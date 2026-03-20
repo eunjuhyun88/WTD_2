@@ -1,0 +1,328 @@
+/* ═══════════════════════════════════════════════════════════════
+   STOCKCLAW Design Token System
+   Single source of truth for all visual properties.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── LOST IN SPACE: Canonical palette ── */
+  --lis-rgb-ink: 5, 9, 20;
+  --lis-rgb-panel: 11, 18, 32;
+  --lis-rgb-panel-hi: 17, 27, 44;
+  --lis-rgb-pink: 219, 154, 159;
+  --lis-rgb-cream: 242, 209, 147;
+  --lis-rgb-ivory: 247, 242, 234;
+  --lis-rgb-lime: 173, 202, 124;
+  --lis-rgb-shadow: 0, 0, 0;
+
+  --lis-bg-0: #050914;
+  --lis-bg-1: #0b1220;
+  --lis-bg-2: #111b2c;
+  --lis-surface-0: #0f1828;
+  --lis-surface-1: #152033;
+  --lis-surface-2: #19263b;
+  --lis-accent: #db9a9f;
+  --lis-highlight: #f2d193;
+  --lis-ivory: #f7f2ea;
+  --lis-positive: #adca7c;
+  --lis-negative: #cf7f8f;
+  --lis-border: rgba(var(--lis-rgb-pink), 0.28);
+  --lis-border-soft: rgba(var(--lis-rgb-pink), 0.16);
+  --lis-border-strong: rgba(var(--lis-rgb-pink), 0.42);
+  --lis-glow-pink: 0 0 18px rgba(var(--lis-rgb-pink), 0.18);
+  --lis-glow-lime: 0 0 18px rgba(var(--lis-rgb-lime), 0.14);
+  --lis-shadow-md: 0 18px 36px rgba(var(--lis-rgb-shadow), 0.24);
+  --lis-shadow-lg: 0 24px 64px rgba(var(--lis-rgb-shadow), 0.34);
+
+  /* ── COLORS: Backgrounds ── */
+  --sc-bg-0: var(--lis-bg-0);          /* deepest space background */
+  --sc-bg-1: var(--lis-bg-1);          /* cards, panels */
+  --sc-bg-2: var(--lis-bg-2);          /* elevated surfaces */
+  --sc-surface: var(--lis-surface-0);  /* interactive surface */
+  --sc-surface-2: var(--lis-surface-1);/* hover / elevated */
+  --sc-overlay: rgba(4, 8, 14, 0.88); /* modal backdrop */
+  --sc-bg-violet: var(--lis-bg-1);
+  --sc-bg-dusk: var(--lis-surface-1);
+
+  /* ── COLORS: Borders & Lines ── */
+  --sc-line: var(--lis-border);
+  --sc-line-soft: var(--lis-border-soft);
+  --sc-line-hard: var(--lis-border-strong);
+
+  /* ── COLORS: Accent ── */
+  --sc-accent: var(--lis-accent);        /* primary accent (pink) */
+  --sc-accent-hover: rgba(var(--lis-rgb-pink), 0.24);
+  --sc-accent-bg: rgba(var(--lis-rgb-pink), 0.1);
+  --sc-accent-bg-subtle: rgba(var(--lis-rgb-pink), 0.05);
+  --sc-accent-2: var(--lis-positive);      /* secondary accent (space green) */
+  --sc-accent-3: var(--lis-highlight);      /* poster cream */
+
+  /* ── COLORS: Semantic ── */
+  --sc-good: var(--lis-positive);          /* gain, success, long */
+  --sc-good-bg: rgba(var(--lis-rgb-lime), 0.16);
+  --sc-bad: var(--lis-negative);           /* loss, error, short */
+  --sc-bad-bg: rgba(var(--lis-rgb-pink), 0.16);
+  --sc-warn: var(--lis-highlight);          /* warning, caution */
+  --sc-warn-bg: rgba(var(--lis-rgb-cream), 0.15);
+  --sc-info: rgba(var(--lis-rgb-lime), 0.88);          /* informational */
+
+  /* ── COLORS: Text ── */
+  --sc-text-0: var(--lis-ivory);        /* primary text (warm ivory) */
+  --sc-text-1: rgba(247, 242, 234, 0.84);  /* secondary text */
+  --sc-text-2: rgba(247, 242, 234, 0.68);  /* muted text */
+  --sc-text-3: rgba(247, 242, 234, 0.52);  /* dim text (a11y floor) */
+
+  /* ── TYPOGRAPHY: Font Families ── */
+  --sc-font-display: 'Bebas Neue', 'Orbitron', monospace;
+  --sc-font-body: 'Space Grotesk', sans-serif;
+  --sc-font-mono: 'JetBrains Mono', monospace;
+  --sc-font-pixel: 'Press Start 2P', monospace;
+  --sc-font-retro: 'VT323', monospace;
+
+  /* ── TYPOGRAPHY: Font Sizes (WCAG: min 9px) ── */
+  --sc-fs-2xs: 9px;
+  --sc-fs-xs: 10px;
+  --sc-fs-sm: 11px;
+  --sc-fs-base: 12px;
+  --sc-fs-md: 13px;
+  --sc-fs-lg: 15px;
+  --sc-fs-xl: 18px;
+  --sc-fs-2xl: 22px;
+  --sc-fs-3xl: 28px;
+  --sc-fs-4xl: 36px;
+
+  /* ── TYPOGRAPHY: Line Heights ── */
+  --sc-lh-tight: 1.2;
+  --sc-lh-normal: 1.45;
+  --sc-lh-relaxed: 1.6;
+
+  /* ── SPACING (4px base) ── */
+  --sc-sp-0: 0;
+  --sc-sp-px: 1px;
+  --sc-sp-0_5: 2px;
+  --sc-sp-1: 4px;
+  --sc-sp-1_5: 6px;
+  --sc-sp-2: 8px;
+  --sc-sp-3: 12px;
+  --sc-sp-4: 16px;
+  --sc-sp-5: 20px;
+  --sc-sp-6: 24px;
+  --sc-sp-8: 32px;
+  --sc-sp-10: 40px;
+  --sc-sp-12: 48px;
+  --sc-sp-16: 64px;
+
+  /* ── BORDERS ── */
+  --sc-border: 1px solid var(--sc-line);
+  --sc-border-soft: 1px solid var(--sc-line-soft);
+  --sc-radius-sm: 4px;
+  --sc-radius-md: 6px;
+  --sc-radius-lg: 8px;
+  --sc-radius-xl: 12px;
+  --sc-radius-pill: 999px;
+
+  /* ── SHADOWS ── */
+  --sc-shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.18);
+  --sc-shadow-md: var(--lis-shadow-md);
+  --sc-shadow-lg: var(--lis-shadow-lg);
+  --sc-shadow-glow: var(--lis-glow-pink);
+
+  /* ── Z-INDEX SCALE ── */
+  --sc-z-base: 1;
+  --sc-z-panel: 10;
+  --sc-z-sticky: 50;
+  --sc-z-header: 100;
+  --sc-z-dropdown: 150;
+  --sc-z-modal-backdrop: 200;
+  --sc-z-modal: 210;
+  --sc-z-notification: 300;
+  --sc-z-toast: 310;
+  --sc-z-tooltip: 400;
+
+  /* ── TRANSITIONS ── */
+  --sc-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --sc-duration-fast: 120ms;
+  --sc-duration-normal: 200ms;
+  --sc-duration-slow: 350ms;
+
+  /* ── LAYOUT ── */
+  --sc-header-h: 56px;
+  --sc-header-h-mobile: 44px;
+  --sc-bottom-bar-h: 28px;
+  --sc-tab-strip-h: 34px;
+
+  /* ── BREAKPOINTS (reference — use in @media queries) ── */
+  /* xs: 0-479 | sm: 480-767 | md: 768-1023 | lg: 1024+ | xl: 1280+ */
+  --sc-bp-xs: 480px;
+  --sc-bp-sm: 768px;
+  --sc-bp-md: 1024px;
+  --sc-bp-lg: 1280px;
+
+  /* ── TOUCH TARGETS (WCAG 2.5.8) ── */
+  --sc-touch-min: 44px;      /* Level AAA — primary interactive */
+  --sc-touch-sm: 36px;       /* acceptable with adequate spacing */
+
+  /* ── RESPONSIVE FONT SIZES (clamp pattern) ── */
+  --sc-fs-resp-2xs: clamp(9px, 2vw, 10px);
+  --sc-fs-resp-xs: clamp(10px, 2.2vw, 11px);
+  --sc-fs-resp-sm: clamp(11px, 2.4vw, 12px);
+  --sc-fs-resp-base: clamp(12px, 2.6vw, 13px);
+
+  /* ── SAFE AREA (notch devices) ── */
+  --sc-safe-top: env(safe-area-inset-top, 0px);
+  --sc-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --sc-safe-left: env(safe-area-inset-left, 0px);
+  --sc-safe-right: env(safe-area-inset-right, 0px);
+
+  /* ═══════════════════════════════════════════════════════════
+     BACKWARD COMPATIBILITY MAPPINGS
+     These map old variable names to new tokens.
+     Remove these after full migration is complete.
+     ═══════════════════════════════════════════════════════════ */
+
+  /* app.css legacy → new tokens */
+  --bg: var(--sc-bg-0);
+  --s1: var(--sc-bg-1);
+  --s2: var(--sc-bg-2);
+  --blk: #0A0808;
+  --card: var(--sc-surface);
+  --card2: var(--sc-surface-2);
+  --yel: var(--sc-accent-3);
+  --pk: var(--sc-accent);
+  --grn: var(--sc-good);
+  --red: var(--sc-bad);
+  --ora: var(--sc-accent);
+  --blu: var(--sc-accent-2);
+  --pur: var(--sc-accent);
+  --gold: var(--sc-accent-3);
+  --cyan: var(--sc-accent-2);
+  --lime: var(--sc-accent-2);
+  --chain: var(--sc-accent-3);
+  --fg: var(--sc-text-0);
+  --fg-strong: rgba(255, 255, 255, 0.95);
+  --fg-medium: rgba(255, 255, 255, 0.7);
+  --dim: rgba(255, 255, 255, 0.5);
+  --dimmer: rgba(255, 255, 255, 0.18);
+
+  /* Font aliases (old → new) */
+  --fd: var(--sc-font-display);
+  --fb: var(--sc-font-body);
+  --fm: var(--sc-font-mono);
+  --fc: 'Impact', 'Arial Black', var(--sc-font-display);
+  --fcomic: 'Comic Sans MS', 'Chalkboard SE', var(--sc-font-mono);
+  --fdisplay: 'Bebas Neue', sans-serif;
+  --fp: var(--sc-font-pixel);
+  --fv: var(--sc-font-retro);
+
+  /* Font size aliases (old → new) */
+  --fs-xs: var(--sc-fs-2xs);
+  --fs-sm: var(--sc-fs-xs);
+  --fs-base: var(--sc-fs-sm);
+  --fs-md: var(--sc-fs-base);
+  --fs-lg: var(--sc-fs-md);
+  --fs-xl: var(--sc-fs-lg);
+  --fs-2xl: var(--sc-fs-xl);
+  --fs-3xl: var(--sc-fs-2xl);
+  --lh-tight: var(--sc-lh-tight);
+  --lh-normal: var(--sc-lh-normal);
+  --lh-relaxed: var(--sc-lh-relaxed);
+
+  /* Border aliases (comic → clean) */
+  --bdr: var(--sc-border);
+  --bdr-thick: var(--sc-border);
+  --shadow: var(--sc-shadow-sm);
+  --shadow-sm: var(--sc-shadow-sm);
+
+  /* arena-tone.css compatibility */
+  --arena-bg-0: var(--sc-bg-0);
+  --arena-bg-1: var(--sc-bg-1);
+  --arena-bg-2: var(--sc-bg-2);
+  --arena-surface: var(--sc-surface);
+  --arena-surface-2: var(--sc-surface-2);
+  --arena-line: var(--sc-line);
+  --arena-line-soft: var(--sc-line-soft);
+  --arena-accent: var(--sc-accent);
+  --arena-accent-2: var(--sc-accent-2);
+  --arena-good: var(--sc-good);
+  --arena-bad: var(--sc-bad);
+  --arena-warn: var(--sc-warn);
+  --arena-text: var(--sc-text-0);
+  --arena-text-dim: var(--sc-text-1);
+  --arena-text-muted: var(--sc-text-2);
+  --arena-shadow: var(--sc-shadow-md);
+}
+
+/* ── GLOBAL FOCUS STATES (a11y) ── */
+:focus-visible {
+  outline: 2px solid var(--sc-accent);
+  outline-offset: 2px;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255, 116, 182, 0.35); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 116, 182, 0.55); }
+
+/* ── ANIMATIONS ── */
+@keyframes sc-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
+@keyframes sc-slide-up { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes sc-slide-in { from { opacity: 0; transform: translateX(-12px) } to { opacity: 1; transform: translateX(0) } }
+@keyframes sc-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sc-shake { 0%, 100% { transform: translateX(0) } 25% { transform: translateX(-3px) } 75% { transform: translateX(3px) } }
+@keyframes sc-float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+@keyframes sc-spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }
+@keyframes sc-ticker { 0% { transform: translateX(0) } 100% { transform: translateX(-50%) } }
+
+/* Legacy animation aliases */
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-20px) } to { opacity: 1; transform: translateX(0) } }
+@keyframes shake { 0%, 100% { transform: translateX(0) } 25% { transform: translateX(-3px) } 75% { transform: translateX(3px) } }
+@keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }
+@keyframes ticker { 0% { transform: translateX(0) } 100% { transform: translateX(-50%) } }
+
+/* ── SELECTION ── */
+::selection {
+  background: var(--sc-accent);
+  color: #000;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PERFORMANCE: backdrop-filter / reduced-motion
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Disable backdrop-filter on mobile (GPU-intensive) */
+@media (max-width: 768px) {
+  .perf-no-blur,
+  .arena-page .result-overlay,
+  .arena-page .pvp-lobby-overlay,
+  .arena-page .chat-area,
+  .chart-legend-wrap,
+  .chart-controls-bar {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Disable all animations and backdrop-filters for reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  *:not(.modal-overlay):not(.wallet-overlay) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCESSIBILITY: minimum font size enforcement
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Global minimum font-size floor for readability (WCAG) */
+/* Components should use --sc-fs-2xs (9px) as the minimum.
+   This rule catches any element that falls below 9px. */

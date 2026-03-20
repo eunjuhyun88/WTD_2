@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  # Required for $env/static imports during svelte-kit check/build in CI.
+  COINALYZE_API_KEY: ci_dummy_key
+  PUBLIC_EVM_CHAIN_ID: '1'
+  PUBLIC_EVM_RPC_URL: https://example.com
+  PUBLIC_WALLETCONNECT_PROJECT_ID: ci_dummy_project
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Docs context check
+        run: npm run docs:check
+
+  check:
+    needs: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COINALYZE_API_KEY: ci_dummy_key
+      PUBLIC_EVM_CHAIN_ID: "42161"
+      PUBLIC_EVM_RPC_URL: https://arb1.arbitrum.io/rpc
+      PUBLIC_WALLETCONNECT_PROJECT_ID: ci_dummy_wc_project
+      WARNING_BUDGET: "49"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Workspace guard
+        run: npm run guard:workspace
+
+      - name: Type check (warning budget)
+        run: npm run check:budget
+
+  build:
+    needs: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COINALYZE_API_KEY: ci_dummy_key
+      PUBLIC_EVM_CHAIN_ID: "42161"
+      PUBLIC_EVM_RPC_URL: https://arb1.arbitrum.io/rpc
+      PUBLIC_WALLETCONNECT_PROJECT_ID: ci_dummy_wc_project
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build

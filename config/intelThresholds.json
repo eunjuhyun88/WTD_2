@@ -1,0 +1,62 @@
+{
+  "policyVersion": "3.0.0",
+  "qualityGate": {
+    "minimum": {
+      "actionability": 70,
+      "timeliness": 65,
+      "reliability": 75,
+      "relevance": 75,
+      "helpfulness": 70
+    },
+    "weights": {
+      "actionability": 0.25,
+      "timeliness": 0.15,
+      "reliability": 0.25,
+      "relevance": 0.15,
+      "helpfulness": 0.2
+    },
+    "passThreshold": 75,
+    "hardHideHelpfulnessBelow": 50,
+    "cacheTtlSec": 300
+  },
+  "domainWeights": {
+    "derivatives": 0.24,
+    "flow": 0.21,
+    "events": 0.19,
+    "headlines": 0.13,
+    "positions": 0.13,
+    "trending": 0.1
+  },
+  "conflict": {
+    "edgeBandPct": 25,
+    "confidencePenaltyPct": 40,
+    "waitPrior": 0.6
+  },
+  "noTrade": {
+    "minCoveragePct": 85,
+    "minBacktestWinRatePct": 58,
+    "maxVolatilityIndex": 50,
+    "minEdgeToTrade": 8
+  },
+  "maxSignalAgeSec": {
+    "derivatives": 1800,
+    "flow": 2700,
+    "events": 21600,
+    "headlines": 5400,
+    "positions": 3600,
+    "trending": 7200
+  },
+  "panelRules": {
+    "maxCardsPerPanel": 5,
+    "positionsPnlAlertPct": 7,
+    "flowOutlierZScoreCut": 2.5,
+    "headlineImpactCutPct": 60,
+    "eventImpactCutPct": 10
+  },
+  "backtestTargets": {
+    "winRateLiftPct": 7,
+    "sharpeLift": 0.2,
+    "maxDrawdownReductionPct": 15,
+    "npsPositiveTargetPct": 80
+  }
+}

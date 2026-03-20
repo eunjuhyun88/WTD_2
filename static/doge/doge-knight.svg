@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Knight Doge - Helmet visor and shield -->
+  <!-- Shield (behind) -->
+  <g transform="translate(145, 120)">
+    <path d="M0 -25 L25 -15 L25 15 L0 30 L-25 15 L-25 -15 Z" fill="#c00" stroke="#000" stroke-width="3"/>
+    <path d="M0 -25 L0 30" stroke="#ffd700" stroke-width="3"/>
+    <path d="M-25 0 L25 0" stroke="#ffd700" stroke-width="3"/>
+    <path d="M-8 -8 L8 -8 L8 8 L-8 8 Z" fill="#ffd700" stroke="#000" stroke-width="1.5"/>
+    <path d="M-4 -4 L4 -4 L4 4 L-4 4 Z" fill="#c00"/>
+  </g>
+  <!-- Helmet -->
+  <path d="M35 115 Q35 45 100 35 Q165 45 165 115 Q165 130 155 140 L45 140 Q35 130 35 115Z" fill="#aaa" stroke="#000" stroke-width="3.5"/>
+  <!-- Helmet top crest -->
+  <path d="M100 35 Q100 20 100 12" stroke="#000" stroke-width="3"/>
+  <path d="M85 12 Q100 5 115 12 Q115 20 100 25 Q85 20 85 12Z" fill="#c00" stroke="#000" stroke-width="2"/>
+  <!-- Plume -->
+  <path d="M100 12 Q110 -5 120 10 Q130 -2 135 15 Q125 8 115 15 Q108 5 100 12Z" fill="#c00" stroke="#000" stroke-width="1.5"/>
+  <!-- Helmet visor slots (eyes visible) -->
+  <rect x="48" y="92" width="104" height="8" rx="2" fill="#222" stroke="#000" stroke-width="2"/>
+  <!-- Doge eyes visible through visor -->
+  <ellipse cx="78" cy="96" rx="8" ry="3.5" fill="#fff"/>
+  <circle cx="80" cy="96" r="3" fill="#d4a33e"/>
+  <circle cx="81" cy="95.5" r="1.5" fill="#1a1a1a"/>
+  <ellipse cx="122" cy="96" rx="8" ry="3.5" fill="#fff"/>
+  <circle cx="124" cy="96" r="3" fill="#d4a33e"/>
+  <circle cx="125" cy="95.5" r="1.5" fill="#1a1a1a"/>
+  <!-- Helmet ventilation holes -->
+  <circle cx="65" cy="110" r="2" fill="#555"/>
+  <circle cx="75" cy="110" r="2" fill="#555"/>
+  <circle cx="85" cy="110" r="2" fill="#555"/>
+  <!-- Nose guard -->
+  <path d="M95 100 L100 120 L105 100" fill="#999" stroke="#000" stroke-width="2"/>
+  <!-- Chin guard -->
+  <path d="M60 130 Q100 145 140 130" fill="#999" stroke="#000" stroke-width="2"/>
+  <!-- Helmet rivets -->
+  <circle cx="45" cy="85" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+  <circle cx="155" cy="85" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+  <circle cx="45" cy="110" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+  <circle cx="155" cy="110" r="3" fill="#888" stroke="#000" stroke-width="1.5"/>
+  <!-- Ear guards -->
+  <path d="M35 75 L25 60 Q30 55 40 62 L42 78" fill="#aaa" stroke="#000" stroke-width="2.5"/>
+  <path d="M165 75 L175 60 Q170 55 160 62 L158 78" fill="#aaa" stroke="#000" stroke-width="2.5"/>
+  <!-- Armor collar hint -->
+  <path d="M40 140 Q100 165 160 140 L165 155 Q100 180 35 155 Z" fill="#999" stroke="#000" stroke-width="2"/>
+</svg>

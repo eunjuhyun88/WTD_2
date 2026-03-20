@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Hacker Doge - Hoodie and glasses -->
+  <!-- Hoodie -->
+  <path d="M25 105 Q25 85 45 75 Q70 62 100 60 Q130 62 155 75 Q175 85 175 105 L180 195 L20 195 Z" fill="#1a1a2e" stroke="#000" stroke-width="3"/>
+  <!-- Hoodie inner shadow -->
+  <path d="M35 100 Q35 88 50 80 Q72 68 100 66 Q128 68 150 80 Q165 88 165 100" fill="#16213e" stroke="none"/>
+  <!-- Hood pulled up over head -->
+  <path d="M32 108 Q30 70 50 52 Q75 35 100 32 Q125 35 150 52 Q170 70 168 108" fill="#1a1a2e" stroke="#000" stroke-width="3"/>
+  <!-- Hood inner edge -->
+  <path d="M40 105 Q38 72 55 58 Q78 42 100 40 Q122 42 145 58 Q162 72 160 105" fill="#16213e" stroke="#000" stroke-width="2"/>
+  <!-- Head base (visible through hood opening) -->
+  <ellipse cx="100" cy="112" rx="55" ry="50" fill="#d4a33e" stroke="none"/>
+  <!-- Inner face -->
+  <ellipse cx="100" cy="118" rx="38" ry="33" fill="#f0d06e"/>
+  <!-- Ears (partially hidden by hood) -->
+  <path d="M52 88 L45 72 L62 82 Z" fill="#d4a33e"/>
+  <path d="M148 88 L155 72 L138 82 Z" fill="#d4a33e"/>
+  <!-- Hacker glasses (rectangular, tinted) -->
+  <rect x="60" y="98" width="30" height="20" rx="3" fill="#00ff41" opacity="0.2" stroke="#000" stroke-width="3"/>
+  <rect x="110" y="98" width="30" height="20" rx="3" fill="#00ff41" opacity="0.2" stroke="#000" stroke-width="3"/>
+  <!-- Glasses bridge -->
+  <path d="M90 108 Q100 104 110 108" fill="none" stroke="#000" stroke-width="3"/>
+  <!-- Glasses arms -->
+  <line x1="60" y1="105" x2="48" y2="102" stroke="#000" stroke-width="2.5"/>
+  <line x1="140" y1="105" x2="152" y2="102" stroke="#000" stroke-width="2.5"/>
+  <!-- Matrix green reflection in glasses -->
+  <text x="65" y="112" font-family="monospace" font-size="7" fill="#00ff41" opacity="0.7">01</text>
+  <text x="75" y="108" font-family="monospace" font-size="6" fill="#00ff41" opacity="0.5">10</text>
+  <text x="115" y="112" font-family="monospace" font-size="7" fill="#00ff41" opacity="0.7">11</text>
+  <text x="125" y="108" font-family="monospace" font-size="6" fill="#00ff41" opacity="0.5">01</text>
+  <!-- Eyes behind glasses -->
+  <circle cx="76" cy="109" r="4" fill="#fff"/>
+  <circle cx="78" cy="109" r="2.5" fill="#1a1a1a"/>
+  <circle cx="79" cy="108" r="1" fill="#00ff41"/>
+  <circle cx="124" cy="109" r="4" fill="#fff"/>
+  <circle cx="126" cy="109" r="2.5" fill="#1a1a1a"/>
+  <circle cx="127" cy="108" r="1" fill="#00ff41"/>
+  <!-- Nose -->
+  <ellipse cx="100" cy="124" rx="6" ry="4.5" fill="#1a1a1a" stroke="#000" stroke-width="1.5"/>
+  <!-- Smirk -->
+  <path d="M88 138 Q100 142 115 135" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Hoodie strings -->
+  <line x1="85" y1="65" x2="82" y2="120" stroke="#444" stroke-width="2"/>
+  <line x1="115" y1="65" x2="118" y2="120" stroke="#444" stroke-width="2"/>
+  <!-- String tips -->
+  <rect x="80" y="118" width="5" height="8" rx="1" fill="#555"/>
+  <rect x="116" y="118" width="5" height="8" rx="1" fill="#555"/>
+  <!-- Green glow effect at bottom -->
+  <ellipse cx="100" cy="185" rx="60" ry="8" fill="#00ff41" opacity="0.15"/>
+</svg>

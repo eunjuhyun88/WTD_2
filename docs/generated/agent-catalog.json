@@ -1,0 +1,207 @@
+{
+  "version": 1,
+  "agentCount": 5,
+  "agents": [
+    {
+      "id": "implementer",
+      "name": "Implementer",
+      "role": "implementer",
+      "summary": "Compatibility implementer alias for legacy flows; prefer the split UI or systems implementers for new work.",
+      "surfaces": [
+        "home",
+        "terminal",
+        "arena",
+        "market",
+        "passport",
+        "lab"
+      ],
+      "reads": [
+        "README.md",
+        "AGENTS.md",
+        "docs/README.md",
+        "ARCHITECTURE.md",
+        "docs/MULTI_AGENT_MEMORY.md",
+        "docs/DESIGN.md",
+        "docs/ENGINEERING.md",
+        "docs/PRODUCT_SENSE.md",
+        "docs/CONTEXT_ENGINEERING.md",
+        "docs/AGENT_FACTORY.md"
+      ],
+      "writes": [
+        "src/",
+        ".agent-context/",
+        "docs/AGENT_WATCH_LOG.md",
+        "docs/handoffs/"
+      ],
+      "outputs": [
+        "code-change",
+        "brief"
+      ],
+      "handoff": "brief",
+      "prompt": "Implement scoped changes against canonical docs. Prefer `implementer-ui` or `implementer-systems` for new slices, keep edits inside owned paths, and leave a concise resume brief.",
+      "manifestPath": "agents/implementer.json",
+      "public": true
+    },
+    {
+      "id": "implementer-systems",
+      "name": "Implementer Systems",
+      "role": "implementer",
+      "summary": "Implements stores, contracts, APIs, runtime controllers, and cross-surface state or logic changes.",
+      "surfaces": [
+        "terminal",
+        "arena",
+        "market",
+        "passport",
+        "lab",
+        "api"
+      ],
+      "reads": [
+        "README.md",
+        "AGENTS.md",
+        "docs/README.md",
+        "ARCHITECTURE.md",
+        "docs/MULTI_AGENT_MEMORY.md",
+        "docs/FRONTEND.md",
+        "docs/API_CONTRACT.md",
+        "docs/RELIABILITY.md",
+        "docs/SECURITY.md"
+      ],
+      "writes": [
+        "src/lib/",
+        "src/routes/api/",
+        "db/",
+        "supabase/",
+        ".agent-context/",
+        "docs/handoffs/"
+      ],
+      "outputs": [
+        "system-change",
+        "brief"
+      ],
+      "handoff": "brief",
+      "prompt": "Implement state, contract, and runtime logic changes against declared ownership boundaries, and leave a concise systems handoff with verification context.",
+      "manifestPath": "agents/implementer-systems.json",
+      "public": true
+    },
+    {
+      "id": "implementer-ui",
+      "name": "Implementer UI",
+      "role": "implementer",
+      "summary": "Implements route shells, page composition, navigation, and presentational UI across Home, Market, Arena, and Passport.",
+      "surfaces": [
+        "home",
+        "market",
+        "arena",
+        "passport",
+        "lab"
+      ],
+      "reads": [
+        "README.md",
+        "AGENTS.md",
+        "docs/README.md",
+        "ARCHITECTURE.md",
+        "docs/MULTI_AGENT_MEMORY.md",
+        "docs/DESIGN.md",
+        "docs/FRONTEND.md",
+        "docs/PRODUCT_SENSE.md",
+        "docs/page-specs/index.md"
+      ],
+      "writes": [
+        "src/routes/",
+        "src/components/",
+        "static/",
+        ".agent-context/",
+        "docs/handoffs/"
+      ],
+      "outputs": [
+        "ui-change",
+        "brief"
+      ],
+      "handoff": "brief",
+      "prompt": "Implement UI slices inside declared route and component ownership, keep route compatibility intact, and leave a precise UI handoff.",
+      "manifestPath": "agents/implementer-ui.json",
+      "public": true
+    },
+    {
+      "id": "planner",
+      "name": "Planner",
+      "role": "planner",
+      "summary": "Plans and routes ambiguous work before implementation begins.",
+      "surfaces": [
+        "home",
+        "terminal",
+        "arena",
+        "market",
+        "passport",
+        "lab",
+        "api"
+      ],
+      "reads": [
+        "README.md",
+        "AGENTS.md",
+        "docs/README.md",
+        "ARCHITECTURE.md",
+        "docs/MULTI_AGENT_MEMORY.md",
+        "docs/SYSTEM_INTENT.md",
+        "docs/PLANS.md",
+        "docs/CONTEXT_ENGINEERING.md",
+        "docs/AGENT_FACTORY.md"
+      ],
+      "writes": [
+        "docs/exec-plans/active/",
+        "docs/decisions/",
+        "docs/handoffs/",
+        "docs/task-contracts/active/",
+        ".agent-context/",
+        "docs/AGENT_WATCH_LOG.md"
+      ],
+      "outputs": [
+        "execution-plan",
+        "checkpoint"
+      ],
+      "handoff": "checkpoint",
+      "prompt": "Break work into minimal execution slices, route file ownership clearly, promote stable decisions into repo docs, and leave plan-level handoff state.",
+      "manifestPath": "agents/planner.json",
+      "public": true
+    },
+    {
+      "id": "reviewer",
+      "name": "Reviewer",
+      "role": "reviewer",
+      "summary": "Reviews work for drift, risk, and boundary compliance.",
+      "surfaces": [
+        "home",
+        "terminal",
+        "arena",
+        "market",
+        "passport",
+        "lab",
+        "api"
+      ],
+      "reads": [
+        "README.md",
+        "AGENTS.md",
+        "docs/README.md",
+        "docs/MULTI_AGENT_MEMORY.md",
+        "docs/QUALITY_SCORE.md",
+        "docs/RELIABILITY.md",
+        "docs/SECURITY.md",
+        "docs/CONTEXT_EVALUATION.md",
+        "docs/AGENT_FACTORY.md"
+      ],
+      "writes": [
+        ".agent-context/",
+        "docs/AGENT_WATCH_LOG.md",
+        "docs/handoffs/"
+      ],
+      "outputs": [
+        "review-findings",
+        "handoff"
+      ],
+      "handoff": "handoff",
+      "prompt": "Review changes for correctness, drift, ownership overlap, and release risk, then leave a handoff artifact with findings or release status.",
+      "manifestPath": "agents/reviewer.json",
+      "public": true
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Detective Doge - Magnifying glass and detective hat -->
+  <!-- Head base -->
+  <ellipse cx="100" cy="115" rx="62" ry="58" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <!-- Inner face -->
+  <ellipse cx="100" cy="122" rx="40" ry="36" fill="#f0d06e"/>
+  <!-- Ears -->
+  <path d="M48 82 L30 38 L67 68 Z" fill="#d4a33e" stroke="#000" stroke-width="3"/>
+  <path d="M152 82 L170 38 L133 68 Z" fill="#d4a33e" stroke="#000" stroke-width="3"/>
+  <path d="M52 78 L40 50 L65 68 Z" fill="#c4922e"/>
+  <path d="M148 78 L160 50 L135 68 Z" fill="#c4922e"/>
+  <!-- Detective hat (deerstalker) -->
+  <path d="M38 85 Q100 55 162 85" fill="#8B6914" stroke="#000" stroke-width="3"/>
+  <path d="M38 85 Q38 65 55 58 Q100 40 145 58 Q162 65 162 85" fill="#a07828" stroke="#000" stroke-width="3"/>
+  <!-- Hat brim front -->
+  <path d="M50 85 Q100 78 150 85 Q145 95 100 92 Q55 95 50 85Z" fill="#8B6914" stroke="#000" stroke-width="2"/>
+  <!-- Hat band -->
+  <path d="M45 82 Q100 72 155 82" fill="none" stroke="#5a4510" stroke-width="3"/>
+  <!-- Hat ear flaps -->
+  <path d="M45 80 Q35 90 38 105 Q42 100 50 95" fill="#a07828" stroke="#000" stroke-width="2"/>
+  <path d="M155 80 Q165 90 162 105 Q158 100 150 95" fill="#a07828" stroke="#000" stroke-width="2"/>
+  <!-- Left eye - sharp/investigating -->
+  <ellipse cx="80" cy="108" rx="11" ry="12" fill="#fff" stroke="#000" stroke-width="3"/>
+  <circle cx="82" cy="109" r="5.5" fill="#4a3000"/>
+  <circle cx="84" cy="107" r="2" fill="#fff"/>
+  <!-- Right eye - squinting -->
+  <path d="M107 108 Q118 102 129 108" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Raised eyebrow -->
+  <path d="M68 96 Q80 88 92 95" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M108 98 Q118 94 128 98" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Nose -->
+  <ellipse cx="100" cy="125" rx="7" ry="5.5" fill="#1a1a1a" stroke="#000" stroke-width="2"/>
+  <!-- Thinking/investigating mouth -->
+  <path d="M88 140 Q95 138 102 140" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Pipe -->
+  <path d="M102 140 L118 135 L122 130" fill="none" stroke="#6b4423" stroke-width="3" stroke-linecap="round"/>
+  <rect x="118" y="120" width="10" height="12" rx="2" fill="#6b4423" stroke="#000" stroke-width="2"/>
+  <!-- Pipe smoke -->
+  <path d="M123 118 Q128 110 124 102" fill="none" stroke="#ccc" stroke-width="1.5" opacity="0.6"/>
+  <path d="M126 115 Q132 105 128 95" fill="none" stroke="#ccc" stroke-width="1.5" opacity="0.4"/>
+  <!-- Magnifying glass -->
+  <g transform="translate(20, 145)">
+    <line x1="18" y1="18" x2="40" y2="45" stroke="#8B6914" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="12" cy="12" r="16" fill="none" stroke="#8B6914" stroke-width="4"/>
+    <circle cx="12" cy="12" r="13" fill="#aad4ff" opacity="0.3" stroke="none"/>
+    <!-- Glass shine -->
+    <path d="M5 5 Q8 2 12 4" fill="none" stroke="#fff" stroke-width="2" opacity="0.6"/>
+  </g>
+</svg>
