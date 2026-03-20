@@ -25,10 +25,10 @@
   },
   "canonical": {
     "files": 27,
-    "lines": 2679,
-    "words": 14273,
-    "chars": 103301,
-    "approxTokens": 25835,
+    "lines": 2680,
+    "words": 14275,
+    "chars": 103378,
+    "approxTokens": 25854,
     "paths": [
       "README.md",
       "AGENTS.md",
@@ -60,11 +60,11 @@
     ]
   },
   "allDocs": {
-    "files": 147,
-    "lines": 42897,
-    "words": 197244,
-    "chars": 1433726,
-    "approxTokens": 358483,
+    "files": 146,
+    "lines": 43258,
+    "words": 198711,
+    "chars": 1446118,
+    "approxTokens": 361580,
     "paths": [
       "README.md",
       "AGENTS.md",
@@ -142,6 +142,7 @@
       "docs/design-docs/unified-product-model.md",
       "docs/exec-plans/active/README.md",
       "docs/exec-plans/active/canonical-frontend-refactor-plan-2026-03-06.md",
+      "docs/exec-plans/active/chatbattle-foundation-refactor-plan-2026-03-20.md",
       "docs/exec-plans/active/context-system-rollout-2026-03-06.md",
       "docs/exec-plans/active/loox-tone-memento-bridge-2026-03-17.md",
       "docs/exec-plans/active/usability-foundation-sprint-0-2026-03-10.md",
@@ -153,9 +154,7 @@
       "docs/full-file-audit.md",
       "docs/generated/README.md",
       "docs/generated/agent-catalog.md",
-      "docs/generated/agent-usage-report.md",
       "docs/generated/api-group-map.md",
-      "docs/generated/context-ab-report.md",
       "docs/generated/db-schema.md",
       "docs/generated/game-record-schema.md",
       "docs/generated/route-map.md",
@@ -216,19 +215,19 @@
     ]
   },
   "reductions": {
-    "smallVsCanonicalPct": 53.19527772401781,
-    "smallVsAllDocsPct": 96.62689723083103,
-    "worstSurfaceReductionVsAllDocsPct": 95.3849973359964
+    "smallVsCanonicalPct": 53.22967432505609,
+    "smallVsAllDocsPct": 96.65578848387632,
+    "worstSurfaceReductionVsAllDocsPct": 95.4278444604237
   },
   "surfaceBundles": [
     {
       "id": "terminal",
       "stats": {
         "files": 9,
-        "lines": 1478,
-        "words": 8514,
-        "chars": 66166,
-        "approxTokens": 16544,
+        "lines": 1477,
+        "words": 8512,
+        "chars": 66118,
+        "approxTokens": 16532,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -241,17 +240,17 @@
           "docs/product-specs/terminal.md"
         ]
       },
-      "reductionVsCanonicalPct": 35.96284110702535,
-      "reductionVsAllDocsPct": 95.3849973359964
+      "reductionVsCanonicalPct": 36.056316237332716,
+      "reductionVsAllDocsPct": 95.4278444604237
     },
     {
       "id": "arena",
       "stats": {
         "files": 9,
-        "lines": 1483,
-        "words": 8498,
-        "chars": 66157,
-        "approxTokens": 16542,
+        "lines": 1482,
+        "words": 8496,
+        "chars": 66109,
+        "approxTokens": 16530,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -264,17 +263,17 @@
           "docs/product-specs/arena.md"
         ]
       },
-      "reductionVsCanonicalPct": 35.97058254306174,
-      "reductionVsAllDocsPct": 95.38555524250802
+      "reductionVsCanonicalPct": 36.06405198421908,
+      "reductionVsAllDocsPct": 95.42839758836219
     },
     {
       "id": "community",
       "stats": {
         "files": 8,
-        "lines": 1411,
-        "words": 8212,
-        "chars": 63947,
-        "approxTokens": 15989,
+        "lines": 1410,
+        "words": 8210,
+        "chars": 63899,
+        "approxTokens": 15977,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -286,17 +285,17 @@
           "docs/generated/api-group-map.md"
         ]
       },
-      "reductionVsCanonicalPct": 38.111089607122125,
-      "reductionVsAllDocsPct": 95.53981639296703
+      "reductionVsCanonicalPct": 38.20298599829813,
+      "reductionVsAllDocsPct": 95.58133746335528
     },
     {
       "id": "api",
       "stats": {
         "files": 8,
-        "lines": 1411,
-        "words": 8212,
-        "chars": 63947,
-        "approxTokens": 15989,
+        "lines": 1410,
+        "words": 8210,
+        "chars": 63899,
+        "approxTokens": 15977,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -308,8 +307,8 @@
           "docs/generated/api-group-map.md"
         ]
       },
-      "reductionVsCanonicalPct": 38.111089607122125,
-      "reductionVsAllDocsPct": 95.53981639296703
+      "reductionVsCanonicalPct": 38.20298599829813,
+      "reductionVsAllDocsPct": 95.58133746335528
     }
   ],
   "structuralScorecard": [
@@ -321,7 +320,7 @@
     },
     {
       "label": "Small-map reduction vs all docs",
-      "actual": "96.6%",
+      "actual": "96.7%",
       "target": ">= 55%",
       "passed": true
     },
@@ -345,7 +344,7 @@
     },
     {
       "label": "Canonical approx tokens",
-      "actual": "25835",
+      "actual": "25854",
       "target": "<= 32000",
       "passed": true
     }
