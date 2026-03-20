@@ -1,0 +1,342 @@
+{
+  "version": 1,
+  "project": {
+    "name": "Stockclaw",
+    "slug": "stockclaw",
+    "summary": "AI-powered social trading terminal with TradingView-grade charting",
+    "stack": "SvelteKit 2 / Svelte 5 / TypeScript / lightweight-charts v5",
+    "phase": "initial bootstrap",
+    "deadline": "TBD"
+  },
+  "git": {
+    "mainBranch": "main"
+  },
+  "discovery": {
+    "routesDir": "src/routes",
+    "storesDir": "src/lib/stores",
+    "apiDir": "src/routes/api"
+  },
+  "surfaces": [
+  {
+    "id": "terminal",
+    "label": "Terminal — Intel & Action",
+    "summary": "Situational awareness, scan orchestration, trading action entry. Chart, war room, intel feeds, quick trades.",
+    "spec": "docs/product-specs/terminal.md",
+    "routes": [
+      "/terminal"
+    ],
+    "stores": [
+      "positionStore",
+      "pnlStore",
+      "quickTradeStore",
+      "trackedSignalStore",
+      "warRoomStore",
+      "copyTradeStore",
+      "predictStore"
+    ],
+    "apis": [
+      "/api/terminal",
+      "/api/quick-trades",
+      "/api/positions",
+      "/api/pnl",
+      "/api/signals",
+      "/api/signal-actions",
+      "/api/copy-trades",
+      "/api/predictions"
+    ]
+  },
+  {
+    "id": "arena",
+    "label": "Arena — Decision Loop",
+    "summary": "Structured human-vs-agent decision loop. Arena v1, v2, Arena War. Phase state machines, chart battle, outcome recording.",
+    "spec": "docs/product-specs/arena.md",
+    "routes": [
+      "/arena",
+      "/arena-v2",
+      "/arena-war"
+    ],
+    "stores": [
+      "gameState",
+      "arenaWarStore",
+      "arenaV2State",
+      "battleFeedStore",
+      "matchHistoryStore",
+      "activeGamesStore",
+      "agentData"
+    ],
+    "apis": [
+      "/api/arena",
+      "/api/arena-war",
+      "/api/matches",
+      "/api/agents"
+    ]
+  },
+  {
+    "id": "community",
+    "label": "Community — Social & Signals",
+    "summary": "Social feed, signal sharing, community posts, copy-trade publishing.",
+    "spec": "docs/product-specs/community.md",
+    "routes": [
+      "/signals",
+      "/live"
+    ],
+    "stores": [
+      "communityStore"
+    ],
+    "apis": [
+      "/api/community",
+      "/api/chat",
+      "/api/activity"
+    ]
+  },
+  {
+    "id": "api",
+    "label": "API — Server Contracts",
+    "summary": "Auth, profile, market data, onchain, external integrations (Binance, GMX, Polymarket, Coingecko, Yahoo).",
+    "spec": "docs/product-specs/api.md",
+    "routes": [
+      "/api"
+    ],
+    "stores": [
+      "priceStore",
+      "walletStore",
+      "userProfileStore",
+      "notificationStore"
+    ],
+    "apis": [
+      "/api/auth",
+      "/api/profile",
+      "/api/market",
+      "/api/coinalyze",
+      "/api/coingecko",
+      "/api/gmx",
+      "/api/polymarket",
+      "/api/yahoo",
+      "/api/macro",
+      "/api/feargreed",
+      "/api/onchain",
+      "/api/etherscan",
+      "/api/senti"
+    ]
+  }
+],
+  "harness": {
+    "pages": [
+      "/"
+    ],
+    "apis": [],
+    "browserPages": [
+      "/"
+    ]
+  },
+	  "coordination": {
+	    "requireClaimOnFeatureBranches": true,
+	    "requirePathsOnFeatureBranches": true,
+	    "featureBranchPrefixes": [
+	      "codex/"
+	    ],
+	    "defaultLeaseMinutes": 240,
+	    "lockStaleMinutes": 15,
+	    "failOnExpiredClaims": true,
+	    "failOnPathOverlap": true,
+	    "failOnUnscopedSurfaceOverlap": true,
+	    "sharedPathPrefixes": [
+      "docs/AGENT_WATCH_LOG.md",
+      "docs/generated/",
+      ".agent-context/"
+	    ]
+	  },
+	  "registry": {
+	    "enabled": true,
+	    "manifestPath": "docs/generated/context-registry.json",
+	    "publicBaseUrl": "",
+	    "publishTags": [
+	      "stockclaw",
+	      "context-kit"
+	    ],
+	    "searchKinds": [
+	      "surface",
+	      "doc",
+	      "command",
+	      "retrieval",
+	      "agent",
+	      "tool"
+	    ]
+	  },
+	  "agents": {
+	    "enabled": true,
+	    "dir": "agents",
+	    "catalogPath": "docs/generated/agent-catalog.json",
+	    "defaultSurface": "terminal"
+	  },
+	  "tools": {
+	    "enabled": true,
+	    "dir": "tools",
+	    "catalogPath": "docs/generated/tool-catalog.json",
+	    "defaultSurface": "terminal"
+	  },
+  "telemetry": {
+	    "enabled": true,
+	    "runsDir": ".agent-context/telemetry/runs",
+	    "eventsDir": ".agent-context/telemetry/events",
+	    "activeDir": ".agent-context/telemetry/active",
+	    "lockPath": ".agent-context/telemetry/telemetry.lock",
+	    "lockStaleMinutes": 5,
+	    "reportPath": "docs/generated/agent-usage-report.json",
+	    "defaults": {
+	      "taskComplexity": "moderate",
+	      "skillLevel": "experienced",
+	      "purpose": "product-development",
+	      "autonomy": "assisted"
+    }
+  },
+  "contracts": {
+    "enabled": true,
+    "activeDir": "docs/task-contracts/active",
+    "completedDir": "docs/task-contracts/completed",
+    "reportPath": "docs/generated/task-contract-report.md",
+    "requireOnFeatureBranches": false,
+    "blockStopOnIncomplete": true,
+    "featureBranchPrefixes": [
+      "codex/"
+    ],
+    "defaultType": "implementation"
+  },
+  "autopilot": {
+    "enabled": true,
+    "agentId": "autopilot",
+    "autoCheckpoint": true,
+    "autoClaim": true,
+    "autoContract": true,
+    "minimumClaimPathDepth": 2,
+    "defaultSurface": "terminal",
+    "defaultObjectivePrefix": "Resume branch work on",
+    "defaultDocs": [
+      "README.md",
+      "AGENTS.md",
+      "docs/README.md",
+      "ARCHITECTURE.md",
+      "docs/CONTEXT_ENGINEERING.md"
+    ]
+  },
+	  "retrieval": {
+	    "enabled": true,
+	    "includePaths": [
+	      "README.md",
+	      "AGENTS.md",
+	      "ARCHITECTURE.md",
+	      "docs/SYSTEM_INTENT.md",
+	      "docs/CONTEXT_ENGINEERING.md",
+	      "docs/CONTEXT_EVALUATION.md",
+	      "docs/CONTEXT_PLATFORM.md",
+	      "docs/CONTEXTUAL_RETRIEVAL.md",
+	      "docs/AGENT_FACTORY.md",
+	      "docs/TOOL_DESIGN.md",
+	      "docs/AGENT_OBSERVABILITY.md",
+	      "docs/MULTI_AGENT_COORDINATION.md",
+	      "docs/SANDBOX_POLICY.md",
+	      "docs/TASK_CONTRACTS.md",
+	      "docs/AUTOPILOT.md",
+	      "docs/CONTEXT_VALIDATION.md",
+	      "docs/DESIGN.md",
+	      "docs/ENGINEERING.md",
+	      "docs/PLANS.md",
+	      "docs/PRODUCT_SENSE.md",
+	      "docs/QUALITY_SCORE.md",
+	      "docs/RELIABILITY.md",
+	      "docs/SECURITY.md",
+	      "docs/HARNESS.md",
+	      "agents/",
+	      "tools/",
+	      "docs/design-docs/",
+	      "docs/product-specs/"
+	    ],
+	    "excludePaths": [
+	      "docs/archive/",
+	      "docs/generated/",
+	      ".agent-context/"
+	    ],
+	    "chunkWords": 120,
+	    "overlapWords": 30,
+	    "defaultTopK": 5,
+	    "contextualWeight": 0.65,
+	    "rawWeight": 0.35,
+	    "pathBoost": 0.8,
+	    "headingBoost": 0.5,
+	    "surfaceBoost": 0.75,
+	    "indexPath": "docs/generated/contextual-retrieval-index.json"
+	  },
+	  "sandbox": {
+	    "enabled": true,
+	    "allowReadPaths": [
+	      "README.md",
+	      "AGENTS.md",
+	      "ARCHITECTURE.md",
+	      "context-kit.json",
+	      "docs/",
+	      "agents/",
+	      "tools/",
+	      "src/",
+	      "package.json"
+	    ],
+	    "allowWritePaths": [
+	      ".agent-context/",
+	      "docs/generated/",
+	      "scripts/dev/"
+	    ],
+	    "allowNetworkHosts": [
+	      "127.0.0.1",
+	      "localhost"
+	    ],
+	    "denyCommandPrefixes": [
+	      "rm -rf",
+	      "git reset --hard",
+	      "git checkout --",
+	      "curl | sh"
+	    ],
+	    "requireApprovalCommandPrefixes": [
+	      "git push",
+	      "npm publish",
+	      "docker push"
+	    ],
+	    "credentialEnvAllowlist": []
+	  },
+	  "evaluation": {
+	    "targets": {
+	      "smallMapReductionVsCanonicalPct": 40,
+      "smallMapReductionVsAllDocsPct": 55,
+      "surfaceReductionVsAllDocsPct": 50,
+      "smallMapMaxApproxTokens": 14000,
+      "smallMapMaxFiles": 6,
+      "canonicalMaxApproxTokens": 32000,
+      "noiseRateMaxPct": 10
+    },
+	    "benchmark": {
+	      "runs": 3,
+	      "warmupRuns": 1,
+	      "mode": "smoke",
+	      "maxDurationCvPct": 15
+	    },
+	    "ab": {
+	      "minComparisons": 1,
+	      "targetDocsBeforeFirstEdit": 6,
+	      "targetResumeLatencyMinutes": 3
+	    },
+	    "validation": {
+	      "minFinishedRuns": 3,
+	      "minRunsWithBaseline": 1,
+	      "minRunsWithEditEvidence": 1,
+	      "minPositiveTimeSavedRuns": 1,
+	      "minEstimatedTimeSavedMinutes": 5,
+	      "maxAverageDocsBeforeFirstEdit": 6,
+	      "minRoutedWins": 1,
+	      "minSurfaceCount": 1,
+	      "minRetrievalChunks": 1
+	    }
+	  },
+	  "commands": {
+    "check": "npm run check",
+    "build": "npm run build",
+    "gate": "npm run gate"
+  }
+}

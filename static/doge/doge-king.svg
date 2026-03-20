@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- King Doge - Crown and royal cape -->
+  <!-- Cape (behind head) -->
+  <path d="M30 130 Q25 145 20 190 L180 190 Q175 145 170 130 Q150 140 100 145 Q50 140 30 130Z" fill="#8b0000" stroke="#000" stroke-width="2.5"/>
+  <!-- Cape ermine trim -->
+  <path d="M20 190 L180 190 L180 180 L20 180 Z" fill="#fff" stroke="#000" stroke-width="2"/>
+  <!-- Ermine spots -->
+  <circle cx="35" cy="185" r="2" fill="#111"/>
+  <circle cx="55" cy="185" r="2" fill="#111"/>
+  <circle cx="75" cy="185" r="2" fill="#111"/>
+  <circle cx="95" cy="185" r="2" fill="#111"/>
+  <circle cx="115" cy="185" r="2" fill="#111"/>
+  <circle cx="135" cy="185" r="2" fill="#111"/>
+  <circle cx="155" cy="185" r="2" fill="#111"/>
+  <circle cx="175" cy="185" r="2" fill="#111"/>
+  <!-- Head base -->
+  <ellipse cx="100" cy="115" rx="62" ry="58" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <!-- Inner face -->
+  <ellipse cx="100" cy="122" rx="40" ry="36" fill="#f0d06e"/>
+  <!-- Ears -->
+  <path d="M48 82 L32 42 L66 70 Z" fill="#d4a33e" stroke="#000" stroke-width="3"/>
+  <path d="M152 82 L168 42 L134 70 Z" fill="#d4a33e" stroke="#000" stroke-width="3"/>
+  <path d="M52 78 L42 52 L64 70 Z" fill="#c4922e"/>
+  <path d="M148 78 L158 52 L136 70 Z" fill="#c4922e"/>
+  <!-- Royal Crown -->
+  <path d="M48 78 L48 55 L65 68 L80 42 L100 65 L120 42 L135 68 L152 55 L152 78 Z" fill="#ffd700" stroke="#000" stroke-width="3"/>
+  <!-- Crown base band -->
+  <rect x="48" y="74" width="104" height="10" rx="2" fill="#ffd700" stroke="#000" stroke-width="2.5"/>
+  <!-- Crown jewels -->
+  <circle cx="65" cy="58" r="4" fill="#ff0044" stroke="#000" stroke-width="1.5"/>
+  <circle cx="100" cy="52" r="5" fill="#0066ff" stroke="#000" stroke-width="1.5"/>
+  <circle cx="135" cy="58" r="4" fill="#00cc44" stroke="#000" stroke-width="1.5"/>
+  <circle cx="80" cy="50" r="3" fill="#ff0044" stroke="#000" stroke-width="1"/>
+  <circle cx="120" cy="50" r="3" fill="#ff0044" stroke="#000" stroke-width="1"/>
+  <!-- Crown band jewels -->
+  <circle cx="70" cy="79" r="3" fill="#0066ff" stroke="#000" stroke-width="1"/>
+  <circle cx="100" cy="79" r="4" fill="#ff0044" stroke="#000" stroke-width="1"/>
+  <circle cx="130" cy="79" r="3" fill="#00cc44" stroke="#000" stroke-width="1"/>
+  <!-- Eyes - regal/confident -->
+  <ellipse cx="80" cy="108" rx="10" ry="11" fill="#fff" stroke="#000" stroke-width="3"/>
+  <circle cx="82" cy="109" r="5.5" fill="#4a3000"/>
+  <circle cx="84" cy="107" r="2" fill="#fff"/>
+  <ellipse cx="120" cy="108" rx="10" ry="11" fill="#fff" stroke="#000" stroke-width="3"/>
+  <circle cx="122" cy="109" r="5.5" fill="#4a3000"/>
+  <circle cx="124" cy="107" r="2" fill="#fff"/>
+  <!-- Regal eyebrows -->
+  <path d="M68 97 Q80 90 92 97" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M108 97 Q120 90 132 97" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Nose -->
+  <ellipse cx="100" cy="125" rx="7" ry="5.5" fill="#1a1a1a" stroke="#000" stroke-width="2"/>
+  <!-- Confident smile -->
+  <path d="M82 140 Q100 152 118 140" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+  <!-- Sparkle effects -->
+  <path d="M45 100 L48 95 L51 100 L48 105 Z" fill="#ffd700" opacity="0.7"/>
+  <path d="M155 98 L158 93 L161 98 L158 103 Z" fill="#ffd700" opacity="0.7"/>
+</svg>
