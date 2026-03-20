@@ -23,6 +23,43 @@
     clampPercent,
     isHorizontalResizeGesture,
   } from '../../components/terminal/terminalHelpers';
+  import {
+    BP_MOBILE,
+    BP_TABLET,
+    MOBILE_TAB_META,
+    type DragTarget,
+    type MobileTab,
+    type MobilePanelSize,
+    type MobileResizeAxis,
+    type MobileResizeState,
+    type MobileTouchResizeState,
+    type DesktopPanelKey,
+    type DesktopPanelSize,
+    type TabletPanelKey,
+    type TabletPanelSize,
+    type TabletSplitResizeAxis,
+    type TabletSplitResizeState,
+    createDefaultMobilePanelSizes,
+    createDefaultDesktopPanelSizes,
+    createDefaultTabletPanelSizes,
+    getViewportFlags,
+    getDesktopPanelStyle as buildDesktopPanelStyle,
+    applyDesktopPanelWheelResize,
+    resetDesktopPanelSize as resetDesktopPanelLayoutSize,
+    getTabletPanelStyle as buildTabletPanelStyle,
+    getDefaultTabletLeftWidth,
+    getDefaultTabletBottomHeight,
+    clampTabletLeftWidth,
+    clampTabletBottomHeight,
+    applyTabletPanelWheelResize,
+    resetTabletPanelSize as resetTabletLayoutSize,
+    getMobilePanelStyle as buildMobilePanelStyle,
+    applyMobilePanelWheelResize,
+    resetMobilePanelSize as resetMobileLayoutSize,
+    applyMobilePanelDrag,
+    clampLeftWidth,
+    clampRightWidth,
+  } from '../../components/terminal/terminalLayoutController';
 
   let liveTickerStr = '';
   let tickerLoaded = false;
@@ -39,67 +76,22 @@
   import { alertEngine } from '$lib/services/alertEngine';
   import { onMount, onDestroy, tick } from 'svelte';
 
-  // ── Panel resize state ──
-  let leftW = 280;       // War Room width
-  let rightW = 300;      // Intel Panel width
+  let leftW = 280;
+  let rightW = 300;
   let windowWidth = 1200;
-
-  const MIN_LEFT = 200;
-  const MAX_LEFT = 450;
-  const MIN_RIGHT = 220;
-  const MAX_RIGHT = 500;
-
-  // Collapse state
   let leftCollapsed = false;
   let rightCollapsed = false;
   let savedLeftW = 280;
   let savedRightW = 300;
-
-  function toggleLeft() {
-    if (leftCollapsed) {
-      leftW = savedLeftW;
-      leftCollapsed = false;
-    } else {
-      savedLeftW = leftW;
-      leftW = 0;
-      leftCollapsed = true;
-    }
-  }
-  function toggleRight() {
-    if (rightCollapsed) {
-      rightW = savedRightW;
-      rightCollapsed = false;
-    } else {
-      savedRightW = rightW;
-      rightW = 0;
-      rightCollapsed = true;
-    }
-  }
-
-  // Responsive breakpoints
-  const BP_MOBILE = 768;
-  const BP_TABLET = 1024;
-
-  type DragTarget = 'left' | 'right' | null;
   let dragTarget: DragTarget = null;
   let dragStartX = 0;
   let dragStartVal = 0;
 
-  // Responsive layout mode
   let isMobile = false;
   let isTablet = false;
   let isDesktop = true;
-  $: isMobile = windowWidth < BP_MOBILE;
-  $: isTablet = windowWidth >= BP_MOBILE && windowWidth < BP_TABLET;
-  $: isDesktop = windowWidth >= BP_TABLET;
+  $: ({ isMobile, isTablet, isDesktop } = getViewportFlags(windowWidth));
 
-  // Mobile tab control
-  type MobileTab = 'warroom' | 'chart' | 'intel';
-  const MOBILE_TAB_META: Record<MobileTab, { label: string; icon: string; desc: string }> = {
-    warroom: { label: 'War Room', icon: '🎖', desc: 'Signal stream and quick trade actions' },
-    chart: { label: 'Chart', icon: '📊', desc: 'Execution chart with drawing and indicators' },
-    intel: { label: 'Intel', icon: '🧠', desc: 'News, community and agent chat' },
-  };
   let mobileTab: MobileTab = 'chart';
   let densityMode: 'essential' | 'pro' = 'essential';
   let densityLabel = 'ESSENTIAL';
@@ -110,149 +102,61 @@
   let decisionPrimaryHint = 'Scan current pair to generate agent consensus';
   let mobileViewTracked = false;
   let mobileNavTracked = false;
-  type MobilePanelSize = { widthPct: number; heightPct: number };
-  const MOBILE_PANEL_MIN_W = 72;
-  const MOBILE_PANEL_MAX_W = 100;
-  const MOBILE_PANEL_MIN_H = 58;
-  const MOBILE_PANEL_MAX_H = 100;
-  const MOBILE_PANEL_STEP = 3;
-  type MobileResizeAxis = 'x' | 'y';
-  type MobileResizeState = {
-    tab: MobileTab;
-    axis: MobileResizeAxis;
-    pointerId: number;
-    startClient: number;
-    startPct: number;
-    basisPx: number;
-  };
-  type MobileTouchResizeState = {
-    tab: MobileTab;
-    axis: MobileResizeAxis;
-    touchId: number;
-    startClient: number;
-    startPct: number;
-    basisPx: number;
-  };
+
   let mobileResizeState: MobileResizeState | null = null;
   let mobileTouchResizeState: MobileTouchResizeState | null = null;
-  let mobilePanelSizes: Record<MobileTab, MobilePanelSize> = {
-    warroom: { widthPct: 100, heightPct: 100 },
-    chart: { widthPct: 100, heightPct: 100 },
-    intel: { widthPct: 100, heightPct: 100 },
-  };
-  type DesktopPanelKey = 'left' | 'center' | 'right';
-  type DesktopPanelSize = { widthPct: number; heightPct: number };
-  const DESKTOP_PANEL_MIN_W = 72;
-  const DESKTOP_PANEL_MAX_W = 100;
-  const DESKTOP_PANEL_MIN_H = 64;
-  const DESKTOP_PANEL_MAX_H = 100;
-  const DESKTOP_PANEL_STEP = 3;
-  let desktopPanelSizes: Record<DesktopPanelKey, DesktopPanelSize> = {
-    left: { widthPct: 100, heightPct: 100 },
-    center: { widthPct: 100, heightPct: 100 },
-    right: { widthPct: 100, heightPct: 100 },
-  };
-  type TabletPanelKey = 'left' | 'center' | 'bottom';
-  type TabletPanelSize = { widthPct: number; heightPct: number };
-  const TABLET_LEFT_MIN = 188;
-  const TABLET_LEFT_MAX = 360;
-  const TABLET_BOTTOM_MIN = 200;
-  const TABLET_BOTTOM_MAX = 360;
-  const TABLET_SPLIT_STEP = 12;
-  let tabletPanelSizes: Record<TabletPanelKey, TabletPanelSize> = {
-    left: { widthPct: 100, heightPct: 100 },
-    center: { widthPct: 100, heightPct: 100 },
-    bottom: { widthPct: 100, heightPct: 100 },
-  };
+  let mobilePanelSizes: Record<MobileTab, MobilePanelSize> = createDefaultMobilePanelSizes();
+
+  let desktopPanelSizes: Record<DesktopPanelKey, DesktopPanelSize> = createDefaultDesktopPanelSizes();
+
+  let tabletPanelSizes: Record<TabletPanelKey, TabletPanelSize> = createDefaultTabletPanelSizes();
   let tabletLeftWidth = 232;
   let tabletBottomHeight = 260;
   let tabletLayoutStyle = '';
   $: tabletLayoutStyle = `--tab-left-width: ${tabletLeftWidth}px; --tab-bottom-height: ${tabletBottomHeight}px;`;
-  type TabletSplitResizeAxis = 'x' | 'y';
-  type TabletSplitResizeState = {
-    axis: TabletSplitResizeAxis;
-    pointerId: number;
-    startClient: number;
-    startValue: number;
-  };
   let tabletSplitResizeState: TabletSplitResizeState | null = null;
 
-  // clampPercent — imported from terminalHelpers
+  function toggleLeft() {
+    if (leftCollapsed) {
+      leftW = savedLeftW;
+      leftCollapsed = false;
+      return;
+    }
+    savedLeftW = leftW;
+    leftW = 0;
+    leftCollapsed = true;
+  }
+
+  function toggleRight() {
+    if (rightCollapsed) {
+      rightW = savedRightW;
+      rightCollapsed = false;
+      return;
+    }
+    savedRightW = rightW;
+    rightW = 0;
+    rightCollapsed = true;
+  }
 
   function getDesktopPanelStyle(panel: DesktopPanelKey) {
-    const size = desktopPanelSizes[panel];
-    return `--desk-panel-width: ${size.widthPct}%; --desk-panel-height: ${size.heightPct}%`;
+    return buildDesktopPanelStyle(desktopPanelSizes, panel);
   }
 
   function resizeDesktopPanelByWheel(panel: DesktopPanelKey, axis: 'x' | 'y', e: WheelEvent) {
     if (!isDesktop) return;
-    const rawDelta = axis === 'x' ? (Math.abs(e.deltaX) > 0 ? e.deltaX : e.deltaY) : e.deltaY;
-    if (!Number.isFinite(rawDelta) || rawDelta === 0) return;
-
-    const step = e.shiftKey ? DESKTOP_PANEL_STEP * 2 : DESKTOP_PANEL_STEP;
-    const signed = rawDelta > 0 ? step : -step;
-    const current = desktopPanelSizes[panel];
+    const next = applyDesktopPanelWheelResize(desktopPanelSizes, panel, axis, e);
+    if (!next) return;
     e.preventDefault();
     e.stopPropagation();
-
-    if (axis === 'x') {
-      const nextWidth = clampPercent(current.widthPct + signed, DESKTOP_PANEL_MIN_W, DESKTOP_PANEL_MAX_W);
-      if (nextWidth === current.widthPct) return;
-      desktopPanelSizes = {
-        ...desktopPanelSizes,
-        [panel]: { ...current, widthPct: nextWidth },
-      };
-      return;
-    }
-
-    const nextHeight = clampPercent(current.heightPct + signed, DESKTOP_PANEL_MIN_H, DESKTOP_PANEL_MAX_H);
-    if (nextHeight === current.heightPct) return;
-    desktopPanelSizes = {
-      ...desktopPanelSizes,
-      [panel]: { ...current, heightPct: nextHeight },
-    };
+    desktopPanelSizes = next;
   }
 
   function resetDesktopPanelSize(panel: DesktopPanelKey) {
-    desktopPanelSizes = {
-      ...desktopPanelSizes,
-      [panel]: { widthPct: 100, heightPct: 100 },
-    };
+    desktopPanelSizes = resetDesktopPanelLayoutSize(desktopPanelSizes, panel);
   }
 
   function getTabletPanelStyle(panel: TabletPanelKey) {
-    const size = tabletPanelSizes[panel];
-    return `--tab-panel-width: ${size.widthPct}%; --tab-panel-height: ${size.heightPct}%`;
-  }
-
-  function getDefaultTabletLeftWidth() {
-    if (typeof window === 'undefined') return 232;
-    return Math.round(Math.min(232, Math.max(196, window.innerWidth * 0.23)));
-  }
-
-  function getDefaultTabletBottomHeight() {
-    if (typeof window === 'undefined') return 260;
-    return Math.round(Math.min(280, Math.max(200, window.innerHeight * 0.28)));
-  }
-
-  function clampTabletLeftWidth(next: number) {
-    if (typeof window === 'undefined') return Math.round(Math.min(TABLET_LEFT_MAX, Math.max(TABLET_LEFT_MIN, next)));
-    const dynamicMax = Math.min(TABLET_LEFT_MAX, Math.max(220, Math.round(window.innerWidth * 0.36)));
-    return Math.round(Math.min(dynamicMax, Math.max(TABLET_LEFT_MIN, next)));
-  }
-
-  function clampTabletBottomHeight(next: number) {
-    if (typeof window === 'undefined') return Math.round(Math.min(TABLET_BOTTOM_MAX, Math.max(TABLET_BOTTOM_MIN, next)));
-    const dynamicMax = Math.min(TABLET_BOTTOM_MAX, Math.max(196, Math.round(window.innerHeight * 0.42)));
-    return Math.round(Math.min(dynamicMax, Math.max(TABLET_BOTTOM_MIN, next)));
-  }
-
-  function applyTabletSplitDelta(axis: TabletSplitResizeAxis, signedDelta: number) {
-    if (axis === 'x') {
-      tabletLeftWidth = clampTabletLeftWidth(tabletLeftWidth + signedDelta);
-      return;
-    }
-    tabletBottomHeight = clampTabletBottomHeight(tabletBottomHeight + signedDelta);
+    return buildTabletPanelStyle(tabletPanelSizes, panel);
   }
 
   function startTabletSplitDrag(axis: TabletSplitResizeAxis, e: PointerEvent) {
@@ -276,10 +180,9 @@
     const currentClient = state.axis === 'x' ? e.clientX : e.clientY;
     const delta = currentClient - state.startClient;
     if (state.axis === 'x') {
-      tabletLeftWidth = clampTabletLeftWidth(state.startValue + delta);
+      tabletLeftWidth = clampTabletLeftWidth(state.startValue + delta, window.innerWidth);
     } else {
-      // Separator up => bottom panel grows, separator down => bottom panel shrinks.
-      tabletBottomHeight = clampTabletBottomHeight(state.startValue - delta);
+      tabletBottomHeight = clampTabletBottomHeight(state.startValue - delta, window.innerHeight);
     }
     e.preventDefault();
   }
@@ -294,72 +197,42 @@
 
   function resizeTabletPanelByWheel(panel: TabletPanelKey, axis: 'x' | 'y', e: WheelEvent) {
     if (!isTablet) return;
-    const rawDelta = axis === 'x' ? (Math.abs(e.deltaX) > 0 ? e.deltaX : e.deltaY) : e.deltaY;
-    if (!Number.isFinite(rawDelta) || rawDelta === 0) return;
-
-    const step = e.shiftKey ? TABLET_SPLIT_STEP + 8 : TABLET_SPLIT_STEP;
-    const signed = rawDelta > 0 ? step : -step;
+    const next = applyTabletPanelWheelResize(
+      tabletLeftWidth,
+      tabletBottomHeight,
+      panel,
+      axis,
+      e,
+      window.innerWidth,
+      window.innerHeight
+    );
+    if (!next) return;
     e.preventDefault();
     e.stopPropagation();
-
-    if (axis === 'x') {
-      // Tablet horizontal split: adjust WAR ROOM vs CHART width.
-      if (panel === 'bottom') return;
-      applyTabletSplitDelta('x', signed);
-      return;
-    }
-
-    // Tablet vertical split: adjust CHART block vs INTEL block height.
-    applyTabletSplitDelta('y', signed);
+    tabletLeftWidth = next.tabletLeftWidth;
+    tabletBottomHeight = next.tabletBottomHeight;
   }
 
   function resetTabletPanelSize(panel: TabletPanelKey) {
-    if (panel === 'bottom') {
-      tabletBottomHeight = getDefaultTabletBottomHeight();
-      return;
-    }
-    tabletLeftWidth = getDefaultTabletLeftWidth();
+    const next = resetTabletLayoutSize(panel, window.innerWidth, window.innerHeight);
+    tabletLeftWidth = next.tabletLeftWidth;
+    tabletBottomHeight = next.tabletBottomHeight;
   }
 
   function getMobilePanelStyle(tab: MobileTab) {
-    const panel = mobilePanelSizes[tab];
-    return `--mob-panel-width: ${panel.widthPct}%; --mob-panel-height: ${panel.heightPct}%`;
+    return buildMobilePanelStyle(mobilePanelSizes, tab);
   }
 
   function resizeMobilePanelByWheel(tab: MobileTab, axis: 'x' | 'y', e: WheelEvent) {
     if (!isMobile) return;
-    const rawDelta = axis === 'x' ? (Math.abs(e.deltaX) > 0 ? e.deltaX : e.deltaY) : e.deltaY;
-    if (!Number.isFinite(rawDelta) || rawDelta === 0) return;
-
-    const step = e.shiftKey ? MOBILE_PANEL_STEP * 2 : MOBILE_PANEL_STEP;
-    const signed = rawDelta > 0 ? step : -step;
-    const current = mobilePanelSizes[tab];
-
-    if (axis === 'x') {
-      const nextWidth = clampPercent(current.widthPct + signed, MOBILE_PANEL_MIN_W, MOBILE_PANEL_MAX_W);
-      if (nextWidth === current.widthPct) return;
-      e.preventDefault();
-      mobilePanelSizes = {
-        ...mobilePanelSizes,
-        [tab]: { ...current, widthPct: nextWidth },
-      };
-      return;
-    }
-
-    const nextHeight = clampPercent(current.heightPct + signed, MOBILE_PANEL_MIN_H, MOBILE_PANEL_MAX_H);
-    if (nextHeight === current.heightPct) return;
+    const next = applyMobilePanelWheelResize(mobilePanelSizes, tab, axis, e);
+    if (!next) return;
     e.preventDefault();
-    mobilePanelSizes = {
-      ...mobilePanelSizes,
-      [tab]: { ...current, heightPct: nextHeight },
-    };
+    mobilePanelSizes = next;
   }
 
   function resetMobilePanelSize(tab: MobileTab) {
-    mobilePanelSizes = {
-      ...mobilePanelSizes,
-      [tab]: { widthPct: 100, heightPct: 100 },
-    };
+    mobilePanelSizes = resetMobileLayoutSize(mobilePanelSizes, tab);
   }
 
   function supportsPointerDrag() {
@@ -370,28 +243,6 @@
     if (!mobileResizeState && !mobileTouchResizeState) {
       document.body.style.userSelect = '';
     }
-  }
-
-  function applyMobilePanelDrag(tab: MobileTab, axis: MobileResizeAxis, startPct: number, deltaPct: number) {
-    const current = mobilePanelSizes[tab];
-
-    if (axis === 'x') {
-      const nextWidth = clampPercent(startPct + deltaPct, MOBILE_PANEL_MIN_W, MOBILE_PANEL_MAX_W);
-      if (nextWidth === current.widthPct) return false;
-      mobilePanelSizes = {
-        ...mobilePanelSizes,
-        [tab]: { ...current, widthPct: nextWidth },
-      };
-      return true;
-    }
-
-    const nextHeight = clampPercent(startPct + deltaPct, MOBILE_PANEL_MIN_H, MOBILE_PANEL_MAX_H);
-    if (nextHeight === current.heightPct) return false;
-    mobilePanelSizes = {
-      ...mobilePanelSizes,
-      [tab]: { ...current, heightPct: nextHeight },
-    };
-    return true;
   }
 
   function startMobilePanelDrag(tab: MobileTab, axis: MobileResizeAxis, e: PointerEvent) {
@@ -433,8 +284,9 @@
     const { tab, axis, startClient, startPct, basisPx } = mobileResizeState;
     const currentClient = axis === 'x' ? e.clientX : e.clientY;
     const deltaPct = ((currentClient - startClient) / basisPx) * 100;
-    const changed = applyMobilePanelDrag(tab, axis, startPct, deltaPct);
-    if (!changed) return;
+    const next = applyMobilePanelDrag(mobilePanelSizes, tab, axis, startPct, deltaPct);
+    if (!next) return;
+    mobilePanelSizes = next;
     e.preventDefault();
   }
 
@@ -499,8 +351,9 @@
     const { tab, axis, startClient, startPct, basisPx } = mobileTouchResizeState;
     const currentClient = axis === 'x' ? touch.clientX : touch.clientY;
     const deltaPct = ((currentClient - startClient) / basisPx) * 100;
-    const changed = applyMobilePanelDrag(tab, axis, startPct, deltaPct);
-    if (!changed) return;
+    const next = applyMobilePanelDrag(mobilePanelSizes, tab, axis, startPct, deltaPct);
+    if (!next) return;
+    mobilePanelSizes = next;
     e.preventDefault();
   }
 
@@ -641,10 +494,10 @@
     if (!dragTarget) return;
     if (dragTarget === 'left') {
       const delta = e.clientX - dragStartX;
-      leftW = Math.min(MAX_LEFT, Math.max(MIN_LEFT, dragStartVal + delta));
+      leftW = clampLeftWidth(dragStartVal + delta);
     } else if (dragTarget === 'right') {
       const delta = dragStartX - e.clientX;
-      rightW = Math.min(MAX_RIGHT, Math.max(MIN_RIGHT, dragStartVal + delta));
+      rightW = clampRightWidth(dragStartVal + delta);
     }
   }
 
@@ -655,14 +508,6 @@
     document.body.style.userSelect = '';
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', onMouseUp);
-  }
-
-  function clampLeftWidth(next: number) {
-    return Math.min(MAX_LEFT, Math.max(MIN_LEFT, next));
-  }
-
-  function clampRightWidth(next: number) {
-    return Math.min(MAX_RIGHT, Math.max(MIN_RIGHT, next));
   }
 
   // isHorizontalResizeGesture — imported from terminalHelpers
@@ -721,12 +566,12 @@
     const nowTablet = windowWidth >= BP_MOBILE && windowWidth < BP_TABLET;
     if (!nowTablet) return;
     if (!wasTablet) {
-      tabletLeftWidth = getDefaultTabletLeftWidth();
-      tabletBottomHeight = getDefaultTabletBottomHeight();
+      tabletLeftWidth = getDefaultTabletLeftWidth(window.innerWidth);
+      tabletBottomHeight = getDefaultTabletBottomHeight(window.innerHeight);
       return;
     }
-    tabletLeftWidth = clampTabletLeftWidth(tabletLeftWidth);
-    tabletBottomHeight = clampTabletBottomHeight(tabletBottomHeight);
+    tabletLeftWidth = clampTabletLeftWidth(tabletLeftWidth, window.innerWidth);
+    tabletBottomHeight = clampTabletBottomHeight(tabletBottomHeight, window.innerHeight);
   }
 
   async function fetchLiveTicker() {
@@ -767,8 +612,8 @@
   onMount(() => {
     windowWidth = window.innerWidth;
     if (windowWidth >= BP_MOBILE && windowWidth < BP_TABLET) {
-      tabletLeftWidth = getDefaultTabletLeftWidth();
-      tabletBottomHeight = getDefaultTabletBottomHeight();
+      tabletLeftWidth = getDefaultTabletLeftWidth(window.innerWidth);
+      tabletBottomHeight = getDefaultTabletBottomHeight(window.innerHeight);
     }
     window.addEventListener('resize', handleResize);
     window.addEventListener('pointermove', onMobilePanelPointerMove, { passive: false });
