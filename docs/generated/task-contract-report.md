@@ -1,6 +1,6 @@
 # Task Contract Report
 
-- Current branch: `codex/dev-server-run-20260320-chatbattle`
+- Current branch: `claude/sweet-ardinghelli`
 - Active dir: `docs/task-contracts/active`
 - Completed dir: `docs/task-contracts/completed`
 - Require contract on feature branches: `no`
@@ -10,8 +10,7 @@
 
 | Contract | Branch | Surface | Type | Finish | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| `docs/task-contracts/active/branch-cleanup-split-2026-03-17.md` | `codex/terminal-uiux-gtm-wip` | `branch-hygiene` | `workflow` | 5/5 | `ready` | ok |
-| `docs/task-contracts/active/codex-terminal-uiux-gtm-wip.md` | `codex/terminal-uiux-gtm-wip` | `home` | `implementation` | 6/6 | `ready` | ok |
+| none | - | - | - | 0/0 | `none` | no active contracts |
 
 ## Completed Contracts
 

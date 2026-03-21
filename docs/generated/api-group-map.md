@@ -15,17 +15,17 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 | GMX V2 | GMX position lifecycle | `/api/gmx/balance`, `/api/gmx/close`, `/api/gmx/confirm`, `/api/gmx/markets` | 6 |
 | Polymarket | prediction market and related positions | `/api/polymarket/markets`, `/api/polymarket/orderbook`, `/api/positions/polymarket`, `/api/positions/polymarket/[id]/close` | 8 |
 | Unified Positions | aggregated position view | `/api/positions/unified` | 1 |
-| Arena | strategic arena lifecycle | `/api/arena/analyze`, `/api/arena/draft`, `/api/arena/hypothesis`, `/api/arena/match` | 8 |
+| Arena | strategic arena lifecycle | `/api/arena/analyze`, `/api/arena/draft`, `/api/arena/hypothesis`, `/api/arena/match` | 11 |
 | Arena War | fast battle records and memory | `/api/arena-war`, `/api/arena-war/rag` | 2 |
-| Passport Learning | learning datasets, evals, and jobs | `/api/profile/passport/learning/datasets`, `/api/profile/passport/learning/evals`, `/api/profile/passport/learning/reports`, `/api/profile/passport/learning/reports/generate` | 7 |
-| User Profile | profile, progression, preferences, and agent stats | `/api/agents/stats`, `/api/agents/stats/[agentId]`, `/api/portfolio/holdings`, `/api/preferences` | 7 |
+| Passport Learning | learning datasets, evals, and jobs | `/api/lab/autorun`, `/api/profile/passport/learning/datasets`, `/api/profile/passport/learning/evals`, `/api/profile/passport/learning/reports` | 8 |
+| User Profile | profile, progression, preferences, and agent stats | `/api/agents/stats`, `/api/agents/stats/[agentId]`, `/api/doctrine`, `/api/portfolio/holdings` | 8 |
 | Predictions | prediction positions and voting | `/api/predictions`, `/api/predictions/positions/[id]/close`, `/api/predictions/positions/open`, `/api/predictions/vote` | 4 |
 | Community | activity, posts, and reactions | `/api/activity`, `/api/activity/reaction`, `/api/community/posts`, `/api/community/posts/[id]/react` | 4 |
-| Copy Trading | publish and run tracking | `/api/copy-trades/publish`, `/api/copy-trades/runs`, `/api/copy-trades/runs/[id]` | 3 |
+| Copy Trading | publish and run tracking | `/api/copy-trades/publish`, `/api/copy-trades/runs`, `/api/copy-trades/runs/[id]`, `/api/marketplace/list` | 6 |
 | Tournaments | tournament lifecycle and bracket access | `/api/tournaments/[id]/bracket`, `/api/tournaments/[id]/register`, `/api/tournaments/active` | 3 |
 | Notifications | notification lifecycle | `/api/notifications`, `/api/notifications/[id]`, `/api/notifications/read` | 3 |
 | Market Alerts | specialized market alert surface | `/api/market/alerts/onchain` | 1 |
-| Proxies & Infra | third-party proxy and support endpoints | `/api/chat/messages`, `/api/coinalyze`, `/api/coingecko/global`, `/api/etherscan/onchain` | 13 |
+| Proxies & Infra | third-party proxy and support endpoints | `/api/chat/messages`, `/api/coinalyze`, `/api/coingecko/global`, `/api/etherscan/onchain` | 16 |
 
 ## Current Route Inventory Snapshot
 
@@ -108,13 +108,17 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/arena/match/[id]`
 - `/api/arena/match/[id]/warroom`
 - `/api/arena/resolve`
+- `/api/battle`
+- `/api/battle/tick`
 - `/api/matches`
+- `/api/memory/[agentId]`
 
 ### Arena War
 - `/api/arena-war`
 - `/api/arena-war/rag`
 
 ### Passport Learning
+- `/api/lab/autorun`
 - `/api/profile/passport/learning/datasets`
 - `/api/profile/passport/learning/evals`
 - `/api/profile/passport/learning/reports`
@@ -126,6 +130,7 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 ### User Profile
 - `/api/agents/stats`
 - `/api/agents/stats/[agentId]`
+- `/api/doctrine`
 - `/api/portfolio/holdings`
 - `/api/preferences`
 - `/api/profile`
@@ -148,6 +153,9 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/copy-trades/publish`
 - `/api/copy-trades/runs`
 - `/api/copy-trades/runs/[id]`
+- `/api/marketplace/list`
+- `/api/marketplace/publish`
+- `/api/marketplace/subscribe`
 
 ### Tournaments
 - `/api/tournaments/[id]/bracket`
@@ -167,6 +175,9 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/coinalyze`
 - `/api/coingecko/global`
 - `/api/etherscan/onchain`
+- `/api/exchange/analysis`
+- `/api/exchange/connect`
+- `/api/exchange/import`
 - `/api/feargreed`
 - `/api/macro/fred`
 - `/api/macro/indicators`
