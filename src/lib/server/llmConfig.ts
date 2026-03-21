@@ -17,9 +17,37 @@ export function geminiUrl(model = GEMINI_MODEL): string {
   return `${GEMINI_ENDPOINT}/models/${model}:generateContent`;
 }
 
-// ─── Groq ─────────────────────────────────────────────────────
+// ─── Groq (with key rotation) ─────────────────────────────────
 
-export const GROQ_API_KEY = env.GROQ_API_KEY ?? '';
+const GROQ_KEYS: string[] = (() => {
+  const keys: string[] = [];
+  // Primary key
+  if (env.GROQ_API_KEY) keys.push(env.GROQ_API_KEY);
+  // Rotation keys (comma-separated)
+  if (env.GROQ_API_KEYS) {
+    for (const k of env.GROQ_API_KEYS.split(',')) {
+      const trimmed = k.trim();
+      if (trimmed && !keys.includes(trimmed)) keys.push(trimmed);
+    }
+  }
+  return keys;
+})();
+
+let _groqKeyIdx = 0;
+
+export function getGroqApiKey(): string {
+  if (GROQ_KEYS.length === 0) return '';
+  const key = GROQ_KEYS[_groqKeyIdx % GROQ_KEYS.length];
+  return key;
+}
+
+export function rotateGroqKey(): void {
+  if (GROQ_KEYS.length > 1) {
+    _groqKeyIdx = (_groqKeyIdx + 1) % GROQ_KEYS.length;
+  }
+}
+
+export const GROQ_API_KEY = GROQ_KEYS[0] ?? '';
 export const GROQ_MODEL = 'llama-3.3-70b-versatile';
 export const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1';
 

@@ -13,6 +13,7 @@ import {
   isDeepSeekAvailable,
   isGeminiAvailable,
   isGroqAvailable,
+  getGroqApiKey, rotateGroqKey,
   type LLMProvider,
 } from './llmConfig';
 import type { MultiTimeframeIndicatorContext } from './multiTimeframeContext';
@@ -50,11 +51,12 @@ async function callGroq(messages: LLMMessage[], maxTokens: number, temperature: 
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const apiKey = getGroqApiKey();
     const res = await fetch(groqUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
@@ -67,6 +69,10 @@ async function callGroq(messages: LLMMessage[], maxTokens: number, temperature: 
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
+      // On 429 (rate limit), rotate to next key and throw for retry
+      if (res.status === 429) {
+        rotateGroqKey();
+      }
       throw new Error(`Groq ${res.status}: ${errBody.slice(0, 200)}`);
     }
 
