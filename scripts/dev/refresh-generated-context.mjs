@@ -301,6 +301,12 @@ function groupApiRoute(route) {
     route.startsWith('/api/creator/')
   ) return 'Community';
   if (route.startsWith('/api/copy-trades/')) return 'Copy Trading';
+  if (route.startsWith('/api/battle')) return 'Arena';
+  if (route.startsWith('/api/memory/')) return 'Arena';
+  if (route.startsWith('/api/doctrine')) return 'User Profile';
+  if (route.startsWith('/api/exchange/')) return 'Proxies & Infra';
+  if (route.startsWith('/api/lab/')) return 'Passport Learning';
+  if (route.startsWith('/api/marketplace/')) return 'Copy Trading';
   if (route.startsWith('/api/tournaments/')) return 'Tournaments';
   if (route.startsWith('/api/notifications')) return 'Notifications';
   if (
