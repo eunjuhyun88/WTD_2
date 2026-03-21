@@ -65,7 +65,20 @@
     "harness:smoke": "bash scripts/dev/run-context-harness.sh",
     "harness:browser": "bash scripts/dev/run-browser-context-harness.sh",
     "harness:all": "bash scripts/dev/run-full-context-harness.sh",
-    "harness:benchmark": "node scripts/dev/run-context-benchmark.mjs"
+    "harness:benchmark": "node scripts/dev/run-context-benchmark.mjs",
+    "ci:install": "bash scripts/dev/ci-install-deps.sh",
+    "ci:context": "bash scripts/dev/run-ci-context.sh",
+    "ci:all": "bash scripts/dev/run-configured-command.sh gate && bash scripts/dev/run-configured-command.sh check && bash scripts/dev/run-configured-command.sh build",
+    "safe:git-config": "bash scripts/dev/bootstrap-git-config.sh",
+    "ctx:resume": "bash scripts/dev/context-restore.sh --mode resume",
+    "auto:run": "node scripts/dev/context-autopilot.mjs",
+    "adopt:bootstrap": "node scripts/dev/bootstrap-project-truth.mjs && node scripts/dev/bootstrap-claude-compat.mjs",
+    "claude:bootstrap": "node scripts/dev/bootstrap-claude-compat.mjs",
+    "orch:work": "node scripts/dev/orchestrate-work.mjs",
+    "orch:list": "node scripts/dev/list-orchestration-work.mjs",
+    "orch:check": "node scripts/dev/check-orchestration-work.mjs",
+    "pilot:start": "node scripts/dev/autopilot-work.mjs --mode start",
+    "pilot:sync": "node scripts/dev/autopilot-work.mjs --mode sync"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.0",
