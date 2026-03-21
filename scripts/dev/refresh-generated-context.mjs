@@ -24,6 +24,20 @@ const routeMeta = [
     deepDocs: '`docs/PRODUCT_SENSE.md`'
   },
   {
+    route: '/dashboard',
+    role: 'daily hub',
+    primaryConcern: 'agent status, battle quota, revenue summary, Lab CTA',
+    keyState: '`agentStore`, `battleStore`',
+    deepDocs: '`docs/product-specs/core.md`'
+  },
+  {
+    route: '/onboard',
+    role: 'onboarding flow',
+    primaryConcern: 'archetype selection, tutorial battle, ERA reveal',
+    keyState: '`onboardingStore`',
+    deepDocs: '`docs/product-specs/core.md`'
+  },
+  {
     route: '/agent',
     role: 'agent hub bridge',
     primaryConcern: 'merged train and record entry point',
