@@ -24,11 +24,11 @@
     ]
   },
   "canonical": {
-    "files": 27,
-    "lines": 2680,
-    "words": 14275,
-    "chars": 103378,
-    "approxTokens": 25854,
+    "files": 28,
+    "lines": 3554,
+    "words": 17884,
+    "chars": 125687,
+    "approxTokens": 31432,
     "paths": [
       "README.md",
       "AGENTS.md",
@@ -43,6 +43,7 @@
       "docs/SECURITY.md",
       "docs/design-docs/arena-domain-model.md",
       "docs/design-docs/core-beliefs.md",
+      "docs/design-docs/fusion-architecture-v1.md",
       "docs/design-docs/index.md",
       "docs/design-docs/learning-loop.md",
       "docs/design-docs/six-surface-game-loop.md",
@@ -60,11 +61,11 @@
     ]
   },
   "allDocs": {
-    "files": 146,
-    "lines": 43258,
-    "words": 198711,
-    "chars": 1446118,
-    "approxTokens": 361580,
+    "files": 147,
+    "lines": 44217,
+    "words": 202714,
+    "chars": 1472315,
+    "approxTokens": 368130,
     "paths": [
       "README.md",
       "AGENTS.md",
@@ -135,6 +136,7 @@
       "docs/decisions/README.md",
       "docs/design-docs/arena-domain-model.md",
       "docs/design-docs/core-beliefs.md",
+      "docs/design-docs/fusion-architecture-v1.md",
       "docs/design-docs/index.md",
       "docs/design-docs/learning-loop.md",
       "docs/design-docs/six-surface-game-loop.md",
@@ -215,19 +217,19 @@
     ]
   },
   "reductions": {
-    "smallVsCanonicalPct": 53.22967432505609,
-    "smallVsAllDocsPct": 96.65578848387632,
-    "worstSurfaceReductionVsAllDocsPct": 95.4278444604237
+    "smallVsCanonicalPct": 61.5296513107661,
+    "smallVsAllDocsPct": 96.71529079401299,
+    "worstSurfaceReductionVsAllDocsPct": 95.4918099584386
   },
   "surfaceBundles": [
     {
       "id": "terminal",
       "stats": {
         "files": 9,
-        "lines": 1477,
-        "words": 8512,
-        "chars": 66118,
-        "approxTokens": 16532,
+        "lines": 1488,
+        "words": 8535,
+        "chars": 66376,
+        "approxTokens": 16596,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -240,17 +242,17 @@
           "docs/product-specs/terminal.md"
         ]
       },
-      "reductionVsCanonicalPct": 36.056316237332716,
-      "reductionVsAllDocsPct": 95.4278444604237
+      "reductionVsCanonicalPct": 47.20030542122677,
+      "reductionVsAllDocsPct": 95.4918099584386
     },
     {
       "id": "arena",
       "stats": {
         "files": 9,
-        "lines": 1482,
-        "words": 8496,
-        "chars": 66109,
-        "approxTokens": 16530,
+        "lines": 1493,
+        "words": 8519,
+        "chars": 66367,
+        "approxTokens": 16594,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -263,17 +265,17 @@
           "docs/product-specs/arena.md"
         ]
       },
-      "reductionVsCanonicalPct": 36.06405198421908,
-      "reductionVsAllDocsPct": 95.42839758836219
+      "reductionVsCanonicalPct": 47.20666836345126,
+      "reductionVsAllDocsPct": 95.49235324477766
     },
     {
       "id": "community",
       "stats": {
         "files": 8,
-        "lines": 1410,
-        "words": 8210,
-        "chars": 63899,
-        "approxTokens": 15977,
+        "lines": 1421,
+        "words": 8233,
+        "chars": 64157,
+        "approxTokens": 16041,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -285,17 +287,17 @@
           "docs/generated/api-group-map.md"
         ]
       },
-      "reductionVsCanonicalPct": 38.20298599829813,
-      "reductionVsAllDocsPct": 95.58133746335528
+      "reductionVsCanonicalPct": 48.96602188852125,
+      "reductionVsAllDocsPct": 95.64257191752912
     },
     {
       "id": "api",
       "stats": {
         "files": 8,
-        "lines": 1410,
-        "words": 8210,
-        "chars": 63899,
-        "approxTokens": 15977,
+        "lines": 1421,
+        "words": 8233,
+        "chars": 64157,
+        "approxTokens": 16041,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -307,14 +309,14 @@
           "docs/generated/api-group-map.md"
         ]
       },
-      "reductionVsCanonicalPct": 38.20298599829813,
-      "reductionVsAllDocsPct": 95.58133746335528
+      "reductionVsCanonicalPct": 48.96602188852125,
+      "reductionVsAllDocsPct": 95.64257191752912
     }
   ],
   "structuralScorecard": [
     {
       "label": "Small-map reduction vs canonical",
-      "actual": "53.2%",
+      "actual": "61.5%",
       "target": ">= 40%",
       "passed": true
     },
@@ -326,7 +328,7 @@
     },
     {
       "label": "Worst surface reduction vs all docs",
-      "actual": "95.4%",
+      "actual": "95.5%",
       "target": ">= 50%",
       "passed": true
     },
@@ -344,7 +346,7 @@
     },
     {
       "label": "Canonical approx tokens",
-      "actual": "25854",
+      "actual": "31432",
       "target": "<= 32000",
       "passed": true
     }
