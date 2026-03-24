@@ -62,7 +62,7 @@ export function initBattle(
   scenario: BattleScenario,
   squad: OwnedAgent[],
   totalRounds: number = 3,
-  objectiveThreshold: number = 0.7,
+  objectiveThreshold: number = 0.45,
   tickLimit: number = 24,
 ): BattleTickState {
   const scenarioFrame: ScenarioFrame = {
