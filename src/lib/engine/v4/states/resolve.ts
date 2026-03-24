@@ -17,6 +17,8 @@ import type {
   MarketFrame,
   ScenarioFrame,
   OwnedAgent,
+  FailureTag,
+  ClassifyOutput,
 } from '../types.js';
 import { V4_CONFIG } from '../types.js';
 
@@ -36,15 +38,27 @@ export function resolve(state: BattleTickState): BattleTickState {
   const events: BattleEvent[] = [];
 
   if (currentPosition && currentPosition.status === 'CLOSED') {
-    // Record the closed trade
+    // Phase 3: Classify failure tags before recording
     const pnl = currentPosition.pnlPercent ?? 0;
+    if (pnl < 0) {
+      currentPosition = {
+        ...currentPosition,
+        failureTags: classifyFailureTags(currentPosition, state.classify),
+      };
+    }
+
     tradeHistory = recordTrade(tradeHistory, currentPosition);
 
     outcome = pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'NEUTRAL';
 
+    // Phase 3: Include MFE/MAE in event detail
+    const mfeStr = currentPosition.mfe > 0 ? ` MFE:+${(currentPosition.mfe * 100).toFixed(1)}%` : '';
+    const maeStr = currentPosition.mae < 0 ? ` MAE:${(currentPosition.mae * 100).toFixed(1)}%` : '';
+    const tagsStr = currentPosition.failureTags?.length ? ` [${currentPosition.failureTags.join(',')}]` : '';
+
     events.push({
       type: pnl > 0 ? 'ZONE_CAPTURED' : 'ZONE_LOST',
-      detail: `${currentPosition.direction} ${pnl > 0 ? '+' : ''}${(pnl * 100).toFixed(2)}% | Total: ${(tradeHistory.totalPnl * 100).toFixed(2)}%`,
+      detail: `${currentPosition.direction} ${pnl > 0 ? '+' : ''}${(pnl * 100).toFixed(2)}%${mfeStr}${maeStr}${tagsStr} | Total: ${(tradeHistory.totalPnl * 100).toFixed(2)}%`,
       tick: state.tick,
     });
 
@@ -58,18 +72,28 @@ export function resolve(state: BattleTickState): BattleTickState {
         size: V4_CONFIG.POSITION_SIZE,
         status: 'OPEN',
         unrealizedPnl: 0,
+        mfe: 0,
+        mae: 0,
+        holdTicks: 0,
+        entryClassify: state.classify,
       };
     } else {
       currentPosition = undefined; // Position fully closed
     }
   }
 
-  // 2. Update unrealized PnL for open position
+  // 2. Update unrealized PnL + MFE/MAE for open position (Phase 3)
   if (currentPosition && currentPosition.status === 'OPEN') {
     const unrealized = currentPosition.direction === 'LONG'
       ? (market.price - currentPosition.entryPrice) / currentPosition.entryPrice
       : (currentPosition.entryPrice - market.price) / currentPosition.entryPrice;
-    currentPosition = { ...currentPosition, unrealizedPnl: unrealized };
+    currentPosition = {
+      ...currentPosition,
+      unrealizedPnl: unrealized,
+      mfe: Math.max(currentPosition.mfe, unrealized),
+      mae: Math.min(currentPosition.mae, unrealized),
+      holdTicks: currentPosition.holdTicks + 1,
+    };
 
     // Track unrealized PnL in tradeHistory for match completion check
     tradeHistory = { ...tradeHistory, unrealizedPnl: unrealized };
@@ -222,4 +246,56 @@ function checkMatchCompletion(
   }
 
   return undefined;
+}
+
+// ─── Failure Tag Classification (Phase 3) ─────────────────────
+// Auto-classify WHY a trade lost based on MFE/MAE/classify data
+
+function classifyFailureTags(
+  position: Position,
+  currentClassify?: ClassifyOutput,
+): FailureTag[] {
+  const tags: FailureTag[] = [];
+  const pnl = position.pnlPercent ?? 0;
+  const { mfe, mae, holdTicks, entryClassify } = position;
+
+  // Only classify losses
+  if (pnl >= 0) return tags;
+
+  // late_entry: MAE hit immediately (within first 2 ticks)
+  if (mae < -0.01 && holdTicks <= 2) {
+    tags.push('late_entry');
+  }
+
+  // stop_too_tight: had profits (MFE > 0) but still lost
+  if (mfe > 0.005 && pnl < 0) {
+    tags.push('stop_too_tight');
+  }
+
+  // target_too_far: significant MFE but ended in loss (gave back all gains)
+  if (mfe > 0.02 && pnl < -0.005) {
+    tags.push('target_too_far');
+  }
+
+  // overstayed: held too long, had gains, gave them back
+  if (mfe > 0.01 && pnl < 0 && holdTicks > 10) {
+    tags.push('overstayed');
+  }
+
+  // wrong_regime: market state changed since entry
+  if (entryClassify && currentClassify && entryClassify.marketState !== currentClassify.marketState) {
+    tags.push('wrong_regime');
+  }
+
+  // wrong_setup: entry setup was no_setup (should not have entered)
+  if (entryClassify?.setupType === 'no_setup') {
+    tags.push('should_not_trade');
+  }
+
+  // Ensure at least one tag for losing trades
+  if (tags.length === 0) {
+    tags.push('wrong_setup');
+  }
+
+  return tags;
 }
