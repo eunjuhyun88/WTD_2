@@ -263,6 +263,7 @@ export interface Position {
 export interface TradeHistory {
   trades: Position[];       // closed trades
   totalPnl: number;         // cumulative realized PnL %
+  unrealizedPnl: number;    // current open position PnL %
   tradeCount: number;
   winCount: number;          // profitable trades
   lossCount: number;         // losing trades

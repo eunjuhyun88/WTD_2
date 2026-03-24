@@ -71,10 +71,15 @@ export function resolve(state: BattleTickState): BattleTickState {
       : (currentPosition.entryPrice - market.price) / currentPosition.entryPrice;
     currentPosition = { ...currentPosition, unrealizedPnl: unrealized };
 
+    // Track unrealized PnL in tradeHistory for match completion check
+    tradeHistory = { ...tradeHistory, unrealizedPnl: unrealized };
+
     // Determine tick outcome from unrealized direction
     if (outcome === 'NEUTRAL') {
       outcome = unrealized > 0.001 ? 'WIN' : unrealized < -0.001 ? 'LOSS' : 'NEUTRAL';
     }
+  } else {
+    tradeHistory = { ...tradeHistory, unrealizedPnl: 0 };
   }
 
   // 3. Update stage based on cumulative PnL
@@ -205,10 +210,13 @@ function checkMatchCompletion(
   const allDead = squad.every(a => a.record.currentHealth <= 0);
   if (allDead) return 'LOSS';
 
-  // Tick limit reached → judge by cumulative PnL
+  // Tick limit reached → judge by cumulative PnL + unrealized PnL
   if (stage.tick >= scenario.tickLimit) {
-    if (tradeHistory.totalPnl > 0.005) return 'WIN';   // +0.5%+ = win
-    if (tradeHistory.totalPnl < -0.005) return 'LOSS';  // -0.5%+ = loss
+    // Include unrealized PnL from open position in final judgment
+    const openPnl = tradeHistory.unrealizedPnl ?? 0;
+    const effectivePnl = tradeHistory.totalPnl + openPnl;
+    if (effectivePnl > 0.005) return 'WIN';   // +0.5%+ = win
+    if (effectivePnl < -0.005) return 'LOSS';  // -0.5%+ = loss
     return 'DRAW';
   }
 

@@ -74,7 +74,21 @@ function isUsableApiKey(value: string, minLength = 16): boolean {
   return !PLACEHOLDER_HINTS.some((hint) => lower.includes(hint));
 }
 
+// ─── Ollama (Local LLM — no rate limits) ─────────────────────
+
+export const OLLAMA_BASE_URL = env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
+export const OLLAMA_MODEL = env.OLLAMA_MODEL ?? 'qwen3:1.7b';
+
+export function ollamaUrl(path = '/api/generate'): string {
+  return `${OLLAMA_BASE_URL}${path}`;
+}
+
 // ─── Availability Check ───────────────────────────────────────
+
+export function isOllamaAvailable(): boolean {
+  // Always true — local, no API key needed. Falls back on connection error.
+  return true;
+}
 
 export function isGeminiAvailable(): boolean {
   return isUsableApiKey(GEMINI_API_KEY, 20);
@@ -88,10 +102,11 @@ export function isDeepSeekAvailable(): boolean {
   return isUsableApiKey(DEEPSEEK_API_KEY, 20);
 }
 
-export type LLMProvider = 'groq' | 'gemini' | 'deepseek';
+export type LLMProvider = 'ollama' | 'groq' | 'gemini' | 'deepseek';
 
-/** 우선순위: Groq(가장 빠름) → DeepSeek(추론 강함) → Gemini */
+/** 우선순위: Ollama(로컬, 무제한) → Groq(빠름) → DeepSeek(추론) → Gemini */
 export function getAvailableProvider(): LLMProvider | null {
+  if (isOllamaAvailable()) return 'ollama';
   if (isGroqAvailable()) return 'groq';
   if (isDeepSeekAvailable()) return 'deepseek';
   if (isGeminiAvailable()) return 'gemini';
