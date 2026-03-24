@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 // COGOCHI — Battle API: Start a new battle
 // POST: Initialize battle with scenario + squad
-// GET: List available scenarios
+// GET: List available scenarios (real data + legacy mock)
 // ═══════════════════════════════════════════════════════════════
 
 import { json } from '@sveltejs/kit';
@@ -9,6 +9,7 @@ import type { RequestHandler } from './$types.js';
 import { initBattle, createDefaultSquad } from '$lib/engine/v4/battleStateMachine.js';
 import type { BattleScenario } from '$lib/engine/v4/types.js';
 import { activeBattles } from '$lib/server/battleStore.js';
+import { buildScenarioById, listScenarios } from '$lib/server/scenarioBuilder.js';
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
@@ -19,8 +20,19 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'scenarioId and userId required' }, { status: 400 });
     }
 
-    // Load scenario (MVP: generate mock scenario)
-    const scenario = getMockScenario(scenarioId);
+    // Phase 4: Try real data scenario first, fall back to mock
+    let scenario: BattleScenario | null = null;
+    try {
+      scenario = await buildScenarioById(scenarioId);
+    } catch (err) {
+      console.warn(`[api/battle] Real scenario fetch failed for "${scenarioId}", falling back to mock:`, err);
+    }
+
+    // Fallback to legacy mock if real data unavailable
+    if (!scenario) {
+      scenario = getMockScenario(scenarioId);
+    }
+
     if (!scenario) {
       return json({ error: `Scenario "${scenarioId}" not found` }, { status: 404 });
     }
@@ -63,22 +75,31 @@ export const POST: RequestHandler = async ({ request }) => {
 };
 
 export const GET: RequestHandler = async () => {
+  // Phase 4: Show real data scenarios from catalog + legacy mock
+  const realScenarios = listScenarios();
+
   return json({
     scenarios: [
-      { id: 'ftx-crash-2022', label: 'FTX Collapse 2022-11-09', ticks: 24 },
-      { id: 'luna-crash-2022', label: 'LUNA Crash 2022-05-09', ticks: 24 },
-      { id: 'covid-crash-2020', label: 'COVID Crash 2020-03-12', ticks: 24 },
-      { id: 'bull-run-2021', label: 'Bull Run ATH 2021-11-10', ticks: 24 },
+      // Real data scenarios (Phase 4)
+      ...realScenarios.map(s => ({
+        id: s.id,
+        label: s.label,
+        source: 'real' as const,
+        cached: s.cached,
+      })),
+      // Legacy mock scenarios (kept for compatibility)
+      { id: 'ftx-crash-2022', label: 'FTX Collapse (mock)', source: 'mock' as const, cached: true },
+      { id: 'luna-crash-2022', label: 'LUNA Crash (mock)', source: 'mock' as const, cached: true },
+      { id: 'covid-crash-2020', label: 'COVID Crash (mock)', source: 'mock' as const, cached: true },
+      { id: 'bull-run-2021', label: 'Bull Run ATH (mock)', source: 'mock' as const, cached: true },
     ],
     activeBattles: activeBattles.size,
   });
 };
 
-// ─── Mock scenario generator ───────────────────────────────────
+// ─── Legacy mock scenario generator (kept for fallback) ──────
 
 function getMockScenario(id: string): BattleScenario | null {
-  // Generate synthetic candle data for testing
-  // Realistic BTC hourly: avg ±0.3% per candle, trend ±0.1~0.3% bias
   const configs: Record<string, { label: string; startPrice: number; trend: number }> = {
     'ftx-crash-2022': { label: 'FTX Collapse 2022-11-09', startPrice: 21000, trend: -0.003 },
     'luna-crash-2022': { label: 'LUNA Crash 2022-05-09', startPrice: 38000, trend: -0.004 },
@@ -110,7 +131,6 @@ function generateCandles(startPrice: number, trend: number, count: number) {
   const baseTime = Math.floor(Date.now() / 1000) - count * 3600;
 
   for (let i = 0; i < count; i++) {
-    // Realistic BTC hourly noise: ±0.3% typical, occasional ±1% spikes
     const noise = (Math.random() - 0.5) * 0.006;
     const spike = Math.random() > 0.9 ? (Math.random() - 0.5) * 0.015 : 0;
     const change = trend + noise + spike;
@@ -136,13 +156,11 @@ function generateOI(count: number) {
 }
 
 function generateFunding(count: number) {
-  // More realistic funding: clusters of overheat + normal periods
   let funding = 0;
   return Array.from({ length: count }, (_, i) => {
-    // Funding tends to trend and occasionally spike
-    funding += (Math.random() - 0.48) * 0.015; // slight long bias
-    funding *= 0.85; // mean-revert
-    funding += (Math.random() > 0.85 ? (Math.random() - 0.5) * 0.08 : 0); // occasional spike
+    funding += (Math.random() - 0.48) * 0.015;
+    funding *= 0.85;
+    funding += (Math.random() > 0.85 ? (Math.random() - 0.5) * 0.08 : 0);
     return {
       timestamp: Date.now() - (count - i) * 3600000,
       fundingRate: funding,
