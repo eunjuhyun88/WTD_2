@@ -78,7 +78,8 @@
     "orch:list": "node scripts/dev/list-orchestration-work.mjs",
     "orch:check": "node scripts/dev/check-orchestration-work.mjs",
     "pilot:start": "node scripts/dev/autopilot-work.mjs --mode start",
-    "pilot:sync": "node scripts/dev/autopilot-work.mjs --mode sync"
+    "pilot:sync": "node scripts/dev/autopilot-work.mjs --mode sync",
+    "validate:forward-walk": "node scripts/dev/forward-walk.mjs"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.0",
