@@ -11,6 +11,37 @@ import type { BinanceKline, FactorResult } from '../types.js';
 // (differs from engine/types.ts which uses 'trending_up' etc.)
 export type V4MarketRegime = 'bull' | 'bear' | 'sideways' | 'extreme_vol';
 
+// ─── CLASSIFY types (Agent Forge Phase 1) ────────────────────
+
+/** Fine-grained market regime — determines which strategy rules apply */
+export type MarketState = 'trend_up' | 'trend_down' | 'range' | 'volatile' | 'compressed';
+
+/** Detected trade setup — drives entry/skip logic */
+export type SetupType = 'breakout' | 'pullback' | 'reversal' | 'range_fade' | 'fake_breakout' | 'no_setup';
+
+/** Why a trade failed — auto-tagged at position close */
+export type FailureTag =
+  | 'late_entry'        // MAE hit immediately after entry
+  | 'stop_too_tight'    // MFE > 0 but hit SL before TP
+  | 'target_too_far'    // MFE > 0 but PnL < 0
+  | 'wrong_regime'      // marketState changed during trade
+  | 'wrong_setup'       // setupType was misclassified
+  | 'should_not_trade'  // setupType was no_setup
+  | 'overstayed';       // held too long, gave back gains
+
+/** How a position was exited */
+export type ExitType = 'tp_hit' | 'sl_hit' | 'flip' | 'timeout' | 'manual' | 'drawdown_limit';
+
+/** Quality classification for learning data */
+export type PairQuality = 'strong' | 'medium' | 'boundary' | 'weak' | 'noise';
+
+/** Output of the CLASSIFY sub-step within OBSERVE */
+export interface ClassifyOutput {
+  marketState: MarketState;
+  setupType: SetupType;
+  regimeConfidence: number; // 0~1
+}
+
 // ─── Battle State Machine ──────────────────────────────────────
 
 export type BattleStateKind =
@@ -330,6 +361,7 @@ export interface BattleTickState {
   signal?: SignalSnapshot;
   stage: StageFrame;
   market?: MarketFrame;
+  classify?: ClassifyOutput;
 
   // RETRIEVE output
   memoriesByAgent?: Record<string, MemoryRecord[]>;
