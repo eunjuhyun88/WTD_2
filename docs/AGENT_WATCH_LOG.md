@@ -7699,3 +7699,111 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Safe status:
   - source repo `npm run safe:status`: PASS with dirty watch-log note
   - source repo `npm run safe:sync`: BLOCKED by existing watch-log change
+
+## [2026-03-20 11:33:10 +0900] START dev-server-run-20260320 (chatbattle)
+- Work ID: `W-20260320-1132-chatbattle-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle`
+  - clean before logging
+  - port `5173` already in use by other node processes
+- Request:
+  - run the local development server for the fresh `CHATBATTLE` repository
+- Owned files / overlap check:
+  - no product code edits planned
+  - only this START entry is being appended before launching the server
+- Safe status:
+  - `npm run safe:status`: PASS
+
+## [2026-03-20 11:39:06 +0900] START chatbattle-foundation-refactor-design-20260320 (chatbattle)
+- Work ID: `W-20260320-1139-chatbattle-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle`
+  - existing uncommitted changes present from prior setup: `docs/AGENT_WATCH_LOG.md`, `package-lock.json`
+- Request:
+  - design the end-to-end refactor order for performance stabilization and structural cleanup
+- Owned files / overlap check:
+  - planned design outputs live under `docs/exec-plans/active/` and `docs/PLANS.md`
+  - no product code changes planned in this step
+- Safe status:
+  - `npm run check`: PASS (`0 errors / 47 warnings`)
+  - `npm run build`: PASS
+
+### W-20260320-1139-chatbattle-codex (finish)
+
+- Finish: 2026-03-20 12:02 +0900
+- What changed:
+  - added `docs/exec-plans/active/chatbattle-foundation-refactor-plan-2026-03-20.md`
+  - registered the new plan in `docs/PLANS.md` and `docs/exec-plans/index.md`
+  - refreshed generated docs after `docs:check` detected stale generated artifacts
+- Validation:
+  - `npm run check`: PASS (`0 errors / 47 warnings`)
+  - `npm run build`: PASS
+  - `npm run docs:refresh`: PASS
+  - `npm run docs:check`: PASS
+- Final state:
+  - branch still includes prior setup changes in `package-lock.json`
+  - plan/doc changes and generated-doc refreshes are now present in this worktree
+
+## [2026-03-20 12:58:00 +0900] START chatbattle-terminal-layout-controller-slice-20260320 (chatbattle)
+- Work ID: `W-20260320-1257-chatbattle-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle`
+  - existing uncommitted changes present from prior setup/design step:
+    - `docs/AGENT_WATCH_LOG.md`
+    - `docs/PLANS.md`
+    - `docs/exec-plans/index.md`
+    - `docs/generated/api-group-map.md`
+    - `docs/generated/context-efficiency-report.json`
+    - `docs/generated/context-efficiency-report.md`
+    - `docs/generated/task-contract-report.md`
+    - `package-lock.json`
+- Request:
+  - start the first implementation slice of the refactor plan by reducing `src/routes/terminal/+page.svelte` responsibility
+- Owned files / overlap check:
+  - `src/routes/terminal/+page.svelte`
+  - `src/components/terminal/terminalLayoutController.ts`
+  - no overlap detected beyond existing docs/setup changes already on this branch
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted branch-local changes
+  - `npm run ctx:checkpoint -- --work-id "W-20260320-1257-chatbattle-codex" --surface "terminal" --objective "Extract terminal layout controller logic out of route shell while preserving responsive behavior"`: PASS
+
+### W-20260320-1257-chatbattle-codex (finish)
+
+- Finish: 2026-03-20 12:58 +0900
+- What changed:
+  - extracted terminal viewport flags, panel defaults, clamp rules, wheel-resize helpers, and mobile drag math into new `src/components/terminal/terminalLayoutController.ts`
+  - updated `src/routes/terminal/+page.svelte` to consume the new layout controller helpers instead of defining those responsive algorithms inline
+  - kept existing terminal scan/chat/copy-trade behavior unchanged while reducing route-shell layout responsibility
+- Validation:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`0 errors / 47 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - not created in this step; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle`
+  - branch remains dirty with prior plan/setup changes plus current terminal slice changes:
+    - `docs/AGENT_WATCH_LOG.md`
+    - `docs/PLANS.md`
+    - `docs/exec-plans/index.md`
+    - `docs/generated/api-group-map.md`
+    - `docs/generated/context-efficiency-report.json`
+    - `docs/generated/context-efficiency-report.md`
+    - `docs/generated/task-contract-report.md`
+    - `package-lock.json`
+    - `src/routes/terminal/+page.svelte`
+    - `docs/exec-plans/active/chatbattle-foundation-refactor-plan-2026-03-20.md`
+    - `src/components/terminal/terminalLayoutController.ts`

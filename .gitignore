@@ -47,3 +47,4 @@ context-kit.local.json
 .playwright-cli/
 output/
 tmp/
+.mcp.json

@@ -1,11 +1,11 @@
 {
   "version": 1,
   "project": {
-    "name": "Stockclaw",
-    "slug": "stockclaw",
-    "summary": "AI-powered social trading terminal with TradingView-grade charting",
-    "stack": "SvelteKit 2 / Svelte 5 / TypeScript / lightweight-charts v5",
-    "phase": "initial bootstrap",
+    "name": "CHATBATTLE",
+    "slug": "chatbattle",
+    "summary": "Crypto Trading Arena with AI Agent Collaboration",
+    "stack": "SvelteKit 2, Svelte 5, TypeScript, Supabase, Vite",
+    "phase": "foundation-refactor",
     "deadline": "TBD"
   },
   "git": {
@@ -16,108 +16,26 @@
     "storesDir": "src/lib/stores",
     "apiDir": "src/routes/api"
   },
+  "claude": {
+    "enabled": true,
+    "settingsPath": ".claude/settings.json",
+    "riskyPathHints": [
+      "src/auth",
+      "src/persistence",
+      "infra"
+    ]
+  },
   "surfaces": [
   {
-    "id": "terminal",
-    "label": "Terminal — Intel & Action",
-    "summary": "Situational awareness, scan orchestration, trading action entry. Chart, war room, intel feeds, quick trades.",
-    "spec": "docs/product-specs/terminal.md",
+    "id": "core",
+    "label": "Core surface",
+    "summary": "Primary responsibilities for the core surface.",
+    "spec": "docs/product-specs/core.md",
     "routes": [
-      "/terminal"
+      "/"
     ],
-    "stores": [
-      "positionStore",
-      "pnlStore",
-      "quickTradeStore",
-      "trackedSignalStore",
-      "warRoomStore",
-      "copyTradeStore",
-      "predictStore"
-    ],
-    "apis": [
-      "/api/terminal",
-      "/api/quick-trades",
-      "/api/positions",
-      "/api/pnl",
-      "/api/signals",
-      "/api/signal-actions",
-      "/api/copy-trades",
-      "/api/predictions"
-    ]
-  },
-  {
-    "id": "arena",
-    "label": "Arena — Decision Loop",
-    "summary": "Structured human-vs-agent decision loop. Arena v1, v2, Arena War. Phase state machines, chart battle, outcome recording.",
-    "spec": "docs/product-specs/arena.md",
-    "routes": [
-      "/arena",
-      "/arena-v2",
-      "/arena-war"
-    ],
-    "stores": [
-      "gameState",
-      "arenaWarStore",
-      "arenaV2State",
-      "battleFeedStore",
-      "matchHistoryStore",
-      "activeGamesStore",
-      "agentData"
-    ],
-    "apis": [
-      "/api/arena",
-      "/api/arena-war",
-      "/api/matches",
-      "/api/agents"
-    ]
-  },
-  {
-    "id": "community",
-    "label": "Community — Social & Signals",
-    "summary": "Social feed, signal sharing, community posts, copy-trade publishing.",
-    "spec": "docs/product-specs/community.md",
-    "routes": [
-      "/signals",
-      "/live"
-    ],
-    "stores": [
-      "communityStore"
-    ],
-    "apis": [
-      "/api/community",
-      "/api/chat",
-      "/api/activity"
-    ]
-  },
-  {
-    "id": "api",
-    "label": "API — Server Contracts",
-    "summary": "Auth, profile, market data, onchain, external integrations (Binance, GMX, Polymarket, Coingecko, Yahoo).",
-    "spec": "docs/product-specs/api.md",
-    "routes": [
-      "/api"
-    ],
-    "stores": [
-      "priceStore",
-      "walletStore",
-      "userProfileStore",
-      "notificationStore"
-    ],
-    "apis": [
-      "/api/auth",
-      "/api/profile",
-      "/api/market",
-      "/api/coinalyze",
-      "/api/coingecko",
-      "/api/gmx",
-      "/api/polymarket",
-      "/api/yahoo",
-      "/api/macro",
-      "/api/feargreed",
-      "/api/onchain",
-      "/api/etherscan",
-      "/api/senti"
-    ]
+    "stores": [],
+    "apis": []
   }
 ],
   "harness": {
@@ -143,15 +61,35 @@
 	    "sharedPathPrefixes": [
       "docs/AGENT_WATCH_LOG.md",
       "docs/generated/",
-      ".agent-context/"
+	      ".agent-context/"
 	    ]
+	  },
+	  "autopilot": {
+	    "enabled": true,
+	    "agentId": "autopilot",
+	    "autoSave": true,
+	    "autoCheckpoint": true,
+	    "autoClaim": true,
+	    "autoCompactOnStop": true,
+	    "autoCompactOnPreCompact": true,
+	    "minimumClaimPathDepth": 2,
+	    "defaultSurface": "core",
+	    "defaultObjectivePrefix": "Resume branch work on",
+	    "defaultDocs": [
+	      "README.md",
+	      "AGENTS.md",
+	      "docs/README.md",
+	      "ARCHITECTURE.md",
+	      "docs/CONTEXT_ENGINEERING.md"
+	    ],
+	    "minIntervalSec": 300
 	  },
 	  "registry": {
 	    "enabled": true,
 	    "manifestPath": "docs/generated/context-registry.json",
 	    "publicBaseUrl": "",
 	    "publishTags": [
-	      "stockclaw",
+	      "chatbattle",
 	      "context-kit"
 	    ],
 	    "searchKinds": [
@@ -167,15 +105,15 @@
 	    "enabled": true,
 	    "dir": "agents",
 	    "catalogPath": "docs/generated/agent-catalog.json",
-	    "defaultSurface": "terminal"
+	    "defaultSurface": "core"
 	  },
 	  "tools": {
 	    "enabled": true,
 	    "dir": "tools",
 	    "catalogPath": "docs/generated/tool-catalog.json",
-	    "defaultSurface": "terminal"
+	    "defaultSurface": "core"
 	  },
-  "telemetry": {
+	  "telemetry": {
 	    "enabled": true,
 	    "runsDir": ".agent-context/telemetry/runs",
 	    "eventsDir": ".agent-context/telemetry/events",
@@ -188,37 +126,8 @@
 	      "skillLevel": "experienced",
 	      "purpose": "product-development",
 	      "autonomy": "assisted"
-    }
-  },
-  "contracts": {
-    "enabled": true,
-    "activeDir": "docs/task-contracts/active",
-    "completedDir": "docs/task-contracts/completed",
-    "reportPath": "docs/generated/task-contract-report.md",
-    "requireOnFeatureBranches": false,
-    "blockStopOnIncomplete": true,
-    "featureBranchPrefixes": [
-      "codex/"
-    ],
-    "defaultType": "implementation"
-  },
-  "autopilot": {
-    "enabled": true,
-    "agentId": "autopilot",
-    "autoCheckpoint": true,
-    "autoClaim": true,
-    "autoContract": true,
-    "minimumClaimPathDepth": 2,
-    "defaultSurface": "terminal",
-    "defaultObjectivePrefix": "Resume branch work on",
-    "defaultDocs": [
-      "README.md",
-      "AGENTS.md",
-      "docs/README.md",
-      "ARCHITECTURE.md",
-      "docs/CONTEXT_ENGINEERING.md"
-    ]
-  },
+	    }
+	  },
 	  "retrieval": {
 	    "enabled": true,
 	    "includePaths": [
@@ -235,9 +144,6 @@
 	      "docs/AGENT_OBSERVABILITY.md",
 	      "docs/MULTI_AGENT_COORDINATION.md",
 	      "docs/SANDBOX_POLICY.md",
-	      "docs/TASK_CONTRACTS.md",
-	      "docs/AUTOPILOT.md",
-	      "docs/CONTEXT_VALIDATION.md",
 	      "docs/DESIGN.md",
 	      "docs/ENGINEERING.md",
 	      "docs/PLANS.md",
@@ -306,9 +212,9 @@
 	      "smallMapReductionVsCanonicalPct": 40,
       "smallMapReductionVsAllDocsPct": 55,
       "surfaceReductionVsAllDocsPct": 50,
-      "smallMapMaxApproxTokens": 14000,
+      "smallMapMaxApproxTokens": 3800,
       "smallMapMaxFiles": 6,
-      "canonicalMaxApproxTokens": 32000,
+      "canonicalMaxApproxTokens": 12000,
       "noiseRateMaxPct": 10
     },
 	    "benchmark": {
@@ -321,22 +227,11 @@
 	      "minComparisons": 1,
 	      "targetDocsBeforeFirstEdit": 6,
 	      "targetResumeLatencyMinutes": 3
-	    },
-	    "validation": {
-	      "minFinishedRuns": 3,
-	      "minRunsWithBaseline": 1,
-	      "minRunsWithEditEvidence": 1,
-	      "minPositiveTimeSavedRuns": 1,
-	      "minEstimatedTimeSavedMinutes": 5,
-	      "maxAverageDocsBeforeFirstEdit": 6,
-	      "minRoutedWins": 1,
-	      "minSurfaceCount": 1,
-	      "minRetrievalChunks": 1
 	    }
 	  },
 	  "commands": {
-    "check": "npm run check",
-    "build": "npm run build",
-    "gate": "npm run gate"
+    "check": "",
+    "build": "",
+    "gate": ""
   }
 }

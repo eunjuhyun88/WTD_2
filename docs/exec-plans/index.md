@@ -5,6 +5,7 @@ Purpose:
 
 ## Active
 
+- `docs/exec-plans/active/chatbattle-foundation-refactor-plan-2026-03-20.md`
 - `docs/exec-plans/active/six-surface-game-loop-ia-2026-03-17.md`
 - `docs/exec-plans/active/cogochi-stockclaw-final-placement-architecture-2026-03-17.md`
 - `docs/exec-plans/active/usability-navigation-sprint-1-2026-03-10.md`

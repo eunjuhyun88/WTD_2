@@ -9,10 +9,13 @@ import {
   GROQ_API_KEY, GROQ_MODEL, groqUrl,
   GEMINI_API_KEY, GEMINI_MODEL, geminiUrl,
   DEEPSEEK_API_KEY, DEEPSEEK_MODEL, deepseekUrl,
+  OLLAMA_MODEL, ollamaUrl,
   getAvailableProvider,
   isDeepSeekAvailable,
   isGeminiAvailable,
   isGroqAvailable,
+  isOllamaAvailable,
+  getGroqApiKey, rotateGroqKey,
   type LLMProvider,
 } from './llmConfig';
 import type { MultiTimeframeIndicatorContext } from './multiTimeframeContext';
@@ -43,6 +46,58 @@ export interface LLMResult {
   usage?: { promptTokens?: number; completionTokens?: number };
 }
 
+// ─── Ollama (Local LLM — no rate limits) ──────────────────────
+
+async function callOllama(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    // Combine messages into single prompt (Ollama generate API)
+    const prompt = '/no_think\n' + messages.map(m => {
+      if (m.role === 'system') return `[System]\n${m.content}`;
+      if (m.role === 'assistant') return `[Assistant]\n${m.content}`;
+      return m.content;
+    }).join('\n\n');
+
+    const res = await fetch(ollamaUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        prompt,
+        format: 'json',
+        stream: false,
+        options: {
+          temperature,
+          num_predict: maxTokens,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new Error(`Ollama ${res.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    if (!data.response) throw new Error('Ollama: empty response');
+
+    return {
+      text: data.response.trim(),
+      provider: 'ollama',
+      model: OLLAMA_MODEL,
+      usage: data.eval_count ? {
+        promptTokens: data.prompt_eval_count,
+        completionTokens: data.eval_count,
+      } : undefined,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─── Groq (OpenAI-compatible) ─────────────────────────────────
 
 async function callGroq(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
@@ -50,11 +105,12 @@ async function callGroq(messages: LLMMessage[], maxTokens: number, temperature: 
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const apiKey = getGroqApiKey();
     const res = await fetch(groqUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
@@ -67,6 +123,10 @@ async function callGroq(messages: LLMMessage[], maxTokens: number, temperature: 
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
+      // On 429 (rate limit), rotate to next key and throw for retry
+      if (res.status === 429) {
+        rotateGroqKey();
+      }
       throw new Error(`Groq ${res.status}: ${errBody.slice(0, 200)}`);
     }
 
@@ -189,15 +249,17 @@ async function callDeepSeek(messages: LLMMessage[], maxTokens: number, temperatu
 // ─── Unified Call with Fallback ───────────────────────────────
 
 const PROVIDER_CALL: Record<LLMProvider, typeof callGroq> = {
+  ollama: callOllama,
   groq: callGroq,
   gemini: callGemini,
   deepseek: callDeepSeek,
 };
 
-const FALLBACK_ORDER: LLMProvider[] = ['groq', 'deepseek', 'gemini'];
+const FALLBACK_ORDER: LLMProvider[] = ['ollama', 'groq', 'deepseek', 'gemini'];
 
 function availableProviders(): LLMProvider[] {
   const checks: Record<LLMProvider, boolean> = {
+    ollama: isOllamaAvailable(),
     groq: isGroqAvailable(),
     deepseek: isDeepSeekAvailable(),
     gemini: isGeminiAvailable(),

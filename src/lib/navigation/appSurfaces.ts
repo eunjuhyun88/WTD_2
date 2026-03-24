@@ -1,14 +1,15 @@
 import {
   buildAgentLink,
   buildBattleLink,
-  buildCreateLink,
   buildMarketLink,
   buildDeepLink,
   buildTerminalLink,
-  buildWorldLink,
+  buildLabLink,
+  buildDashboardLink,
+  buildCopyLink,
 } from '$lib/utils/deepLinks';
 
-export type AppSurfaceId = 'home' | 'create' | 'terminal' | 'world' | 'battle' | 'agent' | 'market';
+export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'lab' | 'battle' | 'agent' | 'market' | 'copy';
 
 export interface AppSurface {
   id: AppSurfaceId;
@@ -27,94 +28,105 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     label: 'Home',
     shortLabel: 'HOME',
     mobileIcon: '⌂',
-    description: 'understand the loop and choose a first action',
+    description: 'landing — choose builder or copier path',
     homeDetail: 'start here',
     href: buildDeepLink('/'),
     activePatterns: ['/'],
   },
-  create: {
-    id: 'create',
-    label: 'Create',
-    shortLabel: 'CRT',
-    mobileIcon: '+',
-    description: 'mint the character-agent and bind the brain',
-    homeDetail: 'mint and bind',
-    href: buildCreateLink(),
-    activePatterns: ['/create'],
+  dashboard: {
+    id: 'dashboard',
+    label: 'Dashboard',
+    shortLabel: 'DASH',
+    mobileIcon: '◻',
+    description: 'daily hub — agent status, battle quota, revenue',
+    homeDetail: 'daily hub',
+    href: buildDashboardLink(),
+    activePatterns: ['/dashboard'],
   },
   terminal: {
     id: 'terminal',
     label: 'Terminal',
     shortLabel: 'TERM',
     mobileIcon: '~',
-    description: 'train the brain and inspect readiness',
-    homeDetail: 'train the brain',
+    description: 'chart analysis — CVD, OI, Funding, Zone social',
+    homeDetail: 'chart analysis',
     href: buildTerminalLink(),
     activePatterns: ['/terminal'],
   },
-  world: {
-    id: 'world',
-    label: 'World',
-    shortLabel: 'WRLD',
-    mobileIcon: '◎',
-    description: 'deploy the run and follow the chart-map',
-    homeDetail: 'deploy the run',
-    href: buildWorldLink(),
-    activePatterns: ['/world'],
+  lab: {
+    id: 'lab',
+    label: 'Lab',
+    shortLabel: 'LAB',
+    mobileIcon: '⚗',
+    description: 'main screen — backtest, delta, Run Again',
+    homeDetail: 'backtest & train',
+    href: buildLabLink(),
+    activePatterns: ['/lab'],
   },
   battle: {
     id: 'battle',
     label: 'Battle',
     shortLabel: 'BTTL',
     mobileIcon: '⚔',
-    description: 'resolve whale encounters under pressure',
-    homeDetail: 'resolve encounter',
+    description: 'prove lab results under pressure — ERA battles',
+    homeDetail: 'prove & battle',
     href: buildBattleLink(),
-    activePatterns: ['/arena', '/arena-war', '/arena-v2'],
+    activePatterns: ['/battle'],
   },
   agent: {
     id: 'agent',
     label: 'Agent',
-    shortLabel: 'AGENT',
+    shortLabel: 'AGNT',
     mobileIcon: '@',
-    description: 'grow proof, train memory, and manage release state',
-    homeDetail: 'prove and grow',
+    description: 'agent HQ — doctrine, memory cards, versions',
+    homeDetail: 'manage agents',
     href: buildAgentLink(),
-    activePatterns: ['/agent', '/lab', '/passport', '/agents'],
+    activePatterns: ['/agent', '/agents', '/passport'],
   },
   market: {
     id: 'market',
     label: 'Market',
     shortLabel: 'MKT',
     mobileIcon: '#',
-    description: 'follow signals, proof, and public trust',
-    homeDetail: 'signals and proof',
+    description: 'marketplace — browse and subscribe proven agents',
+    homeDetail: 'agent marketplace',
     href: buildMarketLink(),
-    activePatterns: ['/signals', '/market', '/oracle', '/creator'],
+    activePatterns: ['/market'],
+  },
+  copy: {
+    id: 'copy',
+    label: 'Copy',
+    shortLabel: 'COPY',
+    mobileIcon: '↗',
+    description: 'copy trading — subscribed agent positions & PnL',
+    homeDetail: 'copy trading',
+    href: buildCopyLink(),
+    activePatterns: ['/copy'],
   },
 };
 
+// v3 유저저니 기준 네비게이션: LAB ★★★ > BATTLE > TERMINAL > AGENT
 export const DESKTOP_NAV_SURFACES = [
-  SURFACE_MAP.create,
+  SURFACE_MAP.lab,
+  SURFACE_MAP.battle,
   SURFACE_MAP.terminal,
-  SURFACE_MAP.world,
   SURFACE_MAP.agent,
 ] as const;
 
 export const MOBILE_NAV_SURFACES = [
   SURFACE_MAP.home,
-  SURFACE_MAP.create,
+  SURFACE_MAP.lab,
+  SURFACE_MAP.battle,
   SURFACE_MAP.terminal,
-  SURFACE_MAP.world,
   SURFACE_MAP.agent,
 ] as const;
 
 export const HOME_SURFACES = [
-  SURFACE_MAP.create,
-  SURFACE_MAP.terminal,
-  SURFACE_MAP.world,
+  SURFACE_MAP.lab,
   SURFACE_MAP.battle,
+  SURFACE_MAP.terminal,
   SURFACE_MAP.agent,
+  SURFACE_MAP.market,
 ] as const;
 
 export function getAppSurface(id: AppSurfaceId): AppSurface {

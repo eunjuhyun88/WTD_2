@@ -81,12 +81,24 @@ export function buildSignalsLink(view?: 'feed' | 'trending' | 'ai'): string {
   return buildDeepLink('/signals', view && view !== 'feed' ? { view } : {});
 }
 
-export function buildMarketLink(view?: 'feed' | 'trending' | 'ai'): string {
-  return buildSignalsLink(view);
+export function buildMarketLink(params: DeepLinkParams = {}): string {
+  return buildDeepLink('/market', params);
 }
 
 export function buildBattleLink(params: DeepLinkParams = {}): string {
-  return buildDeepLink('/arena', params);
+  return buildDeepLink('/battle', params);
+}
+
+export function buildOnboardLink(path?: 'builder' | 'copier'): string {
+  return buildDeepLink('/onboard', path ? { path } : {});
+}
+
+export function buildDashboardLink(params: DeepLinkParams = {}): string {
+  return buildDeepLink('/dashboard', params);
+}
+
+export function buildCopyLink(params: DeepLinkParams = {}): string {
+  return buildDeepLink('/copy', params);
 }
 
 export function buildLabLink(params: DeepLinkParams = {}): string {
