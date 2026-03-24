@@ -130,7 +130,7 @@ function applyOutcome(
       updatedStage.capturedZones.push(plan.targetZone);
       events.push({ type: 'ZONE_CAPTURED', detail: plan.targetZone, tick });
     }
-    updatedStage.zoneControlScore += effectivePower * 0.1;
+    updatedStage.zoneControlScore += effectivePower * 0.15;
     xpGained = Math.round(effectivePower * 10);
 
     // Update all agent records

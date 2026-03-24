@@ -476,10 +476,10 @@ export const V4_CONFIG = {
   REASON_MAX_PREDICT: 256,
 
   // RESOLVE
-  NEUTRAL_PRICE_THRESHOLD: 0.002,  // ±0.2% is NEUTRAL
+  NEUTRAL_PRICE_THRESHOLD: 0.001,  // ±0.1% is NEUTRAL (tighter = more WIN/LOSS, fewer NEUTRAL)
 
-  // Stage modifiers
-  STAGE_POWER_MULTIPLIER: [0.6, 0.8, 1.2, 1.8] as readonly number[],
+  // Stage modifiers (higher = faster zone capture)
+  STAGE_POWER_MULTIPLIER: [0.8, 1.0, 1.4, 2.0] as readonly number[],
 
   // Memory
   MEMORY_MAX_PER_AGENT: 100,
