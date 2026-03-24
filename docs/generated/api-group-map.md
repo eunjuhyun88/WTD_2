@@ -17,7 +17,7 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 | Unified Positions | aggregated position view | `/api/positions/unified` | 1 |
 | Arena | strategic arena lifecycle | `/api/arena/analyze`, `/api/arena/draft`, `/api/arena/hypothesis`, `/api/arena/match` | 11 |
 | Arena War | fast battle records and memory | `/api/arena-war`, `/api/arena-war/rag` | 2 |
-| Passport Learning | learning datasets, evals, and jobs | `/api/lab/autorun`, `/api/profile/passport/learning/datasets`, `/api/profile/passport/learning/evals`, `/api/profile/passport/learning/reports` | 8 |
+| Passport Learning | learning datasets, evals, and jobs | `/api/lab/autorun`, `/api/lab/forward-walk`, `/api/profile/passport/learning/datasets`, `/api/profile/passport/learning/evals` | 9 |
 | User Profile | profile, progression, preferences, and agent stats | `/api/agents/stats`, `/api/agents/stats/[agentId]`, `/api/doctrine`, `/api/portfolio/holdings` | 8 |
 | Predictions | prediction positions and voting | `/api/predictions`, `/api/predictions/positions/[id]/close`, `/api/predictions/positions/open`, `/api/predictions/vote` | 4 |
 | Community | activity, posts, and reactions | `/api/activity`, `/api/activity/reaction`, `/api/community/posts`, `/api/community/posts/[id]/react` | 4 |
@@ -119,6 +119,7 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 
 ### Passport Learning
 - `/api/lab/autorun`
+- `/api/lab/forward-walk`
 - `/api/profile/passport/learning/datasets`
 - `/api/profile/passport/learning/evals`
 - `/api/profile/passport/learning/reports`
