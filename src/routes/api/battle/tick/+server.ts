@@ -85,6 +85,22 @@ export const POST: RequestHandler = async ({ request }) => {
       orpoQueued: result.orpoQueued,
       bondDelta: result.bondDelta,
 
+      // Position + PnL
+      position: result.position ? {
+        direction: result.position.direction,
+        entryPrice: result.position.entryPrice,
+        status: result.position.status,
+        unrealizedPnl: result.position.unrealizedPnl,
+        pnlPercent: result.position.pnlPercent,
+      } : null,
+      positionAction: result.positionAction,
+      tradeHistory: {
+        totalPnl: result.tradeHistory.totalPnl,
+        tradeCount: result.tradeHistory.tradeCount,
+        winCount: result.tradeHistory.winCount,
+        lossCount: result.tradeHistory.lossCount,
+      },
+
       // Stage status
       stage: {
         zoneControl: result.stage.zoneControlScore,

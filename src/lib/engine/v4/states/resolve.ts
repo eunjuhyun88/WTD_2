@@ -1,9 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
-// COGOCHI — Battle State: RESOLVE (PnL-based)
-// Checks position TP/SL against current price.
-// Updates HP based on unrealized/realized PnL.
-// Zone control = cumulative realized PnL.
-// The chart IS the whale — price going against you = losing.
+// COGOCHI — Battle State: RESOLVE (Cumulative PnL)
+// Real trading: track multiple trades, cumulative PnL decides match
+// The chart IS the whale — price going against you = losing
 // Design: BattleStateMachine_20260322 § STATE 6
 // ═══════════════════════════════════════════════════════════════
 
@@ -12,45 +10,90 @@ import type {
   BattleOutcome,
   MatchResult,
   BattleEvent,
-  GameActionPlan,
+  Position,
+  PositionAction,
+  TradeHistory,
   StageFrame,
   MarketFrame,
   ScenarioFrame,
   OwnedAgent,
-  Position,
 } from '../types.js';
 import { V4_CONFIG } from '../types.js';
 
 // ─── Main entry ────────────────────────────────────────────────
 
 export function resolve(state: BattleTickState): BattleTickState {
-  const { plan, stage, market, scenario, squad, position } = state;
+  const { position, positionAction, market, stage, scenario, squad } = state;
+  let tradeHistory = { ...state.tradeHistory };
 
-  if (!plan || !market) {
+  if (!market) {
     return { ...state, state: 'REFLECT' };
   }
 
-  // 1. Resolve position against current price
-  const { resolvedPosition, outcome, pnlPercent } = resolvePosition(position, market, state.tick);
+  // 1. Handle closed/flipped positions → record trade
+  let currentPosition = position;
+  let outcome: BattleOutcome = 'NEUTRAL';
+  const events: BattleEvent[] = [];
 
-  // 2. Update stage/HP/XP based on PnL
-  const { updatedStage, updatedSquad, events, xpGained } = applyPnLOutcome(
-    outcome,
-    pnlPercent,
-    resolvedPosition,
-    plan,
-    stage,
-    squad,
-    state.tick,
-  );
+  if (currentPosition && currentPosition.status === 'CLOSED') {
+    // Record the closed trade
+    const pnl = currentPosition.pnlPercent ?? 0;
+    tradeHistory = recordTrade(tradeHistory, currentPosition);
 
-  // 3. Check match completion
-  const matchResult = checkMatchCompletion(updatedStage, scenario, updatedSquad);
+    outcome = pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'NEUTRAL';
+
+    events.push({
+      type: pnl > 0 ? 'ZONE_CAPTURED' : 'ZONE_LOST',
+      detail: `${currentPosition.direction} ${pnl > 0 ? '+' : ''}${(pnl * 100).toFixed(2)}% | Total: ${(tradeHistory.totalPnl * 100).toFixed(2)}%`,
+      tick: state.tick,
+    });
+
+    // If FLIP, open new position in opposite direction
+    if (positionAction === 'FLIP') {
+      const newDir = currentPosition.direction === 'LONG' ? 'SHORT' as const : 'LONG' as const;
+      currentPosition = {
+        direction: newDir,
+        entryPrice: market.price,
+        entryTick: state.tick,
+        size: V4_CONFIG.POSITION_SIZE,
+        status: 'OPEN',
+        unrealizedPnl: 0,
+      };
+    } else {
+      currentPosition = undefined; // Position fully closed
+    }
+  }
+
+  // 2. Update unrealized PnL for open position
+  if (currentPosition && currentPosition.status === 'OPEN') {
+    const unrealized = currentPosition.direction === 'LONG'
+      ? (market.price - currentPosition.entryPrice) / currentPosition.entryPrice
+      : (currentPosition.entryPrice - market.price) / currentPosition.entryPrice;
+    currentPosition = { ...currentPosition, unrealizedPnl: unrealized };
+
+    // Determine tick outcome from unrealized direction
+    if (outcome === 'NEUTRAL') {
+      outcome = unrealized > 0.001 ? 'WIN' : unrealized < -0.001 ? 'LOSS' : 'NEUTRAL';
+    }
+  }
+
+  // 3. Update stage based on cumulative PnL
+  const updatedStage = updateStage(stage, tradeHistory, outcome, state.tick, events);
+
+  // 4. Update squad HP based on PnL
+  const updatedSquad = updateSquadHP(squad, tradeHistory, outcome, currentPosition);
+
+  // 5. XP
+  const xpGained = outcome === 'WIN' ? 10 : outcome === 'LOSS' ? 3 : 1;
+
+  // 6. Check match completion
+  const matchResult = checkMatchCompletion(tradeHistory, updatedStage, scenario, updatedSquad);
 
   return {
     ...state,
     state: 'REFLECT',
-    position: resolvedPosition,
+    position: currentPosition,
+    tradeHistory,
     outcome,
     matchResult,
     stage: updatedStage,
@@ -60,205 +103,113 @@ export function resolve(state: BattleTickState): BattleTickState {
   };
 }
 
-// ─── Position resolution (TP/SL check) ─────────────────────────
+// ─── Record a closed trade ─────────────────────────────────────
 
-function resolvePosition(
-  position: Position | undefined,
-  market: MarketFrame,
-  tick: number,
-): { resolvedPosition?: Position; outcome: BattleOutcome; pnlPercent: number } {
-
-  // No position = NEUTRAL (FLAT/HOLD)
-  if (!position || position.status !== 'OPEN') {
-    return { resolvedPosition: position, outcome: 'NEUTRAL', pnlPercent: 0 };
-  }
-
-  const price = market.price;
-  const entry = position.entryPrice;
-  const isLong = position.direction === 'LONG';
-
-  // Calculate unrealized PnL
-  const unrealizedPnl = isLong
-    ? (price - entry) / entry
-    : (entry - price) / entry;
-
-  // Check Take Profit
-  const tpHit = isLong
-    ? price >= position.takeProfit
-    : price <= position.takeProfit;
-
-  if (tpHit) {
-    const realizedPnl = isLong
-      ? (position.takeProfit - entry) / entry
-      : (entry - position.takeProfit) / entry;
-
-    return {
-      resolvedPosition: {
-        ...position,
-        status: 'TP_HIT',
-        exitPrice: position.takeProfit,
-        exitTick: tick,
-        pnlPercent: realizedPnl,
-        unrealizedPnl: realizedPnl,
-      },
-      outcome: 'WIN',
-      pnlPercent: realizedPnl,
-    };
-  }
-
-  // Check Stop Loss
-  const slHit = isLong
-    ? price <= position.stopLoss
-    : price >= position.stopLoss;
-
-  if (slHit) {
-    const realizedPnl = isLong
-      ? (position.stopLoss - entry) / entry
-      : (entry - position.stopLoss) / entry;
-
-    return {
-      resolvedPosition: {
-        ...position,
-        status: 'SL_HIT',
-        exitPrice: position.stopLoss,
-        exitTick: tick,
-        pnlPercent: realizedPnl,
-        unrealizedPnl: realizedPnl,
-      },
-      outcome: 'LOSS',
-      pnlPercent: realizedPnl,
-    };
-  }
-
-  // Position still open — track unrealized PnL
+function recordTrade(history: TradeHistory, closedPosition: Position): TradeHistory {
+  const pnl = closedPosition.pnlPercent ?? 0;
   return {
-    resolvedPosition: {
-      ...position,
-      unrealizedPnl,
-    },
-    outcome: 'NEUTRAL', // Not resolved yet
-    pnlPercent: unrealizedPnl,
+    trades: [...history.trades, closedPosition],
+    totalPnl: history.totalPnl + pnl,
+    tradeCount: history.tradeCount + 1,
+    winCount: history.winCount + (pnl > 0 ? 1 : 0),
+    lossCount: history.lossCount + (pnl < 0 ? 1 : 0),
   };
 }
 
-// ─── Apply PnL outcome to game state ───────────────────────────
+// ─── Update stage from cumulative PnL ──────────────────────────
 
-function applyPnLOutcome(
-  outcome: BattleOutcome,
-  pnlPercent: number,
-  position: Position | undefined,
-  plan: GameActionPlan,
+function updateStage(
   stage: StageFrame,
-  squad: OwnedAgent[],
+  tradeHistory: TradeHistory,
+  outcome: BattleOutcome,
   tick: number,
-): {
-  updatedStage: StageFrame;
-  updatedSquad: OwnedAgent[];
-  events: BattleEvent[];
-  xpGained: number;
-} {
-  const events: BattleEvent[] = [];
-  let xpGained = 0;
-
+  events: BattleEvent[],
+): StageFrame {
   const updatedStage: StageFrame = {
     ...stage,
     capturedZones: [...stage.capturedZones],
     predatorZones: [...stage.predatorZones],
+    tick,
   };
 
-  const updatedSquad = squad.map(a => ({
-    ...a,
-    record: { ...a.record },
-  }));
+  // Zone control = cumulative realized PnL (direct mapping)
+  // +5% PnL → 0.5 zone control, +10% → 1.0 (win target)
+  updatedStage.zoneControlScore = tradeHistory.totalPnl / V4_CONFIG.PROFIT_TARGET_PERCENT;
 
-  // ── TP HIT: realized profit ──
-  if (outcome === 'WIN' && position?.status === 'TP_HIT') {
-    updatedStage.zoneControlScore += Math.abs(pnlPercent) * 2;
+  // Capture zones based on cumulative PnL milestones
+  const zones = ['ZONE_1', 'ZONE_2', 'ZONE_3', 'ZONE_4'];
+  const pnlPercent = tradeHistory.totalPnl * 100;
+  const zonesEarned = Math.floor(Math.max(0, pnlPercent) / 2.5); // 1 zone per 2.5% profit
+  updatedStage.capturedZones = zones.slice(0, Math.min(zonesEarned, zones.length));
 
-    if (plan.targetZone && !updatedStage.capturedZones.includes(plan.targetZone)) {
-      updatedStage.capturedZones.push(plan.targetZone);
-      events.push({ type: 'ZONE_CAPTURED', detail: `${plan.targetZone} (+${(pnlPercent * 100).toFixed(2)}%)`, tick });
+  return updatedStage;
+}
+
+// ─── Update squad HP ───────────────────────────────────────────
+
+function updateSquadHP(
+  squad: OwnedAgent[],
+  tradeHistory: TradeHistory,
+  outcome: BattleOutcome,
+  currentPosition: Position | undefined,
+): OwnedAgent[] {
+  return squad.map(a => {
+    const record = { ...a.record };
+
+    // HP = 1.0 - (negative cumulative PnL scaled)
+    // At -15% drawdown → HP = 0
+    const drawdown = Math.max(0, -tradeHistory.totalPnl);
+    const hpFromPnl = Math.max(0, 1 - drawdown / V4_CONFIG.MAX_DRAWDOWN_PERCENT);
+
+    // Unrealized loss also pressures HP slightly
+    const unrealizedPressure = currentPosition?.unrealizedPnl
+      ? Math.max(0, -currentPosition.unrealizedPnl * 0.3)
+      : 0;
+
+    record.currentHealth = Math.max(0, hpFromPnl - unrealizedPressure);
+
+    // Track wins/losses per tick
+    if (outcome === 'WIN') {
+      record.wins += 1;
+      record.currentStreak = Math.max(0, record.currentStreak) + 1;
+    } else if (outcome === 'LOSS') {
+      record.losses += 1;
+      record.currentStreak = Math.min(0, record.currentStreak) - 1;
     }
+    record.totalBattles = tradeHistory.tradeCount;
+    record.xp += outcome === 'WIN' ? 10 : outcome === 'LOSS' ? 3 : 1;
 
-    for (const agent of updatedSquad) {
-      agent.record.currentHealth = Math.min(1, agent.record.currentHealth + Math.abs(pnlPercent) * V4_CONFIG.UNREALIZED_HP_GAIN * 50);
-      agent.record.wins += 1;
-      agent.record.currentStreak = Math.max(0, agent.record.currentStreak) + 1;
-    }
-
-    xpGained = Math.round(Math.abs(pnlPercent) * 1000);
-  }
-
-  // ── SL HIT: realized loss ──
-  if (outcome === 'LOSS' && position?.status === 'SL_HIT') {
-    updatedStage.zoneControlScore -= Math.abs(pnlPercent) * 3;
-
-    if (plan.targetZone && updatedStage.capturedZones.includes(plan.targetZone)) {
-      updatedStage.capturedZones = updatedStage.capturedZones.filter(z => z !== plan.targetZone);
-      events.push({ type: 'ZONE_LOST', detail: `${plan.targetZone} (${(pnlPercent * 100).toFixed(2)}%)`, tick });
-    }
-
-    for (const agent of updatedSquad) {
-      agent.record.currentHealth = Math.max(0, agent.record.currentHealth - Math.abs(pnlPercent) * V4_CONFIG.UNREALIZED_HP_LOSS * 50);
-      agent.record.losses += 1;
-      agent.record.currentStreak = Math.min(0, agent.record.currentStreak) - 1;
-
-      if (agent.record.currentHealth < 0.15) {
-        events.push({ type: 'HEALTH_CRITICAL', agentId: agent.id, tick });
-      }
-    }
-
-    xpGained = Math.round(Math.abs(pnlPercent) * 300);
-  }
-
-  // ── NEUTRAL: position still open — unrealized PnL pressure ──
-  if (outcome === 'NEUTRAL' && position?.status === 'OPEN' && position.unrealizedPnl !== undefined) {
-    const unrealized = position.unrealizedPnl;
-    if (unrealized > 0) {
-      for (const agent of updatedSquad) {
-        agent.record.currentHealth = Math.min(1, agent.record.currentHealth + unrealized * V4_CONFIG.UNREALIZED_HP_GAIN);
-      }
-    } else {
-      for (const agent of updatedSquad) {
-        agent.record.currentHealth = Math.max(0, agent.record.currentHealth + unrealized * V4_CONFIG.UNREALIZED_HP_LOSS);
-        if (agent.record.currentHealth < 0.15) {
-          events.push({ type: 'HEALTH_CRITICAL', agentId: agent.id, tick });
-        }
-      }
-    }
-    xpGained = 1;
-  }
-
-  // Update total battles (only when position closes or FLAT)
-  if (outcome !== 'NEUTRAL' || !position || position.status !== 'OPEN') {
-    for (const agent of updatedSquad) {
-      agent.record.totalBattles += 1;
-    }
-  }
-
-  updatedStage.zoneControlScore = Math.max(-0.5, Math.min(1.5, updatedStage.zoneControlScore));
-
-  return { updatedStage, updatedSquad, events, xpGained };
+    return { ...a, record };
+  });
 }
 
 // ─── Match completion check ────────────────────────────────────
 
 function checkMatchCompletion(
+  tradeHistory: TradeHistory,
   stage: StageFrame,
   scenario: ScenarioFrame,
   squad: OwnedAgent[],
 ): MatchResult | undefined {
-  if (stage.zoneControlScore >= scenario.objectiveThreshold) return 'WIN';
+  // Early WIN: cumulative PnL reaches profit target
+  if (tradeHistory.totalPnl >= V4_CONFIG.PROFIT_TARGET_PERCENT) {
+    return 'WIN';
+  }
 
+  // Early LOSS: cumulative PnL exceeds max drawdown
+  if (tradeHistory.totalPnl <= -V4_CONFIG.MAX_DRAWDOWN_PERCENT) {
+    return 'LOSS';
+  }
+
+  // HP depletion
   const allDead = squad.every(a => a.record.currentHealth <= 0);
   if (allDead) return 'LOSS';
 
-  if (stage.zoneControlScore < -0.3) return 'LOSS';
-
+  // Tick limit reached → judge by cumulative PnL
   if (stage.tick >= scenario.tickLimit) {
-    if (stage.zoneControlScore >= scenario.objectiveThreshold * 0.7) return 'DRAW';
-    if (stage.zoneControlScore > 0) return 'DRAW';
-    return 'LOSS';
+    if (tradeHistory.totalPnl > 0.005) return 'WIN';   // +0.5%+ = win
+    if (tradeHistory.totalPnl < -0.005) return 'LOSS';  // -0.5%+ = loss
+    return 'DRAW';
   }
 
   return undefined;
