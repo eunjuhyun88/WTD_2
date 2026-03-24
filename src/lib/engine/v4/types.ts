@@ -240,22 +240,32 @@ export interface SquadConsensus {
   agentAgreement: number;    // 0~1 how many agents agree
 }
 
-// ─── Position (real PnL tracking) ──────────────────────────────
+// ─── Position (real trading — no fixed TP/SL) ──────────────────
 
-export type PositionStatus = 'OPEN' | 'TP_HIT' | 'SL_HIT' | 'CLOSED';
+export type PositionStatus = 'OPEN' | 'CLOSED';
+
+export type PositionAction = 'OPEN_LONG' | 'OPEN_SHORT' | 'HOLD' | 'CLOSE' | 'FLIP';
 
 export interface Position {
   direction: 'LONG' | 'SHORT';
   entryPrice: number;
   entryTick: number;
   size: number;            // 0~1 portfolio fraction
-  stopLoss: number;        // absolute price
-  takeProfit: number;      // absolute price
   status: PositionStatus;
   exitPrice?: number;
   exitTick?: number;
-  pnlPercent?: number;     // realized PnL %
+  pnlPercent?: number;     // realized PnL % (set on close)
   unrealizedPnl?: number;  // current unrealized PnL %
+}
+
+// ─── Trade History (cumulative PnL across multiple trades) ─────
+
+export interface TradeHistory {
+  trades: Position[];       // closed trades
+  totalPnl: number;         // cumulative realized PnL %
+  tradeCount: number;
+  winCount: number;          // profitable trades
+  lossCount: number;         // losing trades
 }
 
 // ─── Game Action Plan ──────────────────────────────────────────
@@ -310,8 +320,10 @@ export interface BattleTickState {
   scenario: ScenarioFrame;
   battleScenario: BattleScenario;
 
-  // Position (real PnL tracking)
+  // Position + Trade History (real PnL tracking)
   position?: Position;
+  tradeHistory: TradeHistory;
+  positionAction?: PositionAction;
 
   // OBSERVE output
   signal?: SignalSnapshot;
@@ -496,12 +508,11 @@ export const V4_CONFIG = {
   REASON_TEMPERATURE: 0.1,
   REASON_MAX_PREDICT: 256,
 
-  // POSITION (real PnL)
-  DEFAULT_SL_PERCENT: 0.05,     // -5% stop loss (wider for hourly candles)
-  DEFAULT_TP_PERCENT: 0.08,     // +8% take profit (R:R = 1.6:1)
-  POSITION_SIZE: 0.5,           // 50% of portfolio
-  UNREALIZED_HP_GAIN: 0.01,     // HP gain per 1% unrealized profit
-  UNREALIZED_HP_LOSS: 0.015,    // HP loss per 1% unrealized loss
+  // POSITION (real trading — agent decides when to close)
+  AUTO_SL_PERCENT: 0.05,           // individual position auto-stop at -5%
+  MAX_DRAWDOWN_PERCENT: 0.15,      // cumulative -15% → battle LOSS
+  PROFIT_TARGET_PERCENT: 0.10,     // cumulative +10% → battle WIN
+  POSITION_SIZE: 0.5,              // 50% of portfolio per trade
 
   // RESOLVE
   NEUTRAL_PRICE_THRESHOLD: 0.001,  // ±0.1% is NEUTRAL (tighter = more WIN/LOSS, fewer NEUTRAL)

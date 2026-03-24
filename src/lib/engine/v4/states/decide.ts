@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 // COGOCHI — Battle State: DECIDE
-// Compiles SquadConsensus into GameActionPlan (Battle Grammar)
-// Processes player intervention (APPROVE/OVERRIDE)
+// Real trading: agent decides OPEN/HOLD/CLOSE/FLIP each tick
+// No fixed TP/SL — agent manages position dynamically
 // Design: BattleStateMachine_20260322 § STATE 5
 // ═══════════════════════════════════════════════════════════════
 
@@ -14,25 +14,22 @@ import type {
   PlayerIntervention,
   BattleActionKind,
   BattleAction,
-  TrainerLabel,
   Position,
+  PositionAction,
 } from '../types.js';
 import { V4_CONFIG } from '../types.js';
 
 // ─── Main entry ────────────────────────────────────────────────
 
 export function decide(state: BattleTickState): BattleTickState {
-  const { consensus, stage, market, playerIntervention } = state;
+  const { consensus, stage, market, playerIntervention, position } = state;
 
   if (!consensus || !market) {
     return {
       ...state,
       state: 'RESOLVE',
-      plan: {
-        primary: 'HOLD',
-        power: 0,
-        trainerLabel: null,
-      },
+      plan: { primary: 'HOLD', power: 0, trainerLabel: null },
+      positionAction: 'HOLD',
     };
   }
 
@@ -44,18 +41,110 @@ export function decide(state: BattleTickState): BattleTickState {
     plan = applyPlayerIntervention(plan, playerIntervention, consensus);
   }
 
-  // 3. Open position if action is LONG/SHORT and no existing position
-  let position = state.position;
-  if (!position || position.status !== 'OPEN') {
-    position = openPosition(plan, market, consensus.finalConfidence, state.tick);
+  // 3. Decide position action based on current position + consensus
+  const positionAction = decidePositionAction(consensus, position, market);
+
+  // 4. Execute position action
+  let newPosition = position;
+
+  switch (positionAction) {
+    case 'OPEN_LONG':
+      newPosition = createPosition('LONG', market.price, state.tick);
+      break;
+
+    case 'OPEN_SHORT':
+      newPosition = createPosition('SHORT', market.price, state.tick);
+      break;
+
+    case 'HOLD':
+      // Keep current position, update unrealized PnL
+      if (newPosition && newPosition.status === 'OPEN') {
+        const unrealized = calcUnrealizedPnl(newPosition, market.price);
+        newPosition = { ...newPosition, unrealizedPnl: unrealized };
+      }
+      break;
+
+    case 'CLOSE':
+      // Close current position (resolve will record it)
+      if (newPosition && newPosition.status === 'OPEN') {
+        const pnl = calcUnrealizedPnl(newPosition, market.price);
+        newPosition = {
+          ...newPosition,
+          status: 'CLOSED',
+          exitPrice: market.price,
+          exitTick: state.tick,
+          pnlPercent: pnl,
+          unrealizedPnl: pnl,
+        };
+      }
+      break;
+
+    case 'FLIP':
+      // Close current position, then open opposite
+      if (newPosition && newPosition.status === 'OPEN') {
+        const pnl = calcUnrealizedPnl(newPosition, market.price);
+        // Mark current as closed (resolve will record it)
+        newPosition = {
+          ...newPosition,
+          status: 'CLOSED',
+          exitPrice: market.price,
+          exitTick: state.tick,
+          pnlPercent: pnl,
+          unrealizedPnl: pnl,
+        };
+      }
+      break;
   }
 
   return {
     ...state,
     state: 'RESOLVE',
     plan,
-    position,
+    position: newPosition,
+    positionAction,
   };
+}
+
+// ─── Position action decision ──────────────────────────────────
+
+function decidePositionAction(
+  consensus: SquadConsensus,
+  position: Position | undefined,
+  market: MarketFrame,
+): PositionAction {
+  const action = consensus.finalAction;
+  const hasPosition = position && position.status === 'OPEN';
+
+  // No position
+  if (!hasPosition) {
+    if (action === 'LONG') return 'OPEN_LONG';
+    if (action === 'SHORT') return 'OPEN_SHORT';
+    return 'HOLD'; // FLAT with no position = do nothing
+  }
+
+  // Has open position
+  const unrealized = calcUnrealizedPnl(position!, market.price);
+
+  // Auto stop-loss: individual position exceeds -5%
+  if (unrealized <= -V4_CONFIG.AUTO_SL_PERCENT) {
+    return 'CLOSE';
+  }
+
+  // Agent says FLAT → close position
+  if (action === 'FLAT') {
+    return 'CLOSE';
+  }
+
+  // Agent agrees with current direction → hold
+  if (
+    (position!.direction === 'LONG' && action === 'LONG') ||
+    (position!.direction === 'SHORT' && action === 'SHORT')
+  ) {
+    return 'HOLD';
+  }
+
+  // Agent wants opposite direction → flip
+  return 'FLIP';
 }
 
 // ─── Battle Grammar Compiler ───────────────────────────────────
@@ -68,66 +157,24 @@ function compileToGameAction(
   const action = consensus.finalAction;
   const conf = consensus.finalConfidence;
 
-  // LONG actions
   if (action === 'LONG') {
     if (market.volumeImpulse > 0.7 && stage.breakoutGateActive) {
-      return {
-        primary: 'BREAK_WALL',
-        secondary: 'LONG_PUSH',
-        power: conf * 1.5,
-        targetZone: findNextResistanceZone(stage),
-        trainerLabel: null,
-      };
+      return { primary: 'BREAK_WALL', secondary: 'LONG_PUSH', power: conf * 1.5, targetZone: findNextZone(stage), trainerLabel: null };
     }
-    if (market.volumeImpulse > 0.5) {
-      return {
-        primary: 'LONG_PUSH',
-        power: conf,
-        targetZone: findNextResistanceZone(stage),
-        trainerLabel: null,
-      };
-    }
-    return {
-      primary: 'LONG_PUSH',
-      power: conf * 0.7,
-      trainerLabel: null,
-    };
+    return { primary: 'LONG_PUSH', power: conf, targetZone: findNextZone(stage), trainerLabel: null };
   }
 
-  // SHORT actions
   if (action === 'SHORT') {
     if (stage.supportIntegrity < 0.3) {
-      return {
-        primary: 'SHORT_SLAM',
-        secondary: 'CRUSH_SUPPORT',
-        power: conf * 1.3,
-        targetZone: findWeakSupportZone(stage),
-        trainerLabel: null,
-      };
+      return { primary: 'SHORT_SLAM', secondary: 'CRUSH_SUPPORT', power: conf * 1.3, targetZone: findNextZone(stage), trainerLabel: null };
     }
-    if (stage.predatorZones.length > 0 && conf > 0.6) {
-      return {
-        primary: 'LAY_TRAP',
-        power: conf,
-        trainerLabel: null,
-      };
-    }
-    return {
-      primary: 'SHORT_SLAM',
-      power: conf,
-      trainerLabel: null,
-    };
+    return { primary: 'SHORT_SLAM', power: conf, trainerLabel: null };
   }
 
-  // FLAT
-  return {
-    primary: 'HOLD',
-    power: 0,
-    trainerLabel: null,
-  };
+  return { primary: 'HOLD', power: 0, trainerLabel: null };
 }
 
-// ─── Player intervention handler ───────────────────────────────
+// ─── Player intervention ───────────────────────────────────────
 
 function applyPlayerIntervention(
   plan: GameActionPlan,
@@ -136,94 +183,39 @@ function applyPlayerIntervention(
 ): GameActionPlan {
   switch (intervention.type) {
     case 'APPROVE':
-      // Keep consensus, mark as trainer-approved
-      return {
-        ...plan,
-        trainerLabel: 'APPROVED',
-      };
-
+      return { ...plan, trainerLabel: 'APPROVED' };
     case 'OVERRIDE_LONG':
-      return overridePlan(plan, 'LONG', 'LONG_PUSH', originalConsensus);
-
+      return { primary: 'LONG_PUSH', power: 0.6, trainerLabel: 'OVERRIDDEN', originalConsensus };
     case 'OVERRIDE_SHORT':
-      return overridePlan(plan, 'SHORT', 'SHORT_SLAM', originalConsensus);
-
+      return { primary: 'SHORT_SLAM', power: 0.6, trainerLabel: 'OVERRIDDEN', originalConsensus };
     case 'OVERRIDE_FLAT':
-      return {
-        primary: 'HOLD',
-        power: 0,
-        trainerLabel: 'OVERRIDDEN',
-        originalConsensus,
-      };
-
+      return { primary: 'HOLD', power: 0, trainerLabel: 'OVERRIDDEN', originalConsensus };
     default:
       return plan;
   }
 }
 
-function overridePlan(
-  plan: GameActionPlan,
-  _action: BattleAction,
-  primary: BattleActionKind,
-  originalConsensus: SquadConsensus,
-): GameActionPlan {
-  return {
-    primary,
-    power: 0.6, // moderate power for overrides
-    trainerLabel: 'OVERRIDDEN',
-    originalConsensus,
-  };
-}
+// ─── Helpers ───────────────────────────────────────────────────
 
-// ─── Position opening ──────────────────────────────────────────
-
-function openPosition(
-  plan: GameActionPlan,
-  market: MarketFrame,
-  confidence: number,
-  tick: number,
-): Position | undefined {
-  const isLong = ['LONG_PUSH', 'BREAK_WALL'].includes(plan.primary);
-  const isShort = ['SHORT_SLAM', 'CRUSH_SUPPORT', 'LAY_TRAP'].includes(plan.primary);
-
-  if (!isLong && !isShort) return undefined;
-
-  const direction = isLong ? 'LONG' as const : 'SHORT' as const;
-  const price = market.price;
-
-  // Confidence adjusts SL/TP: high confidence = wider TP, low = tighter SL
-  const confFactor = 0.5 + confidence; // 0.5~1.5
-  const slPercent = V4_CONFIG.DEFAULT_SL_PERCENT / confFactor; // tighter SL when less confident
-  const tpPercent = V4_CONFIG.DEFAULT_TP_PERCENT * confFactor; // wider TP when more confident
-
-  const stopLoss = direction === 'LONG'
-    ? price * (1 - slPercent)
-    : price * (1 + slPercent);
-
-  const takeProfit = direction === 'LONG'
-    ? price * (1 + tpPercent)
-    : price * (1 - tpPercent);
-
+function createPosition(direction: 'LONG' | 'SHORT', price: number, tick: number): Position {
   return {
     direction,
     entryPrice: price,
     entryTick: tick,
     size: V4_CONFIG.POSITION_SIZE,
-    stopLoss,
-    takeProfit,
     status: 'OPEN',
+    unrealizedPnl: 0,
   };
 }
 
-// ─── Zone helpers ──────────────────────────────────────────────
-
-function findNextResistanceZone(stage: StageFrame): string | undefined {
-  // Simple: return first uncaptured zone
-  const allZones = ['ZONE_1', 'ZONE_2', 'ZONE_3', 'ZONE_4'];
-  return allZones.find(z => !stage.capturedZones.includes(z));
+function calcUnrealizedPnl(position: Position, currentPrice: number): number {
+  const entry = position.entryPrice;
+  return position.direction === 'LONG'
+    ? (currentPrice - entry) / entry
+    : (entry - currentPrice) / entry;
 }
 
-function findWeakSupportZone(stage: StageFrame): string | undefined {
-  // Return the last captured zone (most vulnerable)
-  return stage.capturedZones[stage.capturedZones.length - 1];
+function findNextZone(stage: StageFrame): string | undefined {
+  const zones = ['ZONE_1', 'ZONE_2', 'ZONE_3', 'ZONE_4'];
+  return zones.find(z => !stage.capturedZones.includes(z));
 }

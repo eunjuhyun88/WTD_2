@@ -107,6 +107,7 @@ export function initBattle(
     scenario: scenarioFrame,
     battleScenario: scenario,
     stage: initialStage,
+    tradeHistory: { trades: [], totalPnl: 0, tradeCount: 0, winCount: 0, lossCount: 0 },
     events: [],
     startedAt: Date.now(),
   };
