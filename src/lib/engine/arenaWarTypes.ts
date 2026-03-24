@@ -16,6 +16,15 @@ import type {
   C02Result,
 } from './types';
 
+import type {
+  MarketState,
+  SetupType,
+  FailureTag,
+  ExitType,
+  ClassifyOutput,
+  BattleAction as V4BattleAction,
+} from './v4/types';
+
 // ─── ReasonTags ─────────────────────────────────────────────
 
 /** "같은 데이터를 보고 왜 다르게 판단했는가"를 구조화 */
@@ -459,5 +468,53 @@ export function computeHumanDelta(
     slDiff,
     disagreedFactors: computeDisagreedFactors(aiFactors, humanDir, aiDir),
     emphasizedFactors: computeEmphasizedFactors(humanReasonTags),
+  };
+}
+
+// ─── GameRecord V2 (Agent Forge Phase 6) ────────────────────
+// Extended record with classify, MFE/MAE, failure analysis,
+// and structured agent outputs for learning pipelines.
+
+export interface GameRecordV2 {
+  id: string;
+  version: 2;
+  createdAt: number;
+  scenarioId: string;
+
+  // Market context (auto-generated from OBSERVE + CLASSIFY)
+  context: {
+    pair: string;
+    timeframe: string;
+    marketState: MarketState;
+    setupType: SetupType;
+    regimeConfidence: number;
+    factorSignature: number[];
+  };
+
+  // Agent consensus decision
+  decision: {
+    action: V4BattleAction;
+    confidence: number;
+    entryPrice?: number;
+    stopLoss?: number;
+    abstainReason?: string;
+  };
+
+  // Trade outcome (auto-computed from resolve)
+  outcome: {
+    pnl: number;
+    rMultiple: number;
+    mfe: number;
+    mae: number;
+    holdTicks: number;
+    exitType: ExitType;
+  };
+
+  // Post-trade review (auto + semi-auto)
+  review: {
+    quality: PairQuality;
+    failureTags: FailureTag[];
+    shouldHaveBeenNoTrade: boolean;
+    lesson: string;
   };
 }

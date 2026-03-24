@@ -18,7 +18,10 @@ import type {
   OrpoPairSource,
   BattleAction,
   ClassifyOutput,
+  Position,
 } from '../types.js';
+import { V4_CONFIG } from '../types.js';
+import type { GameRecordV2, PairQuality } from '../../arenaWarTypes.js';
 
 // ─── Main entry ────────────────────────────────────────────────
 
@@ -59,6 +62,17 @@ export function reflect(state: BattleTickState): BattleTickState {
 
   // 3. Calculate bond delta
   const bondDelta = calculateBondDelta(outcome, plan.trainerLabel);
+
+  // 3.5 Phase 6: Build GameRecordV2 for closed trades this tick
+  const gameRecords: GameRecordV2[] = [];
+  if (state.position?.status === 'CLOSED' || (state.tradeHistory.trades.length > 0 && matchResult)) {
+    const closedTrade = state.position?.status === 'CLOSED'
+      ? state.position
+      : state.tradeHistory.trades[state.tradeHistory.trades.length - 1];
+    if (closedTrade) {
+      gameRecords.push(buildGameRecordV2(state, closedTrade, classify, outcome));
+    }
+  }
 
   // 4. Queue ORPO pair if match ended
   let orpoQueued = false;
@@ -343,6 +357,102 @@ function buildCard(opts: {
     createdAt: opts.now,
     updatedAt: opts.now,
   };
+}
+
+// ─── GameRecordV2 builder (Phase 6) ──────────────────────────
+
+function buildGameRecordV2(
+  state: BattleTickState,
+  trade: Position,
+  classify: ClassifyOutput | undefined,
+  outcome: BattleOutcome,
+): GameRecordV2 {
+  const pnl = trade.pnlPercent ?? 0;
+  const risk = V4_CONFIG.AUTO_SL_PERCENT;
+  const rMultiple = risk > 0 ? pnl / risk : 0;
+
+  const quality: PairQuality = classifyRecordQuality(pnl, rMultiple, trade);
+
+  return {
+    id: `gr2-${state.scenarioId}-${state.tick}-${Date.now()}`,
+    version: 2,
+    createdAt: Date.now(),
+    scenarioId: state.scenarioId,
+
+    context: {
+      pair: state.signal?.symbol ?? state.scenario.symbol,
+      timeframe: '4h',
+      marketState: classify?.marketState ?? 'range',
+      setupType: classify?.setupType ?? 'no_setup',
+      regimeConfidence: classify?.regimeConfidence ?? 0,
+      factorSignature: state.signal?.factors?.map(f => f.value) ?? [],
+    },
+
+    decision: {
+      action: state.consensus?.finalAction ?? 'FLAT',
+      confidence: state.consensus?.finalConfidence ?? 0,
+      entryPrice: trade.entryPrice,
+      stopLoss: trade.entryPrice * (1 - V4_CONFIG.AUTO_SL_PERCENT),
+      abstainReason: state.consensus?.finalAction === 'NO_TRADE'
+        ? state.consensus.vetoReason ?? 'abstain_gate'
+        : undefined,
+    },
+
+    outcome: {
+      pnl,
+      rMultiple,
+      mfe: trade.mfe,
+      mae: trade.mae,
+      holdTicks: trade.holdTicks,
+      exitType: trade.exitType ?? 'manual',
+    },
+
+    review: {
+      quality,
+      failureTags: trade.failureTags ?? [],
+      shouldHaveBeenNoTrade: trade.entryClassify?.setupType === 'no_setup',
+      lesson: generateLessonFromTrade(trade, classify, outcome),
+    },
+  };
+}
+
+function classifyRecordQuality(pnl: number, rMultiple: number, trade: Position): PairQuality {
+  const absPnl = Math.abs(pnl);
+  const hasTags = (trade.failureTags?.length ?? 0) > 0;
+
+  if (absPnl > 0.03 && Math.abs(rMultiple) > 0.5) return 'strong';
+  if (absPnl > 0.015) return 'medium';
+  if (absPnl <= 0.005) return 'boundary'; // close call — high learning value
+  if (hasTags) return 'weak';
+  return 'noise';
+}
+
+function generateLessonFromTrade(
+  trade: Position,
+  classify: ClassifyOutput | undefined,
+  outcome: BattleOutcome,
+): string {
+  const dir = trade.direction;
+  const regime = classify?.marketState ?? 'unknown';
+  const setup = classify?.setupType ?? 'unknown';
+  const tags = trade.failureTags ?? [];
+
+  if (outcome === 'WIN' || (trade.pnlPercent ?? 0) > 0) {
+    return `${dir} worked in ${regime}/${setup}`;
+  }
+  if (tags.includes('late_entry')) {
+    return `Late ${dir} entry in ${regime} — price moved before entry`;
+  }
+  if (tags.includes('wrong_regime')) {
+    return `Regime changed from ${trade.entryClassify?.marketState ?? '?'} to ${regime}`;
+  }
+  if (tags.includes('overstayed')) {
+    return `Overstayed ${dir} in ${regime} — gave back ${(trade.mfe * 100).toFixed(1)}% gains`;
+  }
+  if (tags.includes('should_not_trade')) {
+    return `Should not have traded — no setup in ${regime}`;
+  }
+  return `${dir} failed in ${regime}/${setup}`;
 }
 
 function actionFromPlan(plan: GameActionPlan): string {
