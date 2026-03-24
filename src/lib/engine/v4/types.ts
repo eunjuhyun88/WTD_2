@@ -240,6 +240,24 @@ export interface SquadConsensus {
   agentAgreement: number;    // 0~1 how many agents agree
 }
 
+// ─── Position (real PnL tracking) ──────────────────────────────
+
+export type PositionStatus = 'OPEN' | 'TP_HIT' | 'SL_HIT' | 'CLOSED';
+
+export interface Position {
+  direction: 'LONG' | 'SHORT';
+  entryPrice: number;
+  entryTick: number;
+  size: number;            // 0~1 portfolio fraction
+  stopLoss: number;        // absolute price
+  takeProfit: number;      // absolute price
+  status: PositionStatus;
+  exitPrice?: number;
+  exitTick?: number;
+  pnlPercent?: number;     // realized PnL %
+  unrealizedPnl?: number;  // current unrealized PnL %
+}
+
 // ─── Game Action Plan ──────────────────────────────────────────
 
 export interface GameActionPlan {
@@ -291,6 +309,9 @@ export interface BattleTickState {
   // Scenario data
   scenario: ScenarioFrame;
   battleScenario: BattleScenario;
+
+  // Position (real PnL tracking)
+  position?: Position;
 
   // OBSERVE output
   signal?: SignalSnapshot;
@@ -474,6 +495,13 @@ export const V4_CONFIG = {
   REASON_TOKEN_BUDGET: 2000,
   REASON_TEMPERATURE: 0.1,
   REASON_MAX_PREDICT: 256,
+
+  // POSITION (real PnL)
+  DEFAULT_SL_PERCENT: 0.05,     // -5% stop loss (wider for hourly candles)
+  DEFAULT_TP_PERCENT: 0.08,     // +8% take profit (R:R = 1.6:1)
+  POSITION_SIZE: 0.5,           // 50% of portfolio
+  UNREALIZED_HP_GAIN: 0.01,     // HP gain per 1% unrealized profit
+  UNREALIZED_HP_LOSS: 0.015,    // HP loss per 1% unrealized loss
 
   // RESOLVE
   NEUTRAL_PRICE_THRESHOLD: 0.001,  // ±0.1% is NEUTRAL (tighter = more WIN/LOSS, fewer NEUTRAL)
