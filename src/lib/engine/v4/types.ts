@@ -53,7 +53,7 @@ export type BattleStateKind =
   | 'RESOLVE'
   | 'REFLECT';
 
-export type BattleAction = 'LONG' | 'SHORT' | 'FLAT';
+export type BattleAction = 'LONG' | 'SHORT' | 'FLAT' | 'NO_TRADE';
 export type BattleOutcome = 'WIN' | 'LOSS' | 'NEUTRAL';
 export type MatchResult = 'WIN' | 'LOSS' | 'DRAW';
 export type TrainerLabel = 'APPROVED' | 'OVERRIDDEN' | null;
@@ -546,6 +546,10 @@ export const V4_CONFIG = {
   MAX_DRAWDOWN_PERCENT: 0.15,      // cumulative -15% → battle LOSS
   PROFIT_TARGET_PERCENT: 0.10,     // cumulative +10% → battle WIN
   POSITION_SIZE: 0.5,              // 50% of portfolio per trade
+
+  // ABSTAIN GATE (Phase 2)
+  ABSTAIN_CONFIDENCE_THRESHOLD: 0.45,  // below this → NO_TRADE
+  ABSTAIN_RISK_THRESHOLD: 0.7,         // risk score above this → NO_TRADE
 
   // RESOLVE
   NEUTRAL_PRICE_THRESHOLD: 0.001,  // ±0.1% is NEUTRAL (tighter = more WIN/LOSS, fewer NEUTRAL)

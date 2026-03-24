@@ -19,6 +19,7 @@ import type {
   SquadConsensus,
   BattleAction,
   BattleEvent,
+  ClassifyOutput,
 } from '../types.js';
 import { FLAT_FALLBACK, V4_CONFIG } from '../types.js';
 
@@ -103,12 +104,31 @@ export async function debate(state: BattleTickState): Promise<BattleTickState> {
   const vetoDecision = checkRiskVeto(traces, riskAgent, stage, market, judgeVerdict);
 
   // 7. Build final consensus from all inputs
-  const consensus = buildEnhancedConsensus(
+  let consensus = buildEnhancedConsensus(
     traces, squad, debateTranscript, riskAssessments, judgeVerdict, vetoDecision,
   );
 
+  // 7.5 ABSTAIN GATE — force NO_TRADE when conditions are met (Phase 2)
+  const abstainResult = checkAbstainGate(consensus, state.classify, riskAssessments, signal);
+  if (abstainResult.abstain) {
+    consensus = {
+      finalAction: 'NO_TRADE',
+      finalConfidence: consensus.finalConfidence,
+      vetoApplied: consensus.vetoApplied,
+      vetoReason: consensus.vetoReason,
+      agentAgreement: consensus.agentAgreement,
+    };
+  }
+
   // 8. Collect events
   const events: BattleEvent[] = [...state.events];
+  if (abstainResult.abstain) {
+    events.push({
+      type: 'VETO_FIRED',
+      detail: `ABSTAIN_GATE: ${abstainResult.reason}`,
+      tick: state.tick,
+    });
+  }
   if (vetoDecision.veto) {
     events.push({ type: 'VETO_FIRED', agentId: riskAgent?.id, detail: vetoDecision.reason, tick: state.tick });
   }
@@ -146,7 +166,7 @@ function classifyTeams(
     if (!trace) continue;
     if (trace.action === 'LONG') bullTeam.push(agent.id);
     else if (trace.action === 'SHORT') bearTeam.push(agent.id);
-    else flatTeam.push(agent.id);
+    else flatTeam.push(agent.id); // FLAT and NO_TRADE both go to flat team
   }
 
   return { bullTeam, bearTeam, flatTeam };
@@ -656,7 +676,7 @@ function parseAndValidate(raw: string): AgentDecisionTrace {
 
     const p = parsed as Record<string, unknown>;
 
-    if (!['LONG', 'SHORT', 'FLAT'].includes(p.action as string)) {
+    if (!['LONG', 'SHORT', 'FLAT', 'NO_TRADE'].includes(p.action as string)) {
       return { ...FLAT_FALLBACK, fallbackReason: 'invalid_action' };
     }
 
@@ -686,7 +706,48 @@ function parseAndValidate(raw: string): AgentDecisionTrace {
 // ─── Helpers ───────────────────────────────────────────────────
 
 function getMajorityAction(traces: AgentDecisionTrace[]): BattleAction {
-  const counts: Record<string, number> = { LONG: 0, SHORT: 0, FLAT: 0 };
+  const counts: Record<string, number> = { LONG: 0, SHORT: 0, FLAT: 0, NO_TRADE: 0 };
   for (const t of traces) counts[t.action] = (counts[t.action] ?? 0) + 1;
   return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'FLAT') as BattleAction;
+}
+
+// ─── Abstain Gate (Phase 2) ───────────────────────────────────
+// Forces NO_TRADE when classify/risk conditions indicate no valid setup
+// Ref: TradingAgents risk veto + Agent Forge architecture §2
+
+function checkAbstainGate(
+  consensus: SquadConsensus,
+  classify: ClassifyOutput | undefined,
+  riskAssessments: RiskAssessment[],
+  signal: SignalSnapshot,
+): { abstain: boolean; reason: string } {
+  // Already NO_TRADE or FLAT → no need to gate
+  if (consensus.finalAction === 'NO_TRADE' || consensus.finalAction === 'FLAT') {
+    return { abstain: false, reason: '' };
+  }
+
+  // Rule 1: No setup detected → NO_TRADE
+  if (classify?.setupType === 'no_setup') {
+    return { abstain: true, reason: 'no_setup detected' };
+  }
+
+  // Rule 2: Compressed market with no divergence → NO_TRADE
+  if (classify?.marketState === 'compressed' && !signal.cvdDivergence) {
+    return { abstain: true, reason: 'compressed market, no divergence' };
+  }
+
+  // Rule 3: Consensus confidence too low → NO_TRADE
+  if (consensus.finalConfidence < V4_CONFIG.ABSTAIN_CONFIDENCE_THRESHOLD) {
+    return { abstain: true, reason: `low confidence: ${consensus.finalConfidence.toFixed(2)}` };
+  }
+
+  // Rule 4: Average risk score too high → NO_TRADE
+  if (riskAssessments.length > 0) {
+    const avgRisk = riskAssessments.reduce((s, r) => s + r.riskScore, 0) / riskAssessments.length;
+    if (avgRisk > V4_CONFIG.ABSTAIN_RISK_THRESHOLD) {
+      return { abstain: true, reason: `high risk: ${avgRisk.toFixed(2)}` };
+    }
+  }
+
+  return { abstain: false, reason: '' };
 }

@@ -16,6 +16,7 @@ import type {
   AgentDecisionTrace,
   ContextAssemblyInput,
   CallMeta,
+  ClassifyOutput,
 } from '../types.js';
 import { FLAT_FALLBACK, V4_CONFIG } from '../types.js';
 
@@ -46,9 +47,10 @@ export async function reason(state: BattleTickState): Promise<BattleTickState> {
 
   // Run all agents in parallel
   const startAt = Date.now();
+  const classify = state.classify;
   const results = await Promise.allSettled(
     squad.map(agent => {
-      const input: ContextAssemblyInput = {
+      const input: ContextAssemblyInput & { classify?: ClassifyOutput } = {
         agent,
         signal,
         market,
@@ -56,6 +58,7 @@ export async function reason(state: BattleTickState): Promise<BattleTickState> {
         scenario,
         memories: memoriesByAgent?.[agent.id] ?? [],
         squadNotes: [], // First tick = empty, subsequent ticks use previous results
+        classify,
       };
       return runAgentReason(input);
     })
@@ -95,7 +98,7 @@ export async function reason(state: BattleTickState): Promise<BattleTickState> {
 // ─── Per-agent reasoning ───────────────────────────────────────
 
 async function runAgentReason(
-  input: ContextAssemblyInput,
+  input: ContextAssemblyInput & { classify?: ClassifyOutput },
 ): Promise<{ rawResponse: string; meta: CallMeta }> {
   const startAt = Date.now();
 
@@ -116,7 +119,7 @@ async function runAgentReason(
     };
   } catch (e: any) {
     // Timeout or LLM error → heuristic fallback
-    const fallback = heuristicDecide(input.signal, input.agent);
+    const fallback = heuristicDecide(input.signal, input.agent, input.classify);
 
     return {
       rawResponse: JSON.stringify(fallback),
@@ -131,9 +134,9 @@ async function runAgentReason(
 
 // ─── Context assembler (9 blocks, order is immutable) ──────────
 
-export function assembleContext(input: ContextAssemblyInput): string {
+export function assembleContext(input: ContextAssemblyInput & { classify?: ClassifyOutput }): string {
   // Ultra-compact for small local models (Qwen3 1.7B)
-  const { agent, signal, market, stage } = input;
+  const { agent, signal, market, stage, classify } = input;
   const s = signal;
   const m = market;
   const bias = stage.verticalBias;
@@ -141,15 +144,25 @@ export function assembleContext(input: ContextAssemblyInput): string {
   // Determine what the archetype should lean toward
   const leanHint = bias < -0.2 ? 'SHORT' : bias > 0.2 ? 'LONG' : 'either direction';
 
+  // Classify context (Phase 2)
+  const classifyLine = classify
+    ? `Regime: ${classify.marketState} (${(classify.regimeConfidence * 100).toFixed(0)}%), setup: ${classify.setupType}`
+    : '';
+  const noTradeHint = classify?.setupType === 'no_setup'
+    ? '\nIMPORTANT: No clear setup detected. Consider NO_TRADE.'
+    : '';
+
   return `/no_think
 Crypto trading decision. Pick ONE action.
 
 Market: BTC $${m.price.toFixed(0)}, ${(m.priceDelta * 100).toFixed(1)}% move, ${m.regime} regime
+${classifyLine}
 Signals: CVD ${s.cvd1h > 0 ? 'bullish' : 'bearish'}, funding ${s.fundingRate.toFixed(4)}, bias ${bias.toFixed(2)}
-Archetype ${agent.archetypeId} leans ${leanHint}.
+Archetype ${agent.archetypeId} leans ${leanHint}.${noTradeHint}
 
 Reply with EXACTLY this JSON (fill in values):
-{"action":"SHORT","confidence":0.7,"thesis":"bearish CVD + high funding","invalidation":"price breaks above resistance","evidenceTitles":[],"riskFlags":[],"memoryIdsUsed":[]}`;
+{"action":"SHORT","confidence":0.7,"thesis":"bearish CVD + high funding","invalidation":"price breaks above resistance","evidenceTitles":[],"riskFlags":[],"memoryIdsUsed":[]}
+Valid actions: LONG, SHORT, FLAT, NO_TRADE`;
 }
 
 function blockSystem(agent: OwnedAgent): string {
@@ -225,7 +238,7 @@ function blockSquad(squadNotes: string[]): string {
 function blockSchema(): string {
   return `Respond ONLY with valid JSON. No markdown, no explanation, no extra text.
 {
-  "action":        "LONG" | "SHORT" | "FLAT",
+  "action":        "LONG" | "SHORT" | "FLAT" | "NO_TRADE",
   "confidence":    0.0 to 1.0,
   "thesis":        "one sentence max 50 chars",
   "invalidation":  "one sentence: condition that would make this wrong",
@@ -289,6 +302,7 @@ async function callLLMWithTimeout(prompt: string, timeoutMs: number): Promise<st
 export function heuristicDecide(
   signal: SignalSnapshot,
   agent: OwnedAgent,
+  classify?: ClassifyOutput,
 ): AgentDecisionTrace {
   const cvdBullish = signal.cvd1h > 0;
   const cvdBearish = signal.cvd1h < 0;
@@ -298,7 +312,23 @@ export function heuristicDecide(
   const trendDown = signal.htfStructure === 'DOWNTREND';
   const oiRising = signal.oiTrend === 'RISING';
 
-  let action: 'LONG' | 'SHORT' | 'FLAT' = 'FLAT';
+  // Phase 2: NO_TRADE when no setup detected
+  if (classify?.setupType === 'no_setup') {
+    return {
+      action: 'NO_TRADE',
+      confidence: 0.6,
+      thesis: `NO_TRADE: no setup in ${classify.marketState}`,
+      invalidation: 'clear setup emerges',
+      evidenceTitles: [],
+      riskFlags: [],
+      memoryIdsUsed: [],
+      fallbackUsed: true,
+      fallbackReason: 'no_setup_detected',
+      providerLabel: 'fallback:heuristic',
+    };
+  }
+
+  let action: 'LONG' | 'SHORT' | 'FLAT' | 'NO_TRADE' = 'FLAT';
   let confidence = 0.5;
   let thesis = '';
 

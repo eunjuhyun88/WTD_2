@@ -117,6 +117,7 @@ function decidePositionAction(
 
   // No position
   if (!hasPosition) {
+    if (action === 'NO_TRADE') return 'HOLD'; // Deliberate abstain — don't enter
     if (action === 'LONG') return 'OPEN_LONG';
     if (action === 'SHORT') return 'OPEN_SHORT';
     return 'HOLD'; // FLAT with no position = do nothing
@@ -130,8 +131,8 @@ function decidePositionAction(
     return 'CLOSE';
   }
 
-  // Agent says FLAT → close position
-  if (action === 'FLAT') {
+  // Agent says FLAT or NO_TRADE → close position
+  if (action === 'FLAT' || action === 'NO_TRADE') {
     return 'CLOSE';
   }
 
@@ -169,6 +170,11 @@ function compileToGameAction(
       return { primary: 'SHORT_SLAM', secondary: 'CRUSH_SUPPORT', power: conf * 1.3, targetZone: findNextZone(stage), trainerLabel: null };
     }
     return { primary: 'SHORT_SLAM', power: conf, trainerLabel: null };
+  }
+
+  // NO_TRADE and FLAT both result in HOLD (defensive stance)
+  if (action === 'NO_TRADE') {
+    return { primary: 'DEFEND', power: 0, trainerLabel: null };
   }
 
   return { primary: 'HOLD', power: 0, trainerLabel: null };

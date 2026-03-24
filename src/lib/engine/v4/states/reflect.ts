@@ -17,6 +17,7 @@ import type {
   MarketFrame,
   OrpoPairSource,
   BattleAction,
+  ClassifyOutput,
 } from '../types.js';
 
 // ─── Main entry ────────────────────────────────────────────────
@@ -39,6 +40,8 @@ export function reflect(state: BattleTickState): BattleTickState {
     return { ...state, state: 'OBSERVE', completedAt: Date.now() };
   }
 
+  const classify = state.classify;
+
   // 1. Generate memory cards
   const memoryCards = generateMemoryCards(
     outcome,
@@ -48,10 +51,11 @@ export function reflect(state: BattleTickState): BattleTickState {
     squad[0]?.id ?? 'unknown',
     tick,
     events.some(e => e.type === 'TRAP_CAUGHT'),
+    classify,
   );
 
   // 2. Generate 2-line reflection
-  const reflection = generateReflection(outcome, signal, traces, plan);
+  const reflection = generateReflection(outcome, signal, traces, plan, classify);
 
   // 3. Calculate bond delta
   const bondDelta = calculateBondDelta(outcome, plan.trainerLabel);
@@ -92,10 +96,39 @@ function generateMemoryCards(
   agentId: string,
   tick: number,
   trapCaught: boolean,
+  classify?: ClassifyOutput,
 ): MemoryRecord[] {
   const cards: MemoryRecord[] = [];
   const now = Date.now();
   const executorTrace = Object.values(traces)[0]; // first agent as representative
+
+  // Phase 2: NO_TRADE memory cards
+  const isNoTrade = plan.primary === 'DEFEND' || actionFromPlan(plan) === 'FLAT';
+  const noTradeVotes = Object.values(traces).filter(t => t.action === 'NO_TRADE').length;
+  if (noTradeVotes > 0 && classify) {
+    // NO_TRADE was the consensus (or at least proposed)
+    // NEUTRAL outcome after NO_TRADE = correctly_abstained
+    // We can't know "missed_opportunity" until we see what happened next,
+    // but we record the abstain decision for later evaluation
+    cards.push(buildCard({
+      agentId,
+      kind: outcome === 'NEUTRAL' ? 'SUCCESS_CASE' : 'PLAYBOOK',
+      signal,
+      action: 'NO_TRADE',
+      outcome: outcome === 'NEUTRAL' ? 'correctly_abstained' : 'abstained',
+      title: truncate(`SKIP: ${classify.marketState}/${classify.setupType}`, 30),
+      lesson: truncate(
+        outcome === 'NEUTRAL'
+          ? `Correct NO_TRADE in ${classify.marketState}, setup: ${classify.setupType}`
+          : `NO_TRADE in ${classify.marketState}, market moved ${outcome}`,
+        50
+      ),
+      importance: outcome === 'NEUTRAL' ? 0.8 : 0.6,
+      successScore: outcome === 'NEUTRAL' ? 0.5 : 0.0,
+      tick,
+      now,
+    }));
+  }
 
   // Case: WIN + not overridden
   if (outcome === 'WIN' && plan.trainerLabel !== 'OVERRIDDEN') {
@@ -164,8 +197,20 @@ function generateReflection(
   signal: SignalSnapshot,
   traces: Record<string, AgentDecisionTrace>,
   plan: GameActionPlan,
+  classify?: ClassifyOutput,
 ): string {
   const failure = classifyFailureLesson(signal, traces);
+
+  // Phase 2: NO_TRADE reflection
+  const noTradeVotes = Object.values(traces).filter(t => t.action === 'NO_TRADE').length;
+  if (noTradeVotes > 0 && classify) {
+    const regime = classify.marketState;
+    const setup = classify.setupType;
+    if (outcome === 'NEUTRAL') {
+      return `Correctly abstained in ${regime}/${setup}\nNO_TRADE precision: market stayed flat`;
+    }
+    return `NO_TRADE in ${regime}/${setup}, market moved ${outcome}\n${outcome === 'WIN' ? 'Missed opportunity — consider loosening abstain gate' : 'Good skip — avoided loss'}`;
+  }
 
   if (outcome === 'WIN') {
     const line1 = `Correct ${actionFromPlan(plan)} in ${signal.primaryZone}`;
@@ -307,7 +352,7 @@ function actionFromPlan(plan: GameActionPlan): string {
 }
 
 function getMajorityAction(traces: AgentDecisionTrace[]): BattleAction {
-  const counts: Record<string, number> = { LONG: 0, SHORT: 0, FLAT: 0 };
+  const counts: Record<string, number> = { LONG: 0, SHORT: 0, FLAT: 0, NO_TRADE: 0 };
   for (const t of traces) counts[t.action] = (counts[t.action] ?? 0) + 1;
   return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'FLAT') as BattleAction;
 }
