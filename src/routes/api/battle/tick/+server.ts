@@ -96,6 +96,8 @@ export const POST: RequestHandler = async ({ request }) => {
       positionAction: result.positionAction,
       tradeHistory: {
         totalPnl: result.tradeHistory.totalPnl,
+        unrealizedPnl: result.tradeHistory.unrealizedPnl,
+        effectivePnl: result.tradeHistory.totalPnl + (result.tradeHistory.unrealizedPnl ?? 0),
         tradeCount: result.tradeHistory.tradeCount,
         winCount: result.tradeHistory.winCount,
         lossCount: result.tradeHistory.lossCount,

@@ -132,19 +132,24 @@ async function runAgentReason(
 // ─── Context assembler (9 blocks, order is immutable) ──────────
 
 export function assembleContext(input: ContextAssemblyInput): string {
-  const blocks = [
-    blockSystem(input.agent),
-    blockRole(input.agent),
-    blockObjective(input.scenario),
-    blockSignals(input.agent, input.signal),
-    blockMarket(input.market),
-    blockStage(input.stage),
-    blockMemories(input.memories),
-    blockSquad(input.squadNotes),
-    blockSchema(),
-  ];
+  // Ultra-compact for small local models (Qwen3 1.7B)
+  const { agent, signal, market, stage } = input;
+  const s = signal;
+  const m = market;
+  const bias = stage.verticalBias;
 
-  return trimToTokenBudget(blocks, V4_CONFIG.REASON_TOKEN_BUDGET);
+  // Determine what the archetype should lean toward
+  const leanHint = bias < -0.2 ? 'SHORT' : bias > 0.2 ? 'LONG' : 'either direction';
+
+  return `/no_think
+Crypto trading decision. Pick ONE action.
+
+Market: BTC $${m.price.toFixed(0)}, ${(m.priceDelta * 100).toFixed(1)}% move, ${m.regime} regime
+Signals: CVD ${s.cvd1h > 0 ? 'bullish' : 'bearish'}, funding ${s.fundingRate.toFixed(4)}, bias ${bias.toFixed(2)}
+Archetype ${agent.archetypeId} leans ${leanHint}.
+
+Reply with EXACTLY this JSON (fill in values):
+{"action":"SHORT","confidence":0.7,"thesis":"bearish CVD + high funding","invalidation":"price breaks above resistance","evidenceTitles":[],"riskFlags":[],"memoryIdsUsed":[]}`;
 }
 
 function blockSystem(agent: OwnedAgent): string {

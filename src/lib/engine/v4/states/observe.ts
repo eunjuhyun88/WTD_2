@@ -23,9 +23,9 @@ export function observe(state: BattleTickState): BattleTickState {
   const { battleScenario, tick, stage } = state;
   const candles = battleScenario.candles;
 
-  // Current tick candle + previous 24
-  const endIdx = Math.min(tick + 25, candles.length);
-  const startIdx = Math.max(0, endIdx - 25);
+  // Current tick candle = candles[tick-1], with lookback window up to 24 candles
+  const endIdx = Math.min(tick, candles.length);
+  const startIdx = Math.max(0, endIdx - 24);
   const window = candles.slice(startIdx, endIdx);
   const currentCandle = window[window.length - 1];
 
