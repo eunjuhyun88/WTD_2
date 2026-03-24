@@ -4,45 +4,50 @@
     "smallMapReductionVsCanonicalPct": 40,
     "smallMapReductionVsAllDocsPct": 55,
     "surfaceReductionVsAllDocsPct": 50,
-    "smallMapMaxApproxTokens": 14000,
+    "smallMapMaxApproxTokens": 3800,
     "smallMapMaxFiles": 6,
-    "canonicalMaxApproxTokens": 32000,
+    "canonicalMaxApproxTokens": 12000,
     "noiseRateMaxPct": 10
   },
   "smallMap": {
-    "files": 5,
-    "lines": 1108,
-    "words": 6394,
-    "chars": 48361,
-    "approxTokens": 12092,
-    "paths": [
-      "README.md",
-      "AGENTS.md",
-      "docs/README.md",
-      "ARCHITECTURE.md",
-      "docs/SYSTEM_INTENT.md"
-    ]
-  },
-  "canonical": {
-    "files": 27,
-    "lines": 2679,
-    "words": 14273,
-    "chars": 103301,
-    "approxTokens": 25835,
+    "files": 6,
+    "lines": 1328,
+    "words": 7207,
+    "chars": 54874,
+    "approxTokens": 13721,
     "paths": [
       "README.md",
       "AGENTS.md",
       "docs/README.md",
       "ARCHITECTURE.md",
       "docs/SYSTEM_INTENT.md",
+      "docs/CONTEXT_ENGINEERING.md"
+    ]
+  },
+  "canonical": {
+    "files": 32,
+    "lines": 3974,
+    "words": 19212,
+    "chars": 135868,
+    "approxTokens": 33979,
+    "paths": [
+      "README.md",
+      "AGENTS.md",
+      "docs/README.md",
+      "ARCHITECTURE.md",
+      "docs/SYSTEM_INTENT.md",
+      "docs/CONTEXT_ENGINEERING.md",
       "docs/DESIGN.md",
+      "docs/ENGINEERING.md",
       "docs/PLANS.md",
       "docs/PRODUCT_SENSE.md",
       "docs/QUALITY_SCORE.md",
       "docs/RELIABILITY.md",
       "docs/SECURITY.md",
+      "docs/AUTOPILOT.md",
       "docs/design-docs/arena-domain-model.md",
       "docs/design-docs/core-beliefs.md",
+      "docs/design-docs/fusion-architecture-v1.md",
       "docs/design-docs/index.md",
       "docs/design-docs/learning-loop.md",
       "docs/design-docs/six-surface-game-loop.md",
@@ -50,6 +55,7 @@
       "docs/design-docs/unified-product-model.md",
       "docs/product-specs/agents.md",
       "docs/product-specs/arena.md",
+      "docs/product-specs/core.md",
       "docs/product-specs/create-agent.md",
       "docs/product-specs/home.md",
       "docs/product-specs/index.md",
@@ -60,11 +66,11 @@
     ]
   },
   "allDocs": {
-    "files": 147,
-    "lines": 42897,
-    "words": 197244,
-    "chars": 1433726,
-    "approxTokens": 358483,
+    "files": 176,
+    "lines": 49084,
+    "words": 231466,
+    "chars": 1780106,
+    "approxTokens": 445091,
     "paths": [
       "README.md",
       "AGENTS.md",
@@ -72,17 +78,33 @@
       "ARCHITECTURE.md",
       "docs/AGENT3_FE_BE_BRIDGE_DESIGN_2026-02-24.md",
       "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md",
+      "docs/AGENT_CONTEXT_PROTOCOL.md",
+      "docs/AGENT_FACTORY.md",
+      "docs/AGENT_FORGE_ARCHITECTURE.md",
+      "docs/AGENT_OBSERVABILITY.md",
       "docs/AGENT_WATCH_LOG.md",
       "docs/API_CONTRACT.md",
       "docs/ARENA_SYSTEM_SPEC_V3_0.md",
+      "docs/AUTOPILOT.md",
       "docs/BACKEND_SECURITY_REVIEW_2026-02-25.md",
+      "docs/CI_PIPELINE.md",
+      "docs/CLAUDE_COMPATIBILITY.md",
+      "docs/CONTEXTUAL_RETRIEVAL.md",
+      "docs/CONTEXT_ENGINEERING.md",
+      "docs/CONTEXT_EVALUATION.md",
+      "docs/CONTEXT_PLATFORM.md",
       "docs/DESIGN.md",
+      "docs/ENGINEERING.md",
       "docs/FE_STATE_MAP.md",
       "docs/FRONTEND.md",
+      "docs/GIT_WORKFLOW.md",
+      "docs/HARNESS.md",
       "docs/INTEL_TRADING_DECISION_POLICY_2026-02-25.md",
       "docs/INTERACTION_CALL_MAP.md",
       "docs/MAIN_BRANCH_PROTECTION_POLICY.md",
+      "docs/MULTI_AGENT_COORDINATION.md",
       "docs/MULTI_AGENT_MEMORY.md",
+      "docs/ORCHESTRATION.md",
       "docs/ORPO_DATA_SCHEMA_PIPELINE_v1_2026-02-26.md",
       "docs/PASSPORT_BACKEND_ARCHITECTURE_v1_2026-02-25.md",
       "docs/PASSPORT_ML_ORPO_LEARNING_ARCHITECTURE_v2_2026-02-25.md",
@@ -92,11 +114,13 @@
       "docs/README.md",
       "docs/REFACTORING_BACKLOG.md",
       "docs/RELIABILITY.md",
+      "docs/SANDBOX_POLICY.md",
       "docs/SECURITY.md",
       "docs/SECURITY_SCALE_PLAN_2026-02-25.md",
       "docs/STRUCTURE_ALIGNMENT_ACTION_PLAN.md",
       "docs/SYSTEM_INTENT.md",
       "docs/TERMINAL_SCAN_E2E_SPEC.md",
+      "docs/TOOL_DESIGN.md",
       "docs/archive/ARCHITECTURE_DESIGN.md",
       "docs/archive/MASTER_DESIGN.md",
       "docs/archive/PERSISTENCE_DESIGN.md",
@@ -135,6 +159,7 @@
       "docs/decisions/README.md",
       "docs/design-docs/arena-domain-model.md",
       "docs/design-docs/core-beliefs.md",
+      "docs/design-docs/fusion-architecture-v1.md",
       "docs/design-docs/index.md",
       "docs/design-docs/learning-loop.md",
       "docs/design-docs/six-surface-game-loop.md",
@@ -142,7 +167,9 @@
       "docs/design-docs/unified-product-model.md",
       "docs/exec-plans/active/README.md",
       "docs/exec-plans/active/canonical-frontend-refactor-plan-2026-03-06.md",
+      "docs/exec-plans/active/chatbattle-foundation-refactor-plan-2026-03-20.md",
       "docs/exec-plans/active/context-system-rollout-2026-03-06.md",
+      "docs/exec-plans/active/context-system-rollout.md",
       "docs/exec-plans/active/loox-tone-memento-bridge-2026-03-17.md",
       "docs/exec-plans/active/usability-foundation-sprint-0-2026-03-10.md",
       "docs/exec-plans/active/usability-navigation-sprint-1-2026-03-10.md",
@@ -153,13 +180,20 @@
       "docs/full-file-audit.md",
       "docs/generated/README.md",
       "docs/generated/agent-catalog.md",
-      "docs/generated/agent-usage-report.md",
       "docs/generated/api-group-map.md",
-      "docs/generated/context-ab-report.md",
+      "docs/generated/claude-compatibility-bootstrap.md",
+      "docs/generated/context-contract-report.md",
+      "docs/generated/context-registry.md",
+      "docs/generated/contextual-retrieval.md",
       "docs/generated/db-schema.md",
+      "docs/generated/docs-catalog.md",
       "docs/generated/game-record-schema.md",
+      "docs/generated/legacy-doc-audit.md",
+      "docs/generated/project-truth-bootstrap.md",
       "docs/generated/route-map.md",
+      "docs/generated/sandbox-policy-report.md",
       "docs/generated/store-authority-map.md",
+      "docs/generated/tool-catalog.md",
       "docs/github-issues-refactor.md",
       "docs/handoffs/README.md",
       "docs/overall-architecture-design.md",
@@ -176,6 +210,7 @@
       "docs/page-specs/world-page.md",
       "docs/product-specs/agents.md",
       "docs/product-specs/arena.md",
+      "docs/product-specs/core.md",
       "docs/product-specs/create-agent.md",
       "docs/product-specs/home.md",
       "docs/product-specs/index.md",
@@ -216,139 +251,73 @@
     ]
   },
   "reductions": {
-    "smallVsCanonicalPct": 53.19527772401781,
-    "smallVsAllDocsPct": 96.62689723083103,
-    "worstSurfaceReductionVsAllDocsPct": 95.3849973359964
+    "smallVsCanonicalPct": 59.6191765502222,
+    "smallVsAllDocsPct": 96.91725961657279,
+    "worstSurfaceReductionVsAllDocsPct": 95.98419199669281
   },
   "surfaceBundles": [
     {
-      "id": "terminal",
+      "id": "core",
       "stats": {
-        "files": 9,
-        "lines": 1478,
-        "words": 8514,
-        "chars": 66166,
-        "approxTokens": 16544,
+        "files": 10,
+        "lines": 1673,
+        "words": 9173,
+        "chars": 71480,
+        "approxTokens": 17874,
         "paths": [
           "README.md",
           "AGENTS.md",
           "docs/README.md",
           "ARCHITECTURE.md",
           "docs/SYSTEM_INTENT.md",
+          "docs/CONTEXT_ENGINEERING.md",
           "docs/generated/route-map.md",
           "docs/generated/store-authority-map.md",
           "docs/generated/api-group-map.md",
-          "docs/product-specs/terminal.md"
+          "docs/product-specs/core.md"
         ]
       },
-      "reductionVsCanonicalPct": 35.96284110702535,
-      "reductionVsAllDocsPct": 95.3849973359964
-    },
-    {
-      "id": "arena",
-      "stats": {
-        "files": 9,
-        "lines": 1483,
-        "words": 8498,
-        "chars": 66157,
-        "approxTokens": 16542,
-        "paths": [
-          "README.md",
-          "AGENTS.md",
-          "docs/README.md",
-          "ARCHITECTURE.md",
-          "docs/SYSTEM_INTENT.md",
-          "docs/generated/route-map.md",
-          "docs/generated/store-authority-map.md",
-          "docs/generated/api-group-map.md",
-          "docs/product-specs/arena.md"
-        ]
-      },
-      "reductionVsCanonicalPct": 35.97058254306174,
-      "reductionVsAllDocsPct": 95.38555524250802
-    },
-    {
-      "id": "community",
-      "stats": {
-        "files": 8,
-        "lines": 1411,
-        "words": 8212,
-        "chars": 63947,
-        "approxTokens": 15989,
-        "paths": [
-          "README.md",
-          "AGENTS.md",
-          "docs/README.md",
-          "ARCHITECTURE.md",
-          "docs/SYSTEM_INTENT.md",
-          "docs/generated/route-map.md",
-          "docs/generated/store-authority-map.md",
-          "docs/generated/api-group-map.md"
-        ]
-      },
-      "reductionVsCanonicalPct": 38.111089607122125,
-      "reductionVsAllDocsPct": 95.53981639296703
-    },
-    {
-      "id": "api",
-      "stats": {
-        "files": 8,
-        "lines": 1411,
-        "words": 8212,
-        "chars": 63947,
-        "approxTokens": 15989,
-        "paths": [
-          "README.md",
-          "AGENTS.md",
-          "docs/README.md",
-          "ARCHITECTURE.md",
-          "docs/SYSTEM_INTENT.md",
-          "docs/generated/route-map.md",
-          "docs/generated/store-authority-map.md",
-          "docs/generated/api-group-map.md"
-        ]
-      },
-      "reductionVsCanonicalPct": 38.111089607122125,
-      "reductionVsAllDocsPct": 95.53981639296703
+      "reductionVsCanonicalPct": 47.39692162806439,
+      "reductionVsAllDocsPct": 95.98419199669281
     }
   ],
   "structuralScorecard": [
     {
       "label": "Small-map reduction vs canonical",
-      "actual": "53.2%",
+      "actual": "59.6%",
       "target": ">= 40%",
       "passed": true
     },
     {
       "label": "Small-map reduction vs all docs",
-      "actual": "96.6%",
+      "actual": "96.9%",
       "target": ">= 55%",
       "passed": true
     },
     {
       "label": "Worst surface reduction vs all docs",
-      "actual": "95.4%",
+      "actual": "96.0%",
       "target": ">= 50%",
       "passed": true
     },
     {
       "label": "Small-map approx tokens",
-      "actual": "12092",
-      "target": "<= 14000",
-      "passed": true
+      "actual": "13721",
+      "target": "<= 3800",
+      "passed": false
     },
     {
       "label": "Small-map file count",
-      "actual": "5",
+      "actual": "6",
       "target": "<= 6",
       "passed": true
     },
     {
       "label": "Canonical approx tokens",
-      "actual": "25835",
-      "target": "<= 32000",
-      "passed": true
+      "actual": "33979",
+      "target": "<= 12000",
+      "passed": false
     }
   ],
-  "structuralReady": true
+  "structuralReady": false
 }

@@ -24,6 +24,20 @@ const routeMeta = [
     deepDocs: '`docs/PRODUCT_SENSE.md`'
   },
   {
+    route: '/dashboard',
+    role: 'daily hub',
+    primaryConcern: 'agent status, battle quota, revenue summary, Lab CTA',
+    keyState: '`agentStore`, `battleStore`',
+    deepDocs: '`docs/product-specs/core.md`'
+  },
+  {
+    route: '/onboard',
+    role: 'onboarding flow',
+    primaryConcern: 'archetype selection, tutorial battle, ERA reveal',
+    keyState: '`onboardingStore`',
+    deepDocs: '`docs/product-specs/core.md`'
+  },
+  {
     route: '/agent',
     role: 'agent hub bridge',
     primaryConcern: 'merged train and record entry point',
@@ -301,6 +315,12 @@ function groupApiRoute(route) {
     route.startsWith('/api/creator/')
   ) return 'Community';
   if (route.startsWith('/api/copy-trades/')) return 'Copy Trading';
+  if (route.startsWith('/api/battle')) return 'Arena';
+  if (route.startsWith('/api/memory/')) return 'Arena';
+  if (route.startsWith('/api/doctrine')) return 'User Profile';
+  if (route.startsWith('/api/exchange/')) return 'Proxies & Infra';
+  if (route.startsWith('/api/lab/')) return 'Passport Learning';
+  if (route.startsWith('/api/marketplace/')) return 'Copy Trading';
   if (route.startsWith('/api/tournaments/')) return 'Tournaments';
   if (route.startsWith('/api/notifications')) return 'Notifications';
   if (
