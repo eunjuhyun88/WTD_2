@@ -78,11 +78,12 @@ export const GET: RequestHandler = async () => {
 
 function getMockScenario(id: string): BattleScenario | null {
   // Generate synthetic candle data for testing
+  // Realistic BTC hourly: avg ±0.3% per candle, trend ±0.1~0.3% bias
   const configs: Record<string, { label: string; startPrice: number; trend: number }> = {
-    'ftx-crash-2022': { label: 'FTX Collapse 2022-11-09', startPrice: 21000, trend: -0.02 },
-    'luna-crash-2022': { label: 'LUNA Crash 2022-05-09', startPrice: 38000, trend: -0.03 },
-    'covid-crash-2020': { label: 'COVID Crash 2020-03-12', startPrice: 8000, trend: -0.04 },
-    'bull-run-2021': { label: 'Bull Run ATH 2021-11-10', startPrice: 64000, trend: 0.015 },
+    'ftx-crash-2022': { label: 'FTX Collapse 2022-11-09', startPrice: 21000, trend: -0.003 },
+    'luna-crash-2022': { label: 'LUNA Crash 2022-05-09', startPrice: 38000, trend: -0.004 },
+    'covid-crash-2020': { label: 'COVID Crash 2020-03-12', startPrice: 8000, trend: -0.005 },
+    'bull-run-2021': { label: 'Bull Run ATH 2021-11-10', startPrice: 64000, trend: 0.002 },
   };
 
   const config = configs[id];
@@ -109,8 +110,10 @@ function generateCandles(startPrice: number, trend: number, count: number) {
   const baseTime = Math.floor(Date.now() / 1000) - count * 3600;
 
   for (let i = 0; i < count; i++) {
-    const noise = (Math.random() - 0.5) * 0.02;
-    const change = trend + noise;
+    // Realistic BTC hourly noise: ±0.3% typical, occasional ±1% spikes
+    const noise = (Math.random() - 0.5) * 0.006;
+    const spike = Math.random() > 0.9 ? (Math.random() - 0.5) * 0.015 : 0;
+    const change = trend + noise + spike;
     const open = price;
     const close = price * (1 + change);
     const high = Math.max(open, close) * (1 + Math.random() * 0.005);

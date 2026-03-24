@@ -15,7 +15,9 @@ import type {
   BattleActionKind,
   BattleAction,
   TrainerLabel,
+  Position,
 } from '../types.js';
+import { V4_CONFIG } from '../types.js';
 
 // ─── Main entry ────────────────────────────────────────────────
 
@@ -42,10 +44,17 @@ export function decide(state: BattleTickState): BattleTickState {
     plan = applyPlayerIntervention(plan, playerIntervention, consensus);
   }
 
+  // 3. Open position if action is LONG/SHORT and no existing position
+  let position = state.position;
+  if (!position || position.status !== 'OPEN') {
+    position = openPosition(plan, market, consensus.finalConfidence, state.tick);
+  }
+
   return {
     ...state,
     state: 'RESOLVE',
     plan,
+    position,
   };
 }
 
@@ -163,6 +172,46 @@ function overridePlan(
     power: 0.6, // moderate power for overrides
     trainerLabel: 'OVERRIDDEN',
     originalConsensus,
+  };
+}
+
+// ─── Position opening ──────────────────────────────────────────
+
+function openPosition(
+  plan: GameActionPlan,
+  market: MarketFrame,
+  confidence: number,
+  tick: number,
+): Position | undefined {
+  const isLong = ['LONG_PUSH', 'BREAK_WALL'].includes(plan.primary);
+  const isShort = ['SHORT_SLAM', 'CRUSH_SUPPORT', 'LAY_TRAP'].includes(plan.primary);
+
+  if (!isLong && !isShort) return undefined;
+
+  const direction = isLong ? 'LONG' as const : 'SHORT' as const;
+  const price = market.price;
+
+  // Confidence adjusts SL/TP: high confidence = wider TP, low = tighter SL
+  const confFactor = 0.5 + confidence; // 0.5~1.5
+  const slPercent = V4_CONFIG.DEFAULT_SL_PERCENT / confFactor; // tighter SL when less confident
+  const tpPercent = V4_CONFIG.DEFAULT_TP_PERCENT * confFactor; // wider TP when more confident
+
+  const stopLoss = direction === 'LONG'
+    ? price * (1 - slPercent)
+    : price * (1 + slPercent);
+
+  const takeProfit = direction === 'LONG'
+    ? price * (1 + tpPercent)
+    : price * (1 - tpPercent);
+
+  return {
+    direction,
+    entryPrice: price,
+    entryTick: tick,
+    size: V4_CONFIG.POSITION_SIZE,
+    stopLoss,
+    takeProfit,
+    status: 'OPEN',
   };
 }
 
