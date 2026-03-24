@@ -115,6 +115,7 @@ function recordTrade(history: TradeHistory, closedPosition: Position): TradeHist
   return {
     trades: [...history.trades, closedPosition],
     totalPnl: history.totalPnl + pnl,
+    unrealizedPnl: 0,  // reset after closing
     tradeCount: history.tradeCount + 1,
     winCount: history.winCount + (pnl > 0 ? 1 : 0),
     lossCount: history.lossCount + (pnl < 0 ? 1 : 0),
