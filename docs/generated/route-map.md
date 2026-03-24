@@ -8,6 +8,8 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | Route | Role | Primary concern | Key stores / state | Deep docs |
 | --- | --- | --- | --- | --- |
 | `/` | product entry | positioning, navigation, onboarding | `walletStore`, `authSessionStore`, `profileTier` | `docs/PRODUCT_SENSE.md` |
+| `/dashboard` | daily hub | agent status, battle quota, revenue summary, Lab CTA | `agentStore`, `battleStore` | `docs/product-specs/core.md` |
+| `/onboard` | onboarding flow | archetype selection, tutorial battle, ERA reveal | `onboardingStore` | `docs/product-specs/core.md` |
 | `/agent` | agent hub bridge | merged train and record entry point | `agentData`, `userProfileStore`, `matchHistoryStore` | `docs/product-specs/agents.md` |
 | `/agents` | agent collection surface | stats, memory, roster legibility | `agentData` | `docs/PRODUCT_SENSE.md` |
 | `/create` | create-agent bridge | activation, wallet connection, and terminal handoff | `walletStore`, `authSessionStore` | `docs/page-specs/create-agent-page.md` |
