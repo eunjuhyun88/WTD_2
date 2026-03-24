@@ -6,48 +6,42 @@ This report estimates how much context the routing system saves before the agent
 
 | Bundle | Files | Lines | Approx Tokens | Reduction vs canonical | Reduction vs all docs |
 | --- | --- | --- | --- | --- | --- |
-| small map | 5 | 1108 | 12092 | 61.5% | 96.7% |
-| canonical | 28 | 3554 | 31432 | 0.0% | 91.5% |
-| all docs | 147 | 44217 | 368130 | -1071.2% | 0.0% |
+| small map | 6 | 1328 | 13721 | 51.7% | 99.4% |
+| canonical | 31 | 3100 | 28401 | 0.0% | 98.8% |
+| all docs | 1036 | 244315 | 2427847 | -8448.5% | 0.0% |
 
 ## Estimated Savings
 
-- Small map saves approximately `19340` tokens vs the canonical bundle.
-- Small map saves approximately `356038` tokens vs the all-doc bundle.
-- Surface `terminal` saves approximately `351534` tokens vs the all-doc bundle.
-- Surface `arena` saves approximately `351536` tokens vs the all-doc bundle.
-- Surface `community` saves approximately `352089` tokens vs the all-doc bundle.
-- Surface `api` saves approximately `352089` tokens vs the all-doc bundle.
+- Small map saves approximately `14680` tokens vs the canonical bundle.
+- Small map saves approximately `2414126` tokens vs the all-doc bundle.
+- Surface `core` saves approximately `2410110` tokens vs the all-doc bundle.
 
 ## Surface Bundles
 
 | Bundle | Files | Lines | Approx Tokens | Reduction vs canonical | Reduction vs all docs |
 | --- | --- | --- | --- | --- | --- |
-| terminal | 9 | 1488 | 16596 | 47.2% | 95.5% |
-| arena | 9 | 1493 | 16594 | 47.2% | 95.5% |
-| community | 8 | 1421 | 16041 | 49.0% | 95.6% |
-| api | 8 | 1421 | 16041 | 49.0% | 95.6% |
+| core | 10 | 1659 | 17737 | 37.5% | 99.3% |
 
 ## Structural Scorecard
 
 | Check | Actual | Target | Result |
 | --- | --- | --- | --- |
-| Small-map reduction vs canonical | 61.5% | >= 40% | PASS |
-| Small-map reduction vs all docs | 96.7% | >= 55% | PASS |
-| Worst surface reduction vs all docs | 95.5% | >= 50% | PASS |
-| Small-map approx tokens | 12092 | <= 14000 | PASS |
-| Small-map file count | 5 | <= 6 | PASS |
-| Canonical approx tokens | 31432 | <= 32000 | PASS |
+| Small-map reduction vs canonical | 51.7% | >= 40% | PASS |
+| Small-map reduction vs all docs | 99.4% | >= 55% | PASS |
+| Worst surface reduction vs all docs | 99.3% | >= 50% | PASS |
+| Small-map approx tokens | 13721 | <= 3800 | FAIL |
+| Small-map file count | 6 | <= 6 | PASS |
+| Canonical approx tokens | 28401 | <= 12000 | FAIL |
 
 ## Structural Readiness
 
-- PASS: structural routing gate
+- FAIL: structural routing gate
 
 ## Budget Checks
 
-- PASS: Small map approx tokens <= 14000
+- FAIL: Small map approx tokens <= 3800
 - PASS: Small map files <= 6
-- PASS: Canonical approx tokens <= 32000
+- FAIL: Canonical approx tokens <= 12000
 
 ## Small Map Files
 
@@ -56,6 +50,7 @@ This report estimates how much context the routing system saves before the agent
 - `docs/README.md`
 - `ARCHITECTURE.md`
 - `docs/SYSTEM_INTENT.md`
+- `docs/CONTEXT_ENGINEERING.md`
 
 ## Notes
 
