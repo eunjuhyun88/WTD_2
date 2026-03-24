@@ -16,13 +16,14 @@ import type {
   BattleAction,
   Position,
   PositionAction,
+  ClassifyOutput,
 } from '../types.js';
 import { V4_CONFIG } from '../types.js';
 
 // ─── Main entry ────────────────────────────────────────────────
 
 export function decide(state: BattleTickState): BattleTickState {
-  const { consensus, stage, market, playerIntervention, position } = state;
+  const { consensus, stage, market, playerIntervention, position, classify } = state;
 
   if (!consensus || !market) {
     return {
@@ -49,25 +50,37 @@ export function decide(state: BattleTickState): BattleTickState {
 
   switch (positionAction) {
     case 'OPEN_LONG':
-      newPosition = createPosition('LONG', market.price, state.tick);
+      newPosition = createPosition('LONG', market.price, state.tick, classify);
       break;
 
     case 'OPEN_SHORT':
-      newPosition = createPosition('SHORT', market.price, state.tick);
+      newPosition = createPosition('SHORT', market.price, state.tick, classify);
       break;
 
     case 'HOLD':
-      // Keep current position, update unrealized PnL
+      // Keep current position, update unrealized PnL + MFE/MAE (Phase 3)
       if (newPosition && newPosition.status === 'OPEN') {
         const unrealized = calcUnrealizedPnl(newPosition, market.price);
-        newPosition = { ...newPosition, unrealizedPnl: unrealized };
+        newPosition = {
+          ...newPosition,
+          unrealizedPnl: unrealized,
+          mfe: Math.max(newPosition.mfe, unrealized),
+          mae: Math.min(newPosition.mae, unrealized),
+          holdTicks: newPosition.holdTicks + 1,
+        };
       }
       break;
 
     case 'CLOSE':
-      // Close current position (resolve will record it)
+      // Close current position (resolve will record it + classify failures)
       if (newPosition && newPosition.status === 'OPEN') {
         const pnl = calcUnrealizedPnl(newPosition, market.price);
+        const unrealized = pnl;
+        // Determine exit type based on why we're closing
+        const closeExitType = unrealized <= -V4_CONFIG.AUTO_SL_PERCENT ? 'sl_hit' as const
+          : consensus?.finalAction === 'NO_TRADE' ? 'manual' as const
+          : consensus?.finalAction === 'FLAT' ? 'manual' as const
+          : 'manual' as const;
         newPosition = {
           ...newPosition,
           status: 'CLOSED',
@@ -75,6 +88,10 @@ export function decide(state: BattleTickState): BattleTickState {
           exitTick: state.tick,
           pnlPercent: pnl,
           unrealizedPnl: pnl,
+          mfe: Math.max(newPosition.mfe, unrealized),
+          mae: Math.min(newPosition.mae, unrealized),
+          holdTicks: newPosition.holdTicks + 1,
+          exitType: closeExitType,
         };
       }
       break;
@@ -83,7 +100,6 @@ export function decide(state: BattleTickState): BattleTickState {
       // Close current position, then open opposite
       if (newPosition && newPosition.status === 'OPEN') {
         const pnl = calcUnrealizedPnl(newPosition, market.price);
-        // Mark current as closed (resolve will record it)
         newPosition = {
           ...newPosition,
           status: 'CLOSED',
@@ -91,6 +107,10 @@ export function decide(state: BattleTickState): BattleTickState {
           exitTick: state.tick,
           pnlPercent: pnl,
           unrealizedPnl: pnl,
+          mfe: Math.max(newPosition.mfe, pnl),
+          mae: Math.min(newPosition.mae, pnl),
+          holdTicks: newPosition.holdTicks + 1,
+          exitType: 'flip',
         };
       }
       break;
@@ -203,7 +223,12 @@ function applyPlayerIntervention(
 
 // ─── Helpers ───────────────────────────────────────────────────
 
-function createPosition(direction: 'LONG' | 'SHORT', price: number, tick: number): Position {
+function createPosition(
+  direction: 'LONG' | 'SHORT',
+  price: number,
+  tick: number,
+  classify?: ClassifyOutput,
+): Position {
   return {
     direction,
     entryPrice: price,
@@ -211,6 +236,10 @@ function createPosition(direction: 'LONG' | 'SHORT', price: number, tick: number
     size: V4_CONFIG.POSITION_SIZE,
     status: 'OPEN',
     unrealizedPnl: 0,
+    mfe: 0,
+    mae: 0,
+    holdTicks: 0,
+    entryClassify: classify,
   };
 }
 

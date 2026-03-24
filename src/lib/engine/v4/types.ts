@@ -287,6 +287,14 @@ export interface Position {
   exitTick?: number;
   pnlPercent?: number;     // realized PnL % (set on close)
   unrealizedPnl?: number;  // current unrealized PnL %
+
+  // Phase 3: MFE/MAE tracking
+  mfe: number;             // max favorable excursion (best unrealized %)
+  mae: number;             // max adverse excursion (worst unrealized %)
+  holdTicks: number;       // how many ticks position was held
+  exitType?: ExitType;     // how position was closed
+  failureTags?: FailureTag[]; // why the trade failed (auto-tagged on close)
+  entryClassify?: ClassifyOutput; // market state at entry (for wrong_regime detection)
 }
 
 // ─── Trade History (cumulative PnL across multiple trades) ─────
