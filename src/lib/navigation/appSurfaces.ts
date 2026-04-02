@@ -20,6 +20,8 @@ export interface AppSurface {
   homeDetail: string;
   href: string;
   activePatterns: string[];
+  /** When true, this tab gets accent-color highlighting in nav */
+  highlight?: boolean;
 }
 
 const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
@@ -62,6 +64,7 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     homeDetail: 'backtest & train',
     href: buildLabLink(),
     activePatterns: ['/lab'],
+    highlight: true,
   },
   battle: {
     id: 'battle',
@@ -105,28 +108,23 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
   },
 };
 
-// v3 유저저니 기준 네비게이션: LAB ★★★ > BATTLE > TERMINAL > AGENT
+// 제품 재구성: DASHBOARD > LAB ★★★ > TERMINAL
 export const DESKTOP_NAV_SURFACES = [
+  SURFACE_MAP.dashboard,
   SURFACE_MAP.lab,
-  SURFACE_MAP.battle,
   SURFACE_MAP.terminal,
-  SURFACE_MAP.agent,
 ] as const;
 
 export const MOBILE_NAV_SURFACES = [
-  SURFACE_MAP.home,
+  SURFACE_MAP.dashboard,
   SURFACE_MAP.lab,
-  SURFACE_MAP.battle,
   SURFACE_MAP.terminal,
-  SURFACE_MAP.agent,
 ] as const;
 
 export const HOME_SURFACES = [
   SURFACE_MAP.lab,
-  SURFACE_MAP.battle,
   SURFACE_MAP.terminal,
-  SURFACE_MAP.agent,
-  SURFACE_MAP.market,
+  SURFACE_MAP.dashboard,
 ] as const;
 
 export function getAppSurface(id: AppSurfaceId): AppSurface {

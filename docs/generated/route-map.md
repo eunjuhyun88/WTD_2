@@ -10,7 +10,8 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/` | product entry | positioning, navigation, onboarding | `walletStore`, `authSessionStore`, `profileTier` | `docs/PRODUCT_SENSE.md` |
 | `/dashboard` | daily hub | agent status, battle quota, revenue summary, Lab CTA | `agentStore`, `battleStore` | `docs/product-specs/core.md` |
 | `/onboard` | onboarding flow | archetype selection, tutorial battle, ERA reveal | `onboardingStore` | `docs/product-specs/core.md` |
-| `/agent` | agent hub bridge | merged train and record entry point | `agentData`, `userProfileStore`, `matchHistoryStore` | `docs/product-specs/agents.md` |
+| `/agent` | agent roster surface | owned-agent collection, manage/train handoff, create entry | `agentData`, `userProfileStore`, `matchHistoryStore` | `docs/page-specs/agent-page.md` |
+| `/agent/[id]` | agent hq detail route | doctrine, memory, history, and record for one agent | `agentData`, `doctrineStore` | `docs/page-specs/agent-detail-page.md` |
 | `/agents` | agent collection surface | stats, memory, roster legibility | `agentData` | `docs/PRODUCT_SENSE.md` |
 | `/create` | create-agent bridge | activation, wallet connection, and terminal handoff | `walletStore`, `authSessionStore` | `docs/page-specs/create-agent-page.md` |
 | `/arena` | main strategic arena | structured human-vs-agent decision loop | `gameState`, `matchHistoryStore`, `pnlStore`, `battleFeedStore` | `docs/product-specs/arena.md` |
@@ -19,6 +20,7 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/holdings` | redirect route | redirect to canonical profile/holdings experience | none | `docs/product-specs/passport.md` |
 | `/live` | auxiliary live route/data hook | limited runtime support surface | route-level data | `docs/PRODUCT_SENSE.md` |
 | `/lab` | model training workbench | agent doctrine, retained memory, release readiness | `agentData` | `docs/page-specs/lab-page.md` |
+| `/battle` | standalone proof battle | daily-limited historical chart battle and result loop | `battleStore`, `matchHistoryStore` | `docs/page-specs/battle-page.md` |
 | `/oracle` | redirect route | redirect into signals ai leaderboard view | none | `docs/product-specs/signals.md` |
 | `/passport` | profile/progression surface | identity, stats, learning, history | `userProfileStore`, `userLifecycleStore`, `matchHistoryStore`, `quickTradeStore` | `docs/product-specs/passport.md` |
 | `/settings` | preferences surface | local settings and user controls | `gameState` and preference state | `docs/FRONTEND.md` |

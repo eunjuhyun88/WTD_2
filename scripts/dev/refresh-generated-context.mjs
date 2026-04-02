@@ -39,10 +39,17 @@ const routeMeta = [
   },
   {
     route: '/agent',
-    role: 'agent hub bridge',
-    primaryConcern: 'merged train and record entry point',
+    role: 'agent roster surface',
+    primaryConcern: 'owned-agent collection, manage/train handoff, create entry',
     keyState: '`agentData`, `userProfileStore`, `matchHistoryStore`',
-    deepDocs: '`docs/product-specs/agents.md`'
+    deepDocs: '`docs/page-specs/agent-page.md`'
+  },
+  {
+    route: '/agent/[id]',
+    role: 'agent hq detail route',
+    primaryConcern: 'doctrine, memory, history, and record for one agent',
+    keyState: '`agentData`, `doctrineStore`',
+    deepDocs: '`docs/page-specs/agent-detail-page.md`'
   },
   {
     route: '/agents',
@@ -99,6 +106,13 @@ const routeMeta = [
     primaryConcern: 'agent doctrine, retained memory, release readiness',
     keyState: '`agentData`',
     deepDocs: '`docs/page-specs/lab-page.md`'
+  },
+  {
+    route: '/battle',
+    role: 'standalone proof battle',
+    primaryConcern: 'daily-limited historical chart battle and result loop',
+    keyState: '`battleStore`, `matchHistoryStore`',
+    deepDocs: '`docs/page-specs/battle-page.md`'
   },
   {
     route: '/oracle',
@@ -179,12 +193,15 @@ const storeMeta = [
   ['notificationStore', 'server-authoritative projection', 'durable notifications with optimistic staging', 'Canonical notification records come from the server.'],
   ['pnlStore', 'derived/support', 'pnl summaries and derived display state', 'Depends on durable trade/outcome data.'],
   ['battleFeedStore', 'route/session transient', 'live battle feed', 'Runtime-only presentation state.'],
+  ['battleStore', 'route/session transient', 'standalone battle runtime and round state', 'Owns `/battle` route play state; durable records still belong to server-backed history.'],
   ['agentData', 'derived/support', 'agent stats and learning presentation layer', 'Should not silently redefine server truth.'],
+  ['doctrineStore', 'derived/support', 'per-agent doctrine editor state and version history', 'Editable doctrine state should reconcile with durable agent truth when server APIs land.'],
   ['warRoomStore', 'route/session transient', 'war-room discussion state', 'Runtime coordination state.'],
   ['dbStore', 'derived/support', 'localStorage CRUD helpers and table adapters', 'Utility persistence layer for local fallback tables; not durable server truth.'],
   ['hydration', 'derived/support', 'orchestrates initial store hydration', 'Not domain truth itself.'],
   ['progressionRules', 'derived/support', 'tier and LP mapping logic', 'Rule/helper module, not state owner.'],
-  ['storageKeys', 'derived/support', 'local storage key registry', 'Utility only.']
+  ['storageKeys', 'derived/support', 'local storage key registry', 'Utility only.'],
+  ['strategyStore', 'derived/support', 'strategy CRUD, versioning, backtest results, and fork tracking', 'localStorage persistence; will reconcile with server when strategy APIs land.']
 ];
 
 const apiCategoryOrder = [
@@ -320,6 +337,7 @@ function groupApiRoute(route) {
   if (route.startsWith('/api/doctrine')) return 'User Profile';
   if (route.startsWith('/api/exchange/')) return 'Proxies & Infra';
   if (route.startsWith('/api/lab/')) return 'Passport Learning';
+  if (route.startsWith('/api/cycles/')) return 'Market Data';
   if (route.startsWith('/api/marketplace/')) return 'Copy Trading';
   if (route.startsWith('/api/tournaments/')) return 'Tournaments';
   if (route.startsWith('/api/notifications')) return 'Notifications';
