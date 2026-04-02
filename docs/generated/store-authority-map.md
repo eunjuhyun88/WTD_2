@@ -36,12 +36,15 @@ Source of truth remains store implementations plus canonical state-authority doc
 | `notificationStore` | server-authoritative projection | durable notifications with optimistic staging | Canonical notification records come from the server. |
 | `pnlStore` | derived/support | pnl summaries and derived display state | Depends on durable trade/outcome data. |
 | `battleFeedStore` | route/session transient | live battle feed | Runtime-only presentation state. |
+| `battleStore` | route/session transient | standalone battle runtime and round state | Owns `/battle` route play state; durable records still belong to server-backed history. |
 | `agentData` | derived/support | agent stats and learning presentation layer | Should not silently redefine server truth. |
+| `doctrineStore` | derived/support | per-agent doctrine editor state and version history | Editable doctrine state should reconcile with durable agent truth when server APIs land. |
 | `warRoomStore` | route/session transient | war-room discussion state | Runtime coordination state. |
 | `dbStore` | derived/support | localStorage CRUD helpers and table adapters | Utility persistence layer for local fallback tables; not durable server truth. |
 | `hydration` | derived/support | orchestrates initial store hydration | Not domain truth itself. |
 | `progressionRules` | derived/support | tier and LP mapping logic | Rule/helper module, not state owner. |
 | `storageKeys` | derived/support | local storage key registry | Utility only. |
+| `strategyStore` | derived/support | strategy CRUD, versioning, backtest results, and fork tracking | localStorage persistence; will reconcile with server when strategy APIs land. |
 
 ## Primary Rules
 
