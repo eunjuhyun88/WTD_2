@@ -31,8 +31,11 @@ import type { MultiTimeframeIndicatorContext } from './multiTimeframeContext';
 // ─── Types ────────────────────────────────────────────────────
 
 export interface LLMMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
+  tool_call_id?: string;
+  name?: string;
 }
 
 export interface LLMCallOptions {
@@ -515,6 +518,178 @@ async function* streamFromProvider(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ─── Streaming with Tool Calls ──────────────────────────────
+
+import type {
+  ToolDefinition,
+  ToolCall,
+  LLMStreamChunk,
+  LLMStreamWithToolsOptions,
+} from './douni/types';
+
+/**
+ * SSE 스트리밍 + Function Calling.
+ * 텍스트 청크와 tool_call 청크를 구조화된 LLMStreamChunk로 yield.
+ * tool_call이 나오면 caller가 실행 후 재호출해야 함.
+ */
+export async function* callLLMStreamWithTools(
+  options: LLMStreamWithToolsOptions,
+): AsyncGenerator<LLMStreamChunk> {
+  const { messages, tools, maxTokens = 1024, temperature = 0.6, timeoutMs = 30000 } = options;
+  const providers = availableProviders();
+  if (providers.length === 0) throw new Error('No LLM provider available');
+
+  const preferred = options.provider;
+  // Gemini/Ollama don't support OpenAI tool calling format — exclude
+  type ToolCapableProvider = Exclude<LLMProvider, 'gemini' | 'ollama'>;
+  const toolProviders = providers.filter(
+    (p): p is ToolCapableProvider => p !== 'gemini' && p !== 'ollama',
+  );
+  const ordered: ToolCapableProvider[] = preferred && toolProviders.includes(preferred as ToolCapableProvider)
+    ? [preferred as ToolCapableProvider, ...toolProviders.filter(p => p !== preferred)]
+    : toolProviders;
+
+  if (ordered.length === 0) {
+    throw new Error('No tool-calling capable provider available');
+  }
+
+  let lastError: Error | null = null;
+
+  for (const provider of ordered) {
+    try {
+      yield* streamFromProviderWithTools(provider, messages, tools, maxTokens, temperature, timeoutMs);
+      return;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[llmService] ${provider} tool stream failed: ${err.message}`);
+    }
+  }
+  throw lastError ?? new Error('All tool-calling providers failed');
+}
+
+async function* streamFromProviderWithTools(
+  provider: LLMProvider,
+  messages: LLMMessage[],
+  tools: ToolDefinition[],
+  maxTokens: number,
+  temperature: number,
+  timeoutMs: number,
+): AsyncGenerator<LLMStreamChunk> {
+  const { url, apiKey, model } = getStreamConfig(provider);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model,
+        messages,
+        tools,
+        max_tokens: maxTokens,
+        temperature,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      if (provider === 'groq' && res.status === 429) rotateGroqKey();
+      throw new Error(`${provider} ${res.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    if (!res.body) throw new Error(`${provider}: no response body`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    // Accumulate tool calls across chunks
+    const pendingToolCalls: Map<number, ToolCall> = new Map();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') {
+          yield { type: 'done' };
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta;
+          if (!delta) continue;
+
+          // Text content
+          if (delta.content) {
+            yield { type: 'text_delta', text: delta.content };
+          }
+
+          // Tool calls
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+
+              if (tc.id) {
+                // New tool call start
+                const toolCall: ToolCall = {
+                  id: tc.id,
+                  type: 'function',
+                  function: {
+                    name: tc.function?.name ?? '',
+                    arguments: tc.function?.arguments ?? '',
+                  },
+                };
+                pendingToolCalls.set(idx, toolCall);
+                yield { type: 'tool_call_start', toolCall };
+              } else if (tc.function?.arguments) {
+                // Continuation of arguments
+                const existing = pendingToolCalls.get(idx);
+                if (existing) {
+                  existing.function.arguments += tc.function.arguments;
+                }
+                yield { type: 'tool_call_delta', index: idx, arguments: tc.function.arguments };
+              }
+            }
+          }
+
+          // Check finish reason
+          const finishReason = parsed.choices?.[0]?.finish_reason;
+          if (finishReason === 'tool_calls' || finishReason === 'stop') {
+            // Emit completed tool calls
+            for (const [idx, tc] of pendingToolCalls) {
+              yield { type: 'tool_call_done', index: idx };
+            }
+          }
+        } catch {
+          // skip malformed SSE chunks
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 현재 사용 중인 provider 이름 반환 (UI 표시용) */
+export function getCurrentProvider(): LLMProvider | null {
+  return getAvailableProvider();
 }
 
 // ─── Agent Chat System Prompt Builder ─────────────────────────
