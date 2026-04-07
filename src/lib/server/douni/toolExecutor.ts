@@ -169,6 +169,11 @@ async function executeAnalyzeMarket(
     events.push({ type: 'layer_result', ...entry });
   }
 
+  // Chart klines for side panel
+  const chartKlines = klines.slice(-100).map(k => ({
+    t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume,
+  }));
+
   return {
     symbol,
     timeframe: tf,
@@ -185,6 +190,13 @@ async function executeAnalyzeMarket(
     l14: snapshot.l14,
     l15: snapshot.l15,
     price: klines[klines.length - 1].close,
+    change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
+    chart: chartKlines,
+    derivatives: {
+      funding: deriv.funding,
+      oi: deriv.oi,
+      lsRatio: deriv.lsRatio,
+    },
   };
 }
 
