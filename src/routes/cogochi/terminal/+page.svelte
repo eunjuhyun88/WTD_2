@@ -25,6 +25,17 @@
     id: string; name: string; value: string; score: number;
   }
 
+  // ─── SSE Event Types ─────────────────────────────────────
+  type SSEEvent =
+    | { type: 'text_delta'; text: string }
+    | { type: 'tool_call'; name: string; args: Record<string, unknown> }
+    | { type: 'tool_result'; name: string; data: any }
+    | { type: 'layer_result'; layer: string; score: number; signal: string; detail?: string }
+    | { type: 'chart_action'; action: string; payload: Record<string, unknown> }
+    | { type: 'pattern_draft'; name: string; conditions: unknown[]; requiresConfirmation: boolean }
+    | { type: 'done'; provider: string; totalTokens?: number }
+    | { type: 'error'; message: string };
+
   // ─── State ────────────────────────────────────────────────
   let messages = $state<MessageType[]>([]);
   let inputText = $state('');
@@ -45,6 +56,9 @@
   let patternDirection = $state<'LONG' | 'SHORT'>('SHORT');
   let patternName = $state('');
 
+  // Conversation history for LLM context
+  let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+
   // ─── Init ─────────────────────────────────────────────────
   onMount(() => {
     const hour = new Date().getHours();
@@ -56,160 +70,221 @@
     messages = [{ role: 'douni', text: greeting }];
   });
 
-  // ─── API Call ─────────────────────────────────────────────
-  async function analyzeSymbol(symbol: string, tf: string) {
+  // ─── Send via FC Pipeline ─────────────────────────────────
+  async function handleSend() {
+    const text = inputText.trim();
+    if (!text || isThinking) return;
+
+    messages = [...messages, { role: 'user', text }];
+    inputText = '';
     isThinking = true;
+
+    // Add thinking bubble
     messages = [...messages, { role: 'douni', thinking: true } as MessageType];
     scrollToBottom();
 
+    // Track history for LLM context
+    chatHistory = [...chatHistory, { role: 'user', content: text }];
+
     try {
-      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const res = await fetch('/api/cogochi/terminal/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: chatHistory.slice(-10),
+          snapshot: currentSnapshot || undefined,
+        }),
+      });
 
-      const s = data.snapshot;
-      currentSymbol = symbol;
-      currentTf = tf;
-      currentSnapshot = s;
-      currentChartData = data.chart || [];
-      currentPrice = data.price || 0;
-      currentChange = data.change24h || 0;
-      currentDeriv = data.derivatives || {};
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.body) throw new Error('No response body');
 
-      // Remove thinking
+      // Remove thinking bubble, prepare streaming response
       messages = messages.filter(m => !('thinking' in m));
 
-      // 1) Chart + price info
-      messages = [...messages, {
-        role: 'douni',
-        text: `${symbol.replace('USDT','')} ${tf.toUpperCase()} 봤어.`,
-        widgets: [
-          { type: 'chart', symbol, timeframe: tf.toUpperCase(), chartData: data.chart },
-        ],
-      }];
-      scrollToBottom();
+      let streamingText = '';
+      const pendingLayers: LayerItem[] = [];
+      let pendingAnalysis: any = null;
 
-      // 2) Derivatives metrics (with real data)
-      await delay(300);
-      const fr = currentDeriv?.funding;
-      const oi = currentDeriv?.oi;
-      const ls = currentDeriv?.lsRatio;
-      const fg = currentDeriv?.fearGreed;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-      const metrics: MetricItem[] = [];
-      if (fr != null) {
-        const frPct = (fr * 100).toFixed(4);
-        const frHot = Math.abs(fr) > 0.0005;
-        metrics.push({
-          title: 'Funding Rate',
-          value: `${frPct}%`,
-          subtext: frHot ? (fr > 0 ? '롱 과열 — 청산 리스크' : '숏 과열') : '보통',
-          trend: frHot ? 'danger' : 'neutral',
-          chartData: [0.01, 0.02, 0.03, 0.02, 0.03, 0.04, 0.03, Math.abs(fr) * 100],
-        });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const raw = trimmed.slice(6);
+          if (raw === '[DONE]') continue;
+
+          let event: SSEEvent;
+          try { event = JSON.parse(raw); } catch { continue; }
+
+          switch (event.type) {
+            case 'text_delta':
+              streamingText += event.text;
+              // Update last douni message with streaming text
+              updateStreamingMessage(streamingText);
+              break;
+
+            case 'tool_call':
+              if (event.name === 'analyze_market') {
+                // Show thinking indicator while analyzing
+                messages = [...messages, { role: 'douni', thinking: true } as MessageType];
+                scrollToBottom();
+              }
+              break;
+
+            case 'layer_result':
+              pendingLayers.push({
+                id: event.layer,
+                name: layerName(event.layer),
+                value: event.signal,
+                score: event.score,
+              });
+              break;
+
+            case 'tool_result':
+              if (event.name === 'analyze_market' && event.data) {
+                pendingAnalysis = event.data;
+                // Remove thinking bubble
+                messages = messages.filter(m => !('thinking' in m));
+                // Update state with analysis data
+                applyAnalysisResult(event.data, pendingLayers);
+                // Reset streaming text for the follow-up LLM response
+                streamingText = '';
+              }
+              break;
+
+            case 'chart_action':
+              handleChartAction(event.action, event.payload);
+              break;
+
+            case 'pattern_draft':
+              patternName = event.name;
+              patternConditions = (event.conditions as any[]).map(c =>
+                `${c.field} ${c.operator} ${c.value}`
+              );
+              showPatternModal = true;
+              break;
+
+            case 'error':
+              messages = [...messages, { role: 'douni', text: `❌ ${event.message}` }];
+              scrollToBottom();
+              break;
+
+            case 'done':
+              // Finalize
+              break;
+          }
+        }
       }
-      if (oi != null) {
-        metrics.push({
-          title: 'OI',
-          value: oi >= 1e6 ? `${(oi/1e6).toFixed(0)}M` : `${(oi/1e3).toFixed(0)}K`,
-          subtext: '미결제약정',
-          trend: 'neutral',
-          chartData: [80, 85, 82, 88, 90, 87, 92, 95],
-        });
+
+      // Finalize: ensure last text message is in history
+      if (streamingText) {
+        chatHistory = [...chatHistory, { role: 'assistant', content: streamingText }];
       }
-      if (ls != null) {
-        metrics.push({
-          title: 'L/S Ratio',
-          value: ls.toFixed(2),
-          subtext: ls > 1.1 ? '롱 과밀' : ls < 0.9 ? '숏 과밀' : '균형',
-          trend: ls > 1.1 ? 'bear' : ls < 0.9 ? 'bull' : 'neutral',
-          chartData: [1.0, 1.05, 1.1, 1.08, 1.12, 1.15, 1.1, ls],
-        });
-      }
-      if (fg != null) {
-        metrics.push({
-          title: 'Fear & Greed',
-          value: `${fg}`,
-          subtext: fg < 25 ? 'Extreme Fear' : fg < 40 ? 'Fear' : fg > 75 ? 'Extreme Greed' : fg > 60 ? 'Greed' : 'Neutral',
-          trend: fg < 30 ? 'bear' : fg > 70 ? 'danger' : 'neutral',
-          chartData: [40, 35, 30, 25, 20, 18, 15, fg],
-        });
-      }
-
-      if (metrics.length > 0) {
-        messages = [...messages, { role: 'douni', text: '', widgets: [{ type: 'metrics', items: metrics }] }];
-        scrollToBottom();
-      }
-
-      // 3) Layer breakdown
-      await delay(300);
-      const topLayers = [
-        { id: 'L1', name: '와이코프', value: s.l1.phase, score: s.l1.score },
-        { id: 'L2', name: '수급', value: `FR ${fr != null ? (fr*100).toFixed(3)+'%' : '—'}`, score: s.l2.score },
-        { id: 'L10', name: 'MTF', value: s.l10.mtf_confluence, score: s.l10.score },
-        { id: 'L11', name: 'CVD', value: s.l11.cvd_state, score: s.l11.score },
-        { id: 'L7', name: 'F&G', value: `${fg ?? '—'}`, score: s.l7.score },
-      ].filter(l => l.score !== 0).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)).slice(0, 5);
-
-      messages = [...messages, {
-        role: 'douni', text: '',
-        widgets: [{ type: 'layers', items: topLayers, alphaScore: s.alphaScore, alphaLabel: s.alphaLabel }],
-      }];
-      scrollToBottom();
-
-      // 4) Analysis text + actions
-      await delay(400);
-      const dir = s.alphaScore > 20 ? '불리시' : s.alphaScore < -20 ? '베어리시' : '중립';
-      const cvdNote = s.l11.cvd_state !== 'NEUTRAL' ? `\nCVD: ${s.l11.cvd_state}.` : '';
-      const wyckNote = `와이코프: ${s.l1.phase}.`;
-      const mtfNote = `MTF: ${s.l10.mtf_confluence}.`;
-
-      // Build pattern conditions
-      const conds: string[] = [];
-      if (Math.abs(s.l11.score) >= 5) conds.push(`l11.cvd_state = ${s.l11.cvd_state}`);
-      if (Math.abs(s.l1.score) >= 10) conds.push(`l1.phase = ${s.l1.phase}`);
-      if (Math.abs(s.l10.score) >= 10) conds.push(`l10.mtf = ${s.l10.mtf_confluence}`);
-      if (fr != null && Math.abs(fr) > 0.0003) conds.push(`l2.fr ${fr > 0 ? '>' : '<'} ${Math.abs(fr).toFixed(4)}`);
-
-      patternConditions = conds;
-      patternDirection = s.alphaScore >= 0 ? 'LONG' : 'SHORT';
-      patternName = topLayers.slice(0, 2).map(l => l.value).join('+');
-
-      messages = [...messages, {
-        role: 'douni',
-        text: `Alpha ${s.alphaScore} — ${dir}.\n${wyckNote}\n${mtfNote}${cvdNote}`,
-        widgets: conds.length > 0 ? [{ type: 'actions', patternName, direction: patternDirection, conditions: conds }] : undefined,
-      }];
-
-      showChart = true;
-      isThinking = false;
-      scrollToBottom();
 
     } catch (err: any) {
       messages = messages.filter(m => !('thinking' in m));
-      messages = [...messages, { role: 'douni', text: `❌ 분석 실패: ${err.message}` }];
+      messages = [...messages, { role: 'douni', text: `❌ ${err.message}` }];
+    } finally {
       isThinking = false;
       scrollToBottom();
     }
   }
 
-  // ─── Send ─────────────────────────────────────────────────
-  function handleSend() {
-    const text = inputText.trim();
-    if (!text || isThinking) return;
-    messages = [...messages, { role: 'user', text }];
-    inputText = '';
-
-    // Parse: "BTC 4H", "ETH 1D", "SOL 15m" etc.
-    const match = text.match(/\b(BTC|ETH|SOL|DOGE|XRP|ADA|AVAX|DOT|LINK|BNB|MATIC|OP|ARB|PEPE|WIF)\b.*?\b(1m|5m|15m|1h|4h|1d|1w)\b/i);
-    if (match) {
-      analyzeSymbol(match[1].toUpperCase() + 'USDT', match[2].toLowerCase());
-    } else if (text.includes('패턴') && text.includes('저장')) {
-      showPatternModal = true;
+  // ─── Streaming Text Update ─────────────────────────────────
+  function updateStreamingMessage(text: string) {
+    const last = messages[messages.length - 1];
+    if (last && last.role === 'douni' && !('thinking' in last)) {
+      // Update existing bubble
+      messages = [...messages.slice(0, -1), { ...last, text }];
     } else {
-      messages = [...messages, { role: 'douni', text: '종목+타임프레임으로 알려줘! 예: BTC 4H, ETH 1D, SOL 15m' }];
-      scrollToBottom();
+      // Remove thinking + add new text bubble
+      messages = [...messages.filter(m => !('thinking' in m)), { role: 'douni', text }];
     }
+    scrollToBottom();
+  }
+
+  // ─── Apply Analysis Result ─────────────────────────────────
+  function applyAnalysisResult(data: any, layers: LayerItem[]) {
+    currentSymbol = data.symbol || currentSymbol;
+    currentTf = data.timeframe || currentTf;
+    currentPrice = data.price || currentPrice;
+    currentSnapshot = data;
+
+    // Build metrics from analysis data
+    const metrics: MetricItem[] = [];
+    if (data.l2?.fr != null) {
+      const fr = data.l2.fr;
+      const frPct = (fr * 100).toFixed(4);
+      const frHot = Math.abs(fr) > 0.0005;
+      metrics.push({
+        title: 'Funding Rate', value: `${frPct}%`,
+        subtext: frHot ? (fr > 0 ? '롱 과열' : '숏 과열') : '보통',
+        trend: frHot ? 'danger' : 'neutral',
+        chartData: [0.01, 0.02, 0.03, 0.02, 0.03, 0.04, 0.03, Math.abs(fr) * 100],
+      });
+    }
+    if (data.l7?.fear_greed != null) {
+      const fg = data.l7.fear_greed;
+      metrics.push({
+        title: 'Fear & Greed', value: `${fg}`,
+        subtext: fg < 25 ? 'Extreme Fear' : fg < 40 ? 'Fear' : fg > 75 ? 'Extreme Greed' : fg > 60 ? 'Greed' : 'Neutral',
+        trend: fg < 30 ? 'bear' : fg > 70 ? 'danger' : 'neutral',
+        chartData: [40, 35, 30, 25, 20, 18, 15, fg],
+      });
+    }
+
+    // Add metrics widget
+    if (metrics.length > 0) {
+      messages = [...messages, { role: 'douni', text: '', widgets: [{ type: 'metrics', items: metrics }] }];
+    }
+
+    // Add layers widget
+    const sortedLayers = layers.length > 0
+      ? layers.filter(l => l.score !== 0).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)).slice(0, 6)
+      : [];
+    if (sortedLayers.length > 0 && data.alphaScore != null) {
+      messages = [...messages, {
+        role: 'douni', text: '',
+        widgets: [{ type: 'layers', items: sortedLayers, alphaScore: data.alphaScore, alphaLabel: data.alphaLabel || 'NEUTRAL' }],
+      }];
+    }
+
+    // Show chart
+    showChart = true;
+    scrollToBottom();
+  }
+
+  // ─── Chart Action Handler ──────────────────────────────────
+  function handleChartAction(action: string, payload: Record<string, unknown>) {
+    if (action === 'change_symbol' && payload.symbol) {
+      currentSymbol = payload.symbol as string;
+    }
+    if (action === 'change_timeframe' && payload.timeframe) {
+      currentTf = payload.timeframe as string;
+    }
+  }
+
+  // ─── Layer Name Map ────────────────────────────────────────
+  function layerName(id: string): string {
+    const map: Record<string, string> = {
+      L1: '와이코프', L2: '수급', L3: 'V-Surge', L4: '호가창',
+      L5: 'Basis', L6: '대형흐름', L7: 'F&G', L8: '김프',
+      L9: '청산', L10: 'MTF', L11: 'CVD', L12: '섹터',
+      L13: '돌파', L14: 'BB', L15: 'ATR',
+    };
+    return map[id] || id;
   }
 
   function delay(ms: number) { return new Promise(r => setTimeout(r, ms)); }
@@ -325,7 +400,7 @@
 
     <div class="input-bar">
       <div class="input-box">
-        <input type="text" bind:value={inputText} onkeydown={handleKeydown} placeholder="BTC 4H 분석해줘..." disabled={isThinking} />
+        <input type="text" bind:value={inputText} onkeydown={handleKeydown} placeholder="BTC 어때? / ETH 1D 분석해줘 / 뭐든 물어봐" disabled={isThinking} />
         <button class="send" onclick={handleSend} disabled={isThinking || !inputText.trim()}>↑</button>
       </div>
     </div>
