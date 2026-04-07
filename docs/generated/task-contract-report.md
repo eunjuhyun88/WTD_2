@@ -1,6 +1,6 @@
 # Task Contract Report
 
-- Current branch: `codex/dev-server-run-20260320-chatbattle`
+- Current branch: `main`
 - Active dir: `docs/task-contracts/active`
 - Completed dir: `docs/task-contracts/completed`
 - Require contract on feature branches: `no`

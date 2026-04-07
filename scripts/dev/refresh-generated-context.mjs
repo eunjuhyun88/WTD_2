@@ -237,6 +237,7 @@ const apiCategoryOrder = [
   'Tournaments',
   'Notifications',
   'Market Alerts',
+  'Cogochi',
   'Proxies & Infra'
 ];
 
@@ -259,6 +260,7 @@ const apiCategoryMeta = {
   Tournaments: { purpose: 'tournament lifecycle and bracket access' },
   Notifications: { purpose: 'notification lifecycle' },
   'Market Alerts': { purpose: 'specialized market alert surface' },
+  Cogochi: { purpose: 'DOUNI AI agent — terminal chat, analysis, social tools' },
   'Proxies & Infra': { purpose: 'third-party proxy and support endpoints' }
 };
 
@@ -328,6 +330,7 @@ function groupApiRoute(route) {
     route.startsWith('/api/positions/polymarket/')
   ) return 'Polymarket';
   if (route === '/api/positions/unified') return 'Unified Positions';
+  if (route.startsWith('/api/cogochi/')) return 'Cogochi';
   if (route.startsWith('/api/arena-war')) return 'Arena War';
   if (route.startsWith('/api/arena/') || route === '/api/matches') return 'Arena';
   if (route.startsWith('/api/profile/passport/learning/')) return 'Passport Learning';

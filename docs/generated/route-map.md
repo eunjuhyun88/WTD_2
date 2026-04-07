@@ -29,6 +29,8 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/terminal` | intel/action surface | scan, intel, action orchestration | route shell + `copyTradeStore`, `trackedSignalStore`, live prices | `docs/product-specs/terminal.md` |
 | `/world` | world bridge surface | world-map preview, readiness framing, battle handoff | `gameState` | `docs/page-specs/world-page.md` |
 | `/creator/[userId]` | public creator profile route | creator context and recent community signals | route-local creator loader + community signal cards | `docs/page-specs/creator-page.md` |
+| `/cogochi` | cogochi hub | DOUNI virtual pet entry and navigation | route-level data | `docs/PRODUCT_SENSE.md` |
+| `/cogochi/terminal` | DOUNI AI terminal | LLM-driven chat with function calling, market analysis, social data | route-local chat state + `currentSnapshot` | `docs/PRODUCT_SENSE.md` |
 
 ## Route Shells and Global Entry
 
