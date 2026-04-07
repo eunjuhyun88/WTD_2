@@ -125,7 +125,7 @@ export async function listScenarios(): Promise<Array<{ id: string; symbol: strin
 		const result = await query<Record<string, unknown>>(
 			`SELECT id, symbol, interval, start_ts, end_ts, difficulty FROM cogochi_scenarios ORDER BY difficulty, id`,
 		);
-		return result.rows.map((r) => ({
+		return result.rows.map((r: Record<string, unknown>) => ({
 			id: String(r.id),
 			symbol: String(r.symbol),
 			interval: String(r.interval),

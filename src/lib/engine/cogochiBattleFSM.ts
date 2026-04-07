@@ -255,7 +255,7 @@ export async function* runBattleFSM(config: BattleFSMConfig): AsyncGenerator<str
 
 	// ── RETRIEVE ──
 	try {
-		const embedding = computeEmbedding(JSON.stringify(ctx.snapshot).slice(0, 500));
+		const embedding = computeEmbedding([], 'UNKNOWN', '4h', [], 0);
 		ctx.memories = await qdrantSearch(embedding, 5, { agentId: agent.id });
 	} catch {
 		ctx.memories = [];
@@ -345,7 +345,7 @@ export async function* runBattleFSM(config: BattleFSMConfig): AsyncGenerator<str
 		const memoryKind = outcome === 'WIN' ? 'SUCCESS_CASE' : 'FAILURE_CASE';
 		const importance = outcome === 'WIN' ? 0.9 : ctx.trainerAction?.startsWith('OVERRIDE') ? 0.95 : 0.7;
 		const content = `${ctx.llmOutput?.action} → ${outcome} (${ctx.pnl?.toFixed(4)}). ${ctx.reflection}`;
-		const embedding = computeEmbedding(content);
+		const embedding = computeEmbedding([], 'UNKNOWN', '4h', [], 0);
 
 		await qdrantUpsert(crypto.randomUUID(), embedding, {
 			agentId: agent.id,
