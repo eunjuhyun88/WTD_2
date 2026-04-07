@@ -547,18 +547,18 @@
       </div>
       <div class="modal-body">
         <div class="mf">
-          <label class="mf-label">PATTERN NAME</label>
-          <input class="mf-input" type="text" value={patternName} />
+          <label class="mf-label" for="cg-pattern-name">PATTERN NAME</label>
+          <input id="cg-pattern-name" class="mf-input" type="text" value={patternName} />
         </div>
         <div class="mf">
-          <label class="mf-label">DIRECTION</label>
+          <span class="mf-label">DIRECTION</span>
           <div class="mf-dir">
             <button class="dir-btn" class:active={patternDirection==='LONG'} onclick={() => patternDirection='LONG'}>LONG ▲</button>
             <button class="dir-btn" class:active={patternDirection==='SHORT'} onclick={() => patternDirection='SHORT'}>SHORT ▼</button>
           </div>
         </div>
         <div class="mf">
-          <label class="mf-label">CONDITIONS ({patternConditions.length})</label>
+          <span class="mf-label">CONDITIONS ({patternConditions.length})</span>
           {#each patternConditions as c}
             <div class="cond-row">{c}</div>
           {/each}
