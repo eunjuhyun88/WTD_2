@@ -37,13 +37,23 @@
     | { type: 'done'; provider: string; totalTokens?: number }
     | { type: 'error'; message: string };
 
+  // ─── Feed Entry Types ─────────────────────────────────────
+  type FeedEntry =
+    | { kind: 'query'; text: string }
+    | { kind: 'text'; text: string }
+    | { kind: 'thinking' }
+    | { kind: 'metrics'; items: MetricItem[] }
+    | { kind: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
+    | { kind: 'scan'; items: any[]; sort: string; sector: string }
+    | { kind: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
+    | { kind: 'chart_ref'; symbol: string; timeframe: string };
+
   // ─── State ────────────────────────────────────────────────
   let messages = $state<MessageType[]>([]);
   let inputText = $state('');
   let isThinking = $state(false);
-  let chatContainer: HTMLDivElement | undefined = $state();
+  let feedContainer: HTMLDivElement | undefined = $state();
   let showPatternModal = $state(false);
-  let showChart = $state(false);
 
   // Current analysis data
   let currentSymbol = $state('');
@@ -59,6 +69,47 @@
 
   // Conversation history for LLM context
   let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+
+  // ─── Derived: Feed Entries ────────────────────────────────
+  let feedEntries = $derived.by(() => {
+    const entries: FeedEntry[] = [];
+    for (const msg of messages) {
+      if ('thinking' in msg) {
+        entries.push({ kind: 'thinking' });
+        continue;
+      }
+      if (msg.role === 'user') {
+        entries.push({ kind: 'query', text: msg.text });
+        continue;
+      }
+      // douni message
+      if (msg.text) {
+        entries.push({ kind: 'text', text: msg.text });
+      }
+      if (msg.widgets) {
+        for (const w of msg.widgets) {
+          switch (w.type) {
+            case 'chart':
+              entries.push({ kind: 'chart_ref', symbol: w.symbol, timeframe: w.timeframe });
+              break;
+            case 'metrics':
+              entries.push({ kind: 'metrics', items: w.items });
+              break;
+            case 'layers':
+              entries.push({ kind: 'layers', items: w.items, alphaScore: w.alphaScore, alphaLabel: w.alphaLabel });
+              break;
+            case 'scan_list':
+              entries.push({ kind: 'scan', items: w.items, sort: w.sort, sector: w.sector });
+              break;
+            case 'actions':
+              entries.push({ kind: 'actions', patternName: w.patternName, direction: w.direction, conditions: w.conditions });
+              break;
+          }
+        }
+      }
+    }
+    return entries;
+  });
 
   // ─── Init ─────────────────────────────────────────────────
   onMount(() => {
@@ -183,7 +234,7 @@
               break;
 
             case 'error':
-              messages = [...messages, { role: 'douni', text: `❌ ${event.message}` }];
+              messages = [...messages, { role: 'douni', text: `Error: ${event.message}` }];
               scrollToBottom();
               break;
 
@@ -201,7 +252,7 @@
 
     } catch (err: any) {
       messages = messages.filter(m => !('thinking' in m));
-      messages = [...messages, { role: 'douni', text: `❌ ${err.message}` }];
+      messages = [...messages, { role: 'douni', text: `Error: ${err.message}` }];
     } finally {
       isThinking = false;
       scrollToBottom();
@@ -302,8 +353,6 @@
       widgets: [{ type: 'actions', patternName: `${currentSymbol} ${currentTf}`, direction: dir as 'LONG' | 'SHORT', conditions: [] }],
     }];
 
-    // Show chart
-    showChart = true;
     scrollToBottom();
   }
 
@@ -353,8 +402,8 @@
     // Trending badge
     if (data.is_trending) {
       metrics.push({
-        title: 'Trending', value: data.trend_rank ? `#${data.trend_rank}` : '🔥',
-        subtext: 'CoinGecko 트렌딩', trend: 'bull',
+        title: 'Trending', value: data.trend_rank ? `#${data.trend_rank}` : 'HOT',
+        subtext: 'CoinGecko Trending', trend: 'bull',
         chartData: [1, 2, 3, 5, 8, 12, 18, 25],
       });
     }
@@ -386,7 +435,7 @@
     if (data.trending_coins?.length > 0) {
       const trendText = data.trending_coins.map((c: any) => `${c.symbol}`).join(', ');
       messages = [...messages, {
-        role: 'douni', text: `🔥 트렌딩: ${trendText}`,
+        role: 'douni', text: `Trending: ${trendText}`,
       }];
     }
     scrollToBottom();
@@ -459,7 +508,7 @@
       }
     } catch (err: any) {
       messages = messages.filter(m => !('thinking' in m));
-      messages = [...messages, { role: 'douni', text: `❌ ${err.message}` }];
+      messages = [...messages, { role: 'douni', text: `Error: ${err.message}` }];
     } finally {
       isThinking = false;
       scrollToBottom();
@@ -469,185 +518,257 @@
   // ─── Layer Name Map ────────────────────────────────────────
   function layerName(id: string): string {
     const map: Record<string, string> = {
-      L1: '와이코프', L2: '수급', L3: 'V-Surge', L4: '호가창',
-      L5: 'Basis', L6: '대형흐름', L7: 'F&G', L8: '김프',
-      L9: '청산', L10: 'MTF', L11: 'CVD', L12: '섹터',
-      L13: '돌파', L14: 'BB', L15: 'ATR',
+      L1: 'Wyckoff', L2: 'Supply/Demand', L3: 'V-Surge', L4: 'Order Book',
+      L5: 'Basis', L6: 'Macro Flow', L7: 'F&G', L8: 'Kimchi',
+      L9: 'Liquidation', L10: 'MTF', L11: 'CVD', L12: 'Sector',
+      L13: 'Breakout', L14: 'BB', L15: 'ATR',
     };
     return map[id] || id;
   }
 
-  function delay(ms: number) { return new Promise(r => setTimeout(r, ms)); }
   function scrollToBottom() {
-    requestAnimationFrame(() => chatContainer?.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' }));
+    requestAnimationFrame(() => feedContainer?.scrollTo({ top: feedContainer.scrollHeight, behavior: 'smooth' }));
   }
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
   function scoreColor(s: number): string {
-    if (s <= -15) return '#f43f5e';
-    if (s < 0) return '#f97316';
-    if (s === 0) return '#475569';
-    if (s <= 15) return '#0ea5e9';
-    return '#22d3ee';
+    if (s <= -15) return 'var(--sc-bad)';
+    if (s < 0) return 'var(--sc-warn)';
+    if (s === 0) return 'var(--sc-text-3)';
+    if (s <= 15) return 'var(--sc-good)';
+    return 'var(--sc-good)';
   }
   function alphaColor(s: number): string {
-    if (s >= 20) return '#22d3ee';
-    if (s <= -20) return '#f43f5e';
-    return '#94a3b8';
+    if (s >= 20) return 'var(--sc-good)';
+    if (s <= -20) return 'var(--sc-bad)';
+    return 'var(--sc-text-2)';
+  }
+  function layerCellBg(score: number): string {
+    if (score > 0) return 'rgba(173, 202, 124, 0.08)';
+    if (score < 0) return 'rgba(207, 127, 143, 0.08)';
+    return 'transparent';
+  }
+  function layerBorderColor(score: number): string {
+    if (score > 0) return 'var(--sc-good)';
+    if (score < 0) return 'var(--sc-bad)';
+    return 'var(--sc-text-3)';
   }
 </script>
 
 <svelte:head><title>Cogochi Terminal</title></svelte:head>
 
 <div class="terminal-root">
-  <!-- Main Chat -->
-  <div class="chat-main" class:with-panel={showChart}>
-    <div class="chat-scroll" bind:this={chatContainer}>
-      <div class="chat-inner">
-        {#each messages as msg}
-          {#if 'thinking' in msg}
-            <div class="msg-row douni">
-              <div class="avatar">🐦</div>
-              <div class="bubble douni"><div class="dots"><span class="d"></span><span class="d"></span><span class="d"></span></div></div>
+  <!-- ─── HEADER BAR ─── -->
+  <header class="header-bar">
+    <div class="hb-left">
+      {#if currentSymbol}
+        <span class="hb-symbol">{currentSymbol.replace('USDT','')}</span>
+        <span class="hb-tf">{currentTf.toUpperCase()}</span>
+      {:else}
+        <span class="hb-symbol">TERMINAL</span>
+      {/if}
+    </div>
+    <div class="hb-center">
+      {#if currentPrice > 0}
+        <span class="hb-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
+        <span class="hb-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
+          {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
+        </span>
+      {/if}
+    </div>
+    <div class="hb-right">
+      {#if currentSnapshot?.alphaScore != null}
+        <span class="hb-alpha-label">ALPHA</span>
+        <span class="hb-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
+          {currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
+        </span>
+      {/if}
+    </div>
+  </header>
+
+  <!-- ─── MAIN CONTENT: FEED + CHART ─── -->
+  <div class="main-content">
+    <!-- DATA FEED -->
+    <div class="data-feed" bind:this={feedContainer}>
+      <div class="feed-inner">
+        {#each feedEntries as entry}
+          {#if entry.kind === 'query'}
+            <div class="fe fe-query">
+              <span class="fe-query-arrow">&gt;</span>
+              <span class="fe-query-text">{entry.text}</span>
             </div>
-          {:else if msg.role === 'user'}
-            <div class="msg-row user">
-              <div class="bubble user">{msg.text}</div>
+
+          {:else if entry.kind === 'text'}
+            <div class="fe fe-text">
+              <p class="fe-text-body">{entry.text}</p>
             </div>
-          {:else}
-            <div class="msg-row douni">
-              <div class="avatar">🐦</div>
-              <div class="bubble-group">
-                {#if msg.text}
-                  <div class="bubble douni">{msg.text}</div>
-                {/if}
-                {#if msg.widgets}
-                  {#each msg.widgets as widget}
-                    {#if widget.type === 'chart'}
-                      <button type="button" class="w-chart" onclick={() => showChart = !showChart}>
-                        <div class="wc-head">
-                          <span class="wc-sym">{widget.symbol.replace('USDT','')}</span>
-                          <span class="wc-tf">{widget.timeframe}</span>
-                          {#if currentPrice > 0}
-                            <span class="wc-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
-                            <span class="wc-chg" class:up={currentChange >= 0} class:dn={currentChange < 0}>{currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%</span>
-                          {/if}
-                          <span class="wc-expand">📈 {showChart ? '닫기' : '열기'}</span>
-                        </div>
-                        {#if widget.chartData && widget.chartData.length > 0}
-                          {@const cds = widget.chartData}
-                          {@const mn = Math.min(...cds.map((c: any) => c.l))}
-                          {@const mx = Math.max(...cds.map((c: any) => c.h))}
-                          {@const rg = mx - mn || 1}
-                          <svg viewBox="0 0 {cds.length * 6} 80" class="wc-mini" preserveAspectRatio="none">
-                            {#each cds as c, i}
-                              {@const x = i * 6 + 3}
-                              {@const up = c.c >= c.o}
-                              <line x1={x} y1={76 - ((c.h - mn) / rg) * 72} x2={x} y2={76 - ((c.l - mn) / rg) * 72} stroke={up ? '#22d3ee' : '#f43f5e'} stroke-width="0.8"/>
-                              <rect x={x-2} y={76 - ((Math.max(c.o,c.c) - mn) / rg) * 72} width="4" height={Math.max(Math.abs(c.c-c.o) / rg * 72, 0.5)} fill={up ? '#22d3ee' : '#f43f5e'}/>
-                            {/each}
-                          </svg>
-                        {/if}
-                      </button>
 
-                    {:else if widget.type === 'metrics'}
-                      <div class="w-metrics">
-                        {#each widget.items as item}
-                          <DataCard title={item.title} value={item.value} subtext={item.subtext} trend={item.trend} chartData={item.chartData} />
-                        {/each}
-                      </div>
+          {:else if entry.kind === 'thinking'}
+            <div class="fe fe-thinking">
+              <div class="thinking-bar"></div>
+              <span class="thinking-label">Analyzing...</span>
+            </div>
 
-                    {:else if widget.type === 'layers'}
-                      <div class="w-layers">
-                        <div class="wl-head">Alpha Score: <span class="wl-val" style="color:{alphaColor(widget.alphaScore)}">{widget.alphaScore}</span> <span class="wl-lbl" style="color:{alphaColor(widget.alphaScore)}">{widget.alphaLabel}</span></div>
-                        {#each widget.items as layer}
-                          <div class="wl-row">
-                            <span class="wl-id">{layer.id}</span>
-                            <span class="wl-name">{layer.name}</span>
-                            <span class="wl-v">{layer.value}</span>
-                            <div class="wl-bar-bg"><div class="wl-bar" style="width:{Math.min(Math.abs(layer.score)*2.5,100)}%;background:{scoreColor(layer.score)}"></div></div>
-                            <span class="wl-s" style="color:{scoreColor(layer.score)}">{layer.score > 0 ? '+' : ''}{layer.score}</span>
-                          </div>
-                        {/each}
-                      </div>
+          {:else if entry.kind === 'metrics'}
+            <div class="fe fe-metrics">
+              {#each entry.items as item}
+                <DataCard title={item.title} value={item.value} subtext={item.subtext} trend={item.trend} chartData={item.chartData} />
+              {/each}
+            </div>
 
-                    {:else if widget.type === 'actions'}
-                      <div class="w-actions">
-                        <button class="wa agree" onclick={() => sendFeedback('correct')}>✓ 맞아</button>
-                        <button class="wa disagree" onclick={() => sendFeedback('incorrect')}>✗ 아니야</button>
-                        <button class="wa save" onclick={() => showPatternModal = true}>📌 패턴 저장</button>
-                      </div>
-
-                    {:else if widget.type === 'scan_list'}
-                      <div class="w-scan">
-                        <div class="ws-head">
-                          <span class="ws-title">📊 Market Scan</span>
-                          <span class="ws-meta">{widget.sort} · {widget.sector}</span>
-                        </div>
-                        {#each widget.items as coin}
-                          <div class="ws-row">
-                            <span class="ws-rank">#{coin.rank}</span>
-                            <span class="ws-sym">{coin.symbol}</span>
-                            <span class="ws-name">{coin.name}</span>
-                            {#if coin.price != null}
-                              <span class="ws-price">${coin.price >= 1 ? coin.price.toLocaleString(undefined, {maximumFractionDigits: 1}) : coin.price.toFixed(4)}</span>
-                            {/if}
-                            {#if coin.change24h != null}
-                              <span class="ws-chg" class:up={coin.change24h >= 0} class:dn={coin.change24h < 0}>{coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%</span>
-                            {/if}
-                            {#if coin.is_trending}
-                              <span class="ws-trend">🔥</span>
-                            {/if}
-                          </div>
-                        {/each}
-                      </div>
-                    {/if}
-                  {/each}
-                {/if}
+          {:else if entry.kind === 'layers'}
+            <div class="fe fe-layers">
+              <div class="layers-header">
+                <span class="layers-label">ALPHA SCORE</span>
+                <span class="layers-score" style="color:{alphaColor(entry.alphaScore)}">{entry.alphaScore}</span>
+                <span class="layers-tag" style="color:{alphaColor(entry.alphaScore)}">{entry.alphaLabel}</span>
               </div>
+              <div class="treemap-grid">
+                {#each entry.items as layer}
+                  {@const absScore = Math.abs(layer.score)}
+                  <div
+                    class="treemap-cell"
+                    style="flex:{Math.max(absScore, 3)};background:{layerCellBg(layer.score)};border-left:2px solid {layerBorderColor(layer.score)}"
+                  >
+                    <span class="tm-id">{layer.id}</span>
+                    <span class="tm-name">{layer.name}</span>
+                    <span class="tm-signal">{layer.value}</span>
+                    <span class="tm-score" style="color:{scoreColor(layer.score)}">{layer.score > 0 ? '+' : ''}{layer.score}</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+
+          {:else if entry.kind === 'scan'}
+            <div class="fe fe-scan">
+              <div class="scan-header">
+                <span class="scan-title">Market Scan</span>
+                <span class="scan-meta">{entry.sort} / {entry.sector}</span>
+              </div>
+              {#each entry.items as coin}
+                <div class="scan-row">
+                  <span class="sr-rank">#{coin.rank}</span>
+                  <span class="sr-sym">{coin.symbol}</span>
+                  <span class="sr-name">{coin.name}</span>
+                  {#if coin.price != null}
+                    <span class="sr-price">${coin.price >= 1 ? coin.price.toLocaleString(undefined, {maximumFractionDigits: 1}) : coin.price.toFixed(4)}</span>
+                  {/if}
+                  {#if coin.change24h != null}
+                    <span class="sr-change" class:up={coin.change24h >= 0} class:dn={coin.change24h < 0}>
+                      {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%
+                    </span>
+                  {/if}
+                  {#if coin.is_trending}
+                    <span class="sr-trending"></span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+
+          {:else if entry.kind === 'actions'}
+            <div class="fe fe-actions">
+              <button type="button" class="action-btn action-correct" onclick={() => sendFeedback('correct')}>CORRECT</button>
+              <button type="button" class="action-btn action-incorrect" onclick={() => sendFeedback('incorrect')}>INCORRECT</button>
+              <button type="button" class="action-btn action-save" onclick={() => showPatternModal = true}>SAVE PATTERN</button>
+            </div>
+
+          {:else if entry.kind === 'chart_ref'}
+            <!-- Chart reference: no inline rendering, chart is always in side panel -->
+            <div class="fe fe-chart-ref">
+              <span class="cr-label">Chart loaded</span>
+              <span class="cr-sym">{entry.symbol.replace('USDT','')}</span>
+              <span class="cr-tf">{entry.timeframe}</span>
             </div>
           {/if}
         {/each}
       </div>
     </div>
 
-    <div class="input-bar">
-      <div class="input-box">
-        <input type="text" bind:value={inputText} onkeydown={handleKeydown} placeholder="BTC 어때? / ETH 1D 분석해줘 / 뭐든 물어봐" disabled={isThinking} />
-        <button class="send" onclick={handleSend} disabled={isThinking || !inputText.trim()}>↑</button>
-      </div>
-    </div>
+    <!-- CHART PANEL (always visible) -->
+    <aside class="chart-panel">
+      {#if currentSnapshot && currentChartData.length > 0}
+        <div class="cp-header">
+          <span class="cp-sym">{currentSymbol.replace('USDT','')}</span>
+          <span class="cp-tf">{currentTf.toUpperCase()}</span>
+          {#if currentPrice > 0}
+            <span class="cp-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
+            <span class="cp-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
+              {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
+            </span>
+          {/if}
+          {#if currentSnapshot.alphaScore != null}
+            <span class="cp-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
+              a:{currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
+            </span>
+          {/if}
+        </div>
+        <div class="cp-chart">
+          <CgChart data={currentChartData} currentPrice={currentPrice} />
+        </div>
+        <div class="cp-stats">
+          <div class="qs-cell">
+            <span class="qs-label">Funding</span>
+            <span class="qs-value" style="color:{currentDeriv?.funding > 0.0005 ? 'var(--sc-bad)' : currentDeriv?.funding < -0.0005 ? 'var(--sc-good)' : 'var(--sc-text-2)'}">
+              {currentDeriv?.funding != null ? (currentDeriv.funding * 100).toFixed(4) + '%' : '--'}
+            </span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">OI</span>
+            <span class="qs-value">
+              {currentDeriv?.oi != null ? (currentDeriv.oi >= 1e6 ? (currentDeriv.oi/1e6).toFixed(0)+'M' : (currentDeriv.oi/1e3).toFixed(0)+'K') : '--'}
+            </span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">L/S</span>
+            <span class="qs-value" style="color:{currentDeriv?.lsRatio > 1.1 ? 'var(--sc-bad)' : currentDeriv?.lsRatio < 0.9 ? 'var(--sc-good)' : 'var(--sc-text-2)'}">
+              {currentDeriv?.lsRatio?.toFixed(2) ?? '--'}
+            </span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">BB</span>
+            <span class="qs-value">
+              {currentSnapshot.l14?.bb_squeeze ? 'SQUEEZE' : currentSnapshot.l14?.bb_width != null ? `w:${currentSnapshot.l14.bb_width}` : '--'}
+            </span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">ATR</span>
+            <span class="qs-value">{currentSnapshot.l15?.atr_pct != null ? currentSnapshot.l15.atr_pct + '%' : '--'}</span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">Regime</span>
+            <span class="qs-value">{currentSnapshot.regime ?? '--'}</span>
+          </div>
+        </div>
+      {:else}
+        <div class="cp-empty">
+          <span class="cp-empty-label">No analysis yet</span>
+          <span class="cp-empty-hint">Ask DOUNI to analyze a symbol</span>
+        </div>
+      {/if}
+    </aside>
   </div>
 
-  <!-- Side Panel -->
-  {#if showChart && currentSnapshot}
-    <div class="side-panel">
-      <div class="sp-head">
-        <span class="sp-sym">{currentSymbol.replace('USDT','')}</span>
-        <span class="sp-tf">{currentTf.toUpperCase()}</span>
-        <span class="sp-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">{currentSnapshot.alphaScore} {currentSnapshot.alphaLabel}</span>
-        <button class="sp-close" onclick={() => showChart = false}>✕</button>
-      </div>
-      <div class="sp-chart">
-        <CgChart data={currentChartData} currentPrice={currentPrice} />
-      </div>
-      <div class="sp-info">
-        <div class="sp-row"><span>와이코프</span><span style="color:{scoreColor(currentSnapshot.l1.score)}">{currentSnapshot.l1.phase}</span></div>
-        <div class="sp-row"><span>CVD</span><span style="color:{scoreColor(currentSnapshot.l11.score)}">{currentSnapshot.l11.cvd_state}</span></div>
-        <div class="sp-row"><span>MTF</span><span style="color:{scoreColor(currentSnapshot.l10.score)}">{currentSnapshot.l10.mtf_confluence}</span></div>
-        <div class="sp-row"><span>Funding</span><span style="color:{currentDeriv?.funding > 0.0005 ? '#f43f5e' : currentDeriv?.funding < -0.0005 ? '#22d3ee' : '#94a3b8'}">{currentDeriv?.funding != null ? (currentDeriv.funding * 100).toFixed(4) + '%' : '—'}</span></div>
-        <div class="sp-row"><span>OI</span><span>{currentDeriv?.oi != null ? (currentDeriv.oi >= 1e6 ? (currentDeriv.oi/1e6).toFixed(0)+'M' : (currentDeriv.oi/1e3).toFixed(0)+'K') : '—'}</span></div>
-        <div class="sp-row"><span>L/S</span><span style="color:{currentDeriv?.lsRatio > 1.1 ? '#f43f5e' : currentDeriv?.lsRatio < 0.9 ? '#22d3ee' : '#94a3b8'}">{currentDeriv?.lsRatio?.toFixed(2) ?? '—'}</span></div>
-        <div class="sp-row"><span>BB</span><span>{currentSnapshot.l14.bb_squeeze ? '🔴 SQUEEZE' : `w:${currentSnapshot.l14.bb_width}`}</span></div>
-        <div class="sp-row"><span>ATR</span><span>{currentSnapshot.l15.atr_pct}%</span></div>
-        <div class="sp-row"><span>Regime</span><span>{currentSnapshot.regime}</span></div>
-      </div>
+  <!-- ─── INPUT BAR ─── -->
+  <div class="input-bar">
+    <div class="input-box">
+      <input
+        type="text"
+        bind:value={inputText}
+        onkeydown={handleKeydown}
+        placeholder="BTC 4H / ETH 1D / scan top gainers"
+        disabled={isThinking}
+      />
+      <button type="button" class="send-btn" onclick={handleSend} disabled={isThinking || !inputText.trim()} aria-label="Send message">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 14V2M8 2L3 7M8 2L13 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
-  {/if}
+  </div>
 </div>
 
-<!-- Pattern Modal -->
+<!-- ─── PATTERN MODAL ─── -->
 {#if showPatternModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -655,131 +776,669 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="modal-box" onclick={(e) => e.stopPropagation()}>
-      <h3>📌 패턴 저장</h3>
-      <div class="mf"><label for="pattern-name">패턴 이름</label><input id="pattern-name" type="text" value={patternName} /></div>
+      <h3>Save Pattern</h3>
       <div class="mf">
-        <span class="mf-label">방향</span>
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label for="pattern-name">Pattern Name</label>
+        <input id="pattern-name" type="text" value={patternName} />
+      </div>
+      <div class="mf">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label class="mf-label">Direction</label>
         <div class="mdir">
-          <button class="md" class:act={patternDirection === 'LONG'} onclick={() => patternDirection = 'LONG'}>LONG ▲</button>
-          <button class="md" class:act={patternDirection === 'SHORT'} onclick={() => patternDirection = 'SHORT'}>SHORT ▼</button>
+          <button type="button" class="md" class:act={patternDirection === 'LONG'} onclick={() => patternDirection = 'LONG'}>LONG</button>
+          <button type="button" class="md" class:act={patternDirection === 'SHORT'} onclick={() => patternDirection = 'SHORT'}>SHORT</button>
         </div>
       </div>
       <div class="mf">
-        <span class="mf-label">조건 ({patternConditions.length}개)</span>
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label class="mf-label">Conditions ({patternConditions.length})</label>
         {#each patternConditions as c}
           <div class="mc">{c}</div>
         {/each}
         {#if patternConditions.length === 0}
-          <div class="mc" style="color:#475569">분석 후 조건이 자동 생성됩니다</div>
+          <div class="mc" style="color:var(--sc-text-3)">Conditions auto-generated after analysis</div>
         {/if}
       </div>
       <div class="mbot">
-        <button class="mbtn" onclick={() => showPatternModal = false}>취소</button>
-        <button class="mbtn sv" onclick={() => showPatternModal = false}>저장 → Scanner</button>
+        <button type="button" class="mbtn" onclick={() => showPatternModal = false}>Cancel</button>
+        <button type="button" class="mbtn sv" onclick={() => showPatternModal = false}>Save to Scanner</button>
       </div>
     </div>
   </div>
 {/if}
 
 <style>
-  .terminal-root { display: flex; height: 100%; background: #08080d; }
-  .chat-main { flex: 1; display: flex; flex-direction: column; min-width: 0; transition: all 0.3s; }
-  .chat-scroll { flex: 1; overflow-y: auto; }
-  .chat-inner { max-width: 680px; margin: 0 auto; padding: 24px 20px 120px; display: flex; flex-direction: column; gap: 16px; }
-  .msg-row { display: flex; gap: 10px; }
-  .msg-row.user { justify-content: flex-end; }
-  .msg-row.douni { align-items: flex-start; }
-  .avatar { width: 32px; height: 32px; background: #1a1a3e; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; margin-top: 2px; }
-  .bubble-group { display: flex; flex-direction: column; gap: 10px; max-width: 580px; min-width: 0; }
-  .bubble { padding: 10px 16px; border-radius: 18px; font-size: 14px; line-height: 1.6; white-space: pre-line; }
-  .bubble.user { background: #3b82f6; color: white; border-bottom-right-radius: 6px; max-width: 360px; }
-  .bubble.douni { background: #14142a; color: #d0d0f0; border-bottom-left-radius: 6px; }
-  .dots { display: flex; gap: 5px; padding: 4px 2px; }
-  .d { width: 7px; height: 7px; background: #5858a0; border-radius: 50%; animation: bn 1.4s infinite ease-in-out both; }
-  .d:nth-child(1) { animation-delay: -0.32s; }
-  .d:nth-child(2) { animation-delay: -0.16s; }
-  @keyframes bn { 0%,80%,100% { transform: scale(0); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+  /* ═══ ROOT LAYOUT ═══ */
+  .terminal-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--sc-bg-0, #050914);
+    color: var(--sc-text-0, #f7f2ea);
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+  }
 
-  .w-chart { background: #0c0c18; border: 1px solid #1e1e35; border-radius: 14px; overflow: hidden; cursor: pointer; transition: border-color 0.15s; width: 100%; text-align: left; padding: 0; font: inherit; color: inherit; }
-  .w-chart:hover { border-color: #3b82f6; }
-  .wc-head { padding: 8px 12px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid #1a1a2e; }
-  .wc-sym { font-weight: 800; font-size: 13px; color: #e0e0ff; }
-  .wc-tf { font-size: 10px; color: #5858a0; background: #1a1a2e; padding: 2px 6px; border-radius: 4px; }
-  .wc-price { color: #e2e8f0; font-weight: 600; font-size: 12px; }
-  .wc-chg { font-size: 11px; font-weight: 600; }
-  .wc-chg.up { color: #22d3ee; }
-  .wc-chg.dn { color: #f43f5e; }
-  .wc-expand { margin-left: auto; font-size: 11px; color: #3b82f6; }
-  .wc-mini { width: 100%; height: 80px; display: block; padding: 6px 4px; }
+  /* ═══ HEADER BAR ═══ */
+  .header-bar {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    background: var(--sc-bg-1, #0b1220);
+    flex-shrink: 0;
+  }
+  .hb-left { display: flex; align-items: center; gap: 8px; }
+  .hb-symbol {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: var(--sc-text-0);
+  }
+  .hb-tf {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    background: var(--sc-bg-2, #111b2c);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .hb-center { display: flex; align-items: center; gap: 8px; }
+  .hb-price {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--sc-text-0);
+  }
+  .hb-change {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .hb-change.up { color: var(--sc-good, #adca7c); }
+  .hb-change.dn { color: var(--sc-bad, #cf7f8f); }
+  .hb-right { display: flex; align-items: center; gap: 6px; }
+  .hb-alpha-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--sc-text-3);
+    text-transform: uppercase;
+  }
+  .hb-alpha {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 16px;
+    font-weight: 800;
+  }
 
-  .w-metrics { display: flex; gap: 8px; flex-wrap: wrap; }
-  .w-layers { background: #0c0c18; border: 1px solid #1e1e35; border-radius: 14px; padding: 12px; }
-  .wl-head { font-size: 12px; color: #7878a0; margin-bottom: 8px; font-weight: 600; }
-  .wl-val { font-size: 20px; font-weight: 900; }
-  .wl-lbl { font-size: 10px; font-weight: 700; margin-left: 4px; }
-  .wl-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid #0f0f1a; }
-  .wl-row:last-child { border-bottom: none; }
-  .wl-id { font-size: 10px; font-weight: 700; color: #5858a0; min-width: 26px; font-family: 'JetBrains Mono', monospace; }
-  .wl-name { font-size: 11px; color: #a0a0c0; min-width: 42px; }
-  .wl-v { flex: 1; font-size: 10px; color: #7878a0; font-family: 'JetBrains Mono', monospace; }
-  .wl-bar-bg { width: 44px; height: 4px; background: #12121e; border-radius: 2px; overflow: hidden; }
-  .wl-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
-  .wl-s { font-size: 10px; font-weight: 700; min-width: 28px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+  /* ═══ MAIN CONTENT ═══ */
+  .main-content {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
 
-  .w-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .wa { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid #2a2a4e; background: #12121e; color: #a0a0c0; transition: all 0.15s; }
-  .wa:hover { background: #1a1a3e; color: #e0e0ff; }
-  .wa.agree:hover { background: rgba(34,211,238,0.15); border-color: #22d3ee; color: #22d3ee; }
-  .wa.disagree:hover { background: rgba(244,63,94,0.15); border-color: #f43f5e; color: #f43f5e; }
-  .wa.save { background: linear-gradient(135deg,#3b82f6,#6366f1); border-color: transparent; color: white; }
+  /* ═══ DATA FEED ═══ */
+  .data-feed {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 0;
+  }
+  .feed-inner {
+    max-width: 680px;
+    padding: 16px 20px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
 
-  .w-scan { background: #0c0c18; border: 1px solid #1e1e35; border-radius: 14px; overflow: hidden; }
-  .ws-head { padding: 10px 14px; border-bottom: 1px solid #1a1a2e; display: flex; justify-content: space-between; align-items: center; }
-  .ws-title { font-size: 13px; font-weight: 800; color: #e0e0ff; }
-  .ws-meta { font-size: 10px; color: #5858a0; }
-  .ws-row { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid #0f0f1a; font-size: 12px; }
-  .ws-row:last-child { border-bottom: none; }
-  .ws-rank { color: #5858a0; font-weight: 700; min-width: 24px; font-family: 'JetBrains Mono', monospace; }
-  .ws-sym { color: #e0e0ff; font-weight: 800; min-width: 48px; }
-  .ws-name { color: #7878a0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ws-price { color: #a0a0c0; font-family: 'JetBrains Mono', monospace; min-width: 64px; text-align: right; }
-  .ws-chg { font-weight: 700; font-family: 'JetBrains Mono', monospace; min-width: 52px; text-align: right; }
-  .ws-chg.up { color: #22d3ee; }
-  .ws-chg.dn { color: #f43f5e; }
-  .ws-trend { font-size: 11px; }
+  /* ─── Feed Entry base ─── */
+  .fe {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    animation: sc-slide-up 0.2s ease;
+  }
+  .fe:last-child { border-bottom: none; }
 
-  .input-bar { padding: 12px 20px 16px; }
-  .input-box { max-width: 680px; margin: 0 auto; display: flex; gap: 8px; background: #12121e; border: 1px solid #2a2a4e; border-radius: 14px; padding: 4px 4px 4px 16px; align-items: center; }
-  .input-box input { flex: 1; background: transparent; border: none; color: #d0d0f0; font-size: 14px; outline: none; padding: 8px 0; }
-  .input-box input::placeholder { color: #3a3a5e; }
-  .send { width: 36px; height: 36px; background: #3b82f6; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
-  .send:disabled { opacity: 0.3; }
+  /* ─── Query ─── */
+  .fe-query {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .fe-query-arrow {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    color: var(--sc-text-3);
+    flex-shrink: 0;
+  }
+  .fe-query-text {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 13px;
+    color: var(--sc-text-2);
+  }
 
-  .side-panel { width: 380px; border-left: 1px solid #1a1a2e; background: #0a0a12; display: flex; flex-direction: column; flex-shrink: 0; animation: slideIn 0.3s ease; }
-  @keyframes slideIn { from { width: 0; opacity: 0; } to { width: 380px; opacity: 1; } }
-  .sp-head { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #1a1a2e; }
-  .sp-sym { font-weight: 800; font-size: 15px; color: #e0e0ff; }
-  .sp-tf { font-size: 11px; color: #5858a0; background: #1a1a2e; padding: 2px 6px; border-radius: 4px; }
-  .sp-alpha { margin-left: auto; font-size: 12px; font-weight: 800; }
-  .sp-close { background: none; border: none; color: #5858a0; font-size: 16px; cursor: pointer; padding: 4px 8px; }
-  .sp-close:hover { color: #e0e0ff; }
-  .sp-chart { height: 280px; padding: 4px; }
-  .sp-info { padding: 12px 16px; flex: 1; overflow-y: auto; }
-  .sp-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #12121e; font-size: 13px; color: #a0a0c0; }
+  /* ─── Text ─── */
+  .fe-text-body {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--sc-text-1);
+    white-space: pre-line;
+  }
 
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-  .modal-box { background: #12121e; border: 1px solid #2a2a4e; border-radius: 16px; padding: 28px; width: 420px; max-width: 90vw; }
-  .modal-box h3 { margin: 0 0 20px; color: #e0e0ff; font-size: 18px; }
-  .mf { margin-bottom: 16px; }
-  .mf label, .mf .mf-label { display: block; font-size: 12px; color: #7878a0; margin-bottom: 6px; font-weight: 600; }
-  .mf input { width: 100%; padding: 10px 14px; background: #0a0a14; border: 1px solid #2a2a4e; border-radius: 8px; color: #d0d0f0; font-size: 14px; outline: none; box-sizing: border-box; }
+  /* ─── Thinking ─── */
+  .fe-thinking {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+  }
+  .thinking-bar {
+    width: 120px;
+    height: 2px;
+    background: var(--sc-bg-2);
+    border-radius: 1px;
+    overflow: hidden;
+    position: relative;
+  }
+  .thinking-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 40%;
+    background: var(--sc-accent, #db9a9f);
+    border-radius: 1px;
+    animation: pulse-slide 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-slide {
+    0% { left: -40%; opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { left: 100%; opacity: 0.4; }
+  }
+  .thinking-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 11px;
+    color: var(--sc-text-3);
+    letter-spacing: 0.5px;
+  }
+
+  /* ─── Metrics Grid ─── */
+  .fe-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+
+  /* ─── Layers / Treemap ─── */
+  .fe-layers {
+    padding: 12px 0;
+  }
+  .layers-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .layers-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--sc-text-3);
+    text-transform: uppercase;
+  }
+  .layers-score {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 28px;
+    line-height: 1;
+  }
+  .layers-tag {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .treemap-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .treemap-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    min-width: 80px;
+  }
+  .tm-id {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--sc-text-3);
+  }
+  .tm-name {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 11px;
+    color: var(--sc-text-1);
+    font-weight: 600;
+  }
+  .tm-signal {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-2);
+  }
+  .tm-score {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  /* ─── Scan Table ─── */
+  .fe-scan {
+    background: var(--sc-bg-1, #0b1220);
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .scan-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--sc-line-soft);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .scan-title {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    color: var(--sc-text-0);
+  }
+  .scan-meta {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 10px;
+    color: var(--sc-text-3);
+  }
+  .scan-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--sc-line-soft);
+    font-size: 12px;
+  }
+  .scan-row:last-child { border-bottom: none; }
+  .sr-rank {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    min-width: 24px;
+    font-weight: 700;
+  }
+  .sr-sym {
+    font-weight: 800;
+    color: var(--sc-text-0);
+    min-width: 48px;
+    font-size: 12px;
+  }
+  .sr-name {
+    color: var(--sc-text-3);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+  .sr-price {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    color: var(--sc-text-1);
+    min-width: 64px;
+    text-align: right;
+    font-size: 12px;
+  }
+  .sr-change {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    min-width: 52px;
+    text-align: right;
+    font-size: 11px;
+  }
+  .sr-change.up { color: var(--sc-good, #adca7c); }
+  .sr-change.dn { color: var(--sc-bad, #cf7f8f); }
+  .sr-trending {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--sc-good, #adca7c);
+    flex-shrink: 0;
+  }
+
+  /* ─── Actions ─── */
+  .fe-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+  }
+  .action-btn {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    border: 1px solid var(--sc-line-soft);
+    color: var(--sc-text-2);
+  }
+  .action-btn:hover { color: var(--sc-text-0); }
+  .action-correct:hover {
+    color: var(--sc-good, #adca7c);
+    border-color: var(--sc-good, #adca7c);
+    background: rgba(173, 202, 124, 0.08);
+  }
+  .action-incorrect:hover {
+    color: var(--sc-bad, #cf7f8f);
+    border-color: var(--sc-bad, #cf7f8f);
+    background: rgba(207, 127, 143, 0.08);
+  }
+  .action-save {
+    border-style: dashed;
+  }
+  .action-save:hover {
+    border-style: solid;
+    color: var(--sc-text-0);
+  }
+
+  /* ─── Chart Reference (inline in feed) ─── */
+  .fe-chart-ref {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+  }
+  .cr-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 10px;
+    color: var(--sc-text-3);
+  }
+  .cr-sym {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sc-text-1);
+  }
+  .cr-tf {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    background: var(--sc-bg-2);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+
+  /* ═══ CHART PANEL ═══ */
+  .chart-panel {
+    width: 420px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    background: var(--sc-bg-1, #0b1220);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .cp-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--sc-line-soft);
+    flex-shrink: 0;
+  }
+  .cp-sym {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 20px;
+    color: var(--sc-text-0);
+  }
+  .cp-tf {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    background: var(--sc-bg-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .cp-price {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sc-text-0);
+    margin-left: auto;
+  }
+  .cp-change {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .cp-change.up { color: var(--sc-good, #adca7c); }
+  .cp-change.dn { color: var(--sc-bad, #cf7f8f); }
+  .cp-alpha {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .cp-chart {
+    flex: 1;
+    min-height: 200px;
+    padding: 4px;
+  }
+  .cp-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--sc-line-soft);
+    border-top: 1px solid var(--sc-line-soft);
+    flex-shrink: 0;
+  }
+  .qs-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    background: var(--sc-bg-1, #0b1220);
+  }
+  .qs-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 9px;
+    color: var(--sc-text-3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .qs-value {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sc-text-1);
+  }
+  .cp-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px;
+  }
+  .cp-empty-label {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 22px;
+    color: var(--sc-text-3);
+    letter-spacing: 1px;
+  }
+  .cp-empty-hint {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 11px;
+    color: var(--sc-text-3);
+  }
+
+  /* ═══ INPUT BAR ═══ */
+  .input-bar {
+    padding: 8px 20px 12px;
+    border-top: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    background: var(--sc-bg-0, #050914);
+    flex-shrink: 0;
+  }
+  .input-box {
+    max-width: 680px;
+    margin: 0 auto;
+    display: flex;
+    gap: 8px;
+    background: var(--sc-bg-1, #0b1220);
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 6px;
+    padding: 4px 4px 4px 14px;
+    align-items: center;
+  }
+  .input-box input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--sc-text-0, #f7f2ea);
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 13px;
+    outline: none;
+    padding: 8px 0;
+  }
+  .input-box input::placeholder { color: var(--sc-text-3); }
+  .send-btn {
+    width: 36px;
+    height: 36px;
+    background: var(--sc-accent, #db9a9f);
+    color: var(--sc-bg-0, #050914);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s;
+  }
+  .send-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ═══ MODAL ═══ */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: var(--sc-overlay, rgba(4, 8, 14, 0.88));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-box {
+    background: var(--sc-bg-1, #0b1220);
+    border: 1px solid var(--sc-line);
+    border-radius: 8px;
+    padding: 24px;
+    width: 420px;
+    max-width: 90vw;
+  }
+  .modal-box h3 {
+    margin: 0 0 20px;
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 22px;
+    color: var(--sc-text-0);
+    letter-spacing: 0.5px;
+  }
+  .mf { margin-bottom: 14px; }
+  .mf label, .mf .mf-label {
+    display: block;
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    margin-bottom: 6px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .mf input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--sc-bg-0);
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 4px;
+    color: var(--sc-text-0);
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+  }
   .mdir { display: flex; gap: 8px; }
-  .md { flex: 1; padding: 10px; border: 1px solid #2a2a4e; background: #0a0a14; color: #7878a0; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
-  .md.act { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.1); }
-  .mc { padding: 8px 12px; background: #0a0a14; border: 1px solid #1a1a2e; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a0a0c0; margin-bottom: 4px; }
+  .md {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--sc-line-soft);
+    background: var(--sc-bg-0);
+    color: var(--sc-text-2);
+    border-radius: 4px;
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .md.act {
+    border-color: var(--sc-accent);
+    color: var(--sc-accent);
+    background: rgba(219, 154, 159, 0.08);
+  }
+  .mc {
+    padding: 8px 12px;
+    background: var(--sc-bg-0);
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 4px;
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    color: var(--sc-text-2);
+    margin-bottom: 4px;
+  }
   .mbot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-  .mbtn { padding: 10px 20px; background: transparent; border: 1px solid #2a2a4e; color: #7878a0; border-radius: 8px; cursor: pointer; font-size: 13px; }
-  .mbtn.sv { background: linear-gradient(135deg,#3b82f6,#6366f1); border: none; color: white; font-weight: 700; }
-  .chat-scroll::-webkit-scrollbar { width: 4px; }
-  .chat-scroll::-webkit-scrollbar-thumb { background: #2a2a4e; border-radius: 2px; }
+  .mbtn {
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid var(--sc-line-soft);
+    color: var(--sc-text-2);
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 12px;
+  }
+  .mbtn.sv {
+    background: var(--sc-accent, #db9a9f);
+    border: none;
+    color: var(--sc-bg-0);
+    font-weight: 700;
+  }
+
+  /* ═══ SCROLLBAR ═══ */
+  .data-feed::-webkit-scrollbar { width: 4px; }
+  .data-feed::-webkit-scrollbar-thumb { background: var(--sc-line-soft); border-radius: 2px; }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 1024px) {
+    .main-content { flex-direction: column; }
+    .chart-panel {
+      width: 100%;
+      border-left: none;
+      border-top: 1px solid var(--sc-line-soft);
+      max-height: 380px;
+    }
+    .cp-chart { min-height: 160px; }
+  }
 </style>

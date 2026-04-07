@@ -15,10 +15,10 @@
   } = $props();
 
   const trendMap: Record<string, { color: string; bg: string }> = {
-    bull:    { color: 'var(--cg-cyan, #00e5ff)',   bg: 'rgba(0,229,255,0.06)' },
-    bear:   { color: 'var(--cg-red, #ff3860)',     bg: 'rgba(255,56,96,0.06)' },
-    neutral: { color: 'var(--cg-text-dim, #505078)', bg: 'rgba(80,80,120,0.06)' },
-    danger: { color: 'var(--cg-orange, #ff9f43)',  bg: 'rgba(255,159,67,0.06)' },
+    bull:    { color: 'var(--sc-good, #adca7c)',   bg: 'rgba(173,202,124,0.06)' },
+    bear:    { color: 'var(--sc-bad, #cf7f8f)',     bg: 'rgba(207,127,143,0.06)' },
+    neutral: { color: 'var(--sc-text-2, #505078)',  bg: 'rgba(80,80,120,0.04)' },
+    danger:  { color: 'var(--sc-warn, #f2d193)',    bg: 'rgba(242,209,147,0.06)' },
   };
 
   function sparkPath(data: number[]): string {
@@ -32,8 +32,6 @@
       return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
   }
-
-  // trend style derived inline in template via {@const}
 </script>
 
 {#if true}
@@ -57,17 +55,16 @@
 <style>
   .dc {
     background: var(--dc-bg);
-    border: 1px solid var(--cg-border, #16162a);
+    border: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
     border-radius: 4px;
     padding: 8px 10px;
     min-width: 100px;
-    flex: 1;
-    font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     transition: border-color 0.15s;
   }
 
   .dc:hover {
-    border-color: var(--cg-border-strong, #1e1e38);
+    border-color: var(--sc-line, rgba(219,154,159,0.28));
   }
 
   .dc-head {
@@ -78,10 +75,11 @@
   }
 
   .dc-title {
-    font-size: 8px;
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 9px;
     font-weight: 700;
     letter-spacing: 1.5px;
-    color: var(--cg-text-muted, #383860);
+    color: var(--sc-text-3, rgba(247,242,234,0.52));
     text-transform: uppercase;
   }
 
@@ -101,8 +99,9 @@
   }
 
   .dc-sub {
-    font-size: 8px;
-    color: var(--cg-text-dim, #505078);
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 9px;
+    color: var(--sc-text-3, rgba(247,242,234,0.52));
     margin-top: 3px;
     letter-spacing: 0.3px;
   }
