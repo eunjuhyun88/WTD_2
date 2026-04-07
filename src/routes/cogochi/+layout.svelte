@@ -1,125 +1,192 @@
 <script lang="ts">
-  // Cogochi 전용 레이아웃 — 기존 Header/BottomBar 대신 자체 NavBar 사용.
   let { children } = $props();
+
+  const now = new Date();
+  let clock = $state(formatTime(now));
+
+  function formatTime(d: Date): string {
+    return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  $effect(() => {
+    const iv = setInterval(() => { clock = formatTime(new Date()); }, 1000);
+    return () => clearInterval(iv);
+  });
 </script>
 
-<div class="cogochi-layout">
-  <!-- Cogochi NavBar -->
-  <nav class="cogochi-nav">
-    <div class="nav-left">
-      <a href="/cogochi/terminal" class="nav-brand">
-        <span class="brand-icon">🐦</span>
-        <span class="brand-text">Cogochi</span>
+<div class="cg-shell">
+  <!-- ━━━ Top Bar ━━━ -->
+  <header class="cg-topbar">
+    <div class="tb-left">
+      <a href="/cogochi" class="tb-brand">
+        <span class="tb-logo">◈</span>
+        <span class="tb-name">COGOCHI</span>
       </a>
+      <span class="tb-sep">│</span>
+      <nav class="tb-nav">
+        <a href="/cogochi" class="tb-link active">TERMINAL</a>
+        <a href="/cogochi" class="tb-link">SCANNER</a>
+        <a href="/cogochi" class="tb-link">LAB</a>
+      </nav>
     </div>
-    <div class="nav-center">
-      <a href="/cogochi/terminal" class="nav-link active">Terminal</a>
-      <a href="/cogochi/terminal" class="nav-link">Scanner</a>
-      <a href="/cogochi/terminal" class="nav-link">Lab</a>
+    <div class="tb-right">
+      <span class="tb-clock">{clock}</span>
+      <span class="tb-sep">│</span>
+      <span class="tb-status">
+        <span class="tb-dot"></span>
+        LIVE
+      </span>
     </div>
-    <div class="nav-right">
-      <button class="nav-btn settings">⚙️</button>
-      <button class="nav-btn connect">Connect</button>
-    </div>
-  </nav>
+  </header>
 
-  <!-- Page Content -->
-  <div class="cogochi-content">
+  <!-- ━━━ Content ━━━ -->
+  <div class="cg-content">
     {@render children()}
   </div>
 </div>
 
 <style>
-  .cogochi-layout {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    background: #06060a;
-    color: #d0d0f0;
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :global(body) {
+    margin: 0;
+    padding: 0;
     overflow: hidden;
   }
 
-  /* NavBar */
-  .cogochi-nav {
+  .cg-shell {
+    --cg-bg: #06060b;
+    --cg-surface: #0a0a11;
+    --cg-surface-2: #0e0e17;
+    --cg-border: #16162a;
+    --cg-border-strong: #1e1e38;
+    --cg-text: #c8c8e0;
+    --cg-text-dim: #505078;
+    --cg-text-muted: #383860;
+    --cg-cyan: #00e5ff;
+    --cg-red: #ff3860;
+    --cg-green: #00d68f;
+    --cg-orange: #ff9f43;
+    --cg-purple: #a855f7;
+    --cg-blue: #3b82f6;
+
+    --font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--cg-bg);
+    color: var(--cg-text);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ━━━ Top Bar ━━━ */
+  .cg-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 48px;
-    padding: 0 16px;
-    background: #0a0a12;
-    border-bottom: 1px solid #1a1a2e;
+    height: 36px;
+    padding: 0 12px;
+    background: var(--cg-surface);
+    border-bottom: 1px solid var(--cg-border);
     flex-shrink: 0;
-  }
-  .nav-left {
-    display: flex;
-    align-items: center;
-  }
-  .nav-brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    color: #e0e0ff;
-    font-weight: 800;
-    font-size: 15px;
-    letter-spacing: 0.5px;
-  }
-  .brand-icon {
-    font-size: 20px;
-  }
-  .nav-center {
-    display: flex;
-    gap: 4px;
-  }
-  .nav-link {
-    padding: 6px 16px;
-    color: #5858a0;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: 6px;
-    transition: all 0.15s;
-  }
-  .nav-link:hover {
-    color: #a0a0d0;
-    background: #12121e;
-  }
-  .nav-link.active {
-    color: #e0e0ff;
-    background: #1a1a3e;
-  }
-  .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .nav-btn {
-    padding: 6px 12px;
-    background: transparent;
-    border: 1px solid #2a2a4e;
-    color: #7878a0;
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .nav-btn:hover {
-    background: #1a1a2e;
-    color: #d0d0f0;
-  }
-  .nav-btn.connect {
-    background: #3b82f6;
-    border-color: #3b82f6;
-    color: white;
-    font-weight: 700;
-  }
-  .nav-btn.settings {
-    border: none;
-    font-size: 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    user-select: none;
   }
 
-  /* Content */
-  .cogochi-content {
+  .tb-left, .tb-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tb-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    color: var(--cg-cyan);
+  }
+
+  .tb-logo {
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .tb-name {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+
+  .tb-sep {
+    color: var(--cg-text-muted);
+    font-size: 10px;
+  }
+
+  .tb-nav {
+    display: flex;
+    gap: 2px;
+  }
+
+  .tb-link {
+    padding: 4px 10px;
+    color: var(--cg-text-dim);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 3px;
+    transition: all 0.12s;
+  }
+
+  .tb-link:hover {
+    color: var(--cg-text);
+    background: var(--cg-surface-2);
+  }
+
+  .tb-link.active {
+    color: var(--cg-cyan);
+    background: rgba(0, 229, 255, 0.06);
+  }
+
+  .tb-clock {
+    color: var(--cg-text-dim);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tb-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--cg-green);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .tb-dot {
+    width: 5px;
+    height: 5px;
+    background: var(--cg-green);
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ━━━ Content ━━━ */
+  .cg-content {
     flex: 1;
     overflow: hidden;
   }

@@ -1,29 +1,57 @@
 <script lang="ts">
-  // ═══════════════════════════════════════════════════════════
-  // Cogochi Chart — LightweightCharts candlestick + volume
-  // ═══════════════════════════════════════════════════════════
   import { onMount, onDestroy } from 'svelte';
 
   type ChartKline = { t: number; o: number; h: number; l: number; c: number; v: number };
 
-  let { data = [], currentPrice = 0 }: { data: ChartKline[]; currentPrice?: number } = $props();
+  let {
+    data = [],
+    currentPrice = 0,
+    visible = true,
+  }: {
+    data: ChartKline[];
+    currentPrice?: number;
+    visible?: boolean;
+  } = $props();
 
   let container: HTMLDivElement;
   let chart: any;
   let candleSeries: any;
   let volumeSeries: any;
+  let ro: ResizeObserver | null = null;
 
+  // Update data reactively
   $effect(() => {
     if (candleSeries && data.length > 0) {
       const candles = data.map(k => ({ time: k.t, open: k.o, high: k.h, low: k.l, close: k.c }));
       const volumes = data.map(k => ({
         time: k.t,
         value: k.v,
-        color: k.c >= k.o ? 'rgba(34,211,238,0.25)' : 'rgba(244,63,94,0.25)',
+        color: k.c >= k.o ? 'rgba(0,229,255,0.2)' : 'rgba(255,56,96,0.2)',
       }));
       candleSeries.setData(candles);
       volumeSeries.setData(volumes);
       chart.timeScale().fitContent();
+    }
+  });
+
+  // Handle visibility changes — resize chart when becoming visible
+  $effect(() => {
+    if (visible && chart && container) {
+      // Multiple attempts to catch CSS layout settling
+      const tryResize = () => {
+        if (chart && container && container.clientWidth > 0 && container.clientHeight > 0) {
+          chart.applyOptions({
+            width: container.clientWidth,
+            height: container.clientHeight,
+          });
+          chart.timeScale().fitContent();
+        }
+      };
+      // Try immediately, then at 50ms, 150ms, 300ms
+      tryResize();
+      setTimeout(tryResize, 50);
+      setTimeout(tryResize, 150);
+      setTimeout(tryResize, 300);
     }
   });
 
@@ -34,38 +62,38 @@
       width: container.clientWidth,
       height: container.clientHeight,
       layout: {
-        background: { color: '#08080e' },
-        textColor: '#4a5568',
-        fontSize: 10,
-        fontFamily: 'JetBrains Mono, monospace',
+        background: { color: 'transparent' },
+        textColor: '#383860',
+        fontSize: 9,
+        fontFamily: 'IBM Plex Mono, monospace',
       },
       grid: {
-        vertLines: { color: '#111820' },
-        horzLines: { color: '#111820' },
+        vertLines: { color: '#0e0e1a' },
+        horzLines: { color: '#0e0e1a' },
       },
       crosshair: {
         mode: lwc.CrosshairMode.Normal,
-        vertLine: { color: '#22d3ee40', width: 1, style: lwc.LineStyle.Dashed },
-        horzLine: { color: '#22d3ee40', width: 1, style: lwc.LineStyle.Dashed },
+        vertLine: { color: 'rgba(0,229,255,0.15)', width: 1, style: lwc.LineStyle.Dashed },
+        horzLine: { color: 'rgba(0,229,255,0.15)', width: 1, style: lwc.LineStyle.Dashed },
       },
       rightPriceScale: {
-        borderColor: '#181828',
-        scaleMargins: { top: 0.05, bottom: 0.2 },
+        borderColor: '#16162a',
+        scaleMargins: { top: 0.05, bottom: 0.18 },
       },
       timeScale: {
-        borderColor: '#181828',
+        borderColor: '#16162a',
         timeVisible: true,
         secondsVisible: false,
       },
     });
 
     candleSeries = chart.addCandlestickSeries({
-      upColor: '#22d3ee',
-      downColor: '#f43f5e',
-      borderUpColor: '#22d3ee',
-      borderDownColor: '#f43f5e',
-      wickUpColor: '#22d3ee80',
-      wickDownColor: '#f43f5e80',
+      upColor: '#00e5ff',
+      downColor: '#ff3860',
+      borderUpColor: '#00e5ff',
+      borderDownColor: '#ff3860',
+      wickUpColor: 'rgba(0,229,255,0.5)',
+      wickDownColor: 'rgba(255,56,96,0.5)',
     });
 
     volumeSeries = chart.addHistogramSeries({
@@ -76,20 +104,20 @@
       scaleMargins: { top: 0.85, bottom: 0 },
     });
 
-    // Resize observer
-    const ro = new ResizeObserver(() => {
-      if (chart && container) {
-        chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+    // Resize observer — always watches, even when hidden
+    ro = new ResizeObserver(() => {
+      if (chart && container && container.clientWidth > 0) {
+        chart.applyOptions({
+          width: container.clientWidth,
+          height: container.clientHeight,
+        });
       }
     });
     ro.observe(container);
-    _roCleanup = () => ro.disconnect();
   });
 
-  let _roCleanup: (() => void) | null = null;
-
   onDestroy(() => {
-    _roCleanup?.();
+    ro?.disconnect();
     if (chart) { chart.remove(); chart = null; }
   });
 </script>
@@ -100,6 +128,6 @@
   .cg-chart {
     width: 100%;
     height: 100%;
-    min-height: 200px;
+    min-height: 160px;
   }
 </style>

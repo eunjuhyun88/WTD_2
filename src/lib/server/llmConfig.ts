@@ -65,13 +65,44 @@ export function deepseekUrl(path = '/chat/completions'): string {
   return `${DEEPSEEK_ENDPOINT}${path}`;
 }
 
-const PLACEHOLDER_HINTS = ['your_', 'your-', 'placeholder', 'changeme', 'example', 'dummy', '<'];
+// ─── Qwen (Alibaba DashScope) ─────────────────────────────────
 
-function isUsableApiKey(value: string, minLength = 16): boolean {
-  const trimmed = value.trim();
-  if (trimmed.length < minLength) return false;
-  const lower = trimmed.toLowerCase();
-  return !PLACEHOLDER_HINTS.some((hint) => lower.includes(hint));
+export const QWEN_API_KEY = env.QWEN_API_KEY ?? '';
+export const QWEN_MODEL = env.QWEN_MODEL ?? 'qwen-plus-latest';
+export const QWEN_ENDPOINT = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
+
+export function qwenUrl(path = '/chat/completions'): string {
+  return `${QWEN_ENDPOINT}${path}`;
+}
+
+// ─── Grok (xAI) ───────────────────────────────────────────────
+
+export const GROK_API_KEY = env.GROK_API_KEY ?? '';
+export const GROK_MODEL = env.GROK_MODEL ?? 'grok-4-1-fast-reasoning';
+export const GROK_ENDPOINT = 'https://api.x.ai/v1';
+
+export function grokUrl(path = '/chat/completions'): string {
+  return `${GROK_ENDPOINT}${path}`;
+}
+
+// ─── Kimi (Moonshot) ──────────────────────────────────────────
+
+export const KIMI_API_KEY = env.KIMI_API_KEY ?? '';
+export const KIMI_MODEL = env.KIMI_MODEL ?? 'kimi-k2.5';
+export const KIMI_ENDPOINT = 'https://api.moonshot.ai/v1';
+
+export function kimiUrl(path = '/chat/completions'): string {
+  return `${KIMI_ENDPOINT}${path}`;
+}
+
+// ─── HuggingFace Inference API ─────────────────────────────────
+
+export const HF_TOKEN = env.HF_TOKEN ?? '';
+export const HF_MODEL = env.HF_MODEL ?? 'Qwen/Qwen3.5-397B-A17B';
+export const HF_ENDPOINT = 'https://router.huggingface.co/v1';
+
+export function hfUrl(path = '/chat/completions'): string {
+  return `${HF_ENDPOINT}${path}`;
 }
 
 // ─── Ollama (Local LLM — no rate limits) ─────────────────────
@@ -83,32 +114,67 @@ export function ollamaUrl(path = '/api/generate'): string {
   return `${OLLAMA_BASE_URL}${path}`;
 }
 
-// ─── Availability Check ───────────────────────────────────────
-
-export function isOllamaAvailable(): boolean {
-  // Always true — local, no API key needed. Falls back on connection error.
-  return true;
+/** Ollama OpenAI-compatible chat endpoint (for streaming) */
+export function ollamaChatUrl(path = '/v1/chat/completions'): string {
+  return `${OLLAMA_BASE_URL}${path}`;
 }
 
-export function isGeminiAvailable(): boolean {
-  return isUsableApiKey(GEMINI_API_KEY, 20);
+// ─── Availability Check ───────────────────────────────────────
+
+const PLACEHOLDER_HINTS = ['your_', 'your-', 'placeholder', 'changeme', 'example', 'dummy', '<'];
+
+function isUsableApiKey(value: string, minLength = 16): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length < minLength) return false;
+  const lower = trimmed.toLowerCase();
+  return !PLACEHOLDER_HINTS.some((hint) => lower.includes(hint));
+}
+
+export function isOllamaAvailable(): boolean {
+  return true; // local, no API key needed
 }
 
 export function isGroqAvailable(): boolean {
   return isUsableApiKey(GROQ_API_KEY, 20);
 }
 
+export function isGeminiAvailable(): boolean {
+  return isUsableApiKey(GEMINI_API_KEY, 20);
+}
+
 export function isDeepSeekAvailable(): boolean {
   return isUsableApiKey(DEEPSEEK_API_KEY, 20);
 }
 
-export type LLMProvider = 'ollama' | 'groq' | 'gemini' | 'deepseek';
+export function isQwenAvailable(): boolean {
+  return isUsableApiKey(QWEN_API_KEY, 20);
+}
 
-/** 우선순위: Ollama(로컬, 무제한) → Groq(빠름) → DeepSeek(추론) → Gemini */
+export function isGrokAvailable(): boolean {
+  return isUsableApiKey(GROK_API_KEY, 20);
+}
+
+export function isKimiAvailable(): boolean {
+  return isUsableApiKey(KIMI_API_KEY, 20);
+}
+
+export function isHfAvailable(): boolean {
+  return isUsableApiKey(HF_TOKEN, 10);
+}
+
+// ─── Provider Type ────────────────────────────────────────────
+
+export type LLMProvider = 'ollama' | 'groq' | 'grok' | 'qwen' | 'kimi' | 'hf' | 'deepseek' | 'gemini';
+
+/** 우선순위: Groq(70B,빠름) → Kimi → HF → DeepSeek → Gemini → Ollama(로컬,작음) */
 export function getAvailableProvider(): LLMProvider | null {
-  if (isOllamaAvailable()) return 'ollama';
   if (isGroqAvailable()) return 'groq';
+  if (isGrokAvailable()) return 'grok';
+  if (isKimiAvailable()) return 'kimi';
+  if (isQwenAvailable()) return 'qwen';
+  if (isHfAvailable()) return 'hf';
   if (isDeepSeekAvailable()) return 'deepseek';
   if (isGeminiAvailable()) return 'gemini';
+  if (isOllamaAvailable()) return 'ollama';
   return null;
 }

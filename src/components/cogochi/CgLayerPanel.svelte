@@ -1,8 +1,4 @@
 <script lang="ts">
-  // ═══════════════════════════════════════════════════════════
-  // Cogochi Layer Panel — 15-layer signal visualization
-  // ═══════════════════════════════════════════════════════════
-
   let { snapshot }: { snapshot: any } = $props();
 
   type LayerRow = { id: string; name: string; val: string; score: number; max: number };
@@ -10,119 +6,288 @@
   function toLayers(s: any): LayerRow[] {
     if (!s) return [];
     return [
-      { id: 'L1',  name: 'Wyckoff',  val: s.l1.phase,            score: s.l1.score,  max: 30 },
-      { id: 'L2',  name: 'Supply',   val: fmtFr(s.l2.fr),        score: s.l2.score,  max: 20 },
-      { id: 'L3',  name: 'V-Surge',  val: s.l3.v_surge ? '⚡' : '—', score: s.l3.score, max: 15 },
-      { id: 'L4',  name: 'OrdBook',  val: `${s.l4.bid_ask_ratio}`, score: s.l4.score, max: 10 },
-      { id: 'L5',  name: 'Basis',    val: `${s.l5.basis_pct}%`,   score: s.l5.score,  max: 10 },
-      { id: 'L6',  name: 'OnChain',  val: `${s.l6.exchange_netflow}`, score: s.l6.score, max: 8 },
-      { id: 'L7',  name: 'F&G',      val: `${s.l7.fear_greed}`,   score: s.l7.score,  max: 10 },
-      { id: 'L8',  name: 'Kimchi',   val: `${s.l8.kimchi}%`,      score: s.l8.score,  max: 5 },
-      { id: 'L9',  name: 'Liq',      val: fmtUsd(s.l9.liq_1h),   score: s.l9.score,  max: 10 },
-      { id: 'L10', name: 'MTF',      val: s.l10.mtf_confluence,   score: s.l10.score, max: 20 },
-      { id: 'L11', name: 'CVD',      val: s.l11.cvd_state,        score: s.l11.score, max: 25 },
-      { id: 'L12', name: 'Sector',   val: s.l12.sector_flow,      score: s.l12.score, max: 5 },
-      { id: 'L13', name: 'Break',    val: s.l13.breakout ? '⬆' : '—', score: s.l13.score, max: 15 },
-      { id: 'L14', name: 'BB',       val: s.l14.bb_squeeze ? 'SQZ' : `${s.l14.bb_width}`, score: s.l14.score, max: 5 },
-      { id: 'L15', name: 'ATR',      val: `${s.l15.atr_pct}%`,    score: 0,           max: 0 },
+      { id: 'L01', name: 'Wyckoff',  val: s.l1.phase,                          score: s.l1.score,  max: 30 },
+      { id: 'L02', name: 'Supply',   val: fmtFr(s.l2.fr),                      score: s.l2.score,  max: 20 },
+      { id: 'L03', name: 'V-Surge',  val: s.l3.v_surge ? '⚡' : '—',           score: s.l3.score,  max: 15 },
+      { id: 'L04', name: 'OrdBook',  val: `${s.l4.bid_ask_ratio}`,             score: s.l4.score,  max: 10 },
+      { id: 'L05', name: 'Basis',    val: `${s.l5.basis_pct}%`,                score: s.l5.score,  max: 10 },
+      { id: 'L06', name: 'OnChain',  val: `${s.l6.exchange_netflow}`,          score: s.l6.score,  max: 8 },
+      { id: 'L07', name: 'F&G',      val: `${s.l7.fear_greed}`,                score: s.l7.score,  max: 10 },
+      { id: 'L08', name: 'Kimchi',   val: `${s.l8.kimchi}%`,                   score: s.l8.score,  max: 5 },
+      { id: 'L09', name: 'Liq',      val: fmtUsd(s.l9.liq_1h),                score: s.l9.score,  max: 10 },
+      { id: 'L10', name: 'MTF',      val: s.l10.mtf_confluence,                score: s.l10.score, max: 20 },
+      { id: 'L11', name: 'CVD',      val: s.l11.cvd_state,                     score: s.l11.score, max: 25 },
+      { id: 'L12', name: 'Sector',   val: s.l12.sector_flow,                   score: s.l12.score, max: 5 },
+      { id: 'L13', name: 'Break',    val: s.l13.breakout ? '▲' : '—',          score: s.l13.score, max: 15 },
+      { id: 'L14', name: 'BB',       val: s.l14.bb_squeeze ? 'SQZ' : `w${s.l14.bb_width}`, score: s.l14.score, max: 5 },
+      { id: 'L15', name: 'ATR',      val: `${s.l15.atr_pct}%`,                score: 0,           max: 0 },
     ];
   }
 
-  function fmtFr(fr: number): string {
-    return fr ? `FR ${(fr * 100).toFixed(3)}%` : 'N/A';
-  }
-  function fmtUsd(v: number): string {
-    if (!v) return '—';
-    return v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${(v/1e3).toFixed(0)}K`;
-  }
-  function sc(v: number): string {
-    if (v > 5) return 'bull';
-    if (v > 0) return 'bull-d';
-    if (v === 0) return 'flat';
-    if (v > -5) return 'bear-d';
-    return 'bear';
-  }
-  function barPct(v: number, max: number): number {
-    if (max === 0) return 0;
-    return Math.min(Math.abs(v) / max * 100, 100);
+  function fmtFr(fr: number): string { return fr ? `${(fr * 100).toFixed(3)}%` : '—'; }
+  function fmtUsd(v: number): string { return !v ? '—' : v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${(v/1e3).toFixed(0)}K`; }
+  function barPct(v: number, max: number): number { return max === 0 ? 0 : Math.min(Math.abs(v) / max * 100, 100); }
+
+  function alphaClass(s: number): string {
+    if (s >= 60) return 'strong-bull';
+    if (s >= 20) return 'bull';
+    if (s > -20) return 'neutral';
+    if (s > -60) return 'bear';
+    return 'strong-bear';
   }
 </script>
 
 {#if snapshot}
   {@const layers = toLayers(snapshot)}
   <div class="lp">
-    <!-- Alpha Score header -->
-    <div class="alpha-row">
-      <span class="alpha-label">ALPHA</span>
-      <span class="alpha-score {sc(snapshot.alphaScore)}">{snapshot.alphaScore}</span>
-      <span class="alpha-tag {sc(snapshot.alphaScore)}">{snapshot.alphaLabel}</span>
-      <span class="alpha-regime">{snapshot.regime}</span>
+    <!-- ━━━ Alpha Header ━━━ -->
+    <div class="alpha">
+      <div class="alpha-top">
+        <span class="alpha-label">ALPHA SCORE</span>
+        <span class="alpha-regime">{snapshot.regime}</span>
+      </div>
+      <div class="alpha-bottom">
+        <span class="alpha-val {alphaClass(snapshot.alphaScore)}">{snapshot.alphaScore}</span>
+        <span class="alpha-tag {alphaClass(snapshot.alphaScore)}">{snapshot.alphaLabel}</span>
+      </div>
     </div>
 
-    <!-- Layer rows -->
-    {#each layers as l}
-      <div class="lr" class:highlight={Math.abs(l.score) >= 15}>
-        <span class="lr-id">{l.id}</span>
-        <span class="lr-name">{l.name}</span>
-        <span class="lr-val {sc(l.score)}">{l.val}</span>
-        <div class="lr-bar-wrap">
-          {#if l.score < 0}
+    <!-- ━━━ Layer Grid ━━━ -->
+    <div class="layer-grid">
+      {#each layers as l}
+        <div class="lr" class:hot={Math.abs(l.score) >= 15}>
+          <span class="lr-id">{l.id}</span>
+          <span class="lr-name">{l.name}</span>
+
+          <!-- Centered divergence bar -->
+          <div class="lr-bar-wrap">
             <div class="lr-bar-track">
-              <div class="lr-bar bear" style="width:{barPct(l.score,l.max)}%;margin-left:{100-barPct(l.score,l.max)}%"></div>
+              <div class="lr-center"></div>
+              {#if l.score !== 0}
+                <div
+                  class="lr-bar"
+                  class:bear={l.score < 0}
+                  class:bull={l.score > 0}
+                  style="width:{barPct(l.score, l.max) / 2}%;{l.score < 0 ? `right:50%` : `left:50%`}"
+                ></div>
+              {/if}
             </div>
-          {:else if l.score > 0}
-            <div class="lr-bar-track">
-              <div class="lr-bar bull" style="width:{barPct(l.score,l.max)}%"></div>
-            </div>
-          {:else}
-            <div class="lr-bar-track"><div class="lr-bar flat" style="width:3%"></div></div>
-          {/if}
+          </div>
+
+          <span class="lr-val" class:c-bull={l.score > 0} class:c-bear={l.score < 0}>{l.val}</span>
+          <span class="lr-score" class:c-bull={l.score > 0} class:c-bear={l.score < 0}>{l.score !== 0 ? (l.score > 0 ? '+' : '') + l.score : '·'}</span>
         </div>
-        <span class="lr-score {sc(l.score)}">{l.score !== 0 ? (l.score > 0 ? '+' : '') + l.score : '·'}</span>
-      </div>
-    {/each}
+      {/each}
+    </div>
   </div>
 {:else}
-  <div class="loading">분석 대기 중...</div>
+  <div class="empty">
+    <div class="empty-icon">◈</div>
+    <div class="empty-text">AWAITING SIGNAL</div>
+    <div class="empty-hint">Enter symbol + timeframe</div>
+  </div>
 {/if}
 
 <style>
-  .lp { display: flex; flex-direction: column; }
-  .alpha-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px; border-bottom: 1px solid #181828;
+  .lp {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    font-family: var(--font-mono, 'IBM Plex Mono', monospace);
   }
-  .alpha-label { color: #4a5568; font-size: 10px; letter-spacing: 1px; }
-  .alpha-score { font-size: 20px; font-weight: 800; }
-  .alpha-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
-  .alpha-tag.bull, .alpha-tag.bull-d { background: #22d3ee15; }
-  .alpha-tag.bear, .alpha-tag.bear-d { background: #f43f5e15; }
-  .alpha-tag.flat { background: #33415515; }
-  .alpha-regime { color: #64748b; font-size: 10px; margin-left: auto; }
+
+  /* ━━━ Alpha ━━━ */
+  .alpha {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--cg-border, #16162a);
+  }
+
+  .alpha-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  .alpha-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--cg-text-muted, #383860);
+  }
+
+  .alpha-regime {
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--cg-text-dim, #505078);
+    letter-spacing: 0.5px;
+  }
+
+  .alpha-bottom {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .alpha-val {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .alpha-tag {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  .strong-bull, .bull { color: var(--cg-cyan, #00e5ff); }
+  .strong-bear, .bear { color: var(--cg-red, #ff3860); }
+  .neutral { color: var(--cg-text-dim, #505078); }
+
+  .alpha-tag.strong-bull, .alpha-tag.bull { background: rgba(0, 229, 255, 0.08); }
+  .alpha-tag.strong-bear, .alpha-tag.bear { background: rgba(255, 56, 96, 0.08); }
+  .alpha-tag.neutral { background: rgba(80, 80, 120, 0.15); }
+
+  /* ━━━ Layer Grid ━━━ */
+  .layer-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
 
   .lr {
-    display: grid; grid-template-columns: 28px 52px 1fr 90px 32px;
-    gap: 4px; padding: 2px 10px; align-items: center;
-    font-size: 11px; transition: background 0.1s;
+    display: grid;
+    grid-template-columns: 28px 50px 1fr auto 30px;
+    gap: 4px;
+    padding: 3px 12px;
+    align-items: center;
+    font-size: 10px;
+    transition: background 0.1s;
+    border-left: 2px solid transparent;
   }
-  .lr:hover { background: #0c0c16; }
-  .lr.highlight { background: #0a0a14; }
-  .lr-id { color: #334155; font-size: 10px; }
-  .lr-name { color: #64748b; }
-  .lr-val { font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lr-bar-wrap { height: 100%; display: flex; align-items: center; }
-  .lr-bar-track { width: 100%; height: 4px; background: #111820; border-radius: 2px; overflow: hidden; }
-  .lr-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
-  .lr-bar.bull { background: linear-gradient(90deg, #22d3ee80, #22d3ee); }
-  .lr-bar.bear { background: linear-gradient(270deg, #f43f5e80, #f43f5e); }
-  .lr-bar.flat { background: #334155; }
-  .lr-score { text-align: right; font-weight: 600; font-size: 10px; }
 
-  .bull { color: #22d3ee; }
-  .bull-d { color: #0e7490; }
-  .bear { color: #f43f5e; }
-  .bear-d { color: #9f1239; }
-  .flat { color: #334155; }
+  .lr:hover {
+    background: rgba(255, 255, 255, 0.015);
+  }
 
-  .loading { padding: 20px; color: #334155; text-align: center; }
+  .lr.hot {
+    background: rgba(0, 229, 255, 0.02);
+    border-left-color: var(--cg-cyan, #00e5ff);
+  }
+
+  .lr-id {
+    color: var(--cg-text-muted, #383860);
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  .lr-name {
+    color: var(--cg-text-dim, #505078);
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  /* Centered bar */
+  .lr-bar-wrap {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    min-width: 60px;
+  }
+
+  .lr-bar-track {
+    position: relative;
+    width: 100%;
+    height: 3px;
+    background: var(--cg-surface-2, #0e0e17);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .lr-center {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--cg-border, #16162a);
+  }
+
+  .lr-bar {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 1px;
+    transition: width 0.3s ease;
+  }
+
+  .lr-bar.bull {
+    background: var(--cg-cyan, #00e5ff);
+    opacity: 0.7;
+  }
+
+  .lr-bar.bear {
+    background: var(--cg-red, #ff3860);
+    opacity: 0.7;
+  }
+
+  .lr-val {
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--cg-text-dim, #505078);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 70px;
+  }
+
+  .lr-score {
+    font-size: 9px;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--cg-text-dim, #505078);
+  }
+
+  .c-bull { color: var(--cg-cyan, #00e5ff) !important; }
+  .c-bear { color: var(--cg-red, #ff3860) !important; }
+
+  /* ━━━ Empty ━━━ */
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    opacity: 0.4;
+    font-family: var(--font-mono, monospace);
+  }
+
+  .empty-icon {
+    font-size: 24px;
+    color: var(--cg-cyan, #00e5ff);
+    opacity: 0.5;
+  }
+
+  .empty-text {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--cg-text-dim, #505078);
+  }
+
+  .empty-hint {
+    font-size: 9px;
+    color: var(--cg-text-muted, #383860);
+  }
+
+  .layer-grid::-webkit-scrollbar { width: 3px; }
+  .layer-grid::-webkit-scrollbar-thumb { background: var(--cg-border, #16162a); border-radius: 2px; }
 </style>
