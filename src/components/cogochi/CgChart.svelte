@@ -26,7 +26,7 @@
       const volumes = data.map(k => ({
         time: k.t,
         value: k.v,
-        color: k.c >= k.o ? 'rgba(0,229,255,0.2)' : 'rgba(255,56,96,0.2)',
+        color: k.c >= k.o ? 'rgba(173,202,124,0.2)' : 'rgba(207,127,143,0.2)',
       }));
       candleSeries.setData(candles);
       volumeSeries.setData(volumes);
@@ -73,8 +73,8 @@
       },
       crosshair: {
         mode: lwc.CrosshairMode.Normal,
-        vertLine: { color: 'rgba(0,229,255,0.15)', width: 1, style: lwc.LineStyle.Dashed },
-        horzLine: { color: 'rgba(0,229,255,0.15)', width: 1, style: lwc.LineStyle.Dashed },
+        vertLine: { color: 'rgba(219,154,159,0.15)', width: 1, style: lwc.LineStyle.Dashed },
+        horzLine: { color: 'rgba(219,154,159,0.15)', width: 1, style: lwc.LineStyle.Dashed },
       },
       rightPriceScale: {
         borderColor: '#16162a',
@@ -88,12 +88,12 @@
     });
 
     candleSeries = chart.addCandlestickSeries({
-      upColor: '#00e5ff',
-      downColor: '#ff3860',
-      borderUpColor: '#00e5ff',
-      borderDownColor: '#ff3860',
-      wickUpColor: 'rgba(0,229,255,0.5)',
-      wickDownColor: 'rgba(255,56,96,0.5)',
+      upColor: '#adca7c',
+      downColor: '#cf7f8f',
+      borderUpColor: '#adca7c',
+      borderDownColor: '#cf7f8f',
+      wickUpColor: 'rgba(173,202,124,0.5)',
+      wickDownColor: 'rgba(207,127,143,0.5)',
     });
 
     volumeSeries = chart.addHistogramSeries({
