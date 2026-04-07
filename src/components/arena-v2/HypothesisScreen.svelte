@@ -12,9 +12,9 @@
   } from '$lib/stores/arenaV2State';
   import { searchV2SimilarGames, recallToHint, type V2RAGHint } from '$lib/engine/v2RagBridge';
 
-  export let hypothesis: V2Hypothesis | null = null;
+  export const hypothesis: V2Hypothesis | null = null;
   export let btcPrice: number = 0;
-  export let timer: number = 0;
+  export const timer: number = 0;
   export let consensusDir: Direction = 'NEUTRAL';
   export let consensusConf: number = 0;
   export let findings: Finding[] = [];
@@ -536,7 +536,7 @@
   .tpsl-label { font-size:9px; font-weight:800; width:18px; font-family:var(--fm,'JetBrains Mono',monospace); }
   .tp-c { color:#00ff88; }
   .sl-c { color:#ff2d55; }
-  .tpsl-slider { flex:1; -webkit-appearance:none; height:3px; border-radius:2px; background:rgba(240,237,228,.08); outline:none; }
+  .tpsl-slider { flex:1; -webkit-appearance:none; appearance:none; height:3px; border-radius:2px; background:rgba(240,237,228,.08); outline:none; }
   .tp-slider::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:#00ff88; cursor:pointer; }
   .sl-slider::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:#ff2d55; cursor:pointer; }
   .tpsl-val { font-size:9px; font-weight:700; width:48px; text-align:right; font-family:var(--fm,'JetBrains Mono',monospace); }
@@ -585,7 +585,7 @@
   .conf-section { display:flex; flex-direction:column; gap:4px; }
   .conf-header { font-size:8px; font-weight:800; letter-spacing:2px; color:rgba(240,237,228,.3); font-family:var(--fm,'JetBrains Mono',monospace); }
   .conf-row { display:flex; align-items:center; gap:8px; }
-  .conf-slider { flex:1; -webkit-appearance:none; height:4px; border-radius:2px; background:rgba(240,237,228,.08); outline:none; }
+  .conf-slider { flex:1; -webkit-appearance:none; appearance:none; height:4px; border-radius:2px; background:rgba(240,237,228,.08); outline:none; }
   .conf-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#E8967D; cursor:pointer; }
   .conf-val { font-size:13px; font-weight:900; color:#E8967D; width:38px; text-align:right; font-family:var(--fm,'JetBrains Mono',monospace); }
 

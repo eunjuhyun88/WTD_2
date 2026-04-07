@@ -35,8 +35,8 @@
 
 {#if phase !== 'done'}
   <div class="phase-transition">
-    <div class="pt-bar pt-top" class:closed={phase === 'showing'} class:opening={phase === 'opening'} />
-    <div class="pt-bar pt-bottom" class:closed={phase === 'showing'} class:opening={phase === 'opening'} />
+    <div class="pt-bar pt-top" class:closed={phase === 'showing'} class:opening={phase === 'opening'}></div>
+    <div class="pt-bar pt-bottom" class:closed={phase === 'showing'} class:opening={phase === 'opening'}></div>
 
     {#if phase === 'showing'}
       <div class="pt-text">{text}</div>

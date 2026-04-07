@@ -295,6 +295,13 @@
       }];
     }
 
+    // Add feedback action buttons
+    const dir = data.alphaScore >= 10 ? 'LONG' : data.alphaScore <= -10 ? 'SHORT' : 'LONG';
+    messages = [...messages, {
+      role: 'douni', text: '',
+      widgets: [{ type: 'actions', patternName: `${currentSymbol} ${currentTf}`, direction: dir as 'LONG' | 'SHORT', conditions: [] }],
+    }];
+
     // Show chart
     showChart = true;
     scrollToBottom();
@@ -303,36 +310,52 @@
   // ─── Apply Social Result ───────────────────────────────────
   function applySocialResult(data: any) {
     const metrics: MetricItem[] = [];
-    if (data.galaxy_score != null) {
+    // Sentiment Score (pseudo-sentiment from CoinGecko price change data)
+    if (data.sentiment_score != null) {
+      const s = data.sentiment_score;
       metrics.push({
-        title: 'Galaxy Score', value: `${data.galaxy_score}`,
-        subtext: data.galaxy_score > 60 ? 'Bullish' : data.galaxy_score < 40 ? 'Bearish' : 'Neutral',
-        trend: data.galaxy_score > 60 ? 'bull' : data.galaxy_score < 40 ? 'bear' : 'neutral',
-        chartData: [50, 55, 52, 58, 60, 62, 65, data.galaxy_score],
+        title: 'Sentiment', value: `${s}`,
+        subtext: data.sentiment_label || (s > 60 ? 'Bullish' : s < 40 ? 'Bearish' : 'Neutral'),
+        trend: s > 60 ? 'bull' : s < 40 ? 'bear' : 'neutral',
+        chartData: [50, 48, 52, 55, 50, 53, 56, s],
       });
     }
-    if (data.sentiment != null) {
+    // Fear & Greed
+    if (data.fear_greed != null) {
+      const fg = data.fear_greed;
       metrics.push({
-        title: 'Sentiment', value: `${data.sentiment}%`,
-        subtext: data.sentiment > 60 ? 'Positive' : data.sentiment < 40 ? 'Negative' : 'Mixed',
-        trend: data.sentiment > 60 ? 'bull' : data.sentiment < 40 ? 'bear' : 'neutral',
-        chartData: [50, 48, 52, 55, 50, 53, 56, data.sentiment],
+        title: 'Fear & Greed', value: `${fg}`,
+        subtext: fg < 25 ? 'Extreme Fear' : fg < 40 ? 'Fear' : fg > 75 ? 'Extreme Greed' : fg > 60 ? 'Greed' : 'Neutral',
+        trend: fg < 30 ? 'bear' : fg > 70 ? 'danger' : 'neutral',
+        chartData: [40, 35, 30, 25, 20, 18, 15, fg],
       });
     }
-    if (data.alt_rank != null) {
+    // Market Cap Rank
+    if (data.market_cap_rank != null) {
       metrics.push({
-        title: 'AltRank', value: `#${data.alt_rank}`,
-        subtext: data.alt_rank <= 20 ? 'Top Tier' : data.alt_rank <= 100 ? 'Mid' : 'Low',
-        trend: data.alt_rank <= 20 ? 'bull' : 'neutral',
-        chartData: [100, 80, 60, 50, 40, 35, 30, data.alt_rank],
+        title: 'MCap Rank', value: `#${data.market_cap_rank}`,
+        subtext: data.market_cap_rank <= 10 ? 'Top Tier' : data.market_cap_rank <= 50 ? 'Major' : 'Mid',
+        trend: data.market_cap_rank <= 10 ? 'bull' : 'neutral',
+        chartData: [100, 80, 60, 50, 40, 35, 30, data.market_cap_rank],
       });
     }
-    if (data.interactions_24h != null) {
-      const k = data.interactions_24h >= 1e6 ? `${(data.interactions_24h/1e6).toFixed(1)}M` : `${(data.interactions_24h/1e3).toFixed(0)}K`;
+    // Community
+    const comm = data.community;
+    if (comm?.twitter_followers > 0) {
+      const tw = comm.twitter_followers;
+      const k = tw >= 1e6 ? `${(tw/1e6).toFixed(1)}M` : `${(tw/1e3).toFixed(0)}K`;
       metrics.push({
-        title: 'Engagements', value: k,
-        subtext: '24h 소셜 상호작용', trend: 'neutral',
+        title: 'Twitter', value: k,
+        subtext: '팔로워 수', trend: 'neutral',
         chartData: [10, 15, 12, 18, 20, 22, 25, 30],
+      });
+    }
+    // Trending badge
+    if (data.is_trending) {
+      metrics.push({
+        title: 'Trending', value: data.trend_rank ? `#${data.trend_rank}` : '🔥',
+        subtext: 'CoinGecko 트렌딩', trend: 'bull',
+        chartData: [1, 2, 3, 5, 8, 12, 18, 25],
       });
     }
     if (metrics.length > 0) {
@@ -344,18 +367,26 @@
   // ─── Apply Scan Result ────────────────────────────────────
   function applyScanResult(data: any) {
     if (data.coins && data.coins.length > 0) {
-      // Display as a ranked list widget
       const items = data.coins.slice(0, 10).map((c: any) => ({
         rank: c.rank,
         symbol: c.symbol,
         name: c.name,
-        galaxy_score: c.galaxy_score,
-        sentiment: c.sentiment,
-        change24h: c.percent_change_24h,
+        price: c.price,
+        change24h: c.change24h,
+        market_cap: c.market_cap,
+        volume_24h: c.volume_24h,
+        is_trending: c.is_trending,
       }));
       messages = [...messages, {
         role: 'douni', text: '',
-        widgets: [{ type: 'scan_list', items, sort: data.sort, sector: data.sector }],
+        widgets: [{ type: 'scan_list', items, sort: data.sort, sector: data.sector || 'all' }],
+      }];
+    }
+    // Add trending coins as text if available
+    if (data.trending_coins?.length > 0) {
+      const trendText = data.trending_coins.map((c: any) => `${c.symbol}`).join(', ');
+      messages = [...messages, {
+        role: 'douni', text: `🔥 트렌딩: ${trendText}`,
       }];
     }
     scrollToBottom();
@@ -547,6 +578,30 @@
                         <button class="wa disagree" onclick={() => sendFeedback('incorrect')}>✗ 아니야</button>
                         <button class="wa save" onclick={() => showPatternModal = true}>📌 패턴 저장</button>
                       </div>
+
+                    {:else if widget.type === 'scan_list'}
+                      <div class="w-scan">
+                        <div class="ws-head">
+                          <span class="ws-title">📊 Market Scan</span>
+                          <span class="ws-meta">{widget.sort} · {widget.sector}</span>
+                        </div>
+                        {#each widget.items as coin}
+                          <div class="ws-row">
+                            <span class="ws-rank">#{coin.rank}</span>
+                            <span class="ws-sym">{coin.symbol}</span>
+                            <span class="ws-name">{coin.name}</span>
+                            {#if coin.price != null}
+                              <span class="ws-price">${coin.price >= 1 ? coin.price.toLocaleString(undefined, {maximumFractionDigits: 1}) : coin.price.toFixed(4)}</span>
+                            {/if}
+                            {#if coin.change24h != null}
+                              <span class="ws-chg" class:up={coin.change24h >= 0} class:dn={coin.change24h < 0}>{coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%</span>
+                            {/if}
+                            {#if coin.is_trending}
+                              <span class="ws-trend">🔥</span>
+                            {/if}
+                          </div>
+                        {/each}
+                      </div>
                     {/if}
                   {/each}
                 {/if}
@@ -677,6 +732,21 @@
   .wa.agree:hover { background: rgba(34,211,238,0.15); border-color: #22d3ee; color: #22d3ee; }
   .wa.disagree:hover { background: rgba(244,63,94,0.15); border-color: #f43f5e; color: #f43f5e; }
   .wa.save { background: linear-gradient(135deg,#3b82f6,#6366f1); border-color: transparent; color: white; }
+
+  .w-scan { background: #0c0c18; border: 1px solid #1e1e35; border-radius: 14px; overflow: hidden; }
+  .ws-head { padding: 10px 14px; border-bottom: 1px solid #1a1a2e; display: flex; justify-content: space-between; align-items: center; }
+  .ws-title { font-size: 13px; font-weight: 800; color: #e0e0ff; }
+  .ws-meta { font-size: 10px; color: #5858a0; }
+  .ws-row { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid #0f0f1a; font-size: 12px; }
+  .ws-row:last-child { border-bottom: none; }
+  .ws-rank { color: #5858a0; font-weight: 700; min-width: 24px; font-family: 'JetBrains Mono', monospace; }
+  .ws-sym { color: #e0e0ff; font-weight: 800; min-width: 48px; }
+  .ws-name { color: #7878a0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ws-price { color: #a0a0c0; font-family: 'JetBrains Mono', monospace; min-width: 64px; text-align: right; }
+  .ws-chg { font-weight: 700; font-family: 'JetBrains Mono', monospace; min-width: 52px; text-align: right; }
+  .ws-chg.up { color: #22d3ee; }
+  .ws-chg.dn { color: #f43f5e; }
+  .ws-trend { font-size: 11px; }
 
   .input-bar { padding: 12px 20px 16px; }
   .input-box { max-width: 680px; margin: 0 auto; display: flex; gap: 8px; background: #12121e; border: 1px solid #2a2a4e; border-radius: 14px; padding: 4px 4px 4px 16px; align-items: center; }

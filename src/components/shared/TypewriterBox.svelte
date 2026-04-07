@@ -71,7 +71,7 @@
 </script>
 
 <div class="typewriter-box">
-  <div class="tw-border" />
+  <div class="tw-border"></div>
   <div class="tw-content">
     {#each displayText.split('\n') as line, i}
       {#if i > 0}<br />{/if}

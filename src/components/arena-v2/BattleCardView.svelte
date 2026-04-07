@@ -162,7 +162,7 @@
           <img src={getAgentImg(agent.agentId)} alt={agent.agentId} class="hand-img" />
           <span class="hand-name">{agent.agentId}</span>
           <div class="hand-energy">
-            <div class="hand-energy-fill" style:width="{(agent.energy / agent.maxEnergy) * 100}%" />
+            <div class="hand-energy-fill" style:width="{(agent.energy / agent.maxEnergy) * 100}%"></div>
           </div>
         </div>
       {/each}

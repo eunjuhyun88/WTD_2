@@ -91,7 +91,7 @@
         </span>
       </div>
 
-      <div class="divider" />
+      <div class="divider"></div>
 
       <div class="data-row">
         <span class="data-label">TP</span>
@@ -99,7 +99,7 @@
       </div>
       <div class="progress-row">
         <div class="progress-track">
-          <div class="progress-fill tp" style:width="{tpProgress}%" />
+          <div class="progress-fill tp" style:width="{tpProgress}%"></div>
         </div>
         <span class="progress-pct">{tpProgress.toFixed(0)}%</span>
       </div>
@@ -110,12 +110,12 @@
       </div>
       <div class="progress-row">
         <div class="progress-track">
-          <div class="progress-fill sl" style:width="{slProgress}%" />
+          <div class="progress-fill sl" style:width="{slProgress}%"></div>
         </div>
         <span class="progress-pct">{slProgress.toFixed(0)}%</span>
       </div>
 
-      <div class="divider" />
+      <div class="divider"></div>
 
       <div class="data-row">
         <span class="data-label">VS</span>
@@ -144,7 +144,7 @@
               <span class="as-label">NRG</span>
               <div class="as-bar">
                 <div class="as-fill" style:width="{(agent.energy / agent.maxEnergy) * 100}%"
-                  class:low={agent.energy < 25} />
+                  class:low={agent.energy < 25}></div>
               </div>
               <span class="as-val">{Math.round(agent.energy)}</span>
             </div>
@@ -193,7 +193,7 @@
         {/each}
       </div>
 
-      <div class="divider" />
+      <div class="divider"></div>
 
       <div class="col-header">LOG</div>
       <div class="mission-log">

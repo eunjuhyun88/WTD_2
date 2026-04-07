@@ -3,15 +3,18 @@
   Pokemon-style frame with 3px outer + 1px inner border
 ═══════════════════════════════════════════ -->
 <script lang="ts">
-  const { variant = 'default', padding = '8px' }: {
+  import type { Snippet } from 'svelte';
+
+  const { variant = 'default', padding = '8px', children }: {
     variant?: 'default' | 'dark' | 'accent';
     padding?: string;
+    children: Snippet;
   } = $props();
 </script>
 
 <div class="poke-frame {variant}" style:padding={padding}>
   <div class="poke-inner">
-    <slot />
+    {@render children()}
   </div>
 </div>
 

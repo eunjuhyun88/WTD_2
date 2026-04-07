@@ -241,7 +241,7 @@
 
       <!-- Direction -->
       <div class="decision-section">
-        <label class="dec-label">방향</label>
+        <span class="dec-label">방향</span>
         <div class="dir-buttons">
           <button
             class="dir-btn long"
@@ -272,8 +272,9 @@
 
       <!-- Confidence -->
       <div class="decision-section">
-        <label class="dec-label">확신도: {ws.humanConfidence}%</label>
+        <label class="dec-label" for="confidence-slider">확신도: {ws.humanConfidence}%</label>
         <input
+          id="confidence-slider"
           type="range"
           min="10"
           max="95"
@@ -288,8 +289,9 @@
       <!-- TP / SL -->
       <div class="decision-section tp-sl-row">
         <div class="tp-input">
-          <label class="dec-label">TP</label>
+          <label class="dec-label" for="tp-input">TP</label>
           <input
+            id="tp-input"
             type="number"
             value={ws.humanTp}
             oninput={(e) => setHumanTp(Number(e.currentTarget.value))}
@@ -299,8 +301,9 @@
           />
         </div>
         <div class="sl-input">
-          <label class="dec-label">SL</label>
+          <label class="dec-label" for="sl-input">SL</label>
           <input
+            id="sl-input"
             type="number"
             value={ws.humanSl}
             oninput={(e) => setHumanSl(Number(e.currentTarget.value))}
@@ -310,7 +313,7 @@
           />
         </div>
         <div class="rr-display">
-          <label class="dec-label">R:R</label>
+          <span class="dec-label">R:R</span>
           <span class="rr-value" class:good={rr >= 2} class:warn={rr >= 1.5 && rr < 2} class:bad={rr < 1.5}>
             {rr.toFixed(1)}
           </span>
@@ -319,7 +322,7 @@
 
       <!-- Reason Tags -->
       <div class="decision-section">
-        <label class="dec-label">근거 태그 (AI를 왜 따르거나 거부하는가?)</label>
+        <span class="dec-label">근거 태그 (AI를 왜 따르거나 거부하는가?)</span>
         <div class="tag-categories">
           {#each Object.entries(REASON_TAGS) as [cat, tags]}
             <div class="tag-category">
@@ -353,8 +356,9 @@
 
       <!-- Reason Text (optional) -->
       <div class="decision-section">
-        <label class="dec-label">메모 (선택)</label>
+        <label class="dec-label" for="reason-memo">메모 (선택)</label>
         <textarea
+          id="reason-memo"
           class="reason-text"
           placeholder="AI의 판단과 다르게 생각하는 이유..."
           maxlength="280"
