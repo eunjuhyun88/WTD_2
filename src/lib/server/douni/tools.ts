@@ -188,10 +188,74 @@ export const TOOL_QUERY_MEMORY: ToolDefinition = {
   },
 };
 
+// ─── check_social ──────────────────────────────────────────
+// 소셜 센티먼트·Galaxy Score·AltRank 조회 (LunarCrush-style)
+
+export const TOOL_CHECK_SOCIAL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'check_social',
+    description: `Check social media sentiment, engagement, and buzz for a crypto topic. Returns Galaxy Score, AltRank, sentiment, social dominance, and recent top posts. Use when:
+- User asks about social buzz ("BTC 커뮤니티 분위기 어때?", "도지 소셜 어때?")
+- User wants to know trending coins or topics
+- You need social context to complement technical analysis
+- User asks about influencer posts or news sentiment`,
+    parameters: {
+      type: 'object',
+      properties: {
+        topic: {
+          type: 'string',
+          description: 'Crypto topic or symbol (e.g. "bitcoin", "$btc", "$eth", "solana", "dogecoin")',
+        },
+        include_posts: {
+          type: 'boolean',
+          description: 'Include top social posts (default: true)',
+        },
+      },
+      required: ['topic'],
+    },
+  },
+};
+
+// ─── scan_market ───────────────────────────────────────────
+// 탑 코인 리스트 스캔 (Galaxy Score / AltRank / 센티먼트 등)
+
+export const TOOL_SCAN_MARKET: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'scan_market',
+    description: `Scan and rank top cryptocurrencies by social metrics. Returns sorted list with Galaxy Score, sentiment, price changes. Use when:
+- User asks "지금 뭐가 핫해?", "어떤 코인이 주목받고 있어?"
+- User wants to discover trending or top-performing coins
+- You need a market overview before detailed analysis`,
+    parameters: {
+      type: 'object',
+      properties: {
+        sort: {
+          type: 'string',
+          enum: ['galaxy_score', 'alt_rank', 'sentiment', 'interactions', 'percent_change_24h', 'volume_24h'],
+          description: 'Sort criteria (default: galaxy_score)',
+        },
+        sector: {
+          type: 'string',
+          enum: ['defi', 'meme', 'layer-1', 'layer-2', 'ai', 'gaming', 'nft'],
+          description: 'Optional sector filter',
+        },
+        limit: {
+          type: 'number',
+          description: 'Number of results (default: 10, max: 20)',
+        },
+      },
+    },
+  },
+};
+
 // ─── All Tools ──────────────────────────────────────────────
 
 export const DOUNI_TOOLS: ToolDefinition[] = [
   TOOL_ANALYZE_MARKET,
+  TOOL_CHECK_SOCIAL,
+  TOOL_SCAN_MARKET,
   TOOL_CHART_CONTROL,
   TOOL_SAVE_PATTERN,
   TOOL_SUBMIT_FEEDBACK,
@@ -201,6 +265,8 @@ export const DOUNI_TOOLS: ToolDefinition[] = [
 /** Tool names for validation */
 export type DouniToolName =
   | 'analyze_market'
+  | 'check_social'
+  | 'scan_market'
   | 'chart_control'
   | 'save_pattern'
   | 'submit_feedback'
@@ -208,6 +274,8 @@ export type DouniToolName =
 
 export const VALID_TOOL_NAMES = new Set<string>([
   'analyze_market',
+  'check_social',
+  'scan_market',
   'chart_control',
   'save_pattern',
   'submit_feedback',

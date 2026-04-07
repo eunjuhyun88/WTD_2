@@ -136,8 +136,8 @@
               break;
 
             case 'tool_call':
-              if (event.name === 'analyze_market') {
-                // Show thinking indicator while analyzing
+              if (event.name === 'analyze_market' || event.name === 'check_social' || event.name === 'scan_market') {
+                // Show thinking indicator while tool runs
                 messages = [...messages, { role: 'douni', thinking: true } as MessageType];
                 scrollToBottom();
               }
@@ -155,11 +155,16 @@
             case 'tool_result':
               if (event.name === 'analyze_market' && event.data) {
                 pendingAnalysis = event.data;
-                // Remove thinking bubble
                 messages = messages.filter(m => !('thinking' in m));
-                // Update state with analysis data
                 applyAnalysisResult(event.data, pendingLayers);
-                // Reset streaming text for the follow-up LLM response
+                streamingText = '';
+              } else if (event.name === 'check_social' && event.data) {
+                messages = messages.filter(m => !('thinking' in m));
+                applySocialResult(event.data);
+                streamingText = '';
+              } else if (event.name === 'scan_market' && event.data) {
+                messages = messages.filter(m => !('thinking' in m));
+                applyScanResult(event.data);
                 streamingText = '';
               }
               break;
@@ -291,6 +296,67 @@
 
     // Show chart
     showChart = true;
+    scrollToBottom();
+  }
+
+  // ─── Apply Social Result ───────────────────────────────────
+  function applySocialResult(data: any) {
+    const metrics: MetricItem[] = [];
+    if (data.galaxy_score != null) {
+      metrics.push({
+        title: 'Galaxy Score', value: `${data.galaxy_score}`,
+        subtext: data.galaxy_score > 60 ? 'Bullish' : data.galaxy_score < 40 ? 'Bearish' : 'Neutral',
+        trend: data.galaxy_score > 60 ? 'bull' : data.galaxy_score < 40 ? 'bear' : 'neutral',
+        chartData: [50, 55, 52, 58, 60, 62, 65, data.galaxy_score],
+      });
+    }
+    if (data.sentiment != null) {
+      metrics.push({
+        title: 'Sentiment', value: `${data.sentiment}%`,
+        subtext: data.sentiment > 60 ? 'Positive' : data.sentiment < 40 ? 'Negative' : 'Mixed',
+        trend: data.sentiment > 60 ? 'bull' : data.sentiment < 40 ? 'bear' : 'neutral',
+        chartData: [50, 48, 52, 55, 50, 53, 56, data.sentiment],
+      });
+    }
+    if (data.alt_rank != null) {
+      metrics.push({
+        title: 'AltRank', value: `#${data.alt_rank}`,
+        subtext: data.alt_rank <= 20 ? 'Top Tier' : data.alt_rank <= 100 ? 'Mid' : 'Low',
+        trend: data.alt_rank <= 20 ? 'bull' : 'neutral',
+        chartData: [100, 80, 60, 50, 40, 35, 30, data.alt_rank],
+      });
+    }
+    if (data.interactions_24h != null) {
+      const k = data.interactions_24h >= 1e6 ? `${(data.interactions_24h/1e6).toFixed(1)}M` : `${(data.interactions_24h/1e3).toFixed(0)}K`;
+      metrics.push({
+        title: 'Engagements', value: k,
+        subtext: '24h 소셜 상호작용', trend: 'neutral',
+        chartData: [10, 15, 12, 18, 20, 22, 25, 30],
+      });
+    }
+    if (metrics.length > 0) {
+      messages = [...messages, { role: 'douni', text: '', widgets: [{ type: 'metrics', items: metrics }] }];
+    }
+    scrollToBottom();
+  }
+
+  // ─── Apply Scan Result ────────────────────────────────────
+  function applyScanResult(data: any) {
+    if (data.coins && data.coins.length > 0) {
+      // Display as a ranked list widget
+      const items = data.coins.slice(0, 10).map((c: any) => ({
+        rank: c.rank,
+        symbol: c.symbol,
+        name: c.name,
+        galaxy_score: c.galaxy_score,
+        sentiment: c.sentiment,
+        change24h: c.percent_change_24h,
+      }));
+      messages = [...messages, {
+        role: 'douni', text: '',
+        widgets: [{ type: 'scan_list', items, sort: data.sort, sector: data.sector }],
+      }];
+    }
     scrollToBottom();
   }
 

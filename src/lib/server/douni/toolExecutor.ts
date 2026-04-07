@@ -63,6 +63,12 @@ export async function executeTool(
       case 'analyze_market':
         data = await executeAnalyzeMarket(args, ctx, events);
         break;
+      case 'check_social':
+        data = await executeCheckSocial(args, events);
+        break;
+      case 'scan_market':
+        data = await executeScanMarket(args, events);
+        break;
       case 'chart_control':
         data = executeChartControl(args, events);
         break;
@@ -197,6 +203,174 @@ async function executeAnalyzeMarket(
       oi: deriv.oi,
       lsRatio: deriv.lsRatio,
     },
+  };
+}
+
+// ─── check_social ───────────────────────────────────────────
+
+// Symbol mapping for CoinGecko API
+const COIN_ID_MAP: Record<string, string> = {
+  bitcoin: 'bitcoin', btc: 'bitcoin',
+  ethereum: 'ethereum', eth: 'ethereum',
+  solana: 'solana', sol: 'solana',
+  dogecoin: 'dogecoin', doge: 'dogecoin',
+  xrp: 'ripple', ripple: 'ripple',
+  cardano: 'cardano', ada: 'cardano',
+  avalanche: 'avalanche-2', avax: 'avalanche-2',
+  polkadot: 'polkadot', dot: 'polkadot',
+  chainlink: 'chainlink', link: 'chainlink',
+  bnb: 'binancecoin', sui: 'sui', pepe: 'pepe',
+};
+
+async function executeCheckSocial(
+  args: Record<string, unknown>,
+  events: DouniSSEEvent[],
+): Promise<Record<string, unknown>> {
+  const rawTopic = (args.topic as string || 'bitcoin').toLowerCase().replace('$', '');
+  const coinId = COIN_ID_MAP[rawTopic] || rawTopic;
+
+  const timeout = AbortSignal.timeout(8000);
+
+  // Fetch from CoinGecko (free, no API key)
+  const [coinRes, trendRes, fgRes] = await Promise.all([
+    fetch(
+      `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&community_data=true&developer_data=false&sparkline=false`,
+      { signal: timeout },
+    ).catch(() => null),
+    fetch('https://api.coingecko.com/api/v3/search/trending', { signal: timeout }).catch(() => null),
+    fetchFearGreed(),
+  ]);
+
+  const coinData = coinRes?.ok ? await coinRes.json().catch(() => null) : null;
+  const trendData = trendRes?.ok ? await trendRes.json().catch(() => null) : null;
+
+  if (!coinData) {
+    return {
+      topic: rawTopic,
+      source: 'unavailable',
+      note: `Could not find data for "${rawTopic}". Try using standard name (bitcoin, ethereum, solana...).`,
+    };
+  }
+
+  const cd = coinData.community_data || {};
+  const md = coinData.market_data || {};
+
+  // Derive a pseudo-sentiment from price change + community data
+  const change24h = md.price_change_percentage_24h || 0;
+  const change7d = md.price_change_percentage_7d || 0;
+  const pseudoSentiment = Math.round(50 + (change24h * 2) + (change7d * 0.5));
+  const clampedSentiment = Math.max(0, Math.min(100, pseudoSentiment));
+
+  // Check if trending
+  const trendingCoins = (trendData?.coins || []).map((c: any) => c.item?.id);
+  const isTrending = trendingCoins.includes(coinId);
+  const trendRank = trendingCoins.indexOf(coinId) + 1;
+
+  // Community metrics
+  const twitterFollowers = cd.twitter_followers || 0;
+  const redditSubscribers = cd.reddit_subscribers || 0;
+  const redditActiveAccounts = cd.reddit_accounts_active_48h || 0;
+
+  // Emit social event for UI
+  events.push({
+    type: 'social_data',
+    topic: rawTopic,
+    sentiment: clampedSentiment,
+    trending: isTrending,
+  });
+
+  return {
+    topic: rawTopic,
+    source: 'coingecko',
+    name: coinData.name,
+    symbol: (coinData.symbol || '').toUpperCase(),
+    sentiment_score: clampedSentiment,
+    sentiment_label: clampedSentiment > 60 ? 'Bullish' : clampedSentiment < 40 ? 'Bearish' : 'Neutral',
+    fear_greed: fgRes,
+    is_trending: isTrending,
+    trend_rank: isTrending ? trendRank : null,
+    price: md.current_price?.usd || null,
+    change_24h: change24h,
+    change_7d: change7d,
+    market_cap: md.market_cap?.usd || null,
+    market_cap_rank: coinData.market_cap_rank || null,
+    community: {
+      twitter_followers: twitterFollowers,
+      reddit_subscribers: redditSubscribers,
+      reddit_active_48h: redditActiveAccounts,
+    },
+    coingecko_score: coinData.coingecko_score || null,
+    developer_score: coinData.developer_score || null,
+    community_score: coinData.community_score || null,
+    liquidity_score: coinData.liquidity_score || null,
+  };
+}
+
+// ─── scan_market ────────────────────────────────────────────
+
+async function executeScanMarket(
+  args: Record<string, unknown>,
+  events: DouniSSEEvent[],
+): Promise<Record<string, unknown>> {
+  const sort = (args.sort as string) || 'galaxy_score';
+  const limit = Math.min((args.limit as number) || 10, 20);
+  const sector = args.sector as string | undefined;
+
+  const timeout = AbortSignal.timeout(8000);
+
+  // Use CoinGecko markets + trending APIs
+  const [marketsRes, trendRes] = await Promise.all([
+    fetch(
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${limit}&page=1&sparkline=false&price_change_percentage=24h,7d`,
+      { signal: timeout },
+    ).catch(() => null),
+    fetch('https://api.coingecko.com/api/v3/search/trending', { signal: timeout }).catch(() => null),
+  ]);
+
+  const marketsData = marketsRes?.ok ? await marketsRes.json().catch(() => null) : null;
+  const trendData = trendRes?.ok ? await trendRes.json().catch(() => null) : null;
+
+  // Build trending set for cross-reference
+  const trendingIds = new Set((trendData?.coins || []).map((c: any) => c.item?.id));
+
+  if (!marketsData || !Array.isArray(marketsData)) {
+    // Pure fallback to trending
+    const trending = (trendData?.coins || []).slice(0, limit).map((c: any, i: number) => ({
+      rank: i + 1,
+      name: c.item?.name || '',
+      symbol: (c.item?.symbol || '').toUpperCase(),
+      price: c.item?.data?.price || null,
+      change24h: c.item?.data?.price_change_percentage_24h?.usd || null,
+      market_cap_rank: c.item?.market_cap_rank || null,
+      is_trending: true,
+    }));
+    return { source: 'coingecko_trending', sort: 'trending', coins: trending };
+  }
+
+  const coins = marketsData.slice(0, limit).map((c: any, i: number) => ({
+    rank: i + 1,
+    name: c.name,
+    symbol: (c.symbol || '').toUpperCase(),
+    price: c.current_price,
+    change24h: c.price_change_percentage_24h,
+    change7d: c.price_change_percentage_7d_in_currency || null,
+    market_cap: c.market_cap,
+    market_cap_rank: c.market_cap_rank,
+    volume_24h: c.total_volume,
+    is_trending: trendingIds.has(c.id),
+  }));
+
+  events.push({ type: 'scan_result', sort, count: coins.length });
+
+  return {
+    source: 'coingecko',
+    sort,
+    sector: sector || 'all',
+    coins,
+    trending_coins: (trendData?.coins || []).slice(0, 5).map((c: any) => ({
+      name: c.item?.name,
+      symbol: (c.item?.symbol || '').toUpperCase(),
+    })),
   };
 }
 
