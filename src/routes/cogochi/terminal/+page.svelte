@@ -494,7 +494,7 @@
                 {#if msg.widgets}
                   {#each msg.widgets as widget}
                     {#if widget.type === 'chart'}
-                      <div class="w-chart" onclick={() => showChart = !showChart}>
+                      <button type="button" class="w-chart" onclick={() => showChart = !showChart}>
                         <div class="wc-head">
                           <span class="wc-sym">{widget.symbol.replace('USDT','')}</span>
                           <span class="wc-tf">{widget.timeframe}</span>
@@ -518,7 +518,7 @@
                             {/each}
                           </svg>
                         {/if}
-                      </div>
+                      </button>
 
                     {:else if widget.type === 'metrics'}
                       <div class="w-metrics">
@@ -601,16 +601,16 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="modal-box" onclick={(e) => e.stopPropagation()}>
       <h3>📌 패턴 저장</h3>
-      <div class="mf"><label>패턴 이름</label><input type="text" value={patternName} /></div>
+      <div class="mf"><label for="pattern-name">패턴 이름</label><input id="pattern-name" type="text" value={patternName} /></div>
       <div class="mf">
-        <label>방향</label>
+        <span class="mf-label">방향</span>
         <div class="mdir">
           <button class="md" class:act={patternDirection === 'LONG'} onclick={() => patternDirection = 'LONG'}>LONG ▲</button>
           <button class="md" class:act={patternDirection === 'SHORT'} onclick={() => patternDirection = 'SHORT'}>SHORT ▼</button>
         </div>
       </div>
       <div class="mf">
-        <label>조건 ({patternConditions.length}개)</label>
+        <span class="mf-label">조건 ({patternConditions.length}개)</span>
         {#each patternConditions as c}
           <div class="mc">{c}</div>
         {/each}
@@ -645,7 +645,7 @@
   .d:nth-child(2) { animation-delay: -0.16s; }
   @keyframes bn { 0%,80%,100% { transform: scale(0); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
 
-  .w-chart { background: #0c0c18; border: 1px solid #1e1e35; border-radius: 14px; overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
+  .w-chart { background: #0c0c18; border: 1px solid #1e1e35; border-radius: 14px; overflow: hidden; cursor: pointer; transition: border-color 0.15s; width: 100%; text-align: left; padding: 0; font: inherit; color: inherit; }
   .w-chart:hover { border-color: #3b82f6; }
   .wc-head { padding: 8px 12px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid #1a1a2e; }
   .wc-sym { font-weight: 800; font-size: 13px; color: #e0e0ff; }
@@ -701,7 +701,7 @@
   .modal-box { background: #12121e; border: 1px solid #2a2a4e; border-radius: 16px; padding: 28px; width: 420px; max-width: 90vw; }
   .modal-box h3 { margin: 0 0 20px; color: #e0e0ff; font-size: 18px; }
   .mf { margin-bottom: 16px; }
-  .mf label { display: block; font-size: 12px; color: #7878a0; margin-bottom: 6px; font-weight: 600; }
+  .mf label, .mf .mf-label { display: block; font-size: 12px; color: #7878a0; margin-bottom: 6px; font-weight: 600; }
   .mf input { width: 100%; padding: 10px 14px; background: #0a0a14; border: 1px solid #2a2a4e; border-radius: 8px; color: #d0d0f0; font-size: 14px; outline: none; box-sizing: border-box; }
   .mdir { display: flex; gap: 8px; }
   .md { flex: 1; padding: 10px; border: 1px solid #2a2a4e; background: #0a0a14; color: #7878a0; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
