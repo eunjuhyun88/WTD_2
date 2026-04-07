@@ -169,6 +169,20 @@ const routeMeta = [
     primaryConcern: 'creator context and recent community signals',
     keyState: 'route-local creator loader + community signal cards',
     deepDocs: '`docs/page-specs/creator-page.md`'
+  },
+  {
+    route: '/cogochi',
+    role: 'cogochi hub',
+    primaryConcern: 'DOUNI virtual pet entry and navigation',
+    keyState: 'route-level data',
+    deepDocs: '`docs/PRODUCT_SENSE.md`'
+  },
+  {
+    route: '/cogochi/terminal',
+    role: 'DOUNI AI terminal',
+    primaryConcern: 'LLM-driven chat with function calling, market analysis, social data',
+    keyState: 'route-local chat state + `currentSnapshot`',
+    deepDocs: '`docs/PRODUCT_SENSE.md`'
   }
 ];
 
