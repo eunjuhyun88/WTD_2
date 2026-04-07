@@ -11,12 +11,13 @@
 // - 새 레이어는 klines 직접 분석
 
 import type { MarketContext } from '../factorEngine';
+import type { BinanceKline } from '../types';
 import { computeFactor } from '../factorEngine';
-import { calcCVD, calcATR } from '../indicators';
+import { calcCVD, calcATR, calcEMA, calcBollingerBands } from '../indicators';
 import { detectDivergence, analyzeTrend } from '../trend';
 
 import type {
-  SignalSnapshot,
+  SignalSnapshot, IndicatorSeries,
   L1Result, L2Result, L3Result, L4Result, L5Result,
   L6Result, L7Result, L8Result, L9Result, L10Result,
   L11Result, L12Result, L13Result, L14Result, L15Result,
@@ -363,4 +364,35 @@ export function computeSignalSnapshot(
   // snapshot.hmac은 ''로 반환, 서버 API에서 signSnapshot() 호출
 
   return snapshot;
+}
+
+// ─── Indicator Series Extraction ─────────────────────────────
+
+/**
+ * Compute BB(20,2) and EMA20 indicator series from klines.
+ * Arrays are aligned with klines (first 19 entries are 0 for BB/EMA warm-up).
+ */
+export function computeIndicatorSeries(klines: BinanceKline[]): IndicatorSeries {
+  if (klines.length < 20) {
+    return {};
+  }
+
+  const closes = klines.map(k => k.close);
+
+  // BB(20, 2)
+  const bb = calcBollingerBands(closes, 20, 2);
+  const bbUpper = Array.from(bb.upper) as number[];
+  const bbMiddle = Array.from(bb.middle) as number[];
+  const bbLower = Array.from(bb.lower) as number[];
+
+  // EMA20
+  const ema20Raw = calcEMA(closes, 20);
+  const ema20 = Array.from(ema20Raw) as number[];
+
+  return {
+    bbUpper,
+    bbMiddle,
+    bbLower,
+    ema20,
+  };
 }

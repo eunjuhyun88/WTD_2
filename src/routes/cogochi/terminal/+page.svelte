@@ -67,6 +67,10 @@
   let patternDirection = $state<'LONG' | 'SHORT'>('SHORT');
   let patternName = $state('');
 
+  // Chart overlay data (Sprint 1)
+  let currentAnnotations: any[] = $state([]);
+  let currentIndicators: any = $state(null);
+
   // Conversation history for LLM context
   let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
 
@@ -281,6 +285,8 @@
     currentSnapshot = data;
     if (data.chart) currentChartData = data.chart;
     if (data.derivatives) currentDeriv = data.derivatives;
+    if (data.annotations) currentAnnotations = data.annotations;
+    if (data.indicators) currentIndicators = data.indicators;
 
     // Build metrics from analysis data
     const metrics: MetricItem[] = [];
@@ -705,7 +711,7 @@
           {/if}
         </div>
         <div class="cp-chart">
-          <CgChart data={currentChartData} currentPrice={currentPrice} />
+          <CgChart data={currentChartData} currentPrice={currentPrice} annotations={currentAnnotations} indicators={currentIndicators} />
         </div>
         <div class="cp-stats">
           <div class="qs-cell">
