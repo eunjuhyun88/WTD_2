@@ -1,3453 +1,1453 @@
 <script lang="ts">
-  import WarRoom from '../../components/terminal/WarRoom.svelte';
-  import ChartPanel from '../../components/arena/ChartPanel.svelte';
-  import VerdictBanner from '../../components/terminal/VerdictBanner.svelte';
-  import IntelPanel from '../../components/terminal/IntelPanel.svelte';
-  import TokenDropdown from '../../components/shared/TokenDropdown.svelte';
-  import CopyTradeModal from '../../components/modals/CopyTradeModal.svelte';
-  import { AGDEFS } from '$lib/data/agents';
-  import {
-    type PatternScanScope as PSScopeType,
-    type PatternScanReport as PSReportType,
-    type ChatErrorKind,
-    ERROR_MESSAGES,
-    buildAgentMeta,
-    detectMentionedAgent as detectMentionedAgentLocal,
-    inferAgentFromIntent as inferAgentFromIntentLocal,
-    inferSuggestedDirection,
-    classifyError,
-    isPatternScanIntent,
-    patternKindLabel,
-    patternStatusLabel,
-    formatPatternChatReply,
-    clampPercent,
-    isHorizontalResizeGesture,
-  } from '../../components/terminal/terminalHelpers';
-  import {
-    BP_MOBILE,
-    BP_TABLET,
-    MOBILE_TAB_META,
-    type DragTarget,
-    type MobileTab,
-    type MobilePanelSize,
-    type MobileResizeAxis,
-    type MobileResizeState,
-    type MobileTouchResizeState,
-    type DesktopPanelKey,
-    type DesktopPanelSize,
-    type TabletPanelKey,
-    type TabletPanelSize,
-    type TabletSplitResizeAxis,
-    type TabletSplitResizeState,
-    createDefaultMobilePanelSizes,
-    createDefaultDesktopPanelSizes,
-    createDefaultTabletPanelSizes,
-    getViewportFlags,
-    getDesktopPanelStyle as buildDesktopPanelStyle,
-    applyDesktopPanelWheelResize,
-    resetDesktopPanelSize as resetDesktopPanelLayoutSize,
-    getTabletPanelStyle as buildTabletPanelStyle,
-    getDefaultTabletLeftWidth,
-    getDefaultTabletBottomHeight,
-    clampTabletLeftWidth,
-    clampTabletBottomHeight,
-    applyTabletPanelWheelResize,
-    resetTabletPanelSize as resetTabletLayoutSize,
-    getMobilePanelStyle as buildMobilePanelStyle,
-    applyMobilePanelWheelResize,
-    resetMobilePanelSize as resetMobileLayoutSize,
-    applyMobilePanelDrag,
-    clampLeftWidth,
-    clampRightWidth,
-  } from '../../components/terminal/terminalLayoutController';
+  import { onMount } from 'svelte';
+  import DataCard from '../../components/cogochi/DataCard.svelte';
+  import CgChart from '../../components/cogochi/CgChart.svelte';
 
-  let liveTickerStr = '';
-  let tickerLoaded = false;
-  let tickerText = 'Loading market data...';
-  let tickerSegments: string[] = ['Loading market data...'];
-  $: tickerText = tickerLoaded && liveTickerStr ? liveTickerStr : 'Loading market data...';
-  $: tickerSegments = tickerText.split(' | ').filter(Boolean);
-  import { gameState } from '$lib/stores/gameState';
-  import { livePrices } from '$lib/stores/priceStore';
-  import { hydrateQuickTrades, openTradeCount } from '$lib/stores/quickTradeStore';
-  import { activeSignalCount } from '$lib/stores/trackedSignalStore';
-  import { copyTradeStore } from '$lib/stores/copyTradeStore';
-  import { formatTimeframeLabel } from '$lib/utils/timeframe';
-  import { alertEngine } from '$lib/services/alertEngine';
-  import { onMount, onDestroy, tick } from 'svelte';
+  // ─── Types ────────────────────────────────────────────────
+  type MessageType =
+    | { role: 'user'; text: string }
+    | { role: 'douni'; text: string; widgets?: Widget[] }
+    | { role: 'douni'; thinking: true };
 
-  let leftW = 280;
-  let rightW = 300;
-  let windowWidth = 1200;
-  let leftCollapsed = false;
-  let rightCollapsed = false;
-  let savedLeftW = 280;
-  let savedRightW = 300;
-  let dragTarget: DragTarget = null;
-  let dragStartX = 0;
-  let dragStartVal = 0;
+  type Widget =
+    | { type: 'chart'; symbol: string; timeframe: string; chartData?: any[] }
+    | { type: 'metrics'; items: MetricItem[] }
+    | { type: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
+    | { type: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
+    | { type: 'scan_list'; items: any[]; sort: string; sector: string };
 
-  let isMobile = false;
-  let isTablet = false;
-  let isDesktop = true;
-  $: ({ isMobile, isTablet, isDesktop } = getViewportFlags(windowWidth));
-
-  let mobileTab: MobileTab = 'chart';
-  let densityMode: 'essential' | 'pro' = 'essential';
-  let densityLabel = 'ESSENTIAL';
-  let decisionDirectionLabel = 'UNSCANNED';
-  let decisionDirectionClass = 'neutral';
-  let decisionConfidenceLabel = '--';
-  let decisionPrimaryLabel = 'RUN FIRST SCAN';
-  let decisionPrimaryHint = 'Scan current pair to generate agent consensus';
-  let mobileViewTracked = false;
-  let mobileNavTracked = false;
-
-  let mobileResizeState: MobileResizeState | null = null;
-  let mobileTouchResizeState: MobileTouchResizeState | null = null;
-  let mobilePanelSizes: Record<MobileTab, MobilePanelSize> = createDefaultMobilePanelSizes();
-
-  let desktopPanelSizes: Record<DesktopPanelKey, DesktopPanelSize> = createDefaultDesktopPanelSizes();
-
-  let tabletPanelSizes: Record<TabletPanelKey, TabletPanelSize> = createDefaultTabletPanelSizes();
-  let tabletLeftWidth = 232;
-  let tabletBottomHeight = 260;
-  let tabletLayoutStyle = '';
-  $: tabletLayoutStyle = `--tab-left-width: ${tabletLeftWidth}px; --tab-bottom-height: ${tabletBottomHeight}px;`;
-  let tabletSplitResizeState: TabletSplitResizeState | null = null;
-
-  function toggleLeft() {
-    if (leftCollapsed) {
-      leftW = savedLeftW;
-      leftCollapsed = false;
-      return;
-    }
-    savedLeftW = leftW;
-    leftW = 0;
-    leftCollapsed = true;
+  interface MetricItem {
+    title: string; value: string; subtext: string;
+    trend: 'bull' | 'bear' | 'neutral' | 'danger';
+    chartData: number[];
   }
 
-  function toggleRight() {
-    if (rightCollapsed) {
-      rightW = savedRightW;
-      rightCollapsed = false;
-      return;
-    }
-    savedRightW = rightW;
-    rightW = 0;
-    rightCollapsed = true;
+  interface LayerItem {
+    id: string; name: string; value: string; score: number;
   }
 
-  function getDesktopPanelStyle(panel: DesktopPanelKey) {
-    return buildDesktopPanelStyle(desktopPanelSizes, panel);
-  }
+  // ─── SSE Event Types ─────────────────────────────────────
+  type SSEEvent =
+    | { type: 'text_delta'; text: string }
+    | { type: 'tool_call'; name: string; args: Record<string, unknown> }
+    | { type: 'tool_result'; name: string; data: any }
+    | { type: 'layer_result'; layer: string; score: number; signal: string; detail?: string }
+    | { type: 'chart_action'; action: string; payload: Record<string, unknown> }
+    | { type: 'pattern_draft'; name: string; conditions: unknown[]; requiresConfirmation: boolean }
+    | { type: 'done'; provider: string; totalTokens?: number }
+    | { type: 'error'; message: string };
 
-  function resizeDesktopPanelByWheel(panel: DesktopPanelKey, axis: 'x' | 'y', e: WheelEvent) {
-    if (!isDesktop) return;
-    const next = applyDesktopPanelWheelResize(desktopPanelSizes, panel, axis, e);
-    if (!next) return;
-    e.preventDefault();
-    e.stopPropagation();
-    desktopPanelSizes = next;
-  }
+  // ─── Feed Entry Types ─────────────────────────────────────
+  type FeedEntry =
+    | { kind: 'query'; text: string }
+    | { kind: 'text'; text: string }
+    | { kind: 'thinking' }
+    | { kind: 'metrics'; items: MetricItem[] }
+    | { kind: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
+    | { kind: 'scan'; items: any[]; sort: string; sector: string }
+    | { kind: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
+    | { kind: 'chart_ref'; symbol: string; timeframe: string };
 
-  function resetDesktopPanelSize(panel: DesktopPanelKey) {
-    desktopPanelSizes = resetDesktopPanelLayoutSize(desktopPanelSizes, panel);
-  }
+  // ─── State ────────────────────────────────────────────────
+  let messages = $state<MessageType[]>([]);
+  let inputText = $state('');
+  let isThinking = $state(false);
+  let feedContainer: HTMLDivElement | undefined = $state();
+  let showPatternModal = $state(false);
 
-  function getTabletPanelStyle(panel: TabletPanelKey) {
-    return buildTabletPanelStyle(tabletPanelSizes, panel);
-  }
+  // Current analysis data
+  let currentSymbol = $state('');
+  let currentTf = $state('');
+  let currentSnapshot: any = $state(null);
+  let currentChartData: any[] = $state([]);
+  let currentPrice = $state(0);
+  let currentChange = $state(0);
+  let currentDeriv: any = $state(null);
+  let patternConditions = $state<string[]>([]);
+  let patternDirection = $state<'LONG' | 'SHORT'>('SHORT');
+  let patternName = $state('');
 
-  function startTabletSplitDrag(axis: TabletSplitResizeAxis, e: PointerEvent) {
-    if (!isTablet) return;
-    const source = e.currentTarget as HTMLElement | null;
-    source?.setPointerCapture?.(e.pointerId);
-    tabletSplitResizeState = {
-      axis,
-      pointerId: e.pointerId,
-      startClient: axis === 'x' ? e.clientX : e.clientY,
-      startValue: axis === 'x' ? tabletLeftWidth : tabletBottomHeight,
-    };
-    e.preventDefault();
-    document.body.style.cursor = axis === 'x' ? 'col-resize' : 'row-resize';
-    document.body.style.userSelect = 'none';
-  }
+  // Chart overlay data (Sprint 1)
+  let currentAnnotations: any[] = $state([]);
+  let currentIndicators: any = $state(null);
 
-  function onTabletSplitPointerMove(e: PointerEvent) {
-    const state = tabletSplitResizeState;
-    if (!state || e.pointerId !== state.pointerId) return;
-    const currentClient = state.axis === 'x' ? e.clientX : e.clientY;
-    const delta = currentClient - state.startClient;
-    if (state.axis === 'x') {
-      tabletLeftWidth = clampTabletLeftWidth(state.startValue + delta, window.innerWidth);
-    } else {
-      tabletBottomHeight = clampTabletBottomHeight(state.startValue - delta, window.innerHeight);
-    }
-    e.preventDefault();
-  }
+  // Conversation history for LLM context
+  let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
 
-  function finishTabletSplitDrag(e?: PointerEvent) {
-    if (!tabletSplitResizeState) return;
-    if (e && e.pointerId !== tabletSplitResizeState.pointerId) return;
-    tabletSplitResizeState = null;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-  }
-
-  function resizeTabletPanelByWheel(panel: TabletPanelKey, axis: 'x' | 'y', e: WheelEvent) {
-    if (!isTablet) return;
-    const next = applyTabletPanelWheelResize(
-      tabletLeftWidth,
-      tabletBottomHeight,
-      panel,
-      axis,
-      e,
-      window.innerWidth,
-      window.innerHeight
-    );
-    if (!next) return;
-    e.preventDefault();
-    e.stopPropagation();
-    tabletLeftWidth = next.tabletLeftWidth;
-    tabletBottomHeight = next.tabletBottomHeight;
-  }
-
-  function resetTabletPanelSize(panel: TabletPanelKey) {
-    const next = resetTabletLayoutSize(panel, window.innerWidth, window.innerHeight);
-    tabletLeftWidth = next.tabletLeftWidth;
-    tabletBottomHeight = next.tabletBottomHeight;
-  }
-
-  function getMobilePanelStyle(tab: MobileTab) {
-    return buildMobilePanelStyle(mobilePanelSizes, tab);
-  }
-
-  function resizeMobilePanelByWheel(tab: MobileTab, axis: 'x' | 'y', e: WheelEvent) {
-    if (!isMobile) return;
-    const next = applyMobilePanelWheelResize(mobilePanelSizes, tab, axis, e);
-    if (!next) return;
-    e.preventDefault();
-    mobilePanelSizes = next;
-  }
-
-  function resetMobilePanelSize(tab: MobileTab) {
-    mobilePanelSizes = resetMobileLayoutSize(mobilePanelSizes, tab);
-  }
-
-  function supportsPointerDrag() {
-    return typeof window !== 'undefined' && 'PointerEvent' in window;
-  }
-
-  function clearBodySelectionIfIdle() {
-    if (!mobileResizeState && !mobileTouchResizeState) {
-      document.body.style.userSelect = '';
-    }
-  }
-
-  function startMobilePanelDrag(tab: MobileTab, axis: MobileResizeAxis, e: PointerEvent) {
-    if (!isMobile) return;
-
-    const handle = e.currentTarget as HTMLElement | null;
-    const panel = handle?.closest('.mob-panel-resizable') as HTMLElement | null;
-    if (!panel) return;
-
-    const rect = panel.getBoundingClientRect();
-    const basisPx = axis === 'x' ? rect.width : rect.height;
-    if (!Number.isFinite(basisPx) || basisPx <= 1) return;
-
-    const current = mobilePanelSizes[tab];
-    mobileResizeState = {
-      tab,
-      axis,
-      pointerId: e.pointerId,
-      startClient: axis === 'x' ? e.clientX : e.clientY,
-      startPct: axis === 'x' ? current.widthPct : current.heightPct,
-      basisPx,
-    };
-
-    handle?.setPointerCapture?.(e.pointerId);
-    if (!mobileTouchResizeState) document.body.style.userSelect = 'none';
-    e.preventDefault();
-
-    gtmEvent('terminal_mobile_panel_resize_start', {
-      tab,
-      axis,
-      width_pct: current.widthPct,
-      height_pct: current.heightPct,
-    });
-  }
-
-  function onMobilePanelPointerMove(e: PointerEvent) {
-    if (!mobileResizeState || e.pointerId !== mobileResizeState.pointerId) return;
-
-    const { tab, axis, startClient, startPct, basisPx } = mobileResizeState;
-    const currentClient = axis === 'x' ? e.clientX : e.clientY;
-    const deltaPct = ((currentClient - startClient) / basisPx) * 100;
-    const next = applyMobilePanelDrag(mobilePanelSizes, tab, axis, startPct, deltaPct);
-    if (!next) return;
-    mobilePanelSizes = next;
-    e.preventDefault();
-  }
-
-  function finishMobilePanelDrag(e?: PointerEvent) {
-    if (!mobileResizeState) return;
-    if (e && e.pointerId !== mobileResizeState.pointerId) return;
-
-    const { tab, axis } = mobileResizeState;
-    const current = mobilePanelSizes[tab];
-    mobileResizeState = null;
-    clearBodySelectionIfIdle();
-
-    gtmEvent('terminal_mobile_panel_resize_end', {
-      tab,
-      axis,
-      width_pct: current.widthPct,
-      height_pct: current.heightPct,
-      input: 'pointer',
-    });
-  }
-
-  function startMobilePanelTouchDrag(tab: MobileTab, axis: MobileResizeAxis, e: TouchEvent) {
-    if (!isMobile || supportsPointerDrag()) return;
-    const touch = e.changedTouches[0];
-    if (!touch) return;
-
-    const handle = e.currentTarget as HTMLElement | null;
-    const panel = handle?.closest('.mob-panel-resizable') as HTMLElement | null;
-    if (!panel) return;
-
-    const rect = panel.getBoundingClientRect();
-    const basisPx = axis === 'x' ? rect.width : rect.height;
-    if (!Number.isFinite(basisPx) || basisPx <= 1) return;
-
-    const current = mobilePanelSizes[tab];
-    mobileTouchResizeState = {
-      tab,
-      axis,
-      touchId: touch.identifier,
-      startClient: axis === 'x' ? touch.clientX : touch.clientY,
-      startPct: axis === 'x' ? current.widthPct : current.heightPct,
-      basisPx,
-    };
-
-    if (!mobileResizeState) document.body.style.userSelect = 'none';
-    e.preventDefault();
-
-    gtmEvent('terminal_mobile_panel_resize_start', {
-      tab,
-      axis,
-      width_pct: current.widthPct,
-      height_pct: current.heightPct,
-      input: 'touch',
-    });
-  }
-
-  function onMobilePanelTouchMove(e: TouchEvent) {
-    if (!mobileTouchResizeState) return;
-    const touch = Array.from(e.touches).find(t => t.identifier === mobileTouchResizeState?.touchId);
-    if (!touch) return;
-
-    const { tab, axis, startClient, startPct, basisPx } = mobileTouchResizeState;
-    const currentClient = axis === 'x' ? touch.clientX : touch.clientY;
-    const deltaPct = ((currentClient - startClient) / basisPx) * 100;
-    const next = applyMobilePanelDrag(mobilePanelSizes, tab, axis, startPct, deltaPct);
-    if (!next) return;
-    mobilePanelSizes = next;
-    e.preventDefault();
-  }
-
-  function finishMobilePanelTouchDrag(e?: TouchEvent) {
-    if (!mobileTouchResizeState) return;
-    if (e) {
-      const ended = Array.from(e.changedTouches).some(t => t.identifier === mobileTouchResizeState?.touchId);
-      if (!ended) return;
-    }
-
-    const { tab, axis } = mobileTouchResizeState;
-    const current = mobilePanelSizes[tab];
-    mobileTouchResizeState = null;
-    clearBodySelectionIfIdle();
-
-    gtmEvent('terminal_mobile_panel_resize_end', {
-      tab,
-      axis,
-      width_pct: current.widthPct,
-      height_pct: current.heightPct,
-      input: 'touch',
-    });
-  }
-
-  function gtmEvent(event: string, payload: Record<string, unknown> = {}) {
-    if (typeof window === 'undefined') return;
-    const w = window as any;
-    if (!Array.isArray(w.dataLayer)) return;
-    w.dataLayer.push({
-      event,
-      page: 'terminal',
-      component: 'terminal-shell',
-      viewport: isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop',
-      ...payload,
-    });
-  }
-
-  function tickerSegmentClass(segment: string): string {
-    if (segment.startsWith('FEAR_GREED:')) {
-      const m = segment.match(/FEAR_GREED:\s*(\d+)/i);
-      const value = m ? Number(m[1]) : null;
-      if (value != null && value <= 25) return 'ticker-chip ticker-chip-fg fear';
-      if (value != null && value >= 75) return 'ticker-chip ticker-chip-fg greed';
-      return 'ticker-chip ticker-chip-fg neutral';
-    }
-    if (segment.startsWith('MCAP_24H:')) {
-      return segment.includes('-')
-        ? 'ticker-chip ticker-chip-neg'
-        : 'ticker-chip ticker-chip-pos';
-    }
-    return 'ticker-chip';
-  }
-
-  $: densityLabel = densityMode === 'essential' ? 'ESSENTIAL' : 'PRO';
-  $: if (terminalScanning) {
-    decisionDirectionLabel = 'SCANNING';
-    decisionDirectionClass = 'scanning';
-    decisionConfidenceLabel = '--';
-  } else if (latestScan) {
-    decisionDirectionLabel = latestScan.consensus.toUpperCase();
-    decisionDirectionClass = latestScan.consensus;
-    decisionConfidenceLabel = `${Math.round(latestScan.avgConfidence)}%`;
-  } else {
-    decisionDirectionLabel = 'UNSCANNED';
-    decisionDirectionClass = 'neutral';
-    decisionConfidenceLabel = '--';
-  }
-  $: if (!latestScan) {
-    decisionPrimaryLabel = 'RUN FIRST SCAN';
-    decisionPrimaryHint = 'Scan current pair to generate agent consensus';
-  } else if (chatTradeReady) {
-    decisionPrimaryLabel = `TRADE ${chatSuggestedDir}`;
-    decisionPrimaryHint = 'Open chart planner with latest consensus direction';
-  } else {
-    decisionPrimaryLabel = 'OPEN CHAT PLAN';
-    decisionPrimaryHint = 'Ask agents for trade-ready setup first';
-  }
-
-  function toggleDensityMode() {
-    const nextMode = densityMode === 'essential' ? 'pro' : 'essential';
-    densityMode = nextMode;
-    gtmEvent('terminal_density_mode_toggle', {
-      mode: nextMode,
-      pair: $gameState.pair,
-      timeframe: $gameState.timeframe,
-    });
-  }
-
-  function setMobileTab(tab: MobileTab) {
-    if (mobileTab === tab) return;
-    const fromTab = mobileTab;
-    mobileTab = tab;
-    gtmEvent('terminal_mobile_tab_change', {
-      tab,
-      from_tab: fromTab,
-      source: 'bottom-nav',
-      pair: $gameState.pair,
-      timeframe: $gameState.timeframe,
-    });
-  }
-
-  $: if (isMobile && !mobileViewTracked) {
-    mobileViewTracked = true;
-    gtmEvent('terminal_mobile_view', {
-      tab: mobileTab,
-      pair: $gameState.pair,
-      timeframe: $gameState.timeframe,
-    });
-  } else if (!isMobile && mobileViewTracked) {
-    mobileViewTracked = false;
-  }
-
-  $: if (isMobile && !mobileNavTracked) {
-    mobileNavTracked = true;
-    gtmEvent('terminal_mobile_nav_impression', {
-      tab: mobileTab,
-      pair: $gameState.pair,
-      timeframe: $gameState.timeframe,
-    });
-  } else if (!isMobile && mobileNavTracked) {
-    mobileNavTracked = false;
-  }
-
-  function startDrag(target: DragTarget, e: MouseEvent) {
-    if (isMobile || isTablet) return;
-    dragTarget = target;
-    dragStartX = e.clientX;
-    if (target === 'left') dragStartVal = leftW;
-    else if (target === 'right') dragStartVal = rightW;
-    e.preventDefault();
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }
-
-  function onMouseMove(e: MouseEvent) {
-    if (!dragTarget) return;
-    if (dragTarget === 'left') {
-      const delta = e.clientX - dragStartX;
-      leftW = clampLeftWidth(dragStartVal + delta);
-    } else if (dragTarget === 'right') {
-      const delta = dragStartX - e.clientX;
-      rightW = clampRightWidth(dragStartVal + delta);
-    }
-  }
-
-  function onMouseUp() {
-    if (!dragTarget) return;
-    dragTarget = null;
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-  }
-
-  // isHorizontalResizeGesture — imported from terminalHelpers
-
-  function resizePanelByWheel(target: 'left' | 'right' | 'center', e: WheelEvent, options?: { force?: boolean }) {
-    if (!isDesktop) return;
-
-    const force = options?.force === true;
-    const horizontalGesture = isHorizontalResizeGesture(e);
-    const wantsResize = force || horizontalGesture || e.altKey || e.ctrlKey || e.metaKey;
-    if (!wantsResize) return;
-
-    const delta = horizontalGesture ? e.deltaX : (e.deltaY === 0 ? e.deltaX : e.deltaY);
-    if (!Number.isFinite(delta) || delta === 0) return;
-    e.preventDefault();
-
-    const step = e.shiftKey ? 26 : 14;
-    const signed = delta > 0 ? step : -step;
-
-    if (target === 'left') {
-      if (leftCollapsed) {
-        leftCollapsed = false;
-        leftW = savedLeftW;
+  // ─── Derived: Feed Entries ────────────────────────────────
+  let feedEntries = $derived.by(() => {
+    const entries: FeedEntry[] = [];
+    for (const msg of messages) {
+      if ('thinking' in msg) {
+        entries.push({ kind: 'thinking' });
+        continue;
       }
-      leftW = clampLeftWidth(leftW + signed);
-      savedLeftW = leftW;
-      return;
-    }
-
-    if (target === 'right') {
-      if (rightCollapsed) {
-        rightCollapsed = false;
-        rightW = savedRightW;
+      if (msg.role === 'user') {
+        entries.push({ kind: 'query', text: msg.text });
+        continue;
       }
-      rightW = clampRightWidth(rightW + signed);
-      savedRightW = rightW;
-      return;
-    }
-
-    if (target === 'center') {
-      if (leftCollapsed || rightCollapsed) return;
-      const half = Math.round(signed / 2);
-      // Wheel down: widen side panels (center narrower). Wheel up: opposite.
-      const nextLeft = clampLeftWidth(leftW + half);
-      const nextRight = clampRightWidth(rightW + half);
-      leftW = nextLeft;
-      rightW = nextRight;
-      savedLeftW = leftW;
-      savedRightW = rightW;
-    }
-  }
-
-  function handleResize() {
-    const wasTablet = windowWidth >= BP_MOBILE && windowWidth < BP_TABLET;
-    windowWidth = window.innerWidth;
-    const nowTablet = windowWidth >= BP_MOBILE && windowWidth < BP_TABLET;
-    if (!nowTablet) return;
-    if (!wasTablet) {
-      tabletLeftWidth = getDefaultTabletLeftWidth(window.innerWidth);
-      tabletBottomHeight = getDefaultTabletBottomHeight(window.innerHeight);
-      return;
-    }
-    tabletLeftWidth = clampTabletLeftWidth(tabletLeftWidth, window.innerWidth);
-    tabletBottomHeight = clampTabletBottomHeight(tabletBottomHeight, window.innerHeight);
-  }
-
-  async function fetchLiveTicker() {
-    try {
-      const [fgRes, cgRes] = await Promise.all([
-        fetch('/api/feargreed?limit=1', { signal: AbortSignal.timeout(5000) }).then(r => r.json()).catch(() => null),
-        fetch('/api/coingecko/global', { signal: AbortSignal.timeout(5000) }).then(r => r.json()).catch(() => null),
-      ]);
-
-      const parts: string[] = [];
-      if (cgRes?.ok && cgRes.data?.global) {
-        const g = cgRes.data.global;
-        if (g.btcDominance) parts.push(`BTC_DOM: ${g.btcDominance.toFixed(1)}%`);
-        if (g.totalVolumeUsd) parts.push(`VOL_24H: $${(g.totalVolumeUsd / 1e9).toFixed(1)}B`);
-        if (g.totalMarketCapUsd) parts.push(`MCAP: $${(g.totalMarketCapUsd / 1e12).toFixed(2)}T`);
-        if (g.ethDominance) parts.push(`ETH_DOM: ${g.ethDominance.toFixed(1)}%`);
-        if (g.marketCapChange24hPct != null) parts.push(`MCAP_24H: ${g.marketCapChange24hPct >= 0 ? '+' : ''}${g.marketCapChange24hPct.toFixed(2)}%`);
+      // douni message
+      if (msg.text) {
+        entries.push({ kind: 'text', text: msg.text });
       }
-      if (fgRes?.ok && fgRes.data?.current) {
-        const fg = fgRes.data.current;
-        parts.push(`FEAR_GREED: ${fg.value} (${fg.classification})`);
+      if (msg.widgets) {
+        for (const w of msg.widgets) {
+          switch (w.type) {
+            case 'chart':
+              entries.push({ kind: 'chart_ref', symbol: w.symbol, timeframe: w.timeframe });
+              break;
+            case 'metrics':
+              entries.push({ kind: 'metrics', items: w.items });
+              break;
+            case 'layers':
+              entries.push({ kind: 'layers', items: w.items, alphaScore: w.alphaScore, alphaLabel: w.alphaLabel });
+              break;
+            case 'scan_list':
+              entries.push({ kind: 'scan', items: w.items, sort: w.sort, sector: w.sector });
+              break;
+            case 'actions':
+              entries.push({ kind: 'actions', patternName: w.patternName, direction: w.direction, conditions: w.conditions });
+              break;
+          }
+        }
       }
-      if (cgRes?.ok && cgRes.data?.stablecoin) {
-        const s = cgRes.data.stablecoin;
-        if (s.totalMcapUsd) parts.push(`STABLE_MCAP: $${(s.totalMcapUsd / 1e9).toFixed(1)}B`);
-      }
-
-      if (parts.length > 0) {
-        parts.push(`UPDATED: ${new Date().toTimeString().slice(0, 5)}`);
-        liveTickerStr = parts.join(' | ');
-        tickerLoaded = true;
-      }
-    } catch (e) {
-      console.warn('[Terminal] Live ticker fetch failed, using fallback');
     }
-  }
+    return entries;
+  });
 
+  // ─── Init ─────────────────────────────────────────────────
   onMount(() => {
-    windowWidth = window.innerWidth;
-    if (windowWidth >= BP_MOBILE && windowWidth < BP_TABLET) {
-      tabletLeftWidth = getDefaultTabletLeftWidth(window.innerWidth);
-      tabletBottomHeight = getDefaultTabletBottomHeight(window.innerHeight);
-    }
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('pointermove', onMobilePanelPointerMove, { passive: false });
-    window.addEventListener('pointerup', finishMobilePanelDrag);
-    window.addEventListener('pointercancel', finishMobilePanelDrag);
-    window.addEventListener('touchmove', onMobilePanelTouchMove, { passive: false });
-    window.addEventListener('touchend', finishMobilePanelTouchDrag);
-    window.addEventListener('touchcancel', finishMobilePanelTouchDrag);
-    window.addEventListener('pointermove', onTabletSplitPointerMove, { passive: false });
-    window.addEventListener('pointerup', finishTabletSplitDrag);
-    window.addEventListener('pointercancel', finishTabletSplitDrag);
-
-    // ── Hydrate quick trades (터미널 페이지에서만 호출) ──
-    void hydrateQuickTrades();
-
-    // ── Load live ticker data ──
-    fetchLiveTicker();
-
-    // Background alert engine — scans every 5min, fires notifications
-    alertEngine.start();
-
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('copyTrade') === '1') {
-      const pair = params.get('pair') || 'BTC/USDT';
-      const dir = params.get('dir') === 'SHORT' ? 'SHORT' : 'LONG';
-      const entry = Number(params.get('entry') || 0);
-      const tp = Number(params.get('tp') || 0);
-      const sl = Number(params.get('sl') || 0);
-      const conf = Number(params.get('conf') || 70);
-      const source = params.get('source') || 'SIGNAL ROOM';
-      const reason = params.get('reason') || '';
-
-      if (pair && Number.isFinite(entry) && entry > 0 && Number.isFinite(tp) && Number.isFinite(sl)) {
-        copyTradeStore.openFromSignal({
-          pair,
-          dir,
-          entry,
-          tp,
-          sl,
-          conf: Number.isFinite(conf) ? conf : 70,
-          source,
-          reason,
-        });
-      }
-
-      params.delete('copyTrade');
-      params.delete('pair');
-      params.delete('dir');
-      params.delete('entry');
-      params.delete('tp');
-      params.delete('sl');
-      params.delete('conf');
-      params.delete('source');
-      params.delete('reason');
-      const nextQuery = params.toString();
-      const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
-      history.replaceState({}, '', nextUrl);
-    }
+    const hour = new Date().getHours();
+    let greeting: string;
+    if (hour >= 6 && hour < 12) greeting = '좋은 아침! 뭐 볼까? 종목이랑 타임프레임 알려줘.';
+    else if (hour >= 12 && hour < 18) greeting = '오후야! BTC 4H 분석해볼까?';
+    else if (hour >= 18 && hour < 24) greeting = '오늘 시장 좀 움직였어. 같이 볼까?';
+    else greeting = '아직 안 자? 시장은 쉬지 않지. 뭐 봐줄까?';
+    messages = [{ role: 'douni', text: greeting }];
   });
 
-  onDestroy(() => {
-    finishMobilePanelDrag();
-    finishMobilePanelTouchDrag();
-    finishTabletSplitDrag();
-    alertEngine.stop();
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('pointermove', onMobilePanelPointerMove);
-      window.removeEventListener('pointerup', finishMobilePanelDrag);
-      window.removeEventListener('pointercancel', finishMobilePanelDrag);
-      window.removeEventListener('touchmove', onMobilePanelTouchMove);
-      window.removeEventListener('touchend', finishMobilePanelTouchDrag);
-      window.removeEventListener('touchcancel', finishMobilePanelTouchDrag);
-      window.removeEventListener('pointermove', onTabletSplitPointerMove);
-      window.removeEventListener('pointerup', finishTabletSplitDrag);
-      window.removeEventListener('pointercancel', finishTabletSplitDrag);
-    }
-  });
+  // ─── Send via FC Pipeline ─────────────────────────────────
+  async function handleSend() {
+    const text = inputText.trim();
+    if (!text || isThinking) return;
 
-  // Selected pair display
-  let pair = 'BTC/USDT';
-  let mobileMeta = MOBILE_TAB_META.chart;
-  let mobileOpenTrades = 0;
-  let mobileTrackedSignals = 0;
-  $: pair = $gameState.pair || 'BTC/USDT';
-  $: mobileMeta = MOBILE_TAB_META[mobileTab];
-  $: mobileOpenTrades = $openTradeCount;
-  $: mobileTrackedSignals = $activeSignalCount;
+    messages = [...messages, { role: 'user', text }];
+    inputText = '';
+    isThinking = true;
 
-  function onTokenSelect(e: CustomEvent<{ pair: string }>) {
-    gameState.update(s => ({ ...s, pair: e.detail.pair }));
-    gtmEvent('terminal_pair_change_shell', {
-      pair: e.detail.pair,
-      source: isMobile ? 'mobile-topbar' : 'shell-token-control',
-      timeframe: $gameState.timeframe,
-    });
-  }
+    // Add thinking bubble
+    messages = [...messages, { role: 'douni', thinking: true } as MessageType];
+    scrollToBottom();
 
-  type WarRoomHandle = {
-    triggerScanFromChart?: () => void;
-  };
-  // PatternScanScope, PatternScanReport — imported from terminalHelpers.ts
-  type PatternScanScope = PSScopeType;
-  type PatternScanReport = PSReportType;
-  type ChartPanelHandle = {
-    activateTradeDrawing?: (dir?: 'LONG' | 'SHORT') => Promise<void> | void;
-    runPatternScanFromIntel?: (options?: { scope?: PatternScanScope; focus?: boolean }) => Promise<PatternScanReport>;
-  };
-  let warRoomRef: WarRoomHandle | null = null;
-  let mobileChartRef: ChartPanelHandle | null = null;
-  let tabletChartRef: ChartPanelHandle | null = null;
-  let desktopChartRef: ChartPanelHandle | null = null;
-  let pendingChartScan = false;
-
-  function tryTriggerWarRoomScan(): boolean {
-    if (!warRoomRef || typeof warRoomRef.triggerScanFromChart !== 'function') return false;
-    warRoomRef.triggerScanFromChart();
-    return true;
-  }
-
-  function requestTerminalScan(source: string, pairHint?: string, timeframeHint?: string) {
-    gtmEvent('terminal_scan_request_shell', {
-      source,
-      pair: pairHint || $gameState.pair,
-      timeframe: timeframeHint || $gameState.timeframe,
-    });
-
-    if (tryTriggerWarRoomScan()) return;
-
-    pendingChartScan = true;
-    if (isDesktop && leftCollapsed) {
-      toggleLeft();
-    }
-    if (isMobile && mobileTab !== 'warroom') {
-      gtmEvent('terminal_mobile_tab_auto_switch', {
-        from_tab: mobileTab,
-        to_tab: 'warroom',
-        reason: 'scan_request',
-      });
-      setMobileTab('warroom');
-    }
-  }
-
-  function handleChartScanRequest(e: CustomEvent<{ source?: string; pair?: string; timeframe?: string }>) {
-    const detail = e.detail ?? {};
-    requestTerminalScan(detail.source || 'chart-panel', detail.pair, detail.timeframe);
-  }
-
-  $: if (pendingChartScan && tryTriggerWarRoomScan()) {
-    pendingChartScan = false;
-  }
-
-  // ── Agent Chat State ──
-  interface ChatMsg {
-    from: string;
-    icon: string;
-    color: string;
-    text: string;
-    time: string;
-    isUser: boolean;
-    isSystem?: boolean;
-  }
-
-  type ScanHighlight = {
-    agent: string;
-    vote: 'long' | 'short' | 'neutral';
-    conf: number;
-    note: string;
-  };
-
-  type ScanIntelDetail = {
-    pair: string;
-    timeframe: string;
-    token: string;
-    createdAt: number;
-    label: string;
-    consensus: 'long' | 'short' | 'neutral';
-    avgConfidence: number;
-    summary: string;
-    highlights: ScanHighlight[];
-    signals: Array<{ vote: string; conf: number; entry: number; tp: number; sl: number; name: string; pair: string }>;
-  };
-
-  type AgentTradeSetup = {
-    source: 'consensus' | 'agent';
-    agentName?: string;
-    dir: 'LONG' | 'SHORT';
-    entry: number;
-    tp: number;
-    sl: number;
-    rr: number;
-    conf: number;
-    pair: string;
-  };
-
-  let chatMessages: ChatMsg[] = [
-    { from: 'SYSTEM', icon: '🤖', color: '#E8967D', text: 'Stockclaw Orchestrator v8 online. 8 agents standing by. Scan first, then ask questions about the results.', time: '—', isUser: false, isSystem: true },
-    { from: 'ORCHESTRATOR', icon: '🧠', color: '#ff2d9b',
-      text: '💡 Try these:\n• "BTC 전망 분석해줘" — I\'ll route to the right agents\n• "차트패턴 찾아봐" — 보이는 구간 패턴을 차트에 바로 표시\n• "@STRUCTURE MA, RSI 분석" — Direct to Structure agent\n• "@DERIV 펀딩 + OI 어때?" — Derivatives analysis\n• "@FLOW 고래 움직임?" — On-chain + whale flow\n• "@SENTI 소셜 센티먼트" — F&G + LunarCrush social\n• "@MACRO DXY, 금리 영향?" — Macro regime check',
-      time: '—', isUser: false },
-  ];
-  let isTyping = false;
-  let latestScan: ScanIntelDetail | null = null;
-  let terminalScanning = false;
-  type ChatTradeDirection = 'LONG' | 'SHORT';
-  let chatTradeReady = false;
-  let chatSuggestedDir: ChatTradeDirection = 'LONG';
-  let chatFocusKey = 0;
-  let activeTradeSetup: AgentTradeSetup | null = null;
-
-  // Agent/error/direction helpers — imported from terminalHelpers.ts
-  const AGENT_META = buildAgentMeta();
-
-  // Chat connection status for UI dot indicator
-  let chatConnectionStatus: 'connected' | 'degraded' | 'disconnected' = 'connected';
-  let lastChatSuccess = 0;
-
-  function buildOfflineAgentReply(userText: string, statusLabel: string, err?: unknown): { sender: string; text: string; tradeDir: ChatTradeDirection | null } {
-    const sender = detectMentionedAgentLocal(userText) || inferAgentFromIntentLocal(userText);
-    const pair = $gameState.pair || 'BTC/USDT';
-    const timeframe = ($gameState.timeframe || '4h').toUpperCase();
-    const errorKind = classifyError(statusLabel, err);
-
-    // Update connection status
-    if (errorKind === 'network' || errorKind === 'llm_unavailable') {
-      chatConnectionStatus = 'disconnected';
-    } else {
-      chatConnectionStatus = 'degraded';
-    }
-
-    const scanSummary = latestScan
-      ? `최근 스캔: ${latestScan.pair} ${latestScan.timeframe.toUpperCase()} ${String(latestScan.consensus).toUpperCase()} ${Math.round(latestScan.avgConfidence)}%`
-      : '';
-    const tradeDirFromQuestion = inferSuggestedDirection(userText);
-    const tradeDirFromScan = latestScan?.consensus === 'long'
-      ? 'LONG'
-      : latestScan?.consensus === 'short'
-        ? 'SHORT'
-        : null;
-    const tradeDir = tradeDirFromQuestion || tradeDirFromScan;
-    const tradeHint = tradeDir
-      ? `\n💡 ${tradeDir} 관점 참고. START ${tradeDir}로 드래그 진입 가능.`
-      : '';
-
-    return {
-      sender,
-      tradeDir,
-      text:
-        `⚠️ ${ERROR_MESSAGES[errorKind]}\n` +
-        `${pair} ${timeframe} 기준 로컬 폴백 응답입니다.` +
-        (scanSummary ? `\n${scanSummary}` : '') +
-        tradeHint,
-    };
-  }
-
-  // isPatternScanIntent, patternKindLabel, patternStatusLabel, formatPatternChatReply
-  // — imported from terminalHelpers.ts
-
-  async function triggerPatternScanFromChat(source: string, time: string) {
-    if (isMobile && mobileTab !== 'chart') {
-      gtmEvent('terminal_mobile_tab_auto_switch', {
-        from_tab: mobileTab,
-        to_tab: 'chart',
-        reason: 'pattern_scan_from_chat',
-      });
-      setMobileTab('chart');
-      await tick();
-    }
-
-    await tick();
-    const chartPanel = getActiveChartPanel();
-    if (!chartPanel || typeof chartPanel.runPatternScanFromIntel !== 'function') {
-      gtmEvent('terminal_pattern_scan_request_failed', {
-        source,
-        reason: 'chart_panel_unavailable',
-        pair: $gameState.pair,
-        timeframe: $gameState.timeframe,
-      });
-      chatMessages = [...chatMessages, {
-        from: 'SYSTEM',
-        icon: '⚠️',
-        color: '#ff8c3b',
-        text: '차트가 준비되지 않아 패턴 스캔을 실행하지 못했습니다.',
-        time,
-        isUser: false,
-        isSystem: true,
-      }];
-      return;
-    }
+    // Track history for LLM context
+    chatHistory = [...chatHistory, { role: 'user', content: text }];
 
     try {
-      const report = await chartPanel.runPatternScanFromIntel({ scope: 'visible', focus: true });
-      gtmEvent('terminal_pattern_scan_request', {
-        source,
-        pair: $gameState.pair,
-        timeframe: $gameState.timeframe,
-        scope: report.scope,
-        candle_count: report.candleCount,
-        pattern_count: report.patternCount,
-        ok: report.ok,
-      });
-      chatMessages = [...chatMessages, {
-        from: 'ORCHESTRATOR',
-        icon: '🧠',
-        color: '#ff2d9b',
-        text: formatPatternChatReply(report),
-        time,
-        isUser: false,
-      }];
-    } catch (error) {
-      gtmEvent('terminal_pattern_scan_request_failed', {
-        source,
-        reason: 'runtime_error',
-        pair: $gameState.pair,
-        timeframe: $gameState.timeframe,
-      });
-      chatMessages = [...chatMessages, {
-        from: 'SYSTEM',
-        icon: '⚠️',
-        color: '#ff8c3b',
-        text: '패턴 스캔 실행 중 오류가 발생했습니다.',
-        time,
-        isUser: false,
-        isSystem: true,
-      }];
-      console.error('[terminal] pattern scan from chat failed:', error);
-    }
-  }
-
-  function getActiveChartPanel(): ChartPanelHandle | null {
-    if (isMobile) return mobileChartRef;
-    if (isTablet) return tabletChartRef;
-    return desktopChartRef;
-  }
-
-  function focusIntelChat(source: string) {
-    if (isDesktop && rightCollapsed) toggleRight();
-    if (isMobile && mobileTab !== 'intel') {
-      gtmEvent('terminal_mobile_tab_auto_switch', {
-        from_tab: mobileTab,
-        to_tab: 'intel',
-        reason: source,
-      });
-      setMobileTab('intel');
-    }
-    chatFocusKey += 1;
-  }
-
-  function handleChartChatRequest(e: CustomEvent<{ source?: string; pair?: string; timeframe?: string }>) {
-    const detail = e.detail ?? {};
-    gtmEvent('terminal_chat_request_shell', {
-      source: detail.source || 'chart-panel',
-      pair: detail.pair || $gameState.pair,
-      timeframe: detail.timeframe || $gameState.timeframe,
-      trade_ready: chatTradeReady,
-    });
-    focusIntelChat(detail.source || 'chart-panel');
-  }
-
-  async function triggerTradePlanFromChat(source: string) {
-    if (!chatTradeReady) {
-      gtmEvent('terminal_trade_plan_request_blocked', {
-        source,
-        reason: 'chat_answer_required',
-        pair: $gameState.pair,
-        timeframe: $gameState.timeframe,
-      });
-      focusIntelChat(`${source}-chat-first`);
-      return;
-    }
-
-    if (isDesktop && rightCollapsed) toggleRight();
-    if (isMobile && mobileTab !== 'chart') {
-      gtmEvent('terminal_mobile_tab_auto_switch', {
-        from_tab: mobileTab,
-        to_tab: 'chart',
-        reason: 'trade_plan_from_chat',
-      });
-      setMobileTab('chart');
-      await tick();
-    }
-
-    await tick();
-    const chartPanel = getActiveChartPanel();
-    if (!chartPanel || typeof chartPanel.activateTradeDrawing !== 'function') {
-      gtmEvent('terminal_trade_plan_request_failed', {
-        source,
-        reason: 'chart_panel_unavailable',
-        pair: $gameState.pair,
-        timeframe: $gameState.timeframe,
-      });
-      return;
-    }
-
-    gtmEvent('terminal_trade_plan_request', {
-      source,
-      pair: $gameState.pair,
-      timeframe: $gameState.timeframe,
-      suggested_dir: chatSuggestedDir,
-    });
-    await chartPanel.activateTradeDrawing(chatSuggestedDir);
-  }
-
-  function handleIntelGoTrade() {
-    void triggerTradePlanFromChat('intel-panel');
-  }
-
-  async function handleDecisionPrimaryAction() {
-    if (terminalScanning) return;
-    if (!latestScan) {
-      requestTerminalScan('decision-rail');
-      return;
-    }
-    if (chatTradeReady) {
-      await triggerTradePlanFromChat('decision-rail');
-      return;
-    }
-    focusIntelChat('decision-rail-chat');
-  }
-
-  async function handleSendChat(e: CustomEvent<{ text: string }>) {
-    const text = e.detail.text;
-    if (!text.trim()) return;
-    const now = new Date();
-    const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    // 유저 메시지 즉시 표시
-    chatMessages = [...chatMessages, { from: 'YOU', icon: '🐕', color: '#E8967D', text, time, isUser: true }];
-    isTyping = true;
-
-    // 멘션된 에이전트 감지 (없으면 서버에서 ORCHESTRATOR로 기본 처리)
-    const agent = AGDEFS.find(ag => text.toLowerCase().includes(`@${ag.name.toLowerCase()}`));
-    const mentionedAgent = agent?.name || undefined;
-    const patternIntent = isPatternScanIntent(text);
-    chatTradeReady = false;
-    gtmEvent('terminal_chat_question_sent', {
-      source: 'intel-chat',
-      pair: $gameState.pair || 'BTC/USDT',
-      timeframe: $gameState.timeframe || '4h',
-      chars: text.length,
-      mentioned_agent: mentionedAgent || 'auto',
-      intent: patternIntent ? 'pattern_scan' : 'agent_chat',
-    });
-
-    if (patternIntent) {
-      isTyping = false;
-      await triggerPatternScanFromChat('intel-chat', time);
-      return;
-    }
-
-    isTyping = true;
-
-    try {
-      const res = await fetch('/api/chat/messages', {
+      const res = await fetch('/api/cogochi/terminal/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          channel: 'terminal',
-          senderKind: 'user',
-          senderName: 'YOU',
           message: text,
-          meta: {
-            pair: $gameState.pair || 'BTC/USDT',
-            timeframe: $gameState.timeframe || '4h',
-            mentionedAgent,
-            livePrices: { ...$livePrices },
-          },
+          history: chatHistory.slice(-10),
+          snapshot: currentSnapshot || undefined,
         }),
-        signal: AbortSignal.timeout(20000), // 20s timeout for LLM responses
       });
 
-      isTyping = false;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.body) throw new Error('No response body');
 
-      if (res.ok) {
-        chatConnectionStatus = 'connected';
-        lastChatSuccess = Date.now();
-        const data = await res.json();
-        if (data.agentResponse) {
-          const r = data.agentResponse;
-          const agMeta = AGENT_META[r.senderName] || AGENT_META['ORCHESTRATOR'];
-          chatMessages = [...chatMessages, {
-            from: r.senderName,
-            icon: agMeta.icon,
-            color: agMeta.color,
-            text: r.message,
-            time,
-            isUser: false,
-          }];
-          const inferred = inferSuggestedDirection(String(r.message || ''));
-          if (inferred) chatSuggestedDir = inferred;
-          chatTradeReady = true;
-          gtmEvent('terminal_chat_answer_received', {
-            source: 'intel-chat',
-            pair: $gameState.pair || 'BTC/USDT',
-            timeframe: $gameState.timeframe || '4h',
-            responder: r.senderName || 'ORCHESTRATOR',
-            chars: String(r.message || '').length,
-            suggested_dir: inferred || chatSuggestedDir,
-          });
+      // Remove thinking bubble, prepare streaming response
+      messages = messages.filter(m => !('thinking' in m));
+
+      let streamingText = '';
+      const pendingLayers: LayerItem[] = [];
+      let pendingAnalysis: any = null;
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const raw = trimmed.slice(6);
+          if (raw === '[DONE]') continue;
+
+          let event: SSEEvent;
+          try { event = JSON.parse(raw); } catch { continue; }
+
+          switch (event.type) {
+            case 'text_delta':
+              streamingText += event.text;
+              // Update last douni message with streaming text
+              updateStreamingMessage(streamingText);
+              break;
+
+            case 'tool_call':
+              if (event.name === 'analyze_market' || event.name === 'check_social' || event.name === 'scan_market') {
+                // Show thinking indicator while tool runs
+                messages = [...messages, { role: 'douni', thinking: true } as MessageType];
+                scrollToBottom();
+              }
+              break;
+
+            case 'layer_result':
+              pendingLayers.push({
+                id: event.layer,
+                name: layerName(event.layer),
+                value: event.signal,
+                score: event.score,
+              });
+              break;
+
+            case 'tool_result':
+              if (event.name === 'analyze_market' && event.data) {
+                pendingAnalysis = event.data;
+                messages = messages.filter(m => !('thinking' in m));
+                applyAnalysisResult(event.data, pendingLayers);
+                streamingText = '';
+              } else if (event.name === 'check_social' && event.data) {
+                messages = messages.filter(m => !('thinking' in m));
+                applySocialResult(event.data);
+                streamingText = '';
+              } else if (event.name === 'scan_market' && event.data) {
+                messages = messages.filter(m => !('thinking' in m));
+                applyScanResult(event.data);
+                streamingText = '';
+              }
+              break;
+
+            case 'chart_action':
+              handleChartAction(event.action, event.payload);
+              break;
+
+            case 'pattern_draft':
+              patternName = event.name;
+              patternConditions = (event.conditions as any[]).map(c =>
+                `${c.field} ${c.operator} ${c.value}`
+              );
+              showPatternModal = true;
+              break;
+
+            case 'error':
+              messages = [...messages, { role: 'douni', text: `Error: ${event.message}` }];
+              scrollToBottom();
+              break;
+
+            case 'done':
+              // Finalize
+              break;
+          }
         }
-      } else {
-        let statusLabel = String(res.status);
-        try {
-          const errBody = await res.json();
-          const errMsg = typeof errBody?.error === 'string' ? errBody.error : '';
-          if (errMsg) statusLabel = `${res.status} ${errMsg}`;
-        } catch {
-          // noop
-        }
-        const offline = buildOfflineAgentReply(text, statusLabel);
-        const fallbackMeta = AGENT_META[offline.sender] || AGENT_META.ORCHESTRATOR;
-        if (offline.tradeDir) {
-          chatSuggestedDir = offline.tradeDir;
-          chatTradeReady = true;
-        } else {
-          chatTradeReady = false;
-        }
-        gtmEvent('terminal_chat_answer_error', {
-          source: 'intel-chat',
-          pair: $gameState.pair || 'BTC/USDT',
-          timeframe: $gameState.timeframe || '4h',
-          status: res.status,
-          mode: 'offline_fallback',
-        });
-        chatMessages = [...chatMessages, {
-          from: offline.sender,
-          icon: fallbackMeta.icon,
-          color: fallbackMeta.color,
-          text: offline.text,
-          time,
-          isUser: false,
-        }];
       }
-    } catch (err) {
-      isTyping = false;
-      const errorLabel = err instanceof DOMException && err.name === 'TimeoutError' ? 'timeout' : 'network';
-      const offline = buildOfflineAgentReply(text, errorLabel, err);
-      const fallbackMeta = AGENT_META[offline.sender] || AGENT_META.ORCHESTRATOR;
-      if (offline.tradeDir) {
-        chatSuggestedDir = offline.tradeDir;
-        chatTradeReady = true;
-      } else {
-        chatTradeReady = false;
+
+      // Finalize: ensure last text message is in history
+      if (streamingText) {
+        chatHistory = [...chatHistory, { role: 'assistant', content: streamingText }];
       }
-      gtmEvent('terminal_chat_answer_error', {
-        source: 'intel-chat',
-        pair: $gameState.pair || 'BTC/USDT',
-        timeframe: $gameState.timeframe || '4h',
-        status: 'network',
-        mode: 'offline_fallback',
+
+    } catch (err: any) {
+      messages = messages.filter(m => !('thinking' in m));
+      messages = [...messages, { role: 'douni', text: `Error: ${err.message}` }];
+    } finally {
+      isThinking = false;
+      scrollToBottom();
+    }
+  }
+
+  // ─── Streaming Text Update ─────────────────────────────────
+  function updateStreamingMessage(text: string) {
+    const last = messages[messages.length - 1];
+    if (last && last.role === 'douni' && !('thinking' in last)) {
+      // Update existing bubble
+      messages = [...messages.slice(0, -1), { ...last, text }];
+    } else {
+      // Remove thinking + add new text bubble
+      messages = [...messages.filter(m => !('thinking' in m)), { role: 'douni', text }];
+    }
+    scrollToBottom();
+  }
+
+  // ─── Apply Analysis Result ─────────────────────────────────
+  function applyAnalysisResult(data: any, layers: LayerItem[]) {
+    currentSymbol = data.symbol || currentSymbol;
+    currentTf = data.timeframe || currentTf;
+    currentPrice = data.price || currentPrice;
+    currentChange = data.change24h || currentChange;
+    currentSnapshot = data;
+    if (data.chart) currentChartData = data.chart;
+    if (data.derivatives) currentDeriv = data.derivatives;
+    if (data.annotations) currentAnnotations = data.annotations;
+    if (data.indicators) currentIndicators = data.indicators;
+
+    // Build metrics from analysis data
+    const metrics: MetricItem[] = [];
+    if (data.l2?.fr != null) {
+      const fr = data.l2.fr;
+      const frPct = (fr * 100).toFixed(4);
+      const frHot = Math.abs(fr) > 0.0005;
+      metrics.push({
+        title: 'Funding Rate', value: `${frPct}%`,
+        subtext: frHot ? (fr > 0 ? '롱 과열' : '숏 과열') : '보통',
+        trend: frHot ? 'danger' : 'neutral',
+        chartData: [0.01, 0.02, 0.03, 0.02, 0.03, 0.04, 0.03, Math.abs(fr) * 100],
       });
-      chatMessages = [...chatMessages, {
-        from: offline.sender,
-        icon: fallbackMeta.icon,
-        color: fallbackMeta.color,
-        text: offline.text,
-        time,
-        isUser: false,
+    }
+    if (data.l7?.fear_greed != null) {
+      const fg = data.l7.fear_greed;
+      metrics.push({
+        title: 'Fear & Greed', value: `${fg}`,
+        subtext: fg < 25 ? 'Extreme Fear' : fg < 40 ? 'Fear' : fg > 75 ? 'Extreme Greed' : fg > 60 ? 'Greed' : 'Neutral',
+        trend: fg < 30 ? 'bear' : fg > 70 ? 'danger' : 'neutral',
+        chartData: [40, 35, 30, 25, 20, 18, 15, fg],
+      });
+    }
+    if (data.derivatives?.oi != null) {
+      const oi = data.derivatives.oi;
+      metrics.push({
+        title: 'OI', value: oi >= 1e6 ? `${(oi/1e6).toFixed(0)}M` : `${(oi/1e3).toFixed(0)}K`,
+        subtext: '미결제약정', trend: 'neutral',
+        chartData: [80, 85, 82, 88, 90, 87, 92, 95],
+      });
+    }
+    if (data.derivatives?.lsRatio != null) {
+      const ls = data.derivatives.lsRatio;
+      metrics.push({
+        title: 'L/S Ratio', value: ls.toFixed(2),
+        subtext: ls > 1.1 ? '롱 과밀' : ls < 0.9 ? '숏 과밀' : '균형',
+        trend: ls > 1.1 ? 'bear' : ls < 0.9 ? 'bull' : 'neutral',
+        chartData: [1.0, 1.05, 1.1, 1.08, 1.12, 1.15, 1.1, ls],
+      });
+    }
+
+    // Add chart widget
+    if (data.chart && data.chart.length > 0) {
+      messages = [...messages, {
+        role: 'douni', text: '',
+        widgets: [{ type: 'chart', symbol: currentSymbol, timeframe: currentTf.toUpperCase(), chartData: data.chart }],
       }];
     }
-  }
 
-  function handleScanStart() {
-    terminalScanning = true;
-  }
+    // Add metrics widget
+    if (metrics.length > 0) {
+      messages = [...messages, { role: 'douni', text: '', widgets: [{ type: 'metrics', items: metrics }] }];
+    }
 
-  function handleScanComplete(payload: ScanIntelDetail | CustomEvent<ScanIntelDetail>) {
-    terminalScanning = false;
-    const d = 'detail' in payload ? payload.detail : payload;
-    latestScan = d;
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // Add layers widget
+    const sortedLayers = layers.length > 0
+      ? layers.filter(l => l.score !== 0).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)).slice(0, 6)
+      : [];
+    if (sortedLayers.length > 0 && data.alphaScore != null) {
+      messages = [...messages, {
+        role: 'douni', text: '',
+        widgets: [{ type: 'layers', items: sortedLayers, alphaScore: data.alphaScore, alphaLabel: data.alphaLabel || 'NEUTRAL' }],
+      }];
+    }
 
-    // 1) 스캔 완료 시스템 메시지
-    chatMessages = [...chatMessages, {
-      from: 'SYSTEM', icon: '⚡', color: '#E8967D',
-      text: `SCAN COMPLETE — ${d.pair} ${d.timeframe.toUpperCase()} (${d.label})`,
-      time, isUser: false, isSystem: true,
+    // Add feedback action buttons
+    const dir = data.alphaScore >= 10 ? 'LONG' : data.alphaScore <= -10 ? 'SHORT' : 'LONG';
+    messages = [...messages, {
+      role: 'douni', text: '',
+      widgets: [{ type: 'actions', patternName: `${currentSymbol} ${currentTf}`, direction: dir as 'LONG' | 'SHORT', conditions: [] }],
     }];
 
-    // 2) COMMANDER 종합 판정만 표시 (개별 에이전트는 WarRoom에서 확인)
-    const dirEmoji = d.consensus === 'long' ? '🟢' : d.consensus === 'short' ? '🔴' : '⚪';
-    chatMessages = [...chatMessages, {
-      from: 'COMMANDER',
-      icon: '🧠',
-      color: '#ff2d9b',
-      text: `${dirEmoji} VERDICT: ${d.consensus.toUpperCase()} — Confidence ${d.avgConfidence}%\n${d.summary}\n📊 차트에 TP/SL 표시됨 · 왼쪽 시그널 카드에서 개별 에이전트 확인`,
-      time, isUser: false,
-    }];
+    scrollToBottom();
+  }
 
-    // 3) consensus 방향 에이전트들의 평균 entry/tp/sl → 차트 오버레이
-    if (d.signals && d.signals.length > 0 && d.consensus !== 'neutral') {
-      const dirSignals = d.signals.filter(s => s.vote === d.consensus);
-      if (dirSignals.length > 0) {
-        const avgEntry = dirSignals.reduce((sum, s) => sum + s.entry, 0) / dirSignals.length;
-        const avgTp = dirSignals.reduce((sum, s) => sum + s.tp, 0) / dirSignals.length;
-        const avgSl = dirSignals.reduce((sum, s) => sum + s.sl, 0) / dirSignals.length;
-        const risk = Math.abs(avgEntry - avgSl);
-        const reward = Math.abs(avgTp - avgEntry);
-        activeTradeSetup = {
-          source: 'consensus',
-          dir: d.consensus === 'long' ? 'LONG' : 'SHORT',
-          entry: avgEntry,
-          tp: avgTp,
-          sl: avgSl,
-          rr: risk > 0 ? reward / risk : 2,
-          conf: d.avgConfidence,
-          pair: d.pair,
-        };
+  // ─── Apply Social Result ───────────────────────────────────
+  function applySocialResult(data: any) {
+    const metrics: MetricItem[] = [];
+    // Sentiment Score (pseudo-sentiment from CoinGecko price change data)
+    if (data.sentiment_score != null) {
+      const s = data.sentiment_score;
+      metrics.push({
+        title: 'Sentiment', value: `${s}`,
+        subtext: data.sentiment_label || (s > 60 ? 'Bullish' : s < 40 ? 'Bearish' : 'Neutral'),
+        trend: s > 60 ? 'bull' : s < 40 ? 'bear' : 'neutral',
+        chartData: [50, 48, 52, 55, 50, 53, 56, s],
+      });
+    }
+    // Fear & Greed
+    if (data.fear_greed != null) {
+      const fg = data.fear_greed;
+      metrics.push({
+        title: 'Fear & Greed', value: `${fg}`,
+        subtext: fg < 25 ? 'Extreme Fear' : fg < 40 ? 'Fear' : fg > 75 ? 'Extreme Greed' : fg > 60 ? 'Greed' : 'Neutral',
+        trend: fg < 30 ? 'bear' : fg > 70 ? 'danger' : 'neutral',
+        chartData: [40, 35, 30, 25, 20, 18, 15, fg],
+      });
+    }
+    // Market Cap Rank
+    if (data.market_cap_rank != null) {
+      metrics.push({
+        title: 'MCap Rank', value: `#${data.market_cap_rank}`,
+        subtext: data.market_cap_rank <= 10 ? 'Top Tier' : data.market_cap_rank <= 50 ? 'Major' : 'Mid',
+        trend: data.market_cap_rank <= 10 ? 'bull' : 'neutral',
+        chartData: [100, 80, 60, 50, 40, 35, 30, data.market_cap_rank],
+      });
+    }
+    // Community
+    const comm = data.community;
+    if (comm?.twitter_followers > 0) {
+      const tw = comm.twitter_followers;
+      const k = tw >= 1e6 ? `${(tw/1e6).toFixed(1)}M` : `${(tw/1e3).toFixed(0)}K`;
+      metrics.push({
+        title: 'Twitter', value: k,
+        subtext: '팔로워 수', trend: 'neutral',
+        chartData: [10, 15, 12, 18, 20, 22, 25, 30],
+      });
+    }
+    // Trending badge
+    if (data.is_trending) {
+      metrics.push({
+        title: 'Trending', value: data.trend_rank ? `#${data.trend_rank}` : 'HOT',
+        subtext: 'CoinGecko Trending', trend: 'bull',
+        chartData: [1, 2, 3, 5, 8, 12, 18, 25],
+      });
+    }
+    if (metrics.length > 0) {
+      messages = [...messages, { role: 'douni', text: '', widgets: [{ type: 'metrics', items: metrics }] }];
+    }
+    scrollToBottom();
+  }
+
+  // ─── Apply Scan Result ────────────────────────────────────
+  function applyScanResult(data: any) {
+    if (data.coins && data.coins.length > 0) {
+      const items = data.coins.slice(0, 10).map((c: any) => ({
+        rank: c.rank,
+        symbol: c.symbol,
+        name: c.name,
+        price: c.price,
+        change24h: c.change24h,
+        market_cap: c.market_cap,
+        volume_24h: c.volume_24h,
+        is_trending: c.is_trending,
+      }));
+      messages = [...messages, {
+        role: 'douni', text: '',
+        widgets: [{ type: 'scan_list', items, sort: data.sort, sector: data.sector || 'all' }],
+      }];
+    }
+    // Add trending coins as text if available
+    if (data.trending_coins?.length > 0) {
+      const trendText = data.trending_coins.map((c: any) => `${c.symbol}`).join(', ');
+      messages = [...messages, {
+        role: 'douni', text: `Trending: ${trendText}`,
+      }];
+    }
+    scrollToBottom();
+  }
+
+  // ─── Chart Action Handler ──────────────────────────────────
+  function handleChartAction(action: string, payload: Record<string, unknown>) {
+    if (action === 'change_symbol' && payload.symbol) {
+      currentSymbol = payload.symbol as string;
+    }
+    if (action === 'change_timeframe' && payload.timeframe) {
+      currentTf = payload.timeframe as string;
+    }
+  }
+
+  // ─── Feedback ──────────────────────────────────────────────
+  async function sendFeedback(result: 'correct' | 'incorrect') {
+    const feedbackText = result === 'correct' ? '맞았어!' : '틀렸잖아';
+    messages = [...messages, { role: 'user', text: feedbackText }];
+    chatHistory = [...chatHistory, { role: 'user', content: feedbackText }];
+
+    // Send via FC endpoint — DOUNI will call submit_feedback tool
+    isThinking = true;
+    messages = [...messages, { role: 'douni', thinking: true } as MessageType];
+    scrollToBottom();
+
+    try {
+      const res = await fetch('/api/cogochi/terminal/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: feedbackText,
+          history: chatHistory.slice(-10),
+          snapshot: currentSnapshot || undefined,
+        }),
+      });
+
+      if (!res.ok || !res.body) throw new Error('Feedback failed');
+
+      messages = messages.filter(m => !('thinking' in m));
+      let streamingText = '';
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const raw = trimmed.slice(6);
+          if (raw === '[DONE]') continue;
+          try {
+            const event: SSEEvent = JSON.parse(raw);
+            if (event.type === 'text_delta') {
+              streamingText += event.text;
+              updateStreamingMessage(streamingText);
+            }
+          } catch { /* skip */ }
+        }
       }
-    } else {
-      activeTradeSetup = null;
-    }
 
-    // 방향 추론 → 트레이드 버튼 활성화
-    if (d.consensus === 'long' || d.consensus === 'short') {
-      chatSuggestedDir = d.consensus === 'long' ? 'LONG' : 'SHORT';
-      chatTradeReady = true;
+      if (streamingText) {
+        chatHistory = [...chatHistory, { role: 'assistant', content: streamingText }];
+      }
+    } catch (err: any) {
+      messages = messages.filter(m => !('thinking' in m));
+      messages = [...messages, { role: 'douni', text: `Error: ${err.message}` }];
+    } finally {
+      isThinking = false;
+      scrollToBottom();
     }
   }
 
-  function handleShowOnChart(payload: { signal: { vote: string; conf: number; entry: number; tp: number; sl: number; name: string; pair: string } } | CustomEvent<{ signal: { vote: string; conf: number; entry: number; tp: number; sl: number; name: string; pair: string } }>) {
-    const sig = 'detail' in payload ? payload.detail.signal : payload.signal;
-    if (sig.vote === 'neutral' || !sig.entry || !sig.tp || !sig.sl) return;
-    const risk = Math.abs(sig.entry - sig.sl);
-    const reward = Math.abs(sig.tp - sig.entry);
-    activeTradeSetup = {
-      source: 'agent',
-      agentName: sig.name,
-      dir: sig.vote === 'long' ? 'LONG' : 'SHORT',
-      entry: sig.entry,
-      tp: sig.tp,
-      sl: sig.sl,
-      rr: risk > 0 ? reward / risk : 2,
-      conf: sig.conf,
-      pair: sig.pair,
+  // ─── Layer Name Map ────────────────────────────────────────
+  function layerName(id: string): string {
+    const map: Record<string, string> = {
+      L1: 'Wyckoff', L2: 'Supply/Demand', L3: 'V-Surge', L4: 'Order Book',
+      L5: 'Basis', L6: 'Macro Flow', L7: 'F&G', L8: 'Kimchi',
+      L9: 'Liquidation', L10: 'MTF', L11: 'CVD', L12: 'Sector',
+      L13: 'Breakout', L14: 'BB', L15: 'ATR',
     };
+    return map[id] || id;
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(() => feedContainer?.scrollTo({ top: feedContainer.scrollHeight, behavior: 'smooth' }));
+  }
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  }
+  function scoreColor(s: number): string {
+    if (s <= -15) return 'var(--sc-bad)';
+    if (s < 0) return 'var(--sc-warn)';
+    if (s === 0) return 'var(--sc-text-3)';
+    if (s <= 15) return 'var(--sc-good)';
+    return 'var(--sc-good)';
+  }
+  function alphaColor(s: number): string {
+    if (s >= 20) return 'var(--sc-good)';
+    if (s <= -20) return 'var(--sc-bad)';
+    return 'var(--sc-text-2)';
+  }
+  function layerCellBg(score: number): string {
+    const intensity = Math.min(0.25, 0.06 + Math.abs(score) / 80);
+    if (score > 0) return `rgba(173, 202, 124, ${intensity})`;
+    if (score < 0) return `rgba(207, 127, 143, ${intensity})`;
+    return 'rgba(255,255,255,0.02)';
+  }
+  function layerBorderColor(score: number): string {
+    if (score > 0) return 'var(--sc-good)';
+    if (score < 0) return 'var(--sc-bad)';
+    return 'var(--sc-text-3)';
   }
 </script>
 
-<div class="terminal-shell">
-  <div class="term-stars" aria-hidden="true"></div>
-  <div class="term-stars term-stars-soft" aria-hidden="true"></div>
-  <div class="term-grain" aria-hidden="true"></div>
-  {#if isMobile}
-    <button type="button" class="density-toggle" on:click={toggleDensityMode} title="정보 밀도 전환">
-      {densityLabel}
-    </button>
-  {:else}
-    <div class="decision-rail" role="region" aria-label="Trading decision rail">
-      <div class="decision-context">
-        <span class="dc-pair">{pair}</span>
-        <span class="dc-tf">{formatTimeframeLabel($gameState.timeframe)}</span>
-      </div>
-      <div class="decision-verdict">
-        <span class="dv-label">CONSENSUS</span>
-        <span class="dv-dir {decisionDirectionClass}">{decisionDirectionLabel}</span>
-        <span class="dv-conf">{decisionConfidenceLabel}</span>
-      </div>
-      <button
-        type="button"
-        class="decision-primary"
-        class:trade={latestScan && chatTradeReady}
-        on:click={() => void handleDecisionPrimaryAction()}
-      >
-        <span class="dp-text">{decisionPrimaryLabel}</span>
-        <span class="dp-hint">{decisionPrimaryHint}</span>
-      </button>
-      <button type="button" class="decision-mode" on:click={toggleDensityMode} title="정보 밀도 전환">
-        {densityLabel}
-      </button>
-    </div>
-  {/if}
+<svelte:head><title>Cogochi Terminal</title></svelte:head>
 
-  <!-- ═══ MOBILE LAYOUT ═══ -->
-  {#if isMobile}
-  <div class="terminal-mobile">
-    {#if mobileTab !== 'chart'}
-      <div class="mob-topbar">
-        <div class="mob-topline">
-          <div class="mob-title-wrap">
-            <span class="mob-eyebrow">TERMINAL MOBILE</span>
-            <span class="mob-title">{mobileMeta.label}</span>
-          </div>
-          <span class="mob-live"><span class="ctb-dot"></span>LIVE</span>
-        </div>
-        <div class="mob-meta">
-          <div class="mob-token">
-            <TokenDropdown value={pair} compact on:select={onTokenSelect} />
-          </div>
-          <span class="mob-meta-chip">{formatTimeframeLabel($gameState.timeframe)}</span>
-        </div>
-        <div class="mob-desc">{mobileMeta.desc}</div>
-      </div>
-    {/if}
-
-    <div class="mob-content" class:chart-only={mobileTab === 'chart'}>
-      {#if mobileTab === 'warroom'}
-        <div class="mob-panel-wrap mob-panel-resizable" style={getMobilePanelStyle('warroom')}>
-          <WarRoom
-            bind:this={warRoomRef}
-            {densityMode}
-            onScanStart={handleScanStart}
-            onScanComplete={handleScanComplete}
-            onShowOnChart={handleShowOnChart}
-          />
-          <button
-            type="button"
-            class="resize-handle resize-handle-x mob-resize-handle mob-resize-handle-x"
-            title="좌우 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize war room panel width with scroll"
-            on:wheel={(e) => resizeMobilePanelByWheel('warroom', 'x', e)}
-            on:pointerdown={(e) => startMobilePanelDrag('warroom', 'x', e)}
-            on:touchstart={(e) => startMobilePanelTouchDrag('warroom', 'x', e)}
-            on:dblclick={() => resetMobilePanelSize('warroom')}
-          ></button>
-          <button
-            type="button"
-            class="resize-handle resize-handle-y mob-resize-handle mob-resize-handle-y"
-            title="위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize war room panel height with scroll"
-            on:wheel={(e) => resizeMobilePanelByWheel('warroom', 'y', e)}
-            on:pointerdown={(e) => startMobilePanelDrag('warroom', 'y', e)}
-            on:touchstart={(e) => startMobilePanelTouchDrag('warroom', 'y', e)}
-            on:dblclick={() => resetMobilePanelSize('warroom')}
-          ></button>
-        </div>
-      {:else if mobileTab === 'chart'}
-        <div class="mob-chart-stack">
-          <div class="mob-chart-section mob-panel-resizable" style={getMobilePanelStyle('chart')}>
-            <VerdictBanner verdict={latestScan} scanning={terminalScanning} />
-            <div class="mob-chart-area">
-              <ChartPanel
-                bind:this={mobileChartRef}
-                advancedMode
-                enableTradeLineEntry
-                uiPreset="tradingview"
-                requireTradeConfirm
-                chatFirstMode
-                {chatTradeReady}
-                chatTradeDir={chatSuggestedDir}
-                {activeTradeSetup}
-                hasScanned={!!latestScan}
-                on:scanrequest={handleChartScanRequest}
-                on:chatrequest={handleChartChatRequest}
-                on:clearTradeSetup={() => { activeTradeSetup = null; }}
-              />
-            </div>
-            <button
-              type="button"
-              class="resize-handle resize-handle-x mob-resize-handle mob-resize-handle-x"
-              title="좌우 크기 조절: 스크롤 / 더블클릭 초기화"
-              aria-label="Resize chart panel width with scroll"
-              on:wheel={(e) => resizeMobilePanelByWheel('chart', 'x', e)}
-              on:pointerdown={(e) => startMobilePanelDrag('chart', 'x', e)}
-              on:touchstart={(e) => startMobilePanelTouchDrag('chart', 'x', e)}
-              on:dblclick={() => resetMobilePanelSize('chart')}
-            ></button>
-            <button
-              type="button"
-              class="resize-handle resize-handle-y mob-resize-handle mob-resize-handle-y"
-              title="위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-              aria-label="Resize chart panel height with scroll"
-              on:wheel={(e) => resizeMobilePanelByWheel('chart', 'y', e)}
-              on:pointerdown={(e) => startMobilePanelDrag('chart', 'y', e)}
-              on:touchstart={(e) => startMobilePanelTouchDrag('chart', 'y', e)}
-            on:dblclick={() => resetMobilePanelSize('chart')}
-          ></button>
-          </div>
-        </div>
-      {:else if mobileTab === 'intel'}
-        <div class="mob-panel-wrap mob-panel-resizable" style={getMobilePanelStyle('intel')}>
-          <IntelPanel
-            {densityMode}
-            {chatMessages}
-            {isTyping}
-            {latestScan}
-            prioritizeChat
-            {chatTradeReady}
-            {chatFocusKey}
-            {chatConnectionStatus}
-            on:sendchat={handleSendChat}
-            on:gototrade={handleIntelGoTrade}
-          />
-          <button
-            type="button"
-            class="resize-handle resize-handle-x mob-resize-handle mob-resize-handle-x"
-            title="좌우 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize intel panel width with scroll"
-            on:wheel={(e) => resizeMobilePanelByWheel('intel', 'x', e)}
-            on:pointerdown={(e) => startMobilePanelDrag('intel', 'x', e)}
-            on:touchstart={(e) => startMobilePanelTouchDrag('intel', 'x', e)}
-            on:dblclick={() => resetMobilePanelSize('intel')}
-          ></button>
-          <button
-            type="button"
-            class="resize-handle resize-handle-y mob-resize-handle mob-resize-handle-y"
-            title="위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize intel panel height with scroll"
-            on:wheel={(e) => resizeMobilePanelByWheel('intel', 'y', e)}
-            on:pointerdown={(e) => startMobilePanelDrag('intel', 'y', e)}
-            on:touchstart={(e) => startMobilePanelTouchDrag('intel', 'y', e)}
-            on:dblclick={() => resetMobilePanelSize('intel')}
-          ></button>
-        </div>
+<div class="terminal-root">
+  <!-- ─── HEADER BAR ─── -->
+  <header class="header-bar">
+    <div class="hb-left">
+      {#if currentSymbol}
+        <span class="hb-symbol">{currentSymbol.replace('USDT','')}</span>
+        <span class="hb-tf">{currentTf.toUpperCase()}</span>
+      {:else}
+        <span class="hb-symbol">TERMINAL</span>
       {/if}
     </div>
-
-    <div class="mob-bottom-nav">
-      <button class="mob-nav-btn" class:active={mobileTab === 'warroom'} on:click={() => setMobileTab('warroom')}>
-        <span class="mob-nav-label">WAR ROOM</span>
-        {#if mobileOpenTrades > 0}
-          <span class="mob-nav-badge">{mobileOpenTrades > 9 ? '9+' : mobileOpenTrades}</span>
-        {/if}
-      </button>
-      <button class="mob-nav-btn" class:active={mobileTab === 'chart'} on:click={() => setMobileTab('chart')}>
-        <span class="mob-nav-label">CHART</span>
-      </button>
-      <button class="mob-nav-btn" class:active={mobileTab === 'intel'} on:click={() => setMobileTab('intel')}>
-        <span class="mob-nav-label">CHAT</span>
-        {#if mobileTrackedSignals > 0}
-          <span class="mob-nav-badge">{mobileTrackedSignals > 9 ? '9+' : mobileTrackedSignals}</span>
-        {/if}
-      </button>
+    <div class="hb-center">
+      {#if currentPrice > 0}
+        <span class="hb-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
+        <span class="hb-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
+          {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
+        </span>
+      {/if}
     </div>
+    <div class="hb-right">
+      {#if currentSnapshot?.alphaScore != null}
+        <span class="hb-alpha-label">ALPHA</span>
+        <span class="hb-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
+          {currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
+        </span>
+      {/if}
+    </div>
+  </header>
+
+  <!-- ─── MAIN CONTENT: FEED + CHART ─── -->
+  <div class="main-content">
+    <!-- DATA FEED -->
+    <div class="data-feed" bind:this={feedContainer}>
+      <div class="feed-inner">
+        {#each feedEntries as entry}
+          {#if entry.kind === 'query'}
+            <div class="fe fe-query">
+              <span class="fe-query-arrow">&gt;</span>
+              <span class="fe-query-text">{entry.text}</span>
+            </div>
+
+          {:else if entry.kind === 'text'}
+            <div class="fe fe-text">
+              <p class="fe-text-body">{entry.text}</p>
+            </div>
+
+          {:else if entry.kind === 'thinking'}
+            <div class="fe fe-thinking">
+              <div class="thinking-bar"></div>
+              <span class="thinking-label">Analyzing...</span>
+            </div>
+
+          {:else if entry.kind === 'metrics'}
+            <div class="fe fe-metrics">
+              {#each entry.items as item}
+                <DataCard title={item.title} value={item.value} subtext={item.subtext} trend={item.trend} chartData={item.chartData} />
+              {/each}
+            </div>
+
+          {:else if entry.kind === 'layers'}
+            <div class="fe fe-layers">
+              <div class="layers-header">
+                <span class="layers-label">ALPHA SCORE</span>
+                <span class="layers-score" style="color:{alphaColor(entry.alphaScore)}">{entry.alphaScore}</span>
+                <span class="layers-tag" style="color:{alphaColor(entry.alphaScore)}">{entry.alphaLabel}</span>
+              </div>
+              <div class="treemap-grid">
+                {#each entry.items as layer}
+                  {@const absScore = Math.abs(layer.score)}
+                  <div
+                    class="treemap-cell"
+                    style="flex:{Math.max(absScore, 3)};background:{layerCellBg(layer.score)};border-left:2px solid {layerBorderColor(layer.score)}"
+                  >
+                    <span class="tm-id">{layer.id}</span>
+                    <span class="tm-name">{layer.name}</span>
+                    <span class="tm-signal">{layer.value}</span>
+                    <span class="tm-score" style="color:{scoreColor(layer.score)}">{layer.score > 0 ? '+' : ''}{layer.score}</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+
+          {:else if entry.kind === 'scan'}
+            <div class="fe fe-scan">
+              <div class="scan-header">
+                <span class="scan-title">Market Scan</span>
+                <span class="scan-meta">{entry.sort} / {entry.sector}</span>
+              </div>
+              {#each entry.items as coin}
+                <div class="scan-row">
+                  <span class="sr-rank">#{coin.rank}</span>
+                  <span class="sr-sym">{coin.symbol}</span>
+                  <span class="sr-name">{coin.name}</span>
+                  {#if coin.price != null}
+                    <span class="sr-price">${coin.price >= 1 ? coin.price.toLocaleString(undefined, {maximumFractionDigits: 1}) : coin.price.toFixed(4)}</span>
+                  {/if}
+                  {#if coin.change24h != null}
+                    <span class="sr-change" class:up={coin.change24h >= 0} class:dn={coin.change24h < 0}>
+                      {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%
+                    </span>
+                  {/if}
+                  {#if coin.is_trending}
+                    <span class="sr-trending"></span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+
+          {:else if entry.kind === 'actions'}
+            <div class="fe fe-actions">
+              <button type="button" class="action-btn action-correct" onclick={() => sendFeedback('correct')}>CORRECT</button>
+              <button type="button" class="action-btn action-incorrect" onclick={() => sendFeedback('incorrect')}>INCORRECT</button>
+              <button type="button" class="action-btn action-save" onclick={() => showPatternModal = true}>SAVE PATTERN</button>
+            </div>
+
+          {:else if entry.kind === 'chart_ref'}
+            <!-- Chart reference: no inline rendering, chart is always in side panel -->
+            <div class="fe fe-chart-ref">
+              <span class="cr-label">Chart loaded</span>
+              <span class="cr-sym">{entry.symbol.replace('USDT','')}</span>
+              <span class="cr-tf">{entry.timeframe}</span>
+            </div>
+          {/if}
+        {/each}
+      </div>
+    </div>
+
+    <!-- CHART PANEL (always visible) -->
+    <aside class="chart-panel">
+      {#if currentSnapshot && currentChartData.length > 0}
+        <div class="cp-header">
+          <span class="cp-sym">{currentSymbol.replace('USDT','')}</span>
+          <span class="cp-tf">{currentTf.toUpperCase()}</span>
+          {#if currentPrice > 0}
+            <span class="cp-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
+            <span class="cp-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
+              {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
+            </span>
+          {/if}
+          {#if currentSnapshot.alphaScore != null}
+            <span class="cp-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
+              a:{currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
+            </span>
+          {/if}
+        </div>
+        <div class="cp-chart">
+          <CgChart data={currentChartData} currentPrice={currentPrice} annotations={currentAnnotations} indicators={currentIndicators} />
+        </div>
+        <div class="cp-stats">
+          <div class="qs-cell">
+            <span class="qs-label">Funding</span>
+            <span class="qs-value" style="color:{currentDeriv?.funding > 0.0005 ? 'var(--sc-bad)' : currentDeriv?.funding < -0.0005 ? 'var(--sc-good)' : 'var(--sc-text-2)'}">
+              {currentDeriv?.funding != null ? (currentDeriv.funding * 100).toFixed(4) + '%' : '--'}
+            </span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">OI</span>
+            <span class="qs-value">
+              {currentDeriv?.oi != null ? (currentDeriv.oi >= 1e6 ? (currentDeriv.oi/1e6).toFixed(0)+'M' : (currentDeriv.oi/1e3).toFixed(0)+'K') : '--'}
+            </span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">L/S</span>
+            <span class="qs-value" style="color:{currentDeriv?.lsRatio > 1.1 ? 'var(--sc-bad)' : currentDeriv?.lsRatio < 0.9 ? 'var(--sc-good)' : 'var(--sc-text-2)'}">
+              {currentDeriv?.lsRatio?.toFixed(2) ?? '--'}
+            </span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">BB</span>
+            <span class="qs-value">
+              {currentSnapshot.l14?.bb_squeeze ? 'SQUEEZE' : currentSnapshot.l14?.bb_width != null ? `w:${currentSnapshot.l14.bb_width}` : '--'}
+            </span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">ATR</span>
+            <span class="qs-value">{currentSnapshot.l15?.atr_pct != null ? currentSnapshot.l15.atr_pct + '%' : '--'}</span>
+          </div>
+          <div class="qs-cell">
+            <span class="qs-label">Regime</span>
+            <span class="qs-value">{currentSnapshot.regime ?? '--'}</span>
+          </div>
+        </div>
+      {:else}
+        <div class="cp-empty">
+          <span class="cp-empty-label">No analysis yet</span>
+          <span class="cp-empty-hint">Ask DOUNI to analyze a symbol</span>
+        </div>
+      {/if}
+    </aside>
   </div>
 
-  <!-- ═══ TABLET LAYOUT (no side resizers, stacked) ═══ -->
-  {:else if isTablet}
-  <div class="terminal-tablet" style={tabletLayoutStyle}>
-    <div class="tab-top">
-      <div class="tab-left">
-        <div class="tab-panel-resizable" style={getTabletPanelStyle('left')}>
-          <div class="tab-panel-body">
-            <WarRoom
-              bind:this={warRoomRef}
-              {densityMode}
-              onScanStart={handleScanStart}
-              onScanComplete={handleScanComplete}
-              onShowOnChart={handleShowOnChart}
-            />
-          </div>
-          <button
-            type="button"
-            class="resize-handle resize-handle-x tab-resize-handle tab-resize-handle-x"
-            title="WAR ROOM 좌우 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize tablet war room width with scroll"
-            on:wheel={(e) => resizeTabletPanelByWheel('left', 'x', e)}
-            on:pointerdown={(e) => startTabletSplitDrag('x', e)}
-            on:dblclick={() => resetTabletPanelSize('left')}
-          ></button>
-          <button
-            type="button"
-            class="resize-handle resize-handle-y tab-resize-handle tab-resize-handle-y"
-            title="WAR ROOM 위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize tablet war room height with scroll"
-            on:wheel={(e) => resizeTabletPanelByWheel('left', 'y', e)}
-            on:pointerdown={(e) => startTabletSplitDrag('y', e)}
-            on:dblclick={() => resetTabletPanelSize('left')}
-          ></button>
-        </div>
-      </div>
-      <button
-        type="button"
-        class="tab-layout-split tab-layout-split-v"
-        title="WAR ROOM / CHART 분할 조절: 스크롤/드래그/더블클릭 리셋"
-        aria-label="Resize tablet left and chart split"
-        on:wheel={(e) => resizeTabletPanelByWheel('left', 'x', e)}
-        on:pointerdown={(e) => startTabletSplitDrag('x', e)}
-        on:dblclick={() => resetTabletPanelSize('left')}
-      >
-        <span></span>
-      </button>
-      <div class="tab-center">
-        <div class="tab-panel-resizable" style={getTabletPanelStyle('center')}>
-          <VerdictBanner verdict={latestScan} scanning={terminalScanning} />
-          <div class="tab-panel-body tab-chart-area">
-            <ChartPanel
-              bind:this={tabletChartRef}
-              advancedMode
-              enableTradeLineEntry
-              uiPreset="tradingview"
-              requireTradeConfirm
-              chatFirstMode
-              {chatTradeReady}
-              chatTradeDir={chatSuggestedDir}
-              {activeTradeSetup}
-              on:scanrequest={handleChartScanRequest}
-              on:chatrequest={handleChartChatRequest}
-              on:clearTradeSetup={() => { activeTradeSetup = null; }}
-            />
-          </div>
-          <button
-            type="button"
-            class="resize-handle resize-handle-x tab-resize-handle tab-resize-handle-x"
-            title="CHART 좌우 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize tablet chart width with scroll"
-            on:wheel={(e) => resizeTabletPanelByWheel('center', 'x', e)}
-            on:pointerdown={(e) => startTabletSplitDrag('x', e)}
-            on:dblclick={() => resetTabletPanelSize('center')}
-          ></button>
-          <button
-            type="button"
-            class="resize-handle resize-handle-y tab-resize-handle tab-resize-handle-y"
-            title="CHART 위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize tablet chart height with scroll"
-            on:wheel={(e) => resizeTabletPanelByWheel('center', 'y', e)}
-            on:pointerdown={(e) => startTabletSplitDrag('y', e)}
-            on:dblclick={() => resetTabletPanelSize('center')}
-          ></button>
-        </div>
-      </div>
-    </div>
-    <button
-      type="button"
-      class="tab-layout-split tab-layout-split-h"
-      title="CHART / INTEL 높이 조절: 스크롤/드래그/더블클릭 리셋"
-      aria-label="Resize tablet chart and intel split"
-      on:wheel={(e) => resizeTabletPanelByWheel('bottom', 'y', e)}
-      on:pointerdown={(e) => startTabletSplitDrag('y', e)}
-      on:dblclick={() => resetTabletPanelSize('bottom')}
-    >
-      <span></span>
-    </button>
-    <div class="tab-bottom">
-      <div class="tab-panel-resizable" style={getTabletPanelStyle('bottom')}>
-        <div class="tab-panel-body">
-          <IntelPanel
-            {densityMode}
-            {chatMessages}
-            {isTyping}
-            {latestScan}
-            {chatTradeReady}
-            {chatFocusKey}
-            {chatConnectionStatus}
-            on:sendchat={handleSendChat}
-            on:gototrade={handleIntelGoTrade}
-          />
-        </div>
-        <button
-          type="button"
-          class="resize-handle resize-handle-x tab-resize-handle tab-resize-handle-x"
-          title="좌우 패널 비율 조절: 스크롤 / 더블클릭 초기화"
-          aria-label="Resize tablet left and chart split with scroll"
-          on:wheel={(e) => resizeTabletPanelByWheel('left', 'x', e)}
-          on:pointerdown={(e) => startTabletSplitDrag('x', e)}
-          on:dblclick={() => resetTabletPanelSize('left')}
-        ></button>
-        <button
-          type="button"
-            class="resize-handle resize-handle-y tab-resize-handle tab-resize-handle-y"
-            title="INTEL 위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize tablet intel height with scroll"
-            on:wheel={(e) => resizeTabletPanelByWheel('bottom', 'y', e)}
-            on:pointerdown={(e) => startTabletSplitDrag('y', e)}
-            on:dblclick={() => resetTabletPanelSize('bottom')}
-          ></button>
-      </div>
-    </div>
-
-    <div class="ticker-bar">
-      <div class="ticker-inner">
-        <div class="ticker-track">
-          {#each tickerSegments as segment, idx (`tab-a-${idx}-${segment}`)}
-            <span class={tickerSegmentClass(segment)}>{segment}</span>
-          {/each}
-        </div>
-        <div class="ticker-track" aria-hidden="true">
-          {#each tickerSegments as segment, idx (`tab-b-${idx}-${segment}`)}
-            <span class={tickerSegmentClass(segment)}>{segment}</span>
-          {/each}
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ DESKTOP LAYOUT (full 3-panel with resizers) ═══ -->
-  {:else}
-  <div class="terminal-page"
-    style="grid-template-columns: {leftCollapsed ? 30 : leftW}px 4px 1fr 4px {rightCollapsed ? 30 : rightW}px">
-
-    <!-- Left: WAR ROOM or collapsed strip -->
-    {#if !leftCollapsed}
-      <div class="tl" on:wheel={(e) => resizePanelByWheel('left', e)}>
-        <div class="desk-panel-resizable" style={getDesktopPanelStyle('left')}>
-          <div class="desk-panel-body">
-            <WarRoom
-              bind:this={warRoomRef}
-              {densityMode}
-              onCollapse={toggleLeft}
-              onScanStart={handleScanStart}
-              onScanComplete={handleScanComplete}
-              onShowOnChart={handleShowOnChart}
-            />
-          </div>
-          <button
-            type="button"
-            class="resize-handle resize-handle-x desk-resize-handle desk-resize-handle-x"
-            title="WAR ROOM 좌우 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize war room panel width with scroll"
-            on:wheel={(e) => resizeDesktopPanelByWheel('left', 'x', e)}
-            on:dblclick={() => resetDesktopPanelSize('left')}
-          ></button>
-          <button
-            type="button"
-            class="resize-handle resize-handle-y desk-resize-handle desk-resize-handle-y"
-            title="WAR ROOM 위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize war room panel height with scroll"
-            on:wheel={(e) => resizeDesktopPanelByWheel('left', 'y', e)}
-            on:dblclick={() => resetDesktopPanelSize('left')}
-          ></button>
-        </div>
-      </div>
-    {:else}
-      <button
-        class="panel-strip panel-strip-left"
-        on:click={toggleLeft}
-        on:wheel={(e) => resizePanelByWheel('left', e, { force: true })}
-        title="Show War Room"
-      >
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="1" y="2" width="14" height="12" rx="1.5"/>
-          <line x1="6" y1="2" x2="6" y2="14"/>
+  <!-- ─── INPUT BAR ─── -->
+  <div class="input-bar">
+    <div class="input-box">
+      <input
+        type="text"
+        bind:value={inputText}
+        onkeydown={handleKeydown}
+        placeholder="BTC 4H / ETH 1D / scan top gainers"
+        disabled={isThinking}
+      />
+      <button type="button" class="send-btn" onclick={handleSend} disabled={isThinking || !inputText.trim()} aria-label="Send message">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 14V2M8 2L3 7M8 2L13 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <span class="strip-label">WAR</span>
       </button>
-    {/if}
-
-    <!-- Left Resizer (drag only, no toggle) -->
-    {#if !leftCollapsed}
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="resizer resizer-h resizer-left" on:mousedown={(e) => startDrag('left', e)}>
-      </div>
-    {:else}
-      <div class="resizer-spacer"></div>
-    {/if}
-
-    <!-- Center: Chart -->
-    <div class="tc">
-      <div class="desk-panel-resizable" style={getDesktopPanelStyle('center')}>
-        <div class="desk-panel-body">
-          <VerdictBanner verdict={latestScan} scanning={terminalScanning} />
-          <div class="chart-area chart-area-full">
-            <ChartPanel
-              bind:this={desktopChartRef}
-              advancedMode
-              enableTradeLineEntry
-              uiPreset="tradingview"
-              requireTradeConfirm
-              chatFirstMode
-              {chatTradeReady}
-              chatTradeDir={chatSuggestedDir}
-              {activeTradeSetup}
-              on:scanrequest={handleChartScanRequest}
-              on:chatrequest={handleChartChatRequest}
-              on:clearTradeSetup={() => { activeTradeSetup = null; }}
-            />
-          </div>
-        </div>
-        <button
-          type="button"
-          class="resize-handle resize-handle-x desk-resize-handle desk-resize-handle-x"
-          title="CHART 좌우 크기 조절: 스크롤 / 더블클릭 초기화"
-          aria-label="Resize chart panel width with scroll"
-          on:wheel={(e) => resizeDesktopPanelByWheel('center', 'x', e)}
-          on:dblclick={() => resetDesktopPanelSize('center')}
-        ></button>
-        <button
-          type="button"
-          class="resize-handle resize-handle-y desk-resize-handle desk-resize-handle-y"
-          title="CHART 위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-          aria-label="Resize chart panel height with scroll"
-          on:wheel={(e) => resizeDesktopPanelByWheel('center', 'y', e)}
-          on:dblclick={() => resetDesktopPanelSize('center')}
-        ></button>
-      </div>
     </div>
-
-    <!-- Right Resizer (drag only, no toggle) -->
-    {#if !rightCollapsed}
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="resizer resizer-h resizer-right" on:wheel={(e) => resizePanelByWheel('right', e, { force: true })} title="스크롤/드래그로 INTEL 너비 조절">
-        <div class="resizer-drag" on:mousedown={(e) => startDrag('right', e)}></div>
-      </div>
-    {:else}
-      <div class="resizer-spacer"></div>
-    {/if}
-
-    <!-- Right: Intel Panel or collapsed strip -->
-    {#if !rightCollapsed}
-      <div class="tr" on:wheel={(e) => resizePanelByWheel('right', e)}>
-        <div class="desk-panel-resizable" style={getDesktopPanelStyle('right')}>
-          <div class="desk-panel-body">
-            <IntelPanel
-              {densityMode}
-              {chatMessages}
-              {isTyping}
-              {latestScan}
-              {chatTradeReady}
-              {chatFocusKey}
-              on:sendchat={handleSendChat}
-              on:gototrade={handleIntelGoTrade}
-              on:collapse={toggleRight}
-            />
-          </div>
-          <button
-            type="button"
-            class="resize-handle resize-handle-x desk-resize-handle desk-resize-handle-x"
-            title="INTEL 좌우 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize intel panel width with scroll"
-            on:wheel={(e) => resizeDesktopPanelByWheel('right', 'x', e)}
-            on:dblclick={() => resetDesktopPanelSize('right')}
-          ></button>
-          <button
-            type="button"
-            class="resize-handle resize-handle-y desk-resize-handle desk-resize-handle-y"
-            title="INTEL 위아래 크기 조절: 스크롤 / 더블클릭 초기화"
-            aria-label="Resize intel panel height with scroll"
-            on:wheel={(e) => resizeDesktopPanelByWheel('right', 'y', e)}
-            on:dblclick={() => resetDesktopPanelSize('right')}
-          ></button>
-        </div>
-      </div>
-    {:else}
-      <button
-        class="panel-strip panel-strip-right"
-        on:click={toggleRight}
-        on:wheel={(e) => resizePanelByWheel('right', e, { force: true })}
-        title="Show Intel"
-      >
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="1" y="2" width="14" height="12" rx="1.5"/>
-          <line x1="10" y1="2" x2="10" y2="14"/>
-        </svg>
-        <span class="strip-label">INTEL</span>
-      </button>
-    {/if}
-
-    <!-- Ticker -->
-    <div class="ticker-bar">
-      <div class="ticker-inner">
-        <div class="ticker-track">
-          {#each tickerSegments as segment, idx (`desk-a-${idx}-${segment}`)}
-            <span class={tickerSegmentClass(segment)}>{segment}</span>
-          {/each}
-        </div>
-        <div class="ticker-track" aria-hidden="true">
-          {#each tickerSegments as segment, idx (`desk-b-${idx}-${segment}`)}
-            <span class={tickerSegmentClass(segment)}>{segment}</span>
-          {/each}
-        </div>
-      </div>
-    </div>
-
-    <!-- Drag Overlay (prevents iframes/canvas from eating events) -->
-    {#if dragTarget}
-      <div class="drag-overlay col"></div>
-    {/if}
   </div>
-  {/if}
 </div>
 
-<!-- Copy Trade Modal (shared across all layouts) -->
-<CopyTradeModal />
+<!-- ─── PATTERN MODAL ─── -->
+{#if showPatternModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="modal-bg" onclick={() => showPatternModal = false}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="modal-box" onclick={(e) => e.stopPropagation()}>
+      <h3>Save Pattern</h3>
+      <div class="mf">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label for="pattern-name">Pattern Name</label>
+        <input id="pattern-name" type="text" value={patternName} />
+      </div>
+      <div class="mf">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label class="mf-label">Direction</label>
+        <div class="mdir">
+          <button type="button" class="md" class:act={patternDirection === 'LONG'} onclick={() => patternDirection = 'LONG'}>LONG</button>
+          <button type="button" class="md" class:act={patternDirection === 'SHORT'} onclick={() => patternDirection = 'SHORT'}>SHORT</button>
+        </div>
+      </div>
+      <div class="mf">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label class="mf-label">Conditions ({patternConditions.length})</label>
+        {#each patternConditions as c}
+          <div class="mc">{c}</div>
+        {/each}
+        {#if patternConditions.length === 0}
+          <div class="mc" style="color:var(--sc-text-3)">Conditions auto-generated after analysis</div>
+        {/if}
+      </div>
+      <div class="mbot">
+        <button type="button" class="mbtn" onclick={() => showPatternModal = false}>Cancel</button>
+        <button type="button" class="mbtn sv" onclick={() => showPatternModal = false}>Save to Scanner</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
-  .terminal-shell {
-    --term-bg: #0a1a0d;
-    --term-bg2: #0f2614;
-    --term-bg3: #143620;
-    --term-accent: #e8967d;
-    --term-accent-soft: #f5c4b8;
-    --term-live: #87dcbe;
-    --term-danger: #d86b79;
-    --term-text: #f0ede4;
-    --term-text-dim: rgba(240, 237, 228, 0.56);
-    --term-border: rgba(232, 150, 125, 0.2);
-    --term-border-soft: rgba(232, 150, 125, 0.12);
-    --term-panel: rgba(13, 35, 22, 0.9);
-    --term-panel-2: rgba(10, 27, 17, 0.92);
+  /* ═══ ROOT LAYOUT ═══ */
+  .terminal-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--sc-bg-0, #050914);
+    color: var(--sc-text-0, #f7f2ea);
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+  }
 
-    /* Override legacy terminal globals inside this route only */
-    --yel: var(--term-accent);
-    --pk: var(--term-accent);
-    --grn: var(--term-live);
-    --red: var(--term-danger);
-    --ora: #d8a266;
-    --cyan: #9fd5cb;
-    --blk: #0a1a0d;
+  /* ═══ HEADER BAR ═══ */
+  .header-bar {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    background: var(--sc-bg-1, #0b1220);
+    flex-shrink: 0;
+  }
+  .hb-left { display: flex; align-items: center; gap: 8px; }
+  .hb-symbol {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: var(--sc-text-0);
+  }
+  .hb-tf {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    background: var(--sc-bg-2, #111b2c);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .hb-center { display: flex; align-items: center; gap: 8px; }
+  .hb-price {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--sc-text-0);
+  }
+  .hb-change {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .hb-change.up { color: var(--sc-good, #adca7c); }
+  .hb-change.dn { color: var(--sc-bad, #cf7f8f); }
+  .hb-right { display: flex; align-items: center; gap: 6px; }
+  .hb-alpha-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--sc-text-3);
+    text-transform: uppercase;
+  }
+  .hb-alpha {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 16px;
+    font-weight: 800;
+  }
 
-    position: absolute;
-    inset: 0;
-    width: auto;
-    height: auto;
+  /* ═══ MAIN CONTENT ═══ */
+  .main-content {
+    flex: 1;
+    display: flex;
     min-height: 0;
     overflow: hidden;
-    overflow-x: clip;
-    overscroll-behavior: none;
-    isolation: isolate;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    background:
-      radial-gradient(110% 72% at 15% 0%, rgba(232, 150, 125, 0.1) 0%, rgba(232, 150, 125, 0) 58%),
-      radial-gradient(96% 68% at 88% 6%, rgba(135, 220, 190, 0.14) 0%, rgba(135, 220, 190, 0) 62%),
-      linear-gradient(180deg, var(--term-bg2) 0%, var(--term-bg) 72%);
   }
-  .terminal-shell::before {
+
+  /* ═══ DATA FEED ═══ */
+  .data-feed {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 0;
+  }
+  .feed-inner {
+    max-width: 720px;
+    padding: 8px 16px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ─── Feed Entry base ─── */
+  .fe {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.08));
+    animation: sc-slide-up 0.15s ease;
+  }
+  .fe:last-child { border-bottom: none; }
+
+  /* ─── Query ─── */
+  .fe-query {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .fe-query-arrow {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    color: var(--sc-text-3);
+    flex-shrink: 0;
+  }
+  .fe-query-text {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 13px;
+    color: var(--sc-text-2);
+  }
+
+  /* ─── Text ─── */
+  .fe-text-body {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--sc-text-1);
+    white-space: pre-line;
+  }
+
+  /* ─── Thinking ─── */
+  .fe-thinking {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+  }
+  .thinking-bar {
+    width: 120px;
+    height: 2px;
+    background: var(--sc-bg-2);
+    border-radius: 1px;
+    overflow: hidden;
+    position: relative;
+  }
+  .thinking-bar::after {
     content: '';
     position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(180deg, rgba(240, 237, 228, 0.03) 0%, rgba(240, 237, 228, 0) 24%),
-      repeating-linear-gradient(
-        0deg,
-        transparent 0,
-        transparent 2px,
-        rgba(0, 0, 0, 0.14) 2px,
-        rgba(0, 0, 0, 0.14) 3px
-      );
-    opacity: 0.52;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 40%;
+    background: var(--sc-accent, #db9a9f);
+    border-radius: 1px;
+    animation: pulse-slide 1.4s ease-in-out infinite;
   }
-  .density-toggle {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 30;
-    font: 800 9px/1 var(--fm);
-    letter-spacing: .9px;
-    color: rgba(240,237,228,.9);
-    border: 1px solid rgba(232,150,125,.35);
-    border-radius: 999px;
-    background: rgba(10,9,8,.72);
-    padding: 6px 10px;
-    cursor: pointer;
-    backdrop-filter: blur(4px);
-    transition: all .12s ease;
+  @keyframes pulse-slide {
+    0% { left: -40%; opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { left: 100%; opacity: 0.4; }
   }
-  .density-toggle:hover {
-    border-color: rgba(232,150,125,.55);
-    background: rgba(232,150,125,.14);
-    color: #fff;
+  .thinking-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 11px;
+    color: var(--sc-text-3);
+    letter-spacing: 0.5px;
   }
-  .decision-rail {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    z-index: 28;
+
+  /* ─── Metrics Grid ─── */
+  .fe-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 4px;
+  }
+
+  /* ─── Layers / Treemap ─── */
+  .fe-layers {
+    padding: 6px 0;
+  }
+  .layers-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .layers-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--sc-text-3);
+    text-transform: uppercase;
+  }
+  .layers-score {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 28px;
+    line-height: 1;
+  }
+  .layers-tag {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .treemap-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .treemap-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 8px;
+    border-radius: 3px;
+    min-width: 70px;
+    min-height: 58px;
+    justify-content: space-between;
+  }
+  .tm-id {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--sc-text-3);
+  }
+  .tm-name {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 11px;
+    color: var(--sc-text-1);
+    font-weight: 600;
+  }
+  .tm-signal {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-2);
+  }
+  .tm-score {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  /* ─── Scan Table ─── */
+  .fe-scan {
+    background: var(--sc-bg-1, #0b1220);
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .scan-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--sc-line-soft);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .scan-title {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    color: var(--sc-text-0);
+  }
+  .scan-meta {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 10px;
+    color: var(--sc-text-3);
+  }
+  .scan-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 10px;
-    border: 1px solid rgba(232,150,125,.28);
-    border-radius: 10px;
-    background: rgba(7, 15, 10, .72);
-    box-shadow: 0 8px 22px rgba(0,0,0,.25);
-    backdrop-filter: blur(6px);
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--sc-line-soft);
+    font-size: 12px;
   }
-  .decision-context {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    font-family: var(--fm);
-  }
-  .dc-pair {
+  .scan-row:last-child { border-bottom: none; }
+  .sr-rank {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    color: rgba(255,255,255,.92);
-  }
-  .dc-tf {
-    font-size: 9px;
+    color: var(--sc-text-3);
+    min-width: 24px;
     font-weight: 700;
-    letter-spacing: .8px;
-    color: rgba(255,255,255,.62);
-    border: 1px solid rgba(255,255,255,.16);
-    border-radius: 999px;
-    padding: 2px 6px;
   }
-  .decision-verdict {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--fm);
-    min-width: 0;
-  }
-  .dv-label {
-    font-size: 8px;
-    letter-spacing: .9px;
-    color: rgba(255,255,255,.55);
-  }
-  .dv-dir {
-    font-size: 10px;
-    font-weight: 900;
-    letter-spacing: .9px;
-  }
-  .dv-dir.long { color: #00e676; }
-  .dv-dir.short { color: #ff6b6b; }
-  .dv-dir.neutral { color: #ffd54f; }
-  .dv-dir.scanning { color: #87dcbe; }
-  .dv-conf {
-    font-size: 9px;
+  .sr-sym {
     font-weight: 800;
-    color: rgba(255,255,255,.84);
+    color: var(--sc-text-0);
+    min-width: 48px;
+    font-size: 12px;
   }
-  .decision-primary {
-    margin-left: auto;
-    min-width: 0;
-    border: 1px solid rgba(135,220,190,.34);
-    border-radius: 8px;
-    background: rgba(135,220,190,.14);
-    color: #dff9ef;
-    font-family: var(--fm);
-    padding: 6px 9px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    cursor: pointer;
-    transition: all .12s ease;
-  }
-  .decision-primary.trade {
-    border-color: rgba(0,230,118,.45);
-    background: rgba(0,230,118,.14);
-  }
-  .decision-primary:hover {
-    border-color: rgba(232,150,125,.55);
-    background: rgba(232,150,125,.16);
-    color: #fff;
-  }
-  .dp-text {
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: .9px;
-    line-height: 1;
-  }
-  .dp-hint {
-    font-size: 8px;
-    color: rgba(255,255,255,.66);
-    letter-spacing: .4px;
-    line-height: 1.1;
-    white-space: nowrap;
-  }
-  .decision-mode {
-    font: 800 9px/1 var(--fm);
-    letter-spacing: .9px;
-    color: rgba(240,237,228,.9);
-    border: 1px solid rgba(232,150,125,.35);
-    border-radius: 999px;
-    background: rgba(10,9,8,.72);
-    padding: 6px 10px;
-    cursor: pointer;
-    transition: all .12s ease;
-    white-space: nowrap;
-  }
-  .decision-mode:hover {
-    border-color: rgba(232,150,125,.55);
-    background: rgba(232,150,125,.14);
-    color: #fff;
-  }
-  @media (max-width: 1180px) {
-    .decision-rail { gap: 6px; padding: 6px 8px; }
-    .dc-pair { font-size: 9px; }
-    .dc-tf { font-size: 8px; padding: 2px 5px; }
-    .dp-hint { display: none; }
-  }
-  .term-stars,
-  .term-grain {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .term-stars {
-    background:
-      radial-gradient(1px 1px at 10% 15%, rgba(255, 255, 255, 0.65) 50%, transparent 50%),
-      radial-gradient(1.2px 1.2px at 35% 30%, rgba(255, 255, 255, 0.5) 50%, transparent 50%),
-      radial-gradient(1px 1px at 52% 8%, rgba(255, 255, 255, 0.45) 50%, transparent 50%),
-      radial-gradient(1px 1px at 76% 46%, rgba(255, 255, 255, 0.6) 50%, transparent 50%),
-      radial-gradient(1.2px 1.2px at 84% 18%, rgba(255, 255, 255, 0.42) 50%, transparent 50%),
-      radial-gradient(1px 1px at 18% 64%, rgba(255, 255, 255, 0.5) 50%, transparent 50%),
-      radial-gradient(1px 1px at 64% 74%, rgba(255, 255, 255, 0.38) 50%, transparent 50%),
-      radial-gradient(1.3px 1.3px at 93% 82%, rgba(255, 255, 255, 0.56) 50%, transparent 50%);
-    background-size: 320px 320px;
-    opacity: 0.45;
-  }
-  .term-stars-soft {
-    background:
-      radial-gradient(1px 1px at 22% 22%, rgba(135, 220, 190, 0.55) 50%, transparent 50%),
-      radial-gradient(1px 1px at 68% 36%, rgba(135, 220, 190, 0.45) 50%, transparent 50%),
-      radial-gradient(1.5px 1.5px at 78% 66%, rgba(135, 220, 190, 0.45) 50%, transparent 50%),
-      radial-gradient(1px 1px at 42% 84%, rgba(135, 220, 190, 0.35) 50%, transparent 50%);
-    background-size: 520px 520px;
-    opacity: 0.38;
-    animation: termTwinkle 4.2s ease-in-out infinite alternate;
-  }
-  @keyframes termTwinkle {
-    0% { opacity: 0.26; }
-    100% { opacity: 0.52; }
-  }
-  .term-grain {
-    opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-size: 200px 200px;
-    animation: termGrainShift 0.3s steps(3) infinite;
-  }
-  @keyframes termGrainShift {
-    0% { transform: translate(0, 0); }
-    33% { transform: translate(-1px, 1px); }
-    66% { transform: translate(1px, -1px); }
-    100% { transform: translate(0, 0); }
-  }
-
-  .terminal-page,
-  .terminal-mobile,
-  .terminal-tablet {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Global thin scrollbar for all terminal panels */
-  .terminal-page :global(*::-webkit-scrollbar),
-  .terminal-mobile :global(*::-webkit-scrollbar),
-  .terminal-tablet :global(*::-webkit-scrollbar) { width: 3px; height: 3px; }
-  .terminal-page :global(*::-webkit-scrollbar-thumb),
-  .terminal-mobile :global(*::-webkit-scrollbar-thumb),
-  .terminal-tablet :global(*::-webkit-scrollbar-thumb) { background: rgba(255,255,255,.1); border-radius: 3px; }
-  .terminal-page :global(*::-webkit-scrollbar-track),
-  .terminal-mobile :global(*::-webkit-scrollbar-track),
-  .terminal-tablet :global(*::-webkit-scrollbar-track) { background: transparent; }
-
-  /* ═══════════════════════════════════════════
-     DESKTOP — Full 5-column grid with resizers
-     ═══════════════════════════════════════════ */
-  .terminal-page {
-    display: grid;
-    grid-template-columns: 280px 4px 1fr 4px 300px; /* overridden by inline style */
-    grid-template-rows: 1fr auto;
-    height: 100%;
-    padding-top: 50px;
-    box-sizing: border-box;
-    overflow: hidden;
-    overflow-x: clip;
-    background: linear-gradient(180deg, var(--term-panel) 0%, var(--term-panel-2) 100%);
-    box-shadow: inset 0 0 0 1px var(--term-border-soft);
-  }
-  .ticker-bar {
-    grid-column: 1 / -1;
-  }
-  .tl,
-  .tr,
-  .tc {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    min-width: 0;
-    min-height: 0;
-  }
-  .tab-left {
-    overflow-y: auto;
-    overflow-x: hidden;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-    min-width: 0;
-  }
-  .tl {
-    grid-row: 1;
-    grid-column: 1;
-  }
-  .tr {
-    grid-row: 1;
-    grid-column: 5;
-  }
-  .tab-left::-webkit-scrollbar { width: 3px; }
-  .tab-left::-webkit-scrollbar-track { background: transparent; }
-  .tab-left::-webkit-scrollbar-thumb {
-    background: rgba(232, 150, 125, 0.45);
-    border-radius: 2px;
-  }
-
-  .tc {
-    grid-row: 1;
-    grid-column: 3;
-    flex-direction: column;
-  }
-
-  .desk-panel-resizable {
-    --desk-panel-width: 100%;
-    --desk-panel-height: 100%;
-    position: relative;
-    width: min(100%, var(--desk-panel-width));
-    height: min(100%, var(--desk-panel-height));
-    min-width: 0;
-    min-height: 0;
-    margin: auto;
-    display: flex;
-    flex-direction: column;
-    transition: width .16s ease, height .16s ease, box-shadow .16s ease, border-color .16s ease;
-    border: 1px solid transparent;
-    border-radius: 8px;
-  }
-  .desk-panel-resizable:hover,
-  .desk-panel-resizable:focus-within {
-    border-color: rgba(232, 150, 125, 0.24);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-  }
-  .desk-panel-body {
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .resize-handle {
-    position: absolute;
-    border: 0;
-    background: transparent;
-    padding: 0;
-    margin: 0;
-    opacity: 0;
-    transition: opacity .2s ease;
-  }
-  .resize-handle::before {
-    content: '';
-    position: absolute;
-    inset: 50% auto auto 50%;
-    transform: translate(-50%, -50%);
-    border-radius: 999px;
-    background: rgba(232, 150, 125, 0.5);
-  }
-  .resize-handle:hover,
-  .resize-handle:focus-visible {
-    opacity: 0.7;
-    outline: none;
-  }
-  .resize-handle-x {
-    top: var(--rh-x-top, 10px);
-    right: 0;
-    width: var(--rh-x-width, 12px);
-    height: calc(100% - var(--rh-pad, 20px));
-    cursor: ew-resize;
-  }
-  .resize-handle-x::before {
-    width: 2px;
-    height: var(--rh-x-indicator, 42%);
-  }
-  .resize-handle-y {
-    left: var(--rh-y-left, 10px);
-    bottom: 0;
-    width: calc(100% - var(--rh-pad, 20px));
-    height: var(--rh-y-height, 12px);
-    cursor: ns-resize;
-  }
-  .resize-handle-y::before {
-    width: var(--rh-y-indicator, 42%);
-    height: 2px;
-  }
-  .desk-resize-handle {
-    z-index: 18;
-    --rh-x-top: 12px;
-    --rh-pad: 24px;
-    --rh-x-width: 8px;
-    --rh-x-indicator: 36%;
-    --rh-y-left: 12px;
-    --rh-y-height: 8px;
-    --rh-y-indicator: 36%;
-  }
-
-  /* Shared live status dot */
-  .ctb-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--term-live);
-    box-shadow: 0 0 8px rgba(135, 220, 190, 0.8);
-    animation: blink-dot 0.9s infinite;
-  }
-  @keyframes blink-dot {
-    0%,100% { opacity: 1; }
-    50% { opacity: .2; }
-  }
-
-  .chart-area {
+  .sr-name {
+    color: var(--sc-text-3);
     flex: 1;
-    overflow: hidden;
-    min-height: 180px;
-  }
-  .chart-area-full { flex: 1; }
-
-  /* ── Resizers ── */
-  .resizer {
-    position: relative;
-    z-index: 20;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    grid-row: 1;
-  }
-  .resizer-left { grid-column: 2; }
-  .resizer-right { grid-column: 4; }
-  .resizer-h {
-    width: 2px;
-    background: rgba(255, 255, 255, 0.04);
-    cursor: col-resize;
-    transition: background .15s;
-  }
-  .resizer-h:hover {
-    background: rgba(232, 150, 125, 0.15);
-  }
-  .resizer-spacer {
-    width: 1px;
-    grid-row: 1;
-  }
-  .resizer-spacer:nth-of-type(1) { grid-column: 2; }
-
-  .panel-strip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 7px 0;
-    background: rgba(12, 29, 19, 0.95);
-    border: none;
-    cursor: pointer;
-    transition: background .15s;
-    grid-row: 1;
-  }
-  .panel-strip:hover { background: rgba(232, 150, 125, 0.08); }
-  .panel-strip svg {
-    color: rgba(245, 196, 184, 0.62);
-    transition: color .15s;
-  }
-  .panel-strip:hover svg { color: var(--term-accent-soft); }
-  .strip-label {
-    writing-mode: vertical-rl;
-    font-family: var(--fm);
-    font-size: 8px;
-    font-weight: 900;
-    letter-spacing: 1.8px;
-    color: rgba(245, 196, 184, 0.62);
-    transition: color .15s;
-  }
-  .panel-strip:hover .strip-label { color: rgba(245, 196, 184, 0.8); }
-  .panel-strip-left {
-    grid-column: 1;
-    border-right: 1px solid var(--term-border);
-  }
-  .panel-strip-right {
-    grid-column: 5;
-    border-left: 1px solid var(--term-border);
-  }
-
-  .resizer-drag {
-    position: absolute;
-    inset: 0;
-    cursor: col-resize;
-  }
-
-  /* Drag Overlay */
-  .drag-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 100;
-  }
-  .drag-overlay.col { cursor: col-resize; }
-
-  /* ═══════════════════════════════════════════
-     TICKER BAR — shared across all layouts
-     ═══════════════════════════════════════════ */
-  .ticker-bar {
-    height: 22px;
-    background: linear-gradient(180deg, rgba(15, 40, 24, 0.95) 0%, rgba(10, 27, 17, 0.98) 100%);
-    border-top: 1px solid var(--term-border);
-    overflow: hidden;
-    position: relative;
-    flex-shrink: 0;
-  }
-  .ticker-inner {
-    display: flex;
-    animation: tickerScroll 40s linear infinite;
-    will-change: transform;
-    contain: layout style;
-  }
-  .ticker-track {
-    display: inline-flex;
-    align-items: center;
-    white-space: nowrap;
-  }
-  .ticker-chip {
-    font-size: 9px;
-    font-family: var(--fm);
-    color: var(--term-live);
-    font-weight: 600;
-    letter-spacing: 0.35px;
-    line-height: 1;
-    padding: 3px 8px;
-    margin: 0 10px;
-    border-radius: 999px;
-    border: 1px solid transparent;
-  }
-  .ticker-chip-pos {
-    color: #98f5cc;
-    border-color: rgba(152,245,204,.22);
-    background: rgba(152,245,204,.1);
-  }
-  .ticker-chip-neg {
-    color: #ff9eb0;
-    border-color: rgba(255,158,176,.24);
-    background: rgba(255,158,176,.12);
-  }
-  .ticker-chip-fg {
-    font-weight: 800;
-    border-color: rgba(232,150,125,.3);
-    background: rgba(232,150,125,.12);
-  }
-  .ticker-chip-fg.fear {
-    color: #ff8ca1;
-    box-shadow: 0 0 8px rgba(255,140,161,.24);
-  }
-  .ticker-chip-fg.greed {
-    color: #86f7b4;
-    box-shadow: 0 0 8px rgba(134,247,180,.24);
-  }
-  .ticker-chip-fg.neutral {
-    color: #ffd89d;
-  }
-  @keyframes tickerScroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-
-  /* ═══════════════════════════════════════════
-     MOBILE — Context header + bottom nav
-     ═══════════════════════════════════════════ */
-  .terminal-mobile {
-    --mob-nav-slot: calc(72px + env(safe-area-inset-bottom));
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0;
-    background: linear-gradient(180deg, var(--term-panel) 0%, var(--term-panel-2) 100%);
-    box-shadow: inset 0 0 0 1px var(--term-border-soft);
-    overflow: hidden;
-    overscroll-behavior-y: contain;
-  }
-  .mob-topbar {
-    flex-shrink: 0;
-    padding: 8px 10px 6px;
-    border-bottom: 1px solid var(--term-border);
-    background:
-      linear-gradient(135deg, rgba(232, 150, 125, 0.14), rgba(232, 150, 125, 0.04)),
-      linear-gradient(180deg, rgba(14, 36, 23, 0.92), rgba(10, 27, 17, 0.94));
-    backdrop-filter: blur(8px);
-  }
-  .mob-topline {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    margin-bottom: 6px;
-  }
-  .mob-title-wrap {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    gap: 1px;
-  }
-  .mob-eyebrow {
-    font-family: var(--fm);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 1.4px;
-    color: rgba(240, 237, 228, 0.48);
-  }
-  .mob-title {
-    font-family: var(--fd);
-    font-size: 14px;
-    font-weight: 900;
-    letter-spacing: 0.35px;
-    color: var(--term-text);
-    line-height: 1.2;
-  }
-  .mob-live {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 8px;
-    border-radius: 999px;
-    border: 1px solid rgba(135, 220, 190, 0.26);
-    background: rgba(135, 220, 190, 0.08);
-    font-family: var(--fm);
-    font-size: 8px;
-    font-weight: 800;
-    letter-spacing: 1.3px;
-    color: var(--term-live);
-    white-space: nowrap;
-  }
-  .mob-meta {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-  }
-  .mob-token {
-    min-width: 0;
-    flex: 1;
-  }
-  .mob-meta-chip {
-    flex-shrink: 0;
-    padding: 4px 8px;
-    border-radius: 8px;
-    border: 1px solid rgba(240, 237, 228, 0.2);
-    background: rgba(240, 237, 228, 0.08);
-    font-family: var(--fm);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-    color: rgba(240, 237, 228, 0.84);
-    max-width: 44vw;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .mob-desc {
-    margin-top: 6px;
-    font-family: var(--fm);
-    font-size: 9px;
-    color: rgba(240, 237, 228, 0.56);
-    letter-spacing: 0.15px;
-    line-height: 1.35;
-  }
-  .mob-content {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-    touch-action: pan-y;
-    padding: 8px 8px calc(10px + var(--mob-nav-slot));
-    scroll-padding-bottom: calc(8px + var(--mob-nav-slot));
-    display: flex;
-    flex-direction: column;
-  }
-  .mob-content.chart-only {
-    padding: 4px 6px calc(6px + var(--mob-nav-slot));
-  }
-  .mob-chart-stack {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    flex: 1 1 auto;
-    gap: 0;
-  }
-  .mob-panel-wrap,
-  .mob-chart-section {
-    height: auto;
-    min-height: 0;
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    border-radius: 12px;
-    border: 1px solid rgba(232, 150, 125, 0.16);
-    overflow: hidden;
-    background: rgba(8, 22, 14, 0.58);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26);
-  }
-  .mob-panel-resizable {
-    position: relative;
-    width: min(100%, var(--mob-panel-width, 100%));
-    height: min(100%, var(--mob-panel-height, 100%));
-    margin-inline: auto;
-    transition: width .16s ease, height .16s ease, box-shadow .16s ease, border-color .16s ease;
-  }
-  .mob-panel-resizable:focus-within,
-  .mob-panel-resizable:hover {
-    border-color: rgba(232, 150, 125, 0.28);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  }
-  .mob-resize-handle {
-    z-index: 8;
-    touch-action: none;
-    user-select: none;
-    --rh-x-top: 10px;
-    --rh-pad: 20px;
-    --rh-x-width: 12px;
-    --rh-x-indicator: 42%;
-    --rh-y-left: 10px;
-    --rh-y-height: 12px;
-    --rh-y-indicator: 42%;
-  }
-  .mob-chart-area {
-    flex: 1 1 auto;
-    min-height: 0;
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  .mob-bottom-nav {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-auto-rows: minmax(44px, 44px);
-    align-items: center;
-    gap: 6px;
-    padding: 7px 8px calc(5px + env(safe-area-inset-bottom));
-    min-height: calc(60px + env(safe-area-inset-bottom));
-    max-height: calc(72px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--term-border);
-    background: rgba(10, 26, 16, 0.92);
-    backdrop-filter: blur(8px);
-    margin-top: 0;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 4;
-    overflow: hidden;
-  }
-  .mob-nav-btn {
-    height: 44px;
-    min-height: 44px;
-    max-height: 44px;
-    align-self: center;
-    border-radius: 12px;
-    border: 1px solid rgba(232, 150, 125, 0.16);
-    background: rgba(240, 237, 228, 0.03);
-    color: rgba(240, 237, 228, 0.62);
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    font-family: var(--fm);
-    cursor: pointer;
-    transition: all .14s ease;
-  }
-  .mob-nav-btn.active {
-    color: var(--term-accent-soft);
-    border-color: rgba(232, 150, 125, 0.4);
-    background: linear-gradient(135deg, rgba(232, 150, 125, 0.2), rgba(232, 150, 125, 0.08));
-    box-shadow: inset 0 0 0 1px rgba(245, 196, 184, 0.18);
-  }
-  .mob-nav-label {
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.8px;
-    line-height: 1;
-  }
-  .mob-nav-badge {
-    margin-left: 6px;
-    min-width: 16px;
-    height: 16px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 4px;
-    font-family: var(--fm);
-    font-size: 8px;
-    font-weight: 900;
-    line-height: 1;
-    color: #0b1b12;
-    background: var(--term-live);
-    box-shadow: 0 0 8px rgba(135, 220, 190, 0.45);
-  }
-
-  /* ═══════════════════════════════════════════
-     TABLET — 2-col top + Intel bottom
-     ═══════════════════════════════════════════ */
-  .terminal-tablet {
-    --tab-left-width: clamp(196px, 23vw, 232px);
-    --tab-bottom-height: clamp(200px, 28vh, 280px);
-    display: grid;
-    grid-template-rows: minmax(0, 1fr) 6px var(--tab-bottom-height) auto;
-    height: 100%;
-    padding-top: 50px;
-    box-sizing: border-box;
-    background: linear-gradient(180deg, var(--term-panel) 0%, var(--term-panel-2) 100%);
-    box-shadow: inset 0 0 0 1px var(--term-border-soft);
-    overflow: hidden;
-  }
-  .tab-top {
-    grid-row: 1;
-    display: grid;
-    grid-template-columns: var(--tab-left-width) 6px minmax(0, 1fr);
-    min-height: 0;
-    overflow: hidden;
-  }
-  .tab-left {
-    grid-column: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px 3px 4px 4px;
-    overflow: hidden;
-  }
-  .tab-center {
-    grid-column: 3;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px 4px 4px 3px;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .tab-panel-resizable {
-    --tab-panel-width: 100%;
-    --tab-panel-height: 100%;
-    position: relative;
-    width: min(100%, var(--tab-panel-width));
-    height: min(100%, var(--tab-panel-height));
-    margin: auto;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    transition: width .16s ease, height .16s ease, box-shadow .16s ease, border-color .16s ease;
-    min-width: 0;
-    min-height: 0;
-  }
-  .tab-panel-resizable:hover,
-  .tab-panel-resizable:focus-within {
-    border-color: rgba(232, 150, 125, 0.24);
-    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.26);
-  }
-  .tab-panel-body {
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .tab-resize-handle {
-    z-index: 16;
-    --rh-x-top: 10px;
-    --rh-pad: 20px;
-    --rh-x-width: 20px;
-    --rh-x-indicator: 44%;
-    --rh-y-left: 10px;
-    --rh-y-height: 20px;
-    --rh-y-indicator: 44%;
-  }
-  .tab-chart-area {
-    flex: 1;
-    min-height: 200px;
-    overflow: hidden;
-  }
-  .tab-layout-split {
-    border: 0;
-    background: rgba(8, 18, 13, 0.86);
-    padding: 0;
-    margin: 0;
-    position: relative;
-    z-index: 16;
-    cursor: col-resize;
-    transition: background .14s ease;
-  }
-  .tab-layout-split span {
-    position: absolute;
-    inset: 50% auto auto 50%;
-    transform: translate(-50%, -50%);
-    display: block;
-    border-radius: 999px;
-    background: rgba(245, 196, 184, 0.45);
-  }
-  .tab-layout-split:hover,
-  .tab-layout-split:focus-visible {
-    background: rgba(232, 150, 125, 0.14);
-    outline: none;
-  }
-  .tab-layout-split-v {
-    grid-column: 2;
-  }
-  .tab-layout-split-v span {
-    width: 2px;
-    height: 42px;
-  }
-  .tab-layout-split-h {
-    grid-row: 2;
-    width: 100%;
-    cursor: row-resize;
-  }
-  .tab-layout-split-h span {
-    width: 44px;
-    height: 2px;
-  }
-  .tab-bottom {
-    grid-row: 3;
-    height: 100%;
-    border-top: 1px solid var(--term-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px;
-    overflow: hidden;
-  }
-  .terminal-tablet .ticker-bar {
-    grid-row: 4;
-  }
-
-  /* Route-scoped tone overrides for terminal child components */
-  .terminal-shell :global(.war-room),
-  .terminal-shell :global(.intel-panel) {
-    background: var(--term-panel-2);
-  }
-
-  .terminal-shell :global(.war-room) {
-    border-right: 1px solid var(--term-border-soft);
-  }
-  .terminal-shell :global(.war-room .wr-header) {
-    background: linear-gradient(90deg, rgba(232, 150, 125, 0.94), rgba(245, 196, 184, 0.86));
-    border-bottom: 1px solid rgba(10, 26, 13, 0.5);
-  }
-  .terminal-shell :global(.war-room .wr-title) {
-    color: #112419;
-    letter-spacing: 1.4px;
-    white-space: nowrap;
-  }
-  .terminal-shell :global(.war-room .signal-link) {
-    color: #132418;
-    background: rgba(240, 237, 228, 0.55);
-    border-color: rgba(10, 26, 13, 0.28);
-  }
-  .terminal-shell :global(.war-room .arena-trigger) {
-    color: var(--term-accent-soft);
-    background: rgba(10, 26, 16, 0.78);
-    border-color: rgba(245, 196, 184, 0.34);
-  }
-  .terminal-shell :global(.war-room .arena-trigger:hover) {
-    color: #fff4e9;
-    background: rgba(10, 26, 16, 0.94);
-    border-color: rgba(245, 196, 184, 0.58);
-  }
-  .terminal-shell :global(.war-room .ticker-flow) {
-    border-bottom-color: var(--term-border-soft);
-    background: rgba(9, 24, 16, 0.62);
-  }
-  .terminal-shell :global(.war-room .ticker-chip) {
-    color: rgba(240, 237, 228, 0.78);
-    border-color: rgba(232, 150, 125, 0.2);
-    background: rgba(240, 237, 228, 0.03);
-  }
-  .terminal-shell :global(.war-room .ticker-label) {
-    color: var(--term-accent-soft);
-    border-color: rgba(232, 150, 125, 0.42);
-    background: rgba(232, 150, 125, 0.16);
-  }
-  .terminal-shell :global(.war-room .ticker-tf) {
-    color: var(--term-live);
-    border-color: rgba(94, 203, 180, 0.44);
-    background: rgba(94, 203, 180, 0.14);
-  }
-  .terminal-shell :global(.war-room .token-tabs) {
-    border-bottom-color: var(--term-border-soft);
-    background: rgba(9, 24, 16, 0.55);
-  }
-  .terminal-shell :global(.war-room .token-tab) {
-    color: rgba(240, 237, 228, 0.78);
-  }
-  .terminal-shell :global(.war-room .token-tab.active) {
-    color: var(--term-accent-soft);
-    border-color: rgba(232, 150, 125, 0.52);
-    background: rgba(232, 150, 125, 0.08);
-  }
-  .terminal-shell :global(.war-room .token-tab.active .token-tab-count) {
-    background: rgba(232, 150, 125, 0.14);
-    color: var(--term-accent-soft);
-  }
-  .terminal-shell :global(.war-room .deriv-strip) {
-    background: rgba(10, 26, 16, 0.6);
-    border-bottom-color: var(--term-border-soft);
-  }
-  .terminal-shell :global(.war-room .wr-msg) {
-    border-bottom-color: rgba(232, 150, 125, 0.08);
-  }
-  .terminal-shell :global(.war-room .wr-msg:hover) {
-    background: rgba(232, 150, 125, 0.04);
-  }
-  .terminal-shell :global(.war-room .wr-msg.selected) {
-    background: rgba(232, 150, 125, 0.07);
-    border-left-color: var(--term-accent);
-  }
-  .terminal-shell :global(.war-room .copy-trade-cta) {
-    background: linear-gradient(90deg, rgba(232, 150, 125, 0.2), rgba(232, 150, 125, 0.09));
-    border-top-color: var(--term-border);
-  }
-  .terminal-shell :global(.war-room .copy-trade-cta:hover) {
-    background: linear-gradient(90deg, rgba(232, 150, 125, 0.3), rgba(232, 150, 125, 0.14));
-  }
-  .terminal-shell :global(.war-room .wr-stats) {
-    border-top-color: var(--term-border);
-    background: rgba(232, 150, 125, 0.04);
-  }
-  .terminal-shell :global(.war-room .stat-cell) {
-    border-right-color: rgba(232, 150, 125, 0.14);
-  }
-  .terminal-shell :global(.war-room .stat-lbl) {
-    color: rgba(245, 196, 184, 0.72);
-  }
-
-  .terminal-shell :global(.intel-panel) {
-    border-left: 1px solid var(--term-border-soft);
-  }
-  .terminal-shell :global(.intel-panel .rp-tabs) {
-    border-bottom-color: var(--term-border);
-  }
-  .terminal-shell :global(.intel-panel .rp-tab) {
-    color: rgba(240, 237, 228, 0.8);
-    background: rgba(240, 237, 228, 0.04);
-  }
-  .terminal-shell :global(.intel-panel .rp-tab.active) {
-    background: rgba(232, 150, 125, 0.2);
-    color: var(--term-accent-soft);
-  }
-  .terminal-shell :global(.intel-panel .rp-tab:not(.active):hover) {
-    color: var(--term-accent-soft);
-    background: rgba(232, 150, 125, 0.08);
-  }
-  .terminal-shell :global(.intel-panel .rp-collapse),
-  .terminal-shell :global(.intel-panel .rp-panel-collapse) {
-    border-left-color: var(--term-border-soft);
-    color: rgba(245, 196, 184, 0.78);
-  }
-  .terminal-shell :global(.intel-panel .rp-collapse:hover),
-  .terminal-shell :global(.intel-panel .rp-panel-collapse:hover) {
-    background: rgba(232, 150, 125, 0.14);
-    color: var(--term-accent-soft);
-  }
-  .terminal-shell :global(.intel-panel .feed-chips) {
-    border-bottom-color: var(--term-border-soft);
-  }
-  .terminal-shell :global(.intel-panel .feed-chip) {
-    color: rgba(240, 237, 228, 0.52);
-    border-color: var(--term-border-soft);
-  }
-  .terminal-shell :global(.intel-panel .feed-chip.active) {
-    color: var(--term-accent-soft);
-    border-color: var(--term-accent);
-    background: rgba(232, 150, 125, 0.1);
-  }
-  .terminal-shell :global(.intel-panel .hl-ticker-badge) {
-    color: var(--term-accent-soft);
-    background: rgba(232, 150, 125, 0.1);
-    border-bottom-color: var(--term-border-soft);
-  }
-  .terminal-shell :global(.intel-panel .hl-row),
-  .terminal-shell :global(.intel-panel .ev-card) {
-    border-bottom-color: rgba(232, 150, 125, 0.08);
-  }
-  .terminal-shell :global(.intel-panel .hl-time),
-  .terminal-shell :global(.intel-panel .ev-etime),
-  .terminal-shell :global(.intel-panel .comm-time),
-  .terminal-shell :global(.intel-panel .flow-addr),
-  .terminal-shell :global(.intel-panel .ac-name) {
-    color: rgba(240, 237, 228, 0.68);
-  }
-  .terminal-shell :global(.war-room .wr-msg-text),
-  .terminal-shell :global(.war-room .wr-msg-name),
-  .terminal-shell :global(.intel-panel .hl-txt),
-  .terminal-shell :global(.intel-panel .comm-txt),
-  .terminal-shell :global(.intel-panel .ev-body),
-  .terminal-shell :global(.intel-panel .ac-txt) {
-    line-height: 1.4;
-    letter-spacing: 0.08px;
-  }
-  .terminal-shell :global(.war-room .deriv-val),
-  .terminal-shell :global(.war-room .wr-msg-price),
-  .terminal-shell :global(.intel-panel .flow-amt),
-  .terminal-shell :global(.intel-panel .hl-time),
-  .terminal-shell :global(.intel-panel .ev-etime) {
-    font-variant-numeric: tabular-nums;
-  }
-  .terminal-shell :global(.intel-panel .hl-row:hover),
-  .terminal-shell :global(.intel-panel .comm-react:hover) {
-    background: rgba(232, 150, 125, 0.08);
-  }
-  .terminal-shell :global(.intel-panel .user-post) {
-    border-left-color: var(--term-accent);
-  }
-  .terminal-shell :global(.intel-panel .ac-send) {
-    background: var(--term-accent);
-    color: var(--term-bg);
-    border-color: rgba(10, 26, 13, 0.45);
-  }
-  .terminal-shell :global(.intel-panel .ac-input input:focus) {
-    border-color: rgba(232, 150, 125, 0.42);
-  }
-
-  /* Text density tuning (desktop/tablet): denser headers, clearer body hierarchy */
-  .terminal-shell {
-    --term-font-2xs: clamp(7px, 0.42vw, 8px);
-    --term-font-xs: clamp(8px, 0.5vw, 9px);
-    --term-font-sm: clamp(9px, 0.62vw, 10px);
-    --term-font-md: clamp(10px, 0.78vw, 11.5px);
-    --term-font-lg: clamp(11px, 0.9vw, 13px);
-  }
-  .terminal-shell :global(.war-room .wr-title) {
-    font-size: var(--term-font-md);
-    letter-spacing: 1.05px;
-  }
-  .terminal-shell :global(.war-room .wr-chip),
-  .terminal-shell :global(.war-room .ticker-chip),
-  .terminal-shell :global(.war-room .scan-tab),
-  .terminal-shell :global(.war-room .token-tab),
-  .terminal-shell :global(.intel-panel .feed-chip),
-  .terminal-shell :global(.intel-panel .ac-trade-btn) {
-    font-size: var(--term-font-xs);
-    letter-spacing: 0.42px;
-  }
-  .terminal-shell :global(.war-room .scan-tab-history),
-  .terminal-shell :global(.war-room .token-tab-count),
-  .terminal-shell :global(.war-room .wr-msg-time),
-  .terminal-shell :global(.war-room .wr-msg-src),
-  .terminal-shell :global(.intel-panel .hl-time),
-  .terminal-shell :global(.intel-panel .ev-etime),
-  .terminal-shell :global(.intel-panel .flow-addr),
-  .terminal-shell :global(.intel-panel .ac-name) {
-    font-size: var(--term-font-2xs);
-    letter-spacing: 0.28px;
-  }
-  .terminal-shell :global(.war-room .deriv-lbl),
-  .terminal-shell :global(.war-room .scan-status-text),
-  .terminal-shell :global(.war-room .select-all-btn),
-  .terminal-shell :global(.war-room .wr-act-btn),
-  .terminal-shell :global(.war-room .src-count),
-  .terminal-shell :global(.war-room .src-tracked),
-  .terminal-shell :global(.intel-panel .hl-net),
-  .terminal-shell :global(.intel-panel .hl-engage),
-  .terminal-shell :global(.intel-panel .hl-creator),
-  .terminal-shell :global(.intel-panel .trend-name),
-  .terminal-shell :global(.intel-panel .trend-vol),
-  .terminal-shell :global(.intel-panel .trend-soc),
-  .terminal-shell :global(.intel-panel .trend-galaxy) {
-    font-size: var(--term-font-xs);
-    letter-spacing: 0.18px;
-  }
-  .terminal-shell :global(.war-room .wr-msg-name),
-  .terminal-shell :global(.war-room .wr-msg-vote),
-  .terminal-shell :global(.war-room .wr-msg-conf),
-  .terminal-shell :global(.war-room .wr-msg-signal-row),
-  .terminal-shell :global(.war-room .wr-msg-text),
-  .terminal-shell :global(.war-room .src-text),
-  .terminal-shell :global(.war-room .ctc-text),
-  .terminal-shell :global(.intel-panel .rp-tab),
-  .terminal-shell :global(.intel-panel .hl-txt),
-  .terminal-shell :global(.intel-panel .flow-lbl),
-  .terminal-shell :global(.intel-panel .flow-amt),
-  .terminal-shell :global(.intel-panel .comm-name),
-  .terminal-shell :global(.intel-panel .comm-txt),
-  .terminal-shell :global(.intel-panel .ev-body),
-  .terminal-shell :global(.intel-panel .ac-title),
-  .terminal-shell :global(.intel-panel .ac-txt),
-  .terminal-shell :global(.intel-panel .ac-input input),
-  .terminal-shell :global(.intel-panel .trend-sym),
-  .terminal-shell :global(.intel-panel .trend-price),
-  .terminal-shell :global(.intel-panel .trend-chg) {
-    font-size: var(--term-font-sm);
-    letter-spacing: 0.12px;
-  }
-  .terminal-shell :global(.war-room .deriv-val),
-  .terminal-shell :global(.war-room .stat-val),
-  .terminal-shell :global(.war-room .wr-msg-entry),
-  .terminal-shell :global(.war-room .wr-msg-tp),
-  .terminal-shell :global(.war-room .wr-msg-sl),
-  .terminal-shell :global(.intel-panel .pos-pnl),
-  .terminal-shell :global(.intel-panel .pick-score) {
-    font-size: var(--term-font-md);
-    letter-spacing: 0.08px;
-  }
-  .terminal-shell :global(.war-room .wr-msg-text),
-  .terminal-shell :global(.intel-panel .hl-txt),
-  .terminal-shell :global(.intel-panel .comm-txt),
-  .terminal-shell :global(.intel-panel .ev-body),
-  .terminal-shell :global(.intel-panel .ac-txt) {
-    line-height: 1.38;
-  }
-  .terminal-shell :global(.war-room .deriv-val),
-  .terminal-shell :global(.war-room .wr-msg-conf),
-  .terminal-shell :global(.war-room .wr-msg-time),
-  .terminal-shell :global(.war-room .stat-val),
-  .terminal-shell :global(.intel-panel .flow-amt),
-  .terminal-shell :global(.intel-panel .trend-price),
-  .terminal-shell :global(.intel-panel .trend-chg),
-  .terminal-shell :global(.intel-panel .pick-score),
-  .terminal-shell :global(.intel-panel .pos-pnl) {
-    font-variant-numeric: tabular-nums lining-nums;
-  }
-
-  /* Mobile-only readability and touch ergonomics */
-  .terminal-mobile :global(.war-room),
-  .terminal-mobile :global(.intel-panel),
-  .terminal-mobile :global(.chart-wrapper),
-  .terminal-mobile :global(.tv-container) {
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  .terminal-mobile :global(.chart-wrapper) {
-    height: 100%;
-    min-height: 0;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-container) {
-    min-height: max(180px, 36vh);
-  }
-  .terminal-mobile :global(.war-room .wr-header) {
-    height: 38px;
-    padding: 0 12px;
-  }
-  .terminal-mobile :global(.war-room .wr-header-right) {
-    flex: 0 0 auto;
-    overflow: visible;
-    padding-right: 0;
-    margin-left: auto;
-    scrollbar-width: none;
-  }
-  .terminal-mobile :global(.war-room .wr-header-right::-webkit-scrollbar) {
-    display: none;
-  }
-  .terminal-mobile :global(.war-room .wr-title) {
-    font-size: 13px;
-    letter-spacing: 1.5px;
-  }
-  .terminal-mobile :global(.war-room .signal-link),
-  .terminal-mobile :global(.war-room .wr-collapse-btn) {
-    display: none;
-  }
-  .terminal-mobile :global(.war-room .arena-trigger) {
-    min-height: 26px;
-    height: 26px;
-    min-width: 70px;
-    padding: 0 10px;
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: .8px;
-    color: rgba(245,196,184,.96);
-    background: rgba(10,26,16,.8);
-    border: 1px solid rgba(245,196,184,.35);
-    box-shadow: inset 0 0 0 1px rgba(10,26,16,.45);
-  }
-  .terminal-mobile :global(.war-room .arena-trigger:hover),
-  .terminal-mobile :global(.war-room .arena-trigger:active) {
-    color: #fff4e9;
-    background: rgba(10,26,16,.95);
-    border-color: rgba(245,196,184,.62);
-  }
-  .terminal-mobile :global(.scan-btn) {
-    min-height: 28px;
-    padding: 4px 10px;
-    font-size: 9px;
-  }
-  .terminal-mobile :global(.war-room .token-tab),
-  .terminal-mobile :global(.intel-panel .rp-tab),
-  .terminal-mobile :global(.intel-panel .feed-chip) {
-    min-height: 38px;
-    font-size: 10px;
-    letter-spacing: 0.9px;
-  }
-  .terminal-mobile :global(.war-room .token-tab-count) {
-    font-size: 8px;
-  }
-  .terminal-mobile :global(.war-room .deriv-strip) {
-    padding: 6px 8px;
-  }
-  .terminal-mobile :global(.war-room .ticker-flow) {
-    padding: 4px 8px;
-    gap: 4px;
-  }
-  .terminal-mobile :global(.war-room .ticker-chip) {
-    height: 18px;
-    padding: 0 6px;
-    font-size: 7px;
-    letter-spacing: .4px;
-  }
-  .terminal-mobile :global(.war-room .scan-tabs),
-  .terminal-mobile :global(.war-room .token-tabs) {
-    padding: 3px 6px;
-    gap: 3px;
-  }
-  .terminal-mobile :global(.war-room .scan-tab),
-  .terminal-mobile :global(.war-room .token-tab) {
-    min-height: 28px;
-    height: 28px;
-    padding: 0 8px;
-    border-radius: 12px;
-    font-size: 9px;
-  }
-  .terminal-mobile :global(.war-room .scan-tab-meta),
-  .terminal-mobile :global(.war-room .token-tab-count) {
-    font-size: 7px;
-  }
-  .terminal-mobile :global(.war-room .deriv-val) {
+    font-size: 11px;
+  }
+  .sr-price {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    color: var(--sc-text-1);
+    min-width: 64px;
+    text-align: right;
     font-size: 12px;
   }
-  .terminal-mobile :global(.war-room .wr-msg-body) {
-    padding: 10px 12px 10px 6px;
+  .sr-change {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-weight: 700;
+    min-width: 52px;
+    text-align: right;
+    font-size: 11px;
   }
-  .terminal-mobile :global(.war-room .wr-msg-head) {
-    gap: 5px;
-    margin-bottom: 4px;
+  .sr-change.up { color: var(--sc-good, #adca7c); }
+  .sr-change.dn { color: var(--sc-bad, #cf7f8f); }
+  .sr-trending {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--sc-good, #adca7c);
+    flex-shrink: 0;
   }
-  .terminal-mobile :global(.war-room .wr-msg-name),
-  .terminal-mobile :global(.war-room .wr-msg-text) {
+
+  /* ─── Actions ─── */
+  .fe-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+  }
+  .action-btn {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    border: 1px solid var(--sc-line-soft);
+    color: var(--sc-text-2);
+  }
+  .action-btn:hover { color: var(--sc-text-0); }
+  .action-correct:hover {
+    color: var(--sc-good, #adca7c);
+    border-color: var(--sc-good, #adca7c);
+    background: rgba(173, 202, 124, 0.08);
+  }
+  .action-incorrect:hover {
+    color: var(--sc-bad, #cf7f8f);
+    border-color: var(--sc-bad, #cf7f8f);
+    background: rgba(207, 127, 143, 0.08);
+  }
+  .action-save {
+    border-style: dashed;
+  }
+  .action-save:hover {
+    border-style: solid;
+    color: var(--sc-text-0);
+  }
+
+  /* ─── Chart Reference (inline in feed) ─── */
+  .fe-chart-ref {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+  }
+  .cr-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
     font-size: 10px;
+    color: var(--sc-text-3);
   }
-  .terminal-mobile :global(.war-room .wr-msg-signal-row),
-  .terminal-mobile :global(.war-room .wr-msg-actions) {
-    margin-top: 6px;
-    gap: 6px;
+  .cr-sym {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sc-text-1);
   }
-  .terminal-mobile :global(.war-room .wr-act-btn),
-  .terminal-mobile :global(.war-room .copy-trade-cta),
-  .terminal-mobile :global(.war-room .signal-room-cta) {
-    min-height: 34px;
+  .cr-tf {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    background: var(--sc-bg-2);
+    padding: 1px 5px;
+    border-radius: 2px;
   }
-  .terminal-mobile :global(.war-room .wr-act-btn) {
-    font-size: 8px;
-    padding: 4px 7px;
+
+  /* ═══ CHART PANEL ═══ */
+  .chart-panel {
+    width: 420px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    background: var(--sc-bg-1, #0b1220);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
-  .terminal-mobile :global(.war-room .ctc-text),
-  .terminal-mobile :global(.war-room .src-text) {
+  .cp-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--sc-line-soft);
+    flex-shrink: 0;
+  }
+  .cp-sym {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 20px;
+    color: var(--sc-text-0);
+  }
+  .cp-tf {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    background: var(--sc-bg-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .cp-price {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sc-text-0);
+    margin-left: auto;
+  }
+  .cp-change {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .cp-change.up { color: var(--sc-good, #adca7c); }
+  .cp-change.dn { color: var(--sc-bad, #cf7f8f); }
+  .cp-alpha {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .cp-chart {
+    flex: 1;
+    min-height: 200px;
+    padding: 4px;
+  }
+  .cp-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--sc-line-soft);
+    border-top: 1px solid var(--sc-line-soft);
+    flex-shrink: 0;
+  }
+  .qs-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    background: var(--sc-bg-1, #0b1220);
+  }
+  .qs-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
     font-size: 9px;
+    color: var(--sc-text-3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .qs-value {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sc-text-1);
+  }
+  .cp-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px;
+  }
+  .cp-empty-label {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 22px;
+    color: var(--sc-text-3);
     letter-spacing: 1px;
   }
-
-  .terminal-mobile :global(.intel-panel .rp-tabs) {
-    border-bottom-width: 2px;
-  }
-  .terminal-mobile :global(.intel-panel .rp-collapse) {
-    width: 34px;
-    font-size: 10px;
-  }
-  .terminal-mobile :global(.intel-panel .rp-panel-collapse) {
-    display: none;
-  }
-  .terminal-mobile :global(.intel-panel .rp-body) {
-    padding: 10px;
-    gap: 8px;
-  }
-  .terminal-mobile :global(.intel-panel .hl-row),
-  .terminal-mobile :global(.intel-panel .ev-card),
-  .terminal-mobile :global(.intel-panel .pos-row),
-  .terminal-mobile :global(.intel-panel .comm-post) {
-    padding-top: 10px;
-    padding-bottom: 10px;
-  }
-  .terminal-mobile :global(.intel-panel .hl-txt),
-  .terminal-mobile :global(.intel-panel .comm-txt),
-  .terminal-mobile :global(.intel-panel .ev-body),
-  .terminal-mobile :global(.intel-panel .ac-txt) {
-    font-size: 10px;
-    line-height: 1.45;
-  }
-  .terminal-mobile :global(.intel-panel .ac-section) {
-    flex: 1 1 auto;
-    min-height: 185px;
-    max-height: none;
-  }
-  .terminal-mobile :global(.intel-panel .ac-title) {
-    font-size: 10px;
-    letter-spacing: 1.2px;
-  }
-  .terminal-mobile :global(.intel-panel .ac-input) {
-    padding: 6px 8px 8px;
-    gap: 6px;
-  }
-  .terminal-mobile :global(.intel-panel .ac-input input) {
-    min-height: 36px;
-    font-size: 10px;
-    padding: 8px 10px;
-  }
-  .terminal-mobile :global(.intel-panel .ac-send) {
-    width: 38px;
-    min-height: 36px;
-    border-radius: 8px;
-  }
-
-  .terminal-tablet :global(.intel-panel .rp-body-wrap) {
-    min-height: 0;
-  }
-  .terminal-tablet :global(.intel-panel .ac-section) {
-    flex: 1 1 0%;
-    min-height: 0;
-    max-height: none;
-  }
-
-  .terminal-mobile :global(.chart-wrapper .chart-bar) {
-    gap: 2px;
-    padding: 3px 5px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .bar-top) { gap: 5px; }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .bar-tools) {
-    display: flex;
-    align-items: center;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    gap: 3px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .bar-left) {
-    gap: 4px;
-    width: auto;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .pair-slot) {
-    min-width: 124px;
-    flex: 0 0 auto;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .pair-slot .tdd-trigger) {
-    min-height: 20px;
-    padding: 1px 6px;
-    gap: 3px;
-    border-radius: 7px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .pair-slot .tdd-sym) {
-    font-size: 10px;
-    letter-spacing: .55px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .pair-slot .tdd-pair),
-  .terminal-mobile :global(.chart-wrapper .chart-bar .pair-slot .tdd-arrow) {
-    font-size: 8px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .pair-slot .tdd-panel:not(.mobile)) {
-    width: min(92vw, 320px);
-    max-height: min(62vh, 340px);
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .tf-btns) {
-    width: auto;
-    flex: 0 0 auto;
-    min-width: max-content;
-    padding-bottom: 1px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .tf-btns .tfbtn) {
-    min-height: 20px;
-    height: 20px;
-    padding: 0 6px;
-    font-size: 9px;
-    letter-spacing: .25px;
-    border-radius: 5px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .market-stats) {
-    width: 100%;
-    gap: 4px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .market-stats .mstat) {
-    height: 20px;
-    padding: 0 6px;
-    gap: 4px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .market-stats .mstat-k) {
-    font-size: 8px;
-    letter-spacing: .25px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .market-stats .mstat-v) {
-    font-size: 9px;
-    letter-spacing: .1px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .bar-right) {
-    width: auto;
-    justify-content: flex-end;
-    align-items: center;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .bar-controls) {
-    width: auto;
-    flex: 0 0 auto;
-    min-width: max-content;
-    gap: 4px;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .draw-tools) {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 2px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .mode-toggle .mode-btn) {
-    min-height: 20px;
-    padding: 0 6px;
-    font-size: 9px;
-    letter-spacing: .25px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .draw-tools .draw-btn) {
-    width: 20px;
-    height: 20px;
-    font-size: 8px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .scan-btn) {
-    min-height: 20px;
-    height: 20px;
-    padding: 0 6px;
-    font-size: 9px;
-    letter-spacing: .2px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .price-info) {
-    margin-left: auto;
-    width: auto;
-    justify-content: flex-end;
-    border-left: 1px solid rgba(240, 237, 228, 0.12);
-    padding-left: 4px;
-    gap: 3px;
-    order: initial;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .price-info .cprc) {
+  .cp-empty-hint {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
     font-size: 11px;
-    letter-spacing: .08px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-bar .price-info .pchg) {
-    font-size: 9px;
-  }
-  .terminal-mobile :global(.chart-wrapper .indicator-strip) {
-    padding: 3px 5px;
-    gap: 3px;
-    max-height: none;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-  .terminal-mobile :global(.chart-wrapper .ind-chip),
-  .terminal-mobile :global(.chart-wrapper .legend-chip),
-  .terminal-mobile :global(.chart-wrapper .view-chip) {
-    min-height: 18px;
-    height: 18px;
-    padding: 0 5px;
-    font-size: 8px;
-  }
-  .terminal-mobile :global(.chart-wrapper .chart-footer) {
-    gap: 6px;
-    font-size: 8px;
-    padding: 4px 8px;
+    color: var(--sc-text-3);
   }
 
-  .terminal-mobile :global(.war-room .wr-msgs),
-  .terminal-mobile :global(.intel-panel .rp-body),
-  .terminal-mobile :global(.intel-panel .hl-scrollable),
-  .terminal-mobile :global(.intel-panel .ac-msgs),
-  .terminal-mobile :global(.intel-panel .trend-list),
-  .terminal-mobile :global(.intel-panel .picks-panel) {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y;
+  /* ═══ INPUT BAR ═══ */
+  .input-bar {
+    padding: 8px 20px 12px;
+    border-top: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    background: var(--sc-bg-0, #050914);
+    flex-shrink: 0;
+  }
+  .input-box {
+    max-width: 680px;
+    margin: 0 auto;
+    display: flex;
+    gap: 8px;
+    background: var(--sc-bg-1, #0b1220);
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 6px;
+    padding: 4px 4px 4px 14px;
+    align-items: center;
+  }
+  .input-box input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--sc-text-0, #f7f2ea);
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 13px;
+    outline: none;
+    padding: 8px 0;
+  }
+  .input-box input::placeholder { color: var(--sc-text-3); }
+  .send-btn {
+    width: 36px;
+    height: 36px;
+    background: var(--sc-accent, #db9a9f);
+    color: var(--sc-bg-0, #050914);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s;
+  }
+  .send-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ═══ MODAL ═══ */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: var(--sc-overlay, rgba(4, 8, 14, 0.88));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-box {
+    background: var(--sc-bg-1, #0b1220);
+    border: 1px solid var(--sc-line);
+    border-radius: 8px;
+    padding: 24px;
+    width: 420px;
+    max-width: 90vw;
+  }
+  .modal-box h3 {
+    margin: 0 0 20px;
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 22px;
+    color: var(--sc-text-0);
+    letter-spacing: 0.5px;
+  }
+  .mf { margin-bottom: 14px; }
+  .mf label, .mf .mf-label {
+    display: block;
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    margin-bottom: 6px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .mf input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--sc-bg-0);
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 4px;
+    color: var(--sc-text-0);
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .mdir { display: flex; gap: 8px; }
+  .md {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--sc-line-soft);
+    background: var(--sc-bg-0);
+    color: var(--sc-text-2);
+    border-radius: 4px;
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .md.act {
+    border-color: var(--sc-accent);
+    color: var(--sc-accent);
+    background: rgba(219, 154, 159, 0.08);
+  }
+  .mc {
+    padding: 8px 12px;
+    background: var(--sc-bg-0);
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 4px;
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    color: var(--sc-text-2);
+    margin-bottom: 4px;
+  }
+  .mbot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .mbtn {
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid var(--sc-line-soft);
+    color: var(--sc-text-2);
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 12px;
+  }
+  .mbtn.sv {
+    background: var(--sc-accent, #db9a9f);
+    border: none;
+    color: var(--sc-bg-0);
+    font-weight: 700;
   }
 
-  .terminal-mobile :global(.war-room .ticker-flow),
-  .terminal-mobile :global(.war-room .scan-tabs),
-  .terminal-mobile :global(.war-room .token-tabs),
-  .terminal-mobile :global(.chart-wrapper .indicator-strip),
-  .terminal-mobile :global(.chart-wrapper .chart-bar .bar-tools),
-  .terminal-mobile :global(.chart-wrapper .chart-bar .tf-btns) {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    touch-action: pan-x;
-  }
+  /* ═══ SCROLLBAR ═══ */
+  .data-feed::-webkit-scrollbar { width: 4px; }
+  .data-feed::-webkit-scrollbar-thumb { background: var(--sc-line-soft); border-radius: 2px; }
 
-  .terminal-mobile :global(.chart-wrapper .chart-container),
-  .terminal-mobile :global(.chart-wrapper .tv-container) {
-    touch-action: pan-y pinch-zoom;
-  }
-
-  @media (max-width: 768px) {
-    .terminal-shell::before { opacity: 0.2; }
-    .term-stars-soft,
-    .term-grain { display: none; }
-    .term-stars {
-      opacity: 0.28;
-      animation: none;
-      background-size: 420px 420px;
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 1024px) {
+    .main-content { flex-direction: column; }
+    .chart-panel {
+      width: 100%;
+      border-left: none;
+      border-top: 1px solid var(--sc-line-soft);
+      max-height: 380px;
     }
-  }
-
-  @media (max-width: 768px) and (max-height: 760px) {
-    .terminal-mobile {
-      --mob-nav-slot: calc(64px + env(safe-area-inset-bottom));
-    }
-    .mob-topbar {
-      padding: 8px 10px 6px;
-    }
-    .mob-topline {
-      margin-bottom: 6px;
-    }
-    .mob-desc {
-      display: none;
-    }
-    .mob-content {
-      padding: 8px 8px calc(10px + var(--mob-nav-slot));
-    }
-    .mob-content.chart-only {
-      padding: 4px 6px calc(6px + var(--mob-nav-slot));
-    }
-    .mob-bottom-nav {
-      padding: 6px 8px calc(4px + env(safe-area-inset-bottom));
-      min-height: calc(54px + env(safe-area-inset-bottom));
-      max-height: calc(64px + env(safe-area-inset-bottom));
-      grid-auto-rows: minmax(40px, 40px);
-    }
-    .mob-nav-btn {
-      height: 40px;
-      min-height: 40px;
-      max-height: 40px;
-    }
-  }
-
-  @media (max-width: 520px) {
-    .mob-title {
-      font-size: 13px;
-    }
-    .mob-meta {
-      gap: 4px;
-    }
-    .mob-meta-chip {
-      max-width: 36vw;
-      padding: 4px 7px;
-      font-size: 8px;
-    }
-    .mob-nav-label {
-      font-size: 9px;
-      letter-spacing: 0.9px;
-    }
+    .cp-chart { min-height: 160px; }
   }
 </style>

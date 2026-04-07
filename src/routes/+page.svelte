@@ -4,590 +4,1067 @@
   import { buildOnboardLink, buildMarketLink } from '$lib/utils/deepLinks';
 
   let mounted = $state(false);
-  let candleData = $state<{ h: number; open: number; close: number }[]>([]);
+  let scrollY = $state(0);
 
-  onMount(() => {
-    // Generate mock candle data for the demo chart
-    let price = 42000;
-    const candles: typeof candleData = [];
-    for (let i = 0; i < 24; i++) {
-      const change = (Math.random() - 0.48) * 800;
-      const open = price;
-      price += change;
-      const close = price;
-      const wick = Math.abs(change) * (0.3 + Math.random() * 0.7);
-      candles.push({
-        h: Math.abs(close - open) + wick,
-        open: Math.min(open, close),
-        close: Math.max(open, close),
-      });
-    }
-    candleData = candles;
-    // Stagger entrance
-    requestAnimationFrame(() => { mounted = true; });
+  // ═══ Demo candle animation state ═══
+  let activeCandle = $state(-1);
+  let demoPhase = $state<'idle' | 'scanning' | 'decision' | 'result'>('idle');
+  let demoResult = $state<{ dir: string; pnl: string } | null>(null);
+  let demoLoop = $state(0);
+
+  // ═══ Scroll reveal tracking ═══
+  let sectionEls: Record<string, HTMLElement | null> = {};
+  let visibleSections = $state<Set<string>>(new Set());
+
+  // Parallax
+  const heroOpacity = $derived(Math.max(0, 1 - scrollY / 500));
+  const heroShift = $derived(scrollY * 0.25);
+
+  // Demo candle data (realistic BTC 4H pattern — accumulation → breakout)
+  const candles = [
+    { o: 42100, h: 42380, l: 41950, c: 42300 },
+    { o: 42300, h: 42650, l: 42200, c: 42580 },
+    { o: 42580, h: 42720, l: 42100, c: 42150 },
+    { o: 42150, h: 42400, l: 41800, c: 41900 },
+    { o: 41900, h: 42050, l: 41650, c: 41750 },
+    { o: 41750, h: 42100, l: 41600, c: 42050 },
+    { o: 42050, h: 42300, l: 41900, c: 42250 },
+    { o: 42250, h: 42800, l: 42100, c: 42700 },
+    { o: 42700, h: 43100, l: 42500, c: 43050 },
+    { o: 43050, h: 43200, l: 42600, c: 42680 },
+    { o: 42680, h: 42900, l: 42400, c: 42850 },
+    { o: 42850, h: 43400, l: 42700, c: 43350 },
+    { o: 43350, h: 43500, l: 43000, c: 43100 },
+    { o: 43100, h: 43600, l: 43050, c: 43550 },
+    { o: 43550, h: 43800, l: 43200, c: 43250 },
+    { o: 43250, h: 43700, l: 43100, c: 43650 },
+  ];
+
+  // Price range for SVG coordinate mapping
+  const priceMin = Math.min(...candles.map(c => c.l));
+  const priceMax = Math.max(...candles.map(c => c.h));
+  const priceRange = priceMax - priceMin;
+
+  function candleY(price: number): number {
+    return 180 - ((price - priceMin) / priceRange) * 160;
+  }
+
+  // Volume bars (synthetic)
+  const volumes = candles.map((c, i) => {
+    const base = Math.abs(c.c - c.o) / priceRange;
+    return 8 + base * 40 + (i > 10 ? 12 : 0);
   });
 
-  function goBuilder() { goto(buildOnboardLink('builder')); }
-  function goCopier() { goto(buildMarketLink()); }
+  function runDemoAnimation() {
+    demoPhase = 'scanning';
+    activeCandle = -1;
+    demoResult = null;
+    let idx = 0;
+    const scanInterval = setInterval(() => {
+      activeCandle = idx;
+      idx++;
+      if (idx >= candles.length) {
+        clearInterval(scanInterval);
+        demoPhase = 'decision';
+        setTimeout(() => {
+          demoResult = { dir: 'LONG', pnl: '+4.2%' };
+          demoPhase = 'result';
+          // Loop after pause
+          setTimeout(() => {
+            demoLoop++;
+            runDemoAnimation();
+          }, 4000);
+        }, 1200);
+      }
+    }, 180);
+  }
+
+  onMount(() => {
+    requestAnimationFrame(() => { mounted = true; });
+
+    // Auto-play demo battle after mount
+    const demoTimer = setTimeout(runDemoAnimation, 1000);
+
+    // IntersectionObserver for scroll reveal
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = entry.target.getAttribute('data-reveal');
+          if (!id) continue;
+          if (entry.isIntersecting) {
+            visibleSections = new Set([...visibleSections, id]);
+          }
+        }
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -60px 0px' }
+    );
+
+    // Observe all sections
+    requestAnimationFrame(() => {
+      document.querySelectorAll('[data-reveal]').forEach(el => observer.observe(el));
+    });
+
+    return () => {
+      clearTimeout(demoTimer);
+      observer.disconnect();
+    };
+  });
+
+  function handleScroll(e: Event) {
+    const target = e.target as HTMLElement;
+    scrollY = target.scrollTop;
+  }
+
+  // Core loop data
+  const coreSteps = [
+    { id: 'terminal', icon: 'T', label: 'Terminal', desc: '차트 분석', color: 'var(--lis-highlight)' },
+    { id: 'agent', icon: 'A', label: 'Agent', desc: 'Doctrine 편집', color: 'var(--lis-ivory)' },
+    { id: 'lab', icon: 'L', label: 'Lab', desc: '백테스트', color: '#60a0f0', star: true },
+    { id: 'battle', icon: 'B', label: 'Battle', desc: '실전 증명', color: 'var(--lis-negative)' },
+    { id: 'market', icon: 'M', label: 'Market', desc: '수익화', color: 'var(--lis-positive)' },
+  ];
 </script>
 
-<div class="landing" class:mounted>
-  <!-- Atmospheric background layers -->
-  <div class="bg-grid"></div>
-  <div class="bg-glow"></div>
-
-  <!-- Hero -->
-  <section class="hero">
-    <div class="hero-tag">
-      <span class="tag-dot"></span>
-      <span>COGOCHI</span>
-      <span class="tag-sep">×</span>
-      <span>CHATBATTLE</span>
+<div class="landing" class:mounted onscroll={handleScroll}>
+  <!-- ═══ HERO ═══ -->
+  <section
+    class="hero"
+    style="opacity:{heroOpacity};transform:translateY({heroShift}px)"
+  >
+    <div class="hero-eyebrow">
+      <span class="eyebrow-dot"></span>
+      <span class="eyebrow-text">COGOCHI</span>
     </div>
 
-    <h1 class="hero-h1">
-      <span class="h1-line line-1">내가 만든 AI 에이전트가</span>
-      <span class="h1-line line-2">역사적 시장에서 <em>싸운다</em></span>
+    <h1 class="hero-title">
+      <span class="title-line">내가 만든 AI 에이전트가</span>
+      <span class="title-line title-accent">역사적 시장에서 <em>싸운다</em></span>
     </h1>
 
-    <p class="hero-p">
-      전략을 AI에 학습시키고, 역사 데이터로 훈련하고,<br class="br-desktop" />
-      온체인 증명 후 임대 수익을 만든다.
+    <p class="hero-desc">
+      전략을 가르치고, 역사 데이터로 훈련하고, 증명해서 수익을 만든다.
     </p>
+
+    <div class="hero-actions">
+      <button class="btn-terminal" onclick={() => goto('/terminal')}>
+        TERMINAL
+        <svg class="btn-arrow" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="btn-primary" onclick={() => goto(buildOnboardLink('builder'))}>
+        AI 만들기
+        <svg class="btn-arrow" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="btn-ghost" onclick={() => goto(buildMarketLink())}>
+        마켓 둘러보기
+      </button>
+    </div>
   </section>
 
-  <!-- Live chart demo -->
-  <section class="demo-section">
-    <div class="demo-frame">
-      <div class="demo-header">
-        <span class="demo-pair">BTC/USDT</span>
-        <span class="demo-era">ERA: ???</span>
-        <span class="demo-badge live">BATTLE</span>
-      </div>
-      <div class="demo-chart">
-        {#each candleData as c, i}
-          {@const isGreen = c.close > c.open}
-          <div
-            class="candle"
-            class:green={isGreen}
-            class:red={!isGreen}
-            style="
-              height: {8 + (c.h / 800) * 72}%;
-              animation-delay: {i * 80}ms;
-            "
+  <!-- ═══ DEMO BATTLE ═══ -->
+  <section class="demo" data-reveal="demo" class:revealed={visibleSections.has('demo')}>
+    <div class="demo-chrome">
+      <div class="chrome-bar">
+        <div class="chrome-left">
+          <span class="chrome-pair">BTC / USDT</span>
+          <span class="chrome-tf">4H</span>
+        </div>
+        <div class="chrome-right">
+          <span class="chrome-era" class:revealed={demoPhase === 'result'}>
+            {demoPhase === 'result' ? '2024 Bull Run' : 'ERA: ???'}
+          </span>
+          <span
+            class="chrome-status"
+            class:scanning={demoPhase === 'scanning'}
+            class:deciding={demoPhase === 'decision'}
+            class:complete={demoPhase === 'result'}
           >
-            <div class="candle-wick"></div>
-            <div class="candle-body"></div>
+            {demoPhase === 'idle' ? 'READY' : demoPhase === 'scanning' ? 'SCANNING...' : demoPhase === 'decision' ? 'DECIDING...' : 'COMPLETE'}
+          </span>
+        </div>
+      </div>
+
+      <!-- Candle Chart SVG -->
+      <div class="chart-area">
+        <svg class="chart-svg" viewBox="0 0 640 240" preserveAspectRatio="none">
+          <!-- Grid lines -->
+          {#each [0.25, 0.5, 0.75] as frac}
+            <line
+              x1="0" y1={20 + frac * 160}
+              x2="640" y2={20 + frac * 160}
+              stroke="rgba(247,242,234,0.03)"
+              stroke-dasharray="4 8"
+            />
+          {/each}
+
+          <!-- Volume bars -->
+          {#each candles as _c, i}
+            {@const x = 12 + i * 38}
+            {@const isGreen = candles[i].c >= candles[i].o}
+            <rect
+              x={x + 2} y={200 - volumes[i]}
+              width="12" height={volumes[i]}
+              rx="1"
+              fill={isGreen ? 'rgba(173,202,124,0.08)' : 'rgba(207,127,143,0.08)'}
+              opacity={i <= activeCandle ? 0.6 : 0.15}
+            />
+          {/each}
+
+          <!-- Candles -->
+          {#each candles as c, i}
+            {@const x = 12 + i * 38}
+            {@const isGreen = c.c >= c.o}
+            {@const bodyTop = candleY(Math.max(c.o, c.c))}
+            {@const bodyBot = candleY(Math.min(c.o, c.c))}
+            {@const bodyH = Math.max(bodyBot - bodyTop, 2)}
+            {@const wickTop = candleY(c.h)}
+            {@const wickBot = candleY(c.l)}
+            <g
+              class="candle-g"
+              class:active={i <= activeCandle}
+              class:current={i === activeCandle}
+            >
+              <!-- Wick -->
+              <line
+                x1={x + 8} y1={wickTop}
+                x2={x + 8} y2={wickBot}
+                stroke={isGreen ? 'rgba(173,202,124,0.4)' : 'rgba(207,127,143,0.4)'}
+                stroke-width="1"
+              />
+              <!-- Body -->
+              <rect
+                x={x} y={bodyTop}
+                width="16" height={bodyH || 2}
+                rx="1.5"
+                fill={isGreen ? 'var(--lis-positive)' : 'var(--lis-negative)'}
+                opacity={i <= activeCandle ? 1 : 0.1}
+              />
+              <!-- Scan highlight -->
+              {#if i === activeCandle && demoPhase === 'scanning'}
+                <rect
+                  x={x - 3} y={bodyTop - 3}
+                  width="22" height={bodyH + 6 || 8}
+                  rx="4"
+                  fill="none"
+                  stroke="var(--lis-accent)"
+                  stroke-width="1.5"
+                  class="scan-glow"
+                />
+              {/if}
+            </g>
+          {/each}
+
+          <!-- Moving average line (mock) -->
+          <polyline
+            points={candles.map((c, i) => `${20 + i * 38},${candleY((c.o + c.c) / 2)}`).join(' ')}
+            fill="none"
+            stroke="rgba(219,154,159,0.2)"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            class:active-line={activeCandle >= 0}
+          />
+        </svg>
+
+        <!-- Decision overlay -->
+        {#if demoPhase === 'decision' || demoPhase === 'result'}
+          <div class="decision-overlay" class:show={true}>
+            {#if demoResult}
+              <div class="decision-badge long">
+                <span class="decision-dir">{demoResult.dir}</span>
+                <span class="decision-pnl">{demoResult.pnl}</span>
+              </div>
+            {:else}
+              <div class="decision-thinking">
+                <span class="thinking-dot"></span>
+                <span class="thinking-dot"></span>
+                <span class="thinking-dot"></span>
+              </div>
+            {/if}
           </div>
-        {/each}
+        {/if}
       </div>
+
+      <!-- HUD -->
       <div class="demo-hud">
-        <span class="hud-item"><span class="hud-label">HP</span><span class="hud-bar"><span class="hud-fill hp" style="width:72%"></span></span></span>
-        <span class="hud-item"><span class="hud-label">WHALE</span><span class="hud-bar"><span class="hud-fill whale" style="width:45%"></span></span></span>
-        <span class="hud-result">LONG +4.2%</span>
+        <div class="hud-metric">
+          <span class="hud-label">HP</span>
+          <div class="hud-bar"><div class="hud-fill hp" style="width:78%"></div></div>
+        </div>
+        <div class="hud-metric">
+          <span class="hud-label">CONFIDENCE</span>
+          <div class="hud-bar"><div class="hud-fill conf" style="width:85%"></div></div>
+        </div>
+        <div class="hud-metric">
+          <span class="hud-label">MEMORY</span>
+          <span class="hud-value">12 cards</span>
+        </div>
       </div>
-      <div class="scanline"></div>
     </div>
   </section>
 
-  <!-- Split CTA -->
-  <section class="cta-section">
-    <div class="cta-label">시작하기</div>
-    <div class="cta-grid">
-      <button class="cta builder" onclick={goBuilder}>
-        <div class="cta-top">
-          <span class="cta-num">01</span>
-          <span class="cta-badge builder-badge">BUILDER</span>
+  <!-- ═══ TWO-PATH CTA ═══ -->
+  <section class="paths" data-reveal="paths" class:revealed={visibleSections.has('paths')}>
+    <div class="section-header">
+      <span class="section-label">START</span>
+      <h2 class="section-title">두 가지 경로</h2>
+    </div>
+
+    <div class="path-grid">
+      <button class="path-card builder" onclick={() => goto(buildOnboardLink('builder'))}>
+        <div class="path-icon-wrap builder-glow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="path-icon">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
-        <h2 class="cta-h2">내 전략으로 AI 만들기</h2>
-        <p class="cta-p">매매 패턴을 AI에 학습시키고 온체인 증명 후 임대 수익</p>
-        <div class="cta-bottom">
-          <span class="cta-path">거래소 API 연결 · Doctrine 직접 작성</span>
-          <span class="cta-go">→</span>
+        <div class="path-content">
+          <span class="path-tag">BUILDER</span>
+          <h3 class="path-title">내 전략으로 AI 만들기</h3>
+          <p class="path-desc">매매 패턴을 학습시키고 온체인 증명 후 임대 수익</p>
+        </div>
+        <div class="path-footer">
+          <span class="path-method">거래소 API / Doctrine 직접 작성</span>
+          <span class="path-arrow">&rarr;</span>
         </div>
       </button>
 
-      <button class="cta copier" onclick={goCopier}>
-        <div class="cta-top">
-          <span class="cta-num">02</span>
-          <span class="cta-badge copier-badge">COPIER</span>
+      <button class="path-card copier" onclick={() => goto(buildMarketLink())}>
+        <div class="path-icon-wrap copier-glow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="path-icon">
+            <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="8" y="2" width="8" height="4" rx="1"/>
+            <path d="M9 14l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
-        <h2 class="cta-h2">검증된 AI 구독하기</h2>
-        <p class="cta-p">온체인으로 검증된 에이전트를 찾아서 카피트레이딩</p>
-        <div class="cta-bottom">
-          <span class="cta-path">승률 · 낙폭 · 가격 필터로 탐색</span>
-          <span class="cta-go">→</span>
+        <div class="path-content">
+          <span class="path-tag">COPIER</span>
+          <h3 class="path-title">검증된 AI 구독하기</h3>
+          <p class="path-desc">온체인 증명된 에이전트를 찾아서 카피트레이딩</p>
+        </div>
+        <div class="path-footer">
+          <span class="path-method">승률 / 낙폭 / 가격 필터</span>
+          <span class="path-arrow">&rarr;</span>
         </div>
       </button>
     </div>
   </section>
 
-  <!-- Core Loop -->
-  <section class="loop">
-    <div class="loop-head">
-      <span class="loop-tag">CORE LOOP</span>
-      <span class="loop-desc">매일 반복하면 에이전트가 성장한다</span>
+  <!-- ═══ CORE LOOP ═══ -->
+  <section class="loop-section" data-reveal="loop" class:revealed={visibleSections.has('loop')}>
+    <div class="section-header">
+      <span class="section-label">CORE LOOP</span>
+      <h2 class="section-title">매일 반복하면 에이전트가 성장한다</h2>
     </div>
-    <div class="loop-track">
-      <div class="loop-node terminal"><span class="ln-icon">~</span><span class="ln-name">Terminal</span></div>
-      <div class="loop-wire"></div>
-      <div class="loop-node agent"><span class="ln-icon">@</span><span class="ln-name">Agent</span></div>
-      <div class="loop-wire"></div>
-      <div class="loop-node lab core"><span class="ln-icon">⚗</span><span class="ln-name">Lab</span><span class="ln-star">★★★</span></div>
-      <div class="loop-wire"></div>
-      <div class="loop-node battle"><span class="ln-icon">⚔</span><span class="ln-name">Battle</span></div>
-      <div class="loop-wire"></div>
-      <div class="loop-node market"><span class="ln-icon">#</span><span class="ln-name">Market</span></div>
+
+    <div class="loop-flow">
+      {#each coreSteps as step, i}
+        {#if i > 0}
+          <div class="flow-connector">
+            <svg viewBox="0 0 24 12" class="connector-arrow">
+              <path d="M0 6h20M16 2l4 4-4 4" stroke="rgba(247,242,234,0.12)" stroke-width="1" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+        {/if}
+        <div class="flow-node" class:core={step.star} style="--node-color:{step.color}">
+          <div class="node-icon-ring">
+            <span class="node-icon-letter">{step.icon}</span>
+          </div>
+          <span class="node-label">{step.label}</span>
+          <span class="node-desc">{step.desc}</span>
+          {#if step.star}
+            <span class="node-star-badge">MAIN</span>
+          {/if}
+        </div>
+      {/each}
     </div>
+
     <div class="loop-return">
-      <span class="return-arrow">↩</span>
-      <span class="return-text">Run Again</span>
+      <div class="return-line"></div>
+      <span class="return-badge">Run Again</span>
+      <div class="return-line"></div>
     </div>
   </section>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="landing-footer">
+    <span class="footer-text">COGOCHI &times; CHATBATTLE</span>
+  </footer>
 </div>
 
 <style>
-  /* ═══ Layout ═══ */
+  /* ═══ FOUNDATION ═══ */
   .landing {
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    background: var(--lis-bg-0, #050914);
-    color: var(--lis-ivory, #f7f2ea);
+    scroll-behavior: smooth;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 48px 24px 96px;
-    gap: 56px;
+    gap: 96px;
+    padding: 0 24px 80px;
     position: relative;
-  }
-
-  /* ═══ Atmospheric BG ═══ */
-  .bg-grid {
-    position: fixed;
-    inset: 0;
     background:
-      repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(173, 202, 124, 0.015) 3px, rgba(173, 202, 124, 0.015) 4px);
-    pointer-events: none;
-    z-index: 0;
-  }
-  .bg-glow {
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 600px 400px at 30% 20%, rgba(219, 154, 159, 0.06), transparent),
-      radial-gradient(ellipse 500px 500px at 80% 70%, rgba(173, 202, 124, 0.04), transparent);
-    pointer-events: none;
-    z-index: 0;
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(219,154,159,0.04), transparent),
+      radial-gradient(ellipse 50% 40% at 80% 100%, rgba(96,160,240,0.03), transparent),
+      var(--lis-bg-0);
   }
 
-  .landing > * { position: relative; z-index: 1; }
-
-  /* ═══ Entrance Animations ═══ */
-  .hero, .demo-section, .cta-section, .loop {
+  /* Entrance animations */
+  .hero, .demo, .paths, .loop-section {
     opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.6s var(--sc-ease, ease), transform 0.6s var(--sc-ease, ease);
+    transform: translateY(32px);
+    transition:
+      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .mounted .hero { opacity: 1; transform: translateY(0); transition-delay: 0.1s; }
-  .mounted .demo-section { opacity: 1; transform: translateY(0); transition-delay: 0.25s; }
-  .mounted .cta-section { opacity: 1; transform: translateY(0); transition-delay: 0.4s; }
-  .mounted .loop { opacity: 1; transform: translateY(0); transition-delay: 0.55s; }
+  .mounted .hero { opacity: 1; transform: none; transition-delay: 0.1s; }
+  .mounted .demo { opacity: 1; transform: none; transition-delay: 0.35s; }
 
-  /* ═══ Hero ═══ */
+  /* Scroll reveal for below-fold */
+  .paths, .loop-section {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  .paths.revealed, .loop-section.revealed {
+    opacity: 1;
+    transform: none;
+  }
+  /* Also reveal on mount if visible */
+  .mounted .paths.revealed { transition-delay: 0.5s; }
+  .mounted .loop-section.revealed { transition-delay: 0.65s; }
+
+  /* ═══ HERO ═══ */
   .hero {
     text-align: center;
     max-width: 620px;
+    padding-top: 80px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 28px;
+    will-change: transform, opacity;
   }
 
-  .hero-tag {
+  .hero-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
-    letter-spacing: 2.5px;
-    color: rgba(247, 242, 234, 0.4);
-    text-transform: uppercase;
+    gap: 10px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgba(219,154,159,0.04);
+    border: 1px solid rgba(219,154,159,0.08);
   }
-  .tag-dot {
+  .eyebrow-dot {
     width: 6px; height: 6px; border-radius: 50%;
-    background: var(--lis-positive, #adca7c);
-    box-shadow: 0 0 8px rgba(173, 202, 124, 0.5);
-    animation: sc-pulse 2s ease-in-out infinite;
+    background: var(--lis-positive);
+    box-shadow: 0 0 10px rgba(173,202,124,0.5);
+    animation: pulse 2.5s ease-in-out infinite;
   }
-  .tag-sep { color: rgba(247, 242, 234, 0.2); }
+  .eyebrow-text {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-xs);
+    letter-spacing: 4px;
+    color: var(--sc-text-3);
+  }
 
-  .hero-h1 {
+  .hero-title {
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
-  .h1-line {
-    display: block;
-    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+  .title-line {
+    font-family: var(--sc-font-display);
     font-weight: 400;
-    letter-spacing: 1.5px;
-    line-height: 1.15;
+    letter-spacing: 2px;
+    line-height: 1.1;
+    font-size: clamp(30px, 5.5vw, 52px);
+    color: rgba(247,242,234,0.85);
   }
-  .line-1 {
-    font-size: clamp(28px, 5vw, 42px);
-    color: rgba(247, 242, 234, 0.85);
+  .title-accent {
+    font-size: clamp(36px, 7vw, 62px);
+    color: var(--lis-ivory);
   }
-  .line-2 {
-    font-size: clamp(32px, 6vw, 52px);
-    color: var(--lis-ivory, #f7f2ea);
-  }
-  .line-2 em {
+  .title-accent em {
     font-style: normal;
-    color: var(--lis-accent, #db9a9f);
-    text-shadow: 0 0 32px rgba(219, 154, 159, 0.3);
+    color: var(--lis-accent);
+    text-shadow: 0 0 40px rgba(219,154,159,0.3);
   }
 
-  .hero-p {
-    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 14px;
-    color: rgba(247, 242, 234, 0.45);
-    line-height: 1.8;
-    max-width: 420px;
+  .hero-desc {
+    font-family: var(--sc-font-body);
+    font-size: var(--sc-fs-lg);
+    color: var(--sc-text-3);
+    line-height: var(--sc-lh-relaxed);
+    max-width: 400px;
   }
-  .br-desktop { display: block; }
 
-  /* ═══ Demo Chart ═══ */
-  .demo-section { width: 100%; max-width: 680px; }
-  .demo-frame {
-    width: 100%;
-    aspect-ratio: 16 / 8;
-    border-radius: 10px;
-    border: 1px solid rgba(219, 154, 159, 0.12);
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  /* ═══ BUTTONS ═══ */
+  .btn-terminal {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 36px;
+    border-radius: 12px;
+    border: 1px solid var(--sc-good, #adca7c);
+    background: rgba(173,202,124,0.1);
+    color: var(--sc-good, #adca7c);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: var(--sc-fs-md);
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 20px rgba(173,202,124,0.15);
+  }
+  .btn-terminal:hover {
+    transform: translateY(-3px);
+    background: rgba(173,202,124,0.2);
+    box-shadow: 0 0 32px rgba(173,202,124,0.3);
+  }
+  .btn-terminal:active { transform: translateY(0) scale(0.97); }
+  .btn-terminal:hover .btn-arrow { transform: translateX(4px); }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--lis-accent), rgba(219,154,159,0.8));
+    color: var(--lis-bg-0);
+    font-family: var(--sc-font-body);
+    font-size: var(--sc-fs-md);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 20px rgba(219,154,159,0.25);
+  }
+  .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(219,154,159,0.35);
+  }
+  .btn-primary:active { transform: translateY(0) scale(0.97); }
+  .btn-arrow { width: 16px; height: 16px; transition: transform 0.25s; }
+  .btn-primary:hover .btn-arrow { transform: translateX(4px); }
+
+  .btn-ghost {
+    padding: 14px 28px;
+    border-radius: 12px;
+    border: 1px solid rgba(247,242,234,0.08);
+    background: rgba(247,242,234,0.02);
+    color: var(--sc-text-2);
+    font-family: var(--sc-font-body);
+    font-size: var(--sc-fs-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+  .btn-ghost:hover {
+    border-color: rgba(247,242,234,0.16);
+    color: var(--lis-ivory);
+    background: rgba(247,242,234,0.04);
+    transform: translateY(-2px);
+  }
+  .btn-ghost:active { transform: translateY(0) scale(0.98); }
+
+  /* ═══ DEMO BATTLE ═══ */
+  .demo { width: 100%; max-width: 740px; }
+  .demo-chrome {
+    border-radius: 16px;
+    border: 1px solid rgba(219,154,159,0.1);
     background:
-      linear-gradient(180deg, rgba(11, 18, 32, 0.95), rgba(5, 9, 20, 0.98));
+      linear-gradient(180deg, rgba(11,18,32,0.96), rgba(5,9,20,0.99));
     overflow: hidden;
-    position: relative;
     box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(247, 242, 234, 0.03);
+      0 12px 48px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(219,154,159,0.06),
+      inset 0 1px 0 rgba(247,242,234,0.02);
   }
-  .demo-header {
+
+  .chrome-bar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 14px 0;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(247,242,234,0.04);
   }
-  .demo-pair { color: var(--lis-ivory, #f7f2ea); font-weight: 600; letter-spacing: 0.5px; }
-  .demo-era { color: rgba(247, 242, 234, 0.3); }
-  .demo-badge {
-    margin-left: auto;
+  .chrome-left { display: flex; align-items: center; gap: 10px; }
+  .chrome-pair {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-sm);
+    font-weight: 600;
+    color: var(--lis-ivory);
+    letter-spacing: 0.5px;
+  }
+  .chrome-tf {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-2xs);
     padding: 2px 8px;
-    border-radius: 3px;
+    border-radius: 4px;
+    background: rgba(247,242,234,0.05);
+    color: var(--sc-text-3);
+  }
+  .chrome-right { display: flex; align-items: center; gap: 12px; }
+  .chrome-era {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-xs);
+    color: var(--sc-text-3);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .chrome-era.revealed {
+    color: var(--lis-accent);
+    text-shadow: 0 0 16px rgba(219,154,159,0.35);
+    transform: scale(1.05);
+  }
+  .chrome-status {
+    font-family: var(--sc-font-mono);
     font-size: 8px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: rgba(247,242,234,0.04);
+    color: var(--sc-text-3);
+    transition: all 0.35s;
   }
-  .demo-badge.live {
-    background: rgba(219, 154, 159, 0.15);
-    color: var(--lis-accent, #db9a9f);
-    border: 1px solid rgba(219, 154, 159, 0.25);
+  .chrome-status.scanning {
+    background: rgba(173,202,124,0.1);
+    color: var(--lis-positive);
+    animation: statusPulse 1s ease-in-out infinite;
   }
-
-  .demo-chart {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 3px;
-    height: calc(100% - 60px);
-    padding: 8px 16px 0;
+  .chrome-status.deciding {
+    background: rgba(219,154,159,0.1);
+    color: var(--lis-accent);
+    animation: statusPulse 0.8s ease-in-out infinite;
   }
-
-  .candle {
-    flex: 1;
-    max-width: 14px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    opacity: 0;
-    animation: candleEnter 0.4s var(--sc-ease, ease) forwards;
-  }
-  .candle-wick {
-    width: 1px;
-    height: 30%;
-    min-height: 4px;
-  }
-  .candle-body {
-    width: 100%;
-    flex: 1;
-    min-height: 3px;
-    border-radius: 1px;
-  }
-  .candle.green .candle-wick { background: rgba(173, 202, 124, 0.5); }
-  .candle.green .candle-body { background: var(--lis-positive, #adca7c); box-shadow: 0 0 6px rgba(173, 202, 124, 0.2); }
-  .candle.red .candle-wick { background: rgba(207, 127, 143, 0.5); }
-  .candle.red .candle-body { background: var(--lis-negative, #cf7f8f); box-shadow: 0 0 6px rgba(207, 127, 143, 0.2); }
-
-  @keyframes candleEnter {
-    from { opacity: 0; transform: scaleY(0.3); }
-    to { opacity: 1; transform: scaleY(1); }
+  .chrome-status.complete {
+    background: rgba(173,202,124,0.12);
+    color: var(--lis-positive);
   }
 
-  .demo-hud {
-    position: absolute;
-    bottom: 8px;
-    left: 14px;
-    right: 14px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+  .chart-area {
+    position: relative;
+    height: 220px;
+    padding: 8px 16px;
   }
-  .hud-item { display: flex; align-items: center; gap: 6px; }
-  .hud-label { color: rgba(247, 242, 234, 0.35); font-weight: 600; letter-spacing: 0.5px; }
-  .hud-bar { width: 48px; height: 3px; border-radius: 2px; background: rgba(247, 242, 234, 0.08); overflow: hidden; }
-  .hud-fill { height: 100%; border-radius: 2px; }
-  .hud-fill.hp { background: var(--lis-positive, #adca7c); }
-  .hud-fill.whale { background: var(--lis-negative, #cf7f8f); }
-  .hud-result {
-    margin-left: auto;
-    color: var(--lis-positive, #adca7c);
-    font-weight: 700;
-    font-size: 10px;
+  .chart-svg { width: 100%; height: 100%; }
+  .candle-g rect { transition: opacity 0.3s ease; }
+  .candle-g:not(.active) rect { opacity: 0.06; }
+
+  .scan-glow {
+    animation: scanPulse 0.7s ease-in-out infinite;
   }
 
-  .scanline {
+  .active-line {
+    stroke-dasharray: 600;
+    stroke-dashoffset: 0;
+    animation: drawLine 3s ease forwards;
+  }
+
+  /* Decision overlay */
+  .decision-overlay {
     position: absolute;
     inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(173, 202, 124, 0.008) 2px,
-      rgba(173, 202, 124, 0.008) 4px
-    );
-    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5,9,20,0.6);
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    transition: opacity 0.5s;
   }
-
-  /* ═══ CTA Section ═══ */
-  .cta-section { width: 100%; max-width: 680px; }
-  .cta-label {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 2px;
-    color: rgba(247, 242, 234, 0.25);
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-  .cta-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  .cta {
+  .decision-overlay.show { opacity: 1; }
+  .decision-badge {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 24px 20px 20px;
-    border-radius: 10px;
-    border: 1px solid rgba(247, 242, 234, 0.06);
-    background: rgba(11, 18, 32, 0.6);
+    align-items: center;
+    gap: 6px;
+    padding: 20px 40px;
+    border-radius: 14px;
+    animation: badgePop 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .decision-badge.long {
+    background: rgba(173,202,124,0.08);
+    border: 1px solid rgba(173,202,124,0.25);
+    box-shadow: 0 8px 32px rgba(173,202,124,0.1);
+  }
+  .decision-dir {
+    font-family: var(--sc-font-display);
+    font-size: 32px;
+    letter-spacing: 6px;
+    color: var(--lis-positive);
+  }
+  .decision-pnl {
+    font-family: var(--sc-font-mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--lis-positive);
+    text-shadow: 0 0 20px rgba(173,202,124,0.4);
+  }
+
+  .decision-thinking {
+    display: flex;
+    gap: 6px;
+  }
+  .thinking-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--lis-accent);
+    animation: thinkBounce 0.6s ease-in-out infinite alternate;
+  }
+  .thinking-dot:nth-child(2) { animation-delay: 0.15s; }
+  .thinking-dot:nth-child(3) { animation-delay: 0.3s; }
+
+  /* HUD */
+  .demo-hud {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 12px 18px 16px;
+    border-top: 1px solid rgba(247,242,234,0.03);
+  }
+  .hud-metric { display: flex; align-items: center; gap: 10px; }
+  .hud-label {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--sc-text-3);
+    min-width: 68px;
+  }
+  .hud-bar {
+    width: 64px; height: 3px;
+    border-radius: 2px;
+    background: rgba(247,242,234,0.05);
+    overflow: hidden;
+  }
+  .hud-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hud-fill.hp { background: linear-gradient(90deg, var(--lis-positive), rgba(173,202,124,0.7)); }
+  .hud-fill.conf { background: linear-gradient(90deg, var(--lis-accent), rgba(219,154,159,0.7)); }
+  .hud-value {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-2xs);
+    color: var(--sc-text-3);
+  }
+
+  /* ═══ SECTION SHARED ═══ */
+  .section-header { margin-bottom: 28px; }
+  .section-label {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-2xs);
+    letter-spacing: 3px;
+    color: var(--sc-text-3);
+    display: block;
+    margin-bottom: 10px;
+  }
+  .section-title {
+    font-family: var(--sc-font-display);
+    font-size: clamp(22px, 3.5vw, 32px);
+    letter-spacing: 1.5px;
+    color: var(--lis-ivory);
+  }
+
+  /* ═══ PATHS ═══ */
+  .paths { width: 100%; max-width: 740px; }
+
+  .path-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .path-card {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 28px 24px;
+    border-radius: 16px;
+    border: 1px solid rgba(247,242,234,0.05);
+    background: rgba(11,18,32,0.5);
     cursor: pointer;
     text-align: left;
     color: inherit;
     font-family: inherit;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
     overflow: hidden;
-    transition: all 0.25s var(--sc-ease, ease);
   }
-  .cta::before {
+  .path-card::before {
     content: '';
     position: absolute;
     inset: 0;
     opacity: 0;
-    transition: opacity 0.25s;
+    transition: opacity 0.35s;
+    pointer-events: none;
   }
-  .cta.builder::before {
-    background: radial-gradient(ellipse at 30% 80%, rgba(96, 160, 240, 0.06), transparent 70%);
+  .path-card.builder::before {
+    background: radial-gradient(ellipse at 20% 90%, rgba(96,160,240,0.08), transparent 60%);
   }
-  .cta.copier::before {
-    background: radial-gradient(ellipse at 70% 80%, rgba(173, 202, 124, 0.06), transparent 70%);
+  .path-card.copier::before {
+    background: radial-gradient(ellipse at 80% 90%, rgba(173,202,124,0.08), transparent 60%);
   }
-  .cta:hover { border-color: rgba(247, 242, 234, 0.12); transform: translateY(-2px); }
-  .cta:hover::before { opacity: 1; }
-  .cta:active { transform: translateY(0) scale(0.99); }
+  .path-card:hover {
+    border-color: rgba(247,242,234,0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.35);
+  }
+  .path-card:hover::before { opacity: 1; }
+  .path-card:active { transform: translateY(-1px) scale(0.99); }
 
-  .cta-top {
+  .path-icon-wrap {
+    width: 44px; height: 44px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
   }
-  .cta-num {
-    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
-    font-size: 28px;
-    color: rgba(247, 242, 234, 0.1);
-    line-height: 1;
+  .builder-glow {
+    background: rgba(96,160,240,0.08);
+    border: 1px solid rgba(96,160,240,0.15);
   }
-  .cta-badge {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    padding: 3px 8px;
-    border-radius: 3px;
+  .copier-glow {
+    background: rgba(173,202,124,0.08);
+    border: 1px solid rgba(173,202,124,0.15);
   }
-  .builder-badge { background: rgba(96, 160, 240, 0.12); color: #60a0f0; border: 1px solid rgba(96, 160, 240, 0.2); }
-  .copier-badge { background: rgba(173, 202, 124, 0.12); color: #adca7c; border: 1px solid rgba(173, 202, 124, 0.2); }
+  .path-icon { width: 22px; height: 22px; }
+  .builder .path-icon { color: #60a0f0; }
+  .copier .path-icon { color: var(--lis-positive); }
 
-  .cta-h2 {
-    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--lis-ivory, #f7f2ea);
+  .path-content { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .path-tag {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-2xs);
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--sc-text-3);
+  }
+  .path-title {
+    font-family: var(--sc-font-body);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--lis-ivory);
     line-height: 1.3;
   }
-  .cta-p {
-    font-size: 12px;
-    color: rgba(247, 242, 234, 0.4);
-    line-height: 1.6;
+  .path-desc {
+    font-family: var(--sc-font-body);
+    font-size: var(--sc-fs-base);
+    color: var(--sc-text-3);
+    line-height: var(--sc-lh-relaxed);
   }
-  .cta-bottom {
+
+  .path-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid rgba(247, 242, 234, 0.04);
+    padding-top: 14px;
+    border-top: 1px solid rgba(247,242,234,0.04);
   }
-  .cta-path {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    color: rgba(247, 242, 234, 0.3);
-    letter-spacing: 0.3px;
+  .path-method {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-2xs);
+    color: rgba(247,242,234,0.2);
   }
-  .cta-go {
+  .path-arrow {
     font-size: 18px;
-    color: rgba(247, 242, 234, 0.2);
-    transition: all 0.2s;
+    color: rgba(247,242,234,0.12);
+    transition: all 0.25s;
   }
-  .cta:hover .cta-go {
-    color: var(--lis-accent, #db9a9f);
-    transform: translateX(3px);
-  }
-
-  /* ═══ Core Loop ═══ */
-  .loop { width: 100%; max-width: 680px; }
-  .loop-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .loop-tag {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 2px;
-    color: rgba(247, 242, 234, 0.25);
-  }
-  .loop-desc {
-    font-size: 11px;
-    color: rgba(247, 242, 234, 0.3);
+  .path-card:hover .path-arrow {
+    color: var(--lis-accent);
+    transform: translateX(5px);
   }
 
-  .loop-track {
+  /* ═══ CORE LOOP ═══ */
+  .loop-section { width: 100%; max-width: 740px; }
+
+  .loop-flow {
     display: flex;
     align-items: center;
-    gap: 0;
+    justify-content: center;
   }
-  .loop-node {
-    flex: 1;
+
+  .flow-node {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 14px 8px;
-    border-radius: 8px;
-    border: 1px solid rgba(247, 242, 234, 0.06);
-    background: rgba(11, 18, 32, 0.4);
-    transition: all 0.2s;
+    gap: 8px;
+    padding: 18px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(247,242,234,0.04);
+    background: rgba(11,18,32,0.3);
+    min-width: 88px;
     position: relative;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .loop-node:hover { border-color: rgba(247, 242, 234, 0.12); background: rgba(11, 18, 32, 0.7); }
-  .loop-node.core {
-    border-color: rgba(96, 160, 240, 0.25);
-    background: rgba(96, 160, 240, 0.04);
+  .flow-node:hover {
+    border-color: rgba(247,242,234,0.08);
+    background: rgba(11,18,32,0.5);
+    transform: translateY(-3px);
   }
-  .ln-icon {
+  .flow-node.core {
+    border-color: rgba(96,160,240,0.2);
+    background: rgba(96,160,240,0.04);
+    box-shadow: 0 0 20px rgba(96,160,240,0.06);
+  }
+
+  .node-icon-ring {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    border: 1px solid rgba(247,242,234,0.08);
+    background: rgba(247,242,234,0.03);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .node-icon-letter {
+    font-family: var(--sc-font-display);
     font-size: 16px;
-    font-family: var(--sc-font-mono, monospace);
+    letter-spacing: 1px;
+    color: var(--node-color);
   }
-  .ln-name {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+  .node-label {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-xs);
     font-weight: 600;
     letter-spacing: 1px;
+    color: var(--sc-text-2);
   }
-  .ln-star {
-    font-size: 8px;
-    color: #60a0f0;
+  .node-desc {
+    font-family: var(--sc-font-body);
+    font-size: var(--sc-fs-2xs);
+    color: var(--sc-text-3);
+  }
+  .node-star-badge {
     position: absolute;
-    top: 4px;
-    right: 6px;
+    top: 4px; right: 6px;
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #60a0f0;
+    background: rgba(96,160,240,0.1);
+    padding: 1px 5px;
+    border-radius: 3px;
   }
 
-  .loop-node.terminal .ln-icon { color: #f0c060; }
-  .loop-node.agent .ln-icon { color: rgba(247, 242, 234, 0.5); }
-  .loop-node.lab .ln-icon { color: #60a0f0; }
-  .loop-node.lab .ln-name { color: #60a0f0; }
-  .loop-node.battle .ln-icon { color: var(--lis-negative, #cf7f8f); }
-  .loop-node.market .ln-icon { color: var(--lis-positive, #adca7c); }
-
-  .loop-wire {
-    width: 16px;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(247, 242, 234, 0.08), rgba(247, 242, 234, 0.04));
+  .flow-connector {
+    width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
   }
+  .connector-arrow { width: 24px; height: 12px; }
 
   .loop-return {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-top: 12px;
-    font-family: var(--sc-font-mono, monospace);
+    gap: 14px;
+    margin-top: 20px;
   }
-  .return-arrow {
-    font-size: 14px;
-    color: rgba(247, 242, 234, 0.2);
+  .return-line {
+    height: 1px;
+    flex: 1;
+    max-width: 100px;
+    background: linear-gradient(90deg, transparent, rgba(219,154,159,0.15), transparent);
   }
-  .return-text {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    color: var(--lis-accent, #db9a9f);
-    text-shadow: 0 0 12px rgba(219, 154, 159, 0.3);
+  .return-badge {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-xs);
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--lis-accent);
+    text-shadow: 0 0 16px rgba(219,154,159,0.25);
+    padding: 4px 14px;
+    border: 1px solid rgba(219,154,159,0.1);
+    border-radius: 999px;
+    background: rgba(219,154,159,0.04);
   }
 
-  /* ═══ Responsive ═══ */
-  @media (max-width: 680px) {
-    .landing { padding: 32px 16px 72px; gap: 40px; }
-    .cta-grid { grid-template-columns: 1fr; }
-    .br-desktop { display: none; }
-    .loop-track { flex-wrap: wrap; gap: 6px; justify-content: center; }
-    .loop-wire { display: none; }
-    .loop-node { min-width: 70px; }
-    .cta-num { font-size: 22px; }
+  /* ═══ FOOTER ═══ */
+  .landing-footer { padding: 40px 0 20px; }
+  .footer-text {
+    font-family: var(--sc-font-mono);
+    font-size: var(--sc-fs-2xs);
+    letter-spacing: 3px;
+    color: rgba(247,242,234,0.1);
+  }
+
+  /* ═══ ANIMATIONS ═══ */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(173,202,124,0.5); }
+    50% { opacity: 0.4; box-shadow: 0 0 4px rgba(173,202,124,0.15); }
+  }
+  @keyframes statusPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  @keyframes badgePop {
+    0% { opacity: 0; transform: scale(0.7) translateY(8px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes thinkBounce {
+    from { transform: translateY(0); opacity: 0.3; }
+    to { transform: translateY(-5px); opacity: 1; }
+  }
+  @keyframes scanPulse {
+    0%, 100% { opacity: 0.7; stroke-width: 1.5; }
+    50% { opacity: 0.2; stroke-width: 1; }
+  }
+  @keyframes drawLine {
+    from { stroke-dashoffset: 600; }
+    to { stroke-dashoffset: 0; }
+  }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 768px) {
+    .landing { gap: 64px; padding: 0 16px 56px; }
+    .hero { padding-top: 56px; gap: 22px; }
+    .path-grid { grid-template-columns: 1fr; }
+    .loop-flow { flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .flow-connector { display: none; }
+    .flow-node { min-width: 76px; padding: 14px 12px; }
+    .hero-actions { flex-direction: column; width: 100%; max-width: 300px; }
+    .btn-primary, .btn-ghost { width: 100%; justify-content: center; }
+    .demo-hud { flex-wrap: wrap; gap: 14px; }
+    .chart-area { height: 180px; }
   }
 
   @media (max-width: 480px) {
-    .line-1 { font-size: 24px; }
-    .line-2 { font-size: 30px; }
-    .hero-p { font-size: 12px; }
-    .demo-frame { aspect-ratio: 16 / 10; }
+    .landing { gap: 48px; }
+    .hero { padding-top: 40px; }
+    .hero-desc { font-size: var(--sc-fs-md); }
+    .chart-area { height: 150px; }
+    .path-card { padding: 20px 18px; gap: 14px; }
+    .section-header { margin-bottom: 20px; }
+  }
+
+  /* ═══ REDUCED MOTION ═══ */
+  @media (prefers-reduced-motion: reduce) {
+    .hero, .demo, .paths, .loop-section {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    .scan-glow, .active-line {
+      animation: none;
+    }
   }
 </style>
