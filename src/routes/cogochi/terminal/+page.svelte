@@ -545,9 +545,10 @@
     return 'var(--sc-text-2)';
   }
   function layerCellBg(score: number): string {
-    if (score > 0) return 'rgba(173, 202, 124, 0.08)';
-    if (score < 0) return 'rgba(207, 127, 143, 0.08)';
-    return 'transparent';
+    const intensity = Math.min(0.25, 0.06 + Math.abs(score) / 80);
+    if (score > 0) return `rgba(173, 202, 124, ${intensity})`;
+    if (score < 0) return `rgba(207, 127, 143, ${intensity})`;
+    return 'rgba(255,255,255,0.02)';
   }
   function layerBorderColor(score: number): string {
     if (score > 0) return 'var(--sc-good)';
@@ -888,18 +889,18 @@
     min-width: 0;
   }
   .feed-inner {
-    max-width: 680px;
-    padding: 16px 20px 120px;
+    max-width: 720px;
+    padding: 8px 16px 80px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0;
   }
 
   /* ─── Feed Entry base ─── */
   .fe {
-    padding: 10px 0;
-    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
-    animation: sc-slide-up 0.2s ease;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.08));
+    animation: sc-slide-up 0.15s ease;
   }
   .fe:last-child { border-bottom: none; }
 
@@ -971,13 +972,13 @@
   /* ─── Metrics Grid ─── */
   .fe-metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 4px;
   }
 
   /* ─── Layers / Treemap ─── */
   .fe-layers {
-    padding: 12px 0;
+    padding: 6px 0;
   }
   .layers-header {
     display: flex;
@@ -1005,15 +1006,17 @@
   .treemap-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 3px;
   }
   .treemap-cell {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px;
-    border-radius: 4px;
-    min-width: 80px;
+    gap: 1px;
+    padding: 6px 8px;
+    border-radius: 3px;
+    min-width: 70px;
+    min-height: 58px;
+    justify-content: space-between;
   }
   .tm-id {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);

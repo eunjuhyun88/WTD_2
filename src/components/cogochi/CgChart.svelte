@@ -87,22 +87,51 @@
       },
     });
 
-    candleSeries = chart.addCandlestickSeries({
-      upColor: '#adca7c',
-      downColor: '#cf7f8f',
-      borderUpColor: '#adca7c',
-      borderDownColor: '#cf7f8f',
-      wickUpColor: 'rgba(173,202,124,0.5)',
-      wickDownColor: 'rgba(207,127,143,0.5)',
-    });
-
-    volumeSeries = chart.addHistogramSeries({
-      priceFormat: { type: 'volume' },
-      priceScaleId: '',
-    });
+    // lightweight-charts v5: use addSeries with series constructors
+    if (typeof chart.addSeries === 'function' && lwc.CandlestickSeries) {
+      candleSeries = chart.addSeries(lwc.CandlestickSeries, {
+        upColor: '#adca7c',
+        downColor: '#cf7f8f',
+        borderUpColor: '#adca7c',
+        borderDownColor: '#cf7f8f',
+        wickUpColor: 'rgba(173,202,124,0.5)',
+        wickDownColor: 'rgba(207,127,143,0.5)',
+      });
+      volumeSeries = chart.addSeries(lwc.HistogramSeries, {
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      });
+    } else {
+      // fallback for v4 API
+      candleSeries = chart.addCandlestickSeries({
+        upColor: '#adca7c',
+        downColor: '#cf7f8f',
+        borderUpColor: '#adca7c',
+        borderDownColor: '#cf7f8f',
+        wickUpColor: 'rgba(173,202,124,0.5)',
+        wickDownColor: 'rgba(207,127,143,0.5)',
+      });
+      volumeSeries = chart.addHistogramSeries({
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      });
+    }
     volumeSeries.priceScale().applyOptions({
       scaleMargins: { top: 0.85, bottom: 0 },
     });
+
+    // Initial data load (if data arrived before onMount via SSE)
+    if (data.length > 0) {
+      const candles = data.map(k => ({ time: k.t, open: k.o, high: k.h, low: k.l, close: k.c }));
+      const volumes = data.map(k => ({
+        time: k.t,
+        value: k.v,
+        color: k.c >= k.o ? 'rgba(173,202,124,0.2)' : 'rgba(207,127,143,0.2)',
+      }));
+      candleSeries.setData(candles);
+      volumeSeries.setData(volumes);
+      chart.timeScale().fitContent();
+    }
 
     // Resize observer — always watches, even when hidden
     ro = new ResizeObserver(() => {

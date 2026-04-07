@@ -18,7 +18,7 @@ import {
   type DouniProfile,
 } from '$lib/engine/cogochi/douni/douniPersonality';
 import type { SignalSnapshot } from '$lib/engine/cogochi/types';
-import type { LLMProvider } from '$lib/server/llmConfig';
+import { type LLMProvider, getAvailableProvider } from '$lib/server/llmConfig';
 import type { LLMStreamChunk, ToolCall, DouniSSEEvent, LLMMessageWithTools } from '$lib/server/douni/types';
 import { DOUNI_TOOLS } from '$lib/server/douni/tools';
 import { executeTool } from '$lib/server/douni/toolExecutor';
@@ -185,7 +185,7 @@ You can also have general trading conversation without data.`,
         // Done
         emit({
           type: 'done',
-          provider: (provider || 'groq') as LLMProvider,
+          provider: (provider || getAvailableProvider() || 'ollama') as LLMProvider,
         });
       } catch (err: any) {
         emit({ type: 'error', message: err.message || 'Stream failed' });
