@@ -61,7 +61,7 @@ const SKILL_REGISTRY: Record<string, SkillConfig> = {
 type SkillCaller = (baseUrl: string, headers: Record<string, string>, snapshot: SignalSnapshot) => Promise<Record<string, unknown>>;
 
 async function callCoingecko(baseUrl: string, headers: Record<string, string>, snapshot: SignalSnapshot): Promise<Record<string, unknown>> {
-	const symbol = (snapshot as Record<string, unknown>).symbol as string ?? 'bitcoin';
+	const symbol = (snapshot as unknown as Record<string, unknown>).symbol as string ?? 'bitcoin';
 	const priceRes = await fetch(`${baseUrl}/simple/price?ids=${symbol.toLowerCase()}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true`, { headers });
 	const priceData = await priceRes.json();
 
@@ -77,7 +77,7 @@ async function callCoingecko(baseUrl: string, headers: Record<string, string>, s
 }
 
 async function callBinanceMarket(baseUrl: string, _headers: Record<string, string>, snapshot: SignalSnapshot): Promise<Record<string, unknown>> {
-	const symbol = (snapshot as Record<string, unknown>).symbol as string ?? 'BTCUSDT';
+	const symbol = (snapshot as unknown as Record<string, unknown>).symbol as string ?? 'BTCUSDT';
 	const res = await fetch(`${baseUrl}/fapi/v1/depth?symbol=${symbol}&limit=20`);
 	const depth = await res.json();
 
@@ -98,7 +98,7 @@ async function callBinanceMarket(baseUrl: string, _headers: Record<string, strin
 }
 
 async function callCoinglass(baseUrl: string, headers: Record<string, string>, snapshot: SignalSnapshot): Promise<Record<string, unknown>> {
-	const symbol = ((snapshot as Record<string, unknown>).symbol as string ?? 'BTCUSDT').replace('USDT', '');
+	const symbol = ((snapshot as unknown as Record<string, unknown>).symbol as string ?? 'BTCUSDT').replace('USDT', '');
 	const price = snapshot.currentPrice;
 
 	const res = await fetch(`${baseUrl}/liquidation_map?symbol=${symbol}&range=3`, { headers });
@@ -126,7 +126,7 @@ async function callCoinglass(baseUrl: string, headers: Record<string, string>, s
 }
 
 async function callNansen(baseUrl: string, headers: Record<string, string>, snapshot: SignalSnapshot): Promise<Record<string, unknown>> {
-	const symbol = ((snapshot as Record<string, unknown>).symbol as string ?? 'BTCUSDT').replace('USDT', '');
+	const symbol = ((snapshot as unknown as Record<string, unknown>).symbol as string ?? 'BTCUSDT').replace('USDT', '');
 	const res = await fetch(`${baseUrl}/smart-money/flow?token=${symbol}&hours=24`, { headers });
 	const data = (await res.json()).data ?? {};
 
