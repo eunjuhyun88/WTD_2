@@ -18,6 +18,7 @@
 
   const isTerminal = derived(page, $p => $p.url.pathname.startsWith('/terminal'));
   const isHome = derived(page, $p => $p.url.pathname === '/');
+  const isCogochi = derived(page, $p => $p.url.pathname.startsWith('/cogochi'));
 
   // Hide global BottomBar on mobile (unneeded chrome on small screens)
   // - Terminal routes ≤1024px: terminal has its own bottom nav
@@ -167,16 +168,18 @@
   });
 </script>
 
-<div id="app">
-  <Header />
-  <P0Banner />
+<div id="app" class:cogochi-mode={$isCogochi}>
+  {#if !$isCogochi}<Header />{/if}
+  {#if !$isCogochi}<P0Banner />{/if}
   <div id="main-content" class:terminal-route={$isTerminal}>
     {@render children()}
   </div>
-  {#if showBottomBar}
-    <BottomBar />
-  {:else if showMobileBottomNav}
-    <MobileBottomNav />
+  {#if !$isCogochi}
+    {#if showBottomBar}
+      <BottomBar />
+    {:else if showMobileBottomNav}
+      <MobileBottomNav />
+    {/if}
   {/if}
 </div>
 
@@ -198,6 +201,9 @@
     padding-top: var(--sc-header-h, 44px);
     overflow: hidden;
     position: relative;
+  }
+  #app.cogochi-mode {
+    padding-top: 0;
   }
   #main-content {
     flex: 1;
