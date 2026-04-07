@@ -9,11 +9,19 @@ import {
   GROQ_API_KEY, GROQ_MODEL, groqUrl,
   GEMINI_API_KEY, GEMINI_MODEL, geminiUrl,
   DEEPSEEK_API_KEY, DEEPSEEK_MODEL, deepseekUrl,
-  OLLAMA_MODEL, ollamaUrl,
+  QWEN_API_KEY, QWEN_MODEL, qwenUrl,
+  GROK_API_KEY, GROK_MODEL, grokUrl,
+  KIMI_API_KEY, KIMI_MODEL, kimiUrl,
+  HF_TOKEN, HF_MODEL, hfUrl,
+  OLLAMA_MODEL, ollamaUrl, ollamaChatUrl,
   getAvailableProvider,
   isDeepSeekAvailable,
   isGeminiAvailable,
   isGroqAvailable,
+  isQwenAvailable,
+  isGrokAvailable,
+  isKimiAvailable,
+  isHfAvailable,
   isOllamaAvailable,
   getGroqApiKey, rotateGroqKey,
   type LLMProvider,
@@ -246,21 +254,89 @@ async function callDeepSeek(messages: LLMMessage[], maxTokens: number, temperatu
   }
 }
 
+// ─── Qwen (DashScope, OpenAI-compatible) ─────────────────────
+
+async function callQwen(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
+  return callOpenAICompatible('qwen', qwenUrl(), QWEN_API_KEY, QWEN_MODEL, messages, maxTokens, temperature, timeoutMs);
+}
+
+// ─── Grok (xAI, OpenAI-compatible) ───────────────────────────
+
+async function callGrok(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
+  return callOpenAICompatible('grok', grokUrl(), GROK_API_KEY, GROK_MODEL, messages, maxTokens, temperature, timeoutMs);
+}
+
+// ─── Kimi (Moonshot, OpenAI-compatible) ──────────────────────
+
+async function callKimi(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
+  return callOpenAICompatible('kimi', kimiUrl(), KIMI_API_KEY, KIMI_MODEL, messages, maxTokens, temperature, timeoutMs);
+}
+
+// ─── HuggingFace Inference API (OpenAI-compatible) ───────────
+
+async function callHf(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
+  return callOpenAICompatible('hf', hfUrl(), HF_TOKEN, HF_MODEL, messages, maxTokens, temperature, timeoutMs);
+}
+
+// ─── Generic OpenAI-compatible caller ────────────────────────
+
+async function callOpenAICompatible(
+  providerName: string, url: string, apiKey: string, model: string,
+  messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number,
+): Promise<LLMResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new Error(`${providerName} ${res.status}: ${errBody.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    const choice = data.choices?.[0];
+    if (!choice?.message?.content) throw new Error(`${providerName}: empty response`);
+    return {
+      text: choice.message.content.trim(),
+      provider: providerName as LLMProvider,
+      model,
+      usage: data.usage ? { promptTokens: data.usage.prompt_tokens, completionTokens: data.usage.completion_tokens } : undefined,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─── Unified Call with Fallback ───────────────────────────────
 
 const PROVIDER_CALL: Record<LLMProvider, typeof callGroq> = {
   ollama: callOllama,
   groq: callGroq,
-  gemini: callGemini,
+  grok: callGrok,
+  qwen: callQwen,
+  kimi: callKimi,
+  hf: callHf,
   deepseek: callDeepSeek,
+  gemini: callGemini,
 };
 
-const FALLBACK_ORDER: LLMProvider[] = ['ollama', 'groq', 'deepseek', 'gemini'];
+const FALLBACK_ORDER: LLMProvider[] = ['groq', 'grok', 'kimi', 'qwen', 'hf', 'deepseek', 'gemini', 'ollama'];
 
 function availableProviders(): LLMProvider[] {
   const checks: Record<LLMProvider, boolean> = {
     ollama: isOllamaAvailable(),
     groq: isGroqAvailable(),
+    grok: isGrokAvailable(),
+    qwen: isQwenAvailable(),
+    kimi: isKimiAvailable(),
+    hf: isHfAvailable(),
     deepseek: isDeepSeekAvailable(),
     gemini: isGeminiAvailable(),
   };
@@ -318,6 +394,127 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMResult> {
  */
 export function isLLMAvailable(): boolean {
   return availableProviders().length > 0;
+}
+
+// ─── Streaming LLM Call ──────────────────────────────────────
+
+export interface LLMStreamOptions {
+  messages: LLMMessage[];
+  provider?: LLMProvider;
+  maxTokens?: number;
+  temperature?: number;
+  timeoutMs?: number;
+}
+
+/**
+ * SSE 스트리밍 LLM 호출. AsyncGenerator로 텍스트 청크를 yield.
+ * 풀백 체인 지원 — 첫 성공 provider로 스트리밍.
+ */
+export async function* callLLMStream(options: LLMStreamOptions): AsyncGenerator<string> {
+  const { messages, maxTokens = 1024, temperature = 0.7, timeoutMs = 30000 } = options;
+  const providers = availableProviders();
+  if (providers.length === 0) throw new Error('No LLM provider available');
+
+  const preferred = options.provider;
+  const ordered = preferred && providers.includes(preferred)
+    ? [preferred, ...providers.filter(p => p !== preferred)]
+    : providers;
+
+  let lastError: Error | null = null;
+
+  for (const provider of ordered) {
+    try {
+      yield* streamFromProvider(provider, messages, maxTokens, temperature, timeoutMs);
+      return;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[llmService] ${provider} stream failed: ${err.message}`);
+    }
+  }
+  throw lastError ?? new Error('All LLM providers failed (streaming)');
+}
+
+function getStreamConfig(provider: LLMProvider): { url: string; apiKey: string; model: string } {
+  switch (provider) {
+    case 'ollama':   return { url: ollamaChatUrl(), apiKey: '', model: OLLAMA_MODEL };
+    case 'groq':     return { url: groqUrl(), apiKey: getGroqApiKey(), model: GROQ_MODEL };
+    case 'grok':     return { url: grokUrl(), apiKey: GROK_API_KEY, model: GROK_MODEL };
+    case 'qwen':     return { url: qwenUrl(), apiKey: QWEN_API_KEY, model: QWEN_MODEL };
+    case 'kimi':     return { url: kimiUrl(), apiKey: KIMI_API_KEY, model: KIMI_MODEL };
+    case 'hf':       return { url: hfUrl(), apiKey: HF_TOKEN, model: HF_MODEL };
+    case 'deepseek': return { url: deepseekUrl(), apiKey: DEEPSEEK_API_KEY, model: DEEPSEEK_MODEL };
+    default:         throw new Error(`${provider}: streaming not supported`);
+  }
+}
+
+async function* streamFromProvider(
+  provider: LLMProvider,
+  messages: LLMMessage[],
+  maxTokens: number,
+  temperature: number,
+  timeoutMs: number,
+): AsyncGenerator<string> {
+  // Gemini uses different format — skip for now (it's last in fallback)
+  if (provider === 'gemini') {
+    // Fallback: non-streaming call, yield all at once
+    const result = await callGemini(messages, maxTokens, temperature, timeoutMs);
+    yield result.text;
+    return;
+  }
+
+  const { url, apiKey, model } = getStreamConfig(provider);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature, stream: true }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      if (provider === 'groq' && res.status === 429) rotateGroqKey();
+      throw new Error(`${provider} ${res.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    if (!res.body) throw new Error(`${provider}: no response body`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') return;
+
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) yield delta;
+        } catch {
+          // skip malformed SSE chunks
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ─── Agent Chat System Prompt Builder ─────────────────────────
