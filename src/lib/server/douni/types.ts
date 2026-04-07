@@ -64,6 +64,8 @@ export type DouniSSEEvent =
   | { type: 'layer_result'; layer: string; score: number; signal: string; detail?: string }
   | { type: 'chart_action'; action: string; payload: Record<string, unknown> }
   | { type: 'pattern_draft'; name: string; conditions: unknown[]; requiresConfirmation: boolean }
+  | { type: 'social_data'; topic: string; sentiment: number; trending: boolean }
+  | { type: 'scan_result'; sort: string; count: number }
   | { type: 'done'; provider: LLMProvider; totalTokens?: number }
   | { type: 'error'; message: string };
 

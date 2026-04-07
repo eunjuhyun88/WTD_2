@@ -13,7 +13,8 @@
     | { type: 'chart'; symbol: string; timeframe: string; chartData?: any[] }
     | { type: 'metrics'; items: MetricItem[] }
     | { type: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
-    | { type: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] };
+    | { type: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
+    | { type: 'scan_list'; items: any[]; sort: string; sector: string };
 
   interface MetricItem {
     title: string; value: string; subtext: string;
