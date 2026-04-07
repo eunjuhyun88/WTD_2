@@ -220,7 +220,10 @@
     currentSymbol = data.symbol || currentSymbol;
     currentTf = data.timeframe || currentTf;
     currentPrice = data.price || currentPrice;
+    currentChange = data.change24h || currentChange;
     currentSnapshot = data;
+    if (data.chart) currentChartData = data.chart;
+    if (data.derivatives) currentDeriv = data.derivatives;
 
     // Build metrics from analysis data
     const metrics: MetricItem[] = [];
@@ -243,6 +246,31 @@
         trend: fg < 30 ? 'bear' : fg > 70 ? 'danger' : 'neutral',
         chartData: [40, 35, 30, 25, 20, 18, 15, fg],
       });
+    }
+    if (data.derivatives?.oi != null) {
+      const oi = data.derivatives.oi;
+      metrics.push({
+        title: 'OI', value: oi >= 1e6 ? `${(oi/1e6).toFixed(0)}M` : `${(oi/1e3).toFixed(0)}K`,
+        subtext: '미결제약정', trend: 'neutral',
+        chartData: [80, 85, 82, 88, 90, 87, 92, 95],
+      });
+    }
+    if (data.derivatives?.lsRatio != null) {
+      const ls = data.derivatives.lsRatio;
+      metrics.push({
+        title: 'L/S Ratio', value: ls.toFixed(2),
+        subtext: ls > 1.1 ? '롱 과밀' : ls < 0.9 ? '숏 과밀' : '균형',
+        trend: ls > 1.1 ? 'bear' : ls < 0.9 ? 'bull' : 'neutral',
+        chartData: [1.0, 1.05, 1.1, 1.08, 1.12, 1.15, 1.1, ls],
+      });
+    }
+
+    // Add chart widget
+    if (data.chart && data.chart.length > 0) {
+      messages = [...messages, {
+        role: 'douni', text: '',
+        widgets: [{ type: 'chart', symbol: currentSymbol, timeframe: currentTf.toUpperCase(), chartData: data.chart }],
+      }];
     }
 
     // Add metrics widget
@@ -273,6 +301,70 @@
     }
     if (action === 'change_timeframe' && payload.timeframe) {
       currentTf = payload.timeframe as string;
+    }
+  }
+
+  // ─── Feedback ──────────────────────────────────────────────
+  async function sendFeedback(result: 'correct' | 'incorrect') {
+    const feedbackText = result === 'correct' ? '맞았어!' : '틀렸잖아';
+    messages = [...messages, { role: 'user', text: feedbackText }];
+    chatHistory = [...chatHistory, { role: 'user', content: feedbackText }];
+
+    // Send via FC endpoint — DOUNI will call submit_feedback tool
+    isThinking = true;
+    messages = [...messages, { role: 'douni', thinking: true } as MessageType];
+    scrollToBottom();
+
+    try {
+      const res = await fetch('/api/cogochi/terminal/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: feedbackText,
+          history: chatHistory.slice(-10),
+          snapshot: currentSnapshot || undefined,
+        }),
+      });
+
+      if (!res.ok || !res.body) throw new Error('Feedback failed');
+
+      messages = messages.filter(m => !('thinking' in m));
+      let streamingText = '';
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const raw = trimmed.slice(6);
+          if (raw === '[DONE]') continue;
+          try {
+            const event: SSEEvent = JSON.parse(raw);
+            if (event.type === 'text_delta') {
+              streamingText += event.text;
+              updateStreamingMessage(streamingText);
+            }
+          } catch { /* skip */ }
+        }
+      }
+
+      if (streamingText) {
+        chatHistory = [...chatHistory, { role: 'assistant', content: streamingText }];
+      }
+    } catch (err: any) {
+      messages = messages.filter(m => !('thinking' in m));
+      messages = [...messages, { role: 'douni', text: `❌ ${err.message}` }];
+    } finally {
+      isThinking = false;
+      scrollToBottom();
     }
   }
 
@@ -384,8 +476,8 @@
 
                     {:else if widget.type === 'actions'}
                       <div class="w-actions">
-                        <button class="wa agree">✓ 맞아</button>
-                        <button class="wa disagree">✗ 아니야</button>
+                        <button class="wa agree" onclick={() => sendFeedback('correct')}>✓ 맞아</button>
+                        <button class="wa disagree" onclick={() => sendFeedback('incorrect')}>✗ 아니야</button>
                         <button class="wa save" onclick={() => showPatternModal = true}>📌 패턴 저장</button>
                       </div>
                     {/if}
