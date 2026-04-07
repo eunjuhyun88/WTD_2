@@ -227,7 +227,7 @@
 
   .weight-row { display:flex; align-items:center; gap:6px; }
   .weight-name { font-size:9px; font-weight:700; color:rgba(240,237,228,.7); width:80px; font-family:var(--fm,'JetBrains Mono',monospace); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .weight-slider { flex:1; -webkit-appearance:none; height:4px; border-radius:2px; background:rgba(240,237,228,.1); outline:none; }
+  .weight-slider { flex:1; -webkit-appearance:none; appearance:none; height:4px; border-radius:2px; background:rgba(240,237,228,.1); outline:none; }
   .weight-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#E8967D; cursor:pointer; }
   .weight-val { font-size:11px; font-weight:800; color:#E8967D; width:32px; text-align:right; font-family:var(--fm,'JetBrains Mono',monospace); }
 

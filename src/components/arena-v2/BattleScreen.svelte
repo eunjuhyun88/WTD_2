@@ -480,7 +480,7 @@
       <span class="tick-label">TICK</span>
       <span class="tick-val">{tickN}<span class="tick-max">/{maxTicks}</span></span>
       <div class="tick-bar">
-        <div class="tick-fill" style:width="{tickPct}%" />
+        <div class="tick-fill" style:width="{tickPct}%"></div>
       </div>
     </div>
 
@@ -527,8 +527,8 @@
           class:vs-winning={vs >= 60}
           class:vs-losing={vs <= 40}
           class:vs-danger={vs <= 25}
-        />
-        <div class="vs-center-mark" />
+        ></div>
+        <div class="vs-center-mark"></div>
         <span class="vs-value">{vs.toFixed(0)}</span>
       </div>
       <span class="vs-label-right" class:winning={vs < 45}>MKT</span>
@@ -558,7 +558,7 @@
             <img src="/doge/trade-bear.png" alt="MARKET" class="enemy-img" />
             <!-- Hit flash on favorable tick -->
             {#if tickClass === 'FAVORABLE' || tickClass === 'STRONG_FAVORABLE'}
-              <div class="hit-flash" />
+              <div class="hit-flash"></div>
             {/if}
           </div>
         </div>
@@ -596,7 +596,7 @@
                 class:img-windup={activeAgent.animState === 'WINDUP'}
               />
               {#if activeAgent.currentAction === 'SHIELD'}
-                <div class="shield-overlay" />
+                <div class="shield-overlay"></div>
               {/if}
               <!-- Action badge over sprite -->
               <div class="player-action-icon">
@@ -618,11 +618,11 @@
               <div class="tp-sl-mini">
                 <div class="tp-sl-row">
                   <span class="tp-sl-lbl tp">TP</span>
-                  <div class="tp-sl-track"><div class="tp-sl-fill tp" style:width="{tpProgress * 100}%" /></div>
+                  <div class="tp-sl-track"><div class="tp-sl-fill tp" style:width="{tpProgress * 100}%"></div></div>
                 </div>
                 <div class="tp-sl-row">
                   <span class="tp-sl-lbl sl">SL</span>
-                  <div class="tp-sl-track"><div class="tp-sl-fill sl" style:width="{slProgress * 100}%" /></div>
+                  <div class="tp-sl-track"><div class="tp-sl-fill sl" style:width="{slProgress * 100}%"></div></div>
                 </div>
               </div>
             </div>

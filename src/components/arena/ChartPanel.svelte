@@ -3953,8 +3953,7 @@
     border-bottom-color: #2a2e39;
     background: #131722;
   }
-  .chart-wrapper.tv-like .chart-footer { /* removed */
-  }
+  /* .chart-wrapper.tv-like .chart-footer — removed */
   .chart-wrapper.tv-like .mode-toggle {
     border-color: rgba(255, 255, 255, 0.18);
   }

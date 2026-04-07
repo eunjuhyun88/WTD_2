@@ -8,10 +8,10 @@
   import { saveV2ToRAG } from '$lib/engine/v2RagBridge';
 
   export let battleResult: V2BattleResult | null = null;
-  export let lpDelta: number = 0;
-  export let lpBreakdown: string[] = [];
-  export let fbsScore: FBScore | null = null;
-  export let badges: Badge[] = [];
+  export const lpDelta: number = 0;
+  export const lpBreakdown: string[] = [];
+  export const fbsScore: FBScore | null = null;
+  export const badges: Badge[] = [];
 
   const dispatch = createEventDispatcher();
 
@@ -217,7 +217,7 @@
 
   {#if stage === 0}
     <!-- Pre-reveal black -->
-    <div class="pre-reveal" />
+    <div class="pre-reveal"></div>
   {/if}
 
   <!-- Stage 1: OUTCOME -->
@@ -268,7 +268,7 @@
         <div class="fbs-row">
           <span class="fbs-cat">DS</span>
           <div class="fbs-track">
-            <div class="fbs-fill ds" style:width="{dsWidth}%" />
+            <div class="fbs-fill ds" style:width="{dsWidth}%"></div>
           </div>
           <span class="fbs-val">{computedFBS.ds}</span>
           <span class="fbs-desc">{computedFBS.ds >= 70 ? 'Direction correct' : 'Direction missed'}</span>
@@ -276,7 +276,7 @@
         <div class="fbs-row">
           <span class="fbs-cat">RE</span>
           <div class="fbs-track">
-            <div class="fbs-fill re" style:width="{reWidth}%" />
+            <div class="fbs-fill re" style:width="{reWidth}%"></div>
           </div>
           <span class="fbs-val">{computedFBS.re}</span>
           <span class="fbs-desc">{computedFBS.re >= 70 ? 'Clean execution' : 'Execution needs work'}</span>
@@ -284,7 +284,7 @@
         <div class="fbs-row">
           <span class="fbs-cat">CI</span>
           <div class="fbs-track">
-            <div class="fbs-fill ci" style:width="{ciWidth}%" />
+            <div class="fbs-fill ci" style:width="{ciWidth}%"></div>
           </div>
           <span class="fbs-val">{computedFBS.ci}</span>
           <span class="fbs-desc">{computedFBS.ci >= 70 ? 'Confidence matched' : 'Over/under confident'}</span>

@@ -36,7 +36,7 @@
       class="hp-fill"
       style:width="{pct}%"
       style:background={barColor}
-    />
+    ></div>
   </div>
   {#if showValue}
     <span class="hp-val">{Math.round(value)}<span class="hp-max">/{Math.round(max)}</span></span>

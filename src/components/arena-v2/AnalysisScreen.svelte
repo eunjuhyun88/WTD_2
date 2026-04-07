@@ -17,7 +17,7 @@
   export let findings: Finding[] = [];
   export let chatMessages: ChatMsg[] = [];
   export let selectedAgents: AgentId[] = [];
-  export let timer: number = 0;
+  export const timer: number = 0;
   export let speed: number = 3;
 
   // ── Data sources (beacons on tactical map) ──

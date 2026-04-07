@@ -142,7 +142,7 @@
         <span class="chip-icon">{getAgentIcon(agent.agentId)}</span>
         <span class="chip-action">{agent.currentAction}</span>
         <div class="chip-energy">
-          <div class="chip-energy-fill" style:width="{(agent.energy / agent.maxEnergy) * 100}%" />
+          <div class="chip-energy-fill" style:width="{(agent.energy / agent.maxEnergy) * 100}%"></div>
         </div>
       </div>
     {/each}

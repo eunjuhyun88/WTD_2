@@ -41,7 +41,7 @@
   <div class="setup-grid">
     <!-- Mode Selection (NEW) -->
     <div class="setup-section">
-      <label class="section-label">MODE</label>
+      <span class="section-label">MODE</span>
       <div class="mode-row">
         {#each modes as mode}
           <button
@@ -59,7 +59,7 @@
 
     <!-- Pair Selection -->
     <div class="setup-section">
-      <label class="section-label">PAIR</label>
+      <span class="section-label">PAIR</span>
       <div class="option-row">
         {#each pairs as pair}
           <button
@@ -75,7 +75,7 @@
 
     <!-- Timeframe Selection -->
     <div class="setup-section">
-      <label class="section-label">TIMEFRAME</label>
+      <span class="section-label">TIMEFRAME</span>
       <div class="option-row">
         {#each timeframes as tf}
           <button
@@ -91,7 +91,7 @@
 
     <!-- Wager Selection -->
     <div class="setup-section">
-      <label class="section-label">WAGER (LP)</label>
+      <span class="section-label">WAGER (LP)</span>
       <div class="option-row">
         {#each wagers as w}
           <button

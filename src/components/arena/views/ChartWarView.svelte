@@ -8,7 +8,7 @@
   export let hypothesis: Hypothesis | null = null;
   export let prices: { BTC: number } = { BTC: 0 };
   export let battleResult: string | null = null;
-  export let battlePriceHistory: BattlePriceTick[] = [];
+  export const battlePriceHistory: BattlePriceTick[] = [];
   export let activeAgents: Array<{ id: string; name: string; icon: string; color: string; dir: string; conf: number }> = [];
 
   const dispatch = createEventDispatcher();
