@@ -151,6 +151,11 @@ export interface SignalSnapshot {
   htfStructure: string;
   compositeScore: number; // 0~1 정규화
 
+  // 차트 시각화 데이터 (Sprint 1+)
+  annotations?: ChartAnnotation[];
+  tradePlan?: TradePlan;
+  indicators?: IndicatorSeries;
+
   // 메타
   symbol: string;
   timeframe: string;
@@ -191,6 +196,38 @@ export const LAYER_MAX_CONTRIBUTION: Record<LayerId, number> = {
   l14: 5,
   l15: 0,  // 보조 — Alpha에 직접 기여 안 함
 };
+
+// ─── Chart Visualization Types ──────────────────────────────
+
+export interface ChartAnnotation {
+  type: 'support' | 'resistance' | 'fvg_bull' | 'fvg_bear' | 'ob_bull' | 'ob_bear' | 'bos' | 'choch';
+  price: number;
+  price2?: number;
+  time: number;
+  time2?: number;
+  strength?: number;
+  label?: string;
+}
+
+export interface TradePlan {
+  direction: 'LONG' | 'SHORT' | 'NO_TRADE';
+  entry: number;
+  stopLoss: number;
+  tp1: number;
+  tp2: number;
+  tp3: number;
+  rrToTp2: number;
+  slPct: number;
+  confidence: number;
+}
+
+export interface IndicatorSeries {
+  bbUpper?: number[];
+  bbMiddle?: number[];
+  bbLower?: number[];
+  cvdRaw?: number[];
+  ema20?: number[];
+}
 
 // ─── Pattern Condition (Doctrine에서 사용) ────────────────────
 

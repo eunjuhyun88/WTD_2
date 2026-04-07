@@ -9,7 +9,8 @@ import type { ToolCall, ToolResult, ToolExecutorContext, DouniSSEEvent } from '.
 import type { SignalSnapshot } from '$lib/engine/cogochi/types';
 import { VALID_TOOL_NAMES } from './tools';
 import { fetchKlinesServer, fetch24hrServer } from '../binance';
-import { computeSignalSnapshot } from '$lib/engine/cogochi/layerEngine';
+import { computeSignalSnapshot, computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
+import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 import type { MarketContext } from '$lib/engine/factorEngine';
 
@@ -180,6 +181,11 @@ async function executeAnalyzeMarket(
     t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume,
   }));
 
+  // S/R annotations + indicator series (Sprint 1)
+  const currentPrice = klines[klines.length - 1].close;
+  const annotations = detectSupportResistance(klines, currentPrice);
+  const indicatorSeries = computeIndicatorSeries(klines);
+
   return {
     symbol,
     timeframe: tf,
@@ -195,13 +201,20 @@ async function executeAnalyzeMarket(
     l13: snapshot.l13,
     l14: snapshot.l14,
     l15: snapshot.l15,
-    price: klines[klines.length - 1].close,
+    price: currentPrice,
     change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
     chart: chartKlines,
     derivatives: {
       funding: deriv.funding,
       oi: deriv.oi,
       lsRatio: deriv.lsRatio,
+    },
+    annotations,
+    indicators: {
+      bbUpper: indicatorSeries.bbUpper?.slice(-100),
+      bbMiddle: indicatorSeries.bbMiddle?.slice(-100),
+      bbLower: indicatorSeries.bbLower?.slice(-100),
+      ema20: indicatorSeries.ema20?.slice(-100),
     },
   };
 }
