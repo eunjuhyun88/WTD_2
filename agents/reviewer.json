@@ -25,6 +25,6 @@
     "handoff"
   ],
   "handoff": "handoff",
-  "prompt": "Review changes for correctness, drift, and boundary violations, then leave a handoff artifact with findings or release status.",
+  "prompt": "Resume with MEMENTO_AGENT=reviewer npm run ctx:resume, review changes for correctness, drift, and boundary violations, then leave a handoff artifact with findings or release status.",
   "public": true
 }

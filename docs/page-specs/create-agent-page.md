@@ -1,10 +1,13 @@
 # Create Agent Page
 
+Status:
+- superseded bridge page spec
+
 Route scope:
 - `/create`
 
 Purpose:
-- Define the first-run activation route that creates a usable agent and hands the user into `Terminal`.
+- Historical page spec for the older `/create` activation route.
 
 ## Primary User Job
 
@@ -61,5 +64,5 @@ Purpose:
 ## Read These First
 
 - `docs/product-specs/create-agent.md`
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/product-specs/terminal.md`

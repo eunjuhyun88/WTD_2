@@ -4,7 +4,7 @@ Legacy file path:
 - `docs/product-specs/signals.md`
 
 Purpose:
-- Short product spec for the secondary public/community route that remains outside the primary six-surface IA.
+- Short product spec for the secondary public/community route that remains outside the main builder loop.
 
 ## Primary User Job
 
@@ -12,13 +12,14 @@ Browse public signal and community context that may later feed into the core age
 
 ## Surface Role In The Final IA
 
-`/signals` is no longer a primary top-level surface in the target IA.
+`/signals` is no longer a primary top-level surface in the official IA.
 
 It remains a secondary public/community route while the core product centers on:
 - `Home`
-- `Create Agent`
+- `Onboard`
+- `Dashboard`
 - `Terminal`
-- `World`
+- `Lab`
 - `Battle`
 - `Agent`
 
@@ -48,7 +49,7 @@ It remains a secondary public/community route while the core product centers on:
 
 ## Supporting Docs
 
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/design-docs/unified-product-model.md`
 - `docs/product-specs/agents.md`
 - `docs/references/active/community-chart-signal-copytrade-flow-2026-03-06.md`

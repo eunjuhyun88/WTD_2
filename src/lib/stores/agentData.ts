@@ -9,6 +9,8 @@ import { loadFromStorage, autoSave } from '$lib/utils/storage';
 import { fetchAgentStatsApi, updateAgentStatApi } from '$lib/api/agentStatsApi';
 import { resolveAgentLevelFromMatches } from './progressionRules';
 
+export type AgentMood = 'focused' | 'hungry' | 'tired' | 'sharp';
+
 export interface AgentStats {
   level: number;
   xp: number;
@@ -22,6 +24,12 @@ export interface AgentStats {
   matches: MatchRecord[];
   stamps: { win: number; lose: number; streak: number; diamond: number; crown: number };
   learning: AgentLearning;
+  // Sprint 3: Ownership loop fields
+  mood: AgentMood;
+  bond: number;
+  createdAt: number;
+  stage: 1 | 2 | 3;
+  stageProgress: number;
 }
 
 export interface MatchRecord {
@@ -89,6 +97,11 @@ function createDefaultStats(): Record<string, AgentStats> {
       matches: [],
       stamps: { win: 0, lose: 0, streak: 0, diamond: 0, crown: 0 },
       learning: createDefaultLearning(),
+      mood: 'focused',
+      bond: 0,
+      createdAt: Date.now(),
+      stage: 1,
+      stageProgress: 0,
     };
   }
   return stats;
@@ -221,6 +234,107 @@ function recalcFromMatches(ag: AgentStats) {
   }
 }
 
+// ─── Sprint 3: Mood / Stage helpers ──────────────────────────
+
+/** Derive mood from recent match results. */
+function deriveMood(ag: AgentStats): AgentMood {
+  const recent = ag.matches.slice(-5);
+  if (recent.length === 0) return 'focused';
+  const recentWins = recent.filter(m => m.win).length;
+  const recentRate = recentWins / recent.length;
+  if (ag.curStreak >= 3 && recentRate >= 0.8) return 'sharp';
+  if (recentRate >= 0.6) return 'focused';
+  if (recentRate <= 0.2) return 'tired';
+  return 'hungry';
+}
+
+/** Update evolution stage based on total matches and win rate. */
+function updateStage(ag: AgentStats): void {
+  const total = ag.wins + ag.losses;
+  const wr = total > 0 ? ag.wins / total : 0;
+  if (total >= 50 && wr >= 0.55) {
+    ag.stage = 3;
+    ag.stageProgress = 100;
+  } else if (total >= 20 && wr >= 0.45) {
+    ag.stage = 2;
+    ag.stageProgress = Math.min(100, Math.round(((total - 20) / 30) * 100));
+  } else {
+    ag.stage = 1;
+    ag.stageProgress = Math.min(100, Math.round((total / 20) * 100));
+  }
+}
+
+/** Get agent age in days from createdAt timestamp. */
+export function getAgentAge(createdAt: number): number {
+  return Math.max(1, Math.floor((Date.now() - createdAt) / 86_400_000));
+}
+
+// ─── Sprint A1: Onboard → Agent Binding ─────────────────────
+
+/**
+ * Initialize agent stats from onboarding archetype selection.
+ * Saves primary agent ID and onboard-complete flag to localStorage.
+ */
+export function initFromOnboard(archetype: string, agentId: string): void {
+  agentStats.update((stats) => {
+    const ag = stats[agentId];
+    if (!ag) return stats;
+    ag.mood = 'focused';
+    ag.bond = 1;
+    ag.stage = 1;
+    ag.createdAt = Date.now();
+    ag.stageProgress = 0;
+    return { ...stats };
+  });
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('cogochi_primary_agent', agentId);
+    localStorage.setItem('cogochi_onboard_complete', 'true');
+    localStorage.setItem('cogochi_archetype', archetype);
+  }
+}
+
+// ─── Sprint A5: Memory Cards ────────────────────────────────
+
+export interface MemoryCard {
+  id: string;
+  agentId: string;
+  title: string;
+  lesson: string;
+  regime: string;
+  era: string;
+  result: 'win' | 'loss';
+  createdAt: number;
+}
+
+const MEMORY_CARDS_KEY = 'cogochi_memory_cards';
+
+function loadMemoryCards(): MemoryCard[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(MEMORY_CARDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export const memoryCards = writable<MemoryCard[]>(loadMemoryCards());
+
+// Persist memory cards to localStorage
+memoryCards.subscribe((cards) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(MEMORY_CARDS_KEY, JSON.stringify(cards));
+  } catch { /* ignore quota errors */ }
+});
+
+export function addMemoryCard(card: MemoryCard): void {
+  memoryCards.update((cards) => [card, ...cards].slice(0, 200));
+}
+
+// ─── Match Recording ────────────────────────────────────────
+
 export function recordAgentMatch(agentId: string, match: MatchRecord) {
   agentStats.update((stats) => {
     const ag = stats[agentId];
@@ -243,6 +357,12 @@ export function recordAgentMatch(agentId: string, match: MatchRecord) {
     ag.matches.push(match);
     if (ag.matches.length > 60) ag.matches.shift();
     recalcFromMatches(ag);
+
+    // Sprint 3: Update mood, bond, stage
+    ag.bond += 1;
+    ag.mood = deriveMood(ag);
+    updateStage(ag);
+
     return { ...stats };
   });
 }

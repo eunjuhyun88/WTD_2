@@ -64,7 +64,7 @@ Purpose:
 
 - `docs/product-specs/agents.md`
 - `docs/design-docs/unified-product-model.md`
-- `docs/page-specs/agents-page.md`
+- `docs/page-specs/agent-page.md`
 - `docs/generated/store-authority-map.md`
 
 ## Applied Source Inputs

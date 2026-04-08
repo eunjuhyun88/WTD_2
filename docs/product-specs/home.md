@@ -5,39 +5,35 @@ Purpose:
 
 ## Primary User Job
 
-Help the user understand what they can own, improve, and eventually monetize, then start the loop without unnecessary setup drag.
+Help the user understand the builder vs copier paths quickly, then start the right path without unnecessary setup drag.
 
-## Surface Role In The Merged Product
+## Surface Role In The Official IA
 
 Home must explain, in plain language, that the product is:
-- a place to create an agent
-- train that agent's brain in `Terminal`
-- send the prepared agent into `World`
-- fight whale encounters in `Battle`
-- review growth, record, share, and rental state in `Agent`
-- later distribute proven specialists through the secondary `Signals / Market` layer
+- a place to create and train an AI agent
+- inspect chart context in `Terminal`
+- iterate and rerun doctrine in `Lab`
+- prove the result in `Battle`
+- manage doctrine, memory, and record in `Agent`
+- later distribute proven specialists through `Market`
 
 ## Current Route Shape
 
 - `/` currently behaves as a hero-led landing route, not a signup/demo wizard.
-- The hero supports feature exploration:
-  - desktop swaps hero detail content inline
-  - mobile opens a feature bottom sheet
-- Primary CTA routes into `/terminal`.
-- Secondary CTA is wallet-gated:
-  - connected users can enter `/arena`
-  - disconnected users get wallet connect
-- Funnel events are part of the route contract today.
+- Official direction is a dual-path split:
+  - builder -> `/onboard?path=builder`
+  - copier -> `/market`
+- The page should still support a fast loop explanation and lightweight demo framing.
 - Use `docs/page-specs/home-onboarding.md` for the detailed route contract.
 
 ## Required Message Order
 
 Home should communicate the loop in this order:
-1. own or activate a character-agent
-2. train its brain in `Terminal`
-3. deploy it into `World`
-4. resolve encounters in `Battle`
-5. grow proof, shareability, and rental readiness in `Agent`
+1. onboard an agent
+2. inspect context in `Terminal`
+3. iterate in `Lab`
+4. prove in `Battle`
+5. manage record in `Agent`
 
 If Home cannot communicate those five steps quickly, the surface is failing.
 
@@ -46,17 +42,17 @@ If Home cannot communicate those five steps quickly, the surface is failing.
 1. Land on the home route and understand the product promise.
 2. Explore one feature path without leaving the hero context.
 3. Choose the next action:
-   - create an agent
+   - start builder onboarding
    - inspect the loop
-   - continue into setup if already eligible
+   - browse the market
 4. Understand that monetization is downstream of proof, not the first action.
 
 ## Product Constraints
 
 - The first valuable path should remain available without forced wallet connection.
 - The page should explain the product through the hero, not through a long setup checklist.
-- The hero should communicate the agent create -> terminal train -> world deploy -> battle -> grow loop faster than any lore or worldbuilding detail.
-- The hero should make the ownership -> readiness -> deployment -> proof progression more obvious than any market-jargon or operator-console copy.
+- The hero should communicate the onboarding -> terminal/lab -> battle -> agent -> market progression faster than any lore or worldbuilding detail.
+- The hero should make the builder/copier split obvious before the user hits dense trading UI.
 - Desktop and mobile feature exploration should remain semantically aligned.
 - Landing analytics should reflect the real current CTA paths.
 - Home should not read like a direct shortcut into `Terminal`.
@@ -64,16 +60,16 @@ If Home cannot communicate those five steps quickly, the surface is failing.
 
 ## Target IA
 
-- Primary CTA: `Create My Agent`
-- Target handoff: `/create`
-- Secondary CTA: `See The Loop`
-- Returning-user CTA: progress-aware handoff into the next eligible surface
-- Home should stop behaving like a direct shortcut into the operator console.
+- Primary CTA: `AI 만들기`
+- Target handoff: `/onboard?path=builder`
+- Secondary CTA: `마켓 둘러보기`
+- Market handoff: `/market`
+- Returning-user CTA: progress-aware handoff into `/dashboard`, `/lab`, or `/battle`
 
 ## Supporting Docs
 
 - `docs/page-specs/home-onboarding.md`
 - `docs/PRODUCT_SENSE.md`
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/design-docs/unified-product-model.md`
-- `docs/product-specs/create-agent.md`
+- `docs/SYSTEM_INTENT.md`

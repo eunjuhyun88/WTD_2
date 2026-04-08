@@ -6,10 +6,10 @@ Purpose:
 
 ## Design Authority Stack
 
-1. `docs/SYSTEM_INTENT.md`
-   - Product thesis and architectural invariants.
-2. `docs/design-docs/six-surface-game-loop.md`
-   - Final user-facing IA, gating, and route-role separation.
+1. `docs/design-docs/cogochi-uiux-architecture.md`
+   - Official Cogochi IA, route priorities, page structure, and implementation target.
+2. `docs/SYSTEM_INTENT.md`
+   - Repo-local product thesis and architectural invariants aligned to the official IA.
 3. `docs/design-docs/unified-product-model.md`
    - Merged StockClaw + Cogochi surface model, object model, and product loops.
 4. `docs/CONTEXT_ENGINEERING.md`
@@ -22,8 +22,8 @@ Purpose:
    - Local canonical ORPO/RAG/Passport learning loop.
 8. `docs/references/active/FRONTEND_REFACTOR_EXECUTION_DESIGN_2026-03-06.md`
    - Current structural refactor baseline.
-9. `docs/archive/historical/root-cleanup-2026-03-17/overall-architecture-design.md`
-   - Older broad architecture analysis; useful for historical rationale.
+9. `docs/design-docs/six-surface-game-loop.md`
+   - Superseded six-surface target kept only for historical rationale.
 
 ## Design Principles
 
@@ -40,9 +40,11 @@ Purpose:
 
 ## Current Design Hotspots
 
+- official Cogochi IA rollout across canonical docs and route specs
 - Terminal orchestration and Intel decomposition
-- Arena and Arena War product/implementation alignment
-- Passport authority and badge/progression derivation
+- Battle and Lab product/implementation alignment
+- Agent HQ, doctrine, and memory ownership
+- Passport phase-2/on-chain authority boundaries
 - QuickTrade and tracked-signal server authority
 - Remaining parent-folder design dependence in rare edge cases
 - Sibling clone drift vs canonical `frontend` implementation
@@ -58,6 +60,7 @@ Purpose:
 
 ## Source Docs
 
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/design-docs/six-surface-game-loop.md`
 - `docs/design-docs/unified-product-model.md`
 - `docs/design-docs/index.md`

@@ -27,6 +27,32 @@ function clipText(text, maxLines = 72, maxChars = 8000) {
   return `${clippedLines.slice(0, maxChars)}\n\n…truncated…`;
 }
 
+function firstExistingPath(paths) {
+  return paths.find((candidate) => fs.existsSync(candidate)) ?? '';
+}
+
+function writableRelayRoots(rootDir) {
+  const candidates = [
+    path.resolve(rootDir, '..', '.memento'),
+    path.join(rootDir, '.agent-context', 'memento'),
+  ];
+  const writable = [];
+
+  for (const candidate of candidates) {
+    try {
+      fs.mkdirSync(candidate, { recursive: true });
+      const probePath = path.join(candidate, '.write-test');
+      fs.writeFileSync(probePath, 'ok\n');
+      fs.rmSync(probePath, { force: true });
+      writable.push(candidate);
+    } catch {
+      // Ignore unwritable relay roots and fall back to the repo-local mirror.
+    }
+  }
+
+  return [...new Set(writable)];
+}
+
 const args = process.argv.slice(2);
 let branch = '';
 let workId = '';
@@ -64,13 +90,14 @@ const workSafe = workId ? sanitize(workId) : '';
 const head = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
 const createdAt = new Date().toISOString();
 const contextDir = path.join(rootDir, '.agent-context');
-const mementoDir = path.resolve(rootDir, '..', '.memento');
-const runtimeDir = path.join(mementoDir, 'runtime', 'stockclaw');
-const inboxDir = path.join(runtimeDir, 'handoff-inbox');
-const relayDir = path.join(runtimeDir, 'relay');
+const writableRoots = writableRelayRoots(rootDir);
 
-fs.mkdirSync(inboxDir, { recursive: true });
-fs.mkdirSync(relayDir, { recursive: true });
+if (writableRoots.length === 0) {
+  throw new Error('[memento:relay] no writable memento runtime directory available');
+}
+
+const mementoRoots = [path.resolve(rootDir, '..', '.memento'), ...writableRoots];
+const runtimeName = 'stockclaw';
 
 const checkpointPath = workSafe && fs.existsSync(path.join(contextDir, 'checkpoints', `${workSafe}.md`))
   ? path.join(contextDir, 'checkpoints', `${workSafe}.md`)
@@ -85,7 +112,7 @@ const handoffPath = workSafe
       ? path.join(contextDir, 'handoffs', `${workSafe}.md`)
       : '')
   : path.join(contextDir, 'handoffs', `${branchSafe}-latest.md`);
-const memoryPath = path.join(mementoDir, 'memories', agent, 'MEMORY.md');
+const memoryPath = firstExistingPath(mementoRoots.map((dir) => path.join(dir, 'memories', agent, 'MEMORY.md')));
 
 const relayPayload = {
   createdAt,
@@ -111,12 +138,8 @@ const relayPayload = {
 
 const stamp = createdAt.replace(/[:.]/g, '-');
 const baseName = `${stamp}-${branchSafe}-${sanitize(agent)}`;
-const inboxJsonPath = path.join(inboxDir, `${baseName}.json`);
-const inboxMdPath = path.join(inboxDir, `${baseName}.md`);
-const latestJsonPath = path.join(relayDir, `${branchSafe}-latest.json`);
-const latestMdPath = path.join(relayDir, `${branchSafe}-latest.md`);
-
-fs.writeFileSync(inboxJsonPath, `${JSON.stringify(relayPayload, null, 2)}\n`);
+const writtenPaths = [];
+const relayJson = `${JSON.stringify(relayPayload, null, 2)}\n`;
 
 const markdown = [
   '# Memento Relay Payload',
@@ -156,11 +179,33 @@ const markdown = [
   '',
 ];
 
-fs.writeFileSync(inboxMdPath, `${markdown.join('\n')}\n`);
-fs.copyFileSync(inboxJsonPath, latestJsonPath);
-fs.copyFileSync(inboxMdPath, latestMdPath);
+for (const mementoDir of writableRoots) {
+  const runtimeDir = path.join(mementoDir, 'runtime', runtimeName);
+  const inboxDir = path.join(runtimeDir, 'handoff-inbox');
+  const relayDir = path.join(runtimeDir, 'relay');
+  fs.mkdirSync(inboxDir, { recursive: true });
+  fs.mkdirSync(relayDir, { recursive: true });
 
-console.log(`[memento:relay] inbox json: ${path.relative(rootDir, inboxJsonPath)}`);
-console.log(`[memento:relay] inbox md: ${path.relative(rootDir, inboxMdPath)}`);
-console.log(`[memento:relay] latest json: ${path.relative(rootDir, latestJsonPath)}`);
-console.log(`[memento:relay] latest md: ${path.relative(rootDir, latestMdPath)}`);
+  const inboxJsonPath = path.join(inboxDir, `${baseName}.json`);
+  const inboxMdPath = path.join(inboxDir, `${baseName}.md`);
+  const latestJsonPath = path.join(relayDir, `${branchSafe}-latest.json`);
+  const latestMdPath = path.join(relayDir, `${branchSafe}-latest.md`);
+
+  fs.writeFileSync(inboxJsonPath, relayJson);
+  fs.writeFileSync(inboxMdPath, `${markdown.join('\n')}\n`);
+  fs.copyFileSync(inboxJsonPath, latestJsonPath);
+  fs.copyFileSync(inboxMdPath, latestMdPath);
+  writtenPaths.push({
+    inboxJsonPath,
+    inboxMdPath,
+    latestJsonPath,
+    latestMdPath,
+  });
+}
+
+for (const paths of writtenPaths) {
+  console.log(`[memento:relay] inbox json: ${path.relative(rootDir, paths.inboxJsonPath)}`);
+  console.log(`[memento:relay] inbox md: ${path.relative(rootDir, paths.inboxMdPath)}`);
+  console.log(`[memento:relay] latest json: ${path.relative(rootDir, paths.latestJsonPath)}`);
+  console.log(`[memento:relay] latest md: ${path.relative(rootDir, paths.latestMdPath)}`);
+}

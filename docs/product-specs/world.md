@@ -1,18 +1,21 @@
 # World Product Spec
 
+Status:
+- superseded bridge spec
+
 Purpose:
-- Short product spec for the BTC-history chart map that acts as the main gameplay surface.
+- Historical short spec for the older `World` target route.
 
 ## Primary User Job
 
-Deploy a prepared agent into the world and understand where it is in the run.
+Deploy a prepared agent into a dedicated chart-world play surface.
 
 ## Surface Role
 
-`World` is the main play screen.
+`World` is not part of the current official Cogochi IA.
 
-- `World` = chart world map
-- `Terminal` = brain console
+- Its former play/proof responsibilities are now distributed across `Lab` and `Battle`.
+- Keep this file only for historical reference while older plans are retired.
 
 ## Key Surface Elements
 
@@ -35,9 +38,10 @@ Deploy a prepared agent into the world and understand where it is in the run.
 
 - `/world`
 - not yet shipped
+- superseded by the adopted `Lab -> Battle` route model
 
 ## Supporting Docs
 
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/product-specs/terminal.md`
 - `docs/product-specs/arena.md`

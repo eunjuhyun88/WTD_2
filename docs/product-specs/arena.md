@@ -11,34 +11,37 @@ Purpose:
 
 ## Primary User Job
 
-Resolve a whale encounter and produce a result plus short reflection.
+Prove a trained doctrine against historical chart data and leave with a legible result plus reflection.
 
-## Surface Role In The Final IA
+## Surface Role In The Official IA
 
-`Battle` is a focused event screen entered from `World`.
+`Battle` is a focused proof surface entered from `Lab`, `Dashboard`, or an already-selected agent context.
 
 ## Current Route Shape
 
-- `/arena` currently includes `Lobby` and `SquadConfig` before the phase loop begins.
-- The same match can be viewed through arena, chart, mission, and card modes.
-- Result flow currently includes reward modal, replay state, match history, and tournament bracket support.
-- Use `docs/page-specs/arena-page.md` for the actual route shell; keep this file focused on Battle intent and migration semantics.
+- `/battle` currently ships as a standalone route with:
+  - ready screen
+  - loading state
+  - active battle with simple/advanced order flows
+  - result screen with reflection and replay
+- `/arena` remains a legacy shell and reference surface.
+- Use `docs/page-specs/battle-page.md` for the actual route contract; keep this file focused on Battle intent.
 
 ## Phase Model
 
-1. `DRAFT`
-2. `ANALYSIS`
-3. `HYPOTHESIS`
-4. `BATTLE`
-5. `RESULT`
+1. `ready`
+2. `loading`
+3. `playing`
+4. `round_break`
+5. `result`
 
 ## Core Flows
 
-1. Enter from a `World` encounter.
-2. Resolve the battle loop through structured rounds.
-3. Use override/boost/skip or related interventions.
-4. Observe outcome and reflection.
-5. Return the durable result to `World` and `Agent`.
+1. Enter with a selected symbol and available daily quota.
+2. Resolve three rounds of historical chart play.
+3. Use simple or advanced order entry while reading AI advice.
+4. Observe result, memory-card reveal, and reflection.
+5. Return the durable result to `Lab` or `Agent HQ`.
 
 ## Product Constraints
 
@@ -46,18 +49,25 @@ Resolve a whale encounter and produce a result plus short reflection.
 - The user must understand the current phase and what changed.
 - Result screens should feel like encounter resolution, not generic dashboard output.
 - Durable outcomes should remain compatible with GameRecord, ORPO, and memory systems.
-- The shipped route is broader than the target Battle loop, so lobby/draft/replay/tournament concerns will need pruning or remapping over time.
+- Daily battle limits must remain explicit.
+- The route should feel like proof of lab work, not a detached sandbox.
 
 ## Target IA
 
 - User-facing label: `Battle`
-- Entry source: `World`
-- Return targets: `World`, `Agent`
+- Primary route: `/battle`
+- Entry sources:
+  - `/lab`
+  - `/dashboard`
+  - `/agent/[id]`
+- Return targets:
+  - `/lab`
+  - `/agent/[id]`
 
 ## Local Authority
 
 Read these before using any external design document:
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/design-docs/arena-domain-model.md`
 - `docs/design-docs/learning-loop.md`
 - `docs/generated/game-record-schema.md`

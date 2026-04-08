@@ -2,11 +2,12 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: bash scripts/dev/context-restore.sh --mode <brief|handoff|context|files|list> [--branch <name>] [--work-id <id>] [--list]"
+	echo "Usage: bash scripts/dev/context-restore.sh --mode <brief|handoff|resume|context|files|list> [--branch <name>] [--work-id <id>] [--agent <name>] [--list]"
 	echo ""
 	echo "Modes:"
 	echo "  --mode brief    show the compact branch/work brief"
 	echo "  --mode handoff  show the fuller handoff artifact"
+	echo "  --mode resume   show the memento-backed resume bundle"
 	echo "  --mode context  compatibility alias for --mode brief"
 	echo "  --mode files    show file-recovery guidance only"
 	echo "  --mode list     list available branch artifacts"
@@ -19,6 +20,7 @@ sanitize() {
 MODE=""
 TARGET_BRANCH=""
 WORK_ID=""
+AGENT_ID="${MEMENTO_AGENT:-${CTX_AGENT_ID:-implementer-ui}}"
 LIST_ONLY=0
 
 while [ "$#" -gt 0 ]; do
@@ -33,6 +35,10 @@ while [ "$#" -gt 0 ]; do
 			;;
 		--work-id)
 			WORK_ID="${2:-}"
+			shift 2
+			;;
+		--agent)
+			AGENT_ID="${2:-}"
 			shift 2
 			;;
 		--list)
@@ -121,6 +127,22 @@ if [ "$MODE" = "files" ]; then
 	echo "2. git log --oneline --decorate -n 20"
 	echo "3. git diff <target> -- <file>"
 	echo "4. If needed, create a safety branch before any restore operation."
+	exit 0
+fi
+
+if [ "$MODE" = "resume" ]; then
+	if [ ! -f "scripts/dev/memento-resume.mjs" ]; then
+		echo "[ctx:restore] resume mode requires scripts/dev/memento-resume.mjs"
+		exit 1
+	fi
+	ARGS=("scripts/dev/memento-resume.mjs" "--branch" "$TARGET_BRANCH" "--agent" "$AGENT_ID")
+	if [ -n "$WORK_ID" ]; then
+		ARGS+=("--work-id" "$WORK_ID")
+	fi
+	echo "[ctx:restore] mode=resume"
+	echo "[ctx:restore] agent=$AGENT_ID"
+	echo ""
+	node "${ARGS[@]}"
 	exit 0
 fi
 

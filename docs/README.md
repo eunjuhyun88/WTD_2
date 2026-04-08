@@ -35,7 +35,7 @@ Purpose:
 ## Canonical Entry Docs
 | If you need... | Open this first | Then go deeper to... |
 | --- | --- | --- |
-| final six-surface IA | `docs/design-docs/six-surface-game-loop.md` | relevant surface specs below |
+| official Cogochi IA | `docs/design-docs/cogochi-uiux-architecture.md` | relevant surface specs below |
 | merged StockClaw + Cogochi product model | `docs/design-docs/unified-product-model.md` | domain objects, progression, and monetization model |
 | multi-agent memory and handoff structure | `docs/MULTI_AGENT_MEMORY.md` | `docs/decisions/`, `docs/handoffs/`, `.agent-context/` |
 | context strategy and resume order | `docs/CONTEXT_ENGINEERING.md` | `docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md` |
@@ -55,9 +55,9 @@ Purpose:
 | Topic | Read these first | Notes |
 | --- | --- | --- |
 | Repo workflow | `README.md`, `AGENTS.md`, `docs/CONTEXT_ENGINEERING.md`, `docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md` | Covers gates, loading order, watch log, save/compact/restore. |
-| Final six-surface IA | `docs/SYSTEM_INTENT.md`, `docs/design-docs/six-surface-game-loop.md`, `docs/product-specs/index.md` | Start here for `Home / Create Agent / Terminal / World / Battle / Agent`. |
+| Official Cogochi IA | `docs/SYSTEM_INTENT.md`, `docs/design-docs/cogochi-uiux-architecture.md`, `docs/product-specs/index.md` | Start here for `Home / Onboard / Dashboard / Terminal / Lab / Agent / Battle / Market`. |
 | Multi-agent memory, claims, handoffs | `docs/MULTI_AGENT_MEMORY.md`, `docs/decisions/README.md`, `docs/handoffs/README.md` | Use this before setting up a new worktree or splitting ownership. |
-| IA migration sequence | `docs/exec-plans/active/six-surface-game-loop-ia-2026-03-17.md`, `docs/design-docs/six-surface-game-loop.md`, `docs/design-docs/six-surface-ux-contract.md` | Use this before creating `/create`, `/world`, or merging `/lab` + `/passport`. |
+| IA migration sequence | `docs/design-docs/cogochi-uiux-architecture.md`, `docs/SYSTEM_INTENT.md`, `docs/page-specs/index.md` | Use this before changing nav priority, builder loop order, or route responsibilities. |
 | Page / flow behavior | `docs/page-specs/index.md`, relevant `docs/page-specs/*.md`, `docs/generated/*.md` | Use this before opening dated PRD/FSD docs. |
 | Product / system intent | `docs/SYSTEM_INTENT.md`, `docs/PRODUCT_SENSE.md`, `docs/design-docs/unified-product-model.md`, `docs/product-specs/index.md` | Use this set for ownership, progression, proof, and monetization semantics. |
 | Architecture / state ownership | `ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/FRONTEND.md` | These are the canonical architecture entry points. |
@@ -70,7 +70,7 @@ Purpose:
 | Passport / profile / learning | `docs/product-specs/passport.md`, `docs/FRONTEND.md`, `docs/references/active/PASSPORT_BACKEND_ARCHITECTURE_v1_2026-02-25.md`, `docs/API_CONTRACT.md` | Use when touching profile authority or learning pipeline flows. |
 | Market / copy trade / community | `docs/product-specs/signals.md`, `docs/page-specs/signals-page.md`, `docs/API_CONTRACT.md`, `docs/references/active/community-chart-signal-copytrade-flow-2026-03-06.md` | Object-model and conversion flow first. |
 | Signal detail / comments / creator drilldown | `docs/page-specs/signals-detail-page.md`, `docs/page-specs/creator-page.md`, `docs/product-specs/signals.md`, `docs/API_CONTRACT.md` | Use this before opening the new social detail routes in code. |
-| Agent roster / oracle split | `docs/page-specs/agents-page.md`, `docs/page-specs/oracle-page.md`, `docs/page-specs/signals-page.md` | `/agents` is the collection route; `/oracle` is a redirect shim; the embedded oracle leaderboard lives under `/signals?view=ai`. |
+| Agent roster / oracle split | `docs/page-specs/agent-page.md`, `docs/page-specs/oracle-page.md`, `docs/page-specs/signals-page.md` | `/agent` is the collection route; `/oracle` is a redirect shim; the embedded oracle leaderboard lives under `/signals?view=ai`. |
 | API / data / providers | `docs/API_CONTRACT.md`, `docs/generated/db-schema.md`, `docs/references/active/database-design.md`, `docs/references/active/BACKEND_SECURITY_REVIEW_2026-02-25.md` | Contract first, then data/security constraints. |
 | Routes / stores / API surface inventory | `docs/generated/route-map.md`, `docs/generated/store-authority-map.md`, `docs/generated/api-group-map.md` | Fast repo-local inventory for navigation and authority checks. |
 | Cleanup / drift / audits | `docs/QUALITY_SCORE.md`, `docs/exec-plans/tech-debt-tracker.md`, `docs/references/active/structure-mismatch-audit-latest.md`, `docs/references/active/full-file-audit.md` | Canonical score/debt view before raw audits. |
@@ -84,14 +84,15 @@ Purpose:
 ## Surface Routing
 | If the task is about... | Read this subset first |
 | --- | --- |
-| Home / onboarding / first-run | `docs/product-specs/home.md`, `docs/page-specs/home-onboarding.md`, `docs/design-docs/six-surface-game-loop.md` |
+| Home / onboarding / first-run | `docs/product-specs/home.md`, `docs/page-specs/home-onboarding.md`, `docs/design-docs/cogochi-uiux-architecture.md` |
 | Home positioning and first-action path | `docs/product-specs/home.md`, `docs/page-specs/home-onboarding.md`, `docs/PRODUCT_SENSE.md` |
-| Create Agent target | `docs/product-specs/create-agent.md`, `docs/design-docs/six-surface-game-loop.md` |
-| Terminal brain console | `docs/product-specs/terminal.md`, `docs/page-specs/terminal-page.md`, `docs/design-docs/six-surface-game-loop.md` |
-| World target | `docs/product-specs/world.md`, `docs/design-docs/six-surface-game-loop.md` |
-| Battle target and current arena shell | `docs/product-specs/arena.md`, `docs/page-specs/arena-page.md`, `docs/design-docs/six-surface-game-loop.md` |
-| Agent hub target | `docs/product-specs/agents.md`, `docs/page-specs/lab-page.md`, `docs/page-specs/passport-page.md` |
-| Nav labels and CTA contract | `docs/design-docs/six-surface-ux-contract.md`, `docs/design-docs/six-surface-game-loop.md` |
+| Onboarding target | `docs/design-docs/cogochi-uiux-architecture.md`, `docs/page-specs/home-onboarding.md`, `docs/SYSTEM_INTENT.md` |
+| Dashboard daily hub | `docs/design-docs/cogochi-uiux-architecture.md`, `docs/SYSTEM_INTENT.md`, `docs/product-specs/index.md` |
+| Terminal brain console | `docs/product-specs/terminal.md`, `docs/page-specs/terminal-page.md`, `docs/design-docs/cogochi-uiux-architecture.md` |
+| Lab workbench | `docs/design-docs/cogochi-uiux-architecture.md`, `docs/page-specs/lab-page.md`, `docs/product-specs/agents.md` |
+| Battle target and current route shell | `docs/product-specs/arena.md`, `docs/page-specs/battle-page.md`, `docs/design-docs/cogochi-uiux-architecture.md` |
+| Agent collection and HQ | `docs/product-specs/agents.md`, `docs/page-specs/agent-page.md`, `docs/page-specs/agent-detail-page.md` |
+| Nav labels and CTA contract | `docs/design-docs/cogochi-uiux-architecture.md`, `docs/SYSTEM_INTENT.md` |
 | Terminal UI split, layout, responsive logic | `docs/product-specs/terminal.md`, `docs/page-specs/terminal-page.md`, `docs/FRONTEND.md`, `docs/references/active/terminal-refactor-master-plan-2026-03-06.md` |
 | Scan engine, market feed, intel policy | `docs/product-specs/terminal.md`, `docs/references/active/TERMINAL_SCAN_E2E_SPEC.md`, `docs/INTERACTION_CALL_MAP.md`, `docs/API_CONTRACT.md` |
 | Arena battle flow, GameRecord, ORPO/RAG memory | `docs/product-specs/arena.md`, `docs/page-specs/arena-page.md`, `docs/design-docs/arena-domain-model.md`, `docs/generated/game-record-schema.md` |
@@ -100,9 +101,9 @@ Purpose:
 | Profile and legacy passport slice | `docs/product-specs/passport.md`, `docs/page-specs/passport-page.md`, `docs/references/active/PASSPORT_BACKEND_ARCHITECTURE_v1_2026-02-25.md`, `docs/API_CONTRACT.md` |
 | Secondary signals/community route | `docs/product-specs/signals.md`, `docs/page-specs/signals-page.md`, `docs/API_CONTRACT.md` |
 | Signal detail, comments, creator profile | `docs/page-specs/signals-detail-page.md`, `docs/page-specs/creator-page.md`, `docs/product-specs/signals.md`, `docs/API_CONTRACT.md` |
-| Agent collection, roster stats, or oracle confusion | `docs/page-specs/agents-page.md`, `docs/page-specs/signals-page.md`, `docs/generated/store-authority-map.md` |
+| Agent collection, roster stats, or HQ drilldown | `docs/page-specs/agent-page.md`, `docs/page-specs/agent-detail-page.md`, `docs/generated/store-authority-map.md` |
 | Legacy `/oracle` links or redirect behavior | `docs/page-specs/oracle-page.md`, `docs/page-specs/signals-page.md`, `docs/product-specs/signals.md` |
-| Agent collection and learning-memory surface | `docs/product-specs/agents.md`, `docs/page-specs/agents-page.md`, `docs/page-specs/lab-page.md` |
+| Agent collection and learning-memory surface | `docs/product-specs/agents.md`, `docs/page-specs/agent-page.md`, `docs/page-specs/lab-page.md` |
 | Passport proof, holdings, and revenue | `docs/product-specs/passport.md`, `docs/page-specs/passport-page.md`, `docs/design-docs/unified-product-model.md` |
 | User preferences and local reset behavior | `docs/page-specs/settings-page.md`, `docs/FRONTEND.md`, `docs/API_CONTRACT.md` |
 | State ownership / store cleanup | `ARCHITECTURE.md`, `docs/FRONTEND.md`, `docs/references/active/FRONTEND_REFACTOR_EXECUTION_DESIGN_2026-03-06.md`, `docs/FE_STATE_MAP.md` |

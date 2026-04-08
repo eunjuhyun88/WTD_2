@@ -26,6 +26,6 @@
     "checkpoint"
   ],
   "handoff": "checkpoint",
-  "prompt": "Break requested work into minimal execution steps, route the next canonical docs, and record plan-level handoff state.",
+  "prompt": "Resume with MEMENTO_AGENT=planner npm run ctx:resume, break requested work into minimal execution steps, route the next canonical docs, and record plan-level handoff state.",
   "public": true
 }

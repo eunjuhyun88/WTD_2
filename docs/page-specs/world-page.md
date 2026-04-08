@@ -1,10 +1,13 @@
 # World Page
 
+Status:
+- superseded bridge page spec
+
 Route scope:
 - `/world`
 
 Purpose:
-- Define the target main-play route where a prepared agent traverses a BTC-history chart world map and enters `Battle`.
+- Historical page spec for the older `/world` target route.
 
 ## Primary User Job
 
@@ -58,6 +61,6 @@ Purpose:
 ## Read These First
 
 - `docs/product-specs/world.md`
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/product-specs/terminal.md`
 - `docs/product-specs/arena.md`

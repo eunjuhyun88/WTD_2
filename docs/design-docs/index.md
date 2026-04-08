@@ -6,8 +6,9 @@ Purpose:
 | Doc | Status | Use when | Notes |
 | --- | --- | --- | --- |
 | `docs/SYSTEM_INTENT.md` | active canonical | you need product thesis and invariants | Start here first. |
-| `docs/design-docs/six-surface-game-loop.md` | active canonical | you need the final user-facing IA and gating rules | Home / Create Agent / Terminal / World / Battle / Agent |
-| `docs/design-docs/six-surface-ux-contract.md` | active canonical | you need page purpose, CTA, and nav rules for the six-surface IA | Implementation-grade UX contract. |
+| `docs/design-docs/cogochi-uiux-architecture.md` | active canonical | you need the official Cogochi IA, page structure, and route priorities | Current official design authority for the shipped direction. |
+| `docs/design-docs/six-surface-game-loop.md` | superseded reference | you need the older six-surface target or migration history | Historical authority only; do not treat as the current IA. |
+| `docs/design-docs/six-surface-ux-contract.md` | superseded reference | you need the older six-surface CTA/nav contract | Historical reference only. |
 | `docs/design-docs/unified-product-model.md` | active canonical | you need the merged StockClaw + Cogochi product loops and object model | Character, Lab, Market, Passport alignment lives here. |
 | `docs/design-docs/core-beliefs.md` | active canonical | you need agent-first working principles | Stable operating beliefs. |
 | `docs/design-docs/arena-domain-model.md` | active canonical | you need Arena/Arena War domain semantics | Local replacement for common upstream lookups. |
@@ -19,3 +20,4 @@ Purpose:
 
 Rule:
 - If a dated working design becomes durable, summarize its stable parts into canonical docs.
+- If an older canonical doc is replaced, mark it as superseded here instead of letting both read as current authority.

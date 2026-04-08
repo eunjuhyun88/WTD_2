@@ -63,7 +63,7 @@ const presets = {
     writes: ['docs/exec-plans/active/', '.agent-context/', 'docs/AGENT_WATCH_LOG.md'],
     outputs: ['execution-plan', 'checkpoint'],
     handoff: 'checkpoint',
-    prompt: 'Break requested work into minimal execution steps, route the next canonical docs, and record plan-level handoff state.',
+    prompt: 'Resume with MEMENTO_AGENT=planner npm run ctx:resume, break requested work into minimal execution steps, route the next canonical docs, and record plan-level handoff state.',
     summary: 'Plans and routes ambiguous work before implementation begins.',
   },
   implementer: {
@@ -71,7 +71,7 @@ const presets = {
     writes: ['src/', '.agent-context/', 'docs/AGENT_WATCH_LOG.md'],
     outputs: ['code-change', 'brief'],
     handoff: 'brief',
-    prompt: 'Implement scoped changes against the canonical docs, keep edits inside owned paths, and leave a concise resume brief.',
+    prompt: 'Resume with MEMENTO_AGENT=implementer-ui npm run ctx:resume, implement scoped changes against the canonical docs, keep edits inside owned paths, and leave a concise resume brief plus memento-ready handoff state.',
     summary: 'Implements code changes against declared context and ownership boundaries.',
   },
   reviewer: {
@@ -79,7 +79,7 @@ const presets = {
     writes: ['.agent-context/', 'docs/AGENT_WATCH_LOG.md'],
     outputs: ['review-findings', 'handoff'],
     handoff: 'handoff',
-    prompt: 'Review changes for correctness, drift, and boundary violations, then leave a handoff artifact with findings or release status.',
+    prompt: 'Resume with MEMENTO_AGENT=reviewer npm run ctx:resume, review changes for correctness, drift, and boundary violations, then leave a handoff artifact with findings or release status.',
     summary: 'Reviews work for drift, risk, and boundary compliance.',
   },
 };

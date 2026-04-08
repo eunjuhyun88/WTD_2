@@ -1,11 +1,14 @@
 # Create Agent Product Spec
 
+Status:
+- superseded bridge spec
+
 Purpose:
-- Short product spec for the activation flow that mints and configures a usable agent.
+- Historical short spec for the older `/create` activation flow.
 
 ## Primary User Job
 
-Finish creation with one result: a world-trackable agent that can enter `Terminal`.
+Finish creation with one result: a usable agent that can enter the product loop.
 
 ## Target Flow
 
@@ -29,9 +32,10 @@ Finish creation with one result: a world-trackable agent that can enter `Termina
 
 - `/create`
 - not yet shipped
+- superseded by `/onboard` in the official Cogochi IA
 
 ## Supporting Docs
 
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/product-specs/home.md`
 - `docs/product-specs/terminal.md`

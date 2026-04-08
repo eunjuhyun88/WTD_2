@@ -1,7 +1,7 @@
 # STOCKCLAW Multi-Agent Memory Layout
 
 Purpose:
-- keep `frontend/` as the canonical implementation repo
+- keep `CHATBATTLE/` as the canonical implementation repo
 - let multiple worktrees share memory without writing over each other
 - separate project truth, agent memory, and runtime relay
 
@@ -14,7 +14,7 @@ Status:
 There are three different sources of truth:
 
 1. Repo truth
-   - path: `/Users/ej/Downloads/maxidoge-clones/frontend`
+   - path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
    - contains code, canonical docs, specs, decisions, and generated maps
 2. Agent memory
    - path: `/Users/ej/Downloads/maxidoge-clones/.memento/memories/*`
@@ -25,16 +25,14 @@ There are three different sources of truth:
 
 Non-negotiable rule:
 
-`frontend/` remains the only canonical implementation target.
+`CHATBATTLE/` remains the only canonical implementation target.
 
 ## 2. Current Shared Layout
 
 ```text
 /Users/ej/Downloads/maxidoge-clones/
-  frontend/                           # canonical repo
-  frontend-pr-home-entry/             # worktree
-  .wt-passport-learning-panel/        # worktree
-  .wt-passport-learning-merge/        # worktree
+  CHATBATTLE/                         # canonical repo
+  CHATBATTLE/.claude/worktrees/*      # agent worktrees
   .memento/
     memories/
       planner/
@@ -98,14 +96,14 @@ For any non-trivial task:
 
 ## 5. What Goes Where
 
-Use `frontend/docs/decisions/` for:
+Use `CHATBATTLE/docs/decisions/` for:
 - architecture choices
 - IA decisions
 - ownership boundary changes
 - route naming changes
 - merge strategy decisions
 
-Use `frontend/docs/handoffs/` for:
+Use `CHATBATTLE/docs/handoffs/` for:
 - branch-level handoffs
 - partial implementation notes
 - cross-agent next steps
@@ -135,15 +133,25 @@ Use these commands when the repo-local context system needs to talk to the share
 
 ### Fast resume
 
+Default rule:
+
+- every agent resumes through `ctx:resume`, not direct `ctx:restore`
+- `ctx:resume` is memento-backed and should be called with the matching memory role
+- use:
+  - `MEMENTO_AGENT=planner npm run ctx:resume`
+  - `MEMENTO_AGENT=implementer-ui npm run ctx:resume`
+  - `MEMENTO_AGENT=reviewer npm run ctx:resume`
+
 ```bash
-npm run memento:resume -- --agent implementer-ui
+MEMENTO_AGENT=implementer-ui npm run ctx:resume
 ```
 
 What it does:
 
 - loads the current branch checkpoint, brief, and handoff from `.agent-context/`
 - includes the selected shared agent memory from `.memento/memories/<agent>/MEMORY.md`
-- includes the latest runtime relay payload when one exists
+- includes the latest branch relay payload from shared or repo-local runtime when one exists
+- falls back to repo-local `.agent-context/memento/` mirror when shared `.memento/` is not writable
 
 ### Cross-worktree relay
 
