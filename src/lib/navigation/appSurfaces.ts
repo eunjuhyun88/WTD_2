@@ -9,7 +9,7 @@ import {
   buildCopyLink,
 } from '$lib/utils/deepLinks';
 
-export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'lab' | 'battle' | 'agent' | 'market' | 'copy';
+export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'scanner' | 'lab' | 'battle' | 'agent' | 'market' | 'copy';
 
 export interface AppSurface {
   id: AppSurfaceId;
@@ -54,6 +54,16 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     homeDetail: 'chart analysis',
     href: buildTerminalLink(),
     activePatterns: ['/terminal'],
+  },
+  scanner: {
+    id: 'scanner',
+    label: 'Scanner',
+    shortLabel: 'SCAN',
+    mobileIcon: '⊞',
+    description: 'multi-coin scanner — 15-layer analysis, filters, watchlist',
+    homeDetail: 'market scanner',
+    href: buildDeepLink('/scanner'),
+    activePatterns: ['/scanner'],
   },
   lab: {
     id: 'lab',
@@ -108,23 +118,25 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
   },
 };
 
-// 제품 재구성: DASHBOARD > LAB ★★★ > TERMINAL
+// 제품 재구성: TERMINAL > SCANNER > LAB > DASHBOARD
 export const DESKTOP_NAV_SURFACES = [
-  SURFACE_MAP.dashboard,
-  SURFACE_MAP.lab,
   SURFACE_MAP.terminal,
+  SURFACE_MAP.scanner,
+  SURFACE_MAP.lab,
+  SURFACE_MAP.dashboard,
 ] as const;
 
 export const MOBILE_NAV_SURFACES = [
-  SURFACE_MAP.dashboard,
-  SURFACE_MAP.lab,
   SURFACE_MAP.terminal,
+  SURFACE_MAP.scanner,
+  SURFACE_MAP.lab,
+  SURFACE_MAP.dashboard,
 ] as const;
 
 export const HOME_SURFACES = [
-  SURFACE_MAP.lab,
   SURFACE_MAP.terminal,
-  SURFACE_MAP.dashboard,
+  SURFACE_MAP.scanner,
+  SURFACE_MAP.lab,
 ] as const;
 
 export function getAppSurface(id: AppSurfaceId): AppSurface {
