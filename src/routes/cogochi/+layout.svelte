@@ -1,15 +1,36 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  import MarketThermometer from '../../components/cogochi/MarketThermometer.svelte';
+
   let { children } = $props();
 
   const now = new Date();
   let clock = $state(formatTime(now));
+  let thermoData = $state<Record<string, number | undefined>>({});
 
   function formatTime(d: Date): string {
     return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
+  // Determine active nav from current path
+  let currentPath = $derived(typeof window !== 'undefined' ? window.location.pathname : '');
+
+  async function fetchThermometer() {
+    try {
+      const res = await fetch('/api/cogochi/thermometer');
+      if (res.ok) thermoData = await res.json();
+    } catch { /* silent */ }
+  }
+
   $effect(() => {
     const iv = setInterval(() => { clock = formatTime(new Date()); }, 1000);
+    return () => clearInterval(iv);
+  });
+
+  onMount(() => {
+    fetchThermometer();
+    const iv = setInterval(fetchThermometer, 60_000); // refresh every 60s
     return () => clearInterval(iv);
   });
 </script>
@@ -24,9 +45,9 @@
       </a>
       <span class="tb-sep">│</span>
       <nav class="tb-nav">
-        <a href="/cogochi" class="tb-link active">TERMINAL</a>
-        <a href="/cogochi" class="tb-link">SCANNER</a>
-        <a href="/cogochi" class="tb-link">LAB</a>
+        <a href="/cogochi/terminal" class="tb-link" class:active={currentPath.includes('/terminal')}>TERMINAL</a>
+        <a href="/cogochi/scanner" class="tb-link" class:active={currentPath.includes('/scanner')}>SCANNER</a>
+        <a href="/cogochi" class="tb-link" class:active={currentPath === '/cogochi'}>LAB</a>
       </nav>
     </div>
     <div class="tb-right">
@@ -38,6 +59,9 @@
       </span>
     </div>
   </header>
+
+  <!-- ━━━ Market Thermometer ━━━ -->
+  <MarketThermometer data={thermoData} />
 
   <!-- ━━━ Content ━━━ -->
   <div class="cg-content">
