@@ -191,22 +191,35 @@ function buildStateAwareness(state: DouniState): string {
  * system prompt 뒤에 user message 직전에 삽입.
  */
 export function buildAnalysisContext(snapshot: SignalSnapshot, archetype: DouniArchetype): string {
+  const fmtScore = (s: number) => s > 0 ? `+${s}` : `${s}`;
   const lines: string[] = [
     `## Current Market: ${snapshot.symbol} ${snapshot.timeframe}`,
     `Alpha Score: ${snapshot.alphaScore} (${snapshot.alphaLabel})`,
+    `Verdict: ${snapshot.verdict ?? snapshot.alphaLabel}`,
     `Regime: ${snapshot.regime}`,
     '',
-    '## 15-Layer Summary:',
-    `L1  와이코프: ${snapshot.l1.phase} (${snapshot.l1.score > 0 ? '+' : ''}${snapshot.l1.score})`,
-    `L2  수급: FR ${(snapshot.l2.fr * 100).toFixed(4)}%, OI변화 ${snapshot.l2.oi_change.toFixed(3)}, L/S ${snapshot.l2.ls_ratio.toFixed(2)} (${snapshot.l2.score > 0 ? '+' : ''}${snapshot.l2.score})`,
-    `L3  V-Surge: ${snapshot.l3.v_surge ? '🔥 감지' : '없음'}`,
-    `L7  공포/탐욕: ${snapshot.l7.fear_greed} (${snapshot.l7.score > 0 ? '+' : ''}${snapshot.l7.score})`,
-    `L10 MTF: ${snapshot.l10.mtf_confluence} (${snapshot.l10.score > 0 ? '+' : ''}${snapshot.l10.score})`,
-    `L11 CVD: ${snapshot.l11.cvd_state}, raw ${snapshot.l11.cvd_raw} (${snapshot.l11.score > 0 ? '+' : ''}${snapshot.l11.score})`,
-    `L13 돌파: ${snapshot.l13.breakout ? '✅' : '❌'} (${snapshot.l13.score})`,
-    `L14 BB: ${snapshot.l14.bb_squeeze ? 'SQUEEZE 중' : `width ${snapshot.l14.bb_width}`} (${snapshot.l14.score})`,
-    `L15 ATR: ${snapshot.l15.atr_pct}%`,
+    '## 17-Layer Summary:',
+    `L1  Wyckoff: ${snapshot.l1.phase} ${snapshot.l1.pattern ?? ''} (${fmtScore(snapshot.l1.score)})`,
+    `L2  Flow: FR ${(snapshot.l2.fr * 100).toFixed(4)}%, Taker ${snapshot.l2.taker_ratio?.toFixed(2) ?? '?'}, L/S ${snapshot.l2.ls_ratio.toFixed(2)} (${fmtScore(snapshot.l2.score)})`,
+    `L3  V-Surge: ${snapshot.l3.label ?? (snapshot.l3.v_surge ? 'SURGE' : 'NORMAL')} (${fmtScore(snapshot.l3.score)})`,
+    `L4  OrdBook: ${snapshot.l4.label ?? snapshot.l4.bid_ask_ratio} (${fmtScore(snapshot.l4.score)})`,
+    `L5  LiqEst: ${snapshot.l5.label ?? 'N/A'} (${fmtScore(snapshot.l5.score)})`,
+    `L7  F&G: ${snapshot.l7.fear_greed} ${snapshot.l7.label ?? ''} (${fmtScore(snapshot.l7.score)})`,
+    `L8  Kimchi: ${snapshot.l8.kimchi}% ${snapshot.l8.label ?? ''} (${fmtScore(snapshot.l8.score)})`,
+    `L9  RealLiq: ${snapshot.l9.label ?? 'N/A'} (${fmtScore(snapshot.l9.score)})`,
+    `L10 MTF: ${snapshot.l10.label ?? snapshot.l10.mtf_confluence} (${fmtScore(snapshot.l10.score)})`,
+    `L11 CVD: ${snapshot.l11.cvd_state} (${fmtScore(snapshot.l11.score)})`,
+    `L13 Break: ${snapshot.l13.label ?? (snapshot.l13.breakout ? 'YES' : 'NO')} (${fmtScore(snapshot.l13.score)})`,
+    `L14 BB: ${snapshot.l14.label ?? (snapshot.l14.bb_squeeze ? 'SQUEEZE' : `w${snapshot.l14.bb_width}`)} (${fmtScore(snapshot.l14.score)})`,
+    `L15 ATR: ${snapshot.l15.atr_pct}% [${snapshot.l15.vol_state ?? 'N/A'}] SL:${snapshot.l15.stop_long ?? '?'} TP:${snapshot.l15.tp1_long ?? '?'}`,
+    `L18 5mMom: ${snapshot.l18?.label ?? 'N/A'} (${fmtScore(snapshot.l18?.score ?? 0)})`,
+    `L19 OIAcc: ${snapshot.l19?.label ?? 'N/A'} [${snapshot.l19?.signal ?? ''}] (${fmtScore(snapshot.l19?.score ?? 0)})`,
   ];
+
+  // Alerts
+  if (snapshot.extremeFR) lines.push(`\n⚠ ALERT: ${snapshot.frAlert}`);
+  if (snapshot.mtfTriple) lines.push(`⚠ ALERT: MTF TRIPLE CONFLUENCE ★★★`);
+  if (snapshot.bbBigSqueeze) lines.push(`⚠ ALERT: BB BIG SQUEEZE — energy compressed`);
 
   // 아키타입별 강조
   const emphasis = getArchetypeEmphasis(snapshot, archetype);
@@ -221,11 +234,15 @@ export function buildAnalysisContext(snapshot: SignalSnapshot, archetype: DouniA
 function getArchetypeEmphasis(s: SignalSnapshot, arch: DouniArchetype): string[] {
   const emphasis: string[] = [];
 
+  // Add L18/L19 emphasis for all archetypes
+  if (s.l18?.score && Math.abs(s.l18.score) >= 12) emphasis.push(`⚡ L18 5m Momentum: ${s.l18.label} (${s.l18.score > 0 ? '+' : ''}${s.l18.score})`);
+  if (s.l19?.score && Math.abs(s.l19.score) >= 8) emphasis.push(`⚡ L19 OI Accel: ${s.l19.label} [${s.l19.signal}]`);
+
   switch (arch) {
     case 'CRUSHER':
       if (s.l11.cvd_state.includes('DIVERGENCE')) emphasis.push(`⚠ CVD ${s.l11.cvd_state} — 핵심 시그널`);
       if (s.l2.fr > 0.001) emphasis.push(`⚠ FR ${(s.l2.fr * 100).toFixed(4)}% — 롱 과열`);
-      if (s.l9.liq_1h > 5_000_000) emphasis.push(`⚠ 청산 $${(s.l9.liq_1h / 1e6).toFixed(1)}M — 폭포 가능`);
+      if ((s.l9.liq_long_usd ?? 0) + (s.l9.liq_short_usd ?? 0) > 5_000_000) emphasis.push(`⚠ 청산 활발 — 폭포 가능`);
       break;
 
     case 'RIDER':
@@ -242,7 +259,7 @@ function getArchetypeEmphasis(s: SignalSnapshot, arch: DouniArchetype): string[]
 
     case 'GUARDIAN':
       if (s.l15.atr_pct > 4) emphasis.push(`🛡 ATR ${s.l15.atr_pct}% — 고변동성, 사이즈 축소`);
-      if (s.l9.liq_1h > 3_000_000) emphasis.push(`🛡 청산 $${(s.l9.liq_1h / 1e6).toFixed(1)}M — 리스크 주의`);
+      if ((s.l9.liq_long_usd ?? 0) + (s.l9.liq_short_usd ?? 0) > 3_000_000) emphasis.push(`🛡 청산 활발 — 리스크 주의`);
       if (Math.abs(s.l5.basis_pct) > 0.1) emphasis.push(`🛡 Basis ${s.l5.basis_pct}% — 괴리 경고`);
       break;
   }

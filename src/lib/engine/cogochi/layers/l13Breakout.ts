@@ -1,36 +1,88 @@
 // ═══════════════════════════════════════════════════════════════
-// L13: 돌파 감지 (±15)
+// L13: Breakout Detection — 7D/30D Range (±12)
 // ═══════════════════════════════════════════════════════════════
-// 최근 50봉 고가/저가 돌파 여부.
-// 상방 돌파 = bullish (+15), 하방 돌파 = bearish (-15).
+// Always uses 1D candles to ensure correct 7D/30D calculation.
+// Detects new highs, new lows, and proximity to range edges.
 
-import type { BinanceKline } from '../../types';
 import type { L13Result } from '../types';
 
-export function computeL13Breakout(klines: BinanceKline[]): L13Result {
-  if (klines.length < 52) {
-    return { breakout: false, score: 0 };
+interface DayCandle {
+  high: number;
+  low: number;
+  close: number;
+}
+
+export function computeL13Breakout(
+  dailyCandles: DayCandle[],
+  currentPrice: number,
+): L13Result {
+  const none: L13Result = {
+    breakout: false, pos_7d: 50, pos_30d: 50, score: 0, label: 'NO DATA',
+  };
+
+  if (dailyCandles.length < 7 || currentPrice <= 0) return none;
+
+  const c7 = dailyCandles.slice(-7);
+  const c30 = dailyCandles.length >= 30 ? dailyCandles.slice(-30) : dailyCandles;
+
+  const h7 = Math.max(...c7.map(c => c.high));
+  const l7 = Math.min(...c7.map(c => c.low));
+  const h30 = Math.max(...c30.map(c => c.high));
+  const l30 = Math.min(...c30.map(c => c.low));
+
+  const range7 = h7 - l7 || 1;
+  const range30 = h30 - l30 || 1;
+
+  const pos7 = ((currentPrice - l7) / range7) * 100;
+  const pos30 = ((currentPrice - l30) / range30) * 100;
+
+  const cp = currentPrice;
+  const break30High = cp > h30;
+  const break7High = cp > h7;
+  const near30High = cp > h30 * 0.96;
+  const near7High = cp > h7 * 0.96;
+  const near30Low = cp < l30 * 1.04;
+  const near7Low = cp < l7 * 1.04;
+
+  let score = 0;
+  let label = 'RANGE';
+  let breakout = false;
+
+  if (break30High) {
+    score = 12;
+    label = '30D NEW HIGH';
+    breakout = true;
+  } else if (break7High) {
+    score = 8;
+    label = '7D NEW HIGH';
+    breakout = true;
+  } else if (near30High) {
+    score = 6;
+    label = '30D HIGH APPROACH';
+  } else if (near7High) {
+    score = 4;
+    label = '7D HIGH APPROACH';
+  } else if (cp < l30) {
+    score = -12;
+    label = '30D NEW LOW';
+    breakout = true;
+  } else if (cp < l7) {
+    score = -8;
+    label = '7D NEW LOW';
+    breakout = true;
+  } else if (near30Low) {
+    score = -8;
+    label = '30D LOW APPROACH';
+  } else if (near7Low) {
+    score = -4;
+    label = '7D LOW APPROACH';
   }
 
-  // 최근 50봉 (마지막 2봉 제외 = 기준 범위)
-  const rangeKlines = klines.slice(-52, -2);
-  const lastKline = klines[klines.length - 1];
-  const prevKline = klines[klines.length - 2];
-
-  const rangeHigh = Math.max(...rangeKlines.map(k => k.high));
-  const rangeLow = Math.min(...rangeKlines.map(k => k.low));
-
-  // 상방 돌파: 최근 2봉 중 하나라도 종가가 range high 돌파
-  const bullBreak = lastKline.close > rangeHigh || prevKline.close > rangeHigh;
-  // 하방 돌파: 최근 2봉 중 하나라도 종가가 range low 이탈
-  const bearBreak = lastKline.close < rangeLow || prevKline.close < rangeLow;
-
-  if (bullBreak) {
-    return { breakout: true, score: 15 };
-  }
-  if (bearBreak) {
-    return { breakout: true, score: -15 };
-  }
-
-  return { breakout: false, score: 0 };
+  return {
+    breakout,
+    pos_7d: Math.round(pos7 * 10) / 10,
+    pos_30d: Math.round(pos30 * 10) / 10,
+    score,
+    label,
+  };
 }

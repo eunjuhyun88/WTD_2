@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
-// COGOCHI — 15-Layer Signal Types
+// COGOCHI — 17-Layer Signal Types (L1~L15 + L18 + L19)
 // ═══════════════════════════════════════════════════════════════
-// v5 설계 기준. Scanner + Terminal + Lab에서 공통 사용.
+// Scanner + Terminal + Lab 공통 사용.
 
 // ─── Enums ───────────────────────────────────────────────────
 
@@ -11,13 +11,16 @@ export type WyckoffPhase =
   | 'DISTRIBUTION'
   | 'MARKDOWN'
   | 'REACCUM'
-  | 'REDIST';
+  | 'REDIST'
+  | 'NONE';
 
 export type CvdState =
   | 'BULLISH'
   | 'BEARISH'
   | 'BULLISH_DIVERGENCE'
   | 'BEARISH_DIVERGENCE'
+  | 'ABSORPTION_BUY'
+  | 'ABSORPTION_SELL'
   | 'NEUTRAL';
 
 export type MtfConfluence =
@@ -33,96 +36,160 @@ export type Regime =
   | 'BREAKOUT';
 
 export type AlphaLabel =
-  | 'STRONG_BULL'   // +60 이상
-  | 'BULL'          // +20 ~ +59
-  | 'NEUTRAL'       // -19 ~ +19
-  | 'BEAR'          // -20 ~ -59
-  | 'STRONG_BEAR';  // -60 이하
+  | 'STRONG_BULL'   // >= 60
+  | 'BULL'          // >= 25
+  | 'NEUTRAL'       // > -25
+  | 'BEAR'          // > -60
+  | 'STRONG_BEAR';  // <= -60
+
+export type VolatilityState =
+  | 'ULTRA_LOW'
+  | 'LOW'
+  | 'NORMAL'
+  | 'HIGH'
+  | 'EXTREME';
 
 // ─── Layer Results ───────────────────────────────────────────
 
 export interface L1Result {
   phase: WyckoffPhase;
-  score: number;  // ±30
+  pattern: string;
+  score: number;             // ±28
+  hasSpring?: boolean;
+  hasUtad?: boolean;
+  hasSos?: boolean;
+  hasSow?: boolean;
+  ceTarget?: number;
 }
 
 export interface L2Result {
-  fr: number;             // funding rate (raw)
-  oi_change: number;      // OI 1h change ratio (-1~1)
-  ls_ratio: number;       // long/short ratio
-  score: number;          // ±20
+  fr: number;
+  oi_change: number;
+  ls_ratio: number;
+  taker_ratio: number;
+  price_change: number;
+  score: number;             // ±55
+  detail: string;
 }
 
 export interface L3Result {
   v_surge: boolean;
-  score: number;          // 0 or +15
+  surge_factor: number;
+  direction: number;
+  score: number;             // ±15
+  label: string;
 }
 
 export interface L4Result {
-  bid_ask_ratio: number;  // 0~2
-  score: number;          // ±10
+  bid_ask_ratio: number;
+  score: number;             // ±12
+  label: string;
 }
 
 export interface L5Result {
-  basis_pct: number;      // spot-futures basis %
-  score: number;          // ±10
+  basis_pct: number;
+  score: number;             // ±12
+  label: string;
+  liq_long_est?: number;
+  liq_short_est?: number;
 }
 
 export interface L6Result {
-  exchange_netflow: number;  // BTC
-  score: number;             // ±8
+  n_tx: number;
+  avg_tx_value: number;
+  mempool_pending: number;
+  fastest_fee: number;
+  score: number;             // ±10
+  detail: string;
 }
 
 export interface L7Result {
-  fear_greed: number;     // 0~100
-  score: number;          // ±10
+  fear_greed: number;
+  score: number;             // ±8
+  label: string;
 }
 
 export interface L8Result {
-  kimchi: number;         // premium %
-  score: number;          // ±5
+  kimchi: number;
+  score: number;             // ±10
+  label: string;
 }
 
 export interface L9Result {
-  liq_1h: number;         // USD volume
-  score: number;          // ±10
+  liq_long_usd: number;
+  liq_short_usd: number;
+  score: number;             // ±12
+  label: string;
 }
 
 export interface L10Result {
   mtf_confluence: MtfConfluence;
-  score: number;          // ±20
+  acc_count: number;
+  dist_count: number;
+  score: number;             // ±20
+  label: string;
 }
 
 export interface L11Result {
   cvd_state: CvdState;
   cvd_raw: number;
-  score: number;          // ±25
+  price_change: number;
+  absorption: boolean;
+  score: number;             // ±12
 }
 
 export interface L12Result {
   sector_flow: 'INFLOW' | 'OUTFLOW' | 'NEUTRAL';
-  score: number;          // ±5
+  sector_score: number;
+  score: number;             // ±10
 }
 
 export interface L13Result {
   breakout: boolean;
-  score: number;          // ±15
+  pos_7d: number;
+  pos_30d: number;
+  score: number;             // ±12
+  label: string;
 }
 
 export interface L14Result {
   bb_squeeze: boolean;
+  bb_big_squeeze: boolean;
+  bb_expanding: boolean;
   bb_width: number;
-  score: number;          // ±5
+  bb_pos: number;
+  score: number;             // ±10
+  label: string;
 }
 
 export interface L15Result {
-  atr_pct: number;        // ATR as % of price
+  atr_pct: number;
+  vol_state: VolatilityState;
+  stop_long: number;
+  stop_short: number;
+  tp1_long: number;
+  tp2_long: number;
+  rr_ratio: number;
+  score: number;             // ±6
+}
+
+export interface L18Result {
+  momentum_30m: number;
+  vol_accel: number;
+  score: number;             // ±25
+  label: string;
+}
+
+export interface L19Result {
+  oi_accel: number;
+  signal: 'LONG_ENTRY' | 'SHORT_SQUEEZE' | 'LONG_PANIC' | 'SHORT_ENTRY' | 'NEUTRAL';
+  score: number;             // ±15
+  label: string;
 }
 
 // ─── Signal Snapshot ─────────────────────────────────────────
 
 export interface SignalSnapshot {
-  // 15 레이어
   l1:  L1Result;
   l2:  L2Result;
   l3:  L3Result;
@@ -138,20 +205,29 @@ export interface SignalSnapshot {
   l13: L13Result;
   l14: L14Result;
   l15: L15Result;
+  l18: L18Result;
+  l19: L19Result;
 
   // 종합
-  alphaScore: number;     // -100 ~ +100
+  alphaScore: number;
   alphaLabel: AlphaLabel;
+  verdict: string;
   regime: Regime;
 
-  // Terminal 호환 필드
+  // Alerts
+  extremeFR: boolean;
+  frAlert: string;
+  mtfTriple: boolean;
+  bbBigSqueeze: boolean;
+
+  // Terminal 호환
   primaryZone: WyckoffPhase;
   cvdState: CvdState;
   fundingLabel: string;
   htfStructure: string;
-  compositeScore: number; // 0~1 정규화
+  compositeScore: number;
 
-  // 차트 시각화 데이터 (Sprint 1+)
+  // 시각화
   annotations?: ChartAnnotation[];
   tradePlan?: TradePlan;
   indicators?: IndicatorSeries;
@@ -168,33 +244,34 @@ export interface SignalSnapshot {
 export type LayerId =
   | 'l1' | 'l2' | 'l3' | 'l4' | 'l5'
   | 'l6' | 'l7' | 'l8' | 'l9' | 'l10'
-  | 'l11' | 'l12' | 'l13' | 'l14' | 'l15';
+  | 'l11' | 'l12' | 'l13' | 'l14' | 'l15'
+  | 'l18' | 'l19';
 
 export const ALL_LAYER_IDS: LayerId[] = [
   'l1', 'l2', 'l3', 'l4', 'l5',
   'l6', 'l7', 'l8', 'l9', 'l10',
   'l11', 'l12', 'l13', 'l14', 'l15',
+  'l18', 'l19',
 ];
 
-// ─── Alpha Score weight map ──────────────────────────────────
-
-/** 각 레이어의 Alpha Score 최대 기여값 */
 export const LAYER_MAX_CONTRIBUTION: Record<LayerId, number> = {
-  l1:  30,
-  l2:  20,
+  l1:  28,
+  l2:  55,
   l3:  15,
-  l4:  10,
-  l5:  10,
-  l6:  8,
-  l7:  10,
-  l8:  5,
-  l9:  10,
+  l4:  12,
+  l5:  12,
+  l6:  10,
+  l7:  8,
+  l8:  10,
+  l9:  12,
   l10: 20,
-  l11: 25,
-  l12: 5,
-  l13: 15,
-  l14: 5,
-  l15: 0,  // 보조 — Alpha에 직접 기여 안 함
+  l11: 12,
+  l12: 10,
+  l13: 12,
+  l14: 10,
+  l15: 6,
+  l18: 25,
+  l19: 15,
 };
 
 // ─── Chart Visualization Types ──────────────────────────────
@@ -229,10 +306,28 @@ export interface IndicatorSeries {
   ema20?: number[];
 }
 
-// ─── Pattern Condition (Doctrine에서 사용) ────────────────────
+// ─── Extended Market Data (toolExecutor → layerEngine) ───────
+
+export interface ExtendedMarketData {
+  depth?: { bidVolume: number; askVolume: number; ratio: number };
+  takerRatio?: number;
+  oiChangePct?: number;
+  priceChangePct?: number;
+  forceOrders?: Array<{ side: 'BUY' | 'SELL'; price: number; qty: number; time: number }>;
+  btcOnchain?: { nTx: number; avgTxValue: number };
+  mempool?: { pending: number; fastestFee: number };
+  kimchiPremium?: number;
+  klines5m?: Array<{ time: number; open: number; high: number; low: number; close: number; volume: number; buyVolume?: number }>;
+  klines1dExt?: Array<{ time: number; open: number; high: number; low: number; close: number; volume: number }>;
+  currentPrice?: number;
+  sectorScore?: number;
+  oiHistory5m?: Array<{ timestamp: number; oi: number }>;
+}
+
+// ─── Pattern Condition ───────────────────────────────────────
 
 export interface PatternCondition {
-  field: string;    // "l11.cvd_state", "l2.fr", "l1.phase" 등
+  field: string;
   operator: 'eq' | 'gt' | 'lt' | 'gte' | 'lte' | 'contains';
   value: string | number | boolean;
 }
