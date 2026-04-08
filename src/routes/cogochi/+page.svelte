@@ -3,6 +3,7 @@
   import DataCard from '../../components/cogochi/DataCard.svelte';
   import CgChart from '../../components/cogochi/CgChart.svelte';
   import CgLayerPanel from '../../components/cogochi/CgLayerPanel.svelte';
+  import { fetchUiStateApi, updateUiStateApi } from '$lib/api/preferencesApi';
 
   // ━━━ Types ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   type MessageType =
@@ -52,6 +53,15 @@
   const RIGHT_MIN = 280;
   const RIGHT_MAX = 600;
 
+  // ━━━ Panel Persistence ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  let _persistTimer: ReturnType<typeof setTimeout> | null = null;
+  function persistPanelState() {
+    if (_persistTimer) clearTimeout(_persistTimer);
+    _persistTimer = setTimeout(() => {
+      void updateUiStateApi({ terminalLeftWidth: leftWidth, terminalRightWidth: rightWidth });
+    }, 600);
+  }
+
   function startDragLeft(e: MouseEvent) {
     e.preventDefault();
     isDraggingLeft = true;
@@ -64,6 +74,7 @@
     }
     function onUp() {
       isDraggingLeft = false;
+      persistPanelState();
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     }
@@ -83,6 +94,7 @@
     }
     function onUp() {
       isDraggingRight = false;
+      persistPanelState();
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     }
@@ -101,6 +113,15 @@
           ? 'Evening. Markets moved today.'
           : 'Late session active.';
     messages = [{ role: 'douni', text: g }];
+
+    // Restore saved panel widths
+    void (async () => {
+      const ui = await fetchUiStateApi();
+      if (ui) {
+        if (ui.terminalLeftWidth >= LEFT_MIN && ui.terminalLeftWidth <= LEFT_MAX) leftWidth = ui.terminalLeftWidth;
+        if (ui.terminalRightWidth >= RIGHT_MIN && ui.terminalRightWidth <= RIGHT_MAX) rightWidth = ui.terminalRightWidth;
+      }
+    })();
   });
 
   // ━━━ API ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
