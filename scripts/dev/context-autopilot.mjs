@@ -61,11 +61,13 @@ function autopilotConfig(config) {
   return {
     enabled: config.autopilot?.enabled ?? true,
     agentId: process.env.CTX_AGENT_ID?.trim() || config.autopilot?.agentId || 'autopilot',
+    relayAgentId: process.env.MEMENTO_AGENT?.trim() || process.env.CTX_AGENT_ID?.trim() || config.autopilot?.relayAgentId || 'implementer-ui',
     autoSave: config.autopilot?.autoSave ?? true,
     autoCheckpoint: config.autopilot?.autoCheckpoint ?? true,
     autoClaim: config.autopilot?.autoClaim ?? true,
     autoCompactOnStop: config.autopilot?.autoCompactOnStop ?? true,
     autoCompactOnPreCompact: config.autopilot?.autoCompactOnPreCompact ?? true,
+    autoRelayOnStop: config.autopilot?.autoRelayOnStop ?? true,
     minimumClaimPathDepth: Number(config.autopilot?.minimumClaimPathDepth ?? 2),
     defaultSurface: config.autopilot?.defaultSurface || (config.surfaces?.[0]?.id ?? 'core'),
     defaultObjectivePrefix: config.autopilot?.defaultObjectivePrefix || 'Resume branch work on',
@@ -155,12 +157,83 @@ function commonPathPrefix(paths) {
 
 function inferClaimPath(changedFiles, autopilot) {
   const explicit = process.env.CTX_AUTO_CLAIM_PATH?.trim();
-  if (explicit) return normalizeRepoPath(explicit);
+  if (explicit) {
+    return explicit
+      .split(',')
+      .map((value) => normalizeRepoPath(value))
+      .filter(Boolean);
+  }
   const prefix = commonPathPrefix(changedFiles);
-  if (!prefix) return '';
-  const depth = prefix.split('/').filter(Boolean).length;
-  if (depth < autopilot.minimumClaimPathDepth) return '';
-  return prefix;
+  if (prefix) {
+    const depth = prefix.split('/').filter(Boolean).length;
+    if (depth >= autopilot.minimumClaimPathDepth) return [prefix];
+  }
+
+  const claimPrefixes = [];
+  for (const filePath of changedFiles) {
+    const normalized = normalizeRepoPath(filePath);
+    if (!normalized) continue;
+    const dirname = path.posix.dirname(normalized);
+    const directoryDepth = dirname.split('/').filter(Boolean).length;
+    if (dirname && dirname !== '.' && directoryDepth >= autopilot.minimumClaimPathDepth) {
+      claimPrefixes.push(dirname);
+      continue;
+    }
+
+    const fileDepth = normalized.split('/').filter(Boolean).length;
+    if (fileDepth >= autopilot.minimumClaimPathDepth) {
+      claimPrefixes.push(normalized);
+    }
+  }
+
+  const collapsed = [...new Set(claimPrefixes)]
+    .sort((left, right) => {
+      const leftDepth = left.split('/').filter(Boolean).length;
+      const rightDepth = right.split('/').filter(Boolean).length;
+      if (leftDepth !== rightDepth) return leftDepth - rightDepth;
+      return left.localeCompare(right);
+    })
+    .reduce((acc, candidate) => {
+      if (acc.some((existing) => candidate === existing || candidate.startsWith(`${existing}/`))) {
+        return acc;
+      }
+      acc.push(candidate);
+      return acc;
+    }, []);
+
+  if (collapsed.length > 0) return collapsed;
+
+  return [];
+}
+
+function isExpiredClaim(claim) {
+  if (!claim?.leaseExpiresAt) return false;
+  const expiry = Date.parse(claim.leaseExpiresAt);
+  return Number.isFinite(expiry) && expiry < Date.now();
+}
+
+function releaseClaim(workId, note) {
+  run('node', [
+    'scripts/dev/release-work.mjs',
+    '--work-id', workId,
+    '--status', 'abandoned',
+    '--note', note,
+  ]);
+}
+
+function relayBranchHandoff({ branchName, workId, autopilot }) {
+  if (!autopilot.autoRelayOnStop) return;
+  if (!workId) return;
+  if (!fs.existsSync(path.join(rootDir, 'scripts/dev/memento-relay.mjs'))) return;
+
+  const summary = process.env.MEMENTO_SUMMARY?.trim() || `Autopilot stop relay for ${branchName}`;
+  run('node', [
+    'scripts/dev/memento-relay.mjs',
+    '--branch', branchName,
+    '--work-id', workId,
+    '--agent', autopilot.relayAgentId,
+    '--summary', summary,
+  ]);
 }
 
 function ensureCheckpoint({ branchName, surface, workId, autopilot, forceCheckpoint }) {
@@ -192,23 +265,44 @@ function ensureClaim({ branchName, surface, workId, autopilot, coordination, bra
   if (!coordination.requireClaimOnFeatureBranches || !isFeatureBranch(branchName, coordination.featureBranchPrefixes)) {
     return;
   }
-  if (branchClaims.length > 0) {
-    console.log(`[autopilot] claim already exists for branch ${branchName}`);
-    return;
+  const expiredClaims = branchClaims.filter((claim) => isExpiredClaim(claim));
+  const liveClaims = branchClaims.filter((claim) => !isExpiredClaim(claim));
+
+  if (expiredClaims.length > 0) {
+    for (const claim of expiredClaims) {
+      releaseClaim(claim.workId, `Autopilot rotated expired claim for ${branchName}`);
+    }
   }
-  const claimPath = inferClaimPath(changedFiles, autopilot);
-  if (!claimPath) {
+
+  if (liveClaims.length > 1) {
+    throw new Error(`[autopilot] branch ${branchName} has multiple live claims; resolve coordination state manually`);
+  }
+
+  if (liveClaims.length === 1) {
+    const [existingClaim] = liveClaims;
+    if (existingClaim.workId === workId) {
+      console.log(`[autopilot] claim already current for branch ${branchName}`);
+      return;
+    }
+
+    releaseClaim(existingClaim.workId, `Autopilot rotated superseded claim for ${branchName}; current work ID is ${workId}`);
+  }
+  const claimPaths = inferClaimPath(changedFiles, autopilot);
+  if (claimPaths.length === 0) {
     console.log(`[autopilot] no safe claim path inferred for branch ${branchName}; skipping provisional claim`);
     return;
   }
-  run('node', [
+  const args = [
     'scripts/dev/claim-work.mjs',
     '--work-id', workId,
     '--agent', autopilot.agentId,
     '--surface', surface,
     '--summary', `Autopilot provisional ownership for ${branchName}`,
-    '--path', claimPath,
-  ]);
+  ];
+  for (const claimPath of claimPaths) {
+    args.push('--path', claimPath);
+  }
+  run('node', args);
 }
 
 const { stage, forceCheckpoint } = parseArgs(process.argv.slice(2));
@@ -256,6 +350,10 @@ if (autopilot.autoClaim && (stage === 'post-edit' || stage === 'pre-push')) {
 
 if ((stage === 'pre-compact' && autopilot.autoCompactOnPreCompact) || (stage === 'stop' && autopilot.autoCompactOnStop)) {
   run('bash', ['scripts/dev/context-compact.sh', '--work-id', workId]);
+}
+
+if (stage === 'stop') {
+  relayBranchHandoff({ branchName, workId, autopilot });
 }
 
 console.log(`[autopilot] stage=${stage} branch=${branchName} work_id=${workId} surface=${surface}`);

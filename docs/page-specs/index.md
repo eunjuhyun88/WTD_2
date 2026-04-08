@@ -13,6 +13,9 @@ Purpose:
 
 ## Page Specs
 
+- `docs/page-specs/agent-page.md`
+- `docs/page-specs/agent-detail-page.md`
+- `docs/page-specs/battle-page.md`
 - `docs/page-specs/home-onboarding.md`
 - `docs/page-specs/create-agent-page.md`
 - `docs/page-specs/terminal-page.md`
@@ -23,7 +26,6 @@ Purpose:
 - `docs/page-specs/signals-detail-page.md`
 - `docs/page-specs/creator-page.md`
 - `docs/page-specs/passport-page.md`
-- `docs/page-specs/agents-page.md`
 - `docs/page-specs/oracle-page.md`
 - `docs/page-specs/settings-page.md`
 - `docs/page-specs/arena-war-page.md`

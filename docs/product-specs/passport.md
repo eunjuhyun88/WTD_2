@@ -1,22 +1,21 @@
 # Passport Product Spec
 
 Purpose:
-- Short product spec for the legacy implementation slice that will be absorbed into `Agent`.
+- Short product spec for the profile, proof, and future on-chain passport slice.
 
 ## Primary User Job
 
-Provide the current durable proof and holdings slice while the final `Agent` hub is still being assembled.
+Provide durable proof, holdings, and long-term on-chain identity evidence without replacing `Agent HQ`.
 
-## Surface Role In The Merged Product
+## Surface Role In The Official IA
 
-`Passport` is no longer a target primary-nav surface in the final IA.
+`Passport` is not part of the main builder nav loop today, but it remains a distinct phase-2 surface.
 
-Its responsibilities will be absorbed into `Agent`:
-- durable proof
-- holdings and inventory
-- performance and track record
-- badges, specialization tiers, and history
-- future revenue or rental evidence
+Its long-term responsibilities include:
+- on-chain or publishable track record
+- holdings and inventory proof
+- performance history and revenue evidence
+- specialization tiers and badges backed by durable state
 
 ## Current Route Shape
 
@@ -36,7 +35,7 @@ Its responsibilities will be absorbed into `Agent`:
 
 - Profile and badge state are server-derived or server-validated.
 - The UI should not imply earned state that the server cannot justify.
-- Passport should act as a migration slice toward `Agent`, not as a forever-separate primary product.
+- Passport should not duplicate the doctrine and memory responsibilities of `Agent HQ`.
 - Badge and mission surfaces should be compatible with the system's data-coverage goals.
 - Contribution, calibration, and weak-spot feedback should remain explainable from durable records.
 - Current route-level wallet and positions affordances should stay consistent with those durable records even when holdings fall back to demo data.
@@ -44,12 +43,13 @@ Its responsibilities will be absorbed into `Agent`:
 
 ## Target IA
 
-- final destination: `Agent > Record`
-- current route remains `/passport` until the merge lands
+- primary route: `/passport`
+- current status: secondary / phase-2 proof surface
+- long-term role: publishable or on-chain track record layer
 
 ## Supporting Docs
 
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/design-docs/unified-product-model.md`
 - `docs/product-specs/agents.md`
 - `docs/design-docs/learning-loop.md`

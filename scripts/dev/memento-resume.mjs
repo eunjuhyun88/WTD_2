@@ -38,8 +38,30 @@ function latestMarkdownFile(dirPath) {
         mtimeMs: fs.statSync(filePath).mtimeMs,
       };
     })
-    .sort((left, right) => left.mtimeMs - right.mtimeMs);
-  return entries.length ? entries[entries.length - 1].filePath : '';
+    .sort((left, right) => right.mtimeMs - left.mtimeMs);
+  return entries.length ? entries[0].filePath : '';
+}
+
+function mementoRoots(rootDir) {
+  return [
+    path.resolve(rootDir, '..', '.memento'),
+    path.join(rootDir, '.agent-context', 'memento'),
+  ];
+}
+
+function firstExistingPath(paths) {
+  return paths.find((candidate) => fs.existsSync(candidate)) ?? '';
+}
+
+function freshestExistingPath(paths) {
+  const existing = paths
+    .filter((candidate) => fs.existsSync(candidate))
+    .map((candidate) => ({
+      filePath: candidate,
+      mtimeMs: fs.statSync(candidate).mtimeMs,
+    }))
+    .sort((left, right) => right.mtimeMs - left.mtimeMs);
+  return existing[0]?.filePath ?? '';
 }
 
 const args = process.argv.slice(2);
@@ -76,7 +98,7 @@ if (!branch) {
 const branchSafe = sanitize(branch.replaceAll('/', '-'));
 const workSafe = workId ? sanitize(workId) : '';
 const contextDir = path.join(rootDir, '.agent-context');
-const mementoDir = path.resolve(rootDir, '..', '.memento');
+const mementoDirs = mementoRoots(rootDir);
 
 const checkpointPath = workSafe && fs.existsSync(path.join(contextDir, 'checkpoints', `${workSafe}.md`))
   ? path.join(contextDir, 'checkpoints', `${workSafe}.md`)
@@ -91,8 +113,11 @@ const handoffPath = workSafe
       ? path.join(contextDir, 'handoffs', `${workSafe}.md`)
       : '')
   : path.join(contextDir, 'handoffs', `${branchSafe}-latest.md`);
-const memoryPath = path.join(mementoDir, 'memories', agent, 'MEMORY.md');
-const latestRelayPath = latestMarkdownFile(path.join(mementoDir, 'runtime', 'stockclaw', 'handoff-inbox'));
+const memoryPath = firstExistingPath(mementoDirs.map((dir) => path.join(dir, 'memories', agent, 'MEMORY.md')));
+const branchRelayPath = freshestExistingPath(mementoDirs.map((dir) => path.join(dir, 'runtime', 'stockclaw', 'relay', `${branchSafe}-latest.md`)));
+const latestRelayPath = branchRelayPath || freshestExistingPath(
+  mementoDirs.map((dir) => latestMarkdownFile(path.join(dir, 'runtime', 'stockclaw', 'handoff-inbox'))).filter(Boolean),
+);
 
 const payload = {
   repoRoot: rootDir,
@@ -103,8 +128,8 @@ const payload = {
     checkpoint: fs.existsSync(checkpointPath) ? path.relative(rootDir, checkpointPath) : null,
     brief: fs.existsSync(briefPath) ? path.relative(rootDir, briefPath) : null,
     handoff: fs.existsSync(handoffPath) ? path.relative(rootDir, handoffPath) : null,
-    memory: fs.existsSync(memoryPath) ? path.relative(path.resolve(rootDir, '..'), memoryPath) : null,
-    latestRelay: latestRelayPath ? path.relative(path.resolve(rootDir, '..'), latestRelayPath) : null,
+    memory: fs.existsSync(memoryPath) ? path.relative(rootDir, memoryPath) : null,
+    latestRelay: latestRelayPath ? path.relative(rootDir, latestRelayPath) : null,
   },
   excerpts: {
     checkpoint: clipText(readText(checkpointPath), 40, 4000),

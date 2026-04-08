@@ -1,146 +1,148 @@
-# STOCKCLAW System Intent
+# CHATBATTLE System Intent
 
 Purpose:
-- Repo-local condensed brief for product intent and architectural invariants.
-- Read this before opening larger design docs.
-- Use it to keep `StockClaw` terminal intelligence and `Cogochi` character progression inside one product model.
+- Repo-local condensed brief for the official product direction.
+- Read this before opening deeper page specs or implementation plans.
+- Keep route work aligned to the adopted Cogochi UI/UX architecture.
 
 Primary source:
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 
 Supporting sources:
+- `docs/design-docs/unified-product-model.md`
 - `docs/design-docs/arena-domain-model.md`
 - `docs/design-docs/learning-loop.md`
 
 ## Product Thesis
 
-STOCKCLAW is a character-anchored trading system.
+CHATBATTLE is a character-anchored chart-training game.
 
 Users do not just read signals. They:
-- create an agent
-- connect and train its brain in `Terminal`
-- deploy it into `World`
-- resolve encounters in `Battle`
-- grow, share, and record it in `Agent`
+- create or activate an agent through onboarding
+- check their daily state in `Dashboard`
+- analyze chart context in `Terminal` when needed
+- iterate and compare doctrine in `Lab`
+- prove the result in `Battle`
+- manage doctrine, memory, and record in `Agent`
+- later distribute proven agents through `Market`
 
-The product must feel like one loop, not a dashboard plus a separate tamagotchi game.
+The product should feel like a tight builder loop, not a trading terminal with unrelated pet screens attached.
 
-## Final Surface Model
+## Official Surface Model
 
-- `Home`
-  - explains the full loop quickly and routes into the first meaningful action
-- `Create Agent`
-  - shell selection, minting, AI binding, and starter setup
-- `Terminal`
-  - brain console, doctrine, validation, world readiness
-- `World`
-  - BTC-history map, traversal, era state, encounter triggers
-- `Battle`
-  - whale encounter, rounds, intervention, result, reflection
-- `Agent`
-  - merged growth hub for record, training view, proof, share, and rental
+- `Home` (`/`)
+  - split builder vs copier intent quickly
+- `Onboard` (`/onboard`)
+  - create the first usable agent and deliver the first battle taste
+- `Dashboard` (`/dashboard`)
+  - daily hub with battle quota, lab state, and recent activity
+- `Terminal` (`/terminal`)
+  - optional chart-analysis and doctrine-idea surface
+- `Lab` (`/lab`)
+  - main workbench for backtest, comparison, and rerun
+- `Agent` collection (`/agent`)
+  - roster and creation entry
+- `Agent HQ` (`/agent/[id]`)
+  - doctrine, memory, history, and record management
+- `Battle` (`/battle`)
+  - historical proof surface with daily quota
+- `Market` (`/market`)
+  - phase-2 marketplace for proven agents
+- `Copy` (`/copy`)
+  - phase-2 copy-trading surface
+- `Passport` (`/passport`)
+  - phase-2 on-chain track-record surface
 
-Implementation bridge:
-- `Create Agent` maps to target route `/create` and is not shipped yet.
-- `World` maps to target route `/world` and is not shipped yet.
-- `Battle` currently maps to `/arena`.
-- `Agent` will merge the current `/lab` and `/passport` responsibilities.
-- `/signals` remains secondary and is not part of the primary six-surface IA.
+## Primary Loops
+
+### Builder
+
+`/ -> /onboard?path=builder -> /dashboard -> /terminal (optional) -> /lab -> /battle -> /agent/[id] -> /market`
+
+### Copier
+
+`/ -> /market -> /copy -> optional onboarding`
+
+### Researcher
+
+`/ -> /terminal -> /lab/autorun -> /battle/tournament -> /market`
 
 ## Non-Negotiable Invariants
 
-1. Same data, different interpretation.
-   - Human and AI should reason over the same market context whenever possible.
-   - The value comes from interpretation quality, not hidden information asymmetry.
+1. `Lab` is the main workbench.
+   - It is the longest-dwell surface for builders.
+   - Backtest, comparison, and rerun loops should converge there.
 
-2. Character ownership must have operational meaning.
-   - A character is not just a collectible skin.
-   - It must anchor specialization, training history, and deployable agent identity.
+2. `Battle` is proof, not sandbox.
+   - It exists to validate trained doctrine against historical context.
+   - Daily battle limits and result legibility must remain obvious.
 
-3. Progression must be evidence-bound.
-   - Trading outcomes, backtests, and learning records drive advancement.
-   - Cosmetic progression can reinforce identity but cannot replace proof.
+3. `Terminal` is optional but high-value.
+   - It supports chart reading, zone detection, and idea generation.
+   - It is not the only gateway into the product.
 
-4. The game layer wraps real learning.
-   - Game progression should make trading, training, and specialization more motivating.
-   - It must not drift into a detached idle system with fake value.
+4. `Agent HQ` owns doctrine and memory management.
+   - `/agent` is the collection surface.
+   - `/agent/[id]` is the operational detail surface.
 
-5. `World` and `Terminal` stay separate.
-   - `World` is the main play map.
-   - `Terminal` is the brain console and readiness gate.
+5. Progression must stay evidence-bound.
+   - Win rate, battle history, doctrine versions, and memory cards are product truth.
+   - Cosmetic identity can reinforce attachment but cannot replace proof.
 
-6. Durable actions must produce legible records.
-   - Product actions should be understandable as user behavior, system behavior, and future learning data.
-   - World, Battle, Terminal, and Agent flows must remain compatible with proof and memory systems.
+6. Market access is downstream of proof.
+   - Listing or subscription claims must come after visible battle and lab evidence.
+   - Market language must stay aligned with release readiness.
 
-7. Create Agent is a strong first-run ceremony.
-   - Minting, AI binding, and starter setup belong in one guided flow.
+7. Passport is a later proof layer, not today's primary hub.
+   - Current route work may still expose holdings and profile state.
+   - Long-term purpose is on-chain track record, not duplicating Agent HQ.
 
-8. `frontend` is the canonical implementation target.
-   - Do not land new behavior by copying changes into sibling clone folders.
-   - New work happens once in the canonical tree.
+8. Server-authoritative domains stay server-authoritative.
+   - Durable history, listings, holdings, rental state, tracked signals, and published records cannot rely on client-local truth.
 
-9. Server-authoritative domains stay server-authoritative.
-   - Ownership, holdings, rental state, quick trades, tracked signals, and durable history cannot rely on client-local truth.
-   - Local storage is cache, offline support, or optimistic staging only.
+9. `priceStore` remains the canonical live-price owner on the client.
+   - Header, Terminal, Lab, and Battle should consume shared live-price truth instead of re-creating it.
 
-10. `priceStore` is the canonical live-price owner on the client.
-   - Route or feature stores may consume live prices.
-   - They should not redefine market truth.
+10. Canonical docs must reflect the adopted IA.
+   - Superseded six-surface docs can remain for history.
+   - They no longer define the current official route model.
 
-11. Route state is transient.
-   - Route state owns view mode, local selections, temporary UI state, and flow control.
-   - It should not become a hidden persistence or replication layer.
-
-12. Archive is history, not authority.
-   - Old audits and archived plans explain how the code got here.
-   - They do not override newer canonical docs.
-
-## Surface Intent
+## Route Intent Summary
 
 ### Home
-- Explain the full loop in one screen:
-  - create an agent
-  - train it in Terminal
-  - deploy it into World
-  - fight in Battle
-  - grow it in Agent
-- Do not force deep setup before the user understands the value exchange.
+- Explain builder vs copier paths fast.
+- Primary CTA should send builders into onboarding, not directly into Terminal.
 
-### Create Agent
-- First-run activation ceremony.
-- Must end with one usable result: an agent that can enter `Terminal`.
+### Onboard
+- End with one usable agent plus a memorable first battle moment.
+
+### Dashboard
+- Show what to do today in seconds.
+- Keep `Lab` and `Battle` handoff obvious.
 
 ### Terminal
-- Brain console and readiness gate.
-- Must make setup completion explicit enough to unlock `World`.
+- Help users inspect chart context and form doctrine hypotheses.
+- Forward useful insight into `Lab` or `Agent HQ`.
 
-### World
-- Main play surface.
-- Must reinterpret chart context as traversable world state, not as a full trading workstation.
+### Lab
+- Compare versions, run benchmark packs, and press `Run Again`.
+- This is the center of the builder retention loop.
+
+### Agent / Agent HQ
+- Collection route manages roster.
+- Detail route manages doctrine, memory, history, and record per agent.
 
 ### Battle
-- Encounter-only focused surface.
-- Should sharpen doctrine and proof, not become isolated arcade filler.
+- Reveal historical context through play and result.
+- Send users back to `Lab` or `Agent HQ` with better information.
 
-### Agent
-- Growth, proof, trainer card, share, and rental hub.
-- Absorbs selected responsibilities from the current `Lab` and `Passport` routes.
+### Market / Copy / Passport
+- Secondary or later-phase surfaces.
+- Consume proven agent evidence instead of replacing the builder loop.
 
-## Architecture Heuristics
+## When To Open Larger Docs
 
-- Prefer a small number of canonical documents over many overlapping summaries.
-- Promote stable rules into `README.md`, `AGENTS.md`, or the relevant canonical doc.
-- Keep dated root docs as working references, not authority.
-- Keep execution plans dated and task-specific.
-- Archive superseded plans instead of leaving them mixed with active ones.
-- Make future agent runs able to answer `where do I start?` within one or two file opens.
-
-## When To Open The Larger Docs
-
-- Open `docs/design-docs/six-surface-game-loop.md` when you need the final target IA and player loop.
-- Open `docs/design-docs/unified-product-model.md` when you need domain objects, progression, proof, or monetization context behind the six-surface IA.
-- Open `docs/design-docs/arena-domain-model.md` when you need the local Arena/Arena War semantic model.
-- Open `docs/design-docs/learning-loop.md` when you need ORPO, RAG, Passport contribution, or boundary-learning semantics.
-- Open `docs/references/active/FRONTEND_REFACTOR_EXECUTION_DESIGN_2026-03-06.md` when you need the current structural baseline for refactor work.
-- Open surface-specific docs from `docs/README.md` only after this intent brief matches the task.
+- Open `docs/design-docs/cogochi-uiux-architecture.md` when you need the official IA, page structure, and route hierarchy.
+- Open `docs/product-specs/home.md`, `docs/product-specs/terminal.md`, `docs/product-specs/agents.md`, `docs/product-specs/arena.md`, and `docs/product-specs/passport.md` for surface-level product intent.
+- Open `docs/page-specs/lab-page.md`, `docs/page-specs/agent-page.md`, `docs/page-specs/agent-detail-page.md`, and `docs/page-specs/battle-page.md` for current route behavior.
+- Open `docs/design-docs/unified-product-model.md` when you need domain objects, progression, proof, or monetization semantics.

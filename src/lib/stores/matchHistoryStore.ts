@@ -168,4 +168,61 @@ export function addMatchRecord(record: Omit<MatchRecord, 'id' | 'timestamp'>, sy
   return localId;
 }
 
+// ─── Sprint A2: Simple battle record for CHATBATTLE mode ────
+
+export interface BattleRecord {
+  id: string;
+  timestamp: number;
+  result: 'win' | 'loss';
+  pnl: number;
+  era: string;
+  agentId: string;
+  decisions: number;
+  correctRate: number;
+}
+
+const BATTLE_RECORDS_KEY = 'cogochi_battle_records';
+
+function loadBattleRecords(): BattleRecord[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(BATTLE_RECORDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export const battleRecords = writable<BattleRecord[]>(loadBattleRecords());
+
+battleRecords.subscribe((records) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(BATTLE_RECORDS_KEY, JSON.stringify(records));
+  } catch { /* ignore quota errors */ }
+});
+
+export function addBattleRecord(record: Omit<BattleRecord, 'id' | 'timestamp'>): BattleRecord {
+  const full: BattleRecord = {
+    ...record,
+    id: crypto.randomUUID(),
+    timestamp: Date.now(),
+  };
+  battleRecords.update((recs) => [full, ...recs].slice(0, 200));
+  return full;
+}
+
+export function getTodayBattleCount(): number {
+  let count = 0;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const ts = todayStart.getTime();
+
+  const recs = loadBattleRecords();
+  for (const r of recs) {
+    if (r.timestamp >= ts) count++;
+  }
+  return count;
+}
+
 // 자동 hydration은 hydrateDomainStores() 단일 진입점에서 수행한다.

@@ -7807,3 +7807,466 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
     - `src/routes/terminal/+page.svelte`
     - `docs/exec-plans/active/chatbattle-foundation-refactor-plan-2026-03-20.md`
     - `src/components/terminal/terminalLayoutController.ts`
+
+## [2026-03-24 01:22:00 +0900] START chart-learning-winrate-research-20260324 (chatbattle)
+- Work ID: `W-20260324-0122-chatbattle-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle`
+  - existing uncommitted branch changes already present across UI and route files before this request
+- Request:
+  - review linked GitHub/arXiv trading- and chart-learning research and recommend how to improve chart training and win-rate for the current product direction
+- Owned files / overlap check:
+  - no product code edits planned at start
+  - operational logging only in this file unless scope changes later
+  - overlap detected with existing branch-local WIP in `src/components/layout/*`, `src/routes/*`, and new `src/components/{agent,battle}/`; this task will avoid those files
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+## [2026-03-24 01:24:40 +0900] START memento-kit-usage-audit-20260324 (chatbattle)
+- Work ID: `W-20260324-0124-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle`
+  - existing uncommitted branch changes already present in layout, route, store, and watch-log files before this request
+- Request:
+  - verify whether the repository already applies the external `memento-kit` project (`https://github.com/eunjuhyun88/memento-kit`)
+- Owned files / overlap check:
+  - no product code edits planned at start
+  - operational logging only in this file unless scope changes later
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+### W-20260324-0122-chatbattle-codex (finish)
+
+- Finish: 2026-03-24 01:23 +0900
+- What changed:
+  - appended START/FINISH operational entries in this watch log for the linked-paper research request
+  - created semantic checkpoint for battle-learning synthesis
+  - generated updated branch brief/handoff via `npm run ctx:compact`
+  - no product code changes were made for this task
+- Validation:
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED by pre-existing uncommitted branch changes
+  - `npm run ctx:checkpoint -- --work-id "W-20260324-0122-chatbattle-codex" --surface "battle-learning" --objective "Synthesize linked trading/chart-learning papers into an actionable training and win-rate improvement loop for CHATBATTLE without changing product code yet"`: PASS
+  - `npm run ctx:compact`: PASS
+- Commit hash:
+  - not created in this step; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle`
+  - branch remains dirty with pre-existing UI/route WIP plus this watch-log update:
+    - `docs/AGENT_WATCH_LOG.md`
+    - `src/components/layout/Header.svelte`
+    - `src/components/layout/MobileBottomNav.svelte`
+    - `src/lib/navigation/appSurfaces.ts`
+    - `src/lib/stores/agentData.ts`
+    - `src/lib/stores/matchHistoryStore.ts`
+    - `src/routes/+layout.svelte`
+    - `src/routes/+page.svelte`
+    - `src/routes/agent/+page.svelte`
+    - `src/routes/dashboard/+page.svelte`
+    - `src/routes/lab/+page.svelte`
+    - `src/routes/onboard/+page.svelte`
+    - `docs/design-docs/cogochi-uiux-architecture.md`
+    - `src/components/agent/`
+    - `src/components/battle/`
+    - `src/components/shared/ActivityFeedItem.svelte`
+    - `src/components/shared/DeltaCard.svelte`
+    - `src/components/shared/EvolutionTimeline.svelte`
+    - `src/components/shared/InlineActionButton.svelte`
+    - `src/components/shared/MoodBadge.svelte`
+    - `src/components/shared/StreakCounter.svelte`
+    - `src/lib/stores/battleStore.ts`
+    - `src/lib/stores/doctrineStore.ts`
+    - `src/routes/agent/[id]/`
+    - `src/routes/battle/`
+
+## [2026-03-24 18:40:45 +0900] START chart-learning-winrate-research-20260324-b (chatbattle)
+- Work ID: `W-20260324-1840-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle`
+  - existing uncommitted branch changes already present in layout, route, store, and watch-log files before this request
+- Request:
+  - review linked GitHub/arXiv materials and recommend how to improve chart learning and win rate for the current CHATBATTLE product direction
+- Owned files / overlap check:
+  - no product code edits planned at start
+  - operational logging only in this file unless scope changes later
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+## [2026-03-24 18:42:49 +0900] FINISH chart-learning-winrate-research-20260324-b (chatbattle)
+- What changed:
+  - reviewed linked GitHub/arXiv materials and mapped them to CHATBATTLE `Terminal` / `Battle` / learning-loop constraints
+  - identified current local gaps including mock backtest evaluation, shallow match-history schema, and unconnected learning hooks
+  - no product code changes; operational logging only in this file
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED due pre-existing dirty working tree
+  - `npm run check` / `npm run build` not run because this task delivered research guidance only and did not modify product code
+- Commit hash:
+  - not created; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle`
+  - branch remains dirty with pre-existing UI/route/store WIP plus this watch-log update
+
+## [2026-03-24 19:10:27 +0900] START chart-learning-winrate-research-20260324-c (chatbattle)
+- Work ID: `W-20260324-1909-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle`
+  - existing uncommitted branch changes already present in layout, route, store, and watch-log files before this request
+- Request:
+  - review the linked TauricResearch / arXiv materials and decide whether they should be applied to CHATBATTLE for chart learning and win-rate improvement
+- Owned files / overlap check:
+  - no product code edits planned at start
+  - operational logging only in this file unless scope changes later
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+## [2026-03-24 19:13:04 +0900] FINISH chart-learning-winrate-research-20260324-c (chatbattle)
+- What changed:
+  - reviewed linked TauricResearch / arXiv materials against local `Battle` / doctrine / RAG / passport-learning surfaces
+  - confirmed current local bottlenecks: random battle AI, shallow doctrine evaluation loop, and limited reusable match-history features
+  - no product code changes; operational logging plus `.agent-context/` checkpoint/brief refresh only
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED due pre-existing dirty working tree
+  - `npm run docs:check`: FAIL (`/agent/[id]`, `/battle` route metadata missing on current branch)
+  - `npm run check`: PASS with warnings
+  - `npm run build`: PASS with warnings
+  - `npm run ctx:check -- --strict`: FAIL (brief next-step rule still reported missing by checker)
+- Commit hash:
+  - not created; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle`
+  - branch remains dirty with pre-existing UI/route/store WIP plus this watch-log update
+
+## [2026-03-25 19:24:00 +0900] START design-doc-review-20260325-a (chatbattle)
+- Work ID: `W-20260325-1924-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - existing uncommitted branch changes already present in layout, route, store, design-doc, and watch-log files before this request
+- Request:
+  - review the design documents created so far and identify canonical conflicts, missing contracts, and migration risks
+- Owned files / overlap check:
+  - no product code edits planned at start
+  - operational logging only in this file unless scope changes later
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+  - `npm run ctx:checkpoint -- --work-id "W-20260325-1924-CHATBATTLE-codex" --surface "design-docs" --objective "review existing design docs for canonical conflicts, missing contracts, and migration gaps"`: PASS
+
+## [2026-03-25 19:27:00 +0900] FINISH design-doc-review-20260325-a (chatbattle)
+- What changed:
+  - reviewed the current design authority stack and compared it against `docs/design-docs/cogochi-uiux-architecture.md`
+  - identified canonical IA conflicts, Agent merge-rule regressions, and documentation-layer placement issues
+  - no product code changes; operational logging only in this file
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED due pre-existing dirty working tree
+  - `npm run docs:check`: FAIL (`/agent/[id]`, `/battle` route metadata missing on current branch)
+  - `npm run check` / `npm run build`: not run because this task delivered document review only and did not modify product code
+- Commit hash:
+  - not created; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - branch remains dirty with pre-existing UI/route/store WIP plus this watch-log update
+
+## [2026-03-25 19:24:00 +0900] START official-design-doc-alignment-20260325-b (chatbattle)
+- Work ID: `W-20260325-1924-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - existing uncommitted branch changes already present in layout, route, store, design-doc, and watch-log files before this request
+- Request:
+  - align the canonical docs layer to the officially adopted `docs/design-docs/cogochi-uiux-architecture.md`
+- Owned files / overlap check:
+  - doc and generated-doc updates planned in canonical docs plus `scripts/dev/refresh-generated-context.mjs`
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+  - route/store WIP already existed for `/agent/[id]`, `/battle`, `battleStore`, and `doctrineStore`; this task only updates documentation and metadata to match those additions
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+  - `npm run ctx:checkpoint -- --work-id "W-20260325-1924-CHATBATTLE-codex" --surface "design-docs" --objective "review existing design docs for canonical conflicts, missing contracts, and migration gaps"`: PASS
+
+## [2026-03-25 19:41:00 +0900] FINISH official-design-doc-alignment-20260325-b (chatbattle)
+- What changed:
+  - promoted `docs/design-docs/cogochi-uiux-architecture.md` into the canonical authority stack through updates to `docs/SYSTEM_INTENT.md`, `docs/DESIGN.md`, `docs/design-docs/index.md`, and `docs/README.md`
+  - realigned surface and page specs to the official route model, including new route contracts for `/agent`, `/agent/[id]`, and `/battle`
+  - updated `scripts/dev/refresh-generated-context.mjs` store/route metadata and refreshed generated context docs
+- Validation results:
+  - `npm run docs:refresh`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run ctx:compact`: PASS
+  - `npm run check` / `npm run build`: not run because this task only changed docs and generated doc artifacts
+- Commit hash:
+  - not created; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - branch remains dirty with pre-existing UI/route/store WIP plus the canonical doc, generated-doc, and watch-log updates from this task
+
+## [2026-03-25 20:01:00 +0900] START ui-vs-canonical-audit-20260325-c (chatbattle)
+- Work ID: `W-20260325-2001-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - existing uncommitted branch changes already present in docs, layout, route, store, and component files before this request
+- Request:
+  - inspect the current UI implementation against the newly aligned official Cogochi docs and identify remaining mismatches
+- Owned files / overlap check:
+  - no product code edits planned at start because the relevant layout/route files already contain branch-local UI WIP
+  - operational logging only in this file unless scope changes later
+  - overlap detected with existing branch-local edits in `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, and related layout/navigation files
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: not run for this task because the working tree already contained uncommitted changes
+  - `npm run ctx:checkpoint -- --work-id "W-20260325-2001-CHATBATTLE-codex" --surface "ui-audit" --objective "compare current UI/navigation implementation against official Cogochi architecture and identify actionable mismatches"`: PASS
+
+## [2026-03-25 20:06:00 +0900] FINISH ui-vs-canonical-audit-20260325-c (chatbattle)
+- What changed:
+  - reviewed current layout, navigation, home, dashboard, lab, and agent-state code against the official Cogochi IA
+  - identified remaining implementation mismatches, especially stale old-view routing and hardcoded primary-agent selection
+  - no product code changes; operational logging only in this file
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run check` / `npm run build`: not run because this task delivered implementation audit only and did not modify product code
+- Commit hash:
+  - not created; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - branch remains dirty with pre-existing docs/UI/store WIP plus this watch-log update
+
+## [2026-03-26 22:17:11 +0900] START memento-kit-operability-review-20260326 (chatbattle)
+- Work ID: `W-20260326-2216-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - existing uncommitted branch changes already present in docs, layout, route, store, and component files before this request
+- Request:
+  - verify whether the current `memento-kit` style collaboration layer actually works and whether Anthropic-style multi-agent generator/planner/evaluator harnessing should be applied more strongly here
+- Owned files / overlap check:
+  - no product code edits planned at start
+  - operational logging only in this file unless scope changes later
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+## [2026-03-26 22:18:00 +0900] FINISH memento-kit-operability-review-20260326 (chatbattle)
+- What changed:
+  - verified actual runtime behavior of `memento:resume`, coordination, and orchestration commands
+  - checked shared `.memento` directory presence and relay freshness
+  - assessed whether stronger Anthropic-style planner/generator/evaluator harnessing is justified for the current repo state
+  - no product code changes; operational logging only in this file
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED due pre-existing dirty working tree
+  - `npm run memento:resume -- --agent implementer-ui --json`: PASS
+  - `npm run coord:list`: PASS (`no active claims`)
+  - `npm run coord:check`: FAIL (`feature branch has no active coordination claim`)
+  - `npm run orch:list`: PASS (`no work items`)
+  - `npm run orch:check`: PASS
+- Commit hash:
+  - not created; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - branch remains dirty with pre-existing docs/UI/store WIP plus this watch-log update
+
+## [2026-03-26 23:12:38 +0900] START claude-compat-fix-20260326 (chatbattle)
+- Work ID: `W-20260326-2312-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - existing uncommitted branch changes already present in docs, layout, route, store, and component files before this request
+- Request:
+  - diagnose why the current Claude-compatible memento/coordination layer is not really operating and fix the concrete blocker(s)
+- Owned files / overlap check:
+  - expected write scope limited to Claude/memento/coordination scripts, docs, and watch-log entries
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+## [2026-03-26 23:15:48 +0900] FINISH claude-compat-fix-20260326 (chatbattle)
+- What changed:
+  - improved Claude/Codex autopilot claim inference so wide-scope dirty branches can still create one multi-path coordination claim instead of skipping claim creation
+  - added automatic shared `.memento` relay on `stop` through the Claude hook path
+  - updated `memento:resume` to prefer branch-specific relay pointers instead of the latest global inbox file
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED due pre-existing dirty working tree
+  - `node scripts/dev/context-autopilot.mjs post-edit`: PASS, created claim `W-20260326-2312-CHATBATTLE-codex`
+  - `npm run coord:list`: PASS, active claim present
+  - `npm run coord:check`: PASS
+  - `node scripts/dev/context-autopilot.mjs stop`: PASS, wrote new relay files under shared `.memento/runtime/stockclaw/{handoff-inbox,relay}`
+  - `npm run memento:resume -- --agent implementer-ui --json`: PASS, now resolves branch-specific latest relay
+- Commit hash:
+  - not created; user did not request commit/push
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - branch remains dirty with pre-existing docs/UI/store WIP plus this watch-log update and the Claude compatibility script changes
+
+## [2026-03-27 18:08:00 +0900] START terminal-structure-trace-20260327 (chatbattle)
+- Work ID: `W-20260327-1808-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - existing uncommitted branch changes already present in docs, routes, stores, and components before this request
+- Request:
+  - trace how the current code computes chart structure highs/lows and explain the calculation path
+- Owned files / overlap check:
+  - no product-code edit planned
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: not run for this read-only trace because the working tree was already dirty
+
+## [2026-03-31 23:46:05 +0900] START claude-memento-recheck-20260331 (chatbattle)
+- Work ID: `W-20260331-2345-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - existing uncommitted branch changes already present in docs, routes, stores, components, and memento-related scripts before this request
+- Request:
+  - re-verify whether the earlier Claude/memento/coordination fixes still behave correctly in the current branch state
+- Owned files / overlap check:
+  - no product-code edit planned at start
+  - overlap detected with existing branch-local edits in `docs/AGENT_WATCH_LOG.md`; this entry is appended only at the end
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+## [2026-03-31 23:52:40 +0900] FINISH claude-memento-recheck-20260331 (chatbattle)
+- Work ID: `W-20260331-2345-CHATBATTLE-codex`
+- What changed:
+  - updated `scripts/dev/context-autopilot.mjs` so expired or superseded branch claims are automatically released and re-claimed under the current branch work ID
+  - updated `scripts/dev/memento-relay.mjs` to mirror relay payloads into repo-local `.agent-context/memento` when shared `../.memento` is not writable, while still writing to shared runtime when available
+  - updated `scripts/dev/memento-resume.mjs` to read the freshest relay across shared and repo-local runtime roots
+- Validation:
+  - `node scripts/dev/context-autopilot.mjs post-edit`: PASS
+  - `node scripts/dev/context-autopilot.mjs stop`: PASS
+  - `npm run coord:list`: PASS, current claim rotated to `W-20260327-1808-CHATBATTLE-codex`
+  - `npm run coord:check`: PASS
+  - `npm run memento:resume -- --agent implementer-ui --json`: PASS, latest relay resolved from current branch payload
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with existing Svelte warnings only
+  - `npm run build`: PASS with existing Svelte warnings only
+- Commit hash:
+  - none; commit not requested
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - branch remains dirty with substantial pre-existing docs/UI/store WIP plus this watch-log update and the memento/coordination script fixes
+
+## [2026-03-31 23:53:42 +0900] START branch-sync-and-memento-rollout-20260331 (chatbattle)
+- Work ID: `W-20260331-2354-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/dev-server-run-20260320-chatbattle`
+- Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
+- Working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [behind 14]`
+  - existing uncommitted branch changes already present across docs, UI routes, stores, and memento tooling before this request
+- Request:
+  - fetch origin, rebase/sync the current personal branch safely, then expand memento usage so the agent workflow does not depend on a single Claude path
+- Owned files / overlap check:
+  - expected write scope: `scripts/dev/`, `.claude/hooks/`, `agents/`, relevant canonical docs, and `docs/AGENT_WATCH_LOG.md`
+  - overlap risk exists with pre-existing branch-local WIP in the same branch; no unrelated user changes will be reverted
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: pending; current dirty tree requires preservation before branch sync
+
+## [2026-04-01 00:20:35 +0900] FINISH branch-sync-and-memento-rollout-20260331 (chatbattle)
+- Work ID: `W-20260331-2354-CHATBATTLE-codex`
+- What changed:
+  - stashed the dirty worktree, fetched `origin`, rebased the current branch onto `origin/codex/dev-server-run-20260320-chatbattle`, then ran `npm run safe:sync` to rebase onto latest `origin/main`
+  - restored the stashed WIP and resolved the generated-doc conflict by regenerating docs
+  - updated `scripts/dev/context-restore.sh` so `ctx:resume` is now a valid memento-backed resume mode with `MEMENTO_AGENT` role selection
+  - updated `.claude/hooks/session-start.sh`, `.claude/agents/*.md`, `.claude/commands/resume-context.md`, `agents/*.json`, and `scripts/dev/scaffold-agent.mjs` so planner / implementer / reviewer all route through the same memento-backed resume flow
+  - updated `docs/MULTI_AGENT_MEMORY.md` to reflect the current `CHATBATTLE` repo path and the new default resume rule
+  - rotated the branch coordination claim to `W-20260331-2354-CHATBATTLE-codex` so the new `agents/` and memory-doc paths are covered
+  - compacted current context and published a fresh branch relay with `npm run memento:relay -- --work-id "W-20260331-2354-CHATBATTLE-codex" --agent planner`
+- Validation:
+  - `npm run ctx:resume`: PASS
+  - `MEMENTO_AGENT=planner npm run ctx:resume`: PASS
+  - `MEMENTO_AGENT=reviewer npm run ctx:resume`: PASS
+  - `bash .claude/hooks/session-start.sh`: PASS
+  - `npm run agent:refresh`: PASS
+  - `npm run docs:refresh`: PASS
+  - `npm run gate:context`: PASS
+  - `npm run check`: PASS with existing Svelte warnings only
+  - `npm run build`: PASS with existing Svelte warnings only
+  - `npm run ctx:compact -- --docs-check pass --check pass --build pass --gate pass`: PASS
+- Commit hash:
+  - none; commit not requested
+- Push status:
+  - not requested
+  - note: local branch is now rebased and diverges from `origin/codex/dev-server-run-20260320-chatbattle`; aligning the remote branch would require an explicit push approval
+- Final working tree status:
+  - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [ahead 8, behind 1]`
+  - branch remains dirty with substantial pre-existing docs/UI/store WIP plus the memento/agent workflow updates from this task
+  - stash entry `wip/W-20260331-2354-CHATBATTLE-codex-pre-sync` remains in `git stash list` as a safety backup because the restore path encountered generated-doc conflicts

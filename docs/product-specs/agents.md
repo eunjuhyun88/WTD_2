@@ -7,46 +7,47 @@ Canonical surface label:
 - `Agent`
 
 Purpose:
-- Short product spec for the merged agent hub: growth, training record, trainer card, sharing, and rental state.
+- Short product spec for the agent roster plus per-agent HQ surfaces.
 
 ## Primary User Job
 
-Inspect one owned agent as a living asset: growth, record, training state, shareability, and rental readiness.
+Inspect owned agents as living assets, then open one agent HQ to manage doctrine, memory, history, and record.
 
-## Surface Role In The Merged Product
+## Surface Role In The Official IA
 
-`Agent` is the merged hub that absorbs the old `Lab` and `Passport` responsibilities.
+`Agent` now spans two official routes:
+- `/agent` = roster and creation entry
+- `/agent/[id]` = operational HQ for one agent
 
 The user should be able to:
-- inspect stage, record, HP flow, and whale history
-- inspect doctrine, retained memory, and training state
-- review trainer card, share state, and rental status
-- make focused training adjustments without leaving the agent identity context
+- inspect roster health, stage, win rate, and memory depth
+- open a focused HQ for one agent
+- edit doctrine and inspect retained memory
+- review version history and battle record
+- route the agent back into `Lab`
 
-## Agent Submodes
+## Surface Split
 
-- `Standby / Hangar`
-  - passive companion state with stage, streak, readiness, and quick actions
-- `Train`
-  - doctrine, prompts, memory, and specialization editing
-- `Record`
-  - stage, record, HP flow, whales defeated, trainer card, share, rental
+- `/agent`
+  - collection page with cards, stats, create-agent CTA, and direct lab handoff
+- `/agent/[id]`
+  - tabs for `Overview`, `Doctrine`, `Memory`, `History`, and `Record`
 
 ## Current Implementation Bridge
 
-- `/agents` currently ships as a collection page, not an oracle leaderboard.
-- `/lab` currently owns most training-workbench behavior.
-- `/passport` currently owns durable profile, holdings, and learning-report behavior.
-- The final `Agent` surface will merge selected responsibilities from `/lab` and `/passport`.
-- Use `docs/page-specs/agents-page.md`, `docs/page-specs/lab-page.md`, and `docs/page-specs/passport-page.md` for current route contracts.
+- `/agent` currently ships as the collection page.
+- `/agent/[id]` currently ships as the per-agent HQ.
+- `/lab` remains the separate training workbench and should not be collapsed into the roster route.
+- `/passport` remains a legacy or phase-2 proof slice rather than the main agent-management surface.
+- Use `docs/page-specs/agent-page.md`, `docs/page-specs/agent-detail-page.md`, and `docs/page-specs/lab-page.md` for current route contracts.
 
 ## Core Flows
 
-1. Browse or select an owned character.
-2. Inspect its stage, record, doctrine, and retained memory.
-3. Review training state or reflection history.
-4. Inspect trainer card, share state, and rental readiness.
-5. Decide whether to return to `Terminal`, `World`, or `Battle`.
+1. Browse owned agents from the roster.
+2. Open one agent HQ.
+3. Inspect doctrine, memory, history, and record.
+4. Save changes or route back to `Lab`.
+5. Use the agent's record as proof for later market readiness.
 
 ## Product Constraints
 
@@ -54,22 +55,26 @@ The user should be able to:
 - Empty or partially hydrated stat state should still degrade cleanly through metadata/default fallbacks.
 - Character identity should map to meaningful specialization, not cosmetic-only flavor.
 - Progression should come from evidence, not idle grind.
-- Standby presence should increase attachment and clarity, not create meaningless pet-maintenance chores.
+- Agent HQ should not swallow the dedicated `Lab` workbench.
 - Agent identity, proof, and rental state should remain readable for future agents and humans.
 
 ## Target IA
 
 - User-facing label: `Agent`
-- Primary tabs: `Train`, `Record`
-- Legacy surfaces absorbed over time:
-  - `Lab`
-  - `Passport`
+- Primary routes:
+  - `/agent`
+  - `/agent/[id]`
+- Related supporting routes:
+  - `/lab`
+  - `/battle`
+  - `/market`
 
 ## Supporting Docs
 
-- `docs/design-docs/six-surface-game-loop.md`
+- `docs/design-docs/cogochi-uiux-architecture.md`
 - `docs/design-docs/unified-product-model.md`
-- `docs/page-specs/agents-page.md`
+- `docs/page-specs/agent-page.md`
+- `docs/page-specs/agent-detail-page.md`
 - `docs/page-specs/lab-page.md`
 - `docs/page-specs/passport-page.md`
 - `docs/generated/store-authority-map.md`
