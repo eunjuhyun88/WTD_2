@@ -59,5 +59,8 @@ function buildPayload(snapshot: SignalSnapshot): string {
     l12: snapshot.l12.score,
     l13: snapshot.l13.score,
     l14: snapshot.l14.score,
+    l15: snapshot.l15.score,
+    l18: snapshot.l18.score,
+    l19: snapshot.l19.score,
   });
 }

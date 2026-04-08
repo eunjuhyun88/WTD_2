@@ -6,21 +6,23 @@
   function toLayers(s: any): LayerRow[] {
     if (!s) return [];
     return [
-      { id: 'L01', name: 'Wyckoff',  val: s.l1.phase,                          score: s.l1.score,  max: 30 },
-      { id: 'L02', name: 'Supply',   val: fmtFr(s.l2.fr),                      score: s.l2.score,  max: 20 },
-      { id: 'L03', name: 'V-Surge',  val: s.l3.v_surge ? '⚡' : '—',           score: s.l3.score,  max: 15 },
-      { id: 'L04', name: 'OrdBook',  val: `${s.l4.bid_ask_ratio}`,             score: s.l4.score,  max: 10 },
-      { id: 'L05', name: 'Basis',    val: `${s.l5.basis_pct}%`,                score: s.l5.score,  max: 10 },
-      { id: 'L06', name: 'OnChain',  val: `${s.l6.exchange_netflow}`,          score: s.l6.score,  max: 8 },
-      { id: 'L07', name: 'F&G',      val: `${s.l7.fear_greed}`,                score: s.l7.score,  max: 10 },
-      { id: 'L08', name: 'Kimchi',   val: `${s.l8.kimchi}%`,                   score: s.l8.score,  max: 5 },
-      { id: 'L09', name: 'Liq',      val: fmtUsd(s.l9.liq_1h),                score: s.l9.score,  max: 10 },
-      { id: 'L10', name: 'MTF',      val: s.l10.mtf_confluence,                score: s.l10.score, max: 20 },
-      { id: 'L11', name: 'CVD',      val: s.l11.cvd_state,                     score: s.l11.score, max: 25 },
-      { id: 'L12', name: 'Sector',   val: s.l12.sector_flow,                   score: s.l12.score, max: 5 },
-      { id: 'L13', name: 'Break',    val: s.l13.breakout ? '▲' : '—',          score: s.l13.score, max: 15 },
-      { id: 'L14', name: 'BB',       val: s.l14.bb_squeeze ? 'SQZ' : `w${s.l14.bb_width}`, score: s.l14.score, max: 5 },
-      { id: 'L15', name: 'ATR',      val: `${s.l15.atr_pct}%`,                score: 0,           max: 0 },
+      { id: 'L01', name: 'Wyckoff',  val: s.l1.phase,                          score: s.l1.score,  max: 28 },
+      { id: 'L02', name: 'Flow',     val: fmtFr(s.l2.fr),                      score: s.l2.score,  max: 55 },
+      { id: 'L03', name: 'V-Surge',  val: s.l3.label ?? (s.l3.v_surge ? '⚡' : '—'), score: s.l3.score, max: 15 },
+      { id: 'L04', name: 'OrdBook',  val: s.l4.label ?? `${s.l4.bid_ask_ratio}`, score: s.l4.score, max: 12 },
+      { id: 'L05', name: 'LiqEst',   val: s.l5.label ?? `${s.l5.basis_pct}%`,  score: s.l5.score,  max: 12 },
+      { id: 'L06', name: 'OnChain',  val: s.l6.detail ?? `${s.l6.n_tx ?? 0}tx`, score: s.l6.score, max: 10 },
+      { id: 'L07', name: 'F&G',      val: s.l7.label ?? `${s.l7.fear_greed}`,  score: s.l7.score,  max: 8 },
+      { id: 'L08', name: 'Kimchi',   val: s.l8.label ?? `${s.l8.kimchi}%`,     score: s.l8.score,  max: 10 },
+      { id: 'L09', name: 'RealLiq',  val: s.l9.label ?? fmtUsd((s.l9.liq_long_usd ?? 0) + (s.l9.liq_short_usd ?? 0)), score: s.l9.score, max: 12 },
+      { id: 'L10', name: 'MTF',      val: s.l10.label ?? s.l10.mtf_confluence, score: s.l10.score, max: 20 },
+      { id: 'L11', name: 'CVD',      val: s.l11.cvd_state,                     score: s.l11.score, max: 12 },
+      { id: 'L12', name: 'Sector',   val: s.l12.sector_flow,                   score: s.l12.score, max: 10 },
+      { id: 'L13', name: 'Break',    val: s.l13.label ?? (s.l13.breakout ? '▲' : '—'), score: s.l13.score, max: 12 },
+      { id: 'L14', name: 'BB',       val: s.l14.label ?? (s.l14.bb_squeeze ? 'SQZ' : `w${s.l14.bb_width}`), score: s.l14.score, max: 10 },
+      { id: 'L15', name: 'ATR',      val: `${s.l15.atr_pct}%`,                score: s.l15.score ?? 0, max: 6 },
+      ...(s.l18 ? [{ id: 'L18', name: '5mMom',  val: s.l18.label ?? `${s.l18.momentum_30m}%`, score: s.l18.score, max: 25 }] : []),
+      ...(s.l19 ? [{ id: 'L19', name: 'OIAcc',  val: s.l19.label ?? s.l19.signal,             score: s.l19.score, max: 15 }] : []),
     ];
   }
 

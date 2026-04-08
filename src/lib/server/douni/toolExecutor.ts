@@ -6,13 +6,18 @@
 // 각 도구는 기존 서비스를 호출하여 결과를 생성.
 
 import type { ToolCall, ToolResult, ToolExecutorContext, DouniSSEEvent } from './types';
-import type { SignalSnapshot } from '$lib/engine/cogochi/types';
+import type { SignalSnapshot, ExtendedMarketData } from '$lib/engine/cogochi/types';
 import { VALID_TOOL_NAMES } from './tools';
 import { fetchKlinesServer, fetch24hrServer } from '../binance';
 import { computeSignalSnapshot, computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 import type { MarketContext } from '$lib/engine/factorEngine';
+import {
+  rateLimiter,
+  fetchDepth, fetchOIHistory, fetchTakerRatio, fetchForceOrders,
+  fetchBtcOnchain, fetchMempool, fetchUpbitPrices, fetchBithumbPrices, fetchUsdKrw,
+} from '../marketDataService';
 
 const FAPI = 'https://fapi.binance.com';
 
@@ -119,21 +124,40 @@ async function executeAnalyzeMarket(
 ): Promise<Record<string, unknown>> {
   const symbol = (args.symbol as string || ctx.symbol || 'BTCUSDT').toUpperCase();
   const tf = (args.timeframe as string) || ctx.timeframe || '4h';
+  const isBTC = symbol.startsWith('BTC');
 
-  // Fetch all data in parallel (same logic as /api/cogochi/analyze)
-  const [klines, klines1h, klines1d, ticker, deriv, fearGreed] = await Promise.all([
-    fetchKlinesServer(symbol, tf, 200),
-    fetchKlinesServer(symbol, '1h', 100).catch(() => []),
-    fetchKlinesServer(symbol, '1d', 50).catch(() => []),
-    fetch24hrServer(symbol).catch(() => null),
+  // Fetch all data in parallel — 12 sources via rate limiter
+  const [
+    klines, klines1h, klines1d, klines5m, ticker,
+    deriv, fearGreed, depth, oiHistory, takerData,
+    forceOrders, btcOnchainData, mempoolData,
+    upbitPrices, bithumbPrices, usdKrw,
+  ] = await Promise.all([
+    rateLimiter.execute(() => fetchKlinesServer(symbol, tf, 200)),
+    rateLimiter.execute(() => fetchKlinesServer(symbol, '1h', 100)).catch(() => []),
+    rateLimiter.execute(() => fetchKlinesServer(symbol, '1d', 50)).catch(() => []),
+    rateLimiter.execute(() => fetchKlinesServer(symbol, '5m', 60)).catch(() => []),
+    rateLimiter.execute(() => fetch24hrServer(symbol)).catch(() => null),
     fetchDerivatives(symbol),
     fetchFearGreed(),
+    rateLimiter.execute(() => fetchDepth(symbol, 20)).catch(() => null),
+    rateLimiter.execute(() => fetchOIHistory(symbol, '5m', 12)).catch(() => []),
+    rateLimiter.execute(() => fetchTakerRatio(symbol, '1h', 1)).catch(() => []),
+    rateLimiter.execute(() => fetchForceOrders(symbol, 50)).catch(() => []),
+    isBTC ? rateLimiter.execute(() => fetchBtcOnchain()).catch(() => null) : Promise.resolve(null),
+    isBTC ? rateLimiter.execute(() => fetchMempool()).catch(() => null) : Promise.resolve(null),
+    rateLimiter.execute(() => fetchUpbitPrices()).catch(() => new Map()),
+    rateLimiter.execute(() => fetchBithumbPrices()).catch(() => new Map()),
+    rateLimiter.execute(() => fetchUsdKrw()).catch(() => 1350),
   ]);
 
   if (!klines.length) {
     throw new Error(`No kline data for ${symbol}`);
   }
 
+  const currentPrice = klines[klines.length - 1].close;
+
+  // Build MarketContext (base)
   const marketCtx: MarketContext = {
     pair: symbol,
     timeframe: tf,
@@ -154,35 +178,86 @@ async function executeAnalyzeMarket(
     sentiment: { fearGreed },
   };
 
-  const snapshot = computeSignalSnapshot(marketCtx, symbol, tf);
+  // Compute OI change %
+  let oiChangePct = 0;
+  if (oiHistory.length >= 2) {
+    const firstOI = oiHistory[0].sumOpenInterestValue;
+    const lastOI = oiHistory[oiHistory.length - 1].sumOpenInterestValue;
+    oiChangePct = firstOI > 0 ? ((lastOI - firstOI) / firstOI) * 100 : 0;
+  }
+
+  // Compute kimchi premium
+  let kimchiPremium = 0;
+  const baseSymbol = symbol.replace('USDT', '');
+  const binanceKrw = currentPrice * usdKrw;
+  const prems: number[] = [];
+  const upbitPrice = upbitPrices.get(baseSymbol);
+  const bithumbPrice = bithumbPrices.get(baseSymbol);
+  if (upbitPrice && binanceKrw > 0) prems.push(((upbitPrice / binanceKrw) - 1) * 100);
+  if (bithumbPrice && binanceKrw > 0) prems.push(((bithumbPrice / binanceKrw) - 1) * 100);
+  if (prems.length > 0) kimchiPremium = prems.reduce((s, v) => s + v, 0) / prems.length;
+
+  // Build ExtendedMarketData
+  const ext: ExtendedMarketData = {
+    currentPrice,
+    depth: depth ? { bidVolume: depth.bidVolume, askVolume: depth.askVolume, ratio: depth.ratio } : undefined,
+    takerRatio: takerData.length > 0 ? takerData[0].buySellRatio : undefined,
+    oiChangePct,
+    priceChangePct: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
+    forceOrders: forceOrders.map(o => ({ side: o.side, price: o.price, qty: o.origQty, time: o.time })),
+    btcOnchain: btcOnchainData ? { nTx: btcOnchainData.nTx, avgTxValue: btcOnchainData.avgTxValue } : undefined,
+    mempool: mempoolData ? { pending: mempoolData.count, fastestFee: mempoolData.fastestFee } : undefined,
+    kimchiPremium,
+    klines5m: klines5m.length > 0 ? klines5m.map(k => ({
+      time: k.time, open: k.open, high: k.high, low: k.low, close: k.close,
+      volume: k.volume, buyVolume: (k as any).takerBuyBaseVol,
+    })) : undefined,
+    klines1dExt: klines1d.length > 0 ? klines1d.map(k => ({
+      time: k.time, open: k.open, high: k.high, low: k.low, close: k.close, volume: k.volume,
+    })) : undefined,
+    oiHistory5m: oiHistory.length > 0 ? oiHistory.map(p => ({
+      timestamp: p.timestamp, oi: p.sumOpenInterestValue,
+    })) : undefined,
+  };
+
+  // Compute snapshot with extended data
+  const snapshot = computeSignalSnapshot(marketCtx, symbol, tf, ext);
   snapshot.hmac = signSnapshot(snapshot);
 
-  // Cache for future use
+  // Cache
   ctx.cachedSnapshot = snapshot;
   ctx.symbol = symbol;
   ctx.timeframe = tf;
 
-  // Emit layer results as individual events for UI
+  // Emit layer results for UI
   const layerEntries: Array<{ layer: string; score: number; signal: string; detail?: string }> = [
-    { layer: 'L1', score: snapshot.l1.score, signal: snapshot.l1.phase },
-    { layer: 'L2', score: snapshot.l2.score, signal: `FR:${(snapshot.l2.fr * 100).toFixed(3)}%` },
-    { layer: 'L3', score: snapshot.l3.score, signal: snapshot.l3.v_surge ? 'SURGE' : 'NORMAL' },
-    { layer: 'L10', score: snapshot.l10.score, signal: snapshot.l10.mtf_confluence },
+    { layer: 'L1', score: snapshot.l1.score, signal: snapshot.l1.phase, detail: snapshot.l1.pattern },
+    { layer: 'L2', score: snapshot.l2.score, signal: `FR:${(snapshot.l2.fr * 100).toFixed(3)}%`, detail: snapshot.l2.detail },
+    { layer: 'L3', score: snapshot.l3.score, signal: snapshot.l3.label },
+    { layer: 'L4', score: snapshot.l4.score, signal: snapshot.l4.label },
+    { layer: 'L5', score: snapshot.l5.score, signal: snapshot.l5.label },
+    { layer: 'L6', score: snapshot.l6.score, signal: snapshot.l6.detail },
+    { layer: 'L7', score: snapshot.l7.score, signal: snapshot.l7.label },
+    { layer: 'L8', score: snapshot.l8.score, signal: snapshot.l8.label },
+    { layer: 'L9', score: snapshot.l9.score, signal: snapshot.l9.label },
+    { layer: 'L10', score: snapshot.l10.score, signal: snapshot.l10.label },
     { layer: 'L11', score: snapshot.l11.score, signal: snapshot.l11.cvd_state },
-    { layer: 'L13', score: snapshot.l13.score, signal: snapshot.l13.breakout ? 'BREAKOUT' : 'NO' },
+    { layer: 'L13', score: snapshot.l13.score, signal: snapshot.l13.label },
+    { layer: 'L14', score: snapshot.l14.score, signal: snapshot.l14.label },
+    { layer: 'L18', score: snapshot.l18.score, signal: snapshot.l18.label },
+    { layer: 'L19', score: snapshot.l19.score, signal: snapshot.l19.label },
   ];
 
   for (const entry of layerEntries) {
     events.push({ type: 'layer_result', ...entry });
   }
 
-  // Chart klines for side panel
+  // Chart klines
   const chartKlines = klines.slice(-100).map(k => ({
     t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume,
   }));
 
-  // S/R annotations + indicator series (Sprint 1)
-  const currentPrice = klines[klines.length - 1].close;
+  // S/R + indicators
   const annotations = detectSupportResistance(klines, currentPrice);
   const indicatorSeries = computeIndicatorSeries(klines);
 
@@ -191,16 +266,29 @@ async function executeAnalyzeMarket(
     timeframe: tf,
     alphaScore: snapshot.alphaScore,
     alphaLabel: snapshot.alphaLabel,
+    verdict: snapshot.verdict,
     regime: snapshot.regime,
+    extremeFR: snapshot.extremeFR,
+    frAlert: snapshot.frAlert,
+    mtfTriple: snapshot.mtfTriple,
+    bbBigSqueeze: snapshot.bbBigSqueeze,
     l1: snapshot.l1,
     l2: snapshot.l2,
     l3: snapshot.l3,
+    l4: snapshot.l4,
+    l5: snapshot.l5,
+    l6: snapshot.l6,
     l7: snapshot.l7,
+    l8: snapshot.l8,
+    l9: snapshot.l9,
     l10: snapshot.l10,
     l11: snapshot.l11,
+    l12: snapshot.l12,
     l13: snapshot.l13,
     l14: snapshot.l14,
     l15: snapshot.l15,
+    l18: snapshot.l18,
+    l19: snapshot.l19,
     price: currentPrice,
     change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
     chart: chartKlines,
