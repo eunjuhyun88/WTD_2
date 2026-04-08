@@ -92,8 +92,8 @@
   const selectedPriceText = $derived(
     selectedPrice > 0
       ? Number(selectedPrice).toLocaleString('en-US', {
-          minimumFractionDigits: selectedPrice >= 1000 ? 2 : 4,
-          maximumFractionDigits: selectedPrice >= 1000 ? 2 : 4
+          minimumFractionDigits: selectedPrice >= 1000 ? 0 : 2,
+          maximumFractionDigits: selectedPrice >= 1000 ? 0 : 2
         })
       : '---'
   );
@@ -101,41 +101,48 @@
 
 <nav id="nav">
   <div class="nav-main">
-    <a class="nav-logo" href={buildDeepLink('/')} aria-label="Home">
-      <span class="nav-logo-main">Cogochi</span>
+    <!-- Logo -->
+    <a class="nav-logo" href={buildDeepLink(connected ? '/dashboard' : '/')} aria-label="Home">
+      <span class="nav-logo-main">COGOTCHI</span>
     </a>
 
-    <div class="nav-sep"></div>
+    <div class="nav-sep desktop-only"></div>
 
+    <!-- Ticker (desktop + mobile) -->
     <div class="selected-ticker">
-      <span class="st-pair">{gState.pair}</span>
+      <span class="st-pair">{selectedToken}</span>
       <span class="st-price">${selectedPriceText}</span>
     </div>
 
-    <div class="nav-sep"></div>
+    <div class="nav-sep desktop-only"></div>
 
+    <!-- Desktop/Tablet Nav Tabs -->
     {#each DESKTOP_NAV_SURFACES as item}
       <a
         class="nav-tab-desktop"
         class:active={isActive(item.id)}
+        class:highlight={item.highlight === true}
         title={`${item.label} · ${item.description}`}
         aria-label={`${item.label}: ${item.description}`}
         aria-current={isActive(item.id) ? 'page' : undefined}
         href={item.href}
       >
-        {item.label.toUpperCase()}
+        <span class="tab-full">{item.label.toUpperCase()}{#if item.highlight}<span class="tab-star">&#9733;</span>{/if}</span>
+        <span class="tab-short">{item.shortLabel}{#if item.highlight}<span class="tab-star">&#9733;</span>{/if}</span>
       </a>
     {/each}
   </div>
 
   <div class="nav-right">
-    <div class="score-badge">
+    <!-- Score badge (desktop only) -->
+    <div class="score-badge desktop-only">
       <span class="score-label">SCORE</span>
-      <span class="score-value">{Math.round(gState.score)}</span>
+      <span class="score-value">{Math.round(gState.score).toLocaleString()}</span>
     </div>
 
+    <!-- Settings (desktop only) -->
     <a
-      class="settings-btn"
+      class="settings-btn desktop-only"
       title="Settings"
       aria-label="Settings"
       href={buildDeepLink('/settings')}
@@ -146,6 +153,7 @@
       </svg>
     </a>
 
+    <!-- Wallet / Profile -->
     {#if connected}
       <div class="profile-dropdown-wrap">
         <button class="wallet-btn connected" onclick={toggleProfileDropdown}>
@@ -177,8 +185,8 @@
 <style>
   #nav {
     background:
-      radial-gradient(circle at 10% 0%, rgba(255, 118, 181, 0.12), transparent 28%),
-      radial-gradient(circle at 86% 0%, rgba(186, 240, 106, 0.1), transparent 24%),
+      radial-gradient(circle at 10% 0%, rgba(219, 154, 159, 0.10), transparent 28%),
+      radial-gradient(circle at 86% 0%, rgba(173, 202, 124, 0.08), transparent 24%),
       linear-gradient(180deg, rgba(10, 15, 26, 0.96), rgba(8, 13, 23, 0.94));
     border-bottom: 1px solid var(--sc-line-soft);
     position: fixed;
@@ -202,7 +210,7 @@
     right: 0;
     bottom: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 118, 181, 0.44), rgba(255, 217, 122, 0.18), rgba(186, 240, 106, 0.24), transparent);
+    background: linear-gradient(90deg, transparent, rgba(219, 154, 159, 0.36), rgba(242, 209, 147, 0.18), rgba(173, 202, 124, 0.22), transparent);
     pointer-events: none;
   }
 
@@ -235,7 +243,7 @@
     font-family: var(--sc-font-display);
     font-size: 1.35rem;
     letter-spacing: 0.08em;
-    text-shadow: 0 0 10px rgba(255, 118, 181, 0.1);
+    text-shadow: 0 0 10px rgba(219, 154, 159, 0.1);
   }
 
   .nav-sep {
@@ -277,8 +285,7 @@
     height: 28px;
     display: flex;
     align-items: center;
-    border: 1px solid rgba(255, 217, 122, 0.08);
-    border-right: 1px solid rgba(255, 217, 122, 0.08);
+    border: 1px solid rgba(219, 154, 159, 0.08);
     border-radius: 999px;
     background: rgba(13, 19, 31, 0.72);
     cursor: pointer;
@@ -288,25 +295,54 @@
     text-decoration: none;
     margin-right: 6px;
   }
-  .nav-tab-desktop:last-of-type { border-right: none; }
+  .nav-tab-desktop:last-of-type { margin-right: 0; }
+
+  .tab-short { display: none; }
+
+  .tab-star {
+    margin-left: 3px;
+    font-size: 9px;
+    color: var(--sc-accent);
+  }
+
   .nav-tab-desktop:hover {
     color: var(--sc-text-0);
-    background: rgba(255, 118, 181, 0.08);
+    background: rgba(219, 154, 159, 0.08);
   }
+
+  /* Highlight tab (LAB) */
+  .nav-tab-desktop.highlight {
+    color: var(--sc-accent);
+    border-color: rgba(219, 154, 159, 0.18);
+  }
+  .nav-tab-desktop.highlight:hover {
+    color: var(--sc-text-0);
+    background: rgba(219, 154, 159, 0.12);
+  }
+
+  /* Active tab */
   .nav-tab-desktop.active {
-    color: #fff5dc;
-    background: linear-gradient(135deg, rgba(255, 118, 181, 0.14), rgba(186, 240, 106, 0.1));
-    text-shadow: 0 0 10px rgba(255, 118, 181, 0.18);
+    color: var(--sc-text-0);
+    background: linear-gradient(135deg, rgba(219, 154, 159, 0.14), rgba(173, 202, 124, 0.08));
+    text-shadow: 0 0 10px rgba(219, 154, 159, 0.12);
   }
   .nav-tab-desktop.active::after {
     content: '';
     position: absolute;
     inset: auto 10px -6px;
-    height: 3px;
+    height: 2px;
     border-radius: 999px;
-    background: linear-gradient(90deg, rgba(255, 118, 181, 0.82), rgba(255, 217, 122, 0.62), rgba(186, 240, 106, 0.62));
-    box-shadow: 0 0 10px rgba(255, 118, 181, 0.16);
+    background: linear-gradient(90deg, var(--sc-accent), var(--sc-accent-3));
+    box-shadow: 0 0 8px rgba(219, 154, 159, 0.18);
   }
+  .nav-tab-desktop.active.highlight {
+    color: var(--sc-accent);
+    text-shadow: 0 0 12px rgba(219, 154, 159, 0.2);
+  }
+  .nav-tab-desktop.active.highlight::after {
+    background: var(--sc-accent);
+  }
+
   /* Right Section */
   .nav-right {
     margin-left: var(--sc-sp-2);
@@ -319,9 +355,9 @@
   .score-badge {
     font-family: var(--sc-font-mono);
     font-size: var(--sc-fs-2xs);
-    background: rgba(255, 217, 122, 0.06);
-    color: #fff0ca;
-    border: 1px solid rgba(255, 217, 122, 0.12);
+    background: rgba(242, 209, 147, 0.06);
+    color: var(--sc-accent-3);
+    border: 1px solid rgba(242, 209, 147, 0.12);
     border-radius: 999px;
     padding: var(--sc-sp-1) var(--sc-sp-2);
     letter-spacing: 0.12em;
@@ -352,8 +388,8 @@
   }
   .settings-btn:hover {
     color: var(--sc-text-0);
-    border-color: rgba(255, 118, 181, 0.28);
-    background: rgba(255, 118, 181, 0.08);
+    border-color: rgba(219, 154, 159, 0.28);
+    background: rgba(219, 154, 159, 0.08);
   }
 
   /* Wallet */
@@ -361,9 +397,9 @@
     font-family: var(--sc-font-body);
     font-weight: 700;
     font-size: var(--sc-fs-2xs);
-    background: linear-gradient(135deg, #ff76b5, #ffd6e5 44%, #c8f06f);
+    background: linear-gradient(135deg, var(--sc-accent), rgba(242, 209, 147, 0.6), var(--sc-accent-2));
     color: #0f1520;
-    border: 1px solid rgba(255, 217, 122, 0.34);
+    border: 1px solid rgba(219, 154, 159, 0.34);
     border-radius: 999px;
     padding: var(--sc-sp-1) var(--sc-sp-3);
     min-height: var(--sc-touch-sm, 36px);
@@ -376,13 +412,13 @@
     gap: var(--sc-sp-1);
   }
   .wallet-btn:hover {
-    box-shadow: 0 0 20px rgba(255, 116, 182, 0.24);
+    box-shadow: 0 0 20px rgba(219, 154, 159, 0.24);
     transform: translateY(-1px);
   }
   .wallet-btn.connected {
-    background: rgba(186, 240, 106, 0.12);
+    background: rgba(173, 202, 124, 0.12);
     color: #dff8bd;
-    border: 1px solid rgba(186, 240, 106, 0.2);
+    border: 1px solid rgba(173, 202, 124, 0.2);
     box-shadow: none;
     font-size: var(--sc-fs-2xs);
   }
@@ -393,7 +429,7 @@
     box-shadow: 0 0 6px var(--sc-good);
   }
 
-  /* ── Profile Dropdown ── */
+  /* Profile Dropdown */
   .profile-dropdown-wrap {
     position: relative;
   }
@@ -409,7 +445,7 @@
     z-index: 100;
     min-width: 150px;
     background: rgba(10, 15, 25, 0.98);
-    border: 1px solid rgba(255, 118, 181, 0.2);
+    border: 1px solid rgba(219, 154, 159, 0.2);
     border-radius: var(--sc-radius-md);
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     padding: var(--sc-sp-1) 0;
@@ -430,7 +466,7 @@
     transition: background var(--sc-duration-fast), color var(--sc-duration-fast);
   }
   .dropdown-item:hover {
-    background: rgba(255, 118, 181, 0.08);
+    background: rgba(219, 154, 159, 0.08);
     color: var(--sc-text-0);
   }
   .dropdown-item-danger:hover {
@@ -443,7 +479,7 @@
     margin: var(--sc-sp-1) 0;
   }
 
-  /* ── Active States (Apple-tier touch feedback) ── */
+  /* Active States (touch feedback) */
   .nav-logo:active { opacity: 0.6; transform: scale(0.95); }
   .nav-tab-desktop:active { background: var(--sc-accent-bg); }
   .settings-btn:active {
@@ -455,17 +491,18 @@
     opacity: 0.85;
   }
 
-  /* ═══ COMPACT DESKTOP (769–1024px) ═══
-     한 줄 유지, 티커/스코어 숨김, 탭 패딩 축소 */
+  /* ═══ COMPACT DESKTOP / TABLET (769-1024px) ═══
+     Keep one line, hide ticker/score, show short labels */
   @media (max-width: 1024px) and (min-width: 769px) {
-    .nav-sep { display: none; }
+    .desktop-only { display: none; }
     .selected-ticker { display: none; }
-    .score-badge { display: none; }
     .nav-tab-desktop {
       padding: 0 var(--sc-sp-2);
       font-size: var(--sc-fs-2xs);
       letter-spacing: 0.5px;
     }
+    .tab-full { display: none; }
+    .tab-short { display: inline; }
     .nav-logo {
       gap: 6px;
     }
@@ -473,29 +510,38 @@
     .nav-right { gap: var(--sc-sp-1); }
   }
 
-  /* ═══ MOBILE (≤ 768px) — compact top chrome, primary nav moves to bottom bar ═══ */
+  /* ═══ MOBILE (<=768px) — compact top chrome, tabs move to bottom nav ═══ */
   @media (max-width: 768px) {
     #nav {
       height: var(--sc-header-h-mobile, 40px);
       flex-wrap: nowrap;
     }
-    .nav-sep { display: none; }
-    .selected-ticker { display: none; }
+    .desktop-only { display: none; }
     .nav-tab-desktop { display: none; }
-    .score-badge { display: none; }
 
     .nav-main {
       height: var(--sc-header-h-mobile, 40px);
     }
-    .nav-logo {
-      gap: 0;
-    }
+    .nav-logo { gap: 0; }
     .nav-logo-main {
       font-size: var(--sc-fs-sm);
       letter-spacing: 1.5px;
     }
-    .nav-right {
+
+    /* Show ticker on mobile */
+    .selected-ticker {
+      display: flex;
       margin-left: auto;
+    }
+    .st-pair {
+      font-size: 8px;
+    }
+    .st-price {
+      font-size: var(--sc-fs-2xs);
+    }
+
+    .nav-right {
+      margin-left: var(--sc-sp-2);
       height: var(--sc-header-h-mobile, 40px);
     }
     .settings-btn {
@@ -509,7 +555,7 @@
     }
   }
 
-  /* ═══ SMALL MOBILE (≤ 480px) ═══ */
+  /* ═══ SMALL MOBILE (<=480px) ═══ */
   @media (max-width: 480px) {
     .nav-main {
       height: var(--sc-touch-sm, 36px);
@@ -517,9 +563,7 @@
     .nav-right {
       height: var(--sc-touch-sm, 36px);
     }
-    .nav-logo {
-      gap: 0;
-    }
+    .nav-logo { gap: 0; }
     .nav-logo-main {
       font-size: var(--sc-fs-xs);
       letter-spacing: 1px;
