@@ -9,12 +9,26 @@
     | { role: 'douni'; text: string; widgets?: Widget[] }
     | { role: 'douni'; thinking: true };
 
+  type ScanCoin = {
+    rank: number;
+    symbol: string;
+    name: string;
+    price: number;
+    change24h: number;
+    alphaScore: number;
+    alphaLabel: string;
+    verdict?: string;
+    regime?: string;
+    flags: string[]; // wyckoff | mtf_triple | bb_squeeze | liq_alert | fr_extreme
+    volume_24h?: number;
+  };
+
   type Widget =
     | { type: 'chart'; symbol: string; timeframe: string; chartData?: any[] }
     | { type: 'metrics'; items: MetricItem[] }
     | { type: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
     | { type: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
-    | { type: 'scan_list'; items: any[]; sort: string; sector: string };
+    | { type: 'scan_list'; items: ScanCoin[]; sort: string; sector: string };
 
   interface MetricItem {
     title: string; value: string; subtext: string;
@@ -44,7 +58,7 @@
     | { kind: 'thinking' }
     | { kind: 'metrics'; items: MetricItem[] }
     | { kind: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
-    | { kind: 'scan'; items: any[]; sort: string; sector: string }
+    | { kind: 'scan'; items: ScanCoin[]; sort: string; sector: string }
     | { kind: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
     | { kind: 'chart_ref'; symbol: string; timeframe: string };
 
@@ -463,29 +477,28 @@
     scrollToBottom();
   }
 
-  // ─── Apply Scan Result ────────────────────────────────────
+  // ─── Apply Scan Result (17-layer engine shape) ────────────
+  // Matches executeScanMarket output in lib/server/douni/toolExecutor.ts:
+  //   { source, sort, sector, coins: [{ rank, symbol, name, price, change24h,
+  //     alphaScore, alphaLabel, verdict, regime, flags[], volume_24h }] }
   function applyScanResult(data: any) {
-    if (data.coins && data.coins.length > 0) {
-      const items = data.coins.slice(0, 10).map((c: any) => ({
-        rank: c.rank,
-        symbol: c.symbol,
-        name: c.name,
-        price: c.price,
-        change24h: c.change24h,
-        market_cap: c.market_cap,
+    if (data?.coins && Array.isArray(data.coins) && data.coins.length > 0) {
+      const items: ScanCoin[] = data.coins.slice(0, 10).map((c: any) => ({
+        rank: c.rank ?? 0,
+        symbol: c.symbol ?? '?',
+        name: c.name ?? c.symbol ?? '?',
+        price: Number(c.price ?? 0),
+        change24h: Number(c.change24h ?? 0),
+        alphaScore: Number(c.alphaScore ?? 0),
+        alphaLabel: String(c.alphaLabel ?? 'NEUTRAL'),
+        verdict: c.verdict,
+        regime: c.regime,
+        flags: Array.isArray(c.flags) ? c.flags : [],
         volume_24h: c.volume_24h,
-        is_trending: c.is_trending,
       }));
       messages = [...messages, {
         role: 'douni', text: '',
-        widgets: [{ type: 'scan_list', items, sort: data.sort, sector: data.sector || 'all' }],
-      }];
-    }
-    // Add trending coins as text if available
-    if (data.trending_coins?.length > 0) {
-      const trendText = data.trending_coins.map((c: any) => `${c.symbol}`).join(', ');
-      messages = [...messages, {
-        role: 'douni', text: `Trending: ${trendText}`,
+        widgets: [{ type: 'scan_list', items, sort: data.sort ?? 'alphaScore', sector: data.sector ?? 'all' }],
       }];
     }
     scrollToBottom();
@@ -594,6 +607,16 @@
     if (s <= -20) return 'var(--sc-bad)';
     return 'var(--sc-text-2)';
   }
+  function scanFlagLabel(flag: string): string {
+    switch (flag) {
+      case 'wyckoff': return 'WK';
+      case 'mtf_triple': return 'MTF★';
+      case 'bb_squeeze': return 'BB';
+      case 'liq_alert': return 'LIQ';
+      case 'fr_extreme': return 'FR';
+      default: return flag.slice(0, 3).toUpperCase();
+    }
+  }
   function layerCellBg(score: number): string {
     const intensity = Math.min(0.25, 0.06 + Math.abs(score) / 80);
     if (score > 0) return `rgba(173, 202, 124, ${intensity})`;
@@ -694,24 +717,33 @@
           {:else if entry.kind === 'scan'}
             <div class="fe fe-scan">
               <div class="scan-header">
-                <span class="scan-title">Market Scan</span>
-                <span class="scan-meta">{entry.sort} / {entry.sector}</span>
+                <span class="scan-title">Market Scan · 17L</span>
+                <span class="scan-meta">sort: {entry.sort} · sector: {entry.sector}</span>
               </div>
               {#each entry.items as coin}
                 <div class="scan-row">
                   <span class="sr-rank">#{coin.rank}</span>
                   <span class="sr-sym">{coin.symbol}</span>
-                  <span class="sr-name">{coin.name}</span>
                   {#if coin.price != null}
-                    <span class="sr-price">${coin.price >= 1 ? coin.price.toLocaleString(undefined, {maximumFractionDigits: 1}) : coin.price.toFixed(4)}</span>
+                    <span class="sr-price">${coin.price >= 1 ? coin.price.toLocaleString(undefined, {maximumFractionDigits: 2}) : coin.price.toFixed(4)}</span>
                   {/if}
                   {#if coin.change24h != null}
                     <span class="sr-change" class:up={coin.change24h >= 0} class:dn={coin.change24h < 0}>
                       {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%
                     </span>
                   {/if}
-                  {#if coin.is_trending}
-                    <span class="sr-trending"></span>
+                  {#if coin.alphaScore != null}
+                    <span class="sr-alpha" style="color:{alphaColor(coin.alphaScore)}">
+                      α{coin.alphaScore > 0 ? '+' : ''}{coin.alphaScore}
+                    </span>
+                    <span class="sr-alpha-lbl" style="color:{alphaColor(coin.alphaScore)}">{coin.alphaLabel}</span>
+                  {/if}
+                  {#if coin.flags && coin.flags.length > 0}
+                    <span class="sr-flags">
+                      {#each coin.flags as flag}
+                        <span class="sr-flag sr-flag-{flag}">{scanFlagLabel(flag)}</span>
+                      {/each}
+                    </span>
                   {/if}
                 </div>
               {/each}
@@ -1138,18 +1170,10 @@
     min-width: 48px;
     font-size: 12px;
   }
-  .sr-name {
-    color: var(--sc-text-3);
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 11px;
-  }
   .sr-price {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     color: var(--sc-text-1);
-    min-width: 64px;
+    min-width: 70px;
     text-align: right;
     font-size: 12px;
   }
@@ -1162,12 +1186,65 @@
   }
   .sr-change.up { color: var(--sc-good, #adca7c); }
   .sr-change.dn { color: var(--sc-bad, #cf7f8f); }
-  .sr-trending {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--sc-good, #adca7c);
-    flex-shrink: 0;
+  .sr-alpha {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-weight: 800;
+    min-width: 46px;
+    text-align: right;
+    font-size: 12px;
+  }
+  .sr-alpha-lbl {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    min-width: 54px;
+  }
+  .sr-flags {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    flex: 1;
+    justify-content: flex-end;
+  }
+  .sr-flag {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--sc-line-soft);
+    color: var(--sc-text-2);
+    line-height: 1.2;
+  }
+  .sr-flag-wyckoff {
+    background: rgba(173, 202, 124, 0.12);
+    border-color: rgba(173, 202, 124, 0.35);
+    color: var(--sc-good, #adca7c);
+  }
+  .sr-flag-mtf_triple {
+    background: rgba(255, 215, 0, 0.14);
+    border-color: rgba(255, 215, 0, 0.4);
+    color: #ffd700;
+  }
+  .sr-flag-bb_squeeze {
+    background: rgba(100, 180, 255, 0.12);
+    border-color: rgba(100, 180, 255, 0.35);
+    color: #64b4ff;
+  }
+  .sr-flag-liq_alert {
+    background: rgba(207, 127, 143, 0.12);
+    border-color: rgba(207, 127, 143, 0.35);
+    color: var(--sc-bad, #cf7f8f);
+  }
+  .sr-flag-fr_extreme {
+    background: rgba(255, 140, 60, 0.14);
+    border-color: rgba(255, 140, 60, 0.4);
+    color: #ff8c3c;
   }
 
   /* ─── Actions ─── */
