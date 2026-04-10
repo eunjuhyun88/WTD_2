@@ -1,0 +1,89 @@
+/**
+ * `$lib/contracts` — Phase 0 barrel
+ *
+ * This is the single import surface for cross-boundary types and zod schemas
+ * in CHATBATTLE. Every consumer — server handlers, client stores, DB write
+ * paths, LLM tool handlers — must import from `$lib/contracts`, never from
+ * the individual files.
+ *
+ * Rationale:
+ *   docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md
+ *   §Non-Negotiable Invariants #6 ("Zod is the single runtime validator")
+ */
+
+// Layer prefix + branded IDs + enums
+export {
+	ContractLayer,
+	RawId,
+	StructureStateId,
+	VerdictBias,
+	VerdictUrgency,
+	EventDirection,
+	EventSeverity,
+	hasLayerPrefix,
+	layerOf
+} from './ids';
+export type { TrajectoryId, PairId, TraceId } from './ids';
+
+// Verdict block — A's output, B's input, C's storage unit
+export {
+	VerdictBlockSchemaVersion,
+	VerdictBlockSchema,
+	VerdictBlockForPairSchema,
+	VerdictReasonSchema,
+	VerdictInvalidationSchema,
+	VerdictExecutionSchema,
+	VerdictDataFreshnessSchema,
+	VerdictBiasSchema,
+	VerdictUrgencySchema,
+	StructureStateIdSchema,
+	EventDirectionSchema,
+	EventSeveritySchema,
+	IsoTimestampSchema,
+	SymbolSchema,
+	TimeframeSchema,
+	parseVerdictBlock,
+	safeParseVerdictBlock
+} from './verdict';
+export type {
+	VerdictBlock,
+	VerdictBlockForPair,
+	VerdictReason,
+	VerdictInvalidation,
+	VerdictExecution,
+	VerdictDataFreshness,
+	Timeframe
+} from './verdict';
+
+// Trajectory + ORPO pair — C's row and B's training signal
+export {
+	DecisionTrajectorySchemaVersion,
+	DecisionTrajectorySchema,
+	DecisionActorSchema,
+	DecisionActionSchema,
+	DecisionSchema,
+	TrajectoryOutcomeSchema,
+	ORPOPromptSchemaVersion,
+	ORPOResponseSchemaVersion,
+	ORPOPromptSchema,
+	ORPOResponseSchema,
+	MLPreferencePairSchemaVersion,
+	MLPreferencePairSchema,
+	PairQualitySchema,
+	parseDecisionTrajectory,
+	safeParseDecisionTrajectory,
+	parseMLPreferencePair,
+	safeParseMLPreferencePair,
+	classifyPairQuality
+} from './trajectory';
+export type {
+	DecisionTrajectory,
+	Decision,
+	DecisionActor,
+	DecisionAction,
+	TrajectoryOutcome,
+	ORPOPrompt,
+	ORPOResponse,
+	MLPreferencePair,
+	PairQuality
+} from './trajectory';
