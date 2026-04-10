@@ -7,6 +7,8 @@ import type { RequestHandler } from './$types';
 import { fetchKlinesServer, fetch24hrServer } from '$lib/server/binance';
 import type { MarketContext } from '$lib/engine/factorEngine';
 import { computeSignalSnapshot } from '$lib/engine/cogochi/layerEngine';
+import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
+import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 
 const FAPI = 'https://fapi.binance.com';
@@ -112,10 +114,14 @@ export const GET: RequestHandler = async ({ url }) => {
       t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume,
     }));
 
+    const currentPrice = klines[klines.length - 1].close;
+    const annotations = detectSupportResistance(klines, currentPrice);
+    const indicators = computeIndicatorSeries(klines);
+
     return json({
       snapshot,
       chart: chartKlines,
-      price: klines[klines.length - 1].close,
+      price: currentPrice,
       change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
       // Extra data for UI panels
       derivatives: {
@@ -123,6 +129,13 @@ export const GET: RequestHandler = async ({ url }) => {
         oi: deriv.oi,
         lsRatio: deriv.lsRatio,
         fearGreed,
+      },
+      annotations,
+      indicators: {
+        bbUpper: indicators.bbUpper?.slice(-100),
+        bbMiddle: indicators.bbMiddle?.slice(-100),
+        bbLower: indicators.bbLower?.slice(-100),
+        ema20: indicators.ema20?.slice(-100),
       },
     });
   } catch (err: any) {

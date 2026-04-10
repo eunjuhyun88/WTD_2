@@ -13,6 +13,7 @@ import { computeSignalSnapshot, computeIndicatorSeries } from '$lib/engine/cogoc
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 import type { MarketContext } from '$lib/engine/factorEngine';
+import { scanMarket, type ScanConfig } from '$lib/server/scanner';
 import {
   rateLimiter,
   fetchDepth, fetchOIHistory, fetchTakerRatio, fetchForceOrders,
@@ -407,71 +408,54 @@ async function executeCheckSocial(
   };
 }
 
-// ─── scan_market ────────────────────────────────────────────
+// ─── scan_market (17-layer Binance engine) ──────────────────
 
 async function executeScanMarket(
   args: Record<string, unknown>,
   events: DouniSSEEvent[],
 ): Promise<Record<string, unknown>> {
-  const sort = (args.sort as string) || 'galaxy_score';
-  const limit = Math.min((args.limit as number) || 10, 20);
+  const sort = (args.sort as string) || 'alphaScore';
   const sector = args.sector as string | undefined;
+  const rawSymbols = args.symbols as string[] | undefined;
+  const limit = Math.min((args.limit as number) || 10, 10); // 터미널용 최대 10
 
-  const timeout = AbortSignal.timeout(8000);
+  // Build scan config
+  const config: ScanConfig = rawSymbols?.length
+    ? { mode: 'custom', symbols: rawSymbols.map(s => s.toUpperCase().replace('USDT', '') + 'USDT') }
+    : { mode: 'topN', topN: limit, preset: sector || undefined };
 
-  // Use CoinGecko markets + trending APIs
-  const [marketsRes, trendRes] = await Promise.all([
-    fetch(
-      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${limit}&page=1&sparkline=false&price_change_percentage=24h,7d`,
-      { signal: timeout },
-    ).catch(() => null),
-    fetch('https://api.coingecko.com/api/v3/search/trending', { signal: timeout }).catch(() => null),
-  ]);
+  const results = await scanMarket(config);
 
-  const marketsData = marketsRes?.ok ? await marketsRes.json().catch(() => null) : null;
-  const trendData = trendRes?.ok ? await trendRes.json().catch(() => null) : null;
+  // Sort by alphaScore descending
+  results.sort((a, b) => Math.abs(b.alphaScore) - Math.abs(a.alphaScore));
 
-  // Build trending set for cross-reference
-  const trendingIds = new Set((trendData?.coins || []).map((c: any) => c.item?.id));
-
-  if (!marketsData || !Array.isArray(marketsData)) {
-    // Pure fallback to trending
-    const trending = (trendData?.coins || []).slice(0, limit).map((c: any, i: number) => ({
-      rank: i + 1,
-      name: c.item?.name || '',
-      symbol: (c.item?.symbol || '').toUpperCase(),
-      price: c.item?.data?.price || null,
-      change24h: c.item?.data?.price_change_percentage_24h?.usd || null,
-      market_cap_rank: c.item?.market_cap_rank || null,
-      is_trending: true,
-    }));
-    return { source: 'coingecko_trending', sort: 'trending', coins: trending };
-  }
-
-  const coins = marketsData.slice(0, limit).map((c: any, i: number) => ({
+  const coins = results.slice(0, limit).map((r, i) => ({
     rank: i + 1,
-    name: c.name,
-    symbol: (c.symbol || '').toUpperCase(),
-    price: c.current_price,
-    change24h: c.price_change_percentage_24h,
-    change7d: c.price_change_percentage_7d_in_currency || null,
-    market_cap: c.market_cap,
-    market_cap_rank: c.market_cap_rank,
-    volume_24h: c.total_volume,
-    is_trending: trendingIds.has(c.id),
+    symbol: r.symbol.replace('USDT', ''),
+    name: r.symbol.replace('USDT', ''),
+    price: r.price,
+    change24h: r.change24h,
+    alphaScore: r.alphaScore,
+    alphaLabel: r.alphaLabel,
+    verdict: r.verdict,
+    regime: r.regime,
+    flags: [
+      r.hasWyckoff ? 'wyckoff' : null,
+      r.hasMTF ? 'mtf_triple' : null,
+      r.hasSqueeze ? 'bb_squeeze' : null,
+      r.hasLiqAlert ? 'liq_alert' : null,
+      r.extremeFR ? 'fr_extreme' : null,
+    ].filter(Boolean),
+    volume_24h: r.volume24h,
   }));
 
   events.push({ type: 'scan_result', sort, count: coins.length });
 
   return {
-    source: 'coingecko',
+    source: 'binance_17layer',
     sort,
     sector: sector || 'all',
     coins,
-    trending_coins: (trendData?.coins || []).slice(0, 5).map((c: any) => ({
-      name: c.item?.name,
-      symbol: (c.item?.symbol || '').toUpperCase(),
-    })),
   };
 }
 

@@ -68,31 +68,23 @@ export const POST: RequestHandler = async ({ request }) => {
       };
 
       try {
-        // 1. Build system prompt
-        const systemPrompt = buildDouniSystemPrompt(activeProfile);
+        // 1. Build system prompt (single system message for HF/provider compat)
+        let systemPrompt = buildDouniSystemPrompt(activeProfile);
 
-        // 2. Assemble messages
-        const messages: LLMMessageWithTools[] = [
-          { role: 'system', content: systemPrompt },
-        ];
-
-        // 3. Inject analysis context if available
+        // 2. Inject analysis context into system prompt
         if (snapshot) {
           try {
             const analysisCtx = buildAnalysisContext(snapshot, activeProfile.archetype);
-            messages.push({
-              role: 'system',
-              content: `[Current Analysis Data]\n${analysisCtx}`,
-            });
+            systemPrompt += `\n\n[Current Analysis Data]\n${analysisCtx}`;
           } catch { /* skip partial snapshot */ }
         } else {
-          messages.push({
-            role: 'system',
-            content: `[NO ANALYSIS DATA]
-You have no market data. If the user asks about markets, use the analyze_market tool to fetch data.
-You can also have general trading conversation without data.`,
-          });
+          systemPrompt += `\n\n[NO ANALYSIS DATA]\nYou have no market data. If the user asks about markets, use the analyze_market tool to fetch data.\nYou can also have general trading conversation without data.`;
         }
+
+        // 3. Assemble messages (single system message at top)
+        const messages: LLMMessageWithTools[] = [
+          { role: 'system', content: systemPrompt },
+        ];
 
         // 4. History (last 10 turns)
         for (const h of (history || []).slice(-10)) {

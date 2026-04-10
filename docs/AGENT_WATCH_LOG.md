@@ -7845,6 +7845,62 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run safe:hooks`: PASS
   - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
 
+## [2026-04-09 15:07:28 +0900] START terminal-canonicalize-3panel-20260409 (chatbattle)
+- Work ID: `W-20260409-1506-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/check-last-record`
+- Base `origin/main`: `ad33a6aaa437`
+- Working tree status:
+  - `## codex/check-last-record`
+  - pre-existing uncommitted changes already present in docs/UI/server routes before this documentation task:
+    - `M  docs/STRUCTURE_ALIGNMENT_ACTION_PLAN.md`
+    - ` M src/components/cogochi/CgChart.svelte`
+    - ` M src/lib/navigation/appSurfaces.ts`
+    - ` M src/lib/server/douni/toolExecutor.ts`
+    - ` M src/lib/server/llmService.ts`
+    - ` M src/routes/api/cogochi/terminal/message/+server.ts`
+    - `M  src/routes/cogochi/+page.svelte`
+    - `M  src/routes/terminal-legacy/+page.svelte`
+    - ` M src/routes/terminal/+page.svelte`
+    - `?? src/components/cogochi/QuickPanel.svelte`
+    - `?? src/routes/scanner/`
+- Request:
+  - promote the April 8 three-panel terminal design into canonical repo docs and re-establish a clear done/next/locked-decision source of truth
+- Owned files / overlap check:
+  - expected write scope:
+    - `docs/AGENT_WATCH_LOG.md`
+    - `docs/product-specs/terminal.md`
+    - `docs/page-specs/terminal-page.md`
+    - `docs/exec-plans/active/*terminal*`
+    - planning indexes if needed
+  - no product-code edits planned in this task; existing dirty runtime/UI files are treated as pre-existing overlap and will not be modified
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+## [2026-04-09 14:48:59 +0900] FINISH check-last-record-20260409 (chatbattle)
+- Work ID: `W-20260409-1447-CHATBATTLE-codex`
+- What changed:
+  - inspected repo-local context artifacts to verify whether the latest in-progress work was recorded
+  - appended START/FINISH audit entries to `docs/AGENT_WATCH_LOG.md`
+  - saved a branch-local snapshot/checkpoint and compacted it to refresh `codex/check-last-record` brief/handoff artifacts under `.agent-context/`
+  - no product-code files were modified
+- Validation:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED due pre-existing uncommitted changes
+  - `npm run ctx:save -- --title "check-last-record" --work-id "W-20260409-1447-CHATBATTLE-codex" --agent "reviewer"`: PASS
+  - `npm run ctx:checkpoint -- --work-id "W-20260409-1447-CHATBATTLE-codex" --surface "context-audit" --objective "Verify whether the latest in-progress work is recorded in repo-local memory artifacts"`: PASS
+  - `npm run ctx:compact`: PASS
+  - inspected `.agent-context/checkpoints/main-latest.md`, `.agent-context/briefs/main-latest.md`, `.agent-context/handoffs/main-latest.md`, and `.agent-context/snapshots/main/20260409-144724-auto-safe-status.md`: PASS
+- Commit hash:
+  - none; commit not requested
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/check-last-record`
+  - dirty tree remains due pre-existing docs/UI/server route changes plus this watch-log update
+
 ### W-20260324-0122-chatbattle-codex (finish)
 
 - Finish: 2026-03-24 01:23 +0900
@@ -8270,3 +8326,338 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `## codex/dev-server-run-20260320-chatbattle...origin/codex/dev-server-run-20260320-chatbattle [ahead 8, behind 1]`
   - branch remains dirty with substantial pre-existing docs/UI/store WIP plus the memento/agent workflow updates from this task
   - stash entry `wip/W-20260331-2354-CHATBATTLE-codex-pre-sync` remains in `git stash list` as a safety backup because the restore path encountered generated-doc conflicts
+
+## [2026-04-09 14:48:06 +0900] START check-last-record-20260409 (chatbattle)
+- Work ID: `W-20260409-1447-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/check-last-record`
+- Base `origin/main`: `ad33a6aaa437`
+- Working tree status:
+  - `## codex/check-last-record`
+  - pre-existing uncommitted changes already present in docs/UI/server routes before this inspection:
+    - `M  docs/STRUCTURE_ALIGNMENT_ACTION_PLAN.md`
+    - ` M src/components/cogochi/CgChart.svelte`
+    - ` M src/lib/navigation/appSurfaces.ts`
+    - ` M src/lib/server/douni/toolExecutor.ts`
+    - ` M src/lib/server/llmService.ts`
+    - ` M src/routes/api/cogochi/terminal/message/+server.ts`
+    - `M  src/routes/cogochi/+page.svelte`
+    - `M  src/routes/terminal-legacy/+page.svelte`
+    - ` M src/routes/terminal/+page.svelte`
+    - `?? src/components/cogochi/QuickPanel.svelte`
+    - `?? src/routes/scanner/`
+- Request:
+  - inspect whether the last in-progress work is recorded in repo-local runtime memory, briefs/handoffs/checkpoints, or the watch log
+- Owned files / overlap check:
+  - expected write scope is limited to `docs/AGENT_WATCH_LOG.md` for this inspection log
+  - no product-code edits planned; existing dirty files are treated as pre-existing overlap and will not be modified
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+
+## [2026-04-09 15:16:00 +0900] START alpha-terminal-html-mapping-20260409 (chatbattle)
+- Work ID: `W-20260409-1516-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/check-last-record`
+- Base `origin/main`: `ad33a6aaa437`
+- Working tree status:
+  - `## codex/check-last-record`
+  - pre-existing uncommitted changes remain present in docs/UI/server routes before this HTML analysis:
+    - `M  docs/STRUCTURE_ALIGNMENT_ACTION_PLAN.md`
+    - ` M src/components/cogochi/CgChart.svelte`
+    - ` M src/lib/navigation/appSurfaces.ts`
+    - ` M src/lib/server/douni/toolExecutor.ts`
+    - ` M src/lib/server/llmService.ts`
+    - ` M src/routes/api/cogochi/analyze/+server.ts`
+    - ` M src/routes/api/cogochi/terminal/message/+server.ts`
+    - `M  src/routes/cogochi/+page.svelte`
+    - `M  src/routes/terminal-legacy/+page.svelte`
+    - ` M src/routes/terminal/+page.svelte`
+    - `?? src/components/cogochi/QuickPanel.svelte`
+    - `?? src/routes/scanner/`
+- Request:
+  - dissect `/Users/ej/Downloads/Telegram Lite/나혼자매매 Alpha Flow_by 아카.html` and map its sections to the current repo structure so the user can decide how to apply it safely
+- Owned files / overlap check:
+  - expected write scope is limited to `docs/AGENT_WATCH_LOG.md` for this analysis log
+  - product-code edits are out of scope for this step because `/terminal`, `QuickPanel`, and related routes already have overlapping WIP
+- Safe status:
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+  - `npm run ctx:checkpoint -- --work-id "W-20260409-1516-CHATBATTLE-codex" --surface "terminal" --objective "Dissect external alpha terminal HTML and map it onto current /terminal structure without clobbering existing WIP"`: PASS
+
+## [2026-04-09 16:13:00 +0900] START alpha-terminal-llm-methodology-report-20260409 (chatbattle)
+- Work ID: `W-20260409-1613-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/check-last-record`
+- Base `origin/main`: `ad33a6aaa437`
+- Working tree status:
+  - `## codex/check-last-record`
+  - pre-existing uncommitted changes remain present in docs/UI/server routes before this methodology report:
+    - `M  docs/STRUCTURE_ALIGNMENT_ACTION_PLAN.md`
+    - ` M src/components/cogochi/CgChart.svelte`
+    - ` M src/lib/navigation/appSurfaces.ts`
+    - ` M src/lib/server/douni/toolExecutor.ts`
+    - ` M src/lib/server/llmService.ts`
+    - ` M src/routes/api/cogochi/analyze/+server.ts`
+    - ` M src/routes/api/cogochi/terminal/message/+server.ts`
+    - `M  src/routes/cogochi/+page.svelte`
+    - `M  src/routes/terminal-legacy/+page.svelte`
+    - ` M src/routes/terminal/+page.svelte`
+    - `?? src/components/cogochi/QuickPanel.svelte`
+    - `?? src/routes/scanner/`
+- Request:
+  - write a concrete repo-local report that dissects the provided Alpha Terminal HTML and the user-provided feature updates, then describes how to make those capabilities executable through multimodal natural-language LLM calls
+- Owned files / overlap check:
+  - expected write scope is docs-only for this step:
+    - `docs/AGENT_WATCH_LOG.md`
+    - new report under `docs/exec-plans/active/`
+    - `docs/exec-plans/active/README.md` if discoverability update is needed
+  - no product-code edits planned in this step because terminal/scanner code already has overlapping WIP
+- Safe status:
+  - `npm run ctx:checkpoint -- --work-id "W-20260409-1613-CHATBATTLE-codex" --surface "terminal,llm,scanner" --objective "Write a repo-local methodology report for making the alpha terminal and user-requested quant scanner features callable through multimodal natural-language LLM tooling"`: PASS
+
+## [2026-04-09 16:19:00 +0900] FINISH alpha-terminal-llm-methodology-report-20260409 (chatbattle)
+- Work ID: `W-20260409-1613-CHATBATTLE-codex`
+- What changed:
+  - added a new repo-local methodology report at `docs/exec-plans/active/alpha-terminal-llm-multimodal-methodology-2026-04-09.md`
+  - documented how the provided Alpha Terminal HTML, the user's new bot updates, the whale-tracking scanner concept, and funding-arbitrage explain/scan flows should map onto the current `Terminal` + DOUNI tool-calling architecture
+  - updated `docs/exec-plans/active/README.md` so the new plan is discoverable
+  - refreshed local branch brief/handoff via `npm run ctx:compact` and fixed the brief's missing next-step field so strict context validation passes
+- Validation:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with existing Svelte warnings in `src/routes/+page.svelte`
+  - `npm run build`: PASS with the same existing Svelte warnings in `src/routes/+page.svelte`
+  - `npm run ctx:compact -- --docs-check pass --check pass --build pass`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - none; commit not requested
+- Push status:
+  - not requested
+- Final working tree status:
+  - branch remains dirty due pre-existing product/docs WIP plus the new docs-only report updates from this task
+
+## [2026-04-09 15:22:56 +0900] START terminal-sprint1-implementation-20260409 (chatbattle)
+- Work ID: `W-20260409-1523-CHATBATTLE-codex`
+- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Branch: `codex/check-last-record`
+- Base `origin/main`: `ad33a6aaa437`
+- Working tree status:
+  - `## codex/check-last-record`
+  - pre-existing uncommitted changes already present in docs/UI/server routes before this implementation slice:
+    - `M  docs/STRUCTURE_ALIGNMENT_ACTION_PLAN.md`
+    - ` M src/components/cogochi/CgChart.svelte`
+    - ` M src/lib/navigation/appSurfaces.ts`
+    - ` M src/lib/server/douni/toolExecutor.ts`
+    - ` M src/lib/server/llmService.ts`
+    - ` M src/routes/api/cogochi/terminal/message/+server.ts`
+    - `M  src/routes/cogochi/+page.svelte`
+    - `M  src/routes/terminal-legacy/+page.svelte`
+    - ` M src/routes/terminal/+page.svelte`
+    - `?? src/components/cogochi/QuickPanel.svelte`
+    - `?? src/routes/scanner/`
+- Request:
+  - start actual development from the completed three-panel docs and make Sprint 1 of `/terminal` work end to end
+- Owned files / overlap check:
+  - expected write scope:
+    - `src/routes/terminal/+page.svelte`
+    - `src/components/cogochi/QuickPanel.svelte`
+    - `src/routes/api/cogochi/analyze/+server.ts`
+    - `src/lib/server/douni/toolExecutor.ts`
+    - `src/lib/navigation/appSurfaces.ts`
+    - redirect routes and generated docs needed for validation
+  - existing dirty product-code files outside this slice remain pre-existing overlap and were not reverted
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED because the working tree already contained uncommitted changes
+  - `npm run ctx:checkpoint -- --work-id "W-20260409-1523-CHATBATTLE-codex" --surface "terminal" --objective "Implement Sprint 1 of the three-panel trading desk: scanner preview, chat analyze handoff, route consolidation, and validation gates"`: PASS
+
+## [2026-04-09 15:22:56 +0900] FINISH terminal-sprint1-implementation-20260409 (chatbattle)
+- Work ID: `W-20260409-1523-CHATBATTLE-codex`
+- What changed:
+  - upgraded `/terminal` Sprint 1 so the left scanner panel now supports preset scans, single-click preview into the right analysis panel, and double-click handoff into chat analysis
+  - expanded `QuickPanel` into a denser 280px scanner sidebar with preset/filter controls, price rows, and compact signal flags
+  - extended `/api/cogochi/analyze` to return support/resistance annotations plus indicator overlays so scanner previews can hydrate the right chart panel without going through the chat loop
+  - stabilized `scan_market` in `toolExecutor` to use the repo-local 17-layer scanner engine instead of the earlier CoinGecko fallback shape
+  - removed duplicate scanner navigation from desktop/mobile/home nav arrays and added redirect shims for `/cogochi/terminal` and `/cogochi/scanner`
+  - updated route metadata generation and refreshed generated docs so `docs:check` passes with the new redirect routes
+- Validation:
+  - `npm run docs:refresh`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with pre-existing `src/routes/+page.svelte` warnings only
+  - `npm run build`: PASS with pre-existing `src/routes/+page.svelte` warnings and chunk-size warnings only
+- Commit hash:
+  - none; commit not requested
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/check-last-record`
+  - dirty tree remains because of pre-existing docs/UI/server WIP plus this Sprint 1 terminal slice and generated-doc refresh outputs
+
+## [2026-04-09 17:16:33 +0900] START alpha-terminal-precision-engine-spec-20260409 (chatbattle)
+- Work ID: `W-20260409-1716-CHATBATTLE-codex`
+- Workspace: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/check-last-record`
+- Base `origin/main`: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `## codex/check-last-record`
+  - dirty tree already contained ongoing docs/UI/server WIP before this design task
+- Request:
+  - produce a comprehensive specification table that decomposes the Alpha Terminal HTML and user-requested market logic into raw data, feature, event, structure, verdict, and click/natural-language exposure contracts
+- Owned files / overlap check:
+  - expected write scope for this task:
+    - `docs/exec-plans/active/alpha-terminal-precision-engine-spec-2026-04-09.md`
+    - `docs/exec-plans/active/README.md`
+    - `docs/AGENT_WATCH_LOG.md`
+  - no product-code edits planned in this step; existing dirty implementation files remain untouched
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run ctx:checkpoint -- --work-id "W-20260409-1716-CHATBATTLE-codex" --surface "terminal,scanner,engine,llm" --objective "Write a complete precision-engine specification that decomposes the Alpha Terminal HTML and user requests into raw data, feature, event, structure, verdict, and interaction contracts for click and natural-language access"`: PASS
+
+## [2026-04-09 17:25:22 +0900] FINISH alpha-terminal-precision-engine-spec-20260409 (chatbattle)
+- Work ID: `W-20260409-1716-CHATBATTLE-codex`
+- What changed:
+  - added a comprehensive precision-engine spec at `docs/exec-plans/active/alpha-terminal-precision-engine-spec-2026-04-09.md`
+  - decomposed the Alpha Terminal HTML and user-requested functionality into:
+    - raw data registry
+    - feature registry
+    - event registry
+    - structure/state engine
+    - verdict engine
+    - click / natural-language / multimodal exposure contracts
+    - HTML DOM to contract mapping
+  - updated `docs/exec-plans/active/README.md` so the new spec is discoverable
+  - refreshed local brief/handoff and repaired the local brief next-step field so strict context validation passes
+- Validation:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with existing warnings in `src/routes/+page.svelte`
+  - `npm run build`: PASS with the same existing `src/routes/+page.svelte` warnings and chunk-size warnings
+  - `npm run ctx:compact -- --docs-check pass --check pass --build pass`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - none; commit not requested
+- Push status:
+  - not requested
+- Final working tree status:
+  - branch remains dirty because of pre-existing docs/UI/server WIP plus the new docs-only spec additions from this task
+
+## [2026-04-10 17:06:00 +0900] START sprint1-ui-visual-check (chatbattle)
+- Work ID: `W-20260410-1705-CHATBATTLE-codex`
+- Repo path:
+  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/check-last-record`
+- Base `origin/main` hash:
+  - `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `## codex/check-last-record`
+  - dirty tree already contained ongoing docs/UI/server WIP before this visual inspection task
+  - target Sprint 1 snapshot to inspect lives in read-only sibling worktree `.claude/worktrees/hardcore-haslett` on branch `claude/hardcore-haslett`
+- Request:
+  - show the current implemented Sprint 1 terminal UI before starting Sprint 2, using screenshots from the actual Sprint 1 worktree
+- Owned files / overlap check:
+  - expected write scope for this task:
+    - `docs/AGENT_WATCH_LOG.md`
+  - implementation files will not be edited; UI inspection will run against `.claude/worktrees/hardcore-haslett`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the current worktree already has uncommitted changes and the sync script refused to proceed
+  - `npm run safe:hooks`: PASS
+
+## [2026-04-10 18:33:02 +0900] START terminal-sprint3-ui-density-pass (chatbattle)
+- Work ID: `W-20260410-1833-CHATBATTLE-codex`
+- Repo path:
+  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/check-last-record`
+- Base `origin/main` hash:
+  - `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `## codex/check-last-record`
+  - dirty tree already contained unrelated docs, generated files, server WIP, and an alternate `QuickPanel` terminal experiment before this task
+  - user-provided Sprint 1 reference lives in `.claude/worktrees/hardcore-haslett`; treat it as read-only implementation reference, not the active edit target
+- Request:
+  - reduce the visual footprint and poor hierarchy of the current market/header treatment
+  - improve overall `/terminal` readability and implement the next Sprint 3 UI slice with denser but more legible analysis artifacts
+- Owned files / overlap check:
+  - expected write scope for this task:
+    - `src/routes/terminal/+page.svelte`
+    - `src/components/cogochi/QuickPanel.svelte`
+    - `src/components/cogochi/DeepDivePanel.svelte`
+    - `src/components/layout/Header.svelte`
+    - `src/routes/cogochi/+layout.svelte`
+    - `src/components/cogochi/ScannerPanel.svelte`
+    - `src/components/cogochi/ScanTable.svelte`
+    - `src/components/cogochi/VerdictBox.svelte`
+    - `src/lib/stores/alphaBuckets.ts`
+    - `docs/AGENT_WATCH_LOG.md`
+  - overlap risk exists on `src/routes/terminal/+page.svelte`; current root worktree contains pre-existing uncommitted edits, so only additive terminal-UI changes will be applied after re-reading the current file state
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: FAIL because the current worktree already had uncommitted changes and the sync script refused to proceed
+
+## [2026-04-10 19:32:00 +0900] START run-dev-server (chatbattle)
+- Work ID: `W-20260410-1932-CHATBATTLE-codex`
+- Repo path:
+  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/check-last-record`
+- Base `origin/main` hash:
+  - `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `## codex/check-last-record`
+  - dirty tree already contained ongoing docs, generated files, and UI/server WIP before this server-run request
+- Request:
+  - run the local development server for the current repository
+- Owned files / overlap check:
+  - expected write scope for this task:
+    - `docs/AGENT_WATCH_LOG.md`
+  - no implementation files are owned for this request; server execution will avoid modifying existing user WIP
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: FAIL because the current worktree already had uncommitted changes and the sync script refused to proceed
+
+## [2026-04-10 19:35:00 +0900] FINISH run-dev-server (chatbattle)
+- What changed:
+  - appended START/FINISH operational log entries to `docs/AGENT_WATCH_LOG.md`
+  - started the Vite development server with `npm run dev -- --host 0.0.0.0`
+- Validation results:
+  - dev server start: PASS
+  - local URL: `http://localhost:5173/`
+  - network URLs exposed by Vite:
+    - `http://127.89.56.161:5173/`
+    - `http://172.30.1.78:5173/`
+  - `docs:check` / `check` / `build` / `ctx:check -- --strict`: not run because this request only required local server execution and no implementation change validation gate was requested
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - branch remains dirty due to pre-existing docs/generated/UI/server WIP plus the watch-log entries added for this request
+
+## [2026-04-10 19:39:08 +0900] START branch-and-push-current-wip (chatbattle)
+- Work ID: `W-20260410-1939-CHATBATTLE-codex`
+- Repo path:
+  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-wip-sync-20260410`
+- Base `origin/main` hash:
+  - `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `## codex/terminal-wip-sync-20260410`
+  - branch created from the existing local WIP so the current terminal/scanner/server/docs changes can be preserved independently of the earlier inspection branch
+  - `HEAD`, `main`, and `origin/main` are all aligned at `ad33a6a`, so there is no newer main commit to merge before validation
+- Request:
+  - move the current local WIP onto a dedicated branch, validate it, and push that branch rather than treating the earlier inspection branch as the publish target
+- Owned files / overlap check:
+  - expected write scope for this task:
+    - `docs/AGENT_WATCH_LOG.md`
+    - existing modified/untracked files already present in this worktree
+  - no new feature implementation is planned in this step; the goal is to preserve and validate the current mixed WIP as-is before push
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run ctx:checkpoint -- --work-id "W-20260410-1939-CHATBATTLE-codex" --surface "branching,terminal,scanner,server,docs" --objective "Move the current local WIP onto a dedicated codex branch, validate it against main parity, and prepare it for push without losing existing work"`: PASS
+  - `npm run safe:sync`: deferred until the working tree becomes commit-clean; current script intentionally blocks on uncommitted changes

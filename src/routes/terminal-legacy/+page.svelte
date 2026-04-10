@@ -74,7 +74,6 @@
   import { copyTradeStore } from '$lib/stores/copyTradeStore';
   import { formatTimeframeLabel } from '$lib/utils/timeframe';
   import { alertEngine } from '$lib/services/alertEngine';
-  import { fetchUiStateApi, updateUiStateApi } from '$lib/api/preferencesApi';
   import { onMount, onDestroy, tick } from 'svelte';
 
   let leftW = 280;
@@ -121,24 +120,22 @@
     if (leftCollapsed) {
       leftW = savedLeftW;
       leftCollapsed = false;
-    } else {
-      savedLeftW = leftW;
-      leftW = 0;
-      leftCollapsed = true;
+      return;
     }
-    persistPanelState();
+    savedLeftW = leftW;
+    leftW = 0;
+    leftCollapsed = true;
   }
 
   function toggleRight() {
     if (rightCollapsed) {
       rightW = savedRightW;
       rightCollapsed = false;
-    } else {
-      savedRightW = rightW;
-      rightW = 0;
-      rightCollapsed = true;
+      return;
     }
-    persistPanelState();
+    savedRightW = rightW;
+    rightW = 0;
+    rightCollapsed = true;
   }
 
   function getDesktopPanelStyle(panel: DesktopPanelKey) {
@@ -504,20 +501,6 @@
     }
   }
 
-  // ── Panel Persistence ──────────────────────────────────────
-  let _panelPersistTimer: ReturnType<typeof setTimeout> | null = null;
-  function persistPanelState() {
-    if (_panelPersistTimer) clearTimeout(_panelPersistTimer);
-    _panelPersistTimer = setTimeout(() => {
-      void updateUiStateApi({
-        terminalLeftWidth: leftW,
-        terminalRightWidth: rightW,
-        terminalLeftCollapsed: leftCollapsed,
-        terminalRightCollapsed: rightCollapsed,
-      });
-    }, 600);
-  }
-
   function onMouseUp() {
     if (!dragTarget) return;
     dragTarget = null;
@@ -525,7 +508,6 @@
     document.body.style.userSelect = '';
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', onMouseUp);
-    persistPanelState();
   }
 
   // isHorizontalResizeGesture — imported from terminalHelpers
@@ -643,21 +625,6 @@
     window.addEventListener('pointermove', onTabletSplitPointerMove, { passive: false });
     window.addEventListener('pointerup', finishTabletSplitDrag);
     window.addEventListener('pointercancel', finishTabletSplitDrag);
-
-    // ── Restore saved panel state ──
-    void (async () => {
-      const ui = await fetchUiStateApi();
-      if (ui) {
-        const lw = ui.terminalLeftWidth;
-        const rw = ui.terminalRightWidth;
-        if (lw >= 0 && lw <= 900) { leftW = lw; savedLeftW = lw || 280; }
-        if (rw >= 0 && rw <= 900) { rightW = rw; savedRightW = rw || 300; }
-        leftCollapsed = ui.terminalLeftCollapsed;
-        rightCollapsed = ui.terminalRightCollapsed;
-        if (leftCollapsed) leftW = 0;
-        if (rightCollapsed) rightW = 0;
-      }
-    })();
 
     // ── Hydrate quick trades (터미널 페이지에서만 호출) ──
     void hydrateQuickTrades();
