@@ -1,25 +1,4 @@
 <script lang="ts">
-  /**
-   * AlphaMarketBar — 11-cell global market strip
-   *
-   * Alpha Flow HTML `.mkt-bar` 재구현, --sc-* 팔레트 (핑크/라임/베이지).
-   * Header.svelte row 2 에 통합되어 모든 페이지에 표시된다.
-   *
-   * 셀 구성 (좌→우):
-   *  1. F&G           (Fear & Greed index 0-100 + label)
-   *  2. BTC 김프       (BTC 김치 프리미엄 %)
-   *  3. USD/KRW       (환율)
-   *  4. BTC Tx        (일일 온체인 트랜잭션 수)
-   *  5. 멤풀 대기      (mempool.space pending tx)
-   *  6. 수수료         (fastest fee sat/vB)
-   *  7. Strong Bull   (scanned: alphaScore ≥ 55)
-   *  8. Bull          (scanned: 25 ≤ score < 55)
-   *  9. Neutral       (scanned: |score| ≤ 24)
-   *  10. Bear         (scanned: -54 ≤ score ≤ -25)
-   *  11. Strong Bear  (scanned: score ≤ -55)
-   *  12. Extreme FR   (scanned: |FR| > 0.07%)
-   */
-
   import type { AlphaBuckets } from '$lib/stores/alphaBuckets';
 
   interface ThermometerData {
@@ -40,297 +19,380 @@
     buckets: AlphaBuckets | null;
   } = $props();
 
-  // ─── Fear & Greed helpers ──────────────────────────────────
-  let fgLabel = $derived.by(() => {
-    const v = thermo.fearGreed;
-    if (v == null) return '—';
-    if (v <= 15) return '극단 공포';
-    if (v <= 30) return '공포';
-    if (v <= 45) return '다소 공포';
-    if (v <= 55) return '중립';
-    if (v <= 70) return '탐욕';
-    if (v <= 85) return '과탐욕';
-    return '극단 탐욕';
-  });
+  const bucket = $derived(
+    buckets ?? {
+      strongBull: null,
+      bull: null,
+      neutral: null,
+      bear: null,
+      strongBear: null,
+      extremeFR: null
+    }
+  );
 
-  let fgColor = $derived.by(() => {
-    const v = thermo.fearGreed;
-    if (v == null) return 'var(--sc-text-3)';
-    if (v <= 30) return 'var(--sc-good)';
-    if (v >= 70) return 'var(--sc-bad)';
-    return 'var(--sc-accent)';
-  });
-
-  // ─── Kimchi ───────────────────────────────────────────────
-  let kimchiColor = $derived.by(() => {
-    const v = thermo.kimchiPremium;
-    if (v == null) return 'var(--sc-text-2)';
-    if (v > 2) return 'var(--sc-bad)';
-    if (v < -1) return 'var(--sc-good)';
-    return 'var(--sc-text-0)';
-  });
-
-  let kimchiLabel = $derived.by(() => {
-    const v = thermo.kimchiPremium;
-    if (v == null) return '—';
-    if (v > 3) return '과열';
-    if (v < -2) return '역발상';
-    return '보통';
-  });
-
-  // ─── BTC Tx ───────────────────────────────────────────────
-  let btcTxColor = $derived.by(() => {
-    const v = thermo.btcTx;
-    if (v == null) return 'var(--sc-text-2)';
-    if (v > 450000) return 'var(--sc-good)';
-    if (v < 250000) return 'var(--sc-bad)';
-    return 'var(--sc-text-0)';
-  });
-
-  let btcTxLabel = $derived.by(() => {
-    const v = thermo.btcTx;
-    if (v == null) return '네트워크';
-    if (v > 450000) return '활발';
-    if (v < 250000) return '침체';
-    return '보통';
-  });
-
-  // ─── Mempool ──────────────────────────────────────────────
-  let mempoolColor = $derived.by(() => {
-    const v = thermo.mempoolPending;
-    if (v == null) return 'var(--sc-text-2)';
-    if (v > 80000) return 'var(--sc-bad)';
-    if (v < 30000) return 'var(--sc-good)';
-    return 'var(--sc-text-0)';
-  });
-
-  let mempoolLabel = $derived.by(() => {
-    const v = thermo.mempoolPending;
-    if (v == null) return '—';
-    if (v > 80000) return '혼잡';
-    if (v < 30000) return '여유';
-    return '보통';
-  });
-
-  // ─── Fee ──────────────────────────────────────────────────
-  let feeColor = $derived.by(() => {
-    const v = thermo.fastestFee;
-    if (v == null) return 'var(--sc-text-2)';
-    if (v > 80) return 'var(--sc-bad)';
-    if (v < 30) return 'var(--sc-good)';
-    return 'var(--sc-warn)';
-  });
-
-  // ─── Formatters ───────────────────────────────────────────
   function fmtK(v: number | null): string {
-    if (v == null) return '—';
+    if (v == null) return '--';
     if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
     if (v >= 1_000) return `${Math.round(v / 1_000)}K`;
     return String(v);
   }
 
   function fmtKrw(v: number | null): string {
-    if (v == null) return '—';
+    if (v == null) return '--';
     return Math.round(v).toLocaleString('en-US');
   }
 
   function fmtKimchi(v: number | null): string {
-    if (v == null) return '—';
+    if (v == null) return '--';
     const sign = v >= 0 ? '+' : '';
     return `${sign}${v.toFixed(2)}%`;
   }
 
-  function bucketNum(n: number | undefined): string {
-    return n == null ? '—' : String(n);
+  function bucketNum(n: number | undefined | null): string {
+    return n == null ? '--' : String(n);
   }
+
+  function fgLabel(v: number | null): string {
+    if (v == null) return 'neutral';
+    if (v <= 30) return 'fear';
+    if (v >= 70) return 'greed';
+    return 'balanced';
+  }
+
+  function fgColor(v: number | null): string {
+    if (v == null) return 'var(--sc-text-3)';
+    if (v <= 30) return 'var(--sc-good)';
+    if (v >= 70) return 'var(--sc-bad)';
+    return 'var(--sc-accent)';
+  }
+
+  function kimchiLabel(v: number | null): string {
+    if (v == null) return 'premium';
+    if (v > 3) return 'hot';
+    if (v < -2) return 'discount';
+    return 'flat';
+  }
+
+  function kimchiColor(v: number | null): string {
+    if (v == null) return 'var(--sc-text-2)';
+    if (v > 2) return 'var(--sc-bad)';
+    if (v < -1) return 'var(--sc-good)';
+    return 'var(--sc-text-0)';
+  }
+
+  function btcTxLabel(v: number | null): string {
+    if (v == null) return 'network';
+    if (v > 450000) return 'active';
+    if (v < 250000) return 'slow';
+    return 'normal';
+  }
+
+  function btcTxColor(v: number | null): string {
+    if (v == null) return 'var(--sc-text-2)';
+    if (v > 450000) return 'var(--sc-good)';
+    if (v < 250000) return 'var(--sc-bad)';
+    return 'var(--sc-text-0)';
+  }
+
+  function mempoolLabel(v: number | null): string {
+    if (v == null) return 'pending';
+    if (v > 80000) return 'crowded';
+    if (v < 30000) return 'clear';
+    return 'normal';
+  }
+
+  function mempoolColor(v: number | null): string {
+    if (v == null) return 'var(--sc-text-2)';
+    if (v > 80000) return 'var(--sc-bad)';
+    if (v < 30000) return 'var(--sc-good)';
+    return 'var(--sc-text-0)';
+  }
+
+  function feeColor(v: number | null): string {
+    if (v == null) return 'var(--sc-text-2)';
+    if (v > 80) return 'var(--sc-bad)';
+    if (v < 30) return 'var(--sc-good)';
+    return 'var(--sc-warn)';
+  }
+
+  const thermoChips = $derived([
+    {
+      key: 'fg',
+      short: 'F&G',
+      value: thermo.fearGreed == null ? '--' : String(thermo.fearGreed),
+      meta: fgLabel(thermo.fearGreed),
+      tone: fgColor(thermo.fearGreed)
+    },
+    {
+      key: 'kimchi',
+      short: 'KIMP',
+      value: fmtKimchi(thermo.kimchiPremium),
+      meta: kimchiLabel(thermo.kimchiPremium),
+      tone: kimchiColor(thermo.kimchiPremium)
+    },
+    {
+      key: 'krw',
+      short: 'KRW',
+      value: fmtKrw(thermo.usdKrw),
+      meta: 'usd/krw',
+      tone: 'var(--sc-accent)'
+    },
+    {
+      key: 'btcTx',
+      short: 'BTC TX',
+      value: fmtK(thermo.btcTx),
+      meta: btcTxLabel(thermo.btcTx),
+      tone: btcTxColor(thermo.btcTx)
+    },
+    {
+      key: 'mempool',
+      short: 'MEM',
+      value: fmtK(thermo.mempoolPending),
+      meta: mempoolLabel(thermo.mempoolPending),
+      tone: mempoolColor(thermo.mempoolPending)
+    },
+    {
+      key: 'fee',
+      short: 'FEE',
+      value: thermo.fastestFee == null ? '--' : String(thermo.fastestFee),
+      meta: 'sat/vB',
+      tone: feeColor(thermo.fastestFee)
+    }
+  ]);
+
+  const bucketChips = $derived([
+    { key: 'strongBull', short: 'SB', value: bucketNum(bucket.strongBull), meta: '>=55', tone: 'var(--sc-good)' },
+    { key: 'bull', short: 'B', value: bucketNum(bucket.bull), meta: '25~54', tone: 'var(--sc-good)' },
+    { key: 'neutral', short: 'N', value: bucketNum(bucket.neutral), meta: 'mid', tone: 'var(--sc-accent)' },
+    { key: 'bear', short: 'BR', value: bucketNum(bucket.bear), meta: '-25~-54', tone: 'var(--sc-bad)' },
+    { key: 'strongBear', short: 'SBR', value: bucketNum(bucket.strongBear), meta: '<=-55', tone: 'var(--sc-bad)' },
+    { key: 'extremeFR', short: 'FR', value: bucketNum(bucket.extremeFR), meta: 'hot', tone: 'var(--sc-warn)' }
+  ]);
 </script>
 
-<div class="amb">
-  <!-- 1. Fear & Greed -->
-  <div class="cell">
-    <div class="lbl">공포탐욕</div>
-    <div class="val" style="color:{fgColor}">{thermo.fearGreed ?? '—'}</div>
-    <div class="sub" style="color:{fgColor}">{fgLabel}</div>
+<aside class="market-dock" aria-label="Global market pulse">
+  <div class="dock-head">
+    <span class="dock-title">MARKET PULSE</span>
+    <span class="dock-copy">macro + scan breadth</span>
   </div>
 
-  <!-- 2. Kimchi Premium -->
-  <div class="cell">
-    <div class="lbl">BTC 김프</div>
-    <div class="val" style="color:{kimchiColor}">{fmtKimchi(thermo.kimchiPremium)}</div>
-    <div class="sub">{kimchiLabel}</div>
+  <div class="dock-section">
+    <span class="section-label">THERMO</span>
+    <div class="chip-row">
+      {#each thermoChips as chip}
+        <div class="chip">
+          <span class="chip-key">{chip.short}</span>
+          <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
+          <span class="chip-meta">{chip.meta}</span>
+        </div>
+      {/each}
+    </div>
   </div>
 
-  <!-- 3. USD/KRW -->
-  <div class="cell">
-    <div class="lbl">USD/KRW</div>
-    <div class="val accent">{fmtKrw(thermo.usdKrw)}</div>
-    <div class="sub">환율</div>
+  <div class="dock-section">
+    <span class="section-label">BREADTH</span>
+    <div class="chip-row chip-row-buckets">
+      {#each bucketChips as chip}
+        <div class="chip chip-bucket">
+          <span class="chip-key">{chip.short}</span>
+          <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
+          <span class="chip-meta">{chip.meta}</span>
+        </div>
+      {/each}
+    </div>
   </div>
-
-  <!-- 4. BTC Tx -->
-  <div class="cell">
-    <div class="lbl">BTC Tx (24h)</div>
-    <div class="val" style="color:{btcTxColor}">{fmtK(thermo.btcTx)}</div>
-    <div class="sub">{btcTxLabel}</div>
-  </div>
-
-  <!-- 5. Mempool -->
-  <div class="cell">
-    <div class="lbl">멤풀 대기</div>
-    <div class="val" style="color:{mempoolColor}">{fmtK(thermo.mempoolPending)}</div>
-    <div class="sub">{mempoolLabel}</div>
-  </div>
-
-  <!-- 6. Fee -->
-  <div class="cell">
-    <div class="lbl">수수료</div>
-    <div class="val" style="color:{feeColor}">{thermo.fastestFee ?? '—'}</div>
-    <div class="sub">sat/vB</div>
-  </div>
-
-  <div class="divider"></div>
-
-  <!-- 7. Strong Bull -->
-  <div class="cell">
-    <div class="lbl">Strong Bull</div>
-    <div class="val good">{bucketNum(buckets?.strongBull)}</div>
-    <div class="sub">≥ +55</div>
-  </div>
-
-  <!-- 8. Bull -->
-  <div class="cell">
-    <div class="lbl">Bull</div>
-    <div class="val good dim">{bucketNum(buckets?.bull)}</div>
-    <div class="sub">+25 ~ +54</div>
-  </div>
-
-  <!-- 9. Neutral -->
-  <div class="cell">
-    <div class="lbl">Neutral</div>
-    <div class="val accent">{bucketNum(buckets?.neutral)}</div>
-    <div class="sub">-24 ~ +24</div>
-  </div>
-
-  <!-- 10. Bear -->
-  <div class="cell">
-    <div class="lbl">Bear</div>
-    <div class="val bad dim">{bucketNum(buckets?.bear)}</div>
-    <div class="sub">-25 ~ -54</div>
-  </div>
-
-  <!-- 11. Strong Bear -->
-  <div class="cell">
-    <div class="lbl">Strong Bear</div>
-    <div class="val bad">{bucketNum(buckets?.strongBear)}</div>
-    <div class="sub">≤ -55</div>
-  </div>
-
-  <!-- 12. Extreme FR -->
-  <div class="cell">
-    <div class="lbl">⚡ Extreme FR</div>
-    <div class="val warn">{bucketNum(buckets?.extremeFR)}</div>
-    <div class="sub">|FR| &gt; 0.07%</div>
-  </div>
-</div>
+</aside>
 
 <style>
-  .amb {
+  .market-dock {
     position: fixed;
-    top: var(--sc-header-h, 44px);
-    left: 0;
-    right: 0;
-    height: 52px;
-    display: flex;
-    align-items: stretch;
-    background: var(--sc-bg-1);
-    border-bottom: 1px solid var(--sc-line-soft);
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-    scrollbar-width: thin;
-    scrollbar-color: var(--sc-line-soft) transparent;
-    z-index: calc(var(--sc-z-header) - 1);
-    backdrop-filter: blur(12px);
-  }
-  .amb::-webkit-scrollbar { height: 4px; }
-  .amb::-webkit-scrollbar-thumb { background: var(--sc-line-soft); border-radius: 2px; }
-  .amb::-webkit-scrollbar-track { background: transparent; }
-
-  .cell {
+    top: calc(var(--sc-header-h, 44px) + 12px);
+    right: max(14px, calc((100vw - 1080px) / 2 + 14px));
+    width: min(500px, calc(100vw - 28px));
+    padding: 8px 10px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 1px;
-    padding: 7px 14px;
-    min-width: 96px;
-    border-right: 1px solid var(--sc-line-soft);
-    flex-shrink: 0;
+    gap: 8px;
+    border: 1px solid rgba(219, 154, 159, 0.14);
+    border-radius: 12px;
+    background:
+      linear-gradient(180deg, rgba(8, 13, 23, 0.9), rgba(8, 13, 23, 0.82)),
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.12), transparent 30%);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+    z-index: calc(var(--sc-z-header) - 1);
   }
-  .cell:last-child { border-right: none; }
 
-  .lbl {
+  .dock-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .dock-title {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    color: var(--sc-text-0);
+  }
+
+  .dock-copy {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--sc-text-3);
+    text-transform: uppercase;
+  }
+
+  .dock-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .section-label {
+    width: 50px;
+    flex-shrink: 0;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--sc-text-3);
+    text-transform: uppercase;
+  }
+
+  .chip-row {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .chip {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'key value'
+      'meta meta';
+    gap: 2px 6px;
+    padding: 6px 8px 7px;
+    border: 1px solid rgba(219, 154, 159, 0.1);
+    border-radius: 9px;
+    background: rgba(14, 22, 35, 0.74);
+  }
+
+  .chip-bucket {
+    padding-inline: 8px;
+  }
+
+  .chip-key {
+    grid-area: key;
+    align-self: center;
     font-family: var(--sc-font-body, sans-serif);
-    font-size: 8px;
-    font-weight: 600;
+    font-size: 9px;
+    font-weight: 700;
     letter-spacing: 0.12em;
     color: var(--sc-text-3);
     text-transform: uppercase;
   }
 
-  .val {
+  .chip-value {
+    grid-area: value;
+    justify-self: end;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
+    line-height: 1;
     color: var(--sc-text-0);
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.3px;
   }
-  .val.good { color: var(--sc-good); text-shadow: 0 0 8px rgba(173, 202, 124, 0.3); }
-  .val.bad { color: var(--sc-bad); text-shadow: 0 0 8px rgba(207, 127, 143, 0.3); }
-  .val.accent { color: var(--sc-accent); }
-  .val.warn { color: var(--sc-warn); text-shadow: 0 0 8px rgba(242, 209, 147, 0.3); }
-  .val.dim { opacity: 0.72; }
 
-  .sub {
+  .chip-meta {
+    grid-area: meta;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8.5px;
-    color: var(--sc-text-3);
+    font-size: 9px;
+    line-height: 1.1;
     letter-spacing: 0.02em;
+    color: var(--sc-text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .divider {
-    width: 1px;
-    background: var(--sc-line);
-    margin: 6px 4px;
-  }
-
-  @media (max-width: 1024px) {
-    .cell {
-      min-width: 82px;
-      padding: 6px 10px;
+  @media (max-width: 1200px) {
+    .market-dock {
+      width: min(500px, calc(100vw - 24px));
+      right: 12px;
     }
-    .val { font-size: 14px; }
-    .lbl, .sub { font-size: 8px; }
+
+    .chip-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 768px) {
-    .amb {
-      top: var(--sc-header-h-mobile, 40px);
-      height: 46px;
+    .market-dock {
+      top: calc(var(--sc-header-h-mobile, 36px) + 10px);
+      bottom: auto;
+      left: 10px;
+      right: 10px;
+      width: auto;
+      padding: 8px 9px;
+      gap: 7px;
     }
-    .cell {
-      min-width: 74px;
-      padding: 5px 8px;
-    }
-    .val { font-size: 12px; }
-    .lbl { font-size: 7.5px; }
-    .sub { font-size: 7.5px; }
-    .divider { display: none; }
-  }
 
-  @media (max-width: 480px) {
-    .amb {
-      top: var(--sc-touch-sm, 36px);
+    .dock-head {
+      gap: 8px;
+    }
+
+    .dock-title {
+      font-size: 14px;
+    }
+
+    .dock-copy {
+      font-size: 9px;
+    }
+
+    .dock-section {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    .section-label {
+      width: auto;
+    }
+
+    .chip-row {
+      display: flex;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      gap: 6px;
+      scrollbar-width: none;
+    }
+
+    .chip-row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chip {
+      min-width: 88px;
+      flex: 0 0 auto;
+      padding: 6px 8px 7px;
+    }
+
+    .chip-value {
+      font-size: 12px;
+    }
+
+    .chip-meta,
+    .chip-key,
+    .section-label {
+      font-size: 8px;
     }
   }
 </style>
