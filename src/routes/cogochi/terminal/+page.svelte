@@ -115,15 +115,59 @@
     return entries;
   });
 
-  // ─── Init ─────────────────────────────────────────────────
-  onMount(() => {
-    const hour = new Date().getHours();
-    let greeting: string;
-    if (hour >= 6 && hour < 12) greeting = '좋은 아침! 뭐 볼까? 종목이랑 타임프레임 알려줘.';
-    else if (hour >= 12 && hour < 18) greeting = '오후야! BTC 4H 분석해볼까?';
-    else if (hour >= 18 && hour < 24) greeting = '오늘 시장 좀 움직였어. 같이 볼까?';
-    else greeting = '아직 안 자? 시장은 쉬지 않지. 뭐 봐줄까?';
-    messages = [{ role: 'douni', text: greeting }];
+  // ─── Init: LLM-generated greeting (locale-aware) ──────────
+  onMount(async () => {
+    const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'ko-KR';
+    const isKorean = locale.toLowerCase().startsWith('ko');
+    const fallback = isKorean ? '왔어? 뭐 볼 거야?' : "yo, what're we looking at?";
+
+    // Show thinking bubble while waiting for greeting
+    messages = [{ role: 'douni', thinking: true } as MessageType];
+
+    try {
+      const res = await fetch('/api/cogochi/terminal/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '', greeting: true, locale }),
+      });
+
+      if (!res.ok || !res.body) throw new Error(`Greeting failed: ${res.status}`);
+
+      let streamingText = '';
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const raw = trimmed.slice(6);
+          if (raw === '[DONE]') continue;
+          try {
+            const event: SSEEvent = JSON.parse(raw);
+            if (event.type === 'text_delta') {
+              streamingText += event.text;
+              // Replace the thinking bubble with the streaming greeting
+              messages = [{ role: 'douni', text: streamingText }];
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+
+      // Safety: if LLM returned nothing, fall back to a locale-appropriate stub
+      if (!streamingText.trim()) {
+        messages = [{ role: 'douni', text: fallback }];
+      }
+    } catch {
+      // Network error or LLM unavailable — locale-aware fallback
+      messages = [{ role: 'douni', text: fallback }];
+    }
   });
 
   // ─── Send via FC Pipeline ─────────────────────────────────
