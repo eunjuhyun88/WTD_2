@@ -218,7 +218,7 @@
         background: { color: 'transparent' },
         textColor: '#383860',
         fontSize: 9,
-        fontFamily: 'IBM Plex Mono, monospace',
+        fontFamily: 'JetBrains Mono, monospace',
       },
       grid: {
         vertLines: { color: '#0e0e1a' },
