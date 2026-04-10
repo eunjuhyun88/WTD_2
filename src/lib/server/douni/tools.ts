@@ -218,32 +218,42 @@ export const TOOL_CHECK_SOCIAL: ToolDefinition = {
 };
 
 // ─── scan_market ───────────────────────────────────────────
-// 탑 코인 리스트 스캔 (Galaxy Score / AltRank / 센티먼트 등)
+// 멀티 코인 17-layer 기술적 스캐너 (Binance 기반)
+// Returns each coin's alphaScore, alphaLabel, verdict, regime, and flag
+// badges (wyckoff, mtf_triple, bb_squeeze, liq_alert, fr_extreme).
 
 export const TOOL_SCAN_MARKET: ToolDefinition = {
   type: 'function',
   function: {
     name: 'scan_market',
-    description: `Scan and rank top cryptocurrencies by social metrics. Returns sorted list with Galaxy Score, sentiment, price changes. Use when:
-- User asks "지금 뭐가 핫해?", "어떤 코인이 주목받고 있어?"
-- User wants to discover trending or top-performing coins
-- You need a market overview before detailed analysis`,
+    description: `Run the 17-layer technical scanner across multiple coins on Binance and return a ranked list with alpha scores, layer flags, price, and 24h change. Use when the user wants a multi-coin market overview or to discover what's setting up right now.
+
+Trigger keywords (non-exhaustive):
+- Korean: "지금 뭐가 핫해?", "어떤 코인이 주목받고 있어?", "스캔해", "top 10 보여줘", "알파 높은 거", "와이코프 뜬 거", "BB 스퀴즈 있는 거"
+- English: "scan the market", "what's hot", "top coins", "what's trending", "show me the scan", "anything setting up?", "highest alpha right now", "any bb squeezes?"
+
+Flags each coin may carry: wyckoff (MARKUP/MARKDOWN), mtf_triple (MTF ★), bb_squeeze, liq_alert, fr_extreme. Use these in your summary when present.`,
     parameters: {
       type: 'object',
       properties: {
         sort: {
           type: 'string',
-          enum: ['galaxy_score', 'alt_rank', 'sentiment', 'interactions', 'percent_change_24h', 'volume_24h'],
-          description: 'Sort criteria (default: galaxy_score)',
+          enum: ['alphaScore', 'change24h', 'volume24h'],
+          description: 'Sort criteria (default: alphaScore by absolute magnitude)',
         },
         sector: {
           type: 'string',
           enum: ['defi', 'meme', 'layer-1', 'layer-2', 'ai', 'gaming', 'nft'],
-          description: 'Optional sector filter',
+          description: 'Optional sector filter for topN mode',
+        },
+        symbols: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional custom list of coin symbols (e.g. ["BTC","ETH","SOL"]). Overrides sector/limit when provided.',
         },
         limit: {
           type: 'number',
-          description: 'Number of results (default: 10, max: 20)',
+          description: 'Number of results (default: 10, max: 10 for terminal context)',
         },
       },
     },
