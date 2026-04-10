@@ -19,6 +19,7 @@
   const connected = $derived($isWalletConnected);
   const liveP = $derived($livePrices);
   const activePath = $derived($page.url.pathname);
+  const isHomeRoute = $derived(activePath === '/');
 
   let _lastFetchedToken = '';
 
@@ -99,22 +100,18 @@
   );
 </script>
 
-<nav id="nav">
+<nav id="nav" class:home-mode={isHomeRoute}>
   <div class="nav-main">
     <!-- Logo -->
     <a class="nav-logo" href={buildDeepLink(connected ? '/dashboard' : '/')} aria-label="Home">
       <span class="nav-logo-main">COGOTCHI</span>
     </a>
 
-    <div class="nav-sep desktop-only"></div>
-
     <!-- Ticker (desktop + mobile) -->
     <div class="selected-ticker">
       <span class="st-pair">{selectedToken}</span>
       <span class="st-price">${selectedPriceText}</span>
     </div>
-
-    <div class="nav-sep desktop-only"></div>
 
     <!-- Desktop/Tablet Nav Tabs -->
     {#each DESKTOP_NAV_SURFACES as item}
@@ -136,7 +133,7 @@
   <div class="nav-right">
     <!-- Score badge (desktop only) -->
     <div class="score-badge desktop-only">
-      <span class="score-label">SCORE</span>
+      <span class="score-label">XP</span>
       <span class="score-value">{Math.round(gState.score).toLocaleString()}</span>
     </div>
 
@@ -196,27 +193,17 @@
     flex-wrap: nowrap;
     align-items: center;
     height: var(--sc-header-h);
-    padding: 0 var(--sc-sp-3);
+    padding: 0 10px;
     font-family: var(--sc-font-body);
     color: var(--sc-text-0);
     backdrop-filter: blur(18px);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
-  }
-
-  #nav::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(219, 154, 159, 0.36), rgba(242, 209, 147, 0.18), rgba(173, 202, 124, 0.22), transparent);
-    pointer-events: none;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
   }
 
   .nav-main {
     display: flex;
     align-items: center;
+    gap: 7px;
     min-width: 0;
     flex: 1 1 auto;
     overflow: hidden;
@@ -241,36 +228,32 @@
 
   .nav-logo-main {
     font-family: var(--sc-font-display);
-    font-size: 1.35rem;
-    letter-spacing: 0.08em;
+    font-size: 1.12rem;
+    letter-spacing: 0.07em;
     text-shadow: 0 0 10px rgba(219, 154, 159, 0.1);
-  }
-
-  .nav-sep {
-    width: 1px;
-    height: 20px;
-    background: var(--sc-line-soft);
-    margin: 0 var(--sc-sp-2);
-    flex-shrink: 0;
   }
 
   /* Ticker */
   .selected-ticker {
     display: flex;
     align-items: center;
-    gap: var(--sc-sp-1_5);
-    padding: 0 var(--sc-sp-2);
+    gap: 6px;
+    padding: 0 8px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(12, 18, 29, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     flex-shrink: 0;
   }
   .st-pair {
     font-family: var(--sc-font-pixel);
-    font-size: var(--sc-fs-2xs);
+    font-size: 8px;
     color: var(--sc-text-3);
-    letter-spacing: 1px;
+    letter-spacing: 0.12em;
   }
   .st-price {
     font-family: var(--sc-font-pixel);
-    font-size: var(--sc-fs-sm);
+    font-size: 11px;
     color: var(--sc-text-0);
   }
 
@@ -278,11 +261,11 @@
   .nav-tab-desktop {
     font-family: var(--sc-font-body);
     font-weight: 700;
-    font-size: var(--sc-fs-2xs);
-    letter-spacing: 0.12em;
+    font-size: var(--sc-fs-xs);
+    letter-spacing: 0.1em;
     color: var(--sc-text-3);
-    padding: 0 var(--sc-sp-3);
-    height: 28px;
+    padding: 0 9px;
+    height: 22px;
     display: flex;
     align-items: center;
     border: 1px solid rgba(219, 154, 159, 0.08);
@@ -293,7 +276,7 @@
     white-space: nowrap;
     position: relative;
     text-decoration: none;
-    margin-right: 6px;
+    margin-right: 3px;
   }
   .nav-tab-desktop:last-of-type { margin-right: 0; }
 
@@ -329,7 +312,7 @@
   .nav-tab-desktop.active::after {
     content: '';
     position: absolute;
-    inset: auto 10px -6px;
+    inset: auto 10px -4px;
     height: 2px;
     border-radius: 999px;
     background: linear-gradient(90deg, var(--sc-accent), var(--sc-accent-3));
@@ -345,28 +328,28 @@
 
   /* Right Section */
   .nav-right {
-    margin-left: var(--sc-sp-2);
+    margin-left: 8px;
     display: flex;
     align-items: center;
-    gap: var(--sc-sp-2);
+    gap: 6px;
     flex-shrink: 0;
   }
 
   .score-badge {
     font-family: var(--sc-font-mono);
-    font-size: var(--sc-fs-2xs);
+    font-size: var(--sc-fs-xs);
     background: rgba(242, 209, 147, 0.06);
     color: var(--sc-accent-3);
     border: 1px solid rgba(242, 209, 147, 0.12);
     border-radius: 999px;
-    padding: var(--sc-sp-1) var(--sc-sp-2);
+    padding: 4px 8px;
     letter-spacing: 0.12em;
     display: flex;
     align-items: center;
     gap: var(--sc-sp-1);
   }
   .score-value {
-    font-size: var(--sc-fs-xs);
+    font-size: var(--sc-fs-sm);
     color: var(--sc-text-0);
     font-weight: 700;
   }
@@ -378,7 +361,7 @@
     border: 1px solid var(--sc-line-soft);
     border-radius: var(--sc-radius-sm);
     cursor: pointer;
-    padding: var(--sc-sp-1);
+    padding: 5px;
     transition: all var(--sc-duration-fast);
     line-height: 0;
     display: flex;
@@ -396,13 +379,13 @@
   .wallet-btn {
     font-family: var(--sc-font-body);
     font-weight: 700;
-    font-size: var(--sc-fs-2xs);
+    font-size: var(--sc-fs-xs);
     background: linear-gradient(135deg, var(--sc-accent), rgba(242, 209, 147, 0.6), var(--sc-accent-2));
     color: #0f1520;
     border: 1px solid rgba(219, 154, 159, 0.34);
     border-radius: 999px;
-    padding: var(--sc-sp-1) var(--sc-sp-3);
-    min-height: var(--sc-touch-sm, 36px);
+    padding: 0 11px;
+    min-height: 30px;
     cursor: pointer;
     letter-spacing: 0.06em;
     transition: all var(--sc-duration-fast);
@@ -427,6 +410,57 @@
     border-radius: 50%;
     background: var(--sc-good);
     box-shadow: 0 0 6px var(--sc-good);
+  }
+
+  #nav.home-mode {
+    top: max(6px, calc(var(--sc-safe-top) + 6px));
+    left: 50%;
+    right: auto;
+    width: min(1080px, calc(100vw - 24px));
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid rgba(219, 154, 159, 0.12);
+    border-radius: 15px;
+    background:
+      linear-gradient(180deg, rgba(8, 13, 23, 0.86), rgba(8, 13, 23, 0.76)),
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.1), transparent 34%);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+    transform: translateX(-50%);
+  }
+
+  #nav.home-mode .selected-ticker,
+  #nav.home-mode .score-badge,
+  #nav.home-mode .settings-btn {
+    display: none;
+  }
+
+  #nav.home-mode .nav-main {
+    gap: 6px;
+  }
+
+  #nav.home-mode .nav-logo-main {
+    font-size: 1.18rem;
+    letter-spacing: 0.065em;
+  }
+
+  #nav.home-mode .nav-tab-desktop {
+    height: 24px;
+    padding: 0 10px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    background: rgba(255, 255, 255, 0.025);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  #nav.home-mode .nav-right {
+    margin-left: 4px;
+  }
+
+  #nav.home-mode .wallet-btn {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+    box-shadow: none;
   }
 
   /* Profile Dropdown */
@@ -498,7 +532,7 @@
     .selected-ticker { display: none; }
     .nav-tab-desktop {
       padding: 0 var(--sc-sp-2);
-      font-size: var(--sc-fs-2xs);
+      font-size: var(--sc-fs-xs);
       letter-spacing: 0.5px;
     }
     .tab-full { display: none; }
@@ -506,8 +540,11 @@
     .nav-logo {
       gap: 6px;
     }
-    .nav-logo-main { font-size: var(--sc-fs-sm); }
+    .nav-logo-main { font-size: 1.02rem; }
     .nav-right { gap: var(--sc-sp-1); }
+    #nav.home-mode {
+      width: calc(100vw - 20px);
+    }
   }
 
   /* ═══ MOBILE (<=768px) — compact top chrome, tabs move to bottom nav ═══ */
@@ -515,6 +552,11 @@
     #nav {
       height: var(--sc-header-h-mobile, 40px);
       flex-wrap: nowrap;
+    }
+    #nav.home-mode {
+      width: calc(100vw - 16px);
+      height: 36px;
+      padding: 0 9px;
     }
     .desktop-only { display: none; }
     .nav-tab-desktop { display: none; }
@@ -524,20 +566,25 @@
     }
     .nav-logo { gap: 0; }
     .nav-logo-main {
-      font-size: var(--sc-fs-sm);
-      letter-spacing: 1.5px;
+      font-size: 0.96rem;
+      letter-spacing: 1.2px;
     }
 
     /* Show ticker on mobile */
     .selected-ticker {
       display: flex;
       margin-left: auto;
+      padding-inline: 8px;
+      height: 24px;
+    }
+    #nav.home-mode .selected-ticker {
+      display: none;
     }
     .st-pair {
       font-size: 8px;
     }
     .st-price {
-      font-size: var(--sc-fs-2xs);
+      font-size: 10px;
     }
 
     .nav-right {
@@ -550,8 +597,12 @@
       min-height: var(--sc-touch-sm, 36px);
     }
     .wallet-btn {
-      padding: var(--sc-sp-1) var(--sc-sp-3);
+      padding: 0 12px;
       border-radius: var(--sc-radius-md);
+    }
+    #nav.home-mode .wallet-btn {
+      min-height: 26px;
+      padding: 0 8px;
     }
   }
 
@@ -565,7 +616,7 @@
     }
     .nav-logo { gap: 0; }
     .nav-logo-main {
-      font-size: var(--sc-fs-xs);
+      font-size: 0.84rem;
       letter-spacing: 1px;
     }
     .wallet-btn {

@@ -135,11 +135,17 @@ float glyph(vec2 u, float lv) {
 }
 
 vec3 brand(vec2 uv, float t) {
-  float v = (sin(uv.x * 4.7 + t * 0.3) + cos(uv.y * 3.3 - t * 0.2)) * 0.5 + 0.5;
   vec3 rose = vec3(0.858, 0.604, 0.624);
   vec3 sage = vec3(0.678, 0.792, 0.486);
   vec3 gold = vec3(0.949, 0.820, 0.576);
-  return v < 0.5 ? mix(rose, sage, v * 2.0) : mix(sage, gold, v * 2.0 - 1.0);
+  vec3 ember = vec3(0.952, 0.504, 0.412);
+  float waveA = 0.5 + 0.5 * sin(uv.x * 7.6 - uv.y * 3.7 + t * 0.86);
+  float waveB = 0.5 + 0.5 * cos(uv.y * 6.4 + uv.x * 2.8 - t * 0.68);
+  float waveC = 0.5 + 0.5 * sin((uv.x + uv.y) * 5.1 + t * 1.05);
+  vec3 base = mix(rose, sage, waveA);
+  base = mix(base, gold, waveB * 0.74);
+  base = mix(base, ember, waveC * 0.48);
+  return base * (0.96 + waveA * 0.2 + waveC * 0.16);
 }
 
 void main() {
@@ -150,8 +156,15 @@ void main() {
 
   float trail = texture(uTrail, suv).r;
   vec3 pal = brand(suv, uTime);
-  vec3 col = vec3(0.0);
-  float alpha = 0.0;
+  float asp = uRes.x / max(uRes.y, 1.0);
+  vec2 ambientCenter = vec2(0.5 + sin(uTime * 0.23) * 0.055, 0.52 + cos(uTime * 0.19) * 0.05);
+  float ambientSweep = 0.5 + 0.5 * sin(uTime * 1.05 + vUv.x * 6.8 - vUv.y * 4.4);
+  float ambientRibbon = 0.5 + 0.5 * cos(uTime * 0.92 + vUv.y * 7.6 + vUv.x * 2.6);
+  float ambientFocus = exp(-pow(length((vUv - ambientCenter) * vec2(asp, 1.0)), 2.0) * 1.8);
+  vec3 ambientPal = brand(vUv * 1.15 + vec2(ambientSweep * 0.2, -ambientRibbon * 0.14), uTime * 1.95);
+  float ambientAlpha = clamp(0.024 + ambientFocus * 0.072 + ambientSweep * 0.02 + ambientRibbon * 0.018, 0.0, 0.11);
+  vec3 col = ambientPal * ambientAlpha;
+  float alpha = ambientAlpha;
 
   if (trail > THRESH) {
     float lv = floor(clamp(pow(trail, 0.9), 0.0, 1.0) * 8.0 + 0.5);
@@ -159,12 +172,12 @@ void main() {
     vec2 sh = vec2(10.2 / uRes.x, 0.0);
     float tR = texture(uTrail, suv + sh).r;
     float tB = texture(uTrail, suv - sh).r;
-    vec3 chroma = clamp(vec3(tR, trail, tB) * 1.45 + 0.08, 0.0, 1.0);
-    col = pal * chroma * ch;
-    alpha = ch * min(trail * 1.2, 0.72);
+    vec3 chroma = clamp(vec3(tR, trail, tB) * 1.6 + 0.12, 0.0, 1.0);
+    col += pal * chroma * ch;
+    alpha = max(alpha, ch * min(trail * 1.28, 0.78));
   }
 
-  if (alpha < 0.01) {
+  if (trail <= THRESH + 0.02) {
     vec2 lr = uLogoRect.xy, lt = uLogoRect.zw;
     vec2 logoUv = (suv - lr) / max(lt - lr, vec2(1e-4));
     if (logoUv.x >= 0.0 && logoUv.x <= 1.0 && logoUv.y >= 0.0 && logoUv.y <= 1.0) {
@@ -173,12 +186,11 @@ void main() {
       if (lum > 0.02) {
         float lv = floor(min(lum * 6.0, 4.0) + 0.5);
         float ch = glyph(cell, lv);
-        float asp = uRes.x / uRes.y;
         float dist = length((suv - uMouse) * vec2(asp, 1.0));
         float glow = exp(-dist * dist * 8.0) * 0.45;
-        float la = ch * lum * (0.10 + glow);
-        col = pal * la;
-        alpha = la;
+        float la = ch * lum * (0.16 + glow);
+        col += pal * la;
+        alpha = max(alpha, la);
       }
     }
   }

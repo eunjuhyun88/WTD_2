@@ -28,8 +28,8 @@
   const TARGET_FPS_MOBILE = 30;
   const LOGO_PATH = '/cogochi/logo-filled.png';
   const LOGO_COVER = 0.65;
-  const DRIFT_AMP_X = 20;
-  const DRIFT_AMP_Y = 15;
+  const DRIFT_AMP_X = 34;
+  const DRIFT_AMP_Y = 24;
 
   let canvas: HTMLCanvasElement | undefined = $state(undefined);
   let isMobile = $state(false);
@@ -153,8 +153,8 @@
     function logoRect(t: number): [number, number, number, number] {
       const viewMin = Math.min(w, h);
       const sz = viewMin * LOGO_COVER;
-      const driftX = Math.sin(t * 0.15) * DRIFT_AMP_X;
-      const driftY = Math.cos(t * 0.12) * DRIFT_AMP_Y;
+      const driftX = Math.sin(t * 0.21) * DRIFT_AMP_X + Math.sin(t * 0.48) * 8.0;
+      const driftY = Math.cos(t * 0.18) * DRIFT_AMP_Y + Math.cos(t * 0.37) * 6.0;
       const left = ((w - sz) * 0.5 + driftX) / w;
       const bottom = 1 - ((h - sz) * 0.5 + driftY + sz) / h;
       const right = left + sz / w;
@@ -262,6 +262,8 @@
     width: 100vw;
     height: 100dvh;
     display: block;
+    opacity: 0.96;
+    filter: saturate(1.45) brightness(1.14) contrast(1.08);
   }
 
   @supports not (height: 100dvh) {

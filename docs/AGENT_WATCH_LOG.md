@@ -20,6 +20,225 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## Entries
 
+## [2026-04-10 23:01:00 +0900] START W-20260410-2301-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-wip-sync-20260410`
+- Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/routes/+layout.svelte`
+- Task summary: remove the old top-heavy market strip feel, move the market pulse out of home chrome, and slim the dock density/placement for better UI/UX.
+- Owned files / overlap check:
+  - owned: `src/components/cogochi/AlphaMarketBar.svelte`
+  - owned: `src/routes/+layout.svelte`
+  - no additional overlapping in-progress file ownership detected for this slice
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty files limited to the owned UI slice above
+- `safe:hooks`: PASS
+- `safe:sync`: BLOCKED by uncommitted owned changes in the active slice
+- Status: IN_PROGRESS
+
+## [2026-04-10 23:08:00 +0900] FINISH W-20260410-2301-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/terminal-wip-sync-20260410`
+- What changed:
+  - hid the global `AlphaMarketBar` from home so `/` no longer opens with dense market chrome
+  - tightened the floating dock width, spacing, type scale, and chip density for a slimmer placement on non-home surfaces
+  - preserved the new floating-dock direction instead of the old full-width top strip
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `cc89a46`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/routes/+layout.svelte`
+- Status: DONE
+
+## [2026-04-11 04:21:00 +0900] START W-20260411-0421-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-wip-sync-20260410`
+- Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/routes/+layout.svelte`
+- Task summary: restore stronger home background color-shift motion so the landing hero keeps visible palette changes behind the model and ascii field.
+- Owned files / overlap check:
+  - owned: `src/lib/webgl/ascii-trail-shaders.ts`
+  - shared dirty files currently present in other owned WIP: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/routes/+layout.svelte`
+  - no direct overlap with the shader slice planned here
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - current dirty files understood before edits
+- `safe:hooks`: PASS
+- `safe:sync`: BLOCKED by existing uncommitted worktree changes
+- Status: IN_PROGRESS
+
+## [2026-04-11 04:26:00 +0900] FINISH W-20260411-0421-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/terminal-wip-sync-20260410`
+- What changed:
+  - strengthened the home WebGL palette drift so the landing background color-shift is visibly back
+  - added a shallow animated ambient wash behind the existing ascii/logo field instead of changing the home layout or CTA structure
+  - kept the work isolated to `src/lib/webgl/ascii-trail-shaders.ts`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `cc89a46`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/lib/webgl/ascii-trail-shaders.ts`
+  - `M src/routes/+layout.svelte`
+- Status: DONE
+
+## [2026-04-11 04:24:00 +0900] START W-20260411-0424-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-wip-sync-20260410`
+- Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/lib/webgl/ascii-trail-shaders.ts`
+  - `M src/routes/+layout.svelte`
+- Task summary: make the landing background motion more visible by increasing idle drift, logo/background drift, and palette movement strength.
+- Owned files / overlap check:
+  - owned: `src/routes/+page.svelte`
+  - owned: `src/components/home/WebGLAsciiBackground.svelte`
+  - owned: `src/lib/webgl/ascii-trail-shaders.ts`
+  - shared dirty files present outside this slice: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/routes/+layout.svelte`
+- `safe:status`: PASS
+- `safe:hooks`: PASS
+- `safe:sync`: BLOCKED by existing uncommitted worktree changes
+- Status: IN_PROGRESS
+
+## [2026-04-11 04:31:00 +0900] FINISH W-20260411-0424-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/terminal-wip-sync-20260410`
+- What changed:
+  - increased idle cursor drift range and speed on home so the hero background keeps moving even without input
+  - raised logo/background drift amplitude in the WebGL background
+  - amplified shader palette waves and ambient sweep so the color field shifts more visibly behind the model
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `cc89a46`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/home/WebGLAsciiBackground.svelte`
+  - `M src/lib/webgl/ascii-trail-shaders.ts`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/+page.svelte`
+- Status: DONE
+
+## [2026-04-11 04:48:00 +0900] START W-20260411-0448-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-wip-sync-20260410`
+- Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/home/WebGLAsciiBackground.svelte`
+  - `M src/lib/webgl/ascii-trail-shaders.ts`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/+page.svelte`
+- Task summary: make the landing background color-shift clearly visible by reducing the dark page overlay and increasing the visible presence of the home background canvas.
+- Owned files / overlap check:
+  - owned: `src/routes/+page.svelte`
+  - owned: `src/components/home/WebGLAsciiBackground.svelte`
+  - shared dirty files already present from earlier UI slices are understood and not reverted
+- `safe:status`: PASS
+- `safe:hooks`: PASS
+- `safe:sync`: BLOCKED by existing uncommitted worktree changes
+- Status: IN_PROGRESS
+
+## [2026-04-11 04:54:00 +0900] FINISH W-20260411-0448-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/terminal-wip-sync-20260410`
+- What changed:
+  - reduced the dark landing-page overlay so the existing background color motion is no longer heavily suppressed
+  - increased home background canvas saturation/brightness so the animated palette reads through the shell more clearly
+  - kept the change scoped to home presentation without altering CTA structure or route behavior
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `cc89a46`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/home/WebGLAsciiBackground.svelte`
+  - `M src/lib/webgl/ascii-trail-shaders.ts`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/+page.svelte`
+- Status: DONE
+
+## [2026-04-11 04:56:00 +0900] START W-20260411-0456-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-wip-sync-20260410`
+- Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/home/WebGLAsciiBackground.svelte`
+  - `M src/lib/webgl/ascii-trail-shaders.ts`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/+page.svelte`
+- Task summary: slim the header chrome, center the landing content structure, and remove wasted spacing so the product message reads before decorative UI.
+- Owned files / overlap check:
+  - owned: `src/components/layout/Header.svelte`
+  - owned: `src/routes/+page.svelte`
+  - owned: `src/lib/styles/tokens.css`
+  - existing dirty home/background files are part of the same visual slice and will be preserved
+- `safe:status`: PASS
+- `safe:hooks`: assumed active from prior slice in this branch session
+- `safe:sync`: BLOCKED by existing uncommitted worktree changes
+- Status: IN_PROGRESS
+
+## [2026-04-11 05:05:24 +0900] FINISH W-20260411-0456-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-wip-sync-20260410`
+- Head: `cc89a46`
+- What changed:
+  - [src/components/layout/Header.svelte](/Users/ej/Downloads/maxidoge-clones/CHATBATTLE/src/components/layout/Header.svelte)
+    - reduced base header density and removed divider-style chrome
+    - added a home-only floating compact header mode that hides secondary items and keeps navigation lighter
+  - [src/routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/CHATBATTLE/src/routes/+page.svelte)
+    - tightened hero height, spacing, and card density so the landing message sits closer to the center of the viewport
+    - shortened builder/copier copy, collapsed highlight cards into compact chips, and reduced section/grid padding
+    - switched surface priority cards to a denser 3-column layout on desktop to avoid wasted vertical space
+  - `.agent-context/briefs/codex-terminal-wip-sync-20260410-latest.md`
+    - updated the immediate next step so strict context validation can pass for this branch state
+- Validation:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - none
+- Push status:
+  - not pushed in this slice
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/home/WebGLAsciiBackground.svelte`
+  - `M src/components/layout/Header.svelte`
+  - `M src/lib/styles/tokens.css`
+  - `M src/lib/webgl/ascii-trail-shaders.ts`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/+page.svelte`
+- Status: DONE
+
 ## [2026-03-10 20:33:42 +0900] FINISH chart-mount-state-split-20260310 (frontend)
 - Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
@@ -8689,3 +8908,52 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run safe:status`: PASS
   - `npm run safe:hooks`: PASS
   - `npm run safe:sync`: PASS with existing `src/routes/+page.svelte` warnings only
+
+## [2026-04-11 05:33:00 +0900] START repo-wide-refactor-design-20260411 (chatbattle)
+- Work ID: `W-20260411-0533-CHATBATTLE-codex`
+- Repo path:
+  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-wip-sync-20260410`
+- Base `origin/main` hash:
+  - `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `## codex/terminal-wip-sync-20260410...origin/codex/terminal-wip-sync-20260410`
+  - pre-existing dirty files were already present in the worktree: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`
+  - `safe:sync` cannot proceed until those existing changes are committed or stashed, so this task is limited to documentation/design work that avoids disturbing the active UI WIP
+- Request:
+  - produce a repo-wide refactor design that reconciles the canonical architecture docs, current hotspot files, and the active Alpha Flow plus home-integration work already in progress
+- Owned files / overlap check:
+  - expected write scope for this task:
+    - `docs/AGENT_WATCH_LOG.md`
+    - `docs/PLANS.md`
+    - `docs/exec-plans/active/chatbattle-repo-wide-refactor-design-2026-04-11.md`
+  - overlap with active dirty implementation files: none planned
+  - shared dirty file already present: `docs/AGENT_WATCH_LOG.md`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: FAIL because the current worktree already had uncommitted changes and the sync script refused to proceed
+  - `npm run ctx:checkpoint -- --work-id "W-20260411-0533-CHATBATTLE-codex" --surface "repo-wide-refactor" --objective "Define a repo-wide refactor design that reconciles canonical architecture docs, current hotspot files, and the active Alpha Flow/home integration WIP without rewriting or disturbing existing dirty files"`: PASS
+
+## [2026-04-11 05:36:57 +0900] FINISH repo-wide-refactor-design-20260411 (chatbattle)
+- What changed:
+  - added `docs/exec-plans/active/chatbattle-repo-wide-refactor-design-2026-04-11.md` as the new repo-wide refactor trunk plan
+  - updated `docs/PLANS.md` to register the new active plan
+  - appended START/FINISH records for this planning task to `docs/AGENT_WATCH_LOG.md`
+  - refreshed local branch brief/handoff artifacts with `ctx:compact` and fixed the branch brief's missing next-step field so `ctx:check -- --strict` passes
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS after refreshing `.agent-context` artifacts and filling the missing semantic next step in the latest brief
+  - notable build signal retained for the plan:
+    - client chunk warning still reports chunks above 500 kB
+    - server-heavy route outputs still include `terminal-legacy` at about `149.34 kB`, `arena-v2` at about `138.68 kB`, and `arena` at about `117.64 kB`
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - branch remains dirty because pre-existing UI WIP is still present in `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+layout.svelte`, and `src/routes/+page.svelte`
+  - docs changed in this task: `docs/AGENT_WATCH_LOG.md`, `docs/PLANS.md`, and new file `docs/exec-plans/active/chatbattle-repo-wide-refactor-design-2026-04-11.md`

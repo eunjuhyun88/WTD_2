@@ -24,7 +24,7 @@
       id: 'builder',
       label: 'Builder',
       title: 'Train your own agent',
-      copy: 'Start in onboarding, inspect context in Terminal only when needed, and spend the real work time in Lab.',
+      copy: 'Start in onboarding, then iterate in Lab.',
       path: '/onboard?path=builder',
       accent: 'good',
     },
@@ -32,7 +32,7 @@
       id: 'copier',
       label: 'Copier',
       title: 'Browse proven specialists',
-      copy: 'Go straight to the market, review proof first, and decide later whether you want to build one yourself.',
+      copy: 'Open the market, inspect proof, decide later.',
       path: '/market',
       accent: 'warn',
     },
@@ -64,6 +64,12 @@
     },
   ];
 
+  const homeHighlights = [
+    { label: 'START', value: 'Builder first' },
+    { label: 'CORE LOOP', value: 'Lab -> Battle' },
+    { label: 'RETURN', value: 'Dashboard / Lab' }
+  ];
+
   let mounted = $state(false);
   let mouseX = $state(50);
   let mouseY = $state(50);
@@ -78,6 +84,12 @@
 
   let lastInputTime = 0;
   let driftRaf = 0;
+  const IDLE_DRIFT_DELAY_MS = 1100;
+  const IDLE_DRIFT_SPEED = 0.00062;
+  const IDLE_DRIFT_X = 36;
+  const IDLE_DRIFT_Y = 24;
+  const IDLE_DRIFT_X_DETAIL = 10;
+  const IDLE_DRIFT_Y_DETAIL = 8;
 
   function setCursor(clientX: number, clientY: number) {
     if (typeof window === 'undefined') return;
@@ -112,10 +124,10 @@
     }
 
     function driftLoop(time: number) {
-      if (time - lastInputTime > 1500) {
-        const t = time * 0.0004;
-        mouseX = Math.round(50 + Math.sin(t) * 28 + Math.sin(t * 2.3) * 6);
-        mouseY = Math.round(50 + Math.cos(t * 0.8) * 18 + Math.cos(t * 1.7) * 5);
+      if (time - lastInputTime > IDLE_DRIFT_DELAY_MS) {
+        const t = time * IDLE_DRIFT_SPEED;
+        mouseX = Math.round(50 + Math.sin(t) * IDLE_DRIFT_X + Math.sin(t * 2.7) * IDLE_DRIFT_X_DETAIL);
+        mouseY = Math.round(50 + Math.cos(t * 0.92) * IDLE_DRIFT_Y + Math.cos(t * 1.9) * IDLE_DRIFT_Y_DETAIL);
       }
       driftRaf = requestAnimationFrame(driftLoop);
     }
@@ -159,71 +171,14 @@
 
 <div class="page">
   <section class="hero">
-    <div
-      class="model-shell"
-      aria-hidden="true"
-      style:transform={`translate(-50%, -50%) translate3d(${mx * 16}px, ${my * 10}px, 0)`}
-    >
-      <model-viewer
-        src="/cogochi/logo.glb"
-        class="model-el"
-        alt=""
-        camera-orbit={cameraOrbit}
-        min-camera-orbit="auto auto 0.5m"
-        field-of-view="30deg"
-        interaction-prompt="none"
-        shadow-intensity="0"
-        environment-image="neutral"
-        loading="eager"
-        interpolation-decay="120"
-      ></model-viewer>
-    </div>
-
-    <div class="orbit-layer" aria-hidden="true">
-      {#each orbitCards as card, i}
-        {@const rad = (card.angle * Math.PI) / 180}
-        {@const baseX = Math.cos(rad) * card.dist}
-        {@const baseY = Math.sin(rad) * card.dist}
-        {@const parallax = card.dist / 400}
-        {@const px = mx * 12 * parallax}
-        {@const py = my * 8 * parallax}
-        <div
-          class="orbit-card"
-          style:--size={`${card.size}px`}
-          style:--delay={`${-(i * 0.9)}s`}
-          style:--tx={`${(baseX + px).toFixed(1)}px`}
-          style:--ty={`${(baseY + py).toFixed(1)}px`}
-        >
-          <img src={card.src} alt="" class="orbit-img" loading="lazy" />
-        </div>
-      {/each}
-    </div>
-
-    <div class="hero-copy">
-      <div class="eyebrow">COGOTCHI</div>
-      <h1 class:visible={mounted}>Turn Judgment Into Proof.</h1>
-      <p class:visible={mounted}>
-        Build an agent, inspect context in Terminal, iterate in Lab, prove it in Battle, and keep
-        the record in Agent.
-      </p>
-    </div>
-
-    <div
-      class="center-card"
-      style:transform={`perspective(800px) rotateY(${mx * -1.5}deg) rotateX(${my * 1.5}deg)`}
-    >
-      <div class="card-chrome">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-      <div class="card-body">
-        <div class="card-kicker">Choose your first path</div>
-        <h2>Builder or Copier.</h2>
-        <p>
-          The home surface should split intent first. Builder onboarding goes to a guided start.
-          Copier flow goes to the public market. Terminal is part of the loop, not the front door.
+    <div class="hero-shell">
+      <div class="hero-copy">
+        <div class="eyebrow">COGOTCHI</div>
+        <h1 class:visible={mounted}>Turn Judgment Into Proof.</h1>
+        <p class:visible={mounted}>
+          Build first, inspect context only when needed, then iterate in Lab and prove it in Battle.
         </p>
+
         <div class="hero-actions">
           <button type="button" class="primary" onclick={() => openPath('/onboard?path=builder', 'builder_primary')}>
             BUILD AN AGENT
@@ -232,6 +187,7 @@
             BROWSE MARKET
           </button>
         </div>
+
         <div class="resume-actions">
           <button type="button" class="text-link" onclick={() => openPath('/dashboard', 'dashboard_return')}>
             RETURN TO DASHBOARD
@@ -240,46 +196,90 @@
             OPEN LAB
           </button>
         </div>
+
+        <div class="hero-highlights">
+          {#each homeHighlights as item}
+            <article class="highlight-card">
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </article>
+          {/each}
+        </div>
       </div>
-    </div>
 
-    <div class="side-label left-top">
-      <strong>Builder Loop</strong>
-      <span>Onboard, iterate, prove, remember.</span>
-    </div>
-    <div class="side-label left-bottom">
-      <strong>Terminal Is Optional</strong>
-      <span>Useful for context, never the only start.</span>
-    </div>
-    <div class="side-label right-top">
-      <strong>Proof Before Hype</strong>
-      <span>Market access comes after evidence.</span>
-    </div>
-    <div class="side-label right-bottom">
-      <strong>Agent Is The Record</strong>
-      <span>Doctrine, memory, and history stay durable.</span>
-    </div>
-  </section>
-
-  <section class="path-section">
-    <div class="section-head">
-      <span class="section-label">PATHS</span>
-      <h2>Split intent before dense trading UI.</h2>
-      <p>Home exists to route the first decision correctly, not to overwhelm the user with analysis chrome.</p>
-    </div>
-    <div class="path-grid">
-      {#each pathCards as card}
-        <button
-          type="button"
-          class={`path-card ${card.accent}`}
-          onclick={() => selectPath(card.id, card.path)}
+      <div class="hero-visual">
+        <div
+          class="model-shell"
+          aria-hidden="true"
+          style:transform={`translate(-50%, -50%) translate3d(${mx * 16}px, ${my * 10}px, 0)`}
         >
-          <span class="path-label">{card.label}</span>
-          <h3>{card.title}</h3>
-          <p>{card.copy}</p>
-          <span class="path-cta">Open path</span>
-        </button>
-      {/each}
+          <model-viewer
+            src="/cogochi/logo.glb"
+            class="model-el"
+            alt=""
+            camera-orbit={cameraOrbit}
+            min-camera-orbit="auto auto 0.5m"
+            field-of-view="30deg"
+            interaction-prompt="none"
+            shadow-intensity="0"
+            environment-image="neutral"
+            loading="eager"
+            interpolation-decay="120"
+          ></model-viewer>
+        </div>
+
+        <div class="orbit-layer" aria-hidden="true">
+          {#each orbitCards as card, i}
+            {@const rad = (card.angle * Math.PI) / 180}
+            {@const baseX = Math.cos(rad) * card.dist}
+            {@const baseY = Math.sin(rad) * card.dist}
+            {@const parallax = card.dist / 400}
+            {@const px = mx * 12 * parallax}
+            {@const py = my * 8 * parallax}
+            <div
+              class="orbit-card"
+              style:--size={`${card.size}px`}
+              style:--delay={`${-(i * 0.9)}s`}
+              style:--tx={`${(baseX + px).toFixed(1)}px`}
+              style:--ty={`${(baseY + py).toFixed(1)}px`}
+            >
+              <img src={card.src} alt="" class="orbit-img" loading="lazy" />
+            </div>
+          {/each}
+        </div>
+
+        <div
+          class="center-card"
+          style:transform={`perspective(800px) rotateY(${mx * -1.2}deg) rotateX(${my * 1.1}deg)`}
+        >
+          <div class="card-chrome">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="card-body">
+            <div class="card-kicker">Choose your first path</div>
+            <h2>Builder or Copier.</h2>
+            <p>
+              The home surface should split intent first. Builder onboarding goes to a guided start.
+              Copier flow goes to the public market. Terminal is part of the loop, not the front door.
+            </p>
+            <div class="path-mini-grid">
+              {#each pathCards as card}
+                <button
+                  type="button"
+                  class={`path-mini ${card.accent}`}
+                  onclick={() => selectPath(card.id, card.path)}
+                >
+                  <span class="path-mini-label">{card.label}</span>
+                  <strong>{card.title}</strong>
+                  <span class="path-mini-copy">{card.copy}</span>
+                </button>
+              {/each}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -335,27 +335,41 @@
     color: var(--sc-text-0);
     overflow: clip;
     background:
-      radial-gradient(circle at 20% 18%, rgba(207, 127, 143, 0.08), transparent 24%),
-      radial-gradient(circle at 80% 24%, rgba(173, 202, 124, 0.08), transparent 26%),
-      linear-gradient(180deg, rgba(5, 7, 12, 0.84), rgba(5, 7, 12, 0.96) 42%, #05070c 100%);
+      radial-gradient(circle at 20% 18%, rgba(207, 127, 143, 0.18), transparent 28%),
+      radial-gradient(circle at 80% 24%, rgba(173, 202, 124, 0.16), transparent 30%),
+      linear-gradient(180deg, rgba(5, 7, 12, 0.38), rgba(5, 7, 12, 0.66) 42%, rgba(5, 7, 12, 0.84) 100%);
   }
 
   .hero {
     position: relative;
-    min-height: calc(100vh - 136px);
-    min-height: calc(100dvh - 136px);
+    min-height: calc(100vh - 74px);
+    min-height: calc(100dvh - 74px);
+    padding: clamp(18px, 4vw, 44px) clamp(20px, 4vw, 44px) clamp(30px, 5vw, 52px);
+    overflow: hidden;
+  }
+
+  .hero-shell {
+    width: min(1080px, 100%);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+    align-items: center;
+    gap: clamp(16px, 2.4vw, 28px);
+  }
+
+  .hero-visual {
+    position: relative;
+    min-height: 470px;
     display: grid;
     place-items: center;
-    padding: clamp(48px, 8vw, 96px) clamp(20px, 4vw, 48px) clamp(72px, 8vw, 108px);
-    overflow: hidden;
   }
 
   .model-shell {
     position: absolute;
     left: 50%;
-    top: 45%;
-    width: min(46vw, 34rem);
-    height: min(46vw, 34rem);
+    top: 46%;
+    width: min(40vw, 30rem);
+    height: min(40vw, 30rem);
     z-index: 0;
     pointer-events: none;
     opacity: 0.34;
@@ -376,7 +390,7 @@
   .orbit-layer {
     position: absolute;
     left: 50%;
-    top: 45%;
+    top: 46%;
     width: 0;
     height: 0;
     z-index: 1;
@@ -404,20 +418,19 @@
   }
 
   .hero-copy {
-    position: absolute;
-    top: clamp(32px, 6vw, 54px);
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
     z-index: 3;
-    width: min(820px, calc(100vw - 40px));
-    text-align: center;
+    display: grid;
+    gap: 14px;
+    width: 100%;
+    text-align: left;
   }
 
   .eyebrow {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 14px;
+    padding: 6px 12px;
     border: 1px solid rgba(242, 209, 147, 0.25);
     border-radius: 999px;
     background: rgba(9, 12, 18, 0.58);
@@ -427,8 +440,8 @@
   }
 
   h1 {
-    margin: 18px 0 0;
-    font-size: clamp(2.9rem, 7vw, 5.8rem);
+    margin: 4px 0 0;
+    font-size: clamp(2.7rem, 6.4vw, 5.1rem);
     line-height: 0.98;
     letter-spacing: -0.04em;
     color: rgba(247, 242, 234, 0.96);
@@ -446,11 +459,11 @@
   }
 
   .hero-copy p {
-    max-width: 700px;
-    margin: 18px auto 0;
+    max-width: 540px;
+    margin: 0;
     color: rgba(247, 242, 234, 0.64);
-    font-size: clamp(1rem, 1.6vw, 1.14rem);
-    line-height: 1.65;
+    font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+    line-height: 1.5;
     opacity: 0;
     transform: translateY(18px);
     transition:
@@ -461,11 +474,10 @@
   .center-card {
     position: relative;
     z-index: 3;
-    width: min(480px, calc(100vw - 32px));
-    margin-top: clamp(110px, 14vw, 160px);
+    width: min(420px, 100%);
     background: rgba(10, 13, 20, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
+    border-radius: 22px;
     overflow: hidden;
     backdrop-filter: blur(40px) saturate(1.2);
     -webkit-backdrop-filter: blur(40px) saturate(1.2);
@@ -477,7 +489,7 @@
   .card-chrome {
     display: flex;
     gap: 6px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
@@ -491,8 +503,8 @@
   .card-body {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 28px;
+    gap: 12px;
+    padding: 20px;
   }
 
   .card-kicker,
@@ -519,7 +531,6 @@
 
   .card-body p,
   .section-head p,
-  .path-card p,
   .loop-card p,
   .surface-card p {
     margin: 0;
@@ -530,7 +541,7 @@
   .hero-actions,
   .resume-actions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
   }
 
@@ -540,8 +551,8 @@
   }
 
   .hero-actions button {
-    min-height: 48px;
-    padding: 0 18px;
+    min-height: 44px;
+    padding: 0 16px;
     border-radius: 12px;
     border: 1px solid transparent;
     font-weight: 700;
@@ -561,7 +572,7 @@
   }
 
   .resume-actions {
-    gap: 16px;
+    gap: 12px;
   }
 
   .text-link {
@@ -569,71 +580,104 @@
     border: 0;
     background: transparent;
     color: rgba(247, 242, 234, 0.55);
-    font-size: 0.9rem;
+    font-size: 0.84rem;
     letter-spacing: 0.04em;
   }
 
-  .side-label {
-    position: absolute;
-    z-index: 2;
+  .hero-highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 2px;
+  }
+
+  .highlight-card {
+    display: grid;
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(8, 12, 19, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .highlight-card span,
+  .path-mini-label {
+    color: rgba(247, 242, 234, 0.42);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .highlight-card strong,
+  .path-mini strong {
+    font-size: 0.94rem;
+    line-height: 1.18;
+    color: rgba(247, 242, 234, 0.92);
+  }
+
+  .path-mini-copy {
+    color: rgba(247, 242, 234, 0.58);
+    line-height: 1.45;
+    font-size: 0.84rem;
+  }
+
+  .path-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .path-mini {
     display: grid;
     gap: 6px;
-    max-width: 220px;
-    color: rgba(247, 242, 234, 0.44);
+    text-align: left;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
   }
 
-  .side-label strong {
-    color: rgba(247, 242, 234, 0.84);
-    font-size: 0.92rem;
-    letter-spacing: 0.04em;
+  .path-mini.good {
+    border-color: rgba(173, 202, 124, 0.2);
   }
 
-  .side-label span {
-    line-height: 1.5;
-    font-size: 0.86rem;
+  .path-mini.warn {
+    border-color: rgba(242, 209, 147, 0.2);
   }
 
-  .left-top { left: clamp(22px, 4vw, 54px); top: 22%; }
-  .left-bottom { left: clamp(22px, 4vw, 54px); bottom: 14%; }
-  .right-top { right: clamp(22px, 4vw, 54px); top: 20%; text-align: right; }
-  .right-bottom { right: clamp(22px, 4vw, 54px); bottom: 16%; text-align: right; }
-
-  .path-section,
   .loop-section,
   .surface-section {
     position: relative;
     z-index: 3;
-    padding: 0 clamp(20px, 4vw, 48px) clamp(40px, 6vw, 72px);
+    padding: 0 clamp(20px, 4vw, 44px) clamp(22px, 4vw, 38px);
   }
 
   .section-head {
-    width: min(860px, 100%);
-    margin: 0 auto 28px;
+    width: min(760px, 100%);
+    margin: 0 auto 16px;
     text-align: center;
   }
 
   .section-head.narrow {
-    width: min(760px, 100%);
+    width: min(680px, 100%);
   }
 
-  .path-grid,
   .surface-grid {
-    width: min(1120px, 100%);
+    width: min(1080px, 100%);
     margin: 0 auto;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .loop-grid {
-    width: min(1120px, 100%);
+    width: min(1080px, 100%);
     margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 14px;
+    gap: 10px;
   }
 
-  .path-card,
   .loop-card,
   .surface-card {
     border-radius: 20px;
@@ -642,28 +686,6 @@
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
 
-  .path-card {
-    padding: 24px;
-    text-align: left;
-    display: grid;
-    gap: 14px;
-    transition:
-      transform 180ms ease,
-      border-color 180ms ease,
-      background 180ms ease;
-  }
-
-  .path-card.good:hover {
-    transform: translateY(-2px);
-    border-color: rgba(173, 202, 124, 0.34);
-  }
-
-  .path-card.warn:hover {
-    transform: translateY(-2px);
-    border-color: rgba(242, 209, 147, 0.32);
-  }
-
-  .path-card h3,
   .loop-card h3,
   .surface-card h3 {
     margin: 0;
@@ -671,17 +693,10 @@
     line-height: 1.2;
   }
 
-  .path-label { color: rgba(247, 242, 234, 0.42); }
-  .path-cta {
-    color: rgba(247, 242, 234, 0.76);
-    font-size: 0.92rem;
-    letter-spacing: 0.03em;
-  }
-
   .loop-card {
-    padding: 18px;
+    padding: 14px;
     display: grid;
-    gap: 12px;
+    gap: 8px;
   }
 
   .loop-id {
@@ -691,9 +706,9 @@
   }
 
   .surface-card {
-    padding: 22px;
+    padding: 16px;
     display: grid;
-    gap: 12px;
+    gap: 8px;
   }
 
   .surface-label {
@@ -712,12 +727,29 @@
   }
 
   @media (max-width: 1200px) {
-    .side-label {
-      display: none;
+    .hero-shell {
+      grid-template-columns: 1fr;
+      gap: 22px;
     }
-
+    .hero-copy {
+      text-align: center;
+      place-items: center;
+    }
+    .hero-copy p {
+      margin-inline: auto;
+    }
+    .hero-highlights {
+      width: min(760px, 100%);
+      justify-content: center;
+    }
+    .hero-visual {
+      min-height: 420px;
+    }
     .loop-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .surface-grid {
+      grid-template-columns: 1fr;
     }
   }
 
@@ -729,25 +761,19 @@
 
     .hero {
       min-height: auto;
-      padding-top: 56px;
-    }
-
-    .hero-copy {
-      position: relative;
-      top: auto;
-      left: auto;
-      transform: none;
-      width: 100%;
-      margin-bottom: 22px;
+      padding-top: 18px;
     }
 
     .center-card {
-      margin-top: 0;
+      width: min(560px, 100%);
     }
 
-    .path-grid,
     .surface-grid,
     .loop-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .path-mini-grid {
       grid-template-columns: 1fr;
     }
   }
