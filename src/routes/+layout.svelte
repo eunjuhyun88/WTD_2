@@ -7,14 +7,57 @@
   import NotificationTray from '../components/shared/NotificationTray.svelte';
   import ToastStack from '../components/shared/ToastStack.svelte';
   import P0Banner from '../components/shared/P0Banner.svelte';
+  import AlphaMarketBar from '../components/cogochi/AlphaMarketBar.svelte';
   import { page } from '$app/stores';
   import { gameState } from '$lib/stores/gameState';
+  import { alphaBuckets } from '$lib/stores/alphaBuckets';
   import { derived } from 'svelte/store';
   import { onMount, onDestroy } from 'svelte';
   import { fetchPrices, fetch24hrMulti, subscribeMiniTicker } from '$lib/api/binance';
   import { updatePrice, updatePrices as updatePriceStore, updatePriceFull } from '$lib/stores/priceStore';
 
   let { children } = $props();
+
+  // ─── Global Thermometer (F&G, Kimchi, BTC.D, mempool, fee, USD/KRW) ───
+  interface ThermoData {
+    fearGreed: number | null;
+    btcDominance: number | null;
+    kimchiPremium: number | null;
+    usdKrw: number | null;
+    btcTx: number | null;
+    mempoolPending: number | null;
+    fastestFee: number | null;
+  }
+  let thermoData = $state<ThermoData>({
+    fearGreed: null,
+    btcDominance: null,
+    kimchiPremium: null,
+    usdKrw: null,
+    btcTx: null,
+    mempoolPending: null,
+    fastestFee: null,
+  });
+  const currentBuckets = $derived($alphaBuckets);
+  let thermoTimer: ReturnType<typeof setInterval> | null = null;
+
+  async function loadThermo(): Promise<void> {
+    try {
+      const r = await fetch('/api/cogochi/thermometer', { cache: 'no-store' });
+      if (!r.ok) return;
+      const d = await r.json();
+      thermoData = {
+        fearGreed: d.fearGreed ?? null,
+        btcDominance: d.btcDominance ?? null,
+        kimchiPremium: d.kimchiPremium ?? null,
+        usdKrw: d.usdKrw ?? null,
+        btcTx: d.btcTx ?? null,
+        mempoolPending: d.mempoolPending ?? null,
+        fastestFee: d.fastestFee ?? null,
+      };
+    } catch {
+      /* silent */
+    }
+  }
 
   const isTerminal = derived(page, $p => $p.url.pathname.startsWith('/terminal'));
   const isHome = derived(page, $p => $p.url.pathname === '/');
@@ -56,6 +99,10 @@
     const handleResize = () => { windowWidth = window.innerWidth; };
     window.addEventListener('resize', handleResize);
     _resizeCleanup = () => window.removeEventListener('resize', handleResize);
+
+    // Global Thermometer: initial load + 60s polling
+    void loadThermo();
+    thermoTimer = setInterval(() => { void loadThermo(); }, 60_000);
 
     // 1) REST bootstrap — 초기 가격 + 24h 통계 세팅
     try {
@@ -165,11 +212,13 @@
     if (_wsFullFlushTimer) clearTimeout(_wsFullFlushTimer);
     if (globalWsCleanup) globalWsCleanup();
     if (_resizeCleanup) _resizeCleanup();
+    if (thermoTimer) clearInterval(thermoTimer);
   });
 </script>
 
 <div id="app" class:cogochi-mode={$isCogochi}>
   {#if !$isCogochi}<Header />{/if}
+  {#if !$isCogochi}<AlphaMarketBar thermo={thermoData} buckets={currentBuckets} />{/if}
   {#if !$isCogochi}<P0Banner />{/if}
   <div id="main-content" class:terminal-route={$isTerminal}>
     {@render children()}
@@ -198,7 +247,8 @@
     flex-direction: column;
     height: 100dvh;
     min-height: 100vh;
-    padding-top: var(--sc-header-h, 44px);
+    /* header (var) + AlphaMarketBar (52px fixed below header) */
+    padding-top: calc(var(--sc-header-h, 44px) + 52px);
     overflow: hidden;
     position: relative;
   }
@@ -218,10 +268,10 @@
       min-height: 100svh;
     }
   }
-  /* ≤768px: header (40px) + tab strip (34px) = 74px top */
+  /* ≤768px: header (40px) + AlphaMarketBar (46px) = 86px top */
   @media (max-width: 768px) {
     #app {
-      padding-top: var(--sc-header-h-mobile, 40px);
+      padding-top: calc(var(--sc-header-h-mobile, 40px) + 46px);
       padding-bottom: calc(var(--sc-mobile-nav-h, 64px) + env(safe-area-inset-bottom, 0px));
     }
     #main-content {
@@ -236,7 +286,7 @@
   }
   @media (max-width: 480px) {
     #app {
-      padding-top: var(--sc-touch-sm, 36px);
+      padding-top: calc(var(--sc-touch-sm, 36px) + 46px);
     }
   }
 </style>

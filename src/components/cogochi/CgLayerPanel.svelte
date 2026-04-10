@@ -95,13 +95,13 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
   }
 
   /* ━━━ Alpha ━━━ */
   .alpha {
     padding: 10px 12px;
-    border-bottom: 1px solid var(--cg-border, #16162a);
+    border-bottom: 1px solid var(--sc-line-soft);
   }
 
   .alpha-top {
@@ -115,13 +115,13 @@
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 1.5px;
-    color: var(--cg-text-muted, #383860);
+    color: var(--sc-text-3);
   }
 
   .alpha-regime {
     font-size: 9px;
     font-weight: 500;
-    color: var(--cg-text-dim, #505078);
+    color: var(--sc-text-2);
     letter-spacing: 0.5px;
   }
 
@@ -147,13 +147,13 @@
     border-radius: 2px;
   }
 
-  .strong-bull, .bull { color: var(--cg-cyan, #00e5ff); }
-  .strong-bear, .bear { color: var(--cg-red, #ff3860); }
-  .neutral { color: var(--cg-text-dim, #505078); }
+  .strong-bull, .bull { color: var(--sc-good); }
+  .strong-bear, .bear { color: var(--sc-bad); }
+  .neutral { color: var(--sc-text-2); }
 
-  .alpha-tag.strong-bull, .alpha-tag.bull { background: rgba(0, 229, 255, 0.08); }
-  .alpha-tag.strong-bear, .alpha-tag.bear { background: rgba(255, 56, 96, 0.08); }
-  .alpha-tag.neutral { background: rgba(80, 80, 120, 0.15); }
+  .alpha-tag.strong-bull, .alpha-tag.bull { background: rgba(173, 202, 124, 0.1); }
+  .alpha-tag.strong-bear, .alpha-tag.bear { background: rgba(207, 127, 143, 0.1); }
+  .alpha-tag.neutral { background: rgba(247, 242, 234, 0.06); }
 
   /* ━━━ Layer Grid ━━━ */
   .layer-grid {
@@ -178,18 +178,18 @@
   }
 
   .lr.hot {
-    background: rgba(0, 229, 255, 0.02);
-    border-left-color: var(--cg-cyan, #00e5ff);
+    background: rgba(173, 202, 124, 0.03);
+    border-left-color: var(--sc-good);
   }
 
   .lr-id {
-    color: var(--cg-text-muted, #383860);
+    color: var(--sc-text-3);
     font-size: 9px;
     font-weight: 600;
   }
 
   .lr-name {
-    color: var(--cg-text-dim, #505078);
+    color: var(--sc-text-2);
     font-size: 10px;
     font-weight: 500;
   }
@@ -206,7 +206,7 @@
     position: relative;
     width: 100%;
     height: 3px;
-    background: var(--cg-surface-2, #0e0e17);
+    background: var(--sc-bg-2);
     border-radius: 1px;
     overflow: hidden;
   }
@@ -217,7 +217,7 @@
     top: 0;
     bottom: 0;
     width: 1px;
-    background: var(--cg-border, #16162a);
+    background: var(--sc-line-soft);
   }
 
   .lr-bar {
@@ -229,19 +229,19 @@
   }
 
   .lr-bar.bull {
-    background: var(--cg-cyan, #00e5ff);
+    background: var(--sc-good);
     opacity: 0.7;
   }
 
   .lr-bar.bear {
-    background: var(--cg-red, #ff3860);
+    background: var(--sc-bad);
     opacity: 0.7;
   }
 
   .lr-val {
     font-size: 9px;
     font-weight: 500;
-    color: var(--cg-text-dim, #505078);
+    color: var(--sc-text-2);
     text-align: right;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -254,11 +254,11 @@
     font-weight: 700;
     text-align: right;
     font-variant-numeric: tabular-nums;
-    color: var(--cg-text-dim, #505078);
+    color: var(--sc-text-2);
   }
 
-  .c-bull { color: var(--cg-cyan, #00e5ff) !important; }
-  .c-bear { color: var(--cg-red, #ff3860) !important; }
+  .c-bull { color: var(--sc-good) !important; }
+  .c-bear { color: var(--sc-bad) !important; }
 
   /* ━━━ Empty ━━━ */
   .empty {
@@ -274,7 +274,7 @@
 
   .empty-icon {
     font-size: 24px;
-    color: var(--cg-cyan, #00e5ff);
+    color: var(--sc-good);
     opacity: 0.5;
   }
 
@@ -282,14 +282,14 @@
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 2px;
-    color: var(--cg-text-dim, #505078);
+    color: var(--sc-text-2);
   }
 
   .empty-hint {
     font-size: 9px;
-    color: var(--cg-text-muted, #383860);
+    color: var(--sc-text-3);
   }
 
   .layer-grid::-webkit-scrollbar { width: 3px; }
-  .layer-grid::-webkit-scrollbar-thumb { background: var(--cg-border, #16162a); border-radius: 2px; }
+  .layer-grid::-webkit-scrollbar-thumb { background: var(--sc-line-soft); border-radius: 2px; }
 </style>

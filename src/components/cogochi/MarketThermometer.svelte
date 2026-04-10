@@ -15,10 +15,10 @@
 
   let fgColor = $derived.by(() => {
     const v = data.fearGreed;
-    if (v == null) return 'var(--cg-text-muted, #383860)';
-    if (v < 30) return 'var(--cg-green, #00d68f)';
-    if (v > 70) return 'var(--cg-red, #ff3860)';
-    return 'var(--cg-text-dim, #505078)';
+    if (v == null) return 'var(--sc-text-3)';
+    if (v < 30) return 'var(--sc-good)';
+    if (v > 70) return 'var(--sc-bad)';
+    return 'var(--sc-text-2)';
   });
 
   let fgLabel = $derived.by(() => {
@@ -40,9 +40,9 @@
 
   let kimchiColor = $derived.by(() => {
     const v = data.kimchiPremium;
-    if (v == null) return 'var(--cg-text-dim, #505078)';
-    if (Math.abs(v) > 3) return 'var(--cg-red, #ff3860)';
-    return 'var(--cg-text-dim, #505078)';
+    if (v == null) return 'var(--sc-text-2)';
+    if (Math.abs(v) > 3) return 'var(--sc-bad)';
+    return 'var(--sc-text-2)';
   });
 
   function fmtK(v: number | undefined): string {
@@ -124,9 +124,9 @@
     gap: 0;
     height: 24px;
     padding: 0 12px;
-    background: var(--cg-bg, #06060b);
-    border-bottom: 1px solid var(--cg-border, #16162a);
-    font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+    background: var(--sc-bg-0);
+    border-bottom: 1px solid var(--sc-line-soft);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
@@ -149,7 +149,7 @@
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 0.8px;
-    color: var(--cg-text-muted, #383860);
+    color: var(--sc-text-3);
     text-transform: uppercase;
     user-select: none;
   }
@@ -157,7 +157,7 @@
   .value {
     font-size: 10px;
     font-weight: 700;
-    color: var(--cg-text-dim, #505078);
+    color: var(--sc-text-2);
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.2px;
   }
@@ -170,7 +170,7 @@
   }
 
   .sep {
-    color: var(--cg-border, #16162a);
+    color: var(--sc-line-soft);
     font-size: 10px;
     line-height: 24px;
     flex-shrink: 0;
