@@ -129,7 +129,7 @@ export const POST: RequestHandler = async ({ request }) => {
             tools: DOUNI_TOOLS,
             provider: provider || undefined,
             maxTokens: 1024,
-            temperature: 0.6,
+            temperature: 0.85,
             timeoutMs: 30000,
           })) {
             switch (chunk.type) {

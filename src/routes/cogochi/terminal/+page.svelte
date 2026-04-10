@@ -133,7 +133,7 @@
   onMount(async () => {
     const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'ko-KR';
     const isKorean = locale.toLowerCase().startsWith('ko');
-    const fallback = isKorean ? '왔어? 뭐 볼 거야?' : "yo, what're we looking at?";
+    const fallback = isKorean ? '어 왔네, 오늘 뭐 볼래?' : "hey there, anything on your radar?";
 
     // Show thinking bubble while waiting for greeting
     messages = [{ role: 'douni', thinking: true } as MessageType];
