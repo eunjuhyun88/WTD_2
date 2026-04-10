@@ -39,15 +39,30 @@ export const POST: RequestHandler = async ({ request }) => {
     snapshot,
     provider,
     profile,
+    greeting = false,
+    locale = 'ko-KR',
   } = body as {
     message: string;
     history?: Array<{ role: 'user' | 'assistant'; content: string }>;
     snapshot?: SignalSnapshot;
     provider?: LLMProvider;
     profile?: Partial<DouniProfile>;
+    greeting?: boolean;
+    locale?: string;
   };
 
-  if (!message || typeof message !== 'string') {
+  // Special mode: first-load greeting. Synthesize a user prompt so the LLM
+  // generates a locale-aware greeting instead of the frontend hardcoding it.
+  let effectiveMessage = message;
+  if (greeting) {
+    const hour = new Date().getHours();
+    const isKorean = typeof locale === 'string' && locale.toLowerCase().startsWith('ko');
+    effectiveMessage = isKorean
+      ? `[첫 대화 인사 요청] 지금 ${hour}시야. 유저에게 한국어 반말로 짧게 한 문장 인사해줘. 시간대 반영해서 자연스럽게. 도구 호출하지 말고 그냥 인사만.`
+      : `[First greeting request] It's ${hour}:00 now. Greet me in casual English, one short sentence, reflecting the time of day. No tool calls, just greet.`;
+  }
+
+  if (!effectiveMessage || typeof effectiveMessage !== 'string') {
     return new Response(JSON.stringify({ error: 'message required' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
@@ -94,8 +109,8 @@ export const POST: RequestHandler = async ({ request }) => {
           });
         }
 
-        // 5. Current user message
-        messages.push({ role: 'user', content: message });
+        // 5. Current user message (may be synthesized for greeting mode)
+        messages.push({ role: 'user', content: effectiveMessage });
 
         // 6. Tool call loop (max 3 rounds)
         const toolCtx = {
