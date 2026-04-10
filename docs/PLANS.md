@@ -14,6 +14,7 @@ Purpose:
 
 ## Current Active Planning Surface
 
+- `docs/exec-plans/active/chatbattle-repo-wide-refactor-design-2026-04-11.md`
 - `docs/exec-plans/active/chatbattle-foundation-refactor-plan-2026-03-20.md`
 - `docs/exec-plans/active/cogochi-stockclaw-final-placement-architecture-2026-03-17.md`
 - `docs/exec-plans/active/full-stack-redesign-validation-2026-03-07.md`
