@@ -34,6 +34,7 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/cogochi` | cogochi hub | DOUNI virtual pet entry and navigation | route-level data | `docs/PRODUCT_SENSE.md` |
 | `/cogochi/terminal` | DOUNI AI terminal | LLM-driven chat with function calling, market analysis, social data | route-local chat state + `currentSnapshot` | `docs/PRODUCT_SENSE.md` |
 | `/cogochi/scanner` | legacy cogochi scanner redirect | redirect the old cogochi scanner route into the canonical terminal desk | none | `docs/product-specs/terminal.md` |
+| `/terminal-legacy` | legacy terminal redirect | legacy terminal preservation during Alpha Flow 3-panel migration | none | `docs/exec-plans/active/alpha-flow-terminal-integration-2026-04-10.md` |
 
 ## Route Shells and Global Entry
 

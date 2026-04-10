@@ -1,6 +1,6 @@
 # Task Contract Report
 
-- Current branch: `codex/check-last-record`
+- Current branch: `codex/terminal-wip-sync-20260410`
 - Active dir: `docs/task-contracts/active`
 - Completed dir: `docs/task-contracts/completed`
 - Require contract on feature branches: `no`
