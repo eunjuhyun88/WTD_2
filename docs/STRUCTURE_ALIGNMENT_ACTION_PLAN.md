@@ -341,15 +341,8 @@ interface PanelState {
 - `src/components/terminal/IntelPanel.svelte` — 실데이터 연결
 
 ### 완료 기준
-- [x] 패널 폭 새로고침 후 복원 — cogochi + terminal-legacy 모두 서버 영속화 연결 완료
-- [x] mock 데이터 → "No data" empty state 또는 실데이터 — warroom.ts 타입만 남음, IntelPanel 라이브 데이터 연결 완료
-
-### 완료 노트 (2026-04-08)
-- **7-1 모바일 탭**: 새 `/terminal`은 chat UI로 탭 불필요. legacy는 3탭(warroom/chart/intel) 유지.
-- **7-2 패널 영속화**: `fetchUiStateApi` / `updateUiStateApi` 연결 — 리사이즈 완료 시 600ms 디바운스 저장, onMount 시 복원.
-  - `cogochi/+page.svelte`: leftWidth, rightWidth 영속화
-  - `terminal-legacy/+page.svelte`: leftW, rightW, leftCollapsed, rightCollapsed 영속화
-- **7-3 Mock 정리**: warroom.ts에 mock 데이터 이미 제거됨 (타입 + getConsensus만 유지). IntelPanel은 라이브 API 사용 중.
+- [ ] 패널 폭 새로고침 후 복원
+- [ ] mock 데이터 → "No data" empty state 또는 실데이터
 
 ---
 

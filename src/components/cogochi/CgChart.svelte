@@ -21,13 +21,13 @@
 
   let container: HTMLDivElement;
   let chart: any;
-  let candleSeries: any;
-  let volumeSeries: any;
+  let candleSeries = $state<any>(null);
+  let volumeSeries = $state<any>(null);
   let ro: ResizeObserver | null = null;
 
   // Track overlay series for cleanup
   let overlaySeries: any[] = [];
-  let lwcModule: any = null;
+  let lwcModule = $state<any>(null);
 
   // Update data reactively
   $effect(() => {
@@ -240,7 +240,7 @@
       },
     });
 
-    candleSeries = chart.addCandlestickSeries({
+    candleSeries = chart.addSeries(lwc.CandlestickSeries, {
       upColor: '#00e5ff',
       downColor: '#ff3860',
       borderUpColor: '#00e5ff',
@@ -249,9 +249,9 @@
       wickDownColor: 'rgba(255,56,96,0.5)',
     });
 
-    volumeSeries = chart.addHistogramSeries({
+    volumeSeries = chart.addSeries(lwc.HistogramSeries, {
       priceFormat: { type: 'volume' },
-      priceScaleId: '',
+      priceScaleId: 'volume',
     });
     volumeSeries.priceScale().applyOptions({
       scaleMargins: { top: 0.85, bottom: 0 },

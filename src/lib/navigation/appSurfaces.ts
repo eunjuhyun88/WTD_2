@@ -62,8 +62,8 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     mobileIcon: '⊞',
     description: 'multi-coin scanner — 15-layer analysis, filters, watchlist',
     homeDetail: 'market scanner',
-    href: buildDeepLink('/scanner'),
-    activePatterns: ['/scanner'],
+    href: buildTerminalLink(),
+    activePatterns: ['/scanner', '/terminal', '/cogochi/scanner'],
   },
   lab: {
     id: 'lab',
@@ -121,21 +121,18 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
 // 제품 재구성: TERMINAL > SCANNER > LAB > DASHBOARD
 export const DESKTOP_NAV_SURFACES = [
   SURFACE_MAP.terminal,
-  SURFACE_MAP.scanner,
   SURFACE_MAP.lab,
   SURFACE_MAP.dashboard,
 ] as const;
 
 export const MOBILE_NAV_SURFACES = [
   SURFACE_MAP.terminal,
-  SURFACE_MAP.scanner,
   SURFACE_MAP.lab,
   SURFACE_MAP.dashboard,
 ] as const;
 
 export const HOME_SURFACES = [
   SURFACE_MAP.terminal,
-  SURFACE_MAP.scanner,
   SURFACE_MAP.lab,
 ] as const;
 

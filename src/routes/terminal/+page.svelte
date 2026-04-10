@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import DataCard from '../../components/cogochi/DataCard.svelte';
   import CgChart from '../../components/cogochi/CgChart.svelte';
+  import QuickPanel from '../../components/cogochi/QuickPanel.svelte';
 
   // ─── Types ────────────────────────────────────────────────
   type MessageType =
@@ -67,6 +68,12 @@
   let patternDirection = $state<'LONG' | 'SHORT'>('SHORT');
   let patternName = $state('');
 
+  // Quick Panel state
+  let quickPanelCollapsed = $state(false);
+  let quickPanelScanning = $state(false);
+  let quickPanelItems = $state<Array<{symbol: string; alphaScore: number; alphaLabel: string; price: number; change24h: number; flags: string[]}>>([]);
+  let quickPanelSelected = $state('');
+
   // Chart overlay data (Sprint 1)
   let currentAnnotations: any[] = $state([]);
   let currentIndicators: any = $state(null);
@@ -119,12 +126,128 @@
   onMount(() => {
     const hour = new Date().getHours();
     let greeting: string;
-    if (hour >= 6 && hour < 12) greeting = '좋은 아침! 뭐 볼까? 종목이랑 타임프레임 알려줘.';
-    else if (hour >= 12 && hour < 18) greeting = '오후야! BTC 4H 분석해볼까?';
-    else if (hour >= 18 && hour < 24) greeting = '오늘 시장 좀 움직였어. 같이 볼까?';
-    else greeting = '아직 안 자? 시장은 쉬지 않지. 뭐 봐줄까?';
+    if (hour >= 6 && hour < 12) greeting = 'Good morning. Tell me a symbol and timeframe.';
+    else if (hour >= 12 && hour < 18) greeting = 'Afternoon session. Try: BTC 4H';
+    else if (hour >= 18 && hour < 24) greeting = 'Evening tape is live. What should we inspect?';
+    else greeting = 'Late session active. Markets never sleep.';
     messages = [{ role: 'douni', text: greeting }];
   });
+
+  // ─── Quick Panel Handlers ────────────────────────────────
+  function normalizeTerminalSymbol(symbol: string): string {
+    return symbol.endsWith('USDT') ? symbol : `${symbol}USDT`;
+  }
+
+  async function handleQuickScan(preset: string) {
+    quickPanelScanning = true;
+    try {
+      const topN = preset === 'top5' ? 5 : preset === 'top30' ? 30 : 10;
+      const res = await fetch('/api/cogochi/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'topN', topN, preset }),
+      });
+      if (!res.ok) throw new Error(`Scan failed: ${res.status}`);
+      const data = await res.json();
+      if (data.results) {
+        quickPanelItems = data.results.map((r: any) => ({
+          symbol: r.symbol,
+          alphaScore: r.alphaScore ?? r.snapshot?.alphaScore ?? 0,
+          alphaLabel: r.alphaLabel ?? r.snapshot?.alphaLabel ?? 'NEUTRAL',
+          price: r.price,
+          change24h: r.change24h,
+          flags: extractFlags(r.snapshot || r),
+        }));
+      }
+    } catch (err: any) {
+      console.error('Quick scan failed:', err);
+    } finally {
+      quickPanelScanning = false;
+    }
+  }
+
+  function normalizeAnalysisPayload(data: any, symbolHint?: string, timeframeHint?: string) {
+    if (data?.snapshot) {
+      return {
+        symbol: symbolHint ?? data.snapshot?.symbol ?? data.snapshot?.pair ?? currentSymbol,
+        timeframe: timeframeHint ?? currentTf ?? '4h',
+        price: data.price ?? currentPrice,
+        change24h: data.change24h ?? currentChange,
+        chart: data.chart ?? [],
+        derivatives: data.derivatives ?? null,
+        annotations: data.annotations ?? [],
+        indicators: data.indicators ?? null,
+        ...data.snapshot,
+      };
+    }
+    return data;
+  }
+
+  function syncCurrentAnalysis(data: any) {
+    currentSymbol = data.symbol || currentSymbol;
+    currentTf = data.timeframe || currentTf || '4h';
+    currentPrice = data.price ?? currentPrice;
+    currentChange = data.change24h ?? currentChange;
+    currentSnapshot = data;
+    currentChartData = data.chart ?? currentChartData;
+    currentDeriv = data.derivatives ?? currentDeriv;
+    currentAnnotations = data.annotations ?? [];
+    currentIndicators = data.indicators ?? null;
+  }
+
+  function deriveLayerItems(data: any): LayerItem[] {
+    const candidates: LayerItem[] = [
+      { id: 'L1', name: 'Wyckoff', value: data.l1?.phase ?? '--', score: data.l1?.score ?? 0 },
+      { id: 'L2', name: 'Flow', value: data.l2?.detail ?? (data.l2?.fr != null ? `FR ${(data.l2.fr * 100).toFixed(3)}%` : '--'), score: data.l2?.score ?? 0 },
+      { id: 'L7', name: 'F&G', value: data.l7?.label ?? `${data.l7?.fear_greed ?? '--'}`, score: data.l7?.score ?? 0 },
+      { id: 'L10', name: 'MTF', value: data.l10?.label ?? data.l10?.mtf_confluence ?? '--', score: data.l10?.score ?? 0 },
+      { id: 'L11', name: 'CVD', value: data.l11?.cvd_state ?? '--', score: data.l11?.score ?? 0 },
+      { id: 'L13', name: 'Breakout', value: data.l13?.label ?? '--', score: data.l13?.score ?? 0 },
+      { id: 'L14', name: 'BB', value: data.l14?.label ?? '--', score: data.l14?.score ?? 0 },
+      { id: 'L15', name: 'ATR', value: data.l15?.atr_pct != null ? `${data.l15.atr_pct}%` : '--', score: data.l15?.score ?? 0 },
+      { id: 'L18', name: '5m Mom', value: data.l18?.label ?? '--', score: data.l18?.score ?? 0 },
+      { id: 'L19', name: 'OI Acc', value: data.l19?.label ?? '--', score: data.l19?.score ?? 0 },
+    ];
+    return candidates
+      .filter((item) => item.score !== 0)
+      .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+      .slice(0, 6);
+  }
+
+  async function handleQuickPreview(symbol: string) {
+    quickPanelSelected = normalizeTerminalSymbol(symbol);
+    try {
+      const fullSymbol = normalizeTerminalSymbol(symbol);
+      const tf = currentTf || '4h';
+      const res = await fetch(`/api/cogochi/analyze?symbol=${fullSymbol}&tf=${tf}`);
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || `Preview failed: ${res.status}`);
+      syncCurrentAnalysis(normalizeAnalysisPayload(data, fullSymbol, tf));
+    } catch (err) {
+      console.error('Quick preview failed:', err);
+    }
+  }
+
+  function extractFlags(snap: any): string[] {
+    const flags: string[] = [];
+    if (snap?.l1?.phase && /accum|distrib/i.test(snap.l1.phase)) flags.push('wyckoff');
+    if (snap?.l10?.mtf_confluence === 'TRIPLE') flags.push('mtf_triple');
+    if (snap?.l14?.bb_squeeze) flags.push('bb_squeeze');
+    if (snap?.l2?.fr != null && Math.abs(snap.l2.fr) > 0.001) flags.push('fr_extreme');
+    if (snap?.hasWyckoff) flags.push('wyckoff');
+    if (snap?.hasMTF) flags.push('mtf_triple');
+    if (snap?.hasSqueeze) flags.push('bb_squeeze');
+    if (snap?.extremeFR) flags.push('fr_extreme');
+    if (snap?.hasLiqAlert) flags.push('liq_alert');
+    return [...new Set(flags)];
+  }
+
+  async function handleQuickAnalyze(symbol: string) {
+    const fullSymbol = normalizeTerminalSymbol(symbol);
+    await handleQuickPreview(fullSymbol);
+    inputText = `${fullSymbol.replace('USDT', '')} ${currentTf || '4h'}`;
+    await handleSend();
+  }
 
   // ─── Send via FC Pipeline ─────────────────────────────────
   async function handleSend() {
@@ -278,20 +401,13 @@
 
   // ─── Apply Analysis Result ─────────────────────────────────
   function applyAnalysisResult(data: any, layers: LayerItem[]) {
-    currentSymbol = data.symbol || currentSymbol;
-    currentTf = data.timeframe || currentTf;
-    currentPrice = data.price || currentPrice;
-    currentChange = data.change24h || currentChange;
-    currentSnapshot = data;
-    if (data.chart) currentChartData = data.chart;
-    if (data.derivatives) currentDeriv = data.derivatives;
-    if (data.annotations) currentAnnotations = data.annotations;
-    if (data.indicators) currentIndicators = data.indicators;
+    const normalized = normalizeAnalysisPayload(data);
+    syncCurrentAnalysis(normalized);
 
     // Build metrics from analysis data
     const metrics: MetricItem[] = [];
-    if (data.l2?.fr != null) {
-      const fr = data.l2.fr;
+    if (normalized.l2?.fr != null) {
+      const fr = normalized.l2.fr;
       const frPct = (fr * 100).toFixed(4);
       const frHot = Math.abs(fr) > 0.0005;
       metrics.push({
@@ -301,8 +417,8 @@
         chartData: [0.01, 0.02, 0.03, 0.02, 0.03, 0.04, 0.03, Math.abs(fr) * 100],
       });
     }
-    if (data.l7?.fear_greed != null) {
-      const fg = data.l7.fear_greed;
+    if (normalized.l7?.fear_greed != null) {
+      const fg = normalized.l7.fear_greed;
       metrics.push({
         title: 'Fear & Greed', value: `${fg}`,
         subtext: fg < 25 ? 'Extreme Fear' : fg < 40 ? 'Fear' : fg > 75 ? 'Extreme Greed' : fg > 60 ? 'Greed' : 'Neutral',
@@ -310,16 +426,16 @@
         chartData: [40, 35, 30, 25, 20, 18, 15, fg],
       });
     }
-    if (data.derivatives?.oi != null) {
-      const oi = data.derivatives.oi;
+    if (normalized.derivatives?.oi != null) {
+      const oi = normalized.derivatives.oi;
       metrics.push({
         title: 'OI', value: oi >= 1e6 ? `${(oi/1e6).toFixed(0)}M` : `${(oi/1e3).toFixed(0)}K`,
         subtext: '미결제약정', trend: 'neutral',
         chartData: [80, 85, 82, 88, 90, 87, 92, 95],
       });
     }
-    if (data.derivatives?.lsRatio != null) {
-      const ls = data.derivatives.lsRatio;
+    if (normalized.derivatives?.lsRatio != null) {
+      const ls = normalized.derivatives.lsRatio;
       metrics.push({
         title: 'L/S Ratio', value: ls.toFixed(2),
         subtext: ls > 1.1 ? '롱 과밀' : ls < 0.9 ? '숏 과밀' : '균형',
@@ -329,10 +445,10 @@
     }
 
     // Add chart widget
-    if (data.chart && data.chart.length > 0) {
+    if (normalized.chart && normalized.chart.length > 0) {
       messages = [...messages, {
         role: 'douni', text: '',
-        widgets: [{ type: 'chart', symbol: currentSymbol, timeframe: currentTf.toUpperCase(), chartData: data.chart }],
+        widgets: [{ type: 'chart', symbol: currentSymbol, timeframe: currentTf.toUpperCase(), chartData: normalized.chart }],
       }];
     }
 
@@ -342,18 +458,20 @@
     }
 
     // Add layers widget
-    const sortedLayers = layers.length > 0
-      ? layers.filter(l => l.score !== 0).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)).slice(0, 6)
-      : [];
-    if (sortedLayers.length > 0 && data.alphaScore != null) {
+    const baseLayers = layers.length > 0 ? layers : deriveLayerItems(normalized);
+    const sortedLayers = baseLayers
+      .filter((layer) => layer.score !== 0)
+      .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+      .slice(0, 6);
+    if (sortedLayers.length > 0 && normalized.alphaScore != null) {
       messages = [...messages, {
         role: 'douni', text: '',
-        widgets: [{ type: 'layers', items: sortedLayers, alphaScore: data.alphaScore, alphaLabel: data.alphaLabel || 'NEUTRAL' }],
+        widgets: [{ type: 'layers', items: sortedLayers, alphaScore: normalized.alphaScore, alphaLabel: normalized.alphaLabel || 'NEUTRAL' }],
       }];
     }
 
     // Add feedback action buttons
-    const dir = data.alphaScore >= 10 ? 'LONG' : data.alphaScore <= -10 ? 'SHORT' : 'LONG';
+    const dir = normalized.alphaScore >= 10 ? 'LONG' : normalized.alphaScore <= -10 ? 'SHORT' : 'LONG';
     messages = [...messages, {
       role: 'douni', text: '',
       widgets: [{ type: 'actions', patternName: `${currentSymbol} ${currentTf}`, direction: dir as 'LONG' | 'SHORT', conditions: [] }],
@@ -436,6 +554,18 @@
         role: 'douni', text: '',
         widgets: [{ type: 'scan_list', items, sort: data.sort, sector: data.sector || 'all' }],
       }];
+
+      // Also update QuickPanel
+      if (data.coins) {
+        quickPanelItems = data.coins.map((c: any) => ({
+          symbol: c.symbol + (c.symbol.includes('USDT') ? '' : 'USDT'),
+          alphaScore: c.alphaScore ?? 0,
+          alphaLabel: c.alphaLabel ?? (c.change24h > 0 ? 'BULL' : 'BEAR'),
+          price: c.price,
+          change24h: c.change24h,
+          flags: c.flags || [],
+        }));
+      }
     }
     // Add trending coins as text if available
     if (data.trending_coins?.length > 0) {
@@ -594,8 +724,20 @@
     </div>
   </header>
 
-  <!-- ─── MAIN CONTENT: FEED + CHART ─── -->
+  <!-- ─── MAIN CONTENT: QUICK PANEL + FEED + CHART ─── -->
   <div class="main-content">
+    <!-- QUICK PANEL -->
+    <QuickPanel
+      items={quickPanelItems}
+      scanning={quickPanelScanning}
+      selectedSymbol={quickPanelSelected}
+      collapsed={quickPanelCollapsed}
+      onScan={handleQuickScan}
+      onPreview={(symbol) => { void handleQuickPreview(symbol); }}
+      onAnalyze={(symbol) => { void handleQuickAnalyze(symbol); }}
+      onToggle={() => quickPanelCollapsed = !quickPanelCollapsed}
+    />
+
     <!-- DATA FEED -->
     <div class="data-feed" bind:this={feedContainer}>
       <div class="feed-inner">

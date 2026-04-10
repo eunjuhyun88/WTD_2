@@ -581,17 +581,45 @@ async function* streamFromProviderWithTools(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  // HF: normalize messages — merge multiple system msgs, convert tool→user
+  let normalizedMessages = messages;
+  if (provider === 'hf') {
+    const systemParts: string[] = [];
+    const rest: LLMMessage[] = [];
+    for (const m of messages) {
+      if (m.role === 'system') {
+        systemParts.push(m.content ?? '');
+      } else if (m.role === 'tool') {
+        // HF doesn't support tool role — convert to user message
+        rest.push({ role: 'user', content: `[Tool Result: ${m.name}]\n${m.content}` });
+      } else if (m.role === 'assistant' && m.tool_calls) {
+        // Strip tool_calls from assistant messages for HF
+        const toolNames = m.tool_calls.map(tc => tc.function.name).join(', ');
+        rest.push({ role: 'assistant', content: m.content || `[Called tools: ${toolNames}]` });
+      } else {
+        rest.push(m);
+      }
+    }
+    normalizedMessages = [
+      { role: 'system' as const, content: systemParts.join('\n\n') },
+      ...rest,
+    ];
+  }
+
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+    // HF: don't send tools (not reliably supported for all HF models)
+    const bodyTools = provider === 'hf' ? undefined : tools;
 
     const res = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         model,
-        messages,
-        tools,
+        messages: normalizedMessages,
+        ...(bodyTools ? { tools: bodyTools } : {}),
         max_tokens: maxTokens,
         temperature,
         stream: true,
