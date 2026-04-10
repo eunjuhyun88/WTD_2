@@ -1,0 +1,12 @@
+<svg width="240" height="200" viewBox="0 0 240 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="220" height="180" rx="28" fill="#08111F" fill-opacity="0.94" stroke="#2C4A7F" stroke-width="4"/>
+  <circle cx="78" cy="100" r="34" stroke="#8DD4FF" stroke-width="5" stroke-opacity="0.8"/>
+  <circle cx="160" cy="100" r="34" stroke="#FF7A8A" stroke-width="5" stroke-opacity="0.8"/>
+  <path d="M110 100H140" stroke="#F8FAFC" stroke-width="6" stroke-linecap="round"/>
+  <path d="M140 100L131 92M140 100L131 108" stroke="#F8FAFC" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M78 66V48" stroke="#8DD4FF" stroke-width="4" stroke-linecap="round"/>
+  <path d="M160 66V48" stroke="#FF7A8A" stroke-width="4" stroke-linecap="round"/>
+  <path d="M54 154H186" stroke="#516A93" stroke-opacity="0.5" stroke-width="3" stroke-dasharray="7 8"/>
+  <rect x="22" y="22" width="77" height="28" rx="14" fill="#121B2C" stroke="#8DD4FF" stroke-opacity="0.45"/>
+  <text x="60.5" y="41" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" text-anchor="middle">SWEEP</text>
+</svg>

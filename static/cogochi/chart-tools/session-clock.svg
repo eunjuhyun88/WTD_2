@@ -1,0 +1,14 @@
+<svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="200" height="200" rx="32" fill="#08111A" fill-opacity="0.95" stroke="#29476B" stroke-width="4"/>
+  <circle cx="110" cy="110" r="58" stroke="#D1D5DB" stroke-opacity="0.28" stroke-width="8"/>
+  <circle cx="110" cy="110" r="43" stroke="#8DD4FF" stroke-opacity="0.6" stroke-width="4" stroke-dasharray="6 8"/>
+  <path d="M110 110L110 74" stroke="#F8FAFC" stroke-width="6" stroke-linecap="round"/>
+  <path d="M110 110L138 126" stroke="#FF7A8A" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="110" cy="110" r="7" fill="#F8FAFC"/>
+  <path d="M110 38V28" stroke="#7EE7C6" stroke-width="4" stroke-linecap="round"/>
+  <path d="M110 192V182" stroke="#7EE7C6" stroke-width="4" stroke-linecap="round"/>
+  <path d="M182 110H192" stroke="#7EE7C6" stroke-width="4" stroke-linecap="round"/>
+  <path d="M28 110H38" stroke="#7EE7C6" stroke-width="4" stroke-linecap="round"/>
+  <rect x="24" y="24" width="78" height="28" rx="14" fill="#111827" stroke="#8DD4FF" stroke-opacity="0.45"/>
+  <text x="63" y="43" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" text-anchor="middle">SESSION</text>
+</svg>

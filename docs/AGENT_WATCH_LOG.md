@@ -8661,3 +8661,31 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run safe:status`: PASS
   - `npm run ctx:checkpoint -- --work-id "W-20260410-1939-CHATBATTLE-codex" --surface "branching,terminal,scanner,server,docs" --objective "Move the current local WIP onto a dedicated codex branch, validate it against main parity, and prepare it for push without losing existing work"`: PASS
   - `npm run safe:sync`: deferred until the working tree becomes commit-clean; current script intentionally blocks on uncommitted changes
+
+## [2026-04-10 22:28:05 +0900] START merge-home-into-terminal-wip (chatbattle)
+- Work ID: `W-20260410-2228-CHATBATTLE-codex`
+- Repo path:
+  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-wip-sync-20260410`
+- Base `origin/main` hash:
+  - `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
+- Working tree status:
+  - `## codex/terminal-wip-sync-20260410...origin/codex/terminal-wip-sync-20260410`
+  - clean branch, already pushed, and aligned on top of the latest `origin/main` before merge
+  - source branch selected for integration: `codex/home-cogochi2-integration`
+- Request:
+  - merge the existing cogochi2 home integration branch onto the pushed terminal/scanner/server WIP branch, keeping the current WIP as the terminal authority while importing the home surface and related assets
+- Owned files / overlap check:
+  - expected write scope for this task:
+    - `src/routes/+page.svelte`
+    - `src/routes/+layout.svelte`
+    - `src/routes/terminal/+page.svelte`
+    - `scripts/dev/refresh-generated-context.mjs`
+    - generated docs and related assets/components from the source branch
+    - `docs/AGENT_WATCH_LOG.md`
+  - direct overlap is expected on home and terminal surfaces
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: PASS with existing `src/routes/+page.svelte` warnings only
