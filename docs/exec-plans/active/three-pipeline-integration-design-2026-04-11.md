@@ -226,11 +226,25 @@ Phase 0 (Contract Freeze)
 
 | # | File | Basis | Status |
 |---|---|---|---|
-| 1 | `src/lib/contracts/ids.ts` — contract ID namespace | harness engine-spec §1 | ✅ Drafted on `feat/phase0-contracts` (2026-04-11) |
-| 2 | `src/lib/contracts/verdict.ts` — VerdictBlock zod + type | harness engine-spec verdict section | Pending |
-| 3 | `src/lib/contracts/trajectory.ts` — DecisionTrajectory zod + type | ORPO_DATA_SCHEMA_PIPELINE_v1 §2 + verdict embed | Pending |
-| 4 | `src/lib/contracts/index.ts` — barrel re-export | — | Pending |
-| 5 | `docs/exec-plans/active/alpha-terminal-harness-html-dissection-2026-04-10.md` §10 — Resolved decisions | dissection.md §9 | Pending |
+| 1 | `src/lib/contracts/ids.ts` — contract ID namespace | harness engine-spec §1 | ✅ Landed on `main` (92c1e56 + f84b451). `FORCE_ORDERS_4H` added 2026-04-11 per dissection §10 Q6. |
+| 2 | `src/lib/contracts/verdict.ts` — VerdictBlock zod + type | harness engine-spec verdict section | ✅ Landed on `main` (92c1e56). `legacy_alpha_score` kept nullable per dissection §10 Q5. |
+| 3 | `src/lib/contracts/trajectory.ts` — DecisionTrajectory zod + type | ORPO_DATA_SCHEMA_PIPELINE_v1 §2 + verdict embed | ✅ Landed on `main` (92c1e56). |
+| 4 | `src/lib/contracts/index.ts` — barrel re-export | — | ✅ Landed on `main` (92c1e56). |
+| 5 | `src/lib/contracts/registry.ts` — raw-source subscription shape (bonus, not in original plan) | Phase 0 review 2026-04-11 | ✅ Landed on `main` (f84b451). |
+| 6 | `docs/exec-plans/active/alpha-terminal-harness-html-dissection-2026-04-10.md` §10 — Resolved decisions | dissection.md §9 | ✅ Written 2026-04-11 on `claude/objective-vaughan`. |
+
+### Phase 0 exit gate — CLOSED (2026-04-11)
+
+| Gate | Result |
+|---|---|
+| All five contracts files committed to `main` | ✅ |
+| `zod` explicitly pinned in `package.json` (`^3.25.76`, L101) | ✅ |
+| Dissection §10 Resolved decisions written (all 6 Q1–Q6 answered) | ✅ |
+| `FORCE_ORDERS_4H` added to `ids.ts` per §10 Q6 | ✅ |
+| `npm run check` — 2928 files, 0 errors, 0 warnings | ✅ |
+| `npm run build` — built in ~15s, no errors | ✅ |
+
+Phase 1 (A-P0 + C-schema in parallel) is now unblocked.
 
 ## Zod as Foundation — Why
 

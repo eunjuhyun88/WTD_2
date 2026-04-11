@@ -439,3 +439,86 @@ This slots directly into the existing precision-engine spec phases:
 6. **Live force-orders window** — HTML uses last 50 force orders and filters to last 1H. Should we widen to 4H + 24H rolling windows for liquidation regime context?
 
 Resolve these by writing explicit decisions into this file (add §10 "Resolved decisions") before starting P0 implementation.
+
+---
+
+## 10. Resolved decisions
+
+Status: locked (2026-04-11)
+Authority: closes §9 open questions as the Phase 0 exit gate for the three-pipeline integration design (`docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md`).
+
+Each decision below is (a) a locked answer, (b) where it is already encoded in `src/lib/contracts/`, and (c) the invariant that any future change must pass.
+
+### Q1. Timeframe authority — DECIDED: engine fixed, `#period` is display-only
+
+**Decision.** Engine OI / Long-Short / Taker buy-sell are always computed from a fixed `5m × 12 + 1h × 6` pair. The UI `#period` dropdown controls chart display only and does NOT parameterize engine fetches. Display-timeframe is carried as a separate session field so per-user view choices never leak into the verdict pipeline.
+
+**Where encoded.**
+- `src/lib/contracts/ids.ts` — `OI_HIST_5M`, `OI_HIST_1H`, `OI_HIST_DISPLAY_TF`, `SESSION_DISPLAY_TIMEFRAME` are already split. `OI_HIST_DISPLAY_TF` exists strictly for charting and carries no computational weight.
+- `src/lib/server/marketDataService.ts` — today still accepts `period` as a free parameter. Phase 1 A-P0 will narrow those loaders to the fixed pair and forbid caller-supplied periods on the engine path.
+
+**Invariant.** For the same symbol at the same server tick, two requests with different `#period` values MUST produce the same `verdict_block`. Changing `#period` may never change the engine state, only the view.
+
+### Q2. Sector taxonomy — DECIDED: 2-level registry (ecosystem + narrative)
+
+**Decision.** Sector is a 2-level registry, not a flat enum. Each symbol carries `{ ecosystem, narrative[] }` where `ecosystem` is a single string (chain family: `ethereum`, `solana`, `base`, `bitcoin`, `bnb`, `ton`, `sui`, `other`) and `narrative` is an ordered list of tags (`ai`, `depin`, `meme`, `l2`, `rwa`, `gaming`, `defi`, `stablecoin`, `privacy`, …). The feature layer projects this into two independent flow signals: `feat.sector.ecosystem.*` and `feat.sector.narrative.*`.
+
+**Where encoded.**
+- `src/lib/contracts/ids.ts` — `SECTOR_MAP: 'raw.global.sector.map'` and `SECTOR_OVERRIDE: 'raw.global.sector.override'`. The 2-level shape lands as a zod schema in Phase 1 A-P0 under `src/lib/contracts/sector.ts` (new file, not yet written). Legacy single-number `sectorScore` in `src/lib/engine/cogochi/layerEngine.ts` continues to work as a derived secondary metric; it is not authoritative.
+
+**Invariant.** A symbol must belong to exactly one `ecosystem` and zero-or-more `narrative` tags. ORPO pair generation must be able to group by ecosystem only, narrative only, or both independently without cross-contaminating the two axes.
+
+### Q3. Watchlist persistence scope — DECIDED: per-user when authenticated, per-device fallback, same contract ID
+
+**Decision.** The watchlist contract ID `raw.session.custom_symbols` is single and stable. Its resolver reads from the server profile store when the request carries an authenticated session, and from `localStorage` otherwise. The contract namespace does not fork; only the resolver selects the authority.
+
+**Where encoded.**
+- `src/lib/contracts/ids.ts` — `SESSION_CUSTOM_SYMBOLS: 'raw.session.custom_symbols'` (single ID). The resolver lives in Phase 1 A-P0 `src/lib/server/providers/session.ts`; the client-side fallback lives in an adapter that writes through the same contract shape.
+
+**Invariant.** A user signing in must see their device-local watchlist merged into their server watchlist exactly once (conflict resolution: server wins for duplicates, device-only symbols are promoted). The contract shape downstream of `raw.session.custom_symbols` must never leak the storage source; consumers cannot branch on "did this come from localStorage or Postgres".
+
+### Q4. Multimodal image parsing — DECIDED: defer to Phase 5
+
+**Decision.** No multimodal image → contract extraction in Phase 0–4. Phase 5 wires the NL router and multimodal together: a chart screenshot is parsed into `{ symbol, timeframe, focus }` and then calls the exact same text contracts (`scan.get_symbol_structure`, `scan.get_symbol_verdict`, …) that the click UI uses. No dedicated `verdict_block` variant for multimodal.
+
+**Where encoded.**
+- Not in contracts yet. No namespace reservation in `ids.ts` is required because the multimodal path consumes existing contracts; the extractor itself is NL-router infrastructure, not a raw source.
+
+**Invariant.** Multimodal must never introduce a second verdict pipeline. If Phase 5 discovers a need for a multimodal-specific field, that field is added to the shared schemas in `src/lib/contracts/`, never forked.
+
+### Q5. Alpha score fate — DECIDED: kept as secondary ranking field indefinitely
+
+**Decision.** `legacy_alpha_score` remains a field on `VerdictBlock` past Phase 3 exit. It is never used to override `bias` or `structure_state`. It exists for (a) backward-compatible table ranking, (b) ORPO pair generation as a third "alt" alongside random and heuristic baselines, (c) user trust continuity — users trained on the 15-layer HTML still see the familiar score next to the new structural verdict.
+
+**Where encoded.**
+- `src/lib/contracts/verdict.ts` L202 — `legacy_alpha_score: z.number().finite().nullable()` with the docstring "Kept as a secondary sort key only; NEVER used to override `bias` / `structure_state`."
+
+**Invariant.** `legacy_alpha_score` may be nullable but may not be removed from `VerdictBlockSchema` without a migration that updates every `decision_trajectory` row already persisted. Phase 3 exit explicitly does NOT drop this field.
+
+### Q6. Live force-orders window — DECIDED: 1H + 4H rolling, 24H deferred to Phase 5
+
+**Decision.** Two raw IDs for force orders:
+- `raw.symbol.force_orders.1h` — primary, used by real-time liquidation events (kept as today).
+- `raw.symbol.force_orders.4h` — regime-context rolling window, added in Phase 1 A-P0. Computed server-side by retaining the last 4H of force-order rows in the provider cache.
+
+A 24H rolling window is deferred to Phase 5 because it requires durable storage and pairs naturally with the websocket live-watch infrastructure scheduled for that phase.
+
+**Where encoded.**
+- `src/lib/contracts/ids.ts` — `FORCE_ORDERS_1H` exists today. `FORCE_ORDERS_4H` is added as part of Phase 0 exit (see follow-up commit in this branch) so the Phase 1 loader has a stable ID to write to on day one.
+
+**Invariant.** The 4H window is a pure extension of the 1H window and must always be a superset in time. If both are present, aggregation code must use the 4H window for liquidation-regime classification (ACC / RE_ACC / DIST / MARK_DOWN context) and the 1H window for "recent flush" event detection. 24H is forbidden until Phase 5.
+
+---
+
+### Phase 0 exit gate status
+
+| Gate item | Status |
+|---|---|
+| `src/lib/contracts/{ids,verdict,trajectory,index,registry}.ts` committed | ✅ (f84b451 + 92c1e56) |
+| `zod` pinned in `package.json` dependencies | ✅ (`^3.25.76`, L101) |
+| Dissection §10 Resolved decisions written | ✅ (this section) |
+| `FORCE_ORDERS_4H` added to `ids.ts` per Q6 | pending follow-up commit |
+| `npm run check` green | pending verification |
+| `npm run build` green | pending verification |
+
+Phase 1 (A-P0 provider split + C-schema DB column) may start as soon as the three pending items in the table are green. Until then, Phase 0 is the active surface and no new pipeline code may land.
