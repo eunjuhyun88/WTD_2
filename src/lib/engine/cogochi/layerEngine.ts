@@ -24,6 +24,21 @@ import { computeL18Momentum } from './layers/l18Momentum';
 import { computeL19OIAccel } from './layers/l19OIAccel';
 import { computeAlphaScore, toAlphaLabel, buildVerdict } from './alphaScore';
 
+// E3a — L2 flow event emission uses typed EventId / EventPayload from
+// the contracts registry. Importing via `$lib/contracts` barrel path
+// so the svelte-kit resolver resolves it the same way as every other
+// contract consumer.
+import { EventId, type EventPayload } from '$lib/contracts/events';
+import { EventDirection, EventSeverity } from '$lib/contracts/ids';
+
+// Pinned L2 flow thresholds — dissection §4.2. Lifted to named
+// constants here so the E6 slice can move them into a central
+// thresholds registry without touching the layer body.
+const L2_FR_EXTREME_NEG = -0.07;
+const L2_FR_EXTREME_POS = 0.08;
+const L2_OI_BUILD_MIN_PCT = 3;
+const L2_PRICE_BUILD_MIN_PCT = 0.5;
+
 // ─── Helpers ───��─────────────────────────────────────────────
 
 function clamp(v: number, min: number, max: number): number {
@@ -41,21 +56,83 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
 
   let score = 0;
   const details: string[] = [];
+  const events: EventPayload[] = [];
 
   // FR scoring
-  if (fr < -0.07) { score += 24; details.push('FR극단음수'); }
-  else if (fr < -0.025) { score += 15; details.push('FR음���'); }
+  if (fr < -0.07) {
+    score += 24;
+    details.push('FR극단음수');
+    // E3a — typed event for downstream verdictBuilder consumption.
+    events.push({
+      id: EventId.FLOW_FR_EXTREME_NEGATIVE,
+      direction: EventDirection.BULL,
+      severity: EventSeverity.HIGH,
+      note: 'Short-squeeze risk: funding rate extreme negative',
+      data: { funding_rate: fr, threshold: L2_FR_EXTREME_NEG }
+    });
+  }
+  else if (fr < -0.025) { score += 15; details.push('FR음수'); }
   else if (fr < -0.005) { score += 6; details.push('FR약한음수'); }
   else if (fr < 0.005) { /* neutral */ }
   else if (fr < 0.04) { score -= 10; details.push('FR양수'); }
   else if (fr < 0.08) { score -= 18; details.push('FR높음'); }
-  else { score -= 24; details.push('FR극단양수'); }
+  else {
+    score -= 24;
+    details.push('FR극단양수');
+    events.push({
+      id: EventId.FLOW_FR_EXTREME_POSITIVE,
+      direction: EventDirection.BEAR,
+      severity: EventSeverity.HIGH,
+      note: 'Long-liquidation risk: funding rate extreme positive',
+      data: { funding_rate: fr, threshold: L2_FR_EXTREME_POS }
+    });
+  }
 
   // OI + Price synergy
-  if (oiPct > 3 && pricePct > 0.5) { score += 15; details.push('OI↑+P↑'); }
-  else if (oiPct > 3 && pricePct < -0.5) { score -= 15; details.push('OI↑+P↓'); }
-  else if (oiPct < -3 && pricePct < -0.5) { score += 8; details.push('OI↓+P↓ recovery'); }
-  else if (oiPct < -3 && pricePct > 0.5) { score += 5; details.push('OI↓+P↑ squeeze'); }
+  if (oiPct > L2_OI_BUILD_MIN_PCT && pricePct > L2_PRICE_BUILD_MIN_PCT) {
+    score += 15;
+    details.push('OI↑+P↑');
+    events.push({
+      id: EventId.FLOW_LONG_ENTRY_BUILD,
+      direction: EventDirection.BULL,
+      severity: EventSeverity.MEDIUM,
+      note: 'New longs opening: OI and price rising together',
+      data: { oi_change_pct: oiPct, price_change_pct: pricePct }
+    });
+  }
+  else if (oiPct > L2_OI_BUILD_MIN_PCT && pricePct < -L2_PRICE_BUILD_MIN_PCT) {
+    score -= 15;
+    details.push('OI↑+P↓');
+    events.push({
+      id: EventId.FLOW_SHORT_ENTRY_BUILD,
+      direction: EventDirection.BEAR,
+      severity: EventSeverity.MEDIUM,
+      note: 'New shorts opening: OI rising while price falls',
+      data: { oi_change_pct: oiPct, price_change_pct: pricePct }
+    });
+  }
+  else if (oiPct < -L2_OI_BUILD_MIN_PCT && pricePct < -L2_PRICE_BUILD_MIN_PCT) {
+    score += 8;
+    details.push('OI↓+P↓ recovery');
+    events.push({
+      id: EventId.FLOW_LONG_CASCADE_ACTIVE,
+      direction: EventDirection.BEAR,
+      severity: EventSeverity.HIGH,
+      note: 'Long-liquidation cascade: OI falling with price',
+      data: { oi_change_pct: oiPct, price_change_pct: pricePct }
+    });
+  }
+  else if (oiPct < -L2_OI_BUILD_MIN_PCT && pricePct > L2_PRICE_BUILD_MIN_PCT) {
+    score += 5;
+    details.push('OI↓+P↑ squeeze');
+    events.push({
+      id: EventId.FLOW_SHORT_SQUEEZE_ACTIVE,
+      direction: EventDirection.BULL,
+      severity: EventSeverity.HIGH,
+      note: 'Short-covering squeeze: OI falling while price rises',
+      data: { oi_change_pct: oiPct, price_change_pct: pricePct }
+    });
+  }
 
   // L/S Ratio
   if (lsRatio > 2.2) { score -= 14; details.push('극단롱'); }
@@ -77,6 +154,7 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
     price_change: pricePct,
     score: clamp(score, -55, 55),
     detail: details.join(' · ') || 'NEUTRAL',
+    events,
   };
 }
 

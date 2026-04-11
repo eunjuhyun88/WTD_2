@@ -47,6 +47,7 @@ import {
 	EventDirection,
 	EventSeverity
 } from '../../contracts/ids.ts';
+import { EventId } from '../../contracts/events.ts';
 
 // ---------------------------------------------------------------------------
 // Build context — what the caller provides beyond the snapshot
@@ -152,6 +153,12 @@ type ReasonCandidate = {
 	text: string;
 	direction: 'bull' | 'bear' | 'neutral' | 'context';
 	severity: 'low' | 'medium' | 'high';
+	/**
+	 * Optional list of typed event IDs this reason cites. Populated by
+	 * E3a onward as each layer starts emitting structured events.
+	 * Empty for reasons sourced from legacy free-form fields.
+	 */
+	event_ids?: ReadonlyArray<string>;
 };
 
 /**
@@ -180,12 +187,49 @@ function collectReasonCandidates(snapshot: SignalSnapshot): ReasonCandidate[] {
 	}
 
 	// L2 flow — FR regime, OI build.
-	if (snapshot.extremeFR) {
+	//
+	// E3a wiring: the L2 layer now emits a typed `events` array on
+	// `L2Result`. Pull the IDs into the reason's `event_ids` so the
+	// frozen VerdictBlock carries its provenance. When the layer is
+	// pre-E3a (no events field) we still produce the prose-only
+	// reason from the legacy extremeFR flag.
+	const l2Events = snapshot.l2.events ?? [];
+	const frExtremeEventIds = l2Events
+		.filter(
+			(e) =>
+				e.id === EventId.FLOW_FR_EXTREME_NEGATIVE ||
+				e.id === EventId.FLOW_FR_EXTREME_POSITIVE
+		)
+		.map((e) => e.id);
+	if (snapshot.extremeFR || frExtremeEventIds.length > 0) {
 		out.push({
 			text: `Funding rate ${snapshot.frAlert || 'extreme'} (${snapshot.l2.fr.toFixed(4)})`,
 			direction: snapshot.l2.fr < 0 ? 'bull' : 'bear',
-			severity: 'high'
+			severity: 'high',
+			event_ids: frExtremeEventIds
 		});
+	}
+
+	// OI+price build events from E3a — these were previously buried
+	// in the `l2.detail` string. Surface them as their own reasons so
+	// the verdict can cite the typed event ID directly.
+	for (const evt of l2Events) {
+		if (
+			evt.id === EventId.FLOW_LONG_ENTRY_BUILD ||
+			evt.id === EventId.FLOW_SHORT_ENTRY_BUILD ||
+			evt.id === EventId.FLOW_LONG_CASCADE_ACTIVE ||
+			evt.id === EventId.FLOW_SHORT_SQUEEZE_ACTIVE
+		) {
+			const isBull =
+				evt.direction === EventDirection.BULL ||
+				evt.id === EventId.FLOW_LONG_ENTRY_BUILD;
+			out.push({
+				text: evt.note ?? evt.id,
+				direction: isBull ? 'bull' : 'bear',
+				severity: evt.severity as 'low' | 'medium' | 'high',
+				event_ids: [evt.id]
+			});
+		}
 	}
 
 	// L10 MTF alignment triple.
@@ -262,7 +306,7 @@ function collectReasonCandidates(snapshot: SignalSnapshot): ReasonCandidate[] {
 function candidateToReason(c: ReasonCandidate): VerdictReason {
 	return {
 		text: c.text.slice(0, 240),
-		event_ids: [],
+		event_ids: Array.from(c.event_ids ?? []),
 		direction: c.direction,
 		severity: c.severity
 	};
