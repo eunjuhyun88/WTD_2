@@ -1,58 +1,23 @@
 // ═══════════════════════════════════════════════════════════════
-// Market Data Service — Complete API layer for scanner
+// Market Data Service — fetch primitives for the raw source adapter
 // ═══════════════════════════════════════════════════════════════
-// Ports ALL APIs from the Telegram bot scanner to server-side.
-// All APIs are free, no API keys needed.
+//
+// This module exposes pure fetchers for the non-kline, non-ticker
+// Binance fapi endpoints (depth, OI history, taker ratio, long/short,
+// force orders) plus a handful of non-Binance upstreams (mempool,
+// blockchain.info, upbit, bithumb, coingecko). Every consumer now
+// reaches these via `readRaw()` in `providers/rawSources.ts`, which
+// wraps the Binance-hitting calls with the provider-level
+// `binanceQuota` limiter.
+//
+// The previous client-side `RateLimiter` class + `rateLimiter`
+// singleton lived here so `scanner.ts` and `toolExecutor.ts` could
+// wrap direct fetches with `rateLimiter.execute(...)`. Dissection §1.1
+// mandates DROP for that pattern; the replacement is owned by
+// `providers/binanceQuota.ts` and is invisible to callers.
 
 const FAPI = 'https://fapi.binance.com';
 const SPOT = 'https://api.binance.com';
-
-// ─── Rate Limiter ──────────────────────────────────────
-
-class RateLimiter {
-  private queue: Array<{ fn: () => Promise<any>; resolve: Function; reject: Function }> = [];
-  private running = 0;
-  private lastRun = 0;
-
-  constructor(
-    private maxConcurrent = 8,
-    private minInterval = 80,
-  ) {}
-
-  async execute<T>(fn: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.queue.push({ fn, resolve, reject });
-      this.process();
-    });
-  }
-
-  private async process() {
-    if (this.running >= this.maxConcurrent || this.queue.length === 0) return;
-    const wait = Math.max(0, this.minInterval - (Date.now() - this.lastRun));
-    if (wait > 0) {
-      setTimeout(() => this.process(), wait);
-      return;
-    }
-
-    const item = this.queue.shift();
-    if (!item) return;
-
-    this.running++;
-    this.lastRun = Date.now();
-
-    try {
-      const result = await item.fn();
-      item.resolve(result);
-    } catch (e) {
-      item.reject(e);
-    } finally {
-      this.running--;
-      this.process();
-    }
-  }
-}
-
-export const rateLimiter = new RateLimiter(8, 80);
 
 // ─── Types ─────────────────────────────────────────────
 
