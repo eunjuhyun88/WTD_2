@@ -14,7 +14,7 @@
  *   docs/exec-plans/active/research-spine-2026-04-11.md §R1
  */
 
-import type { AgentPolicy } from '../evaluation/types';
+import type { AgentPolicy } from '../evaluation/types.ts';
 
 export type { AgentPolicy };
 

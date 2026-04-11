@@ -21,8 +21,8 @@
  *   docs/exec-plans/active/research-spine-2026-04-11.md §D2, §R4.1 ("Invariant 8")
  */
 
-import type { DecisionTrajectory } from '../../contracts/index';
-import type { TemporalFold, TemporalSplitConfig, IntegrityAssertion } from './temporalSplit';
+import type { DecisionTrajectory } from '../../contracts/index.ts';
+import type { TemporalFold, TemporalSplitConfig, IntegrityAssertion } from './temporalSplit.ts';
 
 // ---------------------------------------------------------------------------
 // Error type

@@ -13,6 +13,7 @@
     "docs:check": "bash scripts/dev/check-docs-context.sh",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "research:r4-1-fixtures": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-leakage-fixtures.ts",
+    "research:r4-2-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-2-pipeline-smoke.ts",
     "check:budget": "bash scripts/dev/check-svelte-warning-budget.sh",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "guard:workspace": "bash scripts/dev/guard-active-workspace.sh",
