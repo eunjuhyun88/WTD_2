@@ -33,8 +33,8 @@
  *   docs/exec-plans/active/research-spine-2026-04-11.md §D1 / §D2 / §R4.1
  */
 
-import type { DecisionTrajectory } from '../../contracts/index';
-import type { TrajectorySlice, SliceId, Regime } from './types';
+import type { DecisionTrajectory } from '../../contracts/index.ts';
+import type { TrajectorySlice, SliceId, Regime } from './types.ts';
 import {
 	LeakageError,
 	assertConfigWithinBounds,
@@ -44,7 +44,7 @@ import {
 	assertEmbargoSatisfied,
 	assertPurgeApplied,
 	assertTemporalIntegrity
-} from './assertIntegrity';
+} from './assertIntegrity.ts';
 
 // ---------------------------------------------------------------------------
 // Assertion code catalog
@@ -269,12 +269,16 @@ export function temporalSplit(
 		Number.NEGATIVE_INFINITY
 	);
 
-	// Not enough wall-clock span for even the first fold's minimum
-	// (train floor + embargo + test). `lastCreated` is the appropriate
-	// upper bound because test slices live on the `created_at` axis.
-	const firstFoldEnd =
-		firstHorizon + config.trainDurationFloor + config.embargoDuration + config.testDuration;
-	if (firstFoldEnd > lastCreated) return [];
+	// Cheap degenerate check: if the first fold's test window starts after
+	// every existing trajectory, there is no way to populate any test
+	// slice — return empty. This is strictly weaker than "full window
+	// fits in data"; the main fold loop still rejects partial/empty folds
+	// by iterating and skipping them, so windows that only *partially*
+	// overlap remaining data are given a chance to build a fold with
+	// whatever trajectories exist in the window.
+	const firstTestStart =
+		firstHorizon + config.trainDurationFloor + config.embargoDuration;
+	if (firstTestStart > lastCreated) return [];
 
 	const folds: TemporalFold[] = [];
 	let foldIndex = 0;
@@ -429,4 +433,4 @@ export {
 	assertEmbargoSatisfied,
 	assertPurgeApplied,
 	assertTemporalIntegrity
-} from './assertIntegrity';
+} from './assertIntegrity.ts';

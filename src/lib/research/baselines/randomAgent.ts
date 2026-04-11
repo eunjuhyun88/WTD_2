@@ -18,10 +18,10 @@
 import type {
 	AgentObservation,
 	AgentDecisionProposal
-} from '../evaluation/types';
-import type { BaselineAgent } from './types';
-import { BaselineId } from './types';
-import { mulberry32 } from '../stats';
+} from '../evaluation/types.ts';
+import type { BaselineAgent } from './types.ts';
+import { BaselineId } from './types.ts';
+import { mulberry32 } from '../stats.ts';
 
 const ACTIONS = ['open_long', 'open_short', 'wait'] as const;
 

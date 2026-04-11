@@ -92,3 +92,19 @@ export { RuleBasedAgent, createRuleBasedAgent } from './baselines/ruleBasedAgent
 export type { RuleBasedAgentConfig } from './baselines/ruleBasedAgent';
 export { HumanDecisionAgent, createHumanDecisionAgent } from './baselines/humanDecisionAgent';
 export type { HumanDecisionAgentConfig } from './baselines/humanDecisionAgent';
+
+// Pipeline (R4.2) — runExperiment boundary + report gate
+export { runExperiment } from './pipeline/runner';
+export { validateExperimentConfig } from './pipeline/validate';
+export { buildReport, assertReportComplete } from './pipeline/report';
+export { ConfigValidationError, ReportCompletenessError } from './pipeline/types';
+export type {
+	ExperimentConfig,
+	ExperimentReport,
+	DatasetSource,
+	ResearchQuestionId,
+	AgentDecisionRecord,
+	AgentFoldResult,
+	ConfigValidationCode,
+	ReportCompletenessCode
+} from './pipeline/types';
