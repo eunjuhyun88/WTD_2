@@ -4,6 +4,14 @@
 
 export { getCached, setCache, invalidate, invalidatePrefix, cacheStats } from './cache';
 export { getProviderHealth, assembleMarketContext } from './registry';
+export {
+  rawSources,
+  readRaw,
+  isSupportedRawId,
+  type RawSourceInputs,
+  type RawSourceOutputs,
+  type SupportedRawId,
+} from './rawSources';
 export type {
   DataProvider,
   CacheEntry,
