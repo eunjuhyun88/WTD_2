@@ -23,6 +23,7 @@
     "research:e5-db-source-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e5-db-source-smoke.ts",
     "research:rq-b-real-data": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/experiments/rq-b-real-data-2026-04-11/experiment.mjs",
     "research:e6a-thresholds-flow-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e6a-thresholds-flow-smoke.ts",
+    "research:e6b-thresholds-bb-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e6b-thresholds-bb-smoke.ts",
     "research:r4-1-fixtures": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-leakage-fixtures.ts",
     "research:r4-1-scheduled-end": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-scheduled-end-regression.ts",
     "research:r4-2-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-2-pipeline-smoke.ts",
