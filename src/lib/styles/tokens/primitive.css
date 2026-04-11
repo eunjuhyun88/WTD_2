@@ -1,0 +1,153 @@
+/* ═══════════════════════════════════════════════════════════════
+   TOKENS — PRIMITIVE LAYER
+   Raw values. No meaning. Composition target for semantic.css only.
+   Routes and components MUST NOT reference these directly.
+
+   Edit this file to change the palette identity itself.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Palette: LOST IN SPACE ─────────────────────────────────── */
+  --color-ink-900: #040811;
+  --color-ink-800: #05070c;
+  --color-ink-700: #050914;
+  --color-ink-600: #09101b;
+  --color-ink-500: #0a0d14;
+  --color-ink-400: #0b1220;
+  --color-ink-300: #0f1828;
+  --color-ink-200: #152033;
+  --color-ink-100: #19263b;
+
+  --color-rose-500: #db9a9f;
+  --color-rose-500-rgb: 219, 154, 159;
+
+  --color-cream-500: #f2d193;
+  --color-cream-500-rgb: 242, 209, 147;
+
+  --color-lime-500: #adca7c;
+  --color-lime-500-rgb: 173, 202, 124;
+
+  --color-coral-500: #cf7f8f;
+  --color-coral-500-rgb: 207, 127, 143;
+
+  --color-ivory-000: #f7f2ea;
+  --color-ivory-000-rgb: 247, 242, 234;
+
+  /* Alpha ramp (ivory) for text and overlays */
+  --color-ivory-a96: rgba(247, 242, 234, 0.96);
+  --color-ivory-a92: rgba(247, 242, 234, 0.92);
+  --color-ivory-a84: rgba(247, 242, 234, 0.84);
+  --color-ivory-a72: rgba(247, 242, 234, 0.72);
+  --color-ivory-a64: rgba(247, 242, 234, 0.64);
+  --color-ivory-a58: rgba(247, 242, 234, 0.58);
+  --color-ivory-a55: rgba(247, 242, 234, 0.55);
+  --color-ivory-a52: rgba(247, 242, 234, 0.52);
+  --color-ivory-a42: rgba(247, 242, 234, 0.42);
+  --color-ivory-a25: rgba(247, 242, 234, 0.25);
+  --color-ivory-a18: rgba(247, 242, 234, 0.18);
+  --color-ivory-a10: rgba(247, 242, 234, 0.10);
+  --color-ivory-a08: rgba(247, 242, 234, 0.08);
+  --color-ivory-a05: rgba(247, 242, 234, 0.05);
+  --color-ivory-a03: rgba(247, 242, 234, 0.03);
+
+  /* Alpha ramp (lime) */
+  --color-lime-a45: rgba(173, 202, 124, 0.45);
+  --color-lime-a25: rgba(173, 202, 124, 0.25);
+  --color-lime-a22: rgba(173, 202, 124, 0.22);
+  --color-lime-a20: rgba(173, 202, 124, 0.20);
+  --color-lime-a16: rgba(173, 202, 124, 0.16);
+  --color-lime-a08: rgba(173, 202, 124, 0.08);
+  --color-lime-a06: rgba(173, 202, 124, 0.06);
+
+  /* Alpha ramp (cream) */
+  --color-cream-a45: rgba(242, 209, 147, 0.45);
+  --color-cream-a34: rgba(242, 209, 147, 0.34);
+  --color-cream-a25: rgba(242, 209, 147, 0.25);
+  --color-cream-a20: rgba(242, 209, 147, 0.20);
+  --color-cream-a18: rgba(242, 209, 147, 0.18);
+  --color-cream-a06: rgba(242, 209, 147, 0.06);
+
+  /* Alpha ramp (rose) */
+  --color-rose-a30: rgba(219, 154, 159, 0.30);
+  --color-rose-a25: rgba(219, 154, 159, 0.25);
+  --color-rose-a18: rgba(219, 154, 159, 0.18);
+  --color-rose-a12: rgba(219, 154, 159, 0.12);
+  --color-rose-a08: rgba(219, 154, 159, 0.08);
+
+  /* Alpha ramp (coral) */
+  --color-coral-a18: rgba(207, 127, 143, 0.18);
+
+  /* ── Size scale (4pt rhythm) ────────────────────────────────── */
+  --size-0: 0;
+  --size-1: 1px;
+  --size-2: 2px;
+  --size-4: 4px;
+  --size-6: 6px;
+  --size-8: 8px;
+  --size-10: 10px;
+  --size-12: 12px;
+  --size-14: 14px;
+  --size-16: 16px;
+  --size-20: 20px;
+  --size-24: 24px;
+  --size-28: 28px;
+  --size-32: 32px;
+  --size-40: 40px;
+  --size-44: 44px;
+  --size-48: 48px;
+  --size-56: 56px;
+  --size-64: 64px;
+  --size-80: 80px;
+
+  /* ── Radius (rounded family — soft cogotchi) ────────────────── */
+  --radius-0: 0;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;     /* buttons */
+  --radius-lg: 14px;     /* highlight chips, mini path cards */
+  --radius-xl: 20px;     /* loop / surface cards */
+  --radius-2xl: 22px;    /* glass center card */
+  --radius-pill: 9999px; /* eyebrows, status pills */
+
+  /* ── Font families ──────────────────────────────────────────── */
+  --font-display: 'Bebas Neue', 'Orbitron', sans-serif;
+  --font-body: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Motion: durations ──────────────────────────────────────── */
+  --duration-instant: 0ms;
+  --duration-micro: 120ms;
+  --duration-short: 200ms;
+  --duration-medium: 320ms;
+  --duration-long: 500ms;
+  --duration-xl: 900ms;
+
+  /* ── Motion: easing ─────────────────────────────────────────── */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-enter:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-soft:     cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-glide:    cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* ── Z-index ───────────────────────────────────────────────── */
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 50;
+  --z-chrome: 100;
+  --z-dropdown: 150;
+  --z-backdrop: 200;
+  --z-modal: 210;
+  --z-notification: 300;
+  --z-toast: 310;
+  --z-tooltip: 400;
+
+  /* ── Opacity ──────────────────────────────────────────────── */
+  --opacity-disabled: 0.4;
+  --opacity-pressed: 0.6;
+  --opacity-hover: 0.85;
+
+  /* ── Blur ─────────────────────────────────────────────────── */
+  --blur-sm: 8px;
+  --blur-md: 18px;
+  --blur-lg: 40px;  /* glass center card */
+}

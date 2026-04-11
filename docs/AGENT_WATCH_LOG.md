@@ -8958,6 +8958,46 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - branch remains dirty because pre-existing UI WIP is still present in `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+layout.svelte`, and `src/routes/+page.svelte`
   - docs changed in this task: `docs/AGENT_WATCH_LOG.md`, `docs/PLANS.md`, and new file `docs/exec-plans/active/chatbattle-repo-wide-refactor-design-2026-04-11.md`
 
+## [2026-04-11 17:53:46 +0900] START run-server-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/run-server`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/run-server`
+  - pre-existing untracked path present before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - start the local development server and report how to access it
+- Owned files / overlap check result:
+  - expected write scope for this task: `docs/AGENT_WATCH_LOG.md`
+  - no code-file ownership claimed; task is limited to local server startup
+  - no overlap detected with tracked dirty files; one pre-existing untracked path remains outside this task scope
+- Safe status:
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: PASS
+
+## [2026-04-11 17:55:03 +0900] FINISH run-server-20260411 (chatbattle)
+- What changed:
+  - started the local Vite development server for this repo
+  - verified the dev server responds over HTTP on the assigned local port
+  - appended START/FINISH records for this task to `docs/AGENT_WATCH_LOG.md`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `curl -I http://localhost:5174`: PASS (`HTTP/1.1 200 OK`)
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/run-server`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`
+  - pre-existing untracked path remains outside this task scope: `src/lib/styles/tokens/`
+
 ## [2026-04-11 14:00:00 +0900] START W-20260411-1400-chatbattle-impl (chatbattle)
 
 - Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/jovial-newton`
@@ -8993,3 +9033,761 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Commit hash: deferred (pending user approval per AGENTS.md §Push/merge)
 - Push status: not requested
 - Final working tree status: dirty with the six owned files above plus the refreshed `.agent-context/*` brief/handoff/checkpoint artifacts (gitignored) and this watch log entry
+
+## [2026-04-11 18:02:05 +0900] START mono-home-refactor-design-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - pre-existing modified file before this task: `docs/AGENT_WATCH_LOG.md`
+  - pre-existing untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - define an Apple-calibrated monochrome pink × black redesign plan for the home landing and shared chrome, using the provided screenshot and current home implementation as the baseline
+- Owned files / overlap check result:
+  - expected write scope for this task: `docs/AGENT_WATCH_LOG.md`
+  - design analysis may reference `src/routes/+page.svelte`, `src/app.css`, `src/lib/styles/tokens.css`, and `src/components/layout/Header.svelte` but does not claim implementation ownership yet
+  - no new overlap introduced; task is limited to design/spec work on top of an already dirty worktree
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes (`docs/AGENT_WATCH_LOG.md`, `src/lib/styles/tokens/`)
+
+## [2026-04-11 18:05:33 +0900] START mono-home-refactor-impl-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over dirty files before implementation: `docs/AGENT_WATCH_LOG.md`, `src/lib/styles/tokens/`
+- Task summary:
+  - implement the approved monochrome pink × black redesign across shared tokens, global chrome, home hero composition, and the subtle oversized logo background treatment
+- Owned files / overlap check result:
+  - implementation scope: `docs/COGOCHI.md`, `docs/AGENT_WATCH_LOG.md`, `src/lib/styles/tokens.css`, `src/app.css`, `src/components/layout/Header.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/routes/+page.svelte`
+  - pre-existing untracked `src/lib/styles/tokens/primitive.css` is outside this task scope and will not be modified
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree was already dirty before implementation started
+
+## [2026-04-11 18:12:01 +0900] FINISH mono-home-refactor-impl-20260411 (chatbattle)
+- What changed:
+  - updated `src/lib/styles/tokens.css` to establish a monochrome pink × black token system, remap legacy decorative aliases away from lime/cream accents, and replace the rainbow divider with a single pink fade
+  - updated `src/app.css` so the global shell uses pink-only radial lighting over black instead of the earlier pink/lime/blue mix
+  - updated `src/components/layout/Header.svelte` to remove multi-accent gradients from shared chrome, simplify active tab treatments, and normalize the wallet controls into the new pink/ivory system
+  - updated `src/components/home/WebGLAsciiBackground.svelte` to enlarge the subtle logo watermark and reduce the shader field saturation/brightness so the page stays mostly black
+  - updated `src/routes/+page.svelte` to remove the 3D `model-viewer` logo and all floating orbit cards, keep a single glass card in the hero, and restyle the landing around the approved Apple-calibrated pink/black direction
+  - updated `docs/COGOCHI.md` so the canonical home landing spec matches the implemented hero composition
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - retained existing build warning: client chunk `CfPgKGZL.js` still exceeds the 500 kB warning threshold
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 18:12:57 +0900] START market-pulse-refine-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - refine the `MARKET PULSE` dock so it feels quieter, cleaner, and more consistent with the new monochrome pink × black system
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`
+  - task intentionally avoids widening the earlier home refactor scope beyond the dock component
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 18:44:33 +0900] START W-20260411-1844-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - reproduce the current blocking errors first, identify the smallest failing surface, and fix it without disturbing the ongoing mono-home refactor scope
+- Owned files / overlap check result:
+  - confirmed shared dirty worktree; no existing changes were reverted
+  - immediate ownership for this task: `docs/AGENT_WATCH_LOG.md`
+  - code ownership will be narrowed only after the failing surface is reproduced
+- Safe status:
+  - `npm run safe:status`: PASS
+
+## [2026-04-11 18:51:22 +0900] FINISH W-20260411-1844-CHATBATTLE-codex (chatbattle)
+- What changed:
+  - narrowed the active runtime error to `GET /api/community/posts`
+  - confirmed the failure cause was DB persistence unavailability in this environment (`ENOTFOUND` against the configured Supabase host), not a Svelte/type/build regression
+  - updated `src/routes/api/community/posts/+server.ts` so community feed reads degrade to an empty successful payload when DB config, schema, or connectivity is unavailable
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `curl http://127.0.0.1:4179/api/community/posts`: PASS (`200 OK` with empty records + warning fallback)
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/routes/api/community/posts/+server.ts`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 18:15:10 +0900] FINISH market-pulse-refine-20260411 (chatbattle)
+- What changed:
+  - updated `src/components/cogochi/AlphaMarketBar.svelte` so `MARKET PULSE` reads as a quieter diagnostic bar instead of a heavy floating dock
+  - changed the title chrome to a smaller mixed-case treatment with a subtle pink status dot
+  - reduced panel density, softened the container border/shadow, and aligned the whole component to the monochrome pink × black system established in the previous home refactor
+  - changed each chip so its tone influences the chip background subtly, instead of only coloring the numeric value, which makes the panel easier to scan without feeling noisy
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - retained existing build warning: client chunk `CfPgKGZL.js` still exceeds the 500 kB warning threshold
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`
+  - previously modified files from the earlier home refactor remain in the worktree and were not reverted
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 18:15:58 +0900] START market-pulse-reposition-home-black-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - keep the subtle logo-shaped background on home, remove the remaining pink wash from the home field, and move the `MARKET PULSE` dock to a less obstructive position
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `src/routes/+page.svelte`, `src/components/cogochi/AlphaMarketBar.svelte`
+  - task stays within the existing home + dock redesign surface
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 18:17:24 +0900] FINISH market-pulse-reposition-home-black-20260411 (chatbattle)
+- What changed:
+  - updated `src/routes/+page.svelte` so the home field is now near-black instead of carrying the previous pink wash, while preserving the subtle logo-shaped background presence
+  - updated `src/components/cogochi/AlphaMarketBar.svelte` so `MARKET PULSE` is no longer anchored near the upper content area; it now docks near the bottom-right on desktop and above the mobile nav on small screens
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - retained existing build warning: client chunk `CfPgKGZL.js` still exceeds the 500 kB warning threshold
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/routes/+page.svelte`, `src/components/cogochi/AlphaMarketBar.svelte`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 18:18:20 +0900] START uiux-audit-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - perform a page-by-page UI/UX audit across desktop and mobile, focusing on scroll behavior, placement, footer/dock interactions, and data-to-layout fit
+- Owned files / overlap check result:
+  - expected write scope for this task: `docs/AGENT_WATCH_LOG.md`
+  - analysis references route surfaces and runtime screenshots, but does not claim implementation ownership yet
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 18:29:20 +0900] START uiux-audit-continue-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - continue the UI/UX audit against `docs/COGOCHI.md`, confirm which current routes match the canonical surface model, and sharpen the `/terminal` prompt-to-data interaction spec without changing its baseline layout
+- Owned files / overlap check result:
+  - expected write scope for this task: `docs/AGENT_WATCH_LOG.md`
+  - analysis may inspect route files and live runtime, but does not claim implementation ownership yet
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 18:31:51 +0900] FINISH uiux-audit-continue-20260411 (chatbattle)
+- What changed:
+  - continued the canonical UI/UX audit against `docs/COGOCHI.md` with focus on `/`, `/terminal`, `/dashboard`, `/signals`, `/passport`, and `/arena`
+  - revalidated the current runtime at `http://localhost:5174/` and `http://localhost:5174/terminal` using Playwright snapshots and console logs
+  - confirmed that the current home surface is the correct baseline, while `/terminal` should keep its 3-panel scaffold and improve the prompt-to-data contract inside that structure
+  - documented that `/dashboard` remains under-scoped versus the canonical digest spec, and that `/signals`, `/passport`, and `/arena` still carry legacy visual language that conflicts with the current Cogochi mono direction
+  - confirmed a global shell issue: `AlphaMarketBar` and `NotificationTray` are still injected from `src/routes/+layout.svelte`, which keeps bottom-right chrome competing with content across non-home routes
+  - confirmed persistent guest-state runtime noise from `401` responses and a `500` on `/api/community/posts`, which should be treated as a UX fallback issue as much as an API issue
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 18:41:55 +0900] START home-canonical-align-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - align the canonical home spec to the currently approved builder/copier landing direction and tighten the actual home section rhythm without changing the established visual baseline
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/routes/+page.svelte`
+  - no overlap claimed outside the existing home refactor surface
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 18:44:31 +0900] FINISH home-canonical-align-20260411 (chatbattle)
+- What changed:
+  - rewrote `docs/COGOCHI.md` §16 so the canonical home spec now matches the approved builder/copier landing direction instead of the older Terminal-first MacWindow concept
+  - clarified in the canonical doc that home is a black-toned, logo-watermark landing with one restrained glass hero card, no 3D logo, no orbit cards, and no market dock on the home route
+  - refined `src/routes/+page.svelte` hero copy so the message is cleaner and more aligned to the current product order
+  - tightened the actual home rhythm by reducing hero height, hero gap, and first-section spacing so the first scroll reveals the loop section sooner without changing the overall visual baseline
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - Playwright runtime check: home reopened at `http://localhost:5174/` after the changes
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/routes/+page.svelte`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 18:51:00 +0900] START home-webgl-smoothing-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - smooth the home background motion and color transitions by reducing flashy WebGL ambient behavior and toning down the page-level drift/tilt that makes the home hero feel twitchy
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`
+  - explicitly not touching the pre-existing unrelated changes in `src/routes/api/community/posts/+server.ts` or the untracked `src/lib/styles/tokens/`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 18:57:00 +0900] FINISH home-webgl-smoothing-20260411 (chatbattle)
+- What changed:
+  - softened the home hero interaction by converting the hero cursor input to eased target-follow behavior instead of directly driving tilt and glow from raw pointer movement
+  - reduced hero glow travel and card tilt amplitude in `src/routes/+page.svelte` so the home stage reads calmer and less twitchy
+  - reduced the background watermark drift, cursor-reactive trail growth response, and overall canvas intensity in `src/components/home/WebGLAsciiBackground.svelte`
+  - retuned `src/lib/webgl/ascii-trail-shaders.ts` to a narrower mono-pink palette, much lower ambient alpha, slower sweep/ribbon motion, softer logo response, and lower grain so the WebGL background changes color more gradually and stays in the background
+  - refreshed local branch brief/handoff via `npm run ctx:compact -- --docs-check pass --check pass --build pass`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted: `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 18:56:00 +0900] START terminal-rich-chart-audit-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - audit the current `/terminal` page architecture and define how to present rich inline chart/result blocks in the chat feed so search/analysis output can reach a CryptoQuant-grade level of metrics and visualization
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md` plus read-only inspection of `src/routes/terminal/+page.svelte`, `src/components/cogochi/*`, `src/components/terminal/*`, and DOUNI SSE/tool contract files
+  - no product code edits claimed yet; avoiding overlap with the ongoing home refactor files already modified in this branch
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+  - `npm run safe:hooks`: PASS
+
+## [2026-04-11 18:58:44 +0900] FINISH terminal-rich-chart-audit-20260411 (chatbattle)
+- What changed:
+  - audited the current `/terminal` architecture, DOUNI SSE contract, and chart/widget components to determine whether the chat feed can support rich inline research visuals
+  - confirmed that the current route already has a widget-based feed, but the chart widget only renders as a `Chart loaded` reference while the real chart stays pinned in the side panel
+  - identified the main gap for a CryptoQuant-grade experience: the backend fetches richer flow data (`oiHistory`, `takerData`, `forceOrders`, `depth`) but the current tool result contract collapses most of it into summary scalars and synthetic sparklines instead of returning real interval series for inline charts
+  - refreshed branch brief/handoff via `npm run ctx:compact`
+- Validation results:
+  - repo protocol checks run for this analysis task: `npm run safe:status` PASS, `npm run safe:hooks` PASS, `npm run ctx:checkpoint` PASS, `npm run ctx:compact` PASS
+  - build/test gates not run because no product implementation was made in this task
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`
+  - previously modified files from the ongoing home refactor remain in the worktree and were not reverted: `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 19:00:00 +0900] START terminal-chart-block-design-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - design a terminal chat inline chart-block engine that can render CryptoQuant-grade research visuals using the repo's ongoing raw/feature/event/verdict dataset structuring as the authority chain
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`
+  - no product code edits claimed in this design pass
+- Safe status:
+  - prior task's `npm run safe:status`: PASS
+  - `npm run safe:sync`: still blocked by pre-existing uncommitted changes in the branch
+  - prior task's `npm run safe:hooks`: PASS
+
+## [2026-04-11 19:02:00 +0900] FINISH terminal-chart-block-design-20260411 (chatbattle)
+- What changed:
+  - wrote a new active design doc at `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`
+  - defined the proposed `view.*` presentation contract layer above `verdict.*` for terminal-facing research blocks
+  - specified the block registry, shared series primitives, SSE extension, server assembly layer, frontend renderer structure, v1 scope, milestone order, and the mapping from existing `raw.* / feat.* / event.* / verdict.*` datasets to chart-ready `view.*` blocks
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run ctx:compact`: PASS earlier in the same session; briefs/handoffs present for the branch
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`
+  - untracked by this task: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`
+  - previously modified files from the ongoing home refactor remain in the worktree and were not reverted: `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 18:56:00 +0900] START home-webgl-reactivity-retune-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - restore stronger visible mouse reactivity on the home background while keeping the new smoothing so the effect stays expressive without feeling flashy or jittery
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`
+  - explicitly not touching the pre-existing unrelated changes in `src/routes/api/community/posts/+server.ts` or the untracked `src/lib/styles/tokens/`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 19:02:00 +0900] FINISH home-webgl-reactivity-retune-20260411 (chatbattle)
+- What changed:
+  - kept the smoothed target-follow pointer model in `src/routes/+page.svelte` but restored stronger visible reaction by increasing glow travel, card tilt, card translation, and pointer ease
+  - raised the home background intensity in `src/components/home/WebGLAsciiBackground.svelte` so the watermark drift, trail response, and overall canvas visibility remain present instead of fading too far into the background
+  - retuned `src/lib/webgl/ascii-trail-shaders.ts` to preserve the calmer mono palette while bringing back more readable ambient alpha, stronger trail chroma, and a clearer mouse-proximate logo glow
+  - refreshed local branch brief/handoff via `npm run ctx:compact -- --docs-check pass --check pass --build pass`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted: `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 19:00:00 +0900] START home-pointer-sensitivity-retune-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - keep the background visibly alive but retune the mouse sensitivity so the home motion feels less twitchy around the center and more naturally amplified across the stage
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/routes/+page.svelte`
+  - explicitly not touching the pre-existing unrelated changes in `src/routes/api/community/posts/+server.ts` or the untracked `src/lib/styles/tokens/`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 19:08:00 +0900] FINISH home-pointer-sensitivity-retune-20260411 (chatbattle)
+- What changed:
+  - kept the home background visually alive and adjusted the pointer input model in `src/routes/+page.svelte` from raw linear mapping to a shaped response curve with a small deadzone, softer center behavior, and stronger edge travel
+  - increased follow easing slightly so the motion remains responsive without snapping too hard on small cursor shifts
+  - nudged the hero glow/card transforms upward so the improved sensitivity model still reads clearly on screen
+  - slightly raised `src/components/home/WebGLAsciiBackground.svelte` canvas intensity and changed trail-size smoothing to separate rise/fall response, which makes the background feel more present while reducing twitchiness
+  - refreshed local branch brief/handoff via `npm run ctx:compact -- --docs-check pass --check pass --build pass`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/routes/+page.svelte`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted: `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 19:02:00 +0900] START home-webgl-color-visibility-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - increase how readable the WebGL color transitions are on the home background without changing the newly tuned pointer sensitivity model
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`
+  - explicitly not touching the pre-existing unrelated changes in `src/routes/api/community/posts/+server.ts` or the untracked `src/lib/styles/tokens/`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 19:04:00 +0900] START home-webgl-brightness-boost-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked path before this task: `src/lib/styles/tokens/`
+- Task summary:
+  - aggressively raise the visible brightness of the home WebGL colors by about three times while keeping the latest pointer sensitivity behavior intact
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`
+  - explicitly not touching the pre-existing unrelated changes in `src/routes/api/community/posts/+server.ts` or the untracked `src/lib/styles/tokens/`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 19:17:00 +0900] FINISH home-webgl-color-visibility-20260411 (chatbattle)
+- What changed:
+  - this pass was folded into the stronger brightness pass on the same surface instead of landing as a separate visual state
+  - the home WebGL background now uses a wider brand palette, stronger ambient color lift, and brighter trail chroma in `src/lib/webgl/ascii-trail-shaders.ts`
+  - the background canvas presentation in `src/components/home/WebGLAsciiBackground.svelte` was raised with higher saturation/brightness so the color shift reads more clearly without changing the pointer model in `src/routes/+page.svelte`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted: `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 19:17:00 +0900] FINISH home-webgl-brightness-boost-20260411 (chatbattle)
+- What changed:
+  - pushed the home WebGL layer substantially brighter while preserving the latest pointer sensitivity tuning in `src/routes/+page.svelte`
+  - increased ambient alpha, trail chroma, and logo glow in `src/lib/webgl/ascii-trail-shaders.ts` so the background color motion reads much more clearly
+  - strengthened the watermark logo specifically by enlarging its canvas coverage, letting it survive slightly more trail activity, and boosting sampled logo contrast/tint so the shape stays visible as a background mark instead of disappearing into the field
+  - refreshed local branch brief/handoff via `npm run ctx:compact`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted: `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked path still left untouched: `src/lib/styles/tokens/`
+
+## [2026-04-11 19:20:00 +0900] START home-logo-dominance-balance-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked paths before this task: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`, `src/lib/styles/tokens/`
+- Task summary:
+  - reduce the background Cogochi logo watermark dominance so the hero headline and glass card remain the primary focus while preserving a subtle embossed background mark
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`
+  - explicitly not touching the pre-existing unrelated changes in `src/routes/api/community/posts/+server.ts` or the untracked `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md` and `src/lib/styles/tokens/`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 19:24:00 +0900] FINISH home-logo-dominance-balance-20260411 (chatbattle)
+- What changed:
+  - reduced the home background logo watermark dominance so it behaves more like an embossed field mark than a foreground object
+  - lowered logo scale and drift in `src/components/home/WebGLAsciiBackground.svelte`, and nudged the watermark placement so it sits less aggressively under the hero focal area
+  - rebalanced the logo branch in `src/lib/webgl/ascii-trail-shaders.ts` by tightening its visibility condition, lowering glow/tint gain, and adding a center quiet zone so the hero headline and glass card remain the first read
+  - refreshed local branch brief/handoff via `npm run ctx:compact`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted: `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked paths still left untouched: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`, `src/lib/styles/tokens/`
+
+## [2026-04-11 19:28:00 +0900] START home-full-reframe-20260411 (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `0b390a335d084d676931f2408cb0ce7d31d67303`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked paths before this task: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`, `src/lib/styles/tokens/`
+- Task summary:
+  - fully redesign the home route around a stronger product-first story, clearer proof framing, and a calmer Apple-like visual hierarchy instead of the current route-explanation-first landing
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/routes/+page.svelte`
+  - may retain the existing background system in `src/components/home/WebGLAsciiBackground.svelte` without broad shader changes unless the new layout requires it
+  - explicitly not touching the pre-existing unrelated changes in `src/routes/api/community/posts/+server.ts` or the untracked `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md` and `src/lib/styles/tokens/`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 20:05:00 +0900] FINISH home-full-reframe-20260411 (chatbattle)
+- What changed:
+  - rewrote the canonical home contract in `docs/COGOCHI.md` so the landing now leads with the learned-you thesis, then the proof mechanism, then the first move instead of route-explanation-first messaging
+  - rebuilt `src/routes/+page.svelte` into a calmer premium landing with a thesis-led hero, one proof panel, a four-step learning loop section, a surfaces section, stronger responsive/mobile stacking, and a real footer that closes the product story cleanly
+  - fixed home scrolling at the app-shell level in `src/routes/+layout.svelte` by allowing the home route to own its own scroll container instead of inheriting the desktop `overflow: hidden` main-content behavior
+  - cleared existing validation blockers required to pass repo gates by restoring the missing Coinalyze funding-history export path (`src/lib/server/providers/coinalyze.ts`, `src/lib/server/coinalyze.ts`) and normalizing DOUNI/research view typing/markup issues in `src/lib/server/douni/toolExecutor.ts` plus the terminal research block components
+  - refreshed local branch brief/handoff via `npm run ctx:compact`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/routes/+page.svelte`, `src/routes/+layout.svelte`, `src/lib/server/providers/coinalyze.ts`, `src/lib/server/coinalyze.ts`, `src/lib/server/douni/toolExecutor.ts`
+  - task also touched the pre-existing untracked terminal research component path while resolving branch validation blockers: `src/components/terminal/research/`
+  - previously modified files from the ongoing mono-home refactor remain in the worktree and were not reverted: `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/contracts/ids.ts`, `src/lib/contracts/index.ts`, `src/lib/server/douni/types.ts`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked paths still left untouched: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`, `src/lib/contracts/researchView.ts`, `src/lib/server/researchView/`, `src/lib/styles/tokens/`
+
+## [2026-04-11 19:20:04 +0900] START W-20260411-1919-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `a8a1b6e18a2381f55a2cb6cfd58496ef63936a57`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/contracts/ids.ts`, `src/lib/contracts/index.ts`, `src/lib/server/douni/toolExecutor.ts`, `src/lib/server/douni/types.ts`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`
+  - carried-over untracked paths before this task: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`, `src/lib/contracts/researchView.ts`, `src/lib/server/researchView/`, `src/lib/styles/tokens/`
+- Task summary:
+  - sweep the repo for current errors and warnings first, including a11y/static checks and route or API runtime failures on the main user surfaces
+- Owned files / overlap check result:
+  - shared dirty worktree confirmed; existing changes were preserved
+  - immediate ownership for this task: `docs/AGENT_WATCH_LOG.md`
+  - any code changes will be limited to the smallest failing surface found during validation
+- Safe status:
+  - `npm run safe:status`: PASS
+
+## [2026-04-11 19:28:12 +0900] FINISH W-20260411-1919-CHATBATTLE-codex (chatbattle)
+- What changed:
+  - fixed home scrolling by moving the home route off the shared fixed-height scroll trap: `src/app.css` now allows page-level vertical scroll, and `src/routes/+layout.svelte` gives `/` a `home-mode` shell with visible overflow and no mobile bottom-nav collision
+  - strengthened the home route in `src/routes/+page.svelte` with better mobile spacing, safer small-screen stacking, and a more useful footer that now includes product signal cards plus direct terminal/onboarding CTAs
+  - connected terminal research chart blocks end-to-end in `src/routes/terminal/+page.svelte`, consuming `research_block` SSE events, rendering them inline via `src/components/terminal/research/ResearchBlockRenderer.svelte`, and supporting right-panel focus inspection with a return-to-price action
+  - filled the active task contract in `docs/task-contracts/active/terminal-chart-block-engine-v1a.md` so the v1-A slice now has explicit scope and finish criteria
+  - refreshed local branch brief/handoff via `npm run ctx:compact`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - not created (`HEAD` remained `9f459c7`)
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `docs/task-contracts/active/terminal-chart-block-engine-v1a.md`, `src/app.css`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/terminal/+page.svelte`
+  - terminal chart-block support touched existing in-flight branch work without reverting it: `src/lib/contracts/ids.ts`, `src/lib/contracts/index.ts`, `src/lib/server/coinalyze.ts`, `src/lib/server/douni/toolExecutor.ts`, `src/lib/server/douni/types.ts`, `src/lib/server/providers/coinalyze.ts`, `src/lib/contracts/researchView.ts`, `src/lib/server/researchView/`, `src/components/terminal/research/`
+  - previously modified files outside this task remained intact: `docs/COGOCHI.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/api/community/posts/+server.ts`
+  - pre-existing untracked paths still not committed: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`, `src/lib/styles/tokens/`
+
+## [2026-04-11 19:31:14 +0900] START W-20260411-1931-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `a8a1b6e18a2381f55a2cb6cfd58496ef63936a57`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - carried-over modified files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/contracts/ids.ts`, `src/lib/contracts/index.ts`, `src/lib/server/coinalyze.ts`, `src/lib/server/douni/toolExecutor.ts`, `src/lib/server/douni/types.ts`, `src/lib/server/providers/coinalyze.ts`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`, `src/routes/terminal/+page.svelte`
+  - carried-over untracked paths before this task: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`, `src/components/terminal/research/`, `src/lib/contracts/researchView.ts`, `src/lib/server/researchView/`, `src/lib/styles/tokens/`
+- Task summary:
+  - implement the next terminal chart-block slice: `heatmap_flow_chart` plus liquidation/orderbook heatmap rendering and inspector support
+- Owned files / overlap check result:
+  - implementation scope: `docs/AGENT_WATCH_LOG.md`, `docs/task-contracts/active/terminal-chart-block-engine-v1a.md`, `src/lib/contracts/researchView.ts`, `src/lib/contracts/index.ts`, `src/lib/server/douni/types.ts`, `src/lib/server/douni/toolExecutor.ts`, `src/lib/server/researchView/`, `src/components/terminal/research/`, `src/routes/terminal/+page.svelte`
+  - shared dirty worktree confirmed; existing home/refactor changes will be preserved and integrated, not reverted
+  - `docs/SYSTEM_INTENT.md` referenced by repo docs is currently absent in this worktree, so routing fell back to `ARCHITECTURE.md`, `docs/README.md`, and the active terminal design doc
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
+
+## [2026-04-11 19:27:51 +0900] FINISH W-20260411-1919-CHATBATTLE-codex (chatbattle)
+- What changed:
+  - swept current repo errors and found three real static issues on the new research block surface: one TypeScript mismatch, one invalid `{@const}` placement, and one a11y warning on interactive markup
+  - fixed `src/lib/server/douni/toolExecutor.ts` by normalizing liquidation side/price/qty into the stricter `ExtendedMarketData.forceOrders` shape
+  - fixed `src/components/terminal/research/DualPaneFlowChartBlock.svelte` by moving the top-series derivation into script scope
+  - fixed `src/components/terminal/research/ResearchBlockRenderer.svelte` by using a real `<button>` for interactive rendering instead of keyboard-activating a plain `<div>`
+  - confirmed primary page routes respond under preview and verified guest API behavior on a fresh preview instance: `/api/community/posts` now returns `200` with empty records while protected endpoints return expected `401`
+  - refreshed local context artifacts and repaired the latest brief so `ctx:check -- --strict` passes
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run check:budget`: PASS (`errors=0 warnings=0`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+  - preview smoke: PASS on `http://127.0.0.1:4181/` for `/`, `/terminal`, `/signals`, `/passport`, `/arena`, `/lab`, `/create`, `/dashboard`, and `/scanner` (`301` to `/terminal`)
+  - preview API smoke: PASS on `http://127.0.0.1:4181/api/community/posts` (`200` empty payload) and expected auth guards on `/api/activity`, `/api/chat/messages`, `/api/notifications`, `/api/preferences` (`401`)
+- Commit hash:
+  - not created
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/lib/server/douni/toolExecutor.ts`, `src/components/terminal/research/DualPaneFlowChartBlock.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - local-only context artifact updated by this task: `.agent-context/briefs/codex-mono-home-refactor-latest.md`
+  - other in-progress branch changes remained in place and were not reverted
+
+## [2026-04-11 19:33:31 +0900] START W-20260411-1933-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/mono-home-refactor`
+- Base `origin/main` hash:
+  - `3e4a914cd30d20c2c1c4fe71278fd35569631633`
+- Working tree status:
+  - `## codex/mono-home-refactor`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `src/app.css`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/contracts/ids.ts`, `src/lib/contracts/index.ts`, `src/lib/server/coinalyze.ts`, `src/lib/server/douni/toolExecutor.ts`, `src/lib/server/douni/types.ts`, `src/lib/server/providers/coinalyze.ts`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/api/community/posts/+server.ts`, `src/routes/terminal/+page.svelte`
+  - untracked before this task: `docs/exec-plans/active/terminal-chart-block-engine-design-2026-04-11.md`, `src/components/terminal/research/DualPaneFlowChartBlock.svelte`, `src/components/terminal/research/InlinePriceChartBlock.svelte`, `src/components/terminal/research/MetricStripBlock.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/lib/contracts/researchView.ts`, `src/lib/server/researchView/buildResearchBlocks.ts`, `src/lib/styles/tokens/primitive.css`
+- Task summary:
+  - validate the current branch as a whole, commit the branch changes intentionally, sync with remote branch state, and push the personal branch
+- Owned files / overlap check result:
+  - acting on the full current branch state at user request; no unrelated changes were reverted
+  - local-only `.agent-context/` remains excluded from git
+- Safe status:
+  - `npm run safe:status`: PASS

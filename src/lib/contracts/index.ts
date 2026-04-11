@@ -119,6 +119,49 @@ export type {
 	TakerRegime
 } from './features';
 
+// Terminal research view blocks — verdict-derived UI contract
+export {
+	ResearchBlockSchemaVersion,
+	CompareWindowKeySchema,
+	MetricUnitSchema,
+	TimePointSchema,
+	CandlePointSchema,
+	CompareWindowSchema,
+	EventMarkerSchema,
+	MetricCompareSchema,
+	MetricStripBlockSchema,
+	InlinePriceChartBlockSchema,
+	FlowSeriesSchema,
+	HeatmapCellSideSchema,
+	HeatmapCellSchema,
+	HeatmapLegendItemSchema,
+	DualPaneFlowChartBlockSchema,
+	HeatmapFlowChartBlockSchema,
+	ResearchBlockSchema,
+	ResearchBlockEnvelopeSchema,
+	parseResearchBlockEnvelope,
+	safeParseResearchBlockEnvelope
+} from './researchView';
+export type {
+	CompareWindowKey,
+	MetricUnit,
+	TimePoint,
+	CandlePoint,
+	CompareWindow,
+	EventMarker,
+	MetricCompare,
+	MetricStripBlock,
+	InlinePriceChartBlock,
+	FlowSeries,
+	HeatmapCellSide,
+	HeatmapCell,
+	HeatmapLegendItem,
+	DualPaneFlowChartBlock,
+	HeatmapFlowChartBlock,
+	ResearchBlock,
+	ResearchBlockEnvelope
+} from './researchView';
+
 // Raw source registry — user-configurable data acquisition layer
 export {
 	RawSourceCadenceSchema,

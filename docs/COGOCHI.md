@@ -628,79 +628,105 @@ active       → /terminal full experience
 
 ## § 16. Home Landing Page (implementation spec)
 
-### Sections (6 + footer, all MacWindow)
+### Current contract
 
-**1. Hero**
+Home is **not** a route explainer and not a game lobby.  
+Its job is to make the product thesis legible in one screen:
 
-- H1 bilingual:
-  - `Watch the market together.`
-  - `너와 네 AI가 같이 본다.`
-- Sub bilingual (2 lines):
-  - `DOUNI가 15 레이어로 스캔하고, 너랑 Terminal에서 같이 본다.`
-  - `네 피드백 20개면 네 전용 LoRA가 나온다. 1회 $0.07.`
-- Primary CTA: `OPEN TERMINAL →` → `/terminal`
-- Secondary CTA: `READ THE PIPELINE →` → `/docs/autoresearch` (serves PIPELINE.md from user's local archive as static route — implementation detail)
-- Center visual: `TerminalMiniPreview.svelte` — framed mini `/terminal` (chart panel + DOUNI chat bubble + scan result card with ✓/✗), static SVG + low-motion CSS, no live fetch
-- Background: 3D `model-viewer` + orbit cards at opacity 0.15
+1. **This AI learns your judgment**
+2. **It proves itself before asking for trust**
+3. **There is a clear first move for a new user and a quiet return path for an existing one**
 
-**2. Core Loop**
+The approved visual direction is:
 
-- Single full-width MacWindow · title `cogochi://loop`
-- 4-node horizontal diagram: `01 Terminal → 02 Feedback → 03 Train → 04 Deploy`
-- Each node: 1-line description + tech badge (`APScheduler · Binance`, `Telegram Bot · Supabase`, `trl · peft · PEFT adapter`, `PEFT swap · val gate`)
-- Return arrow 04 → 01 (closes the loop)
+- mostly black field
+- embossed, low-contrast Cogochi background mark
+- one premium proof panel, not multiple floating cards
+- no 3D logo
+- no floating orbit cards
+- no global market dock on the home route
 
-**3. The Claim**
+### Sections (current approved implementation)
 
-- Single full-width MacWindow · title `cogochi://h1`
-- Paper abstract tone:
-  ```
-  CLAIM        20 feedbacks → 1 LoRA fine-tune → +5%p hit-rate lift
-  BASE MODEL   Qwen2.5-1.5B-Instruct
-  METHOD       KTO (trl) · LoRA r=16, α=32
-  DATA         user feedback (good/bad), no pairing
-  EVAL         FIXED_SCENARIOS · train 160 / val 40
-  DEPLOY GATE  val Δ ≥ +2%p else rollback
-  COST         $0.07 per run · Computalot
-  PRIOR ART    OPPU (EMNLP 2024) · Per-Pcs (EMNLP 2024)
-  ```
-- CTA: `READ THE FULL PIPELINE →`
+**1. Hero — thesis first**
 
-**4. Stack × Kill Criteria**
+- Eyebrow: `COGOTCHI`
+- H1: the strongest single statement on home
+  - Cogochi is the AI that learns how this user judges the market
+- Sub copy:
+  - save a pattern
+  - let the scanner watch while the user is away
+  - judge hits
+  - deploy a better adapter
+- Primary CTA: start as builder
+  - `/onboard?path=builder`
+- Secondary CTA: inspect proof / copier path
+  - `/market`
+- Hero visual:
+  - one device-like proof panel
+  - panel shows the learning loop as evidence, not decoration
+  - examples:
+    - pattern captured
+    - scanner hit
+    - verdict logged
+    - adapter improved / rolled back
+- Background:
+  - black-toned WebGL / ASCII field
+  - large but quiet Cogochi logo watermark
+  - motion stays low and ambient, never dominant
+- Supporting data rail:
+  - short proof claims
+  - per-user adapter
+  - proof-before-trust
+  - rollback if worse
+- Entry chooser:
+  - builder and copier stay visible above the fold
+  - existing-user actions stay secondary and text-level
 
-- 2 MacWindow grid
-- Left `cogochi://stack`: Python 3.12 · Qwen2.5-1.5B · trl · peft · Supabase · APScheduler · Binance · Telegram · Computalot · Together.ai fallback · mlx-lm · transformers+peft
-- Right `cogochi://kill-criteria`: H1 FAIL / FEEDBACK DRY / DEPLOY GATE / REGRESSION with exact thresholds
+**2. Learning Loop**
 
-**5. Pricing**
+- First scroll section appears quickly after hero; avoid a large dead gap
+- 4-step sequence:
+  - `01 Capture`
+  - `02 Scan`
+  - `03 Judge`
+  - `04 Deploy`
+- Purpose:
+  - explain the product mechanism, not just the route map
+  - show how judgment turns into infrastructure
+  - make the H1 claim feel operational instead of abstract
 
-- 2 MacWindow grid
-- Left `cogochi://free`: 3 patterns · 5 symbols · 3 sessions/day · 1 AutoResearch/mo
-- Right `cogochi://pro`: ∞ patterns · all symbols · ∞ sessions · weekly AutoResearch + manual LoRA · Telegram alerts · **gold accent border**
+**3. Surfaces**
 
-**6. Alpha Access**
+- 3-card grid with crisp role language:
+  - `Terminal` — where the user sees and judges signals
+  - `Lab` — where the model improves and gets evaluated
+  - `Agent` — where doctrine, memory, and record persist
+- This section is for orientation only; it must not overpower the hero
 
-- Small MacWindow · title `cogochi://alpha`
-- Body: "Closed Alpha · limited seats · You bring: Telegram + 3–5 patterns · You get: per-user LoRA adapter in ~2 weeks"
-- Form: email → POST `/api/waitlist` (exists)
+### Layout rules
 
-**7. Phase 2/3 footer strip**
+- Desktop hero: left thesis + right proof panel
+- Tablet/mobile hero: stack vertically, copy first
+- The first content section must start within one natural scroll from hero
+- Home must feel quieter than `/terminal`
+- Accent color can appear as a restrained signal line, not as a page wash
+- The logo watermark should read like an embossed background mark, not a foreground object
+- Typography should do most of the work; cards support the message rather than carrying it alone
+- If something competes with the H1 for attention, remove or weaken it
 
-- `Phase 2 · Verified adapters rent on the market. 15% take rate, no subscription.`
-- `Phase 3 · Historical ERA battles plug into the same LoRA pipeline. HP, Memory Cards, character moments.`
+### Content rules
 
-### MacWindow component contract
+- Home speaks in product truth, then mechanism, then route
+- Avoid long research explanations, jargon blocks, or feature inventories
+- Avoid using Terminal as the hero CTA
+- Builder and Copier should both remain visible above the fold
+- Existing-user return paths should exist, but stay visually secondary
+- Copy should feel assured, compressed, and premium. No hype phrasing and no dashboard-ish labels as hero copy
 
-```typescript
-// src/components/home/MacWindow.svelte (next PR)
-interface Props {
-  title: string;               // "cogochi://terminal"
-  status?: 'live' | 'idle';    // top-right dot
-  accent?: 'neutral' | 'gold' | 'sage';
-  children: Snippet;
-}
-// background: rgba(10,13,20,0.72); backdrop-filter: blur(40px) saturate(1.2);
-```
+### Future extension note
+
+- If pricing / claim / waitlist sections return later, they should be reintroduced under the same black mono system and must not override the thesis + proof + first move structure
 
 ### Shader tuning (exact numbers)
 
