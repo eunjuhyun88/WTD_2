@@ -21,7 +21,13 @@
     walletIntelApiPath,
     walletDeepLink,
   } from '$lib/wallet-intel/walletIntelController';
-  import type { WalletIntelDataset, WalletIntelTab, WalletModeInput } from '$lib/wallet-intel/walletIntelTypes';
+  import type {
+    WalletIntelApiMeta,
+    WalletIntelApiResult,
+    WalletIntelDataset,
+    WalletIntelTab,
+    WalletModeInput,
+  } from '$lib/wallet-intel/walletIntelTypes';
 
   // ─── Types ────────────────────────────────────────────────
   type MessageType =
@@ -973,16 +979,63 @@
     focusedResearchBlock = null;
   }
 
-  async function loadWalletIntelDataset(input: WalletModeInput): Promise<WalletIntelDataset> {
+  function formatWalletIntelMetaNote(meta: WalletIntelApiResult['meta']): string {
+    const sourceLabel = meta.source === 'etherscan' ? 'raw-backed' : 'synthetic fallback';
+    return `${sourceLabel} · ${meta.reason} · ${meta.detail}`;
+  }
+
+  function normalizeWalletIntelMeta(meta: unknown): WalletIntelApiMeta {
+    if (
+      meta &&
+      typeof meta === 'object' &&
+      'source' in meta &&
+      'reason' in meta &&
+      'detail' in meta &&
+      typeof meta.source === 'string' &&
+      typeof meta.reason === 'string' &&
+      typeof meta.detail === 'string'
+    ) {
+      return meta as WalletIntelApiMeta;
+    }
+
+    return {
+      source: 'synthetic',
+      reason: 'local_api_fallback',
+      detail: 'wallet-intel response did not include provider metadata, so terminal used local deterministic scaffolding.',
+    };
+  }
+
+  async function loadWalletIntelDataset(input: WalletModeInput): Promise<WalletIntelApiResult> {
     try {
       const response = await fetch(walletIntelApiPath(input));
-      if (!response.ok) throw new Error(`wallet intel http ${response.status}`);
       const payload = await response.json();
-      if (!payload?.ok || !payload?.data) throw new Error('invalid wallet intel payload');
-      return payload.data as WalletIntelDataset;
+      const meta = normalizeWalletIntelMeta(payload?.meta);
+
+      if (!response.ok) {
+        return {
+          data: buildWalletIntelDataset(input),
+          meta,
+        };
+      }
+
+      if (!payload?.ok || !payload?.data) {
+        throw new Error('invalid wallet intel payload');
+      }
+
+      return {
+        data: payload.data as WalletIntelDataset,
+        meta,
+      };
     } catch (error) {
       console.error('[terminal] wallet intel api fallback:', error);
-      return buildWalletIntelDataset(input);
+      return {
+        data: buildWalletIntelDataset(input),
+        meta: {
+          source: 'synthetic',
+          reason: 'local_api_fallback',
+          detail: 'terminal could not read /api/wallet/intel, so it fell back to local deterministic scaffolding.',
+        },
+      };
     }
   }
 
@@ -990,14 +1043,17 @@
     nextInput: WalletModeInput,
     options: { updateUrl?: boolean; note?: string } = {}
   ) {
-    const dataset = await loadWalletIntelDataset(nextInput);
+    const result = await loadWalletIntelDataset(nextInput);
+    const dataset = result.data;
     walletInput = nextInput;
     walletDataset = dataset;
     walletMode = true;
     walletSelectedTab = 'flow';
     walletSelectedNodeId = dataset.flowLayers[0]?.id ?? dataset.graph.nodes[0]?.id ?? '';
     walletSelectedTokenSymbol = dataset.market.tokens[0]?.symbol ?? '';
-    walletCommandNote = options.note ?? `${nextInput.identifier} wallet context loaded.`;
+    walletCommandNote = options.note
+      ? `${options.note} ${formatWalletIntelMetaNote(result.meta)}`
+      : `${nextInput.identifier} wallet context loaded. ${formatWalletIntelMetaNote(result.meta)}`;
     walletDossierHref = buildPassportWalletLink(nextInput.chain, nextInput.identifier);
     focusedResearchBlock = null;
 

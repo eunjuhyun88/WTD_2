@@ -10248,24 +10248,123 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `## codex/home-visualization-analysis`
   - modified/untracked branch work remains in place, including prior wallet-intel/passport/chart/docs edits plus the new provider-backed wallet intel server files
 
-## [2026-04-11 23:45:00 +0900] START W-20260411-2345-CHATBATTLE-codex (CHATBATTLE)
+## [2026-04-11 23:33:00 +0900] START W-20260411-2333-CHATBATTLE-codex (chatbattle)
 - Repo path:
   - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
 - Branch:
-  - `detached HEAD` in `safe:status`
-  - prior branch context from `git status --short --branch`: `codex/home-visualization-analysis`
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `7b34d4e8b541691987449b307971268787b13dfa`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - clean before this task
+- Task summary:
+  - merge PR #30 into `main` and start the local server after resolving any merge or CI blockers
+- Owned files / overlap check result:
+  - acting on current personal branch and clean `main` worktree for post-merge validation per repo policy
+  - no unrelated local edits present at task start
+- Safe status:
+  - `npm run safe:status`: PASS
+  - PR #30 status at start: `OPEN`, `mergeable=CONFLICTING`, CI `Context Gate` failed
+
+## [2026-04-11 23:39:00 +0900] START W-20260411-2339-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
   - `0819216fecc050df325e81ff60d7dbdf754c0d38`
 - Working tree status:
-  - unresolved conflicts already present before this task: `docs/COGOCHI.md`, `src/routes/terminal/+page.svelte`
-  - additional modified/untracked files already present across docs, wallet-intel, passport wallet dossier, terminal, cogochi, and server layers
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/lib/server/etherscan.ts`, `src/lib/server/walletIntelServer.ts`, `src/lib/wallet-intel/walletIntelTypes.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/terminal/+page.svelte`
 - Task summary:
-  - review the current product/navigation structure and produce a UI/UX-driven restructuring brief grounded in the current docs and route implementation
+  - surface wallet-intel provider source and fallback reason through `/api/wallet/intel` and `/terminal`, so runtime failures are distinguishable from synthetic scaffolding by design
 - Owned files / overlap check result:
-  - no product code ownership claimed in this task
-  - analysis is read-only except for watch-log/checkpoint discipline
-  - user changes and conflicted files will not be edited or resolved in this task
+  - scoped to wallet-intel API and terminal loader paths only
+  - existing dirty files are preserved; no unrelated edits will be reverted
 - Safe status:
-  - `npm run safe:status`: PASS with detached-HEAD warning and existing merge conflicts
+  - `npm run safe:status`: PASS
+
+## [2026-04-11 23:46:00 +0900] FINISH W-20260411-2339-CHATBATTLE-codex (chatbattle)
+- What changed:
+  - updated `src/routes/api/wallet/intel/+server.ts` to return explicit `ok: false` error payloads while preserving provider meta
+  - updated `src/routes/terminal/+page.svelte` so non-200 wallet-intel responses still surface `source / reason / detail` instead of being overwritten by a generic local fallback reason
+  - recorded this provider-debug pass in the watch log and refreshed branch brief/handoff via `npm run ctx:compact`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+  - runtime smoke:
+    - `npm run dev -- --host 127.0.0.1 --port 4179` → served on `http://127.0.0.1:4182`
+    - `curl /api/wallet/intel?...` → `meta.source=synthetic`, `meta.reason=missing_key`
+    - `npm run dev -- --mode production --host 127.0.0.1 --port 4183`
+    - `curl /api/wallet/intel?...` → `meta.source=synthetic`, `meta.reason=missing_key`
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `c4a7da16c79601b9eec4ff5be0d485fbb6ac334b`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified at finish: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/lib/server/etherscan.ts`, `src/lib/server/walletIntelServer.ts`, `src/lib/wallet-intel/walletIntelTypes.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/terminal/+page.svelte`
+
+## [2026-04-11 23:41:00 +0900] START W-20260411-2341-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `0819216fecc050df325e81ff60d7dbdf754c0d38`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/lib/server/etherscan.ts`, `src/lib/server/walletIntelServer.ts`, `src/lib/wallet-intel/walletIntelTypes.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/terminal/+page.svelte`
+- Task summary:
+  - inject a local-only `ETHERSCAN_API_KEY` for dev runtime and verify wallet-intel exits the `missing_key` fallback path
+- Owned files / overlap check result:
+  - local env file only plus watch log
+  - existing source edits remain untouched
+- Safe status:
+  - `npm run safe:status`: PASS
+
+## [2026-04-11 23:52:00 +0900] FINISH W-20260411-2341-CHATBATTLE-codex (chatbattle)
+- What changed:
+  - added local-only `.env.local` with `ETHERSCAN_API_KEY` so `npm run dev` can see the provider key without touching tracked env files
+  - re-verified wallet-intel runtime path after env injection
+  - refreshed local brief quality so `ctx:check -- --strict` passes again
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+  - runtime smoke:
+    - `curl http://127.0.0.1:4182/api/wallet/intel?...` before local env injection → `meta.reason=missing_key`
+    - `curl http://127.0.0.1:4184/api/wallet/intel?...` after local env injection → `meta.reason=upstream_unavailable`
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `c4a7da16c79601b9eec4ff5be0d485fbb6ac334b`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified at finish: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/lib/server/etherscan.ts`, `src/lib/server/walletIntelServer.ts`, `src/lib/wallet-intel/walletIntelTypes.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/terminal/+page.svelte`
+  - local-only env present: `.env.local`
+
+## [2026-04-11 23:45:05 +0900] START W-20260411-2354-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `0819216fecc050df325e81ff60d7dbdf754c0d38`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/lib/server/etherscan.ts`, `src/lib/server/walletIntelServer.ts`, `src/lib/wallet-intel/walletIntelTypes.ts`, `src/routes/+layout.svelte`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/terminal/+page.svelte`
+- Task summary:
+  - commit the current branch state, sync it with remote, merge into `main`, and push validated results
+- Owned files / overlap check result:
+  - acting on the current personal branch state as requested
+  - local-only `.env.local` remains excluded from git
+- Safe status:
+  - `npm run safe:status`: PASS
   - `npm run safe:hooks`: PASS
-  - `npm run safe:sync`: FAIL because the working tree was already dirty/conflicted before this task

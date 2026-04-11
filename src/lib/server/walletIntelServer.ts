@@ -4,6 +4,8 @@ import {
 } from '$lib/wallet-intel/walletIntelController';
 import type {
   WalletActionKind,
+  WalletIntelApiMeta,
+  WalletIntelApiResult,
   WalletBehavior,
   WalletCluster,
   WalletEvidenceRow,
@@ -20,6 +22,7 @@ import type {
 import {
   fetchNormalTxList,
   fetchTokenTxList,
+  hasEtherscanApiKey,
   type EtherscanNormalTx,
   type EtherscanTokenTx,
 } from './etherscan';
@@ -140,17 +143,66 @@ const KNOWN_COUNTERPARTIES: Record<string, KnownCounterparty> = {
 
 export async function buildWalletIntelServerDataset(
   input: WalletModeInput
-): Promise<WalletIntelDataset> {
+): Promise<WalletIntelApiResult> {
   const base = buildWalletIntelDataset(input);
-  if (input.chain.toLowerCase() !== 'eth') return base;
+  if (input.chain.toLowerCase() !== 'eth') {
+    return {
+      data: base,
+      meta: {
+        source: 'synthetic',
+        reason: 'unsupported_chain',
+        detail: `wallet-intel provider backfill is currently limited to ETH; ${input.chain.toUpperCase()} used synthetic scaffolding.`,
+      },
+    };
+  }
+
+  if (!hasEtherscanApiKey()) {
+    return {
+      data: base,
+      meta: {
+        source: 'synthetic',
+        reason: 'missing_key',
+        detail: 'ETHERSCAN_API_KEY was not available at runtime, so wallet-intel returned synthetic scaffolding.',
+      },
+    };
+  }
 
   const [normalTxs, tokenTxs] = await Promise.all([
     fetchNormalTxList(input.address),
     fetchTokenTxList(input.address),
   ]);
 
+  if (normalTxs === null && tokenTxs === null) {
+    return {
+      data: base,
+      meta: {
+        source: 'synthetic',
+        reason: 'upstream_unavailable',
+        detail: 'Etherscan fetch failed or returned no usable response, so wallet-intel fell back to synthetic scaffolding.',
+      },
+    };
+  }
+
   const merged = mergeEtherscanBackfill(base, input, normalTxs ?? [], tokenTxs ?? []);
-  return merged ?? base;
+  if (!merged) {
+    return {
+      data: base,
+      meta: {
+        source: 'synthetic',
+        reason: 'empty_activity',
+        detail: 'Etherscan responded but no usable recent address activity was derived, so wallet-intel kept synthetic scaffolding.',
+      },
+    };
+  }
+
+  return {
+    data: merged,
+    meta: {
+      source: 'etherscan',
+      reason: 'etherscan_backfill',
+      detail: `wallet-intel used Etherscan-backed address activity to replace summary, evidence, graph, and flow hints.`,
+    },
+  };
 }
 
 function mergeEtherscanBackfill(

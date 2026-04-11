@@ -169,10 +169,6 @@
     { key: 'extremeFR', short: 'FR', value: bucketNum(bucket.extremeFR), meta: 'hot', tone: 'var(--sc-warn)' }
   ]);
 
-  const stripItems = $derived([
-    ...thermoChips.map((chip) => ({ ...chip, group: 'thermo' })),
-    ...bucketChips.map((chip) => ({ ...chip, group: 'breadth' }))
-  ]);
 </script>
 
 <aside class="market-dock" aria-label="Global market pulse">
@@ -181,18 +177,35 @@
       <span class="dock-dot" aria-hidden="true"></span>
       <span class="dock-title">Market Pulse</span>
     </div>
-    <span class="dock-copy">macro + breadth</span>
+    <span class="dock-copy">quiet global context</span>
   </div>
 
-  <div class="strip-row">
-    {#each stripItems as chip}
-      <div class="chip" style={`--chip-tone:${chip.tone}`}>
-        <span class="chip-group">{chip.group === 'thermo' ? 'T' : 'B'}</span>
-        <span class="chip-key">{chip.short}</span>
-        <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
-        <span class="chip-meta">{chip.meta}</span>
+  <div class="dock-body">
+    <div class="dock-group">
+      <span class="group-label">Thermo</span>
+      <div class="chip-row">
+        {#each thermoChips as chip}
+          <div class="chip" style={`--chip-tone:${chip.tone}`}>
+            <span class="chip-key">{chip.short}</span>
+            <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
+            <span class="chip-meta">{chip.meta}</span>
+          </div>
+        {/each}
       </div>
-    {/each}
+    </div>
+
+    <div class="dock-group">
+      <span class="group-label">Breadth</span>
+      <div class="chip-row">
+        {#each bucketChips as chip}
+          <div class="chip" style={`--chip-tone:${chip.tone}`}>
+            <span class="chip-key">{chip.short}</span>
+            <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
+            <span class="chip-meta">{chip.meta}</span>
+          </div>
+        {/each}
+      </div>
+    </div>
   </div>
 </aside>
 
@@ -200,28 +213,28 @@
   .market-dock {
     position: relative;
     width: 100%;
-    padding: 6px 10px;
+    max-width: 100%;
+    padding: 8px 10px;
     display: flex;
-    align-items: center;
-    gap: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 12px;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
     background:
-      linear-gradient(180deg, rgba(10, 10, 10, 0.9), rgba(5, 5, 5, 0.84)),
-      radial-gradient(circle at top right, rgba(219, 154, 159, 0.08), transparent 30%);
-    backdrop-filter: blur(16px) saturate(1.04);
-    -webkit-backdrop-filter: blur(16px) saturate(1.04);
+      linear-gradient(180deg, rgba(10, 10, 10, 0.82), rgba(0, 0, 0, 0.78)),
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.08), transparent 28%);
+    backdrop-filter: blur(18px) saturate(1.04);
+    -webkit-backdrop-filter: blur(18px) saturate(1.04);
     box-shadow:
-      0 8px 24px rgba(0, 0, 0, 0.18),
+      0 10px 24px rgba(0, 0, 0, 0.22),
       inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    overflow: hidden;
   }
 
   .dock-head {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
-    flex: 0 0 auto;
   }
 
   .dock-title-wrap {
@@ -242,7 +255,7 @@
 
   .dock-title {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.1em;
     color: var(--sc-text-0);
   }
@@ -256,7 +269,49 @@
     white-space: nowrap;
   }
 
-  .strip-row {
+  .dock-body {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .dock-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .group-label {
+    width: 50px;
+    flex: 0 0 auto;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(219, 154, 159, 0.72);
+    text-transform: uppercase;
+  }
+
+  .chip {
+    --chip-tone: var(--sc-accent);
+    min-width: 0;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 5px 9px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.012)),
+      linear-gradient(180deg, color-mix(in srgb, var(--chip-tone) 9%, transparent), transparent 82%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    white-space: nowrap;
+  }
+
+  .chip-row {
     flex: 1 1 auto;
     min-width: 0;
     display: flex;
@@ -266,33 +321,8 @@
     scrollbar-width: none;
   }
 
-  .strip-row::-webkit-scrollbar {
+  .chip-row::-webkit-scrollbar {
     display: none;
-  }
-
-  .chip {
-    --chip-tone: var(--sc-accent);
-    min-width: 0;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    padding: 4px 8px 5px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 999px;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.012)),
-      linear-gradient(180deg, color-mix(in srgb, var(--chip-tone) 8%, transparent), transparent 82%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    white-space: nowrap;
-  }
-
-  .chip-group {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    color: rgba(219, 154, 159, 0.68);
-    text-transform: uppercase;
   }
 
   .chip-key {
@@ -306,7 +336,7 @@
 
   .chip-value {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1;
     color: var(--sc-text-0);
@@ -323,14 +353,14 @@
 
   @media (max-width: 1200px) {
     .market-dock {
-      gap: 10px;
+      width: 100%;
     }
   }
 
   @media (max-width: 768px) {
-    .market-dock {
-      padding: 5px 8px;
-      gap: 8px;
+    .dock-body {
+      flex-direction: column;
+      align-items: stretch;
     }
 
     .dock-head {
@@ -338,25 +368,31 @@
     }
 
     .dock-title {
-      font-size: 13px;
+      font-size: 11px;
     }
 
     .dock-copy {
       display: none;
     }
 
-    .chip {
+    .dock-group {
+      flex-direction: column;
+      align-items: stretch;
       gap: 5px;
-      padding: 4px 7px;
+    }
+
+    .chip {
+      padding: 5px 8px;
+      gap: 5px;
     }
 
     .chip-value {
-      font-size: 10px;
+      font-size: 11px;
     }
 
     .chip-meta,
     .chip-key,
-    .chip-group {
+    .group-label {
       font-size: 8px;
     }
   }

@@ -13,6 +13,10 @@ function apiKey(): string {
   return env.ETHERSCAN_API_KEY ?? '';
 }
 
+export function hasEtherscanApiKey(): boolean {
+  return Boolean(apiKey());
+}
+
 async function etherscanFetch<T>(
   module: string,
   action: string,

@@ -2,6 +2,15 @@ export type WalletIntelTab = 'flow' | 'bubble' | 'cluster';
 export type WalletTone = 'bull' | 'bear' | 'neutral' | 'warn' | 'cyan';
 export type WalletNodeType = 'wallet' | 'token' | 'contract' | 'cex' | 'bridge' | 'cluster';
 export type WalletActionKind = 'watch' | 'follow' | 'fade' | 'ignore';
+export type WalletIntelSource = 'etherscan' | 'synthetic';
+export type WalletIntelReason =
+  | 'etherscan_backfill'
+  | 'unsupported_chain'
+  | 'missing_key'
+  | 'upstream_unavailable'
+  | 'empty_activity'
+  | 'api_failed'
+  | 'local_api_fallback';
 
 export type WalletChartBar = {
   t: number;
@@ -183,4 +192,15 @@ export type WalletCommandResult = {
   tokenSymbol?: string;
   nextInput?: WalletModeInput;
   exit?: boolean;
+};
+
+export type WalletIntelApiMeta = {
+  source: WalletIntelSource;
+  reason: WalletIntelReason;
+  detail: string;
+};
+
+export type WalletIntelApiResult = {
+  data: WalletIntelDataset;
+  meta: WalletIntelApiMeta;
 };

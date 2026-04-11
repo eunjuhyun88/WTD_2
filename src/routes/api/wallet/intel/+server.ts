@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { normalizeWalletModeInput } from '$lib/wallet-intel/walletIntelController';
+import type { WalletIntelApiMeta } from '$lib/wallet-intel/walletIntelTypes';
 import { buildWalletIntelServerDataset } from '$lib/server/walletIntelServer';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -8,16 +9,17 @@ export const GET: RequestHandler = async ({ url }) => {
   const chain = (url.searchParams.get('chain') || 'eth').trim();
 
   if (!address) {
-    return json({ error: 'address is required' }, { status: 400 });
+    return json({ ok: false, error: 'address is required' }, { status: 400 });
   }
 
   try {
     const input = normalizeWalletModeInput(address, chain);
-    const data = await buildWalletIntelServerDataset(input);
+    const result = await buildWalletIntelServerDataset(input);
     return json(
       {
         ok: true,
-        data,
+        data: result.data,
+        meta: result.meta,
       },
       {
         headers: {
@@ -27,6 +29,17 @@ export const GET: RequestHandler = async ({ url }) => {
     );
   } catch (error) {
     console.error('[wallet/intel] failed:', error);
-    return json({ error: 'failed to build wallet intel dataset' }, { status: 500 });
+    return json(
+      {
+        ok: false,
+        error: 'failed to build wallet intel dataset',
+        meta: {
+          source: 'synthetic',
+          reason: 'api_failed',
+          detail: 'wallet-intel API failed before provider resolution completed.',
+        } satisfies WalletIntelApiMeta,
+      },
+      { status: 500 }
+    );
   }
 };
