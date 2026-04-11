@@ -70,6 +70,19 @@ export interface L2Result {
   price_change: number;
   score: number;             // ±55
   detail: string;
+  /**
+   * Typed flow events emitted by `computeL2`. Populated in E3a of the
+   * harness engine integration plan. Each entry is a validated
+   * `EventPayload` from `src/lib/contracts/events.ts` with its
+   * discriminated `id` naming the specific event (e.g.
+   * `event.flow.fr_extreme_negative`). Empty array when no event
+   * thresholds fired.
+   *
+   * The field is optional so pre-E3a callers that build `L2Result`
+   * objects by hand (tests, fixtures) don't break. Production code
+   * should treat `undefined` and `[]` as equivalent.
+   */
+  events?: ReadonlyArray<import('../../contracts/events.ts').EventPayload>;
 }
 
 export interface L3Result {
