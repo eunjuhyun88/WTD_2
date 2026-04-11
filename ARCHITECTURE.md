@@ -1,69 +1,33 @@
-# STOCKCLAW Frontend Architecture Map
+# Architecture
 
-Purpose:
-- Top-level map for humans and agents.
-- Use this file to choose the next canonical doc before large structural work.
+This file is a thin entry point. For the canonical repo layout, boundaries, and product→code mapping, open **[`docs/COGOCHI.md § 20`](./docs/COGOCHI.md#§-20-appendix--repo-layout--boundaries)**.
 
-## Read Order
+## 30-second overview
 
-1. `README.md`
-2. `AGENTS.md`
-3. `docs/README.md`
-4. `docs/CONTEXT_ENGINEERING.md`
-5. `docs/SYSTEM_INTENT.md`
-6. `docs/MULTI_AGENT_MEMORY.md`
-7. `ARCHITECTURE.md`
-8. Relevant docs from `docs/DESIGN.md`, `docs/FRONTEND.md`, `docs/PLANS.md`
+Cogochi is a **monorepo** containing two coupled surfaces:
 
-## System Map
+```
+src/          SvelteKit 2 full-stack frontend + API layer
+cogochi/      Python AutoResearch service (KTO + LoRA, per-user adapters)
+```
 
-`Product intent -> route surfaces -> client state -> API contracts -> server modules -> DB/migrations`
+The frontend calls the Python service via HTTP routes under `src/routes/api/autoresearch/` and via a Supabase database shared between both. See `docs/COGOCHI.md § 10 AutoResearch Pipeline` for how the Python layer is structured and which functions (`build_orpo_pair`, `BattleContext`, `guardian_veto`) are currently in the repo vs still to be built.
 
-### Route surfaces
-- `Home`: positioning, onboarding, first action routing
-- `Create Agent`: first-run mint + AI bind + starter setup
-- `Terminal`: brain console, doctrine, validation, world readiness
-- `World`: BTC-history map and traversal state
-- `Battle`: structured whale encounter loop
-- `Agent`: growth, record, trainer card, share, rental state
+## Where things live
 
-Implementation bridge:
-- `/create` and `/world` are target routes, `/arena` is the current `Battle` shell, `/lab` + `/passport` merge into `Agent`, and `/signals` stays secondary.
+- **Product truth** — `docs/COGOCHI.md` (single file)
+- **Operational / infra routing** — `docs/{DESIGN,FRONTEND,PLANS,SECURITY,RELIABILITY,QUALITY_SCORE}.md`
+- **Agent discipline** — `docs/AGENT_*.md`, `docs/MULTI_AGENT_*.md`, `docs/CONTEXT_*.md`
+- **Frontend code** — `src/routes/`, `src/components/`, `src/lib/`
+- **Python AutoResearch** — `cogochi/*.py`
+- **v3 historical archive** (outside git) — `~/Downloads/기타_문서/cogochi-v3-archive-2026-04-11/`
 
-### Client authority
-- Live market truth stays in `priceStore`; route stores own transient flow state only.
+## Read order for new sessions
 
-### Server authority
-- Auth, profile, badges, quick trades, tracked signals, persistence, and learning data stay server-authoritative and repo-local.
+1. `README.md` (collaboration SSOT)
+2. `AGENTS.md` (execution rules)
+3. `docs/COGOCHI.md` (product truth — read this once, referenced often)
+4. `docs/README.md` (what else is in docs/)
+5. This file (for the repo layout overview)
 
-## Non-Negotiable Boundaries
-
-1. `frontend/` is the canonical implementation target.
-2. `docs/archive/` is not current authority.
-3. Product intent must be readable from repo-local markdown.
-4. Stable rules belong in canonical docs or scripts, not only watch logs.
-5. The agent should be able to start with a small map and progressively disclose detail.
-
-## Canonical Doc Entry Points
-
-- Design and architecture: `docs/DESIGN.md`
-- Context loading and resume policy: `docs/CONTEXT_ENGINEERING.md`
-- Route/page behavior: `docs/page-specs/index.md`
-- Frontend route/state ownership: `docs/FRONTEND.md`
-- Product rules and user-value constraints: `docs/PRODUCT_SENSE.md`
-- Current plans and execution flow: `docs/PLANS.md`
-- Quality grades and drift: `docs/QUALITY_SCORE.md`
-- Reliability boundaries: `docs/RELIABILITY.md`
-- Security boundaries: `docs/SECURITY.md`
-
-## When To Go Deeper
-
-- Need system or handoff context: open `docs/SYSTEM_INTENT.md` or `docs/MULTI_AGENT_MEMORY.md`.
-- Need context loading rules: open `docs/CONTEXT_ENGINEERING.md`, then `docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md`.
-- Need route or state ownership: open `docs/page-specs/index.md` or `docs/FRONTEND.md`.
-- Need the structural refactor baseline: open `docs/references/active/FRONTEND_REFACTOR_EXECUTION_DESIGN_2026-03-06.md`.
-- Need cutover order: open `docs/exec-plans/active/frontend-backend-separation-plan-2026-03-07.md`.
-- Need Arena semantics: open `docs/product-specs/arena.md`, `docs/design-docs/arena-domain-model.md`, and `docs/design-docs/learning-loop.md`.
-- Need a primary surface contract: open the relevant `docs/product-specs/*.md` and `docs/page-specs/*.md` from `docs/README.md`.
-- Need secondary route behavior: open the relevant page spec under `docs/page-specs/`.
-- Need plan status: open `docs/PLANS.md` and `docs/exec-plans/index.md`.
+If the task is purely operational, skip step 3 and read the relevant `docs/*.md` operational doc instead.

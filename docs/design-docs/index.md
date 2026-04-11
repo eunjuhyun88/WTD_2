@@ -1,23 +1,16 @@
 # Design Docs Index
 
-Purpose:
-- Catalog major design documents and clarify their status.
+**Canonical product doc:** [`../COGOCHI.md`](../COGOCHI.md) — single source of truth. Read that first for product thesis, surfaces, pipeline, data contracts, pricing, kill criteria, home landing spec, and phase 2/3 roadmap.
 
-| Doc | Status | Use when | Notes |
-| --- | --- | --- | --- |
-| `docs/SYSTEM_INTENT.md` | active canonical | you need product thesis and invariants | Start here first. |
-| `docs/design-docs/cogochi-uiux-architecture.md` | active canonical | you need the official Cogochi IA, page structure, and route priorities | Current official design authority for the shipped direction. |
-| `docs/design-docs/six-surface-game-loop.md` | superseded reference | you need the older six-surface target or migration history | Historical authority only; do not treat as the current IA. |
-| `docs/design-docs/six-surface-ux-contract.md` | superseded reference | you need the older six-surface CTA/nav contract | Historical reference only. |
-| `docs/design-docs/unified-product-model.md` | active canonical | you need the merged StockClaw + Cogochi product loops and object model | Character, Lab, Market, Passport alignment lives here. |
-| `docs/design-docs/core-beliefs.md` | active canonical | you need agent-first working principles | Stable operating beliefs. |
-| `docs/design-docs/arena-domain-model.md` | active canonical | you need Arena/Arena War domain semantics | Local replacement for common upstream lookups. |
-| `docs/design-docs/learning-loop.md` | active canonical | you need ORPO/RAG/Passport learning semantics | Local replacement for common upstream lookups. |
-| `docs/DESIGN.md` | active canonical | you need design routing | Entry point. |
-| `docs/references/active/FRONTEND_REFACTOR_EXECUTION_DESIGN_2026-03-06.md` | active working design | structural refactor work | Current baseline. |
-| `docs/archive/historical/root-cleanup-2026-03-17/overall-architecture-design.md` | historical reference | you need older broad rationale | Do not treat as newest authority. |
-| `../STOCKCLAW_UNIFIED_DESIGN.md` | upstream deep reference | you need edge-case product semantics not yet localized | Prefer local canonical docs first. |
+## Files in this folder
 
-Rule:
-- If a dated working design becomes durable, summarize its stable parts into canonical docs.
-- If an older canonical doc is replaced, mark it as superseded here instead of letting both read as current authority.
+| File | Status | Use when |
+|---|---|---|
+| [`core-beliefs.md`](./core-beliefs.md) | **active canonical** | You need stable agent-first working principles. Product-neutral. |
+| `index.md` | this file | Routing pointer. |
+
+Everything else that used to be in this folder (`cogochi-uiux-architecture.md`, `unified-product-model.md`, `learning-loop.md`, `six-surface-game-loop.md`, `six-surface-ux-contract.md`, `arena-domain-model.md`, `fusion-architecture-v1.md`, `alpha-flow-terminal-uiux.md`) was **v3 product canonical** and has been consolidated into `docs/COGOCHI.md` on 2026-04-11. The originals live in `~/Downloads/기타_문서/cogochi-v3-archive-2026-04-11/design-docs/` for historical reference only.
+
+## Rule
+
+New product design thinking goes into `docs/COGOCHI.md` — edit in place. Do not create new files in this folder unless they are product-neutral stable principles (like `core-beliefs.md`).

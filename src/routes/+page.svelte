@@ -4,79 +4,134 @@
   import WebGLAsciiBackground from '../components/home/WebGLAsciiBackground.svelte';
   import { trackHomeFunnel } from '../components/home/homeData';
 
-  const orbitCards = [
-    { src: '/cogochi/chart-tools/scanner-grid.svg', title: 'Scanner', angle: 20, dist: 300, size: 100 },
-    { src: '/cogochi/chart-tools/breakout-arrow.svg', title: 'Breakout', angle: 80, dist: 315, size: 84 },
-    { src: '/cogochi/chart-tools/trend-map.svg', title: 'Trend Map', angle: 140, dist: 290, size: 96 },
-    { src: '/cogochi/chart-tools/vwap-band.svg', title: 'VWAP', angle: 200, dist: 310, size: 88 },
-    { src: '/cogochi/chart-tools/risk-ratio.svg', title: 'Risk', angle: 260, dist: 300, size: 80 },
-    { src: '/cogochi/chart-tools/support-zones.svg', title: 'Zones', angle: 320, dist: 312, size: 84 },
-    { src: '/cogochi/chart-tools/volume-feed.svg', title: 'Volume', angle: 50, dist: 410, size: 84 },
-    { src: '/cogochi/chart-tools/orderbook-ladder.svg', title: 'Orderbook', angle: 110, dist: 425, size: 80 },
-    { src: '/cogochi/chart-tools/liquidity-heatmap.svg', title: 'Heatmap', angle: 170, dist: 420, size: 76 },
-    { src: '/cogochi/chart-tools/divergence-oscillator.svg', title: 'Divergence', angle: 230, dist: 415, size: 76 },
-    { src: '/cogochi/chart-tools/momentum-stack.svg', title: 'Momentum', angle: 290, dist: 425, size: 88 },
-    { src: '/cogochi/chart-tools/session-clock.svg', title: 'Session', angle: 350, dist: 410, size: 74 },
+  const proofPillars = [
+    { label: 'PERSONAL', value: 'One adapter per user' },
+    { label: 'PROOF', value: 'Improve before trust' },
+    { label: 'SAFETY', value: 'Rollback if worse' }
   ];
 
-  const pathCards = [
+  const pathChoices = [
     {
       id: 'builder',
       label: 'Builder',
-      title: 'Train your own agent',
-      copy: 'Start in onboarding, then iterate in Lab.',
+      title: 'Train your first market memory',
+      copy: 'Start with DOUNI, save the first pattern, and let Cogochi learn what you actually trust.',
       path: '/onboard?path=builder',
-      accent: 'good',
+      action: 'START BUILDING'
     },
     {
       id: 'copier',
       label: 'Copier',
-      title: 'Browse proven specialists',
-      copy: 'Open the market, inspect proof, decide later.',
+      title: 'Inspect proven specialists first',
+      copy: 'Browse the market, read the record, and decide later without committing to setup on day one.',
       path: '/market',
-      accent: 'warn',
+      action: 'INSPECT THE MARKET'
+    }
+  ];
+
+  const learningSteps = [
+    {
+      id: '01',
+      title: 'Capture',
+      copy: 'Save the setup you care about instead of hoping you remember it tomorrow.'
     },
+    {
+      id: '02',
+      title: 'Scan',
+      copy: 'The scanner watches while you sleep and sends back the moments worth judging.'
+    },
+    {
+      id: '03',
+      title: 'Judge',
+      copy: 'Every verdict tells the system what your edge actually looks like in the wild.'
+    },
+    {
+      id: '04',
+      title: 'Deploy',
+      copy: 'Lab ships the stronger adapter and rejects the weaker one automatically.'
+    }
   ];
 
-  const loopSteps = [
-    { id: '01', title: 'Onboard', desc: 'Create the first usable agent and get the first battle taste.' },
-    { id: '02', title: 'Terminal', desc: 'Inspect chart context and form a doctrine hypothesis when needed.' },
-    { id: '03', title: 'Lab', desc: 'Compare versions, rerun, and refine. This is the main workbench.' },
-    { id: '04', title: 'Battle', desc: 'Pressure-test the doctrine against historical context and visible stakes.' },
-    { id: '05', title: 'Agent', desc: 'Keep doctrine, memory, and the record in one durable home.' },
-  ];
-
-  const surfaceCards = [
+  const surfaces = [
     {
       label: 'Terminal',
-      title: 'Optional, not the front door',
-      copy: 'Terminal should sharpen context, not act as the only entry into the product.',
+      title: 'See and judge the signal',
+      copy: 'This is where context becomes a decision and every verdict feeds the learning loop.'
     },
     {
       label: 'Lab',
-      title: 'The longest-dwell surface',
-      copy: 'The retention loop lives in rerun, comparison, and iteration, not in hero theatrics.',
+      title: 'Improve the model with evidence',
+      copy: 'Runs, comparisons, and gates live here. It is the workbench, not the stage prop.'
     },
     {
-      label: 'Battle',
-      title: 'Proof before monetization',
-      copy: 'Market language only matters after the doctrine survives visible proof.',
-    },
+      label: 'Agent',
+      title: 'Keep doctrine, memory, and record',
+      copy: 'The model history, the saved patterns, and the performance trail stay in one durable home.'
+    }
   ];
 
-  const homeHighlights = [
-    { label: 'START', value: 'Builder first' },
-    { label: 'CORE LOOP', value: 'Lab -> Battle' },
-    { label: 'RETURN', value: 'Dashboard / Lab' }
+  const footerGroups = [
+    {
+      title: 'Start',
+      links: [
+        { label: 'Build your first agent', path: '/onboard?path=builder', cta: 'footer_builder' },
+        { label: 'Inspect the market', path: '/market', cta: 'footer_market' }
+      ]
+    },
+    {
+      title: 'Product',
+      links: [
+        { label: 'Terminal', path: '/terminal', cta: 'footer_terminal' },
+        { label: 'Lab', path: '/lab', cta: 'footer_lab' },
+        { label: 'Agent', path: '/agent', cta: 'footer_agent' }
+      ]
+    },
+    {
+      title: 'Return',
+      links: [
+        { label: 'Dashboard', path: '/dashboard', cta: 'footer_dashboard' },
+        { label: 'Settings', path: '/settings', cta: 'footer_settings' }
+      ]
+    }
+  ];
+
+  const footerSignals = [
+    { label: 'MEMORY', value: 'One model per trader' },
+    { label: 'VERDICTS', value: 'Judgment becomes training signal' },
+    { label: 'DEPLOY', value: 'Rollback if validation slips' }
+  ];
+
+  const proofRows = [
+    {
+      stage: 'PATTERN',
+      title: 'BTC reclaim saved',
+      detail: 'Funding stretched. CVD still climbing. Wait for reclaim.'
+    },
+    {
+      stage: 'SCAN HIT',
+      title: '3 matches surfaced overnight',
+      detail: 'Scanner found conditions close enough to your saved judgment.'
+    },
+    {
+      stage: 'VERDICT',
+      title: '2 good · 1 bad',
+      detail: 'Your yes and no become usable training signal instead of disappearing.'
+    },
+    {
+      stage: 'DEPLOY',
+      title: 'Adapter v4 shipped',
+      detail: 'Validation improved, so the stronger version becomes the new default.'
+    }
   ];
 
   let mounted = $state(false);
   let mouseX = $state(50);
   let mouseY = $state(50);
+  let targetMouseX = 50;
+  let targetMouseY = 50;
 
   const mx = $derived((mouseX - 50) / 50);
   const my = $derived((mouseY - 50) / 50);
-  const cameraOrbit = $derived(`${(mx * 25).toFixed(1)}deg ${(75 + my * 15).toFixed(1)}deg 1.8m`);
 
   function clamp01(v: number) {
     return Math.min(1, Math.max(0, v));
@@ -84,17 +139,31 @@
 
   let lastInputTime = 0;
   let driftRaf = 0;
-  const IDLE_DRIFT_DELAY_MS = 1100;
-  const IDLE_DRIFT_SPEED = 0.00062;
-  const IDLE_DRIFT_X = 36;
-  const IDLE_DRIFT_Y = 24;
-  const IDLE_DRIFT_X_DETAIL = 10;
-  const IDLE_DRIFT_Y_DETAIL = 8;
+  const IDLE_DRIFT_DELAY_MS = 1600;
+  const IDLE_DRIFT_SPEED = 0.00028;
+  const IDLE_DRIFT_X = 18;
+  const IDLE_DRIFT_Y = 12;
+  const IDLE_DRIFT_X_DETAIL = 4;
+  const IDLE_DRIFT_Y_DETAIL = 3;
+  const POINTER_EASE = 0.11;
+  const POINTER_DEADZONE = 0.07;
+  const POINTER_CURVE = 0.82;
+  const POINTER_EDGE_GAIN = 1.06;
+
+  function shapePointerAxis(raw: number) {
+    const sign = Math.sign(raw);
+    const magnitude = Math.abs(raw);
+    if (magnitude <= POINTER_DEADZONE) return 0;
+    const normalized = (magnitude - POINTER_DEADZONE) / (1 - POINTER_DEADZONE);
+    return sign * Math.min(Math.pow(normalized, POINTER_CURVE) * POINTER_EDGE_GAIN, 1);
+  }
 
   function setCursor(clientX: number, clientY: number) {
     if (typeof window === 'undefined') return;
-    mouseX = Math.round(clamp01(clientX / window.innerWidth) * 100);
-    mouseY = Math.round(clamp01(clientY / window.innerHeight) * 100);
+    const rawX = clamp01(clientX / window.innerWidth) * 2 - 1;
+    const rawY = clamp01(clientY / window.innerHeight) * 2 - 1;
+    targetMouseX = 50 + shapePointerAxis(rawX) * 50;
+    targetMouseY = 50 + shapePointerAxis(rawY) * 50;
     lastInputTime = performance.now();
   }
 
@@ -111,7 +180,7 @@
   onMount(() => {
     requestAnimationFrame(() => {
       mounted = true;
-      trackHomeFunnel('hero_view', 'view', { story: 'builder-copier-split' });
+      trackHomeFunnel('hero_view', 'view', { story: 'learned-you-proof-first' });
     });
 
     function onPointer(e: PointerEvent) {
@@ -126,9 +195,11 @@
     function driftLoop(time: number) {
       if (time - lastInputTime > IDLE_DRIFT_DELAY_MS) {
         const t = time * IDLE_DRIFT_SPEED;
-        mouseX = Math.round(50 + Math.sin(t) * IDLE_DRIFT_X + Math.sin(t * 2.7) * IDLE_DRIFT_X_DETAIL);
-        mouseY = Math.round(50 + Math.cos(t * 0.92) * IDLE_DRIFT_Y + Math.cos(t * 1.9) * IDLE_DRIFT_Y_DETAIL);
+        targetMouseX = 50 + Math.sin(t) * IDLE_DRIFT_X + Math.sin(t * 1.9) * IDLE_DRIFT_X_DETAIL;
+        targetMouseY = 50 + Math.cos(t * 0.78) * IDLE_DRIFT_Y + Math.cos(t * 1.35) * IDLE_DRIFT_Y_DETAIL;
       }
+      mouseX += (targetMouseX - mouseX) * POINTER_EASE;
+      mouseY += (targetMouseY - mouseY) * POINTER_EASE;
       driftRaf = requestAnimationFrame(driftLoop);
     }
 
@@ -147,24 +218,20 @@
 </script>
 
 <svelte:head>
-  <title>Cogotchi — Turn Judgment Into Proof</title>
+  <title>Cogochi — The AI That Learns Your Judgment</title>
   <meta
     name="description"
-    content="Choose the builder or copier path, then move through Terminal, Lab, Battle, and Agent with proof-first progression."
+    content="Save the patterns you trust, let Cogochi scan while you sleep, judge the hits, and deploy a model that gets closer to how you think."
   />
-  <meta property="og:title" content="Cogotchi — Turn Judgment Into Proof" />
+  <meta property="og:title" content="Cogochi — The AI That Learns Your Judgment" />
   <meta
     property="og:description"
-    content="Build an agent, inspect chart context, iterate in Lab, prove it in Battle, and keep the record in Agent."
+    content="Per-user market memory for retail crypto traders. Capture a pattern, judge the signal, and ship a better adapter."
   />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="canonical" href="/" />
-  <script
-    type="module"
-    src="https://unpkg.com/@google/model-viewer@4.0.0/dist/model-viewer.min.js"
-  ></script>
 </svelte:head>
 
 <WebGLAsciiBackground {mouseX} {mouseY} />
@@ -173,149 +240,192 @@
   <section class="hero">
     <div class="hero-shell">
       <div class="hero-copy">
-        <div class="eyebrow">COGOTCHI</div>
-        <h1 class:visible={mounted}>Turn Judgment Into Proof.</h1>
-        <p class:visible={mounted}>
-          Build first, inspect context only when needed, then iterate in Lab and prove it in Battle.
+        <div class="eyebrow">COGOCHI</div>
+        <h1 class:visible={mounted}>The AI that learns your judgment.</h1>
+        <p class:visible={mounted} class="hero-lead">
+          Save a setup. Let the scanner watch while you are away. Judge the hit. Deploy a model that gets closer to how you actually read the market.
         </p>
 
         <div class="hero-actions">
-          <button type="button" class="primary" onclick={() => openPath('/onboard?path=builder', 'builder_primary')}>
-            BUILD AN AGENT
+          <button type="button" class="primary" onclick={() => openPath('/onboard?path=builder', 'primary_builder')}>
+            START WITH YOUR FIRST AGENT
           </button>
-          <button type="button" class="secondary" onclick={() => openPath('/market', 'copier_secondary')}>
-            BROWSE MARKET
-          </button>
-        </div>
-
-        <div class="resume-actions">
-          <button type="button" class="text-link" onclick={() => openPath('/dashboard', 'dashboard_return')}>
-            RETURN TO DASHBOARD
-          </button>
-          <button type="button" class="text-link" onclick={() => openPath('/lab', 'lab_return')}>
-            OPEN LAB
+          <button type="button" class="secondary" onclick={() => openPath('/market', 'secondary_market')}>
+            SEE THE PROOF FIRST
           </button>
         </div>
 
-        <div class="hero-highlights">
-          {#each homeHighlights as item}
-            <article class="highlight-card">
+        <div class="proof-rail">
+          {#each proofPillars as item}
+            <article class="proof-pill">
               <span>{item.label}</span>
               <strong>{item.value}</strong>
             </article>
           {/each}
         </div>
+
+        <div class="entry-grid">
+          {#each pathChoices as card}
+            <button type="button" class="entry-card" onclick={() => selectPath(card.id, card.path)}>
+              <span class="entry-label">{card.label}</span>
+              <h2>{card.title}</h2>
+              <p>{card.copy}</p>
+              <span class="entry-action">{card.action}</span>
+            </button>
+          {/each}
+        </div>
+
+        <div class="return-actions">
+          <button type="button" class="text-link" onclick={() => openPath('/dashboard', 'return_dashboard')}>
+            RETURN TO DASHBOARD
+          </button>
+          <button type="button" class="text-link" onclick={() => openPath('/lab', 'return_lab')}>
+            OPEN LAB
+          </button>
+        </div>
       </div>
 
       <div class="hero-visual">
         <div
-          class="model-shell"
+          class="panel-aura"
           aria-hidden="true"
-          style:transform={`translate(-50%, -50%) translate3d(${mx * 16}px, ${my * 10}px, 0)`}
-        >
-          <model-viewer
-            src="/cogochi/logo.glb"
-            class="model-el"
-            alt=""
-            camera-orbit={cameraOrbit}
-            min-camera-orbit="auto auto 0.5m"
-            field-of-view="30deg"
-            interaction-prompt="none"
-            shadow-intensity="0"
-            environment-image="neutral"
-            loading="eager"
-            interpolation-decay="120"
-          ></model-viewer>
-        </div>
+          style:transform={`translate(-50%, -50%) translate3d(${mx * 12}px, ${my * 8}px, 0)`}
+        ></div>
 
-        <div class="orbit-layer" aria-hidden="true">
-          {#each orbitCards as card, i}
-            {@const rad = (card.angle * Math.PI) / 180}
-            {@const baseX = Math.cos(rad) * card.dist}
-            {@const baseY = Math.sin(rad) * card.dist}
-            {@const parallax = card.dist / 400}
-            {@const px = mx * 12 * parallax}
-            {@const py = my * 8 * parallax}
-            <div
-              class="orbit-card"
-              style:--size={`${card.size}px`}
-              style:--delay={`${-(i * 0.9)}s`}
-              style:--tx={`${(baseX + px).toFixed(1)}px`}
-              style:--ty={`${(baseY + py).toFixed(1)}px`}
-            >
-              <img src={card.src} alt="" class="orbit-img" loading="lazy" />
-            </div>
-          {/each}
-        </div>
-
-        <div
-          class="center-card"
-          style:transform={`perspective(800px) rotateY(${mx * -1.2}deg) rotateX(${my * 1.1}deg)`}
+        <article
+          class="proof-panel"
+          style:transform={`perspective(1100px) rotateY(${mx * -1.08}deg) rotateX(${my * 0.82}deg) translate3d(${mx * 8}px, ${my * 4.5}px, 0)`}
         >
-          <div class="card-chrome">
-            <span></span>
-            <span></span>
-            <span></span>
+          <div class="panel-topline">
+            <span class="panel-chip">Learning Loop</span>
+            <span class="panel-chip subtle">Per-user adapter</span>
           </div>
-          <div class="card-body">
-            <div class="card-kicker">Choose your first path</div>
-            <h2>Builder or Copier.</h2>
+
+          <div class="panel-head">
+            <p class="panel-kicker">Proof before trust</p>
+            <h2>Your edge becomes system behavior.</h2>
             <p>
-              The home surface should split intent first. Builder onboarding goes to a guided start.
-              Copier flow goes to the public market. Terminal is part of the loop, not the front door.
+              Cogochi does not ask you to trust a generic market bot. It keeps the memory, the verdicts, and the deployment gate tied to one user.
             </p>
-            <div class="path-mini-grid">
-              {#each pathCards as card}
-                <button
-                  type="button"
-                  class={`path-mini ${card.accent}`}
-                  onclick={() => selectPath(card.id, card.path)}
-                >
-                  <span class="path-mini-label">{card.label}</span>
-                  <strong>{card.title}</strong>
-                  <span class="path-mini-copy">{card.copy}</span>
-                </button>
-              {/each}
+          </div>
+
+          <div class="timeline">
+            {#each proofRows as row}
+              <div class="timeline-row">
+                <span class="timeline-stage">{row.stage}</span>
+                <div class="timeline-body">
+                  <strong>{row.title}</strong>
+                  <p>{row.detail}</p>
+                </div>
+              </div>
+            {/each}
+          </div>
+
+          <div class="panel-foot">
+            <div class="foot-stat">
+              <span>Gate</span>
+              <strong>Only ships if val improves</strong>
+            </div>
+            <div class="foot-stat">
+              <span>Fallback</span>
+              <strong>Automatic rollback if worse</strong>
             </div>
           </div>
-        </div>
+        </article>
       </div>
     </div>
   </section>
 
-  <section class="loop-section">
-    <div class="section-head narrow">
-      <span class="section-label">CORE LOOP</span>
-      <h2>The message order is fixed.</h2>
-      <p>Home must explain the product in the official sequence. If this order breaks, the landing loses the product thesis.</p>
+  <section class="section section-learning">
+    <div class="section-head">
+      <span class="section-label">HOW IT LEARNS</span>
+      <h2>A sharper model is earned, not assumed.</h2>
+      <p>
+        The home page should make the mechanism feel real in one pass. Not feature soup. Not route labels. Just the loop that turns judgment into a better model.
+      </p>
     </div>
-    <div class="loop-grid">
-      {#each loopSteps as step}
-        <article class="loop-card">
-          <span class="loop-id">{step.id}</span>
+
+    <div class="learning-grid">
+      {#each learningSteps as step}
+        <article class="learning-card">
+          <span class="learning-id">{step.id}</span>
           <h3>{step.title}</h3>
-          <p>{step.desc}</p>
+          <p>{step.copy}</p>
         </article>
       {/each}
     </div>
   </section>
 
-  <section class="surface-section">
+  <section class="section section-surfaces">
     <div class="section-head narrow">
-      <span class="section-label">SURFACE PRIORITY</span>
-      <h2>Home, Terminal, and proof now read as one product.</h2>
-      <p>The visual shell comes from `cogochi_2`; the information architecture stays aligned to the canonical docs in this repo.</p>
+      <span class="section-label">SURFACES</span>
+      <h2>Three places. One proof system.</h2>
+      <p>
+        Terminal is where you judge. Lab is where the model earns deployment. Agent is where the record stays coherent.
+      </p>
     </div>
+
     <div class="surface-grid">
-      {#each surfaceCards as card}
+      {#each surfaces as surface}
         <article class="surface-card">
-          <span class="surface-label">{card.label}</span>
-          <h3>{card.title}</h3>
-          <p>{card.copy}</p>
+          <span class="surface-label">{surface.label}</span>
+          <h3>{surface.title}</h3>
+          <p>{surface.copy}</p>
         </article>
       {/each}
     </div>
   </section>
+
+  <footer class="home-footer">
+    <div class="footer-shell">
+      <div class="footer-intro">
+        <span class="section-label">COGOCHI</span>
+        <h2>Judgment, remembered.</h2>
+        <p>
+          Cogochi is not another generic market assistant. It is the system that keeps your patterns, your verdicts, and the model behavior they produce.
+        </p>
+      </div>
+
+      <div class="footer-grid">
+        {#each footerGroups as group}
+          <div class="footer-group">
+            <h3>{group.title}</h3>
+            <div class="footer-links">
+              {#each group.links as link}
+                <button type="button" class="footer-link" onclick={() => openPath(link.path, link.cta)}>
+                  {link.label}
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="footer-signal-row">
+      {#each footerSignals as signal}
+        <article class="footer-signal">
+          <span>{signal.label}</span>
+          <strong>{signal.value}</strong>
+        </article>
+      {/each}
+    </div>
+
+    <div class="footer-bottom">
+      <p class="footer-note">
+        Built for traders who want evidence before trust, and a model that learns from their actual calls instead of generic prompts.
+      </p>
+
+      <div class="footer-bottom-actions">
+        <button type="button" class="footer-cta footer-cta-primary" onclick={() => openPath('/terminal', 'footer_open_terminal')}>
+          OPEN TERMINAL
+        </button>
+        <button type="button" class="footer-cta footer-cta-secondary" onclick={() => openPath('/onboard?path=builder', 'footer_start_douni')}>
+          START WITH DOUNI
+        </button>
+      </div>
+    </div>
+  </footer>
 </div>
 
 <style>
@@ -326,125 +436,78 @@
 
   :global(body) {
     min-height: 100%;
-    background: #05070c;
+    background: #000;
   }
 
   .page {
     position: relative;
     z-index: 2;
+    overflow: visible;
     color: var(--sc-text-0);
-    overflow: clip;
     background:
-      radial-gradient(circle at 20% 18%, rgba(207, 127, 143, 0.18), transparent 28%),
-      radial-gradient(circle at 80% 24%, rgba(173, 202, 124, 0.16), transparent 30%),
-      linear-gradient(180deg, rgba(5, 7, 12, 0.38), rgba(5, 7, 12, 0.66) 42%, rgba(5, 7, 12, 0.84) 100%);
+      radial-gradient(circle at top, rgba(255, 255, 255, 0.025), transparent 34%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.16) 42%, rgba(0, 0, 0, 0.34) 100%);
   }
 
   .hero {
     position: relative;
-    min-height: calc(100vh - 74px);
-    min-height: calc(100dvh - 74px);
-    padding: clamp(18px, 4vw, 44px) clamp(20px, 4vw, 44px) clamp(30px, 5vw, 52px);
-    overflow: hidden;
+    min-height: clamp(720px, calc(100dvh - 96px), 920px);
+    padding: clamp(28px, 4vw, 46px) clamp(22px, 4vw, 48px) clamp(42px, 6vw, 72px);
   }
 
   .hero-shell {
-    width: min(1080px, 100%);
+    width: min(1180px, 100%);
     margin: 0 auto;
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+    grid-template-columns: minmax(0, 1.03fr) minmax(360px, 0.97fr);
+    gap: clamp(22px, 3vw, 42px);
     align-items: center;
-    gap: clamp(16px, 2.4vw, 28px);
-  }
-
-  .hero-visual {
-    position: relative;
-    min-height: 470px;
-    display: grid;
-    place-items: center;
-  }
-
-  .model-shell {
-    position: absolute;
-    left: 50%;
-    top: 46%;
-    width: min(40vw, 30rem);
-    height: min(40vw, 30rem);
-    z-index: 0;
-    pointer-events: none;
-    opacity: 0.34;
-    transition: transform 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  }
-
-  .model-el {
-    width: 100%;
-    height: 100%;
-    background: transparent !important;
-    border: 0;
-    outline: 0;
-    box-shadow: none;
-    --poster-color: transparent;
-    animation: breathe 7s ease-in-out infinite;
-  }
-
-  .orbit-layer {
-    position: absolute;
-    left: 50%;
-    top: 46%;
-    width: 0;
-    height: 0;
-    z-index: 1;
-    pointer-events: none;
-  }
-
-  .orbit-card {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: var(--size);
-    height: var(--size);
-    margin-left: calc(var(--size) / -2);
-    margin-top: calc(var(--size) / -2);
-    opacity: 0.9;
-    filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.6));
-    animation: orbit-float 10s ease-in-out infinite;
-    animation-delay: var(--delay);
-  }
-
-  .orbit-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
   }
 
   .hero-copy {
-    position: relative;
-    z-index: 3;
     display: grid;
-    gap: 14px;
-    width: 100%;
-    text-align: left;
+    gap: 18px;
+    align-content: start;
+  }
+
+  .eyebrow,
+  .section-label,
+  .entry-label,
+  .surface-label,
+  .panel-kicker,
+  .timeline-stage,
+  .proof-pill span,
+  .foot-stat span {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.72rem;
   }
 
   .eyebrow {
     display: inline-flex;
+    width: fit-content;
     align-items: center;
-    justify-content: center;
-    padding: 6px 12px;
-    border: 1px solid rgba(242, 209, 147, 0.25);
+    padding: 7px 12px;
     border-radius: 999px;
-    background: rgba(9, 12, 18, 0.58);
-    color: var(--sc-warn);
-    font-size: 0.74rem;
-    letter-spacing: 0.18em;
+    border: 1px solid rgba(247, 242, 234, 0.14);
+    background: rgba(10, 10, 12, 0.6);
+    color: rgba(247, 242, 234, 0.78);
+  }
+
+  h1,
+  .section-head h2,
+  .panel-head h2,
+  .entry-card h2 {
+    margin: 0;
+    letter-spacing: -0.045em;
+    line-height: 0.96;
+    font-weight: 650;
   }
 
   h1 {
-    margin: 4px 0 0;
-    font-size: clamp(2.7rem, 6.4vw, 5.1rem);
-    line-height: 0.98;
-    letter-spacing: -0.04em;
-    color: rgba(247, 242, 234, 0.96);
+    max-width: 10ch;
+    font-size: clamp(3.3rem, 8vw, 7.4rem);
+    color: rgba(247, 242, 234, 0.97);
     opacity: 0;
     transform: translateY(26px);
     transition:
@@ -453,95 +516,28 @@
   }
 
   h1.visible,
-  .hero-copy p.visible {
+  .hero-lead.visible {
     opacity: 1;
     transform: translateY(0);
   }
 
-  .hero-copy p {
-    max-width: 540px;
+  .hero-lead {
+    max-width: 38rem;
     margin: 0;
-    color: rgba(247, 242, 234, 0.64);
-    font-size: clamp(0.98rem, 1.4vw, 1.08rem);
-    line-height: 1.5;
+    color: rgba(247, 242, 234, 0.68);
+    font-size: clamp(1.02rem, 1.5vw, 1.18rem);
+    line-height: 1.62;
     opacity: 0;
     transform: translateY(18px);
     transition:
-      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s,
-      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s;
-  }
-
-  .center-card {
-    position: relative;
-    z-index: 3;
-    width: min(420px, 100%);
-    background: rgba(10, 13, 20, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 22px;
-    overflow: hidden;
-    backdrop-filter: blur(40px) saturate(1.2);
-    -webkit-backdrop-filter: blur(40px) saturate(1.2);
-    box-shadow:
-      0 32px 80px rgba(0, 0, 0, 0.56),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  .card-chrome {
-    display: flex;
-    gap: 6px;
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-
-  .card-chrome span {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.16);
-  }
-
-  .card-body {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 20px;
-  }
-
-  .card-kicker,
-  .section-label,
-  .path-label,
-  .surface-label {
-    font-size: 0.76rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  .card-kicker,
-  .section-label {
-    color: var(--sc-warn);
-  }
-
-  .card-body h2,
-  .section-head h2 {
-    margin: 0;
-    font-size: clamp(1.6rem, 2.4vw, 2.4rem);
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-  }
-
-  .card-body p,
-  .section-head p,
-  .loop-card p,
-  .surface-card p {
-    margin: 0;
-    color: rgba(247, 242, 234, 0.6);
-    line-height: 1.6;
+      opacity 0.82s cubic-bezier(0.16, 1, 0.3, 1) 0.14s,
+      transform 0.82s cubic-bezier(0.16, 1, 0.3, 1) 0.14s;
   }
 
   .hero-actions,
-  .resume-actions {
+  .return-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
   }
 
@@ -551,259 +547,640 @@
   }
 
   .hero-actions button {
-    min-height: 44px;
-    padding: 0 16px;
-    border-radius: 12px;
+    min-height: 48px;
+    padding: 0 18px;
+    border-radius: 14px;
     border: 1px solid transparent;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.045em;
+    transition:
+      transform var(--sc-duration-fast),
+      border-color var(--sc-duration-fast),
+      background var(--sc-duration-fast),
+      box-shadow var(--sc-duration-fast),
+      color var(--sc-duration-fast);
   }
 
   .hero-actions .primary {
-    background: linear-gradient(135deg, rgba(173, 202, 124, 0.22), rgba(173, 202, 124, 0.08));
-    border-color: rgba(173, 202, 124, 0.45);
-    color: var(--sc-good);
+    color: #050505;
+    background: linear-gradient(180deg, #e3b4b9, #c78f95);
+    border-color: rgba(227, 180, 185, 0.45);
+    box-shadow: 0 12px 40px rgba(199, 143, 149, 0.16);
   }
 
   .hero-actions .secondary {
-    background: linear-gradient(135deg, rgba(242, 209, 147, 0.18), rgba(242, 209, 147, 0.06));
-    border-color: rgba(242, 209, 147, 0.34);
-    color: var(--sc-warn);
+    color: rgba(247, 242, 234, 0.92);
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(247, 242, 234, 0.14);
   }
 
-  .resume-actions {
+  .hero-actions button:hover,
+  .entry-card:hover,
+  .surface-card:hover,
+  .learning-card:hover {
+    transform: translateY(-1px);
+  }
+
+  .hero-actions .primary:hover {
+    background: linear-gradient(180deg, #ecbcc1, #cf969c);
+    box-shadow: 0 18px 48px rgba(199, 143, 149, 0.22);
+  }
+
+  .hero-actions .secondary:hover {
+    border-color: rgba(227, 180, 185, 0.28);
+    color: rgba(247, 242, 234, 1);
+  }
+
+  .proof-rail {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .proof-pill,
+  .entry-card,
+  .learning-card,
+  .surface-card,
+  .proof-panel {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(12, 14, 20, 0.66);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 22px 60px rgba(0, 0, 0, 0.26);
+    backdrop-filter: blur(28px) saturate(1.1);
+    -webkit-backdrop-filter: blur(28px) saturate(1.1);
+  }
+
+  .proof-pill {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border-radius: 18px;
+  }
+
+  .proof-pill span,
+  .section-label,
+  .panel-kicker,
+  .timeline-stage {
+    color: rgba(227, 180, 185, 0.84);
+  }
+
+  .proof-pill strong,
+  .foot-stat strong {
+    font-size: 0.95rem;
+    line-height: 1.3;
+    color: rgba(247, 242, 234, 0.92);
+  }
+
+  .entry-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+  }
+
+  .entry-card {
+    display: grid;
+    gap: 10px;
+    padding: 18px;
+    border-radius: 22px;
+    text-align: left;
+    transition:
+      transform var(--sc-duration-fast),
+      border-color var(--sc-duration-fast),
+      background var(--sc-duration-fast);
+  }
+
+  .entry-card:hover {
+    border-color: rgba(227, 180, 185, 0.18);
+    background: rgba(14, 17, 23, 0.74);
+  }
+
+  .entry-label {
+    color: rgba(247, 242, 234, 0.42);
+  }
+
+  .entry-card h2 {
+    font-size: clamp(1.28rem, 2.3vw, 1.8rem);
+    line-height: 1.02;
+    color: rgba(247, 242, 234, 0.95);
+  }
+
+  .entry-card p,
+  .section-head p,
+  .learning-card p,
+  .surface-card p,
+  .panel-head p,
+  .timeline-body p {
+    margin: 0;
+    color: rgba(247, 242, 234, 0.62);
+    line-height: 1.58;
+  }
+
+  .entry-action {
+    margin-top: 2px;
+    color: rgba(247, 242, 234, 0.84);
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
   }
 
   .text-link {
     padding: 0;
     border: 0;
     background: transparent;
-    color: rgba(247, 242, 234, 0.55);
+    color: rgba(247, 242, 234, 0.52);
     font-size: 0.84rem;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
   }
 
-  .hero-highlights {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 2px;
+  .text-link:hover {
+    color: rgba(227, 180, 185, 0.92);
   }
 
-  .highlight-card {
+  .hero-visual {
+    position: relative;
+    min-height: 640px;
     display: grid;
-    gap: 2px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    background: rgba(8, 12, 19, 0.42);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    place-items: center;
   }
 
-  .highlight-card span,
-  .path-mini-label {
-    color: rgba(247, 242, 234, 0.42);
-    font-size: 0.72rem;
-    letter-spacing: 0.14em;
+  .panel-aura {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(44rem, 88%);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    opacity: 0.14;
+    background:
+      radial-gradient(circle, rgba(227, 180, 185, 0.18), rgba(227, 180, 185, 0.05) 36%, transparent 72%);
+    filter: blur(48px);
+    pointer-events: none;
+    transition: transform 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transform: translate(-50%, -50%);
+  }
+
+  .proof-panel {
+    position: relative;
+    z-index: 2;
+    width: min(520px, 100%);
+    padding: 22px;
+    border-radius: 28px;
+    transition: transform 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  .panel-topline,
+  .panel-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .panel-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(227, 180, 185, 0.16);
+    background: rgba(227, 180, 185, 0.08);
+    color: rgba(247, 242, 234, 0.88);
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
-  .highlight-card strong,
-  .path-mini strong {
-    font-size: 0.94rem;
-    line-height: 1.18;
-    color: rgba(247, 242, 234, 0.92);
-  }
-
-  .path-mini-copy {
-    color: rgba(247, 242, 234, 0.58);
-    line-height: 1.45;
-    font-size: 0.84rem;
-  }
-
-  .path-mini-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .path-mini {
-    display: grid;
-    gap: 6px;
-    text-align: left;
-    padding: 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+  .panel-chip.subtle {
+    border-color: rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
   }
 
-  .path-mini.good {
-    border-color: rgba(173, 202, 124, 0.2);
+  .panel-head {
+    display: grid;
+    gap: 10px;
+    padding: 18px 0 20px;
   }
 
-  .path-mini.warn {
-    border-color: rgba(242, 209, 147, 0.2);
+  .panel-head h2 {
+    font-size: clamp(1.9rem, 4vw, 3rem);
+    color: rgba(247, 242, 234, 0.97);
   }
 
-  .loop-section,
-  .surface-section {
+  .timeline {
+    display: grid;
+    gap: 12px;
+  }
+
+  .timeline-row {
+    display: grid;
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .timeline-body {
+    display: grid;
+    gap: 4px;
+  }
+
+  .timeline-body strong,
+  .learning-card h3,
+  .surface-card h3 {
+    margin: 0;
+    font-size: 1.12rem;
+    line-height: 1.24;
+    color: rgba(247, 242, 234, 0.94);
+  }
+
+  .panel-foot {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .foot-stat {
+    display: grid;
+    gap: 4px;
+  }
+
+  .foot-stat span {
+    color: rgba(247, 242, 234, 0.4);
+  }
+
+  .section {
     position: relative;
     z-index: 3;
-    padding: 0 clamp(20px, 4vw, 44px) clamp(22px, 4vw, 38px);
+    padding: 0 clamp(22px, 4vw, 48px) clamp(44px, 6vw, 72px);
   }
 
   .section-head {
-    width: min(760px, 100%);
-    margin: 0 auto 16px;
+    width: min(820px, 100%);
+    margin: 0 auto 22px;
     text-align: center;
+    display: grid;
+    gap: 10px;
   }
 
   .section-head.narrow {
-    width: min(680px, 100%);
+    width: min(760px, 100%);
+  }
+
+  .section-head h2 {
+    font-size: clamp(2rem, 4.8vw, 4rem);
+    color: rgba(247, 242, 234, 0.96);
+  }
+
+  .learning-grid {
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .learning-card,
+  .surface-card {
+    display: grid;
+    gap: 10px;
+    padding: 20px;
+    border-radius: 22px;
+    transition:
+      transform var(--sc-duration-fast),
+      border-color var(--sc-duration-fast),
+      background var(--sc-duration-fast);
+  }
+
+  .learning-card:hover,
+  .surface-card:hover {
+    border-color: rgba(227, 180, 185, 0.16);
+    background: rgba(14, 17, 23, 0.72);
+  }
+
+  .learning-id {
+    color: rgba(227, 180, 185, 0.88);
+    font-size: 0.84rem;
+    letter-spacing: 0.12em;
   }
 
   .surface-grid {
-    width: min(1080px, 100%);
+    width: min(1180px, 100%);
     margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
   }
 
-  .loop-grid {
-    width: min(1080px, 100%);
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .loop-card,
-  .surface-card {
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(9, 12, 18, 0.66);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  }
-
-  .loop-card h3,
-  .surface-card h3 {
-    margin: 0;
-    font-size: 1.2rem;
-    line-height: 1.2;
-  }
-
-  .loop-card {
-    padding: 14px;
-    display: grid;
-    gap: 8px;
-  }
-
-  .loop-id {
-    color: var(--sc-warn);
-    font-size: 0.84rem;
-    letter-spacing: 0.08em;
-  }
-
-  .surface-card {
-    padding: 16px;
-    display: grid;
-    gap: 8px;
-  }
-
   .surface-label {
     color: rgba(247, 242, 234, 0.42);
   }
 
-  @keyframes breathe {
-    0%, 100% { translate: 0 0; }
-    40% { translate: 2px -5px; }
-    70% { translate: -1px -3px; }
+  .home-footer {
+    position: relative;
+    z-index: 3;
+    padding: 0 clamp(22px, 4vw, 48px) calc(40px + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    gap: 18px;
   }
 
-  @keyframes orbit-float {
-    0%, 100% { transform: translate(var(--tx, 0), var(--ty, 0)) translateZ(0); }
-    50% { transform: translate(var(--tx, 0), calc(var(--ty, 0) - 8px)) translateZ(0); }
+  .footer-shell {
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    padding: 26px 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 24px;
   }
 
-  @media (max-width: 1200px) {
+  .footer-intro {
+    display: grid;
+    gap: 10px;
+  }
+
+  .footer-intro h2,
+  .footer-group h3 {
+    margin: 0;
+    color: rgba(247, 242, 234, 0.94);
+  }
+
+  .footer-intro h2 {
+    font-size: clamp(1.6rem, 2.8vw, 2.4rem);
+    letter-spacing: -0.04em;
+  }
+
+  .footer-intro p {
+    margin: 0;
+    max-width: 34rem;
+    color: rgba(247, 242, 234, 0.58);
+    line-height: 1.6;
+  }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .footer-signal-row {
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .footer-signal,
+  .footer-bottom {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(12, 14, 20, 0.58);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 16px 40px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(22px) saturate(1.06);
+    -webkit-backdrop-filter: blur(22px) saturate(1.06);
+  }
+
+  .footer-signal {
+    display: grid;
+    gap: 6px;
+    padding: 16px 18px;
+    border-radius: 20px;
+  }
+
+  .footer-signal span {
+    color: rgba(227, 180, 185, 0.84);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+  }
+
+  .footer-signal strong {
+    color: rgba(247, 242, 234, 0.92);
+    font-size: 0.98rem;
+    line-height: 1.32;
+  }
+
+  .footer-bottom {
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    padding: 18px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .footer-note {
+    margin: 0;
+    max-width: 48rem;
+    color: rgba(247, 242, 234, 0.64);
+    line-height: 1.6;
+  }
+
+  .footer-bottom-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .footer-cta {
+    min-height: 46px;
+    padding: 0 16px;
+    border-radius: 14px;
+    font: inherit;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    transition:
+      transform var(--sc-duration-fast),
+      border-color var(--sc-duration-fast),
+      background var(--sc-duration-fast),
+      color var(--sc-duration-fast);
+  }
+
+  .footer-cta-primary {
+    border: 1px solid rgba(227, 180, 185, 0.42);
+    background: linear-gradient(180deg, #e3b4b9, #c78f95);
+    color: #050505;
+  }
+
+  .footer-cta-secondary {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(247, 242, 234, 0.9);
+  }
+
+  .footer-cta:hover {
+    transform: translateY(-1px);
+  }
+
+  .footer-group {
+    display: grid;
+    gap: 10px;
+    padding: 4px 0;
+  }
+
+  .footer-group h3 {
+    font-size: 0.96rem;
+    letter-spacing: 0.04em;
+  }
+
+  .footer-links {
+    display: grid;
+    gap: 8px;
+    justify-items: start;
+  }
+
+  .footer-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(247, 242, 234, 0.54);
+    font-size: 0.94rem;
+    line-height: 1.4;
+    text-align: left;
+    transition: color var(--sc-duration-fast), transform var(--sc-duration-fast);
+  }
+
+  .footer-link:hover {
+    color: rgba(227, 180, 185, 0.92);
+    transform: translateX(2px);
+  }
+
+  @media (max-width: 1180px) {
     .hero-shell {
       grid-template-columns: 1fr;
-      gap: 22px;
+      gap: 28px;
     }
+
     .hero-copy {
+      justify-items: center;
       text-align: center;
-      place-items: center;
     }
-    .hero-copy p {
-      margin-inline: auto;
+
+    h1,
+    .hero-lead {
+      max-width: none;
     }
-    .hero-highlights {
-      width: min(760px, 100%);
-      justify-content: center;
-    }
+
     .hero-visual {
-      min-height: 420px;
-    }
-    .loop-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    .surface-grid {
-      grid-template-columns: 1fr;
+      min-height: 560px;
     }
   }
 
-  @media (max-width: 900px) {
-    .model-shell,
-    .orbit-layer {
-      display: none;
+  @media (max-width: 960px) {
+    .proof-rail,
+    .entry-grid,
+    .learning-grid,
+    .surface-grid,
+    .footer-grid,
+    .footer-shell,
+    .footer-signal-row {
+      grid-template-columns: 1fr;
     }
 
+    .proof-panel {
+      width: min(640px, 100%);
+    }
+  }
+
+  @media (max-width: 720px) {
     .hero {
       min-height: auto;
       padding-top: 18px;
-    }
-
-    .center-card {
-      width: min(560px, 100%);
-    }
-
-    .surface-grid,
-    .loop-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .path-mini-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .card-body {
-      padding: 22px;
+      padding-bottom: 34px;
     }
 
     .hero-actions,
-    .resume-actions {
+    .return-actions,
+    .footer-bottom-actions {
       flex-direction: column;
     }
 
-    .hero-actions button {
+    .hero-actions button,
+    .footer-cta {
       width: 100%;
+    }
+
+    .timeline-row {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .hero-visual {
+      min-height: 420px;
+    }
+
+    .proof-panel {
+      padding: 18px;
+    }
+
+    .footer-bottom {
+      align-items: stretch;
+    }
+
+    .footer-links {
+      justify-items: stretch;
+    }
+
+    .proof-panel,
+    .entry-card,
+    .learning-card,
+    .surface-card {
+      border-radius: 20px;
+    }
+  }
+
+  @media (max-width: 540px) {
+    h1 {
+      font-size: clamp(2.7rem, 13vw, 4.4rem);
+    }
+
+    .hero-lead {
+      font-size: 0.98rem;
+      line-height: 1.56;
+    }
+
+    .section {
+      padding-left: 18px;
+      padding-right: 18px;
+      padding-bottom: 40px;
+    }
+
+    .hero,
+    .home-footer {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+
+    .entry-card,
+    .learning-card,
+    .surface-card,
+    .footer-signal {
+      padding: 16px;
+    }
+
+    .panel-topline,
+    .panel-foot {
+      align-items: flex-start;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     h1,
-    .hero-copy p {
+    .hero-lead {
       opacity: 1;
       transform: none;
       transition: none;
     }
 
-    .model-el,
-    .orbit-card {
-      animation: none;
+    .panel-aura,
+    .proof-panel {
+      transition: none;
+      transform: none !important;
     }
   }
 </style>

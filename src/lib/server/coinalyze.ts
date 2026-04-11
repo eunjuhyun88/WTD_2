@@ -17,6 +17,7 @@ export {
 	fetchCurrentFundingServer,
 	fetchPredictedFundingServer,
 	fetchOIHistoryServer,
+	fetchFundingHistoryServer,
 	fetchLiquidationHistoryServer,
 	fetchLSRatioHistoryServer
 } from './providers/coinalyze';
