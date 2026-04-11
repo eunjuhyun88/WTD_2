@@ -13,6 +13,7 @@ import {
   GROK_API_KEY, GROK_MODEL, grokUrl,
   KIMI_API_KEY, KIMI_MODEL, kimiUrl,
   HF_TOKEN, HF_MODEL, hfUrl,
+  CEREBRAS_API_KEY, CEREBRAS_MODEL, cerebrasUrl,
   OLLAMA_MODEL, ollamaUrl, ollamaChatUrl,
   getAvailableProvider,
   isDeepSeekAvailable,
@@ -22,6 +23,7 @@ import {
   isGrokAvailable,
   isKimiAvailable,
   isHfAvailable,
+  isCerebrasAvailable,
   isOllamaAvailable,
   getGroqApiKey, rotateGroqKey,
   type LLMProvider,
@@ -275,6 +277,12 @@ async function callKimi(messages: LLMMessage[], maxTokens: number, temperature: 
   return callOpenAICompatible('kimi', kimiUrl(), KIMI_API_KEY, KIMI_MODEL, messages, maxTokens, temperature, timeoutMs);
 }
 
+// ─── Cerebras (blazing fast, OpenAI-compatible) ─────────────
+
+async function callCerebras(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
+  return callOpenAICompatible('cerebras', cerebrasUrl(), CEREBRAS_API_KEY, CEREBRAS_MODEL, messages, maxTokens, temperature, timeoutMs);
+}
+
 // ─── HuggingFace Inference API (OpenAI-compatible) ───────────
 
 async function callHf(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
@@ -322,6 +330,7 @@ async function callOpenAICompatible(
 const PROVIDER_CALL: Record<LLMProvider, typeof callGroq> = {
   ollama: callOllama,
   groq: callGroq,
+  cerebras: callCerebras,
   grok: callGrok,
   qwen: callQwen,
   kimi: callKimi,
@@ -330,12 +339,14 @@ const PROVIDER_CALL: Record<LLMProvider, typeof callGroq> = {
   gemini: callGemini,
 };
 
-const FALLBACK_ORDER: LLMProvider[] = ['groq', 'grok', 'kimi', 'qwen', 'hf', 'deepseek', 'gemini', 'ollama'];
+// Cerebras(fast free) → Groq(13 keys) → HF(free) → paid fallbacks → Gemini → Ollama
+const FALLBACK_ORDER: LLMProvider[] = ['cerebras', 'groq', 'hf', 'grok', 'kimi', 'qwen', 'deepseek', 'gemini', 'ollama'];
 
 function availableProviders(): LLMProvider[] {
   const checks: Record<LLMProvider, boolean> = {
     ollama: isOllamaAvailable(),
     groq: isGroqAvailable(),
+    cerebras: isCerebrasAvailable(),
     grok: isGrokAvailable(),
     qwen: isQwenAvailable(),
     kimi: isKimiAvailable(),
@@ -441,6 +452,7 @@ function getStreamConfig(provider: LLMProvider): { url: string; apiKey: string; 
   switch (provider) {
     case 'ollama':   return { url: ollamaChatUrl(), apiKey: '', model: OLLAMA_MODEL };
     case 'groq':     return { url: groqUrl(), apiKey: getGroqApiKey(), model: GROQ_MODEL };
+    case 'cerebras': return { url: cerebrasUrl(), apiKey: CEREBRAS_API_KEY, model: CEREBRAS_MODEL };
     case 'grok':     return { url: grokUrl(), apiKey: GROK_API_KEY, model: GROK_MODEL };
     case 'qwen':     return { url: qwenUrl(), apiKey: QWEN_API_KEY, model: QWEN_MODEL };
     case 'kimi':     return { url: kimiUrl(), apiKey: KIMI_API_KEY, model: KIMI_MODEL };
@@ -558,12 +570,22 @@ export async function* callLLMStreamWithTools(
   let lastError: Error | null = null;
 
   for (const provider of ordered) {
-    try {
-      yield* streamFromProviderWithTools(provider, messages, tools, maxTokens, temperature, timeoutMs);
-      return;
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`[llmService] ${provider} tool stream failed: ${err.message}`);
+    // Groq has ~13 rotating keys — on 429 retry same provider with next key before falling to next provider
+    const maxAttempts = provider === 'groq' ? 5 : 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        yield* streamFromProviderWithTools(provider, messages, tools, maxTokens, temperature, timeoutMs);
+        return;
+      } catch (err: any) {
+        lastError = err;
+        const is429 = /\s429(?::|\s)/.test(err.message || '');
+        const shouldRetrySame = provider === 'groq' && is429 && attempt < maxAttempts - 1;
+        console.warn(
+          `[llmService] ${provider} tool stream failed${shouldRetrySame ? ` (retry ${attempt + 1}/${maxAttempts} with rotated key)` : ''}: ${err.message}`,
+        );
+        if (shouldRetrySame) continue; // rotateGroqKey() was already called in streamFromProviderWithTools on 429
+        break; // fall to next provider
+      }
     }
   }
   throw lastError ?? new Error('All tool-calling providers failed');

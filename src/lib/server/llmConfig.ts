@@ -98,11 +98,21 @@ export function kimiUrl(path = '/chat/completions'): string {
 // ─── HuggingFace Inference API ─────────────────────────────────
 
 export const HF_TOKEN = env.HF_TOKEN ?? '';
-export const HF_MODEL = env.HF_MODEL ?? 'Qwen/Qwen3.5-397B-A17B';
+export const HF_MODEL = env.HF_MODEL ?? 'Qwen/Qwen2.5-72B-Instruct';
 export const HF_ENDPOINT = 'https://router.huggingface.co/v1';
 
 export function hfUrl(path = '/chat/completions'): string {
   return `${HF_ENDPOINT}${path}`;
+}
+
+// ─── Cerebras (blazing fast, OpenAI-compatible) ───────────────
+
+export const CEREBRAS_API_KEY = env.CEREBRAS_API_KEY ?? '';
+export const CEREBRAS_MODEL = env.CEREBRAS_MODEL ?? 'qwen-3-235b-a22b-instruct-2507';
+export const CEREBRAS_ENDPOINT = 'https://api.cerebras.ai/v1';
+
+export function cerebrasUrl(path = '/chat/completions'): string {
+  return `${CEREBRAS_ENDPOINT}${path}`;
 }
 
 // ─── Ollama (Local LLM — no rate limits) ─────────────────────
@@ -162,17 +172,22 @@ export function isHfAvailable(): boolean {
   return isUsableApiKey(HF_TOKEN, 10);
 }
 
+export function isCerebrasAvailable(): boolean {
+  return isUsableApiKey(CEREBRAS_API_KEY, 20);
+}
+
 // ─── Provider Type ────────────────────────────────────────────
 
-export type LLMProvider = 'ollama' | 'groq' | 'grok' | 'qwen' | 'kimi' | 'hf' | 'deepseek' | 'gemini';
+export type LLMProvider = 'ollama' | 'groq' | 'cerebras' | 'grok' | 'qwen' | 'kimi' | 'hf' | 'deepseek' | 'gemini';
 
-/** 우선순위: Groq(70B,빠름) → Kimi → HF → DeepSeek → Gemini → Ollama(로컬,작음) */
+/** 우선순위: Cerebras → Groq → HF → (paid fallbacks) → Gemini → Ollama */
 export function getAvailableProvider(): LLMProvider | null {
+  if (isCerebrasAvailable()) return 'cerebras';
   if (isGroqAvailable()) return 'groq';
+  if (isHfAvailable()) return 'hf';
   if (isGrokAvailable()) return 'grok';
   if (isKimiAvailable()) return 'kimi';
   if (isQwenAvailable()) return 'qwen';
-  if (isHfAvailable()) return 'hf';
   if (isDeepSeekAvailable()) return 'deepseek';
   if (isGeminiAvailable()) return 'gemini';
   if (isOllamaAvailable()) return 'ollama';
