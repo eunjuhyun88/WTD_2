@@ -262,11 +262,25 @@ export function assertEmbargoSatisfied(fold: TemporalFold): void {
 }
 
 /**
- * Assertion #6: no train trajectory has a `resolved_at` inside the purge
- * window `[trainEnd - purgeDuration, trainEnd]` where `trainEnd` is the
- * fold cutoff. Such rows would be labeled with outcomes still being
- * resolved at cutoff and therefore carry partially-observable future
- * information into training.
+ * Assertion #6: no train trajectory has a `resolved_at` strictly inside the
+ * purge window `(scheduledTrainEnd − purgeDuration, scheduledTrainEnd)`.
+ *
+ * `scheduledTrainEnd` is the wall-clock cutoff the splitter used when
+ * building the fold — NOT the post-purge measured `trainKnowledgeHorizon`.
+ * Using the scheduled end is load-bearing: the splitter itself purges
+ * rows relative to this boundary, and any check that re-computes the
+ * window from a DIFFERENT reference (e.g. the measured post-purge max)
+ * can trip on jittered resolution times where no train row happens to
+ * land exactly at the scheduled cutoff.
+ *
+ * The intent: rows whose outcomes were "still resolving" near the fold's
+ * scheduled cutoff carry partially-observable future information into
+ * training. The window is open on both ends so the two boundary cases
+ * (`resolved_at == scheduledTrainEnd − purgeDuration` and
+ * `resolved_at == scheduledTrainEnd`) are NOT flagged: the first is the
+ * earliest acceptable train row after purge, and the second is the
+ * latest row included by the splitter's `resolved_at < trainEnd` filter
+ * (strict upper bound).
  *
  * This assertion is the one that distinguishes R4.1 from the legacy
  * walkForward splitter — that splitter has no purge step at all.
@@ -285,22 +299,24 @@ export function assertPurgeApplied(fold: TemporalFold): void {
 		}
 		return;
 	}
-	const trainEndMs = toMs(
-		fold.integrity.trainKnowledgeHorizon,
-		`fold ${fold.foldIndex} trainKnowledgeHorizon`
+	const scheduledTrainEndMs = toMs(
+		fold.integrity.scheduledTrainEnd,
+		`fold ${fold.foldIndex} scheduledTrainEnd`
 	);
-	const purgeStartMs = trainEndMs - purgeDuration;
+	const purgeStartMs = scheduledTrainEndMs - purgeDuration;
 	for (const t of fold.train.trajectories) {
 		const r = toMs(t.outcome.resolved_at!, `fold ${fold.foldIndex} train`);
-		// Strict inequality on the low end: resolved_at exactly at (trainEnd - purgeDuration)
-		// is the earliest still-inside-purge row; on the high end, the horizon itself is
-		// the latest included row by definition of `trainKnowledgeHorizon = max(resolved_at)`.
-		if (r > purgeStartMs && r < trainEndMs) {
+		// Strict inequality on both ends:
+		//   r == purgeStartMs          → still acceptable (boundary of the keep zone)
+		//   r == scheduledTrainEndMs   → impossible because the splitter uses
+		//                                `r < trainEnd` strict upper bound, but
+		//                                included here for symmetry.
+		if (r > purgeStartMs && r < scheduledTrainEndMs) {
 			throw new LeakageError(
 				'purge_applied',
 				`fold ${fold.foldIndex}: train row ${t.id} has resolved_at ${t.outcome.resolved_at} ` +
 					`inside purge window (${new Date(purgeStartMs).toISOString()}, ` +
-					`${new Date(trainEndMs).toISOString()})`
+					`${new Date(scheduledTrainEndMs).toISOString()})`
 			);
 		}
 	}

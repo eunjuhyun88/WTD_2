@@ -124,6 +124,24 @@ export interface TemporalFoldIntegrity {
 	/** Latest `outcome.resolved_at` in train after purge. */
 	readonly trainKnowledgeHorizon: string;
 
+	/**
+	 * The fold's **scheduled** train cutoff — the wall-clock time boundary the
+	 * splitter used when deciding which rows belong in train and which are
+	 * purged. This is the reference the purge window is measured against:
+	 * `(scheduledTrainEnd − purgeDuration, scheduledTrainEnd)` is the range
+	 * in which a train row's `resolved_at` is treated as "still resolving at
+	 * the fold cutoff" and therefore must be dropped.
+	 *
+	 * This is DISTINCT from `trainKnowledgeHorizon`, which is the maximum
+	 * observed `resolved_at` in the post-purge train slice. The two values
+	 * agree only when the data happens to have a row whose resolved_at sits
+	 * exactly at the scheduled cutoff; under realistic jittered resolution
+	 * times they diverge, and `assertPurgeApplied` must use this field
+	 * rather than `trainKnowledgeHorizon` so the purge check stays
+	 * consistent with the splitter's own purge step.
+	 */
+	readonly scheduledTrainEnd: string;
+
 	/** Earliest `created_at` in test. */
 	readonly testStart: string;
 
@@ -350,6 +368,7 @@ export function temporalSplit(
 
 		const integrity: TemporalFoldIntegrity = {
 			trainKnowledgeHorizon: new Date(trainHorizonMs).toISOString(),
+			scheduledTrainEnd: new Date(trainEnd).toISOString(),
 			testStart: new Date(testStartMs).toISOString(),
 			embargoGap,
 			purgedCount,

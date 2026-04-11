@@ -180,7 +180,10 @@ export {
 	createSyntheticSource,
 	SyntheticSourceConfigError
 } from './source/synthetic.ts';
-export type { SyntheticSourceConfig } from './source/synthetic.ts';
+export type {
+	SyntheticSourceConfig,
+	ResolveAtStrategy
+} from './source/synthetic.ts';
 
 // ---------------------------------------------------------------------------
 // Default registry population (R4.3)
