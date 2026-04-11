@@ -44,6 +44,7 @@ def make_ctx():
         start: str = "2025-01-01",
         freq: str = "1h",
         overrides: Optional[dict] = None,
+        features: Optional[dict] = None,
     ) -> Context:
         n = len(close)
         idx = pd.date_range(start, periods=n, freq=freq, tz="UTC")
@@ -66,7 +67,14 @@ def make_ctx():
                         f"override {col!r} has len {len(values)}, expected {n}"
                     )
                 klines[col] = values
-        features = pd.DataFrame({"_dummy": [0.0] * n}, index=idx)
-        return Context(klines=klines, features=features, symbol=symbol)
+        feat_df = pd.DataFrame({"_dummy": [0.0] * n}, index=idx)
+        if features:
+            for col, values in features.items():
+                if len(values) != n:
+                    raise ValueError(
+                        f"features override {col!r} has len {len(values)}, expected {n}"
+                    )
+                feat_df[col] = values
+        return Context(klines=klines, features=feat_df, symbol=symbol)
 
     return _builder

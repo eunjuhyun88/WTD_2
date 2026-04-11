@@ -487,17 +487,24 @@ FEATURE_COLUMNS: tuple[str, ...] = (
 )
 
 
-def compute_features_table(klines: pd.DataFrame, symbol: str) -> pd.DataFrame:
+def compute_features_table(
+    klines: pd.DataFrame,
+    symbol: str,
+    perp: Optional[pd.DataFrame] = None,
+) -> pd.DataFrame:
     """Vectorized counterpart to compute_snapshot — one row per bar.
 
     For each bar t in `klines`, the returned row's feature values are equal
     to what compute_snapshot would produce if called on klines.iloc[:t+1].
     Verified by tests/test_features.py.
 
-    Microstructure features (funding_rate, oi_change_*, long_short_ratio)
-    use neutral defaults — same as compute_snapshot when no `perp` dict is
-    supplied. Patterns that rely on those fields will match everywhere or
-    nowhere until historical perp data is wired in.
+    Microstructure features (funding_rate, oi_change_*, long_short_ratio):
+    if `perp` is None, `load_perp(symbol, offline=False)` is tried (graceful
+    — a miss returns None and is treated as "no perp data"). If still None,
+    neutral defaults are used (funding=0, oi_change=0, long_short_ratio=1).
+    When perp data exists, it is reindexed onto klines.index with
+    forward-fill (so a single funding event sticks for its interval) and
+    remaining NaN are filled with the same neutral defaults.
 
     The first MIN_HISTORY_BARS rows are dropped (warmup): EMA200 and the
     20d-high/low window need at least ~500 hourly bars to stabilise.
@@ -575,11 +582,36 @@ def compute_features_table(klines: pd.DataFrame, symbol: str) -> pd.DataFrame:
         high.to_numpy(), low.to_numpy(), lookback=20
     )
 
-    # --- Microstructure (perp defaults — neutral) ---
-    funding_rate = np.zeros(len(index), dtype=np.float64)
-    oi_change_1h = np.zeros(len(index), dtype=np.float64)
-    oi_change_24h = np.zeros(len(index), dtype=np.float64)
-    long_short_ratio = np.ones(len(index), dtype=np.float64)
+    # --- Microstructure (perp) ---
+    # Try to load perp data lazily if not provided. A miss or a fetch
+    # failure returns None from load_perp and we fall through to the
+    # neutral defaults path — same behaviour as the original stub.
+    if perp is None:
+        try:
+            from data_cache import load_perp as _load_perp
+            perp = _load_perp(symbol, offline=False)
+        except Exception:
+            perp = None
+
+    if perp is not None and len(perp) > 0:
+        perp_aligned = perp.reindex(index, method="ffill")
+        funding_rate = (
+            perp_aligned["funding_rate"].fillna(0.0).to_numpy(dtype=np.float64)
+        )
+        oi_change_1h = (
+            perp_aligned["oi_change_1h"].fillna(0.0).to_numpy(dtype=np.float64)
+        )
+        oi_change_24h = (
+            perp_aligned["oi_change_24h"].fillna(0.0).to_numpy(dtype=np.float64)
+        )
+        long_short_ratio = (
+            perp_aligned["long_short_ratio"].fillna(1.0).to_numpy(dtype=np.float64)
+        )
+    else:
+        funding_rate = np.zeros(len(index), dtype=np.float64)
+        oi_change_1h = np.zeros(len(index), dtype=np.float64)
+        oi_change_24h = np.zeros(len(index), dtype=np.float64)
+        long_short_ratio = np.ones(len(index), dtype=np.float64)
 
     # --- Order flow ---
     last_vol_safe = volume.replace(0, np.nan)

@@ -10,6 +10,7 @@ from building_blocks.entries.long_lower_wick import long_lower_wick
 from building_blocks.entries.long_upper_wick import long_upper_wick
 from building_blocks.entries.rsi_bearish_divergence import rsi_bearish_divergence
 from building_blocks.entries.rsi_bullish_divergence import rsi_bullish_divergence
+from building_blocks.entries.rsi_threshold import rsi_threshold
 from building_blocks.entries.support_bounce import support_bounce
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "long_upper_wick",
     "rsi_bearish_divergence",
     "rsi_bullish_divergence",
+    "rsi_threshold",
     "support_bounce",
 ]
