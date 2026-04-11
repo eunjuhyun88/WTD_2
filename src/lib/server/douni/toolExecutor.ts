@@ -16,9 +16,13 @@ import type { MarketContext } from '$lib/engine/factorEngine';
 import { scanMarket, type ScanConfig } from '$lib/server/scanner';
 import {
   rateLimiter,
-  fetchDepth, fetchOIHistory, fetchTakerRatio, fetchForceOrders,
-  fetchBtcOnchain, fetchMempool, fetchUpbitPrices, fetchBithumbPrices, fetchUsdKrw,
+  // upbit/bithumb price maps still live in marketDataService — their
+  // Map<string, number> return shape is not yet modeled in the
+  // KnownRawId adapter. Lifted in Phase 1 A-P0 slice 4.
+  fetchUpbitPrices, fetchBithumbPrices,
 } from '../marketDataService';
+import { readRaw } from '../providers';
+import { KnownRawId } from '$lib/contracts/ids';
 
 const FAPI = 'https://fapi.binance.com';
 
@@ -140,16 +144,32 @@ async function executeAnalyzeMarket(
     rateLimiter.execute(() => fetchKlinesServer(symbol, '5m', 60)).catch(() => []),
     rateLimiter.execute(() => fetch24hrServer(symbol)).catch(() => null),
     fetchDerivatives(symbol),
-    fetchFearGreed(),
-    rateLimiter.execute(() => fetchDepth(symbol, 20)).catch(() => null),
-    rateLimiter.execute(() => fetchOIHistory(symbol, '5m', 12)).catch(() => []),
-    rateLimiter.execute(() => fetchTakerRatio(symbol, '1h', 1)).catch(() => []),
-    rateLimiter.execute(() => fetchForceOrders(symbol, 50)).catch(() => []),
-    isBTC ? rateLimiter.execute(() => fetchBtcOnchain()).catch(() => null) : Promise.resolve(null),
-    isBTC ? rateLimiter.execute(() => fetchMempool()).catch(() => null) : Promise.resolve(null),
+    readRaw(KnownRawId.FEAR_GREED_VALUE, {}).catch(() => null),
+    rateLimiter.execute(() => readRaw(KnownRawId.DEPTH_L2_20, { symbol })).catch(() => null),
+    rateLimiter.execute(() => readRaw(KnownRawId.OI_HIST_5M, { symbol })).catch(() => []),
+    rateLimiter.execute(() => readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol })).catch(() => []),
+    rateLimiter.execute(() => readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol })).catch(() => []),
+    // BTC onchain + mempool: rawSources already dedupes compound fetches,
+    // so reading one slice pulls the whole payload once and caches it.
+    isBTC
+      ? Promise.all([
+          readRaw(KnownRawId.BTC_N_TX_24H, {}).catch(() => null),
+          readRaw(KnownRawId.BTC_AVG_TX_VALUE, {}).catch(() => null),
+        ]).then(([nTx, avgTxValue]) =>
+          nTx != null && avgTxValue != null ? { nTx, avgTxValue } : null,
+        )
+      : Promise.resolve(null),
+    isBTC
+      ? Promise.all([
+          readRaw(KnownRawId.MEMPOOL_PENDING_TX, {}).catch(() => null),
+          readRaw(KnownRawId.MEMPOOL_FASTEST_FEE, {}).catch(() => null),
+        ]).then(([pending, fastestFee]) =>
+          pending != null && fastestFee != null ? { count: pending, fastestFee } : null,
+        )
+      : Promise.resolve(null),
     rateLimiter.execute(() => fetchUpbitPrices()).catch(() => new Map()),
     rateLimiter.execute(() => fetchBithumbPrices()).catch(() => new Map()),
-    rateLimiter.execute(() => fetchUsdKrw()).catch(() => 1350),
+    readRaw(KnownRawId.USD_KRW_RATE, {}).catch(() => 1350),
   ]);
 
   if (!klines.length) {
@@ -202,7 +222,9 @@ async function executeAnalyzeMarket(
   const ext: ExtendedMarketData = {
     currentPrice,
     depth: depth ? { bidVolume: depth.bidVolume, askVolume: depth.askVolume, ratio: depth.ratio } : undefined,
-    takerRatio: takerData.length > 0 ? takerData[0].buySellRatio : undefined,
+    // takerData is now the fixed 1h×6 window (§10 Q1). The latest point
+    // is the last element; previously this read [0] because limit=1.
+    takerRatio: takerData.length > 0 ? takerData[takerData.length - 1].buySellRatio : undefined,
     oiChangePct,
     priceChangePct: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
     forceOrders: forceOrders.map(o => ({ side: o.side, price: o.price, qty: o.origQty, time: o.time })),
@@ -340,7 +362,7 @@ async function executeCheckSocial(
       { signal: timeout },
     ).catch(() => null),
     fetch('https://api.coingecko.com/api/v3/search/trending', { signal: timeout }).catch(() => null),
-    fetchFearGreed(),
+    readRaw(KnownRawId.FEAR_GREED_VALUE, {}).catch(() => null),
   ]);
 
   const coinData = coinRes?.ok ? await coinRes.json().catch(() => null) : null;
@@ -578,15 +600,6 @@ async function fetchDerivatives(symbol: string) {
   }
 }
 
-async function fetchFearGreed(): Promise<number | null> {
-  try {
-    const res = await fetch('https://api.alternative.me/fng/?limit=1', {
-      signal: AbortSignal.timeout(3000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return parseInt(data?.data?.[0]?.value) || null;
-  } catch {
-    return null;
-  }
-}
+// fetchFearGreed removed — callers now go through
+// readRaw(KnownRawId.FEAR_GREED_VALUE, {}) which bridges to
+// $lib/server/feargreed with cached TTL.
