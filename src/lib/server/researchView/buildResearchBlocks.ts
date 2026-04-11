@@ -3,11 +3,14 @@ import {
 	type CandlePoint,
 	type CompareWindow,
 	type CompareWindowKey,
+	type EventMarker,
 	type FlowSeries,
+	type HeatmapCell,
 	type ResearchBlockEnvelope,
 	type TimePoint
 } from '$lib/contracts';
 import type { FundingDataPoint, LSRatioDataPoint, LiquidationDataPoint, OIDataPoint } from '$lib/server/coinalyze';
+import type { ForceOrder, OrderBookSnapshot, TakerRatioPoint } from '$lib/server/marketDataService';
 
 type AnnotationInput = Array<{ type?: string; price?: number; strength?: number }>;
 type Kline5m = {
@@ -32,6 +35,9 @@ type BuildResearchBlocksInput = {
 	fundingHistory?: FundingDataPoint[];
 	lsRatioHistory?: LSRatioDataPoint[];
 	liquidationHistory?: LiquidationDataPoint[];
+	depthSnapshot?: OrderBookSnapshot | null;
+	forceOrders?: ForceOrder[];
+	takerData?: TakerRatioPoint[];
 	currentFunding?: number | null;
 	currentLsRatio?: number | null;
 	currentOi?: number | null;
@@ -50,6 +56,10 @@ const WINDOW_SECONDS: Record<CompareWindowKey, number> = {
 function percentDelta(current: number | null, baseline: number | null): number | null {
 	if (current == null || baseline == null || baseline === 0) return null;
 	return ((current - baseline) / Math.abs(baseline)) * 100;
+}
+
+function clamp01(value: number): number {
+	return Math.max(0, Math.min(1, value));
 }
 
 function findBaselinePoint<T extends { t: number; v: number | null }>(
@@ -136,6 +146,13 @@ function buildLiquidationTotalSeries(points: LiquidationDataPoint[] | undefined)
 		.map((point) => ({ t: point.time, v: (point.long ?? 0) + (point.short ?? 0) }));
 }
 
+function buildTakerRatioSeries(points: TakerRatioPoint[] | undefined): TimePoint[] {
+	return (points ?? [])
+		.slice()
+		.sort((a, b) => a.timestamp - b.timestamp)
+		.map((point) => ({ t: point.timestamp / 1000, v: point.buySellRatio }));
+}
+
 function buildMetricInterpretation(
 	label: string,
 	current: number | null,
@@ -158,6 +175,126 @@ function metricCurrentFromSeries(points: TimePoint[], fallback: number | null): 
 	return points.length > 0 ? points[points.length - 1]?.v ?? fallback : fallback;
 }
 
+function buildPriceBounds(
+	priceSeries: CandlePoint[],
+	heatmapCells: HeatmapCell[]
+): { minPrice: number; maxPrice: number; range: number; midpoint: number } {
+	const priceValues = priceSeries.flatMap((point) => [point.l, point.h]);
+	const cellValues = heatmapCells.flatMap((cell) => [cell.y0, cell.y1]);
+	const merged = [...priceValues, ...cellValues];
+	const minPrice = Math.min(...merged);
+	const maxPrice = Math.max(...merged);
+	const range = Math.max(maxPrice - minPrice, maxPrice * 0.01, 1);
+	return { minPrice, maxPrice, range, midpoint: (minPrice + maxPrice) / 2 };
+}
+
+function estimateTimeBucketSeconds(priceSeries: CandlePoint[]): number {
+	if (priceSeries.length < 2) return 3600;
+	const deltas: number[] = [];
+	for (let index = 1; index < priceSeries.length; index += 1) {
+		const delta = priceSeries[index].t - priceSeries[index - 1].t;
+		if (delta > 0) deltas.push(delta);
+	}
+	if (deltas.length === 0) return 3600;
+	deltas.sort((a, b) => a - b);
+	return deltas[Math.floor(deltas.length / 2)] ?? deltas[0] ?? 3600;
+}
+
+function buildDepthHeatmapCells(
+	priceSeries: CandlePoint[],
+	depthSnapshot: OrderBookSnapshot | null | undefined
+): HeatmapCell[] {
+	if (!depthSnapshot || priceSeries.length < 2) return [];
+	const startTs = priceSeries[0].t;
+	const endTs = priceSeries[priceSeries.length - 1].t;
+	const minPrice = Math.min(...priceSeries.map((point) => point.l));
+	const maxPrice = Math.max(...priceSeries.map((point) => point.h));
+	const priceRange = Math.max(maxPrice - minPrice, maxPrice * 0.01, 1);
+	const bandHeight = Math.max(priceRange * 0.012, maxPrice * 0.0018, 6);
+
+	const bidLevels = depthSnapshot.bids
+		.map(([price, qty]) => ({ side: 'bid' as const, price, qty, notional: price * qty }))
+		.sort((a, b) => b.notional - a.notional)
+		.slice(0, 8);
+	const askLevels = depthSnapshot.asks
+		.map(([price, qty]) => ({ side: 'ask' as const, price, qty, notional: price * qty }))
+		.sort((a, b) => b.notional - a.notional)
+		.slice(0, 8);
+	const levels = [...bidLevels, ...askLevels];
+	const maxNotional = Math.max(...levels.map((level) => level.notional), 1);
+
+	return levels.map((level) => ({
+		x0: startTs,
+		x1: endTs,
+		y0: level.price - bandHeight / 2,
+		y1: level.price + bandHeight / 2,
+		intensity: clamp01(0.18 + Math.sqrt(level.notional / maxNotional) * 0.82),
+		side: level.side,
+		value: level.notional,
+		label: level.side === 'bid' ? 'Bid wall' : 'Ask wall'
+	}));
+}
+
+function buildForceOrderHeatmapCells(
+	priceSeries: CandlePoint[],
+	forceOrders: ForceOrder[] | undefined
+): HeatmapCell[] {
+	if (!forceOrders || forceOrders.length === 0 || priceSeries.length < 2) return [];
+	const startTs = priceSeries[0].t;
+	const endTs = priceSeries[priceSeries.length - 1].t;
+	const minPrice = Math.min(...priceSeries.map((point) => point.l));
+	const maxPrice = Math.max(...priceSeries.map((point) => point.h));
+	const priceRange = Math.max(maxPrice - minPrice, maxPrice * 0.01, 1);
+	const bandHeight = Math.max(priceRange * 0.02, maxPrice * 0.0024, 8);
+	const bucketSeconds = estimateTimeBucketSeconds(priceSeries);
+	const pulseWidth = Math.max(Math.round(bucketSeconds * 1.4), 900);
+
+	const ranked = forceOrders
+		.map((order) => ({
+			...order,
+			notional: Math.abs(order.price * order.origQty)
+		}))
+		.filter((order) => Number.isFinite(order.notional) && order.notional > 0)
+		.sort((a, b) => b.notional - a.notional)
+		.slice(0, 18);
+	const maxNotional = Math.max(...ranked.map((order) => order.notional), 1);
+
+	return ranked.map((order) => ({
+		x0: Math.max(startTs, Math.floor(order.time / 1000) - Math.floor(pulseWidth / 2)),
+		x1: Math.min(endTs, Math.floor(order.time / 1000) + Math.floor(pulseWidth / 2)),
+		y0: order.price - bandHeight / 2,
+		y1: order.price + bandHeight / 2,
+		intensity: clamp01(0.14 + Math.sqrt(order.notional / maxNotional) * 0.86),
+		side: order.side === 'BUY' ? 'buy_liq' : 'sell_liq',
+		value: order.notional,
+		label: order.side === 'BUY' ? 'Short liq pulse' : 'Long liq pulse'
+	}));
+}
+
+function buildHeatmapMarkers(forceOrders: ForceOrder[] | undefined): EventMarker[] {
+	if (!forceOrders || forceOrders.length === 0) return [];
+	const ranked = forceOrders
+		.map((order) => ({
+			...order,
+			notional: Math.abs(order.price * order.origQty)
+		}))
+		.filter((order) => Number.isFinite(order.notional) && order.notional > 0)
+		.sort((a, b) => b.notional - a.notional)
+		.slice(0, 6);
+	const maxNotional = Math.max(...ranked.map((order) => order.notional), 1);
+
+	return ranked.map((order, index) => {
+		const strength = order.notional / maxNotional;
+		return {
+			id: `force-${index}-${order.time}`,
+			ts: Math.floor(order.time / 1000),
+			label: order.side === 'BUY' ? 'Short liq' : 'Long liq',
+			direction: order.side === 'BUY' ? 'bull' : 'bear',
+			severity: strength > 0.66 ? 'high' : strength > 0.33 ? 'medium' : 'low'
+		};
+	});
+}
+
 export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBlockEnvelope[] {
 	const priceCloseSeries = mapPriceToTimePoints(input.priceSeries);
 	const cvdSeries = buildCvdSeries(input.klines5m);
@@ -165,6 +302,7 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 	const fundingSeries = buildFundingBpsSeries(input.fundingHistory);
 	const lsSeries = mapHistoryPoints(input.lsRatioHistory);
 	const liqSeries = buildLiquidationTotalSeries(input.liquidationHistory);
+	const takerRatioSeries = buildTakerRatioSeries(input.takerData);
 
 	const priceCompare = buildCompareWindows(priceCloseSeries);
 	const cvdCompare = buildCompareWindows(cvdSeries);
@@ -326,6 +464,17 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 						points: lsSeries
 					}
 				]
+			: []),
+		...(takerRatioSeries.length > 1
+			? [
+					{
+						id: 'taker_ratio',
+						label: 'Taker Ratio',
+						axis: 'right' as const,
+						mode: 'line' as const,
+						points: takerRatioSeries
+					}
+				]
 			: [])
 	];
 
@@ -347,5 +496,67 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 		}
 	});
 
-	return [metricStrip, inlinePrice, dualPaneFlow];
+	const heatmapCells = [
+		...buildDepthHeatmapCells(input.priceSeries, input.depthSnapshot),
+		...buildForceOrderHeatmapCells(input.priceSeries, input.forceOrders)
+	];
+	const heatmapMarkers = buildHeatmapMarkers(input.forceOrders);
+	const blocks = [metricStrip, inlinePrice, dualPaneFlow];
+
+	if (heatmapCells.length > 0) {
+		const priceBounds = buildPriceBounds(input.priceSeries, heatmapCells);
+		const heatmapLowerSeries: FlowSeries[] = [
+			...(liqSeries.length > 1
+				? [
+						{
+							id: 'liquidation_total',
+							label: 'Liquidations',
+							axis: 'left' as const,
+							mode: 'histogram' as const,
+							points: liqSeries
+						}
+					]
+				: []),
+			...(cvdSeries.length > 1
+				? [
+						{
+							id: 'cvd_context',
+							label: 'CVD',
+							axis: 'right' as const,
+							mode: 'line' as const,
+							points: cvdSeries
+						}
+					]
+				: [])
+		];
+
+		blocks.push(
+			parseResearchBlockEnvelope({
+				schemaVersion: 'research_block_v1',
+				id: `${input.symbol}-${input.timeframe}-heatmap-flow`,
+				traceId: input.traceId,
+				symbol: input.symbol,
+				timeframe: input.timeframe,
+				asOf: input.asOf,
+				title: 'Liquidity heatmap',
+				summary: `Orderbook walls and liquidation pulses across ${priceBounds.minPrice.toFixed(0)}-${priceBounds.maxPrice.toFixed(0)} price space.`,
+				block: {
+					kind: 'heatmap_flow_chart',
+					price: input.priceSeries,
+					cells: heatmapCells,
+					lowerPane: heatmapLowerSeries.length > 0 ? { series: heatmapLowerSeries } : undefined,
+					compareWindows: priceCompare,
+					markers: heatmapMarkers,
+					legend: [
+						{ id: 'bid', label: 'Bid wall', color: 'rgba(173, 202, 124, 0.9)' },
+						{ id: 'ask', label: 'Ask wall', color: 'rgba(207, 127, 143, 0.9)' },
+						{ id: 'buy_liq', label: 'Short liq pulse', color: 'rgba(255, 220, 110, 0.95)' },
+						{ id: 'sell_liq', label: 'Long liq pulse', color: 'rgba(86, 146, 255, 0.95)' }
+					]
+				}
+			})
+		);
+	}
+
+	return blocks;
 }
