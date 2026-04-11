@@ -133,6 +133,12 @@ export interface L9Result {
   liq_short_usd: number;
   score: number;             // ±12
   label: string;
+  /**
+   * Typed real-liquidation events emitted by `computeL9`. Populated
+   * in E3d of the harness engine integration plan. Empty when no
+   * event thresholds fired. Optional for pre-E3d fixture compat.
+   */
+  events?: ReadonlyArray<import('../../contracts/events.ts').EventPayload>;
 }
 
 export interface L10Result {
