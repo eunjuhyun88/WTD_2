@@ -109,6 +109,10 @@ export function buildPassportLink(tab?: string): string {
   return buildDeepLink('/passport', tab ? { tab } : {});
 }
 
+export function buildPassportWalletLink(chain: string, address: string): string {
+  return buildDeepLink(`/passport/wallet/${encodeURIComponent(chain)}/${encodeURIComponent(address)}`);
+}
+
 export function buildArenaLink(mode?: 'quick' | 'war' | 'tournament'): string {
   return buildBattleLink(mode ? { mode } : {});
 }

@@ -168,6 +168,11 @@
     { key: 'strongBear', short: 'SBR', value: bucketNum(bucket.strongBear), meta: '<=-55', tone: 'var(--sc-bad)' },
     { key: 'extremeFR', short: 'FR', value: bucketNum(bucket.extremeFR), meta: 'hot', tone: 'var(--sc-warn)' }
   ]);
+
+  const stripItems = $derived([
+    ...thermoChips.map((chip) => ({ ...chip, group: 'thermo' })),
+    ...bucketChips.map((chip) => ({ ...chip, group: 'breadth' }))
+  ]);
 </script>
 
 <aside class="market-dock" aria-label="Global market pulse">
@@ -176,71 +181,53 @@
       <span class="dock-dot" aria-hidden="true"></span>
       <span class="dock-title">Market Pulse</span>
     </div>
-    <span class="dock-copy">macro + scan breadth</span>
+    <span class="dock-copy">macro + breadth</span>
   </div>
 
-  <div class="dock-section">
-    <span class="section-label">THERMO</span>
-    <div class="chip-row">
-      {#each thermoChips as chip}
-        <div class="chip" style={`--chip-tone:${chip.tone}`}>
-          <span class="chip-key">{chip.short}</span>
-          <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
-          <span class="chip-meta">{chip.meta}</span>
-        </div>
-      {/each}
-    </div>
-  </div>
-
-  <div class="dock-section">
-    <span class="section-label">BREADTH</span>
-    <div class="chip-row chip-row-buckets">
-      {#each bucketChips as chip}
-        <div class="chip chip-bucket" style={`--chip-tone:${chip.tone}`}>
-          <span class="chip-key">{chip.short}</span>
-          <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
-          <span class="chip-meta">{chip.meta}</span>
-        </div>
-      {/each}
-    </div>
+  <div class="strip-row">
+    {#each stripItems as chip}
+      <div class="chip" style={`--chip-tone:${chip.tone}`}>
+        <span class="chip-group">{chip.group === 'thermo' ? 'T' : 'B'}</span>
+        <span class="chip-key">{chip.short}</span>
+        <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
+        <span class="chip-meta">{chip.meta}</span>
+      </div>
+    {/each}
   </div>
 </aside>
 
 <style>
   .market-dock {
-    position: fixed;
-    top: auto;
-    bottom: calc(var(--sc-bottom-bar-h, 28px) + 14px);
-    right: max(14px, calc((100vw - 1080px) / 2 + 14px));
-    width: min(468px, calc(100vw - 28px));
-    padding: 10px 11px;
+    position: relative;
+    width: 100%;
+    padding: 6px 10px;
     display: flex;
-    flex-direction: column;
-    gap: 9px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
     background:
-      linear-gradient(180deg, rgba(10, 10, 10, 0.92), rgba(0, 0, 0, 0.86)),
-      radial-gradient(circle at top right, rgba(219, 154, 159, 0.1), transparent 34%);
-    backdrop-filter: blur(20px) saturate(1.08);
-    -webkit-backdrop-filter: blur(20px) saturate(1.08);
+      linear-gradient(180deg, rgba(10, 10, 10, 0.9), rgba(5, 5, 5, 0.84)),
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.08), transparent 30%);
+    backdrop-filter: blur(16px) saturate(1.04);
+    -webkit-backdrop-filter: blur(16px) saturate(1.04);
     box-shadow:
-      0 24px 60px rgba(0, 0, 0, 0.42),
+      0 8px 24px rgba(0, 0, 0, 0.18),
       inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    z-index: calc(var(--sc-z-header) - 1);
+    overflow: hidden;
   }
 
   .dock-head {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
+    flex: 0 0 auto;
   }
 
   .dock-title-wrap {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     min-width: 0;
   }
 
@@ -255,71 +242,60 @@
 
   .dock-title {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
-    font-size: 14px;
-    letter-spacing: 0.08em;
+    font-size: 11px;
+    letter-spacing: 0.1em;
     color: var(--sc-text-0);
   }
 
   .dock-copy {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: 9px;
     letter-spacing: 0.06em;
     color: var(--sc-text-2);
     text-transform: uppercase;
     white-space: nowrap;
   }
 
-  .dock-section {
+  .strip-row {
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .section-label {
-    width: 50px;
-    flex-shrink: 0;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    color: rgba(219, 154, 159, 0.72);
-    text-transform: uppercase;
-  }
-
-  .chip-row {
-    flex: 1;
-    min-width: 0;
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .strip-row::-webkit-scrollbar {
+    display: none;
   }
 
   .chip {
     --chip-tone: var(--sc-accent);
     min-width: 0;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-areas:
-      'key value'
-      'meta meta';
-    gap: 2px 6px;
-    padding: 7px 8px 8px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 8px 5px;
     border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 12px;
+    border-radius: 999px;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.015)),
-      linear-gradient(180deg, color-mix(in srgb, var(--chip-tone) 8%, transparent), transparent 78%);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(255, 255, 255, 0.012)),
+      linear-gradient(180deg, color-mix(in srgb, var(--chip-tone) 8%, transparent), transparent 82%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    white-space: nowrap;
   }
 
-  .chip-bucket {
-    padding-inline: 8px;
+  .chip-group {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(219, 154, 159, 0.68);
+    text-transform: uppercase;
   }
 
   .chip-key {
-    grid-area: key;
-    align-self: center;
     font-family: var(--sc-font-body, sans-serif);
     font-size: 9px;
     font-weight: 700;
@@ -329,10 +305,8 @@
   }
 
   .chip-value {
-    grid-area: value;
-    justify-self: end;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 14px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1;
     color: var(--sc-text-0);
@@ -340,37 +314,23 @@
   }
 
   .chip-meta {
-    grid-area: meta;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: 8px;
     line-height: 1.1;
     letter-spacing: 0.02em;
     color: var(--sc-text-3);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   @media (max-width: 1200px) {
     .market-dock {
-      width: min(468px, calc(100vw - 24px));
-      right: 12px;
-    }
-
-    .chip-row {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
     }
   }
 
   @media (max-width: 768px) {
     .market-dock {
-      top: auto;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
-      left: 10px;
-      right: 10px;
-      width: auto;
-      padding: 9px 10px;
-      gap: 7px;
+      padding: 5px 8px;
+      gap: 8px;
     }
 
     .dock-head {
@@ -382,44 +342,21 @@
     }
 
     .dock-copy {
-      font-size: 9px;
-    }
-
-    .dock-section {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 6px;
-    }
-
-    .section-label {
-      width: auto;
-    }
-
-    .chip-row {
-      display: flex;
-      overflow-x: auto;
-      padding-bottom: 2px;
-      gap: 6px;
-      scrollbar-width: none;
-    }
-
-    .chip-row::-webkit-scrollbar {
       display: none;
     }
 
     .chip {
-      min-width: 88px;
-      flex: 0 0 auto;
-      padding: 6px 8px 7px;
+      gap: 5px;
+      padding: 4px 7px;
     }
 
     .chip-value {
-      font-size: 12px;
+      font-size: 10px;
     }
 
     .chip-meta,
     .chip-key,
-    .section-label {
+    .chip-group {
       font-size: 8px;
     }
   }
