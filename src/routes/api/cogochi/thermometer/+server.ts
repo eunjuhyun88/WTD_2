@@ -1,33 +1,36 @@
 // GET /api/cogochi/thermometer
 // Returns global market data for the thermometer bar.
 // All APIs are free, no keys needed.
+//
+// Migrated to the typed `readRaw()` adapter (Phase 1 A-P0 slice 2).
+// Inline upstream fetches are forbidden — every raw must come through
+// `src/lib/server/providers/rawSources.ts` so the contract namespace
+// remains the single source of truth.
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import {
-  fetchBtcOnchain, fetchMempool, fetchUsdKrw, fetchBtcDominance,
-} from '$lib/server/marketDataService';
+import { readRaw } from '$lib/server/providers';
+import { KnownRawId } from '$lib/contracts/ids';
+import { fetchBtcDominance } from '$lib/server/marketDataService';
 
 export const GET: RequestHandler = async () => {
-  const timeout = AbortSignal.timeout(8000);
-
-  const [fearGreedVal, btcOnchain, mempool, usdKrw, btcDom] = await Promise.all([
-    fetch('https://api.alternative.me/fng/?limit=1', { signal: timeout })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => parseInt(d?.data?.[0]?.value) || null)
-      .catch(() => null),
-    fetchBtcOnchain().catch(() => null),
-    fetchMempool().catch(() => null),
-    fetchUsdKrw().catch(() => 1350),
+  const [fearGreed, btcTx, mempoolPending, fastestFee, usdKrw, btcDom] = await Promise.all([
+    readRaw(KnownRawId.FEAR_GREED_VALUE, {}).catch(() => null),
+    readRaw(KnownRawId.BTC_N_TX_24H, {}).catch(() => null),
+    readRaw(KnownRawId.MEMPOOL_PENDING_TX, {}).catch(() => null),
+    readRaw(KnownRawId.MEMPOOL_FASTEST_FEE, {}).catch(() => null),
+    readRaw(KnownRawId.USD_KRW_RATE, {}).catch(() => 1350),
+    // btc dominance is not yet in the KnownRawId catalog — keep the
+    // legacy direct call for now, will be lifted in a later slice.
     fetchBtcDominance().catch(() => null),
   ]);
 
   return json({
-    fearGreed: fearGreedVal,
-    btcDominance: btcDom ? Math.round(btcDom * 10) / 10 : null,
-    btcTx: btcOnchain?.nTx ?? null,
-    mempoolPending: mempool?.count ?? null,
-    fastestFee: mempool?.fastestFee ?? null,
-    usdKrw: Math.round(usdKrw),
+    fearGreed,
+    btcDominance: btcDom != null ? Math.round(btcDom * 10) / 10 : null,
+    btcTx,
+    mempoolPending,
+    fastestFee,
+    usdKrw: Math.round(usdKrw ?? 1350),
   });
 };
