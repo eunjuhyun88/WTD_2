@@ -138,6 +138,43 @@ export type {
 	ReportCompletenessCode
 } from './pipeline/types.ts';
 
+// Schedule primitives (R4.4) — sample-size ladder
+export {
+	SCHEDULE_VERSION,
+	ScheduleConfigError,
+	createGeometricSchedule,
+	createLinearSchedule,
+	createEarlyStopSchedule
+} from './schedule.ts';
+export type {
+	ExperimentSchedule,
+	ScheduleCell,
+	ScheduleKind,
+	ScheduleVersion,
+	GeometricScheduleConfig,
+	LinearScheduleConfig,
+	EarlyStopConfig,
+	StopCondition
+} from './schedule.ts';
+
+// Weight sweep primitives (R4.4) — reward factorial
+export {
+	WEIGHT_SWEEP_VERSION,
+	WeightSweepConfigError,
+	createFullFactorialSweep,
+	createLatinHypercubeSweep,
+	createEscalatingSweep
+} from './weightSweep.ts';
+export type {
+	WeightSweepStrategy,
+	WeightSweepCell,
+	WeightSweepKind,
+	WeightSweepVersion,
+	FullFactorialGrid,
+	LatinHypercubeRanges,
+	EscalatingSweep
+} from './weightSweep.ts';
+
 // ---------------------------------------------------------------------------
 // Default registry population (R4.3)
 // ---------------------------------------------------------------------------
