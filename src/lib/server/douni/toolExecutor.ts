@@ -320,6 +320,9 @@ async function executeAnalyzeMarket(
     fundingHistory,
     lsRatioHistory,
     liquidationHistory,
+    depthSnapshot: depth,
+    forceOrders: ext.forceOrders,
+    takerData,
     currentFunding: funding,
     currentLsRatio: lsTop,
     currentOi: oiPoint
