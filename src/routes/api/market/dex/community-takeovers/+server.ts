@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchDexCommunityTakeoversLatest } from '$lib/server/dexscreener';
+import { fetchDexCommunityTakeoversLatest } from '$lib/server/providers/dexscreener';
 
 export const GET: RequestHandler = async ({ url }) => {
   try {

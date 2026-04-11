@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchDexPair } from '$lib/server/dexscreener';
+import { fetchDexPair } from '$lib/server/providers/dexscreener';
 
 export const GET: RequestHandler = async ({ params }) => {
   try {

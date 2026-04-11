@@ -6,7 +6,7 @@ import {
   fetchDexCommunityTakeoversLatest,
   fetchDexTokenBoostsLatest,
   fetchDexTokens,
-} from '$lib/server/dexscreener';
+} from '$lib/server/providers/dexscreener';
 
 type DexLikeRow = {
   chainId: string;
