@@ -183,6 +183,20 @@ const routeMeta = [
     primaryConcern: 'LLM-driven chat with function calling, market analysis, social data',
     keyState: 'route-local chat state + `currentSnapshot`',
     deepDocs: '`docs/PRODUCT_SENSE.md`'
+  },
+  {
+    route: '/cogochi/scanner',
+    role: 'cogochi scanner surface',
+    primaryConcern: 'alpha scan results, filter/sort by alpha + regime, layer-score deep dive',
+    keyState: 'route-local scan result state, layer score rows, filter/sort selection',
+    deepDocs: '`docs/product-specs/terminal.md`'
+  },
+  {
+    route: '/terminal-legacy',
+    role: 'legacy terminal shell preserved for comparison',
+    primaryConcern: 'prior war-room + chart + intel layout kept during terminal refactor',
+    keyState: 'route-local chat/pattern state + `copyTradeStore`, `trackedSignalStore`',
+    deepDocs: '`docs/product-specs/terminal.md`'
   }
 ];
 
