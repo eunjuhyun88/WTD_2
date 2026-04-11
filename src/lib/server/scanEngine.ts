@@ -22,7 +22,7 @@ import {
   fetchOIHistoryServer,
 } from '$lib/server/providers/coinalyze';
 import { fetchFearGreed as fetchFearGreedServer } from '$lib/server/feargreed';
-import { fetchCoinGeckoGlobal } from '$lib/server/coingecko';
+import { fetchCoinGeckoGlobal } from '$lib/server/providers/coingecko';
 import { fetchGasOracle, estimateExchangeNetflow } from '$lib/server/etherscan';
 import { fetchYahooSeries } from '$lib/server/yahooFinance';
 import { fetchTopicSocial } from '$lib/server/lunarcrush';

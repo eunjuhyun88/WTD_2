@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from '$lib/server/coingecko';
+import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from '$lib/server/providers/coingecko';
 import { fetchDefiLlamaStableMcap } from '$lib/server/defillama';
 
 export const GET: RequestHandler = async () => {
