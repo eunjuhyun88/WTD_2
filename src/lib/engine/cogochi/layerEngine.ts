@@ -31,13 +31,14 @@ import { computeAlphaScore, toAlphaLabel, buildVerdict } from './alphaScore';
 import { EventId, type EventPayload } from '$lib/contracts/events';
 import { EventDirection, EventSeverity } from '$lib/contracts/ids';
 
-// Pinned L2 flow thresholds — dissection §4.2. Lifted to named
-// constants here so the E6 slice can move them into a central
-// thresholds registry without touching the layer body.
-const L2_FR_EXTREME_NEG = -0.07;
-const L2_FR_EXTREME_POS = 0.08;
-const L2_OI_BUILD_MIN_PCT = 3;
-const L2_PRICE_BUILD_MIN_PCT = 0.5;
+// E6a — L2 flow thresholds (dissection §4.2 lines 1010-1038) now
+// live in the central engine threshold registry. The previous
+// pinned constants here (L2_FR_EXTREME_NEG / L2_FR_EXTREME_POS /
+// L2_OI_BUILD_MIN_PCT / L2_PRICE_BUILD_MIN_PCT) are deleted; every
+// reference now reads from `Thresholds.flow.*`. Behavior is
+// identical — see `e6a-thresholds-flow-smoke.ts` for the parity
+// gate.
+import { Thresholds } from './thresholds';
 
 // ─── Helpers ───��─────────────────────────────────────────────
 
@@ -58,8 +59,8 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
   const details: string[] = [];
   const events: EventPayload[] = [];
 
-  // FR scoring
-  if (fr < -0.07) {
+  // FR scoring — thresholds lifted to Thresholds.flow.* in E6a.
+  if (fr < Thresholds.flow.fr_extreme_negative) {
     score += 24;
     details.push('FR극단음수');
     // E3a — typed event for downstream verdictBuilder consumption.
@@ -68,14 +69,14 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
       direction: EventDirection.BULL,
       severity: EventSeverity.HIGH,
       note: 'Short-squeeze risk: funding rate extreme negative',
-      data: { funding_rate: fr, threshold: L2_FR_EXTREME_NEG }
+      data: { funding_rate: fr, threshold: Thresholds.flow.fr_extreme_negative }
     });
   }
-  else if (fr < -0.025) { score += 15; details.push('FR음수'); }
-  else if (fr < -0.005) { score += 6; details.push('FR약한음수'); }
-  else if (fr < 0.005) { /* neutral */ }
-  else if (fr < 0.04) { score -= 10; details.push('FR양수'); }
-  else if (fr < 0.08) { score -= 18; details.push('FR높음'); }
+  else if (fr < Thresholds.flow.fr_negative) { score += 15; details.push('FR음수'); }
+  else if (fr < Thresholds.flow.fr_weak_negative) { score += 6; details.push('FR약한음수'); }
+  else if (fr < Thresholds.flow.fr_neutral_upper) { /* neutral */ }
+  else if (fr < Thresholds.flow.fr_positive) { score -= 10; details.push('FR양수'); }
+  else if (fr < Thresholds.flow.fr_hot) { score -= 18; details.push('FR높음'); }
   else {
     score -= 24;
     details.push('FR극단양수');
@@ -84,12 +85,12 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
       direction: EventDirection.BEAR,
       severity: EventSeverity.HIGH,
       note: 'Long-liquidation risk: funding rate extreme positive',
-      data: { funding_rate: fr, threshold: L2_FR_EXTREME_POS }
+      data: { funding_rate: fr, threshold: Thresholds.flow.fr_extreme_positive }
     });
   }
 
-  // OI + Price synergy
-  if (oiPct > L2_OI_BUILD_MIN_PCT && pricePct > L2_PRICE_BUILD_MIN_PCT) {
+  // OI + Price synergy — gates lifted to Thresholds.flow.*
+  if (oiPct > Thresholds.flow.oi_build_min_pct && pricePct > Thresholds.flow.price_build_min_pct) {
     score += 15;
     details.push('OI↑+P↑');
     events.push({
@@ -100,7 +101,7 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
       data: { oi_change_pct: oiPct, price_change_pct: pricePct }
     });
   }
-  else if (oiPct > L2_OI_BUILD_MIN_PCT && pricePct < -L2_PRICE_BUILD_MIN_PCT) {
+  else if (oiPct > Thresholds.flow.oi_build_min_pct && pricePct < -Thresholds.flow.price_build_min_pct) {
     score -= 15;
     details.push('OI↑+P↓');
     events.push({
@@ -111,7 +112,7 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
       data: { oi_change_pct: oiPct, price_change_pct: pricePct }
     });
   }
-  else if (oiPct < -L2_OI_BUILD_MIN_PCT && pricePct < -L2_PRICE_BUILD_MIN_PCT) {
+  else if (oiPct < -Thresholds.flow.oi_build_min_pct && pricePct < -Thresholds.flow.price_build_min_pct) {
     score += 8;
     details.push('OI↓+P↓ recovery');
     events.push({
@@ -122,7 +123,7 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
       data: { oi_change_pct: oiPct, price_change_pct: pricePct }
     });
   }
-  else if (oiPct < -L2_OI_BUILD_MIN_PCT && pricePct > L2_PRICE_BUILD_MIN_PCT) {
+  else if (oiPct < -Thresholds.flow.oi_build_min_pct && pricePct > Thresholds.flow.price_build_min_pct) {
     score += 5;
     details.push('OI↓+P↑ squeeze');
     events.push({
@@ -134,17 +135,17 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
     });
   }
 
-  // L/S Ratio
-  if (lsRatio > 2.2) { score -= 14; details.push('극단롱'); }
-  else if (lsRatio > 1.6) { score -= 7; details.push('롱과다'); }
-  else if (lsRatio < 0.6) { score += 13; details.push('극단숏'); }
-  else if (lsRatio < 0.9) { score += 6; details.push('숏우세'); }
+  // L/S Ratio — bands lifted to Thresholds.flow.*
+  if (lsRatio > Thresholds.flow.ls_extreme_long) { score -= 14; details.push('극단롱'); }
+  else if (lsRatio > Thresholds.flow.ls_long_heavy) { score -= 7; details.push('롱과다'); }
+  else if (lsRatio < Thresholds.flow.ls_extreme_short) { score += 13; details.push('극단숏'); }
+  else if (lsRatio < Thresholds.flow.ls_short_heavy) { score += 6; details.push('숏우세'); }
 
-  // Taker Ratio
-  if (takerRatio > 1.25) { score += 10; details.push('공격매수'); }
-  else if (takerRatio > 1.08) { score += 5; details.push('매수우세'); }
-  else if (takerRatio < 0.75) { score -= 10; details.push('공격매도'); }
-  else if (takerRatio < 0.92) { score -= 5; details.push('매도우세'); }
+  // Taker Ratio — bands lifted to Thresholds.flow.*
+  if (takerRatio > Thresholds.flow.taker_aggressive_buy) { score += 10; details.push('공격매수'); }
+  else if (takerRatio > Thresholds.flow.taker_buy_lean) { score += 5; details.push('매수우세'); }
+  else if (takerRatio < Thresholds.flow.taker_aggressive_sell) { score -= 10; details.push('공격매도'); }
+  else if (takerRatio < Thresholds.flow.taker_sell_lean) { score -= 5; details.push('매도우세'); }
 
   return {
     fr,
@@ -152,7 +153,7 @@ function computeL2(ctx: MarketContext, ext: ExtendedMarketData): L2Result {
     ls_ratio: lsRatio,
     taker_ratio: takerRatio,
     price_change: pricePct,
-    score: clamp(score, -55, 55),
+    score: clamp(score, Thresholds.flow.score_clip_min, Thresholds.flow.score_clip_max),
     detail: details.join(' · ') || 'NEUTRAL',
     events,
   };
