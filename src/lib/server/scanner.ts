@@ -4,14 +4,9 @@
 // Scans many symbols in parallel using the 17-layer COGOCHI engine.
 // 3-Group symbol selection: volume, movers, near-breakout.
 
-import {
-  rateLimiter,
-  fetchDepth,
-  fetchOIHistory,
-  fetchTakerRatio,
-  fetchForceOrders,
-  fetchGlobalLS,
-} from './marketDataService';
+import { rateLimiter } from './marketDataService';
+import { readRaw } from './providers';
+import { KnownRawId } from '$lib/contracts/ids';
 import { fetchKlinesServer, fetch24hrServer } from './binance';
 import { computeSignalSnapshot } from '$lib/engine/cogochi/layerEngine';
 import type { SignalSnapshot, ExtendedMarketData } from '$lib/engine/cogochi/types';
@@ -190,19 +185,6 @@ async function fetchDerivatives(symbol: string) {
   }
 }
 
-async function fetchFearGreed(): Promise<number | null> {
-  try {
-    const res = await fetch('https://api.alternative.me/fng/?limit=1', {
-      signal: AbortSignal.timeout(3_000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return parseInt(data?.data?.[0]?.value) || null;
-  } catch {
-    return null;
-  }
-}
-
 // --- Single symbol scan ---------------------------------------------
 
 async function scanSingleSymbol(
@@ -218,10 +200,10 @@ async function scanSingleSymbol(
         rateLimiter.execute(() => fetchKlinesServer(symbol, '1d', 50)).catch(() => []),
         rateLimiter.execute(() => fetch24hrServer(symbol)).catch(() => null),
         rateLimiter.execute(() => fetchDerivatives(symbol)),
-        rateLimiter.execute(() => fetchDepth(symbol, 20)).catch(() => null),
-        rateLimiter.execute(() => fetchOIHistory(symbol, '1h', 6)).catch(() => []),
-        rateLimiter.execute(() => fetchTakerRatio(symbol, '1h', 6)).catch(() => []),
-        rateLimiter.execute(() => fetchForceOrders(symbol, 50)).catch(() => []),
+        rateLimiter.execute(() => readRaw(KnownRawId.DEPTH_L2_20, { symbol })).catch(() => null),
+        rateLimiter.execute(() => readRaw(KnownRawId.OI_HIST_1H, { symbol })).catch(() => []),
+        rateLimiter.execute(() => readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol })).catch(() => []),
+        rateLimiter.execute(() => readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol })).catch(() => []),
       ]);
 
     if (!klines || klines.length === 0) return null;
@@ -356,7 +338,7 @@ export async function scanMarket(config: ScanConfig): Promise<ScanResult[]> {
   }
 
   // Fetch Fear & Greed once (shared across all symbols)
-  const fearGreed = await fetchFearGreed();
+  const fearGreed = await readRaw(KnownRawId.FEAR_GREED_VALUE, {}).catch(() => null);
 
   // Scan all symbols in parallel (rate limiter handles concurrency)
   const promises = symbols.map((symbol) => scanSingleSymbol(symbol, fearGreed));
