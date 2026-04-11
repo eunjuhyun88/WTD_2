@@ -144,50 +144,14 @@ export async function selectSymbols3Group(topN: number): Promise<string[]> {
   return merged.slice(0, topN);
 }
 
-// --- Per-symbol data fetching ---------------------------------------
-
-const FAPI_TIMEOUT = 5_000;
-
-async function fetchDerivatives(symbol: string) {
-  const timeout = AbortSignal.timeout(FAPI_TIMEOUT);
-  try {
-    // premiumIndex (funding rate + mark price) now flows through the raw
-    // source adapter, which dedupes paired FUNDING_RATE / MARK_PRICE reads
-    // for the same symbol within a 5-second window. openInterest (point
-    // in time) and topLongShortAccountRatio are still direct fapi calls
-    // until their raw atoms are added in a follow-up slice.
-    const [funding, oiRes] = await Promise.all([
-      readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null),
-      fetch(`${FAPI}/fapi/v1/openInterest?symbol=${symbol}`, { signal: timeout }),
-    ]);
-
-    const oi = oiRes.ok ? await oiRes.json() : null;
-
-    let lsRatio: number | null = null;
-    try {
-      const lsRes = await fetch(
-        `${FAPI}/futures/data/topLongShortAccountRatio?symbol=${symbol}&period=1h&limit=1`,
-        { signal: AbortSignal.timeout(FAPI_TIMEOUT) },
-      );
-      if (lsRes.ok) {
-        const lsData = await lsRes.json();
-        if (Array.isArray(lsData) && lsData.length > 0) {
-          lsRatio = parseFloat(lsData[0].longShortRatio) || null;
-        }
-      }
-    } catch { /* skip */ }
-
-    return {
-      funding,
-      oi: oi ? parseFloat(oi.openInterest) : null,
-      lsRatio,
-    };
-  } catch {
-    return { funding: null, oi: null, lsRatio: null };
-  }
-}
-
 // --- Single symbol scan ---------------------------------------------
+//
+// Per-symbol derivatives (funding rate, open interest, top-trader L/S)
+// now flow entirely through `readRaw()`. The old private
+// `fetchDerivatives()` helper in this file was a transitional shim while
+// OPEN_INTEREST_POINT and LONG_SHORT_TOP_1H atoms did not exist. They
+// landed in B7, so the helper is gone and the three atoms are fetched
+// alongside the other raw reads below.
 
 async function scanSingleSymbol(
   symbol: string,
@@ -197,18 +161,23 @@ async function scanSingleSymbol(
     // All raw reads now flow through `readRaw()`; provider-level
     // `binanceQuota` inside rawSources handles concurrency + interval
     // pacing (the old per-caller `rateLimiter.execute(...)` wrapper is gone).
-    const [klines, klines1h, klines1d, ticker, deriv, depth, oiHist, takerData, forceData] =
-      await Promise.all([
-        readRaw(KnownRawId.KLINES_4H, { symbol, limit: 200 }),
-        readRaw(KnownRawId.KLINES_1H, { symbol, limit: 100 }).catch(() => []),
-        readRaw(KnownRawId.KLINES_1D, { symbol, limit: 50 }).catch(() => []),
-        readRaw(KnownRawId.TICKER_24HR, { symbol }).catch(() => null),
-        fetchDerivatives(symbol),
-        readRaw(KnownRawId.DEPTH_L2_20, { symbol }).catch(() => null),
-        readRaw(KnownRawId.OI_HIST_1H, { symbol }).catch(() => []),
-        readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol }).catch(() => []),
-        readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol }).catch(() => []),
-      ]);
+    const [
+      klines, klines1h, klines1d, ticker,
+      funding, oiPoint, lsTop,
+      depth, oiHist, takerData, forceData,
+    ] = await Promise.all([
+      readRaw(KnownRawId.KLINES_4H, { symbol, limit: 200 }),
+      readRaw(KnownRawId.KLINES_1H, { symbol, limit: 100 }).catch(() => []),
+      readRaw(KnownRawId.KLINES_1D, { symbol, limit: 50 }).catch(() => []),
+      readRaw(KnownRawId.TICKER_24HR, { symbol }).catch(() => null),
+      readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null),
+      readRaw(KnownRawId.OPEN_INTEREST_POINT, { symbol }).catch(() => null),
+      readRaw(KnownRawId.LONG_SHORT_TOP_1H, { symbol }).catch(() => null),
+      readRaw(KnownRawId.DEPTH_L2_20, { symbol }).catch(() => null),
+      readRaw(KnownRawId.OI_HIST_1H, { symbol }).catch(() => []),
+      readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol }).catch(() => []),
+      readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol }).catch(() => []),
+    ]);
 
     if (!klines || klines.length === 0) return null;
 
@@ -244,9 +213,9 @@ async function scanSingleSymbol(
           }
         : undefined,
       derivatives: {
-        oi: deriv.oi,
-        funding: deriv.funding,
-        lsRatio: deriv.lsRatio,
+        oi: oiPoint,
+        funding,
+        lsRatio: lsTop,
       },
       sentiment: {
         fearGreed,

@@ -112,10 +112,12 @@ export const KnownRawId = {
 	// Derivatives / liquidity
 	MARK_PRICE: 'raw.symbol.mark_price',
 	FUNDING_RATE: 'raw.symbol.funding_rate',
+	OPEN_INTEREST_POINT: 'raw.symbol.open_interest.point',
 	OI_HIST_5M: 'raw.symbol.oi_hist.5m',
 	OI_HIST_1H: 'raw.symbol.oi_hist.1h',
 	OI_HIST_DISPLAY_TF: 'raw.symbol.oi_hist.display_tf',
 	LONG_SHORT_GLOBAL: 'raw.symbol.long_short.global',
+	LONG_SHORT_TOP_1H: 'raw.symbol.long_short.top_1h',
 	TAKER_BUY_SELL_RATIO: 'raw.symbol.taker_buy_sell_ratio',
 	DEPTH_L2_20: 'raw.symbol.depth.l2_20',
 	FORCE_ORDERS_1H: 'raw.symbol.force_orders.1h',

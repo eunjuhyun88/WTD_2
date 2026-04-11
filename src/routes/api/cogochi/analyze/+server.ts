@@ -13,8 +13,6 @@ import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 
-const FAPI = 'https://fapi.binance.com';
-
 /**
  * Map the UI `tf` query param to the corresponding `KLINES_*` raw atom.
  * Falls back to `KLINES_4H` for unknown inputs, matching the previous
@@ -31,44 +29,6 @@ function klinesRawIdForTimeframe(tf: string): KlinesRawId {
     case '1d': return KnownRawId.KLINES_1D;
     case '1w': return KnownRawId.KLINES_1W;
     default: return KnownRawId.KLINES_4H;
-  }
-}
-
-/** Fetch derivatives from Binance Futures API (no key needed) */
-async function fetchDerivatives(symbol: string) {
-  const timeout = AbortSignal.timeout(5000);
-  try {
-    const [frRes, oiRes] = await Promise.all([
-      fetch(`${FAPI}/fapi/v1/premiumIndex?symbol=${symbol}`, { signal: timeout }),
-      fetch(`${FAPI}/fapi/v1/openInterest?symbol=${symbol}`, { signal: timeout }),
-    ]);
-
-    const fr = frRes.ok ? await frRes.json() : null;
-    const oi = oiRes.ok ? await oiRes.json() : null;
-
-    // Long/Short ratio (top traders)
-    let lsRatio: number | null = null;
-    try {
-      const lsRes = await fetch(
-        `${FAPI}/futures/data/topLongShortAccountRatio?symbol=${symbol}&period=1h&limit=1`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (lsRes.ok) {
-        const lsData = await lsRes.json();
-        if (Array.isArray(lsData) && lsData.length > 0) {
-          lsRatio = parseFloat(lsData[0].longShortRatio) || null;
-        }
-      }
-    } catch { /* skip */ }
-
-    return {
-      funding: fr ? parseFloat(fr.lastFundingRate) : null,
-      oi: oi ? parseFloat(oi.openInterest) : null,
-      lsRatio,
-      predFunding: fr ? parseFloat(fr.estimatedSettlePrice) : null,
-    };
-  } catch {
-    return { funding: null, oi: null, lsRatio: null, predFunding: null };
   }
 }
 
@@ -89,18 +49,22 @@ export const GET: RequestHandler = async ({ url }) => {
   const tf = url.searchParams.get('tf') || '4h';
 
   try {
-    // Fetch all data in parallel. Klines/ticker go through `readRaw` so
-    // every provider call on this endpoint funnels through the same
-    // quota + cache layer. Derivatives (openInterest + topLongShort) and
-    // Fear&Greed still hit their upstreams inline — OI and LS_TOP do not
-    // yet have raw atoms (residual debt from the scanner slice), and the
-    // Fear&Greed helper here keeps the original 3s timeout behavior.
-    const [klines, klines1h, klines1d, ticker, deriv, fearGreed] = await Promise.all([
+    // Every provider call on this endpoint funnels through `readRaw` so
+    // the quota + cache layer is consistent. `fetchFearGreed` is still a
+    // local helper because it keeps the original 3s timeout behavior
+    // distinct from the cached 60-sample variant used by other endpoints.
+    const [
+      klines, klines1h, klines1d, ticker,
+      funding, oiPoint, lsTop,
+      fearGreed,
+    ] = await Promise.all([
       readRaw(klinesRawIdForTimeframe(tf), { symbol, limit: 200 }),
       readRaw(KnownRawId.KLINES_1H, { symbol, limit: 100 }).catch((): BinanceKline[] => []),
       readRaw(KnownRawId.KLINES_1D, { symbol, limit: 50 }).catch((): BinanceKline[] => []),
       readRaw(KnownRawId.TICKER_24HR, { symbol }).catch(() => null),
-      fetchDerivatives(symbol),
+      readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null),
+      readRaw(KnownRawId.OPEN_INTEREST_POINT, { symbol }).catch(() => null),
+      readRaw(KnownRawId.LONG_SHORT_TOP_1H, { symbol }).catch(() => null),
       fetchFearGreed(),
     ]);
 
@@ -122,9 +86,9 @@ export const GET: RequestHandler = async ({ url }) => {
         low24h: parseFloat(ticker.lowPrice) || 0,
       } : undefined,
       derivatives: {
-        oi: deriv.oi,
-        funding: deriv.funding,
-        lsRatio: deriv.lsRatio,
+        oi: oiPoint,
+        funding,
+        lsRatio: lsTop,
       },
       sentiment: {
         fearGreed,
@@ -151,9 +115,9 @@ export const GET: RequestHandler = async ({ url }) => {
       change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
       // Extra data for UI panels
       derivatives: {
-        funding: deriv.funding,
-        oi: deriv.oi,
-        lsRatio: deriv.lsRatio,
+        funding,
+        oi: oiPoint,
+        lsRatio: lsTop,
         fearGreed,
       },
       annotations,

@@ -16,8 +16,6 @@ import { scanMarket, type ScanConfig } from '$lib/server/scanner';
 import { readRaw } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
 
-const FAPI = 'https://fapi.binance.com';
-
 // Map a runtime timeframe string to the matching klines RawId atom.
 // Falls back to KLINES_4H when the caller passes a timeframe that is
 // not yet backed by a dedicated raw (e.g. `1m` keeps returning 4h until
@@ -161,7 +159,7 @@ async function executeAnalyzeMarket(
   const currentKlinesRaw = klinesRawIdFor(tf);
   const [
     klines, klines1h, klines1d, klines5m, ticker,
-    deriv, fearGreed, depth, oiHistory, takerData,
+    funding, oiPoint, lsTop, fearGreed, depth, oiHistory, takerData,
     forceOrders, btcOnchainData, mempoolData,
     upbitPrices, bithumbPrices, usdKrw,
   ] = await Promise.all([
@@ -170,7 +168,9 @@ async function executeAnalyzeMarket(
     readRaw(KnownRawId.KLINES_1D, { symbol, limit: 50 }).catch(() => []),
     readRaw(KnownRawId.KLINES_5M, { symbol, limit: 60 }).catch(() => []),
     readRaw(KnownRawId.TICKER_24HR, { symbol }).catch(() => null),
-    fetchDerivatives(symbol),
+    readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null),
+    readRaw(KnownRawId.OPEN_INTEREST_POINT, { symbol }).catch(() => null),
+    readRaw(KnownRawId.LONG_SHORT_TOP_1H, { symbol }).catch(() => null),
     readRaw(KnownRawId.FEAR_GREED_VALUE, {}).catch(() => null),
     readRaw(KnownRawId.DEPTH_L2_20, { symbol }).catch(() => null),
     readRaw(KnownRawId.OI_HIST_5M, { symbol }).catch(() => []),
@@ -219,9 +219,9 @@ async function executeAnalyzeMarket(
       low24h: parseFloat(ticker.lowPrice) || 0,
     } : undefined,
     derivatives: {
-      oi: deriv.oi,
-      funding: deriv.funding,
-      lsRatio: deriv.lsRatio,
+      oi: oiPoint,
+      funding,
+      lsRatio: lsTop,
     },
     sentiment: { fearGreed },
   };
@@ -343,9 +343,9 @@ async function executeAnalyzeMarket(
     change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
     chart: chartKlines,
     derivatives: {
-      funding: deriv.funding,
-      oi: deriv.oi,
-      lsRatio: deriv.lsRatio,
+      funding,
+      oi: oiPoint,
+      lsRatio: lsTop,
     },
     annotations,
     indicators: {
@@ -590,48 +590,10 @@ function executeQueryMemory(
   };
 }
 
-// ─── Helper: Fetch derivatives (reused from analyze endpoint) ──
-//
-// premiumIndex (funding rate + mark price) flows through `readRaw`,
-// which dedupes paired reads for the same symbol within the 5-second
-// `getPremiumIndex` memo owned by `rawSources.ts`. The other two atoms
-// in this helper (`openInterest` point-in-time and
-// `topLongShortAccountRatio`) are still direct fapi calls until their
-// raw atoms are added in a follow-up slice.
-
-async function fetchDerivatives(symbol: string) {
-  const timeout = AbortSignal.timeout(5000);
-  try {
-    const [funding, oiRes] = await Promise.all([
-      readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null),
-      fetch(`${FAPI}/fapi/v1/openInterest?symbol=${symbol}`, { signal: timeout }),
-    ]);
-
-    const oi = oiRes.ok ? await oiRes.json() : null;
-
-    let lsRatio: number | null = null;
-    try {
-      const lsRes = await fetch(
-        `${FAPI}/futures/data/topLongShortAccountRatio?symbol=${symbol}&period=1h&limit=1`,
-        { signal: AbortSignal.timeout(5000) },
-      );
-      if (lsRes.ok) {
-        const lsData = await lsRes.json();
-        if (Array.isArray(lsData) && lsData.length > 0) {
-          lsRatio = parseFloat(lsData[0].longShortRatio) || null;
-        }
-      }
-    } catch { /* skip */ }
-
-    return {
-      funding,
-      oi: oi ? parseFloat(oi.openInterest) : null,
-      lsRatio,
-    };
-  } catch {
-    return { funding: null, oi: null, lsRatio: null };
-  }
-}
+// fetchDerivatives removed in B7 — funding/open interest/top L/S are
+// now `FUNDING_RATE`, `OPEN_INTEREST_POINT`, and `LONG_SHORT_TOP_1H`
+// atoms read directly via `readRaw()`. See `providers/rawSources.ts`
+// for the 5-second in-flight memos that dedupe concurrent reads.
 
 // fetchFearGreed removed — callers now go through
 // readRaw(KnownRawId.FEAR_GREED_VALUE, {}) which bridges to
