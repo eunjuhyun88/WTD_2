@@ -81,6 +81,7 @@ export const KnownRawId = {
 	UPBIT_PRICE_MAP: 'raw.global.exchange.upbit_price_map',
 	UPBIT_VOLUME_MAP: 'raw.global.exchange.upbit_volume_map',
 	BITHUMB_PRICE_MAP: 'raw.global.exchange.bithumb_price_map',
+	BTC_DOMINANCE: 'raw.global.btc_dominance',
 	SECTOR_MAP: 'raw.global.sector.map',
 	SECTOR_OVERRIDE: 'raw.global.sector.override',
 
