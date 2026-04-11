@@ -26,6 +26,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from numpy.lib.stride_tricks import sliding_window_view
 
 from models.signal import (
     CVDState,
@@ -371,3 +372,275 @@ def compute_snapshot(
         hour_of_day=hour_of_day,
         day_of_week=day_of_week,
     )
+
+
+# =========================================================================
+# Vectorized feature table — same values as compute_snapshot, all bars at once
+# =========================================================================
+#
+# compute_snapshot is O(N) per call because every indicator recomputes the
+# whole window. Calling it for every bar in a long history is O(N²) — fine
+# for one symbol × 1 year, prohibitive for 30 symbols × 8 years.
+#
+# compute_features_table runs each indicator once on the full series using
+# pandas/numpy vectorized ops, then returns one row per bar. Output values
+# match compute_snapshot exactly (verified by tests/test_features.py).
+#
+# Used by pattern-scanner-challenge/scan.py to keep the swarm loop fast.
+
+
+def _slope_pct_vec(series: pd.Series, k: int) -> pd.Series:
+    """Vectorized fractional change over k bars. Matches _slope_pct semantics:
+    returns 0.0 where past is NaN/zero (instead of NaN)."""
+    past = series.shift(k)
+    denom = past.abs()
+    out = (series - past) / denom
+    return out.where(denom > 0, 0.0).fillna(0.0)
+
+
+def _slope_abs_vec(series: pd.Series, k: int) -> pd.Series:
+    """Vectorized absolute difference over k bars (fillna with 0)."""
+    return (series - series.shift(k)).fillna(0.0)
+
+
+def _rolling_linear_slope(arr: np.ndarray, window: int) -> np.ndarray:
+    """Slope of linear least-squares fit over each rolling `window` of `arr`.
+
+    Closed form: slope = sum((x-xbar)(y-ybar)) / sum((x-xbar)^2)
+    where x = 0..window-1 (so xbar and sum((x-xbar)^2) are constants).
+
+    Returns an array the same length as `arr`. The first `window-1` entries
+    are NaN (insufficient history). Implemented with sliding_window_view so
+    no Python-level loop runs over the bars.
+    """
+    n = len(arr)
+    out = np.full(n, np.nan, dtype=np.float64)
+    if n < window:
+        return out
+    x = np.arange(window, dtype=np.float64)
+    xc = x - x.mean()
+    denom = float((xc ** 2).sum())  # constant for all windows
+    windows = sliding_window_view(arr.astype(np.float64), window_shape=window)
+    yc = windows - windows.mean(axis=1, keepdims=True)
+    slopes = (yc * xc).sum(axis=1) / denom
+    out[window - 1:] = slopes
+    return out
+
+
+def _rolling_swing_pivot_distance(
+    high: np.ndarray, low: np.ndarray, lookback: int
+) -> np.ndarray:
+    """Vectorized version of _swing_pivot_distance over the full series.
+
+    For each bar t, looks at [t-lookback+1 .. t] and returns:
+        +bars_since_high  if a swing high is more recent than a swing low
+        -bars_since_low   otherwise (ties → low)
+    Where bars_since_X = (lookback - 1) - argmax/argmin in the window.
+    """
+    n = len(high)
+    out = np.zeros(n, dtype=np.float64)
+    if n < lookback:
+        return out
+    h_windows = sliding_window_view(high.astype(np.float64), window_shape=lookback)
+    l_windows = sliding_window_view(low.astype(np.float64), window_shape=lookback)
+    bars_since_high = (lookback - 1) - h_windows.argmax(axis=1)
+    bars_since_low = (lookback - 1) - l_windows.argmin(axis=1)
+    result = np.where(
+        bars_since_high < bars_since_low,
+        bars_since_high.astype(np.float64),
+        -bars_since_low.astype(np.float64),
+    )
+    out[lookback - 1:] = result
+    return out
+
+
+# Column order matches the SignalSnapshot field order (trend → meta).
+FEATURE_COLUMNS: tuple[str, ...] = (
+    "ema20_slope",
+    "ema50_slope",
+    "ema_alignment",
+    "price_vs_ema50",
+    "rsi14",
+    "rsi14_slope",
+    "macd_hist",
+    "roc_10",
+    "atr_pct",
+    "atr_ratio_short_long",
+    "bb_width",
+    "bb_position",
+    "volume_24h",
+    "vol_ratio_3",
+    "obv_slope",
+    "htf_structure",
+    "dist_from_20d_high",
+    "dist_from_20d_low",
+    "swing_pivot_distance",
+    "funding_rate",
+    "oi_change_1h",
+    "oi_change_24h",
+    "long_short_ratio",
+    "cvd_state",
+    "taker_buy_ratio_1h",
+    "regime",
+    "hour_of_day",
+    "day_of_week",
+)
+
+
+def compute_features_table(klines: pd.DataFrame, symbol: str) -> pd.DataFrame:
+    """Vectorized counterpart to compute_snapshot — one row per bar.
+
+    For each bar t in `klines`, the returned row's feature values are equal
+    to what compute_snapshot would produce if called on klines.iloc[:t+1].
+    Verified by tests/test_features.py.
+
+    Microstructure features (funding_rate, oi_change_*, long_short_ratio)
+    use neutral defaults — same as compute_snapshot when no `perp` dict is
+    supplied. Patterns that rely on those fields will match everywhere or
+    nowhere until historical perp data is wired in.
+
+    The first MIN_HISTORY_BARS rows are dropped (warmup): EMA200 and the
+    20d-high/low window need at least ~500 hourly bars to stabilise.
+    """
+    if len(klines) < MIN_HISTORY_BARS:
+        raise ValueError(
+            f"compute_features_table needs ≥{MIN_HISTORY_BARS} bars of history, "
+            f"got {len(klines)}"
+        )
+
+    close = klines["close"].astype(float)
+    high = klines["high"].astype(float)
+    low = klines["low"].astype(float)
+    volume = klines["volume"].astype(float)
+    taker_buy = klines["taker_buy_base_volume"].astype(float)
+    index = klines.index
+
+    # --- Trend ---
+    ema20 = _ema(close, 20)
+    ema50 = _ema(close, 50)
+    ema200 = _ema(close, 200)
+    ema20_slope = _slope_pct_vec(ema20, 5)
+    ema50_slope = _slope_pct_vec(ema50, 10)
+    bullish = (ema20 > ema50) & (ema50 > ema200)
+    bearish = (ema20 < ema50) & (ema50 < ema200)
+    ema_alignment = np.where(
+        bullish, EMAAlignment.BULLISH.value,
+        np.where(bearish, EMAAlignment.BEARISH.value, EMAAlignment.NEUTRAL.value),
+    )
+    price_vs_ema50 = (close - ema50) / ema50.replace(0, np.nan)
+    price_vs_ema50 = price_vs_ema50.fillna(0.0)
+
+    # --- Momentum ---
+    rsi14 = _rsi(close, 14)
+    rsi14_slope = _slope_abs_vec(rsi14, 5)
+    macd_hist = _macd_hist(close).fillna(0.0)
+    roc_10 = _slope_pct_vec(close, 10)
+
+    # --- Volatility ---
+    atr14 = _atr(high, low, close, 14)
+    atr50 = _atr(high, low, close, 50)
+    atr_pct = (atr14 / close.replace(0, np.nan)).fillna(0.0)
+    atr_ratio_short_long = (atr14 / atr50.replace(0, np.nan)).fillna(1.0)
+    bb_lower, bb_mid, bb_upper = _bollinger(close, window=20, k=2.0)
+    bb_width = ((bb_upper - bb_lower) / bb_mid.replace(0, np.nan)).fillna(0.0)
+    bb_range = bb_upper - bb_lower
+    bb_position = ((close - bb_lower) / bb_range.replace(0, np.nan)).fillna(0.5)
+
+    # --- Volume ---
+    # 24h rolling volume on 1h bars. Match compute_snapshot which uses
+    # sum of last 24 (or all if <24) — this matches rolling().sum() with
+    # min_periods=1 after the warmup drop.
+    volume_24h = volume.rolling(24, min_periods=1).sum()
+    # vol_ratio_3 = vol[t] / mean(vol[t-1..t-3]) — past 3 bars excluding t
+    mean_prev3 = volume.shift(1).rolling(3, min_periods=3).mean()
+    vol_ratio_3 = (volume / mean_prev3.replace(0, np.nan)).fillna(1.0)
+    obv_series = _obv(close, volume)
+    obv_slope = _slope_pct_vec(obv_series, 20)
+
+    # --- Structure ---
+    log_close_arr = np.log(close.to_numpy())
+    htf_slope = _rolling_linear_slope(log_close_arr, window=120)
+    htf_thresh = 0.001
+    htf_structure = np.where(
+        htf_slope > htf_thresh, HTFStructure.UPTREND.value,
+        np.where(htf_slope < -htf_thresh, HTFStructure.DOWNTREND.value, HTFStructure.RANGE.value),
+    )
+
+    high_20d_window = 20 * 24  # 480 hourly bars
+    high_20d = high.rolling(high_20d_window, min_periods=1).max()
+    low_20d = low.rolling(high_20d_window, min_periods=1).min()
+    dist_from_20d_high = ((close - high_20d) / high_20d.replace(0, np.nan)).fillna(0.0)
+    dist_from_20d_low = ((close - low_20d) / low_20d.replace(0, np.nan)).fillna(0.0)
+    swing_pivot_distance = _rolling_swing_pivot_distance(
+        high.to_numpy(), low.to_numpy(), lookback=20
+    )
+
+    # --- Microstructure (perp defaults — neutral) ---
+    funding_rate = np.zeros(len(index), dtype=np.float64)
+    oi_change_1h = np.zeros(len(index), dtype=np.float64)
+    oi_change_24h = np.zeros(len(index), dtype=np.float64)
+    long_short_ratio = np.ones(len(index), dtype=np.float64)
+
+    # --- Order flow ---
+    last_vol_safe = volume.replace(0, np.nan)
+    taker_buy_ratio_1h = (taker_buy / last_vol_safe).clip(0.0, 1.0).fillna(0.5)
+    cvd_state = np.where(
+        taker_buy_ratio_1h >= 0.55, CVDState.BUYING.value,
+        np.where(taker_buy_ratio_1h <= 0.45, CVDState.SELLING.value, CVDState.NEUTRAL.value),
+    )
+
+    # --- Meta — regime ---
+    close_slope_50 = _slope_pct_vec(close, 50)
+    risk_on = (atr_pct <= 0.05) & (close_slope_50 > 0.03)
+    risk_off = (atr_pct <= 0.05) & (close_slope_50 < -0.03)
+    regime = np.where(
+        risk_on, Regime.RISK_ON.value,
+        np.where(risk_off, Regime.RISK_OFF.value, Regime.CHOP.value),
+    )
+
+    # --- Meta — time (always UTC) ---
+    if isinstance(index, pd.DatetimeIndex):
+        idx_utc = index.tz_convert("UTC") if index.tz is not None else index.tz_localize("UTC")
+    else:
+        idx_utc = pd.DatetimeIndex(index, tz="UTC")
+    hour_of_day = idx_utc.hour.astype(np.int64)
+    day_of_week = idx_utc.dayofweek.astype(np.int64)
+
+    df = pd.DataFrame(
+        {
+            "ema20_slope": ema20_slope.to_numpy(),
+            "ema50_slope": ema50_slope.to_numpy(),
+            "ema_alignment": ema_alignment,
+            "price_vs_ema50": price_vs_ema50.to_numpy(),
+            "rsi14": rsi14.to_numpy(),
+            "rsi14_slope": rsi14_slope.to_numpy(),
+            "macd_hist": macd_hist.to_numpy(),
+            "roc_10": roc_10.to_numpy(),
+            "atr_pct": atr_pct.to_numpy(),
+            "atr_ratio_short_long": atr_ratio_short_long.to_numpy(),
+            "bb_width": bb_width.to_numpy(),
+            "bb_position": bb_position.to_numpy(),
+            "volume_24h": volume_24h.to_numpy(),
+            "vol_ratio_3": vol_ratio_3.to_numpy(),
+            "obv_slope": obv_slope.to_numpy(),
+            "htf_structure": htf_structure,
+            "dist_from_20d_high": dist_from_20d_high.to_numpy(),
+            "dist_from_20d_low": dist_from_20d_low.to_numpy(),
+            "swing_pivot_distance": swing_pivot_distance,
+            "funding_rate": funding_rate,
+            "oi_change_1h": oi_change_1h,
+            "oi_change_24h": oi_change_24h,
+            "long_short_ratio": long_short_ratio,
+            "cvd_state": cvd_state,
+            "taker_buy_ratio_1h": taker_buy_ratio_1h.to_numpy(),
+            "regime": regime,
+            "hour_of_day": hour_of_day,
+            "day_of_week": day_of_week,
+            "price": close.to_numpy(),
+            "symbol": symbol,
+        },
+        index=index,
+    )
+    # Drop the warmup region — features there are biased by short EMA windows.
+    df = df.iloc[MIN_HISTORY_BARS:].copy()
+    return df

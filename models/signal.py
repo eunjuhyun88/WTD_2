@@ -17,9 +17,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from pydantic import BaseModel, Field, field_validator
+
+if TYPE_CHECKING:
+    import pandas as pd  # noqa: F401  (only for type hints)
 
 
 # =========================================================================
@@ -229,6 +232,53 @@ class Pattern(BaseModel):
 
     def matches(self, snapshot: SignalSnapshot) -> bool:
         return all(c.matches(snapshot) for c in self.conditions)
+
+    def matches_vectorized(self, features_df: "pd.DataFrame") -> "pd.Series":
+        """Vectorized counterpart to matches() over a feature DataFrame.
+
+        `features_df` is the output of scanner.feature_calc.compute_features_table.
+        Returns a boolean Series of length len(features_df) where True means
+        the row satisfies every condition. Categorical fields in
+        features_df are stored as raw strings (not Enum members), so EQ /
+        NEQ / IN / NOT_IN comparisons against the .value of an enum work
+        the same as in the per-snapshot path.
+        """
+        # Local import keeps pandas/numpy out of the module-level import
+        # graph for code paths that don't use the table form.
+        import pandas as pd
+
+        if not self.conditions:
+            return pd.Series(True, index=features_df.index)
+
+        mask = pd.Series(True, index=features_df.index)
+        for c in self.conditions:
+            col = features_df[c.field]
+            op = c.operator
+            val = c.value
+            if op is Operator.GT:
+                m = col > val
+            elif op is Operator.LT:
+                m = col < val
+            elif op is Operator.GTE:
+                m = col >= val
+            elif op is Operator.LTE:
+                m = col <= val
+            elif op is Operator.EQ:
+                m = col == val
+            elif op is Operator.NEQ:
+                m = col != val
+            elif op is Operator.IN:
+                if not isinstance(val, list):
+                    raise TypeError("Operator.IN requires a list value")
+                m = col.isin(val)
+            elif op is Operator.NOT_IN:
+                if not isinstance(val, list):
+                    raise TypeError("Operator.NOT_IN requires a list value")
+                m = ~col.isin(val)
+            else:
+                raise ValueError(f"unknown operator {op}")  # pragma: no cover
+            mask &= m.fillna(False)
+        return mask
 
     def signature(self) -> str:
         """Stable, hashable signature used to dedupe patterns across agents.

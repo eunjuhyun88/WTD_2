@@ -13,8 +13,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from models.signal import EMAAlignment, SignalSnapshot
-from scanner.feature_calc import MIN_HISTORY_BARS, compute_snapshot
+from models.signal import (
+    EMAAlignment,
+    Operator,
+    Pattern,
+    PatternCondition,
+    SignalSnapshot,
+)
+from scanner.feature_calc import (
+    FEATURE_COLUMNS,
+    MIN_HISTORY_BARS,
+    compute_features_table,
+    compute_snapshot,
+)
 
 
 def _make_klines(n: int, drift: float = 0.0, seed: int = 0) -> pd.DataFrame:
@@ -133,3 +144,141 @@ def test_hour_and_dow_are_utc():
     assert 0 <= snap.day_of_week <= 6
     # Index was built in UTC so hour matches.
     assert snap.hour_of_day == k.index[-1].hour
+
+
+# =====================================================================
+# Vectorized parity tests — compute_features_table must agree with
+# per-snapshot compute_snapshot at every bar.
+# =====================================================================
+
+
+_NUMERIC_FEATURES = (
+    "ema20_slope",
+    "ema50_slope",
+    "price_vs_ema50",
+    "rsi14",
+    "rsi14_slope",
+    "macd_hist",
+    "roc_10",
+    "atr_pct",
+    "atr_ratio_short_long",
+    "bb_width",
+    "bb_position",
+    "volume_24h",
+    "vol_ratio_3",
+    "obv_slope",
+    "dist_from_20d_high",
+    "dist_from_20d_low",
+    "swing_pivot_distance",
+    "funding_rate",
+    "oi_change_1h",
+    "oi_change_24h",
+    "long_short_ratio",
+    "taker_buy_ratio_1h",
+)
+_CATEGORICAL_FEATURES = ("ema_alignment", "htf_structure", "cvd_state", "regime")
+
+
+def test_features_table_columns_complete():
+    k = _make_klines(MIN_HISTORY_BARS + 50)
+    df = compute_features_table(k, symbol="TEST")
+    # All declared columns plus price + symbol metadata
+    assert set(FEATURE_COLUMNS).issubset(df.columns)
+    assert "price" in df.columns
+    assert "symbol" in df.columns
+    assert (df["symbol"] == "TEST").all()
+
+
+def test_features_table_drops_warmup():
+    k = _make_klines(MIN_HISTORY_BARS + 50)
+    df = compute_features_table(k, symbol="TEST")
+    # Warmup region must be excluded
+    assert len(df) == 50
+    assert df.index[0] == k.index[MIN_HISTORY_BARS]
+
+
+def test_features_table_matches_compute_snapshot_at_random_bars():
+    """The vectorized table at row t must equal compute_snapshot(k[:t+1])
+    at every bar after warmup. Spot-check several bars."""
+    k = _make_klines(MIN_HISTORY_BARS + 100, drift=0.0006, seed=11)
+    df = compute_features_table(k, symbol="TEST")
+
+    # Spot-check 10 evenly spaced bars across the post-warmup region
+    check_indices = list(range(MIN_HISTORY_BARS, len(k), max(1, (len(k) - MIN_HISTORY_BARS) // 10)))
+    for i in check_indices:
+        snap = compute_snapshot(k.iloc[: i + 1], symbol="TEST")
+        row = df.loc[k.index[i]]
+        for name in _NUMERIC_FEATURES:
+            snap_val = float(getattr(snap, name))
+            row_val = float(row[name])
+            # Loose tol because EMA history differs at the warmup edge
+            assert row_val == pytest.approx(snap_val, abs=1e-6, rel=1e-6), (
+                f"mismatch at bar {i} feature {name}: "
+                f"snapshot={snap_val} vs table={row_val}"
+            )
+        for name in _CATEGORICAL_FEATURES:
+            snap_val = getattr(snap, name).value
+            row_val = row[name]
+            assert row_val == snap_val, (
+                f"categorical mismatch at bar {i} feature {name}: "
+                f"snapshot={snap_val} vs table={row_val}"
+            )
+        assert int(row["hour_of_day"]) == snap.hour_of_day
+        assert int(row["day_of_week"]) == snap.day_of_week
+
+
+def test_pattern_matches_vectorized_agrees_with_loop():
+    """Pattern.matches_vectorized over the table must agree with
+    Pattern.matches() called per snapshot."""
+    k = _make_klines(MIN_HISTORY_BARS + 200, drift=0.0008, seed=7)
+    df = compute_features_table(k, symbol="TEST")
+
+    pattern = Pattern(
+        name="test_baseline_clone",
+        description="ema20 rising, full bullish, RSI > 50",
+        conditions=[
+            PatternCondition(field="ema20_slope", operator=Operator.GT, value=0.0),
+            PatternCondition(field="ema_alignment", operator=Operator.EQ, value="bullish"),
+            PatternCondition(field="rsi14", operator=Operator.GT, value=50.0),
+        ],
+    )
+
+    vec_mask = pattern.matches_vectorized(df)
+    assert len(vec_mask) == len(df)
+
+    # Compare against the per-snapshot loop on a sample of bars
+    sample_indices = list(range(0, len(df), max(1, len(df) // 25)))
+    for offset in sample_indices:
+        bar_t = MIN_HISTORY_BARS + offset
+        snap = compute_snapshot(k.iloc[: bar_t + 1], symbol="TEST")
+        loop_match = pattern.matches(snap)
+        vec_match = bool(vec_mask.iloc[offset])
+        assert vec_match == loop_match, (
+            f"pattern match mismatch at bar {bar_t}: loop={loop_match} vec={vec_match}"
+        )
+
+
+def test_pattern_matches_vectorized_handles_empty_conditions():
+    """A pattern with zero conditions trivially matches every row.
+    (validate.py rejects these in the swarm path, but the AST allows it.)"""
+    k = _make_klines(MIN_HISTORY_BARS + 20)
+    df = compute_features_table(k, symbol="TEST")
+    p = Pattern(name="empty", conditions=[])
+    mask = p.matches_vectorized(df)
+    assert mask.all()
+
+
+def test_pattern_matches_vectorized_supports_in_operator():
+    k = _make_klines(MIN_HISTORY_BARS + 50)
+    df = compute_features_table(k, symbol="TEST")
+    p = Pattern(
+        name="any_alignment",
+        conditions=[
+            PatternCondition(
+                field="ema_alignment",
+                operator=Operator.IN,
+                value=["bullish", "bearish", "neutral"],
+            ),
+        ],
+    )
+    assert p.matches_vectorized(df).all()
