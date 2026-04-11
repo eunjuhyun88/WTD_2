@@ -178,17 +178,17 @@ const routeMeta = [
     deepDocs: '`docs/PRODUCT_SENSE.md`'
   },
   {
-    route: '/cogochi/terminal',
-    role: 'DOUNI AI terminal',
-    primaryConcern: 'LLM-driven chat with function calling, market analysis, social data',
-    keyState: 'route-local chat state + `currentSnapshot`',
-    deepDocs: '`docs/PRODUCT_SENSE.md`'
-  },
-  {
     route: '/cogochi/scanner',
     role: 'cogochi scanner surface',
     primaryConcern: 'alpha scan results, filter/sort by alpha + regime, layer-score deep dive',
     keyState: 'route-local scan result state, layer score rows, filter/sort selection',
+    deepDocs: '`docs/product-specs/terminal.md`'
+  },
+  {
+    route: '/scanner',
+    role: 'top-level scanner redirect/surface',
+    primaryConcern: 'canonical scanner entry — may redirect to /cogochi/scanner',
+    keyState: 'none',
     deepDocs: '`docs/product-specs/terminal.md`'
   },
   {
@@ -229,7 +229,8 @@ const storeMeta = [
   ['hydration', 'derived/support', 'orchestrates initial store hydration', 'Not domain truth itself.'],
   ['progressionRules', 'derived/support', 'tier and LP mapping logic', 'Rule/helper module, not state owner.'],
   ['storageKeys', 'derived/support', 'local storage key registry', 'Utility only.'],
-  ['strategyStore', 'derived/support', 'strategy CRUD, versioning, backtest results, and fork tracking', 'localStorage persistence; will reconcile with server when strategy APIs land.']
+  ['strategyStore', 'derived/support', 'strategy CRUD, versioning, backtest results, and fork tracking', 'localStorage persistence; will reconcile with server when strategy APIs land.'],
+  ['alphaBuckets', 'route/session transient', 'terminal scan bucket counters (Strong Bull/Bull/Neutral/Bear/Strong Bear + Extreme FR) published to global Header AlphaMarketBar', 'Presentation aggregate of latest scan results; not durable truth.']
 ];
 
 const apiCategoryOrder = [
