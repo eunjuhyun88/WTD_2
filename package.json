@@ -12,6 +12,7 @@
     "docs:refresh:check": "node scripts/dev/refresh-generated-context.mjs --check && node scripts/dev/refresh-context-metrics.mjs --check && node scripts/dev/refresh-task-contract-report.mjs --check",
     "docs:check": "bash scripts/dev/check-docs-context.sh",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "research:r4-1-fixtures": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-leakage-fixtures.ts",
     "check:budget": "bash scripts/dev/check-svelte-warning-budget.sh",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "guard:workspace": "bash scripts/dev/guard-active-workspace.sh",

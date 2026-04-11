@@ -56,9 +56,24 @@ export type {
 	UtilityWeights
 } from './evaluation/types';
 
-// Walk-forward splitter
-export { walkForward, countFolds, DEFAULT_WALK_FORWARD } from './evaluation/walkForward';
-export type { WalkForwardConfig } from './evaluation/walkForward';
+// Temporal splitter (R4.1) — leakage-safe, replaces walkForward.ts
+export { temporalSplit, canProduceAnyFold, DEFAULT_TEMPORAL_SPLIT } from './evaluation/temporalSplit';
+export type {
+	TemporalSplitConfig,
+	TemporalFold,
+	TemporalFoldIntegrity,
+	IntegrityAssertion
+} from './evaluation/temporalSplit';
+export {
+	LeakageError,
+	assertConfigWithinBounds,
+	assertResolvedOutcomesOnly,
+	assertSortedByKnowledgeHorizon,
+	assertTrainHorizonStrictlyBeforeTestStart,
+	assertEmbargoSatisfied,
+	assertPurgeApplied,
+	assertTemporalIntegrity
+} from './evaluation/assertIntegrity';
 
 // Regime stratification
 export { stratifyByRegime, regimeCounts } from './evaluation/regimeStrata';
