@@ -175,6 +175,13 @@ export type {
 	EscalatingSweep
 } from './weightSweep.ts';
 
+// Synthetic dataset source (R4.5)
+export {
+	createSyntheticSource,
+	SyntheticSourceConfigError
+} from './source/synthetic.ts';
+export type { SyntheticSourceConfig } from './source/synthetic.ts';
+
 // ---------------------------------------------------------------------------
 // Default registry population (R4.3)
 // ---------------------------------------------------------------------------
