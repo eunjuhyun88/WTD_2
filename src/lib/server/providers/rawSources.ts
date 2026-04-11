@@ -60,7 +60,6 @@ import {
 	fetchBtcOnchain,
 	fetchMempool,
 	fetchUsdKrw,
-	fetchUpbitPrices,
 	fetchBithumbPrices,
 	fetchBtcDominance,
 	type OrderBookSnapshot,
@@ -127,6 +126,7 @@ export interface RawSourceInputs {
 	[KnownRawId.FORCE_ORDERS_1H]: { symbol: string };
 	[KnownRawId.FORCE_ORDERS_4H]: { symbol: string };
 	[KnownRawId.UPBIT_PRICE_MAP]: EmptyInput;
+	[KnownRawId.UPBIT_VOLUME_MAP]: EmptyInput;
 	[KnownRawId.BITHUMB_PRICE_MAP]: EmptyInput;
 	[KnownRawId.BTC_DOMINANCE]: EmptyInput;
 }
@@ -163,6 +163,7 @@ export interface RawSourceOutputs {
 	[KnownRawId.FORCE_ORDERS_1H]: ForceOrder[];
 	[KnownRawId.FORCE_ORDERS_4H]: ForceOrder[];
 	[KnownRawId.UPBIT_PRICE_MAP]: Map<string, number>;
+	[KnownRawId.UPBIT_VOLUME_MAP]: Map<string, number>;
 	[KnownRawId.BITHUMB_PRICE_MAP]: Map<string, number>;
 	[KnownRawId.BTC_DOMINANCE]: number | null;
 }
@@ -269,6 +270,96 @@ function getMempool() {
 		throw err;
 	});
 	return mempoolInflight;
+}
+
+// ---------------------------------------------------------------------------
+// Upbit ticker memo (prices + volumes in one roundtrip)
+// ---------------------------------------------------------------------------
+//
+// Upbit's `/v1/ticker?markets=...` endpoint returns both trade_price and
+// acc_trade_volume_24h in the same payload. Before this slice the
+// `UPBIT_PRICE_MAP` raw called `fetchUpbitPrices` which threw the volume
+// half away, and `UPBIT_VOLUME_MAP` had no backing fetcher at all (see
+// the inline comment in the RawSourceMap block below, pre-slice). B10
+// lifts both reads through one memoized call so the L8 kimchi premium
+// path (prices) and the L3/L12 flow tracking path (volumes) no longer
+// cost two HTTP roundtrips when both are requested in the same scan.
+//
+// The memo window is 30s — matches Upbit's public API rate-limit posture
+// and the btcOnchain / mempool compound memos above. Consumers that need
+// strictly-fresh data should call the fetcher directly, but nothing in
+// the engine path currently does.
+//
+// Implemented inline here (rather than in `marketDataService.ts`) to
+// keep the B-series slice surgical: it touches exactly one file, closes
+// the cataloged `UPBIT_VOLUME_MAP` gap, and leaves existing
+// `fetchUpbitPrices` consumers in `marketDataService.ts` untouched.
+
+interface UpbitTickerPayload {
+	prices: Map<string, number>;
+	volumes: Map<string, number>;
+}
+
+async function fetchUpbitTickers(): Promise<UpbitTickerPayload> {
+	const marketsRes = await fetch(
+		'https://api.upbit.com/v1/market/all?isDetails=false',
+		{ signal: AbortSignal.timeout(5000) }
+	);
+	if (!marketsRes.ok) {
+		return { prices: new Map(), volumes: new Map() };
+	}
+	const markets = (await marketsRes.json()) as Array<{ market: string }>;
+	const krwMarkets = markets
+		.filter((m) => typeof m.market === 'string' && m.market.startsWith('KRW-'))
+		.map((m) => m.market);
+	if (krwMarkets.length === 0) {
+		return { prices: new Map(), volumes: new Map() };
+	}
+
+	const tickerRes = await fetch(
+		`https://api.upbit.com/v1/ticker?markets=${krwMarkets.join(',')}`,
+		{ signal: AbortSignal.timeout(8000) }
+	);
+	if (!tickerRes.ok) {
+		return { prices: new Map(), volumes: new Map() };
+	}
+	const tickers = (await tickerRes.json()) as Array<{
+		market?: string;
+		trade_price?: number;
+		acc_trade_volume_24h?: number;
+	}>;
+
+	const prices = new Map<string, number>();
+	const volumes = new Map<string, number>();
+	for (const t of tickers) {
+		if (typeof t.market !== 'string') continue;
+		const base = t.market.replace('KRW-', '');
+		if (typeof t.trade_price === 'number' && Number.isFinite(t.trade_price)) {
+			prices.set(base, t.trade_price);
+		}
+		if (
+			typeof t.acc_trade_volume_24h === 'number' &&
+			Number.isFinite(t.acc_trade_volume_24h)
+		) {
+			volumes.set(base, t.acc_trade_volume_24h);
+		}
+	}
+	return { prices, volumes };
+}
+
+let upbitTickersInflight: Promise<UpbitTickerPayload> | null = null;
+let upbitTickersAt = 0;
+function getUpbitTickers(): Promise<UpbitTickerPayload> {
+	const now = Date.now();
+	if (upbitTickersInflight && now - upbitTickersAt < 30_000) {
+		return upbitTickersInflight;
+	}
+	upbitTickersAt = now;
+	upbitTickersInflight = fetchUpbitTickers().catch((err) => {
+		upbitTickersInflight = null;
+		throw err;
+	});
+	return upbitTickersInflight;
 }
 
 // ---------------------------------------------------------------------------
@@ -499,10 +590,12 @@ export const rawSources: RawSourceMap = {
 	[KnownRawId.FORCE_ORDERS_4H]: async ({ symbol }) =>
 		binanceQuota.execute(() => fetchForceOrders(symbol, FORCE_ORDERS_4H_LIMIT)),
 
-	// KRW exchange price maps — the volume map is deliberately absent
-	// in this slice; `fetchUpbitPrices` only returns prices and there
-	// is no `fetchUpbitVolumes` yet. Will land with a follow-up.
-	[KnownRawId.UPBIT_PRICE_MAP]: async () => fetchUpbitPrices(),
+	// KRW exchange price + volume maps (Upbit). Both atoms share one
+	// memoized `getUpbitTickers()` call so a scan that reads both
+	// produces a single HTTP roundtrip. B10 slice: UPBIT_VOLUME_MAP
+	// moved from "cataloged but unwired" → wired.
+	[KnownRawId.UPBIT_PRICE_MAP]: async () => (await getUpbitTickers()).prices,
+	[KnownRawId.UPBIT_VOLUME_MAP]: async () => (await getUpbitTickers()).volumes,
 	[KnownRawId.BITHUMB_PRICE_MAP]: async () => fetchBithumbPrices(),
 
 	// BTC dominance (CoinGecko /global endpoint). Returns a percentage
