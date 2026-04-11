@@ -16,6 +16,7 @@
     "research:r4-2-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-2-pipeline-smoke.ts",
     "research:r4-3-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-3-baseline-registry-smoke.ts",
     "research:r4-4-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-4-schedule-sweep-smoke.ts",
+    "research:r4-5-template": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/experiments/_template/experiment.mjs",
     "check:budget": "bash scripts/dev/check-svelte-warning-budget.sh",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "guard:workspace": "bash scripts/dev/guard-active-workspace.sh",
