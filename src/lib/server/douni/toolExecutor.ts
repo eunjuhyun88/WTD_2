@@ -15,7 +15,21 @@ import type { MarketContext } from '$lib/engine/factorEngine';
 import { scanMarket, type ScanConfig } from '$lib/server/scanner';
 import { readRaw, klinesRawIdForTimeframe } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
+import {
+  fetchFundingHistoryServer,
+  fetchLSRatioHistoryServer,
+  fetchLiquidationHistoryServer,
+  fetchOIHistoryServer
+} from '$lib/server/coinalyze';
+import { buildResearchBlocks } from '$lib/server/researchView/buildResearchBlocks';
+function toFiniteNumber(value: number | string): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
+function normalizeForceOrderSide(side: string): 'BUY' | 'SELL' {
+  return side.toUpperCase() === 'SELL' ? 'SELL' : 'BUY';
+}
 // ─── Main Dispatcher ────────────────────────────────────────
 
 /**
@@ -120,6 +134,8 @@ async function executeAnalyzeMarket(
   const symbol = (args.symbol as string || ctx.symbol || 'BTCUSDT').toUpperCase();
   const tf = (args.timeframe as string) || ctx.timeframe || '4h';
   const isBTC = symbol.startsWith('BTC');
+  const traceId = `terminal-${symbol}-${tf}-${Date.now()}`;
+  const pair = `${symbol.replace('USDT', '')}/USDT`;
 
   // Fetch all data in parallel. Every Binance-hitting raw flows through
   // `binanceQuota` inside `rawSources`, so callers no longer need a
@@ -133,6 +149,7 @@ async function executeAnalyzeMarket(
     funding, oiPoint, lsTop, fearGreed, depth, oiHistory, takerData,
     forceOrders, btcOnchainData, mempoolData,
     upbitPrices, bithumbPrices, usdKrw,
+    coinalyzeOiHistory, fundingHistory, lsRatioHistory, liquidationHistory,
   ] = await Promise.all([
     readRaw(currentKlinesRaw, { symbol, limit: 200 }),
     readRaw(KnownRawId.KLINES_1H, { symbol, limit: 100 }).catch(() => []),
@@ -168,6 +185,10 @@ async function executeAnalyzeMarket(
     readRaw(KnownRawId.UPBIT_PRICE_MAP, {}).catch(() => new Map()),
     readRaw(KnownRawId.BITHUMB_PRICE_MAP, {}).catch(() => new Map()),
     readRaw(KnownRawId.USD_KRW_RATE, {}).catch(() => 1350),
+    fetchOIHistoryServer(pair, tf, 60).catch(() => []),
+    fetchFundingHistoryServer(pair, tf, 60).catch(() => []),
+    fetchLSRatioHistoryServer(pair, tf, 60).catch(() => []),
+    fetchLiquidationHistoryServer(pair, tf, 60).catch(() => []),
   ]);
 
   if (!klines.length) {
@@ -225,18 +246,23 @@ async function executeAnalyzeMarket(
     takerRatio: takerData.length > 0 ? takerData[takerData.length - 1].buySellRatio : undefined,
     oiChangePct,
     priceChangePct: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
-    forceOrders: forceOrders.map(o => ({ side: o.side, price: o.price, qty: o.origQty, time: o.time })),
+    forceOrders: forceOrders.map((o: { side: string; price: number | string; origQty: number | string; time: number }) => ({
+      side: normalizeForceOrderSide(o.side),
+      price: toFiniteNumber(o.price),
+      qty: toFiniteNumber(o.origQty),
+      time: o.time,
+    })),
     btcOnchain: btcOnchainData ? { nTx: btcOnchainData.nTx, avgTxValue: btcOnchainData.avgTxValue } : undefined,
     mempool: mempoolData ? { pending: mempoolData.count, fastestFee: mempoolData.fastestFee } : undefined,
     kimchiPremium,
-    klines5m: klines5m.length > 0 ? klines5m.map(k => ({
+    klines5m: klines5m.length > 0 ? klines5m.map((k: any) => ({
       time: k.time, open: k.open, high: k.high, low: k.low, close: k.close,
-      volume: k.volume, buyVolume: (k as any).takerBuyBaseVol,
+      volume: k.volume, buyVolume: k.takerBuyBaseVol,
     })) : undefined,
-    klines1dExt: klines1d.length > 0 ? klines1d.map(k => ({
+    klines1dExt: klines1d.length > 0 ? klines1d.map((k: any) => ({
       time: k.time, open: k.open, high: k.high, low: k.low, close: k.close, volume: k.volume,
     })) : undefined,
-    oiHistory5m: oiHistory.length > 0 ? oiHistory.map(p => ({
+    oiHistory5m: oiHistory.length > 0 ? oiHistory.map((p: any) => ({
       timestamp: p.timestamp, oi: p.sumOpenInterestValue,
     })) : undefined,
   };
@@ -274,17 +300,49 @@ async function executeAnalyzeMarket(
   }
 
   // Chart klines
-  const chartKlines = klines.slice(-100).map(k => ({
+  const chartKlines = klines.slice(-100).map((k: any) => ({
     t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume,
   }));
 
   // S/R + indicators
   const annotations = detectSupportResistance(klines, currentPrice);
   const indicatorSeries = computeIndicatorSeries(klines);
+  const asOf = new Date().toISOString();
+  const researchBlocks = buildResearchBlocks({
+    traceId,
+    symbol,
+    timeframe: tf as '1m' | '5m' | '15m' | '1h' | '4h' | '1d',
+    asOf,
+    priceSeries: chartKlines,
+    annotations,
+    klines5m: ext.klines5m,
+    oiHistory: coinalyzeOiHistory,
+    fundingHistory,
+    lsRatioHistory,
+    liquidationHistory,
+    depthSnapshot: depth,
+    forceOrders: ext.forceOrders?.map((order) => ({
+      symbol,
+      side: order.side,
+      price: order.price,
+      origQty: order.qty,
+      time: order.time,
+    })),
+    takerData,
+    currentFunding: funding,
+    currentLsRatio: lsTop,
+    currentOi: oiPoint
+  });
+
+  for (const researchBlock of researchBlocks) {
+    events.push({ type: 'research_block', payload: researchBlock });
+  }
 
   return {
+    traceId,
     symbol,
     timeframe: tf,
+    asOf,
     alphaScore: snapshot.alphaScore,
     alphaLabel: snapshot.alphaLabel,
     verdict: snapshot.verdict,
@@ -325,6 +383,7 @@ async function executeAnalyzeMarket(
       bbLower: indicatorSeries.bbLower?.slice(-100),
       ema20: indicatorSeries.ema20?.slice(-100),
     },
+    researchBlocks,
   };
 }
 

@@ -4,6 +4,7 @@
 
 import type { LLMProvider } from '../llmConfig';
 import type { SignalSnapshot } from '$lib/engine/cogochi/types';
+import type { ResearchBlockEnvelope } from '$lib/contracts';
 
 // ─── OpenAI-compatible Tool Definition ───────────────────────
 
@@ -61,6 +62,7 @@ export type DouniSSEEvent =
   | { type: 'text_delta'; text: string }
   | { type: 'tool_call'; name: string; args: Record<string, unknown> }
   | { type: 'tool_result'; name: string; data: unknown }
+  | { type: 'research_block'; payload: ResearchBlockEnvelope }
   | { type: 'layer_result'; layer: string; score: number; signal: string; detail?: string }
   | { type: 'chart_action'; action: string; payload: Record<string, unknown> }
   | { type: 'pattern_draft'; name: string; conditions: unknown[]; requiresConfirmation: boolean }

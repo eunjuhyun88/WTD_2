@@ -67,7 +67,7 @@
   // - Terminal routes ≤1024px: terminal has its own bottom nav
   // - All routes ≤768px: status bar adds no value on phones
   let windowWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  const showMobileBottomNav = $derived(windowWidth <= 768);
+  const showMobileBottomNav = $derived(windowWidth <= 768 && !$isHome);
   const showBottomBar = $derived(
     windowWidth > 768 && !$isHome && !($isTerminal && windowWidth <= 1024)
   );
@@ -216,11 +216,11 @@
   });
 </script>
 
-<div id="app" class:cogochi-mode={$isCogochi}>
+<div id="app" class:cogochi-mode={$isCogochi} class:home-mode={$isHome}>
   {#if !$isCogochi}<Header />{/if}
   {#if !$isCogochi && !$isHome}<AlphaMarketBar thermo={thermoData} buckets={currentBuckets} />{/if}
   {#if !$isCogochi}<P0Banner />{/if}
-  <div id="main-content" class:terminal-route={$isTerminal}>
+  <div id="main-content" class:terminal-route={$isTerminal} class:home-route={$isHome}>
     {@render children()}
   </div>
   {#if !$isCogochi}
@@ -254,10 +254,20 @@
   #app.cogochi-mode {
     padding-top: 0;
   }
+  #app.home-mode {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
   #main-content {
     flex: 1;
     overflow: hidden;
     position: relative;
+    min-height: 0;
+  }
+  #main-content.home-route {
+    overflow: visible;
+    min-height: calc(100dvh - var(--sc-header-h, 44px));
   }
 
   /* 769-1024px: compact one-line header (44px) */
@@ -272,6 +282,10 @@
       padding-top: var(--sc-header-h-mobile, 40px);
       padding-bottom: calc(var(--sc-mobile-nav-h, 64px) + env(safe-area-inset-bottom, 0px));
     }
+    #app.home-mode {
+      min-height: 100svh;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
     #main-content {
       overflow: auto;
       -webkit-overflow-scrolling: touch;
@@ -280,6 +294,10 @@
     #main-content.terminal-route {
       overflow: hidden;
       overscroll-behavior: none;
+    }
+    #main-content.home-route {
+      overflow: visible;
+      min-height: calc(100svh - var(--sc-header-h-mobile, 40px));
     }
   }
   @media (max-width: 480px) {

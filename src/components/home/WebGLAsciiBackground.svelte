@@ -27,9 +27,9 @@
   const DPR_CAP_MOBILE = 1;
   const TARGET_FPS_MOBILE = 30;
   const LOGO_PATH = '/cogochi/logo-filled.png';
-  const LOGO_COVER = 0.65;
-  const DRIFT_AMP_X = 34;
-  const DRIFT_AMP_Y = 24;
+  const LOGO_COVER = 0.84;
+  const DRIFT_AMP_X = 18;
+  const DRIFT_AMP_Y = 12;
 
   let canvas: HTMLCanvasElement | undefined = $state(undefined);
   let isMobile = $state(false);
@@ -153,10 +153,10 @@
     function logoRect(t: number): [number, number, number, number] {
       const viewMin = Math.min(w, h);
       const sz = viewMin * LOGO_COVER;
-      const driftX = Math.sin(t * 0.21) * DRIFT_AMP_X + Math.sin(t * 0.48) * 8.0;
-      const driftY = Math.cos(t * 0.18) * DRIFT_AMP_Y + Math.cos(t * 0.37) * 6.0;
-      const left = ((w - sz) * 0.5 + driftX) / w;
-      const bottom = 1 - ((h - sz) * 0.5 + driftY + sz) / h;
+      const driftX = Math.sin(t * 0.16) * DRIFT_AMP_X + Math.sin(t * 0.32) * 4.6;
+      const driftY = Math.cos(t * 0.13) * DRIFT_AMP_Y + Math.cos(t * 0.27) * 3.2;
+      const left = ((w - sz) * 0.5 + driftX - w * 0.018) / w;
+      const bottom = 1 - ((h - sz) * 0.5 + driftY + sz - h * 0.024) / h;
       const right = left + sz / w;
       const top = bottom + sz / h;
       return [left, bottom, right, top];
@@ -179,7 +179,9 @@
       const dx = mx - prevMx;
       const dy = my - prevMy;
       const speed = Math.sqrt(dx * dx + dy * dy);
-      smoothedSize += (Math.min(speed * 40, 1) - smoothedSize) * 0.15;
+      const targetSize = Math.min(speed * 35, 1);
+      const response = targetSize > smoothedSize ? 0.14 : 0.09;
+      smoothedSize += (targetSize - smoothedSize) * response;
 
       gl.bindVertexArray(quad);
 
@@ -262,8 +264,8 @@
     width: 100vw;
     height: 100dvh;
     display: block;
-    opacity: 0.96;
-    filter: saturate(1.45) brightness(1.14) contrast(1.08);
+    opacity: 1;
+    filter: saturate(1.42) brightness(1.16) contrast(1.15);
   }
 
   @supports not (height: 100dvh) {

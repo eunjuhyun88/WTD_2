@@ -10,12 +10,13 @@
 
 html, body {
   height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
   background:
-    radial-gradient(circle at 16% 14%, rgba(255, 118, 181, 0.16), transparent 24%),
-    radial-gradient(circle at 82% 12%, rgba(186, 240, 106, 0.11), transparent 24%),
-    radial-gradient(circle at 50% 105%, rgba(129, 162, 255, 0.08), transparent 32%),
-    linear-gradient(180deg, #040811 0%, #09101b 42%, #0b1320 100%);
+    radial-gradient(circle at 18% 14%, rgba(219, 154, 159, 0.16), transparent 22%),
+    radial-gradient(circle at 82% 88%, rgba(219, 154, 159, 0.08), transparent 24%),
+    linear-gradient(180deg, #000000 0%, #050508 50%, #000000 100%);
   color: var(--sc-text-0);
   font-family: var(--sc-font-body);
   font-size: var(--sc-fs-sm);
@@ -28,6 +29,7 @@ html, body {
 
 body {
   position: relative;
+  overscroll-behavior-y: none;
 }
 
 body::before,
@@ -52,10 +54,10 @@ body::before {
 
 body::after {
   z-index: 0;
-  opacity: 0.22;
+  opacity: 0.16;
   background:
-    linear-gradient(90deg, rgba(186, 240, 106, 0.03) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(255, 118, 181, 0.025) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(219, 154, 159, 0.022) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(219, 154, 159, 0.018) 1px, transparent 1px);
   background-size: 64px 64px;
   mask-image: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.82) 18%, rgba(0, 0, 0, 0.82) 78%, transparent);
 }

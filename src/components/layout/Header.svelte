@@ -182,9 +182,8 @@
 <style>
   #nav {
     background:
-      radial-gradient(circle at 10% 0%, rgba(219, 154, 159, 0.10), transparent 28%),
-      radial-gradient(circle at 86% 0%, rgba(173, 202, 124, 0.08), transparent 24%),
-      linear-gradient(180deg, rgba(10, 15, 26, 0.96), rgba(8, 13, 23, 0.94));
+      radial-gradient(circle at 10% 0%, rgba(219, 154, 159, 0.1), transparent 28%),
+      linear-gradient(180deg, rgba(10, 10, 10, 0.96), rgba(0, 0, 0, 0.94));
     border-bottom: 1px solid var(--sc-line-soft);
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -306,7 +305,7 @@
   /* Active tab */
   .nav-tab-desktop.active {
     color: var(--sc-text-0);
-    background: linear-gradient(135deg, rgba(219, 154, 159, 0.14), rgba(173, 202, 124, 0.08));
+    background: linear-gradient(135deg, rgba(219, 154, 159, 0.14), rgba(219, 154, 159, 0.06));
     text-shadow: 0 0 10px rgba(219, 154, 159, 0.12);
   }
   .nav-tab-desktop.active::after {
@@ -315,7 +314,7 @@
     inset: auto 10px -4px;
     height: 2px;
     border-radius: 999px;
-    background: linear-gradient(90deg, var(--sc-accent), var(--sc-accent-3));
+    background: linear-gradient(90deg, rgba(219, 154, 159, 0.9), rgba(219, 154, 159, 0.42));
     box-shadow: 0 0 8px rgba(219, 154, 159, 0.18);
   }
   .nav-tab-desktop.active.highlight {
@@ -338,9 +337,9 @@
   .score-badge {
     font-family: var(--sc-font-mono);
     font-size: var(--sc-fs-xs);
-    background: rgba(242, 209, 147, 0.06);
-    color: var(--sc-accent-3);
-    border: 1px solid rgba(242, 209, 147, 0.12);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--sc-text-2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 999px;
     padding: 4px 8px;
     letter-spacing: 0.12em;
@@ -362,7 +361,11 @@
     border-radius: var(--sc-radius-sm);
     cursor: pointer;
     padding: 5px;
-    transition: all var(--sc-duration-fast);
+    transition:
+      color var(--sc-duration-fast),
+      border-color var(--sc-duration-fast),
+      background var(--sc-duration-fast),
+      transform var(--sc-duration-fast);
     line-height: 0;
     display: flex;
     align-items: center;
@@ -380,15 +383,21 @@
     font-family: var(--sc-font-body);
     font-weight: 700;
     font-size: var(--sc-fs-xs);
-    background: linear-gradient(135deg, var(--sc-accent), rgba(242, 209, 147, 0.6), var(--sc-accent-2));
-    color: #0f1520;
+    background: var(--sc-accent);
+    color: #000;
     border: 1px solid rgba(219, 154, 159, 0.34);
     border-radius: 999px;
     padding: 0 11px;
     min-height: 30px;
     cursor: pointer;
     letter-spacing: 0.06em;
-    transition: all var(--sc-duration-fast);
+    transition:
+      background var(--sc-duration-fast),
+      color var(--sc-duration-fast),
+      border-color var(--sc-duration-fast),
+      box-shadow var(--sc-duration-fast),
+      transform var(--sc-duration-fast),
+      opacity var(--sc-duration-fast);
     box-shadow: var(--sc-shadow-glow);
     display: flex;
     align-items: center;
@@ -399,17 +408,17 @@
     transform: translateY(-1px);
   }
   .wallet-btn.connected {
-    background: rgba(173, 202, 124, 0.12);
-    color: #dff8bd;
-    border: 1px solid rgba(173, 202, 124, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--sc-text-0);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: none;
     font-size: var(--sc-fs-2xs);
   }
   .wallet-dot {
     width: 5px; height: 5px;
     border-radius: 50%;
-    background: var(--sc-good);
-    box-shadow: 0 0 6px var(--sc-good);
+    background: var(--sc-accent);
+    box-shadow: 0 0 6px rgba(219, 154, 159, 0.4);
   }
 
   #nav.home-mode {
@@ -422,8 +431,8 @@
     border: 1px solid rgba(219, 154, 159, 0.12);
     border-radius: 15px;
     background:
-      linear-gradient(180deg, rgba(8, 13, 23, 0.86), rgba(8, 13, 23, 0.76)),
-      radial-gradient(circle at top right, rgba(219, 154, 159, 0.1), transparent 34%);
+      linear-gradient(180deg, rgba(8, 8, 8, 0.88), rgba(0, 0, 0, 0.78)),
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.08), transparent 34%);
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
     transform: translateX(-50%);
   }

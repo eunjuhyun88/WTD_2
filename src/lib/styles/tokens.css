@@ -5,33 +5,33 @@
 
 :root {
   /* ── LOST IN SPACE: Canonical palette ── */
-  --lis-rgb-ink: 5, 9, 20;
-  --lis-rgb-panel: 11, 18, 32;
-  --lis-rgb-panel-hi: 17, 27, 44;
+  --lis-rgb-ink: 0, 0, 0;
+  --lis-rgb-panel: 10, 10, 10;
+  --lis-rgb-panel-hi: 20, 20, 20;
   --lis-rgb-pink: 219, 154, 159;
   --lis-rgb-cream: 242, 209, 147;
   --lis-rgb-ivory: 247, 242, 234;
-  --lis-rgb-lime: 173, 202, 124;
+  --lis-rgb-lime: 74, 222, 128;
   --lis-rgb-shadow: 0, 0, 0;
 
-  --lis-bg-0: #050914;
-  --lis-bg-1: #0b1220;
-  --lis-bg-2: #111b2c;
-  --lis-surface-0: #0f1828;
-  --lis-surface-1: #152033;
-  --lis-surface-2: #19263b;
+  --lis-bg-0: #000000;
+  --lis-bg-1: #0a0a0a;
+  --lis-bg-2: #141414;
+  --lis-surface-0: rgba(12, 14, 20, 0.68);
+  --lis-surface-1: rgba(16, 18, 24, 0.82);
+  --lis-surface-2: rgba(20, 22, 28, 0.9);
   --lis-accent: #db9a9f;
   --lis-highlight: #f2d193;
   --lis-ivory: #f7f2ea;
-  --lis-positive: #adca7c;
-  --lis-negative: #cf7f8f;
-  --lis-border: rgba(var(--lis-rgb-pink), 0.28);
-  --lis-border-soft: rgba(var(--lis-rgb-pink), 0.16);
-  --lis-border-strong: rgba(var(--lis-rgb-pink), 0.42);
-  --lis-glow-pink: 0 0 18px rgba(var(--lis-rgb-pink), 0.18);
-  --lis-glow-lime: 0 0 18px rgba(var(--lis-rgb-lime), 0.14);
-  --lis-shadow-md: 0 18px 36px rgba(var(--lis-rgb-shadow), 0.24);
-  --lis-shadow-lg: 0 24px 64px rgba(var(--lis-rgb-shadow), 0.34);
+  --lis-positive: #4ade80;
+  --lis-negative: #f87171;
+  --lis-border: rgba(var(--lis-rgb-pink), 0.22);
+  --lis-border-soft: rgba(var(--lis-rgb-pink), 0.12);
+  --lis-border-strong: rgba(var(--lis-rgb-pink), 0.34);
+  --lis-glow-pink: 0 0 22px rgba(var(--lis-rgb-pink), 0.22);
+  --lis-glow-lime: 0 0 18px rgba(var(--lis-rgb-lime), 0.1);
+  --lis-shadow-md: 0 18px 36px rgba(var(--lis-rgb-shadow), 0.36);
+  --lis-shadow-lg: 0 32px 80px rgba(var(--lis-rgb-shadow), 0.6);
 
   /* ── COLORS: Backgrounds ── */
   --sc-bg-0: var(--lis-bg-0);          /* deepest space background */
@@ -39,7 +39,7 @@
   --sc-bg-2: var(--lis-bg-2);          /* elevated surfaces */
   --sc-surface: var(--lis-surface-0);  /* interactive surface */
   --sc-surface-2: var(--lis-surface-1);/* hover / elevated */
-  --sc-overlay: rgba(4, 8, 14, 0.88); /* modal backdrop */
+  --sc-overlay: rgba(0, 0, 0, 0.88); /* modal backdrop */
   --sc-bg-violet: var(--lis-bg-1);
   --sc-bg-dusk: var(--lis-surface-1);
 
@@ -50,26 +50,26 @@
 
   /* ── COLORS: Accent ── */
   --sc-accent: var(--lis-accent);        /* primary accent (pink) */
-  --sc-accent-hover: rgba(var(--lis-rgb-pink), 0.24);
-  --sc-accent-bg: rgba(var(--lis-rgb-pink), 0.1);
+  --sc-accent-hover: #e6a9ad;
+  --sc-accent-bg: rgba(var(--lis-rgb-pink), 0.08);
   --sc-accent-bg-subtle: rgba(var(--lis-rgb-pink), 0.05);
-  --sc-accent-2: var(--lis-positive);      /* secondary accent (space green) */
-  --sc-accent-3: var(--lis-highlight);      /* poster cream */
+  --sc-accent-2: var(--lis-accent);      /* legacy alias -> pink */
+  --sc-accent-3: var(--lis-ivory);       /* legacy decorative alias -> ivory text */
 
   /* ── COLORS: Semantic ── */
   --sc-good: var(--lis-positive);          /* gain, success, long */
   --sc-good-bg: rgba(var(--lis-rgb-lime), 0.16);
   --sc-bad: var(--lis-negative);           /* loss, error, short */
-  --sc-bad-bg: rgba(var(--lis-rgb-pink), 0.16);
-  --sc-warn: var(--lis-highlight);          /* warning, caution */
-  --sc-warn-bg: rgba(var(--lis-rgb-cream), 0.15);
-  --sc-info: rgba(var(--lis-rgb-lime), 0.88);          /* informational */
+  --sc-bad-bg: rgba(248, 113, 113, 0.16);
+  --sc-warn: var(--lis-accent);            /* warning merges into pink */
+  --sc-warn-bg: rgba(var(--lis-rgb-pink), 0.12);
+  --sc-info: rgba(var(--lis-rgb-pink), 0.88);          /* informational */
 
   /* ── COLORS: Text ── */
   --sc-text-0: var(--lis-ivory);        /* primary text (warm ivory) */
-  --sc-text-1: rgba(247, 242, 234, 0.84);  /* secondary text */
-  --sc-text-2: rgba(247, 242, 234, 0.68);  /* muted text */
-  --sc-text-3: rgba(247, 242, 234, 0.52);  /* dim text (a11y floor) */
+  --sc-text-1: rgba(247, 242, 234, 0.72);  /* secondary text */
+  --sc-text-2: rgba(247, 242, 234, 0.48);  /* muted text */
+  --sc-text-3: rgba(247, 242, 234, 0.28);  /* dim text (a11y floor) */
 
   /* ── TYPOGRAPHY: Font Families ── */
   --sc-font-display: 'Bebas Neue', 'Orbitron', monospace;
@@ -186,17 +186,17 @@
   --blk: #0A0808;
   --card: var(--sc-surface);
   --card2: var(--sc-surface-2);
-  --yel: var(--sc-accent-3);
+  --yel: var(--sc-text-0);
   --pk: var(--sc-accent);
   --grn: var(--sc-good);
   --red: var(--sc-bad);
   --ora: var(--sc-accent);
-  --blu: var(--sc-accent-2);
+  --blu: var(--sc-accent);
   --pur: var(--sc-accent);
-  --gold: var(--sc-accent-3);
-  --cyan: var(--sc-accent-2);
-  --lime: var(--sc-accent-2);
-  --chain: var(--sc-accent-3);
+  --gold: var(--sc-accent);
+  --cyan: var(--sc-accent);
+  --lime: var(--sc-accent);
+  --chain: var(--sc-accent);
   --fg: var(--sc-text-0);
   --fg-strong: rgba(255, 255, 255, 0.95);
   --fg-medium: rgba(255, 255, 255, 0.7);
@@ -260,8 +260,12 @@
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
-::-webkit-scrollbar-thumb { background: rgba(255, 116, 182, 0.35); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 116, 182, 0.55); }
+::-webkit-scrollbar-thumb { background: rgba(219, 154, 159, 0.35); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(219, 154, 159, 0.55); }
+
+.cg-rainbow-divider {
+  background: linear-gradient(90deg, transparent, rgba(219, 154, 159, 0.36), transparent);
+}
 
 /* ── ANIMATIONS ── */
 @keyframes sc-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }

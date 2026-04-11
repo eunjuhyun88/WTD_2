@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { safeParseResearchBlockEnvelope, type ResearchBlockEnvelope } from '$lib/contracts';
   import DataCard from '../../components/cogochi/DataCard.svelte';
   import CgChart from '../../components/cogochi/CgChart.svelte';
   import QuickPanel from '../../components/cogochi/QuickPanel.svelte';
+  import ResearchBlockRenderer from '../../components/terminal/research/ResearchBlockRenderer.svelte';
 
   // ─── Types ────────────────────────────────────────────────
   type MessageType =
@@ -15,7 +17,8 @@
     | { type: 'metrics'; items: MetricItem[] }
     | { type: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
     | { type: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
-    | { type: 'scan_list'; items: any[]; sort: string; sector: string };
+    | { type: 'scan_list'; items: any[]; sort: string; sector: string }
+    | { type: 'research_block'; envelope: ResearchBlockEnvelope };
 
   interface MetricItem {
     title: string; value: string; subtext: string;
@@ -32,6 +35,7 @@
     | { type: 'text_delta'; text: string }
     | { type: 'tool_call'; name: string; args: Record<string, unknown> }
     | { type: 'tool_result'; name: string; data: any }
+    | { type: 'research_block'; payload: ResearchBlockEnvelope }
     | { type: 'layer_result'; layer: string; score: number; signal: string; detail?: string }
     | { type: 'chart_action'; action: string; payload: Record<string, unknown> }
     | { type: 'pattern_draft'; name: string; conditions: unknown[]; requiresConfirmation: boolean }
@@ -47,7 +51,8 @@
     | { kind: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
     | { kind: 'scan'; items: any[]; sort: string; sector: string }
     | { kind: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
-    | { kind: 'chart_ref'; symbol: string; timeframe: string };
+    | { kind: 'chart_ref'; symbol: string; timeframe: string }
+    | { kind: 'research_block'; envelope: ResearchBlockEnvelope };
 
   // ─── State ────────────────────────────────────────────────
   let messages = $state<MessageType[]>([]);
@@ -77,6 +82,7 @@
   // Chart overlay data (Sprint 1)
   let currentAnnotations: any[] = $state([]);
   let currentIndicators: any = $state(null);
+  let focusedResearchBlock = $state<ResearchBlockEnvelope | null>(null);
 
   // Conversation history for LLM context
   let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -114,6 +120,9 @@
               break;
             case 'actions':
               entries.push({ kind: 'actions', patternName: w.patternName, direction: w.direction, conditions: w.conditions });
+              break;
+            case 'research_block':
+              entries.push({ kind: 'research_block', envelope: w.envelope });
               break;
           }
         }
@@ -238,6 +247,7 @@
         derivatives: data.derivatives ?? null,
         annotations: data.annotations ?? [],
         indicators: data.indicators ?? null,
+        researchBlocks: data.researchBlocks ?? [],
         ...data.snapshot,
       };
     }
@@ -345,8 +355,6 @@
 
       let streamingText = '';
       const pendingLayers: LayerItem[] = [];
-      let pendingAnalysis: any = null;
-
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -377,11 +385,29 @@
 
             case 'tool_call':
               if (event.name === 'analyze_market' || event.name === 'check_social' || event.name === 'scan_market') {
+                if (event.name === 'analyze_market') {
+                  focusedResearchBlock = null;
+                }
                 // Show thinking indicator while tool runs
                 messages = [...messages, { role: 'douni', thinking: true } as MessageType];
                 scrollToBottom();
               }
               break;
+
+            case 'research_block': {
+              const parsed = safeParseResearchBlockEnvelope(event.payload);
+              if (!parsed.success) break;
+
+              messages = [
+                ...messages.filter(m => !('thinking' in m)),
+                { role: 'douni', text: '', widgets: [{ type: 'research_block', envelope: parsed.data }] }
+              ];
+              if (!focusedResearchBlock || parsed.data.block.kind === 'inline_price_chart') {
+                focusedResearchBlock = parsed.data;
+              }
+              scrollToBottom();
+              break;
+            }
 
             case 'layer_result':
               pendingLayers.push({
@@ -394,7 +420,6 @@
 
             case 'tool_result':
               if (event.name === 'analyze_market' && event.data) {
-                pendingAnalysis = event.data;
                 messages = messages.filter(m => !('thinking' in m));
                 applyAnalysisResult(event.data, pendingLayers);
                 streamingText = '';
@@ -467,6 +492,19 @@
   function applyAnalysisResult(data: any, layers: LayerItem[]) {
     const normalized = normalizeAnalysisPayload(data);
     syncCurrentAnalysis(normalized);
+    const researchBlocks: ResearchBlockEnvelope[] = Array.isArray(normalized.researchBlocks)
+      ? normalized.researchBlocks.flatMap((payload: unknown) => {
+          const parsed = safeParseResearchBlockEnvelope(payload);
+          return parsed.success ? [parsed.data] : [];
+        })
+      : [];
+    const hasResearchBlocks = researchBlocks.length > 0;
+
+    if (hasResearchBlocks) {
+      if (!focusedResearchBlock) {
+        focusedResearchBlock = researchBlocks.find((block) => block.block.kind === 'inline_price_chart') ?? researchBlocks[0];
+      }
+    }
 
     // Build metrics from analysis data
     const metrics: MetricItem[] = [];
@@ -509,7 +547,7 @@
     }
 
     // Add chart widget
-    if (normalized.chart && normalized.chart.length > 0) {
+    if (!hasResearchBlocks && normalized.chart && normalized.chart.length > 0) {
       messages = [...messages, {
         role: 'douni', text: '',
         widgets: [{ type: 'chart', symbol: currentSymbol, timeframe: currentTf.toUpperCase(), chartData: normalized.chart }],
@@ -517,7 +555,7 @@
     }
 
     // Add metrics widget
-    if (metrics.length > 0) {
+    if (!hasResearchBlocks && metrics.length > 0) {
       messages = [...messages, { role: 'douni', text: '', widgets: [{ type: 'metrics', items: metrics }] }];
     }
 
@@ -756,6 +794,14 @@
     if (score < 0) return 'var(--sc-bad)';
     return 'var(--sc-text-3)';
   }
+
+  function focusResearchBlock(envelope: ResearchBlockEnvelope) {
+    focusedResearchBlock = envelope;
+  }
+
+  function clearResearchFocus() {
+    focusedResearchBlock = null;
+  }
 </script>
 
 <svelte:head><title>Cogochi Terminal</title></svelte:head>
@@ -894,6 +940,11 @@
               <span class="cr-sym">{entry.symbol.replace('USDT','')}</span>
               <span class="cr-tf">{entry.timeframe}</span>
             </div>
+
+          {:else if entry.kind === 'research_block'}
+            <div class="fe fe-research">
+              <ResearchBlockRenderer envelope={entry.envelope} interactive={true} onSelect={focusResearchBlock} />
+            </div>
           {/if}
         {/each}
       </div>
@@ -901,7 +952,19 @@
 
     <!-- CHART PANEL (always visible) -->
     <aside class="chart-panel">
-      {#if currentSnapshot && currentChartData.length > 0}
+      {#if focusedResearchBlock}
+        <div class="cp-header cp-header-focus">
+          <div class="cp-focus-meta">
+            <span class="cp-sym">{focusedResearchBlock.symbol.replace('USDT','')}</span>
+            <span class="cp-tf">{focusedResearchBlock.timeframe.toUpperCase()}</span>
+            <span class="cp-focus-label">{focusedResearchBlock.block.kind.replaceAll('_', ' ')}</span>
+          </div>
+          <button type="button" class="cp-reset" onclick={clearResearchFocus}>SHOW PRICE</button>
+        </div>
+        <div class="cp-focus-body">
+          <ResearchBlockRenderer envelope={focusedResearchBlock} presentation="focus" />
+        </div>
+      {:else if currentSnapshot && currentChartData.length > 0}
         <div class="cp-header">
           <span class="cp-sym">{currentSymbol.replace('USDT','')}</span>
           <span class="cp-tf">{currentTf.toUpperCase()}</span>
@@ -1142,6 +1205,10 @@
     line-height: 1.7;
     color: var(--sc-text-1);
     white-space: pre-line;
+  }
+
+  .fe-research {
+    padding: 12px 0 14px;
   }
 
   /* ─── Thinking ─── */
@@ -1408,6 +1475,45 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .cp-header-focus {
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .cp-focus-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .cp-focus-label {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sc-text-3);
+  }
+
+  .cp-reset {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 10px;
+    border: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--sc-text-1, #d9d3cb);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+
+  .cp-focus-body {
+    padding: 12px 14px 16px;
+    overflow: auto;
   }
   .cp-header {
     display: flex;

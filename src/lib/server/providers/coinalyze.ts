@@ -190,6 +190,52 @@ export async function fetchOIHistoryServer(
 	}
 }
 
+// ─── Funding History ─────────────────────────────────────────
+
+export async function fetchFundingHistoryServer(
+	pair: string,
+	tf: string,
+	limit: number = 100
+): Promise<FundingDataPoint[]> {
+	const symbol = pairToCoinalyze(pair);
+	const interval = toCoinalyzeInterval(tf);
+	const cacheKey = `coinalyze:fundingHist:${symbol}:${interval}:${limit}`;
+	const cached = getCached<FundingDataPoint[]>(cacheKey);
+	if (cached) return cached;
+
+	try {
+		const now = Math.floor(Date.now() / 1000);
+		const intervalSecs: Record<string, number> = {
+			'1min': 60,
+			'5min': 300,
+			'15min': 900,
+			'30min': 1800,
+			'1hour': 3600,
+			'4hour': 14400,
+			daily: 86400
+		};
+		const from = now - (intervalSecs[interval] ?? 14400) * limit;
+
+		const data = await coinalyzeFetchDirect('funding-rate-history', {
+			symbols: symbol,
+			interval,
+			from: String(from),
+			to: String(now)
+		});
+
+		const result: FundingDataPoint[] = [];
+		if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0]?.history)) {
+			for (const pt of data[0].history) {
+				result.push({ time: pt.t, value: pt.c ?? pt.o ?? 0 });
+			}
+		}
+		setCache(cacheKey, result, DERIV_CACHE_TTL);
+		return result;
+	} catch {
+		return [];
+	}
+}
+
 // ─── Liquidation History ─────────────────────────────────────
 
 export async function fetchLiquidationHistoryServer(

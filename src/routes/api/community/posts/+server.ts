@@ -6,6 +6,20 @@ import { toBoundedInt } from '$lib/server/apiValidation';
 import { isRequestBodyTooLargeError, readJsonBody } from '$lib/server/requestGuards';
 import { errorContains } from '$lib/utils/errorUtils';
 
+function isCommunityPersistenceUnavailableError(error: unknown): boolean {
+  const code = typeof (error as { code?: unknown } | null)?.code === 'string'
+    ? (error as { code: string }).code
+    : '';
+  return code === '42P01'
+    || code === '42703'
+    || code === '23503'
+    || code === 'ENOTFOUND'
+    || code === 'EAI_AGAIN'
+    || code === 'ECONNREFUSED'
+    || code === 'ETIMEDOUT'
+    || errorContains(error, 'DATABASE_URL is not set');
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(row: Record<string, any>) {
   return {
@@ -56,8 +70,17 @@ export const GET: RequestHandler = async ({ url }) => {
       pagination: { limit, offset },
     });
   } catch (error: unknown) {
-    if (errorContains(error, 'DATABASE_URL is not set')) {
-      return json({ error: 'Server database is not configured' }, { status: 500 });
+    if (isCommunityPersistenceUnavailableError(error)) {
+      return json({
+        success: true,
+        total: 0,
+        records: [],
+        pagination: {
+          limit: toBoundedInt(url.searchParams.get('limit'), 50, 1, 100),
+          offset: toBoundedInt(url.searchParams.get('offset'), 0, 0, 1000),
+        },
+        warning: 'community post tables are unavailable; returning empty feed',
+      });
     }
     console.error('[community/posts/get] unexpected error:', error);
     return json({ error: 'Failed to load community posts' }, { status: 500 });
