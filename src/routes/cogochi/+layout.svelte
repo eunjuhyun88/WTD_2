@@ -45,7 +45,7 @@
       </a>
       <span class="tb-sep">│</span>
       <nav class="tb-nav">
-        <a href="/cogochi/terminal" class="tb-link" class:active={currentPath.includes('/terminal')}>TERMINAL</a>
+        <a href="/terminal" class="tb-link" class:active={currentPath.startsWith('/terminal')}>TERMINAL</a>
         <a href="/cogochi/scanner" class="tb-link" class:active={currentPath.includes('/scanner')}>SCANNER</a>
         <a href="/cogochi" class="tb-link" class:active={currentPath === '/cogochi'}>LAB</a>
       </nav>
