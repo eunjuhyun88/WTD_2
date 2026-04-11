@@ -9747,6 +9747,27 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run safe:hooks`: PASS
   - `npm run safe:sync`: FAIL because the working tree already contained uncommitted changes before this task
 
+## [2026-04-11 19:40:48 +0900] FINISH W-20260411-1931-CHATBATTLE-codex (chatbattle)
+- What changed:
+  - extended the terminal research-view contract in `src/lib/contracts/researchView.ts` with `HeatmapCell`, `HeatmapLegendItem`, and `heatmap_flow_chart`, and re-exported the new schemas/types through `src/lib/contracts/index.ts`
+  - rebuilt `src/lib/server/researchView/buildResearchBlocks.ts` so the research-block assembler now combines depth walls, force-order liquidation pulses, liquidation totals, CVD, and taker ratio into a fourth research block after the existing metric strip / inline price / dual flow sequence
+  - updated `src/lib/server/douni/toolExecutor.ts` to pass `depth`, `forceOrders`, and `takerData` into the research-block builder so `research_block` SSE events now include the new heatmap payload
+  - added a canvas-based renderer at `src/components/terminal/research/HeatmapFlowChartBlock.svelte` and registered it in `src/components/terminal/research/ResearchBlockRenderer.svelte`, which makes the heatmap available both inline in the chat stream and in the right-side focus inspector
+  - widened the active task contract in `docs/task-contracts/active/terminal-chart-block-engine-v1a.md` to include the heatmap slice and refreshed local branch brief/handoff via `npm run ctx:compact`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - manual browser inspection for `/terminal` heatmap interaction: not run in this task
+- Commit hash:
+  - current `HEAD` observed as `8a258c3`
+  - no explicit `git commit` was run in this task
+- Push status:
+  - not requested
+- Final working tree status:
+  - `## codex/mono-home-refactor`
+  - clean at task end
+
 ## [2026-04-11 19:27:51 +0900] FINISH W-20260411-1919-CHATBATTLE-codex (chatbattle)
 - What changed:
   - swept current repo errors and found three real static issues on the new research block surface: one TypeScript mismatch, one invalid `{@const}` placement, and one a11y warning on interactive markup
@@ -9791,3 +9812,21 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - local-only `.agent-context/` remains excluded from git
 - Safe status:
   - `npm run safe:status`: PASS
+
+## [2026-04-11 19:42:07 +0900] FINISH W-20260411-1933-CHATBATTLE-codex (chatbattle)
+- What changed:
+  - validated the full `codex/mono-home-refactor` branch, committed the in-progress home refactor and terminal research block work, then rebased the personal branch onto the latest `origin/main`
+  - resolved the rebase conflict in `src/lib/server/douni/toolExecutor.ts` by keeping the shared provider-based timeframe routing and the local force-order normalization/research-block wiring
+  - finalized the post-rebase heatmap integration with follow-up commits in `toolExecutor.ts` and `buildResearchBlocks.ts`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - branch tip before push: `8a258c3f79dfc25a7dcca9aee8f21bdcd8fb6afd`
+  - commits created during this task flow: `471824e`, `24a4a85`, `7f19bad`, `f289f12`, `8a258c3`
+- Push status:
+  - push requested by user; branch push follows immediately after this log update commit
+- Final working tree status:
+  - clean before final push except for this watch log update
