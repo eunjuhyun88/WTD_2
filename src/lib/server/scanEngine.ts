@@ -5,12 +5,12 @@
 // 15 data sources (13 기존 + Santiment + CoinMetrics) → scoring → WarRoomScanResult
 // All fetch calls use server modules with LRU caching.
 
-import type { BinanceKline } from '$lib/server/binance';
+import type { BinanceKline } from '$lib/server/providers/binance';
 import type { AgentSignal } from '$lib/data/warroom';
 import { AGENT_POOL } from '$lib/engine/agents';
 
 // ── Server-side data fetchers ──
-import { pairToSymbol } from '$lib/server/binance';
+import { pairToSymbol } from '$lib/server/providers/binance';
 import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
 import {

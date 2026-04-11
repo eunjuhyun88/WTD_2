@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { pairToSymbol } from '$lib/server/binance';
+import { pairToSymbol } from '$lib/server/providers/binance';
 import { readRaw } from '$lib/server/providers/rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
 import { fetchDerivatives, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';

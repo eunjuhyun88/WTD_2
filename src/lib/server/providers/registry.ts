@@ -9,7 +9,7 @@ import type { ProviderHealth, OnchainMetrics, SentimentMetrics } from './types';
 import { getCached, setCache } from './cache';
 import { readRaw, klinesRawIdForTimeframe } from './rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
-import { pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/binance';
+import { pairToSymbol, type Binance24hr, type BinanceKline } from './binance';
 import { fetchDerivatives, fetchNews, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { fetchFearGreed } from '$lib/server/feargreed';
 import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from './coingecko';

@@ -70,7 +70,7 @@ import {
 	type ForceOrder
 } from '$lib/server/marketDataService';
 import { fetchFearGreed } from '$lib/server/feargreed';
-import { fetchKlinesServer, fetch24hrServer } from '$lib/server/binance';
+import { fetchKlinesServer, fetch24hrServer } from './binance';
 import type { BinanceKline, Binance24hr } from '$lib/engine/types';
 import { binanceQuota } from './binanceQuota';
 
