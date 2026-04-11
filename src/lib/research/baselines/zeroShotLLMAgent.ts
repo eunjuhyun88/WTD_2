@@ -19,9 +19,9 @@
  *   docs/exec-plans/active/research-spine-2026-04-11.md §R1, RQ-B
  */
 
-import type { AgentObservation, AgentDecisionProposal } from '../evaluation/types';
-import type { BaselineAgent } from './types';
-import { BaselineId } from './types';
+import type { AgentObservation, AgentDecisionProposal } from '../evaluation/types.ts';
+import type { BaselineAgent } from './types.ts';
+import { BaselineId } from './types.ts';
 
 export type ZeroShotLLMAgentConfig = Readonly<{
 	/** Model identifier, e.g. `"anthropic/claude-sonnet-4-6"` or `"openai/gpt-4o"`. */

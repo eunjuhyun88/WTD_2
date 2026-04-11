@@ -18,9 +18,9 @@
  *   docs/exec-plans/active/research-spine-2026-04-11.md §R1
  */
 
-import type { AgentObservation, AgentDecisionProposal } from '../evaluation/types';
-import type { BaselineAgent } from './types';
-import { BaselineId } from './types';
+import type { AgentObservation, AgentDecisionProposal } from '../evaluation/types.ts';
+import type { BaselineAgent } from './types.ts';
+import { BaselineId } from './types.ts';
 
 /**
  * Config placeholder. The concrete implementation will wire execution hints
