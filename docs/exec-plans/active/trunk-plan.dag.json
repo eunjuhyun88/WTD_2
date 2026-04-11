@@ -1,0 +1,355 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-11",
+  "design_doc": "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+  "parent_trunk_plan": "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md",
+  "track_limits": {
+    "product": 6,
+    "research": 3,
+    "fix": 1
+  },
+  "mutex_groups": {
+    "contract-*": "Only one slice at a time may touch src/lib/contracts/**",
+    "scanEngine-decompose": "Only one P1.A0.* slice at a time — all touch scanEngine.ts",
+    "migration-*": "Only one DB migration at a time"
+  },
+  "slices": [
+    {
+      "id": "P0.1-verdict-zod",
+      "title": "Promote engine PipelineResult to VerdictBlock zod schema",
+      "track": "product",
+      "phase": "P0",
+      "priority": 100,
+      "agent_type": "contract-drafter",
+      "depends_on": [],
+      "mutex": ["contract-*"],
+      "paths": [
+        "src/lib/contracts/verdict.ts",
+        "src/lib/contracts/index.ts"
+      ],
+      "context_files": [
+        "src/lib/engine/types.ts",
+        "src/lib/engine/agentPipeline.ts",
+        "src/lib/contracts/ids.ts",
+        "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md",
+        "docs/exec-plans/active/alpha-terminal-harness-engine-spec-2026-04-09.md"
+      ],
+      "dod": [
+        "src/lib/contracts/verdict.ts exports VerdictBlockSchema (zod) and VerdictBlock type via z.infer",
+        "Schema covers every field of PipelineResult + AgentOutput + MatchPrediction from src/lib/engine/types.ts",
+        "Round-trip parse test: sample PipelineResult → JSON.stringify → JSON.parse → schema.parse → deep equal",
+        "npm run check exits 0",
+        "src/lib/contracts/index.ts re-exports VerdictBlockSchema and VerdictBlock"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "The ground truth for verdict_block shape already exists as TypeScript interfaces in src/lib/engine/types.ts. This is a 'promote existing interface to zod' task, not greenfield design. Do not widen or narrow field types without explicit comment."
+    },
+    {
+      "id": "P0.2-trajectory-zod",
+      "title": "Promote DecisionTrajectory schema to zod",
+      "track": "product",
+      "phase": "P0",
+      "priority": 95,
+      "agent_type": "contract-drafter",
+      "depends_on": ["P0.1-verdict-zod"],
+      "mutex": ["contract-*"],
+      "paths": [
+        "src/lib/contracts/trajectory.ts",
+        "src/lib/contracts/index.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/verdict.ts",
+        "src/lib/contracts/ids.ts",
+        "docs/ORPO_DATA_SCHEMA_PIPELINE_v1_2026-02-26.md",
+        "docs/PASSPORT_ML_ORPO_LEARNING_ARCHITECTURE_v2_2026-02-25.md",
+        "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md"
+      ],
+      "dod": [
+        "src/lib/contracts/trajectory.ts exports DecisionTrajectorySchema (zod) and DecisionTrajectory type",
+        "Schema embeds VerdictBlock via VerdictBlockSchema (from P0.1)",
+        "Outcome fields are nullable (resolver populates later)",
+        "Round-trip parse test covers both unresolved and resolved trajectories",
+        "npm run check exits 0",
+        "src/lib/contracts/index.ts re-exports DecisionTrajectorySchema and DecisionTrajectory"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Schema basis is ORPO_DATA_SCHEMA_PIPELINE_v1 §2. Embeds P0.1's VerdictBlock as a JSONB payload in DB terms. Outcome fields start nullable because the time-delay resolver worker (P2.C-outcome-resolver, later slice) populates them."
+    },
+    {
+      "id": "P0.3-ids-finalize",
+      "title": "Finalize contract ID namespace — close RawId registry + add verdict/trajectory/pair IDs",
+      "track": "product",
+      "phase": "P0",
+      "priority": 90,
+      "agent_type": "contract-drafter",
+      "depends_on": [],
+      "mutex": ["contract-*"],
+      "paths": [
+        "src/lib/contracts/ids.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/ids.ts",
+        "docs/exec-plans/active/alpha-terminal-harness-engine-spec-2026-04-09.md"
+      ],
+      "dod": [
+        "VerdictBias, VerdictUrgency, StructureStateId, EventDirection, EventSeverity enums exported from ids.ts",
+        "RawId remains open (template literal), isRawId() function unchanged",
+        "Barrel re-export updated if new enums need re-export via index.ts",
+        "npm run check exits 0"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 2
+      },
+      "notes": "Partially drafted already on feat/phase0-contracts. This slice finishes the enum additions that verdict.ts and trajectory.ts depend on. Can run in parallel with P0.1/P0.2 only if mutex is per-file instead of directory-wide — default setting uses directory-wide so this runs before P0.1."
+    },
+    {
+      "id": "P0.4-contracts-barrel",
+      "title": "Contracts barrel re-export finalization + drop-in type replacement verification",
+      "track": "product",
+      "phase": "P0",
+      "priority": 85,
+      "agent_type": "contract-drafter",
+      "depends_on": ["P0.1-verdict-zod", "P0.2-trajectory-zod", "P0.3-ids-finalize"],
+      "mutex": ["contract-*"],
+      "paths": [
+        "src/lib/contracts/index.ts",
+        "src/lib/engine/types.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/verdict.ts",
+        "src/lib/contracts/trajectory.ts",
+        "src/lib/contracts/ids.ts",
+        "src/lib/engine/types.ts",
+        "src/lib/engine/agentPipeline.ts"
+      ],
+      "dod": [
+        "src/lib/contracts/index.ts re-exports all public schemas and types from verdict, trajectory, ids",
+        "One representative call site in src/lib/engine/types.ts replaced: interface PipelineResult becomes type PipelineResult = z.infer<typeof VerdictBlockSchema>",
+        "agentPipeline.ts continues to compile and run existing callers without code changes",
+        "npm run check exits 0",
+        "Regression test: quickPipeline output still parses via VerdictBlockSchema without errors"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 2
+      },
+      "notes": "This is the verification gate for Phase 0. If this slice passes, contracts are effectively frozen and Phase 1 unblocks. Any P1.* slice may then depend only on the contracts layer, not on engine/types.ts directly."
+    },
+    {
+      "id": "P0.5-zod-pin",
+      "title": "Pin zod as explicit dependency in package.json",
+      "track": "product",
+      "phase": "P0",
+      "priority": 80,
+      "agent_type": "api-surgeon",
+      "depends_on": [],
+      "mutex": [],
+      "paths": [
+        "package.json",
+        "package-lock.json"
+      ],
+      "context_files": [
+        "package.json",
+        "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md"
+      ],
+      "dod": [
+        "zod explicitly listed in dependencies (not just transitive via @walletconnect)",
+        "Version ≥ 3.25 and pinned (no caret or tilde)",
+        "package-lock.json regenerated via npm install",
+        "npm run check exits 0",
+        "No other dependency changes"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 1
+      },
+      "notes": "Prevents zod from silently disappearing if @walletconnect drops it. Smallest possible slice — should merge in under an hour. Safe to run in parallel with P0.1–P0.4 (different file scope)."
+    },
+    {
+      "id": "P1.A0-binance",
+      "title": "Extract binance raw loader to src/lib/server/providers/binance.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 75,
+      "agent_type": "decomposer",
+      "depends_on": ["P0.4-contracts-barrel"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/binance.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/binance.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/binance.ts",
+        "src/lib/contracts/ids.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/binance.ts created with raw loader functions moved out of scanEngine.ts (Phase A plan first, Phase B execute)",
+        "All binance fetch logic previously in scanEngine.ts is now in providers/binance.ts",
+        "scanEngine.ts re-exports binance loaders via barrel for backward compatibility",
+        "No behavior changes, no function signature changes, no type widening",
+        "npm run check exits 0",
+        "All existing imports of binance functions resolve unchanged"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Decomposer agent runs in two phases. Phase A produces a plan at .agent-context/handoffs/P1.A0-binance-split-plan.md and STOPS for human approval. Phase B executes the move as one PR. This is the first decomposer invocation and will validate the pattern for the other P1.A0.* slices."
+    },
+    {
+      "id": "P1.A0-coingecko",
+      "title": "Extract coingecko raw loader to src/lib/server/providers/coingecko.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 74,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-binance"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/coingecko.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coingecko.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coingecko.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/coingecko.ts created, coingecko fetches moved out of scanEngine.ts",
+        "scanEngine.ts re-exports coingecko loaders via barrel",
+        "No behavior changes",
+        "npm run check exits 0",
+        "binance extraction from P1.A0-binance remains intact"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Depends on P1.A0-binance MERGED (not just started) because both touch scanEngine.ts. Mutex enforces this at the scheduler level. Pattern should now be established from binance; coingecko is the pattern repeat."
+    },
+    {
+      "id": "P1.A0-coinalyze",
+      "title": "Extract coinalyze raw loader to src/lib/server/providers/coinalyze.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 73,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-coingecko"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/coinalyze.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinalyze.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinalyze.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/coinalyze.ts created, coinalyze fetches moved out of scanEngine.ts",
+        "scanEngine.ts re-exports coinalyze loaders via barrel",
+        "No behavior changes",
+        "npm run check exits 0"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Serial via mutex after P1.A0-coingecko. By the third P1.A0.* slice the decomposer pattern is fully proven and any issues would have surfaced earlier."
+    },
+    {
+      "id": "P1.A0-dexscreener",
+      "title": "Extract dexscreener raw loader to src/lib/server/providers/dexscreener.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 72,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-coinalyze"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/dexscreener.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/dexscreener.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/dexscreener.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/dexscreener.ts created, dexscreener fetches moved out of scanEngine.ts",
+        "scanEngine.ts re-exports dexscreener loaders via barrel",
+        "No behavior changes",
+        "npm run check exits 0"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Last of the v0 provider extractions. After this, Phase 1 A-P0 has 4 of the 21 providers extracted; the remaining 17 are added to the DAG in a v1 update after first round merges cleanly."
+    },
+    {
+      "id": "P1.C-schema-migration",
+      "title": "Add verdict_block_json JSONB column to decision_trajectories + round-trip test",
+      "track": "product",
+      "phase": "P1",
+      "priority": 70,
+      "agent_type": "migration-writer",
+      "depends_on": ["P0.4-contracts-barrel"],
+      "mutex": ["migration-*"],
+      "paths": [
+        "db/migrations/20260411_decision_trajectories_verdict_block.sql",
+        "supabase/migrations/20260411_decision_trajectories_verdict_block.sql",
+        "src/lib/server/memory/decisionJournal.ts"
+      ],
+      "context_files": [
+        "db/migrations/0007_memory_system.sql",
+        "supabase/migrations/005_terminal_persistence.sql",
+        "src/lib/contracts/trajectory.ts",
+        "src/lib/contracts/verdict.ts",
+        "docs/ORPO_DATA_SCHEMA_PIPELINE_v1_2026-02-26.md"
+      ],
+      "dod": [
+        "Migration file creates decision_trajectories table if not exists (with verdict_block_json JSONB column) OR adds the column if the table already exists",
+        "Migration includes both up and down paths",
+        "src/lib/server/memory/decisionJournal.ts exports insertTrajectory() and getTrajectory() using DecisionTrajectorySchema for validation",
+        "Round-trip integration test: insertTrajectory(sample) → getTrajectory(id) → schema.parse → deep equal sample",
+        "npm run check exits 0",
+        "Supabase RLS policy drafted for trajectory table (even if permissive for now)"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "C-schema track per three-pipeline Phase 1. Runs in parallel with P1.A0.* (different mutex group). This slice defines the first real consumer of the DecisionTrajectorySchema from P0.2 and provides the database surface for the later outcome-resolver worker (future slice, not in this v0 DAG)."
+    }
+  ],
+  "parking_lot": [
+    "P1.A0-etherscan, P1.A0-santiment, P1.A0-lunarcrush, P1.A0-defillama, P1.A0-cryptoquant, P1.A0-glassnode, P1.A0-yahoo, P1.A0-fred, P1.A0-feargreed, P1.A0-coinmetrics, P1.A0-coinmarketcap, P1.A0-dune, P1.A0-gmx, P1.A0-polymarket, P1.A0-geckowhale (16 remaining providers from the 21 atoms — added to DAG v1 after v0 proves the pattern)",
+    "P2.A1-events (rewrite F4~F17 as event emitters) — Phase 2 work",
+    "P2.C-outcome-resolver (time-bridge worker that populates trajectory outcomes) — Phase 2 work",
+    "P3.A2-structure (structural state machine) — Phase 3 work",
+    "P3.A3-verdict-assembler (replace computeAlpha) — Phase 3 work",
+    "P4.B-pair-generator (trajectory → ml_preference_pairs) — Phase 4 work",
+    "P4.B-train-eval-hooks — Phase 4 work",
+    "P5.A4-nl-routing — Phase 5 work"
+  ],
+  "notes": {
+    "v0_scope": "First 10 slices covering Phase 0 (contract freeze, 5 slices) + Phase 1 first half (4 provider extractions + 1 DB migration, 5 slices). This is enough to unblock the entire trunk plan without committing to slice definitions that have not been validated yet.",
+    "v1_trigger": "When P0.4-contracts-barrel and P1.A0-binance both merge successfully, add the remaining 16 providers and Phase 2 slices.",
+    "ordering_rationale": "P0.1 and P0.2 are mutex-serialized (contract-*), so even though they could in theory run in parallel with different target files, default setting runs them serial for safety. P0.5-zod-pin has no mutex and can run in parallel. P0.3 can run first since P0.1 and P0.2 depend on the enums it finalizes.",
+    "priority_explanation": "Priority breaks ties when multiple slices are ready at the same scheduler tick. P0.1 (100) is the highest because contract freeze is the entire critical path.",
+    "research_track_absent_from_v0": "v0 is product-track only. Research track (research-scientist, data-formatter, eval-runner) comes online at Phase 2 rollout (swarm-v1 week 2). First research slice will be 'baseline hit_rate measurement on FIXED_SCENARIOS' and depends on P0.2-trajectory-zod being merged."
+  }
+}
