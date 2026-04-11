@@ -14,7 +14,7 @@ from building_blocks.context import Context
 def breakout_above_high(
     ctx: Context,
     *,
-    lookback_days: int,
+    lookback_days: int = 20,
 ) -> pd.Series:
     """Return a bool Series where close > max(high) over the past
     `lookback_days` days (converted to 1h bars via ×24).

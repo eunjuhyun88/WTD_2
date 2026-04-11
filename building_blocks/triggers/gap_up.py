@@ -14,7 +14,7 @@ from building_blocks.context import Context
 def gap_up(
     ctx: Context,
     *,
-    min_pct: float,
+    min_pct: float = 0.05,
 ) -> pd.Series:
     """Return a bool Series where (open - prev_close) / prev_close ≥ min_pct.
 

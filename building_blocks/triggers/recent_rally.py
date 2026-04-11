@@ -14,8 +14,8 @@ from building_blocks.context import Context
 def recent_rally(
     ctx: Context,
     *,
-    pct: float,
-    lookback_bars: int,
+    pct: float = 0.30,
+    lookback_bars: int = 120,
 ) -> pd.Series:
     """Return a bool Series (indexed like ctx.features) where close has
     risen by ≥`pct` over the last `lookback_bars` bars.

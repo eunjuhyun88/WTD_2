@@ -13,8 +13,8 @@ from building_blocks.context import Context
 def volume_spike(
     ctx: Context,
     *,
-    multiple: float,
-    vs_window: int,
+    multiple: float = 5.0,
+    vs_window: int = 24,
 ) -> pd.Series:
     """Return a bool Series where this bar's volume ≥ `multiple` × the
     mean of the past `vs_window` bars' volume.

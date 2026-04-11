@@ -18,8 +18,8 @@ from building_blocks.context import Context
 def consolidation_then_breakout(
     ctx: Context,
     *,
-    range_bars: int,
-    range_pct: float,
+    range_bars: int = 48,
+    range_pct: float = 0.05,
 ) -> pd.Series:
     """Return a bool Series where the past `range_bars` formed a tight
     range and the current close broke above it.
