@@ -7,6 +7,7 @@ dependencies = [
     "pydantic>=2.6",
     "pandas>=2.0",
     "numpy>=1.24",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -16,4 +17,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+# "." → cogochi imports (models.signal, scanner.feature_calc, etc.)
+# ".." → wizard imports (wizard.composer, wizard.schema, etc.) tested from
+#        the same env without needing a separate wizard pyproject.
+pythonpath = [".", ".."]
