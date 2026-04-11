@@ -319,22 +319,52 @@ function collectReasonCandidates(snapshot: SignalSnapshot): ReasonCandidate[] {
 	}
 
 	// L9 real-liq — directional liquidation bias.
-	const totalLiq = snapshot.l9.liq_long_usd + snapshot.l9.liq_short_usd;
-	if (totalLiq >= 500_000) {
-		const longDominant = snapshot.l9.liq_long_usd > snapshot.l9.liq_short_usd * 1.5;
-		const shortDominant = snapshot.l9.liq_short_usd > snapshot.l9.liq_long_usd * 1.5;
-		if (longDominant) {
-			out.push({
-				text: `Real liq long cascade ($${Math.round(snapshot.l9.liq_long_usd).toLocaleString()})`,
-				direction: 'bear',
-				severity: 'high'
-			});
-		} else if (shortDominant) {
-			out.push({
-				text: `Real liq short squeeze ($${Math.round(snapshot.l9.liq_short_usd).toLocaleString()})`,
-				direction: 'bull',
-				severity: 'high'
-			});
+	//
+	// E3d wiring: computeL9 now emits REAL_LIQ_LONG_CASCADE /
+	// REAL_LIQ_SHORT_SQUEEZE events at the high-dominance thresholds.
+	// Pull event IDs into the reason. Legacy path (no events field)
+	// still produces prose reasons for backward compat.
+	const l9Events = snapshot.l9.events ?? [];
+	const longCascadeEvents = l9Events.filter(
+		(e) => e.id === EventId.REAL_LIQ_LONG_CASCADE
+	);
+	const shortSqueezeEvents = l9Events.filter(
+		(e) => e.id === EventId.REAL_LIQ_SHORT_SQUEEZE
+	);
+
+	if (longCascadeEvents.length > 0) {
+		out.push({
+			text: `Real liq long cascade ($${Math.round(snapshot.l9.liq_long_usd).toLocaleString()})`,
+			direction: 'bear',
+			severity: 'high',
+			event_ids: longCascadeEvents.map((e) => e.id)
+		});
+	} else if (shortSqueezeEvents.length > 0) {
+		out.push({
+			text: `Real liq short squeeze ($${Math.round(snapshot.l9.liq_short_usd).toLocaleString()})`,
+			direction: 'bull',
+			severity: 'high',
+			event_ids: shortSqueezeEvents.map((e) => e.id)
+		});
+	} else {
+		// Legacy fallback: pre-E3d snapshot without events field.
+		const totalLiq = snapshot.l9.liq_long_usd + snapshot.l9.liq_short_usd;
+		if (totalLiq >= 500_000) {
+			const longDominant = snapshot.l9.liq_long_usd > snapshot.l9.liq_short_usd * 1.5;
+			const shortDominant = snapshot.l9.liq_short_usd > snapshot.l9.liq_long_usd * 1.5;
+			if (longDominant) {
+				out.push({
+					text: `Real liq long cascade ($${Math.round(snapshot.l9.liq_long_usd).toLocaleString()})`,
+					direction: 'bear',
+					severity: 'high'
+				});
+			} else if (shortDominant) {
+				out.push({
+					text: `Real liq short squeeze ($${Math.round(snapshot.l9.liq_short_usd).toLocaleString()})`,
+					direction: 'bull',
+					severity: 'high'
+				});
+			}
 		}
 	}
 

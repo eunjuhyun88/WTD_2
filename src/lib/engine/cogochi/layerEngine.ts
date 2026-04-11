@@ -281,6 +281,11 @@ function computeL8(ext: ExtendedMarketData): L8Result {
 
 // ─── L9: Real Liquidation ±12 ─────��─────────────────────────
 
+// Pinned real-liq thresholds — dissection §4 L9 row. Lifted to named
+// constants for E6 registry migration.
+const L9_LIQ_HIGH_USD = 500_000;
+const L9_LIQ_DOMINANCE_HIGH = 2;
+
 function computeL9(ext: ExtendedMarketData): L9Result {
   const orders = ext.forceOrders ?? [];
   const now = Date.now();
@@ -298,18 +303,51 @@ function computeL9(ext: ExtendedMarketData): L9Result {
 
   let score = 0;
   let label = 'QUIET';
+  const events: EventPayload[] = [];
 
-  if (shortLiqUSD > 500000 && shortLiqUSD > longLiqUSD * 2) {
-    score = 10; label = 'SHORT SQUEEZE ACTIVE';
+  if (shortLiqUSD > L9_LIQ_HIGH_USD && shortLiqUSD > longLiqUSD * L9_LIQ_DOMINANCE_HIGH) {
+    score = 10;
+    label = 'SHORT SQUEEZE ACTIVE';
+    events.push({
+      id: EventId.REAL_LIQ_SHORT_SQUEEZE,
+      direction: EventDirection.BULL,
+      severity: EventSeverity.HIGH,
+      note: 'Real short-liq squeeze: short positions being force-liquidated',
+      data: {
+        long_liq_usd: Math.round(longLiqUSD),
+        short_liq_usd: Math.round(shortLiqUSD),
+        dominance_ratio:
+          longLiqUSD > 0 ? shortLiqUSD / longLiqUSD : shortLiqUSD,
+      },
+    });
   } else if (shortLiqUSD > 100000 && shortLiqUSD > longLiqUSD * 1.5) {
     score = 6; label = 'SHORT LIQ DOMINANT';
-  } else if (longLiqUSD > 500000 && longLiqUSD > shortLiqUSD * 2) {
-    score = -10; label = 'LONG CASCADE';
+  } else if (longLiqUSD > L9_LIQ_HIGH_USD && longLiqUSD > shortLiqUSD * L9_LIQ_DOMINANCE_HIGH) {
+    score = -10;
+    label = 'LONG CASCADE';
+    events.push({
+      id: EventId.REAL_LIQ_LONG_CASCADE,
+      direction: EventDirection.BEAR,
+      severity: EventSeverity.HIGH,
+      note: 'Real long-liq cascade: long positions being force-liquidated',
+      data: {
+        long_liq_usd: Math.round(longLiqUSD),
+        short_liq_usd: Math.round(shortLiqUSD),
+        dominance_ratio:
+          shortLiqUSD > 0 ? longLiqUSD / shortLiqUSD : longLiqUSD,
+      },
+    });
   } else if (longLiqUSD > 100000 && longLiqUSD > shortLiqUSD * 1.5) {
     score = -6; label = 'LONG LIQ DOMINANT';
   }
 
-  return { liq_long_usd: Math.round(longLiqUSD), liq_short_usd: Math.round(shortLiqUSD), score, label };
+  return {
+    liq_long_usd: Math.round(longLiqUSD),
+    liq_short_usd: Math.round(shortLiqUSD),
+    score,
+    label,
+    events,
+  };
 }
 
 // ─── L10: MTF Confluence ±20 ────────────────────────────────
