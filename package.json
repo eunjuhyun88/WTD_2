@@ -12,6 +12,7 @@
     "docs:refresh:check": "node scripts/dev/refresh-generated-context.mjs --check && node scripts/dev/refresh-context-metrics.mjs --check && node scripts/dev/refresh-task-contract-report.mjs --check",
     "docs:check": "bash scripts/dev/check-docs-context.sh",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "research:e1-namespace-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e1-namespace-smoke.ts",
     "research:r4-1-fixtures": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-leakage-fixtures.ts",
     "research:r4-1-scheduled-end": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-scheduled-end-regression.ts",
     "research:r4-2-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-2-pipeline-smoke.ts",

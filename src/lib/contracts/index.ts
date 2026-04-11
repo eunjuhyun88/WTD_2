@@ -89,6 +89,36 @@ export type {
 	PairQuality
 } from './trajectory';
 
+// Event registry — E1 of harness engine integration plan
+export {
+	EventId,
+	EventPayloadSchema,
+	ALL_EVENT_IDS,
+	isEventId,
+	parseEventPayload,
+	safeParseEventPayload
+} from './events';
+export type { EventPayload } from './events';
+
+// Feature registry — E1 of harness engine integration plan
+export {
+	FeatureId,
+	FeatureValueSchema,
+	FrRegimeSchema,
+	LongShortRegimeSchema,
+	TakerRegimeSchema,
+	ALL_FEATURE_IDS,
+	isFeatureId,
+	parseFeatureValue,
+	safeParseFeatureValue
+} from './features';
+export type {
+	FeatureValue,
+	FrRegime,
+	LongShortRegime,
+	TakerRegime
+} from './features';
+
 // Raw source registry — user-configurable data acquisition layer
 export {
 	RawSourceCadenceSchema,
