@@ -8,15 +8,21 @@ import type { BinanceKline } from '../../types.ts';
 import type { L14Result } from '../types.ts';
 import { EventId, type EventPayload } from '../../../contracts/events.ts';
 import { EventDirection, EventSeverity } from '../../../contracts/ids.ts';
+import { Thresholds } from '../thresholds.ts';
 
-// Pinned thresholds from dissection §4 L14 row — lifted to named
-// constants so E6 registry migration can move them without touching
-// the layer body.
-const BB_SQUEEZE_RATIO_20 = 0.65;
-const BB_BIG_SQUEEZE_RATIO_50 = 0.5;
-const BB_EXPANSION_RATIO = 1.3;
+// E6b — L14 thresholds (dissection §4.3 lines 1437-1486) now live
+// in the central engine threshold registry. The previous pinned
+// constants (BB_SQUEEZE_RATIO_20 / BB_BIG_SQUEEZE_RATIO_50 /
+// BB_EXPANSION_RATIO) are deleted; every reference reads from
+// `Thresholds.bb.*`. The `calcBB` defaults now point at the
+// registry too, so any future drift in `bb_period` / `bb_std_mult`
+// flows through one place.
 
-function calcBB(closes: number[], period = 20, mult = 2.0) {
+function calcBB(
+  closes: number[],
+  period: number = Thresholds.bb.bb_period,
+  mult: number = Thresholds.bb.bb_std_mult,
+) {
   if (closes.length < period) return { sma: 0, upper: 0, lower: 0, bw: 0 };
 
   const slice = closes.slice(-period);
@@ -38,28 +44,30 @@ export function computeL14BbSqueeze(klines: BinanceKline[]): L14Result {
     events: [],
   };
 
-  if (klines.length < 25) return none;
+  if (klines.length < Thresholds.bb.bb_min_klines) return none;
 
   const closes = klines.map(k => k.close);
   const cp = closes[closes.length - 1];
 
-  // Current BB
-  const bbNow = calcBB(closes, 20, 2.0);
+  // Current BB — registry-defined period/multiplier flow through
+  // calcBB defaults; the explicit args here are intentional so a
+  // grep for the constants finds every consumer.
+  const bbNow = calcBB(closes, Thresholds.bb.bb_period, Thresholds.bb.bb_std_mult);
   if (bbNow.sma <= 0) return none;
 
   // BB from 20 candles ago
-  const bb20ago = closes.length > 40
-    ? calcBB(closes.slice(0, -20), 20, 2.0)
+  const bb20ago = closes.length > Thresholds.bb.bb_lookback_20_floor
+    ? calcBB(closes.slice(0, -20), Thresholds.bb.bb_period, Thresholds.bb.bb_std_mult)
     : bbNow;
 
   // BB from 50 candles ago (for big squeeze)
-  const bb50ago = closes.length > 70
-    ? calcBB(closes.slice(0, -50), 20, 2.0)
+  const bb50ago = closes.length > Thresholds.bb.bb_lookback_50_floor
+    ? calcBB(closes.slice(0, -50), Thresholds.bb.bb_period, Thresholds.bb.bb_std_mult)
     : null;
 
-  const squeeze = bbNow.bw < bb20ago.bw * BB_SQUEEZE_RATIO_20;
-  const bigSqueeze = bb50ago !== null && bbNow.bw < bb50ago.bw * BB_BIG_SQUEEZE_RATIO_50;
-  const expanding = bbNow.bw > bb20ago.bw * BB_EXPANSION_RATIO;
+  const squeeze = bbNow.bw < bb20ago.bw * Thresholds.bb.bb_squeeze_ratio_20;
+  const bigSqueeze = bb50ago !== null && bbNow.bw < bb50ago.bw * Thresholds.bb.bb_big_squeeze_ratio_50;
+  const expanding = bbNow.bw > bb20ago.bw * Thresholds.bb.bb_expansion_ratio;
 
   const bbRange = bbNow.upper - bbNow.lower || 1;
   const bbPos = ((cp - bbNow.lower) / bbRange) * 100;
