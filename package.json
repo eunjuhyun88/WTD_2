@@ -19,6 +19,7 @@
     "research:e3c-l11-cvd-events-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e3c-l11-cvd-events-smoke.ts",
     "research:e3d-l9-real-liq-events-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e3d-l9-real-liq-events-smoke.ts",
     "research:e3e-l1-structure-state-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e3e-l1-structure-state-smoke.ts",
+    "research:e4-trajectory-writer-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e4-trajectory-writer-smoke.ts",
     "research:r4-1-fixtures": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-leakage-fixtures.ts",
     "research:r4-1-scheduled-end": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-scheduled-end-regression.ts",
     "research:r4-2-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-2-pipeline-smoke.ts",
