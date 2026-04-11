@@ -218,7 +218,11 @@
 
 <div id="app" class:cogochi-mode={$isCogochi} class:home-mode={$isHome}>
   {#if !$isCogochi}<Header />{/if}
-  {#if !$isCogochi && !$isHome}<AlphaMarketBar thermo={thermoData} buckets={currentBuckets} />{/if}
+  {#if !$isCogochi && !$isHome}
+    <div class="market-shell-rail">
+      <AlphaMarketBar thermo={thermoData} buckets={currentBuckets} />
+    </div>
+  {/if}
   {#if !$isCogochi}<P0Banner />{/if}
   <div id="main-content" class:terminal-route={$isTerminal} class:home-route={$isHome}>
     {@render children()}
@@ -265,6 +269,16 @@
     position: relative;
     min-height: 0;
   }
+  .market-shell-rail {
+    flex-shrink: 0;
+    padding: 6px 10px 0;
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0));
+    pointer-events: none;
+  }
+  .market-shell-rail :global(.market-dock) {
+    pointer-events: auto;
+  }
   #main-content.home-route {
     overflow: visible;
     min-height: calc(100dvh - var(--sc-header-h, 44px));
@@ -278,6 +292,9 @@
     }
   }
   @media (max-width: 768px) {
+    .market-shell-rail {
+      display: none;
+    }
     #app {
       padding-top: var(--sc-header-h-mobile, 40px);
       padding-bottom: calc(var(--sc-mobile-nav-h, 64px) + env(safe-area-inset-bottom, 0px));

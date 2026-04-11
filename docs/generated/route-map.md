@@ -23,6 +23,7 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/battle` | standalone proof battle | daily-limited historical chart battle and result loop | `battleStore`, `matchHistoryStore` | `docs/page-specs/battle-page.md` |
 | `/oracle` | redirect route | redirect into signals ai leaderboard view | none | `docs/product-specs/signals.md` |
 | `/passport` | profile/progression surface | identity, stats, learning, history | `userProfileStore`, `userLifecycleStore`, `matchHistoryStore`, `quickTradeStore` | `docs/product-specs/passport.md` |
+| `/passport/wallet/[chain]/[address]` | wallet dossier route | durable wallet thesis, evidence snapshots, and dossier recall | route-local dossier loader + wallet-intel aggregate | `docs/COGOCHI.md` |
 | `/settings` | preferences surface | local settings and user controls | `gameState` and preference state | `docs/FRONTEND.md` |
 | `/signals` | signal discovery surface | community, track, convert flows | `gameState`, `matchHistoryStore`, signal state | `docs/product-specs/signals.md` |
 | `/signals/[postId]` | community signal detail route | single-post evidence, comments, and trade handoff | route-local post loader + `communityStore` reaction state | `docs/page-specs/signals-detail-page.md` |

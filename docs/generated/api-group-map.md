@@ -18,6 +18,7 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 | Arena | strategic arena lifecycle | `/api/arena/analyze`, `/api/arena/draft`, `/api/arena/hypothesis`, `/api/arena/match` | 11 |
 | Arena War | fast battle records and memory | `/api/arena-war`, `/api/arena-war/rag` | 2 |
 | Passport Learning | learning datasets, evals, and jobs | `/api/lab/autorun`, `/api/lab/forward-walk`, `/api/profile/passport/learning/datasets`, `/api/profile/passport/learning/evals` | 9 |
+| Wallet Intel | wallet investigation aggregate and dossier truth | `/api/wallet/intel` | 1 |
 | User Profile | profile, progression, preferences, and agent stats | `/api/agents/stats`, `/api/agents/stats/[agentId]`, `/api/doctrine`, `/api/portfolio/holdings` | 8 |
 | Predictions | prediction positions and voting | `/api/predictions`, `/api/predictions/positions/[id]/close`, `/api/predictions/positions/open`, `/api/predictions/vote` | 4 |
 | Community | activity, posts, and reactions | `/api/activity`, `/api/activity/reaction`, `/api/community/posts`, `/api/community/posts/[id]/react` | 4 |
@@ -130,6 +131,9 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/profile/passport/learning/status`
 - `/api/profile/passport/learning/train-jobs`
 - `/api/profile/passport/learning/workers/run`
+
+### Wallet Intel
+- `/api/wallet/intel`
 
 ### User Profile
 - `/api/agents/stats`

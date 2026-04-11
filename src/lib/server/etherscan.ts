@@ -13,6 +13,10 @@ function apiKey(): string {
   return env.ETHERSCAN_API_KEY ?? '';
 }
 
+export function hasEtherscanApiKey(): boolean {
+  return Boolean(apiKey());
+}
+
 async function etherscanFetch<T>(
   module: string,
   action: string,
@@ -48,6 +52,51 @@ export interface EthGasOracle {
   suggestBaseFee: string;
 }
 
+export interface EtherscanNormalTx {
+  blockNumber: string;
+  timeStamp: string;
+  hash: string;
+  nonce: string;
+  blockHash: string;
+  transactionIndex: string;
+  from: string;
+  to: string;
+  value: string;
+  gas: string;
+  gasPrice: string;
+  isError: string;
+  txreceipt_status?: string;
+  input: string;
+  contractAddress?: string;
+  cumulativeGasUsed?: string;
+  gasUsed?: string;
+  confirmations?: string;
+  methodId?: string;
+  functionName?: string;
+}
+
+export interface EtherscanTokenTx {
+  blockNumber: string;
+  timeStamp: string;
+  hash: string;
+  nonce: string;
+  blockHash: string;
+  from: string;
+  contractAddress: string;
+  to: string;
+  value: string;
+  tokenName: string;
+  tokenSymbol: string;
+  tokenDecimal: string;
+  transactionIndex?: string;
+  gas?: string;
+  gasPrice?: string;
+  gasUsed?: string;
+  cumulativeGasUsed?: string;
+  input?: string;
+  confirmations?: string;
+}
+
 // ─── Public API ───────────────────────────────────────────────
 
 export async function fetchGasOracle(): Promise<EthGasOracle | null> {
@@ -81,13 +130,29 @@ export async function fetchNormalTxList(
   startblock = '0',
   endblock = '99999999',
   sort = 'desc',
-): Promise<Array<Record<string, string>> | null> {
-  return etherscanFetch<Array<Record<string, string>>>('account', 'txlist', {
+): Promise<EtherscanNormalTx[] | null> {
+  return etherscanFetch<EtherscanNormalTx[]>('account', 'txlist', {
     address,
     startblock,
     endblock,
     page: '1',
     offset: '50',
+    sort,
+  });
+}
+
+export async function fetchTokenTxList(
+  address: string,
+  startblock = '0',
+  endblock = '99999999',
+  sort = 'desc',
+): Promise<EtherscanTokenTx[] | null> {
+  return etherscanFetch<EtherscanTokenTx[]>('account', 'tokentx', {
+    address,
+    startblock,
+    endblock,
+    page: '1',
+    offset: '80',
     sort,
   });
 }

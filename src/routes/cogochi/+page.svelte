@@ -32,6 +32,8 @@
   let currentPrice = $state(0);
   let currentChange = $state(0);
   let currentDeriv: any = $state(null);
+  let currentAnnotations: any[] = $state([]);
+  let currentIndicators: any = $state(null);
   let patternConditions = $state<string[]>([]);
   let patternDirection = $state<'LONG' | 'SHORT'>('SHORT');
   let patternName = $state('');
@@ -120,6 +122,8 @@
       currentSymbol = sym; currentTf = tf; currentSnapshot = s;
       currentChartData = data.chart || []; currentPrice = data.price || 0;
       currentChange = data.change24h || 0; currentDeriv = data.derivatives || {};
+      currentAnnotations = data.annotations ?? [];
+      currentIndicators = data.indicators ?? null;
 
       // Build all result messages at once
       const fr = currentDeriv?.funding, oi = currentDeriv?.oi, ls = currentDeriv?.lsRatio, fg = currentDeriv?.fearGreed;
@@ -520,7 +524,18 @@
       <button class="ph-close" onclick={() => chartPanelOpen = false}>✕</button>
     </div>
     <div class="chart-area">
-      <CgChart data={currentChartData} currentPrice={currentPrice} visible={chartPanelOpen} />
+      <CgChart
+        data={currentChartData}
+        currentPrice={currentPrice}
+        visible={chartPanelOpen}
+        annotations={currentAnnotations}
+        indicators={currentIndicators}
+        symbol={currentSymbol}
+        timeframe={currentTf}
+        changePct={currentChange}
+        snapshot={currentSnapshot}
+        derivatives={currentDeriv}
+      />
     </div>
     {#if currentSnapshot}
       <div class="chart-info">
