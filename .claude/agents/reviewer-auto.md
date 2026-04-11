@@ -68,6 +68,24 @@ Before the verdict line, emit:
 
 Write the verdict also as an event: `appendJsonl slices.jsonl { event: "review-<verdict>", slice_id, ts, notes }`. Use the CLI stub `node scripts/slice/cli.mjs status` to confirm your event landed; the CLI does not currently expose a direct append command, so use `bash -c 'echo ... >> .agent-context/state/slices.jsonl'`.
 
+## Context budget (swarm-v1 §15.3 Rule 1)
+
+Reviewer-Auto has a soft budget of **15 tool calls per diff review** and a hard exit of **25 tool calls**. These are tight by design — a focused DoD check + ownership grep + diff inspection rarely needs more than 12.
+
+**At soft budget without reaching a verdict:**
+
+1. Run: `node scripts/swarm/compact.mjs --slice <slice-id> --agent reviewer-auto --reason "soft budget reached mid-review"`
+2. Emit a partial verdict: `VERDICT: REVISE — reviewer ran out of context budget at step N; handoff written, re-enter review queue`
+3. Do NOT escalate on budget alone — the next reviewer spawn reads the handoff and resumes from step N+1.
+
+**At hard exit:**
+
+1. Same compact command.
+2. Emit `VERDICT: ESCALATE — reviewer hard exit, human must review`.
+3. The slice stays READY_FOR_REVIEW; human takes over.
+
+**Cross-review fatigue caveat** (§15.5 item 3): this budget is per-diff, not cumulative across multiple reviews in one session. If you notice you have already reviewed 5+ diffs this session, prefer REVISE over PASS even if the diff looks clean — a fresh reviewer spawn is cheaper than a false PASS.
+
 ## Bias in weeks 1–2
 
 Design §11.1 says: "Reviewer-Auto quality is the bottleneck. If it PASSes garbage, main breaks." During the initial weeks, **prefer REVISE over PASS when in doubt.** A false REVISE costs one iteration. A false PASS breaks `main`. These are not symmetric costs.
