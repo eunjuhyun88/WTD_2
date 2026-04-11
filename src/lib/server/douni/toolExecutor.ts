@@ -13,37 +13,8 @@ import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 import type { MarketContext } from '$lib/engine/factorEngine';
 import { scanMarket, type ScanConfig } from '$lib/server/scanner';
-import { readRaw } from '../providers';
+import { readRaw, klinesRawIdForTimeframe } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
-
-// Map a runtime timeframe string to the matching klines RawId atom.
-// Falls back to KLINES_4H when the caller passes a timeframe that is
-// not yet backed by a dedicated raw (e.g. `1m` keeps returning 4h until
-// the 1m raw's consumers are migrated).
-type KlinesRawId =
-  | typeof KnownRawId.KLINES_1M
-  | typeof KnownRawId.KLINES_5M
-  | typeof KnownRawId.KLINES_15M
-  | typeof KnownRawId.KLINES_1H
-  | typeof KnownRawId.KLINES_4H
-  | typeof KnownRawId.KLINES_1D;
-
-function klinesRawIdFor(tf: string): KlinesRawId {
-  switch (tf) {
-    case '1m':
-      return KnownRawId.KLINES_1M;
-    case '5m':
-      return KnownRawId.KLINES_5M;
-    case '15m':
-      return KnownRawId.KLINES_15M;
-    case '1h':
-      return KnownRawId.KLINES_1H;
-    case '1d':
-      return KnownRawId.KLINES_1D;
-    default:
-      return KnownRawId.KLINES_4H;
-  }
-}
 
 // ─── Main Dispatcher ────────────────────────────────────────
 
@@ -156,7 +127,7 @@ async function executeAnalyzeMarket(
   // set is resolved dynamically from the user-supplied `tf`; we fall
   // back to the 4h bucket when the runtime timeframe is not one of the
   // supported klines atoms.
-  const currentKlinesRaw = klinesRawIdFor(tf);
+  const currentKlinesRaw = klinesRawIdForTimeframe(tf);
   const [
     klines, klines1h, klines1d, klines5m, ticker,
     funding, oiPoint, lsTop, fearGreed, depth, oiHistory, takerData,

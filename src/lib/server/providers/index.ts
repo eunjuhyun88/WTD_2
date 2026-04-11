@@ -8,9 +8,11 @@ export {
   rawSources,
   readRaw,
   isSupportedRawId,
+  klinesRawIdForTimeframe,
   type RawSourceInputs,
   type RawSourceOutputs,
   type SupportedRawId,
+  type KlinesRawId,
 } from './rawSources';
 export type {
   DataProvider,

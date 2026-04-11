@@ -7,7 +7,7 @@ import { analyzeTrend, detectDivergence } from '$lib/engine/trend';
 import type { DivergenceSignal, TrendAnalysis } from '$lib/engine/types';
 import { calcEMA, calcRSI } from '$lib/engine/indicators';
 import { pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/binance';
-import { readRaw, type KlinesRawId } from '$lib/server/providers/rawSources';
+import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
 import { fetchDerivatives, fetchNews, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { fetchFearGreed } from '$lib/server/feargreed';
@@ -22,29 +22,6 @@ import { fetchSantimentSocial } from '$lib/server/santiment';
 import { fetchCoinMetricsData } from '$lib/server/coinmetrics';
 import { withTransaction } from '$lib/server/db';
 import { getCached, setCache } from '$lib/server/providers/cache';
-
-/**
- * Map a canonical timeframe string (from `normalizeTimeframe`) to the
- * corresponding `KLINES_*` raw atom. Used by callers that accept a
- * runtime-string timeframe and need to dispatch through `readRaw`.
- *
- * Falls back to `KLINES_4H` if the input is not in the canonical set;
- * since `normalizeTimeframe` already validates against the same set,
- * this fallback is defensive only.
- */
-function klinesRawIdForTimeframe(tf: string): KlinesRawId {
-  switch (tf) {
-    case '1m': return KnownRawId.KLINES_1M;
-    case '5m': return KnownRawId.KLINES_5M;
-    case '15m': return KnownRawId.KLINES_15M;
-    case '30m': return KnownRawId.KLINES_30M;
-    case '1h': return KnownRawId.KLINES_1H;
-    case '4h': return KnownRawId.KLINES_4H;
-    case '1d': return KnownRawId.KLINES_1D;
-    case '1w': return KnownRawId.KLINES_1W;
-    default: return KnownRawId.KLINES_4H;
-  }
-}
 
 const SNAPSHOT_UNAVAILABLE_CODES = new Set(['42P01', '42703', '23503']);
 

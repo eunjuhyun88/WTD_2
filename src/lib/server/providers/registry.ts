@@ -7,7 +7,7 @@ import type { MarketContext } from '$lib/engine/factorEngine';
 import type { TrendAnalysis } from '$lib/engine/types';
 import type { ProviderHealth, OnchainMetrics, SentimentMetrics } from './types';
 import { getCached, setCache } from './cache';
-import { readRaw, type KlinesRawId } from './rawSources';
+import { readRaw, klinesRawIdForTimeframe } from './rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
 import { pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/binance';
 import { fetchDerivatives, fetchNews, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
@@ -133,27 +133,6 @@ async function fetchSentimentMetrics(): Promise<Partial<SentimentMetrics>> {
 function buildTrend(points: Array<{ close: number }> | null): TrendAnalysis | null {
   if (!points?.length) return null;
   return analyzeTrend(points.map((p) => p.close));
-}
-
-/**
- * Map a canonical timeframe string (from `normalizeTimeframe`) to the
- * corresponding `KLINES_*` raw atom so the registry can dispatch klines
- * through `readRaw`. Identical to the helper in `marketSnapshotService.ts`
- * — intentionally duplicated here to keep the providers folder
- * self-contained (no cross-reach into sibling services).
- */
-function klinesRawIdForTimeframe(tf: string): KlinesRawId {
-  switch (tf) {
-    case '1m': return KnownRawId.KLINES_1M;
-    case '5m': return KnownRawId.KLINES_5M;
-    case '15m': return KnownRawId.KLINES_15M;
-    case '30m': return KnownRawId.KLINES_30M;
-    case '1h': return KnownRawId.KLINES_1H;
-    case '4h': return KnownRawId.KLINES_4H;
-    case '1d': return KnownRawId.KLINES_1D;
-    case '1w': return KnownRawId.KLINES_1W;
-    default: return KnownRawId.KLINES_4H;
-  }
 }
 
 // ── Main: Assemble Full MarketContext ────────────────────────────

@@ -187,6 +187,37 @@ export type KlinesRawId =
   | typeof KnownRawId.KLINES_1D
   | typeof KnownRawId.KLINES_1W;
 
+/**
+ * Map a runtime-string timeframe (e.g. `'1h'`, `'4h'`, `'1d'`) to its
+ * corresponding `KLINES_*` raw atom. This is the canonical helper for
+ * every caller that accepts a user-supplied timeframe string and needs
+ * to dispatch through `readRaw`.
+ *
+ * Unknown inputs collapse to `KLINES_4H`, matching the historical
+ * default of `fetchKlinesServer(symbol, interval = '4h')`. Callers that
+ * already validate against the `normalizeTimeframe` canonical set never
+ * hit the default — it is defensive only.
+ *
+ * Before this lived here, four identical copies existed across
+ * `providers/registry.ts`, `marketSnapshotService.ts`, the cogochi
+ * analyze endpoint, and `douni/toolExecutor.ts`. Centralizing it closes
+ * the B6+B7 follow-up without touching the divergent `MarketContext`
+ * assemblers on either side.
+ */
+export function klinesRawIdForTimeframe(tf: string): KlinesRawId {
+  switch (tf) {
+    case '1m': return KnownRawId.KLINES_1M;
+    case '5m': return KnownRawId.KLINES_5M;
+    case '15m': return KnownRawId.KLINES_15M;
+    case '30m': return KnownRawId.KLINES_30M;
+    case '1h': return KnownRawId.KLINES_1H;
+    case '4h': return KnownRawId.KLINES_4H;
+    case '1d': return KnownRawId.KLINES_1D;
+    case '1w': return KnownRawId.KLINES_1W;
+    default: return KnownRawId.KLINES_4H;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Fixed timeframe authority constants (dissection §10 Q1)
 // ---------------------------------------------------------------------------
