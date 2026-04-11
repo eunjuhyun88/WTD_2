@@ -1,0 +1,16 @@
+{
+  "$comment": "swarm-v1 WIP caps per track. Read by scripts/slice/cli.mjs and .claude/agents/scheduler.md. Design: docs/exec-plans/active/swarm-v1-design-2026-04-11.md §8 (rollout) + DAG track_limits.",
+  "version": 1,
+  "tracks": {
+    "product": 6,
+    "research": 3,
+    "fix": 1
+  },
+  "rollout_schedule": {
+    "week_0": { "product": 1, "research": 0, "fix": 0, "note": "foundation — one slice end-to-end manual" },
+    "week_1": { "product": 3, "research": 0, "fix": 0, "note": "single-track, auto scheduler on" },
+    "week_2": { "product": 3, "research": 2, "fix": 0, "note": "two-track, research online" },
+    "week_3": { "product": 6, "research": 3, "fix": 1, "note": "full WIP=10" }
+  },
+  "active_phase": "week_0"
+}

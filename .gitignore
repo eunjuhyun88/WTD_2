@@ -27,11 +27,22 @@ vite.config.ts.timestamp-*
 *.swo
 *~
 
-# Claude Code
-.claude/
+# Claude Code — local session state stays local, but swarm-v1 committed
+# surface (agents, commands, slash-defs) is tracked. Git cannot re-include
+# children if the parent directory itself is ignored, so we ignore
+# `.claude/*` (contents) instead of `.claude/` (directory).
+.claude/*
+!.claude/agents/
+!.claude/agents/**
+!.claude/commands/
+!.claude/commands/**
 
-# Agent context runtime snapshots (local only)
-.agent-context/
+# Agent context — runtime state stays local, policy files are tracked.
+# Same "ignore contents, not directory" trick as above so `policy/` can
+# be selectively re-included.
+.agent-context/*
+!.agent-context/policy/
+!.agent-context/policy/**
 context-kit.local.json
 .codex/
 
