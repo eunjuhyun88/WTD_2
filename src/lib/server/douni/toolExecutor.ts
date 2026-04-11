@@ -20,7 +20,7 @@ import {
   fetchLSRatioHistoryServer,
   fetchLiquidationHistoryServer,
   fetchOIHistoryServer
-} from '$lib/server/coinalyze';
+} from '$lib/server/providers/coinalyze';
 import { buildResearchBlocks } from '$lib/server/researchView/buildResearchBlocks';
 function toFiniteNumber(value: number | string): number {
   const parsed = typeof value === 'number' ? value : Number(value);
