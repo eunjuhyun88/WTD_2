@@ -28,7 +28,7 @@
  *   docs/exec-plans/active/alpha-terminal-harness-engine-spec-2026-04-09.md
  */
 
-import type { SignalSnapshot, WyckoffPhase } from './types.ts';
+import type { SignalSnapshot, WyckoffPhase, L1Result } from './types.ts';
 import type {
 	VerdictBlock,
 	VerdictReason,
@@ -71,21 +71,49 @@ export interface VerdictBuildContext {
 // ---------------------------------------------------------------------------
 
 /**
- * The current engine tracks coarse Wyckoff phase labels (ACCUMULATION,
- * MARKUP, …). The contract has sub-phase granularity (ACC_PHASE_A..E).
- * Until the Phase 2 precision-wyckoff engine (§P2 of dissection) lands,
- * map the coarse phase to the middle sub-phase as a best-effort.
+ * E3e — Wyckoff phase → StructureStateId mapping refined with the
+ * spring/UTAD/SOS/SOW sub-phase flags that `computeL1Wyckoff` already
+ * emits. Previously (pre-E3e) the coarse phase was mapped to the
+ * middle sub-phase as a best-effort. Now:
  *
- * The mapping is deliberately lossy — it is an honest downgrade, not a
- * guess at the missing precision.
+ *   - ACCUMULATION + hasSpring       → ACC_PHASE_C (Spring test)
+ *   - ACCUMULATION + hasSos          → ACC_PHASE_D (Sign of Strength breakout)
+ *   - ACCUMULATION (no spring/sos)   → ACC_PHASE_C (default, middle)
+ *   - DISTRIBUTION + hasUtad         → DIST_PHASE_C (UTAD test)
+ *   - DISTRIBUTION + hasSow          → DIST_PHASE_D (Sign of Weakness breakdown)
+ *   - DISTRIBUTION (no utad/sow)     → DIST_PHASE_C (default, middle)
+ *   - MARKUP                         → MARKUP_CONTINUATION
+ *   - MARKDOWN                       → MARKDOWN_CONTINUATION
+ *   - REACCUM                        → REACCUMULATION
+ *   - REDIST                         → REDISTRIBUTION
+ *   - NONE                           → NONE
+ *
+ * The mapping is still not the full Phase A..E precision the spec
+ * targets — Phases A (preliminary support/supply) and B (cause
+ * building) require microstructure detection that L1's current
+ * threshold-based analyzer does not produce. E3e improves C/D
+ * precision (the phases that matter most for entry timing) without
+ * inventing phase labels the engine doesn't actually detect.
  */
-function mapWyckoffPhaseToState(phase: WyckoffPhase): string {
-	switch (phase) {
+function mapL1ToStructureState(l1: L1Result): string {
+	switch (l1.phase) {
 		case 'ACCUMULATION':
+			// SOS (Sign of Strength) is the Phase C→D transition event
+			// where price breaks the range high on expanding volume.
+			if (l1.hasSos) return StructureStateId.ACC_PHASE_D;
+			// Spring is the Phase C test of supply — a brief penetration
+			// below range low followed by a quick recovery.
+			if (l1.hasSpring) return StructureStateId.ACC_PHASE_C;
 			return StructureStateId.ACC_PHASE_C;
 		case 'MARKUP':
 			return StructureStateId.MARKUP_CONTINUATION;
 		case 'DISTRIBUTION':
+			// SOW (Sign of Weakness) is the Phase C→D transition event
+			// for distribution — range low break on expanding volume.
+			if (l1.hasSow) return StructureStateId.DIST_PHASE_D;
+			// UTAD is the Phase C test of demand — brief range high
+			// penetration followed by sharp rejection.
+			if (l1.hasUtad) return StructureStateId.DIST_PHASE_C;
 			return StructureStateId.DIST_PHASE_C;
 		case 'MARKDOWN':
 			return StructureStateId.MARKDOWN_CONTINUATION;
@@ -525,7 +553,7 @@ export function buildVerdictBlock(
 	}
 
 	const bias = mapAlphaLabelToBias(snapshot.alphaLabel);
-	const structureState = mapWyckoffPhaseToState(snapshot.l1.phase);
+	const structureState = mapL1ToStructureState(snapshot.l1);
 	const confidence = Math.max(0, Math.min(1, (snapshot.alphaScore + 100) / 200));
 	const urgency = deriveUrgency(snapshot);
 
