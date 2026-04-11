@@ -16,6 +16,7 @@
     "research:e2-verdict-builder-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e2-verdict-builder-smoke.ts",
     "research:e3a-l2-flow-events-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e3a-l2-flow-events-smoke.ts",
     "research:e3b-l14-bb-events-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e3b-l14-bb-events-smoke.ts",
+    "research:e3c-l11-cvd-events-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e3c-l11-cvd-events-smoke.ts",
     "research:r4-1-fixtures": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-leakage-fixtures.ts",
     "research:r4-1-scheduled-end": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-1-scheduled-end-regression.ts",
     "research:r4-2-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/r4-2-pipeline-smoke.ts",

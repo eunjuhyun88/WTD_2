@@ -289,7 +289,28 @@ function collectReasonCandidates(snapshot: SignalSnapshot): ReasonCandidate[] {
 	}
 
 	// L11 CVD — absorption.
-	if (snapshot.l11.absorption) {
+	//
+	// E3c wiring: computeL11 now emits CVD_ABSORPTION events when
+	// the absorption pattern fires. Pull the IDs into the reason's
+	// event_ids. Direction comes from the event itself (bull/bear
+	// based on cvdTrend sign) rather than being hard-coded to
+	// 'context' like E2's legacy path.
+	const l11Events = snapshot.l11.events ?? [];
+	const cvdAbsorptionEvents = l11Events.filter(
+		(e) => e.id === EventId.CVD_ABSORPTION
+	);
+	if (cvdAbsorptionEvents.length > 0) {
+		for (const evt of cvdAbsorptionEvents) {
+			const isBull = evt.direction === EventDirection.BULL;
+			out.push({
+				text: evt.note ?? `CVD absorption (${snapshot.l11.cvd_state})`,
+				direction: isBull ? 'bull' : 'bear',
+				severity: evt.severity as 'low' | 'medium' | 'high',
+				event_ids: [evt.id]
+			});
+		}
+	} else if (snapshot.l11.absorption) {
+		// Legacy fallback: pre-E3c snapshot with absorption flag but no events.
 		out.push({
 			text: `CVD absorption detected (cvd_state=${snapshot.l11.cvd_state})`,
 			direction: 'context',

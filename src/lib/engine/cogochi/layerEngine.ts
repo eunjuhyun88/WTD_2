@@ -346,6 +346,11 @@ function computeL10(ctx: MarketContext): L10Result {
 
 // ─── L11: CVD ±12 ───────────────────────────────────────────
 
+// Pinned CVD thresholds — dissection §4 L11 row. Lifted to named
+// constants for E6 registry migration.
+const L11_ABSORPTION_PRICE_BAND = 0.008;
+const L11_ABSORPTION_CVD_TREND_RATIO = 0.3;
+
 function computeL11(klines: BinanceKline[], ext: ExtendedMarketData): L11Result {
   // Prefer 5-min klines for real-time CVD
   type AnyCandle = { open?: number; close?: number; high?: number; low?: number; volume?: number; buyVolume?: number };
@@ -354,7 +359,14 @@ function computeL11(klines: BinanceKline[], ext: ExtendedMarketData): L11Result 
     : klines;
 
   if (candles.length < 20) {
-    return { cvd_state: 'NEUTRAL', cvd_raw: 0, price_change: 0, absorption: false, score: 0 };
+    return {
+      cvd_state: 'NEUTRAL',
+      cvd_raw: 0,
+      price_change: 0,
+      absorption: false,
+      score: 0,
+      events: [],
+    };
   }
 
   const recent20 = candles.slice(-20);
@@ -382,8 +394,8 @@ function computeL11(klines: BinanceKline[], ext: ExtendedMarketData): L11Result 
   const priceEnd = prices[prices.length - 1];
   const priceChange = priceStart > 0 ? (priceEnd - priceStart) / priceStart : 0;
 
-  const absorption = Math.abs(priceChange) < 0.008 &&
-    Math.abs(cvdTrend) > Math.abs(cvd[0]) * 0.3;
+  const absorption = Math.abs(priceChange) < L11_ABSORPTION_PRICE_BAND &&
+    Math.abs(cvdTrend) > Math.abs(cvd[0]) * L11_ABSORPTION_CVD_TREND_RATIO;
 
   let score = 0;
   let cvdState: CvdState = 'NEUTRAL';
@@ -398,12 +410,37 @@ function computeL11(klines: BinanceKline[], ext: ExtendedMarketData): L11Result 
     cvdState = cvdTrend > 0 ? 'ABSORPTION_BUY' : 'ABSORPTION_SELL';
   }
 
+  // E3c — emit typed CVD_ABSORPTION event when the absorption pattern
+  // fires. Direction reflects which side is absorbing (buy = bull
+  // accumulation, sell = bear distribution). Severity is MEDIUM
+  // because absorption is a context signal, not a direct directional
+  // call on its own.
+  const events: EventPayload[] = [];
+  if (absorption) {
+    events.push({
+      id: EventId.CVD_ABSORPTION,
+      direction:
+        cvdTrend > 0 ? EventDirection.BULL : EventDirection.BEAR,
+      severity: EventSeverity.MEDIUM,
+      note:
+        cvdTrend > 0
+          ? 'CVD accumulation while price stalls (buy absorption)'
+          : 'CVD distribution while price stalls (sell absorption)',
+      data: {
+        price_change_pct: Number.isFinite(priceChange) ? priceChange : 0,
+        cvd_trend: Number.isFinite(cvdTrend) ? cvdTrend : 0,
+        cvd_start: Number.isFinite(cvd[0]) ? cvd[0] : 0,
+      },
+    });
+  }
+
   return {
     cvd_state: cvdState,
     cvd_raw: Math.round(cum),
     price_change: Math.round(priceChange * 10000) / 10000,
     absorption,
     score: clamp(score, -12, 12),
+    events,
   };
 }
 
