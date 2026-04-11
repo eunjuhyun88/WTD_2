@@ -10,7 +10,9 @@ import type { AgentSignal } from '$lib/data/warroom';
 import { AGENT_POOL } from '$lib/engine/agents';
 
 // ── Server-side data fetchers ──
-import { fetchKlinesServer, fetch24hrServer, pairToSymbol } from '$lib/server/binance';
+import { pairToSymbol } from '$lib/server/binance';
+import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSources';
+import { KnownRawId } from '$lib/contracts/ids';
 import {
   fetchCurrentOIServer,
   fetchCurrentFundingServer,
@@ -40,7 +42,6 @@ import {
   minerFlowToScore,
 } from '$lib/server/cryptoquant';
 import { getCached, setCache } from './providers/cache';
-import { toBinanceInterval } from '$lib/utils/timeframe';
 
 // ── Performance: 개별 API 타임아웃 + 소스별 캐시 ──────────
 const API_TIMEOUT_MS = 5_000;
@@ -519,9 +520,15 @@ async function _runServerScanInternal(pair: string, timeframe: string): Promise<
   const symbol = pairToSymbol(marketPair);
 
   // ── Phase 1: Core data (Binance klines + ticker) ──
+  // B9: final scanEngine → readRaw migration. scanService already
+  // validates `tf` against the canonical set (1m/5m/15m/30m/1h/4h/1d/1w),
+  // so `klinesRawIdForTimeframe` never hits its defensive fallback on
+  // the primary path. The compare endpoint passes through unnormalized
+  // timeframes — aberrant input now coerces to KLINES_4H instead of
+  // silently fetching a wrong-granularity atom.
   const [klinesRes, tickerRes] = await Promise.allSettled([
-    fetchKlinesServer(symbol, tf, 240),
-    fetch24hrServer(symbol),
+    readRaw(klinesRawIdForTimeframe(tf), { symbol, limit: 240 }),
+    readRaw(KnownRawId.TICKER_24HR, { symbol }),
   ]);
 
   if (klinesRes.status !== 'fulfilled') {
