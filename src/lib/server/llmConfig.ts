@@ -115,6 +115,28 @@ export function cerebrasUrl(path = '/chat/completions'): string {
   return `${CEREBRAS_ENDPOINT}${path}`;
 }
 
+// ─── Mistral La Plateforme (OpenAI-compatible) ────────────────
+
+export const MISTRAL_API_KEY = env.MISTRAL_API_KEY ?? '';
+export const MISTRAL_MODEL = env.MISTRAL_MODEL ?? 'mistral-medium-latest';
+export const MISTRAL_ENDPOINT = 'https://api.mistral.ai/v1';
+
+export function mistralUrl(path = '/chat/completions'): string {
+  return `${MISTRAL_ENDPOINT}${path}`;
+}
+
+// ─── OpenRouter (aggregator, OpenAI-compatible) ───────────────
+
+export const OPENROUTER_API_KEY = env.OPENROUTER_API_KEY ?? '';
+export const OPENROUTER_MODEL = env.OPENROUTER_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b:free';
+export const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1';
+export const OPENROUTER_SITE_URL = env.OPENROUTER_SITE_URL ?? 'http://localhost:5173';
+export const OPENROUTER_APP_NAME = env.OPENROUTER_APP_NAME ?? 'STOCKCLAW';
+
+export function openrouterUrl(path = '/chat/completions'): string {
+  return `${OPENROUTER_ENDPOINT}${path}`;
+}
+
 // ─── Ollama (Local LLM — no rate limits) ─────────────────────
 
 export const OLLAMA_BASE_URL = env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
@@ -176,15 +198,36 @@ export function isCerebrasAvailable(): boolean {
   return isUsableApiKey(CEREBRAS_API_KEY, 20);
 }
 
+export function isMistralAvailable(): boolean {
+  return isUsableApiKey(MISTRAL_API_KEY, 20);
+}
+
+export function isOpenRouterAvailable(): boolean {
+  return isUsableApiKey(OPENROUTER_API_KEY, 20);
+}
+
 // ─── Provider Type ────────────────────────────────────────────
 
-export type LLMProvider = 'ollama' | 'groq' | 'cerebras' | 'grok' | 'qwen' | 'kimi' | 'hf' | 'deepseek' | 'gemini';
+export type LLMProvider =
+  | 'ollama'
+  | 'groq'
+  | 'cerebras'
+  | 'mistral'
+  | 'openrouter'
+  | 'grok'
+  | 'qwen'
+  | 'kimi'
+  | 'hf'
+  | 'deepseek'
+  | 'gemini';
 
-/** 우선순위: Cerebras → Groq → HF → (paid fallbacks) → Gemini → Ollama */
+/** 우선순위: Cerebras(fast) → Groq(13 keys) → Mistral(500k TPM) → HF → OpenRouter → paid → Gemini → Ollama */
 export function getAvailableProvider(): LLMProvider | null {
   if (isCerebrasAvailable()) return 'cerebras';
   if (isGroqAvailable()) return 'groq';
+  if (isMistralAvailable()) return 'mistral';
   if (isHfAvailable()) return 'hf';
+  if (isOpenRouterAvailable()) return 'openrouter';
   if (isGrokAvailable()) return 'grok';
   if (isKimiAvailable()) return 'kimi';
   if (isQwenAvailable()) return 'qwen';

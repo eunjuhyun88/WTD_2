@@ -14,6 +14,8 @@ import {
   KIMI_API_KEY, KIMI_MODEL, kimiUrl,
   HF_TOKEN, HF_MODEL, hfUrl,
   CEREBRAS_API_KEY, CEREBRAS_MODEL, cerebrasUrl,
+  MISTRAL_API_KEY, MISTRAL_MODEL, mistralUrl,
+  OPENROUTER_API_KEY, OPENROUTER_MODEL, openrouterUrl, OPENROUTER_SITE_URL, OPENROUTER_APP_NAME,
   OLLAMA_MODEL, ollamaUrl, ollamaChatUrl,
   getAvailableProvider,
   isDeepSeekAvailable,
@@ -24,6 +26,8 @@ import {
   isKimiAvailable,
   isHfAvailable,
   isCerebrasAvailable,
+  isMistralAvailable,
+  isOpenRouterAvailable,
   isOllamaAvailable,
   getGroqApiKey, rotateGroqKey,
   type LLMProvider,
@@ -283,6 +287,47 @@ async function callCerebras(messages: LLMMessage[], maxTokens: number, temperatu
   return callOpenAICompatible('cerebras', cerebrasUrl(), CEREBRAS_API_KEY, CEREBRAS_MODEL, messages, maxTokens, temperature, timeoutMs);
 }
 
+// ─── Mistral La Plateforme (OpenAI-compatible) ─────────────
+
+async function callMistral(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
+  return callOpenAICompatible('mistral', mistralUrl(), MISTRAL_API_KEY, MISTRAL_MODEL, messages, maxTokens, temperature, timeoutMs);
+}
+
+// ─── OpenRouter (aggregator, OpenAI-compatible + extra headers) ─
+
+async function callOpenRouter(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(openrouterUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': OPENROUTER_SITE_URL,
+        'X-Title': OPENROUTER_APP_NAME,
+      },
+      body: JSON.stringify({ model: OPENROUTER_MODEL, messages, max_tokens: maxTokens, temperature }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new Error(`openrouter ${res.status}: ${errBody.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    const choice = data.choices?.[0];
+    if (!choice?.message?.content) throw new Error('openrouter: empty response');
+    return {
+      text: choice.message.content.trim(),
+      provider: 'openrouter',
+      model: data.model ?? OPENROUTER_MODEL,
+      usage: data.usage ? { promptTokens: data.usage.prompt_tokens, completionTokens: data.usage.completion_tokens } : undefined,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─── HuggingFace Inference API (OpenAI-compatible) ───────────
 
 async function callHf(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
@@ -331,6 +376,8 @@ const PROVIDER_CALL: Record<LLMProvider, typeof callGroq> = {
   ollama: callOllama,
   groq: callGroq,
   cerebras: callCerebras,
+  mistral: callMistral,
+  openrouter: callOpenRouter,
   grok: callGrok,
   qwen: callQwen,
   kimi: callKimi,
@@ -339,14 +386,19 @@ const PROVIDER_CALL: Record<LLMProvider, typeof callGroq> = {
   gemini: callGemini,
 };
 
-// Cerebras(fast free) → Groq(13 keys) → HF(free) → paid fallbacks → Gemini → Ollama
-const FALLBACK_ORDER: LLMProvider[] = ['cerebras', 'groq', 'hf', 'grok', 'kimi', 'qwen', 'deepseek', 'gemini', 'ollama'];
+// Cerebras(fast free) → Groq(13 keys) → Mistral(500k TPM) → HF(free) → OpenRouter(last-resort) → paid → Gemini → Ollama
+const FALLBACK_ORDER: LLMProvider[] = [
+  'cerebras', 'groq', 'mistral', 'hf', 'openrouter',
+  'grok', 'kimi', 'qwen', 'deepseek', 'gemini', 'ollama',
+];
 
 function availableProviders(): LLMProvider[] {
   const checks: Record<LLMProvider, boolean> = {
     ollama: isOllamaAvailable(),
     groq: isGroqAvailable(),
     cerebras: isCerebrasAvailable(),
+    mistral: isMistralAvailable(),
+    openrouter: isOpenRouterAvailable(),
     grok: isGrokAvailable(),
     qwen: isQwenAvailable(),
     kimi: isKimiAvailable(),
@@ -448,11 +500,18 @@ export async function* callLLMStream(options: LLMStreamOptions): AsyncGenerator<
   throw lastError ?? new Error('All LLM providers failed (streaming)');
 }
 
-function getStreamConfig(provider: LLMProvider): { url: string; apiKey: string; model: string } {
+function getStreamConfig(provider: LLMProvider): { url: string; apiKey: string; model: string; extraHeaders?: Record<string, string> } {
   switch (provider) {
-    case 'ollama':   return { url: ollamaChatUrl(), apiKey: '', model: OLLAMA_MODEL };
-    case 'groq':     return { url: groqUrl(), apiKey: getGroqApiKey(), model: GROQ_MODEL };
-    case 'cerebras': return { url: cerebrasUrl(), apiKey: CEREBRAS_API_KEY, model: CEREBRAS_MODEL };
+    case 'ollama':     return { url: ollamaChatUrl(), apiKey: '', model: OLLAMA_MODEL };
+    case 'groq':       return { url: groqUrl(), apiKey: getGroqApiKey(), model: GROQ_MODEL };
+    case 'cerebras':   return { url: cerebrasUrl(), apiKey: CEREBRAS_API_KEY, model: CEREBRAS_MODEL };
+    case 'mistral':    return { url: mistralUrl(), apiKey: MISTRAL_API_KEY, model: MISTRAL_MODEL };
+    case 'openrouter': return {
+      url: openrouterUrl(),
+      apiKey: OPENROUTER_API_KEY,
+      model: OPENROUTER_MODEL,
+      extraHeaders: { 'HTTP-Referer': OPENROUTER_SITE_URL, 'X-Title': OPENROUTER_APP_NAME },
+    };
     case 'grok':     return { url: grokUrl(), apiKey: GROK_API_KEY, model: GROK_MODEL };
     case 'qwen':     return { url: qwenUrl(), apiKey: QWEN_API_KEY, model: QWEN_MODEL };
     case 'kimi':     return { url: kimiUrl(), apiKey: KIMI_API_KEY, model: KIMI_MODEL };
@@ -477,12 +536,12 @@ async function* streamFromProvider(
     return;
   }
 
-  const { url, apiKey, model } = getStreamConfig(provider);
+  const { url, apiKey, model, extraHeaders } = getStreamConfig(provider);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(extraHeaders ?? {}) };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
     const res = await fetch(url, {
@@ -599,7 +658,7 @@ async function* streamFromProviderWithTools(
   temperature: number,
   timeoutMs: number,
 ): AsyncGenerator<LLMStreamChunk> {
-  const { url, apiKey, model } = getStreamConfig(provider);
+  const { url, apiKey, model, extraHeaders } = getStreamConfig(provider);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -629,7 +688,7 @@ async function* streamFromProviderWithTools(
   }
 
   try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(extraHeaders ?? {}) };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
     // HF: don't send tools (not reliably supported for all HF models)
