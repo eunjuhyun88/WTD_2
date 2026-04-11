@@ -5,8 +5,8 @@
 - **Source**: synthetic smoke source for template-smoke-2026-04-11
 - **Trajectories loaded**: 120
 - **Folds built**: 3
-- **Run started**: 2026-04-11T07:03:10.364Z
-- **Run finished**: 2026-04-11T07:03:10.371Z
+- **Run started**: 2026-04-11T07:27:49.785Z
+- **Run finished**: 2026-04-11T07:27:49.791Z
 
 ## Folds
 

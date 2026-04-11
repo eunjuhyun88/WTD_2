@@ -37,6 +37,24 @@ import { VerdictBias, VerdictUrgency, StructureStateId } from '../../contracts/i
 import { mulberry32 } from '../stats.ts';
 import type { DatasetSource } from '../pipeline/types.ts';
 
+/**
+ * How `resolved_at` is derived from `created_at`.
+ *
+ * `'deterministic'` (default) — `resolved_at = created_at + stepMs`.
+ * Reproducible and simple: every row's resolution time is strictly
+ * one step after its creation, so consecutive rows' `resolved_at`
+ * values are spaced exactly `stepMs` apart.
+ *
+ * `'jittered'` — `resolved_at = created_at + (0.5 + u) * stepMs` where
+ * `u ~ Uniform[0, 1)` is drawn from the seeded RNG. Mimics real
+ * trajectories whose resolution time depends on outcome-specific delay.
+ * Before the R4.1 scheduled-end purge-window fix, this path could trip
+ * `assertPurgeApplied` on the end-to-end pipeline with non-zero
+ * `purgeDuration`. After the fix it's the realistic default for
+ * real-data smoke runs.
+ */
+export type ResolveAtStrategy = 'deterministic' | 'jittered';
+
 export interface SyntheticSourceConfig {
 	/** Number of trajectories to generate. Must be a positive integer. */
 	readonly count: number;
@@ -48,6 +66,14 @@ export interface SyntheticSourceConfig {
 	readonly startAt?: string;
 	/** Step between consecutive `created_at` values in ms. Defaults to 12h. */
 	readonly stepMs?: number;
+	/**
+	 * How `resolved_at` is derived from `created_at`. Defaults to
+	 * `'deterministic'` for backward compatibility with R4.5's original
+	 * template run. Experiments that want realistic resolution-time
+	 * variance (and to exercise the scheduled-end purge window fix)
+	 * should pass `'jittered'`.
+	 */
+	readonly resolveAtStrategy?: ResolveAtStrategy;
 	/**
 	 * Label reported by `describe()`. Defaults to a derived string. Override
 	 * when an experiment wants the provenance text to match its own id.
@@ -98,15 +124,22 @@ export function createSyntheticSource(config: SyntheticSourceConfig): DatasetSou
 		);
 	}
 	const stepMs = config.stepMs ?? DEFAULT_STEP_MS;
+	const resolveAtStrategy: ResolveAtStrategy = config.resolveAtStrategy ?? 'deterministic';
+	if (resolveAtStrategy !== 'deterministic' && resolveAtStrategy !== 'jittered') {
+		throw new SyntheticSourceConfigError(
+			`resolveAtStrategy must be 'deterministic' or 'jittered', got ${String(resolveAtStrategy)}`
+		);
+	}
 	const id = `synthetic.${config.count}-${config.seed}`;
 	const describeText =
 		config.label ??
-		`synthetic(count=${config.count}, seed=${config.seed}, symbol=${symbol}, stepMs=${stepMs})`;
+		`synthetic(count=${config.count}, seed=${config.seed}, symbol=${symbol}, stepMs=${stepMs}, resolveAt=${resolveAtStrategy})`;
 
 	return {
 		id,
 		describe: () => describeText,
-		load: async () => generate(config.count, config.seed, symbol, startMs, stepMs)
+		load: async () =>
+			generate(config.count, config.seed, symbol, startMs, stepMs, resolveAtStrategy)
 	};
 }
 
@@ -129,23 +162,24 @@ function generate(
 	seed: number,
 	symbol: string,
 	startMs: number,
-	stepMs: number
+	stepMs: number,
+	resolveAtStrategy: ResolveAtStrategy
 ): DecisionTrajectory[] {
 	const rng = mulberry32((seed ^ 0x51ed1a51) >>> 0);
 	const out: DecisionTrajectory[] = [];
 
 	for (let i = 0; i < count; i++) {
 		const createdAtMs = startMs + i * stepMs;
-		// Resolution happens exactly one step after creation. Deterministic
-		// spacing (instead of a jittered offset) keeps the `resolved_at`
-		// sequence strictly monotonic with identical gap width, so the
-		// temporal splitter's `assertPurgeApplied` check — which compares
-		// train rows' `resolved_at` against the measured train knowledge
-		// horizon — has exactly one row at each edge of the purge window
-		// and none strictly inside. See the R4.5 smoke report for the
-		// note on a pre-existing splitter edge case with jittered outcomes
-		// and non-zero purge.
-		const resolvedAtMs = createdAtMs + stepMs;
+		// Resolution time strategy:
+		//   'deterministic' → exactly one step after creation
+		//   'jittered'      → uniform in [0.5, 1.5) * stepMs after creation
+		// Both satisfy `resolved_at > created_at`. Under the R4.1
+		// scheduled-end purge window fix, both strategies also satisfy
+		// `assertPurgeApplied` end-to-end, regardless of purgeDuration.
+		const resolvedAtMs =
+			resolveAtStrategy === 'deterministic'
+				? createdAtMs + stepMs
+				: createdAtMs + Math.floor((0.5 + rng()) * stepMs);
 
 		const regime = REGIMES[i % REGIMES.length]!;
 		const bias = BIAS_CYCLE[i % BIAS_CYCLE.length]!;

@@ -118,6 +118,12 @@ function buildCleanFold(): TemporalFold {
 		);
 	}
 	const trainHorizonMs = EPOCH + 5 * DAY; // last train row resolved at +5d
+	// Scheduled cutoff matches the last train row's resolved_at in this
+	// hand-crafted fold — the two values only coincide when data happens
+	// to land exactly on the boundary, which is fine for a minimal fixture.
+	// The purge-window fixture below exercises the more realistic case
+	// where `scheduledTrainEnd` is distinct from `trainKnowledgeHorizon`.
+	const scheduledTrainEndMs = trainHorizonMs;
 	const testStartMs = trainHorizonMs + SMALL_CONFIG.embargoDuration + DAY; // +2d embargo gap
 	const testRows: DecisionTrajectory[] = [];
 	for (let i = 0; i < 3; i++) {
@@ -150,6 +156,7 @@ function buildCleanFold(): TemporalFold {
 		},
 		integrity: {
 			trainKnowledgeHorizon: iso(trainHorizonMs),
+			scheduledTrainEnd: iso(scheduledTrainEndMs),
 			testStart: iso(testStartMs),
 			embargoGap: testStartMs - trainHorizonMs,
 			purgedCount: 0,
@@ -305,15 +312,18 @@ const fixtures: FixtureCase[] = [
 		expectedCode: 'purge_applied',
 		run: () => {
 			const fold = buildCleanFold();
-			// Mutate: add a train row whose resolved_at sits strictly inside the
-			// purge window (trainEnd - purgeDuration, trainEnd). Keep the reported
-			// trainKnowledgeHorizon the same as before — the assertion re-computes
-			// the purge window from config.purgeDuration and trainKnowledgeHorizon.
-			const trainHorizonMs = Date.parse(fold.integrity.trainKnowledgeHorizon);
-			const purgeStartMs = trainHorizonMs - SMALL_CONFIG.purgeDuration;
+			// Mutate: add a train row whose resolved_at sits strictly inside
+			// the purge window `(scheduledTrainEnd - purgeDuration, scheduledTrainEnd)`.
+			// The assertion re-computes the window from
+			// `config.purgeDuration` and `fold.integrity.scheduledTrainEnd`, so
+			// the leaky row must land inside that range — NOT inside a window
+			// measured from `trainKnowledgeHorizon` (which is no longer the
+			// assertion's reference point as of the R4.1 scheduled-end fix).
+			const scheduledEndMs = Date.parse(fold.integrity.scheduledTrainEnd);
+			const purgeStartMs = scheduledEndMs - SMALL_CONFIG.purgeDuration;
 			const insidePurge = purgeStartMs + Math.floor(SMALL_CONFIG.purgeDuration / 2);
 			// Insert the leaky row earlier in the array so the sort invariant
-			// still holds on resolved_at (insidePurge < trainHorizonMs).
+			// still holds on resolved_at (insidePurge < scheduledEndMs).
 			const mutatedTrain: DecisionTrajectory[] = [
 				...fold.train.trajectories.slice(0, -1),
 				makeTraj({
@@ -334,6 +344,116 @@ const fixtures: FixtureCase[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Happy-path regression: the scheduled-end purge window fix
+// ---------------------------------------------------------------------------
+//
+// These cases verify the R4.1 fix where `assertPurgeApplied` switched from
+// using `trainKnowledgeHorizon` (measured post-purge max) to
+// `scheduledTrainEnd` (the splitter's wall-clock cutoff). They do NOT
+// expect `LeakageError` — they assert that a well-formed fold with
+// realistic jittered resolution times and non-zero purge passes without
+// throwing.
+
+interface HappyCase {
+	name: string;
+	run: () => void;
+}
+
+function expectNoThrow(fn: () => void, name: string): string {
+	try {
+		fn();
+		return `PASS  ${name}`;
+	} catch (err) {
+		const e = err as Error;
+		return `FAIL  ${name}  →  ${e.name}: ${e.message}`;
+	}
+}
+
+const happyCases: HappyCase[] = [
+	{
+		// Before the fix, this would have tripped `assertPurgeApplied` because
+		// the measured horizon-based purge window covered row `train-4`.
+		// After the fix the window is `(scheduledTrainEnd - purgeDuration,
+		// scheduledTrainEnd)` which excludes any row the splitter would have
+		// kept.
+		name: 'scheduled-end purge: train row near post-purge horizon but outside scheduled window',
+		run: () => {
+			// Hand-craft a fold where `scheduledTrainEnd` is *later* than the
+			// post-purge `trainKnowledgeHorizon`. This is the realistic shape
+			// the splitter produces under jittered resolution: the last
+			// included train row's resolved_at lies below the scheduled
+			// cutoff, and the row-before-last sits within purgeDuration of
+			// THAT row but NOT within purgeDuration of the scheduled end.
+			// The assertion must accept this fold.
+			const scheduledEndMs = EPOCH + 10 * DAY;
+			const trainRows: DecisionTrajectory[] = [];
+			for (let i = 0; i < 4; i++) {
+				trainRows.push(
+					makeTraj({
+						id: `train-${i}`,
+						createdAt: iso(EPOCH, i * DAY),
+						resolvedAt: iso(EPOCH, i * DAY + Math.floor(DAY / 2)),
+						resolved: true
+					})
+				);
+			}
+			// Last row's resolved_at is 6 days before scheduled end — well
+			// outside the purge window `(scheduledEnd - 1d, scheduledEnd)`
+			// but close to its siblings (the pre-fix assertion would have
+			// computed the window around the measured max ≈ day 3.5 and
+			// flagged rows at day 2.5 and day 3.5 as "inside purge").
+			const trainHorizonMs = EPOCH + 3 * DAY + Math.floor(DAY / 2);
+			const testStartMs = scheduledEndMs + SMALL_CONFIG.embargoDuration;
+			const testRows: DecisionTrajectory[] = [
+				makeTraj({
+					id: 'test-0',
+					createdAt: iso(testStartMs),
+					resolvedAt: iso(testStartMs, DAY),
+					resolved: true
+				})
+			];
+			const fold: TemporalFold = {
+				foldIndex: 0,
+				train: {
+					id: 'fold-000-train' as unknown as TemporalFold['train']['id'],
+					label: 'fold-0/train',
+					startAt: trainRows[0]!.created_at,
+					endAt: trainRows[trainRows.length - 1]!.created_at,
+					regime: 'unknown',
+					trajectories: trainRows
+				},
+				test: {
+					id: 'fold-000-test' as unknown as TemporalFold['test']['id'],
+					label: 'fold-0/test',
+					startAt: testRows[0]!.created_at,
+					endAt: testRows[0]!.created_at,
+					regime: 'unknown',
+					trajectories: testRows
+				},
+				integrity: {
+					trainKnowledgeHorizon: iso(trainHorizonMs),
+					scheduledTrainEnd: iso(scheduledEndMs),
+					testStart: iso(testStartMs),
+					embargoGap: testStartMs - trainHorizonMs,
+					purgedCount: 0,
+					config: SMALL_CONFIG,
+					assertionsRan: [
+						'config_within_bounds',
+						'resolved_outcomes_only',
+						'sorted_by_knowledge_horizon',
+						'train_horizon_strictly_before_test_start',
+						'embargo_satisfied',
+						'purge_applied'
+					],
+					assertedAt: new Date().toISOString()
+				}
+			};
+			assertPurgeApplied(fold);
+		}
+	}
+];
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -344,6 +464,9 @@ function main(): number {
 	const lines: string[] = [];
 	for (const f of fixtures) {
 		lines.push(expectLeakage(f.run, f.expectedCode, f.name));
+	}
+	for (const h of happyCases) {
+		lines.push(expectNoThrow(h.run, h.name));
 	}
 
 	let failed = 0;

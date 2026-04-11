@@ -264,6 +264,17 @@ export interface TemporalFold {
     /** Latest `outcome.resolved_at` in train after purge. */
     trainKnowledgeHorizon: IsoTimestamp;
 
+    /**
+     * The fold's **scheduled** train cutoff — the wall-clock time the
+     * splitter used when bucketing rows. The purge window is
+     * `(scheduledTrainEnd − purgeDuration, scheduledTrainEnd)` and
+     * `assertPurgeApplied` measures rows against THIS field, not
+     * `trainKnowledgeHorizon`. The two values diverge whenever data
+     * doesn't happen to land exactly on the scheduled boundary (i.e.
+     * almost always under realistic jittered resolution times).
+     */
+    scheduledTrainEnd: IsoTimestamp;
+
     /** Earliest `created_at` in test. */
     testStart: IsoTimestamp;
 
