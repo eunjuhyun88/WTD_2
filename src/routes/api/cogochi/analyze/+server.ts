@@ -4,7 +4,9 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchKlinesServer, fetch24hrServer } from '$lib/server/binance';
+import { readRaw, type KlinesRawId } from '$lib/server/providers/rawSources';
+import { KnownRawId } from '$lib/contracts/ids';
+import type { BinanceKline } from '$lib/engine/types';
 import type { MarketContext } from '$lib/engine/factorEngine';
 import { computeSignalSnapshot } from '$lib/engine/cogochi/layerEngine';
 import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
@@ -12,6 +14,25 @@ import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 
 const FAPI = 'https://fapi.binance.com';
+
+/**
+ * Map the UI `tf` query param to the corresponding `KLINES_*` raw atom.
+ * Falls back to `KLINES_4H` for unknown inputs, matching the previous
+ * default from `fetchKlinesServer`'s `interval = '4h'` signature.
+ */
+function klinesRawIdForTimeframe(tf: string): KlinesRawId {
+  switch (tf) {
+    case '1m': return KnownRawId.KLINES_1M;
+    case '5m': return KnownRawId.KLINES_5M;
+    case '15m': return KnownRawId.KLINES_15M;
+    case '30m': return KnownRawId.KLINES_30M;
+    case '1h': return KnownRawId.KLINES_1H;
+    case '4h': return KnownRawId.KLINES_4H;
+    case '1d': return KnownRawId.KLINES_1D;
+    case '1w': return KnownRawId.KLINES_1W;
+    default: return KnownRawId.KLINES_4H;
+  }
+}
 
 /** Fetch derivatives from Binance Futures API (no key needed) */
 async function fetchDerivatives(symbol: string) {
@@ -68,12 +89,17 @@ export const GET: RequestHandler = async ({ url }) => {
   const tf = url.searchParams.get('tf') || '4h';
 
   try {
-    // Fetch all data in parallel
+    // Fetch all data in parallel. Klines/ticker go through `readRaw` so
+    // every provider call on this endpoint funnels through the same
+    // quota + cache layer. Derivatives (openInterest + topLongShort) and
+    // Fear&Greed still hit their upstreams inline — OI and LS_TOP do not
+    // yet have raw atoms (residual debt from the scanner slice), and the
+    // Fear&Greed helper here keeps the original 3s timeout behavior.
     const [klines, klines1h, klines1d, ticker, deriv, fearGreed] = await Promise.all([
-      fetchKlinesServer(symbol, tf, 200),
-      fetchKlinesServer(symbol, '1h', 100).catch(() => []),
-      fetchKlinesServer(symbol, '1d', 50).catch(() => []),
-      fetch24hrServer(symbol).catch(() => null),
+      readRaw(klinesRawIdForTimeframe(tf), { symbol, limit: 200 }),
+      readRaw(KnownRawId.KLINES_1H, { symbol, limit: 100 }).catch((): BinanceKline[] => []),
+      readRaw(KnownRawId.KLINES_1D, { symbol, limit: 50 }).catch((): BinanceKline[] => []),
+      readRaw(KnownRawId.TICKER_24HR, { symbol }).catch(() => null),
       fetchDerivatives(symbol),
       fetchFearGreed(),
     ]);

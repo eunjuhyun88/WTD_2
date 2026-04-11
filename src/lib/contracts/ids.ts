@@ -98,9 +98,11 @@ export const KnownRawId = {
 	KLINES_1M: 'raw.symbol.klines.1m',
 	KLINES_5M: 'raw.symbol.klines.5m',
 	KLINES_15M: 'raw.symbol.klines.15m',
+	KLINES_30M: 'raw.symbol.klines.30m',
 	KLINES_1H: 'raw.symbol.klines.1h',
 	KLINES_4H: 'raw.symbol.klines.4h',
 	KLINES_1D: 'raw.symbol.klines.1d',
+	KLINES_1W: 'raw.symbol.klines.1w',
 
 	// Per-symbol 24h ticker snapshot (spot endpoint, compound struct)
 	// Distinct from the `raw.scan.ticker_24h.*` universe-level atoms

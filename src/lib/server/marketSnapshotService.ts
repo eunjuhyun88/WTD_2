@@ -6,7 +6,9 @@ import type { MarketContext } from '$lib/engine/factorEngine';
 import { analyzeTrend, detectDivergence } from '$lib/engine/trend';
 import type { DivergenceSignal, TrendAnalysis } from '$lib/engine/types';
 import { calcEMA, calcRSI } from '$lib/engine/indicators';
-import { fetch24hrServer, fetchKlinesServer, pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/binance';
+import { pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/binance';
+import { readRaw, type KlinesRawId } from '$lib/server/providers/rawSources';
+import { KnownRawId } from '$lib/contracts/ids';
 import { fetchDerivatives, fetchNews, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { fetchFearGreed } from '$lib/server/feargreed';
 import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from '$lib/server/coingecko';
@@ -20,6 +22,29 @@ import { fetchSantimentSocial } from '$lib/server/santiment';
 import { fetchCoinMetricsData } from '$lib/server/coinmetrics';
 import { withTransaction } from '$lib/server/db';
 import { getCached, setCache } from '$lib/server/providers/cache';
+
+/**
+ * Map a canonical timeframe string (from `normalizeTimeframe`) to the
+ * corresponding `KLINES_*` raw atom. Used by callers that accept a
+ * runtime-string timeframe and need to dispatch through `readRaw`.
+ *
+ * Falls back to `KLINES_4H` if the input is not in the canonical set;
+ * since `normalizeTimeframe` already validates against the same set,
+ * this fallback is defensive only.
+ */
+function klinesRawIdForTimeframe(tf: string): KlinesRawId {
+  switch (tf) {
+    case '1m': return KnownRawId.KLINES_1M;
+    case '5m': return KnownRawId.KLINES_5M;
+    case '15m': return KnownRawId.KLINES_15M;
+    case '30m': return KnownRawId.KLINES_30M;
+    case '1h': return KnownRawId.KLINES_1H;
+    case '4h': return KnownRawId.KLINES_4H;
+    case '1d': return KnownRawId.KLINES_1D;
+    case '1w': return KnownRawId.KLINES_1W;
+    default: return KnownRawId.KLINES_4H;
+  }
+}
 
 const SNAPSHOT_UNAVAILABLE_CODES = new Set(['42P01', '42703', '23503']);
 
@@ -344,10 +369,10 @@ async function _collectInternal(
     santimentRes,
     coinMetricsRes,
   ] = await Promise.allSettled([
-    cf(`bn:k:${symbol}:${timeframe}`, () => fetchKlinesServer(symbol, timeframe, 300), SRC_TTL.binance, 'Binance klines'),
-    cf(`bn:k:${symbol}:1h`, () => fetchKlinesServer(symbol, '1h', 300), SRC_TTL.binance, 'Binance 1h'),
-    cf(`bn:k:${symbol}:1d`, () => fetchKlinesServer(symbol, '1d', 300), SRC_TTL.binance, 'Binance 1d'),
-    cf(`bn:24h:${symbol}`, () => fetch24hrServer(symbol), SRC_TTL.binance, 'Binance 24hr'),
+    cf(`bn:k:${symbol}:${timeframe}`, () => readRaw(klinesRawIdForTimeframe(timeframe), { symbol, limit: 300 }), SRC_TTL.binance, 'Binance klines'),
+    cf(`bn:k:${symbol}:1h`, () => readRaw(KnownRawId.KLINES_1H, { symbol, limit: 300 }), SRC_TTL.binance, 'Binance 1h'),
+    cf(`bn:k:${symbol}:1d`, () => readRaw(KnownRawId.KLINES_1D, { symbol, limit: 300 }), SRC_TTL.binance, 'Binance 1d'),
+    cf(`bn:24h:${symbol}`, () => readRaw(KnownRawId.TICKER_24HR, { symbol }), SRC_TTL.binance, 'Binance 24hr'),
     cf(`ca:deriv:${pair}:${timeframe}`, () => fetchDerivatives(eventFetch, pair, timeframe), SRC_TTL.coinalyze, 'Coinalyze Deriv'),
     cf('fng:60', () => fetchFearGreed(60), SRC_TTL.feargreed, 'FearGreed'),
     cf('cg:global', () => fetchCoinGeckoGlobal(), SRC_TTL.coingecko, 'CoinGecko Global'),

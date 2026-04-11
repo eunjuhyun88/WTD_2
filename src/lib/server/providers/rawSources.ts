@@ -109,9 +109,11 @@ export interface RawSourceInputs {
 	[KnownRawId.KLINES_1M]: KlinesInput;
 	[KnownRawId.KLINES_5M]: KlinesInput;
 	[KnownRawId.KLINES_15M]: KlinesInput;
+	[KnownRawId.KLINES_30M]: KlinesInput;
 	[KnownRawId.KLINES_1H]: KlinesInput;
 	[KnownRawId.KLINES_4H]: KlinesInput;
 	[KnownRawId.KLINES_1D]: KlinesInput;
+	[KnownRawId.KLINES_1W]: KlinesInput;
 	[KnownRawId.TICKER_24HR]: { symbol: string };
 	[KnownRawId.FUNDING_RATE]: { symbol: string };
 	[KnownRawId.MARK_PRICE]: { symbol: string };
@@ -141,9 +143,11 @@ export interface RawSourceOutputs {
 	[KnownRawId.KLINES_1M]: BinanceKline[];
 	[KnownRawId.KLINES_5M]: BinanceKline[];
 	[KnownRawId.KLINES_15M]: BinanceKline[];
+	[KnownRawId.KLINES_30M]: BinanceKline[];
 	[KnownRawId.KLINES_1H]: BinanceKline[];
 	[KnownRawId.KLINES_4H]: BinanceKline[];
 	[KnownRawId.KLINES_1D]: BinanceKline[];
+	[KnownRawId.KLINES_1W]: BinanceKline[];
 	[KnownRawId.TICKER_24HR]: Binance24hr;
 	[KnownRawId.FUNDING_RATE]: number | null;
 	[KnownRawId.MARK_PRICE]: number | null;
@@ -161,6 +165,23 @@ export interface RawSourceOutputs {
 
 /** The subset of `KnownRawId` values this slice implements. */
 export type SupportedRawId = keyof RawSourceInputs & keyof RawSourceOutputs;
+
+/**
+ * Narrowed union of every `KLINES_*` raw id. Callers that dispatch a
+ * runtime-string timeframe (e.g. `'1h' | '4h' | '1d'`) to `readRaw` use
+ * this type so the generic collapses the return to `BinanceKline[]`
+ * instead of the full `SupportedRawId` output union (which would contain
+ * unrelated scalar/map types and force the call site to cast).
+ */
+export type KlinesRawId =
+  | typeof KnownRawId.KLINES_1M
+  | typeof KnownRawId.KLINES_5M
+  | typeof KnownRawId.KLINES_15M
+  | typeof KnownRawId.KLINES_30M
+  | typeof KnownRawId.KLINES_1H
+  | typeof KnownRawId.KLINES_4H
+  | typeof KnownRawId.KLINES_1D
+  | typeof KnownRawId.KLINES_1W;
 
 // ---------------------------------------------------------------------------
 // Fixed timeframe authority constants (dissection §10 Q1)
@@ -314,12 +335,16 @@ export const rawSources: RawSourceMap = {
 		binanceQuota.execute(() => fetchKlinesServer(symbol, '5m', limit)),
 	[KnownRawId.KLINES_15M]: async ({ symbol, limit }) =>
 		binanceQuota.execute(() => fetchKlinesServer(symbol, '15m', limit)),
+	[KnownRawId.KLINES_30M]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchKlinesServer(symbol, '30m', limit)),
 	[KnownRawId.KLINES_1H]: async ({ symbol, limit }) =>
 		binanceQuota.execute(() => fetchKlinesServer(symbol, '1h', limit)),
 	[KnownRawId.KLINES_4H]: async ({ symbol, limit }) =>
 		binanceQuota.execute(() => fetchKlinesServer(symbol, '4h', limit)),
 	[KnownRawId.KLINES_1D]: async ({ symbol, limit }) =>
 		binanceQuota.execute(() => fetchKlinesServer(symbol, '1d', limit)),
+	[KnownRawId.KLINES_1W]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchKlinesServer(symbol, '1w', limit)),
 
 	// Per-symbol spot 24hr ticker. `fetch24hrServer` caches internally.
 	[KnownRawId.TICKER_24HR]: async ({ symbol }) =>
