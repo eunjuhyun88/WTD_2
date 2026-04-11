@@ -129,6 +129,13 @@ const routeMeta = [
     deepDocs: '`docs/product-specs/passport.md`'
   },
   {
+    route: '/passport/wallet/[chain]/[address]',
+    role: 'wallet dossier route',
+    primaryConcern: 'durable wallet thesis, evidence snapshots, and dossier recall',
+    keyState: 'route-local dossier loader + wallet-intel aggregate',
+    deepDocs: '`docs/COGOCHI.md`'
+  },
+  {
     route: '/settings',
     role: 'preferences surface',
     primaryConcern: 'local settings and user controls',
@@ -245,6 +252,7 @@ const apiCategoryOrder = [
   'Arena',
   'Arena War',
   'Passport Learning',
+  'Wallet Intel',
   'User Profile',
   'Predictions',
   'Community',
@@ -268,6 +276,7 @@ const apiCategoryMeta = {
   Arena: { purpose: 'strategic arena lifecycle' },
   'Arena War': { purpose: 'fast battle records and memory' },
   'Passport Learning': { purpose: 'learning datasets, evals, and jobs' },
+  'Wallet Intel': { purpose: 'wallet investigation aggregate and dossier truth' },
   'User Profile': { purpose: 'profile, progression, preferences, and agent stats' },
   Predictions: { purpose: 'prediction positions and voting' },
   Community: { purpose: 'activity, posts, and reactions' },
@@ -349,6 +358,7 @@ function groupApiRoute(route) {
   if (route.startsWith('/api/arena-war')) return 'Arena War';
   if (route.startsWith('/api/arena/') || route === '/api/matches') return 'Arena';
   if (route.startsWith('/api/profile/passport/learning/')) return 'Passport Learning';
+  if (route.startsWith('/api/wallet/')) return 'Wallet Intel';
   if (
     route === '/api/profile' ||
     route === '/api/profile/passport' ||

@@ -20,6 +20,147 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## Entries
 
+## [2026-04-11 19:57:54 +0900] START W-20260411-1957-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `ade2487`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+- Task summary: restyle the active product chart to feel like a dense CVD / CryptoQuant / Glassnode terminal, using the provided local HTML as the visual reference.
+- Owned files / overlap check:
+  - planned: `src/components/cogochi/CgChart.svelte`
+  - planned: `src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - planned: route-level chart host if needed after inspection
+  - existing dirty file is the shared watch log only; no direct code overlap identified yet
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - worktree currently dirty only because of the watch log
+- `safe:sync`: BLOCKED by uncommitted watch log changes before first edit
+- Checkpoint: `w-20260411-1957-chatbattle-codex.md`
+- Status: IN_PROGRESS
+
+## [2026-04-11 20:07:05 +0900] FINISH W-20260411-1957-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - rebuilt `src/components/cogochi/CgChart.svelte` into a dense terminal-style chart shell with a dark data-terminal frame, metrics top bar, in-chart HUD cards, S/R stack, and lower tracks for CVD, volume delta, and BB width
+  - updated `src/routes/terminal/+page.svelte` so the shared chart receives symbol/timeframe/change/snapshot/derivatives metadata for richer chart chrome
+  - updated `src/routes/cogochi/+page.svelte` to persist analyze-response annotations/indicators and feed the same metadata into the shared chart surface
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `2c92f09`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+- Status: DONE
+
+## [2026-04-11 20:11:40 +0900] START W-20260411-2011-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `ade2487`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+- Task summary: make the new dense chart presentation more concrete by hardening chart-panel chrome and bringing the focused research heatmap closer to a real CryptoQuant/Glassnode terminal panel.
+- Owned files / overlap check:
+  - planned: `src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - planned: `src/routes/terminal/+page.svelte`
+  - existing dirty shared chart files are part of the same visualization slice and will be extended, not reverted
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty files are understood and part of the active visualization slice
+- `safe:sync`: BLOCKED by active uncommitted visualization changes
+- Checkpoint: `w-20260411-2011-chatbattle-codex.md`
+- Status: IN_PROGRESS
+
+## [2026-04-11 20:17:22 +0900] FINISH W-20260411-2011-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - upgraded `src/components/terminal/research/HeatmapFlowChartBlock.svelte` with terminal-shell stage chips, right-side price rail, bottom time rail, and stronger frame styling so focused research reads like a real dense analytics module
+  - upgraded `src/routes/terminal/+page.svelte` chart-panel header to include a summary ribbon for regime/CVD/MTF/BB state plus a side readout, making the panel surrounding the chart feel less generic
+  - kept the previously rebuilt shared `CgChart` in place so the price chart and focus-research chart now share a more coherent terminal visual language
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `2c92f09`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+- Status: DONE
+
+## [2026-04-11 20:30:54 +0900] START W-20260411-2030-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `ade2487`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+- Task summary: design how wallet-address input should render dense CryptoQuant/CVD/Etherscan-style investigative analysis and narrative output.
+- Owned files / overlap check:
+  - no code edits planned yet; current dirty files belong to the active visualization slice and are understood
+  - design response will align to `docs/COGOCHI.md` surface model without introducing a conflicting product story
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty visualization files understood before design work
+- Checkpoint: `w-20260411-2030-chatbattle-codex.md`
+- Status: IN_PROGRESS
+
+## [2026-04-11 20:32:33 +0900] FINISH W-20260411-2030-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - produced a product design for wallet-address input that combines explorer truth, derived on-chain intelligence, and market/CVD confirmation into a single investigative flow
+  - aligned the proposal to current `COGOCHI` surface priorities by positioning wallet analysis as a Terminal-led intel mode rather than a disconnected standalone tool
+- Validation results:
+  - no new product files edited in this turn beyond the watch log
+  - latest branch validation from the active visualization slice remains green: `docs:check`, `check`, `build`, `ctx:check -- --strict`
+- Commit hash: not created in this turn (`HEAD` remains `2c92f09`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+- Status: DONE
+
+## [2026-04-11 20:41:19 +0900] START W-20260411-2041-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `ade2487`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+- Task summary: write the final canonical wallet-intel product document and the follow-on Svelte IA/route/component breakdown.
+- Owned files / overlap check:
+  - planned: `docs/COGOCHI.md`
+  - planned: `docs/FRONTEND.md`
+  - existing dirty visualization files are understood and will remain untouched unless directly referenced
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty worktree is understood before doc edits
+- `safe:sync`: not attempted because active uncommitted work remains in the branch
+- Checkpoint: `w-20260411-2041-chatbattle-codex.md`
+- Status: IN_PROGRESS
+
 ## [2026-04-10 23:01:00 +0900] START W-20260410-2301-CHATBATTLE-codex (CHATBATTLE)
 - Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
 - Branch: `codex/terminal-wip-sync-20260410`
@@ -37,6 +178,183 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - dirty files limited to the owned UI slice above
 - `safe:hooks`: PASS
 - `safe:sync`: BLOCKED by uncommitted owned changes in the active slice
+
+## [2026-04-11 20:47:03 +0900] FINISH W-20260411-2041-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - added the final wallet-intel product specification to `docs/COGOCHI.md`
+  - documented the `/terminal` wallet investigation mode and the `/passport/wallet/[chain]/[address]` dossier split as the canonical two-surface model
+  - added the wallet-intel IA, route split, API boundaries, and Svelte component blueprint to `docs/FRONTEND.md`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - branch head remains `2c92f09`
+- Push status:
+  - not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - local-only context artifacts were updated and remain untracked by git
+
+## [2026-04-11 20:48:00 +0900] START W-20260411-2048-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `ddfc5cc`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+- Task summary: implement the designed wallet-intel experience inside `/terminal` so address-led investigation mode actually renders and responds in the current app shell.
+- Owned files / overlap check:
+  - planned: `src/routes/terminal/+page.svelte`
+  - planned: `src/components/wallet-intel/*`
+  - planned: `src/lib/wallet-intel/*`
+  - existing chart/heatmap edits remain in place and will be adapted, not reverted
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - existing dirty state is understood before implementation
+- `safe:sync`: not attempted because this branch already contains active uncommitted work
+- Status: IN_PROGRESS
+
+## [2026-04-11 21:02:35 +0900] FINISH W-20260411-2048-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - implemented wallet-intel mode directly inside `/terminal`, including deep-link boot via `?mode=wallet&chain=...&address=...` and direct address input detection in `src/routes/terminal/+page.svelte`
+  - added a deterministic client-side wallet-intel controller/type layer under `src/lib/wallet-intel/` so the new surface renders identity, flow, bubble graph, cluster view, market overlay, evidence rail, and action output without waiting on new backend endpoints
+  - added the initial wallet-intel component set under `src/components/wallet-intel/` and wired it into the existing terminal shell without reverting ongoing chart/heatmap edits
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - branch head remains `2c92f09`
+- Push status:
+  - not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/wallet-intel/`
+  - `?? src/lib/wallet-intel/`
+  - local-only context artifacts remain outside git
+
+## [2026-04-11 21:19:00 +0900] START W-20260411-2119-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `c338d1d`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/wallet-intel/`
+  - `?? src/lib/wallet-intel/`
+- Task summary: continue wallet-intel implementation by adding a shared API route and a passport wallet dossier page that reuses the same dataset contract as terminal mode.
+- Owned files / overlap check:
+  - planned: `src/routes/api/wallet/intel/+server.ts`
+  - planned: `src/routes/passport/wallet/[chain]/[address]/+page.ts`
+  - planned: `src/routes/passport/wallet/[chain]/[address]/+page.svelte`
+  - planned: `src/components/passport/wallet/*`
+  - terminal wallet files from the previous pass remain in scope and will be extended, not reverted
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty state is understood before continuing implementation
+- `safe:sync`: not attempted because active uncommitted work remains on the branch
+- Status: IN_PROGRESS
+
+## [2026-04-11 21:26:52 +0900] FINISH W-20260411-2119-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - added `src/routes/api/wallet/intel/+server.ts` as the shared wallet-intel aggregate endpoint
+  - switched terminal wallet mode to prefer the shared API route while keeping deterministic builder fallback in place
+  - added a real dossier surface at `src/routes/passport/wallet/[chain]/[address]/+page.svelte` with dedicated passport wallet components
+  - added shared deep-link support for passport wallet routes and refreshed generated route/api docs metadata
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - branch head remains `ddfc5cc`
+- Push status:
+  - not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M docs/generated/api-group-map.md`
+  - `M docs/generated/context-efficiency-report.json`
+  - `M docs/generated/context-efficiency-report.md`
+  - `M docs/generated/route-map.md`
+  - `M docs/generated/task-contract-report.md`
+  - `M scripts/dev/refresh-generated-context.mjs`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/lib/utils/deepLinks.ts`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/passport/wallet/`
+  - `?? src/components/wallet-intel/`
+  - `?? src/lib/wallet-intel/`
+  - `?? src/routes/api/wallet/`
+  - `?? src/routes/passport/wallet/`
+  - local-only context artifacts remain outside git
+
+## [2026-04-11 23:04:00 +0900] START W-20260411-2304-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `ef9c3b6`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M docs/generated/api-group-map.md`
+  - `M docs/generated/context-efficiency-report.json`
+  - `M docs/generated/context-efficiency-report.md`
+  - `M docs/generated/route-map.md`
+  - `M docs/generated/task-contract-report.md`
+  - `M scripts/dev/refresh-generated-context.mjs`
+  - `M src/components/cogochi/CgChart.svelte`
+  - `M src/components/terminal/research/HeatmapFlowChartBlock.svelte`
+  - `M src/lib/utils/deepLinks.ts`
+  - `M src/routes/cogochi/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/passport/wallet/`
+  - `?? src/components/wallet-intel/`
+  - `?? src/lib/wallet-intel/`
+  - `?? src/routes/api/wallet/`
+  - `?? src/routes/passport/wallet/`
+- Task summary: continue wallet-intel by enriching the shared wallet aggregate with real provider-backed address activity where available, reducing synthetic-only evidence and identity fields.
+- Owned files / overlap check:
+  - planned: `src/lib/server/etherscan.ts`
+  - planned: `src/routes/api/wallet/intel/+server.ts`
+  - planned: `src/lib/wallet-intel/*`
+  - current terminal/passport wallet surfaces remain in scope and will be adapted, not reverted
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty state is understood before provider enrichment work
+- `safe:sync`: not attempted because active uncommitted work remains on the branch
+- Status: IN_PROGRESS
 - Status: IN_PROGRESS
 
 ## [2026-04-10 23:08:00 +0900] FINISH W-20260410-2301-CHATBATTLE-codex (CHATBATTLE)
@@ -9830,3 +10148,124 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - push requested by user; branch push follows immediately after this log update commit
 - Final working tree status:
   - clean before final push except for this watch log update
+
+## [2026-04-11 19:52:14 +0900] START W-20260411-1951-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `2c92f09b135935426dc74d7f218a2c088a487831`
+- Working tree status:
+  - `## codex/home-visualization-analysis`
+  - clean before this task
+- Task summary:
+  - analyze the current home visualization system and define better motion, contrast, and hierarchy improvements for the landing experience before any redesign pass
+- Owned files / overlap check result:
+  - analysis focus: `src/routes/+page.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/webgl/ascii-trail-shaders.ts`, and `docs/COGOCHI.md`
+  - no overlapping local edits detected on this branch before analysis started
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: PASS
+
+## [2026-04-11 20:44:15 +0900] START W-20260411-2044-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `ddfc5ccf9604eb94c01edf64c263ec34da00b3d6`
+- Working tree status:
+  - `## codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/CgChart.svelte`, `src/components/terminal/research/HeatmapFlowChartBlock.svelte`, `src/routes/cogochi/+page.svelte`, `src/routes/terminal/+page.svelte`
+- Task summary:
+  - sync the current personal branch against the latest `origin/main`, re-run validation, and determine whether a direct `origin/main` push is viable without discarding current branch changes
+- Owned files / overlap check result:
+  - acting on the current branch state as-is at user request; no existing edits will be reverted during sync assessment
+  - working surface is git state, validation output, and `docs/AGENT_WATCH_LOG.md`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+
+## [2026-04-11 20:48:24 +0900] FINISH W-20260411-2044-CHATBATTLE-codex (chatbattle)
+- What changed:
+  - stashed the dirty working tree, ran `npm run safe:sync`, and restored the existing branch edits without conflicts
+  - fast-forwarded `codex/home-visualization-analysis` to the latest `origin/main` so the branch head now matches `ddfc5ccf9604eb94c01edf64c263ec34da00b3d6`
+  - repaired the local `.agent-context` checkpoint/brief metadata so strict context quality passes again
+- Validation results:
+  - `npm run safe:sync`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head after sync: `ddfc5ccf9604eb94c01edf64c263ec34da00b3d6`
+- Push status:
+  - no push attempted
+  - direct `origin/main` push remains premature because the branch changes are still uncommitted and repository policy treats `main` as protected
+- Final working tree status:
+  - `## codex/home-visualization-analysis`
+  - restored dirty edits remain in place: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/CgChart.svelte`, `src/components/terminal/research/HeatmapFlowChartBlock.svelte`, `src/routes/cogochi/+page.svelte`, `src/routes/terminal/+page.svelte`
+
+## [2026-04-11 23:09:00 +0900] START W-20260411-2309-CHATBATTLE-codex (chatbattle)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `ef9c3b65076e3856b4e836f84ed2076824b82b1a`
+- Working tree status:
+  - `## codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `docs/generated/api-group-map.md`, `docs/generated/context-efficiency-report.json`, `docs/generated/context-efficiency-report.md`, `docs/generated/route-map.md`, `docs/generated/task-contract-report.md`, `scripts/dev/refresh-generated-context.mjs`, `src/components/cogochi/CgChart.svelte`, `src/components/terminal/research/HeatmapFlowChartBlock.svelte`, `src/lib/utils/deepLinks.ts`, `src/routes/cogochi/+page.svelte`, `src/routes/terminal/+page.svelte`
+  - untracked before this task: `src/components/passport/wallet/*`, `src/components/wallet-intel/*`, `src/lib/wallet-intel/*`, `src/routes/api/wallet/*`, `src/routes/passport/wallet/*`
+- Task summary:
+  - commit and push the current `codex/home-visualization-analysis` branch state without dropping any existing work, after restoring context quality and re-running required gates
+- Owned files / overlap check result:
+  - acting on the current branch state as-is at user request
+  - no existing local edits will be reverted; scope includes terminal/home/chart, wallet/passport, and generated docs already present in this worktree
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+
+## [2026-04-11 23:31:42 +0900] FINISH W-20260411-2304-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - extended `src/lib/server/etherscan.ts` with typed normal/token transfer support and added `fetchTokenTxList(...)`
+  - added `src/lib/server/walletIntelServer.ts` as the server-side enrichment layer that keeps the existing wallet-intel contract but replaces identity, behavior, flow hints, evidence, graph nodes, clusters, summary text, and market event markers with Etherscan-backed activity where available
+  - updated `src/routes/api/wallet/intel/+server.ts` to use the new server enrichment path so `/terminal` and `/passport/wallet/[chain]/[address]` both consume the same provider-aware dataset
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `8009814a2bda1d6b2ee745627edcc8ab81f1cee1`
+- Push status:
+  - no push attempted
+  - working branch remains uncommitted by user choice
+- Final working tree status:
+  - `## codex/home-visualization-analysis`
+  - modified/untracked branch work remains in place, including prior wallet-intel/passport/chart/docs edits plus the new provider-backed wallet intel server files
+
+## [2026-04-11 23:45:00 +0900] START W-20260411-2345-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `detached HEAD` in `safe:status`
+  - prior branch context from `git status --short --branch`: `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `0819216fecc050df325e81ff60d7dbdf754c0d38`
+- Working tree status:
+  - unresolved conflicts already present before this task: `docs/COGOCHI.md`, `src/routes/terminal/+page.svelte`
+  - additional modified/untracked files already present across docs, wallet-intel, passport wallet dossier, terminal, cogochi, and server layers
+- Task summary:
+  - review the current product/navigation structure and produce a UI/UX-driven restructuring brief grounded in the current docs and route implementation
+- Owned files / overlap check result:
+  - no product code ownership claimed in this task
+  - analysis is read-only except for watch-log/checkpoint discipline
+  - user changes and conflicted files will not be edited or resolved in this task
+- Safe status:
+  - `npm run safe:status`: PASS with detached-HEAD warning and existing merge conflicts
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: FAIL because the working tree was already dirty/conflicted before this task

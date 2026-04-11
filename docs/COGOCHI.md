@@ -215,6 +215,9 @@ PRIOR ART    OPPU (EMNLP 2024) · Per-Pcs (EMNLP 2024)
   - `/terminal?symbol=BTCUSDT&tf=4h&q=recent_rally+bollinger_expansion` — seed the search input
   - `/terminal?slug=<challenge>&instance=<ts>` — jump to a specific match bar from a /lab instance row
   - `/lab?slug=<challenge>` — open the challenge detail + auto-select on list
+  - `/terminal?mode=wallet&chain=<chain>&address=<0x...>` — start wallet investigation inside Terminal
+  - `/passport/wallet/[chain]/[address]` — open the durable wallet dossier
+- **Wallet intel rule:** wallet analysis is not a new top-nav item. Investigation starts in Terminal and durable evidence lives in Passport wallet dossier.
 
 ---
 
@@ -253,6 +256,70 @@ PRIOR ART    OPPU (EMNLP 2024) · Per-Pcs (EMNLP 2024)
 - No Python changes in this repo; the backend is WTD (separate repo).
 
 **Critical UX rule:** The user types, sees matching bars on their chart, hits save, and moves on. No forms, no 7-step wizard, no character dialogue.
+
+---
+
+### § 8.1A `/terminal` Wallet Intel Mode — Address-Led Investigation
+
+**Why this exists:** 사용자는 Etherscan 스타일의 raw truth만 원하는 게 아니라, **주소가 누구인지 · 지금 무엇을 하고 있는지 · 그게 시장에서 왜 중요한지**를 한 흐름으로 보고 싶다. 이 모드는 Explorer truth, derived on-chain intelligence, market confirmation을 같은 surface로 묶는다.
+
+**Entry triggers:**
+1. Terminal input에 `0x...` 또는 ENS 입력
+2. Scanner / alert / saved thesis에서 특정 wallet deep link 클릭
+3. Passport dossier에서 `OPEN IN TERMINAL` 액션 클릭
+
+**Desktop layout (investigation mode):**
+
+```
+┌─ LEFT 22% ────────────┬─ CENTER 53% ─────────────────┬─ RIGHT 25% ───────┐
+│ AI Summary / Query     │ Main Investigation Canvas    │ Evidence Rail      │
+│ • "이 주소는..."        │ • Tab A: Flow Map            │ • tx list          │
+│ • 핵심 주장 3개         │ • Tab B: Token Bubble Graph  │ • labels           │
+│ • follow-up prompt     │ • Tab C: Cluster View        │ • counterparties   │
+│ • filters              │ • selected node detail strip │ • saved alerts     │
+│                        │                              │                    │
+│ ── Behavior Cards ───  │ ── Market Confirmation ──── │ ── Action Plan ──  │
+│ • accumulation score   │ • token price chart          │ • watch/follow     │
+│ • distribution score   │ • wallet event markers       │ • fade/ignore      │
+│ • cex deposit risk     │ • CVD / OI / funding / vΔ    │ • risk notes       │
+│ • holding horizon      │                              │ • scenario notes   │
+└────────────────────────┴──────────────────────────────┴────────────────────┘
+```
+
+**Core tabs:**
+1. **Flow Map** — source → split wallets → holding layer → final hub 를 시간순/금액순으로 보여준다.
+2. **Token Bubble Graph** — 입력 주소와 엮인 토큰/컨트랙트/상대지갑 관계를 force graph로 탐색한다. 버블은 `token`, `wallet`, `contract`, `cex`, `bridge`, `cluster` 타입을 가진다.
+3. **Cluster View** — 단일 주소가 아닌 동일 주체로 추정되는 지갑 묶음을 보여준다. "주소 하나"가 아니라 "세력 하나"를 이해하는 탭이다.
+
+**V1 features (must-have):**
+1. **Identity card** — chain, address, label confidence, first seen, last active, known tags
+2. **Executive summary** — "이 주소는 무엇인가"를 한 문장으로 답하고, confidence + 근거 3개를 보여준다
+3. **Flow map** — 분산/집결/브리지/CEX 입금 패턴을 레이어형 그래프로 시각화
+4. **Token bubble graph** — 주소와 많이 엮인 토큰/컨트랙트/상대지갑을 bubble/graph로 탐색
+5. **Market confirmation chart** — 선택 토큰 차트 위에 wallet 이벤트 마커를 겹치고 하단 pane에 `CVD`, `volume delta`, `OI`, `funding` 중 2~3개 표시
+6. **Evidence rail** — tx hash, timestamp, counterparty, notional, action type을 raw evidence로 유지
+7. **Action outputs** — `watch`, `follow`, `fade`, `ignore` 네 가지 행동 제안을 출력. 모든 주소에 TP/SL을 강제하지 않는다
+8. **Save thesis / set alert** — "이 클러스터가 다시 CEX로 300k 이상 입금하면" 같은 패턴형 alert 저장
+
+**Interpretation rules (non-negotiable):**
+- **Explorer truth**와 **derived inference**를 시각적으로 분리한다. raw tx list는 근거이고, "distribution hub" 같은 문장은 해석이다.
+- **CVD는 주소의 truth가 아니라 market confirmation**이다. 주소 행동을 시장 구조와 교차검증하는 layer로만 쓴다.
+- 첫 화면은 tx list가 아니라 `Who → What → Why it matters → What to do` 순서여야 한다.
+- 버블 그래프는 보조 탐색기다. 기본 탭은 항상 **Flow Map**으로 시작한다.
+
+**V1 scope:**
+- EVM chains only
+- single address input
+- automatic chain detect + manual override
+- 1~2 hop cluster inference
+- top token 기준 market overlay
+- executive summary + flow map + token bubble + evidence rail
+
+**Explicit non-goals (V1):**
+- 3D graph / globe view
+- non-EVM multi-chain normalization
+- every wallet gets a trading plan with exact TP/SL
+- "smart money score"를 모든 주소에 무조건 부여
 
 ---
 
@@ -424,6 +491,48 @@ Lightweight return page — 3 stacked sections, one column, no fancy layout. Rea
 - Missed alerts stream (requires live scanner backend — out of scope)
 - Weekly Δ / Feedback pool counter (requires per-user KTO pipeline — Phase 2+)
 - Morning recap auto-generation
+
+---
+
+### § 8.8 `/passport/wallet/[chain]/[address]` — Wallet Dossier
+
+**Role:** Terminal이 조사하는 surface라면, Passport wallet dossier는 **저장 가능한 정적 기록 / 공유 가능한 증거 페이지**다.
+
+> **Terminal investigates. Passport remembers.**
+
+**Canonical contract:**
+- Terminal은 빠른 탐색과 차트/CVD 연동을 소유한다
+- Passport dossier는 저장된 thesis, evidence snapshot, cluster history, alert history를 소유한다
+- 동일 주소에 대한 canonical URL은 `/passport/wallet/[chain]/[address]`
+
+**Dossier layout:**
+
+```
+┌──────────────────────────────────────────────┐
+│ Wallet Dossier Header                        │
+│ address · chain · labels · confidence        │
+│ [Open in Terminal] [Save Thesis] [Share]     │
+├──────────────────────────────────────────────┤
+│ 1. Executive Summary                         │
+│ 2. Saved Theses / prior analyst notes        │
+│ 3. Cluster history timeline                  │
+│ 4. Evidence snapshots (tx / counterparties)  │
+│ 5. Alert history + outcomes                  │
+│ 6. Related tokens / related wallets          │
+└──────────────────────────────────────────────┘
+```
+
+**Must-have features:**
+1. **Stable identity header** — chain/address/labels/known aliases
+2. **Saved theses** — "distribution hub", "smart-money accumulation" 같은 과거 판단과 작성 시점
+3. **Cluster history** — 집결/분산/브리지/CEX 입금 같은 주요 상태 변화의 시계열
+4. **Evidence snapshots** — investigation 시점의 raw evidence를 immutable snapshot으로 저장
+5. **Alert outcomes** — 저장한 wallet alert가 실제로 몇 번 발생했고 결과가 어땠는지
+6. **Open in Terminal CTA** — dossier에서 즉시 interactive investigation mode로 복귀
+
+**Non-goals:**
+- Passport dossier가 live market chart를 소유하지 않는다
+- dossier는 chat-first가 아니다. conversation은 Terminal이 소유한다
 
 ---
 
