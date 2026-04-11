@@ -23,7 +23,7 @@ import {
 	VerdictUrgency,
 	EventDirection,
 	EventSeverity
-} from './ids';
+} from './ids.ts';
 
 // ---------------------------------------------------------------------------
 // Primitive / shared sub-schemas
