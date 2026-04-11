@@ -1,75 +1,24 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Server-side Binance REST Client (B-02)
+// Stockclaw — Binance loader (legacy path, re-export shim)
 // ═══════════════════════════════════════════════════════════════
-// Public endpoints — no API key. Server-side caching via LRU cache.
+//
+// The canonical location of every Binance fetcher is now
+// `src/lib/server/providers/binance.ts`. This file remains for
+// backward compatibility: six existing callers (scanEngine.ts,
+// multiTimeframeContext.ts, marketSnapshotService.ts,
+// providers/rawSources.ts, providers/registry.ts, and the
+// /api/market/flow route) still import from `$lib/server/binance`,
+// and we do not want to touch all six in the same slice that moves
+// the code.
+//
+// Future slices will migrate each caller to import directly from
+// `$lib/server/providers/binance`, then this shim will be deleted.
+// See `docs/exec-plans/active/trunk-plan.dag.json` P1.A0-binance and
+// the three-pipeline trunk plan §Phase 1 A-P0.
 
-import { getCached, setCache } from './providers/cache';
-import { toBinanceInterval } from '$lib/utils/timeframe';
-import type { BinanceKline, Binance24hr } from '$lib/engine/types';
-
-// Re-export for convenience (consumers can import from here or from engine/types)
-export type { BinanceKline, Binance24hr } from '$lib/engine/types';
-
-const BASE = 'https://api.binance.com';
-const FETCH_TIMEOUT = 8_000;
-const KLINE_CACHE_TTL = 60_000;    // 1min — klines change fast
-const TICKER_CACHE_TTL = 30_000;   // 30s
-const EXTENDED_INTERVALS = new Set(['1M']);
-
-function normalizeServerInterval(interval: string): string {
-  const trimmed = String(interval || '').trim();
-  if (EXTENDED_INTERVALS.has(trimmed)) return trimmed;
-  return toBinanceInterval(trimmed);
-}
-
-// ─── Klines ──────────────────────────────────────────────────
-
-export async function fetchKlinesServer(
-  symbol: string,
-  interval: string = '4h',
-  limit: number = 200
-): Promise<BinanceKline[]> {
-  const normalizedInterval = normalizeServerInterval(interval);
-  const cacheKey = `binance:klines:${symbol}:${normalizedInterval}:${limit}`;
-  const cached = getCached<BinanceKline[]>(cacheKey);
-  if (cached) return cached;
-
-  const url = `${BASE}/api/v3/klines?symbol=${symbol}&interval=${normalizedInterval}&limit=${limit}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
-  if (!res.ok) throw new Error(`Binance klines ${res.status}`);
-
-  const data: unknown[][] = await res.json();
-  const klines: BinanceKline[] = data.map((k) => ({
-    time: Math.floor(Number(k[0]) / 1000),
-    open: parseFloat(String(k[1])),
-    high: parseFloat(String(k[2])),
-    low: parseFloat(String(k[3])),
-    close: parseFloat(String(k[4])),
-    volume: parseFloat(String(k[5])),
-  }));
-
-  setCache(cacheKey, klines, KLINE_CACHE_TTL);
-  return klines;
-}
-
-// ─── 24hr Ticker ─────────────────────────────────────────────
-
-export async function fetch24hrServer(symbol: string): Promise<Binance24hr> {
-  const cacheKey = `binance:24hr:${symbol}`;
-  const cached = getCached<Binance24hr>(cacheKey);
-  if (cached) return cached;
-
-  const url = `${BASE}/api/v3/ticker/24hr?symbol=${symbol}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
-  if (!res.ok) throw new Error(`Binance 24hr ${res.status}`);
-
-  const data: Binance24hr = await res.json();
-  setCache(cacheKey, data, TICKER_CACHE_TTL);
-  return data;
-}
-
-// ─── Symbol mapping ──────────────────────────────────────────
-
-export function pairToSymbol(pair: string): string {
-  return pair.replace('/', '');
-}
+export {
+	fetchKlinesServer,
+	fetch24hrServer,
+	pairToSymbol
+} from './providers/binance';
+export type { BinanceKline, Binance24hr } from './providers/binance';
