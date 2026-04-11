@@ -162,6 +162,48 @@ export type {
 	ResearchBlockEnvelope
 } from './researchView';
 
+// Challenge — PR1 Zoom #1 (/terminal block search parser + /api/wizard)
+export {
+	ChallengeAnswersSchemaVersion,
+	ChallengeTimeframeSchema,
+	DirectionSchema,
+	BlockRoleSchema,
+	BlockParamValueSchema,
+	BlockParamsSchema,
+	ChallengeSlugSchema,
+	ParsedBlockSchema,
+	ParsedQuerySchema,
+	ChallengeBlockEntrySchema,
+	ChallengeBlocksSchema,
+	ChallengeSetupSchema,
+	ChallengeIdentitySchema,
+	ChallengeOutcomeSchema,
+	ChallengeAnswersSchema,
+	CHALLENGE_OUTCOME_DEFAULTS,
+	CHALLENGE_UNIVERSE_DEFAULT,
+	CHALLENGE_TIMEFRAME_DEFAULT,
+	parseParsedQuery,
+	safeParseParsedQuery,
+	parseChallengeAnswers,
+	safeParseChallengeAnswers
+} from './challenge';
+export type {
+	ChallengeTimeframe,
+	Direction,
+	BlockRole,
+	BlockParamValue,
+	BlockParams,
+	ChallengeSlug,
+	ParsedBlock,
+	ParsedQuery,
+	ChallengeBlockEntry,
+	ChallengeBlocks,
+	ChallengeSetup,
+	ChallengeIdentity,
+	ChallengeOutcome,
+	ChallengeAnswers
+} from './challenge';
+
 // Raw source registry — user-configurable data acquisition layer
 export {
 	RawSourceCadenceSchema,
