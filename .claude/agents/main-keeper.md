@@ -17,6 +17,10 @@ You are the merge train and stale-sweep daemon. You protect `main` as single sou
 
 Run the three tasks in order. Each is independent — a failure in one does not block the others.
 
+### Task 0: State reconciliation (pre-train hygiene)
+
+Before any merge decision, run `node scripts/slice/cli.mjs rebuild` (no `--dry-run`) to synchronize `.agent-context/state/slices.jsonl` with the current working tree. This is the per-worktree drift fix from swarm-v1 design §15 + Appendix B.2 — any slice whose owned paths already exist on disk is marked MERGED so the merge-train doesn't try to ff it a second time.
+
 ### Task 1: Merge train (invariant #5)
 
 1. `node scripts/slice/cli.mjs status --json` — find all slices with status `APPROVED`.
@@ -55,6 +59,25 @@ For every slice currently `IN_PROGRESS` or `READY_FOR_REVIEW`:
 - **Always `--ff-only` for merges.** If the flag is missing, refuse. This is the only mode that keeps `main` linear and bisectable.
 - **Gate every candidate before merging.** The worker's gate pass may have been on an older base; re-running `npm run gate` post-rebase is the only way to catch integration failures.
 - **Serial merge train.** Never merge two slices in parallel — they may both touch shared files (e.g. `docs/exec-plans/active/trunk-plan.dag.json`) and one of their gates will stop being valid after the other merges.
+
+## Context budget (swarm-v1 §15.3 Rule 1)
+
+Main-Keeper has a soft budget of **20 tool calls per loop** and a hard exit of **30 tool calls**. This is generous because the merge-train needs several git operations per merge (fetch + switch + gate + merge + push). Still, you must finish within the 30-minute cron window.
+
+**Per-loop compact** (different from per-slice compact that workers use): after every completed merge-train loop, run `node scripts/swarm/compact.mjs --slice main-keeper-loop --agent main-keeper --reason "per-loop state snapshot"`. The "slice" field here is the sentinel `main-keeper-loop`; there is no DAG node for it. This writes a rolling handoff file so the next cron invocation has a fresh state snapshot to read before Task 0.
+
+**At soft budget without finishing all 5 merges:**
+
+1. Commit whatever merges already completed (they are already `git push`ed).
+2. Write the per-loop compact as above.
+3. Emit one digest line: `main-keeper: soft budget hit after N/5 merges, deferring remainder`.
+4. Exit clean. The next cron picks up the remaining APPROVED queue.
+
+**At hard exit:**
+
+1. Same compact command.
+2. Digest line: `MAIN-KEEPER ERROR: hard exit after N/5 merges` and exit non-zero so the cron records a failure.
+3. Three consecutive failures at hard exit → human alert.
 
 ## What you explicitly do NOT do
 

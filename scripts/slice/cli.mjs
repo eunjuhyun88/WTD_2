@@ -511,6 +511,117 @@ function cmdBackfill(args) {
 	console.log(`[slice] backfill ${sliceId} -> MERGED${sha ? ` (sha=${sha})` : ''}`);
 }
 
+/**
+ * Rebuild the state journal from the working tree. For every DAG slice that
+ * is currently UNKNOWN, check whether all of its declared `paths` exist on
+ * disk. If they do, mark the slice MERGED and record the most recent commit
+ * that touched any of those paths as the SHA evidence.
+ *
+ * This is the reconciliation primitive that makes `.agent-context/state/`
+ * gitignore-safe: any fresh worktree can regenerate the journal without
+ * manual per-slice backfill commands. It addresses swarm-v1-design-2026-04-11
+ * Appendix B.2.
+ *
+ * Heuristic rules:
+ *   1. Only touches slices whose status is UNKNOWN. Existing lifecycle
+ *      events are left alone — rebuild never clobbers approved/merged/killed.
+ *   2. A slice is considered MERGED iff every path in `slice.paths` exists
+ *      as a file in the working tree. Partial landing (half the owned files
+ *      created) does NOT trip the rebuild — the slice stays UNKNOWN.
+ *   3. SHA evidence is the `git log -1 --format=%h -- <path>` of the first
+ *      existing owned path. Null if git is unhappy.
+ *   4. `--dry-run` prints the plan without writing to slices.jsonl.
+ *
+ * Limitations (intentional):
+ *   - Does NOT verify DoD items like "npm run check exits 0" or
+ *     "round-trip test passes". Filesystem presence is the only evidence.
+ *     A slice marked MERGED by rebuild may still have unmet DoD items — the
+ *     safety net is that the commits creating those files went through the
+ *     normal `gate` before landing on main.
+ *   - Does NOT detect a slice that was KILLED and partially reverted — if
+ *     the files still exist on disk, rebuild will re-mark them MERGED.
+ *     Kills must be explicit via `slice kill` before rebuild runs.
+ */
+function cmdRebuild(args) {
+	const dryRun = args.includes('--dry-run');
+	const jsonMode = args.includes('--json');
+	const dag = loadDag();
+
+	const plan = [];
+	for (const slice of dag.slices) {
+		const st = computeSliceStatus(slice.id);
+		if (st.status !== 'UNKNOWN') {
+			plan.push({ id: slice.id, action: 'skip', reason: `already ${st.status}` });
+			continue;
+		}
+		const paths = slice.paths ?? [];
+		if (paths.length === 0) {
+			plan.push({ id: slice.id, action: 'skip', reason: 'no declared paths' });
+			continue;
+		}
+		const missing = paths.filter((p) => !existsSync(join(REPO_ROOT, p)));
+		if (missing.length > 0) {
+			plan.push({
+				id: slice.id,
+				action: 'skip',
+				reason: `missing ${missing.length}/${paths.length} owned paths`,
+				missing
+			});
+			continue;
+		}
+
+		let sha = null;
+		for (const p of paths) {
+			try {
+				const out = execSync(`git log -1 --format=%h -- "${p}"`, {
+					encoding: 'utf8',
+					cwd: REPO_ROOT
+				}).trim();
+				if (out) {
+					sha = out;
+					break;
+				}
+			} catch {
+				/* ignore and try next path */
+			}
+		}
+		plan.push({ id: slice.id, action: 'mark-merged', sha });
+	}
+
+	if (jsonMode) {
+		console.log(JSON.stringify({ dry_run: dryRun, plan }, null, 2));
+		return;
+	}
+
+	let marked = 0;
+	let skipped = 0;
+	for (const step of plan) {
+		if (step.action === 'mark-merged') {
+			if (!dryRun) {
+				ensureDir(STATE_DIR);
+				appendJsonl(SLICES_LOG, {
+					ts: nowIso(),
+					event: 'merged',
+					slice_id: step.id,
+					backfill: true,
+					rebuild: true,
+					sha: step.sha,
+					note: 'slice rebuild — all owned paths exist on disk'
+				});
+			}
+			console.log(
+				`[slice] rebuild ${dryRun ? '(dry-run) ' : ''}${step.id} -> MERGED${
+					step.sha ? ` (sha=${step.sha})` : ''
+				}`
+			);
+			marked++;
+		} else {
+			skipped++;
+		}
+	}
+	console.log(`[slice] rebuild: marked=${marked} skipped=${skipped}${dryRun ? ' (dry-run)' : ''}`);
+}
+
 function cmdReady(args) {
 	const jsonMode = args.includes('--json');
 	const dag = loadDag();
@@ -553,7 +664,8 @@ if (!cmd || cmd === '--help' || cmd === '-h') {
 			'  slice kill <slice-id> [--reason "..."] Abandon a slice',
 			'  slice approve <slice-id>               Human sign-off on a reviewed slice',
 			'  slice backfill <slice-id> [--sha <h>] [--note "..."]',
-			'                                         Reconcile MERGED state for pre-swarm-v1 slices',
+			'                                         Reconcile MERGED state for one slice',
+			'  slice rebuild [--dry-run] [--json]     Rebuild slices.jsonl from the working tree',
 			'',
 			'DAG: docs/exec-plans/active/trunk-plan.dag.json',
 			'State: .agent-context/{state,ownership,briefs}/',
@@ -585,6 +697,9 @@ try {
 			break;
 		case 'backfill':
 			cmdBackfill(rest);
+			break;
+		case 'rebuild':
+			cmdRebuild(rest);
 			break;
 		default:
 			die(`unknown command: ${cmd}`);

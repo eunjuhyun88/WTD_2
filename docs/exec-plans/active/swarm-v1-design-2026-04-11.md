@@ -74,7 +74,7 @@ Across this session we iterated through six drafts. The final principles that su
 | Persona files with `paths_allowed`/`paths_forbidden` YAML | Pre-commit hook enforces paths; personas only hold system prompts |
 | WIP limits enforced by JSON policy | WIP limits live in `policy/wip-limits.json` but enforcement is in Scheduler code, not via rules engine |
 | kill-gates.json with semantic criteria | Kill decisions remain cognitive (human); policy file documents thresholds only |
-| 5 persona subagents (ci-fix, merge-train, context-compactor, etc.) | Collapsed: ci-fix → part of Worker's own loop, merge-train → Main-Keeper, compactor → DreamTask (already exists) |
+| 5 persona subagents (ci-fix, merge-train, context-compactor, etc.) | Collapsed: ci-fix → part of Worker's own loop, merge-train → Main-Keeper, compactor → `scripts/swarm/compact.mjs` (historical draft cited DreamTask; superseded by §15) |
 | CPO-style roadmap dashboard | Out of scope; this is a dev system, not a product management tool |
 | MetaGPT-style SOP publish/subscribe | Empirically worse than Claude Code's file-mailbox pattern on SWE-bench |
 | Custom orchestration framework | Claude Code's native stack already provides it |
@@ -155,7 +155,7 @@ Across this session we iterated through six drafts. The final principles that su
 | **Reviewer-Auto** | SubagentStop hook on any worker | Read diff, check DoD, verify ownership boundary, check gate result, output verdict (PASS / REVISE / ESCALATE) |
 | **Main-Keeper** | cron 30m | Stale sweep (age >3d → flag, not auto-kill), merge-train (ff-only, max 5/cycle), main-rebase-ping (notify stale slices to rebase) |
 
-Plus **DreamTask** (already exists in Claude Code) for automatic memory compaction — no new agent needed.
+Plus `scripts/swarm/compact.mjs` as the in-repo context-handoff primitive — see §15 for the full spec. (Earlier drafts cited DreamTask; that primitive lives in Claude Code internals and is not reachable from a CHATBATTLE worker, so it was replaced with a repo-local script.)
 
 ### 3.2 Worker agent types (11)
 
@@ -377,7 +377,7 @@ Without #6, one month at WIP=10 can produce a surprise 7-figure won API bill. Se
 | Scheduler crash | scheduled-task failure event | self-heal next cron; 3 failures → alert |
 | Reviewer false PASS | human reject button | slice → IN_PROGRESS + reviewer prompt iteration |
 | Rate limit | API error pattern | 30min spawn suspend, exponential backoff |
-| Worker memory overflow | session end | DreamTask handoff, Scheduler resumes |
+| Worker memory overflow | soft budget hit (40 tool calls, per §15.3) | `scripts/swarm/compact.mjs` handoff → Scheduler resumes with handoff as spawn context |
 
 ## 11. Risks & Open Questions
 
@@ -423,7 +423,7 @@ From Claude Code's own source at `/Users/ej/Projects/src/`:
 - `src/utils/swarm/` — tmux team-lead + teammates pattern (constants, inProcessRunner, permissionSync, teamHelpers, teammateInit)
 - `src/utils/teammateMailbox.ts` — file-based mailbox pattern directly inspired §4's state layout
 - `src/tools/AgentTool/loadAgentsDir.ts` — markdown subagent loader with frontmatter schema
-- `src/tasks/DreamTask/` — background memory consolidation (we use this unchanged for compaction)
+- `src/tasks/DreamTask/` — background memory consolidation (historical reference; not reachable from CHATBATTLE workers — §15 replaces this with `scripts/swarm/compact.mjs`)
 
 From public GitHub projects evaluated for patterns:
 - [ComposioHQ/agent-orchestrator](https://github.com/ComposioHQ/agent-orchestrator) — worktree-per-slice + auto-CI-fix pattern
@@ -451,6 +451,93 @@ This document is the sixth and final iteration of a design discussion. For futur
 
 The critical realization at iteration 6: **n=10 is a qualitatively different regime from n≤3**. Solo-founder rules ("ship code, not governance") still apply but require enforcement infrastructure to scale. The infrastructure is minimal (3 agents, pre-commit hook, DAG file) but mandatory.
 
+## 15. Worker Context Management
+
+> **Added 2026-04-11 to close Appendix B.1.** Earlier drafts delegated context compaction to "DreamTask" under the assumption that it was already available in Claude Code. `src/tasks/DreamTask/` does not exist in this repo, so this section replaces that reference with a concrete primitive and defines the rules every agent in swarm-v1 must follow for in-session context management.
+
+### 15.1 The problem statement
+
+Every long-running agent in swarm-v1 — worker, Reviewer-Auto, Main-Keeper — burns context window as it works. At the scale of a single slice (one worker per slice), context usually stays under budget. At n=10 workers with long-running reviewers and a 30-minute Main-Keeper cron, the risk profile inverts:
+
+- A worker grinding through a big refactor can exhaust its window before the slice is done → stuck mid-slice with no handoff.
+- Reviewer-Auto reading 5 big worker diffs back-to-back can exhaust its window → PASS everything because it can no longer read carefully.
+- Main-Keeper running on cron for a full day accumulates every merge conflict and lint log → slow death by context bloat.
+
+The §2 principle "ship code, not governance" still applies. The solution is **NOT** a sophisticated context manager. It is a **tiny, explicit primitive** (`scripts/swarm/compact.mjs`) plus **three hard rules** baked into every agent prompt.
+
+### 15.2 The primitive: `scripts/swarm/compact.mjs`
+
+This is a side-effect-only script with a single job: write a semantic snapshot for the current slice to `.agent-context/handoffs/<slice_id>.md` so a fresh agent can resume the slice from that file alone.
+
+Usage from inside any agent:
+
+```
+node scripts/swarm/compact.mjs --slice <slice-id> --agent <agent-type> [--reason "..."]
+```
+
+Effects:
+
+1. Reads the slice brief (`.agent-context/briefs/<slice_id>.md`), the claim file (`.agent-context/ownership/<slice_id>.json`), and the slice DAG entry.
+2. Reads the most recent snapshot for the current branch (`.agent-context/snapshots/<branch>/*.md`) if one exists.
+3. Writes `.agent-context/handoffs/<slice_id>.md` with: slice brief, list of owned files, current git diff summary, last N events from `slices.jsonl`, reason for handoff.
+4. Appends `{ts, event: "handoff", slice_id, agent_type, reason}` to `.agent-context/state/worker-telemetry.jsonl` (new file).
+5. Exits 0. Does **not** kill the agent or modify code.
+
+The primitive is deliberately dumb. It does not decide whether to compact — that's the agent's job. It just produces the minimum artifact another agent needs to resume.
+
+**This replaces every `DreamTask` reference** in §2.1 ("compactor → DreamTask"), §11 ("Worker memory overflow → DreamTask handoff"), and §12 (implicit). Search the doc for `DreamTask` after this section lands — every remaining mention is historical, not operational.
+
+### 15.3 The three rules (bake into every agent prompt)
+
+**Rule 1 — Per-agent context budget**: each agent has a soft budget in tool calls, not tokens (tokens aren't exposed to the running agent; tool calls are a conservative proxy).
+
+| Agent | Soft budget | Hard exit | Rationale |
+|---|---|---|---|
+| Worker (implementer) | 40 tool calls | 60 | Slices are small enough; most finish under 40. |
+| Reviewer-Auto | 15 tool calls per diff | 25 | Reviewer reads code + runs tests; 15 is tight but fair for a focused review. |
+| Main-Keeper | 20 per merge-train loop | 30 | Lots of git ops; must stay quick to fit 30-minute cron. |
+| Scheduler | 8 per spawn decision | 12 | Pure dispatcher — no code reading. |
+
+If an agent hits its soft budget without reaching DoD / task end: write a handoff via `scripts/swarm/compact.mjs`, stop, emit `ready-for-review` or `in-progress` event noting the handoff. The next spawn resumes from the handoff.
+
+If an agent hits its hard exit: write a handoff and **kill the slice** with `slice kill --reason "context hard exit"`. Slice goes back to the DAG as UNKNOWN; human decides whether to re-queue.
+
+**Rule 2 — Read discipline**: before reading any file, check if it is already in the brief's context_files list. If yes, assume it is already cached. If no, and the file is not in `slice.paths` or `slice.context_files`, ask: is reading this file necessary for the DoD? If the answer is "nice to know", skip it.
+
+This rule prevents the slow drift where workers read increasingly peripheral files trying to understand "the bigger picture". The bigger picture lives in the brief.
+
+**Rule 3 — One handoff per agent per slice**: an agent that has already written a handoff for slice X must not start a new handoff for the same slice — it must stop and emit the appropriate lifecycle event. This prevents handoff ping-pong where a worker keeps resuming and re-handing-off without progress.
+
+### 15.4 Where the rules go in prompts
+
+| File | What to add |
+|---|---|
+| `.claude/agents/implementer.md` | Rule 1 budget + handoff trigger + Rule 2 read discipline + `scripts/swarm/compact.mjs` usage. |
+| `.claude/agents/scheduler.md` | On spawn, check for existing handoff file for the slice; if present, include it in the spawn prompt. Also Rule 1 budget for the scheduler itself. |
+| `.claude/agents/reviewer-auto.md` | Rule 1 budget + "if budget hit mid-review, write handoff and re-enter queue". |
+| `.claude/agents/main-keeper.md` | Rule 1 budget + per-loop compact (not per-slice) — Main-Keeper compacts its own running state every N merges. |
+
+### 15.5 What this does NOT fix
+
+This spec is the **minimum viable** B.1. It knowingly leaves these open:
+
+1. **Token-accurate budgeting**. Tool-call count is a proxy. A single `Read` of a 5000-line file burns more tokens than 20 small reads. A future version could wrap Read to track bytes read and use that instead.
+2. **Automatic handoff detection from outside the agent**. If an agent hangs or dies silently, no handoff is written. The `.agent-context/state/worker-telemetry.jsonl` feed gives Main-Keeper a heartbeat it can check on its cron, but this requires workers to emit telemetry proactively. Enforcement is prompt-level, not runtime-level.
+3. **Reviewer fatigue across multiple reviews**. Rule 1 gives Reviewer-Auto 15 tool calls PER DIFF but does not track cumulative fatigue across multiple back-to-back reviews in the same session. A second-order rule (`if I've reviewed 5 diffs in this session, emit handoff and let Scheduler spawn a fresh reviewer`) is out of scope for v0.
+4. **Context-aware Scheduler prioritization**. An ideal Scheduler would estimate slice size (from DoD length + paths count + context_files count) and refuse to spawn when any single slice would likely exceed a fresh worker's budget. Out of scope; falls to B.6 (not yet filed).
+
+These are filed as TODO comments in §11 and the agent prompt files rather than separate appendix entries.
+
+### 15.6 Exit criteria (how we know B.1 is closed)
+
+1. `scripts/swarm/compact.mjs` exists, is executable, and produces `.agent-context/handoffs/<slice_id>.md` when invoked.
+2. Every word `DreamTask` in §§2.1 / 11 / 12 has been either removed or annotated with `(historical; superseded by §15)`.
+3. The four agent prompt files each contain a "Context budget" section with Rule 1 + the explicit soft/hard numbers from 15.3.
+4. `.agent-context/state/worker-telemetry.jsonl` is a new path in the `.agent-context/*` gitignore set and is appended to by `scripts/swarm/compact.mjs`.
+5. The first real end-to-end smoke test (§12 step 6) runs with the new rules in place. If the smoke test trips the soft budget, the handoff → respawn cycle works; if it trips the hard budget, the kill path works.
+
+Items 1 and 4 are satisfied in the same commit that adds this section. Items 2 and 3 are scoped to this commit (agent prompt edits are cheap). Item 5 is the follow-up smoke test, not this commit.
+
 ---
 
 ## Appendix A — Summary of discoveries during the session
@@ -471,7 +558,9 @@ Beyond the design itself, the session surfaced several facts about the repo that
 
 These are open design holes found while running the first operational smoke-test preflight. They are **intentionally not fixed in this revision** — they are recorded here so the next session can address them deliberately rather than rediscovering them.
 
-### B.1 — Worker / session-internal context management is unspecified
+### B.1 — Worker / session-internal context management is unspecified  **— fixed, see §15**
+
+**Status**: Addressed by §15 "Worker Context Management" + `scripts/swarm/compact.mjs` + agent-prompt edits to `implementer.md` / `scheduler.md` / `reviewer-auto.md` / `main-keeper.md`. The section below is retained as historical record of how the gap was discovered.
 
 The body of this design (§2.1, §11.Risks, line ~158/~426) collapses "context compaction" onto **DreamTask** and asserts it "already exists". Reality check:
 
@@ -499,7 +588,9 @@ What DOES exist (session-boundary only):
 2. Replace every `DreamTask` reference in §2.1/§11/§12 with a concrete primitive (most likely a `scripts/swarm/compact.mjs` that wraps `ctx:compact` for worker-targeted use).
 3. Add resume path to Scheduler: worker reports "context N% full" via `.agent-context/state/worker-telemetry.jsonl` → Scheduler respawns with handoff brief.
 
-### B.2 — `.agent-context/state/` is gitignored; `slices.jsonl` is per-worktree
+### B.2 — `.agent-context/state/` is gitignored; `slices.jsonl` is per-worktree  **— fixed, see B.5**
+
+**Status**: Addressed by `slice rebuild` (see B.5 below). Any worktree can now regenerate the journal from the working tree with a single command; no manual per-slice backfill required.
 
 Found while running the first `slice backfill` sweep on `claude/nice-driscoll`:
 
@@ -546,4 +637,39 @@ Before this commit, `.agent-context/state/slices.jsonl` did not exist. The follo
 | P1.A0-coinalyze | 7d558ef | `src/lib/server/providers/coinalyze.ts` canonical loader |
 | P1.A0-dexscreener | 743856d | `src/lib/server/providers/dexscreener.ts` canonical loader |
 
-Backfill applied on `claude/nice-driscoll` via new `slice backfill` subcommand. **Caveat B.2 applies**: because state is gitignored, the backfill is per-worktree. Other worktrees will need to re-run the same 9 commands (or a `slice backfill-all` future convenience) before their `slice ready` output is meaningful.
+Backfill applied on `claude/nice-driscoll` via new `slice backfill` subcommand. Superseded by `slice rebuild` (B.5) for future worktrees — manual per-slice backfill is no longer required.
+
+### B.5 — `slice rebuild` subcommand: working-tree → journal reconstruction
+
+**Status**: added in the follow-up commit to the one that introduced Appendix B.
+
+`slice rebuild` walks every DAG slice whose status is UNKNOWN and marks it MERGED iff all of its declared `slice.paths` exist in the working tree. SHA evidence is the most recent commit that touched the first existing owned path (`git log -1 --format=%h -- <path>`).
+
+```
+$ node scripts/slice/cli.mjs rebuild --dry-run
+[slice] rebuild (dry-run) P0.1-verdict-zod -> MERGED (sha=3e4a914)
+[slice] rebuild (dry-run) P0.2-trajectory-zod -> MERGED (sha=3e4a914)
+...
+[slice] rebuild: marked=9 skipped=1 (dry-run)
+```
+
+**Rules**:
+
+1. Only touches UNKNOWN slices — never clobbers events from the normal lifecycle (`in-progress`, `ready-for-review`, `approved`, `merged`, `killed`).
+2. Partial landings (some but not all owned files present) stay UNKNOWN. This is conservative — false negatives preferred over false positives.
+3. `--dry-run` prints the plan without writing to `slices.jsonl`.
+4. `--json` emits the full plan as structured output for scripts / hooks.
+
+**Limitations (intentional)**:
+
+- Does NOT verify DoD items like "`npm run check` exits 0" or "round-trip test passes". Filesystem presence is the only evidence. The safety net is that commits creating those files already went through the normal `gate` before landing on main.
+- Does NOT detect a slice that was KILLED and partially reverted — if the files still exist on disk, rebuild will re-mark them MERGED. Kills must be explicit via `slice kill` BEFORE rebuild runs.
+- Does NOT read commit messages for slice-ID tokens. An earlier design considered regex-matching commit subjects (`\bP\d+\.\w+-[\w-]+\b`) but that breaks on slices like `P0.1-verdict-zod` whose code landed in a grouped "Phase 0 foundation" commit with no slice ID in the message. Filesystem evidence is strictly stronger.
+
+**Integration points (next-session work)**:
+
+1. Main-Keeper should call `node scripts/slice/cli.mjs rebuild` after every `git fetch` to refresh the journal before it decides what to merge next.
+2. Scheduler should call `slice rebuild` before every `slice ready` query so it never spawns a worker for a slice whose code already exists on disk from a different worktree.
+3. Post-merge ctx:auto hook (already exists in scripts/dev/context-auto.sh) could add a rebuild step so that fresh worktrees don't need a manual first-run reconciliation.
+
+None of 1–3 are wired in this commit. They are ops integrations that depend on the B.1 worker-context work landing first, since Scheduler and Main-Keeper both need context-budget telemetry before they can safely run on a cron.
