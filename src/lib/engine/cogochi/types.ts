@@ -149,6 +149,12 @@ export interface L11Result {
   price_change: number;
   absorption: boolean;
   score: number;             // ±12
+  /**
+   * Typed CVD events emitted by `computeL11`. Populated in E3c of the
+   * harness engine integration plan. Empty when no event thresholds
+   * fired. Optional so pre-E3c fixtures keep working.
+   */
+  events?: ReadonlyArray<import('../../contracts/events.ts').EventPayload>;
 }
 
 export interface L12Result {
