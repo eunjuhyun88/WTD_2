@@ -9,7 +9,12 @@ import {
 	type ResearchBlockEnvelope,
 	type TimePoint
 } from '$lib/contracts';
-import type { FundingDataPoint, LSRatioDataPoint, LiquidationDataPoint, OIDataPoint } from '$lib/server/coinalyze';
+import type {
+	FundingDataPoint,
+	LSRatioDataPoint,
+	LiquidationDataPoint,
+	OIDataPoint
+} from '$lib/server/coinalyze';
 import type { ForceOrder, OrderBookSnapshot, TakerRatioPoint } from '$lib/server/marketDataService';
 
 type AnnotationInput = Array<{ type?: string; price?: number; strength?: number }>;
@@ -150,7 +155,7 @@ function buildTakerRatioSeries(points: TakerRatioPoint[] | undefined): TimePoint
 	return (points ?? [])
 		.slice()
 		.sort((a, b) => a.timestamp - b.timestamp)
-		.map((point) => ({ t: point.timestamp / 1000, v: point.buySellRatio }));
+		.map((point) => ({ t: Math.floor(point.timestamp / 1000), v: point.buySellRatio }));
 }
 
 function buildMetricInterpretation(
@@ -166,26 +171,17 @@ function buildMetricInterpretation(
 		return deltaPct > 0 ? 'buyers gaining control' : deltaPct < 0 ? 'buyers losing control' : 'flow flat';
 	}
 	if (label === 'Open Interest' && deltaPct != null) {
-		return deltaPct > 0 ? 'participation expanding' : deltaPct < 0 ? 'participation contracting' : 'positioning flat';
+		return deltaPct > 0
+			? 'participation expanding'
+			: deltaPct < 0
+				? 'participation contracting'
+				: 'positioning flat';
 	}
 	return undefined;
 }
 
 function metricCurrentFromSeries(points: TimePoint[], fallback: number | null): number | null {
 	return points.length > 0 ? points[points.length - 1]?.v ?? fallback : fallback;
-}
-
-function buildPriceBounds(
-	priceSeries: CandlePoint[],
-	heatmapCells: HeatmapCell[]
-): { minPrice: number; maxPrice: number; range: number; midpoint: number } {
-	const priceValues = priceSeries.flatMap((point) => [point.l, point.h]);
-	const cellValues = heatmapCells.flatMap((cell) => [cell.y0, cell.y1]);
-	const merged = [...priceValues, ...cellValues];
-	const minPrice = Math.min(...merged);
-	const maxPrice = Math.max(...merged);
-	const range = Math.max(maxPrice - minPrice, maxPrice * 0.01, 1);
-	return { minPrice, maxPrice, range, midpoint: (minPrice + maxPrice) / 2 };
 }
 
 function estimateTimeBucketSeconds(priceSeries: CandlePoint[]): number {
@@ -212,15 +208,16 @@ function buildDepthHeatmapCells(
 	const priceRange = Math.max(maxPrice - minPrice, maxPrice * 0.01, 1);
 	const bandHeight = Math.max(priceRange * 0.012, maxPrice * 0.0018, 6);
 
-	const bidLevels = depthSnapshot.bids
-		.map(([price, qty]) => ({ side: 'bid' as const, price, qty, notional: price * qty }))
-		.sort((a, b) => b.notional - a.notional)
-		.slice(0, 8);
-	const askLevels = depthSnapshot.asks
-		.map(([price, qty]) => ({ side: 'ask' as const, price, qty, notional: price * qty }))
-		.sort((a, b) => b.notional - a.notional)
-		.slice(0, 8);
-	const levels = [...bidLevels, ...askLevels];
+	const levels = [
+		...depthSnapshot.bids
+			.map(([price, qty]) => ({ side: 'bid' as const, price, qty, notional: price * qty }))
+			.sort((a, b) => b.notional - a.notional)
+			.slice(0, 8),
+		...depthSnapshot.asks
+			.map(([price, qty]) => ({ side: 'ask' as const, price, qty, notional: price * qty }))
+			.sort((a, b) => b.notional - a.notional)
+			.slice(0, 8)
+	];
 	const maxNotional = Math.max(...levels.map((level) => level.notional), 1);
 
 	return levels.map((level) => ({
@@ -246,8 +243,7 @@ function buildForceOrderHeatmapCells(
 	const maxPrice = Math.max(...priceSeries.map((point) => point.h));
 	const priceRange = Math.max(maxPrice - minPrice, maxPrice * 0.01, 1);
 	const bandHeight = Math.max(priceRange * 0.02, maxPrice * 0.0024, 8);
-	const bucketSeconds = estimateTimeBucketSeconds(priceSeries);
-	const pulseWidth = Math.max(Math.round(bucketSeconds * 1.4), 900);
+	const pulseWidth = Math.max(Math.round(estimateTimeBucketSeconds(priceSeries) * 1.4), 900);
 
 	const ranked = forceOrders
 		.map((order) => ({
@@ -259,16 +255,19 @@ function buildForceOrderHeatmapCells(
 		.slice(0, 18);
 	const maxNotional = Math.max(...ranked.map((order) => order.notional), 1);
 
-	return ranked.map((order) => ({
-		x0: Math.max(startTs, Math.floor(order.time / 1000) - Math.floor(pulseWidth / 2)),
-		x1: Math.min(endTs, Math.floor(order.time / 1000) + Math.floor(pulseWidth / 2)),
-		y0: order.price - bandHeight / 2,
-		y1: order.price + bandHeight / 2,
-		intensity: clamp01(0.14 + Math.sqrt(order.notional / maxNotional) * 0.86),
-		side: order.side === 'BUY' ? 'buy_liq' : 'sell_liq',
-		value: order.notional,
-		label: order.side === 'BUY' ? 'Short liq pulse' : 'Long liq pulse'
-	}));
+	return ranked.map((order) => {
+		const ts = Math.floor(order.time / 1000);
+		return {
+			x0: Math.max(startTs, ts - Math.floor(pulseWidth / 2)),
+			x1: Math.min(endTs, ts + Math.floor(pulseWidth / 2)),
+			y0: order.price - bandHeight / 2,
+			y1: order.price + bandHeight / 2,
+			intensity: clamp01(0.14 + Math.sqrt(order.notional / maxNotional) * 0.86),
+			side: order.side === 'BUY' ? 'buy_liq' : 'sell_liq',
+			value: order.notional,
+			label: order.side === 'BUY' ? 'Short liq pulse' : 'Long liq pulse'
+		};
+	});
 }
 
 function buildHeatmapMarkers(forceOrders: ForceOrder[] | undefined): EventMarker[] {
@@ -284,15 +283,29 @@ function buildHeatmapMarkers(forceOrders: ForceOrder[] | undefined): EventMarker
 	const maxNotional = Math.max(...ranked.map((order) => order.notional), 1);
 
 	return ranked.map((order, index) => {
-		const strength = order.notional / maxNotional;
+		const severityRatio = order.notional / maxNotional;
 		return {
 			id: `force-${index}-${order.time}`,
 			ts: Math.floor(order.time / 1000),
 			label: order.side === 'BUY' ? 'Short liq' : 'Long liq',
 			direction: order.side === 'BUY' ? 'bull' : 'bear',
-			severity: strength > 0.66 ? 'high' : strength > 0.33 ? 'medium' : 'low'
+			severity: severityRatio > 0.66 ? 'high' : severityRatio > 0.33 ? 'medium' : 'low'
 		};
 	});
+}
+
+function buildPriceBounds(
+	priceSeries: CandlePoint[],
+	heatmapCells: HeatmapCell[]
+): { minPrice: number; maxPrice: number } {
+	const merged = [
+		...priceSeries.flatMap((point) => [point.l, point.h]),
+		...heatmapCells.flatMap((cell) => [cell.y0, cell.y1])
+	];
+	return {
+		minPrice: Math.min(...merged),
+		maxPrice: Math.max(...merged)
+	};
 }
 
 export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBlockEnvelope[] {
@@ -338,7 +351,11 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 					unit: 'usd',
 					current: currentPrice,
 					compare: priceCompare,
-					interpretation: buildMetricInterpretation('Price', currentPrice, priceCompare[0]?.deltaPct ?? null),
+					interpretation: buildMetricInterpretation(
+						'Price',
+						currentPrice,
+						priceCompare[0]?.deltaPct ?? null
+					),
 					sourceIds: ['raw.symbol.klines.4h']
 				},
 				{
@@ -347,7 +364,11 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 					unit: 'custom',
 					current: currentCvd,
 					compare: cvdCompare,
-					interpretation: buildMetricInterpretation('CVD', currentCvd, cvdCompare[0]?.deltaPct ?? null),
+					interpretation: buildMetricInterpretation(
+						'CVD',
+						currentCvd,
+						cvdCompare[0]?.deltaPct ?? null
+					),
 					sourceIds: ['raw.symbol.klines.5m', 'feat.flow.cvd.raw']
 				},
 				{
@@ -356,7 +377,11 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 					unit: 'usd_compact',
 					current: currentOi,
 					compare: oiCompare,
-					interpretation: buildMetricInterpretation('Open Interest', currentOi, oiCompare[0]?.deltaPct ?? null),
+					interpretation: buildMetricInterpretation(
+						'Open Interest',
+						currentOi,
+						oiCompare[0]?.deltaPct ?? null
+					),
 					sourceIds: ['raw.symbol.oi_hist.display_tf', 'feat.flow.oi_change_pct']
 				},
 				{
@@ -370,7 +395,11 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 						currentValue: window.currentValue == null ? null : window.currentValue / 100,
 						deltaAbs: window.deltaAbs == null ? null : window.deltaAbs / 100
 					})),
-					interpretation: buildMetricInterpretation('Funding', currentFundingBps, fundingCompare[0]?.deltaPct ?? null),
+					interpretation: buildMetricInterpretation(
+						'Funding',
+						currentFundingBps,
+						fundingCompare[0]?.deltaPct ?? null
+					),
 					sourceIds: ['raw.symbol.funding_rate']
 				},
 				{
@@ -387,7 +416,11 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 					unit: 'usd_compact',
 					current: currentLiq,
 					compare: buildCompareWindows(liqSeries),
-					sourceIds: ['raw.symbol.force_orders.1h', 'event.flow.short_squeeze_active', 'event.flow.long_cascade_active']
+					sourceIds: [
+						'raw.symbol.force_orders.1h',
+						'event.flow.short_squeeze_active',
+						'event.flow.long_cascade_active'
+					]
 				}
 			]
 		}
@@ -408,7 +441,11 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 			compareWindows: priceCompare,
 			overlays: {
 				srLevels: (input.annotations ?? [])
-					.filter((annotation) => (annotation.type === 'support' || annotation.type === 'resistance') && typeof annotation.price === 'number')
+					.filter(
+						(annotation) =>
+							(annotation.type === 'support' || annotation.type === 'resistance') &&
+							typeof annotation.price === 'number'
+					)
 					.slice(0, 6)
 					.map((annotation) => ({
 						price: annotation.price as number,
@@ -496,12 +533,12 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 		}
 	});
 
+	const blocks: ResearchBlockEnvelope[] = [metricStrip, inlinePrice, dualPaneFlow];
+
 	const heatmapCells = [
 		...buildDepthHeatmapCells(input.priceSeries, input.depthSnapshot),
 		...buildForceOrderHeatmapCells(input.priceSeries, input.forceOrders)
 	];
-	const heatmapMarkers = buildHeatmapMarkers(input.forceOrders);
-	const blocks = [metricStrip, inlinePrice, dualPaneFlow];
 
 	if (heatmapCells.length > 0) {
 		const priceBounds = buildPriceBounds(input.priceSeries, heatmapCells);
@@ -546,7 +583,7 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 					cells: heatmapCells,
 					lowerPane: heatmapLowerSeries.length > 0 ? { series: heatmapLowerSeries } : undefined,
 					compareWindows: priceCompare,
-					markers: heatmapMarkers,
+					markers: buildHeatmapMarkers(input.forceOrders),
 					legend: [
 						{ id: 'bid', label: 'Bid wall', color: 'rgba(173, 202, 124, 0.9)' },
 						{ id: 'ask', label: 'Ask wall', color: 'rgba(207, 127, 143, 0.9)' },
