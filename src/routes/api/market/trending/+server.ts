@@ -14,7 +14,7 @@ import {
   type CMCTrendingCoin,
   type CMCGainerLoser,
 } from '$lib/server/coinmarketcap';
-import { fetchDexTokenBoostsTop, fetchDexTokenProfilesLatest, fetchDexTokens } from '$lib/server/dexscreener';
+import { fetchDexTokenBoostsTop, fetchDexTokenProfilesLatest, fetchDexTokens } from '$lib/server/providers/dexscreener';
 import { fetchTopicSocial, hasLunarCrushKey } from '$lib/server/lunarcrush';
 
 // ─── Types ────────────────────────────────────────────────────

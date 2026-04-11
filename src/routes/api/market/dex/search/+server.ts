@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { searchDexPairs } from '$lib/server/dexscreener';
+import { searchDexPairs } from '$lib/server/providers/dexscreener';
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
