@@ -71,7 +71,6 @@ REQUIRED_DIRS=(
 	"docs"
 	"docs/archive"
 	"docs/design-docs"
-	"docs/product-specs"
 	"docs/exec-plans"
 	"docs/exec-plans/active"
 	"docs/exec-plans/completed"
@@ -85,24 +84,16 @@ REQUIRED_FILES=(
 	"CLAUDE.md"
 	"ARCHITECTURE.md"
 	"docs/README.md"
-	"docs/SYSTEM_INTENT.md"
+	"docs/COGOCHI.md"
 	"docs/DESIGN.md"
 	"docs/FRONTEND.md"
 	"docs/PLANS.md"
-	"docs/PRODUCT_SENSE.md"
 	"docs/QUALITY_SCORE.md"
 	"docs/RELIABILITY.md"
 	"docs/SECURITY.md"
 	"docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md"
 	"docs/design-docs/index.md"
 	"docs/design-docs/core-beliefs.md"
-	"docs/design-docs/arena-domain-model.md"
-	"docs/design-docs/learning-loop.md"
-	"docs/product-specs/index.md"
-	"docs/product-specs/arena.md"
-	"docs/product-specs/terminal.md"
-	"docs/product-specs/signals.md"
-	"docs/product-specs/passport.md"
 	"docs/exec-plans/index.md"
 	"docs/exec-plans/active/README.md"
 	"docs/exec-plans/active/context-system-rollout-2026-03-06.md"
@@ -127,6 +118,7 @@ for file in "${REQUIRED_FILES[@]}"; do
 	require_file "$file"
 done
 
+# ── Context routing + collaboration entry points ────────────────────
 require_text "AGENTS.md" "docs/README.md" "task-level docs router"
 require_text "AGENTS.md" "ARCHITECTURE.md" "architecture map"
 require_text "AGENTS.md" "ctx:checkpoint" "semantic checkpoint command"
@@ -136,32 +128,45 @@ require_text "README.md" "### Context Artifact Model" "context artifact model se
 require_text "README.md" "ctx:checkpoint" "checkpoint command in readme"
 require_text "README.md" "ctx:check -- --strict" "strict context quality command in readme"
 require_text "CLAUDE.md" "current git worktree rooted at this repository" "worktree-aware claude guide"
-require_text "ARCHITECTURE.md" "## Canonical Doc Entry Points" "canonical doc entry section"
-require_text "docs/README.md" "## Canonical Entry Docs" "canonical entry docs"
-require_text "docs/README.md" "## Structured Knowledge Base" "structured knowledge base"
-require_text "docs/README.md" "current git worktree rooted at this repository" "worktree-aware active boundary"
-require_text "docs/SYSTEM_INTENT.md" "## Non-Negotiable Invariants" "system invariants"
+
+# ── Canonical product doc (COGOCHI.md) — single source of truth ─────
+require_text "docs/COGOCHI.md" "Executive Summary" "COGOCHI executive summary section"
+require_text "docs/COGOCHI.md" "Core Learning Loop" "COGOCHI core learning loop section"
+require_text "docs/COGOCHI.md" "Surface Model" "COGOCHI surface model section"
+require_text "docs/COGOCHI.md" "H1 Research Claim" "COGOCHI H1 claim section"
+require_text "docs/COGOCHI.md" "Home Landing Page" "COGOCHI home landing spec section"
+require_text "docs/COGOCHI.md" "Kill Criteria" "COGOCHI kill criteria section"
+
+# ── COGOCHI.md is the single canonical pointer target ──────────────
+require_text "docs/README.md" "COGOCHI.md" "docs readme points at COGOCHI"
+require_text "CLAUDE.md" "COGOCHI.md" "CLAUDE read-first points at COGOCHI"
+require_text "ARCHITECTURE.md" "COGOCHI.md" "architecture points at COGOCHI"
+require_text "docs/design-docs/index.md" "COGOCHI.md" "design-docs index points at COGOCHI"
+
+# ── Operational / infra docs (unchanged) ────────────────────────────
 require_text "docs/DESIGN.md" "## Design Authority Stack" "design authority stack"
-require_text "docs/design-docs/arena-domain-model.md" "## Canonical Record: GameRecord" "arena domain GameRecord section"
-require_text "docs/design-docs/learning-loop.md" "## ORPO Learning" "learning loop ORPO section"
 require_text "docs/FRONTEND.md" "## State Authority" "state authority section"
 require_text "docs/PLANS.md" "## Current Active Planning Surface" "active planning section"
-require_text "docs/PRODUCT_SENSE.md" "## Core Product Heuristics" "product heuristics"
 require_text "docs/QUALITY_SCORE.md" "Scale:" "quality scale"
 require_text "docs/QUALITY_SCORE.md" "Context handoff quality" "context handoff quality row"
 require_text "docs/RELIABILITY.md" "## Reliability Rules" "reliability rules"
 require_text "docs/SECURITY.md" "## Security Non-Negotiables" "security non-negotiables"
 require_text "docs/design-docs/core-beliefs.md" "## Beliefs" "beliefs section"
-require_text "docs/product-specs/index.md" "## Surface Specs" "surface specs section"
+
+# ── Generated maps (unchanged) ──────────────────────────────────────
 require_text "docs/generated/game-record-schema.md" "## Primary Structure" "game record schema structure"
 require_text "docs/generated/route-map.md" "## App Routes" "route map section"
 require_text "docs/generated/store-authority-map.md" "## Stores" "store authority section"
 require_text "docs/generated/api-group-map.md" "## API Group Overview" "api group overview"
 require_text "docs/exec-plans/index.md" "## Active" "active plans section"
+
+# ── Context protocol (unchanged) ────────────────────────────────────
 require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "Scope: current git worktree rooted at this repository" "worktree-aware scope"
 require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "## 2) Context Architecture" "context architecture section"
 require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "ctx:checkpoint" "checkpoint command in protocol"
 require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "brief" "brief mode in protocol"
+
+# ── Drift absence checks (unchanged) ────────────────────────────────
 require_absent "AGENTS.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in agents"
 require_absent "AGENTS.md" "/Users/ej/Downloads/maxi-doge-unified/README.md" "broken external ssot readme path in agents"
 require_absent "CLAUDE.md" "DEPRECATED" "deprecated claude banner"
@@ -170,9 +175,10 @@ require_absent "docs/README.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "
 require_absent "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in compaction protocol"
 require_absent "docs/exec-plans/active/context-system-rollout-2026-03-06.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in rollout plan"
 require_absent "docs/DESIGN.md" "../STOCKCLAW_UNIFIED_DESIGN.md" "external arena design ref in design entry doc"
-require_absent "docs/product-specs/index.md" "../STOCKCLAW_UNIFIED_DESIGN.md" "external arena design ref in product spec index"
-require_absent "docs/product-specs/arena.md" "../STOCKCLAW_UNIFIED_DESIGN.md" "external arena design ref in arena spec"
-require_absent "docs/PRODUCT_SENSE.md" "../STOCKCLAW_UNIFIED_DESIGN.md" "external arena design ref in product sense"
+
+# Note: historical references to SYSTEM_INTENT.md / PRODUCT_SENSE.md inside
+# docs/README.md, CLAUDE.md, and docs/archive/ are allowed — they document
+# what was consolidated into COGOCHI.md and where the v3 originals live.
 
 if [ "$FAIL" -ne 0 ]; then
 	echo "[docs:check] failed."
