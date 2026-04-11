@@ -25,7 +25,7 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 | Tournaments | tournament lifecycle and bracket access | `/api/tournaments/[id]/bracket`, `/api/tournaments/[id]/register`, `/api/tournaments/active` | 3 |
 | Notifications | notification lifecycle | `/api/notifications`, `/api/notifications/[id]`, `/api/notifications/read` | 3 |
 | Market Alerts | specialized market alert surface | `/api/market/alerts/onchain` | 1 |
-| Cogochi | DOUNI AI agent — terminal chat, analysis, social tools | `/api/cogochi/analyze`, `/api/cogochi/battle/[battleId]/action`, `/api/cogochi/battle/[battleId]/stream`, `/api/cogochi/battle/scenarios` | 8 |
+| Cogochi | DOUNI AI agent — terminal chat, analysis, social tools | `/api/cogochi/analyze`, `/api/cogochi/battle/[battleId]/action`, `/api/cogochi/battle/[battleId]/stream`, `/api/cogochi/battle/scenarios` | 10 |
 | Proxies & Infra | third-party proxy and support endpoints | `/api/chat/messages`, `/api/coinalyze`, `/api/coingecko/global`, `/api/etherscan/onchain` | 16 |
 
 ## Current Route Inventory Snapshot
@@ -180,8 +180,10 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/cogochi/battle/scenarios`
 - `/api/cogochi/battle/start`
 - `/api/cogochi/chat`
+- `/api/cogochi/scan`
 - `/api/cogochi/skills/catalog`
 - `/api/cogochi/terminal/message`
+- `/api/cogochi/thermometer`
 
 ### Proxies & Infra
 - `/api/chat/messages`

@@ -31,6 +31,8 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/creator/[userId]` | public creator profile route | creator context and recent community signals | route-local creator loader + community signal cards | `docs/page-specs/creator-page.md` |
 | `/cogochi` | cogochi hub | DOUNI virtual pet entry and navigation | route-level data | `docs/PRODUCT_SENSE.md` |
 | `/cogochi/terminal` | DOUNI AI terminal | LLM-driven chat with function calling, market analysis, social data | route-local chat state + `currentSnapshot` | `docs/PRODUCT_SENSE.md` |
+| `/cogochi/scanner` | cogochi scanner surface | alpha scan results, filter/sort by alpha + regime, layer-score deep dive | route-local scan result state, layer score rows, filter/sort selection | `docs/product-specs/terminal.md` |
+| `/terminal-legacy` | legacy terminal shell preserved for comparison | prior war-room + chart + intel layout kept during terminal refactor | route-local chat/pattern state + `copyTradeStore`, `trackedSignalStore` | `docs/product-specs/terminal.md` |
 
 ## Route Shells and Global Entry
 
