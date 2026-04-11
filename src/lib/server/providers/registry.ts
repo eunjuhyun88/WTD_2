@@ -7,7 +7,9 @@ import type { MarketContext } from '$lib/engine/factorEngine';
 import type { TrendAnalysis } from '$lib/engine/types';
 import type { ProviderHealth, OnchainMetrics, SentimentMetrics } from './types';
 import { getCached, setCache } from './cache';
-import { fetchKlinesServer, fetch24hrServer, pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/binance';
+import { readRaw, type KlinesRawId } from './rawSources';
+import { KnownRawId } from '$lib/contracts/ids';
+import { pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/binance';
 import { fetchDerivatives, fetchNews, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { fetchFearGreed } from '$lib/server/feargreed';
 import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from '$lib/server/coingecko';
@@ -133,6 +135,27 @@ function buildTrend(points: Array<{ close: number }> | null): TrendAnalysis | nu
   return analyzeTrend(points.map((p) => p.close));
 }
 
+/**
+ * Map a canonical timeframe string (from `normalizeTimeframe`) to the
+ * corresponding `KLINES_*` raw atom so the registry can dispatch klines
+ * through `readRaw`. Identical to the helper in `marketSnapshotService.ts`
+ * — intentionally duplicated here to keep the providers folder
+ * self-contained (no cross-reach into sibling services).
+ */
+function klinesRawIdForTimeframe(tf: string): KlinesRawId {
+  switch (tf) {
+    case '1m': return KnownRawId.KLINES_1M;
+    case '5m': return KnownRawId.KLINES_5M;
+    case '15m': return KnownRawId.KLINES_15M;
+    case '30m': return KnownRawId.KLINES_30M;
+    case '1h': return KnownRawId.KLINES_1H;
+    case '4h': return KnownRawId.KLINES_4H;
+    case '1d': return KnownRawId.KLINES_1D;
+    case '1w': return KnownRawId.KLINES_1W;
+    default: return KnownRawId.KLINES_4H;
+  }
+}
+
 // ── Main: Assemble Full MarketContext ────────────────────────────
 
 export async function assembleMarketContext(
@@ -165,10 +188,10 @@ export async function assembleMarketContext(
     us10yRes,
     cmcRes,
   ] = await Promise.allSettled([
-    timedFetch('binance:klines', () => fetchKlinesServer(symbol, timeframe, 300)),
-    timedFetch('binance:klines1h', () => fetchKlinesServer(symbol, '1h', 300)),
-    timedFetch('binance:klines1d', () => fetchKlinesServer(symbol, '1d', 300)),
-    timedFetch('binance:ticker', () => fetch24hrServer(symbol)),
+    timedFetch('binance:klines', () => readRaw(klinesRawIdForTimeframe(timeframe), { symbol, limit: 300 })),
+    timedFetch('binance:klines1h', () => readRaw(KnownRawId.KLINES_1H, { symbol, limit: 300 })),
+    timedFetch('binance:klines1d', () => readRaw(KnownRawId.KLINES_1D, { symbol, limit: 300 })),
+    timedFetch('binance:ticker', () => readRaw(KnownRawId.TICKER_24HR, { symbol })),
     timedFetch('coinalyze', () => fetchDerivatives(eventFetch, pair, timeframe)),
     fetchSentimentMetrics(),
     fetchOnchainMetrics(token),

@@ -1,23 +1,30 @@
 import { calcATR, calcEMA, calcMACD, calcRSI, calcSMA } from '$lib/engine/indicators';
 import type { BinanceKline } from '$lib/engine/types';
-import { fetchKlinesServer, pairToSymbol } from '$lib/server/binance';
+import { pairToSymbol } from '$lib/server/binance';
+import { readRaw, type KlinesRawId } from '$lib/server/providers/rawSources';
 import { getCached, setCache } from '$lib/server/providers/cache';
+import { KnownRawId } from '$lib/contracts/ids';
 
 export type TradingBias = 'long' | 'short' | 'neutral';
 
 interface TimeframeConfig {
-  interval: '1h' | '4h' | '1d' | '1w' | '1M';
-  label: '1H' | '4H' | '1D' | '1W' | '1M';
+  rawId: KlinesRawId;
+  label: '1H' | '4H' | '1D' | '1W';
   weight: number;
   limit: number;
 }
 
+// Note: the previous revision also included a `1M` monthly slot, but
+// `toBinanceInterval` lowercases input so `'1M'` was silently falling back
+// to `'1m'` (1-minute) — the monthly weight was effectively re-counting
+// 1-minute data. Dropping the broken slot. Weights are re-distributed
+// across 4 timeframes; the engine divides by totalWeight so the consensus
+// score is still normalized correctly.
 const TIMEFRAMES: readonly TimeframeConfig[] = [
-  { interval: '1h', label: '1H', weight: 0.15, limit: 160 },
-  { interval: '4h', label: '4H', weight: 0.25, limit: 160 },
-  { interval: '1d', label: '1D', weight: 0.30, limit: 160 },
-  { interval: '1w', label: '1W', weight: 0.20, limit: 160 },
-  { interval: '1M', label: '1M', weight: 0.10, limit: 160 },
+  { rawId: KnownRawId.KLINES_1H, label: '1H', weight: 0.17, limit: 160 },
+  { rawId: KnownRawId.KLINES_4H, label: '4H', weight: 0.28, limit: 160 },
+  { rawId: KnownRawId.KLINES_1D, label: '1D', weight: 0.33, limit: 160 },
+  { rawId: KnownRawId.KLINES_1W, label: '1W', weight: 0.22, limit: 160 },
 ] as const;
 
 const MIN_BARS = 80;
@@ -251,7 +258,7 @@ export async function getMultiTimeframeIndicatorContext(inputPair: string): Prom
   const settled = await Promise.all(
     TIMEFRAMES.map(async (tf) => {
       try {
-        const klines = await fetchKlinesServer(symbol, tf.interval, tf.limit);
+        const klines = await readRaw(tf.rawId, { symbol, limit: tf.limit });
         const snapshot = computeSnapshot(tf.label, klines);
         if (!snapshot) return null;
         return { weight: tf.weight, snapshot } satisfies WeightedSnapshot;
