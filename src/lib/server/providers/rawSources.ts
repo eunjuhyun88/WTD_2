@@ -117,10 +117,12 @@ export interface RawSourceInputs {
 	[KnownRawId.TICKER_24HR]: { symbol: string };
 	[KnownRawId.FUNDING_RATE]: { symbol: string };
 	[KnownRawId.MARK_PRICE]: { symbol: string };
+	[KnownRawId.OPEN_INTEREST_POINT]: { symbol: string };
 	[KnownRawId.DEPTH_L2_20]: { symbol: string };
 	[KnownRawId.OI_HIST_5M]: { symbol: string };
 	[KnownRawId.OI_HIST_1H]: { symbol: string };
 	[KnownRawId.LONG_SHORT_GLOBAL]: { symbol: string };
+	[KnownRawId.LONG_SHORT_TOP_1H]: { symbol: string };
 	[KnownRawId.TAKER_BUY_SELL_RATIO]: { symbol: string };
 	[KnownRawId.FORCE_ORDERS_1H]: { symbol: string };
 	[KnownRawId.FORCE_ORDERS_4H]: { symbol: string };
@@ -151,10 +153,12 @@ export interface RawSourceOutputs {
 	[KnownRawId.TICKER_24HR]: Binance24hr;
 	[KnownRawId.FUNDING_RATE]: number | null;
 	[KnownRawId.MARK_PRICE]: number | null;
+	[KnownRawId.OPEN_INTEREST_POINT]: number | null;
 	[KnownRawId.DEPTH_L2_20]: OrderBookSnapshot;
 	[KnownRawId.OI_HIST_5M]: OIHistoryPoint[];
 	[KnownRawId.OI_HIST_1H]: OIHistoryPoint[];
 	[KnownRawId.LONG_SHORT_GLOBAL]: GlobalLSPoint[];
+	[KnownRawId.LONG_SHORT_TOP_1H]: number | null;
 	[KnownRawId.TAKER_BUY_SELL_RATIO]: TakerRatioPoint[];
 	[KnownRawId.FORCE_ORDERS_1H]: ForceOrder[];
 	[KnownRawId.FORCE_ORDERS_4H]: ForceOrder[];
@@ -241,10 +245,11 @@ function getMempool() {
 // ---------------------------------------------------------------------------
 //
 // `fapi/v1/premiumIndex?symbol=X` returns both `lastFundingRate` and
-// `markPrice` in one payload. Previously `scanner.ts` and `toolExecutor.ts`
-// each owned a private `fetchDerivatives()` helper that fetched this
-// endpoint inline (plus `openInterest` and `topLongShortAccountRatio`,
-// which are still local helpers since they do not yet have raw atoms).
+// `markPrice` in one payload. Scanner, tool executor, and the cogochi
+// analyze endpoint historically owned private `fetchDerivatives()` helpers
+// that reached into `fapi.binance.com` directly. Those helpers are gone
+// in B7; all three consumers now go through `readRaw()` for FUNDING_RATE,
+// MARK_PRICE, OPEN_INTEREST_POINT, and LONG_SHORT_TOP_1H.
 //
 // Moving premiumIndex into this memo ensures the FUNDING_RATE and
 // MARK_PRICE atoms, when both are read for the same symbol, do not
@@ -285,6 +290,88 @@ function getPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
 		throw err;
 	});
 	premiumIndexInflight.set(symbol, promise);
+	return promise;
+}
+
+// ---------------------------------------------------------------------------
+// openInterest (point-in-time) memo
+// ---------------------------------------------------------------------------
+//
+// `fapi/v1/openInterest?symbol=X` is a scalar read — one number representing
+// the current outstanding open-interest notional. Previously `scanner.ts`,
+// `toolExecutor.ts`, and the cogochi analyze endpoint each owned a private
+// inline fetcher. This memo dedupes concurrent reads for the same symbol
+// within a 5-second window (matches the binance OI update cadence on the
+// engine path). Errors return null so callers can degrade gracefully — OI
+// is a supporting signal, not a gating one.
+
+const openInterestInflight = new Map<string, Promise<number | null>>();
+const openInterestAt = new Map<string, number>();
+
+async function fetchOpenInterestPoint(symbol: string): Promise<number | null> {
+	try {
+		const res = await fetch(
+			`https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`,
+			{ signal: AbortSignal.timeout(5000) }
+		);
+		if (!res.ok) return null;
+		const data = (await res.json()) as { openInterest?: string };
+		const oi = data.openInterest != null ? parseFloat(data.openInterest) : null;
+		return Number.isFinite(oi as number) ? oi : null;
+	} catch {
+		return null;
+	}
+}
+
+function getOpenInterestPoint(symbol: string): Promise<number | null> {
+	const now = Date.now();
+	const existing = openInterestInflight.get(symbol);
+	const lastAt = openInterestAt.get(symbol) ?? 0;
+	if (existing && now - lastAt < 5_000) return existing;
+	openInterestAt.set(symbol, now);
+	const promise = binanceQuota.execute(() => fetchOpenInterestPoint(symbol)).catch(() => null);
+	openInterestInflight.set(symbol, promise);
+	return promise;
+}
+
+// ---------------------------------------------------------------------------
+// topLongShortAccountRatio (1h, 1 bar) memo
+// ---------------------------------------------------------------------------
+//
+// `futures/data/topLongShortAccountRatio?symbol=X&period=1h&limit=1` returns
+// a 1-element array with the current top-trader long/short account ratio.
+// Dissection §10 Q1 locks the timeframe at `period=1h limit=1` — callers
+// cannot override. Previously this endpoint was fetched inline from 3
+// different call sites with slightly different error handling. This memo
+// gives one canonical path + 5-second in-flight dedupe + null-on-error.
+
+const longShortTopInflight = new Map<string, Promise<number | null>>();
+const longShortTopAt = new Map<string, number>();
+
+async function fetchLongShortTop1h(symbol: string): Promise<number | null> {
+	try {
+		const res = await fetch(
+			`https://fapi.binance.com/futures/data/topLongShortAccountRatio?symbol=${symbol}&period=1h&limit=1`,
+			{ signal: AbortSignal.timeout(5000) }
+		);
+		if (!res.ok) return null;
+		const data = (await res.json()) as Array<{ longShortRatio?: string }>;
+		if (!Array.isArray(data) || data.length === 0) return null;
+		const r = data[0].longShortRatio != null ? parseFloat(data[0].longShortRatio) : null;
+		return Number.isFinite(r as number) ? r : null;
+	} catch {
+		return null;
+	}
+}
+
+function getLongShortTop1h(symbol: string): Promise<number | null> {
+	const now = Date.now();
+	const existing = longShortTopInflight.get(symbol);
+	const lastAt = longShortTopAt.get(symbol) ?? 0;
+	if (existing && now - lastAt < 5_000) return existing;
+	longShortTopAt.set(symbol, now);
+	const promise = binanceQuota.execute(() => fetchLongShortTop1h(symbol)).catch(() => null);
+	longShortTopInflight.set(symbol, promise);
 	return promise;
 }
 
@@ -354,6 +441,13 @@ export const rawSources: RawSourceMap = {
 	// The memo dedupes paired reads for the same symbol within a 5s window.
 	[KnownRawId.FUNDING_RATE]: async ({ symbol }) => (await getPremiumIndex(symbol)).fundingRate,
 	[KnownRawId.MARK_PRICE]: async ({ symbol }) => (await getPremiumIndex(symbol)).markPrice,
+
+	// Point-in-time open interest + top-trader long/short ratio.
+	// Both return `number | null` and are memoized for 5s to dedupe the
+	// concurrent reads issued by scanner, toolExecutor, and the cogochi
+	// analyze endpoint. Errors collapse to null.
+	[KnownRawId.OPEN_INTEREST_POINT]: async ({ symbol }) => getOpenInterestPoint(symbol),
+	[KnownRawId.LONG_SHORT_TOP_1H]: async ({ symbol }) => getLongShortTop1h(symbol),
 
 	[KnownRawId.DEPTH_L2_20]: async ({ symbol }) =>
 		binanceQuota.execute(() => fetchDepth(symbol, 20)),
