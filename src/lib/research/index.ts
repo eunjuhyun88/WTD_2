@@ -185,6 +185,15 @@ export type {
 	ResolveAtStrategy
 } from './source/synthetic.ts';
 
+// DB-backed dataset source (E5)
+export {
+	createDbDatasetSource,
+	prepareDbSelectV2,
+	DbDatasetSourceConfigError,
+	DB_DATASET_SOURCE_MAX_LIMIT
+} from './source/db.ts';
+export type { DbDatasetSourceConfig } from './source/db.ts';
+
 // ---------------------------------------------------------------------------
 // Default registry population (R4.3)
 // ---------------------------------------------------------------------------
