@@ -11,7 +11,7 @@ import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSourc
 import { KnownRawId } from '$lib/contracts/ids';
 import { fetchDerivatives, fetchNews, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { fetchFearGreed } from '$lib/server/feargreed';
-import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from '$lib/server/coingecko';
+import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from '$lib/server/providers/coingecko';
 import { fetchDefiLlamaStableMcap } from '$lib/server/defillama';
 import { fetchYahooSeries } from '$lib/server/yahooFinance';
 import { fetchCoinMarketCapQuote } from '$lib/server/coinmarketcap';

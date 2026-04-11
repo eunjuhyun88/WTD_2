@@ -12,7 +12,7 @@ import { KnownRawId } from '$lib/contracts/ids';
 import { pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/binance';
 import { fetchDerivatives, fetchNews, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { fetchFearGreed } from '$lib/server/feargreed';
-import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from '$lib/server/coingecko';
+import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from './coingecko';
 import { fetchDefiLlamaStableMcap } from '$lib/server/defillama';
 import { fetchYahooSeries } from '$lib/server/yahooFinance';
 import { fetchCoinMarketCapQuote } from '$lib/server/coinmarketcap';
