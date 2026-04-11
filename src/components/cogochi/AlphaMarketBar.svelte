@@ -172,7 +172,10 @@
 
 <aside class="market-dock" aria-label="Global market pulse">
   <div class="dock-head">
-    <span class="dock-title">MARKET PULSE</span>
+    <div class="dock-title-wrap">
+      <span class="dock-dot" aria-hidden="true"></span>
+      <span class="dock-title">Market Pulse</span>
+    </div>
     <span class="dock-copy">macro + scan breadth</span>
   </div>
 
@@ -180,7 +183,7 @@
     <span class="section-label">THERMO</span>
     <div class="chip-row">
       {#each thermoChips as chip}
-        <div class="chip">
+        <div class="chip" style={`--chip-tone:${chip.tone}`}>
           <span class="chip-key">{chip.short}</span>
           <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
           <span class="chip-meta">{chip.meta}</span>
@@ -193,7 +196,7 @@
     <span class="section-label">BREADTH</span>
     <div class="chip-row chip-row-buckets">
       {#each bucketChips as chip}
-        <div class="chip chip-bucket">
+        <div class="chip chip-bucket" style={`--chip-tone:${chip.tone}`}>
           <span class="chip-key">{chip.short}</span>
           <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
           <span class="chip-meta">{chip.meta}</span>
@@ -206,34 +209,54 @@
 <style>
   .market-dock {
     position: fixed;
-    top: calc(var(--sc-header-h, 44px) + 12px);
+    top: auto;
+    bottom: calc(var(--sc-bottom-bar-h, 28px) + 14px);
     right: max(14px, calc((100vw - 1080px) / 2 + 14px));
-    width: min(500px, calc(100vw - 28px));
-    padding: 8px 10px;
+    width: min(468px, calc(100vw - 28px));
+    padding: 10px 11px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    border: 1px solid rgba(219, 154, 159, 0.14);
-    border-radius: 12px;
+    gap: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
     background:
-      linear-gradient(180deg, rgba(8, 13, 23, 0.9), rgba(8, 13, 23, 0.82)),
-      radial-gradient(circle at top right, rgba(219, 154, 159, 0.12), transparent 30%);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+      linear-gradient(180deg, rgba(10, 10, 10, 0.92), rgba(0, 0, 0, 0.86)),
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.1), transparent 34%);
+    backdrop-filter: blur(20px) saturate(1.08);
+    -webkit-backdrop-filter: blur(20px) saturate(1.08);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
     z-index: calc(var(--sc-z-header) - 1);
   }
 
   .dock-head {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
   }
 
+  .dock-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .dock-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: rgba(219, 154, 159, 0.88);
+    box-shadow: 0 0 12px rgba(219, 154, 159, 0.28);
+    flex-shrink: 0;
+  }
+
   .dock-title {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
-    font-size: 15px;
-    letter-spacing: 0.1em;
+    font-size: 14px;
+    letter-spacing: 0.08em;
     color: var(--sc-text-0);
   }
 
@@ -241,8 +264,9 @@
     font-family: var(--sc-font-mono, monospace);
     font-size: 10px;
     letter-spacing: 0.06em;
-    color: var(--sc-text-3);
+    color: var(--sc-text-2);
     text-transform: uppercase;
+    white-space: nowrap;
   }
 
   .dock-section {
@@ -259,7 +283,7 @@
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.14em;
-    color: var(--sc-text-3);
+    color: rgba(219, 154, 159, 0.72);
     text-transform: uppercase;
   }
 
@@ -272,6 +296,7 @@
   }
 
   .chip {
+    --chip-tone: var(--sc-accent);
     min-width: 0;
     display: grid;
     grid-template-columns: auto 1fr;
@@ -279,10 +304,13 @@
       'key value'
       'meta meta';
     gap: 2px 6px;
-    padding: 6px 8px 7px;
-    border: 1px solid rgba(219, 154, 159, 0.1);
-    border-radius: 9px;
-    background: rgba(14, 22, 35, 0.74);
+    padding: 7px 8px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.015)),
+      linear-gradient(180deg, color-mix(in srgb, var(--chip-tone) 8%, transparent), transparent 78%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
 
   .chip-bucket {
@@ -325,7 +353,7 @@
 
   @media (max-width: 1200px) {
     .market-dock {
-      width: min(500px, calc(100vw - 24px));
+      width: min(468px, calc(100vw - 24px));
       right: 12px;
     }
 
@@ -336,12 +364,12 @@
 
   @media (max-width: 768px) {
     .market-dock {
-      top: calc(var(--sc-header-h-mobile, 36px) + 10px);
-      bottom: auto;
+      top: auto;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
       left: 10px;
       right: 10px;
       width: auto;
-      padding: 8px 9px;
+      padding: 9px 10px;
       gap: 7px;
     }
 
@@ -350,7 +378,7 @@
     }
 
     .dock-title {
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .dock-copy {

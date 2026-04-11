@@ -5,7 +5,7 @@
  * layer boundary in CHATBATTLE.
  *
  * The authority chain is fixed:
- *   raw.*  →  feat.*  →  event.*  →  state.*  →  verdict.*  →  trajectory.*  →  pair.*
+ *   raw.*  →  feat.*  →  event.*  →  state.*  →  verdict.*  →  view.*  →  trajectory.*  →  pair.*
  *
  * Rules:
  *  1. Each layer may only emit IDs from its own prefix.
@@ -31,6 +31,7 @@ export const ContractLayer = {
 	EVENT: 'event',
 	STATE: 'state',
 	VERDICT: 'verdict',
+	VIEW: 'view',
 	TRAJECTORY: 'trajectory',
 	PAIR: 'pair'
 } as const;
@@ -259,6 +260,7 @@ export function layerOf(id: string): ContractLayer | null {
 		ContractLayer.EVENT,
 		ContractLayer.STATE,
 		ContractLayer.VERDICT,
+		ContractLayer.VIEW,
 		ContractLayer.TRAJECTORY,
 		ContractLayer.PAIR
 	];
