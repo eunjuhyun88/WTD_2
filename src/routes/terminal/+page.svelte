@@ -122,16 +122,77 @@
     return entries;
   });
 
-  // ─── Init ─────────────────────────────────────────────────
-  onMount(() => {
-    const hour = new Date().getHours();
-    let greeting: string;
-    if (hour >= 6 && hour < 12) greeting = 'Good morning. Tell me a symbol and timeframe.';
-    else if (hour >= 12 && hour < 18) greeting = 'Afternoon session. Try: BTC 4H';
-    else if (hour >= 18 && hour < 24) greeting = 'Evening tape is live. What should we inspect?';
-    else greeting = 'Late session active. Markets never sleep.';
-    messages = [{ role: 'douni', text: greeting }];
+  // ─── Init: LLM-generated greeting (locale-aware) ──────────
+  onMount(async () => {
+    const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'ko-KR';
+    const isKorean = locale.toLowerCase().startsWith('ko');
+    const fallback = isKorean ? '어 왔네, 오늘 뭐 볼래?' : "hey there, anything on your radar?";
+
+    messages = [{ role: 'douni', thinking: true } as MessageType];
+
+    try {
+      const res = await fetch('/api/cogochi/terminal/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '', greeting: true, locale }),
+      });
+
+      if (!res.ok || !res.body) throw new Error(`Greeting failed: ${res.status}`);
+
+      let streamingText = '';
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const raw = trimmed.slice(6);
+          if (raw === '[DONE]') continue;
+          try {
+            const event: SSEEvent = JSON.parse(raw);
+            if (event.type === 'text_delta') {
+              streamingText += event.text;
+              messages = [{ role: 'douni', text: streamingText }];
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+
+      if (!streamingText.trim()) {
+        messages = [{ role: 'douni', text: fallback }];
+      }
+    } catch {
+      messages = [{ role: 'douni', text: fallback }];
+    }
   });
+
+  // ─── Friendly error messages ──────────────────────────────
+  function friendlyError(raw: string): string {
+    const m = (raw || '').toLowerCase();
+    if (m.includes('402') || m.includes('insufficient') || m.includes('depleted') || m.includes('unpurchased')) {
+      return 'AI provider 잔액이 비었어. 다른 provider로 자동 전환 시도 중... 안 되면 관리자한테 알려줘.';
+    }
+    if (m.includes('429') || m.includes('rate limit') || m.includes('queue_exceeded') || m.includes('too_many_requests')) {
+      return 'AI가 지금 많이 바빠. 몇 초 뒤 다시 한 번 쳐줘.';
+    }
+    if (m.includes('no llm provider') || m.includes('no tool-calling')) {
+      return 'AI provider가 설정 안 돼 있어. .env 확인해줘.';
+    }
+    if (m.includes('timeout') || m.includes('aborted')) {
+      return 'AI 응답이 너무 오래 걸려서 끊었어. 다시 시도해줘.';
+    }
+    if (m.includes('fetch failed') || m.includes('network') || m.includes('enotfound')) {
+      return '네트워크 문제인 것 같아. 연결 확인하고 다시.';
+    }
+    return 'AI가 잠깐 쉬는 중이야. 다시 한 번 시도해줘.';
+  }
 
   // ─── Quick Panel Handlers ────────────────────────────────
   function normalizeTerminalSymbol(symbol: string): string {
@@ -361,7 +422,9 @@
               break;
 
             case 'error':
-              messages = [...messages, { role: 'douni', text: `Error: ${event.message}` }];
+              console.error('[terminal] stream error:', event.message);
+              messages = messages.filter(m => !('thinking' in m));
+              messages = [...messages, { role: 'douni', text: friendlyError(event.message) }];
               scrollToBottom();
               break;
 
@@ -378,8 +441,9 @@
       }
 
     } catch (err: any) {
+      console.error('[terminal] handleSend error:', err);
       messages = messages.filter(m => !('thinking' in m));
-      messages = [...messages, { role: 'douni', text: `Error: ${err.message}` }];
+      messages = [...messages, { role: 'douni', text: friendlyError(err?.message ?? '') }];
     } finally {
       isThinking = false;
       scrollToBottom();
@@ -643,8 +707,9 @@
         chatHistory = [...chatHistory, { role: 'assistant', content: streamingText }];
       }
     } catch (err: any) {
+      console.error('[terminal] sendFeedback error:', err);
       messages = messages.filter(m => !('thinking' in m));
-      messages = [...messages, { role: 'douni', text: `Error: ${err.message}` }];
+      messages = [...messages, { role: 'douni', text: friendlyError(err?.message ?? '') }];
     } finally {
       isThinking = false;
       scrollToBottom();
