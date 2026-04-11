@@ -464,3 +464,86 @@ Beyond the design itself, the session surfaced several facts about the repo that
 5. **`/Users/ej/Projects/maxidoge-clones/`** contains 25+ `claude/*` worktrees most of which are stale. Part of Phase 0 foundation work is an audit of these (archive or kill).
 6. **`agents/*.json`** at repo root is legacy Memento-format; `.claude/agents/*.md` is the live Claude Code native format. Do not conflate.
 7. Three CHATBATTLE-adjacent projects exist in `/Users/ej/Projects/`: `Cogochi`, `Cogochi_v1`, `cogochi_02`, plus `WTD` for LoRA training. Relationship between these and CHATBATTLE is unclear; this session did not resolve it.
+
+---
+
+## Appendix B — Known gaps surfaced 2026-04-11 (post-Phase-0 landing)
+
+These are open design holes found while running the first operational smoke-test preflight. They are **intentionally not fixed in this revision** — they are recorded here so the next session can address them deliberately rather than rediscovering them.
+
+### B.1 — Worker / session-internal context management is unspecified
+
+The body of this design (§2.1, §11.Risks, line ~158/~426) collapses "context compaction" onto **DreamTask** and asserts it "already exists". Reality check:
+
+```
+$ ls src/tasks/DreamTask/
+No such file or directory
+```
+
+DreamTask is a Claude Code internal (`/Users/ej/Projects/src/tasks/DreamTask/`), not a CHATBATTLE primitive. It is not reachable from a worker spawned inside this repo. Consequences:
+
+- **Workers have no in-session compact path.** `.claude/agents/implementer.md` only documents `ctx:restore --mode handoff` at session START. No rule for mid-slice context pressure. A long slice that crosses the worker's context budget has no graceful exit.
+- **Scheduler has no resume path.** `.claude/agents/scheduler.md` grep returns zero occurrences of `resume`, `handoff`, `overflow`. The risks table (§11, "Worker memory overflow → session end + DreamTask handoff, Scheduler resumes") is aspirational, not implemented.
+- **Reviewer-Auto / Main-Keeper same.** Neither agent prompt defines a context budget or a compact trigger.
+
+What DOES exist (session-boundary only):
+
+- `npm run ctx:restore` — start of session
+- `npm run ctx:compact` — end of session → snapshot → checkpoint + brief + handoff
+- `ctx:auto` post-merge hook — automatic snapshot after every merge (verified working on 2026-04-11)
+- `.agent-context/briefs/<slice-id>.md` — Scheduler-written fixed input brief
+
+**Proposed next-session work (not this one):**
+
+1. Add §15 "Worker context management" to this doc with explicit budget rules + mid-slice compact trigger.
+2. Replace every `DreamTask` reference in §2.1/§11/§12 with a concrete primitive (most likely a `scripts/swarm/compact.mjs` that wraps `ctx:compact` for worker-targeted use).
+3. Add resume path to Scheduler: worker reports "context N% full" via `.agent-context/state/worker-telemetry.jsonl` → Scheduler respawns with handoff brief.
+
+### B.2 — `.agent-context/state/` is gitignored; `slices.jsonl` is per-worktree
+
+Found while running the first `slice backfill` sweep on `claude/nice-driscoll`:
+
+```
+$ cat .gitignore | grep agent-context
+.agent-context/*
+!.agent-context/policy/
+!.agent-context/policy/**
+```
+
+Only `.agent-context/policy/` is tracked. Everything else — including `state/slices.jsonl`, `ownership/*.json`, `briefs/*.md` — is ephemeral per-worktree.
+
+This breaks a core design assumption. §3 architecture places Scheduler, Reviewer-Auto, and Main-Keeper at the same state layer; §7 event log is authoritative. If that log isn't shared across worktrees, then:
+
+- Each new worktree starts with an empty `slices.jsonl` and must re-backfill from git log.
+- `slice ready` output is only correct for the worktree that did the backfill.
+- Main-Keeper in one worktree cannot see merges completed by workers in other worktrees except via fresh git fetch + recomputation.
+
+**Proposed next-session work (not this one):**
+
+1. Decide: track `.agent-context/state/` (commit the authoritative journal) OR add a rebuild command (`scripts/slice/cli.mjs rebuild` that replays `git log` into `slices.jsonl`).
+2. If tracked: add merge discipline — one writer at a time, or append-only journal format that handles concurrent appends cleanly.
+3. If rebuild: Main-Keeper runs `rebuild` after every fetch; Scheduler runs it before every `ready` query.
+
+Recommendation: **rebuild** is simpler and avoids write contention. The journal is derived data; git log is the source of truth via commit messages matching slice IDs.
+
+### B.3 — `slice` CLI `new`/`status` policy reader shape mismatch (fixed in this commit)
+
+`cmdNew` and `cmdStatus` read `wip-limits.json` expecting `{product, research, fix}` at the root, but the file stores `{tracks: {product, research, fix}, rollout_schedule, active_phase}`. Result: `product=0/undefined` display + `WIP cap hit for track "product" (0/0)` on every `slice new`. Fixed in the same commit that adds this appendix via `loadPolicy()` helper that honors `active_phase` rollout caps.
+
+### B.4 — 9 pre-swarm-v1 merged slices backfilled (journal seed)
+
+Before this commit, `.agent-context/state/slices.jsonl` did not exist. The following 9 slices had landed on main but were not reflected in DAG state (all showed UNKNOWN):
+
+| Slice | Landing SHA | Evidence |
+|---|---|---|
+| P0.1-verdict-zod | 92c1e56 | `src/lib/contracts/verdict.ts` exports `VerdictBlockSchema` |
+| P0.2-trajectory-zod | 92c1e56 | `src/lib/contracts/trajectory.ts` exports `DecisionTrajectorySchema` |
+| P0.3-ids-finalize | 92c1e56 | `src/lib/contracts/ids.ts` exports `ContractLayer` + branded IDs |
+| P0.4-contracts-barrel | 92c1e56 | `src/lib/contracts/index.ts` re-export barrel |
+| P0.5-zod-pin | 88af6b0 | `package.json` pins zod |
+| P1.A0-binance | 89f8430 | `src/lib/server/providers/binance.ts` canonical loader |
+| P1.A0-coingecko | 0ba2653 | `src/lib/server/providers/coingecko.ts` canonical loader |
+| P1.A0-coinalyze | 7d558ef | `src/lib/server/providers/coinalyze.ts` canonical loader |
+| P1.A0-dexscreener | 743856d | `src/lib/server/providers/dexscreener.ts` canonical loader |
+
+Backfill applied on `claude/nice-driscoll` via new `slice backfill` subcommand. **Caveat B.2 applies**: because state is gitignored, the backfill is per-worktree. Other worktrees will need to re-run the same 9 commands (or a `slice backfill-all` future convenience) before their `slice ready` output is meaningful.

@@ -188,6 +188,46 @@ function bumpWip(track, delta) {
 	writeJson(WIP_FILE, wip);
 }
 
+/**
+ * Load wip-limits.json and return both the absolute track caps and the
+ * effective caps (`rollout_schedule[active_phase]` if set).
+ *
+ * File shape (design §8):
+ *   {
+ *     tracks: { product, research, fix },           // absolute ceiling (week_3)
+ *     rollout_schedule: { week_0: { product, ... }, ... },
+ *     active_phase: 'week_0'                        // effective phase key
+ *   }
+ *
+ * Historical fallback: the v0 CLI read `{product, research, fix}` at the
+ * root. If `tracks` is missing but those top-level keys exist, treat the
+ * root object as the tracks bag.
+ */
+function loadPolicy() {
+	const DEFAULTS = { product: 6, research: 3, fix: 1 };
+	const raw = readJson(join(POLICY_DIR, 'wip-limits.json'), null);
+	if (!raw || typeof raw !== 'object') {
+		return { tracks: { ...DEFAULTS }, effective: { ...DEFAULTS }, activePhase: null, raw: null };
+	}
+	const tracks =
+		raw.tracks && typeof raw.tracks === 'object'
+			? { ...DEFAULTS, ...raw.tracks }
+			: { ...DEFAULTS, ...Object.fromEntries(Object.entries(raw).filter(([k]) => k in DEFAULTS)) };
+	const activePhase = typeof raw.active_phase === 'string' ? raw.active_phase : null;
+	let effective = { ...tracks };
+	if (activePhase && raw.rollout_schedule && typeof raw.rollout_schedule === 'object') {
+		const phase = raw.rollout_schedule[activePhase];
+		if (phase && typeof phase === 'object') {
+			effective = {
+				product: phase.product ?? tracks.product,
+				research: phase.research ?? tracks.research,
+				fix: phase.fix ?? tracks.fix
+			};
+		}
+	}
+	return { tracks, effective, activePhase, raw };
+}
+
 // ---------------------------------------------------------------------------
 // Ownership manifest (§6 rule #3 — pre-commit hook reads this)
 // ---------------------------------------------------------------------------
@@ -297,11 +337,13 @@ function cmdNew(args) {
 		die(`slice ${sliceId} already ${existing.status}`);
 	}
 
-	// Check WIP against policy
-	const policy = readJson(join(POLICY_DIR, 'wip-limits.json'), { product: 6, research: 3, fix: 1 });
+	// Check WIP against effective rollout cap (falls back to absolute cap)
+	const policy = loadPolicy();
+	const cap = policy.effective[slice.track] ?? 0;
 	const wip = readWip();
-	if ((wip[slice.track] ?? 0) >= (policy[slice.track] ?? 0)) {
-		die(`WIP cap hit for track "${slice.track}" (${wip[slice.track]}/${policy[slice.track]})`);
+	if ((wip[slice.track] ?? 0) >= cap) {
+		const phaseLabel = policy.activePhase ? ` [${policy.activePhase}]` : '';
+		die(`WIP cap hit for track "${slice.track}" (${wip[slice.track] ?? 0}/${cap})${phaseLabel}`);
 	}
 
 	ensureDir(STATE_DIR);
@@ -325,7 +367,7 @@ function cmdStatus(args) {
 
 	const dag = loadDag();
 	const wip = readWip();
-	const policy = readJson(join(POLICY_DIR, 'wip-limits.json'), { product: 6, research: 3, fix: 1 });
+	const policy = loadPolicy();
 
 	const rows = dag.slices.map((s) => {
 		const st = computeSliceStatus(s.id);
@@ -341,11 +383,28 @@ function cmdStatus(args) {
 	}).filter((r) => !sliceFilter || r.id === sliceFilter);
 
 	if (jsonMode) {
-		console.log(JSON.stringify({ wip, policy, slices: rows }, null, 2));
+		console.log(
+			JSON.stringify(
+				{
+					wip,
+					policy: {
+						active_phase: policy.activePhase,
+						effective: policy.effective,
+						tracks: policy.tracks,
+						raw: policy.raw
+					},
+					slices: rows
+				},
+				null,
+				2
+			)
+		);
 		return;
 	}
 
-	console.log(`WIP: product=${wip.product ?? 0}/${policy.product} research=${wip.research ?? 0}/${policy.research} fix=${wip.fix ?? 0}/${policy.fix}`);
+	const cap = (track) => `${wip[track] ?? 0}/${policy.effective[track] ?? 0}`;
+	const phaseLabel = policy.activePhase ? ` (phase=${policy.activePhase})` : '';
+	console.log(`WIP: product=${cap('product')} research=${cap('research')} fix=${cap('fix')}${phaseLabel}`);
 	console.log('');
 	console.log('ID                                 PHASE TRACK      PRI STATUS');
 	for (const r of rows) {
@@ -406,6 +465,52 @@ function cmdApprove(args) {
 	console.log(`[slice] approve ${sliceId}`);
 }
 
+/**
+ * One-time state reconciliation for slices whose code landed on main before
+ * the swarm-v1 state layer was bootstrapped. Writes a single `merged` event
+ * with `backfill: true` so `computeSliceStatus` reports MERGED and the slice
+ * drops out of the ready queue.
+ *
+ * Intentionally refuses to touch slices that already have state events — if
+ * a slice is IN_PROGRESS / READY_FOR_REVIEW / APPROVED / MERGED, the normal
+ * lifecycle commands are correct and backfill would corrupt the journal.
+ */
+function cmdBackfill(args) {
+	const sliceId = args[0];
+	if (!sliceId) die('usage: slice backfill <slice-id> [--sha <hash>] [--note "..."]');
+	const shaIdx = args.indexOf('--sha');
+	const sha = shaIdx >= 0 ? args[shaIdx + 1] : null;
+	const noteIdx = args.indexOf('--note');
+	const note = noteIdx >= 0 ? args[noteIdx + 1] : 'state-layer backfill for pre-swarm-v1 merge';
+
+	const dag = loadDag();
+	const slice = findSlice(dag, sliceId);
+	if (!slice) die(`slice not in DAG: ${sliceId}`);
+
+	const st = computeSliceStatus(sliceId);
+	if (st.status === 'MERGED') {
+		console.log(`[slice] backfill noop — ${sliceId} already MERGED`);
+		return;
+	}
+	if (st.status !== 'UNKNOWN') {
+		die(
+			`slice ${sliceId} is ${st.status}; backfill only accepts UNKNOWN. ` +
+				'Use approve/merge/kill on slices that already have state events.'
+		);
+	}
+
+	ensureDir(STATE_DIR);
+	appendJsonl(SLICES_LOG, {
+		ts: nowIso(),
+		event: 'merged',
+		slice_id: sliceId,
+		backfill: true,
+		sha: sha ?? null,
+		note
+	});
+	console.log(`[slice] backfill ${sliceId} -> MERGED${sha ? ` (sha=${sha})` : ''}`);
+}
+
 function cmdReady(args) {
 	const jsonMode = args.includes('--json');
 	const dag = loadDag();
@@ -447,6 +552,8 @@ if (!cmd || cmd === '--help' || cmd === '-h') {
 			'  slice merge <slice-id>                 Mark APPROVED slice as merged',
 			'  slice kill <slice-id> [--reason "..."] Abandon a slice',
 			'  slice approve <slice-id>               Human sign-off on a reviewed slice',
+			'  slice backfill <slice-id> [--sha <h>] [--note "..."]',
+			'                                         Reconcile MERGED state for pre-swarm-v1 slices',
 			'',
 			'DAG: docs/exec-plans/active/trunk-plan.dag.json',
 			'State: .agent-context/{state,ownership,briefs}/',
@@ -475,6 +582,9 @@ try {
 			break;
 		case 'approve':
 			cmdApprove(rest);
+			break;
+		case 'backfill':
+			cmdBackfill(rest);
 			break;
 		default:
 			die(`unknown command: ${cmd}`);
