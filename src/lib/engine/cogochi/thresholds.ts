@@ -112,6 +112,62 @@ export const FlowThresholds = Object.freeze({
 export type FlowThresholds = typeof FlowThresholds;
 
 // ---------------------------------------------------------------------------
+// L14 — Bollinger Band Squeeze + Expansion
+// Source: dissection §4.3 lines 1437-1486
+// Layer file: src/lib/engine/cogochi/layers/l14BbSqueeze.ts
+// ---------------------------------------------------------------------------
+
+/**
+ * Bollinger band period, multiplier, squeeze / big-squeeze /
+ * expansion ratios, plus the three data-sufficiency floors that
+ * the layer derives from the period+lookback design. The
+ * dissection ledger names exactly five thresholds for L14
+ * (`period 20, mult 2.0; squeeze bw<bw20ago*0.65; bigSqueeze
+ * bw<bw50ago*0.5; expanding *1.3`); the floors are added here
+ * because they are structural consequences of those values that
+ * gate which branch the layer takes, and pinning them in the
+ * registry lets the smoke catch any future drift.
+ *
+ * Score weights and overbought / oversold band cutoffs stay
+ * inline in `l14BbSqueeze.ts`. Dissection §4.3 does not list
+ * them, and the structure-first verdict rewrite will replace
+ * the score-weighted scoring path entirely.
+ */
+export const BbThresholds = Object.freeze({
+	// Bollinger band parameters — line 1437-1438
+	/** Bollinger band period (number of closes in the moving average). */
+	bb_period: 20,
+	/** Standard-deviation multiplier for the band envelope. */
+	bb_std_mult: 2.0,
+
+	// Compression / expansion ratios — line 1437
+	/** `bw < bw20ago * 0.65` ⇒ squeeze. */
+	bb_squeeze_ratio_20: 0.65,
+	/** `bw < bw50ago * 0.5` ⇒ big squeeze (historic compression). */
+	bb_big_squeeze_ratio_50: 0.5,
+	/** `bw > bw20ago * 1.3` ⇒ expansion. */
+	bb_expansion_ratio: 1.3,
+
+	// Data sufficiency floors — derived from period + lookback
+	/** Minimum klines before any L14 result is computed (period + buffer). */
+	bb_min_klines: 25,
+	/**
+	 * Minimum closes length (`closes.length > N`) required for the
+	 * 20-bar prior `calcBB(slice(0, -20))` to use real data instead
+	 * of the current bandwidth as a fallback.
+	 */
+	bb_lookback_20_floor: 40,
+	/**
+	 * Minimum closes length required for the 50-bar prior
+	 * `calcBB(slice(0, -50))`. When below the floor, big-squeeze
+	 * detection short-circuits to `false`.
+	 */
+	bb_lookback_50_floor: 70
+} as const);
+
+export type BbThresholds = typeof BbThresholds;
+
+// ---------------------------------------------------------------------------
 // Top-level registry barrel
 // ---------------------------------------------------------------------------
 
@@ -121,15 +177,17 @@ export type FlowThresholds = typeof FlowThresholds;
  * literal so the dependency graph stays a single arrow into this
  * file.
  *
- * Future sub-slices add new namespaces:
- *   - `Thresholds.ob` — L4 order-book ratio bands (E6b)
- *   - `Thresholds.onchain` — L6 on-chain bands (E6c)
- *   - `Thresholds.feargreed` — L7 F&G bands (E6d)
- *   - `Thresholds.kimchi` — L8 kimchi bands (E6e)
- *   - ... etc.
+ * Sub-slice progression:
+ *   - E6a (merged) — `Thresholds.flow` (L2)
+ *   - E6b (this slice) — `Thresholds.bb` (L14)
+ *   - E6c..N — `Thresholds.ob` (L4), `Thresholds.feargreed` (L7),
+ *     `Thresholds.kimchi` (L8), `Thresholds.realLiq` (L9),
+ *     `Thresholds.cvd` (L11), `Thresholds.breakout` (L13),
+ *     `Thresholds.atr` (L15), `Thresholds.onchain` (L6).
  */
 export const Thresholds = Object.freeze({
-	flow: FlowThresholds
+	flow: FlowThresholds,
+	bb: BbThresholds
 } as const);
 
 export type Thresholds = typeof Thresholds;
