@@ -14,7 +14,7 @@ import type {
 	LSRatioDataPoint,
 	LiquidationDataPoint,
 	OIDataPoint
-} from '$lib/server/coinalyze';
+} from '$lib/server/providers/coinalyze';
 import type { ForceOrder, OrderBookSnapshot, TakerRatioPoint } from '$lib/server/marketDataService';
 
 type AnnotationInput = Array<{ type?: string; price?: number; strength?: number }>;

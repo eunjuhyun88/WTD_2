@@ -20,7 +20,7 @@ import {
   fetchLSRatioHistoryServer,
   fetchLiquidationHistoryServer,
   fetchOIHistoryServer,
-} from '$lib/server/coinalyze';
+} from '$lib/server/providers/coinalyze';
 import { fetchFearGreed as fetchFearGreedServer } from '$lib/server/feargreed';
 import { fetchCoinGeckoGlobal } from '$lib/server/coingecko';
 import { fetchGasOracle, estimateExchangeNetflow } from '$lib/server/etherscan';

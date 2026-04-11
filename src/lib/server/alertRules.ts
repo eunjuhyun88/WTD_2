@@ -9,7 +9,7 @@
 // 모든 데이터 소스 기존 모듈 재활용 (CoinMetrics, GeckoTerminal, Coinalyze)
 
 import { fetchCoinMetricsData } from './coinmetrics';
-import { fetchLiquidationHistoryServer } from './coinalyze';
+import { fetchLiquidationHistoryServer } from './providers/coinalyze';
 import { getCached, setCache } from './providers/cache';
 
 // ── Types ────────────────────────────────────────────────────
