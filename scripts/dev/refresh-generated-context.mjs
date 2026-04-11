@@ -335,7 +335,7 @@ function groupApiRoute(route) {
   if (route.startsWith('/api/auth/')) return 'Auth & Session';
   if (route.startsWith('/api/market/alerts/')) return 'Market Alerts';
   if (route.startsWith('/api/market/')) return 'Market Data';
-  if (route.startsWith('/api/terminal/')) return 'Terminal Scanner';
+  if (route.startsWith('/api/terminal/') || route === '/api/wizard') return 'Terminal Scanner';
   if (route.startsWith('/api/signals/') || route === '/api/signals' || route === '/api/signal-actions') return 'Signals';
   if (route === '/api/quick-trades' || route.startsWith('/api/quick-trades/')) return 'Quick Trades';
   if (route.startsWith('/api/gmx/')) return 'GMX V2';

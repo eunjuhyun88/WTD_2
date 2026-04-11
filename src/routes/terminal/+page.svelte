@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { safeParseResearchBlockEnvelope, type ResearchBlockEnvelope } from '$lib/contracts';
+  import type { ChallengeAnswers, ParsedQuery } from '$lib/contracts';
+  import {
+    parseBlockSearchWithHints,
+    summarizeParsedQuery
+  } from '$lib/terminal/blockSearchParser';
   import DataCard from '../../components/cogochi/DataCard.svelte';
   import CgChart from '../../components/cogochi/CgChart.svelte';
   import QuickPanel from '../../components/cogochi/QuickPanel.svelte';
@@ -86,6 +91,112 @@
 
   // Conversation history for LLM context
   let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+
+  // ─── Zoom #1: Block Search Parser State ─────────────────────
+  //
+  // `parsedQuery` is the live output of the keyword-first parser. It updates
+  // whenever `inputText` changes via the $effect below. When confidence is
+  // 'high' the permanent `💾 Save` button appears next to the input. Modal
+  // open + POST to /api/wizard are gated on the same state.
+  //
+  // The existing `pattern_draft` SSE path from the LLM is untouched — that
+  // flow still populates `patternName` + `patternConditions` independently.
+  let parsedQuery = $state<ParsedQuery | null>(null);
+  let parsedHint = $state<string>('');
+  let isSavingChallenge = $state<boolean>(false);
+  let wizardToast = $state<string | null>(null);
+  let wizardError = $state<string | null>(null);
+
+  $effect(() => {
+    const text = inputText.trim();
+    if (text.length === 0) {
+      parsedQuery = null;
+      parsedHint = '';
+      return;
+    }
+    const { query } = parseBlockSearchWithHints(text);
+    parsedQuery = query;
+    parsedHint = query.confidence === 'high' ? summarizeParsedQuery(query) : '';
+  });
+
+  function slugifyFromQuery(q: ParsedQuery): string {
+    const sym = (q.symbol ?? 'pattern').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const stamp = Date.now().toString(36).slice(-5);
+    return `${sym || 'pattern'}-${stamp}`;
+  }
+
+  function openChallengeModalFromQuery() {
+    if (!parsedQuery || parsedQuery.confidence !== 'high') return;
+    patternName = slugifyFromQuery(parsedQuery);
+    patternDirection = parsedQuery.direction === 'short' ? 'SHORT' : 'LONG';
+    patternConditions = parsedQuery.blocks.map(
+      (b) => `${b.role}: ${b.function}  (${b.source_token})`
+    );
+    wizardError = null;
+    wizardToast = null;
+    showPatternModal = true;
+  }
+
+  async function handleWizardSave() {
+    if (!parsedQuery || parsedQuery.blocks.length === 0) {
+      // No parsed blocks → fall back to the old no-op close behavior so the
+      // existing LLM `pattern_draft` flow keeps working.
+      showPatternModal = false;
+      return;
+    }
+    if (isSavingChallenge) return;
+    isSavingChallenge = true;
+    wizardError = null;
+
+    const slug = (patternName || slugifyFromQuery(parsedQuery))
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 64);
+
+    const description = parsedQuery.raw.trim().slice(0, 280) || 'parsed from /terminal search';
+    const direction = patternDirection === 'SHORT' ? 'short' : 'long';
+    const timeframe = parsedQuery.timeframe ?? '1h';
+
+    try {
+      const res = await fetch('/api/wizard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug,
+          description,
+          direction,
+          timeframe,
+          blocks: parsedQuery.blocks
+        })
+      });
+      const payload = (await res.json()) as
+        | { ok: true; answers: ChallengeAnswers }
+        | { ok: false; error: string; reason?: string };
+
+      if (!res.ok || !payload.ok) {
+        const reason =
+          ('reason' in payload && payload.reason) ||
+          ('error' in payload && payload.error) ||
+          `HTTP ${res.status}`;
+        wizardError = `Save failed: ${reason}`;
+        return;
+      }
+
+      wizardToast = `Saved ${payload.answers.identity.name} — open /lab?slug=${payload.answers.identity.name}`;
+      showPatternModal = false;
+      // Auto-dismiss toast after 6s.
+      setTimeout(() => {
+        if (wizardToast) wizardToast = null;
+      }, 6000);
+    } catch (err) {
+      console.error('[terminal] /api/wizard error:', err);
+      wizardError = `Save failed: ${err instanceof Error ? err.message : 'network error'}`;
+    } finally {
+      isSavingChallenge = false;
+    }
+  }
 
   // ─── Derived: Feed Entries ────────────────────────────────
   let feedEntries = $derived.by(() => {
@@ -1031,19 +1142,40 @@
     <div class="input-box">
       <input
         type="text"
+        class="query-input"
         bind:value={inputText}
         onkeydown={handleKeydown}
-        placeholder="BTC 4H / ETH 1D / scan top gainers"
+        placeholder="BTC 4H / ETH 1D / 10% 랠리 3일 볼밴 확장"
         disabled={isThinking}
       />
+      {#if parsedQuery && parsedQuery.confidence === 'high'}
+        <button
+          type="button"
+          class="wizard-save-btn"
+          onclick={openChallengeModalFromQuery}
+          disabled={isThinking}
+          title="Save parsed query as a challenge"
+        >
+          💾 Save
+        </button>
+      {/if}
       <button type="button" class="send-btn" onclick={handleSend} disabled={isThinking || !inputText.trim()} aria-label="Send message">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M8 14V2M8 2L3 7M8 2L13 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
     </div>
+    {#if parsedHint}
+      <div class="parsed-hint" data-confidence={parsedQuery?.confidence}>
+        parsed: {parsedHint}
+      </div>
+    {/if}
   </div>
 </div>
+
+{#if wizardToast}
+  <div class="wizard-toast" role="status">{wizardToast}</div>
+{/if}
 
 <!-- ─── PATTERN MODAL ─── -->
 {#if showPatternModal}
@@ -1077,15 +1209,88 @@
           <div class="mc" style="color:var(--sc-text-3)">Conditions auto-generated after analysis</div>
         {/if}
       </div>
+      {#if wizardError}
+        <div class="wizard-error">{wizardError}</div>
+      {/if}
       <div class="mbot">
         <button type="button" class="mbtn" onclick={() => showPatternModal = false}>Cancel</button>
-        <button type="button" class="mbtn sv" onclick={() => showPatternModal = false}>Save to Scanner</button>
+        <button
+          type="button"
+          class="mbtn sv"
+          onclick={handleWizardSave}
+          disabled={isSavingChallenge}
+        >
+          {isSavingChallenge ? 'Saving…' : 'Save Challenge'}
+        </button>
       </div>
     </div>
   </div>
 {/if}
 
 <style>
+  /* ═══ ZOOM #1 — BLOCK SEARCH PARSER UI ═══ */
+  .wizard-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 28px;
+    padding: 0 10px;
+    margin-right: 6px;
+    border: 1px solid var(--sc-accent, #adca7c);
+    border-radius: 4px;
+    background: rgba(173, 202, 124, 0.12);
+    color: var(--sc-accent, #adca7c);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: background 120ms ease;
+  }
+  .wizard-save-btn:hover:not(:disabled) {
+    background: rgba(173, 202, 124, 0.22);
+  }
+  .wizard-save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .parsed-hint {
+    margin-top: 6px;
+    padding: 0 4px;
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3, rgba(247, 242, 234, 0.5));
+    letter-spacing: 0.3px;
+  }
+  .parsed-hint[data-confidence='high'] {
+    color: var(--sc-accent, #adca7c);
+  }
+  .wizard-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    padding: 10px 18px;
+    background: rgba(173, 202, 124, 0.95);
+    color: #0b1220;
+    border-radius: 6px;
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  .wizard-error {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: rgba(207, 127, 143, 0.1);
+    border: 1px solid rgba(207, 127, 143, 0.4);
+    border-radius: 4px;
+    color: var(--sc-bad, #cf7f8f);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+  }
+
   /* ═══ ROOT LAYOUT ═══ */
   .terminal-root {
     display: flex;
