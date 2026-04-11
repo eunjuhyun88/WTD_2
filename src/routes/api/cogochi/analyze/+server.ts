@@ -4,7 +4,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { readRaw, type KlinesRawId } from '$lib/server/providers/rawSources';
+import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
 import type { BinanceKline } from '$lib/engine/types';
 import type { MarketContext } from '$lib/engine/factorEngine';
@@ -12,25 +12,6 @@ import { computeSignalSnapshot } from '$lib/engine/cogochi/layerEngine';
 import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
-
-/**
- * Map the UI `tf` query param to the corresponding `KLINES_*` raw atom.
- * Falls back to `KLINES_4H` for unknown inputs, matching the previous
- * default from `fetchKlinesServer`'s `interval = '4h'` signature.
- */
-function klinesRawIdForTimeframe(tf: string): KlinesRawId {
-  switch (tf) {
-    case '1m': return KnownRawId.KLINES_1M;
-    case '5m': return KnownRawId.KLINES_5M;
-    case '15m': return KnownRawId.KLINES_15M;
-    case '30m': return KnownRawId.KLINES_30M;
-    case '1h': return KnownRawId.KLINES_1H;
-    case '4h': return KnownRawId.KLINES_4H;
-    case '1d': return KnownRawId.KLINES_1D;
-    case '1w': return KnownRawId.KLINES_1W;
-    default: return KnownRawId.KLINES_4H;
-  }
-}
 
 /** Fetch Fear & Greed index */
 async function fetchFearGreed(): Promise<number | null> {
