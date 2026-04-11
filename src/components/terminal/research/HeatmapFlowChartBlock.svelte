@@ -30,6 +30,17 @@
   const linePoints = $derived(pricePoints());
   const topHeight = $derived(presentation === 'focus' ? 320 : 220);
   const lowerHeight = $derived(presentation === 'focus' ? 120 : 84);
+  const latestPrice = $derived(linePoints.length > 0 ? linePoints[linePoints.length - 1]?.v ?? null : null);
+  const priceBounds = $derived(buildPriceBounds(linePoints, block.cells ?? []));
+  const priceRail = $derived(buildPriceRail(priceBounds));
+  const timeRail = $derived(buildTimeRail(linePoints));
+  const stageStats = $derived(buildStageStats({
+    latestPrice,
+    bounds: priceBounds,
+    cells: block.cells ?? [],
+    markers: block.markers ?? [],
+    tracks: block.lowerPane?.series?.length ?? 0,
+  }));
 
   function linePath(points: TimePoint[], width: number, height: number): string {
     if (points.length < 2) return '';
@@ -102,6 +113,76 @@
   function compareLabel(deltaPct: number | null): string {
     if (deltaPct == null) return '--';
     return `${deltaPct > 0 ? '+' : ''}${deltaPct.toFixed(2)}%`;
+  }
+
+  function formatPrice(value: number | null | undefined): string {
+    if (value == null || !Number.isFinite(value)) return '--';
+    if (Math.abs(value) >= 1000) return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    if (Math.abs(value) >= 1) return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  }
+
+  function formatTimeLabel(timestamp: number | null | undefined): string {
+    if (timestamp == null || !Number.isFinite(timestamp)) return '--';
+    const date = new Date(timestamp * 1000);
+    const hours = `${date.getHours()}`.padStart(2, '0');
+    const minutes = `${date.getMinutes()}`.padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  function buildPriceBounds(points: TimePoint[], cells: HeatmapCell[]) {
+    if (points.length === 0) return { min: null, max: null };
+    const values = points.map((point) => point.v ?? 0);
+    const cellValues = cells.flatMap((cell) => [cell.y0, cell.y1]);
+    const merged = [...values, ...cellValues].filter((value) => Number.isFinite(value));
+    if (merged.length === 0) return { min: null, max: null };
+    return {
+      min: Math.min(...merged),
+      max: Math.max(...merged),
+    };
+  }
+
+  function buildPriceRail(bounds: { min: number | null; max: number | null }) {
+    if (bounds.min == null || bounds.max == null) return [];
+    const levels = [0, 0.25, 0.5, 0.75, 1];
+    return levels.map((ratio) => ({
+      key: `${ratio}`,
+      value: bounds.max! - (bounds.max! - bounds.min!) * ratio,
+      topPct: ratio * 100,
+    }));
+  }
+
+  function buildTimeRail(points: TimePoint[]) {
+    if (points.length < 2) return [];
+    const midIndex = Math.floor((points.length - 1) / 2);
+    const picks = [0, midIndex, points.length - 1];
+    return picks.map((index, railIndex) => ({
+      key: `${railIndex}-${points[index]?.t ?? railIndex}`,
+      label: formatTimeLabel(points[index]?.t ?? null),
+      align: railIndex === 0 ? 'start' : railIndex === picks.length - 1 ? 'end' : 'center',
+    }));
+  }
+
+  function buildStageStats(input: {
+    latestPrice: number | null;
+    bounds: { min: number | null; max: number | null };
+    cells: HeatmapCell[];
+    markers: any[];
+    tracks: number;
+  }) {
+    const rangePct =
+      input.bounds.min != null &&
+      input.bounds.max != null &&
+      input.bounds.min > 0
+        ? ((input.bounds.max - input.bounds.min) / input.bounds.min) * 100
+        : null;
+    return [
+      { label: 'LAST', value: formatPrice(input.latestPrice), tone: 'neutral' },
+      { label: 'RANGE', value: rangePct != null ? `${rangePct.toFixed(2)}%` : '--', tone: 'cyan' },
+      { label: 'WALLS', value: `${input.cells.length}`, tone: 'bull' },
+      { label: 'EVENTS', value: `${input.markers.length}`, tone: 'warn' },
+      { label: 'TRACKS', value: `${input.tracks}`, tone: 'neutral' },
+    ];
   }
 
   function drawHeatmap() {
@@ -209,9 +290,35 @@
     </div>
   </div>
 
+  <div class="hfc-stage-meta">
+    {#each stageStats as stat}
+      <span class={`hfc-stage-chip tone-${stat.tone}`}>
+        <em>{stat.label}</em>
+        <strong>{stat.value}</strong>
+      </span>
+    {/each}
+  </div>
+
   <div class="hfc-top">
     <canvas bind:this={heatmapCanvas} class="hfc-canvas" style:height={`${topHeight}px`}></canvas>
+    {#if priceRail.length > 0}
+      <div class="hfc-price-rail">
+        {#each priceRail as level}
+          <span class="hfc-price-label" style:top={`${level.topPct}%`}>
+            {formatPrice(level.value)}
+          </span>
+        {/each}
+      </div>
+    {/if}
   </div>
+
+  {#if timeRail.length > 0}
+    <div class="hfc-time-rail">
+      {#each timeRail as tick}
+        <span class={`hfc-time-label align-${tick.align}`}>{tick.label}</span>
+      {/each}
+    </div>
+  {/if}
 
   {#if block.markers.length > 0}
     <div class="hfc-events">
@@ -263,12 +370,19 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    border: 1px solid rgba(39, 63, 86, 0.82);
+    border-radius: 10px;
+    padding: 10px;
+    background:
+      radial-gradient(circle at top left, rgba(54, 215, 255, 0.05), transparent 28%),
+      linear-gradient(180deg, rgba(7, 14, 26, 0.96), rgba(3, 8, 16, 0.99));
+    box-shadow: inset 0 1px 0 rgba(119, 160, 194, 0.05);
   }
   .hfc-top,
   .hfc-bottom {
-    border: 1px solid rgba(219, 154, 159, 0.16);
+    border: 1px solid rgba(39, 63, 86, 0.82);
     border-radius: 8px;
-    background: linear-gradient(180deg, rgba(11, 18, 32, 0.92), rgba(5, 9, 20, 0.98));
+    background: linear-gradient(180deg, rgba(11, 18, 32, 0.96), rgba(5, 9, 20, 0.99));
     overflow: hidden;
   }
   .hfc-head {
@@ -292,18 +406,44 @@
     align-items: center;
     gap: 6px;
     border-radius: 999px;
-    border: 1px solid rgba(219, 154, 159, 0.16);
+    border: 1px solid rgba(39, 63, 86, 0.78);
     padding: 4px 8px;
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     font-size: 10px;
-    background: rgba(247, 242, 234, 0.03);
-    color: var(--sc-text-3, rgba(247, 242, 234, 0.58));
+    background: rgba(8, 19, 32, 0.88);
+    color: rgba(158, 188, 214, 0.7);
   }
   .hfc-legend-item i {
     width: 8px;
     height: 8px;
     border-radius: 999px;
     display: inline-block;
+  }
+  .hfc-stage-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .hfc-stage-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(39, 63, 86, 0.78);
+    background: rgba(7, 16, 28, 0.88);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+  }
+  .hfc-stage-chip em {
+    font-style: normal;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(122, 156, 185, 0.72);
+  }
+  .hfc-stage-chip strong {
+    font-size: 11px;
+    font-weight: 700;
   }
   .hfc-chip.up,
   .hfc-event.bull {
@@ -318,6 +458,50 @@
   .hfc-canvas {
     width: 100%;
     display: block;
+  }
+  .hfc-top {
+    position: relative;
+    overflow: hidden;
+  }
+  .hfc-price-rail {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 72px;
+    border-left: 1px solid rgba(39, 63, 86, 0.72);
+    background: linear-gradient(180deg, rgba(6, 14, 23, 0.9), rgba(3, 8, 15, 0.92));
+    pointer-events: none;
+  }
+  .hfc-price-label {
+    position: absolute;
+    right: 8px;
+    transform: translateY(-50%);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    color: rgba(180, 206, 228, 0.74);
+  }
+  .hfc-time-rail {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 2px;
+  }
+  .hfc-time-label {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    color: rgba(122, 156, 185, 0.72);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .align-start {
+    text-align: left;
+  }
+  .align-center {
+    text-align: center;
+  }
+  .align-end {
+    text-align: right;
   }
   .hfc-bottom {
     display: flex;
@@ -353,5 +537,20 @@
   .hfc-track-svg {
     width: 100%;
     overflow: visible;
+  }
+  .tone-bull strong {
+    color: var(--sc-good, #adca7c);
+  }
+  .tone-bear strong {
+    color: var(--sc-bad, #cf7f8f);
+  }
+  .tone-cyan strong {
+    color: #36d7ff;
+  }
+  .tone-warn strong {
+    color: #f2d193;
+  }
+  .tone-neutral strong {
+    color: rgba(231, 241, 248, 0.9);
   }
 </style>

@@ -10,6 +10,24 @@
   import CgChart from '../../components/cogochi/CgChart.svelte';
   import QuickPanel from '../../components/cogochi/QuickPanel.svelte';
   import ResearchBlockRenderer from '../../components/terminal/research/ResearchBlockRenderer.svelte';
+  import WalletIntelShell from '../../components/wallet-intel/WalletIntelShell.svelte';
+  import { buildPassportWalletLink } from '$lib/utils/deepLinks';
+  import {
+    buildWalletIntelDataset,
+    findWalletMarketToken,
+    interpretWalletCommand,
+    isWalletIdentifierLike,
+    normalizeWalletModeInput,
+    walletIntelApiPath,
+    walletDeepLink,
+  } from '$lib/wallet-intel/walletIntelController';
+  import type {
+    WalletIntelApiMeta,
+    WalletIntelApiResult,
+    WalletIntelDataset,
+    WalletIntelTab,
+    WalletModeInput,
+  } from '$lib/wallet-intel/walletIntelTypes';
 
   // ─── Types ────────────────────────────────────────────────
   type MessageType =
@@ -88,9 +106,20 @@
   let currentAnnotations: any[] = $state([]);
   let currentIndicators: any = $state(null);
   let focusedResearchBlock = $state<ResearchBlockEnvelope | null>(null);
+  let walletMode = $state(false);
+  let walletInput = $state<WalletModeInput | null>(null);
+  let walletDataset = $state<WalletIntelDataset | null>(null);
+  let walletSelectedTab = $state<WalletIntelTab>('flow');
+  let walletSelectedNodeId = $state('');
+  let walletSelectedTokenSymbol = $state('');
+  let walletCommandNote = $state('');
+  let walletDossierHref = $state('');
 
   // Conversation history for LLM context
   let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const walletSelectedToken = $derived(
+    walletDataset ? findWalletMarketToken(walletDataset, walletSelectedTokenSymbol) : null
+  );
 
   // ─── Zoom #1: Block Search Parser State ─────────────────────
   //
@@ -244,6 +273,17 @@
 
   // ─── Init: LLM-generated greeting (locale-aware) ──────────
   onMount(async () => {
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const walletAddress = params?.get('address');
+    const walletModeRequested = params?.get('mode') === 'wallet';
+    if (walletAddress && (walletModeRequested || isWalletIdentifierLike(walletAddress))) {
+      await activateWalletMode(normalizeWalletModeInput(walletAddress, params?.get('chain') || 'eth'), {
+        updateUrl: false,
+        note: 'Deep-linked wallet investigation loaded.',
+      });
+      return;
+    }
+
     const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'ko-KR';
     const isKorean = locale.toLowerCase().startsWith('ko');
     const fallback = isKorean ? '어 왔네, 오늘 뭐 볼래?' : "hey there, anything on your radar?";
@@ -435,6 +475,31 @@
   async function handleSend() {
     const text = inputText.trim();
     if (!text || isThinking) return;
+
+    if (walletMode && walletDataset) {
+      inputText = '';
+      const result = interpretWalletCommand(text, walletDataset);
+      if (result.nextInput) {
+        await activateWalletMode(result.nextInput, { note: result.note });
+        return;
+      }
+      if (result.exit) {
+        exitWalletMode();
+        return;
+      }
+      if (result.tab) walletSelectedTab = result.tab;
+      if (result.tokenSymbol) walletSelectedTokenSymbol = result.tokenSymbol;
+      walletCommandNote = result.note;
+      return;
+    }
+
+    if (isWalletIdentifierLike(text)) {
+      inputText = '';
+      await activateWalletMode(normalizeWalletModeInput(text), {
+        note: 'Address-led investigation loaded from terminal input.',
+      });
+      return;
+    }
 
     messages = [...messages, { role: 'user', text }];
     inputText = '';
@@ -913,6 +978,148 @@
   function clearResearchFocus() {
     focusedResearchBlock = null;
   }
+
+  function formatWalletIntelMetaNote(meta: WalletIntelApiResult['meta']): string {
+    const sourceLabel = meta.source === 'etherscan' ? 'raw-backed' : 'synthetic fallback';
+    return `${sourceLabel} · ${meta.reason} · ${meta.detail}`;
+  }
+
+  function normalizeWalletIntelMeta(meta: unknown): WalletIntelApiMeta {
+    if (
+      meta &&
+      typeof meta === 'object' &&
+      'source' in meta &&
+      'reason' in meta &&
+      'detail' in meta &&
+      typeof meta.source === 'string' &&
+      typeof meta.reason === 'string' &&
+      typeof meta.detail === 'string'
+    ) {
+      return meta as WalletIntelApiMeta;
+    }
+
+    return {
+      source: 'synthetic',
+      reason: 'local_api_fallback',
+      detail: 'wallet-intel response did not include provider metadata, so terminal used local deterministic scaffolding.',
+    };
+  }
+
+  async function loadWalletIntelDataset(input: WalletModeInput): Promise<WalletIntelApiResult> {
+    try {
+      const response = await fetch(walletIntelApiPath(input));
+      const payload = await response.json();
+      const meta = normalizeWalletIntelMeta(payload?.meta);
+
+      if (!response.ok) {
+        return {
+          data: buildWalletIntelDataset(input),
+          meta,
+        };
+      }
+
+      if (!payload?.ok || !payload?.data) {
+        throw new Error('invalid wallet intel payload');
+      }
+
+      return {
+        data: payload.data as WalletIntelDataset,
+        meta,
+      };
+    } catch (error) {
+      console.error('[terminal] wallet intel api fallback:', error);
+      return {
+        data: buildWalletIntelDataset(input),
+        meta: {
+          source: 'synthetic',
+          reason: 'local_api_fallback',
+          detail: 'terminal could not read /api/wallet/intel, so it fell back to local deterministic scaffolding.',
+        },
+      };
+    }
+  }
+
+  async function activateWalletMode(
+    nextInput: WalletModeInput,
+    options: { updateUrl?: boolean; note?: string } = {}
+  ) {
+    const result = await loadWalletIntelDataset(nextInput);
+    const dataset = result.data;
+    walletInput = nextInput;
+    walletDataset = dataset;
+    walletMode = true;
+    walletSelectedTab = 'flow';
+    walletSelectedNodeId = dataset.flowLayers[0]?.id ?? dataset.graph.nodes[0]?.id ?? '';
+    walletSelectedTokenSymbol = dataset.market.tokens[0]?.symbol ?? '';
+    walletCommandNote = options.note
+      ? `${options.note} ${formatWalletIntelMetaNote(result.meta)}`
+      : `${nextInput.identifier} wallet context loaded. ${formatWalletIntelMetaNote(result.meta)}`;
+    walletDossierHref = buildPassportWalletLink(nextInput.chain, nextInput.identifier);
+    focusedResearchBlock = null;
+
+    if (options.updateUrl !== false && typeof window !== 'undefined') {
+      window.history.replaceState({}, '', walletDeepLink(nextInput));
+    }
+  }
+
+  function exitWalletMode() {
+    walletMode = false;
+    walletInput = null;
+    walletDataset = null;
+    walletSelectedTab = 'flow';
+    walletSelectedNodeId = '';
+    walletSelectedTokenSymbol = '';
+    walletCommandNote = '';
+    walletDossierHref = '';
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', '/terminal');
+    }
+  }
+
+  function handleWalletTabSelect(tab: WalletIntelTab) {
+    walletSelectedTab = tab;
+    if (!walletDataset) return;
+    if (tab === 'flow') {
+      walletSelectedNodeId = walletDataset.flowLayers[0]?.id ?? walletSelectedNodeId;
+      return;
+    }
+    if (tab === 'bubble') {
+      walletSelectedNodeId = walletDataset.graph.nodes[0]?.id ?? walletSelectedNodeId;
+      return;
+    }
+    walletSelectedNodeId = walletDataset.clusters[0]?.id ?? walletSelectedNodeId;
+  }
+
+  function handleWalletNodeSelect(id: string) {
+    walletSelectedNodeId = id;
+    if (!walletDataset) return;
+
+    if (walletDataset.flowLayers.some((layer) => layer.id === id)) {
+      walletSelectedTab = 'flow';
+      walletCommandNote = 'Flow layer focus updated.';
+      return;
+    }
+
+    const graphNode = walletDataset.graph.nodes.find((node) => node.id === id);
+    if (graphNode) {
+      walletSelectedTab = 'bubble';
+      if (graphNode.tokenSymbol) {
+        walletSelectedTokenSymbol = graphNode.tokenSymbol;
+      }
+      walletCommandNote = `${graphNode.shortLabel} node selected.`;
+      return;
+    }
+
+    if (walletDataset.clusters.some((cluster) => cluster.id === id)) {
+      walletSelectedTab = 'cluster';
+      walletCommandNote = 'Cluster focus updated.';
+    }
+  }
+
+  function handleWalletTokenSelect(symbol: string) {
+    walletSelectedTokenSymbol = symbol;
+    walletCommandNote = `${symbol} market overlay selected.`;
+  }
 </script>
 
 <svelte:head><title>Cogochi Terminal</title></svelte:head>
@@ -920,34 +1127,70 @@
 <div class="terminal-root">
   <!-- ─── HEADER BAR ─── -->
   <header class="header-bar">
-    <div class="hb-left">
-      {#if currentSymbol}
-        <span class="hb-symbol">{currentSymbol.replace('USDT','')}</span>
-        <span class="hb-tf">{currentTf.toUpperCase()}</span>
-      {:else}
-        <span class="hb-symbol">TERMINAL</span>
-      {/if}
-    </div>
-    <div class="hb-center">
-      {#if currentPrice > 0}
-        <span class="hb-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
-        <span class="hb-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
-          {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
-        </span>
-      {/if}
-    </div>
-    <div class="hb-right">
-      {#if currentSnapshot?.alphaScore != null}
-        <span class="hb-alpha-label">ALPHA</span>
-        <span class="hb-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
-          {currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
-        </span>
-      {/if}
-    </div>
+    {#if walletMode && walletDataset}
+      <div class="hb-left wallet-head-left">
+        <span class="hb-symbol">WALLET</span>
+        <span class="hb-tf">{walletDataset.identity.chain}</span>
+        <span class="hb-wallet-address">{walletDataset.identity.displayAddress}</span>
+      </div>
+      <div class="hb-center wallet-head-center">
+        <span class="hb-price">{walletDataset.identity.label}</span>
+        {#if walletSelectedToken}
+          <span class="hb-change" class:up={walletSelectedToken.changePct >= 0} class:dn={walletSelectedToken.changePct < 0}>
+            {walletSelectedToken.symbol} {walletSelectedToken.changePct >= 0 ? '+' : ''}{walletSelectedToken.changePct.toFixed(2)}%
+          </span>
+        {/if}
+      </div>
+      <div class="hb-right wallet-head-right">
+        <span class="hb-alpha-label">CONF</span>
+        <span class="hb-alpha">{walletDataset.identity.confidence}%</span>
+      </div>
+    {:else}
+      <div class="hb-left">
+        {#if currentSymbol}
+          <span class="hb-symbol">{currentSymbol.replace('USDT','')}</span>
+          <span class="hb-tf">{currentTf.toUpperCase()}</span>
+        {:else}
+          <span class="hb-symbol">TERMINAL</span>
+        {/if}
+      </div>
+      <div class="hb-center">
+        {#if currentPrice > 0}
+          <span class="hb-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
+          <span class="hb-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
+            {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
+          </span>
+        {/if}
+      </div>
+      <div class="hb-right">
+        {#if currentSnapshot?.alphaScore != null}
+          <span class="hb-alpha-label">ALPHA</span>
+          <span class="hb-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
+            {currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
+          </span>
+        {/if}
+      </div>
+    {/if}
   </header>
 
   <!-- ─── MAIN CONTENT: QUICK PANEL + FEED + CHART ─── -->
-  <div class="main-content">
+  {#if walletMode && walletDataset}
+    <div class="main-content wallet-main-content">
+      <WalletIntelShell
+        dataset={walletDataset}
+        selectedTab={walletSelectedTab}
+        selectedNodeId={walletSelectedNodeId}
+        selectedTokenSymbol={walletSelectedTokenSymbol}
+        commandNote={walletCommandNote}
+        dossierHref={walletDossierHref}
+        onTabSelect={handleWalletTabSelect}
+        onNodeSelect={handleWalletNodeSelect}
+        onTokenSelect={handleWalletTokenSelect}
+        onExit={exitWalletMode}
+      />
+    </div>
+  {:else}
+    <div class="main-content">
     <!-- QUICK PANEL -->
     <QuickPanel
       items={quickPanelItems}
@@ -1065,10 +1308,19 @@
     <aside class="chart-panel">
       {#if focusedResearchBlock}
         <div class="cp-header cp-header-focus">
-          <div class="cp-focus-meta">
-            <span class="cp-sym">{focusedResearchBlock.symbol.replace('USDT','')}</span>
-            <span class="cp-tf">{focusedResearchBlock.timeframe.toUpperCase()}</span>
-            <span class="cp-focus-label">{focusedResearchBlock.block.kind.replaceAll('_', ' ')}</span>
+          <div class="cp-focus-stack">
+            <div class="cp-focus-meta">
+              <span class="cp-sym">{focusedResearchBlock.symbol.replace('USDT','')}</span>
+              <span class="cp-tf">{focusedResearchBlock.timeframe.toUpperCase()}</span>
+              <span class="cp-focus-label">{focusedResearchBlock.block.kind.replaceAll('_', ' ')}</span>
+            </div>
+            <div class="cp-focus-ribbon">
+              {#if focusedResearchBlock.block.kind === 'heatmap_flow_chart'}
+                <span class="cp-mini-chip">walls {focusedResearchBlock.block.cells.length}</span>
+                <span class="cp-mini-chip">events {focusedResearchBlock.block.markers.length}</span>
+                <span class="cp-mini-chip">tracks {focusedResearchBlock.block.lowerPane?.series?.length ?? 0}</span>
+              {/if}
+            </div>
           </div>
           <button type="button" class="cp-reset" onclick={clearResearchFocus}>SHOW PRICE</button>
         </div>
@@ -1077,22 +1329,46 @@
         </div>
       {:else if currentSnapshot && currentChartData.length > 0}
         <div class="cp-header">
-          <span class="cp-sym">{currentSymbol.replace('USDT','')}</span>
-          <span class="cp-tf">{currentTf.toUpperCase()}</span>
-          {#if currentPrice > 0}
-            <span class="cp-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
-            <span class="cp-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
-              {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
-            </span>
-          {/if}
-          {#if currentSnapshot.alphaScore != null}
-            <span class="cp-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
-              a:{currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
-            </span>
-          {/if}
+          <div class="cp-price-stack">
+            <div class="cp-primary-row">
+              <span class="cp-sym">{currentSymbol.replace('USDT','')}</span>
+              <span class="cp-tf">{currentTf.toUpperCase()}</span>
+              {#if currentPrice > 0}
+                <span class="cp-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
+                <span class="cp-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
+                  {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
+                </span>
+              {/if}
+              {#if currentSnapshot.alphaScore != null}
+                <span class="cp-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
+                  a:{currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
+                </span>
+              {/if}
+            </div>
+            <div class="cp-ribbon">
+              <span class="cp-mini-chip">regime {currentSnapshot.regime ?? '--'}</span>
+              <span class="cp-mini-chip">cvd {currentSnapshot.l11?.cvd_state ?? '--'}</span>
+              <span class="cp-mini-chip">mtf {currentSnapshot.l10?.mtf_confluence ?? '--'}</span>
+              <span class="cp-mini-chip">bb {currentSnapshot.l14?.bb_squeeze ? 'SQZ' : 'OPEN'}</span>
+            </div>
+          </div>
+          <div class="cp-header-side">
+            <span class="cp-side-label">terminal chart</span>
+            <span class="cp-side-value">{currentChartData.length} bars</span>
+          </div>
         </div>
         <div class="cp-chart">
-          <CgChart data={currentChartData} currentPrice={currentPrice} annotations={currentAnnotations} indicators={currentIndicators} />
+          <CgChart
+            data={currentChartData}
+            currentPrice={currentPrice}
+            annotations={currentAnnotations}
+            indicators={currentIndicators}
+            symbol={currentSymbol}
+            timeframe={currentTf}
+            changePct={currentChange}
+            snapshot={currentSnapshot}
+            derivatives={currentDeriv}
+          />
         </div>
         <div class="cp-stats">
           <div class="qs-cell">
@@ -1135,7 +1411,8 @@
         </div>
       {/if}
     </aside>
-  </div>
+    </div>
+  {/if}
 
   <!-- ─── INPUT BAR ─── -->
   <div class="input-bar">
@@ -1145,7 +1422,7 @@
         class="query-input"
         bind:value={inputText}
         onkeydown={handleKeydown}
-        placeholder="BTC 4H / ETH 1D / 10% 랠리 3일 볼밴 확장"
+        placeholder={walletMode ? '0x... / vitalik.eth / flow / bubble / cluster / ETH' : 'BTC 4H / ETH 1D / 10% 랠리 3일 볼밴 확장'}
         disabled={isThinking}
       />
       {#if parsedQuery && parsedQuery.confidence === 'high'}
@@ -1313,6 +1590,11 @@
     flex-shrink: 0;
   }
   .hb-left { display: flex; align-items: center; gap: 8px; }
+  .wallet-head-left,
+  .wallet-head-center,
+  .wallet-head-right {
+    min-width: 0;
+  }
   .hb-symbol {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
     font-size: 22px;
@@ -1328,6 +1610,7 @@
     border-radius: 3px;
   }
   .hb-center { display: flex; align-items: center; gap: 8px; }
+  .wallet-head-center { justify-content: center; }
   .hb-price {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     font-size: 14px;
@@ -1342,6 +1625,7 @@
   .hb-change.up { color: var(--sc-good, #adca7c); }
   .hb-change.dn { color: var(--sc-bad, #cf7f8f); }
   .hb-right { display: flex; align-items: center; gap: 6px; }
+  .wallet-head-right { white-space: nowrap; }
   .hb-alpha-label {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
     font-size: 9px;
@@ -1354,6 +1638,15 @@
     font-size: 16px;
     font-weight: 800;
   }
+  .hb-wallet-address {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 12px;
+    color: rgba(255,255,255,0.74);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 360px;
+  }
 
   /* ═══ MAIN CONTENT ═══ */
   .main-content {
@@ -1361,6 +1654,14 @@
     display: flex;
     min-height: 0;
     overflow: hidden;
+  }
+  .wallet-main-content {
+    padding: 14px;
+    overflow: auto;
+  }
+  .wallet-main-content :global(.wallet-shell) {
+    width: 100%;
+    flex: 1 1 auto;
   }
 
   /* ═══ DATA FEED ═══ */
@@ -1676,7 +1977,9 @@
     width: 420px;
     flex-shrink: 0;
     border-left: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
-    background: var(--sc-bg-1, #0b1220);
+    background:
+      radial-gradient(circle at top right, rgba(54, 215, 255, 0.06), transparent 28%),
+      linear-gradient(180deg, rgba(7, 14, 25, 0.98), rgba(4, 10, 18, 0.99));
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1688,12 +1991,28 @@
     gap: 12px;
   }
 
+  .cp-focus-stack,
+  .cp-price-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+  }
+
   .cp-focus-meta {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
     min-width: 0;
+  }
+
+  .cp-focus-ribbon,
+  .cp-ribbon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .cp-focus-label {
@@ -1722,11 +2041,19 @@
   }
   .cp-header {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--sc-line-soft);
     flex-shrink: 0;
+    background: linear-gradient(180deg, rgba(8, 17, 29, 0.92), rgba(5, 11, 19, 0.84));
+  }
+  .cp-primary-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
   }
   .cp-sym {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
@@ -1760,10 +2087,45 @@
     font-size: 11px;
     font-weight: 800;
   }
+  .cp-mini-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border: 1px solid rgba(39, 63, 86, 0.78);
+    border-radius: 999px;
+    background: rgba(7, 16, 28, 0.92);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(176, 205, 228, 0.74);
+  }
+  .cp-header-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    padding-top: 2px;
+  }
+  .cp-side-label {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sc-text-3);
+  }
+  .cp-side-value {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sc-text-1);
+  }
   .cp-chart {
     flex: 1;
     min-height: 200px;
-    padding: 4px;
+    padding: 6px;
+    background: linear-gradient(180deg, rgba(4, 10, 17, 0.3), rgba(4, 10, 17, 0));
   }
   .cp-stats {
     display: grid;
@@ -1778,7 +2140,7 @@
     flex-direction: column;
     gap: 2px;
     padding: 8px 10px;
-    background: var(--sc-bg-1, #0b1220);
+    background: rgba(5, 12, 21, 0.98);
   }
   .qs-label {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
@@ -1967,5 +2329,19 @@
       max-height: 380px;
     }
     .cp-chart { min-height: 160px; }
+    .header-bar {
+      height: auto;
+      padding: 10px 14px;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .wallet-head-left {
+      flex-wrap: wrap;
+    }
+    .hb-wallet-address {
+      max-width: 100%;
+      white-space: normal;
+      overflow: visible;
+    }
   }
 </style>
