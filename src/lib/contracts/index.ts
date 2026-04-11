@@ -14,16 +14,17 @@
 // Layer prefix + branded IDs + enums
 export {
 	ContractLayer,
-	RawId,
+	KnownRawId,
 	StructureStateId,
 	VerdictBias,
 	VerdictUrgency,
 	EventDirection,
 	EventSeverity,
 	hasLayerPrefix,
-	layerOf
+	layerOf,
+	isRawId
 } from './ids';
-export type { TrajectoryId, PairId, TraceId } from './ids';
+export type { RawId, TrajectoryId, PairId, TraceId } from './ids';
 
 // Verdict block — A's output, B's input, C's storage unit
 export {
@@ -87,3 +88,32 @@ export type {
 	MLPreferencePair,
 	PairQuality
 } from './trajectory';
+
+// Raw source registry — user-configurable data acquisition layer
+export {
+	RawSourceCadenceSchema,
+	RawSourceCategorySchema,
+	RawSourceCostHintSchema,
+	RawSourceNullPolicySchema,
+	RawSourceSchema,
+	RawSourceCatalogSchema,
+	RawSourceSubscriptionSchemaVersion,
+	RawSourceSubscriptionSchema,
+	RawProviderKeyOverrideSchema,
+	resolveEffectiveRawSet,
+	resolveEffectiveCadence,
+	parseRawSource,
+	parseRawSourceCatalog,
+	parseRawSourceSubscription,
+	safeParseRawSourceSubscription
+} from './registry';
+export type {
+	RawSourceCadence,
+	RawSourceCategory,
+	RawSourceCostHint,
+	RawSourceNullPolicy,
+	RawSource,
+	RawSourceCatalog,
+	RawSourceSubscription,
+	RawProviderKeyOverride
+} from './registry';

@@ -41,11 +41,32 @@ export type ContractLayer = (typeof ContractLayer)[keyof typeof ContractLayer];
 // Raw data IDs  (harness engine-spec §4)
 // ---------------------------------------------------------------------------
 //
-// Not exhaustive on purpose — only the IDs that are quoted verbatim in the
-// canonical doc are frozen here. Adding more requires a doc edit first so
-// that layer-to-layer traceability stays readable.
+// IMPORTANT: `RawId` is an OPEN type, not a closed enum. The raw-data layer
+// in CHATBATTLE is user-configurable — loaders, providers, and user
+// extensions may emit any valid `raw.*` string. Locking the type to a fixed
+// list would prevent per-user subscriptions from choosing which raws to pull
+// and would make Phase 4 extended indicators (MVRV, Sharpe, Material
+// Indicators orderbook, etc.) require a contract edit each time.
+//
+// The const below (`KnownRawId`) is a CONVENIENCE CATALOG, not a type guard.
+// It documents the IDs that the canonical harness engine-spec §4 quotes
+// verbatim. Runtime validation of a raw id uses `isRawId()` or the
+// `RawSourceSchema` / `RawSourceSubscriptionSchema` in `./registry.ts`.
 
-export const RawId = {
+/** Open template literal: any string starting with `raw.` is a valid RawId. */
+export type RawId = `raw.${string}`;
+
+/** Runtime guard for an open RawId string. */
+export function isRawId(s: string): s is RawId {
+	return s.startsWith('raw.') && s.length > 4;
+}
+
+/**
+ * Convenience catalog of raws explicitly named by the harness engine-spec §4.
+ * Providers, tests, and tooling may reference these by symbol to keep
+ * renames traceable, but the set is NOT exhaustive and NOT closed.
+ */
+export const KnownRawId = {
 	// Global / cross-market
 	FEAR_GREED_VALUE: 'raw.global.fear_greed.value',
 	USD_KRW_RATE: 'raw.global.usd_krw.rate',
@@ -105,7 +126,7 @@ export const RawId = {
 	SESSION_INTENT_FOCUS: 'raw.session.intent_focus'
 } as const;
 
-export type RawId = (typeof RawId)[keyof typeof RawId];
+export type KnownRawId = (typeof KnownRawId)[keyof typeof KnownRawId];
 
 // ---------------------------------------------------------------------------
 // Structural state catalog  (harness engine-spec §7.1)
