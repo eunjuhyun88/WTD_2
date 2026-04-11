@@ -102,6 +102,11 @@ export const KnownRawId = {
 	KLINES_4H: 'raw.symbol.klines.4h',
 	KLINES_1D: 'raw.symbol.klines.1d',
 
+	// Per-symbol 24h ticker snapshot (spot endpoint, compound struct)
+	// Distinct from the `raw.scan.ticker_24h.*` universe-level atoms
+	// (those are field-level slices of the futures-wide ticker list).
+	TICKER_24HR: 'raw.symbol.ticker_24h',
+
 	// Derivatives / liquidity
 	MARK_PRICE: 'raw.symbol.mark_price',
 	FUNDING_RATE: 'raw.symbol.funding_rate',
