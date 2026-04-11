@@ -23,7 +23,7 @@ import {
 	TimeframeSchema,
 	VerdictBlockSchema,
 	VerdictBlockForPairSchema
-} from './verdict';
+} from './verdict.ts';
 
 // ---------------------------------------------------------------------------
 // Decision envelope: who decided what, in response to which verdict
