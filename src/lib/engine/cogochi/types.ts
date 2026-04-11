@@ -173,6 +173,12 @@ export interface L14Result {
   bb_pos: number;
   score: number;             // ±10
   label: string;
+  /**
+   * Typed BB events emitted by `computeL14BbSqueeze`. Populated in
+   * E3b of the harness engine integration plan. Empty when no event
+   * thresholds fired. Optional so pre-E3b fixtures keep working.
+   */
+  events?: ReadonlyArray<import('../../contracts/events.ts').EventPayload>;
 }
 
 export interface L15Result {

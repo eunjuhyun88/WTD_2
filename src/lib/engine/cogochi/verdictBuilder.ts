@@ -246,17 +246,45 @@ function collectReasonCandidates(snapshot: SignalSnapshot): ReasonCandidate[] {
 	}
 
 	// L14 BB squeeze — context (direction neutral).
-	if (snapshot.bbBigSqueeze) {
+	//
+	// E3b wiring: computeL14BbSqueeze now emits typed BB_SQUEEZE /
+	// BB_BIG_SQUEEZE / BB_EXPANSION events. Pull their IDs into the
+	// reason's event_ids. When the layer is pre-E3b (no events field)
+	// we still produce the prose-only reason from the legacy
+	// bbBigSqueeze / bb_squeeze flags.
+	const l14Events = snapshot.l14.events ?? [];
+	const bbBigSqueezeEventIds = l14Events
+		.filter((e) => e.id === EventId.BB_BIG_SQUEEZE)
+		.map((e) => e.id);
+	const bbSqueezeEventIds = l14Events
+		.filter((e) => e.id === EventId.BB_SQUEEZE)
+		.map((e) => e.id);
+	const bbExpansionEventIds = l14Events
+		.filter((e) => e.id === EventId.BB_EXPANSION)
+		.map((e) => e.id);
+
+	if (snapshot.bbBigSqueeze || bbBigSqueezeEventIds.length > 0) {
 		out.push({
 			text: `BB big squeeze active (bw=${snapshot.l14.bb_width.toFixed(4)})`,
 			direction: 'context',
-			severity: 'high'
+			severity: 'high',
+			event_ids: bbBigSqueezeEventIds
 		});
-	} else if (snapshot.l14.bb_squeeze) {
+	} else if (snapshot.l14.bb_squeeze || bbSqueezeEventIds.length > 0) {
 		out.push({
 			text: `BB squeeze (bw=${snapshot.l14.bb_width.toFixed(4)})`,
 			direction: 'context',
-			severity: 'medium'
+			severity: 'medium',
+			event_ids: bbSqueezeEventIds
+		});
+	}
+
+	if (bbExpansionEventIds.length > 0) {
+		out.push({
+			text: `BB expansion after compression (bw=${snapshot.l14.bb_width.toFixed(4)})`,
+			direction: 'context',
+			severity: 'medium',
+			event_ids: bbExpansionEventIds
 		});
 	}
 
