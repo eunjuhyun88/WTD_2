@@ -1,17 +1,42 @@
 # COGOCHI — Product Requirements Document
 
-> **Version:** 1.0
+> **Version:** 1.1 (2026-04-11 mid-transition patch)
 > **Date:** 2026-04-11
 > **Author:** CPO × AI Research Lead
 > **Status:** Single source of truth for the Cogochi product
 > **Audience:** next Claude session · engineering agents · you in 3 weeks
->
-> **How to use this document:**
-> - If you came here to understand what Cogochi is, read § 0 through § 5.
-> - If you're implementing the home landing page, read § 16.
-> - If you're touching the Python AutoResearch pipeline, read § 10.
-> - If you're adding a new feature, check § 7 surface role + § 14 kill criteria first.
-> - Everything else in `docs/` is operational/infra. This is the only product canonical.
+
+---
+
+## ⚠️ 2026-04-11 Status Patch — READ THIS FIRST
+
+This document is in **mid-transition** between two designs. When a section contradicts another, the section order below is authoritative:
+
+| Authoritative (current Day-1 design) | Drifted (pre-pivot, preserved for reference) |
+|---|---|
+| § 7 Surface Model (3 Day-1 surfaces) | § 0, 4, 6 still describe DOUNI + 15-layer + scan feedback |
+| § 8 Per-Surface Feature Spec (patched) | § 10 still describes the old `cogochi/*.py` monorepo layout |
+| § 9 Character Layer (DEFERRED) | § 12 Journey State Machine still references DOUNI |
+| § 11 Data Contracts (WTD klines + 28 features + Challenge) | § 17 Roadmap mentions archetype + adapter |
+| § 16 Home landing (still valid layout, copy deltas noted in § 8.6) | § 18 Implementation Sequence lists old PR A-N |
+|  | § 19 Open Questions mentions archetype veto |
+|  | § 20 Appendix still shows `cogochi/*.py` + DOUNI paths |
+
+**Core pivots (2026-04-11):**
+
+1. **Backend = external repo `/Users/ej/Projects/WTD/`.** The `cogochi-autoresearch/` Python package there (with 29 building blocks, `wizard/`, `challenges/pattern-hunting/`) is the actual engine. The `cogochi/*.py` files in THIS repo are legacy monorepo leftovers.
+2. **Character layer DEFERRED.** No DOUNI, no archetype, no Stage. See § 9.
+3. **Day-1 = 3 surfaces only:** `/terminal` (observe + compose via search), `/lab` (evaluate + inspect + iterate), `/dashboard` (my stuff inbox) + `/` (landing). See § 7.
+4. **Search query IS the wizard.** No 5-step svelte form. User types `btc 4h recent_rally 10% + bollinger_expansion`, parser maps to WTD blocks, one click saves as a challenge. See § 8.1.
+5. **Data contracts = WTD klines (7 columns) + features (28 columns) + Challenge directory format.** 15-layer `SignalSnapshot` is dropped. See § 11.
+
+**How to use this document (revised):**
+- New to Cogochi? Read the **Status Patch above**, then § 7, § 8 (the 4 active-surface subsections), § 11.
+- Touching `/terminal`, `/lab`, `/dashboard`? Read § 8.1 / § 8.2 / § 8.7 respectively. Ignore § 8.3–§ 8.5.
+- Need product narrative / thesis? § 0–§ 5 are still useful as intent — just substitute "challenge" for "pattern/feedback/adapter" and ignore the character references.
+- Touching the backend? Go to `/Users/ej/Projects/WTD/cogochi-autoresearch/` directly — § 10 is archival.
+- Writing the home landing page? § 16 layout is still valid; § 8.6 has the 2026-04-11 copy deltas.
+- Everything else in `docs/` is operational/infra. This is the only product canonical.
 
 ---
 
@@ -149,248 +174,282 @@ PRIOR ART    OPPU (EMNLP 2024) · Per-Pcs (EMNLP 2024)
 
 ## § 7. Surface Model (Day-1 + Phase 2/3)
 
-### Day-1 active surfaces
+> **2026-04-11 patch:** product pivot. Day-1 collapses to **3 active surfaces + landing**. Character layer (DOUNI/archetype/stage) is deferred entirely (see § 9). Wizard, scanner cockpit, and agent HQ are folded into /terminal + /lab. The authoritative backend is now the external repo `/Users/ej/Projects/WTD/` (cogochi-autoresearch package + wizard + challenges/pattern-hunting).
+
+### Day-1 active surfaces (3 + landing)
 
 | Route | Role | Priority | 1-line contract |
 |---|---|---|---|
-| `/terminal` | **Primary daily driver** | ★★★ | DOUNI와 같이 차트 보고 스캔 결과 받고 피드백 주는 작업실 |
-| `/lab` | AutoResearch runner | ★★ | 주간 파인튜닝 돌리고 val 결과 보는 실험실. Weekly report here. |
-| `/agent/[id]` | Ownership + history | ★ | 내 adapter 버전들 · 저장한 패턴들 · 적중률 히스토리 · archetype |
-| `/create` | DOUNI onboarding | ★ | 5 step · 이름 · 아키타입 · 첫 패턴 · 첫 스캔 확인 |
-| `/` | Landing page | ★ | 비로그인/첫방문용. H1 pitch · 4-step loop · 알파 가입. §16 detailed |
-| `/scanner` | **Settings only** | · | 저장된 패턴 on/off · 알림 히스토리. 주 UI 아님, Terminal이 scan 경험을 소유 |
-| `/dashboard` | Optional | · | DOUNI 상태 · 놓친 알림 · weekly report 프리뷰. 시간 부족하면 skip. |
+| `/terminal` | **Observe + compose** | ★★★ | Chart + block-name search. **Search query IS the pattern composer.** One click saves the current query as a new challenge in WTD. |
+| `/lab` | **Evaluate + inspect + iterate** | ★★★ | Challenge list + detail + Run button that streams `python prepare.py evaluate` stdout via SSE + SCORE card + instances table that deep-links back to /terminal. |
+| `/dashboard` | **My stuff inbox** | ★★ | 3 sections: *My Challenges* (summary of /lab) · *Watching* (saved live searches from /terminal) · *My Adapters* (Phase 2+ placeholder). |
+| `/` | Landing | ★ | Thesis + CTA into /terminal. Marketing only. See § 16 for layout — still valid but copy points to the new 3-surface flow. |
+
+### Day-1 deferred / redirected surfaces
+
+| Route | Previously | Status |
+|---|---|---|
+| `/create` | 5-step DOUNI onboarding (§ 8.4 old) | **DEFERRED.** No onboarding page in Day-1. New users land directly in /terminal. The WTD CLI `python -m wizard.new_pattern` remains as a power-user entry point. Character-creation flow returns in Phase 2+ if archetypes come back. |
+| `/agent/[id]` | Character HQ + archetype + stage (§ 8.3 old) | **REDIRECTED to /lab.** Ownership + history now live in /lab's challenge list + detail pane. Stage/archetype badges are gone. |
+| `/cogochi/scanner` | Live scan cockpit + deep-dive (§ 8.5 old) | **FOLDED into /lab.** /lab absorbs the "my challenges" list. The 1600-line legacy view in `src/routes/cogochi/scanner/+page.svelte` stays parked for later revival. |
 
 ### Phase 2 (later) surfaces
 | Route | Role |
 |---|---|
-| `/market` | 검증된 어댑터 임대 (15% take rate) |
-| `/copy` | Copy trading (archetype 기반) |
+| `/market` | Verified adapter rental (15% take rate) |
+| `/copy` | Copy trading (direction-aware, no archetypes yet) |
+| `/training` | KTO/LoRA per-user fine-tuning UI on top of WTD challenge instances |
 
 ### Phase 3 (later) surfaces
 | Route | Role |
 |---|---|
-| `/battle` | 역사 ERA 배틀 (HP / character animation / Memory Cards) · scaffolding already in `cogochi/battle_engine.py` |
+| `/battle` | Historical ERA battle (HP / character / Memory Cards) — character layer revival |
 | `/passport` | ERC-8004 on-chain track record |
 | `/world` | BTC history traversal (v3 fusion concept) |
 
-### Navigation
+### Navigation (Day-1)
 
-- **Desktop header:** `[Logo] [가격티커] TERMINAL · LAB · AGENT [Settings] [Connect]` — Terminal 첫 번째.
-- **Mobile bottom nav:** `⌂ · ⚗ LAB · 💬 TERM · @ AGENT` — Terminal 강조.
-- **Deep links:** `/terminal?symbol=BTCUSDT&tf=4h&from=scanner&alertId=xxx` 지원.
+- **Desktop header:** `[Logo] [가격티커] TERMINAL · LAB · DASHBOARD [Settings] [Connect]` — Terminal first.
+- **Mobile bottom nav:** `⌂ · 💬 TERMINAL · ⚗ LAB · @ DASHBOARD` — Terminal highlighted, 4 slots.
+- **Deep links:**
+  - `/terminal?symbol=BTCUSDT&tf=4h&q=recent_rally+bollinger_expansion` — seed the search input
+  - `/terminal?slug=<challenge>&instance=<ts>` — jump to a specific match bar from a /lab instance row
+  - `/lab?slug=<challenge>` — open the challenge detail + auto-select on list
 
 ---
 
 ## § 8. Per-Surface Feature Spec
 
-### § 8.1 `/terminal` — Primary "같이 보는" Surface
+### § 8.1 `/terminal` — Observe + Compose (search query is the wizard)
 
-**Layout (desktop, 3-panel):**
+**Core idea:** the existing bottom search input in `terminal/+page.svelte` becomes the pattern composer. User types a natural-language / semi-structured query; a client-side parser maps tokens → WTD block chain; the chart highlights matched bars; one button saves the current query as a new challenge in WTD.
 
-```
-┌─ LEFT 20% ──┬─ CENTER 55% ──────────┬─ RIGHT 25% ───┐
-│ DOUNI chat   │ Chart (TradingView)    │ Scan results │
-│ • avatar     │ • OHLC + volume        │ • pattern hit │
-│ • dialogue   │ • 15-layer overlay     │ • alert card │
-│ • reactions  │ • DOUNI callouts       │ • ✓/✗ buttons │
-│ • prompt     │ • 📌 save pattern      │ • /lab link  │
-│              │                        │               │
-│              │                        │ ── history ──│
-│              │                        │ • recent ✓/✗ │
-│              │                        │ • daily count│
-└──────────────┴────────────────────────┴───────────────┘
-```
+**No new layout.** The existing 3-panel v3 Bloomberg layout stays. Only the input handler, a new save path, and an inline result overlay change. No DOUNI chat panel, no character avatar, no archetype/stage, no 15-layer overlay.
 
 **Day-1 features (must-have):**
-1. **Chart + indicator overlay** — TradingView Lightweight Charts, Binance WS 실시간, 15-layer 지표 토글
-2. **DOUNI chat panel** — LLM 대화, 15-layer 상태를 컨텍스트로 사용, `cogochi/context_builder.py` 활용, personality via `cogochi/skill_registry.py`
-3. **Scan results stream** — 백엔드 Scanner 알림이 Terminal 우측 패널에 라이브로 쌓임
-4. **Pattern save** — "📌 이 조건을 패턴으로" 버튼. Condition 필드는 l1~l15 + alphaScore + regime
-5. **Feedback** — 알림 카드마다 ✓/✗ 인라인. 1시간 후 auto-judge가 같은 DB row를 보강
-6. **Deep link from scanner** — URL param `?from=scanner&alertId=xxx`로 차트 자동 로드 + 알림 시점 수직선 표시
+1. **Block-name search** — bottom input `<input class="query-input">` already exists (line ~1030). New client parser `src/lib/terminal/blockSearchParser.ts` converts input string → `ParsedQuery { symbol?, timeframe?, direction?, blocks: ParsedBlock[], confidence }`.
+2. **Preview overlay** — when parsed successfully, the chart highlights bars where the block chain matches. Preview is computed server-side via a tiny `/api/terminal/preview` endpoint OR client-side if features can be inlined (TBD zoom #1).
+3. **Save-as-challenge button** — reuse the existing `showPatternModal` (line ~1049). Modal now asks for `name` only (slug); direction / universe / timeframe / outcome are inferred from the parsed query + defaults. On Save:
+   - `POST /api/wizard` with body `{slug, description, blocks, direction, timeframe}`
+   - Server writes `WTD/challenges/pattern-hunting/<slug>/{answers.yaml, match.py, prepare.py, program.md}` via subprocess `python -m wizard.new_pattern --answers <tmp>` (composer.py is SSOT).
+   - Toast: `Saved ${slug}` with action `Open in Lab` → `/lab?slug=<slug>`.
+4. **Deep link consumption** — `?symbol=...&tf=...&q=...` seeds the search input on mount. `?slug=...&instance=...` jumps to a specific instance row's bar.
+5. **Live market view** — existing chart + data-feed behavior preserved. No new 15-layer overlay.
+
+**Day-1 parser (keyword-first):**
+- Single dictionary mapping EN + KO phrases → WTD block names + default params. See `~/.claude/projects/.../memory/patterns.md` for the NL→block table.
+- Number extraction: `10%` → `0.10`, `5x` → `5.0`, `3 days` / `3일` → `72` bars (1h) or `18` bars (4h).
+- Confidence `high` if at least 1 trigger was found; `low` otherwise. Day-1 only uses keyword parser; LLM fallback is Phase 2.
 
 **Day-1 explicitly NOT in /terminal:**
-- HP bar, battle mode (Phase 3)
-- Memory card grid view (Phase 3)
-- ERA REVEAL overlay (Phase 3)
-- Doctrine weight slider UI (Phase 2)
-- Wallet connect required (avoid forced signin)
+- DOUNI chat panel / character personality / archetype / stage
+- 15-layer indicator overlay (use WTD's 28 feature columns instead — see § 11)
+- Wallet connect forced signin
+- Any v3 Bloomberg artifacts (WarRoom, Intel panel, HP bar, memory cards, ERA reveal)
 
 **Reused existing code:**
-- `src/routes/terminal/+page.svelte` (3000+ lines, v3 Bloomberg-style) → 교체 아님, **리팩터**: WarRoom 패널을 DOUNI chat으로 개명, Intel 패널을 Scan results 패널로 재배선
-- `terminalLayoutController.ts` 재사용
-- `cogochi/context_builder.py` · `cogochi/skill_registry.py` 그대로
+- `src/routes/terminal/+page.svelte` — keep layout, wire new handlers into the existing `inputText` + `handleSend` + `showPatternModal` state.
+- `src/lib/terminal/*` — new parser module only.
+- No Python changes in this repo; the backend is WTD (separate repo).
 
-**Critical UX rule:** 유저는 Terminal 바깥으로 나갈 필요 없이 스캔, 피드백, 패턴 저장 전부 할 수 있어야 한다. 이게 "같이 본다"의 정의다.
+**Critical UX rule:** The user types, sees matching bars on their chart, hits save, and moves on. No forms, no 7-step wizard, no character dialogue.
 
 ---
 
-### § 8.2 `/lab` — AutoResearch Runner (async companion)
+### § 8.2 `/lab` — Challenge Workbench (list + detail + runner)
 
-**Day-1 single-mode UI (dual mode in Phase 2):**
+**Role:** the only place where challenges live. Replaces the old backtest builder UI, the character HQ, and the scanner cockpit — all at once.
+
+**Layout (desktop, 2-pane):**
 
 ```
-┌──────────────────────────────────────────────┐
-│ MY AGENT (DOUNI)                Stage: CHICK │
-│ current adapter: v4 (2026-04-09)  hit 61.3%  │
-│                                              │
-│ ── Feedback Pool ──────────────────────────  │
-│ Unused: 14 samples                           │
-│ Next autotune at 20 samples (6 needed)       │
-│                                              │
-│ [ Manual Fine-tune Now ($2 GPU credit) ]     │
-│                                              │
-│ ── Recent Runs ───────────────────────────── │
-│ v4 (Apr 9) Δ +2.8%p  PASSED  current         │
-│ v3 (Apr 2) Δ -1.2%p  FAILED  (rolled back)   │
-│ v2 (Mar 26) Δ +3.1%p PASSED                  │
-│ v1 (Mar 19) baseline                         │
-│                                              │
-│ ── Weekly Report ──────────────────────────  │
-│ This week your adapter improved +2.8%p       │
-│ from 23 feedbacks. Here's what it learned:   │
-│ · CVD bearish divergence → increased recall  │
-│ · Funding extreme long → stricter filter     │
-└──────────────────────────────────────────────┘
+┌─ LAB ─────────────────────────────────────────────────────┐
+│ ┌─ My Challenges ────┐  ┌─ Selected ─────────────────────┐│
+│ │                     │  │                                 ││
+│ │ ⭐ sample-rally      │  │ sample-rally-pattern            ││
+│ │    0.0234  2h       │  │ long · binance_30 · 1h          ││
+│ │ ⦿ cvd-div-funding   │  │ "10% rally over 3 days, BB ..." ││
+│ │    -1.0    8h       │  │                                 ││
+│ │ ⦿ bb-squeeze-long   │  │ ── Blocks ──                    ││
+│ │    never run        │  │ trigger: recent_rally           ││
+│ │                     │  │   pct=0.1  lookback_bars=72     ││
+│ │ [+ new from         │  │ confirm: bollinger_expansion    ││
+│ │    /terminal]       │  │ entry:   long_lower_wick        ││
+│ │                     │  │ disq:    extreme_volatility     ││
+│ │                     │  │                                 ││
+│ │                     │  │ [ ▶ RUN EVALUATE ]              ││
+│ │                     │  │                                 ││
+│ │                     │  │ ── Live output ──               ││
+│ │                     │  │ [prepare] warming...            ││
+│ │                     │  │ ok BTCUSDT                      ││
+│ │                     │  │ ---                             ││
+│ │                     │  │ SCORE: 0.0234                   ││
+│ │                     │  │ N_INSTANCES: 47                 ││
+│ │                     │  │ POSITIVE_RATE: 0.68             ││
+│ │                     │  │                                 ││
+│ │                     │  │ ── Instances (47) ──            ││
+│ │                     │  │ BTC  3/22 14:00  +4.2%  ✓      ││
+│ │                     │  │ click → /terminal jump          ││
+│ └─────────────────────┘  └─────────────────────────────────┘│
+└───────────────────────────────────────────────────────────┘
 ```
 
 **Day-1 features:**
-1. **Pool counter** — 쌓인 피드백 수 + 다음 자동 파인튜닝까지 남은 수
-2. **Manual trigger** — PRO 유저가 즉시 파인튜닝 돌리는 버튼 ($2 GPU credit)
-3. **Run history** — 각 adapter 버전 · val Δ · PASSED/FAILED/ROLLED-BACK
-4. **Weekly report** — 자연어 요약 + "what it learned" 패턴 설명 (Terminal에서 푸시됨)
-5. **Backend:** `cogochi/autoresearch_service.py` 호출, Python worker가 KTO trainer 실행
+1. **Left — My Challenges list** — filesystem scan of `WTD/challenges/pattern-hunting/*/`. Each row: slug + latest SCORE + last run time. Sort: recent run desc. Starred rows pinned top.
+2. **Right — Selected challenge detail:**
+   - Header: slug · direction · universe · timeframe · one-line description (from `answers.yaml::identity.description`)
+   - Blocks section: parse `answers.yaml::blocks` → 4 cards (trigger / confirmations[] / entry / disqualifiers[])
+   - Read-only view of `match.py` (copy button → open in editor)
+3. **Run Evaluate button** — `POST /api/challenges/[slug]/run`. Server spawns `python prepare.py evaluate` in the challenge dir and pipes stdout/stderr via SSE to the client. Final `---` summary is parsed into the SCORE card.
+4. **Instances table** — after run, read `<slug>/output/instances.jsonl` and render rows: `symbol · timestamp · upside · downside · outcome`. Click → `/terminal?slug=<slug>&instance=<ts>` to jump to the bar.
+5. **[+ new from /terminal]** — deep link to `/terminal` (composer lives there).
+
+**Day-1 backend bridges:**
+- **Filesystem bridge:** `src/lib/server/challengesApi.ts` — `listChallenges()`, `getChallenge(slug)`, `readInstances(slug)`. Pure filesystem reads rooted at `process.env.WTD_ROOT`.
+- **Subprocess bridge:** `src/lib/server/runnerApi.ts` — `streamEvaluate(slug): ReadableStream`. Spawns `uv run --project $WTD_ROOT/cogochi-autoresearch python prepare.py evaluate` with cwd = challenge dir.
+- Both bridges are server-side only (`src/lib/server/**`).
 
 **Day-1 NOT in /lab:**
-- 백테스트 UI (v3 Run Again / Before-After delta) — Phase 2
-- 벤치마크팩 선택 — Phase 2
-- Doctrine weight slider — Phase 2
-- Version diff 시각화 — Phase 2
+- Backtest strategy builder UI (v3 tabs: strategy / result / order / trades) — old code parked at `src/routes/lab/+page.svelte` stays buildable but is unreachable without redirect
+- Per-user LoRA adapter runner (Phase 2+, goes to /training)
+- Weekly natural-language report (Phase 2+)
+- Feedback pool counter + Manual Fine-tune button (Phase 2+, requires KTO pipeline)
+- Character stage bar, archetype badge (permanently out)
+
+**Critical UX rule:** /lab is where challenges LIVE. If you want to create a new one you go to /terminal. If you want to run or inspect one, you stay in /lab.
 
 ---
 
-### § 8.3 `/agent/[id]` — Ownership + History
+### § 8.3 `/agent/[id]` — **REDIRECTED to /lab (Day-1)**
+
+This route is deprecated for Day-1. Ownership + history now live in `/lab`'s challenge list (left pane) + detail (right pane). The character layer that motivated this page (DOUNI identity, Stage progress, Archetype badge, Reflection log) is entirely out of Day-1 scope (see § 9).
+
+**Day-1 behaviour:**
+- Any existing `/agent` or `/agent/[id]` deep link should 302 → `/lab?slug=<id>` (treat the id as a challenge slug rather than an agent id).
+- The 1187-line `src/routes/agent/[id]/+page.svelte` stays parked but is never linked.
+- Saved patterns list, adapter version history, and reflection log are all absorbed by `/lab` as challenge rows / instance rows. No per-user agent object exists in Day-1.
+
+**Returns in Phase 3** when the character layer (Stage / Archetype / Memory Card grid) comes back for `/battle` and `/passport`. Until then, treat "agent" = "challenge".
+
+---
+
+### § 8.4 `/create` — **DEFERRED (Day-1)**
+
+No onboarding page in Day-1. The former 5-step DOUNI flow (name → archetype → first dialogue → first pattern → scanner check) depended on the character layer and on Supabase-side per-user agents — neither of which exists in Day-1.
+
+**Day-1 behaviour:**
+- New users land directly in `/terminal` with an empty state hint ("type a pattern like `btc 4h recent_rally 10% + bollinger_expansion` to start").
+- The WTD CLI `python -m wizard.new_pattern` remains as the power-user entry point for authoring challenges outside the UI. It's fully functional and supported.
+- The existing `src/routes/create/+page.svelte` (246 lines, 3-step wallet bridge) is left in place but unlinked; `/create` still resolves if visited directly.
+
+**Returns in Phase 2+** if archetype/character flow comes back, OR as a lightweight "connect wallet + seed example patterns" bridge even without character.
+
+---
+
+### § 8.5 `/cogochi/scanner` (and `/scanner`) — **FOLDED into /lab (Day-1)**
+
+Both scanner routes are deprecated for Day-1. The "my saved patterns" use case is served by `/lab`'s left-pane challenge list (each row = a saved challenge with its latest SCORE and enable/disable toggle). The live scan cockpit use case (deep dive, filter bar, scan table) is out of scope — real-time observation happens in `/terminal`, historical evaluation happens via `/lab`'s Run button.
+
+**Day-1 behaviour:**
+- `/scanner` stays as a 301 → `/terminal` redirect (already in `src/routes/scanner/+page.ts`).
+- `/cogochi/scanner` (the 1634-line legacy cockpit at `src/routes/cogochi/scanner/+page.svelte`) is parked: buildable but unlinked from the Day-1 nav. Not deleted — may revive in Phase 2.
+- `/lab` absorbs the three features that actually mattered from the old scanner:
+  1. List of saved patterns (now "challenges") with their SCOREs
+  2. On/off toggle (stored as a starred flag in the /lab list — not reevaluated)
+  3. Deep link back into `/terminal` for the detail view
+
+**Returns in Phase 2** only if a live-scanner cockpit is explicitly requested; most of its functionality is redundant with /terminal + /lab.
+
+---
+
+### § 8.6 `/` — Home Landing (detailed layout in § 16, copy deltas below)
+
+Existing `src/routes/+page.svelte` (1186 lines) stays structurally intact — hero + learning loop + surfaces + footer. The layout rules in § 16 are still valid.
+
+**2026-04-11 copy deltas (Day-1 pivot):**
+- Hero CTA primary: `START A CHALLENGE` → `/terminal` (not `/onboard`)
+- Hero CTA secondary: `SEE HOW IT SCORES` → `/lab`
+- Remove any copy referencing DOUNI / adapter / Stage / Archetype / onboarding
+- Proof panel timeline stages: `COMPOSE` · `EVALUATE` · `INSPECT` · `ITERATE` (not `PATTERN/SCAN HIT/VERDICT/DEPLOY`)
+- Surfaces section: `Terminal (compose) · Lab (evaluate) · Dashboard (my stuff)`. Drop `Agent`.
+- Footer: fix `return-actions` links to point at `/dashboard` and `/lab` only
+
+**Body scroll fix (separate from pivot):**
+- Remove `:global(body) { height: 100%; overflow: hidden auto; }` at the top of the `<style>` block. Home must scroll at window level.
+- Normalize responsive breakpoints to `1200px` / `768px` / `480px` (was `1180/960/720/540`).
+
+See § 16 for the fuller approved layout (mostly still valid, just re-label the timeline and CTAs per above).
+
+---
+
+### § 8.7 `/dashboard` — My Stuff Inbox (3 sections)
+
+Lightweight return page — 3 stacked sections, one column, no fancy layout. Reads from WTD filesystem + browser local state. No character greeting, no DOUNI name, no morning hype copy.
+
+```
+┌─ Dashboard — my stuff ──────────────────────────┐
+│                                                  │
+│ 1. MY CHALLENGES                                 │
+│    sample-rally-pattern    SCORE 0.0234  2h ago │
+│    cvd-div-funding-hot     SCORE -1.0    8h ago │
+│    bb-squeeze-long         never run             │
+│    [+ new from /terminal]                       │
+│                                                  │
+│ 2. WATCHING                                      │
+│    BTC 4H  recent_rally + bb_expansion  ✓ live  │
+│    ETH 1H  cvd_bearish + funding_hot    ✓ live  │
+│    SOL 4H  volume_spike                 paused  │
+│    [+ add from /terminal]                       │
+│                                                  │
+│ 3. MY ADAPTERS (Phase 2+ placeholder)           │
+│    No adapters yet. Adapter training (KTO/LoRA) │
+│    comes in Phase 2 via /training.              │
+│                                                  │
+│ [ OPEN /terminal ]  [ OPEN /lab ]               │
+└──────────────────────────────────────────────────┘
+```
 
 **Day-1 features:**
-1. **Identity header:** DOUNI avatar · name · Stage progress bar · archetype badge
-2. **Saved patterns list:** 내가 저장한 모든 패턴 · 각 패턴의 적중률 · on/off toggle
-3. **Adapter version history:** 연속된 어댑터 버전들 · 각각의 val 결과
-4. **Reflection log:** 각 피드백에서 생성된 short reflection 텍스트 (`BattleContext.reflection` 재사용)
+1. **MY CHALLENGES** — summary of `/lab` list. Top 5 by latest run time. Clicking a row → `/lab?slug=<slug>`. `[+ new]` → `/terminal`.
+2. **WATCHING** — saved live searches from `/terminal`. Day-1 storage: `localStorage["cogochi.watches"]` (array of `{slug, query, createdAt, lastEvaluatedAt}`). Day-2+ promotes to `WTD/watches/*.json` filesystem for cross-device sync.
+3. **MY ADAPTERS** — placeholder. Empty state copy explaining Phase 2+ scope. No data source yet.
+
+**Data sources:**
+- Challenges: `GET /api/challenges` (filesystem read, same as /lab)
+- Watches: client-side `localStorage` (Day-1)
+- Adapters: empty array (Phase 2+)
 
 **Day-1 NOT:**
-- Doctrine weight slider (Phase 2)
-- Memory card grid (Phase 3)
-- Trainer card sharing (Phase 2)
-- Rental readiness toggle (Phase 2)
+- DOUNI greeting or any character copy
+- Missed alerts stream (requires live scanner backend — out of scope)
+- Weekly Δ / Feedback pool counter (requires per-user KTO pipeline — Phase 2+)
+- Morning recap auto-generation
 
 ---
 
-### § 8.4 `/create` — DOUNI Onboarding (5-step flow, ~5 min)
+## § 9. DOUNI × Archetype — **DEFERRED (not in Day-1)**
 
-**Steps:**
+> **2026-04-11 patch:** the entire character layer (DOUNI name, avatar, growth Stage, Archetype personality filter) is removed from Day-1 scope. Day-1 is a clinical pattern-composer + challenge workbench without character framing. The rationale: users judged the character layer as noise on top of what they actually wanted — compose a pattern, evaluate it, iterate. The character design below is preserved for reference and will return in Phase 2+/3 if marketplace or battle surfaces revive.
 
-1. **이름** (15 sec) — DOUNI 이름 입력, default "DOUNI"
-2. **아키타입** (30 sec) — Oracle / Crusher / Guardian / Rider (4 cards)
-3. **First dialogue** (2 min) — "BTC 4H" 프롬프트 유도 → 차트 로드 + DOUNI 자동 분석 2~3개
-4. **First pattern save** (1 min) — ✓ 1개 이상 → 📌 패턴 저장 CTA 활성화 → 저장
-5. **Scanner check** (30 sec) — `/scanner`로 이동, 방금 저장한 패턴이 [내 패턴] 탭에 활성화된 것 확인 → Telegram 연결 유도
+### Archived design (for Phase 2+/3 revival)
 
-**Success metric:** 첫 패턴 저장까지 완료율 60%+. 30% 미만 → 플로우 재설계 (kill criteria).
+The original design had two orthogonal axes:
 
----
+**Stage (growth):** `EGG → CHICK → FLEDGLING → DOUNI → ELDER`, unlocked by feedback count + LoRA pass count + marketplace eligibility. Purpose was to gate advanced features (lab method selection, LoRA rank control, market listing).
 
-### § 8.5 `/scanner` — Settings Only (not a primary UI)
+**Archetype (personality / runtime filter):** `Oracle | Crusher | Guardian | Rider`. Runtime rule was a scan-alert filter (e.g. Guardian blocks LONG alerts during funding overheat). Mapped to `cogochi/battle_engine.py::guardian_veto()` for the Phase 3 battle system.
 
-**Day-1 single feature: Saved Patterns Management**
+### What replaces it in Day-1
 
-```
-┌──────────────────────────────────────┐
-│ MY PATTERNS                          │
-│                                      │
-│ ⦿ CVD divergence + funding overheat  │
-│   hits: 11/15 (73%)  on [●─────]     │
-│   [edit] [delete]                    │
-│                                      │
-│ ⦿ Wyckoff distribution + vol drop    │
-│   hits: 4/7 (57%)   on [●─────]      │
-│                                      │
-│ ⦿ FR extreme + OI accumulation       │
-│   hits: 0/1 (-)     off [─────○]     │
-│                                      │
-│ [+ Add pattern from Terminal]        │
-│                                      │
-│ ── Alert History ────────────────── │
-│ (last 20 alerts with their feedback) │
-└──────────────────────────────────────┘
-```
+| Role character layer was filling | Day-1 replacement |
+|---|---|
+| Per-user identity / ownership | Per-user filesystem namespace under `WTD/challenges/pattern-hunting/<slug>/`. No character object. |
+| Stage-gated feature unlock | No gates. All Day-1 features available from the start. |
+| Archetype alert filter | User writes filters directly via `disqualifiers` blocks in their challenge composition (e.g. `extreme_volatility`, `volume_below_average`, `extended_from_ma`). |
+| `/agent/[id]` character HQ | Folded into `/lab` challenge list + detail. |
+| `/create` step 2 archetype pick | Removed — there is no `/create` in Day-1. |
 
-**NOT in /scanner:**
-- Live charting (Terminal owns that)
-- Pattern authoring UI (Terminal authors, /scanner manages)
-- Deep dive panel (Phase 2, at Scanner feedback → Terminal deep link)
-
----
-
-### § 8.6 `/` — Home Landing (detailed spec in § 16)
-
-See § 16 below. Six MacWindow sections + Phase 2/3 footer.
-
----
-
-### § 8.7 `/dashboard` — Optional Day-1
-
-If time-constrained this PR, skip `/dashboard` and land onboarding directly to `/terminal`. Otherwise:
-
-```
-┌──────────────────────────────────┐
-│ 🐦 {DOUNI name}  Stage: CHICK    │
-│ "좋은 아침! 어젯밤 BTC +2.3%"     │
-│                                  │
-│ ── Missed Alerts (3) ──────────  │
-│ BTC 1H  볼밴수축  LONG  방금      │
-│ ETH 4H  CVD div   SHORT  2h ago  │
-│ SOL 4H  CVD div   SHORT  5h ago  │
-│                                  │
-│ ── This Week ────────────────── │
-│ Feedbacks: 14/20 (next autotune) │
-│ Adapter: v4 · hit 61.3%          │
-│ Weekly Δ: +2.8%p                 │
-│                                  │
-│ [ OPEN TERMINAL → ]              │
-└──────────────────────────────────┘
-```
-
----
-
-## § 9. DOUNI × Archetype (two orthogonal axes)
-
-DOUNI는 **두 축**이 직교로 만나는 캐릭터다. 하나는 성장(Stage), 하나는 성향(Archetype).
-
-### Axis 1: Stage (성장)
-
-| Stage | Trigger | Unlock |
-|---|---|---|
-| EGG | 생성 직후 | Terminal access, 1 pattern, 5 symbols |
-| CHICK | first feedback | 10 symbols, 15 indicators |
-| FLEDGLING | first LoRA pass | full market scan, 40 indicators |
-| DOUNI | 3+ successful LoRA versions | Lab method selection, LoRA rank control |
-| ELDER | Phase 2 marketplace ready | Market listing, Model export |
-
-**Rule:** Stage가 낮아도 기본 성능은 100%. 높으면 보너스. 낮다고 벌칙 없음. Duolingo streak ≠ Cogochi stage.
-
-### Axis 2: Archetype (성향, 런타임 필터)
-
-`cogochi/battle_engine.py`의 `guardian_veto()` 참조. Day-1에서 archetype은 **Scanner 알림 필터**로 작동한다 (Phase 3에서는 Battle veto로도 확장).
-
-| Archetype | 성향 | Runtime rule (Scanner filter) |
-|---|---|---|
-| **Oracle** | 역추세 · divergence 감지 | CVD divergence 우선 알림, breakout 알림 디프리오 |
-| **Crusher** | 모멘텀 · 돌파 편향 | Vol surge · breakout 우선, reversal 디프리오 |
-| **Guardian** | 리스크 관리 · ATR/청산 | 펀딩 과열 시 LONG 알림 차단, high-vol 경고 우선 |
-| **Rider** | 추세 추종 · MTF align | HTF align BULL/BEAR일 때만 알림, range 디프리오 |
-
-**선택 시점:** `/create` step 2. 나중에 `/agent/[id]`에서 변경 가능 (단, adapter는 다시 학습해야 함).
+**Returns when:** marketplace (`/market`) or battle (`/battle`) surfaces are revived. Until then, treat every reference to "DOUNI", "archetype", or "Stage" elsewhere in this doc as archival.
 
 ---
 
@@ -448,106 +507,169 @@ Step 5: Deploy                   — adapter swap · version manager · rollback
 
 ## § 11. Data Contracts
 
-### SignalSnapshot (15 layers + composite)
+> **2026-04-11 patch:** the 15-layer `SignalSnapshot` structure is dropped entirely. Real data contracts come from the WTD backend (`/Users/ej/Projects/WTD/cogochi-autoresearch/`) and are grounded in what actually runs. `Pattern` → `Challenge`, `Feedback` → `Instance`, `ModelVersion` → Phase 2+.
 
-```typescript
+### 11.1 klines DataFrame (7 columns)
+
+Raw OHLCV from Binance spot, cached at `WTD/cogochi-autoresearch/data_cache/cache/{SYMBOL}_{TIMEFRAME}.csv`. Fetched via `data_cache.load_klines(symbol, timeframe)`.
+
+```
+index: pd.DatetimeIndex (UTC)
+columns:
+  open                      float
+  high                      float
+  low                       float
+  close                     float
+  volume                    float
+  taker_buy_base_volume     float
+```
+
+Only `1h` is supported as of Phase E1. See `WTD/cogochi-autoresearch/data_cache/fetch_binance.py`.
+
+### 11.2 features DataFrame (28 columns)
+
+Computed from klines by `scanner.feature_calc.compute_features_table(klines, symbol, perp=None)`. First `MIN_HISTORY_BARS` (~500) rows are dropped as warmup. Past-only (no look-ahead).
+
+```
+FEATURE_COLUMNS = (
+  # Trend
+  "ema20_slope", "ema50_slope", "ema_alignment",
+  "price_vs_ema50",
+  # Momentum
+  "rsi14", "rsi14_slope", "macd_hist", "roc_10",
+  # Volatility
+  "atr_pct", "atr_ratio_short_long", "bb_width", "bb_position",
+  # Volume
+  "volume_24h", "vol_ratio_3", "obv_slope",
+  # Structure
+  "htf_structure",  # "uptrend" | "downtrend" | "range"
+  "dist_from_20d_high", "dist_from_20d_low", "swing_pivot_distance",
+  # Microstructure (perp — real data, Phase E1)
+  "funding_rate", "oi_change_1h", "oi_change_24h", "long_short_ratio",
+  # Order flow
+  "cvd_state",           # "buying" | "selling" | "neutral"
+  "taker_buy_ratio_1h",
+  # Meta
+  "regime",              # "risk_on" | "risk_off" | "chop"
+  "hour_of_day", "day_of_week",
+)
+```
+
+The perp columns (`funding_rate`, `oi_change_*`, `long_short_ratio`) fall back to neutral defaults when the perp layer is unavailable. See `data_cache.load_perp` and `fetch_binance_perp.py`.
+
+### 11.3 Context wrapper (passed to every block)
+
+```python
+@dataclass(frozen=True)
+class Context:
+    klines: pd.DataFrame     # 7-column OHLCV, may start before features.index[0]
+    features: pd.DataFrame   # 28-column feature table (post-warmup)
+    symbol: str              # diagnostics only
+```
+
+Every block function has the same signature:
+
+```python
+def block(ctx: Context, *, param1=default, param2=default, ...) -> pd.Series[bool]
+```
+
+All tunable parameters are keyword-only after `*`. Returns a bool Series aligned to `ctx.features.index`. See `WTD/cogochi-autoresearch/building_blocks/` for the 29 implemented blocks (post Phase E1).
+
+### 11.4 Challenge (user-saved pattern, replaces old `Pattern`)
+
+A challenge is a **directory on disk**, not a DB row:
+
+```
+WTD/challenges/pattern-hunting/<slug>/
+├── answers.yaml       # canonical wizard output — THE spec
+├── match.py           # auto-generated, user/LLM editable
+├── prepare.py         # auto-generated, DO NOT MODIFY
+├── program.md         # agent instructions / README
+├── pyproject.toml     # uv project
+└── output/
+    └── instances.jsonl   # evaluation results (one JSON object per match bar)
+```
+
+`answers.yaml` schema:
+
+```yaml
+version: 1
+schema: pattern_hunting
+created_at: 2026-04-11T08:22:23Z
+identity:
+  name: sample-rally-pattern           # slug
+  description: 10% rally over 3 days, Bollinger expansion, enter on long lower wick.
+setup:
+  direction: long                       # long | short
+  universe: binance_30
+  timeframe: 1h
+blocks:
+  trigger:
+    module: building_blocks.triggers
+    function: recent_rally
+    params:
+      pct: 0.1
+      lookback_bars: 72
+  confirmations:
+    - module: building_blocks.confirmations
+      function: bollinger_expansion
+      params:
+        expansion_factor: 1.5
+        ago: 5
+  entry:
+    module: building_blocks.entries
+    function: long_lower_wick
+    params:
+      body_ratio: 1.5
+  disqualifiers:
+    - module: building_blocks.disqualifiers
+      function: extreme_volatility
+      params:
+        atr_pct_threshold: 0.1
+outcome:
+  target_pct: 0.06
+  stop_pct: 0.02
+  horizon_bars: 24
+```
+
+Composition rule: `pattern = trigger ∧ conf₁ ∧ ... ∧ confₙ ∧ entry ∧ ¬disq₁ ∧ ... ∧ ¬disqₘ`. Wizard constraints: trigger=1, confirmations 0-3, entry 0-1, disqualifiers 0-3.
+
+### 11.5 Instance row (replaces old `Feedback`)
+
+One row in `<slug>/output/instances.jsonl`:
+
+```json
 {
-  // 15 layers (backend only)
-  l1:  { phase: "ACCUM|DIST|MARKUP|MARKDOWN|REACCUM|REDIST", score: number },
-  l2:  { fr: number, oi_change: number, ls_ratio: number, score: number },
-  l3:  { v_surge: boolean, score: number },
-  l4:  { bid_ask_ratio: number, score: number },
-  l5:  { basis_pct: number, score: number },
-  l6:  { exchange_netflow: number, score: number },
-  l7:  { fear_greed: number, score: number },
-  l8:  { kimchi: number, score: number },
-  l9:  { liq_1h: number, score: number },
-  l10: { mtf_confluence: "BULL|BEAR|MIXED", score: number },
-  l11: { cvd_state: "BULLISH|BEARISH|BULLISH_DIV|BEARISH_DIV|NEUTRAL", score: number },
-  l12: { sector_flow: string, score: number },
-  l13: { breakout: boolean, score: number },
-  l14: { bb_squeeze: boolean, bb_width: number, score: number },
-  l15: { atr_pct: number },
-
-  // Composite
-  alphaScore: number,   // -100 ~ +100
-  regime: "UPTREND|DOWNTREND|VOLATILE|RANGE|BREAKOUT",
-
-  // Meta
-  symbol: string,
-  timeframe: string,
-  timestamp: number,
-  hmac: string,          // server-signed for anti-tamper
+  "symbol": "BTCUSDT",
+  "timestamp": "2026-03-22T14:00:00+00:00",
+  "entry_price": 67250.5,
+  "upside": 0.042,
+  "downside": 0.008,
+  "outcome": 0.034
 }
 ```
 
-### Pattern (user-saved)
+`outcome = upside - downside` over `horizon_bars` forward. No manual labeling — evaluation is deterministic on historical data.
 
-```typescript
-{
-  id: string,
-  user_id: string,
-  name: string,                      // auto-generated or user-edited
-  direction: "LONG" | "SHORT",
-  conditions: [
-    { field: "l11.cvd_state", op: "eq", value: "BEARISH_DIVERGENCE" },
-    { field: "l2.fr", op: "gt", value: 0.0010 },
-    { field: "l1.phase", op: "eq", value: "DISTRIBUTION" },
-  ],
-  active: boolean,
-  created_at: timestamp,
-  hit_count: number,
-  miss_count: number,
-  void_count: number,
-}
+### 11.6 Evaluate stdout (final SCORE contract)
+
+Final block that `prepare.py evaluate` prints to stdout (parsed by `/lab` UI):
+
+```
+---
+SCORE: <float>
+N_INSTANCES: <int>
+N_SYMBOLS_HIT: <int>
+MEAN_OUTCOME: <float>
+POSITIVE_RATE: <float>
+TOTAL_SECONDS: <float>
 ```
 
-### Feedback (KTO sample)
+SCORE formula: `mean_outcome × positive_rate × coverage`, where `coverage = n_symbols_hit / n_universe`. If `n_instances < MIN_INSTANCES` (default 30), `SCORE = -1.0`.
 
-```typescript
-{
-  id: string,
-  user_id: string,
-  pattern_id: string,
-  alert_id: string,
-  snapshot: SignalSnapshot,
-  verdict: "HIT" | "MISS" | "VOID",  // manual or auto
-  verdict_source: "manual" | "auto_1h_close",
-  p0_price: number,                  // price at alert
-  p1_price: number,                  // price 1H later
-  p1_change_pct: number,
-  created_at: timestamp,
-  reflection: string | null,         // LLM-generated short note
-}
-```
+### 11.7 ModelVersion / Adapter — **DEFERRED (Phase 2+)**
 
-### ModelVersion (adapter)
-
-```typescript
-{
-  id: string,
-  user_id: string,
-  base_model: "Qwen/Qwen2.5-1.5B-Instruct",
-  adapter_path: string,              // ~/.cache/cogochi_autoresearch/adapters/...
-  parent_version: string | null,     // previous version
-  training_config: {
-    method: "KTO" | "ORPO" | "DPO",
-    lora_r: number,
-    lora_alpha: number,
-    learning_rate: number,
-    num_samples: number,
-  },
-  val_metrics: {
-    hit_rate_before: number,
-    hit_rate_after: number,
-    delta_pp: number,
-    per_regime: { [regime: string]: { before, after, delta } },
-  },
-  status: "training" | "passed" | "failed" | "deployed" | "rolled_back",
-  created_at: timestamp,
-  deployed_at: timestamp | null,
-}
-```
+No per-user LoRA adapters in Day-1. The KTO/LoRA training pipeline, `ModelVersion` table, and deploy-gate mechanics return with `/training` surface in Phase 2+. Day-1 does NOT fine-tune models; it only composes + evaluates patterns.
 
 ---
 
