@@ -4,10 +4,8 @@
 // Scans many symbols in parallel using the 17-layer COGOCHI engine.
 // 3-Group symbol selection: volume, movers, near-breakout.
 
-import { rateLimiter } from './marketDataService';
 import { readRaw } from './providers';
 import { KnownRawId } from '$lib/contracts/ids';
-import { fetchKlinesServer, fetch24hrServer } from './binance';
 import { computeSignalSnapshot } from '$lib/engine/cogochi/layerEngine';
 import type { SignalSnapshot, ExtendedMarketData } from '$lib/engine/cogochi/types';
 import type { MarketContext } from '$lib/engine/factorEngine';
@@ -153,12 +151,16 @@ const FAPI_TIMEOUT = 5_000;
 async function fetchDerivatives(symbol: string) {
   const timeout = AbortSignal.timeout(FAPI_TIMEOUT);
   try {
-    const [frRes, oiRes] = await Promise.all([
-      fetch(`${FAPI}/fapi/v1/premiumIndex?symbol=${symbol}`, { signal: timeout }),
+    // premiumIndex (funding rate + mark price) now flows through the raw
+    // source adapter, which dedupes paired FUNDING_RATE / MARK_PRICE reads
+    // for the same symbol within a 5-second window. openInterest (point
+    // in time) and topLongShortAccountRatio are still direct fapi calls
+    // until their raw atoms are added in a follow-up slice.
+    const [funding, oiRes] = await Promise.all([
+      readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null),
       fetch(`${FAPI}/fapi/v1/openInterest?symbol=${symbol}`, { signal: timeout }),
     ]);
 
-    const fr = frRes.ok ? await frRes.json() : null;
     const oi = oiRes.ok ? await oiRes.json() : null;
 
     let lsRatio: number | null = null;
@@ -176,7 +178,7 @@ async function fetchDerivatives(symbol: string) {
     } catch { /* skip */ }
 
     return {
-      funding: fr ? parseFloat(fr.lastFundingRate) : null,
+      funding,
       oi: oi ? parseFloat(oi.openInterest) : null,
       lsRatio,
     };
@@ -192,18 +194,20 @@ async function scanSingleSymbol(
   fearGreed: number | null,
 ): Promise<ScanResult | null> {
   try {
-    // Fetch all data through the rate limiter
+    // All raw reads now flow through `readRaw()`; provider-level
+    // `binanceQuota` inside rawSources handles concurrency + interval
+    // pacing (the old per-caller `rateLimiter.execute(...)` wrapper is gone).
     const [klines, klines1h, klines1d, ticker, deriv, depth, oiHist, takerData, forceData] =
       await Promise.all([
-        rateLimiter.execute(() => fetchKlinesServer(symbol, '4h', 200)),
-        rateLimiter.execute(() => fetchKlinesServer(symbol, '1h', 100)).catch(() => []),
-        rateLimiter.execute(() => fetchKlinesServer(symbol, '1d', 50)).catch(() => []),
-        rateLimiter.execute(() => fetch24hrServer(symbol)).catch(() => null),
-        rateLimiter.execute(() => fetchDerivatives(symbol)),
-        rateLimiter.execute(() => readRaw(KnownRawId.DEPTH_L2_20, { symbol })).catch(() => null),
-        rateLimiter.execute(() => readRaw(KnownRawId.OI_HIST_1H, { symbol })).catch(() => []),
-        rateLimiter.execute(() => readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol })).catch(() => []),
-        rateLimiter.execute(() => readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol })).catch(() => []),
+        readRaw(KnownRawId.KLINES_4H, { symbol, limit: 200 }),
+        readRaw(KnownRawId.KLINES_1H, { symbol, limit: 100 }).catch(() => []),
+        readRaw(KnownRawId.KLINES_1D, { symbol, limit: 50 }).catch(() => []),
+        readRaw(KnownRawId.TICKER_24HR, { symbol }).catch(() => null),
+        fetchDerivatives(symbol),
+        readRaw(KnownRawId.DEPTH_L2_20, { symbol }).catch(() => null),
+        readRaw(KnownRawId.OI_HIST_1H, { symbol }).catch(() => []),
+        readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol }).catch(() => []),
+        readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol }).catch(() => []),
       ]);
 
     if (!klines || klines.length === 0) return null;

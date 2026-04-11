@@ -70,6 +70,9 @@ import {
 	type ForceOrder
 } from '$lib/server/marketDataService';
 import { fetchFearGreed } from '$lib/server/feargreed';
+import { fetchKlinesServer, fetch24hrServer } from '$lib/server/binance';
+import type { BinanceKline, Binance24hr } from '$lib/engine/types';
+import { binanceQuota } from './binanceQuota';
 
 // ---------------------------------------------------------------------------
 // Per-raw input + output type maps
@@ -84,6 +87,14 @@ import { fetchFearGreed } from '$lib/server/feargreed';
 
 type EmptyInput = Record<string, never>;
 
+/**
+ * Kline fetches carry a caller-supplied `limit` because different feature
+ * layers need different lookback windows (wyckoff needs ~200 bars, MTF
+ * needs ~100, sparkline panels need ~50). Unlike the OI/LS/taker raws,
+ * the dissection does not lock a single limit per timeframe.
+ */
+type KlinesInput = { symbol: string; limit: number };
+
 export interface RawSourceInputs {
 	[KnownRawId.FEAR_GREED_VALUE]: EmptyInput;
 	[KnownRawId.USD_KRW_RATE]: EmptyInput;
@@ -95,6 +106,15 @@ export interface RawSourceInputs {
 	[KnownRawId.MEMPOOL_FASTEST_FEE]: EmptyInput;
 	[KnownRawId.MEMPOOL_HALFHOUR_FEE]: EmptyInput;
 	[KnownRawId.MEMPOOL_HOUR_FEE]: EmptyInput;
+	[KnownRawId.KLINES_1M]: KlinesInput;
+	[KnownRawId.KLINES_5M]: KlinesInput;
+	[KnownRawId.KLINES_15M]: KlinesInput;
+	[KnownRawId.KLINES_1H]: KlinesInput;
+	[KnownRawId.KLINES_4H]: KlinesInput;
+	[KnownRawId.KLINES_1D]: KlinesInput;
+	[KnownRawId.TICKER_24HR]: { symbol: string };
+	[KnownRawId.FUNDING_RATE]: { symbol: string };
+	[KnownRawId.MARK_PRICE]: { symbol: string };
 	[KnownRawId.DEPTH_L2_20]: { symbol: string };
 	[KnownRawId.OI_HIST_5M]: { symbol: string };
 	[KnownRawId.OI_HIST_1H]: { symbol: string };
@@ -118,6 +138,15 @@ export interface RawSourceOutputs {
 	[KnownRawId.MEMPOOL_FASTEST_FEE]: number;
 	[KnownRawId.MEMPOOL_HALFHOUR_FEE]: number;
 	[KnownRawId.MEMPOOL_HOUR_FEE]: number;
+	[KnownRawId.KLINES_1M]: BinanceKline[];
+	[KnownRawId.KLINES_5M]: BinanceKline[];
+	[KnownRawId.KLINES_15M]: BinanceKline[];
+	[KnownRawId.KLINES_1H]: BinanceKline[];
+	[KnownRawId.KLINES_4H]: BinanceKline[];
+	[KnownRawId.KLINES_1D]: BinanceKline[];
+	[KnownRawId.TICKER_24HR]: Binance24hr;
+	[KnownRawId.FUNDING_RATE]: number | null;
+	[KnownRawId.MARK_PRICE]: number | null;
 	[KnownRawId.DEPTH_L2_20]: OrderBookSnapshot;
 	[KnownRawId.OI_HIST_5M]: OIHistoryPoint[];
 	[KnownRawId.OI_HIST_1H]: OIHistoryPoint[];
@@ -187,6 +216,58 @@ function getMempool() {
 }
 
 // ---------------------------------------------------------------------------
+// premiumIndex memo (funding rate + mark price)
+// ---------------------------------------------------------------------------
+//
+// `fapi/v1/premiumIndex?symbol=X` returns both `lastFundingRate` and
+// `markPrice` in one payload. Previously `scanner.ts` and `toolExecutor.ts`
+// each owned a private `fetchDerivatives()` helper that fetched this
+// endpoint inline (plus `openInterest` and `topLongShortAccountRatio`,
+// which are still local helpers since they do not yet have raw atoms).
+//
+// Moving premiumIndex into this memo ensures the FUNDING_RATE and
+// MARK_PRICE atoms, when both are read for the same symbol, do not
+// produce two network calls. The 5-second TTL matches Binance's typical
+// funding-rate update cadence on the engine path.
+
+interface PremiumIndexPayload {
+	fundingRate: number | null;
+	markPrice: number | null;
+}
+
+const premiumIndexInflight = new Map<string, Promise<PremiumIndexPayload>>();
+const premiumIndexAt = new Map<string, number>();
+
+async function fetchPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
+	const res = await fetch(
+		`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${symbol}`,
+		{ signal: AbortSignal.timeout(5000) }
+	);
+	if (!res.ok) throw new Error(`premiumIndex ${res.status}`);
+	const data = (await res.json()) as { lastFundingRate?: string; markPrice?: string };
+	const fundingRate = data.lastFundingRate != null ? parseFloat(data.lastFundingRate) : null;
+	const markPrice = data.markPrice != null ? parseFloat(data.markPrice) : null;
+	return {
+		fundingRate: Number.isFinite(fundingRate as number) ? fundingRate : null,
+		markPrice: Number.isFinite(markPrice as number) ? markPrice : null
+	};
+}
+
+function getPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
+	const now = Date.now();
+	const existing = premiumIndexInflight.get(symbol);
+	const lastAt = premiumIndexAt.get(symbol) ?? 0;
+	if (existing && now - lastAt < 5_000) return existing;
+	premiumIndexAt.set(symbol, now);
+	const promise = binanceQuota.execute(() => fetchPremiumIndex(symbol)).catch((err) => {
+		premiumIndexInflight.delete(symbol);
+		throw err;
+	});
+	premiumIndexInflight.set(symbol, promise);
+	return promise;
+}
+
+// ---------------------------------------------------------------------------
 // Adapter map
 // ---------------------------------------------------------------------------
 //
@@ -223,20 +304,50 @@ export const rawSources: RawSourceMap = {
 	[KnownRawId.MEMPOOL_HALFHOUR_FEE]: async () => (await getMempool()).halfHourFee,
 	[KnownRawId.MEMPOOL_HOUR_FEE]: async () => (await getMempool()).hourFee,
 
-	[KnownRawId.DEPTH_L2_20]: async ({ symbol }) => fetchDepth(symbol, 20),
+	// Klines — one raw per timeframe, caller supplies the lookback limit.
+	// `fetchKlinesServer` owns its own TTL cache keyed on
+	// `${symbol}:${interval}:${limit}`, so the provider wrapper only needs
+	// to hold the quota slot.
+	[KnownRawId.KLINES_1M]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchKlinesServer(symbol, '1m', limit)),
+	[KnownRawId.KLINES_5M]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchKlinesServer(symbol, '5m', limit)),
+	[KnownRawId.KLINES_15M]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchKlinesServer(symbol, '15m', limit)),
+	[KnownRawId.KLINES_1H]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchKlinesServer(symbol, '1h', limit)),
+	[KnownRawId.KLINES_4H]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchKlinesServer(symbol, '4h', limit)),
+	[KnownRawId.KLINES_1D]: async ({ symbol, limit }) =>
+		binanceQuota.execute(() => fetchKlinesServer(symbol, '1d', limit)),
+
+	// Per-symbol spot 24hr ticker. `fetch24hrServer` caches internally.
+	[KnownRawId.TICKER_24HR]: async ({ symbol }) =>
+		binanceQuota.execute(() => fetch24hrServer(symbol)),
+
+	// FUNDING_RATE + MARK_PRICE share one upstream (`fapi/v1/premiumIndex`).
+	// The memo dedupes paired reads for the same symbol within a 5s window.
+	[KnownRawId.FUNDING_RATE]: async ({ symbol }) => (await getPremiumIndex(symbol)).fundingRate,
+	[KnownRawId.MARK_PRICE]: async ({ symbol }) => (await getPremiumIndex(symbol)).markPrice,
+
+	[KnownRawId.DEPTH_L2_20]: async ({ symbol }) =>
+		binanceQuota.execute(() => fetchDepth(symbol, 20)),
 
 	// §10 Q1 — fixed timeframe authority, callers cannot override
-	[KnownRawId.OI_HIST_5M]: async ({ symbol }) => fetchOIHistory(symbol, '5m', OI_5M_LIMIT),
-	[KnownRawId.OI_HIST_1H]: async ({ symbol }) => fetchOIHistory(symbol, '1h', OI_1H_LIMIT),
-	[KnownRawId.LONG_SHORT_GLOBAL]: async ({ symbol }) => fetchGlobalLS(symbol, '1h', LS_1H_LIMIT),
+	[KnownRawId.OI_HIST_5M]: async ({ symbol }) =>
+		binanceQuota.execute(() => fetchOIHistory(symbol, '5m', OI_5M_LIMIT)),
+	[KnownRawId.OI_HIST_1H]: async ({ symbol }) =>
+		binanceQuota.execute(() => fetchOIHistory(symbol, '1h', OI_1H_LIMIT)),
+	[KnownRawId.LONG_SHORT_GLOBAL]: async ({ symbol }) =>
+		binanceQuota.execute(() => fetchGlobalLS(symbol, '1h', LS_1H_LIMIT)),
 	[KnownRawId.TAKER_BUY_SELL_RATIO]: async ({ symbol }) =>
-		fetchTakerRatio(symbol, '1h', TAKER_1H_LIMIT),
+		binanceQuota.execute(() => fetchTakerRatio(symbol, '1h', TAKER_1H_LIMIT)),
 
 	// §10 Q6 — 1h primary + 4h regime-context
 	[KnownRawId.FORCE_ORDERS_1H]: async ({ symbol }) =>
-		fetchForceOrders(symbol, FORCE_ORDERS_1H_LIMIT),
+		binanceQuota.execute(() => fetchForceOrders(symbol, FORCE_ORDERS_1H_LIMIT)),
 	[KnownRawId.FORCE_ORDERS_4H]: async ({ symbol }) =>
-		fetchForceOrders(symbol, FORCE_ORDERS_4H_LIMIT),
+		binanceQuota.execute(() => fetchForceOrders(symbol, FORCE_ORDERS_4H_LIMIT)),
 
 	// KRW exchange price maps — the volume map is deliberately absent
 	// in this slice; `fetchUpbitPrices` only returns prices and there

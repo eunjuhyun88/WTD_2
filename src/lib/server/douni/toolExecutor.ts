@@ -8,17 +8,44 @@
 import type { ToolCall, ToolResult, ToolExecutorContext, DouniSSEEvent } from './types';
 import type { SignalSnapshot, ExtendedMarketData } from '$lib/engine/cogochi/types';
 import { VALID_TOOL_NAMES } from './tools';
-import { fetchKlinesServer, fetch24hrServer } from '../binance';
 import { computeSignalSnapshot, computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 import type { MarketContext } from '$lib/engine/factorEngine';
 import { scanMarket, type ScanConfig } from '$lib/server/scanner';
-import { rateLimiter } from '../marketDataService';
 import { readRaw } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
 
 const FAPI = 'https://fapi.binance.com';
+
+// Map a runtime timeframe string to the matching klines RawId atom.
+// Falls back to KLINES_4H when the caller passes a timeframe that is
+// not yet backed by a dedicated raw (e.g. `1m` keeps returning 4h until
+// the 1m raw's consumers are migrated).
+type KlinesRawId =
+  | typeof KnownRawId.KLINES_1M
+  | typeof KnownRawId.KLINES_5M
+  | typeof KnownRawId.KLINES_15M
+  | typeof KnownRawId.KLINES_1H
+  | typeof KnownRawId.KLINES_4H
+  | typeof KnownRawId.KLINES_1D;
+
+function klinesRawIdFor(tf: string): KlinesRawId {
+  switch (tf) {
+    case '1m':
+      return KnownRawId.KLINES_1M;
+    case '5m':
+      return KnownRawId.KLINES_5M;
+    case '15m':
+      return KnownRawId.KLINES_15M;
+    case '1h':
+      return KnownRawId.KLINES_1H;
+    case '1d':
+      return KnownRawId.KLINES_1D;
+    default:
+      return KnownRawId.KLINES_4H;
+  }
+}
 
 // ─── Main Dispatcher ────────────────────────────────────────
 
@@ -125,24 +152,30 @@ async function executeAnalyzeMarket(
   const tf = (args.timeframe as string) || ctx.timeframe || '4h';
   const isBTC = symbol.startsWith('BTC');
 
-  // Fetch all data in parallel — 12 sources via rate limiter
+  // Fetch all data in parallel. Every Binance-hitting raw flows through
+  // `binanceQuota` inside `rawSources`, so callers no longer need a
+  // per-site rate limiter wrapper. Timeframe for the "current" klines
+  // set is resolved dynamically from the user-supplied `tf`; we fall
+  // back to the 4h bucket when the runtime timeframe is not one of the
+  // supported klines atoms.
+  const currentKlinesRaw = klinesRawIdFor(tf);
   const [
     klines, klines1h, klines1d, klines5m, ticker,
     deriv, fearGreed, depth, oiHistory, takerData,
     forceOrders, btcOnchainData, mempoolData,
     upbitPrices, bithumbPrices, usdKrw,
   ] = await Promise.all([
-    rateLimiter.execute(() => fetchKlinesServer(symbol, tf, 200)),
-    rateLimiter.execute(() => fetchKlinesServer(symbol, '1h', 100)).catch(() => []),
-    rateLimiter.execute(() => fetchKlinesServer(symbol, '1d', 50)).catch(() => []),
-    rateLimiter.execute(() => fetchKlinesServer(symbol, '5m', 60)).catch(() => []),
-    rateLimiter.execute(() => fetch24hrServer(symbol)).catch(() => null),
+    readRaw(currentKlinesRaw, { symbol, limit: 200 }),
+    readRaw(KnownRawId.KLINES_1H, { symbol, limit: 100 }).catch(() => []),
+    readRaw(KnownRawId.KLINES_1D, { symbol, limit: 50 }).catch(() => []),
+    readRaw(KnownRawId.KLINES_5M, { symbol, limit: 60 }).catch(() => []),
+    readRaw(KnownRawId.TICKER_24HR, { symbol }).catch(() => null),
     fetchDerivatives(symbol),
     readRaw(KnownRawId.FEAR_GREED_VALUE, {}).catch(() => null),
-    rateLimiter.execute(() => readRaw(KnownRawId.DEPTH_L2_20, { symbol })).catch(() => null),
-    rateLimiter.execute(() => readRaw(KnownRawId.OI_HIST_5M, { symbol })).catch(() => []),
-    rateLimiter.execute(() => readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol })).catch(() => []),
-    rateLimiter.execute(() => readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol })).catch(() => []),
+    readRaw(KnownRawId.DEPTH_L2_20, { symbol }).catch(() => null),
+    readRaw(KnownRawId.OI_HIST_5M, { symbol }).catch(() => []),
+    readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol }).catch(() => []),
+    readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol }).catch(() => []),
     // BTC onchain + mempool: rawSources already dedupes compound fetches,
     // so reading one slice pulls the whole payload once and caches it.
     isBTC
@@ -161,8 +194,8 @@ async function executeAnalyzeMarket(
           pending != null && fastestFee != null ? { count: pending, fastestFee } : null,
         )
       : Promise.resolve(null),
-    rateLimiter.execute(() => readRaw(KnownRawId.UPBIT_PRICE_MAP, {})).catch(() => new Map()),
-    rateLimiter.execute(() => readRaw(KnownRawId.BITHUMB_PRICE_MAP, {})).catch(() => new Map()),
+    readRaw(KnownRawId.UPBIT_PRICE_MAP, {}).catch(() => new Map()),
+    readRaw(KnownRawId.BITHUMB_PRICE_MAP, {}).catch(() => new Map()),
     readRaw(KnownRawId.USD_KRW_RATE, {}).catch(() => 1350),
   ]);
 
@@ -558,16 +591,22 @@ function executeQueryMemory(
 }
 
 // ─── Helper: Fetch derivatives (reused from analyze endpoint) ──
+//
+// premiumIndex (funding rate + mark price) flows through `readRaw`,
+// which dedupes paired reads for the same symbol within the 5-second
+// `getPremiumIndex` memo owned by `rawSources.ts`. The other two atoms
+// in this helper (`openInterest` point-in-time and
+// `topLongShortAccountRatio`) are still direct fapi calls until their
+// raw atoms are added in a follow-up slice.
 
 async function fetchDerivatives(symbol: string) {
   const timeout = AbortSignal.timeout(5000);
   try {
-    const [frRes, oiRes] = await Promise.all([
-      fetch(`${FAPI}/fapi/v1/premiumIndex?symbol=${symbol}`, { signal: timeout }),
+    const [funding, oiRes] = await Promise.all([
+      readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null),
       fetch(`${FAPI}/fapi/v1/openInterest?symbol=${symbol}`, { signal: timeout }),
     ]);
 
-    const fr = frRes.ok ? await frRes.json() : null;
     const oi = oiRes.ok ? await oiRes.json() : null;
 
     let lsRatio: number | null = null;
@@ -585,7 +624,7 @@ async function fetchDerivatives(symbol: string) {
     } catch { /* skip */ }
 
     return {
-      funding: fr ? parseFloat(fr.lastFundingRate) : null,
+      funding,
       oi: oi ? parseFloat(oi.openInterest) : null,
       lsRatio,
     };

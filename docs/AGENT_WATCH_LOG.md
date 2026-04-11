@@ -8957,3 +8957,39 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Final working tree status:
   - branch remains dirty because pre-existing UI WIP is still present in `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/styles/tokens.css`, `src/lib/webgl/ascii-trail-shaders.ts`, `src/routes/+layout.svelte`, and `src/routes/+page.svelte`
   - docs changed in this task: `docs/AGENT_WATCH_LOG.md`, `docs/PLANS.md`, and new file `docs/exec-plans/active/chatbattle-repo-wide-refactor-design-2026-04-11.md`
+
+## [2026-04-11 14:00:00 +0900] START W-20260411-1400-chatbattle-impl (chatbattle)
+
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/jovial-newton`
+- Branch: `claude/jovial-newton`
+- Base `origin/main` hash: not fetched (worktree-local session)
+- Working tree status at start: clean (HEAD at `5697dfe`)
+- Task summary: Phase 1 A-P0 finish slice B4/B5. Add Binance klines/ticker/funding/mark-price raw atoms, wire them through `providers/rawSources.ts`, relocate the old client-side `RateLimiter` (`marketDataService.ts`) to a provider-level `binanceQuota` module, then migrate every remaining `rateLimiter.execute(...)` + direct `fetchKlinesServer`/`fetch24hrServer`/`premiumIndex` call in `scanner.ts` and `douni/toolExecutor.ts` onto `readRaw(...)`. Exit criterion: zero `marketDataService` imports in `src/lib/server/scanner.ts` and `src/lib/server/douni/toolExecutor.ts`.
+- Owned files:
+  - `src/lib/contracts/ids.ts`
+  - `src/lib/server/providers/binanceQuota.ts` (new)
+  - `src/lib/server/providers/rawSources.ts`
+  - `src/lib/server/marketDataService.ts`
+  - `src/lib/server/scanner.ts`
+  - `src/lib/server/douni/toolExecutor.ts`
+- Overlap check: no other agent is editing these paths in this worktree.
+
+## [2026-04-11 15:10:00 +0900] FINISH W-20260411-1400-chatbattle-impl (chatbattle)
+
+- What changed:
+  - added `src/lib/server/providers/binanceQuota.ts` — provider-level concurrency + pacing limiter (8 inflight, 80 ms interval) that replaces the deprecated client-side `RateLimiter` from `marketDataService.ts` (dissection §1.1 DROP)
+  - extended `src/lib/contracts/ids.ts` with `KnownRawId.TICKER_24HR` for the per-symbol spot 24hr ticker raw
+  - extended `src/lib/server/providers/rawSources.ts` with typed input/output entries for `KLINES_{1M,5M,15M,1H,4H,1D}`, `TICKER_24HR`, `FUNDING_RATE`, and `MARK_PRICE`; added a 5-second `getPremiumIndex` memo so paired FUNDING_RATE/MARK_PRICE reads for the same symbol share one `fapi/v1/premiumIndex` request; wrapped every Binance-hitting fetcher in the adapter map with `binanceQuota.execute(...)`
+  - migrated `src/lib/server/scanner.ts` — dropped `import { rateLimiter } from './marketDataService'` and `import { fetchKlinesServer, fetch24hrServer } from './binance'`; swapped klines/ticker/derivatives reads onto `readRaw(...)`; rewrote the internal `fetchDerivatives` helper so its premiumIndex leg uses `readRaw(KnownRawId.FUNDING_RATE, ...)` (openInterest and topLongShortAccountRatio remain inline fetches until their raw atoms land)
+  - migrated `src/lib/server/douni/toolExecutor.ts` — same import drop + same migration + added a local `klinesRawIdFor(tf)` helper that maps the runtime `tf` string to the matching klines RawId atom (falls back to `KLINES_4H` for unsupported timeframes)
+  - deleted the `RateLimiter` class and the exported `rateLimiter` singleton from `src/lib/server/marketDataService.ts`; rewrote the module-level comment to describe the new adapter relationship
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings` across 2933 files)
+  - `npm run build`: PASS (`✓ built in 15.41s`; `rawSources.js` chunk 15.84 kB, no new warnings)
+  - `npm run ctx:check -- --strict`: PASS after refreshing the checkpoint with `--next` and `--question`, regenerating the latest brief and handoff via `ctx:compact`
+- Exit criterion verification:
+  - `grep -n 'marketDataService\|rateLimiter' src/lib/server/scanner.ts src/lib/server/douni/toolExecutor.ts` returns only a single comment reference in `scanner.ts` noting that the old wrapper was removed; zero import statements remain in either file
+- Commit hash: deferred (pending user approval per AGENTS.md §Push/merge)
+- Push status: not requested
+- Final working tree status: dirty with the six owned files above plus the refreshed `.agent-context/*` brief/handoff/checkpoint artifacts (gitignored) and this watch log entry
