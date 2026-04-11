@@ -11,7 +11,6 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { readRaw } from '$lib/server/providers';
 import { KnownRawId } from '$lib/contracts/ids';
-import { fetchBtcDominance } from '$lib/server/marketDataService';
 
 export const GET: RequestHandler = async () => {
   const [fearGreed, btcTx, mempoolPending, fastestFee, usdKrw, btcDom] = await Promise.all([
@@ -20,9 +19,7 @@ export const GET: RequestHandler = async () => {
     readRaw(KnownRawId.MEMPOOL_PENDING_TX, {}).catch(() => null),
     readRaw(KnownRawId.MEMPOOL_FASTEST_FEE, {}).catch(() => null),
     readRaw(KnownRawId.USD_KRW_RATE, {}).catch(() => 1350),
-    // btc dominance is not yet in the KnownRawId catalog — keep the
-    // legacy direct call for now, will be lifted in a later slice.
-    fetchBtcDominance().catch(() => null),
+    readRaw(KnownRawId.BTC_DOMINANCE, {}).catch(() => null),
   ]);
 
   return json({

@@ -14,13 +14,7 @@ import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 import type { MarketContext } from '$lib/engine/factorEngine';
 import { scanMarket, type ScanConfig } from '$lib/server/scanner';
-import {
-  rateLimiter,
-  // upbit/bithumb price maps still live in marketDataService — their
-  // Map<string, number> return shape is not yet modeled in the
-  // KnownRawId adapter. Lifted in Phase 1 A-P0 slice 4.
-  fetchUpbitPrices, fetchBithumbPrices,
-} from '../marketDataService';
+import { rateLimiter } from '../marketDataService';
 import { readRaw } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
 
@@ -167,8 +161,8 @@ async function executeAnalyzeMarket(
           pending != null && fastestFee != null ? { count: pending, fastestFee } : null,
         )
       : Promise.resolve(null),
-    rateLimiter.execute(() => fetchUpbitPrices()).catch(() => new Map()),
-    rateLimiter.execute(() => fetchBithumbPrices()).catch(() => new Map()),
+    rateLimiter.execute(() => readRaw(KnownRawId.UPBIT_PRICE_MAP, {})).catch(() => new Map()),
+    rateLimiter.execute(() => readRaw(KnownRawId.BITHUMB_PRICE_MAP, {})).catch(() => new Map()),
     readRaw(KnownRawId.USD_KRW_RATE, {}).catch(() => 1350),
   ]);
 

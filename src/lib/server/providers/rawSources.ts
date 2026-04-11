@@ -60,6 +60,9 @@ import {
 	fetchBtcOnchain,
 	fetchMempool,
 	fetchUsdKrw,
+	fetchUpbitPrices,
+	fetchBithumbPrices,
+	fetchBtcDominance,
 	type OrderBookSnapshot,
 	type OIHistoryPoint,
 	type TakerRatioPoint,
@@ -99,6 +102,9 @@ export interface RawSourceInputs {
 	[KnownRawId.TAKER_BUY_SELL_RATIO]: { symbol: string };
 	[KnownRawId.FORCE_ORDERS_1H]: { symbol: string };
 	[KnownRawId.FORCE_ORDERS_4H]: { symbol: string };
+	[KnownRawId.UPBIT_PRICE_MAP]: EmptyInput;
+	[KnownRawId.BITHUMB_PRICE_MAP]: EmptyInput;
+	[KnownRawId.BTC_DOMINANCE]: EmptyInput;
 }
 
 export interface RawSourceOutputs {
@@ -119,6 +125,9 @@ export interface RawSourceOutputs {
 	[KnownRawId.TAKER_BUY_SELL_RATIO]: TakerRatioPoint[];
 	[KnownRawId.FORCE_ORDERS_1H]: ForceOrder[];
 	[KnownRawId.FORCE_ORDERS_4H]: ForceOrder[];
+	[KnownRawId.UPBIT_PRICE_MAP]: Map<string, number>;
+	[KnownRawId.BITHUMB_PRICE_MAP]: Map<string, number>;
+	[KnownRawId.BTC_DOMINANCE]: number | null;
 }
 
 /** The subset of `KnownRawId` values this slice implements. */
@@ -224,8 +233,23 @@ export const rawSources: RawSourceMap = {
 		fetchTakerRatio(symbol, '1h', TAKER_1H_LIMIT),
 
 	// §10 Q6 — 1h primary + 4h regime-context
-	[KnownRawId.FORCE_ORDERS_1H]: async ({ symbol }) => fetchForceOrders(symbol, FORCE_ORDERS_1H_LIMIT),
-	[KnownRawId.FORCE_ORDERS_4H]: async ({ symbol }) => fetchForceOrders(symbol, FORCE_ORDERS_4H_LIMIT)
+	[KnownRawId.FORCE_ORDERS_1H]: async ({ symbol }) =>
+		fetchForceOrders(symbol, FORCE_ORDERS_1H_LIMIT),
+	[KnownRawId.FORCE_ORDERS_4H]: async ({ symbol }) =>
+		fetchForceOrders(symbol, FORCE_ORDERS_4H_LIMIT),
+
+	// KRW exchange price maps — the volume map is deliberately absent
+	// in this slice; `fetchUpbitPrices` only returns prices and there
+	// is no `fetchUpbitVolumes` yet. Will land with a follow-up.
+	[KnownRawId.UPBIT_PRICE_MAP]: async () => fetchUpbitPrices(),
+	[KnownRawId.BITHUMB_PRICE_MAP]: async () => fetchBithumbPrices(),
+
+	// BTC dominance (CoinGecko /global endpoint). Returns a percentage
+	// 0-100, or null when the upstream is unavailable.
+	[KnownRawId.BTC_DOMINANCE]: async () => {
+		const v = await fetchBtcDominance();
+		return v > 0 ? v : null;
+	}
 };
 
 // ---------------------------------------------------------------------------
