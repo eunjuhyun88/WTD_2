@@ -6,16 +6,16 @@
 // 에이전트 채팅, 분석 요약 등 모든 LLM 호출의 단일 진입점.
 
 import {
-  GROQ_API_KEY, GROQ_MODEL, groqUrl,
-  GEMINI_API_KEY, GEMINI_MODEL, geminiUrl,
-  DEEPSEEK_API_KEY, DEEPSEEK_MODEL, deepseekUrl,
-  QWEN_API_KEY, QWEN_MODEL, qwenUrl,
-  GROK_API_KEY, GROK_MODEL, grokUrl,
-  KIMI_API_KEY, KIMI_MODEL, kimiUrl,
-  HF_TOKEN, HF_MODEL, hfUrl,
-  CEREBRAS_API_KEY, CEREBRAS_MODEL, cerebrasUrl,
-  MISTRAL_API_KEY, MISTRAL_MODEL, mistralUrl,
-  OPENROUTER_API_KEY, OPENROUTER_MODEL, openrouterUrl, OPENROUTER_SITE_URL, OPENROUTER_APP_NAME,
+  GROQ_MODEL, groqUrl,
+  GEMINI_MODEL, geminiUrl,
+  DEEPSEEK_MODEL, deepseekUrl,
+  QWEN_MODEL, qwenUrl,
+  GROK_MODEL, grokUrl,
+  KIMI_MODEL, kimiUrl,
+  HF_MODEL, hfUrl,
+  CEREBRAS_MODEL, cerebrasUrl,
+  MISTRAL_MODEL, mistralUrl,
+  OPENROUTER_MODEL, openrouterUrl, OPENROUTER_SITE_URL, OPENROUTER_APP_NAME,
   OLLAMA_MODEL, ollamaUrl, ollamaChatUrl,
   getAvailableProvider,
   isDeepSeekAvailable,
@@ -29,7 +29,17 @@ import {
   isMistralAvailable,
   isOpenRouterAvailable,
   isOllamaAvailable,
+  // Rotation pool accessors (one pair per provider)
   getGroqApiKey, rotateGroqKey,
+  getCerebrasApiKey, rotateCerebrasKey,
+  getHfToken, rotateHfToken,
+  getGeminiApiKey, rotateGeminiKey,
+  getDeepSeekApiKey, rotateDeepSeekKey,
+  getQwenApiKey, rotateQwenKey,
+  getGrokApiKey, rotateGrokKey,
+  getKimiApiKey, rotateKimiKey,
+  getMistralApiKey, rotateMistralKey,
+  getOpenRouterApiKey, rotateOpenRouterKey,
   type LLMProvider,
 } from './llmConfig';
 import type { MultiTimeframeIndicatorContext } from './multiTimeframeContext';
@@ -181,7 +191,7 @@ async function callGemini(messages: LLMMessage[], maxTokens: number, temperature
     }));
 
   try {
-    const res = await fetch(`${geminiUrl()}?key=${GEMINI_API_KEY}`, {
+    const res = await fetch(`${geminiUrl()}?key=${getGeminiApiKey()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -197,6 +207,8 @@ async function callGemini(messages: LLMMessage[], maxTokens: number, temperature
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
+      // Rotate on quota (429) or auth failure (401/403 for revoked keys)
+      if (res.status === 429 || res.status === 401 || res.status === 403) rotateGeminiKey();
       throw new Error(`Gemini ${res.status}: ${errBody.slice(0, 200)}`);
     }
 
@@ -229,7 +241,7 @@ async function callDeepSeek(messages: LLMMessage[], maxTokens: number, temperatu
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${getDeepSeekApiKey()}`,
       },
       body: JSON.stringify({
         model: DEEPSEEK_MODEL,
@@ -242,6 +254,7 @@ async function callDeepSeek(messages: LLMMessage[], maxTokens: number, temperatu
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
+      if (res.status === 429 || res.status === 401) rotateDeepSeekKey();
       throw new Error(`DeepSeek ${res.status}: ${errBody.slice(0, 200)}`);
     }
 
@@ -263,37 +276,66 @@ async function callDeepSeek(messages: LLMMessage[], maxTokens: number, temperatu
   }
 }
 
-// ─── Qwen (DashScope, OpenAI-compatible) ─────────────────────
+// ─── Qwen (DashScope, OpenAI-compatible, with key rotation) ──
 
 async function callQwen(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
-  return callOpenAICompatible('qwen', qwenUrl(), QWEN_API_KEY, QWEN_MODEL, messages, maxTokens, temperature, timeoutMs);
+  return callOpenAICompatible(
+    'qwen', qwenUrl(), getQwenApiKey(), QWEN_MODEL,
+    messages, maxTokens, temperature, timeoutMs,
+    (status) => { if (status === 429 || status === 401) rotateQwenKey(); },
+  );
 }
 
-// ─── Grok (xAI, OpenAI-compatible) ───────────────────────────
+// ─── Grok (xAI, OpenAI-compatible, with key rotation) ────────
 
 async function callGrok(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
-  return callOpenAICompatible('grok', grokUrl(), GROK_API_KEY, GROK_MODEL, messages, maxTokens, temperature, timeoutMs);
+  return callOpenAICompatible(
+    'grok', grokUrl(), getGrokApiKey(), GROK_MODEL,
+    messages, maxTokens, temperature, timeoutMs,
+    (status) => { if (status === 429 || status === 401) rotateGrokKey(); },
+  );
 }
 
-// ─── Kimi (Moonshot, OpenAI-compatible) ──────────────────────
+// ─── Kimi (Moonshot, OpenAI-compatible, with key rotation) ───
 
 async function callKimi(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
-  return callOpenAICompatible('kimi', kimiUrl(), KIMI_API_KEY, KIMI_MODEL, messages, maxTokens, temperature, timeoutMs);
+  return callOpenAICompatible(
+    'kimi', kimiUrl(), getKimiApiKey(), KIMI_MODEL,
+    messages, maxTokens, temperature, timeoutMs,
+    (status) => { if (status === 429 || status === 401) rotateKimiKey(); },
+  );
 }
 
-// ─── Cerebras (blazing fast, OpenAI-compatible) ─────────────
+// ─── Cerebras (blazing fast, OpenAI-compatible, with key rotation) ───
 
 async function callCerebras(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
-  return callOpenAICompatible('cerebras', cerebrasUrl(), CEREBRAS_API_KEY, CEREBRAS_MODEL, messages, maxTokens, temperature, timeoutMs);
+  return callOpenAICompatible(
+    'cerebras',
+    cerebrasUrl(),
+    getCerebrasApiKey(),
+    CEREBRAS_MODEL,
+    messages,
+    maxTokens,
+    temperature,
+    timeoutMs,
+    (status) => {
+      // Rotate on rate-limit (429) or auth failure (401, e.g. revoked key)
+      if (status === 429 || status === 401) rotateCerebrasKey();
+    },
+  );
 }
 
-// ─── Mistral La Plateforme (OpenAI-compatible) ─────────────
+// ─── Mistral La Plateforme (OpenAI-compatible, with key rotation) ─
 
 async function callMistral(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
-  return callOpenAICompatible('mistral', mistralUrl(), MISTRAL_API_KEY, MISTRAL_MODEL, messages, maxTokens, temperature, timeoutMs);
+  return callOpenAICompatible(
+    'mistral', mistralUrl(), getMistralApiKey(), MISTRAL_MODEL,
+    messages, maxTokens, temperature, timeoutMs,
+    (status) => { if (status === 429 || status === 401) rotateMistralKey(); },
+  );
 }
 
-// ─── OpenRouter (aggregator, OpenAI-compatible + extra headers) ─
+// ─── OpenRouter (aggregator, OpenAI-compatible + extra headers, with key rotation) ─
 
 async function callOpenRouter(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
   const controller = new AbortController();
@@ -303,7 +345,7 @@ async function callOpenRouter(messages: LLMMessage[], maxTokens: number, tempera
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${getOpenRouterApiKey()}`,
         'HTTP-Referer': OPENROUTER_SITE_URL,
         'X-Title': OPENROUTER_APP_NAME,
       },
@@ -312,6 +354,7 @@ async function callOpenRouter(messages: LLMMessage[], maxTokens: number, tempera
     });
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
+      if (res.status === 429 || res.status === 401) rotateOpenRouterKey();
       throw new Error(`openrouter ${res.status}: ${errBody.slice(0, 200)}`);
     }
     const data = await res.json();
@@ -328,10 +371,23 @@ async function callOpenRouter(messages: LLMMessage[], maxTokens: number, tempera
   }
 }
 
-// ─── HuggingFace Inference API (OpenAI-compatible) ───────────
+// ─── HuggingFace Inference API (OpenAI-compatible, with token rotation) ─
 
 async function callHf(messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number): Promise<LLMResult> {
-  return callOpenAICompatible('hf', hfUrl(), HF_TOKEN, HF_MODEL, messages, maxTokens, temperature, timeoutMs);
+  return callOpenAICompatible(
+    'hf',
+    hfUrl(),
+    getHfToken(),
+    HF_MODEL,
+    messages,
+    maxTokens,
+    temperature,
+    timeoutMs,
+    (status) => {
+      // Rotate on rate-limit (429) or auth failure (401, e.g. revoked token)
+      if (status === 429 || status === 401) rotateHfToken();
+    },
+  );
 }
 
 // ─── Generic OpenAI-compatible caller ────────────────────────
@@ -339,6 +395,7 @@ async function callHf(messages: LLMMessage[], maxTokens: number, temperature: nu
 async function callOpenAICompatible(
   providerName: string, url: string, apiKey: string, model: string,
   messages: LLMMessage[], maxTokens: number, temperature: number, timeoutMs: number,
+  onHttpError?: (status: number) => void,
 ): Promise<LLMResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -354,6 +411,7 @@ async function callOpenAICompatible(
     });
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
+      onHttpError?.(res.status);
       throw new Error(`${providerName} ${res.status}: ${errBody.slice(0, 200)}`);
     }
     const data = await res.json();
@@ -504,19 +562,19 @@ function getStreamConfig(provider: LLMProvider): { url: string; apiKey: string; 
   switch (provider) {
     case 'ollama':     return { url: ollamaChatUrl(), apiKey: '', model: OLLAMA_MODEL };
     case 'groq':       return { url: groqUrl(), apiKey: getGroqApiKey(), model: GROQ_MODEL };
-    case 'cerebras':   return { url: cerebrasUrl(), apiKey: CEREBRAS_API_KEY, model: CEREBRAS_MODEL };
-    case 'mistral':    return { url: mistralUrl(), apiKey: MISTRAL_API_KEY, model: MISTRAL_MODEL };
+    case 'cerebras':   return { url: cerebrasUrl(), apiKey: getCerebrasApiKey(), model: CEREBRAS_MODEL };
+    case 'mistral':    return { url: mistralUrl(), apiKey: getMistralApiKey(), model: MISTRAL_MODEL };
     case 'openrouter': return {
       url: openrouterUrl(),
-      apiKey: OPENROUTER_API_KEY,
+      apiKey: getOpenRouterApiKey(),
       model: OPENROUTER_MODEL,
       extraHeaders: { 'HTTP-Referer': OPENROUTER_SITE_URL, 'X-Title': OPENROUTER_APP_NAME },
     };
-    case 'grok':     return { url: grokUrl(), apiKey: GROK_API_KEY, model: GROK_MODEL };
-    case 'qwen':     return { url: qwenUrl(), apiKey: QWEN_API_KEY, model: QWEN_MODEL };
-    case 'kimi':     return { url: kimiUrl(), apiKey: KIMI_API_KEY, model: KIMI_MODEL };
-    case 'hf':       return { url: hfUrl(), apiKey: HF_TOKEN, model: HF_MODEL };
-    case 'deepseek': return { url: deepseekUrl(), apiKey: DEEPSEEK_API_KEY, model: DEEPSEEK_MODEL };
+    case 'grok':     return { url: grokUrl(), apiKey: getGrokApiKey(), model: GROK_MODEL };
+    case 'qwen':     return { url: qwenUrl(), apiKey: getQwenApiKey(), model: QWEN_MODEL };
+    case 'kimi':     return { url: kimiUrl(), apiKey: getKimiApiKey(), model: KIMI_MODEL };
+    case 'hf':       return { url: hfUrl(), apiKey: getHfToken(), model: HF_MODEL };
+    case 'deepseek': return { url: deepseekUrl(), apiKey: getDeepSeekApiKey(), model: DEEPSEEK_MODEL };
     default:         throw new Error(`${provider}: streaming not supported`);
   }
 }
@@ -553,7 +611,18 @@ async function* streamFromProvider(
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
-      if (provider === 'groq' && res.status === 429) rotateGroqKey();
+      if (res.status === 429 || res.status === 401) {
+        // Universal rotation — every provider's streaming path honours 429/401 failover
+        if (provider === 'groq') rotateGroqKey();
+        else if (provider === 'cerebras') rotateCerebrasKey();
+        else if (provider === 'hf') rotateHfToken();
+        else if (provider === 'deepseek') rotateDeepSeekKey();
+        else if (provider === 'qwen') rotateQwenKey();
+        else if (provider === 'grok') rotateGrokKey();
+        else if (provider === 'kimi') rotateKimiKey();
+        else if (provider === 'mistral') rotateMistralKey();
+        else if (provider === 'openrouter') rotateOpenRouterKey();
+      }
       throw new Error(`${provider} ${res.status}: ${errBody.slice(0, 200)}`);
     }
 
@@ -710,7 +779,18 @@ async function* streamFromProviderWithTools(
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
-      if (provider === 'groq' && res.status === 429) rotateGroqKey();
+      if (res.status === 429 || res.status === 401) {
+        // Universal rotation — every provider's streaming path honours 429/401 failover
+        if (provider === 'groq') rotateGroqKey();
+        else if (provider === 'cerebras') rotateCerebrasKey();
+        else if (provider === 'hf') rotateHfToken();
+        else if (provider === 'deepseek') rotateDeepSeekKey();
+        else if (provider === 'qwen') rotateQwenKey();
+        else if (provider === 'grok') rotateGrokKey();
+        else if (provider === 'kimi') rotateKimiKey();
+        else if (provider === 'mistral') rotateMistralKey();
+        else if (provider === 'openrouter') rotateOpenRouterKey();
+      }
       throw new Error(`${provider} ${res.status}: ${errBody.slice(0, 200)}`);
     }
 

@@ -7,9 +7,54 @@
 
 import { env } from '$env/dynamic/private';
 
-// ─── Gemini (Google) ──────────────────────────────────────────
+// ─── Key Rotation Pool Factory ────────────────────────────────
+// Every LLM provider shares the same rotation shape:
+//   XXX_API_KEY            — primary key (singular, legacy + backward-compat)
+//   XXX_API_KEYS           — optional comma-separated rotation pool
+// The factory merges both into a single de-duped list and exposes
+//   get()    — current active key (respects rotation index)
+//   rotate() — advance to next key on 429/401
+//   count()  — pool size (0 = unconfigured)
+//   primary  — first key in pool (backward-compat constant)
+// Pool state is process-local in-memory; rotation index resets on
+// cold start. This is intentional for rate-limit forgiveness.
 
-export const GEMINI_API_KEY = env.GEMINI_API_KEY ?? '';
+export interface KeyPool {
+  get: () => string;
+  rotate: () => void;
+  count: () => number;
+  primary: string;
+  keys: readonly string[];
+}
+
+function createKeyPool(primary: string | undefined, rotation: string | undefined): KeyPool {
+  const keys: string[] = [];
+  if (primary) keys.push(primary);
+  if (rotation) {
+    for (const k of rotation.split(',')) {
+      const trimmed = k.trim();
+      if (trimmed && !keys.includes(trimmed)) keys.push(trimmed);
+    }
+  }
+  let idx = 0;
+  return {
+    get: () => (keys.length === 0 ? '' : keys[idx % keys.length]),
+    rotate: () => {
+      if (keys.length > 1) idx = (idx + 1) % keys.length;
+    },
+    count: () => keys.length,
+    primary: keys[0] ?? '',
+    keys,
+  };
+}
+
+// ─── Gemini (Google, with key rotation) ───────────────────────
+
+const geminiPool = createKeyPool(env.GEMINI_API_KEY, env.GEMINI_API_KEYS);
+export const getGeminiApiKey = (): string => geminiPool.get();
+export const rotateGeminiKey = (): void => geminiPool.rotate();
+export const getGeminiKeyCount = (): number => geminiPool.count();
+export const GEMINI_API_KEY = geminiPool.primary;
 export const GEMINI_MODEL = 'gemini-2.0-flash';
 export const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -55,9 +100,13 @@ export function groqUrl(path = '/chat/completions'): string {
   return `${GROQ_ENDPOINT}${path}`;
 }
 
-// ─── DeepSeek ─────────────────────────────────────────────────
+// ─── DeepSeek (with key rotation) ─────────────────────────────
 
-export const DEEPSEEK_API_KEY = env.DEEPSEEK_API_KEY ?? '';
+const deepseekPool = createKeyPool(env.DEEPSEEK_API_KEY, env.DEEPSEEK_API_KEYS);
+export const getDeepSeekApiKey = (): string => deepseekPool.get();
+export const rotateDeepSeekKey = (): void => deepseekPool.rotate();
+export const getDeepSeekKeyCount = (): number => deepseekPool.count();
+export const DEEPSEEK_API_KEY = deepseekPool.primary;
 export const DEEPSEEK_MODEL = 'deepseek-chat';
 export const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/v1';
 
@@ -65,9 +114,13 @@ export function deepseekUrl(path = '/chat/completions'): string {
   return `${DEEPSEEK_ENDPOINT}${path}`;
 }
 
-// ─── Qwen (Alibaba DashScope) ─────────────────────────────────
+// ─── Qwen (Alibaba DashScope, with key rotation) ──────────────
 
-export const QWEN_API_KEY = env.QWEN_API_KEY ?? '';
+const qwenPool = createKeyPool(env.QWEN_API_KEY, env.QWEN_API_KEYS);
+export const getQwenApiKey = (): string => qwenPool.get();
+export const rotateQwenKey = (): void => qwenPool.rotate();
+export const getQwenKeyCount = (): number => qwenPool.count();
+export const QWEN_API_KEY = qwenPool.primary;
 export const QWEN_MODEL = env.QWEN_MODEL ?? 'qwen-plus-latest';
 export const QWEN_ENDPOINT = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
 
@@ -75,9 +128,13 @@ export function qwenUrl(path = '/chat/completions'): string {
   return `${QWEN_ENDPOINT}${path}`;
 }
 
-// ─── Grok (xAI) ───────────────────────────────────────────────
+// ─── Grok (xAI, with key rotation) ────────────────────────────
 
-export const GROK_API_KEY = env.GROK_API_KEY ?? '';
+const grokPool = createKeyPool(env.GROK_API_KEY, env.GROK_API_KEYS);
+export const getGrokApiKey = (): string => grokPool.get();
+export const rotateGrokKey = (): void => grokPool.rotate();
+export const getGrokKeyCount = (): number => grokPool.count();
+export const GROK_API_KEY = grokPool.primary;
 export const GROK_MODEL = env.GROK_MODEL ?? 'grok-4-1-fast-reasoning';
 export const GROK_ENDPOINT = 'https://api.x.ai/v1';
 
@@ -85,9 +142,13 @@ export function grokUrl(path = '/chat/completions'): string {
   return `${GROK_ENDPOINT}${path}`;
 }
 
-// ─── Kimi (Moonshot) ──────────────────────────────────────────
+// ─── Kimi (Moonshot, with key rotation) ───────────────────────
 
-export const KIMI_API_KEY = env.KIMI_API_KEY ?? '';
+const kimiPool = createKeyPool(env.KIMI_API_KEY, env.KIMI_API_KEYS);
+export const getKimiApiKey = (): string => kimiPool.get();
+export const rotateKimiKey = (): void => kimiPool.rotate();
+export const getKimiKeyCount = (): number => kimiPool.count();
+export const KIMI_API_KEY = kimiPool.primary;
 export const KIMI_MODEL = env.KIMI_MODEL ?? 'kimi-k2.5';
 export const KIMI_ENDPOINT = 'https://api.moonshot.ai/v1';
 
@@ -95,9 +156,13 @@ export function kimiUrl(path = '/chat/completions'): string {
   return `${KIMI_ENDPOINT}${path}`;
 }
 
-// ─── HuggingFace Inference API ─────────────────────────────────
+// ─── HuggingFace Inference API (OpenAI-compatible router, with token rotation) ──
 
-export const HF_TOKEN = env.HF_TOKEN ?? '';
+const hfPool = createKeyPool(env.HF_TOKEN, env.HF_TOKENS);
+export const getHfToken = (): string => hfPool.get();
+export const rotateHfToken = (): void => hfPool.rotate();
+export const getHfTokenCount = (): number => hfPool.count();
+export const HF_TOKEN = hfPool.primary;
 export const HF_MODEL = env.HF_MODEL ?? 'Qwen/Qwen2.5-72B-Instruct';
 export const HF_ENDPOINT = 'https://router.huggingface.co/v1';
 
@@ -105,9 +170,13 @@ export function hfUrl(path = '/chat/completions'): string {
   return `${HF_ENDPOINT}${path}`;
 }
 
-// ─── Cerebras (blazing fast, OpenAI-compatible) ───────────────
+// ─── Cerebras (blazing fast, OpenAI-compatible, with key rotation) ───
 
-export const CEREBRAS_API_KEY = env.CEREBRAS_API_KEY ?? '';
+const cerebrasPool = createKeyPool(env.CEREBRAS_API_KEY, env.CEREBRAS_API_KEYS);
+export const getCerebrasApiKey = (): string => cerebrasPool.get();
+export const rotateCerebrasKey = (): void => cerebrasPool.rotate();
+export const getCerebrasKeyCount = (): number => cerebrasPool.count();
+export const CEREBRAS_API_KEY = cerebrasPool.primary;
 export const CEREBRAS_MODEL = env.CEREBRAS_MODEL ?? 'qwen-3-235b-a22b-instruct-2507';
 export const CEREBRAS_ENDPOINT = 'https://api.cerebras.ai/v1';
 
@@ -115,9 +184,13 @@ export function cerebrasUrl(path = '/chat/completions'): string {
   return `${CEREBRAS_ENDPOINT}${path}`;
 }
 
-// ─── Mistral La Plateforme (OpenAI-compatible) ────────────────
+// ─── Mistral La Plateforme (OpenAI-compatible, with key rotation) ─
 
-export const MISTRAL_API_KEY = env.MISTRAL_API_KEY ?? '';
+const mistralPool = createKeyPool(env.MISTRAL_API_KEY, env.MISTRAL_API_KEYS);
+export const getMistralApiKey = (): string => mistralPool.get();
+export const rotateMistralKey = (): void => mistralPool.rotate();
+export const getMistralKeyCount = (): number => mistralPool.count();
+export const MISTRAL_API_KEY = mistralPool.primary;
 export const MISTRAL_MODEL = env.MISTRAL_MODEL ?? 'mistral-medium-latest';
 export const MISTRAL_ENDPOINT = 'https://api.mistral.ai/v1';
 
@@ -125,9 +198,13 @@ export function mistralUrl(path = '/chat/completions'): string {
   return `${MISTRAL_ENDPOINT}${path}`;
 }
 
-// ─── OpenRouter (aggregator, OpenAI-compatible) ───────────────
+// ─── OpenRouter (aggregator, OpenAI-compatible, with key rotation) ─
 
-export const OPENROUTER_API_KEY = env.OPENROUTER_API_KEY ?? '';
+const openrouterPool = createKeyPool(env.OPENROUTER_API_KEY, env.OPENROUTER_API_KEYS);
+export const getOpenRouterApiKey = (): string => openrouterPool.get();
+export const rotateOpenRouterKey = (): void => openrouterPool.rotate();
+export const getOpenRouterKeyCount = (): number => openrouterPool.count();
+export const OPENROUTER_API_KEY = openrouterPool.primary;
 export const OPENROUTER_MODEL = env.OPENROUTER_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b:free';
 export const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1';
 export const OPENROUTER_SITE_URL = env.OPENROUTER_SITE_URL ?? 'http://localhost:5173';
@@ -170,40 +247,44 @@ export function isGroqAvailable(): boolean {
   return isUsableApiKey(GROQ_API_KEY, 20);
 }
 
+function isPoolAvailable(pool: KeyPool, minLength = 20): boolean {
+  return pool.count() > 0 && pool.keys.some((k) => isUsableApiKey(k, minLength));
+}
+
 export function isGeminiAvailable(): boolean {
-  return isUsableApiKey(GEMINI_API_KEY, 20);
+  return isPoolAvailable(geminiPool, 20);
 }
 
 export function isDeepSeekAvailable(): boolean {
-  return isUsableApiKey(DEEPSEEK_API_KEY, 20);
+  return isPoolAvailable(deepseekPool, 20);
 }
 
 export function isQwenAvailable(): boolean {
-  return isUsableApiKey(QWEN_API_KEY, 20);
+  return isPoolAvailable(qwenPool, 20);
 }
 
 export function isGrokAvailable(): boolean {
-  return isUsableApiKey(GROK_API_KEY, 20);
+  return isPoolAvailable(grokPool, 20);
 }
 
 export function isKimiAvailable(): boolean {
-  return isUsableApiKey(KIMI_API_KEY, 20);
+  return isPoolAvailable(kimiPool, 20);
 }
 
 export function isHfAvailable(): boolean {
-  return isUsableApiKey(HF_TOKEN, 10);
+  return isPoolAvailable(hfPool, 10);
 }
 
 export function isCerebrasAvailable(): boolean {
-  return isUsableApiKey(CEREBRAS_API_KEY, 20);
+  return isPoolAvailable(cerebrasPool, 20);
 }
 
 export function isMistralAvailable(): boolean {
-  return isUsableApiKey(MISTRAL_API_KEY, 20);
+  return isPoolAvailable(mistralPool, 20);
 }
 
 export function isOpenRouterAvailable(): boolean {
-  return isUsableApiKey(OPENROUTER_API_KEY, 20);
+  return isPoolAvailable(openrouterPool, 20);
 }
 
 // ─── Provider Type ────────────────────────────────────────────
