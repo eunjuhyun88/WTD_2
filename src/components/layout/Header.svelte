@@ -131,12 +131,6 @@
   </div>
 
   <div class="nav-right">
-    <!-- Score badge (desktop only) -->
-    <div class="score-badge desktop-only">
-      <span class="score-label">XP</span>
-      <span class="score-value">{Math.round(gState.score).toLocaleString()}</span>
-    </div>
-
     <!-- Settings (desktop only) -->
     <a
       class="settings-btn desktop-only"
@@ -337,25 +331,6 @@
     flex-shrink: 0;
   }
 
-  .score-badge {
-    font-family: var(--sc-font-mono);
-    font-size: var(--sc-fs-xs);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--sc-text-2);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
-    padding: 4px 8px;
-    letter-spacing: 0.12em;
-    display: flex;
-    align-items: center;
-    gap: var(--sc-sp-1);
-  }
-  .score-value {
-    font-size: var(--sc-fs-sm);
-    color: var(--sc-text-0);
-    font-weight: 700;
-  }
-
   /* Settings */
   .settings-btn {
     color: var(--sc-text-2);
@@ -442,7 +417,6 @@
   }
 
   #nav.home-mode .selected-ticker,
-  #nav.home-mode .score-badge,
   #nav.home-mode .settings-btn {
     display: none;
   }
