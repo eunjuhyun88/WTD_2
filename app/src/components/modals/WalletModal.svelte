@@ -312,8 +312,7 @@
           const walletAddress = await requestInjectedEvmAccount('phantom');
           connectWallet(provider, walletAddress, preferredEvmChain);
         } else {
-          const solAddress = await requestPhantomSolanaAccount();
-          connectWallet(provider, solAddress, 'SOL');
+          throw new Error('Phantom EVM wallet required. Enable EVM in Phantom settings or use MetaMask.');
         }
       } else {
         const walletAddress = await requestInjectedEvmAccount(provider);
