@@ -8,6 +8,7 @@
   import WalletModal from '../components/modals/WalletModal.svelte';
   import NotificationTray from '../components/shared/NotificationTray.svelte';
   import ToastStack from '../components/shared/ToastStack.svelte';
+  import CookieConsent from '../components/shared/CookieConsent.svelte';
   import P0Banner from '../components/shared/P0Banner.svelte';
   import { page } from '$app/stores';
   import { activePairState, setActiveView } from '$lib/stores/activePairStore';
@@ -101,6 +102,9 @@
 
 <!-- Global Toast Stack (bottom-right, above bell) -->
 <ToastStack />
+
+<!-- Cookie Consent Banner -->
+<CookieConsent />
 
 <style>
   #app {
