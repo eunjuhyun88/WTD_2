@@ -87,3 +87,18 @@ export interface MemoryCard {
 	embedding?: number[];
 	createdAt: number;
 }
+
+// --- Extracted from stores/arenaV2State.ts (Batch 4) ---
+
+import type { Direction } from '$lib/engine/types';
+
+/** A single research finding from an arena-v2 RAG analysis session. */
+export interface Finding {
+	agentId: string;
+	title: string;
+	detail: string;
+	direction: Direction;
+	confidence: number;
+	icon: string;
+	timestamp: number;
+}
