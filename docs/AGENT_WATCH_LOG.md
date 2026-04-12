@@ -20,6 +20,60 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## Entries
 
+## [2026-04-12 22:40:02 +0900] START W-20260412-2244-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-shell-redesign`
+- Base `origin/main` hash: `d4101f8793bb6cbc7d721aeb193d0da1f12397e0`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/terminal/SingleAssetBoard.svelte`
+  - `?? src/components/terminal/WorkspaceCompareBlock.svelte`
+  - `?? src/lib/terminal/blockSearchPreview.ts`
+  - `?? src/lib/terminal/workspaceCompare.ts`
+- Task summary: extend the `/terminal` parsed-query preview contract into compare boards so compare cards retain query context and local chart highlights after the input clears.
+- Owned files / overlap check:
+  - implementation focus: `src/lib/terminal/workspaceCompare.ts`, `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/routes/terminal/+page.svelte`
+  - canonical docs expected if compare-board behavior changes: `docs/COGOCHI.md`, `docs/FRONTEND.md`
+  - overlap check: continuing the same terminal-shell WIP branch and file set; no unrelated overlap detected
+- `safe:status`: PASS
+- `safe:sync`: BLOCKED by existing uncommitted branch changes
+- `safe:hooks`: PASS
+- Status: IN_PROGRESS
+
+## [2026-04-12 22:52:48 +0900] FINISH W-20260412-2244-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - wired the existing untracked `/terminal` preview components into `src/routes/terminal/+page.svelte` so the right chart stage now uses `SingleAssetBoard` and shows parsed-query preview/highlight overlays on local charts
+  - added inline compare-board support in `/terminal`: compare intents now materialize `WorkspaceCompareBlock` cards in the feed, keep block-local parsed-query preview state, and allow follow-up compare mutations against the selected board
+  - extended compare cards so `Grid` / `Focus` / `Single` local charts project lightweight highlight bands from the stored parsed query, while `TV` mode keeps the preview as summary-only metadata
+  - updated canonical product/frontend docs to reflect the compare-board preview/highlight contract
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with existing warnings only (`BottomBar.svelte`, `settings/+page.svelte` unused CSS 16건)
+  - `npm run build`: PASS with existing warnings only (same unused CSS warnings + existing Vite dynamic-import / adapter-auto notes)
+  - `npm run ctx:compact -- --docs-check pass --check pass --build pass --gate pass`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `0dc7f4e`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/terminal/SingleAssetBoard.svelte`
+  - `?? src/components/terminal/WorkspaceCompareBlock.svelte`
+  - `?? src/lib/terminal/blockSearchPreview.ts`
+  - `?? src/lib/terminal/workspaceCompare.ts`
+
 ## [2026-04-12 14:55:00 +0900] DONE W-20260412-1400-CHATBATTLE-keen-jackson — CTO Cleanup Execution
 
 - Branch: `claude/keen-jackson` (operating on `main` via `zealous-goodall`)
