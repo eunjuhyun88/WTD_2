@@ -323,6 +323,7 @@
   onMount(async () => {
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const walletAddress = params?.get('address');
+    const seededQuery = params?.get('q')?.trim() ?? '';
     const walletModeRequested = params?.get('mode') === 'wallet';
     if (walletAddress && (walletModeRequested || isWalletIdentifierLike(walletAddress))) {
       await activateWalletMode(normalizeWalletModeInput(walletAddress, params?.get('chain') || 'eth'), {
@@ -330,6 +331,10 @@
         note: 'Deep-linked wallet investigation loaded.',
       });
       return;
+    }
+
+    if (seededQuery.length > 0) {
+      inputText = seededQuery;
     }
 
     const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'ko-KR';

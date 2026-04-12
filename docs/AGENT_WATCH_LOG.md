@@ -20,6 +20,76 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## Entries
 
+## [2026-04-12 10:04:39 +0900] START W-20260412-1004-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `25d3e15f7c85fcc07a131ca44dfaf429180b93ec`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/home/HomeFinalCta.svelte`
+  - `?? src/components/home/HomeHero.svelte`
+  - `?? src/components/home/HomeLearningLoop.svelte`
+  - `?? src/components/home/HomeSurfaceCards.svelte`
+  - `?? src/lib/home/homeLanding.ts`
+- Task summary: package the current home-page refactor and terminal query-seeding changes into a single commit, then cherry-pick that commit onto clean `main`.
+- Owned files / overlap check:
+  - planned: `src/routes/+page.svelte`
+  - planned: `src/routes/terminal/+page.svelte`
+  - planned: `src/components/home/*`
+  - planned: `src/lib/home/homeLanding.ts`
+  - planned: `docs/AGENT_WATCH_LOG.md`
+  - current dirty set reads as one coherent home-surface slice; no separate unrelated product files are mixed into this commit candidate
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty files and untracked home components recorded before commit/cherry-pick work
+- Status: IN_PROGRESS
+
+## [2026-04-12 10:03:29 +0900] START W-20260412-1003-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `25d3e15f7c85fcc07a131ca44dfaf429180b93ec`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/home/HomeFinalCta.svelte`
+  - `?? src/components/home/HomeHero.svelte`
+  - `?? src/components/home/HomeLearningLoop.svelte`
+  - `?? src/components/home/HomeSurfaceCards.svelte`
+  - `?? src/lib/home/`
+- Task summary: start the local development server for this repository without modifying the existing in-progress branch changes.
+- Owned files / overlap check:
+  - no product-code edits planned
+  - existing dirty files are acknowledged and will be left untouched while the dev server runs
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - existing dirty files recorded before server startup
+- Status: IN_PROGRESS
+
+## [2026-04-12 10:04:07 +0900] FINISH W-20260412-1003-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - started the local Vite development server for the current workspace
+  - left all existing in-progress branch changes untouched
+- Validation results:
+  - `npm run dev`: PASS
+  - local URL: `http://localhost:5173/`
+- Commit hash: not created in this turn (`HEAD` remains `9cfc7bf`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/home/HomeFinalCta.svelte`
+  - `?? src/components/home/HomeHero.svelte`
+  - `?? src/components/home/HomeLearningLoop.svelte`
+  - `?? src/components/home/HomeSurfaceCards.svelte`
+  - `?? src/lib/home/`
+  - dev server remains running in session `17108`
+- Status: DONE
+
 ## [2026-04-12 09:51:21 +0900] START W-20260412-0950-CHATBATTLE-codex (CHATBATTLE)
 - Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
@@ -10713,3 +10783,24 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - implementation should follow only after the home direction is made explicit in docs
 - Safe status:
   - `npm run safe:status`: PASS earlier in this branch session
+
+## [2026-04-12 10:02:00 +0900] FINISH W-20260412-0947-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - rewrote the Home route around the new design direction: cleaner thesis-first hierarchy plus an immediate-start hero bar
+  - split the previous 1194-line `src/routes/+page.svelte` into a smaller route shell plus dedicated home sections: `HomeHero`, `HomeLearningLoop`, `HomeSurfaceCards`, and `HomeFinalCta`
+  - introduced `src/lib/home/homeLanding.ts` to hold canonical home copy/data instead of embedding all arrays directly in the route file
+  - added a Home start-bar → Terminal handoff using `/terminal?q=...`, and updated `src/routes/terminal/+page.svelte` to seed the compose input from that query when present
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `9cfc7bf`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis [ahead 6]`
+  - directly modified by this task: `src/routes/+page.svelte`, `src/routes/terminal/+page.svelte`
+  - new files by this task: `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/HomeFinalCta.svelte`, `src/lib/home/homeLanding.ts`
+  - broader pre-existing branch work remains in place outside this slice
