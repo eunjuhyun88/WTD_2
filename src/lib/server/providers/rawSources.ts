@@ -411,39 +411,48 @@ export type SupportedRawId = keyof RawSourceInputs & keyof RawSourceOutputs;
 //      nothing to "read" — session inputs flow in from the request
 //      pipeline, not from a provider.
 //
-// The enforcement mechanism: a bidirectional type equality between
-// `KnownRawId` and `SupportedRawId | DeferredRawId`. Adding a new
-// member to `KnownRawId` is a check-time error unless it is either
-// wired (added to `RawSourceInputs` / `rawSources`) or explicitly
-// deferred (added to `DeferredRawId` below). The B-series is then
-// "done" in the strict sense: every catalog ID is accounted for,
-// either with a live fetcher or a documented deferral.
+// The enforcement mechanism: a set-algebra derivation. `DeferredRawId`
+// is defined as `Exclude<KnownRawId, SupportedRawId>` — the catalog
+// minus the wired set. `DEFERRED_RAW_IDS: Record<DeferredRawId, ...>`
+// then forces the developer to supply a rationale entry for every
+// unwired atom. Both directions of the equality `KnownRawId ===
+// SupportedRawId ∪ DeferredRawId` are enforced automatically:
+//
+//   - Adding a new member to `KnownRawId` without wiring it makes
+//     `Exclude` pick it up; `Record` then demands an entry or the
+//     check fails with "Property 'NEW_ATOM' is missing in type".
+//   - Wiring an atom (adding to `RawSourceInputs` / `rawSources`)
+//     removes it from `DeferredRawId`; the orphan entry in
+//     `DEFERRED_RAW_IDS` then fails with "Object literal may only
+//     specify known properties".
+//
+// No hand-rolled assertion is needed — TypeScript's structural
+// typing does the work. This is the load-bearing "B-series is
+// done" invariant.
 
 /**
- * The 11 `KnownRawId` values the B-series intentionally leaves
- * unwired. Each entry has a machine-readable rationale in
- * `DEFERRED_RAW_IDS` below. Consumers should **not** call
- * `readRaw()` on these atoms — doing so is a type error because
- * `DeferredRawId` is disjoint from `SupportedRawId`.
+ * `KnownRawId` values the B-series intentionally leaves unwired.
+ * Derived as the set-theoretic complement of `SupportedRawId`
+ * inside `KnownRawId`, so adding or wiring an atom in `ids.ts` /
+ * `rawSources.ts` automatically reshapes this union — there is
+ * no manual list to maintain. Each member has a machine-readable
+ * rationale in `DEFERRED_RAW_IDS` below. Consumers should **not**
+ * call `readRaw()` on these atoms — doing so is a type error
+ * because `DeferredRawId` is disjoint from `SupportedRawId`.
  */
-export type DeferredRawId =
-	| typeof KnownRawId.AGG_TRADES_LIVE
-	| typeof KnownRawId.BOOK_TICKER_LIVE
-	| typeof KnownRawId.DEPTH_LIVE
-	| typeof KnownRawId.SESSION_SCAN_MODE
-	| typeof KnownRawId.SESSION_TOP_N
-	| typeof KnownRawId.SESSION_CUSTOM_SYMBOLS
-	| typeof KnownRawId.SESSION_DISPLAY_TIMEFRAME
-	| typeof KnownRawId.SESSION_MIN_ALPHA
-	| typeof KnownRawId.SESSION_ACTIVE_FILTER
-	| typeof KnownRawId.SESSION_SELECTED_SYMBOL
-	| typeof KnownRawId.SESSION_INTENT_FOCUS;
+export type DeferredRawId = Exclude<KnownRawId, SupportedRawId>;
 
 /**
  * Per-atom deferral rationale. `reason` says why the slice is not
  * wired right now; `unblocker` says what has to land before it can
  * be wired. Both fields are required — the whole point of the
  * closeout is that "deferred" is never an empty gesture.
+ *
+ * The `Record<DeferredRawId, ...>` signature is the invariant: if a
+ * new `KnownRawId` is added without wiring, TypeScript demands an
+ * entry here; if an existing deferred atom is wired, the entry
+ * becomes an orphan property and is rejected. Either direction of
+ * the catalog equality is enforced by this single line.
  */
 export const DEFERRED_RAW_IDS: Readonly<
 	Record<DeferredRawId, { readonly reason: string; readonly unblocker: string }>
@@ -500,23 +509,6 @@ export const DEFERRED_RAW_IDS: Readonly<
 		unblocker: 'Same as SESSION_SCAN_MODE.'
 	}
 };
-
-// Bidirectional type equality assertion: every `KnownRawId` member
-// must be either `SupportedRawId` (wired) or `DeferredRawId`
-// (explicitly deferred with rationale in `DEFERRED_RAW_IDS`).
-// Adding a new member to `KnownRawId` without assigning it to one
-// of these two buckets is a check-time error at the next line.
-// This is the load-bearing "B-series is done" invariant.
-type _CatalogCoverage = SupportedRawId | DeferredRawId;
-type _AssertCatalogExhaustive = [
-	_CatalogCoverage extends KnownRawId ? true : never,
-	KnownRawId extends _CatalogCoverage ? true : never
-];
-// Force the assertion to be evaluated at check time. If either
-// direction fails, this line emits "Type 'never' is not assignable
-// to type 'true'." with a pointer at the failing side.
-const _CATALOG_EXHAUSTIVE_ASSERT: _AssertCatalogExhaustive = [true, true];
-void _CATALOG_EXHAUSTIVE_ASSERT;
 
 /**
  * Narrowed union of every `KLINES_*` raw id. Callers that dispatch a
