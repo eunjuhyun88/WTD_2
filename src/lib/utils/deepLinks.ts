@@ -12,17 +12,6 @@ export interface ParsedDeepLink {
   hash: string;
 }
 
-export interface TerminalCopyTradeParams {
-  pair: string;
-  dir: 'LONG' | 'SHORT';
-  entry: number;
-  tp: number;
-  sl: number;
-  conf?: number;
-  source?: string;
-  reason?: string;
-}
-
 export function buildDeepLink(path: string, params: DeepLinkParams = {}, hash = ''): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -51,68 +40,16 @@ export function buildTerminalLink(params: DeepLinkParams = {}): string {
   return buildDeepLink('/terminal', params);
 }
 
-export function buildCreateLink(params: DeepLinkParams = {}): string {
-  return buildDeepLink('/create', params);
-}
-
-export function buildWorldLink(params: DeepLinkParams = {}): string {
-  return buildDeepLink('/world', params);
-}
-
-export function buildAgentLink(params: DeepLinkParams = {}): string {
-  return buildDeepLink('/agent', params);
-}
-
-export function buildTerminalCopyTradeLink(params: TerminalCopyTradeParams): string {
-  return buildTerminalLink({
-    copyTrade: true,
-    pair: params.pair,
-    dir: params.dir,
-    entry: Math.round(params.entry),
-    tp: Math.round(params.tp),
-    sl: Math.round(params.sl),
-    conf: params.conf == null ? undefined : Math.round(params.conf),
-    source: params.source ?? 'community',
-    reason: params.reason ?? '',
-  });
-}
-
-export function buildSignalsLink(view?: 'feed' | 'trending' | 'ai'): string {
-  return buildDeepLink('/signals', view && view !== 'feed' ? { view } : {});
-}
-
-export function buildMarketLink(params: DeepLinkParams = {}): string {
-  return buildDeepLink('/market', params);
-}
-
-export function buildBattleLink(params: DeepLinkParams = {}): string {
-  return buildDeepLink('/battle', params);
-}
-
-export function buildOnboardLink(path?: 'builder' | 'copier'): string {
-  return buildDeepLink('/onboard', path ? { path } : {});
-}
-
 export function buildDashboardLink(params: DeepLinkParams = {}): string {
   return buildDeepLink('/dashboard', params);
-}
-
-export function buildCopyLink(params: DeepLinkParams = {}): string {
-  return buildDeepLink('/copy', params);
 }
 
 export function buildLabLink(params: DeepLinkParams = {}): string {
   return buildDeepLink('/lab', params);
 }
 
-export function buildPassportLink(tab?: string): string {
-  return buildDeepLink('/passport', tab ? { tab } : {});
-}
-
+// NOTE: passport routes are archived (Phase 2 deferred) but this builder
+// is still used by terminal/+page.svelte for wallet dossier links.
 export function buildPassportWalletLink(chain: string, address: string): string {
   return buildDeepLink(`/passport/wallet/${encodeURIComponent(chain)}/${encodeURIComponent(address)}`);
-}
-
-export function buildArenaLink(mode?: 'quick' | 'war' | 'tournament'): string {
-  return buildBattleLink(mode ? { mode } : {});
 }
