@@ -6,6 +6,7 @@
 // Directional — surge up or down matters.
 
 import type { L3Result } from '../types';
+import { Thresholds } from '../thresholds';
 
 interface MiniCandle {
   open: number;
@@ -38,23 +39,23 @@ export function computeL3VSurge(
   let score = 0;
   let label = 'NORMAL';
 
-  if (sf > 5) {
-    score = dirSign > 0 ? 15 : dirSign < 0 ? -15 : 10;
+  if (sf > Thresholds.vSurge.extreme_factor) {
+    score = dirSign > 0 ? Thresholds.vSurge.score_extreme : dirSign < 0 ? -Thresholds.vSurge.score_extreme : 10;
     label = 'EXTREME SURGE';
-  } else if (sf > 3) {
-    score = dirSign > 0 ? 10 : dirSign < 0 ? -10 : 6;
+  } else if (sf > Thresholds.vSurge.strong_factor) {
+    score = dirSign > 0 ? Thresholds.vSurge.score_strong : dirSign < 0 ? -Thresholds.vSurge.score_strong : 6;
     label = 'STRONG SURGE';
-  } else if (sf > 1.8) {
-    score = dirSign > 0 ? 6 : dirSign < 0 ? -6 : 3;
+  } else if (sf > Thresholds.vSurge.surge_factor) {
+    score = dirSign > 0 ? Thresholds.vSurge.score_surge : dirSign < 0 ? -Thresholds.vSurge.score_surge : 3;
     label = 'SURGE';
-  } else if (sf > 1.3) {
-    score = dirSign > 0 ? 3 : dirSign < 0 ? -3 : 1;
+  } else if (sf > Thresholds.vSurge.moderate_factor) {
+    score = dirSign > 0 ? Thresholds.vSurge.score_moderate : dirSign < 0 ? -Thresholds.vSurge.score_moderate : 1;
     label = 'MODERATE';
-  } else if (sf < 0.35) {
-    score = 3; // ultra low vol = energy building
+  } else if (sf < Thresholds.vSurge.ultra_low_factor) {
+    score = Thresholds.vSurge.score_ultra_low; // ultra low vol = energy building
     label = 'ULTRA LOW VOL';
-  } else if (sf < 0.6) {
-    score = 2;
+  } else if (sf < Thresholds.vSurge.low_vol_factor) {
+    score = Thresholds.vSurge.score_low_vol;
     label = 'LOW VOL';
   } else {
     score = 0;
@@ -62,7 +63,7 @@ export function computeL3VSurge(
   }
 
   return {
-    v_surge: sf > 1.8,
+    v_surge: sf > Thresholds.vSurge.surge_factor,
     surge_factor: Math.round(sf * 100) / 100,
     direction: dirSign,
     score,
