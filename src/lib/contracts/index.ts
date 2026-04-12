@@ -243,5 +243,6 @@ export type {
 	SkillResult,
 	SkillCatalogItem,
 	MemoryKind,
-	MemoryCard
+	MemoryCard,
+	Finding
 } from './signals';
