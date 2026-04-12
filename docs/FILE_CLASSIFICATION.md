@@ -824,16 +824,20 @@ Classifies every file in `src/` across 4 axes for the Cogochi day-1 cleanup plan
 - Archived 20 safe engine files (battleEngine, gameLoop, phases, scoring, teamSynergy, replay, mockArenaData, agentPipeline, c02Pipeline, warroomScan, v2BattleEngine, v2RagBridge, v3BattleEngine, v3BattleTypes, cogochiBattleFSM, cogochiContextBuilder, cogochiDoctrine, cogochiGameEngine, gameRecordStore, douniSprite)
 - **14 blocked engine files kept** (active server consumers): agents.ts, v4/types.ts, v4/battleStateMachine.ts + 7 states, battleResolver.ts, arenaWarTypes.ts, agentCharacter.ts, v2BattleTypes.ts, douniPersonality.ts + douniState.ts
 
-### Batch 8 -- Archive legacy server files
-- Archive legacy server services (battleStore, arenaService, tournamentService, cogochiBattleService, douni/*)
-- **Files touched**: 7 files
-- **Risk**: LOW (isolated server modules)
+### Batch 8 -- Archive legacy server files ✅ DONE
+- Archived: arenaService, tournamentService, cogochiBattleService, warRoomService, agentPersonaService, ollamaClient, progressionUpdater (7 files)
+- **BLOCKED**: douni/* (active imports from api/cogochi/terminal/message/+server.ts + llmService.ts)
+- battleStore was already archived in prior batch
 
-### Batch 9 -- Shared component audit
-- Grep each `components/shared/*` file for imports from active surfaces
-- Archive any that are only imported by already-archived files (HD-5)
-- **Files touched**: 0-17 files (depends on grep results)
-- **Risk**: LOW (verification pass)
+### Batch 9 -- Shared component audit ✅ DONE (HD-5 resolved)
+- Archived 14 dead components: ActivityFeedItem, ContextBanner, DeltaCard, EmptyState, EvolutionTimeline, HPBar, InlineActionButton, MoodBadge, PartyTray, PhaseTransition, PokemonFrame, StreakCounter, TokenDropdown, TypewriterBox
+- Kept 3 active (imported by +layout.svelte): NotificationTray, P0Banner, ToastStack
+
+### Batch 10 -- Nav cleanup ✅ DONE
+- homeData.ts: removed 4 dead constants (FEATURES, SCAN_CATS, SQUAD_DISPLAY, FLOW_STEPS) — zero consumers
+- deepLinks.ts: removed 10 dead link builders, kept 4 active (terminal, dashboard, lab, passportWallet)
+- appSurfaces.ts: removed 4 dead surfaces (battle, agent, market, copy), narrowed AppSurfaceId
+- BottomBar.svelte + MobileBottomNav.svelte: fixed dead surface references
 
 ---
 
