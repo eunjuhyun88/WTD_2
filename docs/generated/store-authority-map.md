@@ -17,7 +17,8 @@ Source of truth remains store implementations plus canonical state-authority doc
 | Store | Authority class | Role | Notes |
 | --- | --- | --- | --- |
 | `priceStore` | canonical client truth | live market prices and stats | Header, Chart, and Terminal should consume this directly. |
-| `gameState` | route/session transient | arena phase/view/hypothesis/session UI | Must not become market-truth owner. |
+| `activePairStore` | canonical client truth | active pair/timeframe/prices/view for Day-1 surfaces | Extracted from gameState (Batch 2). Active surfaces import this, not gameState. |
+| `gameState` | route/session transient | arena phase/view/hypothesis/session UI (legacy) | Must not become market-truth owner. Active code migrated to activePairStore. |
 | `arenaV2State` | route/session transient | simplified arena v2 local flow | Route-specific state. |
 | `arenaWarStore` | route/session transient | arena-war state machine and local orchestration | Durable record still belongs to server persistence. |
 | `activeGamesStore` | route/session transient | local multi-game runtime tracking | Coordination state, not durable truth. |
