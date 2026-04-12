@@ -27,9 +27,10 @@
   const DPR_CAP_MOBILE = 1;
   const TARGET_FPS_MOBILE = 30;
   const LOGO_PATH = '/cogochi/logo-filled.png';
-  const LOGO_COVER = 0.84;
-  const DRIFT_AMP_X = 18;
-  const DRIFT_AMP_Y = 12;
+  const LOGO_COVER_DESKTOP = 0.92;
+  const LOGO_COVER_MOBILE = 0.5;
+  const DRIFT_AMP_X = 20;
+  const DRIFT_AMP_Y = 14;
 
   let canvas: HTMLCanvasElement | undefined = $state(undefined);
   let isMobile = $state(false);
@@ -151,12 +152,15 @@
     window.addEventListener('orientationchange', onResize, { passive: true });
 
     function logoRect(t: number): [number, number, number, number] {
+      const mobile = w < MOBILE_BP;
       const viewMin = Math.min(w, h);
-      const sz = viewMin * LOGO_COVER;
+      const sz = viewMin * (mobile ? LOGO_COVER_MOBILE : LOGO_COVER_DESKTOP);
       const driftX = Math.sin(t * 0.16) * DRIFT_AMP_X + Math.sin(t * 0.32) * 4.6;
       const driftY = Math.cos(t * 0.13) * DRIFT_AMP_Y + Math.cos(t * 0.27) * 3.2;
-      const left = ((w - sz) * 0.5 + driftX - w * 0.018) / w;
-      const bottom = 1 - ((h - sz) * 0.5 + driftY + sz - h * 0.024) / h;
+      const centerX = (mobile ? 0.82 : 0.76) * w + driftX;
+      const centerY = (mobile ? 0.16 : 0.48) * h + driftY;
+      const left = (centerX - sz * 0.5) / w;
+      const bottom = 1 - (centerY + sz * 0.5) / h;
       const right = left + sz / w;
       const top = bottom + sz / h;
       return [left, bottom, right, top];
@@ -264,8 +268,8 @@
     width: 100vw;
     height: 100dvh;
     display: block;
-    opacity: 1;
-    filter: saturate(1.42) brightness(1.16) contrast(1.15);
+    opacity: 0.9;
+    filter: saturate(1.3) brightness(1.02) contrast(1.16);
   }
 
   @supports not (height: 100dvh) {
@@ -277,6 +281,13 @@
   @media (prefers-reduced-motion: reduce) {
     .ascii-bg {
       display: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .ascii-bg {
+      opacity: 0.76;
+      filter: saturate(1.18) brightness(0.98) contrast(1.08);
     }
   }
 </style>
