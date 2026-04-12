@@ -30,61 +30,61 @@ export interface ProofRow {
 }
 
 export const HOME_PROOF_PILLARS: ProofPillar[] = [
-  { label: 'PERSONAL', value: 'One adapter per trader' },
-  { label: 'PROOF', value: 'Validation before deploy' },
-  { label: 'SAFETY', value: 'Rollback if the score slips' }
+  { label: 'MEMORY', value: 'Store the judgment' },
+  { label: 'WATCH', value: 'Catch the scene again' },
+  { label: 'GATE', value: 'Ship only with proof' }
 ];
 
 export const HOME_EXAMPLE_PROMPTS: ExamplePrompt[] = [
-  { label: 'BTC reclaim', prompt: 'BTC reclaim after sweep with rising CVD' },
-  { label: 'ETH unwind', prompt: 'ETH funding unwind after crowded longs' },
-  { label: 'SOL breakout', prompt: 'SOL breakout with momentum and clean pullback' }
+  { label: 'btc reclaim', prompt: 'btc 4h reclaim after selloff' },
+  { label: 'eth unwind', prompt: 'eth daily unwind after crowded longs' },
+  { label: 'sol retest', prompt: 'sol breakout retest after flush' }
 ];
 
 export const HOME_LEARNING_STEPS: LearningStep[] = [
   {
     id: '01',
-    title: 'Capture',
-    copy: 'Save one setup in language you would actually use again, not a note you forget tomorrow.'
+    title: 'Save',
+    copy: 'Capture the setup you are looking at in one line.'
   },
   {
     id: '02',
     title: 'Watch',
-    copy: 'Terminal keeps it alive and surfaces the moments that look close enough to deserve your attention.'
+    copy: 'Terminal keeps watching for similar moments after that.'
   },
   {
     id: '03',
     title: 'Judge',
-    copy: 'Your yes and no calls become training signal instead of disappearing into chat history.'
+    copy: 'Good calls and bad calls remain as records instead of disappearing.'
   },
   {
     id: '04',
-    title: 'Deploy',
-    copy: 'Lab ships the stronger adapter and rolls back the weaker one when the evidence says so.'
+    title: 'Ship',
+    copy: 'Lab only moves a stronger version back into the default path.'
   }
 ];
 
 export const HOME_SURFACES: SurfaceCard[] = [
   {
-    label: 'Terminal',
-    title: 'Search the market and save the setup',
-    copy: 'This is the fast workspace. Type what you are looking for, inspect the chart, and pin the pattern without leaving the flow.',
+    label: '01 · TERMINAL',
+    title: 'Capture it first',
+    copy: 'Search the live scene and save the setup you want to keep.',
     path: '/terminal',
     cta: 'surface_terminal',
     actionLabel: 'Open Terminal'
   },
   {
-    label: 'Lab',
-    title: 'See whether the pattern earned another run',
-    copy: 'Runs, comparisons, and validation live here. Lab is where evidence decides whether the model actually improved.',
+    label: '02 · LAB',
+    title: 'Review the proof',
+    copy: 'Inspect the run results and see whether the version actually improved.',
     path: '/lab',
     cta: 'surface_lab',
     actionLabel: 'Open Lab'
   },
   {
-    label: 'Dashboard',
-    title: 'Come back to what changed',
-    copy: 'Saved challenges, watched setups, and recent runs return as one inbox instead of scattered old routes.',
+    label: '03 · DASHBOARD',
+    title: 'Return to state',
+    copy: 'Saved setups and recent changes come back together in one place.',
     path: '/dashboard',
     cta: 'surface_dashboard',
     actionLabel: 'Return to Dashboard'
@@ -93,23 +93,23 @@ export const HOME_SURFACES: SurfaceCard[] = [
 
 export const HOME_PROOF_ROWS: ProofRow[] = [
   {
-    stage: 'PATTERN',
+    stage: '01',
     title: 'BTC reclaim saved',
-    detail: 'Funding stretched. CVD still rising. Wait for reclaim confirmation.'
+    detail: 'A one-line setup is stored in Terminal.'
   },
   {
-    stage: 'SCAN HIT',
-    title: 'Three close matches surfaced overnight',
-    detail: 'The system found moments that resemble your saved judgment closely enough to review.'
+    stage: '02',
+    title: 'Similar scene caught overnight',
+    detail: 'Only close-enough moments are surfaced back into the workspace.'
   },
   {
-    stage: 'VERDICT',
-    title: 'Two good calls, one bad call',
-    detail: 'Those yes and no decisions become reusable signal tied to one trader record.'
+    stage: '03',
+    title: 'Good calls split from bad calls',
+    detail: 'Judgment does not disappear. It accumulates as record.'
   },
   {
-    stage: 'DEPLOY',
-    title: 'Adapter v4 shipped',
-    detail: 'Validation improved, so the stronger version becomes the new default and weaker ones stay out.'
+    stage: '04',
+    title: 'Only validated versions ship',
+    detail: 'A new version becomes default only when the evidence improves.'
   }
 ];
