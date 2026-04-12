@@ -16,6 +16,8 @@ import { scanMarket, type ScanConfig } from '$lib/server/scanner';
 import { readRaw, klinesRawIdForTimeframe } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
 import { buildResearchBlocks } from '$lib/server/researchView/buildResearchBlocks';
+import { query } from '$lib/server/db.js';
+import { sendTelegramMessage, formatAlphaAlert } from '$lib/server/telegram';
 function toFiniteNumber(value: number | string): number {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -82,13 +84,13 @@ export async function executeTool(
         data = executeChartControl(args, events);
         break;
       case 'save_pattern':
-        data = executeSavePattern(args, events);
+        data = await executeSavePattern(args, ctx, events);
         break;
       case 'submit_feedback':
-        data = executeSubmitFeedback(args, events);
+        data = await executeSubmitFeedback(args, ctx, events);
         break;
       case 'query_memory':
-        data = executeQueryMemory(args, events);
+        data = await executeQueryMemory(args, ctx, events);
         break;
       default:
         data = null;
@@ -530,6 +532,13 @@ async function executeScanMarket(
 
   events.push({ type: 'scan_result', sort, count: coins.length });
 
+  // Alpha Score 임계값(≥30 or ≤-30) 초과 코인 Telegram 알림
+  const alertCoins = coins.filter(c => Math.abs(c.alphaScore) >= 30);
+  if (alertCoins.length > 0) {
+    const msg = formatAlphaAlert(alertCoins);
+    sendTelegramMessage(msg).catch(() => {}); // non-blocking, fire-and-forget
+  }
+
   return {
     source: 'binance_17layer',
     sort,
@@ -564,60 +573,148 @@ function executeChartControl(
 
 // ─── save_pattern ───────────────────────────────────────────
 
-function executeSavePattern(
+async function executeSavePattern(
   args: Record<string, unknown>,
+  ctx: ToolExecutorContext,
   events: DouniSSEEvent[],
-): Record<string, unknown> {
-  // Phase 1: Return draft for user confirmation (no DB yet)
+): Promise<Record<string, unknown>> {
   const name = args.name as string;
   const conditions = args.conditions as unknown[];
   const direction = args.direction as string;
+  const lesson = conditions
+    .map((c: any) => `${c.field} ${c.operator} ${c.value}`)
+    .join(', ');
 
-  events.push({
-    type: 'pattern_draft',
-    name,
-    conditions,
-    requiresConfirmation: true,
-  });
+  events.push({ type: 'pattern_draft', name, conditions, requiresConfirmation: false });
 
-  return {
-    status: 'draft',
-    name,
-    direction,
-    conditionCount: conditions.length,
-    message: 'Pattern draft created. User confirmation required to save.',
-  };
+  if (!ctx.userId) {
+    return { status: 'draft', name, direction, conditionCount: conditions.length, message: 'Login required to save.' };
+  }
+
+  try {
+    const result = await query<{ id: string }>(
+      `INSERT INTO agent_memories
+         (agent_id, user_id, kind, symbol, action, title, lesson, detail, importance, success_score, is_doctrine_card)
+       VALUES ('douni', $1, 'PLAYBOOK', $2, $3, $4, $5, $6, 0.8, 0, false)
+       RETURNING id`,
+      [
+        ctx.userId,
+        ctx.symbol ?? null,
+        direction,
+        name,
+        lesson,
+        JSON.stringify(conditions),
+      ],
+    );
+    return { status: 'saved', name, direction, conditionCount: conditions.length, id: result.rows[0]?.id };
+  } catch (err: any) {
+    return { status: 'error', name, message: err?.message ?? 'Save failed' };
+  }
 }
 
 // ─── submit_feedback ────────────────────────────────────────
 
-function executeSubmitFeedback(
+async function executeSubmitFeedback(
   args: Record<string, unknown>,
+  ctx: ToolExecutorContext,
   _events: DouniSSEEvent[],
-): Record<string, unknown> {
-  // Phase 1: Acknowledge feedback (no DB yet)
-  return {
-    status: 'acknowledged',
-    target: args.target,
-    result: args.result,
-    note: args.note || null,
-    message: 'Feedback recorded. Will be used for learning in Phase 2.',
-  };
+): Promise<Record<string, unknown>> {
+  const target = args.target as string;
+  const result = args.result as string;
+  const note = (args.note as string) || null;
+
+  if (!ctx.userId) {
+    return { status: 'acknowledged', target, result, note };
+  }
+
+  const kind = result === 'correct' ? 'SUCCESS_CASE' : result === 'incorrect' ? 'FAILURE_CASE' : 'PLAYBOOK';
+  const title = `피드백: ${target} — ${result}`;
+  const lesson = note ?? `${target} 분석 결과: ${result}`;
+  const successScore = result === 'correct' ? 1.0 : result === 'incorrect' ? 0.0 : 0.5;
+
+  try {
+    await query(
+      `INSERT INTO agent_memories
+         (agent_id, user_id, kind, symbol, action, title, lesson, importance, success_score, is_doctrine_card)
+       VALUES ('douni', $1, $2, $3, null, $4, $5, 0.6, $6, false)`,
+      [ctx.userId, kind, ctx.symbol ?? null, title, lesson, successScore],
+    );
+    return { status: 'saved', target, result, note };
+  } catch (err: any) {
+    return { status: 'acknowledged', target, result, note, warning: err?.message };
+  }
 }
 
 // ─── query_memory ───────────────────────────────────────────
 
-function executeQueryMemory(
+async function executeQueryMemory(
   args: Record<string, unknown>,
+  ctx: ToolExecutorContext,
   _events: DouniSSEEvent[],
-): Record<string, unknown> {
-  // Phase 1: Stub (no persistent memory yet)
-  return {
-    status: 'empty',
-    query: args.query,
-    results: [],
-    message: 'Memory system not yet connected. Will be available in Phase 2.',
-  };
+): Promise<Record<string, unknown>> {
+  const searchQuery = (args.query as string) || '';
+  const kind = args.type as string | undefined;
+  const limit = Math.min((args.limit as number) || 5, 10);
+
+  if (!ctx.userId) {
+    return { status: 'empty', query: searchQuery, results: [], message: 'Login required.' };
+  }
+
+  try {
+    const conditions = ['agent_id = $1', 'user_id = $2', 'compaction_level < 2'];
+    const params: unknown[] = ['douni', ctx.userId];
+    let idx = 3;
+
+    if (searchQuery) {
+      conditions.push(`(title ILIKE $${idx} OR lesson ILIKE $${idx} OR detail ILIKE $${idx})`);
+      params.push(`%${searchQuery}%`);
+      idx++;
+    }
+    if (kind && kind !== 'all') {
+      const kindMap: Record<string, string> = {
+        analysis: 'SUCCESS_CASE',
+        pattern: 'PLAYBOOK',
+        feedback: 'FAILURE_CASE',
+      };
+      conditions.push(`kind = $${idx}`);
+      params.push(kindMap[kind] ?? kind.toUpperCase());
+      idx++;
+    }
+
+    params.push(limit);
+
+    type MemRow = {
+      id: string; kind: string; symbol: string | null; action: string | null;
+      title: string; lesson: string; importance: number; created_at: string;
+    };
+
+    const result = await query<MemRow>(
+      `SELECT id, kind, symbol, action, title, lesson, importance, created_at
+       FROM agent_memories
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY is_doctrine_card DESC, importance DESC, created_at DESC
+       LIMIT $${idx}`,
+      params,
+    );
+
+    return {
+      status: 'ok',
+      query: searchQuery,
+      count: result.rows.length,
+      results: (result.rows as MemRow[]).map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        symbol: r.symbol,
+        direction: r.action,
+        title: r.title,
+        lesson: r.lesson,
+        importance: parseFloat(String(r.importance)),
+        savedAt: r.created_at,
+      })),
+    };
+  } catch (err: any) {
+    return { status: 'error', query: searchQuery, results: [], message: err?.message };
+  }
 }
 
 // fetchDerivatives removed in B7 — funding/open interest/top L/S are

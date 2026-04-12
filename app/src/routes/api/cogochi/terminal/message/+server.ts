@@ -145,21 +145,23 @@ export const POST: RequestHandler = async ({ request }) => {
           // No tool calls → done
           if (collectedToolCalls.length === 0) break;
 
-          // Execute tool calls
+          // Execute tool calls — parallel when multiple tools requested
           messages.push({
             role: 'assistant',
             content: null,
             tool_calls: collectedToolCalls,
           });
 
-          for (const tc of collectedToolCalls) {
-            const { result, events } = await executeTool(tc, toolCtx);
+          const toolResults = await Promise.all(
+            collectedToolCalls.map(tc => executeTool(tc, toolCtx)),
+          );
+          for (const { result, events } of toolResults) {
             for (const event of events) emit(event);
             messages.push({
               role: 'tool',
               content: JSON.stringify(result.result),
-              tool_call_id: tc.id,
-              name: tc.function.name,
+              tool_call_id: result.toolCallId,
+              name: result.name,
             });
           }
         }
