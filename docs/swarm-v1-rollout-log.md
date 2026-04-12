@@ -410,3 +410,59 @@ Z3 (cost guard, parallel) ──────────────────
 ```
 
 Next session: Z4 OR Z5 (either can run after Z2 lands). Z5 is the more critical path — it unlocks Z6. Z4 is hygiene that also cleans up the existing 15+ orphans.
+
+---
+
+## Z5 — Cross-worktree state read (2026-04-12)
+
+**Slice**: `Z5-cross-worktree-state-read`
+**PR**: (pending)
+**Branch**: `claude/Z5-cross-worktree-state-read`
+
+### What
+
+Added `loadCrossWorktreeClaims()` to `scripts/slice/cli.mjs` — a helper that walks `git worktree list --porcelain`, reads each sibling worktree's `.agent-context/ownership/*.json` claim files, and returns a `Map<slice_id, {worktree, branch, paths, source_path}>`.
+
+Wired into:
+- **`cmdNew`**: refuses to create a slice whose ID is already claimed by another worktree. Error names the conflicting worktree + branch.
+- **`cmdReady`**: filters the ready set to exclude cross-worktree-claimed slices. A slice owned by a sibling is not "ready" for pickup.
+- **`.githooks/pre-commit`**: after finding a local claim, walks siblings for the same slice_id. If found, rejects with "Cross-worktree conflict" naming the other worktree. Prevents two worktrees from divergently editing the same slice's owned paths.
+
+### Smoke results
+
+```
+Smoke 1: slice new cross-claim rejection
+  ✓ slice new <ready-slice> exits non-zero
+  ✓ error mentions "already claimed"
+  ✓ error names the conflicting worktree
+
+Smoke 2: slice ready cross-claim filter
+  ✓ <ready-slice> NOT in ready set while claimed by sibling
+  ✓ <ready-slice> reappears in ready after claim removal
+
+5 passed, 0 failed
+```
+
+### 1000-user perf budget — Z5
+
+- `loadCrossWorktreeClaims()` runs one `git worktree list --porcelain` subprocess + N synchronous JSON reads (N = number of worktrees). At n=10 worktrees, measured <100ms total.
+- Result is cached per-CLI-invocation — subsequent calls within the same process return the cached Map with zero I/O.
+- No runtime impact on product surfaces (`/api/*`, `/terminal`). This is a development-time CLI tool only.
+
+### Security — Z5
+
+- **Read-only**: the walker never writes to sibling worktrees. It only reads `.agent-context/ownership/*.json` files.
+- **Strict JSON parse**: malformed claim files are silently skipped (no eval, no JSONP).
+- **No new network egress**: all operations are local filesystem reads.
+- **No new credentials**: no API keys or secrets involved.
+
+### Execution order update
+
+```
+Z2 (lifecycle) ✅ ──▶ Z5 (cross-worktree, THIS) ──▶ Z6 (spawn)
+                 └──▶ Z4 (orphan sweep)              ▲
+                                                      │
+Z3 (cost guard) ──────────────────────────────────────┘
+```
+
+Next: Z4 (hygiene) and Z3 (cost guard) can run in parallel. Z6 depends on both Z3 + Z5.

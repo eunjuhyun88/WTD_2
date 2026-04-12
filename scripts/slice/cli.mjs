@@ -229,6 +229,92 @@ function loadPolicy() {
 }
 
 // ---------------------------------------------------------------------------
+// Cross-worktree claim awareness (Z5 — n≥5 parallel safety)
+// ---------------------------------------------------------------------------
+
+/**
+ * Walk every git worktree registered by `git worktree list --porcelain`
+ * and collect the set of active slice claims across ALL sibling worktrees.
+ *
+ * Returns Map<slice_id, { worktree, branch, paths, source_path }>.
+ *
+ * Reads each worktree's `.agent-context/ownership/*.json` files
+ * (excluding `branch-*.json` mirrors to avoid double counting).
+ * Silently skips worktrees whose ownership dir does not exist or
+ * whose claim files fail JSON.parse.
+ *
+ * Cached per-CLI-invocation: first call scans, subsequent calls
+ * return the cached Map. Pass `force: true` to invalidate.
+ *
+ * Perf budget (Z5 DoD): <500ms at n=10 worktrees — one subprocess
+ * for `git worktree list` + N small JSON reads, all synchronous.
+ */
+let _crossClaimsCache = null;
+
+function loadCrossWorktreeClaims({ force = false } = {}) {
+	if (!force && _crossClaimsCache) return _crossClaimsCache;
+
+	const claims = new Map();
+	let output;
+	try {
+		output = execSync('git worktree list --porcelain', { encoding: 'utf8' });
+	} catch {
+		_crossClaimsCache = claims;
+		return claims;
+	}
+
+	// Parse porcelain output: blocks separated by blank lines.
+	// Each block:  worktree <path>\nHEAD <sha>\nbranch refs/heads/<name>
+	const worktrees = [];
+	for (const block of output.split('\n\n')) {
+		const lines = block.split('\n').filter(Boolean);
+		let wt = null;
+		let branch = null;
+		for (const line of lines) {
+			if (line.startsWith('worktree ')) wt = line.slice('worktree '.length);
+			else if (line.startsWith('branch refs/heads/')) branch = line.slice('branch refs/heads/'.length);
+		}
+		if (wt) worktrees.push({ path: wt, branch });
+	}
+
+	for (const wt of worktrees) {
+		const ownershipDir = join(wt.path, '.agent-context/ownership');
+		if (!existsSync(ownershipDir)) continue;
+		let entries;
+		try {
+			entries = readdirSync(ownershipDir);
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			// Skip branch-keyed mirrors — they duplicate slice-id-keyed files.
+			if (entry.startsWith('branch-')) continue;
+			if (!entry.endsWith('.json')) continue;
+			const filePath = join(ownershipDir, entry);
+			let claim;
+			try {
+				const raw = readFileSync(filePath, 'utf8');
+				claim = JSON.parse(raw);
+			} catch {
+				// Strict JSON parse — reject malformed (Z5 DoD: security).
+				continue;
+			}
+			if (!claim || typeof claim !== 'object') continue;
+			if (typeof claim.slice_id !== 'string') continue;
+			claims.set(claim.slice_id, {
+				worktree: wt.path,
+				branch: claim.branch ?? wt.branch ?? null,
+				paths: Array.isArray(claim.paths) ? claim.paths : [],
+				source_path: filePath
+			});
+		}
+	}
+
+	_crossClaimsCache = claims;
+	return claims;
+}
+
+// ---------------------------------------------------------------------------
 // Ownership manifest (§6 rule #3 — pre-commit hook reads this)
 // ---------------------------------------------------------------------------
 
