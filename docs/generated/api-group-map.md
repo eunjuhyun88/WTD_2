@@ -15,18 +15,15 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 | GMX V2 | GMX position lifecycle | `/api/gmx/balance`, `/api/gmx/close`, `/api/gmx/confirm`, `/api/gmx/markets` | 6 |
 | Polymarket | prediction market and related positions | `/api/polymarket/markets`, `/api/polymarket/orderbook`, `/api/positions/polymarket`, `/api/positions/polymarket/[id]/close` | 8 |
 | Unified Positions | aggregated position view | `/api/positions/unified` | 1 |
-| Arena | strategic arena lifecycle | `/api/arena/analyze`, `/api/arena/draft`, `/api/arena/hypothesis`, `/api/arena/match` | 11 |
-| Arena War | fast battle records and memory | `/api/arena-war`, `/api/arena-war/rag` | 2 |
+| Arena | strategic arena lifecycle | `/api/memory/[agentId]` | 1 |
 | Passport Learning | learning datasets, evals, and jobs | `/api/lab/autorun`, `/api/lab/forward-walk`, `/api/profile/passport/learning/datasets`, `/api/profile/passport/learning/evals` | 9 |
 | Wallet Intel | wallet investigation aggregate and dossier truth | `/api/wallet/intel` | 1 |
-| User Profile | profile, progression, preferences, and agent stats | `/api/agents/stats`, `/api/agents/stats/[agentId]`, `/api/doctrine`, `/api/portfolio/holdings` | 8 |
+| User Profile | profile, progression, preferences, and agent stats | `/api/doctrine`, `/api/portfolio/holdings`, `/api/preferences`, `/api/profile` | 6 |
 | Predictions | prediction positions and voting | `/api/predictions`, `/api/predictions/positions/[id]/close`, `/api/predictions/positions/open`, `/api/predictions/vote` | 4 |
-| Community | activity, posts, and reactions | `/api/activity`, `/api/activity/reaction`, `/api/community/posts`, `/api/community/posts/[id]/react` | 4 |
-| Copy Trading | publish and run tracking | `/api/copy-trades/publish`, `/api/copy-trades/runs`, `/api/copy-trades/runs/[id]`, `/api/marketplace/list` | 6 |
-| Tournaments | tournament lifecycle and bracket access | `/api/tournaments/[id]/bracket`, `/api/tournaments/[id]/register`, `/api/tournaments/active` | 3 |
+| Community | activity, posts, and reactions | `/api/activity`, `/api/activity/reaction` | 2 |
 | Notifications | notification lifecycle | `/api/notifications`, `/api/notifications/[id]`, `/api/notifications/read` | 3 |
 | Market Alerts | specialized market alert surface | `/api/market/alerts/onchain` | 1 |
-| Cogochi | DOUNI AI agent — terminal chat, analysis, social tools | `/api/cogochi/analyze`, `/api/cogochi/battle/[battleId]/action`, `/api/cogochi/battle/[battleId]/stream`, `/api/cogochi/battle/scenarios` | 10 |
+| Cogochi | DOUNI AI agent — terminal chat, analysis, social tools | `/api/cogochi/analyze`, `/api/cogochi/terminal/message`, `/api/cogochi/thermometer` | 3 |
 | Proxies & Infra | third-party proxy and support endpoints | `/api/chat/messages`, `/api/coinalyze`, `/api/coingecko/global`, `/api/etherscan/onchain` | 16 |
 
 ## Current Route Inventory Snapshot
@@ -105,21 +102,7 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/positions/unified`
 
 ### Arena
-- `/api/arena/analyze`
-- `/api/arena/draft`
-- `/api/arena/hypothesis`
-- `/api/arena/match`
-- `/api/arena/match/[id]`
-- `/api/arena/match/[id]/warroom`
-- `/api/arena/resolve`
-- `/api/battle`
-- `/api/battle/tick`
-- `/api/matches`
 - `/api/memory/[agentId]`
-
-### Arena War
-- `/api/arena-war`
-- `/api/arena-war/rag`
 
 ### Passport Learning
 - `/api/lab/autorun`
@@ -136,8 +119,6 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/wallet/intel`
 
 ### User Profile
-- `/api/agents/stats`
-- `/api/agents/stats/[agentId]`
 - `/api/doctrine`
 - `/api/portfolio/holdings`
 - `/api/preferences`
@@ -154,21 +135,6 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 ### Community
 - `/api/activity`
 - `/api/activity/reaction`
-- `/api/community/posts`
-- `/api/community/posts/[id]/react`
-
-### Copy Trading
-- `/api/copy-trades/publish`
-- `/api/copy-trades/runs`
-- `/api/copy-trades/runs/[id]`
-- `/api/marketplace/list`
-- `/api/marketplace/publish`
-- `/api/marketplace/subscribe`
-
-### Tournaments
-- `/api/tournaments/[id]/bracket`
-- `/api/tournaments/[id]/register`
-- `/api/tournaments/active`
 
 ### Notifications
 - `/api/notifications`
@@ -180,13 +146,6 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 
 ### Cogochi
 - `/api/cogochi/analyze`
-- `/api/cogochi/battle/[battleId]/action`
-- `/api/cogochi/battle/[battleId]/stream`
-- `/api/cogochi/battle/scenarios`
-- `/api/cogochi/battle/start`
-- `/api/cogochi/chat`
-- `/api/cogochi/scan`
-- `/api/cogochi/skills/catalog`
 - `/api/cogochi/terminal/message`
 - `/api/cogochi/thermometer`
 
