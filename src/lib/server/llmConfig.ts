@@ -6,6 +6,12 @@
 // 클라이언트 번들에 절대 포함되지 않음 ($lib/server/ 경로).
 
 import { env } from '$env/dynamic/private';
+import {
+  buildPool,
+  discoverKeysFromEnv,
+  type EnvSource,
+  type KeyPool,
+} from './keyPoolDiscovery';
 
 // ─── Key Rotation Pool Factory ────────────────────────────────
 // Every LLM provider shares the same rotation shape:
@@ -18,14 +24,15 @@ import { env } from '$env/dynamic/private';
 //   primary  — first key in pool (backward-compat constant)
 // Pool state is process-local in-memory; rotation index resets on
 // cold start. This is intentional for rate-limit forgiveness.
+//
+// `createKeyPoolWithDiscovery` extends the base factory by also
+// scanning the environment for **variant** slots (`KEY__SUFFIX`,
+// `KEYS__SUFFIX`) and **alias** slots (alternate env var names for
+// the same credential, e.g. `HF_TOKEN` ↔ `HUGGINGFACE_API_KEY`).
+// The pure discovery logic lives in `./keyPoolDiscovery.ts` so
+// research smokes can test it without a SvelteKit context.
 
-export interface KeyPool {
-  get: () => string;
-  rotate: () => void;
-  count: () => number;
-  primary: string;
-  keys: readonly string[];
-}
+export type { KeyPool };
 
 function createKeyPool(primary: string | undefined, rotation: string | undefined): KeyPool {
   const keys: string[] = [];
@@ -36,21 +43,22 @@ function createKeyPool(primary: string | undefined, rotation: string | undefined
       if (trimmed && !keys.includes(trimmed)) keys.push(trimmed);
     }
   }
-  let idx = 0;
-  return {
-    get: () => (keys.length === 0 ? '' : keys[idx % keys.length]),
-    rotate: () => {
-      if (keys.length > 1) idx = (idx + 1) % keys.length;
-    },
-    count: () => keys.length,
-    primary: keys[0] ?? '',
-    keys,
-  };
+  return buildPool(keys);
+}
+
+function createKeyPoolWithDiscovery(
+  primaryName: string,
+  poolName: string,
+  aliasNames: readonly string[] = [],
+): KeyPool {
+  return buildPool(
+    discoverKeysFromEnv(env as unknown as EnvSource, primaryName, poolName, aliasNames),
+  );
 }
 
 // ─── Gemini (Google, with key rotation) ───────────────────────
 
-const geminiPool = createKeyPool(env.GEMINI_API_KEY, env.GEMINI_API_KEYS);
+const geminiPool = createKeyPoolWithDiscovery('GEMINI_API_KEY', 'GEMINI_API_KEYS');
 export const getGeminiApiKey = (): string => geminiPool.get();
 export const rotateGeminiKey = (): void => geminiPool.rotate();
 export const getGeminiKeyCount = (): number => geminiPool.count();
@@ -62,37 +70,20 @@ export function geminiUrl(model = GEMINI_MODEL): string {
   return `${GEMINI_ENDPOINT}/models/${model}:generateContent`;
 }
 
-// ─── Groq (with key rotation) ─────────────────────────────────
+// ─── Groq (with key rotation, discovery-aware) ────────────────
 
-const GROQ_KEYS: string[] = (() => {
-  const keys: string[] = [];
-  // Primary key
-  if (env.GROQ_API_KEY) keys.push(env.GROQ_API_KEY);
-  // Rotation keys (comma-separated)
-  if (env.GROQ_API_KEYS) {
-    for (const k of env.GROQ_API_KEYS.split(',')) {
-      const trimmed = k.trim();
-      if (trimmed && !keys.includes(trimmed)) keys.push(trimmed);
-    }
-  }
-  return keys;
-})();
-
-let _groqKeyIdx = 0;
+const groqPool = createKeyPoolWithDiscovery('GROQ_API_KEY', 'GROQ_API_KEYS');
 
 export function getGroqApiKey(): string {
-  if (GROQ_KEYS.length === 0) return '';
-  const key = GROQ_KEYS[_groqKeyIdx % GROQ_KEYS.length];
-  return key;
+  return groqPool.get();
 }
 
 export function rotateGroqKey(): void {
-  if (GROQ_KEYS.length > 1) {
-    _groqKeyIdx = (_groqKeyIdx + 1) % GROQ_KEYS.length;
-  }
+  groqPool.rotate();
 }
 
-export const GROQ_API_KEY = GROQ_KEYS[0] ?? '';
+export const getGroqKeyCount = (): number => groqPool.count();
+export const GROQ_API_KEY = groqPool.primary;
 export const GROQ_MODEL = 'llama-3.3-70b-versatile';
 export const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1';
 
@@ -102,7 +93,7 @@ export function groqUrl(path = '/chat/completions'): string {
 
 // ─── DeepSeek (with key rotation) ─────────────────────────────
 
-const deepseekPool = createKeyPool(env.DEEPSEEK_API_KEY, env.DEEPSEEK_API_KEYS);
+const deepseekPool = createKeyPoolWithDiscovery('DEEPSEEK_API_KEY', 'DEEPSEEK_API_KEYS');
 export const getDeepSeekApiKey = (): string => deepseekPool.get();
 export const rotateDeepSeekKey = (): void => deepseekPool.rotate();
 export const getDeepSeekKeyCount = (): number => deepseekPool.count();
@@ -116,7 +107,7 @@ export function deepseekUrl(path = '/chat/completions'): string {
 
 // ─── Qwen (Alibaba DashScope, with key rotation) ──────────────
 
-const qwenPool = createKeyPool(env.QWEN_API_KEY, env.QWEN_API_KEYS);
+const qwenPool = createKeyPoolWithDiscovery('QWEN_API_KEY', 'QWEN_API_KEYS');
 export const getQwenApiKey = (): string => qwenPool.get();
 export const rotateQwenKey = (): void => qwenPool.rotate();
 export const getQwenKeyCount = (): number => qwenPool.count();
@@ -130,7 +121,7 @@ export function qwenUrl(path = '/chat/completions'): string {
 
 // ─── Grok (xAI, with key rotation) ────────────────────────────
 
-const grokPool = createKeyPool(env.GROK_API_KEY, env.GROK_API_KEYS);
+const grokPool = createKeyPoolWithDiscovery('GROK_API_KEY', 'GROK_API_KEYS');
 export const getGrokApiKey = (): string => grokPool.get();
 export const rotateGrokKey = (): void => grokPool.rotate();
 export const getGrokKeyCount = (): number => grokPool.count();
@@ -144,7 +135,7 @@ export function grokUrl(path = '/chat/completions'): string {
 
 // ─── Kimi (Moonshot, with key rotation) ───────────────────────
 
-const kimiPool = createKeyPool(env.KIMI_API_KEY, env.KIMI_API_KEYS);
+const kimiPool = createKeyPoolWithDiscovery('KIMI_API_KEY', 'KIMI_API_KEYS');
 export const getKimiApiKey = (): string => kimiPool.get();
 export const rotateKimiKey = (): void => kimiPool.rotate();
 export const getKimiKeyCount = (): number => kimiPool.count();
@@ -158,7 +149,13 @@ export function kimiUrl(path = '/chat/completions'): string {
 
 // ─── HuggingFace Inference API (OpenAI-compatible router, with token rotation) ──
 
-const hfPool = createKeyPool(env.HF_TOKEN, env.HF_TOKENS);
+// HF picks up `HUGGINGFACE_API_KEY` and `HUGGING_FACE_HUB_TOKEN`
+// as aliases — the same credential type ships under three env-var
+// names depending on the SDK / library version.
+const hfPool = createKeyPoolWithDiscovery('HF_TOKEN', 'HF_TOKENS', [
+  'HUGGINGFACE_API_KEY',
+  'HUGGING_FACE_HUB_TOKEN',
+]);
 export const getHfToken = (): string => hfPool.get();
 export const rotateHfToken = (): void => hfPool.rotate();
 export const getHfTokenCount = (): number => hfPool.count();
@@ -172,7 +169,7 @@ export function hfUrl(path = '/chat/completions'): string {
 
 // ─── Cerebras (blazing fast, OpenAI-compatible, with key rotation) ───
 
-const cerebrasPool = createKeyPool(env.CEREBRAS_API_KEY, env.CEREBRAS_API_KEYS);
+const cerebrasPool = createKeyPoolWithDiscovery('CEREBRAS_API_KEY', 'CEREBRAS_API_KEYS');
 export const getCerebrasApiKey = (): string => cerebrasPool.get();
 export const rotateCerebrasKey = (): void => cerebrasPool.rotate();
 export const getCerebrasKeyCount = (): number => cerebrasPool.count();
@@ -186,7 +183,7 @@ export function cerebrasUrl(path = '/chat/completions'): string {
 
 // ─── Mistral La Plateforme (OpenAI-compatible, with key rotation) ─
 
-const mistralPool = createKeyPool(env.MISTRAL_API_KEY, env.MISTRAL_API_KEYS);
+const mistralPool = createKeyPoolWithDiscovery('MISTRAL_API_KEY', 'MISTRAL_API_KEYS');
 export const getMistralApiKey = (): string => mistralPool.get();
 export const rotateMistralKey = (): void => mistralPool.rotate();
 export const getMistralKeyCount = (): number => mistralPool.count();
@@ -200,7 +197,7 @@ export function mistralUrl(path = '/chat/completions'): string {
 
 // ─── OpenRouter (aggregator, OpenAI-compatible, with key rotation) ─
 
-const openrouterPool = createKeyPool(env.OPENROUTER_API_KEY, env.OPENROUTER_API_KEYS);
+const openrouterPool = createKeyPoolWithDiscovery('OPENROUTER_API_KEY', 'OPENROUTER_API_KEYS');
 export const getOpenRouterApiKey = (): string => openrouterPool.get();
 export const rotateOpenRouterKey = (): void => openrouterPool.rotate();
 export const getOpenRouterKeyCount = (): number => openrouterPool.count();
