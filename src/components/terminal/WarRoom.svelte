@@ -1,7 +1,7 @@
 <script lang="ts">
   import { type AgentSignal } from '$lib/data/warroom';
   import { STORAGE_KEYS } from '$lib/stores/storageKeys';
-  import { gameState, setView } from '$lib/stores/gameState';
+  import { activePairState, setActiveView } from '$lib/stores/activePairStore';
   import { openQuickTrade } from '$lib/stores/quickTradeStore';
   import { trackSignal as trackSignalStore, activeSignalCount } from '$lib/stores/trackedSignalStore';
   import { incrementTrackedSignals } from '$lib/stores/userProfileStore';
@@ -168,8 +168,8 @@
     }
   }
 
-  let currentPair = $derived($gameState.pair);
-  let currentTF = $derived($gameState.timeframe);
+  let currentPair = $derived($activePairState.pair);
+  let currentTF = $derived($activePairState.timeframe);
 
   // 프리셋(하드코딩) 데이터 제거 — 실제 스캔 데이터만 표시
   let signalPool = $derived(
@@ -603,7 +603,7 @@
   }
 
   function goArena() {
-    setView('arena');
+    setActiveView('arena');
     goto('/arena');
   }
 

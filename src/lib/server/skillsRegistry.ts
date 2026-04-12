@@ -5,7 +5,7 @@
  */
 
 import { env } from '$env/dynamic/private';
-import type { SignalSnapshot, SkillLoadout, SkillResult, SkillCatalogItem } from '$lib/engine/cogochiTypes';
+import type { SignalSnapshot, SkillLoadout, SkillResult, SkillCatalogItem } from '$lib/contracts/signals';
 
 // ─── Registry Config ───
 

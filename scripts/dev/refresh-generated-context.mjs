@@ -30,13 +30,7 @@ const routeMeta = [
     keyState: '`agentStore`, `battleStore`',
     deepDocs: '`docs/product-specs/core.md`'
   },
-  {
-    route: '/onboard',
-    role: 'onboarding flow',
-    primaryConcern: 'archetype selection, tutorial battle, ERA reveal',
-    keyState: '`onboardingStore`',
-    deepDocs: '`docs/product-specs/core.md`'
-  },
+  // /onboard — ARCHIVED (Batch 3)
   {
     route: '/agent',
     role: 'agent roster surface',
@@ -58,34 +52,10 @@ const routeMeta = [
     keyState: '`agentData`',
     deepDocs: '`docs/PRODUCT_SENSE.md`'
   },
-  {
-    route: '/create',
-    role: 'create-agent bridge',
-    primaryConcern: 'activation, wallet connection, and terminal handoff',
-    keyState: '`walletStore`, `authSessionStore`',
-    deepDocs: '`docs/page-specs/create-agent-page.md`'
-  },
-  {
-    route: '/arena',
-    role: 'main strategic arena',
-    primaryConcern: 'structured human-vs-agent decision loop',
-    keyState: '`gameState`, `matchHistoryStore`, `pnlStore`, `battleFeedStore`',
-    deepDocs: '`docs/product-specs/arena.md`'
-  },
-  {
-    route: '/arena-v2',
-    role: 'simplified arena variant',
-    primaryConcern: 'alternate arena flow and views',
-    keyState: '`arenaV2State`, live price context',
-    deepDocs: '`docs/product-specs/arena.md`'
-  },
-  {
-    route: '/arena-war',
-    role: 'fast AI battle mode',
-    primaryConcern: 'phase machine, battle rendering, GameRecord flow',
-    keyState: '`arenaWarStore`',
-    deepDocs: '`docs/design-docs/arena-domain-model.md`'
-  },
+  // /create — ARCHIVED (Batch 3)
+  // /arena — ARCHIVED (Batch 3)
+  // /arena-v2 — ARCHIVED (Batch 3)
+  // /arena-war — ARCHIVED (Batch 3)
   {
     route: '/holdings',
     role: 'redirect route',
@@ -93,13 +63,7 @@ const routeMeta = [
     keyState: 'none',
     deepDocs: '`docs/product-specs/passport.md`'
   },
-  {
-    route: '/live',
-    role: 'auxiliary live route/data hook',
-    primaryConcern: 'limited runtime support surface',
-    keyState: 'route-level data',
-    deepDocs: '`docs/PRODUCT_SENSE.md`'
-  },
+  // /live — ARCHIVED (Batch 3)
   {
     route: '/lab',
     role: 'model training workbench',
@@ -107,34 +71,10 @@ const routeMeta = [
     keyState: '`agentData`',
     deepDocs: '`docs/page-specs/lab-page.md`'
   },
-  {
-    route: '/battle',
-    role: 'standalone proof battle',
-    primaryConcern: 'daily-limited historical chart battle and result loop',
-    keyState: '`battleStore`, `matchHistoryStore`',
-    deepDocs: '`docs/page-specs/battle-page.md`'
-  },
-  {
-    route: '/oracle',
-    role: 'redirect route',
-    primaryConcern: 'redirect into signals ai leaderboard view',
-    keyState: 'none',
-    deepDocs: '`docs/product-specs/signals.md`'
-  },
-  {
-    route: '/passport',
-    role: 'profile/progression surface',
-    primaryConcern: 'identity, stats, learning, history',
-    keyState: '`userProfileStore`, `userLifecycleStore`, `matchHistoryStore`, `quickTradeStore`',
-    deepDocs: '`docs/product-specs/passport.md`'
-  },
-  {
-    route: '/passport/wallet/[chain]/[address]',
-    role: 'wallet dossier route',
-    primaryConcern: 'durable wallet thesis, evidence snapshots, and dossier recall',
-    keyState: 'route-local dossier loader + wallet-intel aggregate',
-    deepDocs: '`docs/COGOCHI.md`'
-  },
+  // /battle — ARCHIVED (Batch 3)
+  // /oracle — ARCHIVED (Batch 3)
+  // /passport — ARCHIVED (Batch 5)
+  // /passport/wallet/[chain]/[address] — ARCHIVED (Batch 5)
   {
     route: '/settings',
     role: 'preferences surface',
@@ -142,20 +82,8 @@ const routeMeta = [
     keyState: '`gameState` and preference state',
     deepDocs: '`docs/FRONTEND.md`'
   },
-  {
-    route: '/signals',
-    role: 'signal discovery surface',
-    primaryConcern: 'community, track, convert flows',
-    keyState: '`gameState`, `matchHistoryStore`, signal state',
-    deepDocs: '`docs/product-specs/signals.md`'
-  },
-  {
-    route: '/signals/[postId]',
-    role: 'community signal detail route',
-    primaryConcern: 'single-post evidence, comments, and trade handoff',
-    keyState: 'route-local post loader + `communityStore` reaction state',
-    deepDocs: '`docs/page-specs/signals-detail-page.md`'
-  },
+  // /signals — ARCHIVED (Batch 3)
+  // /signals/[postId] — ARCHIVED (Batch 3)
   {
     route: '/terminal',
     role: 'intel/action surface',
@@ -163,34 +91,10 @@ const routeMeta = [
     keyState: 'route shell + `copyTradeStore`, `trackedSignalStore`, live prices',
     deepDocs: '`docs/product-specs/terminal.md`'
   },
-  {
-    route: '/world',
-    role: 'world bridge surface',
-    primaryConcern: 'world-map preview, readiness framing, battle handoff',
-    keyState: '`gameState`',
-    deepDocs: '`docs/page-specs/world-page.md`'
-  },
-  {
-    route: '/creator/[userId]',
-    role: 'public creator profile route',
-    primaryConcern: 'creator context and recent community signals',
-    keyState: 'route-local creator loader + community signal cards',
-    deepDocs: '`docs/page-specs/creator-page.md`'
-  },
-  {
-    route: '/cogochi',
-    role: 'cogochi hub',
-    primaryConcern: 'DOUNI virtual pet entry and navigation',
-    keyState: 'route-level data',
-    deepDocs: '`docs/PRODUCT_SENSE.md`'
-  },
-  {
-    route: '/cogochi/scanner',
-    role: 'cogochi scanner surface',
-    primaryConcern: 'alpha scan results, filter/sort by alpha + regime, layer-score deep dive',
-    keyState: 'route-local scan result state, layer score rows, filter/sort selection',
-    deepDocs: '`docs/product-specs/terminal.md`'
-  },
+  // /world — ARCHIVED (Batch 3)
+  // /creator/[userId] — DELETED (Batch 1)
+  // /cogochi — ARCHIVED (Batch 5)
+  // /cogochi/scanner — ARCHIVED (Batch 5)
   {
     route: '/scanner',
     role: 'top-level scanner redirect/surface',
@@ -198,21 +102,16 @@ const routeMeta = [
     keyState: 'none',
     deepDocs: '`docs/product-specs/terminal.md`'
   },
-  {
-    route: '/terminal-legacy',
-    role: 'legacy terminal shell preserved for comparison',
-    primaryConcern: 'prior war-room + chart + intel layout kept during terminal refactor',
-    keyState: 'route-local chat/pattern state + `copyTradeStore`, `trackedSignalStore`',
-    deepDocs: '`docs/product-specs/terminal.md`'
-  }
+  // /terminal-legacy — DELETED (Batch 1)
 ];
 
 const storeMeta = [
   ['priceStore', 'canonical client truth', 'live market prices and stats', 'Header, Chart, and Terminal should consume this directly.'],
-  ['gameState', 'route/session transient', 'arena phase/view/hypothesis/session UI', 'Must not become market-truth owner.'],
-  ['arenaV2State', 'route/session transient', 'simplified arena v2 local flow', 'Route-specific state.'],
-  ['arenaWarStore', 'route/session transient', 'arena-war state machine and local orchestration', 'Durable record still belongs to server persistence.'],
-  ['activeGamesStore', 'route/session transient', 'local multi-game runtime tracking', 'Coordination state, not durable truth.'],
+  ['activePairStore', 'canonical client truth', 'active pair/timeframe/prices/view for Day-1 surfaces', 'Extracted from gameState (Batch 2). Active surfaces import this, not gameState.'],
+  ['gameState', 'route/session transient', 'arena phase/view/hypothesis/session UI (legacy)', 'Must not become market-truth owner. Active code migrated to activePairStore.'],
+  // arenaV2State — ARCHIVED (Batch 4)
+  // arenaWarStore — ARCHIVED (Batch 4)
+  // activeGamesStore — ARCHIVED (Batch 4)
   ['authSessionStore', 'server-authoritative projection', 'authenticated session mirror and cookie-backed identity', 'Session authority should stay separate from wallet UX and route-local control state.'],
   ['walletStore', 'route/session transient', 'wallet connection transport and signed-wallet shell', 'Connection UX state should stay separate from durable profile or trade truth.'],
   ['walletModalStore', 'route/session transient', 'wallet modal visibility and step flow', 'Modal UX state is split from wallet transport and progression state.'],
@@ -227,8 +126,8 @@ const storeMeta = [
   ['communityStore', 'server-authoritative projection', 'community posts and reactions', 'Local storage is convenience, not source of truth.'],
   ['notificationStore', 'server-authoritative projection', 'durable notifications with optimistic staging', 'Canonical notification records come from the server.'],
   ['pnlStore', 'derived/support', 'pnl summaries and derived display state', 'Depends on durable trade/outcome data.'],
-  ['battleFeedStore', 'route/session transient', 'live battle feed', 'Runtime-only presentation state.'],
-  ['battleStore', 'route/session transient', 'standalone battle runtime and round state', 'Owns `/battle` route play state; durable records still belong to server-backed history.'],
+  // battleFeedStore — ARCHIVED (Batch 4)
+  // battleStore — ARCHIVED (Batch 4)
   ['agentData', 'derived/support', 'agent stats and learning presentation layer', 'Should not silently redefine server truth.'],
   ['doctrineStore', 'derived/support', 'per-agent doctrine editor state and version history', 'Editable doctrine state should reconcile with durable agent truth when server APIs land.'],
   ['warRoomStore', 'route/session transient', 'war-room discussion state', 'Runtime coordination state.'],

@@ -1,7 +1,7 @@
 <script lang="ts">
   import AlphaMarketBar from '../cogochi/AlphaMarketBar.svelte';
   import { EMPTY_THERMO_DATA, type ThermoData } from '$lib/cogochi/marketPulse';
-  import { gameState } from '$lib/stores/gameState';
+  import { activePairState } from '$lib/stores/activePairStore';
   import { openTradeCount } from '$lib/stores/quickTradeStore';
   import { activeSignalCount } from '$lib/stores/trackedSignalStore';
   import { livePrices } from '$lib/stores/priceStore';
@@ -15,7 +15,7 @@
     buckets?: import('$lib/stores/alphaBuckets').AlphaBuckets | null;
   } = $props();
 
-  const state = $derived($gameState);
+  const state = $derived($activePairState);
   const openPos = $derived($openTradeCount);
   const trackedSigs = $derived($activeSignalCount);
   const liveP = $derived($livePrices);
@@ -60,17 +60,7 @@
   </div>
 
   <div class="sb-section sb-right">
-    <span class="sb-stat"><span class="sb-lbl">M:</span>{state.matchN}</span>
-    <span class="sb-stat"><span class="sb-lbl">W:</span>{state.wins}</span>
-    {#if state.streak > 0}
-      <span class="sb-stat sb-streak">{state.streak}</span>
-    {/if}
-    <div class="sb-lp">
-      <div class="sb-lp-track">
-        <div class="sb-lp-fill" style="width:{Math.min(state.lp / 50, 100)}%"></div>
-      </div>
-      <span class="sb-lp-val">{state.lp.toLocaleString()} LP</span>
-    </div>
+    <!-- Arena stats removed (Day-1 has no arena) -->
   </div>
 </div>
 
