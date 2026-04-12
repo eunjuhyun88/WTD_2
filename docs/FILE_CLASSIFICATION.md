@@ -794,10 +794,10 @@ Classifies every file in `src/` across 4 axes for the Cogochi day-1 cleanup plan
 - **Files touched**: ~10 files
 - **Risk**: HIGH (HD-1, HD-2, HD-4 -- cross-surface imports)
 
-### Batch 3 -- Archive legacy page routes
-- Archive all legacy-delete page routes: arena, arena-v2, arena-war, battle, world, oracle, live, signals, create, onboard
-- **Files touched**: ~15 route files
-- **Risk**: Low (no active imports)
+### Batch 3 -- Archive legacy page routes ✅ DONE
+- Archived 12 legacy-delete page routes to `_archive/routes/`: arena, arena-v2, arena-war, battle, world, oracle, live, signals, signals/[postId], create, onboard
+- **Files archived**: 12 route files (-8,827 lines from active src/)
+- **Risk**: Low (no active imports; nav references → dead links = SvelteKit 404, cleanup in Batch 9/10)
 
 ### Batch 4 -- Archive legacy components + API routes + client wrappers
 - Archive all legacy-delete components (arena/*, arena-v2/*, arena-war/*, battle/*, agent/*, community/*, live/*, CopyTradeModal, OracleModal)
