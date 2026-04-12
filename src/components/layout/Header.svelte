@@ -107,10 +107,6 @@
       <span class="nav-logo-main">COGOCHI</span>
     </a>
 
-    {#if isHomeRoute}
-      <span class="home-route-pill">HOME</span>
-    {/if}
-
     <!-- Ticker (desktop + mobile) -->
     <div class="selected-ticker">
       <span class="st-pair">{selectedToken}</span>
@@ -135,18 +131,6 @@
   </div>
 
   <div class="nav-right">
-    {#if isHomeRoute}
-      <a
-        class="home-start-btn"
-        aria-label="Open Terminal"
-        href={buildDeepLink('/terminal')}
-      >
-        OPEN TERMINAL
-      </a>
-    {/if}
-
-    <!-- Score badge removed (Day-1 has no arena XP) -->
-
     <!-- Settings (desktop only) -->
     <a
       class="settings-btn desktop-only"
@@ -237,56 +221,11 @@
   .nav-logo:hover { opacity: 0.8; }
 
   .nav-logo-main {
-    font-family: var(--sc-font-display);
-    font-size: 1.12rem;
-    letter-spacing: 0.07em;
-    text-shadow: 0 0 10px rgba(219, 154, 159, 0.1);
-  }
-
-  .home-route-pill,
-  .home-start-btn {
-    display: none;
-  }
-
-  .home-route-pill {
-    align-items: center;
-    min-height: 22px;
-    padding: 0 8px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
-    color: rgba(255, 247, 244, 0.7);
-    font-family: var(--sc-font-mono);
-    font-size: 0.64rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .home-start-btn {
-    align-items: center;
-    justify-content: center;
-    min-height: 30px;
-    padding: 0 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 79, 163, 0.24);
-    background: linear-gradient(135deg, #ff4fa3, #ff8a63);
-    color: #070707;
-    font-family: var(--sc-font-mono);
-    font-size: 0.66rem;
+    font-family: var(--sc-font-body);
+    font-size: 1.04rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
-    text-decoration: none;
-    box-shadow: 0 10px 28px rgba(255, 79, 163, 0.24);
-    transition:
-      transform var(--sc-duration-fast),
-      box-shadow var(--sc-duration-fast),
-      opacity var(--sc-duration-fast);
-  }
-
-  .home-start-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 14px 30px rgba(255, 79, 163, 0.3);
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 10px rgba(219, 154, 159, 0.08);
   }
 
   /* Ticker */
@@ -302,15 +241,16 @@
     flex-shrink: 0;
   }
   .st-pair {
-    font-family: var(--sc-font-pixel);
-    font-size: 8px;
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
     color: var(--sc-text-3);
     letter-spacing: 0.12em;
   }
   .st-price {
-    font-family: var(--sc-font-pixel);
+    font-family: var(--sc-font-body);
     font-size: 11px;
     color: var(--sc-text-0);
+    font-weight: 600;
   }
 
   /* Desktop Nav Tabs */
@@ -391,25 +331,6 @@
     flex-shrink: 0;
   }
 
-  .score-badge {
-    font-family: var(--sc-font-mono);
-    font-size: var(--sc-fs-xs);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--sc-text-2);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
-    padding: 4px 8px;
-    letter-spacing: 0.12em;
-    display: flex;
-    align-items: center;
-    gap: var(--sc-sp-1);
-  }
-  .score-value {
-    font-size: var(--sc-fs-sm);
-    color: var(--sc-text-0);
-    font-weight: 700;
-  }
-
   /* Settings */
   .settings-btn {
     color: var(--sc-text-2);
@@ -479,58 +400,84 @@
   }
 
   #nav.home-mode {
-    top: max(6px, calc(var(--sc-safe-top) + 6px));
+    top: max(8px, calc(var(--sc-safe-top) + 8px));
     left: 50%;
     right: auto;
-    width: min(1080px, calc(100vw - 24px));
+    width: min(1040px, calc(100vw - 28px));
     height: 40px;
-    padding: 0 12px;
-    border: 1px solid rgba(219, 154, 159, 0.12);
-    border-radius: 15px;
+    padding: 0 14px;
+    border: 1px solid rgba(249, 216, 194, 0.1);
+    border-radius: 18px;
     background:
-      linear-gradient(180deg, rgba(8, 8, 8, 0.88), rgba(0, 0, 0, 0.78)),
-      radial-gradient(circle at top right, rgba(219, 154, 159, 0.08), transparent 34%);
-    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+      linear-gradient(180deg, rgba(10, 10, 11, 0.76), rgba(6, 6, 7, 0.66)),
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.045), transparent 34%);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
     transform: translateX(-50%);
+    backdrop-filter: blur(20px);
   }
 
   #nav.home-mode .selected-ticker,
-  #nav.home-mode .score-badge,
   #nav.home-mode .settings-btn {
     display: none;
   }
 
   #nav.home-mode .nav-main {
-    gap: 6px;
+    gap: 12px;
   }
 
   #nav.home-mode .nav-logo-main {
-    font-size: 1.18rem;
-    letter-spacing: 0.065em;
+    font-weight: 700;
+    font-size: 0.96rem;
+    letter-spacing: 0.05em;
   }
 
   #nav.home-mode .nav-tab-desktop {
-    height: 24px;
-    padding: 0 10px;
-    font-size: 12px;
-    letter-spacing: 0.06em;
-    background: rgba(255, 255, 255, 0.025);
-    border-color: rgba(255, 255, 255, 0.05);
+    height: 100%;
+    padding: 0 6px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: rgba(250, 247, 235, 0.4);
+    margin-right: 0;
+  }
+
+  #nav.home-mode .nav-tab-desktop:hover {
+    background: transparent;
+    color: rgba(250, 247, 235, 0.74);
+  }
+
+  #nav.home-mode .nav-tab-desktop.active {
+    background: transparent;
+    color: rgba(250, 247, 235, 0.96);
+    text-shadow: none;
+  }
+
+  #nav.home-mode .nav-tab-desktop.active::after {
+    inset: auto 6px 7px;
+    height: 1px;
+    background: rgba(219, 154, 159, 0.9);
+    box-shadow: none;
+  }
+
+  #nav.home-mode .nav-tab-desktop.highlight,
+  #nav.home-mode .nav-tab-desktop.active.highlight {
+    color: rgba(var(--home-accent-rgb, 219, 154, 159), 0.92);
   }
 
   #nav.home-mode .nav-right {
-    margin-left: 4px;
-  }
-
-  #nav.home-mode .home-start-btn {
-    display: inline-flex;
+    margin-left: auto;
   }
 
   #nav.home-mode .wallet-btn {
     min-height: 28px;
-    padding: 0 10px;
-    font-size: 12px;
-    box-shadow: none;
+    padding: 0 13px;
+    font-size: 11px;
+    background: linear-gradient(180deg, rgba(250, 247, 235, 0.98), rgba(249, 246, 241, 0.96));
+    border-color: rgba(219, 154, 159, 0.24);
+    box-shadow: 0 6px 14px rgba(219, 154, 159, 0.1);
   }
 
   /* Profile Dropdown */
@@ -618,11 +565,6 @@
     #nav.home-mode .nav-tab-desktop:nth-of-type(3) {
       display: none;
     }
-    #nav.home-mode .home-start-btn {
-      min-height: 28px;
-      padding: 0 10px;
-      font-size: 0.62rem;
-    }
   }
 
   /* ═══ MOBILE (<=768px) — compact top chrome, tabs move to bottom nav ═══ */
@@ -633,8 +575,11 @@
     }
     #nav.home-mode {
       width: calc(100vw - 16px);
-      height: 36px;
+      height: 38px;
       padding: 0 9px;
+    }
+    #nav.home-mode .nav-tab-desktop:nth-of-type(3) {
+      display: none;
     }
     .desktop-only { display: none; }
     .nav-tab-desktop { display: none; }
@@ -658,10 +603,6 @@
     #nav.home-mode .selected-ticker {
       display: none;
     }
-    #nav.home-mode .home-route-pill {
-      display: inline-flex;
-      margin-left: 6px;
-    }
     .st-pair {
       font-size: 8px;
     }
@@ -682,18 +623,11 @@
       padding: 0 12px;
       border-radius: var(--sc-radius-md);
     }
-    #nav.home-mode .profile-dropdown-wrap,
-    #nav.home-mode .wallet-btn {
+    #nav.home-mode .profile-dropdown-wrap {
       display: none;
     }
     #nav.home-mode .nav-right {
       margin-left: auto;
-    }
-    #nav.home-mode .home-start-btn {
-      min-height: 26px;
-      padding: 0 10px;
-      font-size: 0.58rem;
-      letter-spacing: 0.1em;
     }
   }
 
