@@ -108,6 +108,25 @@ class SignalSnapshot(BaseModel):
     cvd_state: CVDState
     taker_buy_ratio_1h: float  # taker buy base vol / total base vol, 0..1
 
+    # ---- H. Price changes (4) ----
+    price_change_1h: float = 0.0    # pct change over 1 bar
+    price_change_4h: float = 0.0    # pct change over 4 bars
+    price_change_24h: float = 0.0   # pct change over 24 bars
+    price_change_7d: float = 0.0    # pct change over 168 bars
+
+    # ---- I. Additional momentum oscillators (3) ----
+    stoch_rsi: float = 50.0         # stochastic RSI, 0..100
+    williams_r: float = -50.0       # Williams %R, -100..0
+    cci: float = 0.0                # Commodity Channel Index (unbounded)
+
+    # ---- J. Price relative (2) ----
+    vwap_ratio: float = 0.0         # (price - vwap_24h) / vwap_24h
+    price_vs_ema200: float = 0.0    # (price - ema200) / ema200
+
+    # ---- K. Candle structure (2) ----
+    upper_wick_pct: float = 0.0     # upper wick / total candle range, 0..1
+    lower_wick_pct: float = 0.0     # lower wick / total candle range, 0..1
+
     # ---- Meta (3) ----
     regime: Regime
     hour_of_day: int           # 0..23 UTC

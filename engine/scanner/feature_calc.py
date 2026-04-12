@@ -97,6 +97,45 @@ def _obv(close: pd.Series, volume: pd.Series) -> pd.Series:
     return (direction * volume).cumsum()
 
 
+def _stoch_rsi(rsi: pd.Series, period: int = 14) -> pd.Series:
+    """Stochastic RSI: (rsi - min_rsi) / (max_rsi - min_rsi) scaled to 0..100.
+    Returns 50.0 where the RSI range over the window is zero."""
+    rsi_min = rsi.rolling(period, min_periods=period).min()
+    rsi_max = rsi.rolling(period, min_periods=period).max()
+    rsi_range = rsi_max - rsi_min
+    raw = (rsi - rsi_min) / rsi_range.replace(0, np.nan)
+    return (raw * 100.0).fillna(50.0).clip(0.0, 100.0)
+
+
+def _williams_r(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+    """Williams %R: -100 to 0. -100 = close at period low, 0 = at period high."""
+    hh = high.rolling(period, min_periods=period).max()
+    ll = low.rolling(period, min_periods=period).min()
+    denom = (hh - ll).replace(0, np.nan)
+    raw = (hh - close) / denom * -100.0
+    return raw.fillna(-50.0).clip(-100.0, 0.0)
+
+
+def _cci(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 20) -> pd.Series:
+    """Commodity Channel Index. Unbounded; typical range ±200."""
+    typical = (high + low + close) / 3.0
+    sma_tp = typical.rolling(period, min_periods=period).mean()
+    mean_dev = typical.rolling(period, min_periods=period).apply(
+        lambda x: np.mean(np.abs(x - x.mean())), raw=True
+    )
+    denom = (0.015 * mean_dev).replace(0, np.nan)
+    return ((typical - sma_tp) / denom).fillna(0.0)
+
+
+def _vwap_ratio(close: pd.Series, volume: pd.Series, period: int = 24) -> pd.Series:
+    """(close - vwap_period) / vwap_period where vwap = sum(close*vol)/sum(vol)."""
+    pv = close * volume
+    rolling_pv = pv.rolling(period, min_periods=1).sum()
+    rolling_vol = volume.rolling(period, min_periods=1).sum()
+    vwap = (rolling_pv / rolling_vol.replace(0, np.nan)).fillna(close)
+    return ((close - vwap) / vwap.replace(0, np.nan)).fillna(0.0)
+
+
 # =========================================================================
 # Per-feature helpers
 # =========================================================================
@@ -225,6 +264,7 @@ def compute_snapshot(
     close = klines["close"].astype(float)
     high = klines["high"].astype(float)
     low = klines["low"].astype(float)
+    open_ = klines["open"].astype(float)
     volume = klines["volume"].astype(float)
     taker_buy = klines["taker_buy_base_volume"].astype(float)
 
@@ -326,6 +366,41 @@ def compute_snapshot(
     taker_buy_ratio_1h = max(0.0, min(1.0, taker_buy_ratio_1h))
     cvd_state = _cvd_state(taker_buy_ratio_1h)
 
+    # --- H. Price changes (from klines only) ---
+    def _pct_change_scalar(n: int) -> float:
+        if len(close) <= n:
+            return 0.0
+        past = float(close.iloc[-1 - n])
+        return float((price - past) / past) if past else 0.0
+
+    price_change_1h = _pct_change_scalar(1)
+    price_change_4h = _pct_change_scalar(4)
+    price_change_24h = _pct_change_scalar(24)
+    price_change_7d = _pct_change_scalar(168)
+
+    # --- I. Additional momentum oscillators ---
+    stoch_rsi_val = float(_stoch_rsi(rsi_series, 14).iloc[-1])
+    williams_r_val = float(_williams_r(high, low, close, 14).iloc[-1])
+    cci_val = float(_cci(high, low, close, 20).iloc[-1])
+
+    # --- J. Price relative ---
+    vwap_ratio_val = float(_vwap_ratio(close, volume, 24).iloc[-1])
+    price_vs_ema200 = (price - ema200) / ema200 if ema200 else 0.0
+
+    # --- K. Candle structure (last bar only) ---
+    candle_high = float(high.iloc[-1])
+    candle_low = float(low.iloc[-1])
+    candle_open = float(open_.iloc[-1])
+    candle_range = candle_high - candle_low
+    if candle_range > 0:
+        body_top = max(price, candle_open)
+        body_bot = min(price, candle_open)
+        upper_wick_pct = (candle_high - body_top) / candle_range
+        lower_wick_pct = (body_bot - candle_low) / candle_range
+    else:
+        upper_wick_pct = 0.0
+        lower_wick_pct = 0.0
+
     # --- Meta ---
     regime = _regime(close, atr_pct)
     hour_of_day = int(ts_dt.astimezone(timezone.utc).hour)
@@ -367,6 +442,21 @@ def compute_snapshot(
         # Order flow
         cvd_state=cvd_state,
         taker_buy_ratio_1h=taker_buy_ratio_1h,
+        # H. Price changes
+        price_change_1h=price_change_1h,
+        price_change_4h=price_change_4h,
+        price_change_24h=price_change_24h,
+        price_change_7d=price_change_7d,
+        # I. Additional momentum oscillators
+        stoch_rsi=stoch_rsi_val,
+        williams_r=williams_r_val,
+        cci=cci_val,
+        # J. Price relative
+        vwap_ratio=vwap_ratio_val,
+        price_vs_ema200=price_vs_ema200,
+        # K. Candle structure
+        upper_wick_pct=upper_wick_pct,
+        lower_wick_pct=lower_wick_pct,
         # Meta
         regime=regime,
         hour_of_day=hour_of_day,
@@ -481,6 +571,21 @@ _CORE_FEATURE_COLUMNS: tuple[str, ...] = (
     "long_short_ratio",
     "cvd_state",
     "taker_buy_ratio_1h",
+    # H. Price changes
+    "price_change_1h",
+    "price_change_4h",
+    "price_change_24h",
+    "price_change_7d",
+    # I. Additional momentum oscillators
+    "stoch_rsi",
+    "williams_r",
+    "cci",
+    # J. Price relative
+    "vwap_ratio",
+    "price_vs_ema200",
+    # K. Candle structure
+    "upper_wick_pct",
+    "lower_wick_pct",
     "regime",
     "hour_of_day",
     "day_of_week",
@@ -539,6 +644,7 @@ def compute_features_table(
     close = klines["close"].astype(float)
     high = klines["high"].astype(float)
     low = klines["low"].astype(float)
+    open_ = klines["open"].astype(float)
     volume = klines["volume"].astype(float)
     taker_buy = klines["taker_buy_base_volume"].astype(float)
     index = klines.index
@@ -641,6 +747,28 @@ def compute_features_table(
         taker_buy_ratio_1h >= 0.55, CVDState.BUYING.value,
         np.where(taker_buy_ratio_1h <= 0.45, CVDState.SELLING.value, CVDState.NEUTRAL.value),
     )
+
+    # --- H. Price changes (pure klines) ---
+    price_change_1h = close.pct_change(1).fillna(0.0)
+    price_change_4h = close.pct_change(4).fillna(0.0)
+    price_change_24h = close.pct_change(24).fillna(0.0)
+    price_change_7d = close.pct_change(168).fillna(0.0)
+
+    # --- I. Additional momentum oscillators ---
+    stoch_rsi_series = _stoch_rsi(rsi14, 14)
+    williams_r_series = _williams_r(high, low, close, 14)
+    cci_series = _cci(high, low, close, 20)
+
+    # --- J. Price relative ---
+    vwap_ratio_series = _vwap_ratio(close, volume, 24)
+    price_vs_ema200 = ((close - ema200) / ema200.replace(0, np.nan)).fillna(0.0)
+
+    # --- K. Candle structure ---
+    candle_range = (high - low).replace(0, np.nan)
+    body_top = pd.concat([close, open_], axis=1).max(axis=1)
+    body_bot = pd.concat([close, open_], axis=1).min(axis=1)
+    upper_wick_pct = ((high - body_top) / candle_range).fillna(0.0).clip(0.0, 1.0)
+    lower_wick_pct = ((body_bot - low) / candle_range).fillna(0.0).clip(0.0, 1.0)
 
     # --- Macro + On-chain (registry-driven, daily → ffill onto hourly) ---
     # Uses data_cache.registry defaults for any missing column.
@@ -757,6 +885,21 @@ def compute_features_table(
             "long_short_ratio": long_short_ratio,
             "cvd_state": cvd_state,
             "taker_buy_ratio_1h": taker_buy_ratio_1h.to_numpy(),
+            # H. Price changes
+            "price_change_1h": price_change_1h.to_numpy(),
+            "price_change_4h": price_change_4h.to_numpy(),
+            "price_change_24h": price_change_24h.to_numpy(),
+            "price_change_7d": price_change_7d.to_numpy(),
+            # I. Additional momentum oscillators
+            "stoch_rsi": stoch_rsi_series.to_numpy(),
+            "williams_r": williams_r_series.to_numpy(),
+            "cci": cci_series.to_numpy(),
+            # J. Price relative
+            "vwap_ratio": vwap_ratio_series.to_numpy(),
+            "price_vs_ema200": price_vs_ema200.to_numpy(),
+            # K. Candle structure
+            "upper_wick_pct": upper_wick_pct.to_numpy(),
+            "lower_wick_pct": lower_wick_pct.to_numpy(),
             "regime": regime,
             "hour_of_day": hour_of_day,
             "day_of_week": day_of_week,
