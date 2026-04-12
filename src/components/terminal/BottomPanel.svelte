@@ -2,7 +2,7 @@
   import { timeSince } from '$lib/utils/time';
   import { quickTradeStore, openTrades, closedTrades, totalQuickPnL, closeQuickTrade, clearClosedTrades } from '$lib/stores/quickTradeStore';
   import { trackedSignalStore, activeSignals, activeSignalCount, convertToTrade, removeTracked, clearExpired } from '$lib/stores/trackedSignalStore';
-  import { gameState } from '$lib/stores/gameState';
+  import { activePairState } from '$lib/stores/activePairStore';
 
   // ── Activity log ──
   interface Activity {
@@ -30,7 +30,7 @@
   }
 
   // ── Reactive ──
-  $: state = $gameState;
+  $: state = $activePairState;
   $: opens = $openTrades;
   $: closed = $closedTrades;
   $: totalPnl = $totalQuickPnL;

@@ -232,3 +232,16 @@ export type {
 	RawSourceSubscription,
 	RawProviderKeyOverride
 } from './registry';
+
+// Signal & skill types — extracted from engine/cogochiTypes.ts (Batch 2)
+export {
+	DEFAULT_SKILL_LOADOUT
+} from './signals';
+export type {
+	SignalSnapshot,
+	SkillLoadout,
+	SkillResult,
+	SkillCatalogItem,
+	MemoryKind,
+	MemoryCard
+} from './signals';
