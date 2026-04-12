@@ -20,6 +20,41 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## Entries
 
+## [2026-04-12 14:55:00 +0900] DONE W-20260412-1400-CHATBATTLE-keen-jackson — CTO Cleanup Execution
+
+- Branch: `claude/keen-jackson` (operating on `main` via `zealous-goodall`)
+- Plan: `cto-cleanup-plan-2026-04-12.md` (designed by heuristic-knuth, executed by keen-jackson)
+- Duration: ~1.5h
+
+### Completed phases:
+- **P0** Precondition check — DELTA found (origin moved, divergence resolved by prior session)
+- **P6** Main push — 9 local unpushed commits pushed to origin (home landing refactor)
+- **P3** Root CLAUDE.md rewrite — `/Users/ej/Projects/maxidoge-clones/CLAUDE.md` replaced with new 12-section version (BE extraction, worktree lifecycle, parallel session coordination, decision authority matrix)
+- **P5** MERGED 12 worktree cleanup — 12/12 removed + branches deleted (compassionate-jepsen, eager-nash, elated-davinci, hardcore-kapitsa, inspiring-hertz, jovial-newton, nice-driscoll, nostalgic-johnson, objective-vaughan, pensive-bardeen, strange-burnell, upbeat-lovelace)
+- **P7** PR #5 closed — superseded by BE extraction plan
+- **P8** zoom1-terminal removed — worktree + local + remote branch deleted (SHA 5058b1f for recovery)
+- **P4** BE extraction design v0 — `be-extraction-design-v0.md` committed + pushed (59bf36a)
+
+### Metrics:
+- Worktree count: 31 → 17 (14 removed: 12 MERGED + zoom1-terminal + Z5 by other session)
+- PRs closed: 1 (#5)
+- Open PRs remaining: 3 (#11, #33, #45)
+- Main commits pushed: 10 (9 zealous-goodall + 1 BE design)
+- Root CLAUDE.md: full rewrite (99 → 230 lines)
+
+### Deferred / Not touched:
+- Orphan 17 directories: HARDFROZEN (per root CLAUDE.md § 6.1)
+- Stash 7 entries: preserved
+- PR #11, #33, #45: owned by other sessions
+- heuristic-knuth worktree: pending self-cleanup decision
+
+### Hand-off:
+- Next BE extraction session: read `be-extraction-design-v0.md`, start Step 1 (contracts)
+- Next infra session: swarm-v1 Z2-Z6 implementation
+- Orphan 17: do NOT touch. Ever.
+
+---
+
 ## [2026-04-12 12:08:00 +0900] START W-20260412-1208-CHATBATTLE-codex (CHATBATTLE)
 - Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
