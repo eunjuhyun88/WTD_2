@@ -11148,3 +11148,26 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - pending: `npm run safe:status`
   - pending: `npm run safe:hooks`
   - pending: `npm run safe:sync`
+
+## [2026-04-12 13:15:00 +0900] FINISH W-20260412-1310-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - validated the in-flight home landing polish on `codex/home-visualization-analysis`
+  - committed the home-only polish as `d0c6fe9` (`feat(home): polish terminal-first landing and home navigation`)
+  - rebased the feature branch onto `origin/main`; obsolete earlier branch commits were skipped/dropped because their content was already upstream in `cb21830`
+  - merged `origin/main` into local `main`, then merged `codex/home-visualization-analysis` into `main`
+- Validation results:
+  - feature branch `npm run docs:check`: PASS
+  - feature branch `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - feature branch `npm run build`: PASS
+  - feature branch `npm run ctx:check -- --strict`: PASS
+  - clean `main` worktree `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - clean `main` worktree `npm run build`: PASS
+- Commit hash:
+  - feature commit: `d0c6fe98042ce1917dd6e815210278196d5c287b`
+  - main merge commit: `51368eef785dd4a4bf17eb13a949725df65cd9f7`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - feature branch: `codex/home-visualization-analysis` clean and rebased on `origin/main`
+  - main worktree: `## main...origin/main [ahead 8]`
+  - no uncommitted changes after merge/log close
