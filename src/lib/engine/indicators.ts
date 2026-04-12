@@ -146,6 +146,11 @@ export function calcMACD(
   return { macd, signal, histogram };
 }
 
+/**
+ * @deprecated Use calcCVDCanonical instead.
+ * This implementation uses close-delta direction (close > prev close = buy volume),
+ * which does not match the industry-standard taker buy/sell volume method.
+ */
 export function calcCVD(closes: NumArray, volumes: NumArray): NumArray {
   const len = Math.min(closes.length, volumes.length);
   const out = fill(len, 0);
@@ -161,6 +166,13 @@ export function calcCVD(closes: NumArray, volumes: NumArray): NumArray {
   }
   return out;
 }
+
+/**
+ * Canonical CVD using taker buy/sell volume.
+ * Re-exports from metrics/compute/cvd.ts for backward compat.
+ * @see computeCVDSeries in metrics/compute/cvd.ts
+ */
+export { computeCVDSeries as calcCVDCanonical, computeVolumeDelta, computeTakerBuySellRatio } from './metrics/compute/cvd';
 
 export function calcBollingerBands(
   values: NumArray,

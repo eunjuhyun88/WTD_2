@@ -158,11 +158,13 @@ export function detectDivergence(prices: number[], indicator: number[]): Diverge
     const pa = toHighAction(priceHighs[0].value, priceHighs[1].value);
     const ia = toHighAction(indHighs[0].value, indHighs[1].value);
     if (pa === 'HH' && ia === 'LH') {
-      const confidence = clamp(
-        Math.abs(priceHighs[1].value - priceHighs[0].value) + Math.abs(indHighs[1].value - indHighs[0].value),
-        15,
-        90
-      );
+      const priceDeltaPct = priceHighs[0].value !== 0
+        ? Math.abs((priceHighs[1].value - priceHighs[0].value) / priceHighs[0].value) * 100
+        : 0;
+      const indDeltaPct = indHighs[0].value !== 0
+        ? Math.abs((indHighs[1].value - indHighs[0].value) / indHighs[0].value) * 100
+        : 0;
+      const confidence = clamp(priceDeltaPct * 4 + indDeltaPct * 6, 15, 90);
       return {
         type: 'BEARISH_DIV',
         indicator: 'GENERIC',
@@ -173,11 +175,13 @@ export function detectDivergence(prices: number[], indicator: number[]): Diverge
       };
     }
     if (pa === 'LH' && ia === 'HH') {
-      const confidence = clamp(
-        Math.abs(priceHighs[1].value - priceHighs[0].value) + Math.abs(indHighs[1].value - indHighs[0].value),
-        15,
-        90
-      );
+      const priceDeltaPct = priceHighs[0].value !== 0
+        ? Math.abs((priceHighs[1].value - priceHighs[0].value) / priceHighs[0].value) * 100
+        : 0;
+      const indDeltaPct = indHighs[0].value !== 0
+        ? Math.abs((indHighs[1].value - indHighs[0].value) / indHighs[0].value) * 100
+        : 0;
+      const confidence = clamp(priceDeltaPct * 4 + indDeltaPct * 6, 15, 90);
       return {
         type: 'HIDDEN_BEAR',
         indicator: 'GENERIC',
@@ -193,11 +197,13 @@ export function detectDivergence(prices: number[], indicator: number[]): Diverge
     const pa = toLowAction(priceLows[0].value, priceLows[1].value);
     const ia = toLowAction(indLows[0].value, indLows[1].value);
     if (pa === 'LL' && ia === 'HL') {
-      const confidence = clamp(
-        Math.abs(priceLows[1].value - priceLows[0].value) + Math.abs(indLows[1].value - indLows[0].value),
-        15,
-        90
-      );
+      const priceDeltaPct = priceLows[0].value !== 0
+        ? Math.abs((priceLows[1].value - priceLows[0].value) / priceLows[0].value) * 100
+        : 0;
+      const indDeltaPct = indLows[0].value !== 0
+        ? Math.abs((indLows[1].value - indLows[0].value) / indLows[0].value) * 100
+        : 0;
+      const confidence = clamp(priceDeltaPct * 4 + indDeltaPct * 6, 15, 90);
       return {
         type: 'BULLISH_DIV',
         indicator: 'GENERIC',
@@ -208,11 +214,13 @@ export function detectDivergence(prices: number[], indicator: number[]): Diverge
       };
     }
     if (pa === 'HL' && ia === 'LL') {
-      const confidence = clamp(
-        Math.abs(priceLows[1].value - priceLows[0].value) + Math.abs(indLows[1].value - indLows[0].value),
-        15,
-        90
-      );
+      const priceDeltaPct = priceLows[0].value !== 0
+        ? Math.abs((priceLows[1].value - priceLows[0].value) / priceLows[0].value) * 100
+        : 0;
+      const indDeltaPct = indLows[0].value !== 0
+        ? Math.abs((indLows[1].value - indLows[0].value) / indLows[0].value) * 100
+        : 0;
+      const confidence = clamp(priceDeltaPct * 4 + indDeltaPct * 6, 15, 90);
       return {
         type: 'HIDDEN_BULL',
         indicator: 'GENERIC',
