@@ -20,6 +20,7 @@ import {
   fetchLSRatioHistoryServer,
   fetchLiquidationHistoryServer,
   fetchOIHistoryServer,
+  fetchFundingHistoryServer,
 } from '$lib/server/providers/coinalyze';
 import { fetchFearGreed as fetchFearGreedServer } from '$lib/server/feargreed';
 import { fetchCoinGeckoGlobal } from '$lib/server/providers/coingecko';
@@ -551,6 +552,7 @@ async function _runServerScanInternal(pair: string, timeframe: string): Promise<
     macroRaw, socialRaw, oiHistRaw,
     fredRaw, cqRaw,
     santimentRaw, coinMetricsRaw,
+    fundingHistRaw,
   ] = await Promise.allSettled([
     cachedFetch(`ca:oi:${marketPair}`, () => fetchCurrentOIServer(marketPair), CACHE_TTL.coinalyze, 'Coinalyze OI'),
     cachedFetch(`ca:fr:${marketPair}`, () => fetchCurrentFundingServer(marketPair), CACHE_TTL.coinalyze, 'Coinalyze FR'),
@@ -569,6 +571,8 @@ async function _runServerScanInternal(pair: string, timeframe: string): Promise<
     cachedFetch(`san:${token}`, () => fetchSantimentSocial(token.toLowerCase()), CACHE_TTL.santiment, 'Santiment'),
     // Slot 14: Coin Metrics (CryptoQuant 대체 — 무료, 키 불필요)
     cachedFetch(`cm:${cqAsset}`, () => fetchCoinMetricsData(cqAsset), CACHE_TTL.coinmetrics, 'CoinMetrics'),
+    // Slot 15: Funding history (for 7d avg funding)
+    cachedFetch(`ca:frh:${marketPair}`, () => fetchFundingHistoryServer(marketPair, '1h', 168), CACHE_TTL.coinalyze, 'Coinalyze FundingHist'),
   ]);
 
   // ── Phase 3: Data Consolidation ──
@@ -590,6 +594,34 @@ async function _runServerScanInternal(pair: string, timeframe: string): Promise<
 
   const change24 = Number(ticker.priceChangePercent || 0);
   const quoteVolume24 = Number(ticker.quoteVolume || 0);
+
+  // ── Funding avg 7d ──
+  const fundingHist = fundingHistRaw.status === 'fulfilled' ? fundingHistRaw.value : [];
+  const fundingAvg7d = Array.isArray(fundingHist) && fundingHist.length > 0
+    ? fundingHist.reduce((sum, d) => sum + (d.value ?? 0), 0) / fundingHist.length
+    : null;
+  const fundingAnnualized = funding != null ? funding * 3 * 365 : null; // 8h periods per year
+
+  // ── Quick-win price changes from klines ──
+  const change1h = closes.length >= 2
+    ? ((latestClose - closes[Math.max(0, closes.length - 2)]) / closes[Math.max(0, closes.length - 2)]) * 100
+    : null;
+  const change4h = closes.length >= 5
+    ? ((latestClose - closes[Math.max(0, closes.length - 5)]) / closes[Math.max(0, closes.length - 5)]) * 100
+    : null;
+  const change7d = closes.length >= 42
+    ? ((latestClose - closes[Math.max(0, closes.length - 42)]) / closes[Math.max(0, closes.length - 42)]) * 100
+    : null;
+  // ATH ratio: current price vs highest in available klines (proxy)
+  const highestClose = Math.max(...closes);
+  const athRatio = highestClose > 0 ? latestClose / highestClose : null;
+  // Market cap from CoinGecko (will be extracted below)
+  // Volume change: current 24h vs previous 24h (from ticker)
+  const prevVolume = Number(ticker.prevClosePrice || 0) > 0 && avgVolume20 > 0
+    ? avgVolume20 : null;
+  const volumeChange24 = prevVolume != null && prevVolume > 0
+    ? ((quoteVolume24 - prevVolume * 24) / (prevVolume * 24)) * 100
+    : null;
 
   // Derivatives
   const oi = oiRaw.status === 'fulfilled' && oiRaw.value ? oiRaw.value.value : null;
