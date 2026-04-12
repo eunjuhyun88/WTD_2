@@ -11,17 +11,33 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import backtest, challenge, score, train
+from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
 )
 log = logging.getLogger("engine")
+
+
+# ---------------------------------------------------------------------------
+# Lifespan — start/stop background scanner
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):  # noqa: ANN001
+    start_scheduler()
+    log.info("Engine started — background scanner active")
+    yield
+    stop_scheduler()
+    log.info("Engine shutdown — scanner stopped")
+
 
 # ---------------------------------------------------------------------------
 # App
@@ -36,6 +52,7 @@ app = FastAPI(
     ),
     docs_url="/docs",
     redoc_url=None,
+    lifespan=lifespan,
 )
 
 # Allow SvelteKit dev server and production domain.
@@ -66,6 +83,16 @@ app.include_router(train.router, prefix="/train", tags=["training"])
 @app.get("/healthz", tags=["meta"])
 def healthz() -> dict:
     return {"status": "ok", "version": app.version}
+
+
+@app.get("/scanner/status", tags=["meta"])
+def scanner_status() -> dict:
+    return {
+        "running": is_running(),
+        "next_scan": next_run_time(),
+        "interval_seconds": int(os.getenv("SCAN_INTERVAL_SECONDS", "900")),
+        "universe": os.getenv("SCAN_UNIVERSE", "binance_30"),
+    }
 
 
 # ---------------------------------------------------------------------------
