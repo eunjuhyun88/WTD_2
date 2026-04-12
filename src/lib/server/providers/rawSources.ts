@@ -75,6 +75,16 @@ import { fetchFearGreed } from '$lib/server/feargreed';
 import { fetchKlinesServer, fetch24hrServer } from './binance';
 import type { BinanceKline, Binance24hr } from '$lib/engine/types';
 import { binanceQuota } from './binanceQuota';
+import {
+	fetchOIHistoryServer,
+	fetchFundingHistoryServer,
+	fetchLSRatioHistoryServer,
+	fetchLiquidationHistoryServer,
+	type OIDataPoint,
+	type FundingDataPoint,
+	type LSRatioDataPoint,
+	type LiquidationDataPoint
+} from './coinalyze';
 
 // ---------------------------------------------------------------------------
 // Per-raw input + output type maps
@@ -145,7 +155,26 @@ export interface RawSourceInputs {
 	[KnownRawId.TICKER_LOW_PRICE]: EmptyInput;
 	[KnownRawId.TICKER_LAST_PRICE]: EmptyInput;
 	[KnownRawId.UNIVERSE_IS_USDT]: EmptyInput;
+	// B13-b: Coinalyze cross-exchange aggregated history. All four
+	// share the same `(pair, tf, limit)` call shape, mirroring the
+	// underlying `fetchXXXHistoryServer` signatures in coinalyze.ts.
+	// `pair` is the canonical `BASE/QUOTE` string (e.g. `BTC/USDT`),
+	// matching what toolExecutor.ts already computes for DOUNI inputs.
+	[KnownRawId.COINALYZE_OI_HIST_TF]: CoinalyzeHistoryInput;
+	[KnownRawId.COINALYZE_FUNDING_HIST_TF]: CoinalyzeHistoryInput;
+	[KnownRawId.COINALYZE_LSRATIO_HIST_TF]: CoinalyzeHistoryInput;
+	[KnownRawId.COINALYZE_LIQ_HIST_TF]: CoinalyzeHistoryInput;
 }
+
+/**
+ * Coinalyze history input tuple. `pair` is `BASE/QUOTE` (slashed),
+ * `tf` is a human timeframe like `1h` / `4h` / `1d` (the coinalyze
+ * adapter maps to its internal `1hour` / `4hour` / `daily` vocabulary
+ * via `toCoinalyzeInterval`), and `limit` is the history depth in
+ * bars. Default of 60 at the call site mirrors the existing
+ * toolExecutor invocations we are migrating.
+ */
+export type CoinalyzeHistoryInput = { pair: string; tf: string; limit: number };
 
 export interface RawSourceOutputs {
 	[KnownRawId.FEAR_GREED_VALUE]: number | null;
@@ -201,6 +230,16 @@ export interface RawSourceOutputs {
 	[KnownRawId.TICKER_LOW_PRICE]: Map<string, number>;
 	[KnownRawId.TICKER_LAST_PRICE]: Map<string, number>;
 	[KnownRawId.UNIVERSE_IS_USDT]: Set<string>;
+	// B13-b: Coinalyze history return shapes are the existing
+	// `XXXDataPoint[]` arrays exported from coinalyze.ts. Re-exporting
+	// them through `readRaw()` does not change the row shape — it
+	// only relocates the fetch path into the provenance chain so
+	// buildResearchBlocks.ts can cite a sourceId the type system
+	// actually knows about.
+	[KnownRawId.COINALYZE_OI_HIST_TF]: OIDataPoint[];
+	[KnownRawId.COINALYZE_FUNDING_HIST_TF]: FundingDataPoint[];
+	[KnownRawId.COINALYZE_LSRATIO_HIST_TF]: LSRatioDataPoint[];
+	[KnownRawId.COINALYZE_LIQ_HIST_TF]: LiquidationDataPoint[];
 }
 
 /** The subset of `KnownRawId` values this slice implements. */
@@ -831,7 +870,33 @@ export const rawSources: RawSourceMap = {
 	[KnownRawId.TICKER_HIGH_PRICE]: async () => (await getFuturesTickers()).highPrice,
 	[KnownRawId.TICKER_LOW_PRICE]: async () => (await getFuturesTickers()).lowPrice,
 	[KnownRawId.TICKER_LAST_PRICE]: async () => (await getFuturesTickers()).lastPrice,
-	[KnownRawId.UNIVERSE_IS_USDT]: async () => (await getFuturesTickers()).symbols
+	[KnownRawId.UNIVERSE_IS_USDT]: async () => (await getFuturesTickers()).symbols,
+
+	// B13-b: Coinalyze cross-exchange history. Thin shims over the
+	// existing `fetchXXXHistoryServer` helpers in coinalyze.ts — they
+	// already own their own cache (`coinalyze:*` keys with
+	// `DERIV_CACHE_TTL`) and their own error handling (return empty
+	// arrays on failure), so we do not wrap them in another memo.
+	//
+	// The provenance motivation: buildResearchBlocks.ts's metric_strip
+	// research block cited Binance-family sourceIds (`raw.symbol.oi_hist.display_tf`,
+	// `raw.symbol.funding_rate`, `raw.symbol.long_short.global`,
+	// `raw.symbol.force_orders.1h`) but was fed Coinalyze data from
+	// toolExecutor.ts. Routing those four history reads through `readRaw`
+	// under dedicated Coinalyze atoms lets the research view cite an
+	// honest sourceId that matches its actual data source.
+	//
+	// The Binance-only atoms (`OI_HIST_DISPLAY_TF`, `FUNDING_RATE`,
+	// `LONG_SHORT_GLOBAL`, `FORCE_ORDERS_1H`) remain in the catalog
+	// with their single-venue semantic; this slice does not touch them.
+	[KnownRawId.COINALYZE_OI_HIST_TF]: async ({ pair, tf, limit }) =>
+		fetchOIHistoryServer(pair, tf, limit),
+	[KnownRawId.COINALYZE_FUNDING_HIST_TF]: async ({ pair, tf, limit }) =>
+		fetchFundingHistoryServer(pair, tf, limit),
+	[KnownRawId.COINALYZE_LSRATIO_HIST_TF]: async ({ pair, tf, limit }) =>
+		fetchLSRatioHistoryServer(pair, tf, limit),
+	[KnownRawId.COINALYZE_LIQ_HIST_TF]: async ({ pair, tf, limit }) =>
+		fetchLiquidationHistoryServer(pair, tf, limit)
 };
 
 // ---------------------------------------------------------------------------

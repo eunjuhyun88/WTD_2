@@ -15,12 +15,6 @@ import type { MarketContext } from '$lib/engine/factorEngine';
 import { scanMarket, type ScanConfig } from '$lib/server/scanner';
 import { readRaw, klinesRawIdForTimeframe } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
-import {
-  fetchFundingHistoryServer,
-  fetchLSRatioHistoryServer,
-  fetchLiquidationHistoryServer,
-  fetchOIHistoryServer
-} from '$lib/server/providers/coinalyze';
 import { buildResearchBlocks } from '$lib/server/researchView/buildResearchBlocks';
 function toFiniteNumber(value: number | string): number {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -185,10 +179,16 @@ async function executeAnalyzeMarket(
     readRaw(KnownRawId.UPBIT_PRICE_MAP, {}).catch(() => new Map()),
     readRaw(KnownRawId.BITHUMB_PRICE_MAP, {}).catch(() => new Map()),
     readRaw(KnownRawId.USD_KRW_RATE, {}).catch(() => 1350),
-    fetchOIHistoryServer(pair, tf, 60).catch(() => []),
-    fetchFundingHistoryServer(pair, tf, 60).catch(() => []),
-    fetchLSRatioHistoryServer(pair, tf, 60).catch(() => []),
-    fetchLiquidationHistoryServer(pair, tf, 60).catch(() => []),
+    // B13-b: Coinalyze cross-exchange history now flows through
+    // `readRaw()` under dedicated `COINALYZE_*` atoms. This gives
+    // buildResearchBlocks.ts a provenance-honest sourceId chain to cite
+    // (see metric_strip block below — the four history rows previously
+    // cited Binance-family atoms but rendered Coinalyze data, and the
+    // research view contract enforces sourceId↔data fidelity).
+    readRaw(KnownRawId.COINALYZE_OI_HIST_TF, { pair, tf, limit: 60 }).catch(() => []),
+    readRaw(KnownRawId.COINALYZE_FUNDING_HIST_TF, { pair, tf, limit: 60 }).catch(() => []),
+    readRaw(KnownRawId.COINALYZE_LSRATIO_HIST_TF, { pair, tf, limit: 60 }).catch(() => []),
+    readRaw(KnownRawId.COINALYZE_LIQ_HIST_TF, { pair, tf, limit: 60 }).catch(() => []),
   ]);
 
   if (!klines.length) {
