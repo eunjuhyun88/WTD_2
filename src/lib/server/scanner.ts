@@ -57,75 +57,73 @@ const PRESETS: Record<string, string[]> = {
   meme: ['DOGEUSDT', 'SHIBUSDT', 'PEPEUSDT', 'FLOKIUSDT', 'BONKUSDT', 'WIFUSDT'],
 };
 
-// --- Binance Futures API constants ----------------------------------
-
-const FAPI = 'https://fapi.binance.com';
-
 // --- 3-Group Symbol Selection ---------------------------------------
-
-interface FuturesTicker {
-  symbol: string;
-  lastPrice: string;
-  priceChangePercent: string;
-  quoteVolume: string;
-  highPrice: string;
-  lowPrice: string;
-}
-
-/**
- * Fetch all USDT perpetual futures tickers from Binance.
- */
-async function fetchAllFuturesTickers(): Promise<FuturesTicker[]> {
-  const res = await fetch(`${FAPI}/fapi/v1/ticker/24hr`, {
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`futures tickers ${res.status}`);
-  const data: FuturesTicker[] = await res.json();
-  // Only keep USDT-margined perpetual pairs (filter out quarterly/coin-M)
-  return data.filter(
-    (t) => t.symbol.endsWith('USDT') && !t.symbol.includes('_'),
-  );
-}
+//
+// B13-a migration: the private `fetchAllFuturesTickers()` helper that
+// used to live here went direct-to-`fapi.binance.com/fapi/v1/ticker/24hr`
+// and duplicated the USDT-perp filter (`endsWith('USDT') && !includes('_')`).
+// B12 lifted that same roundtrip into `rawSources.ts` as a
+// 30-second-memoized compound fetch exposed via seven `TICKER_*` atoms.
+// Scanner now reads those atoms through `readRaw()`, so the scanner path
+// and any other downstream that also reads the 24hr ticker (e.g. research
+// blocks, tool executor) share a single `/fapi/v1/ticker/24hr` payload
+// inside the memo window. No private FAPI fetch remains in this file.
 
 /**
  * 3-Group selection algorithm.
  *
  * Group 1 (50%): Top by 24H quote volume
  * Group 2 (30%): Top by 24H price change % (absolute value)
- * Group 3 (25%): Coins where current price > 90% of 24H high (near breakout)
+ * Group 3 (25%): Coins where current price > 90% of 24H range (near breakout)
  *
  * Groups are merged and deduplicated, then trimmed to topN.
+ *
+ * All universe + field slices flow through `readRaw(KnownRawId.TICKER_*)`.
+ * On fetcher failure the B12 memo returns empty Set/Map payloads, so we
+ * fall back to `PRESETS.top10` when the universe is empty — identical to
+ * the pre-B13a behavior (old `fetchAllFuturesTickers` threw, was caught at
+ * the `scanMarket` boundary, and produced the same empty-universe path).
  */
 export async function selectSymbols3Group(topN: number): Promise<string[]> {
-  const tickers = await fetchAllFuturesTickers();
-  if (tickers.length === 0) return PRESETS.top10;
+  const [symbols, quoteVolume, priceChangePct, lastPrice, highPrice, lowPrice] =
+    await Promise.all([
+      readRaw(KnownRawId.TICKER_SYMBOL, {}),
+      readRaw(KnownRawId.TICKER_QUOTE_VOLUME, {}),
+      readRaw(KnownRawId.TICKER_PRICE_CHANGE_PCT, {}),
+      readRaw(KnownRawId.TICKER_LAST_PRICE, {}),
+      readRaw(KnownRawId.TICKER_HIGH_PRICE, {}),
+      readRaw(KnownRawId.TICKER_LOW_PRICE, {}),
+    ]);
+
+  if (symbols.size === 0) return PRESETS.top10;
+  const symArr = Array.from(symbols);
 
   // Group 1: Top by 24H quote volume (50% of topN)
   const g1Count = Math.ceil(topN * 0.5);
-  const byVolume = [...tickers].sort(
-    (a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume),
-  );
-  const group1 = byVolume.slice(0, g1Count).map((t) => t.symbol);
+  const group1 = [...symArr]
+    .sort((a, b) => (quoteVolume.get(b) ?? 0) - (quoteVolume.get(a) ?? 0))
+    .slice(0, g1Count);
 
   // Group 2: Top by |24H price change %| (30% of topN)
   const g2Count = Math.ceil(topN * 0.3);
-  const byChange = [...tickers].sort(
-    (a, b) =>
-      Math.abs(parseFloat(b.priceChangePercent)) -
-      Math.abs(parseFloat(a.priceChangePercent)),
-  );
-  const group2 = byChange.slice(0, g2Count).map((t) => t.symbol);
+  const group2 = [...symArr]
+    .sort(
+      (a, b) =>
+        Math.abs(priceChangePct.get(b) ?? 0) -
+        Math.abs(priceChangePct.get(a) ?? 0),
+    )
+    .slice(0, g2Count);
 
-  // Group 3: Near breakout -- price > 90% of 24H high (25% of topN)
+  // Group 3: Near breakout -- price > 90% of 24H range (25% of topN)
   const g3Count = Math.ceil(topN * 0.25);
-  const nearBreakout = tickers
-    .map((t) => {
-      const price = parseFloat(t.lastPrice);
-      const high = parseFloat(t.highPrice);
-      const low = parseFloat(t.lowPrice);
+  const nearBreakout = symArr
+    .map((sym) => {
+      const price = lastPrice.get(sym) ?? 0;
+      const high = highPrice.get(sym) ?? 0;
+      const low = lowPrice.get(sym) ?? 0;
       const range = high - low;
       const pctOfHigh = range > 0 ? (price - low) / range : 0;
-      return { symbol: t.symbol, pctOfHigh };
+      return { symbol: sym, pctOfHigh };
     })
     .filter((t) => t.pctOfHigh >= 0.90)
     .sort((a, b) => b.pctOfHigh - a.pctOfHigh);
