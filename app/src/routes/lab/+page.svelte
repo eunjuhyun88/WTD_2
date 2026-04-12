@@ -568,12 +568,13 @@
 
   @media (max-width: 640px) {
     .chart-area {
-      min-height: 340px;
+      min-height: 300px;
     }
 
+    /* keep 2-col order buttons and manual stats on mobile */
     .manual-stats,
     .order-buttons {
-      grid-template-columns: 1fr;
+      gap: 8px;
     }
 
     .tab-content {

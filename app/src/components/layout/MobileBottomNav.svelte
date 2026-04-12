@@ -52,73 +52,83 @@
     z-index: var(--sc-z-sticky, 140);
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    height: calc(var(--sc-mobile-nav-h, 74px) + env(safe-area-inset-bottom, 0px));
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    height: calc(var(--sc-mobile-nav-h, 68px) + env(safe-area-inset-bottom, 0px));
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
     background:
-      linear-gradient(180deg, rgba(10, 10, 11, 0.9), rgba(6, 6, 7, 0.92)),
-      radial-gradient(circle at center top, rgba(249, 216, 194, 0.04), transparent 42%);
-    border-top: 1px solid rgba(249, 216, 194, 0.08);
-    backdrop-filter: blur(18px);
+      linear-gradient(180deg, rgba(8, 8, 10, 0.94), rgba(5, 5, 7, 0.96)),
+      radial-gradient(circle at center top, rgba(249, 216, 194, 0.035), transparent 40%);
+    border-top: 1px solid rgba(249, 216, 194, 0.07);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
   }
 
   .mobile-nav-item {
     position: relative;
     display: grid;
     place-items: center;
-    gap: 6px;
-    border: 1px solid rgba(249, 216, 194, 0.08);
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.03);
-    color: rgba(250, 247, 235, 0.52);
+    gap: 5px;
+    border: 1px solid rgba(249, 216, 194, 0.06);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.025);
+    color: rgba(250, 247, 235, 0.44);
     font-family: var(--sc-font-body);
     font-weight: 600;
     cursor: pointer;
-    min-height: 56px;
+    min-height: 52px;
     text-decoration: none;
-    transition: color var(--sc-duration-fast), background var(--sc-duration-fast), transform var(--sc-duration-fast);
+    transition:
+      color 100ms ease,
+      background 100ms ease,
+      border-color 100ms ease,
+      transform 80ms ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
-  /* Highlight tab (LAB) — accent color even when inactive */
+  .mobile-nav-item:active {
+    transform: scale(0.96);
+  }
+
+  /* Highlight tab (LAB) */
   .mobile-nav-item.highlight {
-    color: rgba(var(--home-ref-accent-rgb, 219, 154, 159), 0.88);
+    color: rgba(var(--home-ref-accent-rgb, 219, 154, 159), 0.78);
   }
 
   /* Active state */
   .mobile-nav-item.active {
     color: rgba(250, 247, 235, 0.96);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-    transform: translateY(-1px);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
+    border-color: rgba(249, 216, 194, 0.11);
   }
 
-  .mobile-nav-item.active::before {
+  .mobile-nav-item.active::after {
     content: '';
     position: absolute;
-    top: 6px;
-    left: 22%;
-    right: 22%;
-    height: 1px;
+    top: 7px;
+    left: 28%;
+    right: 28%;
+    height: 2px;
     border-radius: 999px;
-    background: linear-gradient(90deg, var(--sc-accent), var(--sc-accent-3));
-    box-shadow: none;
+    background: linear-gradient(90deg, rgba(219, 154, 159, 0.9), rgba(249, 216, 194, 0.7));
   }
 
-  /* Active + highlight = accent color text */
   .mobile-nav-item.active.highlight {
     color: var(--sc-accent);
   }
-  .mobile-nav-item.active.highlight::before {
+  .mobile-nav-item.active.highlight::after {
     background: var(--sc-accent);
   }
 
   .icon {
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1;
   }
 
   .label {
-    font-size: 11px;
-    letter-spacing: 0.01em;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 
@@ -129,19 +139,19 @@
 
   .badge {
     position: absolute;
-    top: 8px;
+    top: 7px;
     right: calc(50% - 22px);
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: var(--sc-accent-3);
-    color: #182015;
+    background: var(--sc-accent);
+    color: #0f0f12;
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
   }
 </style>
