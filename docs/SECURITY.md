@@ -15,6 +15,8 @@ Purpose:
 
 - `docs/references/active/BACKEND_SECURITY_REVIEW_2026-02-25.md`
 - `docs/references/active/SECURITY_SCALE_PLAN_2026-02-25.md`
+- `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`
+- `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`
 - `docs/API_CONTRACT.md`
 - `src/hooks.server.ts`
 - `src/lib/server/requestGuards.ts`
@@ -26,6 +28,9 @@ Purpose:
 - CSP and external embed policy
 - rate-limit backend rollout
 - auth/session hardening and request guards
+- privileged control-plane separation
+- admin MFA, RBAC, and short-lived elevated sessions
+- session binding and suspicious-session re-auth
 
 ## Upgrade Rule
 

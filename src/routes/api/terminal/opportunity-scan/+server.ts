@@ -14,6 +14,8 @@ import type { RequestHandler } from './$types';
 import { runOpportunityScan, extractAlerts, type OpportunityScanResult, type OpportunityAlert } from '$lib/engine/opportunityScanner';
 import { query } from '$lib/server/db';
 import { opportunityScanLimiter } from '$lib/server/rateLimit';
+import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
 
 // ── Server-side result cache + coalescing ────────────────────
 
@@ -34,9 +36,17 @@ let _inflightPromise: Promise<CachedScan> | null = null;
  * (request coalescing). This prevents 1000 simultaneous API storms.
  */
 async function getOrRunScan(limit: number): Promise<CachedScan> {
+  const sharedKey = `limit:${limit}`;
+
   // Serve from cache if fresh
   if (_cachedScan && Date.now() - _cachedScan.cachedAt < CACHE_TTL_MS) {
     return _cachedScan;
+  }
+
+  const shared = await getSharedCache<CachedScan>('terminal:opportunity-scan', sharedKey);
+  if (shared && Date.now() - shared.cachedAt < CACHE_TTL_MS) {
+    _cachedScan = shared;
+    return shared;
   }
 
   // Coalesce: if a scan is already running, wait for it
@@ -52,6 +62,7 @@ async function getOrRunScan(limit: number): Promise<CachedScan> {
 
       const cached: CachedScan = { result, alerts, cachedAt: Date.now() };
       _cachedScan = cached;
+      await setSharedCache('terminal:opportunity-scan', sharedKey, cached, CACHE_TTL_MS);
 
       // Best-effort DB persist (don't block response)
       persistToDb(result, alerts).catch(() => {});
@@ -94,12 +105,16 @@ async function persistToDb(result: OpportunityScanResult, alerts: OpportunityAle
 
 // ── Handler ──────────────────────────────────────────────────
 
-export const GET: RequestHandler = async ({ url, getClientAddress }) => {
-  // Rate limit: 12 req/min per IP
-  const ip = getClientAddress();
-  if (!opportunityScanLimiter.check(ip)) {
-    return json({ error: 'Too many requests. Please wait.' }, { status: 429 });
-  }
+export const GET: RequestHandler = async ({ url, getClientAddress, request }) => {
+  const guard = await runIpRateLimitGuard({
+    request,
+    fallbackIp: getClientAddress(),
+    limiter: opportunityScanLimiter,
+    scope: 'terminal:opportunity-scan',
+    max: 12,
+    tooManyMessage: 'Too many opportunity scan requests. Please wait.',
+  });
+  if (!guard.ok) return guard.response;
 
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 15, 5), 30);
 
@@ -118,7 +133,11 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
           scanDurationMs: result.scanDurationMs,
         },
       },
-      { headers: { 'Cache-Control': 'public, max-age=60' } }
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=15, s-maxage=60, stale-while-revalidate=60',
+        },
+      }
     );
   } catch (error: unknown) {
     console.error('[opportunity-scan] error:', error);
