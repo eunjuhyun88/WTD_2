@@ -127,8 +127,16 @@
   let walletCommandNote = $state('');
   let walletDossierHref = $state('');
 
-  // Conversation history for LLM context
-  let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  // Conversation history — compressed format (Cursor-style token management)
+  // assistant analysis turns are stored as semantic summaries, not full text
+  type ChatHistoryEntry = {
+    role: 'user' | 'assistant';
+    content: string;
+    meta?: { symbol?: string; tf?: string; alphaScore?: number; direction?: 'LONG'|'SHORT'|'NEUTRAL'; kind?: 'analysis'|'scan'|'social'|'convo' };
+  };
+  let chatHistory = $state<ChatHistoryEntry[]>([]);
+  /** Unix ms when currentSnapshot was last computed */
+  let snapshotTs = $state<number | null>(null);
   const walletSelectedToken = $derived(
     walletDataset ? findWalletMarketToken(walletDataset, walletSelectedTokenSymbol) : null
   );
@@ -468,6 +476,7 @@
     currentDeriv = data.derivatives ?? currentDeriv;
     currentAnnotations = data.annotations ?? [];
     currentIndicators = data.indicators ?? null;
+    snapshotTs = Date.now();
   }
 
   function deriveLayerItems(data: any): LayerItem[] {
@@ -591,8 +600,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          history: chatHistory.slice(-10),
+          history: chatHistory,            // already depth-capped + compressed
           snapshot: currentSnapshot || undefined,
+          snapshotTs: snapshotTs ?? undefined,
+          detectedSymbol: detectedSym ?? undefined,
         }),
       });
 
@@ -605,6 +616,8 @@
       let streamingText = '';
       const pendingLayers: LayerItem[] = [];
       let analyzeToolResultReceived = false;
+      let scanResultReceived = false;
+      let socialResultReceived = false;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -675,10 +688,12 @@
                 applyAnalysisResult(event.data, pendingLayers, event.data?.symbol, event.data?.timeframe);
                 streamingText = '';
               } else if (event.name === 'check_social' && event.data) {
+                socialResultReceived = true;
                 messages = messages.filter(m => !('thinking' in m));
                 applySocialResult(event.data);
                 streamingText = '';
               } else if (event.name === 'scan_market' && event.data) {
+                scanResultReceived = true;
                 messages = messages.filter(m => !('thinking' in m));
                 applyScanResult(event.data);
                 streamingText = '';
@@ -711,9 +726,30 @@
         }
       }
 
-      // Finalize: ensure last text message is in history
+      // Finalize: compress + store assistant turn (Cursor-style token management)
       if (streamingText) {
-        chatHistory = [...chatHistory, { role: 'assistant', content: streamingText }];
+        const alpha = currentSnapshot?.alphaScore as number | undefined;
+        const dir: 'LONG' | 'SHORT' | 'NEUTRAL' = alpha != null ? (alpha >= 10 ? 'LONG' : alpha <= -10 ? 'SHORT' : 'NEUTRAL') : 'NEUTRAL';
+        const scoreStr = alpha != null ? (alpha > 0 ? `+${alpha}` : `${alpha}`) : '';
+
+        let compressed: string;
+        let entryMeta: ChatHistoryEntry['meta'];
+
+        if (analyzeToolResultReceived) {
+          compressed = `[${currentSymbol || '?'} ${currentTf || '?'} ${dir}${scoreStr}: ${streamingText.slice(0, 60).replace(/\n/g, ' ')}]`;
+          entryMeta = { symbol: currentSymbol, tf: currentTf, alphaScore: alpha, direction: dir, kind: 'analysis' };
+        } else if (scanResultReceived) {
+          compressed = `[SCAN: ${streamingText.slice(0, 80).replace(/\n/g, ' ')}]`;
+          entryMeta = { kind: 'scan' };
+        } else if (socialResultReceived) {
+          compressed = `[SOCIAL ${detectedSym ?? ''}: ${streamingText.slice(0, 60).replace(/\n/g, ' ')}]`;
+          entryMeta = { kind: 'social' };
+        } else {
+          compressed = streamingText.slice(0, 100);
+          entryMeta = { kind: 'convo' };
+        }
+
+        chatHistory = [...chatHistory, { role: 'assistant', content: compressed, meta: entryMeta }];
       }
 
       // ── Fallback: apply pre-fetched analysis if LLM didn't call the tool ──
