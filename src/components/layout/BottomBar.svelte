@@ -5,8 +5,6 @@
   import { openTradeCount } from '$lib/stores/quickTradeStore';
   import { activeSignalCount } from '$lib/stores/trackedSignalStore';
   import { livePrices } from '$lib/stores/priceStore';
-  import { getAppSurface } from '$lib/navigation/appSurfaces';
-
   let {
     thermo = EMPTY_THERMO_DATA,
     buckets = null
@@ -19,7 +17,6 @@
   const openPos = $derived($openTradeCount);
   const trackedSigs = $derived($activeSignalCount);
   const liveP = $derived($livePrices);
-  const marketSurface = getAppSurface('market');
 
   const selectedToken = $derived(state.pair.split('/')[0] || 'BTC');
   const selectedPrice = $derived(liveP[selectedToken] || 0);
@@ -42,15 +39,15 @@
       {/if}
     </div>
     {#if openPos > 0}
-      <a class="sb-badge sb-pos" href="/agent">
+      <a class="sb-badge sb-pos" href="/terminal">
         <span class="sb-dot dot-good"></span>
         {openPos} POS
       </a>
     {/if}
     {#if trackedSigs > 0}
-      <a class="sb-badge sb-sig" href={marketSurface.href}>
+      <a class="sb-badge sb-sig" href="/terminal">
         <span class="sb-dot dot-warn"></span>
-        {trackedSigs} {marketSurface.shortLabel}
+        {trackedSigs} SIG
       </a>
     {/if}
   </div>
