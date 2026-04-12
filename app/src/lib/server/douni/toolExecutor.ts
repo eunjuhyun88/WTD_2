@@ -17,6 +17,7 @@ import { readRaw, klinesRawIdForTimeframe } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
 import { buildResearchBlocks } from '$lib/server/researchView/buildResearchBlocks';
 import { query } from '$lib/server/db.js';
+import { sendTelegramMessage, formatAlphaAlert } from '$lib/server/telegram';
 function toFiniteNumber(value: number | string): number {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -530,6 +531,13 @@ async function executeScanMarket(
   }));
 
   events.push({ type: 'scan_result', sort, count: coins.length });
+
+  // Alpha Score 임계값(≥30 or ≤-30) 초과 코인 Telegram 알림
+  const alertCoins = coins.filter(c => Math.abs(c.alphaScore) >= 30);
+  if (alertCoins.length > 0) {
+    const msg = formatAlphaAlert(alertCoins);
+    sendTelegramMessage(msg).catch(() => {}); // non-blocking, fire-and-forget
+  }
 
   return {
     source: 'binance_17layer',
