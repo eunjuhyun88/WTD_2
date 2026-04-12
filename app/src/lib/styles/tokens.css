@@ -145,8 +145,9 @@
   --sc-duration-slow: 350ms;
 
   /* ── LAYOUT ── */
-  --sc-header-h: 44px;
-  --sc-header-h-mobile: 36px;
+  --sc-header-h: 52px;
+  --sc-header-h-mobile: 52px;
+  --sc-mobile-nav-h: 68px;
   --sc-bottom-bar-h: 28px;
   --sc-tab-strip-h: 34px;
 

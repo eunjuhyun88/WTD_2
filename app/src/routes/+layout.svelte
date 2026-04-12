@@ -108,7 +108,7 @@
     flex-direction: column;
     height: 100dvh;
     min-height: 100vh;
-    padding-top: var(--sc-header-h, 44px);
+    padding-top: var(--sc-header-h, 52px);
     overflow: hidden;
     position: relative;
   }
@@ -133,10 +133,9 @@
   }
   #main-content.home-route {
     overflow: visible;
-    min-height: calc(100dvh - var(--sc-header-h, 44px));
+    min-height: calc(100dvh - var(--sc-header-h, 52px));
   }
 
-  /* 769-1024px: compact one-line header (44px) */
   @media (max-width: 1024px) {
     #app {
       height: 100svh;
@@ -145,8 +144,8 @@
   }
   @media (max-width: 768px) {
     #app {
-      padding-top: var(--sc-header-h-mobile, 40px);
-      padding-bottom: calc(var(--sc-mobile-nav-h, 64px) + env(safe-area-inset-bottom, 0px));
+      padding-top: var(--sc-header-h-mobile, 52px);
+      padding-bottom: calc(var(--sc-mobile-nav-h, 68px) + env(safe-area-inset-bottom, 0px));
     }
     #app.home-mode {
       min-height: 100svh;
@@ -163,12 +162,7 @@
     }
     #main-content.home-route {
       overflow: visible;
-      min-height: calc(100svh - var(--sc-header-h-mobile, 40px));
-    }
-  }
-  @media (max-width: 480px) {
-    #app {
-      padding-top: var(--sc-touch-sm, 36px);
+      min-height: calc(100svh - var(--sc-header-h-mobile, 52px));
     }
   }
 </style>
