@@ -56,10 +56,22 @@ class ScoreRequest(BaseModel):
     perp: PerpSnapshot = Field(default_factory=PerpSnapshot)
 
 
+class EnsembleSignal(BaseModel):
+    direction: str             # "strong_long" | "long" | "neutral" | "short" | "strong_short"
+    ensemble_score: float      # [0, 1] overall conviction
+    ml_contribution: float
+    block_contribution: float
+    regime_contribution: float
+    confidence: str            # "high" | "medium" | "low"
+    reason: str
+    block_analysis: dict[str, Any]
+
+
 class ScoreResponse(BaseModel):
     snapshot: dict[str, Any]   # SignalSnapshot.model_dump()
     p_win: Optional[float]     # None until LightGBM is trained
     blocks_triggered: list[str]  # building blocks that fire on this bar
+    ensemble: Optional[EnsembleSignal] = None  # fused ML + blocks signal
 
 
 # =========================================================================

@@ -15,7 +15,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import backtest, challenge, score, train
+from api.routes import backtest, challenge, score, train, verdict, scanner
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,6 +61,8 @@ app.include_router(score.router, prefix="/score", tags=["scoring"])
 app.include_router(backtest.router, prefix="/backtest", tags=["backtest"])
 app.include_router(challenge.router, prefix="/challenge", tags=["challenge"])
 app.include_router(train.router, prefix="/train", tags=["training"])
+app.include_router(verdict.router, prefix="/verdict", tags=["verdict"])
+app.include_router(scanner.router, prefix="/scanner", tags=["scanner"])
 
 
 @app.get("/healthz", tags=["meta"])

@@ -105,6 +105,7 @@ export const GET: RequestHandler = async ({ url }) => {
       snapshot: engineResult.snapshot,
       p_win: engineResult.p_win,
       blocks_triggered: engineResult.blocks_triggered,
+      ensemble: engineResult.ensemble ?? null,
 
       // UI extras
       chart: chartKlines,
