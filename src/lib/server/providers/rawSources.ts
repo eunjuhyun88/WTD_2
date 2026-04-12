@@ -371,6 +371,153 @@ export interface RawSourceOutputs {
 /** The subset of `KnownRawId` values this slice implements. */
 export type SupportedRawId = keyof RawSourceInputs & keyof RawSourceOutputs;
 
+// ---------------------------------------------------------------------------
+// B-series closeout: deferred-with-rationale atoms
+// ---------------------------------------------------------------------------
+//
+// The B-series (B10 … B14) exists to close the gap where `KnownRawId`
+// declares a raw atom but `rawSources` has no entry wiring it to a
+// fetcher. Every such dangling atom is a broken link in the provenance
+// chain the verdict engine cites.
+//
+// B10/B11/B12 wired new data paths. B13-a/B13-b migrated existing
+// consumers onto `readRaw()`. B14 closed the SECTOR_* gap with an
+// internal taxonomy. The slice you are reading now (B-final) closes
+// the **last 11** unwired atoms — but it does so by **explicitly
+// deferring them with rationale** rather than writing code we would
+// have to throw away when the real consumer lands.
+//
+// The two unwired groups:
+//
+//   1. `*_LIVE` atoms (3):  AGG_TRADES_LIVE / BOOK_TICKER_LIVE /
+//      DEPTH_LIVE. Their semantic is "sub-second streaming feed",
+//      which implies a WebSocket transport. We have no WS consumer
+//      in the engine yet, and wiring them as REST-polled shims
+//      would produce misleading "live" data (REST gives you a
+//      snapshot, not every update). Wiring is premature; we leave
+//      the atom contracts in place so that when a streaming
+//      consumer lands (E7 live scan loop or similar), the catalog
+//      already has the right identifiers reserved.
+//
+//   2. `SESSION_*` atoms (8): SCAN_MODE / TOP_N / CUSTOM_SYMBOLS /
+//      DISPLAY_TIMEFRAME / MIN_ALPHA / ACTIVE_FILTER / SELECTED_SYMBOL /
+//      INTENT_FOCUS. These are not fetched from any upstream — they
+//      are session-scoped inputs (per-user or per-device state).
+//      Wiring them requires resolving a contract-level question
+//      that is out of scope for the providers layer: where does
+//      session state live (per-user DB row? per-device localStorage?
+//      per-request header?). Until that lands (COGOCHI §10 Q3),
+//      `readRaw(SESSION_*)` should not exist because there is
+//      nothing to "read" — session inputs flow in from the request
+//      pipeline, not from a provider.
+//
+// The enforcement mechanism: a bidirectional type equality between
+// `KnownRawId` and `SupportedRawId | DeferredRawId`. Adding a new
+// member to `KnownRawId` is a check-time error unless it is either
+// wired (added to `RawSourceInputs` / `rawSources`) or explicitly
+// deferred (added to `DeferredRawId` below). The B-series is then
+// "done" in the strict sense: every catalog ID is accounted for,
+// either with a live fetcher or a documented deferral.
+
+/**
+ * The 11 `KnownRawId` values the B-series intentionally leaves
+ * unwired. Each entry has a machine-readable rationale in
+ * `DEFERRED_RAW_IDS` below. Consumers should **not** call
+ * `readRaw()` on these atoms — doing so is a type error because
+ * `DeferredRawId` is disjoint from `SupportedRawId`.
+ */
+export type DeferredRawId =
+	| typeof KnownRawId.AGG_TRADES_LIVE
+	| typeof KnownRawId.BOOK_TICKER_LIVE
+	| typeof KnownRawId.DEPTH_LIVE
+	| typeof KnownRawId.SESSION_SCAN_MODE
+	| typeof KnownRawId.SESSION_TOP_N
+	| typeof KnownRawId.SESSION_CUSTOM_SYMBOLS
+	| typeof KnownRawId.SESSION_DISPLAY_TIMEFRAME
+	| typeof KnownRawId.SESSION_MIN_ALPHA
+	| typeof KnownRawId.SESSION_ACTIVE_FILTER
+	| typeof KnownRawId.SESSION_SELECTED_SYMBOL
+	| typeof KnownRawId.SESSION_INTENT_FOCUS;
+
+/**
+ * Per-atom deferral rationale. `reason` says why the slice is not
+ * wired right now; `unblocker` says what has to land before it can
+ * be wired. Both fields are required — the whole point of the
+ * closeout is that "deferred" is never an empty gesture.
+ */
+export const DEFERRED_RAW_IDS: Readonly<
+	Record<DeferredRawId, { readonly reason: string; readonly unblocker: string }>
+> = {
+	[KnownRawId.AGG_TRADES_LIVE]: {
+		reason:
+			'Live aggregated trade feed implies WebSocket streaming; REST polling would produce misleading "live" semantics.',
+		unblocker:
+			'Streaming consumer (engine E7 live scan loop or equivalent) + a WS transport layer in providers/.'
+	},
+	[KnownRawId.BOOK_TICKER_LIVE]: {
+		reason:
+			'Top-of-book updates every tick; REST snapshot breaks the contract of "current best bid/ask right now".',
+		unblocker: 'Same WS transport layer as AGG_TRADES_LIVE.'
+	},
+	[KnownRawId.DEPTH_LIVE]: {
+		reason:
+			'Order book deltas stream in, they do not poll. A REST depth snapshot is a distinct atom (DEPTH_L2_20) and is already wired.',
+		unblocker: 'Same WS transport layer as AGG_TRADES_LIVE.'
+	},
+	[KnownRawId.SESSION_SCAN_MODE]: {
+		reason:
+			'Session input, not a provider fetch. Scan mode ("topN" / "custom" / preset) is chosen by the user and flows in from the request pipeline.',
+		unblocker: 'COGOCHI §10 Q3 — per-user vs per-device session storage contract decision.'
+	},
+	[KnownRawId.SESSION_TOP_N]: {
+		reason: 'Session input — user-chosen universe size, not a fetchable value.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_CUSTOM_SYMBOLS]: {
+		reason: 'Session input — user-supplied explicit symbol list, not a fetchable value.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_DISPLAY_TIMEFRAME]: {
+		reason:
+			'Session input — user-chosen display timeframe. The engine consumes it as a parameter to other reads (KLINES_*, COINALYZE_*_HIST_TF), not as a fetch of its own.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_MIN_ALPHA]: {
+		reason: 'Session input — user-chosen alpha filter threshold for scanner results.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_ACTIVE_FILTER]: {
+		reason: 'Session input — user-toggled "only show X" filter state on scanner/terminal.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_SELECTED_SYMBOL]: {
+		reason: 'Session input — which symbol the user is currently focused on in the terminal.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_INTENT_FOCUS]: {
+		reason:
+			'Session input — which intent slot ("watch" / "trade" / "research") the user is in.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	}
+};
+
+// Bidirectional type equality assertion: every `KnownRawId` member
+// must be either `SupportedRawId` (wired) or `DeferredRawId`
+// (explicitly deferred with rationale in `DEFERRED_RAW_IDS`).
+// Adding a new member to `KnownRawId` without assigning it to one
+// of these two buckets is a check-time error at the next line.
+// This is the load-bearing "B-series is done" invariant.
+type _CatalogCoverage = SupportedRawId | DeferredRawId;
+type _AssertCatalogExhaustive = [
+	_CatalogCoverage extends KnownRawId ? true : never,
+	KnownRawId extends _CatalogCoverage ? true : never
+];
+// Force the assertion to be evaluated at check time. If either
+// direction fails, this line emits "Type 'never' is not assignable
+// to type 'true'." with a pointer at the failing side.
+const _CATALOG_EXHAUSTIVE_ASSERT: _AssertCatalogExhaustive = [true, true];
+void _CATALOG_EXHAUSTIVE_ASSERT;
+
 /**
  * Narrowed union of every `KLINES_*` raw id. Callers that dispatch a
  * runtime-string timeframe (e.g. `'1h' | '4h' | '1d'`) to `readRaw` use
