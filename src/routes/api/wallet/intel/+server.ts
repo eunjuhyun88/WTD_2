@@ -3,8 +3,20 @@ import type { RequestHandler } from './$types';
 import { normalizeWalletModeInput } from '$lib/wallet-intel/walletIntelController';
 import type { WalletIntelApiMeta } from '$lib/wallet-intel/walletIntelTypes';
 import { buildWalletIntelServerDataset } from '$lib/server/walletIntelServer';
+import { walletIntelLimiter } from '$lib/server/rateLimit';
+import { runIpRateLimitGuard } from '$lib/server/authSecurity';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
+  const guard = await runIpRateLimitGuard({
+    request,
+    fallbackIp: getClientAddress(),
+    limiter: walletIntelLimiter,
+    scope: 'wallet:intel',
+    max: 12,
+    tooManyMessage: 'Too many wallet intel requests. Please wait.',
+  });
+  if (!guard.ok) return guard.response;
+
   const address = (url.searchParams.get('address') || '').trim();
   const chain = (url.searchParams.get('chain') || 'eth').trim();
 
@@ -23,7 +35,7 @@ export const GET: RequestHandler = async ({ url }) => {
       },
       {
         headers: {
-          'Cache-Control': 'public, max-age=60',
+          'Cache-Control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=60',
         },
       }
     );

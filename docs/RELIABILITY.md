@@ -17,6 +17,8 @@ Purpose:
 - `docs/references/active/terminal-refactor-master-plan-2026-03-06.md`
 - `docs/references/active/TERMINAL_SCAN_E2E_SPEC.md`
 - `docs/references/active/warning-priority-2026-03-06.md`
+- `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`
+- `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`
 - `scripts/perf/k6-auth-snapshot.js`
 
 ## Current Gaps
@@ -30,3 +32,5 @@ Purpose:
 - Add route-level critical journey checklist.
 - Add explicit state-authority regression checklist for profile/trade/signal flows.
 - Add stronger docs check coverage for canonical paths and stale references.
+- Split web request handling from async worker execution for heavy launch-time routes.
+- Promote shared cache and shared rate-limit policy ahead of multi-instance deploy.

@@ -139,5 +139,38 @@ export const authVerifyLimiter = createRateLimiter({ windowMs: 60_000, max: 10 }
 /** Market snapshot (heavy fan-out): 20 per minute per IP */
 export const marketSnapshotLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
+/** Wallet intel (public heavy read): 12 per minute per IP */
+export const walletIntelLimiter = createRateLimiter({ windowMs: 60_000, max: 12 });
+
+/** Intel shadow (public heavy read): 12 per minute per IP */
+export const intelShadowLimiter = createRateLimiter({ windowMs: 60_000, max: 12 });
+
+/** Intel shadow forced refresh: 4 per minute per IP */
+export const intelShadowRefreshLimiter = createRateLimiter({ windowMs: 60_000, max: 4 });
+
+/** Wizard challenge composition: 10 per minute per IP */
+export const wizardLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
+
+/** Lab autorun launch: 2 per minute per IP */
+export const autorunLimiter = createRateLimiter({ windowMs: 60_000, max: 2 });
+
+/** Exchange credential connect/list: 10 per minute per IP */
+export const exchangeConnectionLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
+
+/** Exchange trade import: 6 per minute per IP */
+export const exchangeImportLimiter = createRateLimiter({ windowMs: 60_000, max: 6 });
+
+/** Passport worker trigger: 2 per minute per IP */
+export const passportWorkerRunLimiter = createRateLimiter({ windowMs: 60_000, max: 2 });
+
+/** Passport report generation trigger: 2 per minute per IP */
+export const passportReportGenerateLimiter = createRateLimiter({ windowMs: 60_000, max: 2 });
+
+/** Passport train-job reads: 20 per minute per IP */
+export const passportTrainJobReadLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
+
+/** Passport train-job creation trigger: 2 per minute per IP */
+export const passportTrainJobCreateLimiter = createRateLimiter({ windowMs: 60_000, max: 2 });
+
 // War Room
 export const emergencyMeetingLimiter = createRateLimiter({ windowMs: 60_000, max: 5 });
