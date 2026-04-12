@@ -22,7 +22,6 @@ Source of truth remains store implementations plus canonical state-authority doc
 | `authSessionStore` | server-authoritative projection | authenticated session mirror and cookie-backed identity | Session authority should stay separate from wallet UX and route-local control state. |
 | `walletStore` | route/session transient | wallet connection transport and signed-wallet shell | Connection UX state should stay separate from durable profile or trade truth. |
 | `walletModalStore` | route/session transient | wallet modal visibility and step flow | Modal UX state is split from wallet transport and progression state. |
-| `remoteSessionGuard` | derived/support | remote-session gate helpers | Utility helpers around authenticated remote-backed store access. |
 | `userProfileStore` | server-authoritative projection | profile projection and progression read model | Current unified profile surface remains the durable profile-facing store. |
 | `quickTradeStore` | server-authoritative projection | quick trades with optimistic staging | Reconcile optimistic IDs to server truth. |
 | `trackedSignalStore` | server-authoritative projection | tracked signals and conversion state | Local cache/fallback only. |

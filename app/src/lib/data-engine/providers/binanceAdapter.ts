@@ -1,72 +1,159 @@
-import type { DataEngineProvider } from './providerAdapter'
-import type { NormalizedSeries, NormalizedSnapshot } from '../types'
-import { normalizeSymbol } from '../normalization/normalizeSymbol'
-import { normalizeTimestamp } from '../normalization/normalizeTimestamp'
+// ─── Binance Adapter ─────────────────────────────────────────
+// 기존 rawSources.readRaw()를 data-engine 포맷으로 변환.
+// server-only.
 
-/**
- * Binance provider adapter.
- * Wraps the existing binance.ts provider and converts to NormalizedSeries.
- *
- * Note: Does NOT import binance.ts directly to avoid server-side dependency.
- * Instead, accepts a fetch function that the caller provides.
- */
-export function createBinanceAdapter(deps: {
-  fetchKlines: (symbol: string, interval: string, limit: number) => Promise<Array<{ time: number; open: number; high: number; low: number; close: number; volume: number }>>
-  fetch24hr: (symbol: string) => Promise<{ priceChangePercent: string; volume: string; lastPrice: string } | null>
-}): DataEngineProvider {
+import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSources';
+import { KnownRawId } from '$lib/contracts/ids';
+import type { OhlcvPoint, NormalizedPoint, NormalizedSnapshot } from '../types';
+import { normalizeTimestamp } from '../normalization/normalizeTimestamp';
+import { normalizeSymbol } from '../normalization/normalizeSymbol';
+import { fundingToBps, normalizeTakerRatio } from '../normalization/normalizeUnit';
+
+// ─── OHLCV ───────────────────────────────────────────────────
+
+export async function fetchOhlcv(
+  symbol: string,
+  tf: string,
+  limit = 200,
+): Promise<OhlcvPoint[]> {
+  const sym = normalizeSymbol(symbol);
+  const rawId = klinesRawIdForTimeframe(tf);
+  const klines = await readRaw(rawId, { symbol: sym, limit });
+  return klines.map(k => ({
+    t: normalizeTimestamp(k.time),
+    o: k.open,
+    h: k.high,
+    l: k.low,
+    c: k.close,
+    v: k.volume,
+  }));
+}
+
+// ─── Funding Rate Snapshot ───────────────────────────────────
+
+export async function fetchFundingSnapshot(
+  symbol: string,
+): Promise<NormalizedSnapshot | null> {
+  const sym = normalizeSymbol(symbol);
+  const raw = await readRaw(KnownRawId.FUNDING_RATE, { symbol: sym }).catch(() => null);
+  if (raw === null) return null;
   return {
-    name: 'binance',
+    symbol: sym,
+    rawId: KnownRawId.FUNDING_RATE,
+    value: raw,           // decimal (e.g. 0.0001)
+    meta: { bps: fundingToBps(raw) },
+    updatedAt: Date.now(),
+  };
+}
 
-    async fetchSeries(symbol, metric, tf, limit) {
-      const normalized = normalizeSymbol(symbol)
-      if (metric !== 'klines') return null
+// ─── OI Point Snapshot ───────────────────────────────────────
 
-      try {
-        const klines = await deps.fetchKlines(normalized, tf, limit)
-        return {
-          id: `binance:klines:${normalized}:${tf}`,
-          symbol: normalized,
-          timeframe: tf,
-          provider: 'binance',
-          unit: 'usd',
-          points: klines.map(k => ({
-            ts: normalizeTimestamp(k.time),
-            value: k.close,
-          })),
-          meta: {
-            fetchedAt: normalizeTimestamp(Date.now()),
-            ttlMs: 60_000,
-            cadence: '1m',
-          },
-        }
-      } catch {
-        return null
-      }
-    },
+export async function fetchOISnapshot(
+  symbol: string,
+): Promise<NormalizedSnapshot | null> {
+  const sym = normalizeSymbol(symbol);
+  const raw = await readRaw(KnownRawId.OPEN_INTEREST_POINT, { symbol: sym }).catch(() => null);
+  if (raw === null) return null;
+  return {
+    symbol: sym,
+    rawId: KnownRawId.OPEN_INTEREST_POINT,
+    value: raw,
+    updatedAt: Date.now(),
+  };
+}
 
-    async fetchSnapshot(symbol, metric) {
-      if (metric !== 'ticker') return null
-      const normalized = normalizeSymbol(symbol)
+// ─── L/S Ratio Snapshot ──────────────────────────────────────
 
-      try {
-        const ticker = await deps.fetch24hr(normalized)
-        if (!ticker) return null
-        return {
-          id: `binance:ticker:${normalized}`,
-          symbol: normalized,
-          provider: 'binance',
-          ts: normalizeTimestamp(Date.now()),
-          values: {
-            price: parseFloat(ticker.lastPrice) || null,
-            volume24h: parseFloat(ticker.volume) || null,
-            changePct24h: parseFloat(ticker.priceChangePercent) || null,
-          },
-        }
-      } catch {
-        return null
-      }
-    },
+export async function fetchLsRatioSnapshot(
+  symbol: string,
+): Promise<NormalizedSnapshot | null> {
+  const sym = normalizeSymbol(symbol);
+  const raw = await readRaw(KnownRawId.LONG_SHORT_TOP_1H, { symbol: sym }).catch(() => null);
+  if (raw === null) return null;
+  return {
+    symbol: sym,
+    rawId: KnownRawId.LONG_SHORT_TOP_1H,
+    value: raw,
+    updatedAt: Date.now(),
+  };
+}
 
-    isAvailable: () => true,
-  }
+// ─── Ticker Snapshot ─────────────────────────────────────────
+
+export async function fetchTickerSnapshot(
+  symbol: string,
+): Promise<NormalizedSnapshot | null> {
+  const sym = normalizeSymbol(symbol);
+  const raw = await readRaw(KnownRawId.TICKER_24HR, { symbol: sym }).catch(() => null);
+  if (!raw) return null;
+  const change24h = parseFloat(raw.priceChangePercent) || 0;
+  const vol24h = parseFloat(raw.quoteVolume) || 0;
+  return {
+    symbol: sym,
+    rawId: KnownRawId.TICKER_24HR,
+    value: parseFloat(raw.lastPrice) || 0,
+    meta: { change24h, vol24h },
+    updatedAt: Date.now(),
+  };
+}
+
+// ─── OI History Series ───────────────────────────────────────
+
+export async function fetchOIHistSeries(
+  symbol: string,
+): Promise<NormalizedPoint[]> {
+  const sym = normalizeSymbol(symbol);
+  const points = await readRaw(KnownRawId.OI_HIST_5M, { symbol: sym }).catch(() => null);
+  if (!points) return [];
+  return points.map((p: { timestamp: number; sumOpenInterestValue: number }) => ({
+    t: normalizeTimestamp(p.timestamp),
+    v: p.sumOpenInterestValue,
+  }));
+}
+
+// ─── Taker Ratio Series ──────────────────────────────────────
+
+export async function fetchTakerRatioSeries(
+  symbol: string,
+): Promise<NormalizedPoint[]> {
+  const sym = normalizeSymbol(symbol);
+  const points = await readRaw(KnownRawId.TAKER_BUY_SELL_RATIO, { symbol: sym }).catch(() => null);
+  if (!points || !Array.isArray(points)) return [];
+  return points.map((p: { timestamp: number; buyVol: number; sellVol: number; buySellRatio: number }) => ({
+    t: normalizeTimestamp(p.timestamp),
+    v: normalizeTakerRatio(p.buyVol, p.sellVol),
+    meta: { ratio: p.buySellRatio },
+  }));
+}
+
+// ─── Force Orders Series ─────────────────────────────────────
+
+export async function fetchForceOrdersSeries(
+  symbol: string,
+): Promise<NormalizedPoint[]> {
+  const sym = normalizeSymbol(symbol);
+  const orders = await readRaw(KnownRawId.FORCE_ORDERS_1H, { symbol: sym }).catch(() => null);
+  if (!orders || !Array.isArray(orders)) return [];
+  return orders.map((o: { time: number; side: string; origQty: number; price: number }) => ({
+    t: normalizeTimestamp(o.time),
+    v: o.origQty * o.price,
+    meta: { side: o.side === 'BUY' ? 1 : -1 },
+  }));
+}
+
+// ─── Depth Snapshot ──────────────────────────────────────────
+
+export async function fetchDepthSnapshot(
+  symbol: string,
+): Promise<NormalizedSnapshot | null> {
+  const sym = normalizeSymbol(symbol);
+  const raw = await readRaw(KnownRawId.DEPTH_L2_20, { symbol: sym }).catch(() => null);
+  if (!raw) return null;
+  return {
+    symbol: sym,
+    rawId: KnownRawId.DEPTH_L2_20,
+    value: raw.ratio,
+    meta: { bidVol: raw.bidVolume, askVol: raw.askVolume },
+    updatedAt: Date.now(),
+  };
 }

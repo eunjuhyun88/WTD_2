@@ -127,8 +127,16 @@
   let walletCommandNote = $state('');
   let walletDossierHref = $state('');
 
-  // Conversation history for LLM context
-  let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  // Conversation history — compressed format (Cursor-style token management)
+  // assistant analysis turns are stored as semantic summaries, not full text
+  type ChatHistoryEntry = {
+    role: 'user' | 'assistant';
+    content: string;
+    meta?: { symbol?: string; tf?: string; alphaScore?: number; direction?: 'LONG'|'SHORT'|'NEUTRAL'; kind?: 'analysis'|'scan'|'social'|'convo' };
+  };
+  let chatHistory = $state<ChatHistoryEntry[]>([]);
+  /** Unix ms when currentSnapshot was last computed */
+  let snapshotTs = $state<number | null>(null);
   const walletSelectedToken = $derived(
     walletDataset ? findWalletMarketToken(walletDataset, walletSelectedTokenSymbol) : null
   );
@@ -468,6 +476,7 @@
     currentDeriv = data.derivatives ?? currentDeriv;
     currentAnnotations = data.annotations ?? [];
     currentIndicators = data.indicators ?? null;
+    snapshotTs = Date.now();
   }
 
   function deriveLayerItems(data: any): LayerItem[] {
@@ -554,6 +563,9 @@
       return;
     }
 
+    // Capture parsed query BEFORE clearing inputText (effect will nullify it)
+    const capturedParsedQuery = parsedQuery;
+
     messages = [...messages, { role: 'user', text }];
     inputText = '';
     isThinking = true;
@@ -565,14 +577,33 @@
     // Track history for LLM context
     chatHistory = [...chatHistory, { role: 'user', content: text }];
 
+    // ── Pre-fetch analysis in parallel ────────────────────────
+    // Detect symbol/TF from parsed query or fall back to current context.
+    // This ensures panels update for any coin regardless of whether the LLM
+    // decides to call the analyze_market tool.
+    const detectedSym = capturedParsedQuery?.symbol
+      ? normalizeTerminalSymbol(capturedParsedQuery.symbol)
+      : (currentSymbol || null);
+    const detectedTf = capturedParsedQuery?.timeframe ?? currentTf ?? '4h';
+
+    let prefetchedAnalysis: any = null;
+    const analyzePromise: Promise<void> = detectedSym
+      ? fetch(`/api/cogochi/analyze?symbol=${encodeURIComponent(detectedSym)}&tf=${encodeURIComponent(detectedTf)}`)
+          .then(r => r.json())
+          .then(data => { if (!data.error) prefetchedAnalysis = data; })
+          .catch(() => {})
+      : Promise.resolve();
+
     try {
       const res = await fetch('/api/cogochi/terminal/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          history: chatHistory.slice(-10),
+          history: chatHistory,            // already depth-capped + compressed
           snapshot: currentSnapshot || undefined,
+          snapshotTs: snapshotTs ?? undefined,
+          detectedSymbol: detectedSym ?? undefined,
         }),
       });
 
@@ -584,6 +615,9 @@
 
       let streamingText = '';
       const pendingLayers: LayerItem[] = [];
+      let analyzeToolResultReceived = false;
+      let scanResultReceived = false;
+      let socialResultReceived = false;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -649,14 +683,17 @@
 
             case 'tool_result':
               if (event.name === 'analyze_market' && event.data) {
+                analyzeToolResultReceived = true;
                 messages = messages.filter(m => !('thinking' in m));
-                applyAnalysisResult(event.data, pendingLayers);
+                applyAnalysisResult(event.data, pendingLayers, event.data?.symbol, event.data?.timeframe);
                 streamingText = '';
               } else if (event.name === 'check_social' && event.data) {
+                socialResultReceived = true;
                 messages = messages.filter(m => !('thinking' in m));
                 applySocialResult(event.data);
                 streamingText = '';
               } else if (event.name === 'scan_market' && event.data) {
+                scanResultReceived = true;
                 messages = messages.filter(m => !('thinking' in m));
                 applyScanResult(event.data);
                 streamingText = '';
@@ -689,9 +726,39 @@
         }
       }
 
-      // Finalize: ensure last text message is in history
+      // Finalize: compress + store assistant turn (Cursor-style token management)
       if (streamingText) {
-        chatHistory = [...chatHistory, { role: 'assistant', content: streamingText }];
+        const alpha = currentSnapshot?.alphaScore as number | undefined;
+        const dir: 'LONG' | 'SHORT' | 'NEUTRAL' = alpha != null ? (alpha >= 10 ? 'LONG' : alpha <= -10 ? 'SHORT' : 'NEUTRAL') : 'NEUTRAL';
+        const scoreStr = alpha != null ? (alpha > 0 ? `+${alpha}` : `${alpha}`) : '';
+
+        let compressed: string;
+        let entryMeta: ChatHistoryEntry['meta'];
+
+        if (analyzeToolResultReceived) {
+          compressed = `[${currentSymbol || '?'} ${currentTf || '?'} ${dir}${scoreStr}: ${streamingText.slice(0, 60).replace(/\n/g, ' ')}]`;
+          entryMeta = { symbol: currentSymbol, tf: currentTf, alphaScore: alpha, direction: dir, kind: 'analysis' };
+        } else if (scanResultReceived) {
+          compressed = `[SCAN: ${streamingText.slice(0, 80).replace(/\n/g, ' ')}]`;
+          entryMeta = { kind: 'scan' };
+        } else if (socialResultReceived) {
+          compressed = `[SOCIAL ${detectedSym ?? ''}: ${streamingText.slice(0, 60).replace(/\n/g, ' ')}]`;
+          entryMeta = { kind: 'social' };
+        } else {
+          compressed = streamingText.slice(0, 100);
+          entryMeta = { kind: 'convo' };
+        }
+
+        chatHistory = [...chatHistory, { role: 'assistant', content: compressed, meta: entryMeta }];
+      }
+
+      // ── Fallback: apply pre-fetched analysis if LLM didn't call the tool ──
+      // Waits for parallel analyze fetch to settle, then applies panels
+      // so the user always sees chart + metrics regardless of LLM behavior.
+      await analyzePromise;
+      if (!analyzeToolResultReceived && prefetchedAnalysis && detectedSym) {
+        messages = messages.filter(m => !('thinking' in m));
+        applyAnalysisResult(prefetchedAnalysis, pendingLayers, detectedSym, detectedTf);
       }
 
     } catch (err: any) {
@@ -718,8 +785,8 @@
   }
 
   // ─── Apply Analysis Result ─────────────────────────────────
-  function applyAnalysisResult(data: any, layers: LayerItem[]) {
-    const normalized = normalizeAnalysisPayload(data);
+  function applyAnalysisResult(data: any, layers: LayerItem[], symbolHint?: string, timeframeHint?: string) {
+    const normalized = normalizeAnalysisPayload(data, symbolHint, timeframeHint);
     syncCurrentAnalysis(normalized);
     const researchBlocks: ResearchBlockEnvelope[] = Array.isArray(normalized.researchBlocks)
       ? normalized.researchBlocks.flatMap((payload: unknown) => {

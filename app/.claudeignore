@@ -1,0 +1,40 @@
+# Archive directories — kept in git history, excluded from Claude context
+_archive/
+docs/archive/
+
+# Completed plans — done, not needed for active work
+docs/exec-plans/completed/
+
+# Stale references — 2026-03-06 era, superseded by COGOCHI.md
+docs/references/
+
+# Generated infra docs — agent coordination system internals
+docs/generated/agent-catalog.md
+docs/generated/context-contract-report.md
+docs/generated/context-efficiency-report.md
+docs/generated/context-registry.md
+docs/generated/context-value-demo.md
+docs/generated/contextual-retrieval.md
+docs/generated/docs-catalog.md
+docs/generated/legacy-doc-audit.md
+docs/generated/project-truth-bootstrap.md
+docs/generated/sandbox-policy-report.md
+docs/generated/task-contract-report.md
+docs/generated/tool-catalog.md
+docs/generated/claude-compatibility-bootstrap.md
+
+# Agent infra design docs — swarm coordination internals
+docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md
+docs/AGENT_CONTEXT_PROTOCOL.md
+docs/AGENT_FACTORY.md
+docs/AGENT_FORGE_ARCHITECTURE.md
+docs/AGENT_OBSERVABILITY.md
+docs/CONTEXT_ENGINEERING.md
+docs/CONTEXT_EVALUATION.md
+docs/CONTEXT_PLATFORM.md
+docs/CONTEXTUAL_RETRIEVAL.md
+docs/AUTOPILOT.md
+docs/ORCHESTRATION.md
+docs/TOOL_DESIGN.md
+docs/MULTI_AGENT_COORDINATION.md
+docs/MULTI_AGENT_MEMORY.md

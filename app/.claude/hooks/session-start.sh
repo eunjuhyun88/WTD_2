@@ -13,13 +13,8 @@ if [ -f "scripts/dev/context-restore.sh" ]; then
 		echo "[memento] Latest branch resume bundle:"
 		printf '%s\n' "$OUTPUT" | sed -n '1,120p'
 	else
-		echo "[memento] No branch resume bundle yet. Create a semantic checkpoint before non-trivial work."
-		echo "[memento] Example: npm run ctx:checkpoint -- --work-id \"W-...\" --surface \"<surface>\" --objective \"<objective>\""
+		echo "[memento] No branch resume bundle yet."
 	fi
-fi
-
-if [ -f "scripts/dev/context-autopilot.mjs" ]; then
-	node scripts/dev/context-autopilot.mjs session-start >/dev/null 2>&1 || true
 fi
 
 # MemKraft accumulated knowledge context (fail-open)

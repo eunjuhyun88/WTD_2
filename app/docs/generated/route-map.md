@@ -11,8 +11,6 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/dashboard` | daily hub | agent status, battle quota, revenue summary, Lab CTA | `agentStore`, `battleStore` | `docs/product-specs/core.md` |
 | `/agent` | agent roster surface | owned-agent collection, manage/train handoff, create entry | `agentData`, `userProfileStore`, `matchHistoryStore` | `docs/page-specs/agent-page.md` |
 | `/agent/[id]` | agent hq detail route | doctrine, memory, history, and record for one agent | `agentData`, `doctrineStore` | `docs/page-specs/agent-detail-page.md` |
-| `/agents` | agent collection surface | stats, memory, roster legibility | `agentData` | `docs/PRODUCT_SENSE.md` |
-| `/holdings` | redirect route | redirect to canonical profile/holdings experience | none | `docs/product-specs/passport.md` |
 | `/lab` | model training workbench | agent doctrine, retained memory, release readiness | `agentData` | `docs/page-specs/lab-page.md` |
 | `/settings` | preferences surface | local settings and user controls | `gameState` and preference state | `docs/FRONTEND.md` |
 | `/terminal` | intel/action surface | scan, intel, action orchestration | route shell + `copyTradeStore`, `trackedSignalStore`, live prices | `docs/product-specs/terminal.md` |

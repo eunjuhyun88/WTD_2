@@ -1,40 +1,19 @@
-import type { NormalizedSeries, NormalizedSnapshot } from '../types'
+// ─── Provider Adapter Interface ──────────────────────────────
+// data-engine이 외부 데이터를 가져오는 인터페이스.
 
-/**
- * Interface for data-engine provider adapters.
- * Wraps existing provider implementations and converts their output
- * to normalized format.
- */
-export interface DataEngineProvider {
-  readonly name: string
-  fetchSeries(symbol: string, metric: string, tf: string, limit: number): Promise<NormalizedSeries | null>
-  fetchSnapshot(symbol: string, metric: string): Promise<NormalizedSnapshot | null>
-  isAvailable(): boolean
+import type { OhlcvPoint, NormalizedPoint, NormalizedSnapshot } from '../types';
+
+/** OHLCV 데이터 페처 */
+export interface OhlcvFetcher {
+  (symbol: string, tf: string, limit: number): Promise<OhlcvPoint[]>;
 }
 
-/**
- * Registry of data engine providers.
- */
-export class ProviderRegistry {
-  private providers = new Map<string, DataEngineProvider>()
+/** 단일 스냅샷 페처 (funding, OI point, …) */
+export interface SnapshotFetcher {
+  (symbol: string): Promise<NormalizedSnapshot | null>;
+}
 
-  register(provider: DataEngineProvider): void {
-    this.providers.set(provider.name, provider)
-  }
-
-  get(name: string): DataEngineProvider | undefined {
-    return this.providers.get(name)
-  }
-
-  getAll(): DataEngineProvider[] {
-    return [...this.providers.values()]
-  }
-
-  getAvailable(): DataEngineProvider[] {
-    return [...this.providers.values()].filter(p => p.isAvailable())
-  }
-
-  get count(): number {
-    return this.providers.size
-  }
+/** 시계열 페처 (OI history, L/S ratio history, …) */
+export interface SeriesFetcher {
+  (symbol: string): Promise<NormalizedPoint[]>;
 }

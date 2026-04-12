@@ -1,15 +1,11 @@
 import {
-  buildAgentLink,
-  buildBattleLink,
-  buildMarketLink,
   buildDeepLink,
   buildTerminalLink,
   buildLabLink,
   buildDashboardLink,
-  buildCopyLink,
 } from '$lib/utils/deepLinks';
 
-export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'scanner' | 'lab' | 'battle' | 'agent' | 'market' | 'copy';
+export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'scanner' | 'lab';
 
 export interface AppSurface {
   id: AppSurfaceId;
@@ -75,46 +71,6 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     href: buildLabLink(),
     activePatterns: ['/lab'],
     highlight: true,
-  },
-  battle: {
-    id: 'battle',
-    label: 'Battle',
-    shortLabel: 'BTTL',
-    mobileIcon: '⚔',
-    description: 'prove lab results under pressure — ERA battles',
-    homeDetail: 'prove & battle',
-    href: buildBattleLink(),
-    activePatterns: ['/battle'],
-  },
-  agent: {
-    id: 'agent',
-    label: 'Agent',
-    shortLabel: 'AGNT',
-    mobileIcon: '@',
-    description: 'agent HQ — doctrine, memory cards, versions',
-    homeDetail: 'manage agents',
-    href: buildAgentLink(),
-    activePatterns: ['/agent', '/agents', '/passport'],
-  },
-  market: {
-    id: 'market',
-    label: 'Market',
-    shortLabel: 'MKT',
-    mobileIcon: '#',
-    description: 'marketplace — browse and subscribe proven agents',
-    homeDetail: 'agent marketplace',
-    href: buildMarketLink(),
-    activePatterns: ['/market'],
-  },
-  copy: {
-    id: 'copy',
-    label: 'Copy',
-    shortLabel: 'COPY',
-    mobileIcon: '↗',
-    description: 'copy trading — subscribed agent positions & PnL',
-    homeDetail: 'copy trading',
-    href: buildCopyLink(),
-    activePatterns: ['/copy'],
   },
 };
 

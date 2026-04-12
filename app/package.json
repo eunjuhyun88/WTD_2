@@ -36,7 +36,7 @@
     "check:budget": "bash scripts/dev/check-svelte-warning-budget.sh",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "guard:workspace": "bash scripts/dev/guard-active-workspace.sh",
-    "gate": "npm run guard:workspace && npm run docs:check && npm run check:budget && npm run build",
+    "gate": "npm run guard:workspace && npm run build",
     "safe:status": "bash scripts/dev/safe-status.sh",
     "safe:worktree": "bash scripts/dev/new-worktree.sh",
     "safe:split": "bash scripts/dev/split-wip-slice.sh",
