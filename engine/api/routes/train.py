@@ -90,8 +90,15 @@ async def train(req: TrainRequest) -> TrainResponse:
     engine = get_engine(req.user_id)
     result = engine.train(X, y)
 
+    # model_version: new version if replaced, "not_replaced" if incumbent kept.
+    model_version = (
+        result["model_version"]
+        if result["replaced"] and result["model_version"]
+        else ("not_replaced" if not result["replaced"] else "untrained")
+    )
+
     return TrainResponse(
         auc=result["auc"],
         n_samples=result["n_samples"],
-        model_version=result["model_version"] or "untrained",
+        model_version=model_version,
     )

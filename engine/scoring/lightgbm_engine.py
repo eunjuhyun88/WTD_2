@@ -80,7 +80,6 @@ class LightGBMEngine:
         """
         try:
             import lightgbm as lgb
-            from sklearn.model_selection import StratifiedKFold
             from sklearn.metrics import roc_auc_score
         except ImportError as exc:
             raise RuntimeError(
@@ -107,13 +106,26 @@ class LightGBMEngine:
             "random_state": 42,
         }
 
-        # Walk-forward CV to validate temporal stability.
-        skf = StratifiedKFold(n_splits=n_splits, shuffle=False)
+        # True expanding-window walk-forward CV — no temporal leakage.
+        # Fold i trains on rows [0, (i+1)*split_size) and validates on the
+        # NEXT split_size rows (always in the future relative to train).
+        # StratifiedKFold(shuffle=False) is intentionally NOT used here
+        # because it interleaves train/val rows temporally.
+        n = len(X)
+        split_size = max(1, n // (n_splits + 1))
         fold_aucs: list[float] = []
 
-        for train_idx, val_idx in skf.split(X, y):
-            X_tr, X_val = X[train_idx], X[val_idx]
-            y_tr, y_val = y[train_idx], y[val_idx]
+        for i in range(n_splits):
+            train_end = (i + 1) * split_size
+            val_start = train_end
+            val_end = min(val_start + split_size, n)
+            if val_end <= val_start:
+                break
+            X_tr, X_val = X[:train_end], X[val_start:val_end]
+            y_tr, y_val = y[:train_end], y[val_start:val_end]
+            # Skip folds with single-class labels (AUC undefined)
+            if len(np.unique(y_tr)) < 2 or len(np.unique(y_val)) < 2:
+                continue
             m = lgb.LGBMClassifier(**params)
             m.fit(
                 X_tr, y_tr,
@@ -121,11 +133,16 @@ class LightGBMEngine:
                 callbacks=[lgb.early_stopping(30, verbose=False)],
             )
             preds = m.predict_proba(X_val)[:, 1]
-            if len(np.unique(y_val)) < 2:
-                continue
             fold_aucs.append(roc_auc_score(y_val, preds))
 
-        new_auc = float(np.mean(fold_aucs)) if fold_aucs else 0.5
+        # Refuse to replace if no valid fold completed (class imbalance / too few records).
+        if not fold_aucs:
+            raise ValueError(
+                "All CV folds had single-class labels — cannot compute AUC. "
+                "Need both wins and losses in training data."
+            )
+
+        new_auc = float(np.mean(fold_aucs))
 
         # Train final model on full data.
         final_model = lgb.LGBMClassifier(**params)

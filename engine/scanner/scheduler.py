@@ -108,9 +108,23 @@ async def _scan_universe() -> None:
         if features_df.empty:
             continue
 
-        # Reconstruct the last-bar SignalSnapshot (needed by evaluate_blocks)
+        # Reconstruct the last-bar SignalSnapshot (needed by evaluate_blocks).
+        # compute_snapshot expects perp as a plain dict — extract last row
+        # of the perp DataFrame if available.
+        perp_dict: dict | None = None
+        if perp_df is not None and not perp_df.empty:
+            last = perp_df.iloc[-1]
+            perp_dict = {
+                "funding_rate":    float(last.get("funding_rate", 0.0)),
+                "long_short_ratio": float(last.get("long_short_ratio", 1.0)),
+                # oi_change_1h / oi_change_24h come from FAPI — treat as
+                # pseudo oi_now for compute_snapshot's oi_now/oi_1h_ago path.
+                "oi_now":    float(last.get("oi_change_1h", 0.0)),
+                "oi_1h_ago": 0.0,
+            }
+
         try:
-            snap = compute_snapshot(klines_df, symbol, perp=perp_df)
+            snap = compute_snapshot(klines_df, symbol, perp=perp_dict)
         except Exception as exc:
             log.warning("Snapshot failed for %s: %s", symbol, exc)
             continue
@@ -133,9 +147,9 @@ async def _scan_universe() -> None:
         except Exception:
             pass
 
-        # Snapshot dict for context (serialisable subset)
-        snap_dict = features_df.iloc[-1].to_dict()
-        snap_dict["symbol"] = symbol
+        # Snapshot dict — use Pydantic model_dump for guaranteed JSON-safety.
+        # Avoids np.float64 / enum values that json.dumps can't serialise.
+        snap_dict = snap.model_dump(mode="json")
 
         payload: dict[str, Any] = {
             "symbol":           symbol,
