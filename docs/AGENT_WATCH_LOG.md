@@ -46,6 +46,24 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - dirty files and untracked home components recorded before commit/cherry-pick work
 - Status: IN_PROGRESS
 
+## [2026-04-12 10:07:07 +0900] FINISH W-20260412-1004-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - split the large home route into dedicated section components and a shared home landing data module
+  - added start-bar prompt handoff so Home can seed `/terminal?q=...` directly into the compose input
+  - preserved the current home visual system while making the route easier to cherry-pick as an isolated slice
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: `220b3c8`
+- Push status: not requested
+- Final working tree status:
+  - clean immediately after commit `220b3c8`
+  - watch log reopened only to append this finish entry before cherry-pick
+- Status: DONE
+
 ## [2026-04-12 10:03:29 +0900] START W-20260412-1003-CHATBATTLE-codex (CHATBATTLE)
 - Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
