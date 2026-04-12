@@ -673,3 +673,72 @@ $ node scripts/slice/cli.mjs rebuild --dry-run
 3. Post-merge ctx:auto hook (already exists in scripts/dev/context-auto.sh) could add a rebuild step so that fresh worktrees don't need a manual first-run reconciliation.
 
 None of 1–3 are wired in this commit. They are ops integrations that depend on the B.1 worker-context work landing first, since Scheduler and Main-Keeper both need context-budget telemetry before they can safely run on a cron.
+
+## 16. Multi-worktree state coordination (gap identified 2026-04-12)
+
+> **Scope of this section**: The original design (§1–§15) implicitly assumed a single active worktree at a time — one developer, one slice CLI session, one `slices.jsonl`. The 2026-04-12 CTO session (PR #35 + #37) executed Z0-smoke and Z1-hook-subagent-autospawn end-to-end in the `focused-pike` worktree and discovered that **the state layer has no story for multiple worktrees operating in parallel**. This section documents the gap and the four slice categories that close it.
+
+### 16.1 The problem, concretely
+
+At 2026-04-12 afternoon, `git worktree list` reports 28 registered worktrees and `.claude/worktrees/` holds 43 directories on disk — a delta of 15 orphans left over from sessions where the worker finished but nothing pruned the filesystem. Zero cleanup automation exists.
+
+Worse: each worktree owns its own `.agent-context/state/slices.jsonl`. `.gitignore` line 43 excludes `.agent-context/*` except `.agent-context/policy/**`, so the state journal is deliberately untracked. This means:
+
+- **Session A** in `worktree-X` runs `slice new Z1-hook-subagent-autospawn` → appends `in-progress` event → `wip.product = 1`
+- **Session B** in `worktree-Y` runs `slice ready --json` → sees Z1 still UNKNOWN because its state journal is empty → happily runs `slice new Z1-hook-subagent-autospawn` → **double-claim**.
+- Both sessions commit to their own branches. Pre-commit hook enforces path ownership against the local `branch-<sanitized>.json` claim — which is also per-worktree. Two branches with identical `paths[]` both pass pre-commit. Main-Keeper sees two APPROVED slices, ff-merges one, and the other explodes with merge conflicts.
+
+The pre-commit hook and DAG mutex groups protect against **within-worktree** collisions. They do **nothing** about **cross-worktree** collisions because there is no shared source of truth for "which slices are currently in-progress system-wide".
+
+### 16.2 Four independent sub-problems
+
+These are not one bug — they are four. Fixing one without the others does not unlock n≥5 parallel workers.
+
+1. **Worktree cleanup lifecycle (Z4 territory)**. `slice new --worktree` provisions a worktree; `slice merge` and `slice kill` must tear it down. Orphan sweep reconciles `git worktree list` against `.claude/worktrees/` filesystem. Main-Keeper gains a new Task 4 that prunes worktrees whose last-known slice is MERGED or KILLED.
+
+2. **Cross-worktree state coordination (Z5 territory)**. Three candidate architectures, each with tradeoffs:
+
+   | Option | How it shares state | Tradeoff |
+   |---|---|---|
+   | **(a) Track the state file in git** | Move `.agent-context/state/slices.jsonl` out of `.gitignore` and commit it | State becomes conflict-prone on rebase; every slice event = merge conflict with every other active worker |
+   | **(b) Symlink into a shared location** | Each worktree symlinks `.agent-context/state/` → `$HOME/.swarm-v1/<repo-hash>/state/` | Fragile on macOS, platform-specific, not git-tracked, relies on consistent symlink creation at worktree provisioning time |
+   | **(c) Origin/main as the authoritative state** | Before every lifecycle command, `git fetch origin main` and read state from there; events are proposed locally but must be pushed to main before another worktree sees them | Adds network round-trip to every CLI call; eventual consistency; prevents double-claim only up to fetch freshness |
+   | **(d) Local daemon on localhost:port** | Single long-running process holds state; CLI clients talk to it via TCP/unix socket | Heaviest; adds a new persistent process; requires lifecycle management; incompatible with hooks |
+
+   **Recommended: (c) with a twist.** Before `slice new`, fetch origin/main, rebuild state from the merged slices (what already exists), and union with the CURRENT set of `branch-*.json` claim files across ALL worktrees. The CLI walks sibling worktrees by reading `git worktree list --porcelain` and checking each one's `.agent-context/ownership/branch-*.json`. This is local-only (no network), read-only on other worktrees (no lock contention), and adds ~50ms per `slice new`. The cost scales linearly with worktree count; at n=10 that's ~500ms, acceptable.
+
+3. **Actual session-spawn mechanism (Z6 territory)**. Z1 deliberately did not invoke `claude -p scheduler` because of Claude API rate limits. For n≥5 parallel workers, *something* has to actually fire the subagents. Three candidates:
+
+   | Option | Mechanism | Tradeoff |
+   |---|---|---|
+   | **(a) `claude -p`** from the SubagentStop hook | Spawn a new Claude CLI process when the ready set is non-empty | Each spawn is a full Claude session; heavy; rate-limit sensitive; tied to local machine uptime |
+   | **(b) scheduled-tasks MCP cron** | Use the existing `mcp__scheduled-tasks__create_scheduled_task` tool to register Scheduler + Main-Keeper as cron jobs | Already available, already wired; but runs inside *this* Claude session only — dies when session exits |
+   | **(c) External runner (GitHub Actions / self-hosted systemd)** | Each slice becomes a GitHub Actions job spawned by a webhook on DAG state change | Heaviest; gives true parallelism decoupled from local uptime; requires GitHub Actions budget + auth |
+
+   **Recommended: (a) + (c) hybrid**. Local `claude -p` for iterative work, Actions for overnight batches when the operator is asleep. Z3 cost ceiling guard short-circuits both. Z6 implements the local `claude -p` path first; the Actions runner is deferred to a later slice (explicit non-goal for Z6).
+
+4. **Orphan sweep hygiene (part of Z4)**. The 15+ current orphans must be cleaned by hand exactly once (this session or the next), then Main-Keeper's Task 4 prevents accumulation going forward. A standalone `scripts/swarm/orphan-sweep.sh` script performs the one-time reconciliation.
+
+### 16.3 Slice definitions (Z2 rewrite + Z4, Z5, Z6)
+
+- **Z2 rewrite**: expand scope from "provisioning only" to "provisioning + teardown on merge/kill". `cmdNew` gains `--worktree`. `cmdMerge` detects worktree ownership and runs `git worktree remove`. `cmdKill` does the same, with a `--keep-worktree` opt-out flag for debugging. Depends on Z1 (merged). Mutex: scanEngine-decompose is irrelevant; this slice only touches `scripts/slice/cli.mjs`.
+
+- **Z4-worktree-orphan-sweep**: standalone `scripts/swarm/orphan-sweep.sh` that reconciles `git worktree list --porcelain` against `.claude/worktrees/` filesystem, offers dry-run preview, and removes confirmed orphans. Main-Keeper gains Task 4 that calls it every cron cycle. Depends on Z2 (cleanup lifecycle must exist first to avoid removing something still in flight).
+
+- **Z5-cross-worktree-state-read**: extend `cmdNew` and `cmdReady` to walk sibling worktrees via `git worktree list --porcelain`, read each one's `branch-*.json` claim, and exclude any slice ID that is claimed elsewhere. Pre-commit hook gains a parallel cross-worktree claim check (no slice ID may be claimed by two worktrees simultaneously). Depends on Z2 (worktree provisioning must be stable first).
+
+- **Z6-claude-p-spawn-mechanism**: implement the first real `claude -p scheduler` invocation path. SubagentStop hook (gated behind Z3 cost guard) writes a spawn-request file; a new `scripts/swarm/spawn.sh` polls the request, invokes `claude -p` with the scheduler agent and the next ready slice, captures output into the digest. Depends on Z1 (observability must tell it what to spawn) and Z3 (cost guard must prevent runaway).
+
+### 16.4 Binding constraints (do not revisit without RFC)
+
+- **Z2 → Z5 → Z4 → Z6 is the execution order.** Provisioning must work before cross-worktree reads can be tested (Z5 needs ≥2 real worktrees). Cleanup lifecycle must exist before orphan sweep (Z4 would otherwise flag working worktrees as orphans). Spawn mechanism is last because it is the riskiest (API rate limit).
+- **Option (c) for cross-worktree state is recommended but not locked.** If Z5 implementation reveals that walking sibling worktrees is fragile or too slow, the fallback is option (a) — commit the state journal. The fallback costs migration work but is less architecturally involved.
+- **The 1000-user perf + security DoD mandate (2026-04-12) applies to all four slices.** Every new `.sh` / `.mjs` change must declare the perf budget line and the security posture line per Reviewer-Auto step 3.1.
+- **Session-spawn via `claude -p` is local-only for Z6.** Remote / Actions-based spawn is a separate future slice and is not part of the 10+ parallel target for the current milestone. The 10+ target is local-parallel on one dev machine.
+
+### 16.5 Non-goals for §16
+
+- Multi-user / multi-developer coordination. swarm-v1 stays solo-specific.
+- State replication between remote machines.
+- Real-time scheduler UI. The daily digest + CLI `slice status` remain the only surfaces.
+- Automatic slice retry on failure. Human still owns the kill decision.

@@ -232,20 +232,144 @@ function loadPolicy() {
 // Ownership manifest (§6 rule #3 — pre-commit hook reads this)
 // ---------------------------------------------------------------------------
 
-function writeClaim(slice) {
+function writeClaim(slice, extras = {}) {
 	ensureDir(OWNERSHIP_DIR);
 	const claim = {
 		slice_id: slice.id,
 		branch: currentBranch(),
 		agent_type: slice.agent_type,
 		paths: slice.paths,
-		claimed_at: nowIso()
+		claimed_at: nowIso(),
+		// Optional worktree_path (Z2 lifecycle): absolute path to the
+		// git worktree this slice owns, if any. Written by cmdNew
+		// --worktree, read by cmdMerge / cmdKill for teardown.
+		...(extras.worktree_path ? { worktree_path: extras.worktree_path } : {}),
+		...(extras.worktree_branch ? { worktree_branch: extras.worktree_branch } : {})
 	};
 	writeJson(join(OWNERSHIP_DIR, `${slice.id}.json`), claim);
 	// Branch-keyed mirror makes pre-commit lookup O(1) in the common case
 	// where one branch = one slice.
 	const branch = claim.branch.replace(/[^a-zA-Z0-9._-]/g, '_');
 	writeJson(join(OWNERSHIP_DIR, `branch-${branch}.json`), claim);
+}
+
+/**
+ * Read a slice's claim file. Returns null if no claim exists. Used by
+ * cmdMerge and cmdKill to find the worktree_path before teardown.
+ */
+function readClaim(sliceId) {
+	const path = join(OWNERSHIP_DIR, `${sliceId}.json`);
+	if (!existsSync(path)) return null;
+	try {
+		return readJson(path);
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Provision a git worktree for a slice (Z2 lifecycle).
+ *
+ * Target path: <repo-root>/.claude/worktrees/<slice-id>
+ * Branch name: claude/<slice-id>
+ *
+ * Refuses if:
+ *   - Target directory already exists on disk
+ *   - Target path is already a registered git worktree
+ *   - git worktree add fails for any reason (base branch missing, etc.)
+ *
+ * Returns { worktree_path, worktree_branch } on success.
+ * Dies with a clear error message on failure — cmdNew rolls back
+ * the claim + brief + state event if provisioning fails.
+ */
+function provisionWorktree(sliceId) {
+	const safeName = sliceId.replace(/[^a-zA-Z0-9._-]/g, '_');
+	// Always provision at the MAIN repo's .claude/worktrees/, not the
+	// current worktree's. Otherwise we create nested worktrees that the
+	// Z4 orphan sweep (scanning the main location) will miss.
+	const worktreePath = join(mainRepoRoot(), '.claude/worktrees', safeName);
+	const worktreeBranch = `claude/${safeName}`;
+
+	// Refuse if the directory already exists (tracked or not).
+	if (existsSync(worktreePath)) {
+		die(
+			`worktree path already exists: ${worktreePath}\n` +
+				'  either it is a live worktree from a previous slice (run `git worktree list` to check)\n' +
+				'  or it is an orphan left behind by Z4-worktree-orphan-sweep cleanup'
+		);
+	}
+
+	// Refuse if the branch already exists (to avoid --force situations).
+	try {
+		execSync(`git rev-parse --verify --quiet ${JSON.stringify(worktreeBranch)}`, {
+			stdio: 'pipe'
+		});
+		// If rev-parse succeeded, the branch exists — refuse.
+		die(
+			`branch already exists: ${worktreeBranch}\n` +
+				'  kill the old slice (`slice kill`) or delete the branch (`git branch -D`) before retrying'
+		);
+	} catch (err) {
+		// rev-parse non-zero = branch does not exist = proceed.
+	}
+
+	try {
+		execSync(
+			`git worktree add ${JSON.stringify(worktreePath)} -b ${JSON.stringify(worktreeBranch)}`,
+			{ stdio: 'pipe' }
+		);
+	} catch (err) {
+		die(
+			`git worktree add failed for ${sliceId}:\n  ${err.message ?? err}\n` +
+				'  claim + brief + state events NOT written — no cleanup needed'
+		);
+	}
+
+	return { worktree_path: worktreePath, worktree_branch: worktreeBranch };
+}
+
+/**
+ * Tear down a slice's worktree (Z2 lifecycle teardown half).
+ *
+ * Called by cmdMerge and cmdKill AFTER the state event has been appended
+ * and the claim has been released. Reads worktree_path from the claim
+ * (which was captured at cmdNew time) and runs `git worktree remove`.
+ *
+ * Silent no-op when:
+ *   - The slice had no --worktree flag (no worktree_path in claim)
+ *   - The worktree is already gone (someone ran git worktree prune already)
+ *
+ * Respects `--keep-worktree` by returning early BEFORE git worktree remove.
+ * Callers that pass keepWorktree=true still get a digest log entry.
+ *
+ * Does NOT force-remove worktrees with uncommitted changes unless
+ * `force` is explicit. This prevents data loss on a stuck slice.
+ */
+function teardownWorktree(claimSnapshot, { keepWorktree = false, force = false } = {}) {
+	if (!claimSnapshot || !claimSnapshot.worktree_path) {
+		return { status: 'noop', reason: 'no worktree_path in claim' };
+	}
+	const wtPath = claimSnapshot.worktree_path;
+	if (!existsSync(wtPath)) {
+		return { status: 'noop', reason: 'worktree path already gone' };
+	}
+	if (keepWorktree) {
+		return { status: 'kept', path: wtPath };
+	}
+	try {
+		const forceFlag = force ? ' --force' : '';
+		execSync(`git worktree remove${forceFlag} ${JSON.stringify(wtPath)}`, { stdio: 'pipe' });
+		return { status: 'removed', path: wtPath };
+	} catch (err) {
+		// Failed — likely uncommitted changes or a lock file. Do not die;
+		// the state transition already happened, we just leave the worktree
+		// on disk and the Z4 orphan sweep will pick it up later.
+		return {
+			status: 'failed',
+			path: wtPath,
+			reason: (err.message ?? String(err)).split('\n')[0]
+		};
+	}
 }
 
 function releaseClaim(sliceId) {
@@ -273,6 +397,37 @@ function currentBranch() {
 		return execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
 	} catch {
 		return 'detached';
+	}
+}
+
+/**
+ * Return the absolute path of the MAIN repo root, even when invoked from
+ * a git worktree. Uses `git rev-parse --git-common-dir` which returns the
+ * shared .git directory (e.g. /path/to/repo/.git) regardless of which
+ * worktree the CLI is running in. The parent of that directory is the
+ * main checkout root.
+ *
+ * Falls back to REPO_ROOT (the current worktree's root) if anything
+ * fails. The fallback preserves old behavior on fresh clones.
+ *
+ * Used by provisionWorktree() so slice worktrees always land in the
+ * canonical `<main-repo>/.claude/worktrees/<slice-id>` location
+ * regardless of which worktree the operator is working from. This is
+ * the convention every existing swarm-v1 worktree already follows.
+ */
+function mainRepoRoot() {
+	try {
+		const gitCommonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8' }).trim();
+		// git-common-dir may be relative; resolve against the current worktree.
+		const absCommonDir = gitCommonDir.startsWith('/') ? gitCommonDir : resolve(REPO_ROOT, gitCommonDir);
+		// The main worktree's .git directory ends in `/.git` — strip it to get the main root.
+		if (absCommonDir.endsWith('/.git')) {
+			return absCommonDir.slice(0, -'/.git'.length);
+		}
+		// Unusual layouts (submodules, non-standard setups) — fall back.
+		return REPO_ROOT;
+	} catch {
+		return REPO_ROOT;
 	}
 }
 
@@ -325,7 +480,8 @@ function writeBrief(slice) {
 
 function cmdNew(args) {
 	const sliceId = args[0];
-	if (!sliceId) die('usage: slice new <slice-id>');
+	if (!sliceId) die('usage: slice new <slice-id> [--worktree]');
+	const withWorktree = args.includes('--worktree');
 	const dag = loadDag();
 	topoSort(dag); // fail fast on cycles
 	const slice = findSlice(dag, sliceId);
@@ -346,16 +502,35 @@ function cmdNew(args) {
 		die(`WIP cap hit for track "${slice.track}" (${wip[slice.track] ?? 0}/${cap})${phaseLabel}`);
 	}
 
+	// Provision worktree FIRST (Z2 lifecycle) so the claim we write
+	// below can embed the worktree_path. If provisioning fails, die()
+	// kills the CLI BEFORE any state mutation, so there is nothing to
+	// roll back.
+	let worktreeInfo = null;
+	if (withWorktree) {
+		worktreeInfo = provisionWorktree(sliceId);
+	}
+
 	ensureDir(STATE_DIR);
-	writeClaim(slice);
+	writeClaim(slice, worktreeInfo ?? {});
 	const briefPath = writeBrief(slice);
-	appendJsonl(SLICES_LOG, { ts: nowIso(), event: 'in-progress', slice_id: sliceId, branch: currentBranch() });
+	appendJsonl(SLICES_LOG, {
+		ts: nowIso(),
+		event: 'in-progress',
+		slice_id: sliceId,
+		branch: currentBranch(),
+		...(worktreeInfo ? { worktree_path: worktreeInfo.worktree_path } : {})
+	});
 	bumpWip(slice.track, +1);
 
 	console.log(`[slice] new ${sliceId}`);
 	console.log(`  brief: ${briefPath}`);
 	console.log(`  claim: ${join(OWNERSHIP_DIR, `${sliceId}.json`)}`);
 	console.log(`  track: ${slice.track} (wip ${readWip()[slice.track]}/${policy[slice.track]})`);
+	if (worktreeInfo) {
+		console.log(`  worktree: ${worktreeInfo.worktree_path}`);
+		console.log(`  branch:   ${worktreeInfo.worktree_branch}`);
+	}
 }
 
 function cmdStatus(args) {
@@ -416,7 +591,8 @@ function cmdStatus(args) {
 
 function cmdMerge(args) {
 	const sliceId = args[0];
-	if (!sliceId) die('usage: slice merge <slice-id>');
+	if (!sliceId) die('usage: slice merge <slice-id> [--keep-worktree]');
+	const keepWorktree = args.includes('--keep-worktree');
 	const dag = loadDag();
 	const slice = findSlice(dag, sliceId);
 	if (!slice) die(`slice not in DAG: ${sliceId}`);
@@ -424,17 +600,36 @@ function cmdMerge(args) {
 	if (st.status !== 'APPROVED') {
 		die(`slice ${sliceId} is ${st.status}, expected APPROVED before merge`);
 	}
+
+	// Capture the claim snapshot BEFORE releasing it, so we still have
+	// the worktree_path for teardown below.
+	const claimSnapshot = readClaim(sliceId);
+
 	appendJsonl(SLICES_LOG, { ts: nowIso(), event: 'merged', slice_id: sliceId });
 	releaseClaim(sliceId);
 	bumpWip(slice.track, -1);
 	console.log(`[slice] merge ${sliceId} (wip ${readWip()[slice.track]})`);
+
+	// Z2 lifecycle teardown half — runs AFTER state + claim + WIP are
+	// consistent. Failure here is non-fatal: the state transition
+	// already landed, and the Z4 orphan sweep catches leftover dirs.
+	const teardown = teardownWorktree(claimSnapshot, { keepWorktree });
+	if (teardown.status === 'removed') {
+		console.log(`  worktree removed: ${teardown.path}`);
+	} else if (teardown.status === 'kept') {
+		console.log(`  worktree kept: ${teardown.path}`);
+	} else if (teardown.status === 'failed') {
+		console.log(`  worktree teardown failed: ${teardown.reason} (${teardown.path})`);
+		console.log('  → Z4 orphan sweep will reconcile on next run');
+	}
 }
 
 function cmdKill(args) {
 	const sliceId = args[0];
-	if (!sliceId) die('usage: slice kill <slice-id> [--reason "..."]');
+	if (!sliceId) die('usage: slice kill <slice-id> [--reason "..."] [--keep-worktree]');
 	const reasonIdx = args.indexOf('--reason');
 	const reason = reasonIdx >= 0 ? args[reasonIdx + 1] : 'unspecified';
+	const keepWorktree = args.includes('--keep-worktree');
 
 	const dag = loadDag();
 	const slice = findSlice(dag, sliceId);
@@ -443,12 +638,30 @@ function cmdKill(args) {
 	if (['MERGED', 'KILLED'].includes(st.status)) {
 		die(`slice ${sliceId} already ${st.status}`);
 	}
+
+	// Capture claim snapshot BEFORE releasing it — same reason as cmdMerge.
+	const claimSnapshot = readClaim(sliceId);
+
 	appendJsonl(SLICES_LOG, { ts: nowIso(), event: 'killed', slice_id: sliceId, reason });
 	releaseClaim(sliceId);
 	if (['IN_PROGRESS', 'READY_FOR_REVIEW', 'APPROVED'].includes(st.status)) {
 		bumpWip(slice.track, -1);
 	}
 	console.log(`[slice] kill ${sliceId} (${reason})`);
+
+	// Z2 lifecycle teardown half — default behavior for kill is the same
+	// as merge: remove the worktree unless --keep-worktree is passed.
+	// The opt-out exists because killed slices are often being debugged
+	// and the operator wants to inspect the working tree state.
+	const teardown = teardownWorktree(claimSnapshot, { keepWorktree });
+	if (teardown.status === 'removed') {
+		console.log(`  worktree removed: ${teardown.path}`);
+	} else if (teardown.status === 'kept') {
+		console.log(`  worktree kept: ${teardown.path} (use this for post-mortem)`);
+	} else if (teardown.status === 'failed') {
+		console.log(`  worktree teardown failed: ${teardown.reason} (${teardown.path})`);
+		console.log('  → Z4 orphan sweep will reconcile on next run');
+	}
 }
 
 function cmdApprove(args) {
@@ -657,11 +870,18 @@ if (!cmd || cmd === '--help' || cmd === '-h') {
 		[
 			'slice — swarm-v1 slice CLI',
 			'',
-			'  slice new <slice-id>                   Claim paths, write brief, bump WIP',
+			'  slice new <slice-id> [--worktree]      Claim paths, write brief, bump WIP',
+			'                                         --worktree also runs `git worktree add`',
+			'                                         at .claude/worktrees/<slice-id> on a new',
+			'                                         claude/<slice-id> branch (Z2 lifecycle)',
 			'  slice status [--slice <id>] [--json]   Show DAG + WIP state',
 			'  slice ready [--json]                   List slices whose deps are merged',
-			'  slice merge <slice-id>                 Mark APPROVED slice as merged',
-			'  slice kill <slice-id> [--reason "..."] Abandon a slice',
+			'  slice merge <slice-id> [--keep-worktree]',
+			'                                         Mark APPROVED slice as merged + tear down',
+			'                                         the slice worktree unless --keep-worktree',
+			'  slice kill <slice-id> [--reason "..."] [--keep-worktree]',
+			'                                         Abandon a slice + tear down worktree',
+			'                                         (--keep-worktree preserves it for debug)',
 			'  slice approve <slice-id>               Human sign-off on a reviewed slice',
 			'  slice backfill <slice-id> [--sha <h>] [--note "..."]',
 			'                                         Reconcile MERGED state for one slice',
