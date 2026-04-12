@@ -588,6 +588,78 @@ function getStreamConfig(provider: LLMProvider): StreamConfig {
   }
 }
 
+async function* streamGemini(
+  messages: LLMMessage[],
+  maxTokens: number,
+  temperature: number,
+  timeoutMs: number,
+): AsyncGenerator<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const systemMsg = messages.find(m => m.role === 'system');
+  const contents = messages
+    .filter(m => m.role !== 'system')
+    .map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+  const model = GEMINI_MODEL;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${getGeminiApiKey()}`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...(systemMsg ? { systemInstruction: { parts: [{ text: systemMsg.content }] } } : {}),
+        contents,
+        generationConfig: { maxOutputTokens: maxTokens, temperature },
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      if (res.status === 429 || res.status === 401 || res.status === 403) rotateGeminiKey();
+      throw new Error(`Gemini ${res.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    if (!res.body) throw new Error('Gemini: no response body');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') return;
+
+        try {
+          const parsed = JSON.parse(data);
+          const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) yield text;
+        } catch {
+          // skip malformed SSE chunks
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function* streamFromProvider(
   provider: LLMProvider,
   messages: LLMMessage[],
@@ -595,10 +667,8 @@ async function* streamFromProvider(
   temperature: number,
   timeoutMs: number,
 ): AsyncGenerator<string> {
-  // Gemini uses different format — skip for now (it's last in fallback)
   if (provider === 'gemini') {
-    const result = await callGemini(messages, maxTokens, temperature, timeoutMs);
-    yield result.text;
+    yield* streamGemini(messages, maxTokens, temperature, timeoutMs);
     return;
   }
 
