@@ -38,14 +38,14 @@ export interface WalletState {
 
   // UI state
   showWalletModal: boolean;
-  walletModalStep: 'welcome' | 'wallet-select' | 'connecting' | 'sign-message' | 'connected' | 'signup' | 'login' | 'demo-intro' | 'profile';
+  walletModalStep: 'wallet-select' | 'connecting' | 'sign-message' | 'connected' | 'signup' | 'login' | 'profile';
   signature: string | null;
 }
 
 function normalizeProvider(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const value = raw.trim().toLowerCase();
-  if (value === 'metamask' || value === 'coinbase' || value === 'walletconnect' || value === 'phantom') {
+  if (value === 'metamask' || value === 'coinbase' || value === 'walletconnect' || value === 'phantom' || value === 'base') {
     return value;
   }
 
@@ -71,7 +71,7 @@ const defaultWallet: WalletState = {
   matchesPlayed: 0,
   totalLP: 0,
   showWalletModal: false,
-  walletModalStep: 'welcome',
+  walletModalStep: 'wallet-select',
   signature: null
 };
 
@@ -151,7 +151,7 @@ export function clearAuthenticatedUser() {
     nickname: null,
     tier: w.connected ? 'connected' : 'guest',
     showWalletModal: false,
-    walletModalStep: w.connected ? 'connected' : 'welcome',
+    walletModalStep: w.connected ? 'connected' : 'wallet-select',
   }));
 }
 
@@ -185,13 +185,21 @@ export async function hydrateAuthSession(force = false) {
 
 export function openWalletModal() {
   walletStore.update(w => {
-    // Wallet-first flow:
+    // Wallet-first flow (no welcome step):
     // connected + account => profile
-    // connected only => choose login/signup from connected step
-    // account only (session restored) but no wallet => reconnect wallet first
-    const step = w.connected
-      ? (w.email ? 'profile' : 'connected')
-      : (w.email ? 'wallet-select' : 'welcome');
+    // connected + signed but no account => signup
+    // connected only => sign-message
+    // not connected => wallet-select
+    let step: WalletState['walletModalStep'];
+    if (w.connected && w.email) {
+      step = 'profile';
+    } else if (w.connected && w.signature) {
+      step = 'signup';
+    } else if (w.connected) {
+      step = 'sign-message';
+    } else {
+      step = 'wallet-select';
+    }
     return { ...w, showWalletModal: true, walletModalStep: step };
   });
 }
@@ -254,15 +262,6 @@ export function signMessage(signatureOverride?: string) {
     signature,
     phase: Math.max(resolveLifecyclePhase(w.matchesPlayed, w.totalLP), 2),
     walletModalStep: 'connected'
-  }));
-}
-
-// Skip wallet connection (stay at registered, still usable!)
-export function skipWalletConnection() {
-  walletStore.update(w => ({
-    ...w,
-    hasCompletedOnboarding: true,
-    showWalletModal: false
   }));
 }
 
