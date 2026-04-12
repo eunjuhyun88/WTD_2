@@ -1,73 +1,49 @@
-// ═══════════════════════════════════════════════════════════════
-// Data Engine — Gap Filling
-// ═══════════════════════════════════════════════════════════════
-//
-// Fill null gaps in a NormalizedSeries using various strategies.
+// ─── Gap Filler ──────────────────────────────────────────────
+// 누락된 타임스탬프를 채운다. (forward fill / zero fill)
 
-import type { NormalizedSeries, NormalizedPoint, FillMode } from '../types';
+import type { NormalizedPoint } from '../types';
+
+export type FillMode = 'forward' | 'zero' | 'interpolate';
 
 /**
- * Fill null gaps in a NormalizedSeries.
- *
- * Modes:
- * - 'forward'     — carry the last known non-null value forward
- * - 'zero'        — replace nulls with 0
- * - 'interpolate' — linear interpolation between surrounding known values;
- *                   falls back to forward-fill at the trailing edge
- * - 'none'        — return the series unchanged
- *
- * @param series - Input series. Points array is not mutated.
- * @param mode   - Gap-filling strategy. Defaults to 'forward'.
- * @returns New series with gaps filled according to the chosen mode.
+ * 주어진 시계열에서 갭을 채운다.
+ * @param series  오름차순 정렬된 시계열
+ * @param tfSec   타임프레임 초 (bar 간격)
+ * @param mode    채우기 방식
  */
-export function fillGaps(series: NormalizedSeries, mode: FillMode = 'forward'): NormalizedSeries {
-	if (mode === 'none') return series;
+export function fillGaps(
+  series: NormalizedPoint[],
+  tfSec: number,
+  mode: FillMode = 'forward',
+): NormalizedPoint[] {
+  if (series.length < 2 || tfSec <= 0) return series;
 
-	const points = [...series.points];
+  const result: NormalizedPoint[] = [];
+  for (let i = 0; i < series.length; i++) {
+    result.push(series[i]);
+    if (i + 1 >= series.length) break;
 
-	if (mode === 'forward') {
-		let lastValue: number | null = null;
-		for (let i = 0; i < points.length; i++) {
-			if (points[i].value != null) {
-				lastValue = points[i].value;
-			} else if (lastValue != null) {
-				points[i] = { ts: points[i].ts, value: lastValue };
-			}
-		}
-	} else if (mode === 'zero') {
-		for (let i = 0; i < points.length; i++) {
-			if (points[i].value == null) {
-				points[i] = { ts: points[i].ts, value: 0 };
-			}
-		}
-	} else if (mode === 'interpolate') {
-		for (let i = 0; i < points.length; i++) {
-			if (points[i].value != null) continue;
+    const curr = series[i];
+    const next = series[i + 1];
+    const gap = next.t - curr.t;
 
-			// Find the nearest non-null neighbours
-			let prevIdx = -1;
-			let nextIdx = -1;
-			for (let j = i - 1; j >= 0; j--) {
-				if (points[j].value != null) { prevIdx = j; break; }
-			}
-			for (let j = i + 1; j < points.length; j++) {
-				if (points[j].value != null) { nextIdx = j; break; }
-			}
+    if (gap <= tfSec) continue; // 갭 없음
 
-			if (prevIdx >= 0 && nextIdx >= 0) {
-				const prevVal = points[prevIdx].value!;
-				const nextVal = points[nextIdx].value!;
-				const ratio =
-					(points[i].ts - points[prevIdx].ts) /
-					(points[nextIdx].ts - points[prevIdx].ts);
-				points[i] = { ts: points[i].ts, value: prevVal + (nextVal - prevVal) * ratio };
-			} else if (prevIdx >= 0) {
-				// Trailing edge: forward-fill
-				points[i] = { ts: points[i].ts, value: points[prevIdx].value };
-			}
-			// Leading edge (no prevIdx) stays null
-		}
-	}
+    const steps = Math.round(gap / tfSec) - 1;
+    for (let s = 1; s <= steps; s++) {
+      const t = curr.t + s * tfSec;
+      let v: number;
+      if (mode === 'zero') {
+        v = 0;
+      } else if (mode === 'interpolate') {
+        v = curr.v + (next.v - curr.v) * (s / (steps + 1));
+      } else {
+        // forward fill
+        v = curr.v;
+      }
+      result.push({ t, v });
+    }
+  }
 
-	return { ...series, points };
+  return result;
 }

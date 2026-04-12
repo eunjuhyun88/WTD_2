@@ -96,7 +96,7 @@ REQUIRED_FILES=(
 	"docs/design-docs/core-beliefs.md"
 	"docs/exec-plans/index.md"
 	"docs/exec-plans/active/README.md"
-	"docs/exec-plans/active/context-system-rollout-2026-03-06.md"
+	# context-system-rollout moved to completed/ (2026-04-12)
 	"docs/exec-plans/completed/README.md"
 	"docs/exec-plans/tech-debt-tracker.md"
 	"docs/generated/README.md"
@@ -173,7 +173,7 @@ require_absent "CLAUDE.md" "DEPRECATED" "deprecated claude banner"
 require_absent "CLAUDE.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in claude guide"
 require_absent "docs/README.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in docs router"
 require_absent "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in compaction protocol"
-require_absent "docs/exec-plans/active/context-system-rollout-2026-03-06.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in rollout plan"
+# context-system-rollout moved to completed/ — check removed (2026-04-12)
 require_absent "docs/DESIGN.md" "../STOCKCLAW_UNIFIED_DESIGN.md" "external arena design ref in design entry doc"
 
 # Note: historical references to SYSTEM_INTENT.md / PRODUCT_SENSE.md inside

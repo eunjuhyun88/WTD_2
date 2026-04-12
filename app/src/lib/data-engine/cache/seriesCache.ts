@@ -1,129 +1,146 @@
-// ═══════════════════════════════════════════════════════════════
-// Data Engine — Series Cache
-// ═══════════════════════════════════════════════════════════════
-//
-// Time-series cache with append-only updates and TTL expiration.
-//
-// Unlike the point cache in providers/cache.ts, this stores entire
-// NormalizedSeries objects and supports efficient incremental appends.
-//
-// Key convention: 'provider:metric:symbol:timeframe'
-//   e.g., 'binance:klines:BTCUSDT:4h'
+// ─── Series Cache ────────────────────────────────────────────
+// 시계열 데이터 캐시.  append-only, TTL, max-size trim.
+// 싱글턴 모듈 수준 Map. (서버 프로세스 생애 동안 유지)
 
-import type { NormalizedSeries, NormalizedPoint } from '../types';
+import type { NormalizedPoint, NormalizedSeries, OhlcvPoint } from '../types';
 
-interface CacheEntry {
-	series: NormalizedSeries;
-	expiresAt: number;
+// ── Config ───────────────────────────────────────────────────
+
+const MAX_POINTS = 500;    // 키당 최대 포인트 수
+const DEFAULT_TTL = 10 * 60_000;  // 10분 기본 TTL
+
+// ── Internal Stores ──────────────────────────────────────────
+
+interface Entry {
+  series: NormalizedSeries;
+  expiresAt: number;
 }
 
-/**
- * Time-series cache with TTL, append, and LRU-style eviction.
- *
- * Designed for medium-lived series data (seconds to minutes TTL).
- * Thread-safety is not guaranteed; callers in a single-threaded JS
- * environment do not need to coordinate.
- */
-export class SeriesCache {
-	private readonly store = new Map<string, CacheEntry>();
-	private readonly maxEntries: number;
+interface OhlcvEntry {
+  points: OhlcvPoint[];
+  expiresAt: number;
+  updatedAt: number;
+}
 
-	constructor(maxEntries = 200) {
-		this.maxEntries = maxEntries;
-	}
+const seriesStore = new Map<string, Entry>();
+const ohlcvStore = new Map<string, OhlcvEntry>();
 
-	// ─── Read ────────────────────────────────────────────────────
+// ── Series API ───────────────────────────────────────────────
 
-	/** Return the series for `key`, or null if absent / expired. */
-	get(key: string): NormalizedSeries | null {
-		const entry = this.store.get(key);
-		if (!entry) return null;
-		if (Date.now() > entry.expiresAt) {
-			this.store.delete(key);
-			return null;
-		}
-		return entry.series;
-	}
+/** 캐시에 시계열 전체 설정 (replace) */
+export function setSeries(
+  key: string,
+  series: NormalizedSeries,
+  ttlMs: number = DEFAULT_TTL,
+): void {
+  seriesStore.set(key, {
+    series: { ...series, points: series.points.slice(-MAX_POINTS) },
+    expiresAt: Date.now() + ttlMs,
+  });
+}
 
-	// ─── Write ───────────────────────────────────────────────────
+/** 시계열 뒤에 새 포인트 추가 (중복 t 제거, 정렬 유지) */
+export function appendSeries(
+  key: string,
+  newPoints: NormalizedPoint[],
+  ttlMs: number = DEFAULT_TTL,
+): void {
+  const existing = seriesStore.get(key);
+  const now = Date.now();
 
-	/** Store a complete series with the given TTL. */
-	set(key: string, series: NormalizedSeries, ttlMs = 60_000): void {
-		if (this.store.size >= this.maxEntries) this.evictOldest();
-		this.store.set(key, { series, expiresAt: Date.now() + ttlMs });
-	}
+  if (!existing || now > existing.expiresAt) {
+    // 새 엔트리
+    const base = existing?.series;
+    seriesStore.set(key, {
+      series: {
+        symbol: base?.symbol ?? '',
+        rawId: base?.rawId ?? '',
+        tf: base?.tf,
+        points: newPoints.slice(-MAX_POINTS),
+        updatedAt: now,
+      },
+      expiresAt: now + ttlMs,
+    });
+    return;
+  }
 
-	/**
-	 * Append new points to an existing cached series.
-	 *
-	 * Points whose timestamp already exists in the cache are deduplicated.
-	 * The resulting series is re-sorted by timestamp. If the key is not
-	 * already cached, this is a no-op.
-	 *
-	 * @param key    - Cache key.
-	 * @param newPoints - Points to merge in.
-	 * @param ttlMs  - Refreshed TTL applied after the append.
-	 */
-	append(key: string, newPoints: NormalizedPoint[], ttlMs = 60_000): void {
-		const existing = this.get(key);
-		if (!existing) return;
+  // 기존 포인트 맵
+  const pointMap = new Map(existing.series.points.map(p => [p.t, p]));
+  for (const p of newPoints) pointMap.set(p.t, p);
 
-		const tsSet = new Set(existing.points.map(p => p.ts));
-		const unique = newPoints.filter(p => !tsSet.has(p.ts));
-		const merged = [...existing.points, ...unique].sort((a, b) => a.ts - b.ts);
+  const merged = Array.from(pointMap.values())
+    .sort((a, b) => a.t - b.t)
+    .slice(-MAX_POINTS);
 
-		this.set(key, { ...existing, points: merged }, ttlMs);
-	}
+  seriesStore.set(key, {
+    series: { ...existing.series, points: merged, updatedAt: now },
+    expiresAt: now + ttlMs,
+  });
+}
 
-	/**
-	 * Trim a cached series to retain only the most recent `maxPoints` points.
-	 *
-	 * If the series has fewer than `maxPoints` this is a no-op.
-	 */
-	trim(key: string, maxPoints: number): void {
-		const entry = this.store.get(key);
-		if (!entry) return;
-		if (entry.series.points.length > maxPoints) {
-			entry.series = {
-				...entry.series,
-				points: entry.series.points.slice(-maxPoints),
-			};
-		}
-	}
+/** 캐시에서 시계열 읽기 */
+export function getSeries(key: string): NormalizedSeries | null {
+  const entry = seriesStore.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    seriesStore.delete(key);
+    return null;
+  }
+  return entry.series;
+}
 
-	// ─── Invalidation ────────────────────────────────────────────
+// ── OHLCV API ────────────────────────────────────────────────
 
-	/** Remove all entries whose key contains `:symbol:`. */
-	invalidate(symbol: string): void {
-		const pattern = `:${symbol}:`;
-		for (const key of this.store.keys()) {
-			if (key.includes(pattern)) this.store.delete(key);
-		}
-	}
+/** OHLCV 캐시 설정 (replace) */
+export function setOhlcv(
+  key: string,
+  points: OhlcvPoint[],
+  ttlMs: number = DEFAULT_TTL,
+): void {
+  ohlcvStore.set(key, {
+    points: points.slice(-MAX_POINTS),
+    expiresAt: Date.now() + ttlMs,
+    updatedAt: Date.now(),
+  });
+}
 
-	/** Remove all entries. */
-	invalidateAll(): void {
-		this.store.clear();
-	}
+/** OHLCV 캐시 읽기 */
+export function getOhlcv(key: string): OhlcvPoint[] | null {
+  const entry = ohlcvStore.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    ohlcvStore.delete(key);
+    return null;
+  }
+  return entry.points;
+}
 
-	// ─── Introspection ───────────────────────────────────────────
+/** OHLCV 마지막 bar만 업데이트 */
+export function updateLastOhlcv(key: string, point: OhlcvPoint): void {
+  const entry = ohlcvStore.get(key);
+  if (!entry) return;
+  const points = entry.points;
+  if (points.length > 0 && points[points.length - 1].t === point.t) {
+    points[points.length - 1] = point;
+  } else {
+    points.push(point);
+    if (points.length > MAX_POINTS) points.shift();
+  }
+  entry.updatedAt = Date.now();
+}
 
-	get size(): number {
-		return this.store.size;
-	}
+// ── Maintenance ──────────────────────────────────────────────
 
-	// ─── Internal ────────────────────────────────────────────────
+export function purgeExpired(): void {
+  const now = Date.now();
+  for (const [k, v] of seriesStore) {
+    if (now > v.expiresAt) seriesStore.delete(k);
+  }
+  for (const [k, v] of ohlcvStore) {
+    if (now > v.expiresAt) ohlcvStore.delete(k);
+  }
+}
 
-	/**
-	 * Evict the oldest 10 % of entries by expiry time.
-	 * Called automatically when `maxEntries` is reached.
-	 */
-	private evictOldest(): void {
-		const entries = [...this.store.entries()]
-			.sort(([, a], [, b]) => a.expiresAt - b.expiresAt);
-		const toEvict = Math.max(1, Math.floor(entries.length * 0.1));
-		for (let i = 0; i < toEvict; i++) {
-			this.store.delete(entries[i][0]);
-		}
-	}
+export function seriesCacheStats() {
+  return { series: seriesStore.size, ohlcv: ohlcvStore.size };
 }

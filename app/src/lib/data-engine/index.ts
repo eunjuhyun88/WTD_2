@@ -1,80 +1,30 @@
 // ═══════════════════════════════════════════════════════════════
-// Data Engine — Barrel Export
+// Data Engine — Public API
 // ═══════════════════════════════════════════════════════════════
-//
-// Sprint 1: types + normalization functions.
-// Alignment, cache, scheduler, and provider adapters are added in Sprints 2-5.
+// 외부에서는 buildContext() 만 호출하면 된다.
 
-// ─── Types ───────────────────────────────────────────────────
+export { buildContext } from './context/contextBuilder';
+export type { BuiltContext } from './context/contextBuilder';
 
-export type {
-	DataCadence,
-	NormalizedPoint,
-	NormalizedOHLCV,
-	NormalizedSeries,
-	NormalizedSnapshot,
-	ResampleMode,
-	FillMode,
-} from './types';
+// 타입
+export type { NormalizedPoint, NormalizedSeries, NormalizedSnapshot, OhlcvPoint, DataCadence } from './types';
+export { DataCadence as DataCadenceValues } from './types';
 
-// ─── Symbol ──────────────────────────────────────────────────
+// 캐시 (디버그/admin 용)
+export { seriesCacheStats, purgeExpired } from './cache/seriesCache';
+export { snapshotCacheStats, purgeExpiredSnapshots } from './cache/snapshotCache';
 
+// 스케줄러 (admin 용)
+export { listPollers, registerPoller, unregisterPoller, runNow } from './scheduler/pollingScheduler';
+export { listSubscriptions, subscribe, unsubscribe } from './scheduler/subscriptionManager';
+
+// 정규화 유틸 (metric-engine 내부에서 직접 사용)
 export { normalizeSymbol } from './normalization/normalizeSymbol';
+export { normalizeTimeframe, tfToSeconds } from './normalization/normalizeTimeframe';
+export { normalizeTimestamp, alignToGrid } from './normalization/normalizeTimestamp';
+export { fundingToBps, normalizeTakerRatio } from './normalization/normalizeUnit';
 
-// ─── Timeframe ───────────────────────────────────────────────
-
-export {
-	normalizeTimeframe,
-	timeframeDurationSeconds,
-	VALID_TIMEFRAMES,
-} from './normalization/normalizeTimeframe';
-export type { ValidTimeframe } from './normalization/normalizeTimeframe';
-
-// ─── Timestamp ───────────────────────────────────────────────
-
-export {
-	normalizeTimestamp,
-	normalizeTimestamps,
-	floorToTimeframe,
-} from './normalization/normalizeTimestamp';
-
-// ─── Units ───────────────────────────────────────────────────
-
-export {
-	fundingRateToBps,
-	bpsToFundingRate,
-	oiContractsToUsd,
-	percentToRatio,
-	ratioToPercent,
-	annualToEightHour,
-	eightHourToAnnual,
-} from './normalization/normalizeUnit';
-
-// ─── Alignment (Sprint 2) ─────────────────────────────────────
-
-export { alignSeries } from './alignment/alignSeries';
-export { resampleSeries } from './alignment/resampleSeries';
+// 정렬 유틸
 export { fillGaps } from './alignment/fillGaps';
-
-// ─── Cache (Sprint 3) ─────────────────────────────────────────
-
-export { SeriesCache } from './cache/seriesCache';
-export { SnapshotCache } from './cache/snapshotCache';
-
-// ─── Scheduler (Sprint 4) ─────────────────────────────────────
-
-export { CADENCE_MS, CADENCE_SECONDS, DATA_CADENCE } from './scheduler/cadenceRegistry'
-export { PollingScheduler } from './scheduler/pollingScheduler'
-export type { PollTask } from './scheduler/pollingScheduler'
-export { SubscriptionManager } from './scheduler/subscriptionManager'
-
-// ─── Providers (Sprint 5) ────────────────────────────────────
-
-export { ProviderRegistry } from './providers/providerAdapter'
-export type { DataEngineProvider } from './providers/providerAdapter'
-export { createBinanceAdapter } from './providers/binanceAdapter'
-export { createCoinalyzeAdapter } from './providers/coinalyzeAdapter'
-
-// ─── Context (Sprint 5) ──────────────────────────────────────
-
-export { buildContextFromCache } from './context/contextBuilder'
+export { resampleSeries } from './alignment/resampleSeries';
+export { alignTwo, alignMany } from './alignment/alignSeries';

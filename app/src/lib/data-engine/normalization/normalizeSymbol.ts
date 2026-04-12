@@ -1,49 +1,13 @@
-// ═══════════════════════════════════════════════════════════════
-// Data Engine — Symbol Normalization
-// ═══════════════════════════════════════════════════════════════
-//
-// Normalize trading pair symbols to canonical format.
-//
-// Canonical format: BTCUSDT (uppercase, no separators)
-//
-// Input formats handled:
-//   'BTC/USDT'       → 'BTCUSDT'
-//   'btcusdt'        → 'BTCUSDT'
-//   'BTC-USDT'       → 'BTCUSDT'
-//   'BTC_USDT'       → 'BTCUSDT'
-//   'BTCUSDT_PERP.A' → 'BTCUSDT'  (Coinalyze format)
-//   'BTCUSD_PERP'    → 'BTCUSDT'  (coin-margined → linear)
-//   'BTC'            → 'BTCUSDT'  (bare asset → append USDT)
+// ─── Symbol Normalizer ───────────────────────────────────────
+// "BTC/USDT" | "btcusdt" | "BTC-USDT" → "BTCUSDT"
 
-/**
- * Normalize a trading pair symbol to canonical BTCUSDT format.
- *
- * @param input - Raw symbol string from any provider.
- * @returns Uppercase symbol with no separators, USDT-quoted.
- */
-export function normalizeSymbol(input: string): string {
-	if (!input) return 'BTCUSDT';
+const SLASH_DASH = /[\/\-_]/g;
 
-	let s = input.trim().toUpperCase();
+export function normalizeSymbol(raw: string): string {
+  return raw.trim().toUpperCase().replace(SLASH_DASH, '');
+}
 
-	// Strip Coinalyze suffixes: _PERP.A, _PERP.B, _PERP
-	s = s.replace(/_PERP\.[A-Z]$/, '').replace(/_PERP$/, '');
-
-	// Remove separators: /, -, _
-	s = s.replace(/[\/\-_]/g, '');
-
-	// If it ends with USD but not USDT, append T
-	if (s.endsWith('USD') && !s.endsWith('USDT')) {
-		s = s + 'T';
-	}
-
-	// If no quote asset detected, append USDT
-	if (!s.endsWith('USDT') && !s.endsWith('BUSD') && !s.endsWith('USDC')) {
-		// Only append if it looks like a bare asset (3-5 chars)
-		if (s.length <= 5) {
-			s = s + 'USDT';
-		}
-	}
-
-	return s;
+/** Coinalyze 포맷: "BTCUSDT" → "BTCUSDT_PERP.A" */
+export function toCoinalyzeSymbol(symbol: string): string {
+  return normalizeSymbol(symbol) + '_PERP.A';
 }

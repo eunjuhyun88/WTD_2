@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import ChartStage from '../chart/ChartStage.svelte';
+  import { fromAnalyzeSnapshot } from '$lib/chart-engine/app';
 
   type ChartKline = { t: number; o: number; h: number; l: number; c: number; v: number };
   type TimePoint = { t: number; v: number };
@@ -12,13 +13,6 @@
     tone: Tone;
     mode: 'line' | 'histogram';
     points: TimePoint[];
-  };
-  type TradePlanLine = {
-    price: number;
-    color: string;
-    lineWidth: number;
-    lineStyle: number;
-    title: string;
   };
 
   let {
@@ -47,25 +41,13 @@
     derivatives?: any;
   } = $props();
 
-  let container: HTMLDivElement;
-  let chart: any;
-  let candleSeries = $state<any>(null);
-  let volumeSeries = $state<any>(null);
-  let ro: ResizeObserver | null = null;
-
-  let overlaySeries: any[] = [];
-  let overlayPriceLines: any[] = [];
-  let lwcModule = $state<any>(null);
-
   const cvdSeries = $derived(buildCvdSeries(data));
   const volumeDeltaSeries = $derived(buildVolumeDeltaSeries(data));
   const bbWidthSeries = $derived(buildBbWidthSeries(indicators, data));
   const sessionHigh = $derived(data.length ? Math.max(...data.map((k) => k.h)) : null);
   const sessionLow = $derived(data.length ? Math.min(...data.map((k) => k.l)) : null);
   const latestVolume = $derived(data.length ? data[data.length - 1]?.v ?? null : null);
-  const avgVolume = $derived(
-    data.length ? average(data.slice(-20).map((k) => k.v)) : null
-  );
+  const avgVolume = $derived(data.length ? average(data.slice(-20).map((k) => k.v)) : null);
   const srLevels = $derived(buildSrLevels(annotations));
   const trackCards = $derived(
     [
@@ -99,61 +81,48 @@
       },
     ].filter((track): track is TrackCard => track.points.length > 1)
   );
-  const signalChips = $derived(buildSignalChips({
-    symbol,
-    timeframe,
-    changePct,
-    currentPrice,
-    snapshot,
-    derivatives,
-    latestVolume,
-    avgVolume,
-  }));
+  const signalChips = $derived(
+    buildSignalChips({
+      symbol,
+      timeframe,
+      changePct,
+      currentPrice,
+      snapshot,
+      derivatives,
+      latestVolume,
+      avgVolume,
+    })
+  );
+  const spec = $derived.by(() => {
+    const base = fromAnalyzeSnapshot({
+      symbol,
+      timeframe,
+      chart: data,
+      annotations,
+      indicators,
+    });
+    const referenceLines = [
+      tradePlan?.entry
+        ? { id: 'entry', price: tradePlan.entry, color: '#f5f7ff', lineWidth: 1, lineStyle: 0, title: 'ENTRY' }
+        : null,
+      tradePlan?.stopLoss
+        ? { id: 'sl', price: tradePlan.stopLoss, color: '#ff537a', lineWidth: 1, lineStyle: 2, title: 'SL' }
+        : null,
+      tradePlan?.tp1
+        ? { id: 'tp1', price: tradePlan.tp1, color: 'rgba(0, 233, 184, 0.52)', lineWidth: 1, lineStyle: 2, title: 'TP1' }
+        : null,
+      tradePlan?.tp2
+        ? { id: 'tp2', price: tradePlan.tp2, color: 'rgba(0, 233, 184, 0.72)', lineWidth: 1, lineStyle: 2, title: 'TP2' }
+        : null,
+      tradePlan?.tp3
+        ? { id: 'tp3', price: tradePlan.tp3, color: 'rgba(0, 233, 184, 0.92)', lineWidth: 1, lineStyle: 2, title: 'TP3' }
+        : null,
+    ].filter((line) => line !== null);
 
-  $effect(() => {
-    if (candleSeries && volumeSeries && data.length > 0) {
-      const candles = data.map((k) => ({ time: k.t, open: k.o, high: k.h, low: k.l, close: k.c }));
-      const volumes = data.map((k) => ({
-        time: k.t,
-        value: k.v,
-        color: k.c >= k.o ? 'rgba(0, 233, 184, 0.30)' : 'rgba(255, 83, 122, 0.28)',
-      }));
-      candleSeries.setData(candles);
-      volumeSeries.setData(volumes);
-      chart.timeScale().fitContent();
-    }
-  });
-
-  $effect(() => {
-    if (!chart || !candleSeries || !lwcModule || data.length === 0) return;
-
-    const _ann = annotations;
-    const _ind = indicators;
-    const _tp = tradePlan;
-
-    clearOverlays();
-    renderSRLines(_ann);
-    renderBBBands(_ind);
-    renderEMA20(_ind);
-    renderTradePlan(_tp);
-  });
-
-  $effect(() => {
-    if (visible && chart && container) {
-      const tryResize = () => {
-        if (chart && container && container.clientWidth > 0 && container.clientHeight > 0) {
-          chart.applyOptions({
-            width: container.clientWidth,
-            height: container.clientHeight,
-          });
-          chart.timeScale().fitContent();
-        }
-      };
-      tryResize();
-      setTimeout(tryResize, 50);
-      setTimeout(tryResize, 150);
-      setTimeout(tryResize, 300);
-    }
+    return {
+      ...base,
+      referenceLines,
+    };
   });
 
   function average(values: number[]): number | null {
@@ -185,10 +154,7 @@
         if (!Number.isFinite(mid) || !Number.isFinite(upper) || !Number.isFinite(lower) || !time || mid === 0) {
           return null;
         }
-        return {
-          t: time,
-          v: ((upper - lower) / mid) * 100,
-        };
+        return { t: time, v: ((upper - lower) / mid) * 100 };
       })
       .filter((point: TimePoint | null): point is TimePoint => point !== null);
   }
@@ -387,214 +353,9 @@
         return 'tone-neutral';
     }
   }
-
-  function clearOverlays() {
-    for (const series of overlaySeries) {
-      try {
-        chart.removeSeries(series);
-      } catch {
-        // ignore removal errors for stale series
-      }
-    }
-    overlaySeries = [];
-
-    for (const priceLine of overlayPriceLines) {
-      try {
-        candleSeries?.removePriceLine(priceLine);
-      } catch {
-        // ignore removal errors for stale price lines
-      }
-    }
-    overlayPriceLines = [];
-  }
-
-  function renderSRLines(ann: any[]) {
-    if (!ann || !candleSeries) return;
-    for (const item of ann) {
-      if (item.type === 'support' || item.type === 'resistance') {
-        const priceLine = candleSeries.createPriceLine({
-          price: item.price,
-          color: item.type === 'support' ? 'rgba(0, 233, 184, 0.44)' : 'rgba(255, 83, 122, 0.42)',
-          lineWidth: (item.strength || 1) >= 4 ? 2 : 1,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: `${item.type === 'support' ? 'S' : 'R'}${item.strength || ''}`,
-        });
-        overlayPriceLines.push(priceLine);
-      }
-    }
-  }
-
-  function renderBBBands(ind: any) {
-    if (!ind?.bbUpper || data.length === 0) return;
-    const lwc = lwcModule;
-
-    const bbUpperSeries = chart.addSeries(lwc.LineSeries, {
-      color: 'rgba(54, 215, 255, 0.20)',
-      lineWidth: 1,
-      priceScaleId: 'right',
-      crosshairMarkerVisible: false,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    const bbMidSeries = chart.addSeries(lwc.LineSeries, {
-      color: 'rgba(255, 191, 95, 0.36)',
-      lineWidth: 1,
-      lineStyle: 2,
-      priceScaleId: 'right',
-      crosshairMarkerVisible: false,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    const bbLowerSeries = chart.addSeries(lwc.LineSeries, {
-      color: 'rgba(54, 215, 255, 0.20)',
-      lineWidth: 1,
-      priceScaleId: 'right',
-      crosshairMarkerVisible: false,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-
-    const bbData = (arr: number[]) =>
-      arr
-        .map((value, index) => ({ time: data[index]?.t, value }))
-        .filter((point): point is { time: number; value: number } => point.time != null && Number.isFinite(point.value));
-
-    bbUpperSeries.setData(bbData(ind.bbUpper));
-    bbMidSeries.setData(bbData(ind.bbMiddle ?? []));
-    bbLowerSeries.setData(bbData(ind.bbLower));
-
-    overlaySeries.push(bbUpperSeries, bbMidSeries, bbLowerSeries);
-  }
-
-  function renderEMA20(ind: any) {
-    if (!ind?.ema20 || data.length === 0) return;
-    const lwc = lwcModule;
-    const emaSeries = chart.addSeries(lwc.LineSeries, {
-      color: 'rgba(255, 191, 95, 0.85)',
-      lineWidth: 1.5,
-      priceScaleId: 'right',
-      crosshairMarkerVisible: false,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-
-    emaSeries.setData(
-      ind.ema20
-        .map((value: number, index: number) => ({ time: data[index]?.t, value }))
-        .filter((point: any) => point.time != null && Number.isFinite(point.value))
-    );
-
-    overlaySeries.push(emaSeries);
-  }
-
-  function renderTradePlan(tp: any) {
-    if (!tp || !candleSeries) return;
-
-    const lines = [
-      tp.entry
-        ? { price: tp.entry, color: '#f5f7ff', lineWidth: 1, lineStyle: 0, title: 'ENTRY' }
-        : null,
-      tp.stopLoss
-        ? { price: tp.stopLoss, color: '#ff537a', lineWidth: 1, lineStyle: 2, title: 'SL' }
-        : null,
-      tp.tp1
-        ? { price: tp.tp1, color: 'rgba(0, 233, 184, 0.52)', lineWidth: 1, lineStyle: 2, title: 'TP1' }
-        : null,
-      tp.tp2
-        ? { price: tp.tp2, color: 'rgba(0, 233, 184, 0.72)', lineWidth: 1, lineStyle: 2, title: 'TP2' }
-        : null,
-      tp.tp3
-        ? { price: tp.tp3, color: 'rgba(0, 233, 184, 0.92)', lineWidth: 1, lineStyle: 2, title: 'TP3' }
-        : null,
-    ].filter((line): line is TradePlanLine => line !== null);
-
-    for (const line of lines) {
-      const priceLine = candleSeries.createPriceLine({
-        price: line.price,
-        color: line.color,
-        lineWidth: line.lineWidth,
-        lineStyle: line.lineStyle,
-        axisLabelVisible: true,
-        title: line.title,
-      });
-      overlayPriceLines.push(priceLine);
-    }
-  }
-
-  onMount(async () => {
-    const lwc = await import('lightweight-charts');
-    lwcModule = lwc;
-
-    chart = lwc.createChart(container, {
-      width: container.clientWidth,
-      height: container.clientHeight,
-      layout: {
-        background: { color: 'transparent' },
-        textColor: '#6f90aa',
-        fontSize: 10,
-        fontFamily: 'var(--sc-font-mono, "JetBrains Mono", monospace)',
-      },
-      grid: {
-        vertLines: { color: 'rgba(39, 63, 86, 0.55)' },
-        horzLines: { color: 'rgba(24, 39, 58, 0.75)' },
-      },
-      crosshair: {
-        mode: lwc.CrosshairMode.Normal,
-        vertLine: { color: 'rgba(54, 215, 255, 0.35)', width: 1, style: lwc.LineStyle.Dashed },
-        horzLine: { color: 'rgba(54, 215, 255, 0.30)', width: 1, style: lwc.LineStyle.Dashed },
-      },
-      rightPriceScale: {
-        borderColor: 'rgba(39, 63, 86, 0.9)',
-        scaleMargins: { top: 0.08, bottom: 0.24 },
-      },
-      timeScale: {
-        borderColor: 'rgba(39, 63, 86, 0.9)',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    });
-
-    candleSeries = chart.addSeries(lwc.CandlestickSeries, {
-      upColor: '#00e9b8',
-      downColor: '#ff537a',
-      borderUpColor: '#00e9b8',
-      borderDownColor: '#ff537a',
-      wickUpColor: 'rgba(0, 233, 184, 0.65)',
-      wickDownColor: 'rgba(255, 83, 122, 0.68)',
-    });
-
-    volumeSeries = chart.addSeries(lwc.HistogramSeries, {
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'volume',
-    });
-    volumeSeries.priceScale().applyOptions({
-      borderColor: 'rgba(39, 63, 86, 0.55)',
-      scaleMargins: { top: 0.82, bottom: 0 },
-    });
-
-    ro = new ResizeObserver(() => {
-      if (chart && container && container.clientWidth > 0) {
-        chart.applyOptions({
-          width: container.clientWidth,
-          height: container.clientHeight,
-        });
-      }
-    });
-    ro.observe(container);
-  });
-
-  onDestroy(() => {
-    ro?.disconnect();
-    clearOverlays();
-    if (chart) {
-      chart.remove();
-      chart = null;
-    }
-  });
 </script>
 
-<div class="cg-shell">
+<div class:muted={!visible} class="cg-shell">
   <div class="cg-topbar">
     {#each signalChips as chip}
       <div class={`cg-chip ${toneClass(chip.tone)}`}>
@@ -605,7 +366,9 @@
   </div>
 
   <div class="cg-stage">
-    <div class="cg-canvas" bind:this={container}></div>
+    <div class="cg-canvas">
+      <ChartStage spec={spec} presentation="fill" />
+    </div>
 
     <div class="cg-hud cg-hud-left">
       <div class="cg-hud-head">MARKET FRAME</div>
@@ -699,19 +462,8 @@
     position: relative;
   }
 
-  .cg-shell::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      180deg,
-      transparent 0,
-      transparent 3px,
-      rgba(18, 29, 45, 0.26) 3px,
-      rgba(18, 29, 45, 0.26) 4px
-    );
-    pointer-events: none;
-    opacity: 0.38;
+  .cg-shell.muted {
+    opacity: 0.72;
   }
 
   .cg-topbar {
@@ -761,150 +513,103 @@
   .cg-stage {
     position: relative;
     min-height: 0;
-    overflow: hidden;
-  }
-
-  .cg-stage::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(29, 49, 71, 0.26) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(29, 49, 71, 0.18) 1px, transparent 1px);
-    background-size: 100% 56px, 56px 100%;
-    pointer-events: none;
-    opacity: 0.34;
-    z-index: 1;
+    padding: 10px;
   }
 
   .cg-canvas {
-    position: absolute;
-    inset: 0;
-    min-height: 0;
-    z-index: 0;
+    height: 100%;
+    min-height: 320px;
   }
 
   .cg-hud {
     position: absolute;
-    top: 10px;
-    z-index: 2;
-    width: 112px;
-    padding: 10px 10px 8px;
-    border: 1px solid rgba(39, 63, 86, 0.9);
-    border-radius: 4px;
-    background: rgba(4, 11, 19, 0.88);
-    backdrop-filter: blur(4px);
+    top: 18px;
+    z-index: 3;
+    width: 148px;
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid rgba(39, 63, 86, 0.88);
+    border-radius: 6px;
+    background: rgba(4, 12, 21, 0.84);
+    backdrop-filter: blur(10px);
   }
 
-  .cg-hud-left {
-    left: 10px;
-  }
-
-  .cg-hud-right {
-    right: 10px;
-  }
+  .cg-hud-left { left: 18px; }
+  .cg-hud-right { right: 18px; }
 
   .cg-hud-row,
   .cg-level {
     display: flex;
-    align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding-top: 6px;
-    margin-top: 6px;
-    border-top: 1px solid rgba(39, 63, 86, 0.46);
+    align-items: center;
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 10px;
-    color: rgba(183, 211, 233, 0.78);
-  }
-
-  .cg-level strong,
-  .cg-hud-row strong {
-    color: rgba(231, 241, 248, 0.95);
-    font-size: 10px;
+    font-size: 11px;
+    color: rgba(223, 236, 247, 0.92);
   }
 
   .cg-level-tag {
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
 
-  .cg-level-empty {
-    justify-content: space-between;
-  }
-
   .cg-tracks {
-    position: relative;
-    z-index: 2;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1px;
-    padding-top: 1px;
-    background: rgba(39, 63, 86, 0.86);
-    border-top: 1px solid rgba(39, 63, 86, 0.9);
+    gap: 8px;
+    padding: 8px 10px 10px;
+    border-top: 1px solid rgba(39, 63, 86, 0.85);
+    background: rgba(5, 12, 20, 0.82);
   }
 
   .cg-track {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-    padding: 8px 10px 10px;
-    background: rgba(4, 11, 19, 0.96);
+    padding: 8px;
+    border: 1px solid rgba(39, 63, 86, 0.75);
+    border-radius: 6px;
+    background: rgba(7, 16, 28, 0.88);
   }
 
   .cg-track-meta {
     display: flex;
-    align-items: baseline;
     justify-content: space-between;
     gap: 8px;
+    margin-bottom: 6px;
   }
 
   .cg-track-value {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     font-size: 11px;
-    font-weight: 700;
   }
 
   .cg-track-svg {
     width: 100%;
     height: 56px;
-    overflow: visible;
+    display: block;
   }
 
-  .tone-bull {
-    color: #00e9b8;
-  }
+  .tone-bull { color: #00e9b8; }
+  .tone-bear { color: #ff537a; }
+  .tone-warn { color: #ffbf5f; }
+  .tone-cyan { color: #36d7ff; }
+  .tone-neutral { color: #8aa6be; }
 
-  .tone-bear {
-    color: #ff537a;
-  }
-
-  .tone-neutral {
-    color: #9ab0c5;
-  }
-
-  .tone-warn {
-    color: #ffbf5f;
-  }
-
-  .tone-cyan {
-    color: #36d7ff;
-  }
-
-  @media (max-width: 900px) {
-    .cg-topbar {
+  @media (max-width: 960px) {
+    .cg-topbar,
+    .cg-tracks {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .cg-hud {
-      width: 104px;
-      padding: 8px;
+      position: static;
+      width: auto;
+      margin-top: 8px;
     }
 
-    .cg-tracks {
-      grid-template-columns: 1fr;
+    .cg-stage {
+      display: grid;
+      gap: 8px;
     }
   }
 </style>
