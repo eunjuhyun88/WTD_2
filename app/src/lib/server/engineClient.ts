@@ -97,9 +97,10 @@ export interface EnsembleSignal {
 
 export interface ScoreResult {
   snapshot: SignalSnapshotRaw;
-  p_win: number | null;          // null until LightGBM trained
-  blocks_triggered: string[];    // active building block names
+  p_win: number | null;             // null until LightGBM trained
+  blocks_triggered: string[];       // active building block names
   ensemble: EnsembleSignal | null;  // fused ML + blocks signal
+  ensemble_triggered: boolean;      // convenience: confidence in (high|medium) && direction != neutral
 }
 
 // ---------------------------------------------------------------------------
