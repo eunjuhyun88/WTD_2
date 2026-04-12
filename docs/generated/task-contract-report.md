@@ -1,6 +1,6 @@
 # Task Contract Report
 
-- Current branch: `claude/upbeat-noyce`
+- Current branch: `codex/ui-home-pattern-unify`
 - Active dir: `docs/task-contracts/active`
 - Completed dir: `docs/task-contracts/completed`
 - Require contract on feature branches: `no`

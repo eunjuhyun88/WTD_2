@@ -1228,6 +1228,8 @@
           <span class="hb-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
             {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
           </span>
+        {:else}
+          <span class="hb-note">Search a ticker, wallet, or saved setup.</span>
         {/if}
       </div>
       <div class="hb-right">
@@ -1236,6 +1238,8 @@
           <span class="hb-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
             {currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
           </span>
+        {:else}
+          <span class="hb-status-chip">Live workspace</span>
         {/if}
       </div>
     {/if}
@@ -1283,8 +1287,34 @@
     {/if}
 
     <!-- DATA FEED -->
-    <div class="data-feed main-panel main-panel-center" bind:this={feedContainer}>
+    <div class="data-feed main-panel main-panel-center" class:feed-empty={feedEntries.length === 0} bind:this={feedContainer}>
       <div class="feed-inner">
+        {#if feedEntries.length === 0}
+          <section class="feed-start-panel">
+            <div class="feed-start-copy">
+              <span class="feed-start-kicker">START HERE</span>
+              <h2>Keep the chart and the question in one place.</h2>
+              <p>
+                Ask for a symbol, timeframe, wallet flow, or saved setup. Terminal should feel like
+                one guided workspace, not three competing panes.
+              </p>
+            </div>
+            <div class="feed-start-actions">
+              <button type="button" class="feed-start-chip" onclick={() => inputText = 'BTC 4H reclaim after selloff'}>
+                BTC 4H reclaim
+              </button>
+              <button type="button" class="feed-start-chip" onclick={() => inputText = 'ETH 1D squeeze with funding spike'}>
+                ETH 1D squeeze
+              </button>
+              <button type="button" class="feed-start-chip" onclick={() => inputText = '0x742d35... wallet flow'}>
+                Wallet flow
+              </button>
+              <button type="button" class="feed-start-chip" onclick={() => inputText = 'SOL range breakdown with OI shift'}>
+                SOL range breakdown
+              </button>
+            </div>
+          </section>
+        {/if}
         {#each feedEntries as entry}
           {#if entry.kind === 'query'}
             <div class="fe fe-query">
@@ -1710,6 +1740,11 @@
   }
   .hb-change.up { color: var(--sc-good, #adca7c); }
   .hb-change.dn { color: var(--sc-bad, #cf7f8f); }
+  .hb-note {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 12px;
+    color: rgba(247, 242, 234, 0.6);
+  }
   .hb-right { display: flex; align-items: center; gap: 6px; }
   .wallet-head-right { white-space: nowrap; }
   .hb-alpha-label {
@@ -1723,6 +1758,20 @@
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     font-size: 16px;
     font-weight: 800;
+  }
+  .hb-status-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(249, 216, 194, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(247, 242, 234, 0.62);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   .hb-wallet-address {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
@@ -1797,10 +1846,73 @@
   }
   .feed-inner {
     max-width: 720px;
-    padding: 8px 16px 80px;
+    padding: 16px 16px 80px;
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 10px;
+  }
+
+  .feed-start-panel {
+    display: grid;
+    gap: 18px;
+    padding: 22px;
+    border-radius: 24px;
+    border: 1px solid rgba(249, 216, 194, 0.12);
+    background:
+      linear-gradient(180deg, rgba(18, 18, 20, 0.88), rgba(10, 10, 12, 0.84)),
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.08), transparent 42%);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.12);
+  }
+  .feed-start-copy {
+    display: grid;
+    gap: 10px;
+  }
+  .feed-start-kicker,
+  .feed-start-chip {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .feed-start-kicker {
+    font-size: 10px;
+    color: rgba(219, 154, 159, 0.9);
+  }
+  .feed-start-copy h2 {
+    margin: 0;
+    color: rgba(250, 247, 235, 0.98);
+    font-size: clamp(1.5rem, 3.2vw, 2.1rem);
+    line-height: 1.02;
+    letter-spacing: -0.05em;
+  }
+  .feed-start-copy p {
+    margin: 0;
+    color: rgba(250, 247, 235, 0.68);
+    font-size: 0.98rem;
+    line-height: 1.64;
+  }
+  .feed-start-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .feed-start-chip {
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(249, 216, 194, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(250, 247, 235, 0.76);
+    font-size: 10px;
+    cursor: pointer;
+    transition:
+      transform var(--sc-duration-fast),
+      background var(--sc-duration-fast),
+      border-color var(--sc-duration-fast);
+  }
+  .feed-start-chip:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(219, 154, 159, 0.24);
   }
 
   /* ─── Feed Entry base ─── */
@@ -2446,24 +2558,74 @@
   /* ═══ RESPONSIVE ═══ */
   @media (max-width: 1024px) {
     .main-content {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1fr;
+      align-content: start;
+      gap: 12px;
+      padding: 14px;
+      overflow-y: auto;
     }
     .panel-divider {
       display: none;
     }
+    .main-panel-left {
+      order: 1;
+      grid-column: auto;
+    }
+    .main-panel-center {
+      order: 2;
+      grid-column: auto;
+    }
+    .main-panel-right {
+      order: 3;
+      grid-column: auto;
+    }
+    .data-feed {
+      flex: none;
+      overflow: visible;
+      border: 1px solid rgba(249, 216, 194, 0.12);
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(14, 14, 16, 0.9), rgba(9, 9, 11, 0.88)),
+        radial-gradient(circle at top left, rgba(219, 154, 159, 0.06), transparent 42%);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.14);
+    }
+    .feed-inner {
+      max-width: none;
+      padding: 14px 14px 18px;
+      gap: 8px;
+    }
     .chart-panel {
       width: 100%;
+      border: 1px solid rgba(249, 216, 194, 0.12);
+      border-radius: 24px;
       border-left: none;
-      border-top: 1px solid var(--sc-line-soft);
-      max-height: 380px;
+      border-top: none;
+      max-height: none;
+      min-height: 300px;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.14);
     }
-    .cp-chart { min-height: 160px; }
+    .chart-panel {
+      overflow: hidden;
+    }
+    .cp-chart { min-height: 220px; }
     .header-bar {
       height: auto;
-      padding: 10px 14px;
+      margin: 14px 14px 0;
+      padding: 14px 16px;
       gap: 10px;
       align-items: flex-start;
+      border: 1px solid rgba(249, 216, 194, 0.1);
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(16, 16, 18, 0.9), rgba(10, 10, 12, 0.86)),
+        radial-gradient(circle at top right, rgba(219, 154, 159, 0.05), transparent 36%);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.14);
+    }
+    .hb-left,
+    .hb-center,
+    .hb-right {
+      min-width: 0;
     }
     .wallet-head-left {
       flex-wrap: wrap;
@@ -2472,6 +2634,120 @@
       max-width: 100%;
       white-space: normal;
       overflow: visible;
+    }
+    .input-bar {
+      position: sticky;
+      bottom: calc(var(--sc-mobile-nav-h, 64px) + 10px);
+      z-index: 4;
+      padding: 0 14px 10px;
+      border-top: none;
+      background: transparent;
+    }
+    .input-box {
+      max-width: none;
+      padding: 8px 8px 8px 16px;
+      border-radius: 22px;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.16);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .terminal-root {
+      height: 100%;
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.98), rgba(4, 4, 6, 1)),
+        radial-gradient(circle at top left, rgba(219, 154, 159, 0.08), transparent 36%);
+    }
+    .header-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .hb-left,
+    .hb-center,
+    .hb-right {
+      justify-content: space-between;
+    }
+    .hb-note {
+      line-height: 1.5;
+    }
+    .feed-start-panel {
+      padding: 20px;
+      gap: 16px;
+      border-radius: 22px;
+    }
+    .feed-start-copy h2 {
+      font-size: clamp(1.44rem, 7vw, 1.92rem);
+    }
+    .feed-start-copy p {
+      font-size: 0.94rem;
+    }
+    .cp-header {
+      padding: 14px;
+    }
+    .cp-chart {
+      min-height: 200px;
+      padding: 8px;
+    }
+    .cp-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .fe-actions {
+      flex-wrap: wrap;
+    }
+    .action-btn {
+      flex: 1 1 calc(50% - 6px);
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 540px) {
+    .main-content {
+      padding: 12px;
+      gap: 10px;
+    }
+    .header-bar {
+      margin: 12px 12px 0;
+      padding: 12px 14px;
+      border-radius: 20px;
+    }
+    .hb-symbol {
+      font-size: 18px;
+    }
+    .hb-note {
+      font-size: 11px;
+    }
+    .data-feed,
+    .chart-panel {
+      border-radius: 20px;
+    }
+    .feed-inner {
+      padding: 12px 12px 16px;
+    }
+    .feed-start-panel {
+      padding: 18px;
+      border-radius: 20px;
+    }
+    .feed-start-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .feed-start-chip {
+      width: 100%;
+      justify-content: center;
+    }
+    .input-bar {
+      bottom: calc(var(--sc-mobile-nav-h, 64px) + 8px);
+      padding: 0 12px 8px;
+    }
+    .input-box {
+      padding: 6px 6px 6px 14px;
+      border-radius: 20px;
+    }
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
     }
   }
 </style>

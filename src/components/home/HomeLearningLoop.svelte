@@ -34,7 +34,7 @@
   .section {
     position: relative;
     z-index: 3;
-    padding: 10px clamp(22px, 4vw, 48px) 30px;
+    padding: 18px clamp(22px, 4vw, 48px) 42px;
     font-family: var(--sc-font-body);
   }
 
@@ -46,7 +46,7 @@
   .rail-shell {
     display: grid;
     grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
-    gap: 28px;
+    gap: 40px;
     align-items: start;
   }
 
@@ -100,8 +100,8 @@
   .learning-step {
     display: grid;
     grid-template-columns: 56px minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px 0;
+    gap: 16px;
+    padding: 16px 0;
     border-bottom: 1px solid rgba(250, 247, 235, 0.08);
   }
 
@@ -112,7 +112,7 @@
 
   .learning-body {
     display: grid;
-    gap: 6px;
+    gap: 8px;
   }
 
   .learning-body h3 {
@@ -134,12 +134,27 @@
     .section {
       padding-left: 18px;
       padding-right: 18px;
-      padding-bottom: 28px;
+      padding-bottom: 34px;
+    }
+
+    .section-head {
+      gap: 12px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(1.94rem, 8.5vw, 2.36rem);
+      line-height: 1.02;
+    }
+
+    .section-head p {
+      font-size: 0.98rem;
+      line-height: 1.68;
     }
 
     .learning-step {
       grid-template-columns: 1fr;
-      gap: 6px;
+      gap: 10px;
+      padding: 18px 0;
     }
   }
 </style>

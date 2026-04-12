@@ -51,15 +51,14 @@
     bottom: 0;
     z-index: var(--sc-z-sticky, 140);
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0;
-    height: calc(var(--sc-mobile-nav-h, 64px) + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    height: calc(var(--sc-mobile-nav-h, 74px) + env(safe-area-inset-bottom, 0px));
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
     background:
-      radial-gradient(circle at 15% 100%, rgba(219, 154, 159, 0.10), transparent 34%),
-      radial-gradient(circle at 85% 100%, rgba(173, 202, 124, 0.08), transparent 32%),
-      linear-gradient(180deg, rgba(12, 18, 30, 0.96), rgba(9, 14, 24, 0.96));
-    border-top: 1px solid rgba(219, 154, 159, 0.18);
+      linear-gradient(180deg, rgba(10, 10, 11, 0.9), rgba(6, 6, 7, 0.92)),
+      radial-gradient(circle at center top, rgba(249, 216, 194, 0.04), transparent 42%);
+    border-top: 1px solid rgba(249, 216, 194, 0.08);
     backdrop-filter: blur(18px);
   }
 
@@ -67,39 +66,41 @@
     position: relative;
     display: grid;
     place-items: center;
-    gap: 4px;
-    border: none;
-    background: transparent;
-    color: var(--sc-text-3);
+    gap: 6px;
+    border: 1px solid rgba(249, 216, 194, 0.08);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(250, 247, 235, 0.52);
     font-family: var(--sc-font-body);
     font-weight: 600;
     cursor: pointer;
-    min-height: var(--sc-mobile-nav-h, 64px);
+    min-height: 56px;
     text-decoration: none;
-    transition: color var(--sc-duration-fast), background var(--sc-duration-fast);
+    transition: color var(--sc-duration-fast), background var(--sc-duration-fast), transform var(--sc-duration-fast);
   }
 
   /* Highlight tab (LAB) — accent color even when inactive */
   .mobile-nav-item.highlight {
-    color: var(--sc-accent);
+    color: rgba(var(--home-ref-accent-rgb, 219, 154, 159), 0.88);
   }
 
   /* Active state */
   .mobile-nav-item.active {
-    color: var(--sc-text-0);
-    background: rgba(219, 154, 159, 0.06);
+    color: rgba(250, 247, 235, 0.96);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+    transform: translateY(-1px);
   }
 
   .mobile-nav-item.active::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 18%;
-    right: 18%;
-    height: 2px;
-    border-radius: 0 0 999px 999px;
+    top: 6px;
+    left: 22%;
+    right: 22%;
+    height: 1px;
+    border-radius: 999px;
     background: linear-gradient(90deg, var(--sc-accent), var(--sc-accent-3));
-    box-shadow: 0 0 8px rgba(219, 154, 159, 0.18);
+    box-shadow: none;
   }
 
   /* Active + highlight = accent color text */
@@ -111,19 +112,19 @@
   }
 
   .icon {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1;
   }
 
   .label {
-    font-size: 8px;
-    letter-spacing: 0.06em;
+    font-size: 11px;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
   }
 
   .star {
     margin-left: 2px;
-    font-size: 7px;
+    font-size: 9px;
   }
 
   .badge {

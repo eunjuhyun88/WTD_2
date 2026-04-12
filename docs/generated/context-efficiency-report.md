@@ -8,19 +8,19 @@ This report estimates how much context the routing system saves before the agent
 | --- | --- | --- | --- | --- | --- |
 | small map | 5 | 1036 | 8769 | 55.2% | 98.6% |
 | canonical | 15 | 2162 | 19565 | 0.0% | 96.9% |
-| all docs | 180 | 60415 | 633328 | -3137.0% | 0.0% |
+| all docs | 177 | 60320 | 633369 | -3137.3% | 0.0% |
 
 ## Estimated Savings
 
 - Small map saves approximately `10796` tokens vs the canonical bundle.
-- Small map saves approximately `624559` tokens vs the all-doc bundle.
-- Surface `core` saves approximately `621048` tokens vs the all-doc bundle.
+- Small map saves approximately `624600` tokens vs the all-doc bundle.
+- Surface `core` saves approximately `621045` tokens vs the all-doc bundle.
 
 ## Surface Bundles
 
 | Bundle | Files | Lines | Approx Tokens | Reduction vs canonical | Reduction vs all docs |
 | --- | --- | --- | --- | --- | --- |
-| core | 8 | 1320 | 12280 | 37.2% | 98.1% |
+| core | 8 | 1321 | 12324 | 37.0% | 98.1% |
 
 ## Structural Scorecard
 
