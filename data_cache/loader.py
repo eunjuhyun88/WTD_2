@@ -15,6 +15,10 @@ import pandas as pd
 
 from data_cache.fetch_binance import fetch_klines_max
 from data_cache.fetch_binance_perp import fetch_perp_max
+# Re-export the canonical CacheMiss from the top-level exceptions
+# taxonomy so the symbol remains importable from data_cache without
+# forcing callers to know about the new module layout.
+from exceptions import CacheMiss  # noqa: F401  (re-exported)
 
 # On-disk storage — resolves to cogochi-autoresearch/data_cache/cache/.
 # This is gitignored. See cogochi-autoresearch/.gitignore handling in
@@ -22,10 +26,6 @@ from data_cache.fetch_binance_perp import fetch_perp_max
 CACHE_DIR = Path(__file__).parent / "cache"
 
 _SUPPORTED_TIMEFRAMES = frozenset({"1h"})
-
-
-class CacheMiss(RuntimeError):
-    """Raised when load_klines(..., offline=True) hits an empty cache."""
 
 
 def cache_path(symbol: str, timeframe: str) -> Path:
