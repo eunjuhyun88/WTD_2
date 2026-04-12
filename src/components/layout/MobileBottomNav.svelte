@@ -1,6 +1,5 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { openTradeCount } from '$lib/stores/quickTradeStore';
   import { MOBILE_NAV_SURFACES, isAppSurfaceActive } from '$lib/navigation/appSurfaces';
 
   type NavItem = {
@@ -13,7 +12,6 @@
   };
 
   const activePath = $derived($page.url.pathname);
-  const openPositions = $derived($openTradeCount);
 
   const items = $derived<NavItem[]>(
     MOBILE_NAV_SURFACES.map((surface) => ({
@@ -21,7 +19,7 @@
       label: surface.label,
       icon: surface.mobileIcon,
       href: surface.href,
-      badge: surface.id === 'agent' ? (openPositions > 0 ? openPositions : undefined) : undefined,
+      badge: undefined,
       highlight: surface.highlight === true,
     }))
   );
