@@ -28,7 +28,7 @@ class KlineBar(BaseModel):
     l: float  # low
     c: float  # close
     v: float  # base volume
-    tbv: float = 0.5  # taker buy base volume (fraction if not available)
+    tbv: float = 0.0  # taker buy base volume — absolute, same unit as volume
 
 
 class PerpSnapshot(BaseModel):
@@ -162,7 +162,7 @@ class TradeRecord(BaseModel):
 
 
 class TrainRequest(BaseModel):
-    records: list[TradeRecord] = Field(..., min_length=10)
+    records: list[TradeRecord] = Field(..., min_length=20)  # matches MIN_TRAIN_RECORDS
     user_id: Optional[str] = None
 
 
