@@ -60,3 +60,7 @@ output/
 tmp/
 .mcp.json
 .env*.local
+
+# MemKraft — runtime state stays local, knowledge pages are tracked.
+memory/.memkraft/
+memory/sessions/
