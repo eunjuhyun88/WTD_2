@@ -558,23 +558,32 @@ export async function* callLLMStream(options: LLMStreamOptions): AsyncGenerator<
   throw lastError ?? new Error('All LLM providers failed (streaming)');
 }
 
-function getStreamConfig(provider: LLMProvider): { url: string; apiKey: string; model: string; extraHeaders?: Record<string, string> } {
+interface StreamConfig {
+  url: string;
+  apiKey: string;
+  model: string;
+  extraHeaders?: Record<string, string>;
+  onRotate: () => void;
+}
+
+function getStreamConfig(provider: LLMProvider): StreamConfig {
   switch (provider) {
-    case 'ollama':     return { url: ollamaChatUrl(), apiKey: '', model: OLLAMA_MODEL };
-    case 'groq':       return { url: groqUrl(), apiKey: getGroqApiKey(), model: GROQ_MODEL };
-    case 'cerebras':   return { url: cerebrasUrl(), apiKey: getCerebrasApiKey(), model: CEREBRAS_MODEL };
-    case 'mistral':    return { url: mistralUrl(), apiKey: getMistralApiKey(), model: MISTRAL_MODEL };
+    case 'ollama':     return { url: ollamaChatUrl(), apiKey: '', model: OLLAMA_MODEL, onRotate: () => {} };
+    case 'groq':       return { url: groqUrl(), apiKey: getGroqApiKey(), model: GROQ_MODEL, onRotate: rotateGroqKey };
+    case 'cerebras':   return { url: cerebrasUrl(), apiKey: getCerebrasApiKey(), model: CEREBRAS_MODEL, onRotate: rotateCerebrasKey };
+    case 'mistral':    return { url: mistralUrl(), apiKey: getMistralApiKey(), model: MISTRAL_MODEL, onRotate: rotateMistralKey };
     case 'openrouter': return {
       url: openrouterUrl(),
       apiKey: getOpenRouterApiKey(),
       model: OPENROUTER_MODEL,
       extraHeaders: { 'HTTP-Referer': OPENROUTER_SITE_URL, 'X-Title': OPENROUTER_APP_NAME },
+      onRotate: rotateOpenRouterKey,
     };
-    case 'grok':     return { url: grokUrl(), apiKey: getGrokApiKey(), model: GROK_MODEL };
-    case 'qwen':     return { url: qwenUrl(), apiKey: getQwenApiKey(), model: QWEN_MODEL };
-    case 'kimi':     return { url: kimiUrl(), apiKey: getKimiApiKey(), model: KIMI_MODEL };
-    case 'hf':       return { url: hfUrl(), apiKey: getHfToken(), model: HF_MODEL };
-    case 'deepseek': return { url: deepseekUrl(), apiKey: getDeepSeekApiKey(), model: DEEPSEEK_MODEL };
+    case 'grok':     return { url: grokUrl(), apiKey: getGrokApiKey(), model: GROK_MODEL, onRotate: rotateGrokKey };
+    case 'qwen':     return { url: qwenUrl(), apiKey: getQwenApiKey(), model: QWEN_MODEL, onRotate: rotateQwenKey };
+    case 'kimi':     return { url: kimiUrl(), apiKey: getKimiApiKey(), model: KIMI_MODEL, onRotate: rotateKimiKey };
+    case 'hf':       return { url: hfUrl(), apiKey: getHfToken(), model: HF_MODEL, onRotate: rotateHfToken };
+    case 'deepseek': return { url: deepseekUrl(), apiKey: getDeepSeekApiKey(), model: DEEPSEEK_MODEL, onRotate: rotateDeepSeekKey };
     default:         throw new Error(`${provider}: streaming not supported`);
   }
 }
@@ -588,13 +597,12 @@ async function* streamFromProvider(
 ): AsyncGenerator<string> {
   // Gemini uses different format — skip for now (it's last in fallback)
   if (provider === 'gemini') {
-    // Fallback: non-streaming call, yield all at once
     const result = await callGemini(messages, maxTokens, temperature, timeoutMs);
     yield result.text;
     return;
   }
 
-  const { url, apiKey, model, extraHeaders } = getStreamConfig(provider);
+  const { url, apiKey, model, extraHeaders, onRotate } = getStreamConfig(provider);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -611,18 +619,7 @@ async function* streamFromProvider(
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
-      if (res.status === 429 || res.status === 401) {
-        // Universal rotation — every provider's streaming path honours 429/401 failover
-        if (provider === 'groq') rotateGroqKey();
-        else if (provider === 'cerebras') rotateCerebrasKey();
-        else if (provider === 'hf') rotateHfToken();
-        else if (provider === 'deepseek') rotateDeepSeekKey();
-        else if (provider === 'qwen') rotateQwenKey();
-        else if (provider === 'grok') rotateGrokKey();
-        else if (provider === 'kimi') rotateKimiKey();
-        else if (provider === 'mistral') rotateMistralKey();
-        else if (provider === 'openrouter') rotateOpenRouterKey();
-      }
+      if (res.status === 429 || res.status === 401) onRotate();
       throw new Error(`${provider} ${res.status}: ${errBody.slice(0, 200)}`);
     }
 
