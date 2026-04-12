@@ -799,14 +799,14 @@ Classifies every file in `src/` across 4 axes for the Cogochi day-1 cleanup plan
 - **Files archived**: 12 route files (-8,827 lines from active src/)
 - **Risk**: Low (no active imports; nav references → dead links = SvelteKit 404, cleanup in Batch 9/10)
 
-### Batch 4 -- Archive legacy components + API routes + client wrappers
-- Archive all legacy-delete components (arena/*, arena-v2/*, arena-war/*, battle/*, agent/*, community/*, live/*, CopyTradeModal, OracleModal)
-- Archive all legacy-delete API routes (arena/*, arena-war/*, battle/*, agents/*, matches/*, tournaments/*, cogochi/battle/*, cogochi/skills/*)
-- Archive legacy client wrappers (arenaApi, matchesApi, agentStatsApi)
-- Archive legacy stores (battleStore, battleFeedStore, arenaV2State, arenaWarStore, activeGamesStore, matchHistoryStore, copyTradeStore)
-- Evaluate HD-6 (chartDrawingEngine reusability) before archiving
-- **Files touched**: ~85 files
-- **Risk**: MEDIUM (check for surviving imports)
+### Batch 4 -- Archive legacy components + API routes + client wrappers ✅ DONE
+- Archived 22 API routes, 5 component dirs + 4 individual components, 5 stores, 1 client API
+- Extracted `Finding` type from `arenaV2State` → `contracts/signals.ts`
+- Redirected `/agent`, `/agent/[id]`, `/agents` → `/lab` (Batch 6 partial)
+- **3 files kept (active, not archivable)**: `matchHistoryStore` (5 consumers), `copyTradeStore` (WarRoom dep), `agentStatsApi` (agentData dep), `matchesApi` (matchHistoryStore dep)
+- HD-6 (chartDrawingEngine): archived with arena components — if reuse needed, recover from `_archive/`
+- **Files archived**: ~90 files
+- **Risk**: Resolved — 0 type errors after archive
 
 ### Batch 5 -- Unlink parked surfaces
 - Unlink cogochi route pages, cogochi components, passport components
