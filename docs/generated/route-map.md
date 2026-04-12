@@ -29,11 +29,9 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/signals/[postId]` | community signal detail route | single-post evidence, comments, and trade handoff | route-local post loader + `communityStore` reaction state | `docs/page-specs/signals-detail-page.md` |
 | `/terminal` | intel/action surface | scan, intel, action orchestration | route shell + `copyTradeStore`, `trackedSignalStore`, live prices | `docs/product-specs/terminal.md` |
 | `/world` | world bridge surface | world-map preview, readiness framing, battle handoff | `gameState` | `docs/page-specs/world-page.md` |
-| `/creator/[userId]` | public creator profile route | creator context and recent community signals | route-local creator loader + community signal cards | `docs/page-specs/creator-page.md` |
 | `/cogochi` | cogochi hub | DOUNI virtual pet entry and navigation | route-level data | `docs/PRODUCT_SENSE.md` |
 | `/cogochi/scanner` | cogochi scanner surface | alpha scan results, filter/sort by alpha + regime, layer-score deep dive | route-local scan result state, layer score rows, filter/sort selection | `docs/product-specs/terminal.md` |
 | `/scanner` | top-level scanner redirect/surface | canonical scanner entry — may redirect to /cogochi/scanner | none | `docs/product-specs/terminal.md` |
-| `/terminal-legacy` | legacy terminal shell preserved for comparison | prior war-room + chart + intel layout kept during terminal refactor | route-local chat/pattern state + `copyTradeStore`, `trackedSignalStore` | `docs/product-specs/terminal.md` |
 
 ## Route Shells and Global Entry
 
