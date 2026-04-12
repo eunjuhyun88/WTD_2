@@ -47,6 +47,36 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 SLICE_ID="$(jq -r '.slice_id // "unknown"' "$CLAIM_FILE")"
+
+# --- Cross-worktree duplicate claim check (Z5) ---
+# Walk sibling worktrees; if ANY other worktree also holds a claim for
+# this slice-id, reject — two worktrees working on the same slice is
+# the root cause of most sibling collisions.
+CROSS_CONFLICT=""
+while IFS= read -r wt_line; do
+	[ -z "$wt_line" ] && continue
+	wt_path="${wt_line#worktree }"
+	# Skip ourselves
+	[ "$wt_path" = "$ROOT_DIR" ] && continue
+	sibling_claim="${wt_path}/.agent-context/ownership/${SLICE_ID}.json"
+	if [ -f "$sibling_claim" ]; then
+		sibling_branch="$(jq -r '.branch // "unknown"' "$sibling_claim" 2>/dev/null || echo 'unknown')"
+		CROSS_CONFLICT="${wt_path} (branch: ${sibling_branch})"
+		break
+	fi
+done < <(git worktree list --porcelain 2>/dev/null | grep '^worktree ')
+
+if [ -n "$CROSS_CONFLICT" ]; then
+	{
+		echo "[pre-commit] Cross-worktree conflict: slice '${SLICE_ID}' is also claimed by:"
+		echo "  ${CROSS_CONFLICT}"
+		echo ""
+		echo "Two worktrees must not work on the same slice. Kill the stale claim"
+		echo "in the other worktree (\`slice kill ${SLICE_ID}\`) before committing here."
+	} >&2
+	exit 1
+fi
+
 # macOS ships bash 3.2 which lacks `readarray` (bash 4+ builtin). Use a
 # while-read loop instead so the hook works on every Apple silicon dev box.
 OWNED=()
