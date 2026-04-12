@@ -8,11 +8,17 @@ dependencies = [
     "pandas>=2.0",
     "numpy>=1.24",
     "pyyaml>=6.0",
+    "lightgbm[apple]>=4.6.0",
+    "scikit-learn>=1.8.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+]
+ml = [
+    "lightgbm>=4.0",
+    "scikit-learn>=1.4",
 ]
 
 [tool.pytest.ini_options]
