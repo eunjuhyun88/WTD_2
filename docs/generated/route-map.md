@@ -9,28 +9,13 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | --- | --- | --- | --- | --- |
 | `/` | product entry | positioning, navigation, onboarding | `walletStore`, `authSessionStore`, `profileTier` | `docs/PRODUCT_SENSE.md` |
 | `/dashboard` | daily hub | agent status, battle quota, revenue summary, Lab CTA | `agentStore`, `battleStore` | `docs/product-specs/core.md` |
-| `/onboard` | onboarding flow | archetype selection, tutorial battle, ERA reveal | `onboardingStore` | `docs/product-specs/core.md` |
 | `/agent` | agent roster surface | owned-agent collection, manage/train handoff, create entry | `agentData`, `userProfileStore`, `matchHistoryStore` | `docs/page-specs/agent-page.md` |
 | `/agent/[id]` | agent hq detail route | doctrine, memory, history, and record for one agent | `agentData`, `doctrineStore` | `docs/page-specs/agent-detail-page.md` |
 | `/agents` | agent collection surface | stats, memory, roster legibility | `agentData` | `docs/PRODUCT_SENSE.md` |
-| `/create` | create-agent bridge | activation, wallet connection, and terminal handoff | `walletStore`, `authSessionStore` | `docs/page-specs/create-agent-page.md` |
-| `/arena` | main strategic arena | structured human-vs-agent decision loop | `gameState`, `matchHistoryStore`, `pnlStore`, `battleFeedStore` | `docs/product-specs/arena.md` |
-| `/arena-v2` | simplified arena variant | alternate arena flow and views | `arenaV2State`, live price context | `docs/product-specs/arena.md` |
-| `/arena-war` | fast AI battle mode | phase machine, battle rendering, GameRecord flow | `arenaWarStore` | `docs/design-docs/arena-domain-model.md` |
 | `/holdings` | redirect route | redirect to canonical profile/holdings experience | none | `docs/product-specs/passport.md` |
-| `/live` | auxiliary live route/data hook | limited runtime support surface | route-level data | `docs/PRODUCT_SENSE.md` |
 | `/lab` | model training workbench | agent doctrine, retained memory, release readiness | `agentData` | `docs/page-specs/lab-page.md` |
-| `/battle` | standalone proof battle | daily-limited historical chart battle and result loop | `battleStore`, `matchHistoryStore` | `docs/page-specs/battle-page.md` |
-| `/oracle` | redirect route | redirect into signals ai leaderboard view | none | `docs/product-specs/signals.md` |
-| `/passport` | profile/progression surface | identity, stats, learning, history | `userProfileStore`, `userLifecycleStore`, `matchHistoryStore`, `quickTradeStore` | `docs/product-specs/passport.md` |
-| `/passport/wallet/[chain]/[address]` | wallet dossier route | durable wallet thesis, evidence snapshots, and dossier recall | route-local dossier loader + wallet-intel aggregate | `docs/COGOCHI.md` |
 | `/settings` | preferences surface | local settings and user controls | `gameState` and preference state | `docs/FRONTEND.md` |
-| `/signals` | signal discovery surface | community, track, convert flows | `gameState`, `matchHistoryStore`, signal state | `docs/product-specs/signals.md` |
-| `/signals/[postId]` | community signal detail route | single-post evidence, comments, and trade handoff | route-local post loader + `communityStore` reaction state | `docs/page-specs/signals-detail-page.md` |
 | `/terminal` | intel/action surface | scan, intel, action orchestration | route shell + `copyTradeStore`, `trackedSignalStore`, live prices | `docs/product-specs/terminal.md` |
-| `/world` | world bridge surface | world-map preview, readiness framing, battle handoff | `gameState` | `docs/page-specs/world-page.md` |
-| `/cogochi` | cogochi hub | DOUNI virtual pet entry and navigation | route-level data | `docs/PRODUCT_SENSE.md` |
-| `/cogochi/scanner` | cogochi scanner surface | alpha scan results, filter/sort by alpha + regime, layer-score deep dive | route-local scan result state, layer score rows, filter/sort selection | `docs/product-specs/terminal.md` |
 | `/scanner` | top-level scanner redirect/surface | canonical scanner entry — may redirect to /cogochi/scanner | none | `docs/product-specs/terminal.md` |
 
 ## Route Shells and Global Entry
