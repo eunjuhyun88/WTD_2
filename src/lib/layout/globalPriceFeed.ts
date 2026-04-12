@@ -1,6 +1,6 @@
 import { fetchPrices, fetch24hrMulti, subscribeMiniTicker, type Binance24hr } from '$lib/api/binance';
 import { updatePrice, updatePrices as updatePriceStore, updatePriceFull } from '$lib/stores/priceStore';
-import { gameState } from '$lib/stores/gameState';
+import { activePairState } from '$lib/stores/activePairStore';
 
 const TRACKED_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'] as const;
 const SYMBOL_MAP: Record<string, 'BTC' | 'ETH' | 'SOL'> = {
@@ -52,7 +52,7 @@ async function bootstrapInitialPrices(): Promise<void> {
     }
 
     if (Object.keys(updates).length) {
-      gameState.update((state) => ({
+      activePairState.update((state) => ({
         ...state,
         bases: {
           BTC: updates.BTC ?? state.bases.BTC,

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { gameState } from '$lib/stores/gameState';
+  import { activePairState, setActivePair, setActiveTimeframe, setActiveSpeed } from '$lib/stores/activePairStore';
   import { RESETTABLE_STORAGE_KEYS } from '$lib/stores/storageKeys';
   import {
     CORE_TIMEFRAME_OPTIONS,
@@ -9,8 +9,8 @@
   } from '$lib/utils/timeframe';
   import { fetchPreferencesApi, updatePreferencesApi } from '$lib/api/preferencesApi';
 
-  let state = $gameState;
-  $: state = $gameState;
+  let state = $activePairState;
+  $: state = $activePairState;
   let saving = false;
   let loadedRemote = false;
 
@@ -58,11 +58,11 @@
     const next = { ...settings, [key]: value };
     settings = next;
     if (key === 'speed') {
-      gameState.update(s => ({ ...s, speed: value }));
+      setActiveSpeed(value);
     }
     if (key === 'defaultTF') {
       const timeframe = normalizeTimeframe(value);
-      gameState.update(s => ({ ...s, timeframe }));
+      setActiveTimeframe(timeframe);
     }
     queuePersist();
   }
@@ -91,7 +91,7 @@
       language: remote.language || settings.language
     };
 
-    gameState.update((s) => ({
+    activePairState.update((s) => ({
       ...s,
       pair: remote.defaultPair || s.pair,
       timeframe: normalizeTimeframe(remote.defaultTimeframe),
@@ -218,17 +218,7 @@
       </div>
     </div>
 
-    <!-- Account Stats -->
-    <div class="settings-section">
-      <div class="ss-title">📋 ACCOUNT</div>
-      <div class="account-stats">
-        <div class="as-row"><span>Matches Played</span><span class="as-val">{state.matchN}</span></div>
-        <div class="as-row"><span>Total Wins</span><span class="as-val up">{state.wins}</span></div>
-        <div class="as-row"><span>Total Losses</span><span class="as-val dn">{state.losses}</span></div>
-        <div class="as-row"><span>Current LP</span><span class="as-val">{state.lp.toLocaleString()}</span></div>
-        <div class="as-row"><span>Current Streak</span><span class="as-val fire">🔥 {state.streak}</span></div>
-      </div>
-    </div>
+    <!-- Account Stats (arena stats removed — Day-1 has no arena) -->
 
     <!-- Danger Zone -->
     <div class="settings-section danger">

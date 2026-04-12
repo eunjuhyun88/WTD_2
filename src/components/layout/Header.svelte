@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { gameState } from '$lib/stores/gameState';
+  import { activePairState } from '$lib/stores/activePairStore';
   import { walletStore, isWalletConnected } from '$lib/stores/walletStore';
   import { openWalletModal } from '$lib/stores/walletModalStore';
   import { hydrateAuthSession } from '$lib/stores/walletStore';
@@ -14,7 +14,7 @@
   import { buildDeepLink } from '$lib/utils/deepLinks';
   import { DESKTOP_NAV_SURFACES, isAppSurfaceActive } from '$lib/navigation/appSurfaces';
 
-  const gState = $derived($gameState);
+  const gState = $derived($activePairState);
   const wallet = $derived($walletStore);
   const connected = $derived($isWalletConnected);
   const liveP = $derived($livePrices);
@@ -145,11 +145,7 @@
       </a>
     {/if}
 
-    <!-- Score badge (desktop only) -->
-    <div class="score-badge desktop-only">
-      <span class="score-label">XP</span>
-      <span class="score-value">{Math.round(gState.score).toLocaleString()}</span>
-    </div>
+    <!-- Score badge removed (Day-1 has no arena XP) -->
 
     <!-- Settings (desktop only) -->
     <a
