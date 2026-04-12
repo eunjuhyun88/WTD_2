@@ -1,0 +1,26 @@
+"""Trigger building blocks — initial events that catch the eye.
+
+A trigger says "something interesting just happened at this bar."
+Triggers are usually the first block in a composed pattern: they
+narrow the candidate bars down to a manageable set before more
+expensive confirmations run.
+"""
+from building_blocks.triggers.breakout_above_high import breakout_above_high
+from building_blocks.triggers.consolidation_then_breakout import (
+    consolidation_then_breakout,
+)
+from building_blocks.triggers.gap_down import gap_down
+from building_blocks.triggers.gap_up import gap_up
+from building_blocks.triggers.recent_decline import recent_decline
+from building_blocks.triggers.recent_rally import recent_rally
+from building_blocks.triggers.volume_spike import volume_spike
+
+__all__ = [
+    "breakout_above_high",
+    "consolidation_then_breakout",
+    "gap_down",
+    "gap_up",
+    "recent_decline",
+    "recent_rally",
+    "volume_spike",
+]

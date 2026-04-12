@@ -1,0 +1,23 @@
+[project]
+name = "cogochi-autoresearch"
+version = "0.1.0"
+description = "Shared models and feature calculators for the Cogochi LoRA pipeline (Track A) and the pattern-scanner swarm challenge (Track B)"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# "." → cogochi imports (models.signal, scanner.feature_calc, etc.)
+# ".." → wizard imports (wizard.composer, wizard.schema, etc.) tested from
+#        the same env without needing a separate wizard pyproject.
+pythonpath = [".", ".."]
