@@ -59,6 +59,29 @@ if [ "${#OWNED[@]}" -eq 0 ]; then
 	exit 1
 fi
 
+# Cross-worktree duplicate check (Z5 §16.2 — fail if sibling owns same slice)
+SIBLING_CONFLICT=""
+while IFS= read -r WT_LINE; do
+	WT_PATH="${WT_LINE#worktree }"
+	[ "$WT_PATH" = "$ROOT_DIR" ] && continue
+	SIBLING_CLAIM="$WT_PATH/.agent-context/ownership/${SLICE_ID}.json"
+	if [ -f "$SIBLING_CLAIM" ]; then
+		SIBLING_CONFLICT="$WT_PATH"
+		break
+	fi
+done < <(git worktree list --porcelain 2>/dev/null | grep '^worktree ')
+
+if [ -n "$SIBLING_CONFLICT" ]; then
+	{
+		echo "[pre-commit] CROSS-WORKTREE CONFLICT: slice '${SLICE_ID}' is also claimed in:"
+		echo "  worktree: $SIBLING_CONFLICT"
+		echo "  claim: $SIBLING_CONFLICT/.agent-context/ownership/${SLICE_ID}.json"
+		echo ""
+		echo "Release the claim there first (slice kill / slice merge) before committing here."
+	} >&2
+	exit 1
+fi
+
 # Collect staged files (A, M, R — additions, modifications, renames).
 STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
 if [ -z "$STAGED" ]; then

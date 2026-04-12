@@ -432,6 +432,84 @@ function mainRepoRoot() {
 }
 
 // ---------------------------------------------------------------------------
+// Cross-worktree claim awareness (§16.2 — Z5)
+// ---------------------------------------------------------------------------
+
+/** Module-level cache: cleared implicitly on process exit. */
+let _crossClaimsCache = null;
+
+/**
+ * Walk sibling git worktrees and read their claim files.
+ * Returns a Map<sliceId, {worktree, branch, paths, claimed_at}>.
+ *
+ * This is the cross-worktree awareness primitive from design §16.2 option (c).
+ * It lets cmdNew refuse double-claims and cmdReady filter out slices that
+ * another worktree is already working on.
+ *
+ * Performance: one `git worktree list --porcelain` subprocess + one JSON.parse
+ * per claim file per sibling. Cached for the duration of this CLI invocation.
+ *
+ * **Read-only**: never writes to sibling worktrees.
+ */
+function loadCrossWorktreeClaims() {
+	if (_crossClaimsCache) return _crossClaimsCache;
+	const claims = new Map();
+
+	let worktreeOutput;
+	try {
+		worktreeOutput = execSync('git worktree list --porcelain', { encoding: 'utf8', timeout: 5000 });
+	} catch {
+		// git worktree list failed — non-worktree env or git issue. Return empty.
+		_crossClaimsCache = claims;
+		return claims;
+	}
+
+	// Porcelain format: blocks separated by blank lines.
+	// Each block: "worktree <path>\nHEAD <sha>\nbranch refs/heads/...\n"
+	const blocks = worktreeOutput.split('\n\n').filter((b) => b.trim());
+
+	for (const block of blocks) {
+		const lines = block.split('\n');
+		const wtLine = lines.find((l) => l.startsWith('worktree '));
+		if (!wtLine) continue;
+		const wtPath = wtLine.slice('worktree '.length);
+		// Skip our own worktree — local claims are handled by computeSliceStatus.
+		if (wtPath === REPO_ROOT) continue;
+
+		const ownershipDir = join(wtPath, '.agent-context', 'ownership');
+		if (!existsSync(ownershipDir)) continue;
+
+		let files;
+		try {
+			files = readdirSync(ownershipDir).filter((f) => f.endsWith('.json') && !f.startsWith('branch-'));
+		} catch {
+			continue; // permission error or dir gone between check and read
+		}
+
+		for (const file of files) {
+			try {
+				const raw = readFileSync(join(ownershipDir, file), 'utf8');
+				const claim = JSON.parse(raw);
+				if (claim.slice_id) {
+					claims.set(claim.slice_id, {
+						worktree: wtPath,
+						branch: claim.branch ?? 'unknown',
+						paths: claim.paths ?? [],
+						claimed_at: claim.claimed_at ?? null
+					});
+				}
+			} catch {
+				// Malformed JSON — skip silently. Strict parse = reject tampered files.
+				continue;
+			}
+		}
+	}
+
+	_crossClaimsCache = claims;
+	return claims;
+}
+
+// ---------------------------------------------------------------------------
 // Brief generator (§3.1 Scheduler responsibility, minimal v0)
 // ---------------------------------------------------------------------------
 
@@ -491,6 +569,19 @@ function cmdNew(args) {
 	const existing = computeSliceStatus(sliceId);
 	if (['IN_PROGRESS', 'READY_FOR_REVIEW', 'APPROVED'].includes(existing.status)) {
 		die(`slice ${sliceId} already ${existing.status}`);
+	}
+
+	// Cross-worktree claim check (Z5 §16.2 — refuse double-claims across worktrees)
+	const crossClaims = loadCrossWorktreeClaims();
+	if (crossClaims.has(sliceId)) {
+		const conflict = crossClaims.get(sliceId);
+		die(
+			`slice ${sliceId} already claimed in sibling worktree:\n` +
+				`  worktree: ${conflict.worktree}\n` +
+				`  branch: ${conflict.branch}\n` +
+				`  claimed_at: ${conflict.claimed_at ?? 'unknown'}\n` +
+				'Release the claim there first (slice kill / slice merge) before claiming here.'
+		);
 	}
 
 	// Check WIP against effective rollout cap (falls back to absolute cap)
@@ -845,9 +936,13 @@ function cmdReady(args) {
 		const st = computeSliceStatus(s.id);
 		terminalByDep.set(s.id, st.status === 'MERGED');
 	}
+	// Cross-worktree claims (Z5 §16.2): exclude slices another worktree owns.
+	const crossClaims = loadCrossWorktreeClaims();
+
 	const ready = sorted.filter((s) => {
 		const st = computeSliceStatus(s.id);
 		if (st.status !== 'UNKNOWN' && st.status !== 'QUEUED') return false;
+		if (crossClaims.has(s.id)) return false; // claimed in a sibling worktree
 		return (s.depends_on ?? []).every((dep) => terminalByDep.get(dep));
 	});
 	if (jsonMode) {
