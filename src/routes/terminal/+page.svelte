@@ -15,6 +15,7 @@
   import WalletIntelShell from '../../components/wallet-intel/WalletIntelShell.svelte';
   import { buildPassportWalletLink } from '$lib/utils/deepLinks';
   import {
+    buildCompareRunLabel,
     buildWorkspaceComparePreviewQuery,
     createWorkspaceCompareId,
     formatTerminalCompareSymbol,
@@ -87,6 +88,7 @@
     | { kind: 'compare'; blockId: string; block: WorkspaceCompareBlockData }
     | { kind: 'metrics'; items: MetricItem[] }
     | { kind: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
+    | { kind: 'compare'; blockId: string; block: WorkspaceCompareBlockData }
     | { kind: 'scan'; items: any[]; sort: string; sector: string }
     | { kind: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
     | { kind: 'chart_ref'; symbol: string; timeframe: string }
@@ -99,6 +101,8 @@
     startLeftWidth: number;
     startRightWidth: number;
   };
+  type MobileTerminalMode = 'scanner' | 'workspace' | 'insight';
+  type WizardToastState = { slug: string; href: string };
 
   // ─── State ────────────────────────────────────────────────
   let messages = $state<MessageType[]>([]);
@@ -106,9 +110,10 @@
   let isThinking = $state(false);
   let feedContainer: HTMLDivElement | undefined = $state();
   let showPatternModal = $state(false);
-  let leftPaneWidth = $state(220);
-  let rightPaneWidth = $state(336);
+  let leftPaneWidth = $state(320);
+  let rightPaneWidth = $state(380);
   let panelDragState = $state<PanelDragState | null>(null);
+  let mobileTerminalMode = $state<MobileTerminalMode>('workspace');
 
   // Current analysis data
   let currentSymbol = $state('');
@@ -134,6 +139,7 @@
   let focusedResearchBlock = $state<ResearchBlockEnvelope | null>(null);
   let compareBlocks = $state<WorkspaceCompareBlockData[]>([]);
   let selectedCompareBlockId = $state<string | null>(null);
+  let workspaceRunLabel = $state('');
   let walletMode = $state(false);
   let walletInput = $state<WalletModeInput | null>(null);
   let walletDataset = $state<WalletIntelDataset | null>(null);
@@ -157,23 +163,11 @@
     walletDataset ? findWalletMarketToken(walletDataset, walletSelectedTokenSymbol) : null
   );
   const terminalLayoutStyle = $derived(
-    `--terminal-left-pane:${quickPanelCollapsed ? 34 : leftPaneWidth}px; --terminal-right-pane:${rightPaneWidth}px;`
+    `--terminal-scanner-pane:${leftPaneWidth}px; --terminal-inspector-pane:${rightPaneWidth}px;`
   );
   const selectedCompareBlock = $derived(
     selectedCompareBlockId ? compareBlocks.find((block) => block.id === selectedCompareBlockId) ?? null : null
   );
-  const activeBlockSearchPreview = $derived.by(() =>
-    buildBlockSearchPreview({
-      parsedQuery,
-      currentSymbol,
-      currentTimeframe: currentTf || '4h',
-      chartData: currentChartData,
-      snapshot: currentSnapshot,
-      indicators: currentIndicators,
-      price: currentPrice,
-    })
-  );
-
   // ─── Zoom #1: Block Search Parser State ─────────────────────
   //
   // `parsedQuery` is the live output of the keyword-first parser. It updates
@@ -186,8 +180,10 @@
   let parsedQuery = $state<ParsedQuery | null>(null);
   let parsedHint = $state<string>('');
   let isSavingChallenge = $state<boolean>(false);
-  let wizardToast = $state<string | null>(null);
+  let wizardToast = $state<WizardToastState | null>(null);
   let wizardError = $state<string | null>(null);
+  let wizardDraftQuery = $state<ParsedQuery | null>(null);
+  let wizardToastTimer: ReturnType<typeof setTimeout> | null = null;
 
   $effect(() => {
     const text = inputText.trim();
@@ -201,45 +197,95 @@
     parsedHint = query.confidence === 'high' ? summarizeParsedQuery(query) : '';
   });
 
+  const activeBlockSearchPreview = $derived.by(() =>
+    buildBlockSearchPreview({
+      parsedQuery,
+      currentSymbol,
+      currentTimeframe: currentTf || '4h',
+      chartData: currentChartData,
+      snapshot: currentSnapshot,
+      indicators: currentIndicators,
+      price: currentPrice,
+    })
+  );
+  const activeSaveQuery = $derived.by(() => resolveSaveQuery());
+
   function slugifyFromQuery(q: ParsedQuery): string {
     const sym = (q.symbol ?? 'pattern').toLowerCase().replace(/[^a-z0-9]/g, '');
     const stamp = Date.now().toString(36).slice(-5);
     return `${sym || 'pattern'}-${stamp}`;
   }
 
-  function openChallengeModalFromQuery() {
-    if (!parsedQuery || parsedQuery.confidence !== 'high') return;
-    patternName = slugifyFromQuery(parsedQuery);
-    patternDirection = parsedQuery.direction === 'short' ? 'SHORT' : 'LONG';
-    patternConditions = parsedQuery.blocks.map(
+  function resolveSaveQuery(queryOverride: ParsedQuery | null = null): ParsedQuery | null {
+    const candidate = queryOverride ?? wizardDraftQuery ?? parsedQuery;
+    return candidate && candidate.confidence === 'high' && candidate.blocks.length > 0
+      ? candidate
+      : null;
+  }
+
+  function dismissWizardToast() {
+    if (wizardToastTimer) {
+      clearTimeout(wizardToastTimer);
+      wizardToastTimer = null;
+    }
+    wizardToast = null;
+  }
+
+  function showWizardToast(slug: string) {
+    dismissWizardToast();
+    wizardToast = { slug, href: `/lab?slug=${encodeURIComponent(slug)}` };
+    wizardToastTimer = setTimeout(() => {
+      wizardToast = null;
+      wizardToastTimer = null;
+    }, 6000);
+  }
+
+  function openLabFromToast() {
+    if (!wizardToast || typeof window === 'undefined') return;
+    window.location.assign(wizardToast.href);
+  }
+
+  function closeChallengeModal() {
+    showPatternModal = false;
+    wizardError = null;
+  }
+
+  function openChallengeModalFromQuery(queryOverride: ParsedQuery | null = null) {
+    const query = resolveSaveQuery(queryOverride);
+    if (!query) return;
+    wizardDraftQuery = query;
+    patternName = slugifyFromQuery(query);
+    patternDirection = query.direction === 'short' ? 'SHORT' : 'LONG';
+    patternConditions = query.blocks.map(
       (b) => `${b.role}: ${b.function}  (${b.source_token})`
     );
     wizardError = null;
-    wizardToast = null;
+    dismissWizardToast();
     showPatternModal = true;
   }
 
   async function handleWizardSave() {
-    if (!parsedQuery || parsedQuery.blocks.length === 0) {
+    const query = resolveSaveQuery();
+    if (!query) {
       // No parsed blocks → fall back to the old no-op close behavior so the
       // existing LLM `pattern_draft` flow keeps working.
-      showPatternModal = false;
+      closeChallengeModal();
       return;
     }
     if (isSavingChallenge) return;
     isSavingChallenge = true;
     wizardError = null;
 
-    const slug = (patternName || slugifyFromQuery(parsedQuery))
+    const slug = (patternName || slugifyFromQuery(query))
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 64);
 
-    const description = parsedQuery.raw.trim().slice(0, 280) || 'parsed from /terminal search';
-    const direction = patternDirection === 'SHORT' ? 'short' : 'long';
-    const timeframe = parsedQuery.timeframe ?? '1h';
+    const description = query.raw.trim().slice(0, 280) || 'parsed from /terminal search';
+    const direction = query.direction === 'short' ? 'short' : 'long';
+    const timeframe = query.timeframe ?? '1h';
 
     try {
       const res = await fetch('/api/wizard', {
@@ -250,7 +296,7 @@
           description,
           direction,
           timeframe,
-          blocks: parsedQuery.blocks
+          blocks: query.blocks
         })
       });
       const payload = (await res.json()) as
@@ -266,12 +312,8 @@
         return;
       }
 
-      wizardToast = `Saved ${payload.answers.identity.name} — open /lab?slug=${payload.answers.identity.name}`;
-      showPatternModal = false;
-      // Auto-dismiss toast after 6s.
-      setTimeout(() => {
-        if (wizardToast) wizardToast = null;
-      }, 6000);
+      showWizardToast(payload.answers.identity.name);
+      closeChallengeModal();
     } catch (err) {
       console.error('[terminal] /api/wizard error:', err);
       wizardError = `Save failed: ${err instanceof Error ? err.message : 'network error'}`;
@@ -341,7 +383,7 @@
 
       if (state.target === 'left') {
         leftPaneWidth = clampLeftWidth(state.startLeftWidth + (e.clientX - state.startX));
-      } else {
+      } else if (focusedResearchBlock) {
         rightPaneWidth = clampRightWidth(state.startRightWidth - (e.clientX - state.startX));
       }
     };
@@ -507,6 +549,7 @@
     selectedCompareBlockId = null;
     currentSymbol = data.symbol || currentSymbol;
     currentTf = data.timeframe || currentTf || '4h';
+    workspaceRunLabel = currentSymbol ? `${formatTerminalCompareSymbol(currentSymbol)} ${currentTf.toUpperCase()}` : '';
     currentPrice = data.price ?? currentPrice;
     currentChange = data.change24h ?? currentChange;
     currentSnapshot = data;
@@ -541,7 +584,12 @@
 
   function selectCompareBlock(blockId: string) {
     selectedCompareBlockId = blockId;
+    const block = compareBlocks.find((candidate) => candidate.id === blockId);
+    if (!block) return;
+
     focusedResearchBlock = null;
+    mobileTerminalMode = 'workspace';
+    workspaceRunLabel = buildCompareRunLabel(block.symbols, block.timeframe);
   }
 
   async function fetchCompareCard(symbol: string, timeframe: WorkspaceCompareIntent['timeframe']) {
@@ -754,6 +802,7 @@
     }
   }
 
+
   function deriveLayerItems(data: any): LayerItem[] {
     const candidates: LayerItem[] = [
       { id: 'L1', name: 'Wyckoff', value: data.l1?.phase ?? '--', score: data.l1?.score ?? 0 },
@@ -776,6 +825,8 @@
   async function handleQuickPreview(symbol: string) {
     quickPanelSelected = normalizeTerminalSymbol(symbol);
     selectedCompareBlockId = null;
+    focusedResearchBlock = null;
+    mobileTerminalMode = 'workspace';
     try {
       const fullSymbol = normalizeTerminalSymbol(symbol);
       const tf = currentTf || '4h';
@@ -805,14 +856,17 @@
   async function handleQuickAnalyze(symbol: string) {
     const fullSymbol = normalizeTerminalSymbol(symbol);
     await handleQuickPreview(fullSymbol);
+    mobileTerminalMode = 'workspace';
     inputText = `${fullSymbol.replace('USDT', '')} ${currentTf || '4h'}`;
     await handleSend();
   }
+
 
   // ─── Send via FC Pipeline ─────────────────────────────────
   async function handleSend() {
     const text = inputText.trim();
     if (!text || isThinking) return;
+    const saveableQuery = resolveSaveQuery(parsedQuery);
 
     if (walletMode && walletDataset) {
       inputText = '';
@@ -855,8 +909,12 @@
     const capturedParsedQuery = parsedQuery;
 
     messages = [...messages, { role: 'user', text }];
+    if (saveableQuery) {
+      wizardDraftQuery = saveableQuery;
+    }
     inputText = '';
     isThinking = true;
+    mobileTerminalMode = 'workspace';
 
     // Add thinking bubble
     messages = [...messages, { role: 'douni', thinking: true } as MessageType];
@@ -953,9 +1011,6 @@
                 ...messages.filter(m => !('thinking' in m)),
                 { role: 'douni', text: '', widgets: [{ type: 'research_block', envelope: parsed.data }] }
               ];
-              if (!focusedResearchBlock || parsed.data.block.kind === 'inline_price_chart') {
-                focusedResearchBlock = parsed.data;
-              }
               scrollToBottom();
               break;
             }
@@ -993,10 +1048,12 @@
               break;
 
             case 'pattern_draft':
+              wizardDraftQuery = null;
               patternName = event.name;
               patternConditions = (event.conditions as any[]).map(c =>
                 `${c.field} ${c.operator} ${c.value}`
               );
+              wizardError = null;
               showPatternModal = true;
               break;
 
@@ -1085,9 +1142,7 @@
     const hasResearchBlocks = researchBlocks.length > 0;
 
     if (hasResearchBlocks) {
-      if (!focusedResearchBlock) {
-        focusedResearchBlock = researchBlocks.find((block) => block.block.kind === 'inline_price_chart') ?? researchBlocks[0];
-      }
+      focusedResearchBlock = null;
     }
 
     // Build metrics from analysis data
@@ -1367,6 +1422,39 @@
     document.body.style.userSelect = 'none';
     e.preventDefault();
   }
+  function getWheelResizeDelta(e: WheelEvent) {
+    const rawDelta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (!Number.isFinite(rawDelta) || rawDelta === 0) return 0;
+    const step = e.shiftKey ? 40 : 20;
+    return rawDelta > 0 ? step : -step;
+  }
+  function resizeDesktopPane(target: PanelDragTarget, signedDelta: number) {
+    if (!isDesktopLayout() || signedDelta === 0) return;
+    if (target === 'left') {
+      leftPaneWidth = clampLeftWidth(leftPaneWidth + signedDelta);
+      return;
+    }
+    if (focusedResearchBlock) {
+      rightPaneWidth = clampRightWidth(rightPaneWidth + signedDelta);
+    }
+  }
+  function handleDividerWheel(target: PanelDragTarget, e: WheelEvent) {
+    const signedDelta = getWheelResizeDelta(e);
+    if (signedDelta === 0) return;
+    e.preventDefault();
+    resizeDesktopPane(target, signedDelta);
+  }
+  function handleDividerKeydown(target: PanelDragTarget, e: KeyboardEvent) {
+    if (!isDesktopLayout()) return;
+    const step = e.shiftKey ? 40 : 20;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      resizeDesktopPane(target, -step);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      resizeDesktopPane(target, step);
+    }
+  }
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
@@ -1396,10 +1484,14 @@
 
   function focusResearchBlock(envelope: ResearchBlockEnvelope) {
     focusedResearchBlock = envelope;
+    mobileTerminalMode = 'insight';
   }
 
   function clearResearchFocus() {
     focusedResearchBlock = null;
+    if (mobileTerminalMode === 'insight') {
+      mobileTerminalMode = 'workspace';
+    }
   }
 
   function formatWalletIntelMetaNote(meta: WalletIntelApiResult['meta']): string {
@@ -1613,190 +1705,241 @@
       />
     </div>
   {:else}
-    <div class="main-content" style={terminalLayoutStyle}>
-    <!-- QUICK PANEL -->
-    <div class="main-panel main-panel-left">
-      <QuickPanel
-        items={quickPanelItems}
-        scanning={quickPanelScanning}
-        selectedSymbol={quickPanelSelected}
-        collapsed={quickPanelCollapsed}
-        onScan={handleQuickScan}
-        onPreview={(symbol) => { void handleQuickPreview(symbol); }}
-        onAnalyze={(symbol) => { void handleQuickAnalyze(symbol); }}
-        onToggle={() => quickPanelCollapsed = !quickPanelCollapsed}
-      />
+    <div class="mobile-mode-tabs" role="tablist" aria-label="Terminal mode">
+      <button type="button" class:active={mobileTerminalMode === 'scanner'} onclick={() => mobileTerminalMode = 'scanner'}>Scanner</button>
+      <button type="button" class:active={mobileTerminalMode === 'workspace'} onclick={() => mobileTerminalMode = 'workspace'}>Workspace</button>
+      <button
+        type="button"
+        class:active={mobileTerminalMode === 'insight'}
+        disabled={!focusedResearchBlock}
+        onclick={() => { if (focusedResearchBlock) mobileTerminalMode = 'insight'; }}
+      >
+        Insight
+      </button>
     </div>
 
-    {#if !quickPanelCollapsed}
+    <div class="main-content terminal-workspace" class:inspector-open={focusedResearchBlock != null} style={terminalLayoutStyle}>
+      <section class="scanner-rail main-panel main-panel-left" class:mobile-active={mobileTerminalMode === 'scanner'}>
+        <div class="pane-titlebar">
+          <div>
+            <span class="pane-kicker">Scanner</span>
+            <strong>Watchlists, presets, signals.</strong>
+          </div>
+          <span class="pane-state">{quickPanelScanning ? 'scanning' : `${quickPanelItems.length} rows`}</span>
+        </div>
+
+        <div class="scanner-quick">
+          <QuickPanel
+            items={quickPanelItems}
+            scanning={quickPanelScanning}
+            selectedSymbol={quickPanelSelected}
+            collapsed={quickPanelCollapsed}
+            onScan={handleQuickScan}
+            onPreview={(symbol) => { void handleQuickPreview(symbol); }}
+            onAnalyze={(symbol) => { void handleQuickAnalyze(symbol); }}
+            onToggle={() => quickPanelCollapsed = !quickPanelCollapsed}
+          />
+        </div>
+      </section>
+
       <button
         type="button"
         class="panel-divider panel-divider-left"
-        aria-label="Resize scanner panel"
+        aria-label="Resize scanner rail"
         onpointerdown={(e) => startPanelDrag('left', e)}
+        onwheel={(e) => handleDividerWheel('left', e)}
+        onkeydown={(e) => handleDividerKeydown('left', e)}
       ></button>
-    {/if}
 
-    <!-- DATA FEED -->
-    <div class="data-feed main-panel main-panel-center" bind:this={feedContainer}>
-      <div class="feed-inner">
-        {#each feedEntries as entry}
-          {#if entry.kind === 'query'}
-            <div class="fe fe-query">
-              <span class="fe-query-arrow">&gt;</span>
-              <span class="fe-query-text">{entry.text}</span>
-            </div>
+      <section class="multimodal-workspace main-panel main-panel-center" class:mobile-active={mobileTerminalMode === 'workspace'}>
+        <div class="pane-titlebar">
+          <div>
+            <span class="pane-kicker">Multimodal</span>
+            <strong>Search, render, compare, decide.</strong>
+          </div>
+          <span class="pane-state">{isThinking ? 'rendering' : workspaceRunLabel || 'idle'}</span>
+        </div>
 
-          {:else if entry.kind === 'text'}
-            <div class="fe fe-text">
-              <p class="fe-text-body">{entry.text}</p>
-            </div>
-
-          {:else if entry.kind === 'thinking'}
-            <div class="fe fe-thinking">
-              <div class="thinking-bar"></div>
-              <span class="thinking-label">Analyzing...</span>
-            </div>
-
-          {:else if entry.kind === 'metrics'}
-            <div class="fe fe-metrics">
-              {#each entry.items as item}
-                <DataCard title={item.title} value={item.value} subtext={item.subtext} trend={item.trend} chartData={item.chartData} />
-              {/each}
-            </div>
-
-          {:else if entry.kind === 'compare'}
-            <div class="fe fe-compare">
-              <WorkspaceCompareBlock
-                block={entry.block}
-                selected={selectedCompareBlockId === entry.blockId}
-                onSelect={selectCompareBlock}
-              />
-            </div>
-
-          {:else if entry.kind === 'layers'}
-            <div class="fe fe-layers">
-              <div class="layers-header">
-                <span class="layers-label">ALPHA SCORE</span>
-                <span class="layers-score" style="color:{alphaColor(entry.alphaScore)}">{entry.alphaScore}</span>
-                <span class="layers-tag" style="color:{alphaColor(entry.alphaScore)}">{entry.alphaLabel}</span>
-              </div>
-              <div class="treemap-grid">
-                {#each entry.items as layer}
-                  {@const absScore = Math.abs(layer.score)}
-                  <div
-                    class="treemap-cell"
-                    style="flex:{Math.max(absScore, 3)};background:{layerCellBg(layer.score)};border-left:2px solid {layerBorderColor(layer.score)}"
-                  >
-                    <span class="tm-id">{layer.id}</span>
-                    <span class="tm-name">{layer.name}</span>
-                    <span class="tm-signal">{layer.value}</span>
-                    <span class="tm-score" style="color:{scoreColor(layer.score)}">{layer.score > 0 ? '+' : ''}{layer.score}</span>
-                  </div>
-                {/each}
-              </div>
-            </div>
-
-          {:else if entry.kind === 'scan'}
-            <div class="fe fe-scan">
-              <div class="scan-header">
-                <span class="scan-title">Market Scan</span>
-                <span class="scan-meta">{entry.sort} / {entry.sector}</span>
-              </div>
-              {#each entry.items as coin}
-                <div class="scan-row">
-                  <span class="sr-rank">#{coin.rank}</span>
-                  <span class="sr-sym">{coin.symbol}</span>
-                  <span class="sr-name">{coin.name}</span>
-                  {#if coin.price != null}
-                    <span class="sr-price">${coin.price >= 1 ? coin.price.toLocaleString(undefined, {maximumFractionDigits: 1}) : coin.price.toFixed(4)}</span>
-                  {/if}
-                  {#if coin.change24h != null}
-                    <span class="sr-change" class:up={coin.change24h >= 0} class:dn={coin.change24h < 0}>
-                      {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%
-                    </span>
-                  {/if}
-                  {#if coin.is_trending}
-                    <span class="sr-trending"></span>
-                  {/if}
+        <div class="workspace-body">
+          <div class="workspace-flow data-feed" bind:this={feedContainer}>
+            <div class="workspace-flow-inner">
+              {#if currentSnapshot && currentChartData.length > 0}
+                <section class="workspace-stage workspace-card">
+                  <SingleAssetBoard
+                    symbol={currentSymbol}
+                    timeframe={currentTf}
+                    price={currentPrice}
+                    change={currentChange}
+                    snapshot={currentSnapshot}
+                    chartData={currentChartData}
+                    annotations={currentAnnotations}
+                    indicators={currentIndicators}
+                    derivatives={currentDeriv}
+                    preview={activeBlockSearchPreview}
+                  />
+                </section>
+              {:else if feedEntries.length === 0}
+                <div class="cp-empty workspace-card workspace-empty-card">
+                  <span class="cp-empty-label">Multimodal workspace ready</span>
+                  <span class="cp-empty-hint">Search in the center. If the run needs a chart, it renders here. Use More detail on a result to expand the inspector.</span>
                 </div>
+              {/if}
+
+              {#if feedEntries.length > 0}
+                <section class="workspace-results">
+                  <div class="feed-inner">
+              {#each feedEntries as entry}
+                {#if entry.kind === 'query'}
+                  <div class="fe fe-query">
+                    <span class="fe-query-arrow">&gt;</span>
+                    <span class="fe-query-text">{entry.text}</span>
+                  </div>
+
+                {:else if entry.kind === 'text'}
+                  <div class="fe fe-text">
+                    <p class="fe-text-body">{entry.text}</p>
+                  </div>
+
+                {:else if entry.kind === 'thinking'}
+                  <div class="fe fe-thinking">
+                    <div class="thinking-bar"></div>
+                    <span class="thinking-label">Analyzing...</span>
+                  </div>
+
+                {:else if entry.kind === 'metrics'}
+                  <div class="fe fe-metrics">
+                    {#each entry.items as item}
+                      <DataCard title={item.title} value={item.value} subtext={item.subtext} trend={item.trend} chartData={item.chartData} />
+                    {/each}
+                  </div>
+
+                {:else if entry.kind === 'compare'}
+                  <div class="fe fe-compare">
+                    <WorkspaceCompareBlock
+                      block={entry.block}
+                      selected={selectedCompareBlockId === entry.blockId}
+                      onSelect={selectCompareBlock}
+                    />
+                  </div>
+
+                {:else if entry.kind === 'layers'}
+                  <div class="fe fe-layers">
+                    <div class="layers-header">
+                      <span class="layers-label">ALPHA SCORE</span>
+                      <span class="layers-score" style="color:{alphaColor(entry.alphaScore)}">{entry.alphaScore}</span>
+                      <span class="layers-tag" style="color:{alphaColor(entry.alphaScore)}">{entry.alphaLabel}</span>
+                    </div>
+                    <div class="treemap-grid">
+                      {#each entry.items as layer}
+                        {@const absScore = Math.abs(layer.score)}
+                        <div
+                          class="treemap-cell"
+                          style="flex:{Math.max(absScore, 3)};background:{layerCellBg(layer.score)};border-left:2px solid {layerBorderColor(layer.score)}"
+                        >
+                          <span class="tm-id">{layer.id}</span>
+                          <span class="tm-name">{layer.name}</span>
+                          <span class="tm-signal">{layer.value}</span>
+                          <span class="tm-score" style="color:{scoreColor(layer.score)}">{layer.score > 0 ? '+' : ''}{layer.score}</span>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+
+                {:else if entry.kind === 'scan'}
+                  <div class="fe fe-scan">
+                    <div class="scan-header">
+                      <span class="scan-title">Market Scan</span>
+                      <span class="scan-meta">{entry.sort} / {entry.sector}</span>
+                    </div>
+                    {#each entry.items as coin}
+                      <div class="scan-row">
+                        <span class="sr-rank">#{coin.rank}</span>
+                        <span class="sr-sym">{coin.symbol}</span>
+                        <span class="sr-name">{coin.name}</span>
+                        {#if coin.price != null}
+                          <span class="sr-price">${coin.price >= 1 ? coin.price.toLocaleString(undefined, {maximumFractionDigits: 1}) : coin.price.toFixed(4)}</span>
+                        {/if}
+                        {#if coin.change24h != null}
+                          <span class="sr-change" class:up={coin.change24h >= 0} class:dn={coin.change24h < 0}>
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%
+                          </span>
+                        {/if}
+                        {#if coin.is_trending}
+                          <span class="sr-trending"></span>
+                        {/if}
+                      </div>
+                    {/each}
+                  </div>
+
+                {:else if entry.kind === 'actions'}
+                  <div class="fe fe-actions">
+                    <button type="button" class="action-btn action-correct" onclick={() => sendFeedback('correct')}>CORRECT</button>
+                    <button type="button" class="action-btn action-incorrect" onclick={() => sendFeedback('incorrect')}>INCORRECT</button>
+                    <button
+                      type="button"
+                      class="action-btn action-save"
+                      onclick={() => openChallengeModalFromQuery()}
+                      disabled={!activeSaveQuery}
+                      title={activeSaveQuery ? 'Save the current parsed query as a challenge' : 'Use the parsed query save button after a high-confidence block search'}
+                    >
+                      SAVE PATTERN
+                    </button>
+                  </div>
+
+                {:else if entry.kind === 'chart_ref'}
+                  <div class="fe fe-chart-ref">
+                    <span class="cr-label">Chart loaded</span>
+                    <span class="cr-sym">{entry.symbol.replace('USDT','')}</span>
+                    <span class="cr-tf">{entry.timeframe}</span>
+                  </div>
+
+                {:else if entry.kind === 'research_block'}
+                  <div class="fe fe-research">
+                    <ResearchBlockRenderer envelope={entry.envelope} interactive={true} onSelect={focusResearchBlock} />
+                  </div>
+                {/if}
               {/each}
-            </div>
-
-          {:else if entry.kind === 'actions'}
-            <div class="fe fe-actions">
-              <button type="button" class="action-btn action-correct" onclick={() => sendFeedback('correct')}>CORRECT</button>
-              <button type="button" class="action-btn action-incorrect" onclick={() => sendFeedback('incorrect')}>INCORRECT</button>
-              <button type="button" class="action-btn action-save" onclick={() => showPatternModal = true}>SAVE PATTERN</button>
-            </div>
-
-          {:else if entry.kind === 'chart_ref'}
-            <!-- Chart reference: no inline rendering, chart is always in side panel -->
-            <div class="fe fe-chart-ref">
-              <span class="cr-label">Chart loaded</span>
-              <span class="cr-sym">{entry.symbol.replace('USDT','')}</span>
-              <span class="cr-tf">{entry.timeframe}</span>
-            </div>
-
-          {:else if entry.kind === 'research_block'}
-            <div class="fe fe-research">
-              <ResearchBlockRenderer envelope={entry.envelope} interactive={true} onSelect={focusResearchBlock} />
-            </div>
-          {/if}
-        {/each}
-      </div>
-    </div>
-
-    <button
-      type="button"
-      class="panel-divider panel-divider-right"
-      aria-label="Resize chart panel"
-      onpointerdown={(e) => startPanelDrag('right', e)}
-    ></button>
-
-    <!-- CHART PANEL (always visible) -->
-    <aside class="chart-panel main-panel main-panel-right">
-      {#if focusedResearchBlock}
-        <div class="cp-header cp-header-focus">
-          <div class="cp-focus-stack">
-            <div class="cp-focus-meta">
-              <span class="cp-sym">{focusedResearchBlock.symbol.replace('USDT','')}</span>
-              <span class="cp-tf">{focusedResearchBlock.timeframe.toUpperCase()}</span>
-              <span class="cp-focus-label">{focusedResearchBlock.block.kind.replaceAll('_', ' ')}</span>
-            </div>
-            <div class="cp-focus-ribbon">
-              {#if focusedResearchBlock.block.kind === 'heatmap_flow_chart'}
-                <span class="cp-mini-chip">walls {focusedResearchBlock.block.cells.length}</span>
-                <span class="cp-mini-chip">events {focusedResearchBlock.block.markers.length}</span>
-                <span class="cp-mini-chip">tracks {focusedResearchBlock.block.lowerPane?.series?.length ?? 0}</span>
+                  </div>
+                </section>
               {/if}
             </div>
           </div>
-          <button type="button" class="cp-reset" onclick={clearResearchFocus}>SHOW PRICE</button>
         </div>
-        <div class="cp-focus-body">
-          <ResearchBlockRenderer envelope={focusedResearchBlock} presentation="focus" />
-        </div>
-      {:else if currentSnapshot && currentChartData.length > 0}
-        <SingleAssetBoard
-          symbol={currentSymbol}
-          timeframe={currentTf}
-          price={currentPrice}
-          change={currentChange}
-          snapshot={currentSnapshot}
-          chartData={currentChartData}
-          annotations={currentAnnotations}
-          indicators={currentIndicators}
-          derivatives={currentDeriv}
-          preview={activeBlockSearchPreview}
-        />
-      {:else}
-        <div class="cp-empty">
-          <span class="cp-empty-label">No analysis yet</span>
-          <span class="cp-empty-hint">Ask DOUNI to analyze a symbol</span>
-        </div>
+      </section>
+
+      {#if focusedResearchBlock}
+        <button
+          type="button"
+          class="panel-divider panel-divider-right"
+          aria-label="Resize inspector"
+          onpointerdown={(e) => startPanelDrag('right', e)}
+          onwheel={(e) => handleDividerWheel('right', e)}
+          onkeydown={(e) => handleDividerKeydown('right', e)}
+        ></button>
+
+        <aside class="inspector-panel main-panel main-panel-right" class:mobile-active={mobileTerminalMode === 'insight'}>
+          <div class="cp-header cp-header-focus">
+            <div class="cp-focus-stack">
+              <div class="cp-focus-meta">
+                <span class="cp-sym">{focusedResearchBlock.symbol.replace('USDT','')}</span>
+                <span class="cp-tf">{focusedResearchBlock.timeframe.toUpperCase()}</span>
+                <span class="cp-focus-label">{focusedResearchBlock.block.kind.replaceAll('_', ' ')}</span>
+              </div>
+              <div class="cp-focus-ribbon">
+                {#if focusedResearchBlock.block.kind === 'heatmap_flow_chart'}
+                  <span class="cp-mini-chip">walls {focusedResearchBlock.block.cells.length}</span>
+                  <span class="cp-mini-chip">events {focusedResearchBlock.block.markers.length}</span>
+                  <span class="cp-mini-chip">tracks {focusedResearchBlock.block.lowerPane?.series?.length ?? 0}</span>
+                {/if}
+              </div>
+            </div>
+            <button type="button" class="cp-reset" onclick={clearResearchFocus}>CLOSE</button>
+          </div>
+          <div class="cp-focus-body">
+            <ResearchBlockRenderer envelope={focusedResearchBlock} presentation="focus" />
+          </div>
+        </aside>
       {/if}
-    </aside>
     </div>
   {/if}
 
@@ -1815,7 +1958,7 @@
         <button
           type="button"
           class="wizard-save-btn"
-          onclick={openChallengeModalFromQuery}
+          onclick={() => openChallengeModalFromQuery()}
           disabled={isThinking}
           title="Save parsed query as a challenge"
         >
@@ -1837,51 +1980,66 @@
 </div>
 
 {#if wizardToast}
-  <div class="wizard-toast" role="status">{wizardToast}</div>
+  <div class="wizard-toast" role="status">
+    <div class="wizard-toast-copy">
+      <span class="wizard-toast-kicker">Saved challenge</span>
+      <strong>{wizardToast.slug}</strong>
+    </div>
+    <button type="button" class="wizard-toast-action" onclick={openLabFromToast}>Open in Lab</button>
+    <button type="button" class="wizard-toast-dismiss" onclick={dismissWizardToast} aria-label="Dismiss saved challenge toast">✕</button>
+  </div>
 {/if}
 
 <!-- ─── PATTERN MODAL ─── -->
 {#if showPatternModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal-bg" onclick={() => showPatternModal = false}>
+  <div class="modal-bg" onclick={closeChallengeModal}>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="modal-box" onclick={(e) => e.stopPropagation()}>
-      <h3>Save Pattern</h3>
+      <h3>Save Challenge</h3>
       <div class="mf">
         <!-- svelte-ignore a11y_label_has_associated_control -->
-        <label for="pattern-name">Pattern Name</label>
-        <input id="pattern-name" type="text" value={patternName} />
+        <label for="pattern-name">Challenge Name</label>
+        <input id="pattern-name" type="text" bind:value={patternName} />
       </div>
-      <div class="mf">
-        <!-- svelte-ignore a11y_label_has_associated_control -->
-        <label class="mf-label">Direction</label>
-        <div class="mdir">
-          <button type="button" class="md" class:act={patternDirection === 'LONG'} onclick={() => patternDirection = 'LONG'}>LONG</button>
-          <button type="button" class="md" class:act={patternDirection === 'SHORT'} onclick={() => patternDirection = 'SHORT'}>SHORT</button>
+      {#if activeSaveQuery}
+        <div class="wizard-summary-card">
+          <div class="wizard-summary-head">
+            <span class="wizard-summary-kicker">Inferred from query</span>
+            <strong>{activeSaveQuery.raw}</strong>
+          </div>
+          <div class="wizard-summary-meta">
+            <span>{activeSaveQuery.direction ?? 'long'} bias</span>
+            <span>{(activeSaveQuery.timeframe ?? '1h').toUpperCase()}</span>
+            <span>{activeSaveQuery.blocks.length} blocks</span>
+            <span>{(activeSaveQuery.symbol?.replace('USDT', '') ?? currentSymbol.replace('USDT', '')) || 'market'}</span>
+          </div>
+          <div class="wizard-summary-blocks">
+            {#each activeSaveQuery.blocks as block}
+              <div class="wizard-block-pill">
+                <span>{block.role}</span>
+                <strong>{block.function}</strong>
+              </div>
+            {/each}
+          </div>
         </div>
-      </div>
-      <div class="mf">
-        <!-- svelte-ignore a11y_label_has_associated_control -->
-        <label class="mf-label">Conditions ({patternConditions.length})</label>
-        {#each patternConditions as c}
-          <div class="mc">{c}</div>
-        {/each}
-        {#if patternConditions.length === 0}
-          <div class="mc" style="color:var(--sc-text-3)">Conditions auto-generated after analysis</div>
-        {/if}
-      </div>
+      {:else}
+        <div class="wizard-note">
+          Day-1 save works only from a parsed block-search query. Re-open this from the input `Save` button after a high-confidence query parse.
+        </div>
+      {/if}
       {#if wizardError}
         <div class="wizard-error">{wizardError}</div>
       {/if}
       <div class="mbot">
-        <button type="button" class="mbtn" onclick={() => showPatternModal = false}>Cancel</button>
+        <button type="button" class="mbtn" onclick={closeChallengeModal}>Cancel</button>
         <button
           type="button"
           class="mbtn sv"
           onclick={handleWizardSave}
-          disabled={isSavingChallenge}
+          disabled={isSavingChallenge || !activeSaveQuery}
         >
           {isSavingChallenge ? 'Saving…' : 'Save Challenge'}
         </button>
@@ -1934,14 +2092,60 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 9999;
-    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: min(92vw, 460px);
+    padding: 12px 14px;
     background: rgba(173, 202, 124, 0.95);
     color: #0b1220;
-    border-radius: 6px;
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 12px;
-    font-weight: 700;
+    border-radius: 10px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  .wizard-toast-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
+  .wizard-toast-kicker,
+  .wizard-summary-kicker {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.72;
+  }
+  .wizard-toast-copy strong {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    line-height: 1.3;
+  }
+  .wizard-toast-action,
+  .wizard-toast-dismiss {
+    border: 1px solid rgba(11, 18, 32, 0.18);
+    background: rgba(11, 18, 32, 0.08);
+    color: #0b1220;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .wizard-toast-action {
+    min-height: 34px;
+    padding: 0 12px;
+    white-space: nowrap;
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .wizard-toast-dismiss {
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+    line-height: 1;
   }
   .wizard-error {
     margin-top: 8px;
@@ -2035,12 +2239,18 @@
   }
 
   /* ═══ MAIN CONTENT ═══ */
+  .mobile-mode-tabs {
+    display: none;
+  }
   .main-content {
     flex: 1;
     display: grid;
-    grid-template-columns: var(--terminal-left-pane) 3px minmax(0, 1fr) 3px var(--terminal-right-pane);
+    grid-template-columns: var(--terminal-scanner-pane) 4px minmax(520px, 1fr);
     min-height: 0;
     overflow: hidden;
+  }
+  .main-content.inspector-open {
+    grid-template-columns: var(--terminal-scanner-pane) 4px minmax(420px, 1fr) 4px var(--terminal-inspector-pane);
   }
   .main-panel {
     min-width: 0;
@@ -2050,14 +2260,120 @@
   .main-panel-left { grid-column: 1; }
   .main-panel-center { grid-column: 3; }
   .main-panel-right { grid-column: 5; }
+  .scanner-rail {
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(circle at top left, rgba(219, 154, 159, 0.06), transparent 28%),
+      linear-gradient(180deg, rgba(10, 12, 16, 0.98), rgba(8, 10, 14, 0.99));
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  .multimodal-workspace {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background:
+      radial-gradient(circle at top center, rgba(173, 202, 124, 0.06), transparent 24%),
+      linear-gradient(180deg, rgba(12, 15, 20, 0.98), rgba(8, 10, 14, 0.99));
+  }
+  .pane-titlebar {
+    min-height: 56px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .pane-titlebar div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .pane-kicker,
+  .pane-state {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(219, 154, 159, 0.82);
+  }
+  .pane-titlebar strong {
+    color: var(--sc-text-0, #f7f2ea);
+    font-size: 14px;
+    line-height: 1.2;
+  }
+  .pane-state {
+    color: var(--sc-text-3);
+    white-space: nowrap;
+  }
+  .scanner-quick {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  :global(.scanner-quick .qp) {
+    width: 100%;
+    height: 100%;
+    border-right: 0;
+    background: rgba(11, 18, 32, 0.42);
+  }
+  :global(.scanner-quick .qp-expand) {
+    position: static;
+    transform: none;
+    width: 100%;
+    min-height: 36px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  .workspace-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace-flow {
+    flex: 1;
+    min-height: 0;
+  }
+  .workspace-flow-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 16px 18px 96px;
+    width: min(100%, 980px);
+    margin: 0 auto;
+  }
+  .workspace-card {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .workspace-stage {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .workspace-results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
   .panel-divider {
     position: relative;
-    width: 3px;
+    width: 4px;
     border: 0;
     padding: 0;
     margin: 0;
     background: rgba(255, 255, 255, 0.04);
     cursor: col-resize;
+    touch-action: none;
     transition: background 0.14s ease;
     z-index: 2;
   }
@@ -2080,6 +2396,16 @@
   }
   .panel-divider-left { grid-column: 2; }
   .panel-divider-right { grid-column: 4; }
+  .inspector-panel {
+    grid-column: 5;
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(circle at top right, rgba(219, 154, 159, 0.08), transparent 28%),
+      linear-gradient(180deg, rgba(14, 12, 15, 0.98), rgba(7, 8, 11, 0.99));
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+  }
   .wallet-main-content {
     padding: 14px;
     overflow: auto;
@@ -2094,22 +2420,23 @@
     flex: 1;
     overflow-y: auto;
     min-width: 0;
+    min-height: 0;
   }
   .feed-inner {
-    max-width: 720px;
-    padding: 8px 16px 80px;
+    max-width: none;
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 18px;
   }
 
   /* ─── Feed Entry base ─── */
   .fe {
-    padding: 6px 0;
-    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.08));
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     animation: sc-slide-up 0.15s ease;
   }
-  .fe:last-child { border-bottom: none; }
 
   /* ─── Query ─── */
   .fe-query {
@@ -2125,21 +2452,28 @@
   }
   .fe-query-text {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 13px;
-    color: var(--sc-text-2);
+    font-size: 15px;
+    color: var(--sc-text-1);
   }
 
   /* ─── Text ─── */
   .fe-text-body {
     margin: 0;
-    font-size: 13px;
-    line-height: 1.7;
+    font-size: 15px;
+    line-height: 1.72;
     color: var(--sc-text-1);
     white-space: pre-line;
   }
 
   .fe-research {
-    padding: 12px 0 14px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .fe-compare {
+    padding: 2px 0 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   /* ─── Thinking ─── */
@@ -2184,7 +2518,7 @@
   .fe-metrics {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 4px;
+    gap: 8px;
   }
 
   /* ─── Layers / Treemap ─── */
@@ -2254,9 +2588,9 @@
 
   /* ─── Scan Table ─── */
   .fe-scan {
-    background: var(--sc-bg-1, #0b1220);
-    border: 1px solid var(--sc-line-soft);
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
     overflow: hidden;
   }
   .scan-header {
@@ -2336,7 +2670,7 @@
     display: flex;
     gap: 12px;
     align-items: center;
-    padding: 8px 0;
+    padding: 2px 0;
   }
   .action-btn {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
@@ -2352,6 +2686,10 @@
     color: var(--sc-text-2);
   }
   .action-btn:hover { color: var(--sc-text-0); }
+  .action-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
   .action-correct:hover {
     color: var(--sc-good, #adca7c);
     border-color: var(--sc-good, #adca7c);
@@ -2397,18 +2735,17 @@
     border-radius: 2px;
   }
 
-  /* ═══ CHART PANEL ═══ */
-  .chart-panel {
+  /* ═══ WORKSPACE STAGE ═══ */
+  .workspace-stage {
     width: 100%;
     flex-shrink: 0;
     background:
-      radial-gradient(circle at top right, rgba(54, 215, 255, 0.06), transparent 28%),
-      linear-gradient(180deg, rgba(7, 14, 25, 0.98), rgba(4, 10, 18, 0.99));
+      radial-gradient(circle at top right, rgba(54, 215, 255, 0.05), transparent 28%),
+      linear-gradient(180deg, rgba(7, 14, 25, 0.7), rgba(4, 10, 18, 0.38));
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
-
   .cp-header-focus {
     align-items: center;
     justify-content: space-between;
@@ -2458,6 +2795,8 @@
   }
 
   .cp-focus-body {
+    flex: 1;
+    min-height: 0;
     padding: 12px 14px 16px;
     overflow: auto;
   }
@@ -2465,10 +2804,10 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--sc-line-soft);
+    padding: 8px 0 12px;
+    border-bottom: 0;
     flex-shrink: 0;
-    background: linear-gradient(180deg, rgba(8, 17, 29, 0.92), rgba(5, 11, 19, 0.84));
+    background: transparent;
   }
   .cp-sym {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
@@ -2506,9 +2845,15 @@
     gap: 8px;
     padding: 40px;
   }
+  .workspace-empty-card {
+    min-height: 320px;
+    background:
+      radial-gradient(circle at top center, rgba(173, 202, 124, 0.04), transparent 30%),
+      linear-gradient(180deg, rgba(7, 14, 25, 0.42), rgba(4, 10, 18, 0.16));
+  }
   .cp-empty-label {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
-    font-size: 22px;
+    font-size: 24px;
     color: var(--sc-text-3);
     letter-spacing: 1px;
   }
@@ -2516,6 +2861,9 @@
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
     font-size: 11px;
     color: var(--sc-text-3);
+    max-width: 420px;
+    text-align: center;
+    line-height: 1.6;
   }
 
   /* ═══ INPUT BAR ═══ */
@@ -2589,7 +2937,7 @@
     letter-spacing: 0.5px;
   }
   .mf { margin-bottom: 14px; }
-  .mf label, .mf .mf-label {
+  .mf label {
     display: block;
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
     font-size: 10px;
@@ -2611,33 +2959,65 @@
     outline: none;
     box-sizing: border-box;
   }
-  .mdir { display: flex; gap: 8px; }
-  .md {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid var(--sc-line-soft);
-    background: var(--sc-bg-0);
-    color: var(--sc-text-2);
-    border-radius: 4px;
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .md.act {
-    border-color: var(--sc-accent);
-    color: var(--sc-accent);
-    background: rgba(219, 154, 159, 0.08);
-  }
-  .mc {
-    padding: 8px 12px;
+  .wizard-summary-card,
+  .wizard-note {
+    padding: 12px 14px;
     background: var(--sc-bg-0);
     border: 1px solid var(--sc-line-soft);
-    border-radius: 4px;
+    border-radius: 8px;
+  }
+  .wizard-summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .wizard-summary-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .wizard-summary-head strong {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--sc-text-0);
+  }
+  .wizard-summary-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .wizard-summary-meta span,
+  .wizard-block-pill,
+  .wizard-note {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     font-size: 11px;
     color: var(--sc-text-2);
-    margin-bottom: 4px;
+  }
+  .wizard-summary-meta span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .wizard-summary-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .wizard-block-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(219, 154, 159, 0.08);
+    border: 1px solid rgba(219, 154, 159, 0.14);
+  }
+  .wizard-block-pill strong {
+    color: var(--sc-text-0);
+  }
+  .wizard-note {
+    line-height: 1.6;
   }
   .mbot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
   .mbtn {
@@ -2656,6 +3036,10 @@
     color: var(--sc-bg-0);
     font-weight: 700;
   }
+  .mbtn:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+  }
 
   /* ═══ SCROLLBAR ═══ */
   .data-feed::-webkit-scrollbar { width: 4px; }
@@ -2663,18 +3047,80 @@
 
   /* ═══ RESPONSIVE ═══ */
   @media (max-width: 1024px) {
+    .wizard-toast {
+      left: 12px;
+      right: 12px;
+      bottom: 92px;
+      transform: none;
+      min-width: 0;
+    }
+    .mobile-mode-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+      background: rgba(5, 9, 14, 0.96);
+    }
+    .mobile-mode-tabs button {
+      min-height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--sc-text-2, rgba(247, 242, 234, 0.72));
+      font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .mobile-mode-tabs button.active {
+      border-color: rgba(219, 154, 159, 0.46);
+      background: rgba(219, 154, 159, 0.12);
+      color: var(--sc-text-0, #f7f2ea);
+    }
+    .mobile-mode-tabs button:disabled {
+      opacity: 0.38;
+    }
     .main-content {
-      display: flex;
-      flex-direction: column;
+      display: block;
+      position: relative;
     }
     .panel-divider {
       display: none;
     }
-    .chart-panel {
+    .scanner-rail,
+    .multimodal-workspace {
+      display: none;
       width: 100%;
+      height: 100%;
       border-left: none;
-      border-top: 1px solid var(--sc-line-soft);
-      max-height: 380px;
+      border-top: none;
+      max-height: none;
+    }
+    .inspector-panel {
+      display: none;
+      width: 100%;
+      height: 100%;
+      border-left: none;
+    }
+    .scanner-rail.mobile-active,
+    .multimodal-workspace.mobile-active,
+    .inspector-panel.mobile-active {
+      display: flex;
+    }
+    .scanner-quick {
+      flex: 1;
+    }
+    .workspace-flow-inner {
+      padding: 12px 12px 96px;
+      width: 100%;
+    }
+    .workspace-body {
+      display: flex;
+      flex-direction: column;
+    }
+    .workspace-stage {
+      min-height: 220px;
+      flex: 0 0 auto;
     }
     .header-bar {
       height: auto;

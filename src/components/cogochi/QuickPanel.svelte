@@ -171,8 +171,9 @@
 
 <style>
   .qp {
-    width: 280px;
-    flex-shrink: 0;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
     border-right: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
     background: var(--sc-bg-1, #0b1220);
     display: flex;
@@ -414,7 +415,24 @@
   .qp-results::-webkit-scrollbar-thumb { background: var(--sc-line-soft); border-radius: 2px; }
 
   @media (max-width: 900px) {
-    .qp { display: none; }
-    .qp-expand { display: none; }
+    .qp {
+      display: flex;
+      width: 100%;
+      max-height: 220px;
+      border-right: 0;
+    }
+    .qp-sub {
+      display: none;
+    }
+    .qp-results {
+      max-height: 96px;
+    }
+    .qp-expand {
+      position: static;
+      transform: none;
+      display: block;
+      width: 100%;
+      border-radius: 0;
+    }
   }
 </style>

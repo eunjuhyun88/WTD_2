@@ -63,10 +63,10 @@ const TABLET_BOTTOM_MIN = 200;
 const TABLET_BOTTOM_MAX = 360;
 const TABLET_SPLIT_STEP = 12;
 
-const MIN_LEFT = 200;
-const MAX_LEFT = 450;
-const MIN_RIGHT = 220;
-const MAX_RIGHT = 500;
+const MIN_LEFT = 260;
+const MAX_LEFT = 400;
+const MIN_RIGHT = 320;
+const MAX_RIGHT = 460;
 
 export function getViewportFlags(windowWidth: number) {
   return {
