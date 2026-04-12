@@ -11898,3 +11898,43 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - pending commit
 - Status:
   - READY_TO_COMMIT
+
+## [2026-04-12 20:50:00 +0900] START W-20260412-2049-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/CHATBATTLE-chart-engine-core-pick`
+- Branch:
+  - `codex/chart-engine-core-pick`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/chart-engine-core-pick`
+  - clean before this task
+- Task summary:
+  - promote only the chart-engine core slice from the dirty `codex/ui-feature-inventory` worktree onto a fresh `main`-based branch, excluding consumer/UI carry unless required for integrity
+- Owned files / overlap check result:
+  - owning `src/lib/chart-engine/**` in this branch
+  - source worktree overlap acknowledged with `src/components/chart/**`, consumer rewires, terminal/CVD, and DOUNI changes, which stay out of scope for this promotion slice
+- Safe status:
+  - `npm run safe:status`: PASS
+- Sync note:
+  - `npm run safe:sync`: git sync PASS on this fresh branch; local validation step blocked until dependencies are installed in the new worktree
+
+## [2026-04-12 20:57:00 +0900] FINISH W-20260412-2049-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - promoted the `src/lib/chart-engine/**` slice from the dirty `codex/ui-feature-inventory` worktree onto a fresh `main`-based branch as an isolated infrastructure commit
+  - carried the portable chart contracts, runtime, adapter barrel, and app adapter files without bringing along `ChartStage`, renderer components, route rewires, or terminal/CVD work
+  - updated `docs/FRONTEND.md` minimally so the canonical frontend map now points shared chart model/runtime ownership at `src/lib/chart-engine/*`
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: PASS for git sync to latest `origin/main`; initial local `check` step was blocked in the fresh worktree until `npm install` completed
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same pre-existing unused CSS warnings; Vite emitted an existing dynamic import/chunking notice)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - to be created by the atomic commit that includes this FINISH entry
+- Push status:
+  - pending feature-branch push for `codex/chart-engine-core-pick`
+- Final working tree status:
+  - pending commit of `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, and `src/lib/chart-engine/**`
