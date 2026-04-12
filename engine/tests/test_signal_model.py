@@ -85,14 +85,17 @@ def test_snapshot_constructs_with_valid_fields():
     assert snap.ema_alignment is EMAAlignment.BULLISH
 
 
-def test_snapshot_has_39_feature_fields():
+def test_snapshot_has_66_feature_fields():
     """Guard against accidental add/remove of feature fields.
-    28 original + 11 quick-win indicators (H-K groups).
+    Groups A-K (39) + groups L-T (24: RSI7/21, Stoch, MFI, CMF, VolZ,
+    ADX/DMI, Aroon, KC, Donchian, BBsqueeze, PVT, Ichimoku, Pivots,
+    Supertrend, PriceAccel) + group U (3: mvrv, mvrv_zscore, puell_multiple)
+    = 66 total.
     """
     meta = {"symbol", "timestamp", "price"}
     feature_fields = set(SignalSnapshot.model_fields.keys()) - meta
-    assert len(feature_fields) == 39, (
-        f"expected 39 feature fields, got {len(feature_fields)}: "
+    assert len(feature_fields) == 66, (
+        f"expected 66 feature fields, got {len(feature_fields)}: "
         f"{sorted(feature_fields)}"
     )
 
