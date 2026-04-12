@@ -85,6 +85,23 @@ append_digest() {
 }
 
 # ---------------------------------------------------------------------------
+# Cost ceiling guard (Z3) — short-circuit if OVER budget.
+# ---------------------------------------------------------------------------
+
+COST_SCRIPT="$ROOT_DIR/scripts/swarm/cost-check.sh"
+if [ -x "$COST_SCRIPT" ]; then
+	COST_STATUS="$("$COST_SCRIPT" 2>/dev/null || echo 'DISABLED')"
+	COST_VERDICT="$(echo "$COST_STATUS" | awk '{print $1}')"
+	if [ "$COST_VERDICT" = "OVER" ]; then
+		append_digest "auto-spawn: COST CEILING EXCEEDED ($COST_STATUS) — refusing to pick next slice"
+		exit 0
+	fi
+	if [ "$COST_VERDICT" = "NEAR" ]; then
+		append_digest "auto-spawn: cost warning ($COST_STATUS) — continuing but approaching ceiling"
+	fi
+fi
+
+# ---------------------------------------------------------------------------
 # Read ready set and status JSON.
 # ---------------------------------------------------------------------------
 
