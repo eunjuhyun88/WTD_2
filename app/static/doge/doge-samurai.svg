@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Samurai Doge - With katana and headband -->
+  <!-- Katana (behind) -->
+  <g transform="translate(155, 50) rotate(25)">
+    <rect x="-2" y="0" width="4" height="120" rx="1" fill="#ddd" stroke="#000" stroke-width="1.5"/>
+    <!-- Blade shine -->
+    <rect x="-1" y="5" width="2" height="110" fill="#fff" opacity="0.4"/>
+    <!-- Guard (tsuba) -->
+    <ellipse cx="0" cy="0" rx="8" ry="4" fill="#333" stroke="#000" stroke-width="2"/>
+    <!-- Handle (tsuka) -->
+    <rect x="-3" y="-30" width="6" height="30" rx="1" fill="#4a0e0e" stroke="#000" stroke-width="1.5"/>
+    <!-- Handle wrapping -->
+    <path d="M-3 -5 L3 -10 M-3 -12 L3 -17 M-3 -19 L3 -24" fill="none" stroke="#222" stroke-width="1.5"/>
+  </g>
+  <!-- Head base -->
+  <ellipse cx="95" cy="115" rx="62" ry="58" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <!-- Inner face -->
+  <ellipse cx="95" cy="122" rx="40" ry="36" fill="#f0d06e"/>
+  <!-- Ears -->
+  <path d="M43 82 L27 38 L62 68 Z" fill="#d4a33e" stroke="#000" stroke-width="3"/>
+  <path d="M147 82 L163 38 L128 68 Z" fill="#d4a33e" stroke="#000" stroke-width="3"/>
+  <path d="M47 78 L37 50 L60 68 Z" fill="#c4922e"/>
+  <path d="M143 78 L155 50 L130 68 Z" fill="#c4922e"/>
+  <!-- Hachimaki (headband) -->
+  <rect x="33" y="80" width="124" height="14" rx="2" fill="#fff" stroke="#000" stroke-width="2"/>
+  <!-- Red sun on headband -->
+  <circle cx="95" cy="87" r="5" fill="#c00"/>
+  <!-- Headband tails -->
+  <path d="M33 84 Q20 80 12 88 Q18 92 22 90" fill="#fff" stroke="#000" stroke-width="2"/>
+  <path d="M33 90 Q22 95 18 100" fill="#fff" stroke="#000" stroke-width="2"/>
+  <!-- Eyes - fierce/determined -->
+  <path d="M68 100 L92 106" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M70 106 L90 102" fill="none" stroke="#000" stroke-width="2"/>
+  <ellipse cx="80" cy="104" rx="7" ry="4" fill="#fff" stroke="#000" stroke-width="2"/>
+  <circle cx="82" cy="104" r="3" fill="#1a1a1a"/>
+  <circle cx="83" cy="103" r="1" fill="#fff"/>
+  <path d="M98 106 L122 100" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M100 102 L120 106" fill="none" stroke="#000" stroke-width="2"/>
+  <ellipse cx="110" cy="104" rx="7" ry="4" fill="#fff" stroke="#000" stroke-width="2"/>
+  <circle cx="112" cy="104" r="3" fill="#1a1a1a"/>
+  <circle cx="113" cy="103" r="1" fill="#fff"/>
+  <!-- Nose -->
+  <ellipse cx="95" cy="122" rx="7" ry="5" fill="#1a1a1a" stroke="#000" stroke-width="2"/>
+  <!-- Stern mouth -->
+  <path d="M82 136 L108 136" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+  <!-- Wind lines (action effect) -->
+  <path d="M5 60 L25 62" stroke="#888" stroke-width="1.5" opacity="0.5"/>
+  <path d="M8 72 L22 73" stroke="#888" stroke-width="1.5" opacity="0.5"/>
+  <path d="M3 84 L18 84" stroke="#888" stroke-width="1.5" opacity="0.4"/>
+</svg>

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "${SKIP_PREPUSH:-0}" = "1" ]; then
+	echo "[pre-push] SKIP_PREPUSH=1 set. Skipping gate."
+	exit 0
+fi
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+echo "[pre-push] branch: $CURRENT_BRANCH"
+
+if [ -x scripts/dev/guard-active-workspace.sh ]; then
+	echo "[pre-push] workspace guard"
+	bash scripts/dev/guard-active-workspace.sh
+fi
+
+if [ -x scripts/dev/context-auto.sh ]; then
+	echo "[pre-push] context auto snapshot"
+	bash scripts/dev/context-auto.sh pre-push || true
+fi
+
+if [ -x scripts/dev/check-context-quality.sh ]; then
+	echo "[pre-push] context quality check"
+	bash scripts/dev/check-context-quality.sh --strict
+fi
+
+echo "[pre-push] fetching origin"
+git fetch origin --prune
+
+if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+	echo "[pre-push] origin/main not found. Check remote configuration."
+	exit 1
+fi
+
+if ! git merge-base --is-ancestor origin/main HEAD; then
+	echo "[pre-push] blocked: current branch does not include latest origin/main."
+	echo "[pre-push] run: npm run safe:sync:gate"
+	git rev-list --left-right --count HEAD...origin/main | awk '{print "[pre-push] ahead behind = "$1" "$2}'
+	exit 1
+fi
+
+echo "[pre-push] running npm run gate"
+npm run gate
+
+echo "[pre-push] gate passed"

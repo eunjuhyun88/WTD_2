@@ -1,0 +1,10 @@
+<svg width="320" height="190" viewBox="0 0 320 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="300" height="170" rx="28" fill="#09101B" fill-opacity="0.94" stroke="#2D4770" stroke-width="4"/>
+  <path d="M34 142H286" stroke="#94A3B8" stroke-opacity="0.25" stroke-width="3"/>
+  <path d="M34 110H286" stroke="#94A3B8" stroke-opacity="0.14" stroke-width="2" stroke-dasharray="6 8"/>
+  <path d="M38 132C62 128 78 116 98 110C118 104 138 92 158 88C178 84 192 92 210 80C228 68 248 50 282 58" stroke="#8DD4FF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 146C64 140 82 128 102 124C124 120 140 124 160 116C180 108 192 92 212 88C232 84 250 86 282 74" stroke="#7EE7C6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 156C58 150 78 150 102 142C126 134 142 122 160 118C182 114 200 120 218 106C242 90 256 82 282 80" stroke="#FF7A8A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0 0"/>
+  <rect x="22" y="22" width="94" height="30" rx="15" fill="#111827" stroke="#8DD4FF" stroke-opacity="0.4"/>
+  <text x="69" y="42" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" text-anchor="middle">TREND MAP</text>
+</svg>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="22" y1="18" x2="234" y2="242" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0E1218" />
+      <stop offset="1" stop-color="#080B10" />
+    </linearGradient>
+    <linearGradient id="curve" x1="66" y1="70" x2="194" y2="186" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF6B6B" />
+      <stop offset="0.5" stop-color="#E8EEF9" />
+      <stop offset="1" stop-color="#4DE3B2" />
+    </linearGradient>
+  </defs>
+
+  <rect x="18" y="18" width="224" height="224" rx="34" fill="url(#bg)" stroke="#354055" stroke-width="2" />
+  <rect x="42" y="42" width="176" height="176" rx="26" fill="#111720" stroke="#263144" stroke-width="1.5" />
+
+  <path d="M60 82H200" stroke="#253041" stroke-width="1.1" opacity=".58" />
+  <path d="M60 116H200" stroke="#253041" stroke-width="1.1" opacity=".34" />
+  <path d="M60 150H200" stroke="#253041" stroke-width="1.1" opacity=".2" />
+  <path d="M60 184H200" stroke="#253041" stroke-width="1.1" opacity=".12" />
+
+  <path d="M70 158C88 148 100 96 120 96C142 96 146 144 166 144C178 144 186 136 194 130" stroke="#67A8FF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M70 136C88 136 102 170 120 170C144 170 150 108 168 108C182 108 188 116 194 122" stroke="url(#curve)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  <circle cx="70" cy="158" r="4" fill="#67A8FF" />
+  <circle cx="120" cy="96" r="4" fill="#4DE3B2" />
+  <circle cx="166" cy="144" r="4" fill="#FF6B6B" />
+  <circle cx="194" cy="130" r="4" fill="#E8EEF9" />
+
+  <circle cx="70" cy="136" r="4" fill="#FF6B6B" />
+  <circle cx="120" cy="170" r="4" fill="#E8EEF9" />
+  <circle cx="168" cy="108" r="4" fill="#4DE3B2" />
+  <circle cx="194" cy="122" r="4" fill="#67A8FF" />
+
+  <path d="M96 62v14" stroke="#E8EEF9" stroke-width="3" stroke-linecap="round" opacity=".8" />
+  <path d="M96 76h14" stroke="#E8EEF9" stroke-width="3" stroke-linecap="round" opacity=".8" />
+  <path d="M160 62v14" stroke="#E8EEF9" stroke-width="3" stroke-linecap="round" opacity=".8" />
+  <path d="M160 76h-14" stroke="#E8EEF9" stroke-width="3" stroke-linecap="round" opacity=".8" />
+</svg>

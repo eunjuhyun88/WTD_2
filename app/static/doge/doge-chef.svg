@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Chef Doge - Chef hat and utensils -->
+  <!-- Head base -->
+  <ellipse cx="100" cy="120" rx="62" ry="55" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <!-- Inner face -->
+  <ellipse cx="100" cy="127" rx="40" ry="35" fill="#f0d06e"/>
+  <!-- Ears -->
+  <path d="M48 92 L32 50 L66 78 Z" fill="#d4a33e" stroke="#000" stroke-width="3"/>
+  <path d="M152 92 L168 50 L134 78 Z" fill="#d4a33e" stroke="#000" stroke-width="3"/>
+  <path d="M52 88 L42 58 L64 78 Z" fill="#c4922e"/>
+  <path d="M148 88 L158 58 L136 78 Z" fill="#c4922e"/>
+  <!-- Chef Hat (Toque) -->
+  <ellipse cx="100" cy="80" rx="50" ry="10" fill="#fff" stroke="#000" stroke-width="3"/>
+  <!-- Hat puffs -->
+  <circle cx="75" cy="55" r="22" fill="#fff" stroke="#000" stroke-width="2.5"/>
+  <circle cx="100" cy="45" r="24" fill="#fff" stroke="#000" stroke-width="2.5"/>
+  <circle cx="125" cy="55" r="22" fill="#fff" stroke="#000" stroke-width="2.5"/>
+  <circle cx="88" cy="38" r="18" fill="#fff" stroke="#000" stroke-width="2"/>
+  <circle cx="112" cy="38" r="18" fill="#fff" stroke="#000" stroke-width="2"/>
+  <circle cx="100" cy="30" r="16" fill="#fff" stroke="#000" stroke-width="2"/>
+  <!-- Hat band -->
+  <rect x="50" y="74" width="100" height="12" rx="2" fill="#fff" stroke="#000" stroke-width="2.5"/>
+  <!-- Eyes - happy/proud -->
+  <path d="M72 110 Q82 102 92 110" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M108 110 Q118 102 128 110" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Rosy cheeks -->
+  <circle cx="70" cy="118" r="8" fill="#ff9999" opacity="0.5"/>
+  <circle cx="130" cy="118" r="8" fill="#ff9999" opacity="0.5"/>
+  <!-- Nose -->
+  <ellipse cx="100" cy="125" rx="7" ry="5" fill="#1a1a1a" stroke="#000" stroke-width="2"/>
+  <!-- Happy open mouth -->
+  <path d="M82 138 Q100 152 118 138" fill="#2a1a00" stroke="#000" stroke-width="3"/>
+  <path d="M85 138 Q100 145 115 138" fill="#ff6b8a" stroke="none"/>
+  <!-- Tongue -->
+  <ellipse cx="100" cy="148" rx="8" ry="5" fill="#ff8a8a"/>
+  <!-- Wooden spoon -->
+  <g transform="translate(160, 100) rotate(20)">
+    <rect x="-3" y="0" width="6" height="50" rx="2" fill="#c4822e" stroke="#000" stroke-width="2"/>
+    <ellipse cx="0" cy="-5" rx="10" ry="12" fill="#c4822e" stroke="#000" stroke-width="2"/>
+    <ellipse cx="0" cy="-5" rx="6" ry="8" fill="#d4923e"/>
+  </g>
+  <!-- Small chef kiss sparkles -->
+  <path d="M55 100 L58 95 L61 100 L56 97 L60 97 Z" fill="#ffd700" transform="scale(0.8)"/>
+  <circle cx="150" cy="95" r="2" fill="#ffd700"/>
+</svg>

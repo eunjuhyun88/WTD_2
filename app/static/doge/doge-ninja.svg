@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Ninja Doge - Mask and bandana -->
+  <!-- Head base -->
+  <ellipse cx="100" cy="110" rx="65" ry="60" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <!-- Ears -->
+  <path d="M45 75 L25 30 L65 60 Z" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <path d="M155 75 L175 30 L135 60 Z" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <path d="M50 72 L38 42 L63 62 Z" fill="#c4922e"/>
+  <path d="M150 72 L162 42 L137 62 Z" fill="#c4922e"/>
+  <!-- Ninja bandana/headband -->
+  <rect x="35" y="78" width="130" height="18" rx="3" fill="#222" stroke="#000" stroke-width="2"/>
+  <!-- Bandana tails flowing right -->
+  <path d="M165 82 Q180 78 190 85 Q185 90 175 88 Q180 95 190 98" fill="#222" stroke="#000" stroke-width="2"/>
+  <path d="M165 88 Q178 92 185 100" fill="#222" stroke="#000" stroke-width="2"/>
+  <!-- Metal plate on bandana -->
+  <rect x="82" y="80" width="36" height="14" rx="3" fill="#888" stroke="#555" stroke-width="2"/>
+  <!-- Ninja symbol on plate -->
+  <path d="M95 87 L100 83 L105 87 L100 91 Z" fill="#c00" stroke="#000" stroke-width="1"/>
+  <!-- Ninja mask covering lower face -->
+  <path d="M45 110 Q50 100 65 100 L135 100 Q150 100 155 110 L155 145 Q100 165 45 145 Z" fill="#1a1a1a" stroke="#000" stroke-width="3"/>
+  <!-- Eyes - intense squinting -->
+  <path d="M68 98 Q78 92 88 98" fill="#fff" stroke="#000" stroke-width="3"/>
+  <circle cx="78" cy="96" r="4" fill="#c00"/>
+  <circle cx="79" cy="95" r="1.5" fill="#fff"/>
+  <path d="M112 98 Q122 92 132 98" fill="#fff" stroke="#000" stroke-width="3"/>
+  <circle cx="122" cy="96" r="4" fill="#c00"/>
+  <circle cx="123" cy="95" r="1.5" fill="#fff"/>
+  <!-- Shuriken in hand -->
+  <g transform="translate(25, 150) rotate(-15)">
+    <path d="M0 -12 L4 -4 L12 0 L4 4 L0 12 L-4 4 L-12 0 L-4 -4 Z" fill="#aaa" stroke="#000" stroke-width="2"/>
+    <circle cx="0" cy="0" r="3" fill="#666" stroke="#000" stroke-width="1"/>
+  </g>
+</svg>

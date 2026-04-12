@@ -1,0 +1,25 @@
+{
+  "$comment": "swarm-v1 kill-gate defaults. The scheduler and reviewer-auto agents read this at startup AND each DAG node can override via its own kill_gate field. Design: docs/exec-plans/active/swarm-v1-design-2026-04-11.md §6 invariants 4, 10.",
+  "version": 1,
+  "defaults": {
+    "gate_fail_max": 3,
+    "age_days_max": 3,
+    "silent_hours_max": 48,
+    "auto_archive_hours_after_silent": 24
+  },
+  "bias": {
+    "note": "Design §11.1: weeks 1–2 reviewer-auto should bias toward REVISE over PASS. We track this as an explicit knob so Phase 3 can relax.",
+    "reviewer_bias_mode": "strict",
+    "reviewer_bias_modes": {
+      "strict": "prefer REVISE when unsure — false PASS breaks main, false REVISE costs one iteration",
+      "balanced": "evenly weighted — use after 3 weeks stable in strict mode",
+      "permissive": "prefer PASS when unsure — only after Phase 4, never before"
+    }
+  },
+  "cost_ceiling": {
+    "env_var": "CLAUDE_API_DAILY_CEILING_USD",
+    "suspend_at_pct": 80,
+    "kill_at_pct": 100,
+    "note": "Design §9 #6. Without this, WIP=10 can produce 7-figure KRW surprise bills."
+  }
+}

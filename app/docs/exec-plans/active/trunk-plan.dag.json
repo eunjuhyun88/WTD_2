@@ -1,0 +1,1083 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-11",
+  "design_doc": "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+  "parent_trunk_plan": "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md",
+  "track_limits": {
+    "product": 6,
+    "research": 3,
+    "fix": 1
+  },
+  "mutex_groups": {
+    "contract-*": "Only one slice at a time may touch src/lib/contracts/**",
+    "scanEngine-decompose": "Only one P1.A0.* slice at a time — all touch scanEngine.ts",
+    "migration-*": "Only one DB migration at a time"
+  },
+  "slices": [
+    {
+      "id": "P0.1-verdict-zod",
+      "title": "Promote engine PipelineResult to VerdictBlock zod schema",
+      "track": "product",
+      "phase": "P0",
+      "priority": 100,
+      "agent_type": "contract-drafter",
+      "depends_on": [],
+      "mutex": ["contract-*"],
+      "paths": [
+        "src/lib/contracts/verdict.ts",
+        "src/lib/contracts/index.ts"
+      ],
+      "context_files": [
+        "src/lib/engine/types.ts",
+        "src/lib/engine/agentPipeline.ts",
+        "src/lib/contracts/ids.ts",
+        "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md",
+        "docs/exec-plans/active/alpha-terminal-harness-engine-spec-2026-04-09.md"
+      ],
+      "dod": [
+        "src/lib/contracts/verdict.ts exports VerdictBlockSchema (zod) and VerdictBlock type via z.infer",
+        "Schema covers every field of PipelineResult + AgentOutput + MatchPrediction from src/lib/engine/types.ts",
+        "Round-trip parse test: sample PipelineResult → JSON.stringify → JSON.parse → schema.parse → deep equal",
+        "npm run check exits 0",
+        "src/lib/contracts/index.ts re-exports VerdictBlockSchema and VerdictBlock"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "The ground truth for verdict_block shape already exists as TypeScript interfaces in src/lib/engine/types.ts. This is a 'promote existing interface to zod' task, not greenfield design. Do not widen or narrow field types without explicit comment."
+    },
+    {
+      "id": "P0.2-trajectory-zod",
+      "title": "Promote DecisionTrajectory schema to zod",
+      "track": "product",
+      "phase": "P0",
+      "priority": 95,
+      "agent_type": "contract-drafter",
+      "depends_on": ["P0.1-verdict-zod"],
+      "mutex": ["contract-*"],
+      "paths": [
+        "src/lib/contracts/trajectory.ts",
+        "src/lib/contracts/index.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/verdict.ts",
+        "src/lib/contracts/ids.ts",
+        "docs/ORPO_DATA_SCHEMA_PIPELINE_v1_2026-02-26.md",
+        "docs/PASSPORT_ML_ORPO_LEARNING_ARCHITECTURE_v2_2026-02-25.md",
+        "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md"
+      ],
+      "dod": [
+        "src/lib/contracts/trajectory.ts exports DecisionTrajectorySchema (zod) and DecisionTrajectory type",
+        "Schema embeds VerdictBlock via VerdictBlockSchema (from P0.1)",
+        "Outcome fields are nullable (resolver populates later)",
+        "Round-trip parse test covers both unresolved and resolved trajectories",
+        "npm run check exits 0",
+        "src/lib/contracts/index.ts re-exports DecisionTrajectorySchema and DecisionTrajectory"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Schema basis is ORPO_DATA_SCHEMA_PIPELINE_v1 §2. Embeds P0.1's VerdictBlock as a JSONB payload in DB terms. Outcome fields start nullable because the time-delay resolver worker (P2.C-outcome-resolver, later slice) populates them."
+    },
+    {
+      "id": "P0.3-ids-finalize",
+      "title": "Finalize contract ID namespace — close RawId registry + add verdict/trajectory/pair IDs",
+      "track": "product",
+      "phase": "P0",
+      "priority": 90,
+      "agent_type": "contract-drafter",
+      "depends_on": [],
+      "mutex": ["contract-*"],
+      "paths": [
+        "src/lib/contracts/ids.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/ids.ts",
+        "docs/exec-plans/active/alpha-terminal-harness-engine-spec-2026-04-09.md"
+      ],
+      "dod": [
+        "VerdictBias, VerdictUrgency, StructureStateId, EventDirection, EventSeverity enums exported from ids.ts",
+        "RawId remains open (template literal), isRawId() function unchanged",
+        "Barrel re-export updated if new enums need re-export via index.ts",
+        "npm run check exits 0"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 2
+      },
+      "notes": "Partially drafted already on feat/phase0-contracts. This slice finishes the enum additions that verdict.ts and trajectory.ts depend on. Can run in parallel with P0.1/P0.2 only if mutex is per-file instead of directory-wide — default setting uses directory-wide so this runs before P0.1."
+    },
+    {
+      "id": "P0.4-contracts-barrel",
+      "title": "Contracts barrel re-export finalization + drop-in type replacement verification",
+      "track": "product",
+      "phase": "P0",
+      "priority": 85,
+      "agent_type": "contract-drafter",
+      "depends_on": ["P0.1-verdict-zod", "P0.2-trajectory-zod", "P0.3-ids-finalize"],
+      "mutex": ["contract-*"],
+      "paths": [
+        "src/lib/contracts/index.ts",
+        "src/lib/engine/types.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/verdict.ts",
+        "src/lib/contracts/trajectory.ts",
+        "src/lib/contracts/ids.ts",
+        "src/lib/engine/types.ts",
+        "src/lib/engine/agentPipeline.ts"
+      ],
+      "dod": [
+        "src/lib/contracts/index.ts re-exports all public schemas and types from verdict, trajectory, ids",
+        "One representative call site in src/lib/engine/types.ts replaced: interface PipelineResult becomes type PipelineResult = z.infer<typeof VerdictBlockSchema>",
+        "agentPipeline.ts continues to compile and run existing callers without code changes",
+        "npm run check exits 0",
+        "Regression test: quickPipeline output still parses via VerdictBlockSchema without errors"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 2
+      },
+      "notes": "This is the verification gate for Phase 0. If this slice passes, contracts are effectively frozen and Phase 1 unblocks. Any P1.* slice may then depend only on the contracts layer, not on engine/types.ts directly."
+    },
+    {
+      "id": "P0.5-zod-pin",
+      "title": "Pin zod as explicit dependency in package.json",
+      "track": "product",
+      "phase": "P0",
+      "priority": 80,
+      "agent_type": "api-surgeon",
+      "depends_on": [],
+      "mutex": [],
+      "paths": [
+        "package.json",
+        "package-lock.json"
+      ],
+      "context_files": [
+        "package.json",
+        "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md"
+      ],
+      "dod": [
+        "zod explicitly listed in dependencies (not just transitive via @walletconnect)",
+        "Version ≥ 3.25 and pinned (no caret or tilde)",
+        "package-lock.json regenerated via npm install",
+        "npm run check exits 0",
+        "No other dependency changes"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 1
+      },
+      "notes": "Prevents zod from silently disappearing if @walletconnect drops it. Smallest possible slice — should merge in under an hour. Safe to run in parallel with P0.1–P0.4 (different file scope)."
+    },
+    {
+      "id": "P1.A0-binance",
+      "title": "Extract binance raw loader to src/lib/server/providers/binance.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 75,
+      "agent_type": "decomposer",
+      "depends_on": ["P0.4-contracts-barrel"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/binance.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/binance.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/binance.ts",
+        "src/lib/contracts/ids.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/binance.ts created with raw loader functions moved out of scanEngine.ts (Phase A plan first, Phase B execute)",
+        "All binance fetch logic previously in scanEngine.ts is now in providers/binance.ts",
+        "scanEngine.ts re-exports binance loaders via barrel for backward compatibility",
+        "No behavior changes, no function signature changes, no type widening",
+        "npm run check exits 0",
+        "All existing imports of binance functions resolve unchanged"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Decomposer agent runs in two phases. Phase A produces a plan at .agent-context/handoffs/P1.A0-binance-split-plan.md and STOPS for human approval. Phase B executes the move as one PR. This is the first decomposer invocation and will validate the pattern for the other P1.A0.* slices."
+    },
+    {
+      "id": "P1.A0-coingecko",
+      "title": "Extract coingecko raw loader to src/lib/server/providers/coingecko.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 74,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-binance"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/coingecko.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coingecko.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coingecko.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/coingecko.ts created, coingecko fetches moved out of scanEngine.ts",
+        "scanEngine.ts re-exports coingecko loaders via barrel",
+        "No behavior changes",
+        "npm run check exits 0",
+        "binance extraction from P1.A0-binance remains intact"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Depends on P1.A0-binance MERGED (not just started) because both touch scanEngine.ts. Mutex enforces this at the scheduler level. Pattern should now be established from binance; coingecko is the pattern repeat."
+    },
+    {
+      "id": "P1.A0-coinalyze",
+      "title": "Extract coinalyze raw loader to src/lib/server/providers/coinalyze.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 73,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-coingecko"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/coinalyze.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinalyze.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinalyze.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/coinalyze.ts created, coinalyze fetches moved out of scanEngine.ts",
+        "scanEngine.ts re-exports coinalyze loaders via barrel",
+        "No behavior changes",
+        "npm run check exits 0"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Serial via mutex after P1.A0-coingecko. By the third P1.A0.* slice the decomposer pattern is fully proven and any issues would have surfaced earlier."
+    },
+    {
+      "id": "P1.A0-dexscreener",
+      "title": "Extract dexscreener raw loader to src/lib/server/providers/dexscreener.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 72,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-coinalyze"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/dexscreener.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/dexscreener.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/dexscreener.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/dexscreener.ts created, dexscreener fetches moved out of scanEngine.ts",
+        "scanEngine.ts re-exports dexscreener loaders via barrel",
+        "No behavior changes",
+        "npm run check exits 0"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "Last of the v0 provider extractions. After this, Phase 1 A-P0 has 4 of the 21 providers extracted; the remaining 17 are added to the DAG in a v1 update after first round merges cleanly."
+    },
+    {
+      "id": "P1.C-schema-migration",
+      "title": "Add verdict_block_json JSONB column to decision_trajectories + round-trip test",
+      "track": "product",
+      "phase": "P1",
+      "priority": 70,
+      "agent_type": "migration-writer",
+      "depends_on": ["P0.4-contracts-barrel"],
+      "mutex": ["migration-*"],
+      "paths": [
+        "db/migrations/20260411_decision_trajectories_verdict_block.sql",
+        "supabase/migrations/20260411_decision_trajectories_verdict_block.sql",
+        "src/lib/server/memory/decisionJournal.ts"
+      ],
+      "context_files": [
+        "db/migrations/0007_memory_system.sql",
+        "supabase/migrations/005_terminal_persistence.sql",
+        "src/lib/contracts/trajectory.ts",
+        "src/lib/contracts/verdict.ts",
+        "docs/ORPO_DATA_SCHEMA_PIPELINE_v1_2026-02-26.md"
+      ],
+      "dod": [
+        "Migration file creates decision_trajectories table if not exists (with verdict_block_json JSONB column) OR adds the column if the table already exists",
+        "Migration includes both up and down paths",
+        "src/lib/server/memory/decisionJournal.ts exports insertTrajectory() and getTrajectory() using DecisionTrajectorySchema for validation",
+        "Round-trip integration test: insertTrajectory(sample) → getTrajectory(id) → schema.parse → deep equal sample",
+        "npm run check exits 0",
+        "Supabase RLS policy drafted for trajectory table (even if permissive for now)",
+        "1000-user perf budget: insert+read round-trip p95 < 50ms on default supabase free tier (documented in slice handoff)",
+        "Security: RLS policy enforces user_id ownership OR explicit comment in SQL header justifying permissive default"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 3,
+        "age_days_max": 3
+      },
+      "notes": "C-schema track per three-pipeline Phase 1. Runs in parallel with P1.A0.* (different mutex group). This slice defines the first real consumer of the DecisionTrajectorySchema from P0.2 and provides the database surface for the later outcome-resolver worker (future slice, not in this v0 DAG)."
+    },
+    {
+      "id": "Z0-smoke-rollout-marker",
+      "title": "week_0 gate smoke — exercise full slice lifecycle end-to-end",
+      "track": "product",
+      "phase": "Z0",
+      "priority": 999,
+      "agent_type": "implementer",
+      "depends_on": [],
+      "mutex": [],
+      "paths": [
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".agent-context/policy/wip-limits.json",
+        "scripts/slice/cli.mjs"
+      ],
+      "dod": [
+        "docs/swarm-v1-rollout-log.md created at repo root docs/",
+        "File records: state reconciliation evidence (P0.1..P0.5 rebuild + 4 P1.A0 backfills with SHAs)",
+        "File records: Z0-smoke end-to-end journal (in-progress → ready-for-review → approved → merged events)",
+        "File records: week_0 → week_1 advancement decision and the 3 rollout gates per design §8",
+        "File records: 1000-user perf + security baseline commitment (baseline + budget table)",
+        "npm run gate exits 0",
+        "slice status shows Z0-smoke as MERGED after lifecycle completes",
+        "1000-user perf budget: zero new runtime code, zero perf regression by construction (docs-only slice)",
+        "Security posture: no new creds, no new network egress, no new surface (docs-only slice)"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 1,
+        "age_days_max": 1
+      },
+      "notes": "Ops-only slice. Purpose is to exercise the full swarm-v1 slice lifecycle (new → ready-for-review → approved → merged) in one sitting so the week_0 rollout gate can be declared passed by human review. Uses the single product WIP slot under week_0 cap. After Z0-smoke merges, advance active_phase to week_1 in .agent-context/policy/wip-limits.json."
+    },
+    {
+      "id": "P1.A0-upbit",
+      "title": "Extract upbit raw loader to src/lib/server/providers/upbit.ts (if legacy exists)",
+      "track": "product",
+      "phase": "P1",
+      "priority": 71,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-dexscreener"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/upbit.ts",
+        "src/lib/server/scanEngine.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "Slice worker FIRST verifies whether legacy upbit loader exists by grep on src/lib/server/; if absent, worker emits kill-reason 'no legacy upbit shim' and exits",
+        "If present: src/lib/server/providers/upbit.ts created with raw loader moved out of scanEngine.ts",
+        "No behavior changes, no function signature changes",
+        "npm run check exits 0",
+        "1000-user perf budget: no regression in scanEngine execution time, no added network hops",
+        "Security: no new API keys introduced (reuse existing rotation pool pattern)"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Promoted from parking_lot in DAG v1. upbit legacy file NOT confirmed on disk at time of promotion — worker must kill-exit if no shim found. Serial via scanEngine-decompose mutex."
+    },
+    {
+      "id": "P1.A0-etherscan",
+      "title": "Extract etherscan raw loader to src/lib/server/providers/etherscan.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 70,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-upbit"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/etherscan.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/etherscan.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/etherscan.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/etherscan.ts created with raw loader moved out of scanEngine.ts",
+        "scanEngine.ts re-exports etherscan loaders via barrel",
+        "No behavior changes",
+        "npm run check exits 0",
+        "1000-user perf budget: no regression in scanEngine execution time",
+        "Security: no new creds; etherscan key already in rotation pool"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy file confirmed at src/lib/server/etherscan.ts. Same pattern as P1.A0-binance."
+    },
+    {
+      "id": "P1.A0-santiment",
+      "title": "Extract santiment raw loader to src/lib/server/providers/santiment.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 69,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-etherscan"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/santiment.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/santiment.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/santiment.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/santiment.ts created",
+        "scanEngine.ts re-exports santiment loaders",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/santiment.ts."
+    },
+    {
+      "id": "P1.A0-lunarcrush",
+      "title": "Extract lunarcrush raw loader to src/lib/server/providers/lunarcrush.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 68,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-santiment"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/lunarcrush.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/lunarcrush.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/lunarcrush.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/lunarcrush.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/lunarcrush.ts."
+    },
+    {
+      "id": "P1.A0-defillama",
+      "title": "Extract defillama raw loader to src/lib/server/providers/defillama.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 67,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-lunarcrush"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/defillama.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/defillama.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/defillama.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/defillama.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/defillama.ts."
+    },
+    {
+      "id": "P1.A0-cryptoquant",
+      "title": "Extract cryptoquant raw loader to src/lib/server/providers/cryptoquant.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 66,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-defillama"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/cryptoquant.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/cryptoquant.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/cryptoquant.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/cryptoquant.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/cryptoquant.ts."
+    },
+    {
+      "id": "P1.A0-yahoo",
+      "title": "Extract yahoo-finance raw loader to src/lib/server/providers/yahoo.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 65,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-cryptoquant"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/yahoo.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/yahooFinance.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/yahooFinance.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/yahoo.ts created (legacy is yahooFinance.ts)",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy name is yahooFinance.ts — worker should preserve export names for backward compat."
+    },
+    {
+      "id": "P1.A0-fred",
+      "title": "Extract fred raw loader to src/lib/server/providers/fred.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 64,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-yahoo"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/fred.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/fred.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/fred.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/fred.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/fred.ts."
+    },
+    {
+      "id": "P1.A0-feargreed",
+      "title": "Extract feargreed raw loader to src/lib/server/providers/feargreed.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 63,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-fred"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/feargreed.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/feargreed.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/feargreed.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/feargreed.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/feargreed.ts. Already has E6c thresholds slice in-flight on a separate worktree — coordinate via mutex."
+    },
+    {
+      "id": "P1.A0-coinmetrics",
+      "title": "Extract coinmetrics raw loader to src/lib/server/providers/coinmetrics.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 62,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-feargreed"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/coinmetrics.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinmetrics.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinmetrics.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/coinmetrics.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/coinmetrics.ts."
+    },
+    {
+      "id": "P1.A0-coinmarketcap",
+      "title": "Extract coinmarketcap raw loader to src/lib/server/providers/coinmarketcap.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 61,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-coinmetrics"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/coinmarketcap.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinmarketcap.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinmarketcap.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/coinmarketcap.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/coinmarketcap.ts."
+    },
+    {
+      "id": "P1.A0-dune",
+      "title": "Extract dune raw loader to src/lib/server/providers/dune.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 60,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-coinmarketcap"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/dune.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/dune.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/dune.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/dune.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: DUNE_API_KEY in rotation pool only, never logged"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/dune.ts. DUNE_API_KEY noted in credential rotation pending list — handle carefully."
+    },
+    {
+      "id": "P1.A0-gmx",
+      "title": "Extract gmx-v2 raw loader to src/lib/server/providers/gmx.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 59,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-dune"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/gmx.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/gmxV2.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/gmxV2.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/gmx.ts created (legacy gmxV2.ts)",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy name is gmxV2.ts — preserve export names for backward compat."
+    },
+    {
+      "id": "P1.A0-polymarket",
+      "title": "Extract polymarket-clob raw loader to src/lib/server/providers/polymarket.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 58,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-gmx"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/polymarket.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/polymarketClob.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/polymarketClob.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/polymarket.ts created (legacy polymarketClob.ts)",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy name is polymarketClob.ts — preserve export names."
+    },
+    {
+      "id": "P1.A0-geckowhale",
+      "title": "Extract geckowhale raw loader to src/lib/server/providers/geckowhale.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 57,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-polymarket"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/geckowhale.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/geckoWhale.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/geckoWhale.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/geckowhale.ts created (legacy geckoWhale.ts)",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy name is geckoWhale.ts (camelCase). Last of the v1 P1.A0 promotions."
+    },
+    {
+      "id": "P2.A1-events-base",
+      "title": "Phase 2 seed — factor event emitter base module",
+      "track": "product",
+      "phase": "P2",
+      "priority": 55,
+      "agent_type": "api-surgeon",
+      "depends_on": ["P0.4-contracts-barrel", "P1.C-schema-migration"],
+      "mutex": [],
+      "paths": [
+        "src/lib/engine/events/base.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/index.ts",
+        "src/lib/engine/agentPipeline.ts",
+        "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md"
+      ],
+      "dod": [
+        "src/lib/engine/events/base.ts defines FactorEventEmitter interface + emit() helper",
+        "Uses E1 event namespace registry from src/lib/contracts/events.ts (already landed)",
+        "npm run check exits 0",
+        "1000-user perf: event emit is synchronous + no I/O; < 1μs per call",
+        "Security: no PII in event payloads (enforced by contract schema)"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 5 },
+      "notes": "Phase 2 seed — unblocks the F4~F17 factor event rewrites. Does NOT rewrite any factor yet; just provides the base module."
+    },
+    {
+      "id": "P2.C-outcome-resolver",
+      "title": "Phase 2 — time-bridge worker that populates trajectory outcomes",
+      "track": "product",
+      "phase": "P2",
+      "priority": 50,
+      "agent_type": "api-surgeon",
+      "depends_on": ["P1.C-schema-migration"],
+      "mutex": [],
+      "paths": [
+        "src/lib/server/workers/outcomeResolver.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/trajectory.ts",
+        "src/lib/server/memory/decisionJournal.ts",
+        "docs/ORPO_DATA_SCHEMA_PIPELINE_v1_2026-02-26.md"
+      ],
+      "dod": [
+        "src/lib/server/workers/outcomeResolver.ts exports resolveOutcomes(window: number)",
+        "Reads trajectories older than window from decision journal, fetches price at resolution tick, writes back outcome fields",
+        "Cron schedule documented in comment header (e.g. every 5 minutes via Vercel cron)",
+        "Unit smoke covers: fresh trajectory not resolved, window-elapsed trajectory resolved, stale-data edge case",
+        "npm run check exits 0",
+        "1000-user perf: worker processes up to 1000 trajectories per invocation in < 10s (batched read + parallel resolve)",
+        "Security: read-only to price sources, write-only to own table, no cross-tenant reads"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 7 },
+      "notes": "Phase 2 critical path — makes the ORPO pair generator possible. Depends on P1.C-schema-migration because it writes outcome fields to the trajectory table."
+    },
+    {
+      "id": "Z1-hook-subagent-autospawn",
+      "title": "SubagentStop hook emits next-ready-slice notice to daily digest",
+      "track": "product",
+      "phase": "Z1",
+      "priority": 990,
+      "agent_type": "implementer",
+      "depends_on": [],
+      "mutex": [],
+      "paths": [
+        "scripts/swarm/auto-spawn.sh",
+        ".claude/hooks/subagent-auto-spawn.sh",
+        ".claude/settings.json",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".claude/agents/scheduler.md",
+        "scripts/slice/cli.mjs",
+        ".claude/hooks/stop-context.sh"
+      ],
+      "dod": [
+        "scripts/swarm/auto-spawn.sh exists and is executable; reads `slice ready --json`, picks highest priority, checks WIP cap vs active_phase, appends to .agent-context/digest/YYYY-MM-DD.md",
+        ".claude/hooks/subagent-auto-spawn.sh is a thin wrapper that cd's to repo root and invokes scripts/swarm/auto-spawn.sh with stderr capture",
+        ".claude/settings.json SubagentStop hook chain includes the new hook AFTER stop-context.sh (context save must run first)",
+        "Smoke verification: running scripts/swarm/auto-spawn.sh produces a digest entry of shape `- HH:MM:SSZ scheduler: next ready slice=<id> track=<t> (WIP a/b, phase=week_N)`",
+        "Rollout log in docs/swarm-v1-rollout-log.md updated with Z1 landing entry + auto-spawn usage notes",
+        "npm run check exits 0; npm run gate exits 0",
+        "1000-user perf budget: hook runs in < 200ms wall-clock (bash + one jq + one node CLI call); no blocking I/O; zero network",
+        "Security: no new network egress, no new creds, no PII in digest; auto-spawn script refuses to execute outside the repo root; hook aborts silently if scripts/swarm/auto-spawn.sh is missing (no error spam for non-swarm branches)"
+      ],
+      "kill_gate": { "gate_fail_max": 2, "age_days_max": 1 },
+      "notes": "Scope is intentionally NARROW: this slice does NOT auto-invoke the Scheduler subagent (which would require spawning a whole Claude process). It only makes the scheduler state OBSERVABLE after every SubagentStop so the human operator (or a future slice) can react. Full auto-spawn via `claude -p scheduler` is deferred until cost-ceiling-guard (Z3) lands. Uses observability, not automation."
+    },
+    {
+      "id": "Z2-slice-worktree-lifecycle",
+      "title": "slice new --worktree + slice merge/kill teardown (full lifecycle)",
+      "track": "product",
+      "phase": "Z2",
+      "priority": 985,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z1-hook-subagent-autospawn"],
+      "mutex": [],
+      "paths": [
+        "scripts/slice/cli.mjs",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        "scripts/slice/cli.mjs"
+      ],
+      "dod": [
+        "cmdNew gains optional --worktree flag that runs `git worktree add .claude/worktrees/<slice-id> -b <branch>` after writing brief + claim",
+        "Without --worktree, cmdNew behaves exactly as before (backward compat)",
+        "With --worktree, cmdNew refuses to create if target path already exists and prints the existing worktree info",
+        "cmdMerge detects whether the slice owns a worktree (claim has worktree_path field) and runs `git worktree remove <path>` after the merged event lands — teardown half of the lifecycle",
+        "cmdKill runs the same teardown; accepts --keep-worktree opt-out for debugging",
+        "Claim JSON schema extended to include optional worktree_path field written by cmdNew and read by cmdMerge/cmdKill",
+        "Smoke: `slice new <id> --worktree` creates worktree; `slice approve` + `slice merge` removes it; `git worktree list` no longer shows it",
+        "Smoke 2: `slice new <id> --worktree` then `slice kill --keep-worktree` leaves the worktree for inspection",
+        "Help text in scripts/slice/cli.mjs lists --worktree and --keep-worktree",
+        "npm run check exits 0",
+        "1000-user perf budget: one extra shell-out per slice-new and per slice-merge/kill; no runtime impact on /api/* or /terminal rendering; total CLI overhead < 500ms per lifecycle command even at n=10 worktrees",
+        "Security: git worktree add/remove are local-only operations; no network; provisioning does NOT copy keys or env files (git worktree shares .git but working tree starts clean); removal refuses to delete worktrees with uncommitted changes unless --force is explicit"
+      ],
+      "kill_gate": { "gate_fail_max": 2, "age_days_max": 2 },
+      "notes": "Rewritten from v1.1 (provisioning-only) to v1.2 (full lifecycle) per design §16.3. Cleanup half is the binding piece: without teardown, the 15+ orphan directories observed at 2026-04-12 just keep growing. Keep all new flags optional so existing shared-worktree flows stay unchanged."
+    },
+    {
+      "id": "Z3-cost-ceiling-guard",
+      "title": "CLAUDE_API_DAILY_CEILING_USD guard + daily digest spend tracking",
+      "track": "product",
+      "phase": "Z3",
+      "priority": 980,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z1-hook-subagent-autospawn"],
+      "mutex": [],
+      "paths": [
+        "scripts/swarm/cost-check.sh",
+        "scripts/swarm/auto-spawn.sh",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".claude/agents/scheduler.md",
+        "scripts/swarm/auto-spawn.sh"
+      ],
+      "dod": [
+        "scripts/swarm/cost-check.sh reads CLAUDE_API_DAILY_CEILING_USD env var (default empty = guard disabled)",
+        "When set, computes today's spend from .agent-context/digest/YYYY-MM-DD.md cost lines (if present) and emits status: OK / NEAR (>=80%) / OVER (>=100%)",
+        "scripts/swarm/auto-spawn.sh short-circuits at OVER and writes a digest warning instead of picking a slice",
+        "When CLAUDE_API_DAILY_CEILING_USD is unset, cost-check.sh prints 'disabled' and exits 0 (no guard)",
+        "Smoke: export CLAUDE_API_DAILY_CEILING_USD=0 then cost-check.sh reports OVER, then auto-spawn.sh short-circuits",
+        "1000-user perf budget: cost-check.sh runs in <50ms; no network; pure file read + awk math",
+        "Security: env var is read-only; no cost data is exfiltrated; digest cost lines are human-appended only (no automatic API polling)"
+      ],
+      "kill_gate": { "gate_fail_max": 2, "age_days_max": 2 },
+      "notes": "Honest boundary: this slice does NOT auto-compute cost from the Claude API — that would require an API key and polling. Instead it reads a digest file that the human operator (or a future cron) appends cost snapshots to. The value is the SHORT-CIRCUIT: once OVER, auto-spawn.sh stops picking new work until the operator resolves the budget."
+    },
+    {
+      "id": "Z4-worktree-orphan-sweep",
+      "title": "Orphan worktree sweep + Main-Keeper Task 4 integration",
+      "track": "product",
+      "phase": "Z4",
+      "priority": 975,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z2-slice-worktree-lifecycle"],
+      "mutex": [],
+      "paths": [
+        "scripts/swarm/orphan-sweep.sh",
+        ".claude/agents/main-keeper.md",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".claude/agents/main-keeper.md",
+        "scripts/slice/cli.mjs"
+      ],
+      "dod": [
+        "scripts/swarm/orphan-sweep.sh exists and is executable",
+        "Reconciles `git worktree list --porcelain` against `.claude/worktrees/` filesystem entries",
+        "Classifies each directory as: TRACKED (in git worktree list), ORPHAN (on disk only), STALE (in git but last commit > 14 days ago), or ACTIVE_CLAIM (has .agent-context/ownership/branch-*.json)",
+        "Default mode is dry-run — prints the plan with color-coded categories",
+        "`--apply` flag required to actually `git worktree remove` orphans and `rm -rf` untracked directories",
+        "Refuses to remove any directory that matches ACTIVE_CLAIM, even with --apply",
+        "Main-Keeper spec gains Task 4: `scripts/swarm/orphan-sweep.sh --apply --stale-days 14` run every 24h per cron",
+        "Smoke: create a test orphan directory, run dry-run, verify it's flagged; run --apply, verify it's removed",
+        "One-time cleanup of the 15+ current orphans documented in rollout log with before/after counts",
+        "1000-user perf budget: orphan-sweep.sh scans ≤100 directories in <200ms; no network; pure filesystem + `git worktree list` (one subprocess)",
+        "Security: refuses to rm anything outside `.claude/worktrees/`; uses absolute path prefix check; no follow-symlinks; dry-run default prevents accidents"
+      ],
+      "kill_gate": { "gate_fail_max": 2, "age_days_max": 3 },
+      "notes": "Per design §16.3. Depends on Z2 because cleanup lifecycle must exist before orphan sweep — otherwise Z4 would flag in-flight worktrees as orphans. Main-Keeper Task 4 is the scheduled integration; standalone script usage is the fallback when cron is disabled."
+    },
+    {
+      "id": "Z5-cross-worktree-state-read",
+      "title": "slice new + slice ready walk sibling worktrees for cross-claim awareness",
+      "track": "product",
+      "phase": "Z5",
+      "priority": 970,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z2-slice-worktree-lifecycle"],
+      "mutex": [],
+      "paths": [
+        "scripts/slice/cli.mjs",
+        ".githooks/pre-commit",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        "scripts/slice/cli.mjs",
+        ".githooks/pre-commit"
+      ],
+      "dod": [
+        "scripts/slice/cli.mjs gains a loadCrossWorktreeClaims() helper that walks `git worktree list --porcelain`, reads each worktree's `.agent-context/ownership/branch-*.json`, and returns a Map<slice-id, {worktree, branch, paths}>",
+        "cmdNew refuses to create a slice whose ID is already claimed in another worktree; prints the conflicting worktree + branch",
+        "cmdReady filters the ready set to exclude cross-worktree-claimed slices",
+        "Pre-commit hook gains a cross-worktree check: before enforcing local claim paths, verify the current slice-id is not also claimed by a sibling worktree — if it is, reject with a clear error naming the other worktree",
+        "Smoke: create worktree A + slice new X + worktree B + slice new X (expected: second new fails with cross-claim error)",
+        "Smoke 2: create worktree A + slice new X + worktree B + slice ready --json (expected: X is NOT in ready set from B)",
+        "1000-user perf budget: loadCrossWorktreeClaims() runs in <500ms even at n=10 worktrees (one subprocess for git worktree list + N small JSON reads); cached per-CLI-invocation to avoid repeated scans",
+        "Security: read-only access to sibling worktrees; never writes across worktree boundaries; sibling claim files parsed with strict JSON (rejects malformed)"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "The single most important slice for n>=5 parallel. Per design §16.2 sub-problem 2, option (c) 'origin/main + sibling walk' is the recommended architecture. If this slice's smoke reveals that sibling walk is fragile or too slow, fallback to option (a) — commit state journal to git — documented in design §16.4."
+    },
+    {
+      "id": "Z6-claude-p-spawn-mechanism",
+      "title": "Real claude -p scheduler invocation path (gated behind Z3 cost guard)",
+      "track": "product",
+      "phase": "Z6",
+      "priority": 965,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z3-cost-ceiling-guard", "Z5-cross-worktree-state-read"],
+      "mutex": [],
+      "paths": [
+        "scripts/swarm/spawn.sh",
+        "scripts/swarm/auto-spawn.sh",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".claude/agents/scheduler.md",
+        "scripts/swarm/auto-spawn.sh"
+      ],
+      "dod": [
+        "scripts/swarm/spawn.sh invokes `claude -p` with the scheduler agent + the next ready slice id + a fresh worktree path",
+        "spawn.sh checks Z3 cost guard status FIRST — refuses to spawn if cost-check.sh reports OVER or if CLAUDE_API_DAILY_CEILING_USD is unset (no guard = no spawn)",
+        "scripts/swarm/auto-spawn.sh (Z1 observability script) gains a new --spawn mode that writes a spawn-request file to .agent-context/spawn-requests/<ts>-<slice-id>.json instead of invoking claude -p directly",
+        "spawn.sh reads spawn-request files in order, invokes claude -p, captures stdout+stderr to .agent-context/digest/YYYY-MM-DD.md, and deletes the request file on success",
+        "Rate limit stagger: spawn.sh waits >= 10s between consecutive claude -p invocations (design §9)",
+        "Smoke: set CLAUDE_API_DAILY_CEILING_USD=100, write a test spawn-request, run spawn.sh, verify claude -p launches and the digest gets a spawn event line",
+        "Smoke 2: set CLAUDE_API_DAILY_CEILING_USD=0, write a spawn-request, run spawn.sh, verify it short-circuits without invoking claude -p",
+        "1000-user perf budget: spawn.sh itself runs in <100ms (claude -p is asynchronous in the background); rate limit stagger 10s between spawns is a HARD wall",
+        "Security: refuses to spawn without Z3 cost guard armed; refuses to spawn without a valid sibling worktree path (prevents spawning into main); claude -p output goes ONLY to the digest file, never to untrusted locations; spawn requests are consumed once then deleted to prevent replay"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 5 },
+      "notes": "The riskiest slice in DAG v1.2 — first slice that actually consumes Claude API budget automatically. Depends on BOTH Z3 (cost guard must be armed) AND Z5 (cross-worktree state read must prevent double-spawn). Execution order per §16.4: Z2 → Z5 → Z4 → Z6. Z3 can run in parallel with Z4/Z5 because its mutex is different, but Z6 must wait for both."
+    }
+  ],
+  "parking_lot": [
+    "P1.A0-glassnode (no legacy shim on disk — needs initial implementation before extraction slice)",
+    "P2.A1-F4~F17 (rewrite each factor as event emitter) — 14 slices depending on P2.A1-events-base",
+    "P3.A2-structure (structural state machine) — Phase 3 work",
+    "P3.A3-verdict-assembler (replace computeAlpha) — Phase 3 work",
+    "P4.B-pair-generator (trajectory → ml_preference_pairs) — Phase 4 work",
+    "P4.B-train-eval-hooks — Phase 4 work",
+    "P5.A4-nl-routing — Phase 5 work"
+  ],
+  "notes": {
+    "v0_scope": "First 10 slices covering Phase 0 (contract freeze, 5 slices) + Phase 1 first half (4 provider extractions + 1 DB migration, 5 slices). This was enough to unblock the entire trunk plan without committing to slice definitions that had not been validated yet.",
+    "v1_scope": "Promoted Z0-smoke-rollout-marker (week_0 gate slice), 14 P1.A0 provider extractions from parking_lot (upbit + 13 confirmed-on-disk providers), and 2 Phase 2 seed slices (P2.A1-events-base, P2.C-outcome-resolver). Total: 27 slices. DAG v1 adopted after rebuild+backfill confirmed 9/10 v0 slices merged. glassnode dropped from parking_lot because no legacy shim exists — needs prior greenfield implementation.",
+    "v1_trigger_met": "P0.4-contracts-barrel MERGED (bab703e) + P1.A0-binance MERGED (89f8430) confirmed 2026-04-12 via rebuild+backfill.",
+    "v2_trigger": "When Z0-smoke-rollout-marker merges AND one P1.A0-* v1 slice merges successfully, add P2.A1-F4~F17 (14 factor event rewrites) + P3 seeds to DAG v2.",
+    "ordering_rationale": "P0.1 and P0.2 are mutex-serialized (contract-*), so even though they could in theory run in parallel with different target files, default setting runs them serial for safety. P0.5-zod-pin has no mutex and can run in parallel. P0.3 can run first since P0.1 and P0.2 depend on the enums it finalizes. All P1.A0.* are mutex-serialized via scanEngine-decompose because they all touch scanEngine.ts.",
+    "priority_explanation": "Priority breaks ties when multiple slices are ready at the same scheduler tick. Z0-smoke (999) is highest because it's the week_0 gate and must run first. P0.1 (100) was the contract-freeze critical path. P1.A0 chain descends from 75 (binance) to 57 (geckowhale) to reflect the serial order within the mutex group.",
+    "research_track_absent_from_v1": "v1 remains product-track only. Research track (research-scientist, data-formatter, eval-runner) comes online at week_2 rollout phase (swarm-v1 design §8). First research slice will be 'baseline hit_rate measurement on FIXED_SCENARIOS' and depends on P0.2-trajectory-zod (MERGED) + P1.C-schema-migration (pending).",
+    "performance_security_baseline": "Every slice in DAG v1 has an explicit '1000-user perf budget' line and 'Security' line in its DoD. This is enforced by Reviewer-Auto's DoD checklist (see .claude/agents/reviewer-auto.md). Slices that are docs-only or test-only may mark 'by construction' in the perf line; slices touching runtime code must document specific p95/throughput numbers."
+  }
+}

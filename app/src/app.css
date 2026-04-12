@@ -1,0 +1,115 @@
+/* ═══════════════════════════════════════════════════════════════
+   STOCKCLAW — Global Styles
+   Design token system: see src/lib/styles/tokens.css
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@400;700;900&family=Bebas+Neue&family=Press+Start+2P&family=VT323&family=Racing+Sans+One&display=swap');
+@import '$lib/styles/tokens.css';
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(219, 154, 159, 0.16), transparent 22%),
+    radial-gradient(circle at 82% 88%, rgba(219, 154, 159, 0.08), transparent 24%),
+    linear-gradient(180deg, #000000 0%, #050508 50%, #000000 100%);
+  color: var(--sc-text-0);
+  font-family: var(--sc-font-body);
+  font-size: var(--sc-fs-sm);
+  line-height: var(--sc-lh-normal);
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  position: relative;
+  overscroll-behavior-y: none;
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+body::before {
+  z-index: 0;
+  opacity: 0.26;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 18%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      rgba(255, 255, 255, 0.012) 3px 4px
+    );
+}
+
+body::after {
+  z-index: 0;
+  opacity: 0.16;
+  background:
+    linear-gradient(90deg, rgba(219, 154, 159, 0.022) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(219, 154, 159, 0.018) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.82) 18%, rgba(0, 0, 0, 0.82) 78%, transparent);
+}
+
+button,
+a,
+[role="button"],
+[role="tab"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  user-select: none;
+}
+
+/* Legacy .halftone and .sunburst removed — Phase 1-1 dead code cleanup */
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE: Touch Target Enforcement
+   WCAG 2.5.8 — minimum target size on touch devices
+   ═══════════════════════════════════════════════════════════════ */
+@media (pointer: coarse) {
+  button,
+  a[role="button"],
+  [role="button"],
+  [role="tab"],
+  select {
+    min-height: var(--sc-touch-sm, 36px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE: Active State Feedback (Apple-tier touch feel)
+   Touch devices get scale-down on press instead of hover.
+   ═══════════════════════════════════════════════════════════════ */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  a:active,
+  [role="button"]:active,
+  [role="tab"]:active {
+    transform: scale(0.97);
+    transition: transform 60ms var(--sc-ease, ease-out);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE: Safe Area Padding (notch devices)
+   ═══════════════════════════════════════════════════════════════ */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
