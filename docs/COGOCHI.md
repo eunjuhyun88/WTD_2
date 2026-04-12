@@ -231,13 +231,14 @@ PRIOR ART    OPPU (EMNLP 2024) · Per-Pcs (EMNLP 2024)
 
 **Day-1 features (must-have):**
 1. **Block-name search** — bottom input `<input class="query-input">` already exists (line ~1030). New client parser `src/lib/terminal/blockSearchParser.ts` converts input string → `ParsedQuery { symbol?, timeframe?, direction?, blocks: ParsedBlock[], confidence }`.
-2. **Preview overlay** — when parsed successfully, the chart highlights bars where the block chain matches. Preview is computed server-side via a tiny `/api/terminal/preview` endpoint OR client-side if features can be inlined (TBD zoom #1).
+2. **Preview overlay** — when parsed successfully, the active chart surface keeps a client-side preview card and highlights the evaluated bars locally. Single-symbol mode renders that preview inside the board itself; compare queries render an inline multi-chart compare block whose local cards each retain the parsed-query preview and project lightweight highlights on their own charts, while `TV` mode stays summary-only.
 3. **Save-as-challenge button** — reuse the existing `showPatternModal` (line ~1049). Modal now asks for `name` only (slug); direction / universe / timeframe / outcome are inferred from the parsed query + defaults. On Save:
    - `POST /api/wizard` with body `{slug, description, blocks, direction, timeframe}`
    - Server writes `WTD/challenges/pattern-hunting/<slug>/{answers.yaml, match.py, prepare.py, program.md}` via subprocess `python -m wizard.new_pattern --answers <tmp>` (composer.py is SSOT).
    - Toast: `Saved ${slug}` with action `Open in Lab` → `/lab?slug=<slug>`.
 4. **Deep link consumption** — `?symbol=...&tf=...&q=...` seeds the search input on mount. `?slug=...&instance=...` jumps to a specific instance row's bar.
 5. **Live market view** — existing chart + data-feed behavior preserved. No new 15-layer overlay.
+6. **Compare block mutation** — explicit compare queries such as `compare BTC ETH SOL 4h recent_rally` render an inline compare board inside `/terminal`; follow-up natural-language mutations update that same board in place rather than opening a separate detail surface.
 
 **Day-1 parser (keyword-first):**
 - Single dictionary mapping EN + KO phrases → WTD block names + default params. See `~/.claude/projects/.../memory/patterns.md` for the NL→block table.

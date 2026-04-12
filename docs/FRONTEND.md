@@ -58,6 +58,8 @@ When editing these, update the relevant canonical doc if authority or behavior c
 
 - `src/routes/terminal/+page.svelte` owns the Terminal workspace shell and breakpoint switching.
 - Desktop layout is a 3-pane grid: scanner rail, DOUNI feed, chart stage.
+- The chart stage now hosts `SingleAssetBoard`, which keeps parsed-query preview state local to the active symbol board and reflects supported blocks as lightweight bar/window highlights on `Board` / `Strip` charts.
+- Compare queries render as inline `WorkspaceCompareBlock` boards inside the feed; those boards own their own parsed-query preview state so each local compare card can show score/scope and chart highlights without depending on the live input field.
 - Desktop supports direct drag-resize between scanner/feed and feed/chart; those split widths remain route-local UI state.
 - Tablet keeps the scanner rail on the left and stacks feed over chart on the right; scanner width and chart height are independently resizable.
 - Mobile does not keep all three panes visible at once; it switches between scanner, feed, and chart to preserve readability.

@@ -6,12 +6,24 @@
     parseBlockSearchWithHints,
     summarizeParsedQuery
   } from '$lib/terminal/blockSearchParser';
+  import { buildBlockSearchPreview } from '$lib/terminal/blockSearchPreview';
   import DataCard from '../../components/cogochi/DataCard.svelte';
-  import CgChart from '../../components/cogochi/CgChart.svelte';
   import QuickPanel from '../../components/cogochi/QuickPanel.svelte';
+  import SingleAssetBoard from '../../components/terminal/SingleAssetBoard.svelte';
+  import WorkspaceCompareBlock from '../../components/terminal/WorkspaceCompareBlock.svelte';
   import ResearchBlockRenderer from '../../components/terminal/research/ResearchBlockRenderer.svelte';
   import WalletIntelShell from '../../components/wallet-intel/WalletIntelShell.svelte';
   import { buildPassportWalletLink } from '$lib/utils/deepLinks';
+  import {
+    buildWorkspaceComparePreviewQuery,
+    createWorkspaceCompareId,
+    formatTerminalCompareSymbol,
+    parseWorkspaceCompareIntent,
+    parseWorkspaceCompareMutation,
+    type WorkspaceCompareBlock as WorkspaceCompareBlockData,
+    type WorkspaceCompareIntent,
+    type WorkspaceCompareMutation,
+  } from '$lib/terminal/workspaceCompare';
   import {
     buildWalletIntelDataset,
     findWalletMarketToken,
@@ -38,6 +50,7 @@
 
   type Widget =
     | { type: 'chart'; symbol: string; timeframe: string; chartData?: any[] }
+    | { type: 'compare'; blockId: string }
     | { type: 'metrics'; items: MetricItem[] }
     | { type: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
     | { type: 'actions'; patternName: string; direction: 'LONG' | 'SHORT'; conditions: string[] }
@@ -71,6 +84,7 @@
     | { kind: 'query'; text: string }
     | { kind: 'text'; text: string }
     | { kind: 'thinking' }
+    | { kind: 'compare'; blockId: string; block: WorkspaceCompareBlockData }
     | { kind: 'metrics'; items: MetricItem[] }
     | { kind: 'layers'; items: LayerItem[]; alphaScore: number; alphaLabel: string }
     | { kind: 'scan'; items: any[]; sort: string; sector: string }
@@ -118,6 +132,8 @@
   let currentAnnotations: any[] = $state([]);
   let currentIndicators: any = $state(null);
   let focusedResearchBlock = $state<ResearchBlockEnvelope | null>(null);
+  let compareBlocks = $state<WorkspaceCompareBlockData[]>([]);
+  let selectedCompareBlockId = $state<string | null>(null);
   let walletMode = $state(false);
   let walletInput = $state<WalletModeInput | null>(null);
   let walletDataset = $state<WalletIntelDataset | null>(null);
@@ -142,6 +158,20 @@
   );
   const terminalLayoutStyle = $derived(
     `--terminal-left-pane:${quickPanelCollapsed ? 34 : leftPaneWidth}px; --terminal-right-pane:${rightPaneWidth}px;`
+  );
+  const selectedCompareBlock = $derived(
+    selectedCompareBlockId ? compareBlocks.find((block) => block.id === selectedCompareBlockId) ?? null : null
+  );
+  const activeBlockSearchPreview = $derived.by(() =>
+    buildBlockSearchPreview({
+      parsedQuery,
+      currentSymbol,
+      currentTimeframe: currentTf || '4h',
+      chartData: currentChartData,
+      snapshot: currentSnapshot,
+      indicators: currentIndicators,
+      price: currentPrice,
+    })
   );
 
   // ─── Zoom #1: Block Search Parser State ─────────────────────
@@ -272,6 +302,13 @@
             case 'chart':
               entries.push({ kind: 'chart_ref', symbol: w.symbol, timeframe: w.timeframe });
               break;
+            case 'compare': {
+              const block = compareBlocks.find((candidate) => candidate.id === w.blockId);
+              if (block) {
+                entries.push({ kind: 'compare', blockId: w.blockId, block });
+              }
+              break;
+            }
             case 'metrics':
               entries.push({ kind: 'metrics', items: w.items });
               break;
@@ -467,6 +504,7 @@
   }
 
   function syncCurrentAnalysis(data: any) {
+    selectedCompareBlockId = null;
     currentSymbol = data.symbol || currentSymbol;
     currentTf = data.timeframe || currentTf || '4h';
     currentPrice = data.price ?? currentPrice;
@@ -477,6 +515,243 @@
     currentAnnotations = data.annotations ?? [];
     currentIndicators = data.indicators ?? null;
     snapshotTs = Date.now();
+  }
+
+  function clearCurrentAnalysisStage() {
+    currentSymbol = '';
+    currentSnapshot = null;
+    currentChartData = [];
+    currentPrice = 0;
+    currentChange = 0;
+    currentDeriv = null;
+    currentAnnotations = [];
+    currentIndicators = null;
+    snapshotTs = null;
+  }
+
+  function upsertCompareBlock(block: WorkspaceCompareBlockData) {
+    const existingIndex = compareBlocks.findIndex((candidate) => candidate.id === block.id);
+    if (existingIndex === -1) {
+      compareBlocks = [...compareBlocks, block];
+      return;
+    }
+
+    compareBlocks = compareBlocks.map((candidate) => (candidate.id === block.id ? block : candidate));
+  }
+
+  function selectCompareBlock(blockId: string) {
+    selectedCompareBlockId = blockId;
+    focusedResearchBlock = null;
+  }
+
+  async function fetchCompareCard(symbol: string, timeframe: WorkspaceCompareIntent['timeframe']) {
+    const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}`);
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error(data.error || `Compare fetch failed: ${res.status}`);
+    }
+
+    const normalized = normalizeAnalysisPayload(data, symbol, timeframe);
+    return {
+      symbol,
+      timeframe,
+      price: normalized.price ?? 0,
+      change24h: normalized.change24h ?? 0,
+      chartData: normalized.chart ?? [],
+      snapshot: normalized,
+      derivatives: normalized.derivatives ?? null,
+      annotations: normalized.annotations ?? [],
+      indicators: normalized.indicators ?? null,
+    };
+  }
+
+  async function materializeCompareBlock(params: {
+    id: string;
+    query: string;
+    symbols: string[];
+    timeframe: WorkspaceCompareIntent['timeframe'];
+    focusTerms: string[];
+    previous?: WorkspaceCompareBlockData | null;
+  }): Promise<WorkspaceCompareBlockData> {
+    const normalizedSymbols = Array.from(new Set(params.symbols)).slice(0, 4);
+    const reusableCards = new Map(
+      (params.previous?.cards ?? [])
+        .filter((card) => card.timeframe === params.timeframe)
+        .map((card) => [card.symbol, card] as const)
+    );
+    const symbolsToFetch = normalizedSymbols.filter((symbol) => !reusableCards.has(symbol));
+
+    const settled = await Promise.allSettled(
+      symbolsToFetch.map(async (symbol) => ({
+        symbol,
+        card: await fetchCompareCard(symbol, params.timeframe),
+      }))
+    );
+
+    const fetchedCards = new Map(
+      settled.flatMap((result) =>
+        result.status === 'fulfilled' ? [[result.value.symbol, result.value.card] as const] : []
+      )
+    );
+    const failedSymbols = settled.flatMap((result, index) =>
+      result.status === 'rejected' ? [symbolsToFetch[index]] : []
+    );
+    const cards = normalizedSymbols.flatMap((symbol) => {
+      const reusable = reusableCards.get(symbol);
+      if (reusable) return [reusable];
+      const fetched = fetchedCards.get(symbol);
+      return fetched ? [fetched] : [];
+    });
+
+    if (cards.length < 2) {
+      throw new Error('Need at least two valid symbols to compare');
+    }
+
+    return {
+      id: params.id,
+      query: params.query,
+      timeframe: params.timeframe,
+      symbols: normalizedSymbols,
+      focusTerms: params.focusTerms,
+      previewQuery: buildWorkspaceComparePreviewQuery({
+        raw: params.query,
+        timeframe: params.timeframe,
+        focusTerms: params.focusTerms,
+        previous: params.previous?.previewQuery ?? null,
+      }),
+      cards,
+      failedSymbols,
+    };
+  }
+
+  async function buildCompareBlock(intent: WorkspaceCompareIntent): Promise<WorkspaceCompareBlockData> {
+    return materializeCompareBlock({
+      id: createWorkspaceCompareId(),
+      query: intent.raw,
+      symbols: intent.symbols,
+      timeframe: intent.timeframe,
+      focusTerms: intent.focusTerms,
+    });
+  }
+
+  async function applyCompareMutation(
+    block: WorkspaceCompareBlockData,
+    mutation: WorkspaceCompareMutation
+  ): Promise<WorkspaceCompareBlockData> {
+    const nextSymbols = mutation.nextSymbols ?? block.symbols;
+    if (nextSymbols.length < 2) {
+      throw new Error('Compare blocks need at least two symbols');
+    }
+
+    return materializeCompareBlock({
+      id: block.id,
+      query: mutation.raw,
+      symbols: nextSymbols,
+      timeframe: mutation.timeframe ?? block.timeframe,
+      focusTerms: mutation.focusTerms.length > 0 ? mutation.focusTerms : block.focusTerms,
+      previous: block,
+    });
+  }
+
+  function buildCompareNarrative(block: WorkspaceCompareBlockData) {
+    const alphaLeader = [...block.cards]
+      .sort((a, b) => (b.snapshot?.alphaScore ?? -Infinity) - (a.snapshot?.alphaScore ?? -Infinity))[0];
+    const crowdingLeader = [...block.cards]
+      .filter((card) => typeof card.derivatives?.funding === 'number')
+      .sort((a, b) => Math.abs(b.derivatives.funding) - Math.abs(a.derivatives.funding))[0];
+
+    const segments = [
+      `Compared ${block.symbols.map(formatTerminalCompareSymbol).join(', ')} on ${block.timeframe.toUpperCase()}.`,
+    ];
+
+    if (alphaLeader?.snapshot?.alphaScore != null) {
+      segments.push(
+        `${formatTerminalCompareSymbol(alphaLeader.symbol)} leads alpha at ${alphaLeader.snapshot.alphaScore > 0 ? '+' : ''}${alphaLeader.snapshot.alphaScore}.`
+      );
+    }
+
+    if (crowdingLeader?.derivatives?.funding != null) {
+      segments.push(
+        `${formatTerminalCompareSymbol(crowdingLeader.symbol)} shows the most crowded funding at ${(crowdingLeader.derivatives.funding * 100).toFixed(4)}%.`
+      );
+    }
+
+    if (block.failedSymbols.length > 0) {
+      segments.push(`Skipped ${block.failedSymbols.map(formatTerminalCompareSymbol).join(', ')}.`);
+    }
+
+    return segments.join(' ');
+  }
+
+  async function handleCompareIntent(text: string, intent: WorkspaceCompareIntent) {
+    messages = [...messages, { role: 'user', text }];
+    inputText = '';
+    isThinking = true;
+    focusedResearchBlock = null;
+
+    messages = [...messages, { role: 'douni', thinking: true } as MessageType];
+    scrollToBottom();
+    chatHistory = [...chatHistory, { role: 'user', content: text }];
+
+    try {
+      const block = await buildCompareBlock(intent);
+      clearCurrentAnalysisStage();
+      currentTf = intent.timeframe;
+      upsertCompareBlock(block);
+      selectCompareBlock(block.id);
+      messages = messages.filter((m) => !('thinking' in m));
+      const narrative = buildCompareNarrative(block);
+      messages = [
+        ...messages,
+        {
+          role: 'douni',
+          text: narrative,
+          widgets: [{ type: 'compare', blockId: block.id }],
+        },
+      ];
+      chatHistory = [...chatHistory, { role: 'assistant', content: narrative, meta: { kind: 'analysis' } }];
+    } catch (err: any) {
+      console.error('[terminal] compare intent error:', err);
+      messages = messages.filter((m) => !('thinking' in m));
+      messages = [...messages, { role: 'douni', text: friendlyError(err?.message ?? '') }];
+    } finally {
+      isThinking = false;
+      scrollToBottom();
+    }
+  }
+
+  async function handleCompareMutation(
+    text: string,
+    block: WorkspaceCompareBlockData,
+    mutation: WorkspaceCompareMutation
+  ) {
+    messages = [...messages, { role: 'user', text }];
+    inputText = '';
+    isThinking = true;
+    focusedResearchBlock = null;
+
+    messages = [...messages, { role: 'douni', thinking: true } as MessageType];
+    scrollToBottom();
+    chatHistory = [...chatHistory, { role: 'user', content: text }];
+
+    try {
+      const nextBlock = await applyCompareMutation(block, mutation);
+      clearCurrentAnalysisStage();
+      currentTf = nextBlock.timeframe;
+      upsertCompareBlock(nextBlock);
+      selectCompareBlock(nextBlock.id);
+      messages = messages.filter((m) => !('thinking' in m));
+      const narrative = `Updated ${nextBlock.symbols.map(formatTerminalCompareSymbol).join(', ')} compare: ${mutation.summary}.`;
+      messages = [...messages, { role: 'douni', text: narrative }];
+      chatHistory = [...chatHistory, { role: 'assistant', content: narrative, meta: { kind: 'analysis' } }];
+    } catch (err: any) {
+      console.error('[terminal] compare mutation error:', err);
+      messages = messages.filter((m) => !('thinking' in m));
+      messages = [...messages, { role: 'douni', text: friendlyError(err?.message ?? '') }];
+    } finally {
+      isThinking = false;
+      scrollToBottom();
+    }
   }
 
   function deriveLayerItems(data: any): LayerItem[] {
@@ -500,6 +775,7 @@
 
   async function handleQuickPreview(symbol: string) {
     quickPanelSelected = normalizeTerminalSymbol(symbol);
+    selectedCompareBlockId = null;
     try {
       const fullSymbol = normalizeTerminalSymbol(symbol);
       const tf = currentTf || '4h';
@@ -560,6 +836,18 @@
       await activateWalletMode(normalizeWalletModeInput(text), {
         note: 'Address-led investigation loaded from terminal input.',
       });
+      return;
+    }
+
+    const compareIntent = parseWorkspaceCompareIntent(text);
+    if (compareIntent) {
+      await handleCompareIntent(text, compareIntent);
+      return;
+    }
+
+    const compareMutation = parseWorkspaceCompareMutation(text, selectedCompareBlock);
+    if (compareMutation && selectedCompareBlock) {
+      await handleCompareMutation(text, selectedCompareBlock, compareMutation);
       return;
     }
 
@@ -1377,6 +1665,15 @@
               {/each}
             </div>
 
+          {:else if entry.kind === 'compare'}
+            <div class="fe fe-compare">
+              <WorkspaceCompareBlock
+                block={entry.block}
+                selected={selectedCompareBlockId === entry.blockId}
+                onSelect={selectCompareBlock}
+              />
+            </div>
+
           {:else if entry.kind === 'layers'}
             <div class="fe fe-layers">
               <div class="layers-header">
@@ -1481,82 +1778,18 @@
           <ResearchBlockRenderer envelope={focusedResearchBlock} presentation="focus" />
         </div>
       {:else if currentSnapshot && currentChartData.length > 0}
-        <div class="cp-header">
-          <div class="cp-price-stack">
-            <div class="cp-primary-row">
-              <span class="cp-sym">{currentSymbol.replace('USDT','')}</span>
-              <span class="cp-tf">{currentTf.toUpperCase()}</span>
-              {#if currentPrice > 0}
-                <span class="cp-price">${currentPrice.toLocaleString(undefined,{maximumFractionDigits:1})}</span>
-                <span class="cp-change" class:up={currentChange >= 0} class:dn={currentChange < 0}>
-                  {currentChange >= 0 ? '+' : ''}{currentChange.toFixed(2)}%
-                </span>
-              {/if}
-              {#if currentSnapshot.alphaScore != null}
-                <span class="cp-alpha" style="color:{alphaColor(currentSnapshot.alphaScore)}">
-                  a:{currentSnapshot.alphaScore > 0 ? '+' : ''}{currentSnapshot.alphaScore}
-                </span>
-              {/if}
-            </div>
-            <div class="cp-ribbon">
-              <span class="cp-mini-chip">regime {currentSnapshot.regime ?? '--'}</span>
-              <span class="cp-mini-chip">cvd {currentSnapshot.l11?.cvd_state ?? '--'}</span>
-              <span class="cp-mini-chip">mtf {currentSnapshot.l10?.mtf_confluence ?? '--'}</span>
-              <span class="cp-mini-chip">bb {currentSnapshot.l14?.bb_squeeze ? 'SQZ' : 'OPEN'}</span>
-            </div>
-          </div>
-          <div class="cp-header-side">
-            <span class="cp-side-label">terminal chart</span>
-            <span class="cp-side-value">{currentChartData.length} bars</span>
-          </div>
-        </div>
-        <div class="cp-chart">
-          <CgChart
-            data={currentChartData}
-            currentPrice={currentPrice}
-            annotations={currentAnnotations}
-            indicators={currentIndicators}
-            symbol={currentSymbol}
-            timeframe={currentTf}
-            changePct={currentChange}
-            snapshot={currentSnapshot}
-            derivatives={currentDeriv}
-          />
-        </div>
-        <div class="cp-stats">
-          <div class="qs-cell">
-            <span class="qs-label">Funding</span>
-            <span class="qs-value" style="color:{currentDeriv?.funding > 0.0005 ? 'var(--sc-bad)' : currentDeriv?.funding < -0.0005 ? 'var(--sc-good)' : 'var(--sc-text-2)'}">
-              {currentDeriv?.funding != null ? (currentDeriv.funding * 100).toFixed(4) + '%' : '--'}
-            </span>
-          </div>
-          <div class="qs-cell">
-            <span class="qs-label">OI</span>
-            <span class="qs-value">
-              {currentDeriv?.oi != null ? (currentDeriv.oi >= 1e6 ? (currentDeriv.oi/1e6).toFixed(0)+'M' : (currentDeriv.oi/1e3).toFixed(0)+'K') : '--'}
-            </span>
-          </div>
-          <div class="qs-cell">
-            <span class="qs-label">L/S</span>
-            <span class="qs-value" style="color:{currentDeriv?.lsRatio > 1.1 ? 'var(--sc-bad)' : currentDeriv?.lsRatio < 0.9 ? 'var(--sc-good)' : 'var(--sc-text-2)'}">
-              {currentDeriv?.lsRatio?.toFixed(2) ?? '--'}
-            </span>
-          </div>
-          <div class="qs-cell">
-            <span class="qs-label">BB</span>
-            <span class="qs-value">
-              {currentSnapshot.l14?.bb_squeeze ? 'SQUEEZE' : currentSnapshot.l14?.bb_width != null ? `w:${currentSnapshot.l14.bb_width}` : '--'}
-            </span>
-          </div>
-          <div class="qs-cell">
-            <span class="qs-label">ATR</span>
-            <span class="qs-value">{currentSnapshot.l15?.atr_pct != null ? currentSnapshot.l15.atr_pct + '%' : '--'}</span>
-          </div>
-          <div class="qs-cell">
-            <span class="qs-label">Regime</span>
-            <span class="qs-value">{currentSnapshot.regime ?? '--'}</span>
-          </div>
-        </div>
+        <SingleAssetBoard
+          symbol={currentSymbol}
+          timeframe={currentTf}
+          price={currentPrice}
+          change={currentChange}
+          snapshot={currentSnapshot}
+          chartData={currentChartData}
+          annotations={currentAnnotations}
+          indicators={currentIndicators}
+          derivatives={currentDeriv}
+          preview={activeBlockSearchPreview}
+        />
       {:else}
         <div class="cp-empty">
           <span class="cp-empty-label">No analysis yet</span>
@@ -2182,8 +2415,7 @@
     gap: 12px;
   }
 
-  .cp-focus-stack,
-  .cp-price-stack {
+  .cp-focus-stack {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -2199,8 +2431,7 @@
     min-width: 0;
   }
 
-  .cp-focus-ribbon,
-  .cp-ribbon {
+  .cp-focus-ribbon {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -2239,13 +2470,6 @@
     flex-shrink: 0;
     background: linear-gradient(180deg, rgba(8, 17, 29, 0.92), rgba(5, 11, 19, 0.84));
   }
-  .cp-primary-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    flex-wrap: wrap;
-  }
   .cp-sym {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
     font-size: 20px;
@@ -2258,25 +2482,6 @@
     background: var(--sc-bg-2);
     padding: 1px 6px;
     border-radius: 3px;
-  }
-  .cp-price {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--sc-text-0);
-    margin-left: auto;
-  }
-  .cp-change {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .cp-change.up { color: var(--sc-good, #adca7c); }
-  .cp-change.dn { color: var(--sc-bad, #cf7f8f); }
-  .cp-alpha {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 11px;
-    font-weight: 800;
   }
   .cp-mini-chip {
     display: inline-flex;
@@ -2291,60 +2496,6 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(176, 205, 228, 0.74);
-  }
-  .cp-header-side {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
-    padding-top: 2px;
-  }
-  .cp-side-label {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 9px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--sc-text-3);
-  }
-  .cp-side-value {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--sc-text-1);
-  }
-  .cp-chart {
-    flex: 1;
-    min-height: 200px;
-    padding: 6px;
-    background: linear-gradient(180deg, rgba(4, 10, 17, 0.3), rgba(4, 10, 17, 0));
-  }
-  .cp-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
-    background: var(--sc-line-soft);
-    border-top: 1px solid var(--sc-line-soft);
-    flex-shrink: 0;
-  }
-  .qs-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px;
-    background: rgba(5, 12, 21, 0.98);
-  }
-  .qs-label {
-    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 9px;
-    color: var(--sc-text-3);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-  .qs-value {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--sc-text-1);
   }
   .cp-empty {
     flex: 1;
@@ -2525,7 +2676,6 @@
       border-top: 1px solid var(--sc-line-soft);
       max-height: 380px;
     }
-    .cp-chart { min-height: 160px; }
     .header-bar {
       height: auto;
       padding: 10px 14px;
