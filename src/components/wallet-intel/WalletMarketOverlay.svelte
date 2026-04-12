@@ -1,5 +1,6 @@
 <script lang="ts">
-  import CgChart from '../cogochi/CgChart.svelte';
+  import ChartStage from '../chart/ChartStage.svelte';
+  import { fromWalletMarketToken } from '$lib/chart-engine/app';
   import type { WalletMarketToken } from '$lib/wallet-intel/walletIntelTypes';
 
   let {
@@ -15,6 +16,7 @@
   const selectedToken = $derived(
     tokens.find((token) => token.symbol === selectedTokenSymbol) ?? tokens[0]
   );
+  const chartSpec = $derived(fromWalletMarketToken(selectedToken));
 </script>
 
 <section class="wallet-card market-card">
@@ -57,17 +59,7 @@
   </div>
 
   <div class="chart-wrap">
-    <CgChart
-      data={selectedToken.chart}
-      currentPrice={selectedToken.price}
-      annotations={selectedToken.annotations}
-      indicators={selectedToken.indicators}
-      symbol={selectedToken.pair}
-      timeframe="4h"
-      changePct={selectedToken.changePct}
-      snapshot={selectedToken.snapshot}
-      derivatives={selectedToken.derivatives}
-    />
+    <ChartStage spec={chartSpec} presentation="focus" />
   </div>
 </section>
 
