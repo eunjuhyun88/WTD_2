@@ -20,6 +20,260 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## Entries
 
+## [2026-04-12 22:21:00 +0900] START W-20260412-2221-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-shell-redesign`
+- Base `origin/main` hash: `effcdfaf2f66ac9e77668fc7a59c643386d02347`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/terminal/SingleAssetBoard.svelte`
+  - `?? src/components/terminal/WorkspaceCompareBlock.svelte`
+  - `?? src/lib/terminal/blockSearchPreview.ts`
+  - `?? src/lib/terminal/workspaceCompare.ts`
+- Task summary: extend the single-asset `/terminal` preview from board-level query scoring into actual chart bar highlights so parsed block-search intent is visible directly on the workspace chart.
+- Owned files / overlap check:
+  - implementation focus: `src/lib/terminal/blockSearchPreview.ts`, `src/components/terminal/SingleAssetBoard.svelte`
+  - route wiring may stay unchanged if preview prop shape remains local to the board
+  - overlap check: continuing on the same terminal-shell WIP files and branch; no unrelated overlap detected
+- `safe:status`: PASS
+- `safe:sync`: BLOCKED by existing uncommitted branch changes
+- `safe:hooks`: PASS
+- Status: IN_PROGRESS
+
+## [2026-04-12 22:28:00 +0900] FINISH W-20260412-2221-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - extended `blockSearchPreview` so supported parsed blocks now emit compact bar/window highlight metadata in addition to the existing row-level scope/match summary
+  - overlaid those highlight bands and focus markers on the local `Board` and `Strip` charts inside the single-asset workspace so the evaluated zone is visible directly on the chart
+  - updated canonical `/terminal` docs to state that local workspace charts now reflect parsed-query previews with lightweight highlights, while `TV` mode keeps the summary rail only
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with existing warnings only (`BottomBar.svelte`, `settings/+page.svelte` unused CSS 16건)
+  - `npm run build`: PASS with existing warnings only (same unused CSS warnings + adapter-auto environment note)
+  - `npm run ctx:compact -- --docs-check pass --check pass --build pass --gate pass`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/terminal/SingleAssetBoard.svelte`
+  - `?? src/components/terminal/WorkspaceCompareBlock.svelte`
+  - `?? src/lib/terminal/blockSearchPreview.ts`
+  - `?? src/lib/terminal/workspaceCompare.ts`
+
+## [2026-04-12 22:11:00 +0900] START W-20260412-2211-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-shell-redesign`
+- Base `origin/main` hash: `fe739d2a6b65264d02126e5a7e267de41a995c71`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/terminal/SingleAssetBoard.svelte`
+  - `?? src/components/terminal/WorkspaceCompareBlock.svelte`
+  - `?? src/lib/terminal/blockSearchPreview.ts`
+  - `?? src/lib/terminal/workspaceCompare.ts`
+- Task summary: continue the `/terminal` shell redesign by aligning the parsed-query save flow with the day-1 contract and making the saved-state handoff into `/lab` explicit.
+- Owned files / overlap check:
+  - implementation focus: `src/routes/terminal/+page.svelte`
+  - canonical docs already opened: `docs/COGOCHI.md`, `docs/FRONTEND.md`, `ARCHITECTURE.md`
+  - `docs/SYSTEM_INTENT.md` not present in repo; continuing with current canonical docs
+  - overlap check: continuing existing terminal-shell WIP on the same branch; no unrelated overlap detected
+- `safe:status`: PASS
+- `safe:sync`: BLOCKED by existing uncommitted branch changes
+- `safe:hooks`: PASS
+- Status: IN_PROGRESS
+
+## [2026-04-12 22:20:00 +0900] FINISH W-20260412-2211-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - stabilized the `/terminal` parsed-query save flow by persisting the active high-confidence query in route state before the input clears or the workspace mutates
+  - reduced the save modal to the day-1 contract: editable challenge name only, with direction/timeframe/block details rendered as inferred read-only metadata
+  - replaced the plain save toast with an actionable `Open in Lab` CTA and disabled legacy feed save entry points when no parsed query is available
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with existing warnings only (`BottomBar.svelte`, `settings/+page.svelte` unused CSS 16건)
+  - `npm run build`: PASS with existing warnings only (same unused CSS warnings + adapter-auto environment note)
+  - `npm run ctx:compact -- --docs-check pass --check pass --build pass --gate pass`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/terminal/SingleAssetBoard.svelte`
+  - `?? src/components/terminal/WorkspaceCompareBlock.svelte`
+  - `?? src/lib/terminal/blockSearchPreview.ts`
+  - `?? src/lib/terminal/workspaceCompare.ts`
+
+## [2026-04-12 20:34:00 +0900] START W-20260412-2022-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-shell-redesign`
+- Base `origin/main` hash: `694ceb22f715ac4515296d3c28beb8c58248d9fc`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+- Task summary: reduce the boxed, panelized feel of the center `/terminal` workspace so multimodal output feels like a single Claude-style stream while keeping the right inspector as optional detail.
+- Owned files / overlap check:
+  - implementation focus: `src/routes/terminal/+page.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`
+- overlap check: continuing on same terminal shell files; no unrelated overlap detected
+- `safe:status`: PASS
+- Status: IN_PROGRESS
+
+## [2026-04-12 20:36:23 +0900] FINISH W-20260412-2022-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - softened the center `/terminal` workspace so multimodal output reads like one continuous Claude-style stream instead of a stack of boxed cards
+  - reduced border/background chrome on feed items and research blocks, and turned `More detail` into a lighter inline action so the right inspector feels secondary
+  - kept the left scanner and optional right inspector contract intact while making the center chart/render area feel like part of the same stream
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run ctx:checkpoint -- --work-id "W-20260412-2022-CHATBATTLE-codex" --surface "terminal-shell" --objective "...Claude-style stream..."`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with existing warnings only (`BottomBar.svelte`, `settings/+page.svelte` unused CSS 16건)
+  - `npm run build`: PASS with existing warnings only (same unused CSS warnings + existing chunk-size warning)
+  - `npm run ctx:compact`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+
+## [2026-04-12 20:16:00 +0900] START W-20260412-2016-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-shell-redesign`
+- Base `origin/main` hash: `694ceb22f715ac4515296d3c28beb8c58248d9fc`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+- Task summary: clean up `/terminal` UI so the center Multimodal workspace clearly owns search, streamed results, and chart rendering, while the right Inspector appears only as a deliberate detail expansion from the center flow.
+- Owned files / overlap check:
+  - implementation focus: `src/routes/terminal/+page.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/cogochi/QuickPanel.svelte`
+  - doc alignment if shell behavior shifts: `docs/COGOCHI.md`, `docs/FRONTEND.md`
+  - overlap check: continuing on the same terminal-shell branch and file set; no unrelated overlap detected
+- `safe:status`: PASS
+- Status: IN_PROGRESS
+
+## [2026-04-12 20:20:59 +0900] FINISH W-20260412-2016-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - restructured the center of `/terminal` into a single result-first multimodal canvas instead of a hard split between a top chart panel and a bottom feed
+  - kept chart rendering inside that center canvas so scanner preview and multimodal runs read as one flow, while the right Inspector remains a deliberate detail expansion
+  - updated the center empty-state and research block interaction so the “More detail -> right panel” contract is visible in the UI
+  - aligned canonical docs with the center-canvas + explicit-detail Inspector model
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run ctx:checkpoint -- --work-id "W-20260412-2016-CHATBATTLE-codex" --surface "terminal-shell" --objective "...optional detail expansion"`: PASS
+  - `npm run check`: PASS with existing warnings only (`BottomBar.svelte`, `settings/+page.svelte` unused CSS 16건)
+  - `npm run docs:check`: PASS
+  - `npm run build`: PASS with existing warnings only (same unused CSS warnings + existing chunk-size warning)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+
+## [2026-04-12 20:08:00 +0900] START W-20260412-2008-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/terminal-shell-redesign`
+- Base `origin/main` hash: `694ceb22f715ac4515296d3c28beb8c58248d9fc`
+- Working tree status:
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+- Task summary: tighten `/terminal` so the center Multimodal workspace owns search results and chart rendering, while the right Inspector expands only from an explicit detail action instead of opening on any research-block click.
+- Owned files / overlap check:
+  - implementation focus: `src/routes/terminal/+page.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - doc alignment if behavior changes: `docs/FRONTEND.md`, `docs/COGOCHI.md`
+  - overlap check: active local changes are on the same Terminal shell surface; no unrelated target-file conflicts identified
+- `safe:status`: PASS
+- Status: IN_PROGRESS
+
+## [2026-04-12 20:12:14 +0900] FINISH W-20260412-2008-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - changed interactive research results in the center Multimodal workspace so they stay inline and expose an explicit `More detail` action instead of opening the Inspector on any card click
+  - updated the empty-state guidance in `/terminal` so the center panel explains that results stay in the workspace and the right panel expands only from a detail action
+  - aligned `docs/COGOCHI.md` and `docs/FRONTEND.md` with the explicit-detail Inspector contract
+- Validation results:
+  - `npm run safe:sync`: BLOCKED by existing uncommitted Terminal-shell changes already present on the branch
+  - `npm run safe:hooks`: PASS
+  - `npm run ctx:checkpoint -- --work-id "W-20260412-2008-CHATBATTLE-codex" --surface "terminal-shell" --objective "...explicit detail action"`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS with existing warnings only (`BottomBar.svelte`, `settings/+page.svelte` unused CSS 16건)
+  - `npm run build`: PASS with existing warnings only (same unused CSS warnings + existing chunk-size warning)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/terminal/research/ResearchBlockRenderer.svelte`
+  - `M src/components/terminal/terminalLayoutController.ts`
+  - `M src/routes/terminal/+page.svelte`
+
 ## [2026-04-12 14:55:00 +0900] DONE W-20260412-1400-CHATBATTLE-keen-jackson — CTO Cleanup Execution
 
 - Branch: `claude/keen-jackson` (operating on `main` via `zealous-goodall`)
@@ -12310,6 +12564,376 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Owned files / overlap check result:
   - owning the existing branch-local Phase 0 launch-hardening changes plus `docs/AGENT_WATCH_LOG.md` for sync/push bookkeeping
   - overlap risk is limited to latest `origin/main`; sync will be done after committing current local work
+- Safe status:
+  - `npm run safe:status`: PASS
+- Status:
+  - IN_PROGRESS
+||||||| parent of 72e03de (feat(terminal): merge stash — workspace layout, WorkspaceCompare, blockSearch preview)
+||||||| Stash base
+## [2026-04-12 20:43:00 +0900] START W-20260412-2043-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-shell-redesign`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+- Task summary:
+  - add compare-first multimodal workspace behavior to `/terminal` so natural-language compare queries render multi-chart comparison inline in the center workspace without promoting the Inspector to the main surface
+- Owned files / overlap check result:
+  - continuing on existing branch-local Terminal shell WIP
+  - expected owned files for this slice: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/routes/terminal/+page.svelte`, and new/adjacent terminal compare helpers if required
+  - overlap risk acknowledged on already-dirty branch files; do not revert unrelated WIP
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED (`Working tree has uncommitted changes. Commit or stash first.`)
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 20:51:00 +0900] FINISH W-20260412-2043-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - added inline compare intent handling in `src/routes/terminal/+page.svelte` so queries like `compare BTC ETH SOL 4h` and `BTC vs ETH 1h` render directly in the center Multimodal Workspace instead of going through the Inspector flow
+  - added `src/lib/terminal/workspaceCompare.ts` for compare-intent parsing and symbol/timeframe extraction
+  - added `src/components/terminal/WorkspaceCompareBlock.svelte` to render multi-chart comparison cards using existing `CgChart` visuals and derivatives/snapshot context
+  - updated `docs/COGOCHI.md` and `docs/FRONTEND.md` so the Terminal shell contract explicitly includes inline compare blocks inside the Multimodal Workspace
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; same pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same unused CSS warnings and existing chunk-size warning)
+  - `npm run ctx:compact`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked: `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Status:
+  - COMPLETE_NOT_COMMITTED
+
+## [2026-04-12 21:00:00 +0900] START W-20260412-2100-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-shell-redesign`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked before this task: `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Task summary:
+  - add selected compare-block state and natural-language mutate behavior so follow-up terminal commands can update an existing center compare block instead of always creating a new one
+- Owned files / overlap check result:
+  - continuing on existing branch-local terminal shell WIP
+  - owned for this slice: `docs/AGENT_WATCH_LOG.md`, `src/routes/terminal/+page.svelte`, `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`, and canonical docs only if the terminal interaction contract changes
+  - do not revert unrelated branch-local changes in `QuickPanel` / `ResearchBlockRenderer` / layout controller
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED earlier on dirty worktree; no sync attempted in this slice
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:06:00 +0900] FINISH W-20260412-2100-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - upgraded terminal compare handling from one-off compare rendering to selected-block mutation behavior in `src/routes/terminal/+page.svelte`
+  - compare widgets now point at block IDs, with compare block state stored separately so follow-up commands mutate the existing center block instead of appending another compare widget
+  - added natural-language compare mutation parsing in `src/lib/terminal/workspaceCompare.ts` for `add/remove/keep-only/timeframe change` patterns such as `SOL도 추가해`, `BTC랑 ETH만 남겨`, and `1h로 바꿔`
+  - updated `src/components/terminal/WorkspaceCompareBlock.svelte` so compare blocks are selectable targets and visually indicate the active mutation target
+  - updated canonical terminal docs to state that selected compare blocks accept follow-up natural-language mutations in place
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; same pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same unused CSS warnings and existing chunk-size warning)
+  - `npm run ctx:compact`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked: `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Status:
+  - COMPLETE_NOT_COMMITTED
+
+## [2026-04-12 20:54:14 +0900] START W-20260412-2053-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-shell-redesign`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked before this task: `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Task summary:
+  - resume the existing Terminal shell redesign branch, restore the current implementation context, and continue the next highest-priority `/terminal` slice on top of the already-dirty compare-first workspace WIP
+- Owned files / overlap check result:
+  - continuing branch-local `/terminal` WIP already in progress on `codex/terminal-shell-redesign`
+  - expected working set for this resume pass: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/routes/terminal/+page.svelte`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+  - overlap risk remains on already-dirty branch files; do not revert unrelated WIP
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED (`Working tree has uncommitted changes. Commit or stash first.`)
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 20:58:12 +0900] FINISH W-20260412-2053-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - resumed the dirty `codex/terminal-shell-redesign` branch safely by restoring canonical docs/context, adding a semantic checkpoint, and refreshing the branch brief/handoff so strict context validation works again
+  - fixed `src/components/terminal/research/ResearchBlockRenderer.svelte` so `heatmap_flow_chart` blocks render in Inspector focus mode as well as inline mode; this avoids blank detail panels when a heatmap result is opened via `More detail`
+  - updated `src/components/cogochi/QuickPanel.svelte` so the scanner panel follows parent sizing instead of relying on a fixed internal width, matching the current Terminal shell contract
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED (`Working tree has uncommitted changes. Commit or stash first.`)
+  - `npm run ctx:checkpoint -- --work-id "W-20260412-2053-CHATBATTLE-codex" --surface "terminal" --objective "...compare-first multimodal workspace..."`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; same pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same pre-existing unused CSS warnings; existing adapter-auto / environment notice)
+  - `npm run ctx:compact`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked: `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Status:
+  - COMPLETE_NOT_COMMITTED
+
+## [2026-04-12 21:29:02 +0900] START W-20260412-2129-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-shell-redesign`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked before this task: `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Task summary:
+  - redesign the `/terminal` Multimodal Workspace compare/result rendering into a denser Bloomberg-style quant board with flexible chart layouts, richer compare density, and TradingView-style chart access inside the active workspace
+- Owned files / overlap check result:
+  - continuing branch-local `/terminal` shell redesign WIP already in progress
+  - expected working set for this slice: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/routes/terminal/+page.svelte`, `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`, plus any minimal shared chart/view helpers needed for the new compare board
+  - overlap risk remains on already-dirty branch files; do not revert unrelated WIP
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED (`Working tree has uncommitted changes. Commit or stash first.`)
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:37:17 +0900] FINISH W-20260412-2129-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - turned the compare renderer into a denser quant board in `src/components/terminal/WorkspaceCompareBlock.svelte` instead of a simple static card list
+  - added flexible board layouts inside the same Multimodal Workspace block: `Grid`, `Focus`, `Single`, and `TV`
+  - added focused-symbol switching, dense watchstrip pills, richer quant stat ribbons, and relative ladder / side-stack views so the same compare result can move between many-chart and one-chart inspection without leaving `/terminal`
+  - added TradingView embed access for the focused symbol in `TV` mode while keeping the rest of the compare set visible in a compact side strip
+  - updated `docs/COGOCHI.md` and `docs/FRONTEND.md` so the Terminal contract now explicitly treats compare results as flexible quant boards rather than fixed cards
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED (`Working tree has uncommitted changes. Commit or stash first.`)
+  - `npm run ctx:checkpoint -- --work-id "W-20260412-2129-CHATBATTLE-codex" --surface "terminal" --objective "...quant board..."`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; same pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same pre-existing unused CSS warnings; existing adapter-auto / environment notice)
+  - `npm run ctx:compact`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked: `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Status:
+  - COMPLETE_NOT_COMMITTED
+
+## [2026-04-12 21:38:29 +0900] START W-20260412-2138-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-shell-redesign`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked before this task: `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Task summary:
+  - extend the new quant-board direction beyond compare blocks so the primary single-symbol workspace stage can also switch between dense overview, focused chart, and TradingView-heavy inspection without leaving `/terminal`
+- Owned files / overlap check result:
+  - continuing branch-local `/terminal` shell redesign WIP already in progress
+  - expected working set for this slice: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/routes/terminal/+page.svelte`, plus any minimal new terminal board components/helpers needed for the single-symbol stage
+  - overlap risk remains on already-dirty branch files; do not revert unrelated WIP
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: not rerun yet for this slice; branch is already dirty so sync is expected to block until commit/stash
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:45:08 +0900] FINISH W-20260412-2138-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - extracted the single-symbol workspace stage into `src/components/terminal/SingleAssetBoard.svelte` so the main active chart is no longer a fixed hero card inside `src/routes/terminal/+page.svelte`
+  - added three single-asset inspection modes inside the same Multimodal Workspace state: `Board`, `Strip`, and `TV`
+  - made the active symbol board denser with quant matrix cards, signal ladders, and a TradingView-heavy mode while preserving the current shell, compare flow, and Inspector behavior
+  - updated `docs/COGOCHI.md` and `docs/FRONTEND.md` so the Terminal contract now treats both compare results and single-symbol analysis as flexible workspace boards
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run ctx:checkpoint -- --work-id "W-20260412-2138-CHATBATTLE-codex" --surface "terminal" --objective "...single-symbol analysis stage..."`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; same pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same pre-existing unused CSS warnings; existing adapter-auto / environment notice)
+  - `npm run ctx:compact`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked: `src/components/terminal/SingleAssetBoard.svelte`, `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Status:
+  - COMPLETE_NOT_COMMITTED
+
+## [2026-04-12 21:53:51 +0900] START W-20260412-2153-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-shell-redesign`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked before this task: `src/components/terminal/SingleAssetBoard.svelte`, `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/workspaceCompare.ts`
+- Task summary:
+  - design and implement a block-search preview overlay inside the new single-asset terminal board so parsed search intent becomes an on-chart/on-board preview state instead of only a bottom-input hint
+- Owned files / overlap check result:
+  - continuing branch-local `/terminal` shell redesign WIP already in progress
+  - expected working set for this slice: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/routes/terminal/+page.svelte`, `src/components/terminal/SingleAssetBoard.svelte`, and a minimal terminal preview helper if needed
+  - overlap risk remains on already-dirty branch files; do not revert unrelated WIP
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: not rerun yet for this slice; branch is already dirty so sync is expected to block until commit/stash
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 22:02:56 +0900] FINISH W-20260412-2153-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - added `src/lib/terminal/blockSearchPreview.ts` to translate high-confidence parsed queries into a board-level preview model with scope alignment, per-block match state, and descriptive detail text
+  - wired `src/routes/terminal/+page.svelte` so the active single-symbol workspace stage derives a live parsed-query preview from the current symbol/timeframe/chart context and passes it into `SingleAssetBoard`
+  - updated `src/components/terminal/SingleAssetBoard.svelte` so parsed-query previews now render inside the asset board across `Board`, `Strip`, and `TV` modes instead of living only as the footer hint below the input
+  - updated `docs/COGOCHI.md` and `docs/FRONTEND.md` so the Terminal contract explicitly treats parsed-query preview as an in-board workspace surface with scope/match state
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run ctx:checkpoint -- --work-id "W-20260412-2153-CHATBATTLE-codex" --surface "terminal" --objective "...block-search preview inside SingleAssetBoard..."`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; same pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same pre-existing unused CSS warnings, chunk-size warning, and adapter-auto environment notice)
+  - `npm run ctx:compact -- --docs-check pass --check pass --build pass --gate pass`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new commit created
+  - current branch head: `520ecfd`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/COGOCHI.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/components/terminal/research/ResearchBlockRenderer.svelte`, `src/components/terminal/terminalLayoutController.ts`, `src/routes/terminal/+page.svelte`
+  - untracked: `src/components/terminal/SingleAssetBoard.svelte`, `src/components/terminal/WorkspaceCompareBlock.svelte`, `src/lib/terminal/blockSearchPreview.ts`, `src/lib/terminal/workspaceCompare.ts`
+- Status:
+  - COMPLETE_NOT_COMMITTED
+
+## [2026-04-12 21:16:00 +0900] START W-20260412-2113-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-ui-home-pattern-unify`
+- Branch:
+  - `codex/ui-home-pattern-unify`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/ui-home-pattern-unify`
+  - clean before this task after rebasing to latest `origin/main`
+- Task summary:
+  - unify the UI/UX language for `lab`, `dashboard`, missing `/passport`, and wallet connect around the home surface design system, with home as the visual reference pattern
+- Owned files / overlap check result:
+  - isolated to the dedicated `codex/ui-home-pattern-unify` worktree created from `main`
+  - expected ownership: `src/routes/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/passport/+page.svelte`, `src/components/layout/Header.svelte`, `src/components/modals/WalletModal.svelte`, and any new shared home-style UI shell files
+  - overlap with dirty `codex/terminal-shell-redesign` worktree avoided by branch/worktree split; no direct file overlap in this task workspace
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: PASS after `npm install` in the fresh worktree (`svelte-check` passed with 16 pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+- Checkpoint:
+  - `.agent-context/checkpoints/w-20260412-2113-chatbattle-codex.md`
+- Notes:
+  - `docs/SYSTEM_INTENT.md` is absent in this repo snapshot; current product intent is routed through `docs/COGOCHI.md` per `docs/README.md`
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:54:19 +0900] FINISH W-20260412-2113-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - unified `lab` and `dashboard` around the home visual language with a shared editorial surface shell, lower chrome density, larger readable typography, and calmer card/panel hierarchy
+  - added a real `/passport` page so the existing header/profile and wallet flows no longer point at a missing route
+  - redesigned shared chrome in `Header.svelte` and `WalletModal.svelte` so wallet connect/auth now visually belongs to the same home-derived system instead of the older green auth panel style
+  - added global home-reference surface tokens in `src/app.css` and updated frontend/generated route metadata so docs gates understand the revived `/passport` route
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: PASS after installing dependencies in the fresh worktree; same pre-existing unused CSS warnings remained in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`
+  - `npm run docs:refresh`: PASS (required escalated write to refresh generated docs)
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; warnings are the same pre-existing unused CSS selectors in `BottomBar.svelte` and `settings/+page.svelte`)
+  - `npm run build`: PASS (same pre-existing unused CSS warnings during build)
+  - `npm run ctx:check -- --strict`: PASS
+  - `git diff --check`: PASS
+- Commit hash:
+  - not created yet
+- Push status:
+  - not pushed; waiting for explicit user approval
+- Final working tree status:
+  - `## codex/ui-home-pattern-unify`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `docs/generated/context-efficiency-report.json`, `docs/generated/context-efficiency-report.md`, `docs/generated/route-map.md`, `docs/generated/task-contract-report.md`, `scripts/dev/refresh-generated-context.mjs`, `src/app.css`, `src/components/layout/Header.svelte`, `src/components/modals/WalletModal.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`
+  - untracked: `src/routes/passport/+page.svelte`
+- Status:
+  - READY_FOR_REVIEW
+
+## [2026-04-12 23:23:51 +0900] START W-20260412-2323-CHATBATTLE-codex (CHATBATTLE)
+- Repo:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/terminal-shell-redesign`
+- Base:
+  - `origin/main` @ `ab79b16de3664522e3aaa62f4ff2611f7d986ddb`
+- Working tree status:
+  - `## codex/terminal-shell-redesign`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `docs/generated/context-efficiency-report.json`, `docs/generated/context-efficiency-report.md`, `docs/generated/route-map.md`, `docs/generated/task-contract-report.md`, `scripts/dev/refresh-generated-context.mjs`, `src/app.css`, `src/components/cogochi/QuickPanel.svelte`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/layout/BottomBar.svelte`, `src/components/layout/Header.svelte`, `src/components/layout/MobileBottomNav.svelte`, `src/components/modals/WalletModal.svelte`, `src/components/shared/P0Banner.svelte`, `src/routes/+layout.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/terminal/+page.svelte`
+  - added: `src/routes/passport/+page.svelte`
+- Task summary:
+  - finalize the merged `codex/ui-home-pattern-unify` surface work into `codex/terminal-shell-redesign`, validate the combined branch, then commit/push/merge the result as one atomic change
+- Ownership / overlap check:
+  - current branch owns terminal shell files and now absorbs the overlapping UI shell files from `codex/ui-home-pattern-unify`
+  - resolved overlap set: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/cogochi/QuickPanel.svelte`, `src/routes/terminal/+page.svelte`
+  - absorbed UI shell set: `src/app.css`, `src/components/home/*`, `src/components/layout/*`, `src/components/modals/WalletModal.svelte`, `src/components/shared/P0Banner.svelte`, `src/routes/+layout.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/passport/+page.svelte`
 - Safe status:
   - `npm run safe:status`: PASS
 - Status:

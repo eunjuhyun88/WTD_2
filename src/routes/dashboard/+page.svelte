@@ -56,7 +56,7 @@
 
   function pnlClass(v: number | null | undefined): string {
     if (v == null) return '';
-    return v >= 0 ? 'positive' : 'negative';
+    return v >= 0 ? 'surface-value-positive' : 'surface-value-negative';
   }
 
   function cyclesTested(entry: StrategyEntry): number {
@@ -88,106 +88,111 @@
   <title>Dashboard — Cogochi</title>
 </svelte:head>
 
-<div class="dash-page">
-  <section class="hero-card">
-    <div class="hero-copy">
-      <span class="hero-kicker">DASHBOARD</span>
-      <h1>저장된 판단과 바뀐 상태가 다시 모이는 곳.</h1>
-      <p>
-        Dashboard는 새 기능을 설명하는 곳이 아니라, 내가 남긴 세팅과 최근 변화만 빠르게 다시 읽는 inbox입니다.
+<div class="surface-page dashboard-page">
+  <section class="surface-hero split">
+    <div class="surface-copy">
+      <span class="surface-kicker">Dashboard</span>
+      <h1 class="surface-title">저장된 판단과 최근 변화가 다시 모이는 inbox.</h1>
+      <p class="surface-subtitle">
+        Dashboard는 설명용 홈이 아니다. 내가 남긴 세팅, 다시 봐야 할 검색, 다음에 이어볼 상태만
+        빠르게 재진입할 수 있게 정리된 복귀 surface다.
       </p>
-    </div>
-
-    <div class="hero-stats">
-      <article class="hero-stat">
-        <span class="hero-stat-label">Challenges</span>
-        <strong>{strategies.length}</strong>
-        <p>저장된 세팅</p>
-      </article>
-      <article class="hero-stat">
-        <span class="hero-stat-label">Tested</span>
-        <strong>{testedChallengeCount}</strong>
-        <p>최근 검증 완료</p>
-      </article>
-      <article class="hero-stat">
-        <span class="hero-stat-label">Last activity</span>
-        <strong>{latestActivityText}</strong>
-        <p>마지막 변화</p>
-      </article>
-    </div>
-  </section>
-
-  <section class="market-card">
-    <div class="market-copy">
-      <span class="section-kicker">Market context</span>
-      <strong>BTC {fmtPrice(btcPrice)}</strong>
-    </div>
-    <button class="market-link" onclick={() => goto('/terminal')}>
-      Open Terminal
-    </button>
-  </section>
-
-  <section class="section-block">
-    <div class="section-head">
-      <div>
-        <span class="section-kicker">My Challenges</span>
-        <h2>지금 이어서 볼 세팅</h2>
+      <div class="surface-inline-actions">
+        <button class="surface-button" onclick={() => goto('/terminal')}>Open Terminal</button>
+        <button class="surface-button-secondary" onclick={() => goto('/lab')}>Open Lab</button>
       </div>
-      <span class="section-count">{strategies.length}</span>
+    </div>
+
+    <div class="surface-stats">
+      <article class="surface-stat">
+        <span class="surface-meta">Challenges</span>
+        <strong>{strategies.length}</strong>
+        <p>저장된 챌린지 수</p>
+      </article>
+      <article class="surface-stat">
+        <span class="surface-meta">Tested</span>
+        <strong>{testedChallengeCount}</strong>
+        <p>검증이 완료된 세팅</p>
+      </article>
+      <article class="surface-stat">
+        <span class="surface-meta">Last Activity</span>
+        <strong>{latestActivityText}</strong>
+        <p>최근 변경 시점</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="surface-card soft market-banner">
+    <div>
+      <span class="surface-kicker">Market Context</span>
+      <h2>BTC {fmtPrice(btcPrice)}</h2>
+      <p>현재 관찰 중인 시장 맥락으로 바로 복귀한다.</p>
+    </div>
+    <button class="surface-button-secondary" onclick={() => goto('/terminal')}>Return to Terminal</button>
+  </section>
+
+  <section class="surface-grid">
+    <div class="surface-section-head">
+      <div>
+        <span class="surface-kicker">My Challenges</span>
+        <h2>지금 이어서 볼 세팅</h2>
+        <p>Terminal에서 저장한 판단을 Lab으로 다시 열 수 있다.</p>
+      </div>
+      <span class="surface-chip">{strategies.length} saved</span>
     </div>
 
     {#if strategies.length === 0}
-      <div class="empty-card">
+      <div class="surface-card empty-card">
         <p>아직 저장된 챌린지가 없습니다.</p>
-        <button class="action-btn" onclick={() => goto('/terminal')}>Terminal에서 시작</button>
+        <button class="surface-button" onclick={() => goto('/terminal')}>Terminal에서 시작</button>
       </div>
     {:else}
-      <div class="strat-grid">
+      <div class="challenge-grid">
         {#each strategies as entry (entry.strategy.id)}
           {@const s = entry.strategy}
           {@const r = entry.lastResult}
-          <button class="strat-card" onclick={() => goToLab(s.id)}>
-            <div class="sc-top">
-              <div class="sc-title">
-                <span class="sc-kicker">Challenge</span>
+          <button class="surface-card challenge-card" onclick={() => goToLab(s.id)}>
+            <div class="challenge-top">
+              <div>
+                <span class="surface-meta">Challenge</span>
                 <strong>{s.name}</strong>
               </div>
-              <span class="sc-ver">v{s.version}</span>
+              <span class="surface-chip">v{s.version}</span>
             </div>
 
             {#if r}
-              <div class="sc-stats">
-                <div class="sc-stat">
-                  <span class="sc-stat-label">Win</span>
-                  <span class="sc-stat-value {pnlClass(r.winRate >= 55 ? 1 : r.winRate < 45 ? -1 : 0)}">{r.winRate.toFixed(0)}%</span>
+              <div class="challenge-stats">
+                <div>
+                  <span class="surface-meta">Win</span>
+                  <strong class={pnlClass(r.winRate >= 55 ? 1 : r.winRate < 45 ? -1 : 0)}>{r.winRate.toFixed(0)}%</strong>
                 </div>
-                <div class="sc-stat">
-                  <span class="sc-stat-label">Sharpe</span>
-                  <span class="sc-stat-value {pnlClass(r.sharpeRatio)}">{fmtNum(r.sharpeRatio)}</span>
+                <div>
+                  <span class="surface-meta">Sharpe</span>
+                  <strong class={pnlClass(r.sharpeRatio)}>{fmtNum(r.sharpeRatio)}</strong>
                 </div>
-                <div class="sc-stat">
-                  <span class="sc-stat-label">MDD</span>
-                  <span class="sc-stat-value negative">-{r.maxDrawdownPercent.toFixed(1)}%</span>
+                <div>
+                  <span class="surface-meta">MDD</span>
+                  <strong class="surface-value-negative">-{r.maxDrawdownPercent.toFixed(1)}%</strong>
                 </div>
-                <div class="sc-stat">
-                  <span class="sc-stat-label">PnL</span>
-                  <span class="sc-stat-value {pnlClass(r.totalPnlPercent)}">{fmtPct(r.totalPnlPercent)}</span>
+                <div>
+                  <span class="surface-meta">PnL</span>
+                  <strong class={pnlClass(r.totalPnlPercent)}>{fmtPct(r.totalPnlPercent)}</strong>
                 </div>
               </div>
 
-              <div class="sc-progress">
-                <div class="sc-progress-bar">
-                  <div class="sc-progress-fill" style:width="{(cyclesTested(entry) / MARKET_CYCLES.length) * 100}%"></div>
+              <div class="progress-block">
+                <div class="progress-track">
+                  <div class="progress-fill" style:width={`${(cyclesTested(entry) / MARKET_CYCLES.length) * 100}%`}></div>
                 </div>
-                <span class="sc-progress-text">{cyclesTested(entry)}/{MARKET_CYCLES.length} cycles</span>
+                <span class="surface-meta">{cyclesTested(entry)}/{MARKET_CYCLES.length} cycles</span>
               </div>
             {:else}
-              <div class="sc-untested">아직 첫 검증 전입니다.</div>
+              <p class="untested-copy">아직 첫 검증 전입니다. Lab에서 첫 실행을 시작하세요.</p>
             {/if}
 
-            <div class="sc-footer">
-              <span class="sc-time">{timeSince(entry.lastModified)}</span>
-              <span class="sc-cta">Open Lab</span>
+            <div class="challenge-footer">
+              <span class="surface-meta">{timeSince(entry.lastModified)}</span>
+              <span class="surface-chip">Open Lab</span>
             </div>
           </button>
         {/each}
@@ -195,522 +200,217 @@
     {/if}
   </section>
 
-  <section class="section-block">
-    <div class="section-head">
-      <div>
-        <span class="section-kicker">Watching</span>
-        <h2>다시 볼 검색</h2>
+  <section class="surface-grid cols-2">
+    <div class="surface-grid">
+      <div class="surface-section-head">
+        <div>
+          <span class="surface-kicker">Watching</span>
+          <h2>다시 볼 검색</h2>
+        </div>
+        <span class="surface-chip">{WATCHING_QUERIES.length} saved</span>
       </div>
-      <span class="section-count">{WATCHING_QUERIES.length}</span>
-    </div>
 
-    <div class="aux-grid">
       {#each WATCHING_QUERIES as item}
-        <button class="aux-card" onclick={() => openWatching(item.query)}>
-          <div class="aux-top">
-            <span class="aux-label">Terminal</span>
-            <span class="aux-chip">Saved query</span>
+        <button class="surface-card watcher-card" onclick={() => openWatching(item.query)}>
+          <div class="watcher-top">
+            <span class="surface-meta">Terminal Query</span>
+            <span class="surface-chip">Open</span>
           </div>
           <strong>{item.title}</strong>
           <p>{item.note}</p>
-          <code>{item.query}</code>
+          <code class="surface-code">{item.query}</code>
         </button>
       {/each}
     </div>
-  </section>
 
-  <section class="section-block">
-    <div class="section-head">
-      <div>
-        <span class="section-kicker">My Adapters</span>
-        <h2>검증 이후에 모일 상태</h2>
+    <div class="surface-grid">
+      <div class="surface-section-head">
+        <div>
+          <span class="surface-kicker">My Adapters</span>
+          <h2>검증 이후 상태</h2>
+        </div>
+        <span class="surface-chip">{waitingChallengeCount} waiting</span>
       </div>
-      <span class="section-count">{waitingChallengeCount}</span>
-    </div>
 
-    <div class="aux-grid">
       {#each ADAPTER_STATES as item}
-        <article class="aux-card static">
-          <div class="aux-top">
-            <span class="aux-label">Status</span>
-            <span class="aux-chip muted">{item.state}</span>
+        <article class="surface-card watcher-card">
+          <div class="watcher-top">
+            <span class="surface-meta">Status</span>
+            <span class="surface-chip">{item.state}</span>
           </div>
           <strong>{item.title}</strong>
           <p>{item.note}</p>
         </article>
       {/each}
-    </div>
-  </section>
 
-  <section class="quick-bar">
-    <button class="quick-btn primary" onclick={() => goto('/terminal')}>
-      <span class="qb-copy">
-        <span class="qb-kicker">Next move</span>
-        <strong>Open Terminal</strong>
-      </span>
-    </button>
-    <button class="quick-btn" onclick={() => goto('/lab')}>
-      <span class="qb-copy">
-        <span class="qb-kicker">Review</span>
-        <strong>Open Lab</strong>
-      </span>
-    </button>
+      <div class="surface-cta">
+        <span class="surface-kicker">Next Move</span>
+        <h2>새로운 세팅을 저장하거나 기존 결과를 재검토한다.</h2>
+        <div class="surface-inline-actions">
+          <button class="surface-button" onclick={() => goto('/terminal')}>Open Terminal</button>
+          <button class="surface-button-secondary" onclick={() => goto('/lab')}>Review in Lab</button>
+        </div>
+      </div>
+    </div>
   </section>
 </div>
 
 <style>
-  .dash-page {
-    width: min(1120px, 100%);
-    margin: 0 auto;
-    padding: 24px 20px 40px;
-    display: grid;
-    gap: 22px;
-    font-family: var(--sc-font-body);
+  .dashboard-page {
+    padding-top: 12px;
   }
 
-  .hero-card,
-  .market-card,
-  .strat-card,
-  .aux-card,
-  .empty-card,
-  .quick-btn {
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(180deg, rgba(18, 18, 20, 0.82), rgba(10, 10, 12, 0.78));
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 18px 42px rgba(0, 0, 0, 0.18);
+  .market-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
   }
 
-  .hero-card {
-    display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
-    gap: 18px;
-    padding: 24px;
-    align-items: start;
-  }
-
-  .hero-copy {
-    display: grid;
-    gap: 10px;
-    max-width: 36rem;
-  }
-
-  .hero-kicker,
-  .section-kicker,
-  .hero-stat-label,
-  .aux-label,
-  .aux-chip,
-  .sc-kicker,
-  .sc-ver,
-  .sc-stat-label,
-  .sc-progress-text,
-  .qb-kicker {
-    font-family: var(--sc-font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  .hero-kicker,
-  .section-kicker,
-  .aux-chip,
-  .sc-ver,
-  .qb-kicker {
-    color: rgba(var(--lis-rgb-pink), 0.92);
-  }
-
-  .hero-copy h1,
-  .section-head h2 {
-    margin: 0;
-    font-family: var(--sc-font-body);
+  .market-banner h2,
+  .surface-cta h2 {
+    margin: 6px 0 0;
+    font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+    line-height: 1.02;
     letter-spacing: -0.05em;
-    color: rgba(255, 247, 244, 0.97);
+    color: rgba(250, 247, 235, 0.98);
   }
 
-  .hero-copy h1 {
-    font-size: clamp(2.2rem, 4vw, 3.8rem);
-    line-height: 0.98;
-    max-width: 11ch;
+  .market-banner p {
+    margin: 8px 0 0;
+    color: rgba(250, 247, 235, 0.62);
   }
 
-  .hero-copy p {
-    margin: 0;
-    color: rgba(255, 247, 244, 0.78);
-    font-size: 1.08rem;
-    line-height: 1.7;
-  }
-
-  .hero-stats {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .hero-stat {
-    display: grid;
-    gap: 4px;
-    padding: 14px 16px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .hero-stat-label,
-  .aux-label,
-  .sc-kicker,
-  .sc-stat-label,
-  .sc-progress-text,
-  .qb-kicker {
-    color: rgba(255, 247, 244, 0.46);
-  }
-
-  .hero-stat strong {
-    color: rgba(255, 247, 244, 0.94);
-    font-size: 1.3rem;
-    line-height: 1.2;
-  }
-
-  .hero-stat p {
-    margin: 0;
-    color: rgba(255, 247, 244, 0.7);
-    font-size: 0.95rem;
-    line-height: 1.45;
-  }
-
-  .market-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    padding: 16px 18px;
-  }
-
-  .market-copy {
-    display: grid;
-    gap: 4px;
-  }
-
-  .market-copy strong {
-    color: rgba(255, 247, 244, 0.94);
-    font-size: 1.16rem;
-    line-height: 1.25;
-  }
-
-  .market-link,
-  .action-btn {
-    min-height: 44px;
-    padding: 0 16px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: linear-gradient(180deg, rgba(248, 243, 236, 0.96), rgba(231, 224, 216, 0.94));
-    color: #0a0908;
-    font-family: var(--sc-font-body);
-    font-size: 0.96rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .section-block {
-    display: grid;
-    gap: 14px;
-  }
-
-  .section-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: end;
-    gap: 12px;
-  }
-
-  .section-head div {
-    display: grid;
-    gap: 4px;
-  }
-
-  .section-head h2 {
-    font-size: clamp(1.55rem, 2.4vw, 2.25rem);
-    line-height: 1.06;
-  }
-
-  .section-count {
-    min-width: 34px;
-    min-height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: rgba(var(--lis-rgb-pink), 0.1);
-    color: rgba(var(--lis-rgb-pink), 0.92);
-    font-family: var(--sc-font-mono);
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
-  }
-
-  .strat-grid,
-  .aux-grid {
+  .challenge-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 18px;
   }
 
-  .strat-card,
-  .aux-card {
+  .challenge-card,
+  .watcher-card {
     display: grid;
-    gap: 12px;
-    padding: 18px;
+    gap: 16px;
     text-align: left;
     cursor: pointer;
-    transition:
-      transform var(--sc-duration-fast),
-      border-color var(--sc-duration-fast),
-      background var(--sc-duration-fast);
+    transition: transform var(--sc-duration-fast), border-color var(--sc-duration-fast);
   }
 
-  .strat-card:hover,
-  .aux-card:hover {
-    transform: translateY(-1px);
-    border-color: rgba(var(--lis-rgb-pink), 0.18);
-    background: linear-gradient(180deg, rgba(22, 22, 24, 0.84), rgba(11, 11, 13, 0.8));
+  .challenge-card:hover,
+  .watcher-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--home-ref-border-strong);
   }
 
-  .aux-card.static {
-    cursor: default;
-  }
-
-  .aux-card.static:hover {
-    transform: none;
-  }
-
-  .sc-top,
-  .aux-top {
+  .challenge-top,
+  .watcher-top,
+  .challenge-footer {
     display: flex;
-    align-items: start;
     justify-content: space-between;
+    align-items: start;
     gap: 10px;
   }
 
-  .sc-title {
-    display: grid;
-    gap: 4px;
-  }
-
-  .sc-title strong,
-  .aux-card strong {
-    color: rgba(255, 247, 244, 0.94);
+  .challenge-top strong,
+  .watcher-card strong {
+    display: block;
+    margin-top: 4px;
+    color: rgba(250, 247, 235, 0.98);
     font-size: 1.14rem;
-    line-height: 1.28;
+    line-height: 1.14;
+    letter-spacing: -0.03em;
   }
 
-  .sc-ver,
-  .aux-chip {
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: rgba(var(--lis-rgb-pink), 0.1);
-  }
-
-  .aux-chip.muted {
-    color: rgba(255, 247, 244, 0.62);
-    background: rgba(255, 255, 255, 0.06);
-  }
-
-  .sc-stats {
+  .challenge-stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
-    padding: 12px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 14px;
   }
 
-  .sc-stat {
-    display: grid;
-    gap: 4px;
+  .challenge-stats strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 1rem;
+    color: rgba(250, 247, 235, 0.96);
   }
 
-  .sc-stat-value {
-    font-family: var(--sc-font-body);
-    font-size: 1.04rem;
-    font-weight: 600;
-    color: rgba(255, 247, 244, 0.88);
-  }
-
-  .sc-stat-value.positive {
-    color: var(--lis-positive);
-  }
-
-  .sc-stat-value.negative {
-    color: var(--sc-bad);
-  }
-
-  .sc-progress {
+  .progress-block {
     display: grid;
     gap: 8px;
   }
 
-  .sc-progress-bar {
-    width: 100%;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 999px;
+  .progress-track {
+    height: 7px;
     overflow: hidden;
-  }
-
-  .sc-progress-fill {
-    height: 100%;
-    background: var(--lis-accent);
     border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
   }
 
-  .sc-untested {
-    color: rgba(255, 247, 244, 0.58);
-    font-size: 1rem;
-    line-height: 1.5;
-    padding: 6px 0;
+  .progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgba(255, 127, 133, 0.92), rgba(249, 216, 194, 0.84));
   }
 
-  .sc-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .sc-time {
-    color: rgba(255, 247, 244, 0.52);
-    font-size: 0.92rem;
-  }
-
-  .sc-cta {
-    color: rgba(var(--lis-rgb-pink), 0.92);
-    font-size: 0.94rem;
-    font-weight: 500;
-  }
-
-  .aux-card p {
+  .untested-copy,
+  .watcher-card p,
+  .empty-card p {
     margin: 0;
-    color: rgba(255, 247, 244, 0.72);
-    font-size: 0.98rem;
-    line-height: 1.62;
+    color: rgba(250, 247, 235, 0.64);
+    line-height: 1.6;
   }
 
-  .aux-card code {
-    color: rgba(255, 247, 244, 0.62);
-    font-family: var(--sc-font-mono);
-    font-size: 0.84rem;
-    line-height: 1.6;
-    word-break: break-word;
+  .surface-code {
+    display: inline-flex;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: rgba(250, 247, 235, 0.82);
   }
 
   .empty-card {
     display: grid;
-    justify-items: center;
     gap: 14px;
-    padding: 36px 20px;
-    text-align: center;
+    justify-items: start;
   }
 
-  .empty-card p {
-    margin: 0;
-    color: rgba(255, 247, 244, 0.68);
-    font-size: 1.04rem;
-    line-height: 1.6;
-  }
-
-  .quick-bar {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .quick-btn {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    padding: 18px;
-    text-align: left;
-    cursor: pointer;
-    transition:
-      transform var(--sc-duration-fast),
-      border-color var(--sc-duration-fast),
-      background var(--sc-duration-fast);
-  }
-
-  .quick-btn:hover {
-    transform: translateY(-1px);
-    border-color: rgba(var(--lis-rgb-pink), 0.18);
-  }
-
-  .quick-btn.primary {
-    background: linear-gradient(180deg, rgba(248, 243, 236, 0.96), rgba(231, 224, 216, 0.94));
-    color: #0a0908;
-  }
-
-  .quick-btn.primary .qb-kicker,
-  .quick-btn.primary strong {
-    color: #0a0908;
-  }
-
-  .qb-copy {
-    display: grid;
-    gap: 4px;
-  }
-
-  .qb-copy strong {
-    font-size: 1.08rem;
-    line-height: 1.2;
-    color: rgba(255, 247, 244, 0.94);
-  }
-
-  @media (max-width: 900px) {
-    .hero-card {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .dash-page {
-      padding: 18px 16px 28px;
-      gap: 18px;
-    }
-
-    .strat-grid,
-    .aux-grid,
-    .quick-bar {
+  @media (max-width: 960px) {
+    .challenge-grid,
+    .challenge-stats {
       grid-template-columns: 1fr;
     }
 
-    .sc-stats {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 540px) {
-    .dash-page {
-      padding-left: 14px;
-      padding-right: 14px;
-    }
-
-    .hero-card,
-    .market-card,
-    .strat-card,
-    .aux-card,
-    .quick-btn,
-    .empty-card {
-      padding: 16px;
-      border-radius: 18px;
-    }
-
-    .market-card,
-    .section-head,
-    .sc-footer {
+    .market-banner {
+      align-items: start;
       flex-direction: column;
-      align-items: flex-start;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .dashboard-page {
+      padding-top: 4px;
     }
 
-    .market-link,
-    .action-btn {
-      width: 100%;
+    .challenge-card,
+    .watcher-card {
+      gap: 14px;
+    }
+
+    .challenge-top,
+    .watcher-top,
+    .challenge-footer {
+      flex-direction: column;
+      align-items: start;
+    }
+
+    .surface-code {
+      white-space: normal;
+      word-break: break-word;
     }
   }
 </style>
