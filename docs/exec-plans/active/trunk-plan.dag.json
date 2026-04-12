@@ -326,19 +326,545 @@
         "src/lib/server/memory/decisionJournal.ts exports insertTrajectory() and getTrajectory() using DecisionTrajectorySchema for validation",
         "Round-trip integration test: insertTrajectory(sample) → getTrajectory(id) → schema.parse → deep equal sample",
         "npm run check exits 0",
-        "Supabase RLS policy drafted for trajectory table (even if permissive for now)"
+        "Supabase RLS policy drafted for trajectory table (even if permissive for now)",
+        "1000-user perf budget: insert+read round-trip p95 < 50ms on default supabase free tier (documented in slice handoff)",
+        "Security: RLS policy enforces user_id ownership OR explicit comment in SQL header justifying permissive default"
       ],
       "kill_gate": {
         "gate_fail_max": 3,
         "age_days_max": 3
       },
       "notes": "C-schema track per three-pipeline Phase 1. Runs in parallel with P1.A0.* (different mutex group). This slice defines the first real consumer of the DecisionTrajectorySchema from P0.2 and provides the database surface for the later outcome-resolver worker (future slice, not in this v0 DAG)."
+    },
+    {
+      "id": "Z0-smoke-rollout-marker",
+      "title": "week_0 gate smoke — exercise full slice lifecycle end-to-end",
+      "track": "product",
+      "phase": "Z0",
+      "priority": 999,
+      "agent_type": "implementer",
+      "depends_on": [],
+      "mutex": [],
+      "paths": [
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".agent-context/policy/wip-limits.json",
+        "scripts/slice/cli.mjs"
+      ],
+      "dod": [
+        "docs/swarm-v1-rollout-log.md created at repo root docs/",
+        "File records: state reconciliation evidence (P0.1..P0.5 rebuild + 4 P1.A0 backfills with SHAs)",
+        "File records: Z0-smoke end-to-end journal (in-progress → ready-for-review → approved → merged events)",
+        "File records: week_0 → week_1 advancement decision and the 3 rollout gates per design §8",
+        "File records: 1000-user perf + security baseline commitment (baseline + budget table)",
+        "npm run gate exits 0",
+        "slice status shows Z0-smoke as MERGED after lifecycle completes",
+        "1000-user perf budget: zero new runtime code, zero perf regression by construction (docs-only slice)",
+        "Security posture: no new creds, no new network egress, no new surface (docs-only slice)"
+      ],
+      "kill_gate": {
+        "gate_fail_max": 1,
+        "age_days_max": 1
+      },
+      "notes": "Ops-only slice. Purpose is to exercise the full swarm-v1 slice lifecycle (new → ready-for-review → approved → merged) in one sitting so the week_0 rollout gate can be declared passed by human review. Uses the single product WIP slot under week_0 cap. After Z0-smoke merges, advance active_phase to week_1 in .agent-context/policy/wip-limits.json."
+    },
+    {
+      "id": "P1.A0-upbit",
+      "title": "Extract upbit raw loader to src/lib/server/providers/upbit.ts (if legacy exists)",
+      "track": "product",
+      "phase": "P1",
+      "priority": 71,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-dexscreener"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/upbit.ts",
+        "src/lib/server/scanEngine.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "Slice worker FIRST verifies whether legacy upbit loader exists by grep on src/lib/server/; if absent, worker emits kill-reason 'no legacy upbit shim' and exits",
+        "If present: src/lib/server/providers/upbit.ts created with raw loader moved out of scanEngine.ts",
+        "No behavior changes, no function signature changes",
+        "npm run check exits 0",
+        "1000-user perf budget: no regression in scanEngine execution time, no added network hops",
+        "Security: no new API keys introduced (reuse existing rotation pool pattern)"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Promoted from parking_lot in DAG v1. upbit legacy file NOT confirmed on disk at time of promotion — worker must kill-exit if no shim found. Serial via scanEngine-decompose mutex."
+    },
+    {
+      "id": "P1.A0-etherscan",
+      "title": "Extract etherscan raw loader to src/lib/server/providers/etherscan.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 70,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-upbit"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/etherscan.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/etherscan.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/etherscan.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/etherscan.ts created with raw loader moved out of scanEngine.ts",
+        "scanEngine.ts re-exports etherscan loaders via barrel",
+        "No behavior changes",
+        "npm run check exits 0",
+        "1000-user perf budget: no regression in scanEngine execution time",
+        "Security: no new creds; etherscan key already in rotation pool"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy file confirmed at src/lib/server/etherscan.ts. Same pattern as P1.A0-binance."
+    },
+    {
+      "id": "P1.A0-santiment",
+      "title": "Extract santiment raw loader to src/lib/server/providers/santiment.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 69,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-etherscan"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/santiment.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/santiment.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/santiment.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "src/lib/server/providers/santiment.ts created",
+        "scanEngine.ts re-exports santiment loaders",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/santiment.ts."
+    },
+    {
+      "id": "P1.A0-lunarcrush",
+      "title": "Extract lunarcrush raw loader to src/lib/server/providers/lunarcrush.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 68,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-santiment"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/lunarcrush.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/lunarcrush.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/lunarcrush.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/lunarcrush.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/lunarcrush.ts."
+    },
+    {
+      "id": "P1.A0-defillama",
+      "title": "Extract defillama raw loader to src/lib/server/providers/defillama.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 67,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-lunarcrush"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/defillama.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/defillama.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/defillama.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/defillama.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/defillama.ts."
+    },
+    {
+      "id": "P1.A0-cryptoquant",
+      "title": "Extract cryptoquant raw loader to src/lib/server/providers/cryptoquant.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 66,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-defillama"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/cryptoquant.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/cryptoquant.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/cryptoquant.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/cryptoquant.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/cryptoquant.ts."
+    },
+    {
+      "id": "P1.A0-yahoo",
+      "title": "Extract yahoo-finance raw loader to src/lib/server/providers/yahoo.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 65,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-cryptoquant"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/yahoo.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/yahooFinance.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/yahooFinance.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/yahoo.ts created (legacy is yahooFinance.ts)",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy name is yahooFinance.ts — worker should preserve export names for backward compat."
+    },
+    {
+      "id": "P1.A0-fred",
+      "title": "Extract fred raw loader to src/lib/server/providers/fred.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 64,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-yahoo"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/fred.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/fred.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/fred.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/fred.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/fred.ts."
+    },
+    {
+      "id": "P1.A0-feargreed",
+      "title": "Extract feargreed raw loader to src/lib/server/providers/feargreed.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 63,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-fred"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/feargreed.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/feargreed.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/feargreed.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/feargreed.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/feargreed.ts. Already has E6c thresholds slice in-flight on a separate worktree — coordinate via mutex."
+    },
+    {
+      "id": "P1.A0-coinmetrics",
+      "title": "Extract coinmetrics raw loader to src/lib/server/providers/coinmetrics.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 62,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-feargreed"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/coinmetrics.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinmetrics.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinmetrics.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/coinmetrics.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/coinmetrics.ts."
+    },
+    {
+      "id": "P1.A0-coinmarketcap",
+      "title": "Extract coinmarketcap raw loader to src/lib/server/providers/coinmarketcap.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 61,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-coinmetrics"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/coinmarketcap.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinmarketcap.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/coinmarketcap.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/coinmarketcap.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/coinmarketcap.ts."
+    },
+    {
+      "id": "P1.A0-dune",
+      "title": "Extract dune raw loader to src/lib/server/providers/dune.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 60,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-coinmarketcap"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/dune.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/dune.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/dune.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/dune.ts created",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: DUNE_API_KEY in rotation pool only, never logged"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy confirmed at src/lib/server/dune.ts. DUNE_API_KEY noted in credential rotation pending list — handle carefully."
+    },
+    {
+      "id": "P1.A0-gmx",
+      "title": "Extract gmx-v2 raw loader to src/lib/server/providers/gmx.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 59,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-dune"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/gmx.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/gmxV2.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/gmxV2.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/gmx.ts created (legacy gmxV2.ts)",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy name is gmxV2.ts — preserve export names for backward compat."
+    },
+    {
+      "id": "P1.A0-polymarket",
+      "title": "Extract polymarket-clob raw loader to src/lib/server/providers/polymarket.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 58,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-gmx"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/polymarket.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/polymarketClob.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/polymarketClob.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/polymarket.ts created (legacy polymarketClob.ts)",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy name is polymarketClob.ts — preserve export names."
+    },
+    {
+      "id": "P1.A0-geckowhale",
+      "title": "Extract geckowhale raw loader to src/lib/server/providers/geckowhale.ts",
+      "track": "product",
+      "phase": "P1",
+      "priority": 57,
+      "agent_type": "decomposer",
+      "depends_on": ["P1.A0-polymarket"],
+      "mutex": ["scanEngine-decompose"],
+      "paths": [
+        "src/lib/server/providers/geckowhale.ts",
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/geckoWhale.ts"
+      ],
+      "context_files": [
+        "src/lib/server/scanEngine.ts",
+        "src/lib/server/geckoWhale.ts",
+        "src/lib/server/providers/binance.ts"
+      ],
+      "dod": [
+        "providers/geckowhale.ts created (legacy geckoWhale.ts)",
+        "scanEngine re-exports",
+        "npm run check exits 0",
+        "1000-user perf: no regression",
+        "Security: no new creds"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "Legacy name is geckoWhale.ts (camelCase). Last of the v1 P1.A0 promotions."
+    },
+    {
+      "id": "P2.A1-events-base",
+      "title": "Phase 2 seed — factor event emitter base module",
+      "track": "product",
+      "phase": "P2",
+      "priority": 55,
+      "agent_type": "api-surgeon",
+      "depends_on": ["P0.4-contracts-barrel", "P1.C-schema-migration"],
+      "mutex": [],
+      "paths": [
+        "src/lib/engine/events/base.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/index.ts",
+        "src/lib/engine/agentPipeline.ts",
+        "docs/exec-plans/active/three-pipeline-integration-design-2026-04-11.md"
+      ],
+      "dod": [
+        "src/lib/engine/events/base.ts defines FactorEventEmitter interface + emit() helper",
+        "Uses E1 event namespace registry from src/lib/contracts/events.ts (already landed)",
+        "npm run check exits 0",
+        "1000-user perf: event emit is synchronous + no I/O; < 1μs per call",
+        "Security: no PII in event payloads (enforced by contract schema)"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 5 },
+      "notes": "Phase 2 seed — unblocks the F4~F17 factor event rewrites. Does NOT rewrite any factor yet; just provides the base module."
+    },
+    {
+      "id": "P2.C-outcome-resolver",
+      "title": "Phase 2 — time-bridge worker that populates trajectory outcomes",
+      "track": "product",
+      "phase": "P2",
+      "priority": 50,
+      "agent_type": "api-surgeon",
+      "depends_on": ["P1.C-schema-migration"],
+      "mutex": [],
+      "paths": [
+        "src/lib/server/workers/outcomeResolver.ts"
+      ],
+      "context_files": [
+        "src/lib/contracts/trajectory.ts",
+        "src/lib/server/memory/decisionJournal.ts",
+        "docs/ORPO_DATA_SCHEMA_PIPELINE_v1_2026-02-26.md"
+      ],
+      "dod": [
+        "src/lib/server/workers/outcomeResolver.ts exports resolveOutcomes(window: number)",
+        "Reads trajectories older than window from decision journal, fetches price at resolution tick, writes back outcome fields",
+        "Cron schedule documented in comment header (e.g. every 5 minutes via Vercel cron)",
+        "Unit smoke covers: fresh trajectory not resolved, window-elapsed trajectory resolved, stale-data edge case",
+        "npm run check exits 0",
+        "1000-user perf: worker processes up to 1000 trajectories per invocation in < 10s (batched read + parallel resolve)",
+        "Security: read-only to price sources, write-only to own table, no cross-tenant reads"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 7 },
+      "notes": "Phase 2 critical path — makes the ORPO pair generator possible. Depends on P1.C-schema-migration because it writes outcome fields to the trajectory table."
     }
   ],
   "parking_lot": [
-    "P1.A0-etherscan, P1.A0-santiment, P1.A0-lunarcrush, P1.A0-defillama, P1.A0-cryptoquant, P1.A0-glassnode, P1.A0-yahoo, P1.A0-fred, P1.A0-feargreed, P1.A0-coinmetrics, P1.A0-coinmarketcap, P1.A0-dune, P1.A0-gmx, P1.A0-polymarket, P1.A0-geckowhale (16 remaining providers from the 21 atoms — added to DAG v1 after v0 proves the pattern)",
-    "P2.A1-events (rewrite F4~F17 as event emitters) — Phase 2 work",
-    "P2.C-outcome-resolver (time-bridge worker that populates trajectory outcomes) — Phase 2 work",
+    "P1.A0-glassnode (no legacy shim on disk — needs initial implementation before extraction slice)",
+    "P2.A1-F4~F17 (rewrite each factor as event emitter) — 14 slices depending on P2.A1-events-base",
     "P3.A2-structure (structural state machine) — Phase 3 work",
     "P3.A3-verdict-assembler (replace computeAlpha) — Phase 3 work",
     "P4.B-pair-generator (trajectory → ml_preference_pairs) — Phase 4 work",
@@ -346,10 +872,13 @@
     "P5.A4-nl-routing — Phase 5 work"
   ],
   "notes": {
-    "v0_scope": "First 10 slices covering Phase 0 (contract freeze, 5 slices) + Phase 1 first half (4 provider extractions + 1 DB migration, 5 slices). This is enough to unblock the entire trunk plan without committing to slice definitions that have not been validated yet.",
-    "v1_trigger": "When P0.4-contracts-barrel and P1.A0-binance both merge successfully, add the remaining 16 providers and Phase 2 slices.",
-    "ordering_rationale": "P0.1 and P0.2 are mutex-serialized (contract-*), so even though they could in theory run in parallel with different target files, default setting runs them serial for safety. P0.5-zod-pin has no mutex and can run in parallel. P0.3 can run first since P0.1 and P0.2 depend on the enums it finalizes.",
-    "priority_explanation": "Priority breaks ties when multiple slices are ready at the same scheduler tick. P0.1 (100) is the highest because contract freeze is the entire critical path.",
-    "research_track_absent_from_v0": "v0 is product-track only. Research track (research-scientist, data-formatter, eval-runner) comes online at Phase 2 rollout (swarm-v1 week 2). First research slice will be 'baseline hit_rate measurement on FIXED_SCENARIOS' and depends on P0.2-trajectory-zod being merged."
+    "v0_scope": "First 10 slices covering Phase 0 (contract freeze, 5 slices) + Phase 1 first half (4 provider extractions + 1 DB migration, 5 slices). This was enough to unblock the entire trunk plan without committing to slice definitions that had not been validated yet.",
+    "v1_scope": "Promoted Z0-smoke-rollout-marker (week_0 gate slice), 14 P1.A0 provider extractions from parking_lot (upbit + 13 confirmed-on-disk providers), and 2 Phase 2 seed slices (P2.A1-events-base, P2.C-outcome-resolver). Total: 27 slices. DAG v1 adopted after rebuild+backfill confirmed 9/10 v0 slices merged. glassnode dropped from parking_lot because no legacy shim exists — needs prior greenfield implementation.",
+    "v1_trigger_met": "P0.4-contracts-barrel MERGED (bab703e) + P1.A0-binance MERGED (89f8430) confirmed 2026-04-12 via rebuild+backfill.",
+    "v2_trigger": "When Z0-smoke-rollout-marker merges AND one P1.A0-* v1 slice merges successfully, add P2.A1-F4~F17 (14 factor event rewrites) + P3 seeds to DAG v2.",
+    "ordering_rationale": "P0.1 and P0.2 are mutex-serialized (contract-*), so even though they could in theory run in parallel with different target files, default setting runs them serial for safety. P0.5-zod-pin has no mutex and can run in parallel. P0.3 can run first since P0.1 and P0.2 depend on the enums it finalizes. All P1.A0.* are mutex-serialized via scanEngine-decompose because they all touch scanEngine.ts.",
+    "priority_explanation": "Priority breaks ties when multiple slices are ready at the same scheduler tick. Z0-smoke (999) is highest because it's the week_0 gate and must run first. P0.1 (100) was the contract-freeze critical path. P1.A0 chain descends from 75 (binance) to 57 (geckowhale) to reflect the serial order within the mutex group.",
+    "research_track_absent_from_v1": "v1 remains product-track only. Research track (research-scientist, data-formatter, eval-runner) comes online at week_2 rollout phase (swarm-v1 design §8). First research slice will be 'baseline hit_rate measurement on FIXED_SCENARIOS' and depends on P0.2-trajectory-zod (MERGED) + P1.C-schema-migration (pending).",
+    "performance_security_baseline": "Every slice in DAG v1 has an explicit '1000-user perf budget' line and 'Security' line in its DoD. This is enforced by Reviewer-Auto's DoD checklist (see .claude/agents/reviewer-auto.md). Slices that are docs-only or test-only may mark 'by construction' in the perf line; slices touching runtime code must document specific p95/throughput numbers."
   }
 }

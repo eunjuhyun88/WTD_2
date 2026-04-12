@@ -47,7 +47,12 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 SLICE_ID="$(jq -r '.slice_id // "unknown"' "$CLAIM_FILE")"
-readarray -t OWNED < <(jq -r '.paths[]?' "$CLAIM_FILE")
+# macOS ships bash 3.2 which lacks `readarray` (bash 4+ builtin). Use a
+# while-read loop instead so the hook works on every Apple silicon dev box.
+OWNED=()
+while IFS= read -r line; do
+	[ -n "$line" ] && OWNED+=("$line")
+done < <(jq -r '.paths[]?' "$CLAIM_FILE")
 
 if [ "${#OWNED[@]}" -eq 0 ]; then
 	echo "[pre-commit] claim ${CLAIM_FILE} has no paths[]; refusing commit to avoid wide-open commits" >&2

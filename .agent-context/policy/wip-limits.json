@@ -12,5 +12,8 @@
     "week_2": { "product": 3, "research": 2, "fix": 0, "note": "two-track, research online" },
     "week_3": { "product": 6, "research": 3, "fix": 1, "note": "full WIP=10" }
   },
-  "active_phase": "week_0"
+  "active_phase": "week_1",
+  "rollout_history": [
+    { "phase": "week_0", "started_at": "2026-04-11", "ended_at": "2026-04-12", "ended_by": "Z0-smoke-rollout-marker merged via full lifecycle on claude/focused-pike (commit 0062d1f)" }
+  ]
 }
