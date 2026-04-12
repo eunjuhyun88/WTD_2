@@ -204,3 +204,65 @@ export async function findAuthUserForLogin(
 
   return result.rows[0] || null;
 }
+
+/**
+ * Find user by wallet address alone (wallet-first auth).
+ */
+export async function findAuthUserByWallet(
+  walletAddress: string
+): Promise<AuthUserRow | null> {
+  const result = await query<AuthUserRow>(
+    `
+      SELECT id, email, nickname, tier, phase, wallet_address
+      FROM users
+      WHERE lower(wallet_address) = lower($1)
+      LIMIT 1
+    `,
+    [walletAddress]
+  );
+  return result.rows[0] || null;
+}
+
+/**
+ * Create a wallet-only user — no email or nickname required.
+ * Auto-generates a display nickname from the last 6 chars of the wallet address.
+ */
+export async function createWalletOnlyUser(
+  walletAddress: string,
+  walletSignature: string
+): Promise<AuthUserRow> {
+  const suffix = walletAddress.replace(/^0x/i, '').slice(-6).toUpperCase();
+
+  // Retry with random suffix if nickname collides (uq_users_nickname_lower)
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const extra = attempt === 0 ? '' : `_${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+    const autoNickname = `Trader_${suffix}${extra}`;
+
+    try {
+      const result = await query<AuthUserRow>(
+        `
+          INSERT INTO users (wallet_address, wallet_signature, nickname, tier, phase)
+          VALUES ($1, $2, $3, 'verified', 2)
+          RETURNING id, email, nickname, tier, phase, wallet_address
+        `,
+        [walletAddress, walletSignature, autoNickname]
+      );
+      return result.rows[0];
+    } catch (err: any) {
+      // 23505 = unique_violation; retry only for nickname conflict, not wallet conflict
+      const isNicknameConflict = err?.code === '23505' && err?.constraint?.includes('nickname');
+      if (!isNicknameConflict) throw err;
+    }
+  }
+
+  // Fallback: null nickname (still valid since column is nullable)
+  const result = await query<AuthUserRow>(
+    `
+      INSERT INTO users (wallet_address, wallet_signature, tier, phase)
+      VALUES ($1, $2, 'verified', 2)
+      RETURNING id, email, nickname, tier, phase, wallet_address
+    `,
+    [walletAddress, walletSignature]
+  );
+  return result.rows[0];
+}
