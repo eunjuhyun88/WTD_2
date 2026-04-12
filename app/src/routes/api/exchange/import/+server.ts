@@ -7,14 +7,45 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { query } from '$lib/server/db.js';
 import { fetchBinanceTrades, saveImportedTrades, decryptApiKey } from '$lib/server/exchange/binanceConnector.js';
+import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { exchangeImportLimiter } from '$lib/server/rateLimit';
+import { isRequestBodyTooLargeError, readJsonBody } from '$lib/server/requestGuards';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, cookies, getClientAddress }) => {
+  const guard = await runIpRateLimitGuard({
+    request,
+    fallbackIp: getClientAddress(),
+    limiter: exchangeImportLimiter,
+    scope: 'exchange:import',
+    max: 6,
+    tooManyMessage: 'Too many trade import requests. Please wait.',
+  });
+  if (!guard.ok) return guard.response;
+
   try {
-    const body = await request.json();
-    const { userId, connectionId, symbol, startTime } = body;
+    const user = await getAuthUserFromCookies(cookies);
+    if (!user) {
+      return json({ error: 'Authentication required' }, { status: 401 });
+    }
 
-    if (!userId || !connectionId) {
-      return json({ error: 'userId and connectionId required' }, { status: 400 });
+    const body = await readJsonBody<Record<string, unknown>>(request, 16 * 1024);
+    const requestedUserId = typeof body.userId === 'string' ? body.userId.trim() : '';
+    if (requestedUserId && requestedUserId !== user.id) {
+      return json({ error: 'Cannot import trades for another user' }, { status: 403 });
+    }
+
+    const connectionId = typeof body.connectionId === 'string' ? body.connectionId.trim() : '';
+    const symbol = typeof body.symbol === 'string' ? body.symbol.trim() : undefined;
+    const startTimeRaw = body.startTime;
+    const startTime = typeof startTimeRaw === 'number'
+      ? startTimeRaw
+      : typeof startTimeRaw === 'string' && startTimeRaw.trim()
+        ? Number(startTimeRaw)
+        : undefined;
+
+    if (!connectionId) {
+      return json({ error: 'connectionId required' }, { status: 400 });
     }
 
     // Get connection details
@@ -27,7 +58,7 @@ export const POST: RequestHandler = async ({ request }) => {
       `SELECT exchange, api_key_encrypted, api_secret_encrypted, status
        FROM exchange_connections
        WHERE id = $1 AND user_id = $2`,
-      [connectionId, userId],
+      [connectionId, user.id],
     );
 
     if (conn.rows.length === 0) {
@@ -48,7 +79,7 @@ export const POST: RequestHandler = async ({ request }) => {
       apiKey,
       apiSecret,
       symbol ?? 'BTCUSDT',
-      startTime ? Number(startTime) : undefined,
+      Number.isFinite(startTime) ? Number(startTime) : undefined,
     );
 
     if (error) {
@@ -61,15 +92,28 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // Save to DB
-    const { saved, skipped } = await saveImportedTrades(userId, connectionId, trades);
+    const { saved, skipped } = await saveImportedTrades(user.id, connectionId, trades);
 
-    return json({
-      success: true,
-      fetched: trades.length,
-      saved,
-      skipped,
-    });
+    return json(
+      {
+        success: true,
+        fetched: trades.length,
+        saved,
+        skipped,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      },
+    );
   } catch (err: any) {
+    if (isRequestBodyTooLargeError(err)) {
+      return json({ error: 'Request body too large' }, { status: 413 });
+    }
+    if (err instanceof SyntaxError) {
+      return json({ error: 'Invalid request body' }, { status: 400 });
+    }
     console.error('[api/exchange/import] POST error:', err);
     return json({ error: 'Failed to import trades' }, { status: 500 });
   }

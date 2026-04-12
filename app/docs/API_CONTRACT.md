@@ -5,6 +5,13 @@
 목적: FE/BE 분리 개발을 위해 Arena/Live/Market API 계약을 고정한다.
 Doc index: `docs/README.md`
 
+## Launch Route-Tier Inventory
+
+Launch-time route classification, ownership, and abuse policy now live in:
+- `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`
+
+Any new `/api/*` endpoint must be assigned Tier A/B/C/D and an abuse policy there before public exposure.
+
 ## 1. Conventions
 
 1. Base path: `/api`

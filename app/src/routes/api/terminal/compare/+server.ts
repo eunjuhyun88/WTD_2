@@ -7,18 +7,24 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { runServerScan } from '$lib/server/scanEngine';
 import { compareLimiter } from '$lib/server/rateLimit';
+import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { isRequestBodyTooLargeError, readJsonBody } from '$lib/server/requestGuards';
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
-  // Rate limit: 3 comparisons/min per IP
-  const ip = getClientAddress();
-  if (!compareLimiter.check(ip)) {
-    return json({ error: 'Too many comparison requests. Please wait.' }, { status: 429 });
-  }
+  const guard = await runIpRateLimitGuard({
+    request,
+    fallbackIp: getClientAddress(),
+    limiter: compareLimiter,
+    scope: 'terminal:compare',
+    max: 3,
+    tooManyMessage: 'Too many comparison requests. Please wait.',
+  });
+  if (!guard.ok) return guard.response;
 
   try {
-    const body = await request.json();
-    const pairs: string[] = body?.pairs ?? [];
-    const timeframe: string = body?.timeframe ?? '4h';
+    const body = await readJsonBody<Record<string, unknown>>(request, 8 * 1024);
+    const pairs = Array.isArray(body?.pairs) ? body.pairs : [];
+    const timeframe = typeof body?.timeframe === 'string' ? body.timeframe : '4h';
 
     if (!Array.isArray(pairs) || pairs.length < 2 || pairs.length > 5) {
       return json({ error: 'Provide 2-5 pairs to compare' }, { status: 400 });
@@ -76,16 +82,29 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
       }))
       .sort((a, b) => b.rankScore - a.rankScore);
 
-    return json({
-      ok: true,
-      data: {
-        scans,
-        comparison: ranked,
-        bestPick: ranked[0] ?? null,
-        scannedAt: Date.now(),
+    return json(
+      {
+        ok: true,
+        data: {
+          scans,
+          comparison: ranked,
+          bestPick: ranked[0] ?? null,
+          scannedAt: Date.now(),
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      },
+    );
   } catch (error: unknown) {
+    if (isRequestBodyTooLargeError(error)) {
+      return json({ error: 'Request body too large' }, { status: 413 });
+    }
+    if (error instanceof SyntaxError) {
+      return json({ error: 'Invalid request body' }, { status: 400 });
+    }
     console.error('[compare] error:', error);
     return json({ error: 'Comparison failed' }, { status: 500 });
   }

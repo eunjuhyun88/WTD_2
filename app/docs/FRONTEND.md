@@ -57,10 +57,14 @@ When editing these, update the relevant canonical doc if authority or behavior c
 ## Terminal Shell Contract
 
 - `src/routes/terminal/+page.svelte` owns the Terminal workspace shell and breakpoint switching.
-- Desktop layout is a 3-pane grid: scanner rail, DOUNI feed, chart stage.
-- Desktop supports direct drag-resize between scanner/feed and feed/chart; those split widths remain route-local UI state.
-- Tablet keeps the scanner rail on the left and stacks feed over chart on the right; scanner width and chart height are independently resizable.
-- Mobile does not keep all three panes visible at once; it switches between scanner, feed, and chart to preserve readability.
+- Desktop keeps a 3-part shell: `Scanner Rail`, `Multimodal Workspace`, and conditional `Inspector`.
+- `Scanner Rail` owns presets, quick scan results, and single-click / analyze entry points.
+- `Multimodal Workspace` is a single result-first canvas that owns query input context, AI stream, chart rendering, result cards, and save/correct/incorrect actions.
+- The chart stage now hosts `SingleAssetBoard`, which keeps parsed-query preview state local to the active symbol board and reflects supported blocks as lightweight bar/window highlights on `Board` / `Strip` charts.
+- Compare queries render as inline `WorkspaceCompareBlock` boards inside the workspace; those boards own their own parsed-query preview state so each local compare card can show score/scope and chart highlights without depending on the live input field.
+- Desktop opens the conditional `Inspector` only after the user triggers an explicit `More detail` action from a research/detail result in the active workspace.
+- Desktop supports direct drag-resize between Scanner Rail and Multimodal Workspace; when Inspector is open, the second divider resizes Workspace and Inspector while keeping the Workspace as the flexible center.
+- Mobile does not keep all panes visible at once; it switches between `Scanner`, `Workspace`, and `Insight` modes to preserve readability.
 - `src/components/cogochi/QuickPanel.svelte` must follow parent width/height and must not hard-code the Terminal shell width.
 
 ## Wallet Intel Route / Component Blueprint
@@ -163,7 +167,7 @@ This is an execution-facing materialization of the current canonical product dir
 
 | Route | Status | Rule |
 | --- | --- | --- |
-| `/passport` | secondary | durable profile / dossier, not a primary Day-1 tab |
+| `/passport` | secondary | durable profile / wallet continuity page, reachable from header profile and wallet/auth flow |
 | `/passport/wallet/[chain]/[address]` | secondary | dossier endpoint from Terminal wallet investigation |
 | `/create`, `/onboard`, `/agent`, `/agent/[id]`, `/scanner`, `/cogochi/scanner`, `/market`, `/battle` | deferred / legacy / later-phase | do not expose as first-order Day-1 navigation |
 
@@ -214,9 +218,13 @@ This is an execution-facing materialization of the current canonical product dir
   current symbol / mode / quick status
 
 [Main shell]
-  Left: quick list / watch context
-  Center: feed / results / research blocks
-  Right: chart / focused inspection
+  Default desktop:
+    Left: Scanner Rail
+    Center: Multimodal Workspace
+  Detail selected:
+    Left: Scanner Rail
+    Center: Multimodal Workspace
+    Right: Inspector
 
 [Bottom input]
   query entry
@@ -578,7 +586,7 @@ Terminal should use **progressive disclosure**, not permanent 3-panel density.
 
 - Default desktop state:
   - 2-panel working layout
-  - feed/workstream + chart/context
+  - Scanner Rail + Multimodal Workspace
 - Third panel:
   - opens only when the user selects a result, block, or deep detail object from the active feed
   - closes back into the 2-panel layout when focus is cleared
@@ -590,8 +598,8 @@ Terminal should use **progressive disclosure**, not permanent 3-panel density.
   - the stored ratio from the 2-panel state should carry into the 3-panel state
   - when detail opens, the center/right widths should rebalance from the previous remembered split, not jump to arbitrary fixed widths
 - Mobile:
-  - feed first
-  - chart/context second
+  - scanner first
+  - workspace second
   - detail panel becomes an overlay or stacked drill-in, never a squeezed 3-column layout
 
 ### Surface-specific implementation direction
@@ -787,6 +795,16 @@ This is the cleanup inventory that should drive actual folder reorganization. It
   - `src/lib/wallet-intel/walletIntelTypes.ts`
   - `src/lib/api/profileApi.ts`
   - `src/lib/api/passportLearningApi.ts`
+
+#### Wallet connect modal
+
+- Shared UI files:
+  - `src/components/layout/Header.svelte`
+  - `src/components/modals/WalletModal.svelte`
+- State / glue:
+  - `src/lib/stores/walletStore.ts`
+  - `src/lib/stores/walletModalStore.ts`
+  - `src/lib/wallet/providers.ts`
 
 #### Settings
 

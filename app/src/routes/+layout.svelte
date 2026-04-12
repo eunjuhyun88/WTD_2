@@ -23,6 +23,10 @@
   const isTerminal = derived(page, $p => $p.url.pathname.startsWith('/terminal'));
   const isHome = derived(page, $p => $p.url.pathname === '/');
   const isCogochi = derived(page, $p => $p.url.pathname.startsWith('/cogochi'));
+  const isScrollableSurface = derived(
+    page,
+    $p => !$p.url.pathname.startsWith('/terminal') && !$p.url.pathname.startsWith('/cogochi') && $p.url.pathname !== '/'
+  );
 
   // Hide global BottomBar on mobile (unneeded chrome on small screens)
   // - Terminal routes ≤1024px: terminal has its own bottom nav
@@ -68,7 +72,12 @@
 <div id="app" class:cogochi-mode={$isCogochi} class:home-mode={$isHome}>
   {#if !$isCogochi}<Header />{/if}
   {#if !$isCogochi}<P0Banner />{/if}
-  <div id="main-content" class:terminal-route={$isTerminal} class:home-route={$isHome}>
+  <div
+    id="main-content"
+    class:terminal-route={$isTerminal}
+    class:home-route={$isHome}
+    class:scrollable-surface={$isScrollableSurface}
+  >
     {@render children()}
   </div>
   {#if !$isCogochi}
@@ -112,6 +121,11 @@
     overflow: hidden;
     position: relative;
     min-height: 0;
+  }
+  #main-content.scrollable-surface {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
   #main-content.home-route {
     overflow: visible;
