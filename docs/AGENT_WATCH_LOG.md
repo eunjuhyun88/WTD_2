@@ -52,6 +52,24 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Checkpoint: `w-20260412-0950-chatbattle-codex.md`
 - Status: IN_PROGRESS
 
+## [2026-04-12 09:54:59 +0900] FINISH W-20260412-0950-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - realigned the Day-1 IA so Home, Header, Dashboard, and Lab consistently present `Terminal / Lab / Dashboard` as the primary story
+  - refined the Terminal desktop shell with direct panel-boundary resizing and moved the global market pulse into the bottom status bar
+  - extracted shared layout polling helpers into `src/lib/cogochi/marketPulse.ts` and `src/lib/layout/globalPriceFeed.ts`, and updated canonical docs to match the new surface model
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: `5415b48`
+- Push status: not requested
+- Final working tree status:
+  - clean after `safe:sync` and final branch validation at commit `5415b48`
+  - watch log reopened only to append this finish entry before merge
+- Status: DONE
+
 ## [2026-04-12 09:17:00 +0900] START W-20260412-0012-CHATBATTLE-codex (CHATBATTLE)
 - Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
