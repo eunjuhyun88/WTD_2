@@ -54,7 +54,7 @@
   <!-- Strategy picker -->
   <div class="tb-group" class:open={showStratPicker}>
     <button class="tb-btn strat-btn" onclick={() => { showStratPicker = !showStratPicker; showCyclePicker = false; }}>
-      <span class="tb-label">{activeStrategy?.name ?? '전략 선택'}</span>
+      <span class="tb-label">{activeStrategy?.name ?? '챌린지 선택'}</span>
       <span class="tb-ver">{activeStrategy ? `v${activeStrategy.version}` : ''}</span>
       <span class="tb-arrow">▾</span>
     </button>
@@ -68,7 +68,7 @@
           </button>
         {/each}
         <div class="dd-sep"></div>
-        <button class="dd-item add" onclick={() => { onNewStrategy(); showStratPicker = false; }}>+ 새 전략</button>
+        <button class="dd-item add" onclick={() => { onNewStrategy(); showStratPicker = false; }}>+ 새 챌린지</button>
         <button class="dd-item add" onclick={() => { onImport(); showStratPicker = false; }}>임포트</button>
       </div>
     {/if}

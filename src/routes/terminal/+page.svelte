@@ -28,6 +28,7 @@
     WalletIntelTab,
     WalletModeInput,
   } from '$lib/wallet-intel/walletIntelTypes';
+  import { clampLeftWidth, clampRightWidth } from '../../components/terminal/terminalLayoutController';
 
   // ─── Types ────────────────────────────────────────────────
   type MessageType =
@@ -77,12 +78,23 @@
     | { kind: 'chart_ref'; symbol: string; timeframe: string }
     | { kind: 'research_block'; envelope: ResearchBlockEnvelope };
 
+  type PanelDragTarget = 'left' | 'right';
+  type PanelDragState = {
+    target: PanelDragTarget;
+    startX: number;
+    startLeftWidth: number;
+    startRightWidth: number;
+  };
+
   // ─── State ────────────────────────────────────────────────
   let messages = $state<MessageType[]>([]);
   let inputText = $state('');
   let isThinking = $state(false);
   let feedContainer: HTMLDivElement | undefined = $state();
   let showPatternModal = $state(false);
+  let leftPaneWidth = $state(220);
+  let rightPaneWidth = $state(336);
+  let panelDragState = $state<PanelDragState | null>(null);
 
   // Current analysis data
   let currentSymbol = $state('');
@@ -119,6 +131,9 @@
   let chatHistory = $state<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const walletSelectedToken = $derived(
     walletDataset ? findWalletMarketToken(walletDataset, walletSelectedTokenSymbol) : null
+  );
+  const terminalLayoutStyle = $derived(
+    `--terminal-left-pane:${quickPanelCollapsed ? 34 : leftPaneWidth}px; --terminal-right-pane:${rightPaneWidth}px;`
   );
 
   // ─── Zoom #1: Block Search Parser State ─────────────────────
@@ -272,6 +287,39 @@
   });
 
   // ─── Init: LLM-generated greeting (locale-aware) ──────────
+  onMount(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const state = panelDragState;
+      if (!state) return;
+
+      if (state.target === 'left') {
+        leftPaneWidth = clampLeftWidth(state.startLeftWidth + (e.clientX - state.startX));
+      } else {
+        rightPaneWidth = clampRightWidth(state.startRightWidth - (e.clientX - state.startX));
+      }
+    };
+
+    const stopDrag = () => {
+      if (!panelDragState) return;
+      panelDragState = null;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopDrag);
+    window.addEventListener('pointercancel', stopDrag);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopDrag);
+      window.removeEventListener('pointercancel', stopDrag);
+      stopDrag();
+    };
+  });
+
   onMount(async () => {
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const walletAddress = params?.get('address');
@@ -944,6 +992,21 @@
   function scrollToBottom() {
     requestAnimationFrame(() => feedContainer?.scrollTo({ top: feedContainer.scrollHeight, behavior: 'smooth' }));
   }
+  function isDesktopLayout() {
+    return typeof window !== 'undefined' && window.innerWidth > 1024;
+  }
+  function startPanelDrag(target: PanelDragTarget, e: PointerEvent) {
+    if (!isDesktopLayout()) return;
+    panelDragState = {
+      target,
+      startX: e.clientX,
+      startLeftWidth: leftPaneWidth,
+      startRightWidth: rightPaneWidth,
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  }
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
@@ -1190,21 +1253,32 @@
       />
     </div>
   {:else}
-    <div class="main-content">
+    <div class="main-content" style={terminalLayoutStyle}>
     <!-- QUICK PANEL -->
-    <QuickPanel
-      items={quickPanelItems}
-      scanning={quickPanelScanning}
-      selectedSymbol={quickPanelSelected}
-      collapsed={quickPanelCollapsed}
-      onScan={handleQuickScan}
-      onPreview={(symbol) => { void handleQuickPreview(symbol); }}
-      onAnalyze={(symbol) => { void handleQuickAnalyze(symbol); }}
-      onToggle={() => quickPanelCollapsed = !quickPanelCollapsed}
-    />
+    <div class="main-panel main-panel-left">
+      <QuickPanel
+        items={quickPanelItems}
+        scanning={quickPanelScanning}
+        selectedSymbol={quickPanelSelected}
+        collapsed={quickPanelCollapsed}
+        onScan={handleQuickScan}
+        onPreview={(symbol) => { void handleQuickPreview(symbol); }}
+        onAnalyze={(symbol) => { void handleQuickAnalyze(symbol); }}
+        onToggle={() => quickPanelCollapsed = !quickPanelCollapsed}
+      />
+    </div>
+
+    {#if !quickPanelCollapsed}
+      <button
+        type="button"
+        class="panel-divider panel-divider-left"
+        aria-label="Resize scanner panel"
+        onpointerdown={(e) => startPanelDrag('left', e)}
+      ></button>
+    {/if}
 
     <!-- DATA FEED -->
-    <div class="data-feed" bind:this={feedContainer}>
+    <div class="data-feed main-panel main-panel-center" bind:this={feedContainer}>
       <div class="feed-inner">
         {#each feedEntries as entry}
           {#if entry.kind === 'query'}
@@ -1304,8 +1378,15 @@
       </div>
     </div>
 
+    <button
+      type="button"
+      class="panel-divider panel-divider-right"
+      aria-label="Resize chart panel"
+      onpointerdown={(e) => startPanelDrag('right', e)}
+    ></button>
+
     <!-- CHART PANEL (always visible) -->
-    <aside class="chart-panel">
+    <aside class="chart-panel main-panel main-panel-right">
       {#if focusedResearchBlock}
         <div class="cp-header cp-header-focus">
           <div class="cp-focus-stack">
@@ -1651,10 +1732,49 @@
   /* ═══ MAIN CONTENT ═══ */
   .main-content {
     flex: 1;
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--terminal-left-pane) 3px minmax(0, 1fr) 3px var(--terminal-right-pane);
     min-height: 0;
     overflow: hidden;
   }
+  .main-panel {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .main-panel-left { grid-column: 1; }
+  .main-panel-center { grid-column: 3; }
+  .main-panel-right { grid-column: 5; }
+  .panel-divider {
+    position: relative;
+    width: 3px;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.04);
+    cursor: col-resize;
+    transition: background 0.14s ease;
+    z-index: 2;
+  }
+  .panel-divider::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(219, 154, 159, 0.08), rgba(173, 202, 124, 0.08));
+    opacity: 0;
+    transition: opacity 0.14s ease;
+  }
+  .panel-divider:hover,
+  .panel-divider:focus-visible {
+    background: rgba(255, 255, 255, 0.09);
+    outline: none;
+  }
+  .panel-divider:hover::after,
+  .panel-divider:focus-visible::after {
+    opacity: 1;
+  }
+  .panel-divider-left { grid-column: 2; }
+  .panel-divider-right { grid-column: 4; }
   .wallet-main-content {
     padding: 14px;
     overflow: auto;
@@ -1974,9 +2094,8 @@
 
   /* ═══ CHART PANEL ═══ */
   .chart-panel {
-    width: 420px;
+    width: 100%;
     flex-shrink: 0;
-    border-left: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
     background:
       radial-gradient(circle at top right, rgba(54, 215, 255, 0.06), transparent 28%),
       linear-gradient(180deg, rgba(7, 14, 25, 0.98), rgba(4, 10, 18, 0.99));
@@ -2321,7 +2440,13 @@
 
   /* ═══ RESPONSIVE ═══ */
   @media (max-width: 1024px) {
-    .main-content { flex-direction: column; }
+    .main-content {
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-divider {
+      display: none;
+    }
     .chart-panel {
       width: 100%;
       border-left: none;

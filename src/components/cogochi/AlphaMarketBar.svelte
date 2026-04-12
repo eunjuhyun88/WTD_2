@@ -1,21 +1,12 @@
 <script lang="ts">
   import type { AlphaBuckets } from '$lib/stores/alphaBuckets';
-
-  interface ThermometerData {
-    fearGreed: number | null;
-    btcDominance: number | null;
-    kimchiPremium: number | null;
-    usdKrw: number | null;
-    btcTx: number | null;
-    mempoolPending: number | null;
-    fastestFee: number | null;
-  }
+  import { EMPTY_THERMO_DATA, type ThermoData } from '$lib/cogochi/marketPulse';
 
   let {
-    thermo,
+    thermo = EMPTY_THERMO_DATA,
     buckets,
   }: {
-    thermo: ThermometerData;
+    thermo?: ThermoData;
     buckets: AlphaBuckets | null;
   } = $props();
 
@@ -169,130 +160,101 @@
     { key: 'extremeFR', short: 'FR', value: bucketNum(bucket.extremeFR), meta: 'hot', tone: 'var(--sc-warn)' }
   ]);
 
+  const stripItems = $derived([
+    ...thermoChips.map((chip) => ({ ...chip, lane: 'thermo' })),
+    ...bucketChips.map((chip) => ({ ...chip, lane: 'breadth' }))
+  ]);
+
 </script>
 
-<aside class="market-dock" aria-label="Global market pulse">
-  <div class="dock-head">
-    <div class="dock-title-wrap">
-      <span class="dock-dot" aria-hidden="true"></span>
-      <span class="dock-title">Market Pulse</span>
-    </div>
-    <span class="dock-copy">quiet global context</span>
+<div class="market-pulse" aria-label="Global market pulse">
+  <div class="pulse-label">
+    <span class="pulse-dot" aria-hidden="true"></span>
+    <span class="pulse-title">Market Pulse</span>
   </div>
 
-  <div class="dock-body">
-    <div class="dock-group">
-      <span class="group-label">Thermo</span>
-      <div class="chip-row">
-        {#each thermoChips as chip}
+  <div class="pulse-marquee">
+    {#each [0, 1] as copyIndex}
+      <div class="pulse-track" aria-hidden={copyIndex === 1}>
+        {#each stripItems as chip}
           <div class="chip" style={`--chip-tone:${chip.tone}`}>
+            <span class="chip-lane">{chip.lane === 'thermo' ? 'T' : 'B'}</span>
             <span class="chip-key">{chip.short}</span>
-            <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
+            <span class="chip-value" style={`color:${chip.tone}`}>{chip.value}</span>
             <span class="chip-meta">{chip.meta}</span>
           </div>
         {/each}
       </div>
-    </div>
-
-    <div class="dock-group">
-      <span class="group-label">Breadth</span>
-      <div class="chip-row">
-        {#each bucketChips as chip}
-          <div class="chip" style={`--chip-tone:${chip.tone}`}>
-            <span class="chip-key">{chip.short}</span>
-            <span class="chip-value" style="color:{chip.tone}">{chip.value}</span>
-            <span class="chip-meta">{chip.meta}</span>
-          </div>
-        {/each}
-      </div>
-    </div>
+    {/each}
   </div>
-</aside>
+</div>
 
 <style>
-  .market-dock {
-    position: relative;
+  .market-pulse {
     width: 100%;
-    max-width: 100%;
-    padding: 8px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    background:
-      linear-gradient(180deg, rgba(10, 10, 10, 0.82), rgba(0, 0, 0, 0.78)),
-      radial-gradient(circle at top right, rgba(219, 154, 159, 0.08), transparent 28%);
-    backdrop-filter: blur(18px) saturate(1.04);
-    -webkit-backdrop-filter: blur(18px) saturate(1.04);
-    box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  }
-
-  .dock-head {
+    min-width: 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
+    pointer-events: none;
   }
 
-  .dock-title-wrap {
+  .pulse-label {
+    flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    min-width: 0;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: linear-gradient(180deg, rgba(12, 18, 29, 0.86), rgba(8, 11, 18, 0.7));
+    white-space: nowrap;
   }
 
-  .dock-dot {
-    width: 7px;
-    height: 7px;
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
     border-radius: 999px;
     background: rgba(219, 154, 159, 0.88);
     box-shadow: 0 0 12px rgba(219, 154, 159, 0.28);
     flex-shrink: 0;
   }
 
-  .dock-title {
+  .pulse-title {
     font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
-    font-size: 12px;
-    letter-spacing: 0.1em;
+    font-size: 10px;
+    letter-spacing: 0.14em;
     color: var(--sc-text-0);
-  }
-
-  .dock-copy {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 0.06em;
-    color: var(--sc-text-2);
     text-transform: uppercase;
-    white-space: nowrap;
   }
 
-  .dock-body {
+  .pulse-marquee {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background:
+      linear-gradient(180deg, rgba(12, 18, 29, 0.68), rgba(8, 11, 18, 0.52)),
+      radial-gradient(circle at left center, rgba(219, 154, 159, 0.07), transparent 26%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    min-height: 22px;
+  }
+
+  .pulse-track {
     display: flex;
     align-items: center;
     gap: 6px;
-    min-width: 0;
-  }
-
-  .dock-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    flex: 1 1 0;
-  }
-
-  .group-label {
-    width: 50px;
+    min-width: max-content;
+    padding: 0 6px;
     flex: 0 0 auto;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    color: rgba(219, 154, 159, 0.72);
-    text-transform: uppercase;
+    animation: market-pulse-marquee 34s linear infinite;
   }
 
   .chip {
@@ -300,34 +262,30 @@
     min-width: 0;
     display: inline-flex;
     align-items: baseline;
-    gap: 6px;
-    padding: 5px 9px 6px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    gap: 5px;
+    padding: 2px 7px 3px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 999px;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.012)),
-      linear-gradient(180deg, color-mix(in srgb, var(--chip-tone) 9%, transparent), transparent 82%);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)),
+      linear-gradient(180deg, color-mix(in srgb, var(--chip-tone) 8%, transparent), transparent 84%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
     white-space: nowrap;
+    flex: 0 0 auto;
   }
 
-  .chip-row {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .chip-row::-webkit-scrollbar {
-    display: none;
+  .chip-lane {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(219, 154, 159, 0.64);
+    text-transform: uppercase;
   }
 
   .chip-key {
     font-family: var(--sc-font-body, sans-serif);
-    font-size: 9px;
+    font-size: 7px;
     font-weight: 700;
     letter-spacing: 0.12em;
     color: var(--sc-text-3);
@@ -336,7 +294,7 @@
 
   .chip-value {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 12px;
+    font-size: 9px;
     font-weight: 700;
     line-height: 1;
     color: var(--sc-text-0);
@@ -345,55 +303,40 @@
 
   .chip-meta {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: 7px;
     line-height: 1.1;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.05em;
     color: var(--sc-text-3);
+    text-transform: uppercase;
   }
 
-  @media (max-width: 1200px) {
-    .market-dock {
-      width: 100%;
+  @keyframes market-pulse-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - 6px));
     }
   }
 
-  @media (max-width: 768px) {
-    .dock-body {
-      flex-direction: column;
-      align-items: stretch;
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-track {
+      animation: none;
     }
+  }
 
-    .dock-head {
-      gap: 8px;
-    }
-
-    .dock-title {
-      font-size: 11px;
-    }
-
-    .dock-copy {
+  @media (max-width: 900px) {
+    .pulse-label {
       display: none;
     }
-
-    .dock-group {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 5px;
+    .pulse-marquee {
+      min-height: 20px;
     }
-
+    .pulse-track {
+      animation-duration: 28s;
+    }
     .chip {
-      padding: 5px 8px;
-      gap: 5px;
-    }
-
-    .chip-value {
-      font-size: 11px;
-    }
-
-    .chip-meta,
-    .chip-key,
-    .group-label {
-      font-size: 8px;
+      padding: 2px 6px 3px;
     }
   }
 </style>

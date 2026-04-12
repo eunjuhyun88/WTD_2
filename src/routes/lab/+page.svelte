@@ -54,6 +54,9 @@
   const strat = $derived(entry?.strategy ?? null);
   const selectedCycles = $derived(entry?.selectedCycles ?? ['2020-covid', '2021-bull', '2022-bear', '2023-recovery']);
   const strategies = $derived($allStrategies);
+  const testedChallengeCount = $derived(strategies.filter((item) => item.lastResult).length);
+  const pendingChallengeCount = $derived(Math.max(strategies.length - testedChallengeCount, 0));
+  const activeChallengeLabel = $derived(strat?.name ?? 'No challenge selected');
 
   // Init
   $effect(() => {
@@ -212,10 +215,34 @@
 </script>
 
 <svelte:head>
-  <title>Lab — STOCKCLAW</title>
+  <title>Lab — Cogochi</title>
 </svelte:head>
 
 <div class="lab-page">
+  <section class="lab-intro">
+    <div class="lab-intro-copy">
+      <span class="lab-kicker">LAB</span>
+      <h1>Evaluate saved challenges.</h1>
+      <p>
+        Terminal is where a pattern gets captured. Lab is where it gets rerun, inspected, and judged against real market history.
+      </p>
+    </div>
+    <div class="lab-summary">
+      <article class="lab-stat">
+        <span class="lab-stat-label">Selected</span>
+        <strong>{activeChallengeLabel}</strong>
+      </article>
+      <article class="lab-stat">
+        <span class="lab-stat-label">Tested</span>
+        <strong>{testedChallengeCount}</strong>
+      </article>
+      <article class="lab-stat">
+        <span class="lab-stat-label">Waiting</span>
+        <strong>{pendingChallengeCount}</strong>
+      </article>
+    </div>
+  </section>
+
   <!-- Toolbar -->
   <LabToolbar
     {strategies}
@@ -250,11 +277,11 @@
       <!-- Tab bar -->
       <div class="tab-bar">
         {#if mode === 'auto'}
-          <button class="tab" class:active={activeTab === 'strategy'} onclick={() => activeTab = 'strategy'}>전략</button>
-          <button class="tab" class:active={activeTab === 'result'} onclick={() => activeTab = 'result'}>결과</button>
+          <button class="tab" class:active={activeTab === 'strategy'} onclick={() => activeTab = 'strategy'}>챌린지</button>
+          <button class="tab" class:active={activeTab === 'result'} onclick={() => activeTab = 'result'}>런 결과</button>
         {:else}
-          <button class="tab" class:active={activeTab === 'order'} onclick={() => activeTab = 'order'}>주문</button>
-          <button class="tab" class:active={activeTab === 'trades'} onclick={() => activeTab = 'trades'}>트레이드</button>
+          <button class="tab" class:active={activeTab === 'order'} onclick={() => activeTab = 'order'}>리플레이</button>
+          <button class="tab" class:active={activeTab === 'trades'} onclick={() => activeTab = 'trades'}>로그</button>
         {/if}
       </div>
 
@@ -381,6 +408,78 @@
     height: calc(100vh - 60px);
     max-height: calc(100vh - 60px);
     overflow: hidden;
+  }
+
+  .lab-intro {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(255 255 255 / 0.08);
+    background:
+      radial-gradient(circle at top left, rgba(219 154 159 / 0.12), transparent 32%),
+      linear-gradient(180deg, rgba(20 25 36 / 0.96), rgba(12 16 24 / 0.96));
+  }
+
+  .lab-intro-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 620px;
+  }
+
+  .lab-kicker {
+    font-family: var(--sc-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--lis-accent);
+  }
+
+  .lab-intro-copy h1 {
+    margin: 0;
+    font-family: var(--sc-font-display);
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1;
+    color: rgba(255 255 255 / 0.95);
+  }
+
+  .lab-intro-copy p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(255 255 255 / 0.62);
+  }
+
+  .lab-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 10px;
+    min-width: min(100%, 420px);
+  }
+
+  .lab-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    border-radius: 10px;
+    background: rgba(255 255 255 / 0.03);
+    border: 1px solid rgba(255 255 255 / 0.06);
+  }
+
+  .lab-stat-label {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: rgba(255 255 255 / 0.42);
+    text-transform: uppercase;
+  }
+
+  .lab-stat strong {
+    font-size: 15px;
+    line-height: 1.3;
+    color: rgba(255 255 255 / 0.92);
   }
 
   /* ── Main (chart + panel) ── */
@@ -539,6 +638,8 @@
   /* ── Responsive ── */
   @media (max-width: 768px) {
     .lab-page { padding: 6px; height: auto; max-height: none; }
+    .lab-intro { flex-direction: column; }
+    .lab-summary { grid-template-columns: 1fr; min-width: 0; }
     .lab-main { grid-template-columns: 1fr; }
     .chart-area { height: 50vh; }
     .panel-area { max-height: 40vh; }
