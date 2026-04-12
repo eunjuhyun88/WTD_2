@@ -55,7 +55,7 @@ class Regime(str, Enum):
 
 
 # =========================================================================
-# SignalSnapshot — 66 features + metadata
+# SignalSnapshot — 92 features + metadata
 # =========================================================================
 
 
@@ -173,6 +173,46 @@ class SignalSnapshot(BaseModel):
     mvrv: float = 1.0               # Market cap / Realised cap ratio
     mvrv_zscore: float = 0.0        # MVRV Z-score (2yr rolling); > 7 = top, < −0.5 = bottom
     puell_multiple: float = 1.0     # Daily issuance USD / 365d avg; > 4 = overheated
+
+    # ---- V. EMA multi-period (4) ----
+    ema9_slope: float = 0.0         # EMA-9 slope over 5 bars (fractional)
+    ema100_slope: float = 0.0       # EMA-100 slope over 10 bars (fractional)
+    price_vs_ema20: float = 0.0     # (close − EMA-20) / EMA-20
+    price_vs_ema100: float = 0.0    # (close − EMA-100) / EMA-100
+
+    # ---- W. Historical volatility (4) ----
+    hist_vol_24h: float = 0.0       # 24-bar realized vol, annualised (hourly)
+    hist_vol_7d: float = 0.0        # 168-bar realized vol, annualised
+    vol_regime: float = 1.0         # hist_vol_24h / hist_vol_7d; > 1 = vol spike
+    parkinson_vol: float = 0.0      # Parkinson H/L vol estimator, 24-bar, annualised
+
+    # ---- X. MACD extensions (2) ----
+    macd_line: float = 0.0          # Raw MACD = (EMA12 − EMA26) / price
+    macd_hist_slope: float = 0.0    # 3-bar difference of MACD histogram
+
+    # ---- Y. Volume profile (4) ----
+    volume_7d: float = 0.0          # Rolling 168h volume sum
+    vol_ratio_24: float = 1.0       # vol[t] / mean(vol[t-1..t-24])
+    taker_buy_ratio_24h: float = 0.5  # sum(taker_buy_24h) / sum(vol_24h), 0..1
+    vol_acceleration: float = 1.0   # vol_ratio_3 / vol_ratio_24 (short vs long spike)
+
+    # ---- Z. Price structure (5) ----
+    range_7d_position: float = 0.5  # (close − low_7d) / (high_7d − low_7d), 0..1
+    gap_pct: float = 0.0            # (open − prev_close) / prev_close
+    close_above_open_ratio: float = 0.5  # fraction of last 20 bars with close > open
+    consecutive_bars: float = 0.0   # signed count of consecutive same-direction closes, ±7
+    body_ratio: float = 0.5         # |close − open| / (high − low), 0..1
+
+    # ---- AA. Candle patterns (4) ----
+    engulfing_bull: float = 0.0     # 1 = bullish engulfing, else 0
+    engulfing_bear: float = 0.0     # 1 = bearish engulfing, else 0
+    doji: float = 0.0               # 1 = doji (tiny body relative to range), else 0
+    hammer: float = 0.0             # +1 = hammer (bullish pin), −1 = shooting star, 0 = neither
+
+    # ---- AB. Trend quality (3) ----
+    lr_slope_20: float = 0.0        # Linear regression slope over 20 bars, normalised by price
+    efficiency_ratio: float = 0.5   # Kaufman's Efficiency Ratio over 20 bars, 0..1
+    trend_consistency: float = 0.5  # |Σ signed returns| / Σ|returns| over 20 bars, 0..1
 
     # ---- Meta (3) ----
     regime: Regime
