@@ -6,6 +6,7 @@
 // Catches real-time surges that longer timeframes miss.
 
 import type { L18Result } from '../types';
+import { Thresholds } from '../thresholds';
 
 interface MiniCandle {
   open: number;
@@ -41,29 +42,29 @@ export function computeL18Momentum(
   let label = 'FLAT';
 
   // Strong momentum: +5% in 30min with 3x volume
-  if (momentum30m > 5 && volAccel > 3) {
-    score = 25;
+  if (momentum30m > Thresholds.momentum.momentum_extreme_pct && volAccel > Thresholds.momentum.vol_accel_extreme) {
+    score = Thresholds.momentum.score_extreme;
     label = 'EXTREME SURGE UP';
-  } else if (momentum30m > 3 && volAccel > 2) {
-    score = 18;
+  } else if (momentum30m > Thresholds.momentum.momentum_strong_pct && volAccel > Thresholds.momentum.vol_accel_strong) {
+    score = Thresholds.momentum.score_strong;
     label = 'STRONG SURGE UP';
-  } else if (momentum30m > 1.5 && volAccel > 1.5) {
-    score = 12;
+  } else if (momentum30m > Thresholds.momentum.momentum_surge_pct && volAccel > Thresholds.momentum.vol_accel_surge) {
+    score = Thresholds.momentum.score_surge;
     label = 'SURGE UP';
-  } else if (momentum30m > 0.5 && volAccel > 1.2) {
-    score = 6;
+  } else if (momentum30m > Thresholds.momentum.momentum_mild_pct && volAccel > Thresholds.momentum.vol_accel_mild) {
+    score = Thresholds.momentum.score_mild;
     label = 'MILD UP';
-  } else if (momentum30m < -5 && volAccel > 3) {
-    score = -25;
+  } else if (momentum30m < -Thresholds.momentum.momentum_extreme_pct && volAccel > Thresholds.momentum.vol_accel_extreme) {
+    score = -Thresholds.momentum.score_extreme;
     label = 'EXTREME DUMP';
-  } else if (momentum30m < -3 && volAccel > 2) {
-    score = -18;
+  } else if (momentum30m < -Thresholds.momentum.momentum_strong_pct && volAccel > Thresholds.momentum.vol_accel_strong) {
+    score = -Thresholds.momentum.score_strong;
     label = 'STRONG DUMP';
-  } else if (momentum30m < -1.5 && volAccel > 1.5) {
-    score = -12;
+  } else if (momentum30m < -Thresholds.momentum.momentum_surge_pct && volAccel > Thresholds.momentum.vol_accel_surge) {
+    score = -Thresholds.momentum.score_surge;
     label = 'DUMP';
-  } else if (momentum30m < -0.5 && volAccel > 1.2) {
-    score = -6;
+  } else if (momentum30m < -Thresholds.momentum.momentum_mild_pct && volAccel > Thresholds.momentum.vol_accel_mild) {
+    score = -Thresholds.momentum.score_mild;
     label = 'MILD DOWN';
   }
 

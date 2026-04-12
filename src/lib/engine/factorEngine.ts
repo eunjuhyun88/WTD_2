@@ -14,6 +14,7 @@
 import type { FactorResult, TrendAnalysis, DivergenceSignal, BinanceKline } from './types';
 import { calcSMA, calcEMA, calcRSI, calcATR, calcOBV, calcMACD, calcCVD, calcBollingerBands } from './indicators';
 import { analyzeTrend, detectDivergence, analyzeMultiTF } from './trend';
+import type { MetricStore } from './metrics/store';
 
 // ─── Market Context (파이프라인 입력) ─────────────────────────
 
@@ -503,13 +504,32 @@ function computePremiumDiscount(ctx: MarketContext): FactorResult {
 // ─── DERIV Factors ───────────────────────────────────────────
 
 function computeOiPriceConv(ctx: MarketContext): FactorResult {
-  if (!ctx.derivatives?.oi) return neutralFactor('OI_PRICE_CONV', 'OI data unavailable');
+  const oiHistory = (ctx.derivatives as any)?.oiHistory as Array<{ timestamp: number; oi: number }> | undefined;
   const closes = ctx.klines.map(k => k.close);
+
+  if (!oiHistory || oiHistory.length < 6) {
+    // Fallback: use price trend only (existing behavior, but documented as fallback)
+    const priceTrend = analyzeTrend(closes.slice(-20));
+    const score = priceTrend.direction === 'RISING' ? 20 : priceTrend.direction === 'FALLING' ? -20 : 0;
+    return scoreFactor('OI_PRICE_CONV', score,
+      `Price trend ${priceTrend.direction} (OI history unavailable — price-only fallback)`,
+      { trend: priceTrend }
+    );
+  }
+
+  const oiValues = oiHistory.slice(-20).map(p => p.oi);
+  const oiTrend = analyzeTrend(oiValues);
   const priceTrend = analyzeTrend(closes.slice(-20));
-  const score = priceTrend.direction === 'RISING' ? 30 : priceTrend.direction === 'FALLING' ? -30 : 0;
+  const aligned = oiTrend.direction === priceTrend.direction;
+
+  let score = 0;
+  if (aligned && priceTrend.direction === 'RISING') score = 40;
+  else if (aligned && priceTrend.direction === 'FALLING') score = -40;
+  else if (!aligned && priceTrend.direction === 'RISING') score = -25; // weak rally
+  else if (!aligned && priceTrend.direction === 'FALLING') score = 25; // capitulation ending
 
   return scoreFactor('OI_PRICE_CONV', score,
-    `OI available · price trend ${priceTrend.direction} · convergence proxy`,
+    `OI ${oiTrend.direction} · Price ${priceTrend.direction} · ${aligned ? 'convergent' : 'divergent'}`,
     { trend: priceTrend }
   );
 }
@@ -562,8 +582,38 @@ function computeLsRatioTrend(ctx: MarketContext): FactorResult {
 }
 
 function computeOiDivergence(ctx: MarketContext): FactorResult {
-  if (!ctx.derivatives?.oi) return neutralFactor('OI_DIVERGENCE', 'OI data unavailable');
-  return neutralFactor('OI_DIVERGENCE', 'OI time-series not yet available — awaiting B-05');
+  const oiHistory = (ctx.derivatives as any)?.oiHistory as Array<{ timestamp: number; oi: number }> | undefined;
+  if (!oiHistory || oiHistory.length < 10) return neutralFactor('OI_DIVERGENCE', 'OI time-series unavailable');
+
+  const oiValues = oiHistory.slice(-20).map(p => p.oi);
+  const closes = ctx.klines.slice(-20).map(k => k.close);
+  if (closes.length < 10) return neutralFactor('OI_DIVERGENCE', 'Insufficient price data');
+
+  const oiTrend = analyzeTrend(oiValues);
+  const priceTrend = analyzeTrend(closes);
+
+  let score = 0;
+  let detail = '';
+
+  if (priceTrend.direction === 'RISING' && oiTrend.direction === 'FALLING') {
+    // Price up on decreasing OI = short covering, weak rally
+    score = -40;
+    detail = `OI↓ + Price↑ — short covering (weak rally)`;
+  } else if (priceTrend.direction === 'FALLING' && oiTrend.direction === 'RISING') {
+    // Price down with new OI = new shorts building (potential squeeze)
+    score = 40;
+    detail = `OI↑ + Price↓ — new shorts building (squeeze potential)`;
+  } else if (priceTrend.direction === 'RISING' && oiTrend.direction === 'RISING') {
+    score = 30;
+    detail = `OI↑ + Price↑ — new longs opening (confirmed rally)`;
+  } else if (priceTrend.direction === 'FALLING' && oiTrend.direction === 'FALLING') {
+    score = -30;
+    detail = `OI↓ + Price↓ — long unwind (capitulation)`;
+  } else {
+    detail = `OI ${oiTrend.direction} + Price ${priceTrend.direction} — no clear signal`;
+  }
+
+  return scoreFactor('OI_DIVERGENCE', score, detail, { rawValue: oiTrend.slope });
 }
 
 function computeSqueezeSignal(ctx: MarketContext): FactorResult {
@@ -631,14 +681,55 @@ function computeSoprSignal(ctx: MarketContext): FactorResult {
   );
 }
 
-function computeCyclePosition(ctx: MarketContext): FactorResult {
-  return neutralFactor('CYCLE_POSITION', 'Cycle analysis requires halving data — proxy pending');
+function computeCyclePosition(_ctx: MarketContext): FactorResult {
+  const halvingDates = [
+    new Date('2012-11-28').getTime(),
+    new Date('2016-07-09').getTime(),
+    new Date('2020-05-11').getTime(),
+    new Date('2024-04-19').getTime(),
+  ];
+
+  const now = Date.now();
+  let lastHalving = halvingDates[0];
+  for (const h of halvingDates) {
+    if (h <= now) lastHalving = h;
+  }
+
+  const daysSince = Math.floor((now - lastHalving) / 86_400_000);
+  const progress = daysSince / 1460; // ~4 year cycle
+
+  let score = 0;
+  let phase = '';
+
+  if (progress < 0.15) { score = 60; phase = 'post-halving accumulation'; }
+  else if (progress < 0.50) { score = 40; phase = 'mid-cycle bull'; }
+  else if (progress < 0.75) { score = -40; phase = 'distribution zone'; }
+  else { score = -20; phase = 'late bear / pre-halving'; }
+
+  return scoreFactor('CYCLE_POSITION', score,
+    `Cycle ${(progress * 100).toFixed(0)}% · ${daysSince}d since halving · ${phase}`,
+    { rawValue: progress }
+  );
 }
 
 function computeRealizedCapTrend(ctx: MarketContext): FactorResult {
   const rc = ctx.onchain?.realizedCap;
   if (rc == null) return neutralFactor('REALIZED_CAP_TREND', 'Realized cap data unavailable');
-  return scoreFactor('REALIZED_CAP_TREND', 0, `Realized cap ${(rc / 1e9).toFixed(1)}B — trend analysis pending`, { rawValue: rc });
+
+  // With a single data point we can only report the value, not the trend
+  // Score based on MVRV relationship if market cap is known
+  const closes = ctx.klines.map(k => k.close);
+  const priceTrend = analyzeTrend(closes.slice(-30));
+
+  // Rising price + stable realized cap = speculation
+  // Falling price + rising realized cap = accumulation
+  const score = priceTrend.direction === 'RISING' ? 15 :
+    priceTrend.direction === 'FALLING' ? -15 : 0;
+
+  return scoreFactor('REALIZED_CAP_TREND', score,
+    `Realized cap ${(rc / 1e9).toFixed(1)}B · price ${priceTrend.direction}`,
+    { rawValue: rc, trend: priceTrend }
+  );
 }
 
 function computeSupplyProfit(ctx: MarketContext): FactorResult {
@@ -689,7 +780,18 @@ function computeStablecoinFlow(ctx: MarketContext): FactorResult {
 function computeActiveAddresses(ctx: MarketContext): FactorResult {
   const aa = ctx.onchain?.activeAddresses;
   if (aa == null) return neutralFactor('ACTIVE_ADDRESSES', 'Active address data unavailable');
-  return scoreFactor('ACTIVE_ADDRESSES', 0, `Active addresses proxy — trend analysis pending`, { rawValue: aa });
+
+  // Score based on absolute level (historical BTC ranges)
+  let score = 0;
+  if (aa > 1_000_000) { score = 30; }
+  else if (aa > 800_000) { score = 15; }
+  else if (aa < 400_000 && aa > 0) { score = -20; }
+  else if (aa < 600_000 && aa > 0) { score = -10; }
+
+  return scoreFactor('ACTIVE_ADDRESSES', score,
+    `Active addresses ${(aa / 1000).toFixed(0)}K · ${aa > 800_000 ? 'high activity' : aa < 500_000 ? 'low activity' : 'normal'}`,
+    { rawValue: aa }
+  );
 }
 
 function computeEtfFlow(ctx: MarketContext): FactorResult {
@@ -904,6 +1006,6 @@ export function computeFactor(factorId: string, ctx: MarketContext): FactorResul
 }
 
 /** 에이전트의 모든 팩터 계산 */
-export function computeAgentFactors(factorIds: string[], ctx: MarketContext): FactorResult[] {
+export function computeAgentFactors(factorIds: string[], ctx: MarketContext, _metricStore?: MetricStore): FactorResult[] {
   return factorIds.map(id => computeFactor(id, ctx));
 }

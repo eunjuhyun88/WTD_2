@@ -5,6 +5,7 @@
 // Detects new highs, new lows, and proximity to range edges.
 
 import type { L13Result } from '../types';
+import { Thresholds } from '../thresholds';
 
 interface DayCandle {
   high: number;
@@ -39,10 +40,10 @@ export function computeL13Breakout(
   const cp = currentPrice;
   const break30High = cp > h30;
   const break7High = cp > h7;
-  const near30High = cp > h30 * 0.96;
-  const near7High = cp > h7 * 0.96;
-  const near30Low = cp < l30 * 1.04;
-  const near7Low = cp < l7 * 1.04;
+  const near30High = cp > h30 * Thresholds.breakout.near_high_pct;
+  const near7High = cp > h7 * Thresholds.breakout.near_high_pct;
+  const near30Low = cp < l30 * Thresholds.breakout.near_low_pct;
+  const near7Low = cp < l7 * Thresholds.breakout.near_low_pct;
 
   let score = 0;
   let label = 'RANGE';

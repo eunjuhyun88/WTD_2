@@ -10,6 +10,7 @@ import type { BinanceKline } from '$lib/engine/types';
 import type { MarketContext } from '$lib/engine/factorEngine';
 import { computeSignalSnapshot } from '$lib/engine/cogochi/layerEngine';
 import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
+import { MetricStore } from '$lib/engine/metrics';
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { signSnapshot } from '$lib/engine/cogochi/hmac';
 
@@ -77,7 +78,8 @@ export const GET: RequestHandler = async ({ url }) => {
     };
 
     // Compute 15-layer snapshot + HMAC
-    const snapshot = computeSignalSnapshot(ctx, symbol, tf);
+    const metricStore = new MetricStore();
+    const snapshot = computeSignalSnapshot(ctx, symbol, tf, {}, metricStore);
     snapshot.hmac = signSnapshot(snapshot);
 
     // Chart klines
