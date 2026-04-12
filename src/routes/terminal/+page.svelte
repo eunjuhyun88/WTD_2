@@ -554,6 +554,9 @@
       return;
     }
 
+    // Capture parsed query BEFORE clearing inputText (effect will nullify it)
+    const capturedParsedQuery = parsedQuery;
+
     messages = [...messages, { role: 'user', text }];
     inputText = '';
     isThinking = true;
@@ -564,6 +567,23 @@
 
     // Track history for LLM context
     chatHistory = [...chatHistory, { role: 'user', content: text }];
+
+    // ── Pre-fetch analysis in parallel ────────────────────────
+    // Detect symbol/TF from parsed query or fall back to current context.
+    // This ensures panels update for any coin regardless of whether the LLM
+    // decides to call the analyze_market tool.
+    const detectedSym = capturedParsedQuery?.symbol
+      ? normalizeTerminalSymbol(capturedParsedQuery.symbol)
+      : (currentSymbol || null);
+    const detectedTf = capturedParsedQuery?.timeframe ?? currentTf ?? '4h';
+
+    let prefetchedAnalysis: any = null;
+    const analyzePromise: Promise<void> = detectedSym
+      ? fetch(`/api/cogochi/analyze?symbol=${encodeURIComponent(detectedSym)}&tf=${encodeURIComponent(detectedTf)}`)
+          .then(r => r.json())
+          .then(data => { if (!data.error) prefetchedAnalysis = data; })
+          .catch(() => {})
+      : Promise.resolve();
 
     try {
       const res = await fetch('/api/cogochi/terminal/message', {
@@ -584,6 +604,7 @@
 
       let streamingText = '';
       const pendingLayers: LayerItem[] = [];
+      let analyzeToolResultReceived = false;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -649,8 +670,9 @@
 
             case 'tool_result':
               if (event.name === 'analyze_market' && event.data) {
+                analyzeToolResultReceived = true;
                 messages = messages.filter(m => !('thinking' in m));
-                applyAnalysisResult(event.data, pendingLayers);
+                applyAnalysisResult(event.data, pendingLayers, event.data?.symbol, event.data?.timeframe);
                 streamingText = '';
               } else if (event.name === 'check_social' && event.data) {
                 messages = messages.filter(m => !('thinking' in m));
@@ -694,6 +716,15 @@
         chatHistory = [...chatHistory, { role: 'assistant', content: streamingText }];
       }
 
+      // ── Fallback: apply pre-fetched analysis if LLM didn't call the tool ──
+      // Waits for parallel analyze fetch to settle, then applies panels
+      // so the user always sees chart + metrics regardless of LLM behavior.
+      await analyzePromise;
+      if (!analyzeToolResultReceived && prefetchedAnalysis && detectedSym) {
+        messages = messages.filter(m => !('thinking' in m));
+        applyAnalysisResult(prefetchedAnalysis, pendingLayers, detectedSym, detectedTf);
+      }
+
     } catch (err: any) {
       console.error('[terminal] handleSend error:', err);
       messages = messages.filter(m => !('thinking' in m));
@@ -718,8 +749,8 @@
   }
 
   // ─── Apply Analysis Result ─────────────────────────────────
-  function applyAnalysisResult(data: any, layers: LayerItem[]) {
-    const normalized = normalizeAnalysisPayload(data);
+  function applyAnalysisResult(data: any, layers: LayerItem[], symbolHint?: string, timeframeHint?: string) {
+    const normalized = normalizeAnalysisPayload(data, symbolHint, timeframeHint);
     syncCurrentAnalysis(normalized);
     const researchBlocks: ResearchBlockEnvelope[] = Array.isArray(normalized.researchBlocks)
       ? normalized.researchBlocks.flatMap((payload: unknown) => {
