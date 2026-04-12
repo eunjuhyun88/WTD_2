@@ -89,47 +89,24 @@
 </svelte:head>
 
 <div class="surface-page dashboard-page">
-  <section class="surface-hero split">
-    <div class="surface-copy">
-      <span class="surface-kicker">Dashboard</span>
-      <h1 class="surface-title">저장된 판단과 최근 변화가 다시 모이는 inbox.</h1>
-      <p class="surface-subtitle">
-        Dashboard는 설명용 홈이 아니다. 내가 남긴 세팅, 다시 봐야 할 검색, 다음에 이어볼 상태만
-        빠르게 재진입할 수 있게 정리된 복귀 surface다.
-      </p>
-      <div class="surface-inline-actions">
-        <button class="surface-button" onclick={() => goto('/terminal')}>Open Terminal</button>
-        <button class="surface-button-secondary" onclick={() => goto('/lab')}>Open Lab</button>
-      </div>
+  <div class="dash-topbar">
+    <span class="dash-title">DASHBOARD</span>
+    <div class="dash-stats">
+      <span class="ds-item"><span class="ds-label">CHALLENGES</span><strong class="ds-value">{strategies.length}</strong></span>
+      <span class="ds-sep">·</span>
+      <span class="ds-item"><span class="ds-label">TESTED</span><strong class="ds-value">{testedChallengeCount}</strong></span>
+      <span class="ds-sep">·</span>
+      <span class="ds-item"><span class="ds-label">LAST</span><strong class="ds-value">{latestActivityText}</strong></span>
+      {#if btcPrice > 0}
+        <span class="ds-sep">·</span>
+        <span class="ds-item"><span class="ds-label">BTC</span><strong class="ds-value ds-btc">{fmtPrice(btcPrice)}</strong></span>
+      {/if}
     </div>
-
-    <div class="surface-stats">
-      <article class="surface-stat">
-        <span class="surface-meta">Challenges</span>
-        <strong>{strategies.length}</strong>
-        <p>저장된 챌린지 수</p>
-      </article>
-      <article class="surface-stat">
-        <span class="surface-meta">Tested</span>
-        <strong>{testedChallengeCount}</strong>
-        <p>검증이 완료된 세팅</p>
-      </article>
-      <article class="surface-stat">
-        <span class="surface-meta">Last Activity</span>
-        <strong>{latestActivityText}</strong>
-        <p>최근 변경 시점</p>
-      </article>
+    <div class="dash-actions">
+      <button class="surface-button-secondary" onclick={() => goto('/terminal')}>Terminal</button>
+      <button class="surface-button" onclick={() => goto('/lab')}>Lab</button>
     </div>
-  </section>
-
-  <section class="surface-card soft market-banner">
-    <div>
-      <span class="surface-kicker">Market Context</span>
-      <h2>BTC {fmtPrice(btcPrice)}</h2>
-      <p>현재 관찰 중인 시장 맥락으로 바로 복귀한다.</p>
-    </div>
-    <button class="surface-button-secondary" onclick={() => goto('/terminal')}>Return to Terminal</button>
-  </section>
+  </div>
 
   <section class="surface-grid">
     <div class="surface-section-head">
@@ -260,25 +237,64 @@
     padding-top: 12px;
   }
 
-  .market-banner {
+  /* ── Topbar ──────────────────────────────────────── */
+  .dash-topbar {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: 16px;
+    padding: 10px 20px 12px;
+    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.12));
+    flex-wrap: wrap;
+  }
+  .dash-title {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--sc-text-0);
+    flex-shrink: 0;
+  }
+  .dash-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+  .ds-item {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+  .ds-label {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 8px;
+    letter-spacing: 0.5px;
+    color: var(--sc-text-3);
+    text-transform: uppercase;
+  }
+  .ds-value {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sc-text-1);
+  }
+  .ds-btc { color: var(--sc-accent, #db9a9f); }
+  .ds-sep {
+    color: var(--sc-text-3);
+    font-size: 10px;
+    opacity: 0.4;
+  }
+  .dash-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
   }
 
-  .market-banner h2,
   .surface-cta h2 {
     margin: 6px 0 0;
     font-size: clamp(1.5rem, 2.6vw, 2.2rem);
     line-height: 1.02;
     letter-spacing: -0.05em;
     color: rgba(250, 247, 235, 0.98);
-  }
-
-  .market-banner p {
-    margin: 8px 0 0;
-    color: rgba(250, 247, 235, 0.62);
   }
 
   .challenge-grid {
@@ -380,20 +396,25 @@
   }
 
   @media (max-width: 960px) {
-    .challenge-grid,
-    .challenge-stats {
-      grid-template-columns: 1fr;
-    }
-
     .market-banner {
       align-items: start;
       flex-direction: column;
+    }
+
+    /* 4-col stats → 2-col on tablet */
+    .challenge-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   @media (max-width: 640px) {
     .dashboard-page {
       padding-top: 4px;
+    }
+
+    /* card grid stays 2-col until very small; stats 2-col always */
+    .challenge-grid {
+      grid-template-columns: 1fr;
     }
 
     .challenge-card,

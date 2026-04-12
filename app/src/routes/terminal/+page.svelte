@@ -129,6 +129,7 @@
 
   // Quick Panel state
   let quickPanelCollapsed = $state(false);
+  let rightPanelOpen = $state(false);
   let quickPanelScanning = $state(false);
   let quickPanelItems = $state<Array<{symbol: string; alphaScore: number; alphaLabel: string; price: number; change24h: number; flags: string[]}>>([]);
   let quickPanelSelected = $state('');
@@ -1489,6 +1490,7 @@
   function focusResearchBlock(envelope: ResearchBlockEnvelope) {
     focusedResearchBlock = envelope;
     mobileTerminalMode = 'insight';
+    rightPanelOpen = true;
   }
 
   function clearResearchFocus() {
@@ -1691,6 +1693,14 @@
           </span>
         {:else}
           <span class="hb-status-chip">Live workspace</span>
+        {/if}
+        {#if currentSymbol}
+          <button
+            type="button"
+            class="hb-expand-btn"
+            class:active={rightPanelOpen}
+            onclick={() => rightPanelOpen = !rightPanelOpen}
+          >{rightPanelOpen ? '✕ Chart' : 'Chart ↗'}</button>
         {/if}
       </div>
     {/if}
@@ -2285,6 +2295,26 @@
     white-space: nowrap;
     max-width: 360px;
   }
+  .hb-expand-btn {
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--sc-text-2);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .hb-expand-btn:hover { color: var(--sc-text-0); border-color: rgba(255,255,255,0.28); }
+  .hb-expand-btn.active {
+    border-color: var(--sc-line-soft);
+    color: var(--sc-text-3);
+  }
 
   /* ═══ MAIN CONTENT ═══ */
   .mobile-mode-tabs {
@@ -2819,35 +2849,99 @@
     color: var(--sc-text-0);
   }
 
-  /* ─── Chart Reference (inline in feed) ─── */
-  .fe-chart-ref {
+  /* ─── Inline Chart in Feed ─── */
+  .fe-chart-inline {
+    padding: 8px 0 10px;
+  }
+  .fci-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .fci-meta {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 0;
   }
-  .cr-label {
-    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 10px;
-    color: var(--sc-text-3);
+  .fci-sym {
+    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
+    font-size: 18px;
+    color: var(--sc-text-0);
   }
-  .cr-sym {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--sc-text-1);
-  }
-  .cr-tf {
+  .fci-tf {
     font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
     font-size: 10px;
     color: var(--sc-text-3);
     background: var(--sc-bg-2);
-    padding: 1px 5px;
+    padding: 1px 6px;
     border-radius: 2px;
   }
+  .fci-price {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sc-text-0);
+  }
+  .fci-change {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .fci-change.up { color: var(--sc-good, #adca7c); }
+  .fci-change.dn { color: var(--sc-bad, #cf7f8f); }
+  .fci-expand {
+    flex-shrink: 0;
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--sc-text-2);
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s;
+  }
+  .fci-expand:hover {
+    color: var(--sc-text-0);
+    border-color: rgba(255,255,255,0.2);
+  }
+  .fci-chart {
+    height: 280px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--sc-bg-1);
+  }
 
-  /* ═══ WORKSPACE STAGE ═══ */
-  .workspace-stage {
+  /* ═══ CHART PANEL ═══ */
+  .cp-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 2;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--sc-line-soft);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--sc-text-3);
+    font-size: 11px;
+    cursor: pointer;
+    transition: color 0.12s, border-color 0.12s;
+  }
+  .cp-close-btn:hover {
+    color: var(--sc-text-0);
+    border-color: rgba(255,255,255,0.2);
+  }
+  .chart-panel {
+    position: relative;
     width: 100%;
     flex-shrink: 0;
     background:
