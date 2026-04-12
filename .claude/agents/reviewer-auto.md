@@ -40,6 +40,46 @@ You are called with a single argument: `<slice-id>`. The slice must be in status
 - If any item is ❌ FAIL → `REVISE: <which DoD item> — <what is missing>`.
 - If >1 item is ⚠️ UNVERIFIABLE → `ESCALATE: dod-unverifiable <items>`.
 
+### 3.1. Mandatory perf + security DoD lines (DAG v1 binding, 2026-04-12)
+
+Every DAG v1+ slice MUST contain two specific DoD lines. If either is
+absent from the slice's `dod` array, immediately emit
+`REVISE: missing mandatory perf/security DoD line` and stop — do not
+proceed to the per-item checklist. This is the enforcement surface for
+the 1000-concurrent-user performance and security baseline declared in
+`docs/swarm-v1-rollout-log.md`.
+
+**Required lines** (match the prefix, the suffix is slice-specific):
+
+1. `1000-user perf budget: <concrete numbers OR "by construction">` —
+   concrete p95/throughput commitment for runtime-touching slices, or
+   explicit "by construction" / "docs-only" / "test-only" justification
+   for non-runtime slices. Example acceptable values:
+   - `1000-user perf budget: insert+read round-trip p95 < 50ms on default supabase free tier`
+   - `1000-user perf budget: no regression in scanEngine execution time, no added network hops`
+   - `1000-user perf budget: zero new runtime code, zero perf regression by construction (docs-only slice)`
+2. `Security: <posture statement>` — must state one of: no new creds, no
+   new egress destination (or name the destination and justify), RLS
+   policy explicit, no PII in event payloads, or a targeted statement
+   of what the slice does to the security surface. Example acceptable:
+   - `Security: no new creds; etherscan key already in rotation pool`
+   - `Security: RLS policy enforces user_id ownership OR explicit comment justifying permissive default`
+   - `Security: no new network egress destinations; all calls stay inside existing provider set`
+
+**Verification at review time**:
+
+- Check that BOTH lines exist in the slice's `dod` array.
+- For runtime-touching slices, the perf line must contain a number (ms,
+  KB, qps, users, etc.) — not just "by construction". If the slice
+  touches `src/**` or `scripts/**` and only says "by construction",
+  emit `REVISE: runtime slice requires concrete perf numbers`.
+- The security line must not be generic. "Security: follows best
+  practices" is REVISE. "Security: no new creds, no new egress" is PASS.
+
+This check lives BEFORE the normal DoD checklist so that the review
+fails fast on slices that do not meet the baseline. It runs even if the
+worker insists the slice is trivial — the baseline applies uniformly.
+
 ### 4. Kill gate check
 - Compute slice age from first `in-progress` event.
 - If age > `dod.kill_gate.age_days_max` → `ESCALATE: age-exceeded (N days)`.

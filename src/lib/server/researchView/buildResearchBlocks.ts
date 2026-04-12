@@ -382,7 +382,7 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 						currentOi,
 						oiCompare[0]?.deltaPct ?? null
 					),
-					sourceIds: ['raw.symbol.oi_hist.display_tf', 'feat.flow.oi_change_pct']
+					sourceIds: ['raw.symbol.coinalyze.oi_hist.tf', 'feat.flow.oi_change_pct']
 				},
 				{
 					metricId: 'funding_bps',
@@ -400,7 +400,7 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 						currentFundingBps,
 						fundingCompare[0]?.deltaPct ?? null
 					),
-					sourceIds: ['raw.symbol.funding_rate']
+					sourceIds: ['raw.symbol.coinalyze.funding_hist.tf']
 				},
 				{
 					metricId: 'ls_ratio',
@@ -408,7 +408,7 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 					unit: 'ratio',
 					current: currentLs,
 					compare: lsCompare,
-					sourceIds: ['raw.symbol.long_short.global']
+					sourceIds: ['raw.symbol.coinalyze.ls_ratio_hist.tf']
 				},
 				{
 					metricId: 'liquidation_total',
@@ -417,7 +417,7 @@ export function buildResearchBlocks(input: BuildResearchBlocksInput): ResearchBl
 					current: currentLiq,
 					compare: buildCompareWindows(liqSeries),
 					sourceIds: [
-						'raw.symbol.force_orders.1h',
+						'raw.symbol.coinalyze.liq_hist.tf',
 						'event.flow.short_squeeze_active',
 						'event.flow.long_cascade_active'
 					]

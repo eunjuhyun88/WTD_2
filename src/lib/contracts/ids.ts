@@ -127,6 +127,18 @@ export const KnownRawId = {
 	BOOK_TICKER_LIVE: 'raw.symbol.book_ticker.live',
 	DEPTH_LIVE: 'raw.symbol.depth.live',
 
+	// Coinalyze cross-exchange aggregated history atoms (B13-b).
+	// Distinct from the single-exchange `raw.symbol.*` Binance atoms
+	// above: these aggregate OI / funding / L/S / liquidation across
+	// every perpetual venue Coinalyze tracks, which is what the
+	// research-view metric strip + DOUNI tool executor actually render.
+	// The Binance-only atoms cover engine-layer features (single-venue
+	// price/OI coherence); Coinalyze atoms cover narrative/provenance.
+	COINALYZE_OI_HIST_TF: 'raw.symbol.coinalyze.oi_hist.tf',
+	COINALYZE_FUNDING_HIST_TF: 'raw.symbol.coinalyze.funding_hist.tf',
+	COINALYZE_LSRATIO_HIST_TF: 'raw.symbol.coinalyze.ls_ratio_hist.tf',
+	COINALYZE_LIQ_HIST_TF: 'raw.symbol.coinalyze.liq_hist.tf',
+
 	// Session / user-controlled
 	SESSION_SCAN_MODE: 'raw.session.scan_mode',
 	SESSION_TOP_N: 'raw.session.top_n',
