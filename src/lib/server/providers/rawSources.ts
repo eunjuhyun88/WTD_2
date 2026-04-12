@@ -620,41 +620,98 @@ const OI_DISPLAY_TF_LIMITS = {
 export type OIHistoryInterval = keyof typeof OI_DISPLAY_TF_LIMITS;
 
 // ---------------------------------------------------------------------------
+// Compound memo helpers
+// ---------------------------------------------------------------------------
+//
+// Every compound fetch in this file shares the same two-hand memo shape:
+//
+//   1. In-flight promise dedup. Requests that arrive while a fetch is
+//      already pending share the same promise, so the N atom-level
+//      consumers of a compound payload (e.g. the 7 TICKER_* atoms all
+//      deriving from one /fapi/v1/ticker/24hr roundtrip) cost exactly
+//      one network call inside the TTL window.
+//
+//   2. TTL-based staleness. After the window closes, the next caller
+//      triggers a fresh fetch. Windows are intentionally short because
+//      the persistent cache layer lives elsewhere (coinalyze.ts cache,
+//      binanceQuota concurrency gate, etc.) — this memo is only for
+//      in-flight dedupe on the hot path.
+//
+// Error policy is caller-controlled via the fetcher closure:
+//
+//   - Throw variant: the fetcher rejects on error. `compoundMemo`
+//     clears the in-flight slot so the NEXT caller retries immediately
+//     (no sticky cached error). Used for futuresTickers / premiumIndex
+//     / upbit / btcOnchain / mempool where the engine path wants to
+//     see real failures.
+//
+//   - Null variant: the fetcher swallows errors internally via
+//     `.catch(() => null)` and returns a resolved-null. The helper's
+//     clearing path is never triggered; the null-resolved promise
+//     stays cached for the TTL window so failure is sticky within one
+//     window. Used for openInterest / longShortTop where the engine
+//     degrades gracefully rather than propagating a scanner-killing
+//     throw from one symbol's fetch.
+//
+// Both variants share the same helper function. The only difference is
+// what the caller passes into the fetcher closure.
+
+/**
+ * Singleton compound memo. Shares one in-flight promise across all
+ * callers for `ttlMs` milliseconds. On fetch rejection, clears the
+ * cached promise so the next call retries.
+ */
+function compoundMemo<T>(ttlMs: number, fetcher: () => Promise<T>): () => Promise<T> {
+	let inflight: Promise<T> | null = null;
+	let at = 0;
+	return () => {
+		const now = Date.now();
+		if (inflight && now - at < ttlMs) return inflight;
+		at = now;
+		inflight = fetcher().catch((err) => {
+			inflight = null;
+			throw err;
+		});
+		return inflight;
+	};
+}
+
+/**
+ * Keyed compound memo — one in-flight slot per key (e.g. per-symbol).
+ * Same semantics as `compoundMemo` but each key has its own pending
+ * promise + timestamp.
+ */
+function compoundMemoKeyed<K, T>(
+	ttlMs: number,
+	fetcher: (key: K) => Promise<T>
+): (key: K) => Promise<T> {
+	const inflight = new Map<K, Promise<T>>();
+	const lastAt = new Map<K, number>();
+	return (key: K) => {
+		const now = Date.now();
+		const existing = inflight.get(key);
+		const prevAt = lastAt.get(key) ?? 0;
+		if (existing && now - prevAt < ttlMs) return existing;
+		lastAt.set(key, now);
+		const promise = fetcher(key).catch((err) => {
+			inflight.delete(key);
+			throw err;
+		});
+		inflight.set(key, promise);
+		return promise;
+	};
+}
+
+// ---------------------------------------------------------------------------
 // Shared fetch + memoize for compound sources
 // ---------------------------------------------------------------------------
 //
 // `fetchBtcOnchain` and `fetchMempool` each return a compound payload that
-// is sliced into 3 and 5 raws respectively. We wrap them in a 30-second
-// promise memo so one compound request fills every slice without spamming
-// the upstream. This memo is intentionally simple — the provider-level
-// `cache.ts` layer owns the persistent TTL cache. This is only the
-// in-flight dedupe.
+// is sliced into 3 and 5 raws respectively. 30-second window matches the
+// other compound memos in this file.
 
-let btcOnchainInflight: Promise<Awaited<ReturnType<typeof fetchBtcOnchain>>> | null = null;
-let btcOnchainAt = 0;
-function getBtcOnchain() {
-	const now = Date.now();
-	if (btcOnchainInflight && now - btcOnchainAt < 30_000) return btcOnchainInflight;
-	btcOnchainAt = now;
-	btcOnchainInflight = fetchBtcOnchain().catch((err) => {
-		btcOnchainInflight = null;
-		throw err;
-	});
-	return btcOnchainInflight;
-}
-
-let mempoolInflight: Promise<Awaited<ReturnType<typeof fetchMempool>>> | null = null;
-let mempoolAt = 0;
-function getMempool() {
-	const now = Date.now();
-	if (mempoolInflight && now - mempoolAt < 30_000) return mempoolInflight;
-	mempoolAt = now;
-	mempoolInflight = fetchMempool().catch((err) => {
-		mempoolInflight = null;
-		throw err;
-	});
-	return mempoolInflight;
-}
+const getBtcOnchain = compoundMemo(30_000, fetchBtcOnchain);
+const getMempool = compoundMemo(30_000, fetchMempool);
 
 // ---------------------------------------------------------------------------
 // Upbit ticker memo (prices + volumes in one roundtrip)
@@ -731,20 +788,7 @@ async function fetchUpbitTickers(): Promise<UpbitTickerPayload> {
 	return { prices, volumes };
 }
 
-let upbitTickersInflight: Promise<UpbitTickerPayload> | null = null;
-let upbitTickersAt = 0;
-function getUpbitTickers(): Promise<UpbitTickerPayload> {
-	const now = Date.now();
-	if (upbitTickersInflight && now - upbitTickersAt < 30_000) {
-		return upbitTickersInflight;
-	}
-	upbitTickersAt = now;
-	upbitTickersInflight = fetchUpbitTickers().catch((err) => {
-		upbitTickersInflight = null;
-		throw err;
-	});
-	return upbitTickersInflight;
-}
+const getUpbitTickers = compoundMemo(30_000, fetchUpbitTickers);
 
 // ---------------------------------------------------------------------------
 // Binance futures-wide 24hr ticker memo (B12)
@@ -850,22 +894,9 @@ async function fetchFuturesTickers(): Promise<FuturesTickerPayload> {
 	return payload;
 }
 
-let futuresTickersInflight: Promise<FuturesTickerPayload> | null = null;
-let futuresTickersAt = 0;
-function getFuturesTickers(): Promise<FuturesTickerPayload> {
-	const now = Date.now();
-	if (futuresTickersInflight && now - futuresTickersAt < 30_000) {
-		return futuresTickersInflight;
-	}
-	futuresTickersAt = now;
-	futuresTickersInflight = binanceQuota
-		.execute(() => fetchFuturesTickers())
-		.catch((err) => {
-			futuresTickersInflight = null;
-			throw err;
-		});
-	return futuresTickersInflight;
-}
+const getFuturesTickers = compoundMemo(30_000, () =>
+	binanceQuota.execute(() => fetchFuturesTickers())
+);
 
 // ---------------------------------------------------------------------------
 // premiumIndex memo (funding rate + mark price)
@@ -888,9 +919,6 @@ interface PremiumIndexPayload {
 	markPrice: number | null;
 }
 
-const premiumIndexInflight = new Map<string, Promise<PremiumIndexPayload>>();
-const premiumIndexAt = new Map<string, number>();
-
 async function fetchPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
 	const res = await fetch(
 		`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${symbol}`,
@@ -906,19 +934,9 @@ async function fetchPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
 	};
 }
 
-function getPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
-	const now = Date.now();
-	const existing = premiumIndexInflight.get(symbol);
-	const lastAt = premiumIndexAt.get(symbol) ?? 0;
-	if (existing && now - lastAt < 5_000) return existing;
-	premiumIndexAt.set(symbol, now);
-	const promise = binanceQuota.execute(() => fetchPremiumIndex(symbol)).catch((err) => {
-		premiumIndexInflight.delete(symbol);
-		throw err;
-	});
-	premiumIndexInflight.set(symbol, promise);
-	return promise;
-}
+const getPremiumIndex = compoundMemoKeyed(5_000, (symbol: string) =>
+	binanceQuota.execute(() => fetchPremiumIndex(symbol))
+);
 
 // ---------------------------------------------------------------------------
 // openInterest (point-in-time) memo
@@ -931,9 +949,6 @@ function getPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
 // within a 5-second window (matches the binance OI update cadence on the
 // engine path). Errors return null so callers can degrade gracefully — OI
 // is a supporting signal, not a gating one.
-
-const openInterestInflight = new Map<string, Promise<number | null>>();
-const openInterestAt = new Map<string, number>();
 
 async function fetchOpenInterestPoint(symbol: string): Promise<number | null> {
 	try {
@@ -950,16 +965,12 @@ async function fetchOpenInterestPoint(symbol: string): Promise<number | null> {
 	}
 }
 
-function getOpenInterestPoint(symbol: string): Promise<number | null> {
-	const now = Date.now();
-	const existing = openInterestInflight.get(symbol);
-	const lastAt = openInterestAt.get(symbol) ?? 0;
-	if (existing && now - lastAt < 5_000) return existing;
-	openInterestAt.set(symbol, now);
-	const promise = binanceQuota.execute(() => fetchOpenInterestPoint(symbol)).catch(() => null);
-	openInterestInflight.set(symbol, promise);
-	return promise;
-}
+// Null-variant memo: the fetcher catches internally so the helper's
+// clear-on-reject path is never triggered; a null-resolved promise
+// stays cached for the full TTL window (failure is sticky per window).
+const getOpenInterestPoint = compoundMemoKeyed(5_000, (symbol: string) =>
+	binanceQuota.execute(() => fetchOpenInterestPoint(symbol)).catch(() => null)
+);
 
 // ---------------------------------------------------------------------------
 // topLongShortAccountRatio (1h, 1 bar) memo
@@ -971,9 +982,6 @@ function getOpenInterestPoint(symbol: string): Promise<number | null> {
 // cannot override. Previously this endpoint was fetched inline from 3
 // different call sites with slightly different error handling. This memo
 // gives one canonical path + 5-second in-flight dedupe + null-on-error.
-
-const longShortTopInflight = new Map<string, Promise<number | null>>();
-const longShortTopAt = new Map<string, number>();
 
 async function fetchLongShortTop1h(symbol: string): Promise<number | null> {
 	try {
@@ -991,16 +999,10 @@ async function fetchLongShortTop1h(symbol: string): Promise<number | null> {
 	}
 }
 
-function getLongShortTop1h(symbol: string): Promise<number | null> {
-	const now = Date.now();
-	const existing = longShortTopInflight.get(symbol);
-	const lastAt = longShortTopAt.get(symbol) ?? 0;
-	if (existing && now - lastAt < 5_000) return existing;
-	longShortTopAt.set(symbol, now);
-	const promise = binanceQuota.execute(() => fetchLongShortTop1h(symbol)).catch(() => null);
-	longShortTopInflight.set(symbol, promise);
-	return promise;
-}
+// Null-variant memo — same rationale as getOpenInterestPoint.
+const getLongShortTop1h = compoundMemoKeyed(5_000, (symbol: string) =>
+	binanceQuota.execute(() => fetchLongShortTop1h(symbol)).catch(() => null)
+);
 
 // ---------------------------------------------------------------------------
 // Adapter map
