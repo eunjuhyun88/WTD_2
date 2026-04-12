@@ -338,6 +338,115 @@ def _price_accel(close: pd.Series, period: int = 5) -> pd.Series:
     return roc.diff().fillna(0.0)
 
 
+# ── Groups V-AB primitives ───────────────────────────────────────────────────
+
+
+def _hist_vol(close: pd.Series, period: int) -> pd.Series:
+    """Realized volatility: std of log-returns × sqrt(24×365), annualised for 1h bars."""
+    log_ret = np.log(close / close.shift(1)).fillna(0.0)
+    return (log_ret.rolling(period, min_periods=period).std(ddof=1) * np.sqrt(24 * 365)).fillna(0.0)
+
+
+def _parkinson_vol(high: pd.Series, low: pd.Series, period: int = 24) -> pd.Series:
+    """Parkinson's High-Low volatility estimator — more efficient than close-close.
+    σ_P = sqrt(1/(4·N·ln 2) · Σ(ln(H/L))²) × sqrt(24·365) annualised.
+    """
+    log_hl = np.log((high / low.replace(0, np.nan)).replace(0, np.nan)).fillna(0.0)
+    factor = 1.0 / (4.0 * np.log(2))
+    var = (log_hl ** 2).rolling(period, min_periods=period).mean() * factor
+    return (np.sqrt(var * 24 * 365)).fillna(0.0)
+
+
+def _lr_slope_norm(close: pd.Series, period: int = 20) -> pd.Series:
+    """OLS slope of `close` over a rolling `period`-bar window, normalised by price."""
+    def _slope(arr: np.ndarray) -> float:
+        x = np.arange(len(arr), dtype=float)
+        return float(np.polyfit(x, arr, 1)[0])
+
+    raw_slope = close.rolling(period, min_periods=period).apply(_slope, raw=True)
+    return (raw_slope / close.replace(0, np.nan)).fillna(0.0)
+
+
+def _efficiency_ratio(close: pd.Series, period: int = 20) -> pd.Series:
+    """Kaufman's Efficiency Ratio: directional distance / path distance, 0..1."""
+    direction = (close - close.shift(period)).abs()
+    path = close.diff().abs().rolling(period, min_periods=period).sum()
+    return (direction / path.replace(0, np.nan)).fillna(0.5).clip(0.0, 1.0)
+
+
+def _trend_consistency(close: pd.Series, period: int = 20) -> pd.Series:
+    """Trend consistency: |sum(signed returns)| / sum(|returns|) over period, 0..1."""
+    log_ret = np.log(close / close.shift(1)).fillna(0.0)
+    net = log_ret.rolling(period, min_periods=period).sum().abs()
+    gross = log_ret.abs().rolling(period, min_periods=period).sum()
+    return (net / gross.replace(0, np.nan)).fillna(0.5).clip(0.0, 1.0)
+
+
+def _consecutive_bars_vec(close: pd.Series, cap: int = 7) -> pd.Series:
+    """Signed count of consecutive same-direction closes, capped ±cap.
+    Fully vectorised using cumsum + groupby on direction-change groups.
+    """
+    direction = np.sign(close.diff().fillna(0.0))
+    # Identify groups of consecutive same-direction bars
+    group = (direction != direction.shift(1)).astype(int).cumsum()
+    cum = direction.groupby(group).cumsum()
+    return cum.clip(-float(cap), float(cap))
+
+
+def _candle_patterns(
+    open_: pd.Series, high: pd.Series, low: pd.Series, close: pd.Series,
+) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+    """Returns (engulfing_bull, engulfing_bear, doji, hammer).
+    engulfing_bull/bear: 0 or 1.
+    doji: 0 or 1 (body < 10 % of range).
+    hammer: +1 = hammer, −1 = shooting star, 0 = neither.
+    """
+    prev_open = open_.shift(1)
+    prev_close = close.shift(1)
+    candle_range = (high - low).replace(0, np.nan)
+    body = (close - open_).abs()
+    prev_body = (prev_close - prev_open).abs()
+
+    # Bullish engulfing: prev bar was bearish; current bar is bullish and fully engulfs prev body
+    prev_bearish = prev_close < prev_open
+    curr_bullish = close > open_
+    bull_eng = (prev_bearish & curr_bullish & (open_ <= prev_close) & (close >= prev_open)).astype(float)
+
+    # Bearish engulfing: prev bar was bullish; current bar is bearish and fully engulfs prev body
+    prev_bullish = prev_close > prev_open
+    curr_bearish = close < open_
+    bear_eng = (prev_bullish & curr_bearish & (open_ >= prev_close) & (close <= prev_open)).astype(float)
+
+    # Doji: body < 10 % of range
+    doji = ((body / candle_range).fillna(1.0) < 0.10).astype(float)
+
+    # Hammer / Shooting star
+    body_top = pd.concat([close, open_], axis=1).max(axis=1)
+    body_bot = pd.concat([close, open_], axis=1).min(axis=1)
+    upper_wick = high - body_top
+    lower_wick = body_bot - low
+    body_safe = body.replace(0, np.nan)
+
+    is_hammer = (
+        (lower_wick >= 2.0 * body_safe) &  # long lower wick
+        (upper_wick <= 0.5 * body_safe) &   # tiny upper wick
+        ((body_top - low) / candle_range.fillna(1.0) >= 0.6)  # body in upper 40% of range
+    )
+    is_star = (
+        (upper_wick >= 2.0 * body_safe) &
+        (lower_wick <= 0.5 * body_safe) &
+        ((high - body_bot) / candle_range.fillna(1.0) >= 0.6)
+    )
+    hammer = is_hammer.astype(float) - is_star.astype(float)
+
+    return (
+        bull_eng.fillna(0.0),
+        bear_eng.fillna(0.0),
+        doji.fillna(0.0),
+        hammer.fillna(0.0),
+    )
+
+
 # =========================================================================
 # Per-feature helpers
 # =========================================================================
@@ -667,6 +776,65 @@ def compute_snapshot(
     # --- T. Price acceleration ---
     price_accel_val = float(_price_accel(close, 5).iloc[-1])
 
+    # --- V. EMA multi-period ---
+    ema9_series = _ema(close, 9)
+    ema100_series = _ema(close, 100)
+    ema9_slope = _slope_pct(ema9_series, 5)
+    ema100_slope = _slope_pct(ema100_series, 10)
+    ema20_v = float(ema20_series.iloc[-1])   # already computed above
+    ema100_v = float(ema100_series.iloc[-1])
+    price_vs_ema20 = (price - ema20_v) / ema20_v if ema20_v else 0.0
+    price_vs_ema100 = (price - ema100_v) / ema100_v if ema100_v else 0.0
+
+    # --- W. Historical volatility ---
+    hvol24 = float(_hist_vol(close, 24).iloc[-1])
+    hvol7d = float(_hist_vol(close, 168).iloc[-1])
+    vol_regime_val = (hvol24 / hvol7d) if hvol7d > 0 else 1.0
+    vol_regime_val = max(0.1, min(5.0, vol_regime_val))
+    parkinson_val = float(_parkinson_vol(high, low, 24).iloc[-1])
+
+    # --- X. MACD extensions ---
+    _ema12_v = float(_ema(close, 12).iloc[-1])
+    _ema26_v = float(_ema(close, 26).iloc[-1])
+    macd_line_norm = (_ema12_v - _ema26_v) / price if price else 0.0
+    _mh_prev = float(macd_h_series.iloc[-4]) if len(macd_h_series) >= 4 else float(macd_h_series.iloc[0])
+    macd_hist_slope_val = float(macd_h_series.iloc[-1]) - _mh_prev
+
+    # --- Y. Volume profile ---
+    volume_7d = float(volume.iloc[-168:].sum()) if len(volume) >= 168 else float(volume.sum())
+    mean_vol_24 = float(volume.iloc[-25:-1].mean()) if len(volume) >= 25 else float(volume.mean())
+    vol_ratio_24_val = float(volume.iloc[-1]) / mean_vol_24 if mean_vol_24 > 0 else 1.0
+    taker_24h = float(taker_buy.iloc[-24:].sum()) if len(taker_buy) >= 24 else float(taker_buy.sum())
+    vol_24h_sum = float(volume.iloc[-24:].sum()) if len(volume) >= 24 else float(volume.sum())
+    taker_buy_ratio_24h_val = max(0.0, min(1.0, taker_24h / vol_24h_sum if vol_24h_sum > 0 else 0.5))
+    vol_acceleration_val = max(0.1, min(10.0, vol_ratio_3 / vol_ratio_24_val if vol_ratio_24_val > 0 else 1.0))
+
+    # --- Z. Price structure ---
+    n_7d = 168
+    high_7d = float(high.iloc[-n_7d:].max()) if len(high) >= n_7d else float(high.max())
+    low_7d = float(low.iloc[-n_7d:].min()) if len(low) >= n_7d else float(low.min())
+    range_7d = high_7d - low_7d
+    range_7d_pos = (price - low_7d) / range_7d if range_7d > 0 else 0.5
+    prev_close_val = float(close.iloc[-2]) if len(close) >= 2 else price
+    gap_pct_val = (candle_open - prev_close_val) / prev_close_val if prev_close_val else 0.0
+    up_bars = (close.iloc[-20:] > open_.iloc[-20:]) if len(close) >= 20 else (close > open_)
+    close_above_open_ratio_val = float(up_bars.mean())
+    consecutive_bars_val = float(_consecutive_bars_vec(close).iloc[-1])
+    _body_abs = abs(price - candle_open)
+    body_ratio_val = _body_abs / candle_range if candle_range > 0 else 0.5
+
+    # --- AA. Candle patterns ---
+    eng_bull_s, eng_bear_s, doji_s, hammer_s = _candle_patterns(open_, high, low, close)
+    engulfing_bull_val = float(eng_bull_s.iloc[-1])
+    engulfing_bear_val = float(eng_bear_s.iloc[-1])
+    doji_val = float(doji_s.iloc[-1])
+    hammer_val = float(hammer_s.iloc[-1])
+
+    # --- AB. Trend quality ---
+    lr_slope_20_val = float(_lr_slope_norm(close, 20).iloc[-1])
+    efficiency_ratio_val = float(_efficiency_ratio(close, 20).iloc[-1])
+    trend_consistency_val = float(_trend_consistency(close, 20).iloc[-1])
+
     # --- Meta ---
     regime = _regime(close, atr_pct)
     hour_of_day = int(ts_dt.astimezone(timezone.utc).hour)
@@ -756,6 +924,39 @@ def compute_snapshot(
         supertrend_dist=supertrend_dist_val,
         # T. Price acceleration
         price_accel=price_accel_val,
+        # V. EMA multi-period
+        ema9_slope=ema9_slope,
+        ema100_slope=ema100_slope,
+        price_vs_ema20=price_vs_ema20,
+        price_vs_ema100=price_vs_ema100,
+        # W. Historical volatility
+        hist_vol_24h=hvol24,
+        hist_vol_7d=hvol7d,
+        vol_regime=vol_regime_val,
+        parkinson_vol=parkinson_val,
+        # X. MACD extensions
+        macd_line=macd_line_norm,
+        macd_hist_slope=macd_hist_slope_val,
+        # Y. Volume profile
+        volume_7d=volume_7d,
+        vol_ratio_24=vol_ratio_24_val,
+        taker_buy_ratio_24h=taker_buy_ratio_24h_val,
+        vol_acceleration=vol_acceleration_val,
+        # Z. Price structure
+        range_7d_position=range_7d_pos,
+        gap_pct=gap_pct_val,
+        close_above_open_ratio=close_above_open_ratio_val,
+        consecutive_bars=consecutive_bars_val,
+        body_ratio=body_ratio_val,
+        # AA. Candle patterns
+        engulfing_bull=engulfing_bull_val,
+        engulfing_bear=engulfing_bear_val,
+        doji=doji_val,
+        hammer=hammer_val,
+        # AB. Trend quality
+        lr_slope_20=lr_slope_20_val,
+        efficiency_ratio=efficiency_ratio_val,
+        trend_consistency=trend_consistency_val,
         # Meta
         regime=regime,
         hour_of_day=hour_of_day,
@@ -918,6 +1119,39 @@ _CORE_FEATURE_COLUMNS: tuple[str, ...] = (
     "supertrend_dist",
     # T. Price acceleration
     "price_accel",
+    # V. EMA multi-period
+    "ema9_slope",
+    "ema100_slope",
+    "price_vs_ema20",
+    "price_vs_ema100",
+    # W. Historical volatility
+    "hist_vol_24h",
+    "hist_vol_7d",
+    "vol_regime",
+    "parkinson_vol",
+    # X. MACD extensions
+    "macd_line",
+    "macd_hist_slope",
+    # Y. Volume profile
+    "volume_7d",
+    "vol_ratio_24",
+    "taker_buy_ratio_24h",
+    "vol_acceleration",
+    # Z. Price structure
+    "range_7d_position",
+    "gap_pct",
+    "close_above_open_ratio",
+    "consecutive_bars",
+    "body_ratio",
+    # AA. Candle patterns
+    "engulfing_bull",
+    "engulfing_bear",
+    "doji",
+    "hammer",
+    # AB. Trend quality
+    "lr_slope_20",
+    "efficiency_ratio",
+    "trend_consistency",
     "regime",
     "hour_of_day",
     "day_of_week",
@@ -1154,6 +1388,57 @@ def compute_features_table(
     # --- T. Price acceleration ---
     price_accel_col = _price_accel(close, 5)
 
+    # --- V. EMA multi-period ---
+    ema9_s = _ema(close, 9)
+    ema100_s = _ema(close, 100)
+    ema9_slope_col = _slope_pct_vec(ema9_s, 5)
+    ema100_slope_col = _slope_pct_vec(ema100_s, 10)
+    price_vs_ema20_col = ((close - ema20) / ema20.replace(0, np.nan)).fillna(0.0)
+    price_vs_ema100_col = ((close - ema100_s) / ema100_s.replace(0, np.nan)).fillna(0.0)
+
+    # --- W. Historical volatility ---
+    hvol24_col = _hist_vol(close, 24)
+    hvol7d_col = _hist_vol(close, 168)
+    vol_regime_col = (hvol24_col / hvol7d_col.replace(0, np.nan)).fillna(1.0).clip(0.1, 5.0)
+    parkinson_col = _parkinson_vol(high, low, 24)
+
+    # --- X. MACD extensions ---
+    ema12_col = _ema(close, 12)
+    ema26_col = _ema(close, 26)
+    macd_line_col = ((ema12_col - ema26_col) / close.replace(0, np.nan)).fillna(0.0)
+    macd_hist_slope_col = macd_hist.diff(3).fillna(0.0)
+
+    # --- Y. Volume profile ---
+    volume_7d_col = volume.rolling(168, min_periods=1).sum()
+    mean_vol_24_col = volume.shift(1).rolling(24, min_periods=24).mean()
+    vol_ratio_24_col = (volume / mean_vol_24_col.replace(0, np.nan)).fillna(1.0)
+    taker_buy_24h_col = taker_buy.rolling(24, min_periods=1).sum()
+    vol_24h_col = volume.rolling(24, min_periods=1).sum()
+    taker_buy_ratio_24h_col = (taker_buy_24h_col / vol_24h_col.replace(0, np.nan)).clip(0.0, 1.0).fillna(0.5)
+    # vol_ratio_3 already computed above
+    vol_acceleration_col = (vol_ratio_3 / vol_ratio_24_col.replace(0, np.nan)).fillna(1.0).clip(0.1, 10.0)
+
+    # --- Z. Price structure ---
+    high_7d_col = high.rolling(168, min_periods=1).max()
+    low_7d_col = low.rolling(168, min_periods=1).min()
+    range_7d_col = (high_7d_col - low_7d_col).replace(0, np.nan)
+    range_7d_pos_col = ((close - low_7d_col) / range_7d_col).fillna(0.5).clip(0.0, 1.0)
+    gap_pct_col = ((open_ - close.shift(1)) / close.shift(1).replace(0, np.nan)).fillna(0.0)
+    up_bars_col = (close > open_).astype(float)
+    close_above_open_ratio_col = up_bars_col.rolling(20, min_periods=1).mean()
+    consecutive_bars_col = _consecutive_bars_vec(close, cap=7)
+    candle_range_z = (high - low).replace(0, np.nan)
+    body_z = (close - open_).abs()
+    body_ratio_col = (body_z / candle_range_z).fillna(0.5).clip(0.0, 1.0)
+
+    # --- AA. Candle patterns ---
+    eng_bull_col, eng_bear_col, doji_col, hammer_col = _candle_patterns(open_, high, low, close)
+
+    # --- AB. Trend quality ---
+    lr_slope_20_col = _lr_slope_norm(close, 20)
+    efficiency_ratio_col = _efficiency_ratio(close, 20)
+    trend_consistency_col = _trend_consistency(close, 20)
+
     # --- Macro + On-chain (registry-driven, daily → ffill onto hourly) ---
     # Uses data_cache.registry defaults for any missing column.
     from data_cache.registry import (  # noqa: PLC0415
@@ -1317,6 +1602,39 @@ def compute_features_table(
             "supertrend_dist": st_dist_col.to_numpy(),
             # T. Price acceleration
             "price_accel": price_accel_col.to_numpy(),
+            # V. EMA multi-period
+            "ema9_slope": ema9_slope_col.to_numpy(),
+            "ema100_slope": ema100_slope_col.to_numpy(),
+            "price_vs_ema20": price_vs_ema20_col.to_numpy(),
+            "price_vs_ema100": price_vs_ema100_col.to_numpy(),
+            # W. Historical volatility
+            "hist_vol_24h": hvol24_col.to_numpy(),
+            "hist_vol_7d": hvol7d_col.to_numpy(),
+            "vol_regime": vol_regime_col.to_numpy(),
+            "parkinson_vol": parkinson_col.to_numpy(),
+            # X. MACD extensions
+            "macd_line": macd_line_col.to_numpy(),
+            "macd_hist_slope": macd_hist_slope_col.to_numpy(),
+            # Y. Volume profile
+            "volume_7d": volume_7d_col.to_numpy(),
+            "vol_ratio_24": vol_ratio_24_col.to_numpy(),
+            "taker_buy_ratio_24h": taker_buy_ratio_24h_col.to_numpy(),
+            "vol_acceleration": vol_acceleration_col.to_numpy(),
+            # Z. Price structure
+            "range_7d_position": range_7d_pos_col.to_numpy(),
+            "gap_pct": gap_pct_col.to_numpy(),
+            "close_above_open_ratio": close_above_open_ratio_col.to_numpy(),
+            "consecutive_bars": consecutive_bars_col.to_numpy(),
+            "body_ratio": body_ratio_col.to_numpy(),
+            # AA. Candle patterns
+            "engulfing_bull": eng_bull_col.to_numpy(),
+            "engulfing_bear": eng_bear_col.to_numpy(),
+            "doji": doji_col.to_numpy(),
+            "hammer": hammer_col.to_numpy(),
+            # AB. Trend quality
+            "lr_slope_20": lr_slope_20_col.to_numpy(),
+            "efficiency_ratio": efficiency_ratio_col.to_numpy(),
+            "trend_consistency": trend_consistency_col.to_numpy(),
             "regime": regime,
             "hour_of_day": hour_of_day,
             "day_of_week": day_of_week,
