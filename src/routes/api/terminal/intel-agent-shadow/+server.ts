@@ -5,6 +5,9 @@ import { normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService
 import { buildShadowAgentDecision, type ShadowAgentDecision } from '$lib/server/intelShadowAgent';
 import type { IntelPolicyOutput } from '$lib/server/intelPolicyRuntime';
 import { getLLMRuntimeStatus, type LLMRuntimeStatus } from '$lib/server/llmService';
+import { intelShadowLimiter, intelShadowRefreshLimiter } from '$lib/server/rateLimit';
+import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
 
 const CACHE_TTL_MS = 20_000;
 
@@ -62,25 +65,53 @@ async function buildPayload(fetchFn: typeof fetch, pair: string, timeframe: stri
   };
 }
 
-export const GET: RequestHandler = async ({ fetch, url }) => {
+async function getCachedPayload(key: string) {
+  const local = cache.get(key);
+  if (local && Date.now() - local.createdAt < CACHE_TTL_MS) {
+    return local.payload;
+  }
+
+  const shared = await getSharedCache<ShadowCacheEntry['payload']>('terminal:intel-shadow', key);
+  if (!shared) return null;
+  cache.set(key, { createdAt: Date.now(), payload: shared });
+  return shared;
+}
+
+async function persistPayload(key: string, payload: ShadowCacheEntry['payload']) {
+  cache.set(key, { createdAt: Date.now(), payload });
+  await setSharedCache('terminal:intel-shadow', key, payload, CACHE_TTL_MS);
+}
+
+export const GET: RequestHandler = async ({ fetch, url, request, getClientAddress }) => {
   try {
     const pair = normalizePair(url.searchParams.get('pair'));
     const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
     const refresh = url.searchParams.get('refresh') === '1';
+    const guard = await runIpRateLimitGuard({
+      request,
+      fallbackIp: getClientAddress(),
+      limiter: refresh ? intelShadowRefreshLimiter : intelShadowLimiter,
+      scope: refresh ? 'terminal:intel-shadow:refresh' : 'terminal:intel-shadow',
+      max: refresh ? 4 : 12,
+      tooManyMessage: refresh
+        ? 'Too many shadow refresh requests. Please wait.'
+        : 'Too many shadow intel requests. Please wait.',
+    });
+    if (!guard.ok) return guard.response;
     const key = cacheKey(pair, timeframe);
 
     if (!refresh) {
-      const cached = cache.get(key);
-      if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
+      const cachedPayload = await getCachedPayload(key);
+      if (cachedPayload) {
         return json(
           {
             ok: true,
-            data: cached.payload,
+            data: cachedPayload,
             cached: true,
           },
           {
             headers: {
-              'Cache-Control': 'public, max-age=20',
+              'Cache-Control': 'public, max-age=15, s-maxage=20, stale-while-revalidate=30',
             },
           },
         );
@@ -99,15 +130,15 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
         },
         {
           headers: {
-            'Cache-Control': 'public, max-age=20',
+            'Cache-Control': 'public, max-age=15, s-maxage=20, stale-while-revalidate=30',
           },
         },
       );
     }
 
     const job = buildPayload(fetch, pair, timeframe)
-      .then((payload) => {
-        cache.set(key, { createdAt: Date.now(), payload });
+      .then(async (payload) => {
+        await persistPayload(key, payload);
         return payload;
       })
       .finally(() => {
@@ -125,7 +156,7 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
       },
       {
         headers: {
-          'Cache-Control': 'public, max-age=20',
+          'Cache-Control': 'public, max-age=15, s-maxage=20, stale-while-revalidate=30',
         },
       },
     );

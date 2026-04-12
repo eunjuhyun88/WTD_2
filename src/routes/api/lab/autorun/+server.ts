@@ -6,10 +6,16 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
+import { env } from '$env/dynamic/private';
 import { runAutoResearch, type AutoResearchReport, type ExperimentConfig } from '$lib/server/autoResearch/experimentRunner.js';
+import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { autorunLimiter } from '$lib/server/rateLimit';
+import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { isRequestBodyTooLargeError, readJsonBody } from '$lib/server/requestGuards';
 
 // In-memory job store
 const _jobs = new Map<string, {
+  ownerUserId: string;
   status: 'running' | 'completed' | 'failed';
   progress: { done: number; total: number };
   bestScore: number;
@@ -18,19 +24,82 @@ const _jobs = new Map<string, {
   startedAt: number;
 }>();
 
-export const POST: RequestHandler = async ({ request }) => {
+const ARCHETYPES = ['CRUSHER', 'RIDER', 'ORACLE', 'GUARDIAN'] as const;
+const OBJECTIVES = ['maximize_winrate', 'minimize_drawdown', 'maximize_sharpe', 'balanced'] as const;
+
+type AutorunArchetype = ExperimentConfig['archetype'];
+type AutorunObjective = ExperimentConfig['objective'];
+
+function envBool(name: string, fallback: boolean): boolean {
+  const raw = env[name as keyof typeof env];
+  if (typeof raw !== 'string') return fallback;
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return fallback;
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
+function isWebAutorunEnabled(): boolean {
+  return envBool('LAB_AUTORUN_WEB_ENABLED', false);
+}
+
+function isAutorunArchetype(value: unknown): value is AutorunArchetype {
+  return typeof value === 'string' && ARCHETYPES.includes(value as AutorunArchetype);
+}
+
+function isAutorunObjective(value: unknown): value is AutorunObjective {
+  return typeof value === 'string' && OBJECTIVES.includes(value as AutorunObjective);
+}
+
+function disabledResponse() {
+  return json(
+    {
+      error: 'Lab autorun is disabled on the web origin',
+      code: 'AUTORUN_WEB_DISABLED',
+      reason: 'Move this workload to a queue/worker plane or explicitly enable LAB_AUTORUN_WEB_ENABLED for internal use only.',
+    },
+    { status: 503 },
+  );
+}
+
+export const POST: RequestHandler = async ({ request, cookies, getClientAddress }) => {
+  if (!isWebAutorunEnabled()) {
+    return disabledResponse();
+  }
+
+  const guard = await runIpRateLimitGuard({
+    request,
+    fallbackIp: getClientAddress(),
+    limiter: autorunLimiter,
+    scope: 'lab:autorun:post',
+    max: 2,
+    tooManyMessage: 'Too many autorun launches. Please wait.',
+  });
+  if (!guard.ok) return guard.response;
+
   try {
-    const body = await request.json();
-    const { userId, archetype, objective, experiments } = body;
+    const user = await getAuthUserFromCookies(cookies);
+    if (!user) {
+      return json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const body = await readJsonBody<Record<string, unknown>>(request, 16 * 1024);
+    const userId = typeof body.userId === 'string' && body.userId.trim() ? body.userId.trim() : user.id;
+    const archetype = isAutorunArchetype(body.archetype) ? body.archetype : undefined;
+    const objective = isAutorunObjective(body.objective) ? body.objective : undefined;
+    const experiments = typeof body.experiments === 'number' ? body.experiments : undefined;
 
     if (!userId) {
       return json({ error: 'userId required' }, { status: 400 });
+    }
+    if (userId !== user.id) {
+      return json({ error: 'Cannot launch autorun for another user' }, { status: 403 });
     }
 
     const jobId = `autorun-${userId}-${Date.now()}`;
 
     // Initialize job
     _jobs.set(jobId, {
+      ownerUserId: user.id,
       status: 'running',
       progress: { done: 0, total: experiments ?? 20 },
       bestScore: 0,
@@ -50,24 +119,43 @@ export const POST: RequestHandler = async ({ request }) => {
 
     return json({ success: true, jobId });
   } catch (err: any) {
+    if (isRequestBodyTooLargeError(err)) {
+      return json({ error: 'Request body too large' }, { status: 413 });
+    }
+    if (err instanceof SyntaxError) {
+      return json({ error: 'Invalid request body' }, { status: 400 });
+    }
     console.error('[api/lab/autorun] POST error:', err);
     return json({ error: 'Failed to start autorun' }, { status: 500 });
   }
 };
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, cookies }) => {
+  if (!isWebAutorunEnabled()) {
+    return disabledResponse();
+  }
+
+  const user = await getAuthUserFromCookies(cookies);
+  if (!user) {
+    return json({ error: 'Authentication required' }, { status: 401 });
+  }
+
   const jobId = url.searchParams.get('jobId');
 
   if (!jobId) {
-    // List all jobs
+    // List only the caller's jobs.
     const jobs = Array.from(_jobs.entries()).map(([id, j]) => ({
-      jobId: id, status: j.status, progress: j.progress, bestScore: j.bestScore,
-    }));
+      jobId: id, status: j.status, progress: j.progress, bestScore: j.bestScore, ownerUserId: j.ownerUserId,
+    })).filter((job) => job.ownerUserId === user.id)
+      .map(({ ownerUserId: _ownerUserId, ...job }) => job);
     return json({ jobs });
   }
 
   const job = _jobs.get(jobId);
   if (!job) {
+    return json({ error: 'Job not found' }, { status: 404 });
+  }
+  if (job.ownerUserId !== user.id) {
     return json({ error: 'Job not found' }, { status: 404 });
   }
 
