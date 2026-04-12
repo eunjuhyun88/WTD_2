@@ -227,17 +227,30 @@ PRIOR ART    OPPU (EMNLP 2024) · Per-Pcs (EMNLP 2024)
 
 **Core idea:** the existing bottom search input in `terminal/+page.svelte` becomes the pattern composer. User types a natural-language / semi-structured query; a client-side parser maps tokens → WTD block chain; the chart highlights matched bars; one button saves the current query as a new challenge in WTD.
 
-**No new layout.** The existing 3-panel v3 Bloomberg layout stays. Only the input handler, a new save path, and an inline result overlay change. No DOUNI chat panel, no character avatar, no archetype/stage, no 15-layer overlay.
+**Shell model:** Terminal is a working surface for `find -> read -> judge -> save`, not a permanent wall of small panels. Desktop defaults to **Scanner Rail + Multimodal Workspace**. The center is a **single result-first multimodal canvas**: search, streamed output, and any needed chart render all belong there. The **Inspector** opens only from an explicit deeper-detail action from that center flow. No DOUNI chat panel, no character avatar, no archetype/stage, no 15-layer overlay.
 
 **Day-1 features (must-have):**
 1. **Block-name search** — bottom input `<input class="query-input">` already exists (line ~1030). New client parser `src/lib/terminal/blockSearchParser.ts` converts input string → `ParsedQuery { symbol?, timeframe?, direction?, blocks: ParsedBlock[], confidence }`.
-2. **Preview overlay** — when parsed successfully, the chart highlights bars where the block chain matches. Preview is computed server-side via a tiny `/api/terminal/preview` endpoint OR client-side if features can be inlined (TBD zoom #1).
+2. **Preview overlay** — when parsed successfully, the active chart surface keeps a client-side preview card and highlights the evaluated bars locally. Single-symbol mode renders that preview inside the board itself; compare queries render an inline multi-chart compare block whose local cards each retain the parsed-query preview and project lightweight highlights on their own charts, while `TV` mode stays summary-only.
 3. **Save-as-challenge button** — reuse the existing `showPatternModal` (line ~1049). Modal now asks for `name` only (slug); direction / universe / timeframe / outcome are inferred from the parsed query + defaults. On Save:
    - `POST /api/wizard` with body `{slug, description, blocks, direction, timeframe}`
    - Server writes `WTD/challenges/pattern-hunting/<slug>/{answers.yaml, match.py, prepare.py, program.md}` via subprocess `python -m wizard.new_pattern --answers <tmp>` (composer.py is SSOT).
    - Toast: `Saved ${slug}` with action `Open in Lab` → `/lab?slug=<slug>`.
 4. **Deep link consumption** — `?symbol=...&tf=...&q=...` seeds the search input on mount. `?slug=...&instance=...` jumps to a specific instance row's bar.
 5. **Live market view** — existing chart + data-feed behavior preserved. No new 15-layer overlay.
+6. **Compare block mutation** — explicit compare queries such as `compare BTC ETH SOL 4h recent_rally` render an inline compare board inside `/terminal`; follow-up natural-language mutations update that same board in place rather than opening a separate detail surface.
+
+**Interaction rules:**
+- scanner single click previews the symbol in the Multimodal Workspace and keeps Inspector closed
+- scanner double click or send query runs the AI stream and appends summary/results in the Multimodal Workspace
+- single-symbol analysis renders as a mutable asset board, not a fixed one-off chart: users can flip the active symbol between dense `Board`, compact `Strip`, and `TV` views inside the same workspace
+- parsed-query previews belong inside that asset board, not only in the bottom input hint: `Board` mode can float the preview over the chart and highlight the evaluated bars, `Strip` keeps the same preview in the side context area plus compact chart highlights, and `TV` keeps the summary in the context rail
+- compare intents such as `compare BTC ETH SOL 4h` or `BTC vs ETH 1h` render as an inline multi-chart compare block in the Multimodal Workspace, not a separate page or Inspector-first flow
+- compare blocks behave like dense quant boards, not static cards: the same result can flip between `Grid`, `Focus`, `Single`, and `TV` layouts so users can inspect many charts or one dominant chart without leaving `/terminal`
+- once a compare block is selected, follow-up commands such as `SOL도 추가해`, `BTC랑 ETH만 남겨`, or `1h로 바꿔` mutate that same block instead of creating a fresh detail surface
+- research/detail blocks stay inline in the Multimodal Workspace; the Inspector opens only from an explicit `More detail` action
+- closing Inspector returns desktop to the 2-panel shell
+- mobile is mode-based: `Scanner`, `Workspace`, `Insight`; it must not squeeze desktop columns into a narrow viewport
 
 **Day-1 parser (keyword-first):**
 - Single dictionary mapping EN + KO phrases → WTD block names + default params. See `~/.claude/projects/.../memory/patterns.md` for the NL→block table.

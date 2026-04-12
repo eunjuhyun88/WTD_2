@@ -116,16 +116,16 @@
 <style>
   .hero {
     position: relative;
-    padding: clamp(92px, 11.5vh, 132px) clamp(22px, 4vw, 48px) 42px;
+    padding: clamp(96px, 12vh, 144px) clamp(22px, 4vw, 48px) 56px;
     font-family: var(--sc-font-body);
   }
 
   .hero-shell {
-    width: min(1120px, 100%);
+    width: min(1180px, 100%);
     margin: 0 auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: clamp(22px, 3vw, 34px);
+    gap: clamp(28px, 3.4vw, 40px);
     align-items: start;
   }
 
@@ -137,7 +137,7 @@
     min-height: auto;
     padding: 10px 0 0;
     overflow: hidden;
-    max-width: 900px;
+    max-width: 980px;
     justify-self: center;
     justify-items: center;
     text-align: center;
@@ -213,7 +213,7 @@
   .hero-meta p {
     max-width: 28rem;
     color: rgba(250, 247, 235, 0.68);
-    font-size: 0.92rem;
+    font-size: 0.98rem;
   }
 
   h1 {
@@ -240,7 +240,7 @@
   }
 
   .hero-lead {
-    max-width: 33rem;
+    max-width: 38rem;
     margin: 0;
     color: rgba(250, 247, 235, 0.94);
     font-size: clamp(1.14rem, 1.58vw, 1.34rem);
@@ -256,10 +256,10 @@
 
   .start-card {
     display: grid;
-    gap: 18px;
-    width: min(100%, 690px);
-    padding: 24px 24px 22px;
-    border-radius: 32px;
+    gap: 20px;
+    width: min(100%, 760px);
+    padding: 28px 28px 24px;
+    border-radius: 34px;
     border: 1px solid rgba(249, 216, 194, 0.48);
     background:
       linear-gradient(180deg, rgba(250, 247, 235, 0.84), rgba(249, 246, 241, 0.76)),
@@ -294,7 +294,8 @@
   }
 
   .start-copy p {
-    font-size: 0.94rem;
+    font-size: 1rem;
+    line-height: 1.62;
   }
 
   .composer {
@@ -305,9 +306,9 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: stretch;
-    gap: 9px;
-    padding: 8px;
-    border-radius: 22px;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 24px;
     background: linear-gradient(180deg, rgba(21, 19, 20, 0.98), rgba(12, 11, 12, 0.98));
     border: 1px solid rgba(17, 13, 14, 0.12);
     box-shadow: inset 0 1px 0 rgba(250, 247, 235, 0.03);
@@ -318,9 +319,9 @@
     grid-template-columns: 18px minmax(0, 1fr);
     align-items: center;
     gap: 12px;
-    min-height: 62px;
-    padding: 0 18px;
-    border-radius: 16px;
+    min-height: 66px;
+    padding: 0 20px;
+    border-radius: 18px;
     background: rgba(255, 255, 255, 0.02);
   }
 
@@ -337,7 +338,7 @@
     background: transparent;
     color: rgba(255, 247, 244, 0.96);
     font-family: var(--sc-font-body);
-    font-size: 1.08rem;
+    font-size: 1.04rem;
     outline: none;
   }
 
@@ -346,11 +347,11 @@
   }
 
   .composer-submit {
-    width: 196px;
+    width: 208px;
     min-width: 0;
-    min-height: 62px;
-    padding: 0 18px;
-    border-radius: 16px;
+    min-height: 66px;
+    padding: 0 20px;
+    border-radius: 18px;
     border: 1px solid rgba(236, 147, 147, 0.36);
     background: linear-gradient(180deg, rgba(249, 216, 194, 0.98), rgba(219, 154, 159, 0.96));
     color: #171214;
@@ -376,13 +377,13 @@
   .prompt-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 7px;
+    gap: 10px;
     justify-content: center;
   }
 
   .prompt-chip {
-    min-height: 32px;
-    padding: 0 11px;
+    min-height: 36px;
+    padding: 0 13px;
     border-radius: 999px;
     border: 1px solid rgba(219, 154, 159, 0.18);
     background: rgba(255, 255, 255, 0.28);
@@ -402,9 +403,9 @@
 
   .start-footer {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
-    gap: 10px 14px;
+    gap: 12px 16px;
     flex-wrap: wrap;
   }
 
@@ -438,8 +439,8 @@
 
   .proof-strip {
     display: grid;
-    gap: 8px;
-    width: min(100%, 1040px);
+    gap: 14px;
+    width: min(100%, 1100px);
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
     justify-self: center;
@@ -454,14 +455,14 @@
   .proof-list {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+    gap: 18px;
   }
 
   .proof-row {
     display: grid;
     grid-template-columns: 24px minmax(0, 1fr);
-    gap: 8px;
-    padding-top: 10px;
+    gap: 10px;
+    padding-top: 14px;
     border-top: 1px solid rgba(250, 247, 235, 0.08);
   }
 
@@ -480,7 +481,7 @@
     margin: 0;
     color: rgba(250, 247, 235, 0.5);
     font-size: 0.76rem;
-    line-height: 1.42;
+    line-height: 1.5;
   }
 
   @media (max-width: 980px) {
@@ -496,18 +497,20 @@
 
   @media (max-width: 760px) {
     .hero {
-      padding-top: 84px;
+      padding-top: 98px;
+      padding-bottom: 40px;
     }
 
     .story-panel {
       justify-items: start;
       text-align: left;
+      gap: 16px;
     }
 
     .story-panel::after {
       left: auto;
       right: -2px;
-      top: 128px;
+      top: 112px;
       transform: none;
     }
 
@@ -516,9 +519,26 @@
       max-width: 100%;
     }
 
+    h1 {
+      max-width: 10.4ch;
+      font-size: clamp(3.08rem, 11vw, 4.5rem);
+      line-height: 0.95;
+    }
+
+    .hero-lead {
+      font-size: 1.06rem;
+      line-height: 1.68;
+    }
+
     .start-copy {
       justify-items: start;
       text-align: left;
+    }
+
+    .prompt-row,
+    .start-footer,
+    .inline-links {
+      justify-content: flex-start;
     }
 
     .composer-shell {
@@ -542,25 +562,46 @@
 
   @media (max-width: 540px) {
     .hero {
-      padding-top: 76px;
+      padding-top: 88px;
       padding-left: 18px;
       padding-right: 18px;
-      padding-bottom: 28px;
+      padding-bottom: 30px;
     }
 
     .start-card {
-      padding: 20px;
-      border-radius: 24px;
+      padding: 22px 20px 20px;
+      border-radius: 26px;
     }
 
     h1 {
-      max-width: 9.2ch;
-      font-size: clamp(2.72rem, 11vw, 3.88rem);
+      max-width: 10ch;
+      font-size: clamp(2.96rem, 12vw, 4rem);
+      letter-spacing: -0.058em;
+    }
+
+    .hero-meta p {
+      font-size: 0.94rem;
+      line-height: 1.74;
+    }
+
+    .hero-lead {
+      font-size: 1rem;
+      line-height: 1.7;
     }
 
     .proof-row {
       grid-template-columns: 1fr;
       gap: 6px;
+    }
+
+    .composer-row {
+      min-height: 58px;
+      padding: 0 16px;
+    }
+
+    .composer-submit {
+      min-height: 54px;
+      font-size: 0.9rem;
     }
   }
 </style>
