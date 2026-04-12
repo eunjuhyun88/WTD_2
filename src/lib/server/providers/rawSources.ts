@@ -29,7 +29,10 @@
 //   - TAKER_BUY_SELL_RATIO   → always `period=1h limit=6`.
 //   Callers cannot override these. Display-timeframe fetches that
 //   follow the UI `#period` dropdown use the separate
-//   `OI_HIST_DISPLAY_TF` id (wired in a later slice).
+//   `OI_HIST_DISPLAY_TF` id (B11: wired — see the interval-keyed
+//   `OI_DISPLAY_TF_LIMITS` table and the rawSources map entry below).
+//   DISPLAY_TF retains the "adapter authorizes limits" principle —
+//   callers pick the interval, but the per-TF limit is locked here.
 //
 // §10 Q6 (force-orders window):
 //   - FORCE_ORDERS_1H → `limit=50`, existing behavior.
@@ -120,6 +123,8 @@ export interface RawSourceInputs {
 	[KnownRawId.DEPTH_L2_20]: { symbol: string };
 	[KnownRawId.OI_HIST_5M]: { symbol: string };
 	[KnownRawId.OI_HIST_1H]: { symbol: string };
+	// B11: display-TF OI history — caller picks interval, adapter picks limit.
+	[KnownRawId.OI_HIST_DISPLAY_TF]: { symbol: string; interval: OIHistoryInterval };
 	[KnownRawId.LONG_SHORT_GLOBAL]: { symbol: string };
 	[KnownRawId.LONG_SHORT_TOP_1H]: { symbol: string };
 	[KnownRawId.TAKER_BUY_SELL_RATIO]: { symbol: string };
@@ -157,6 +162,10 @@ export interface RawSourceOutputs {
 	[KnownRawId.DEPTH_L2_20]: OrderBookSnapshot;
 	[KnownRawId.OI_HIST_5M]: OIHistoryPoint[];
 	[KnownRawId.OI_HIST_1H]: OIHistoryPoint[];
+	// B11: same point shape as the fixed-TF OI raws — compare windows
+	// consume the array by index, so the structure is identical to
+	// OI_HIST_5M / OI_HIST_1H. Only the length / spacing differs.
+	[KnownRawId.OI_HIST_DISPLAY_TF]: OIHistoryPoint[];
 	[KnownRawId.LONG_SHORT_GLOBAL]: GlobalLSPoint[];
 	[KnownRawId.LONG_SHORT_TOP_1H]: number | null;
 	[KnownRawId.TAKER_BUY_SELL_RATIO]: TakerRatioPoint[];
@@ -234,6 +243,51 @@ const LS_1H_LIMIT = 6; //  1h × 6  = 6h rolling
 const TAKER_1H_LIMIT = 6; //  1h × 6  = 6h rolling
 const FORCE_ORDERS_1H_LIMIT = 50; // §10 Q6 — primary window
 const FORCE_ORDERS_4H_LIMIT = 200; // §10 Q6 — regime-context window
+
+// B11: OI_HIST_DISPLAY_TF — caller-supplied interval, adapter-authored limit.
+//
+// Unlike OI_HIST_5M / OI_HIST_1H (fixed-period engine raws used for
+// rolling point-in-time stats), DISPLAY_TF feeds the research-view
+// block that needs compare windows up to 7d across any user-selected
+// display timeframe. Each interval gets a limit tuned to:
+//   (a) stay under Binance's `/futures/data/openInterestHist` 500-row
+//       hard cap,
+//   (b) provide enough bars for rolling z-score (window ≈ 50) and
+//       regime tagging (window ≈ 40), and
+//   (c) cover the longest research-view compare window the TF is
+//       physically capable of spanning.
+//
+// 5m and 15m cannot reach the 7d compare window even at Binance's
+// 500-row cap — their limits below are the max useful lookback. The
+// research view is responsible for degrading gracefully (null-out the
+// 7d comparator) on those TFs; this file only guarantees the fetch
+// returns the longest valid window.
+//
+// The table is declared `as const` so the `OIHistoryInterval` union
+// below is derived from the single source of truth and cannot drift.
+
+const OI_DISPLAY_TF_LIMITS = {
+	'5m': 288, //  5m × 288 = 24h  — max 24h compare
+	'15m': 288, // 15m × 288 = 72h  — 3d window (7d unreachable on 15m)
+	'30m': 336, // 30m × 336 = 7d   — exactly spans 7d compare
+	'1h': 336, //  1h × 336 = 14d  — 7d compare + regime buffer
+	'2h': 240, //  2h × 240 = 20d  — 7d compare + 13d buffer
+	'4h': 180, //  4h × 180 = 30d  — monthly regime context
+	'6h': 120, //  6h × 120 = 30d  — monthly regime context
+	'12h': 100, // 12h × 100 = 50d  — 7-week regime
+	'1d': 60 //   1d × 60  = 60d  — 2-month regime
+} as const satisfies Record<string, number>;
+
+/**
+ * The full set of display-timeframe intervals the B11 adapter accepts.
+ * Derived from `OI_DISPLAY_TF_LIMITS` keys so the union cannot drift
+ * from the per-interval limit table.
+ *
+ * Consumers (e.g. the research view OI metric block) type their
+ * interval argument against this union so `readRaw` call sites
+ * type-check the TF without needing a separate runtime guard.
+ */
+export type OIHistoryInterval = keyof typeof OI_DISPLAY_TF_LIMITS;
 
 // ---------------------------------------------------------------------------
 // Shared fetch + memoize for compound sources
@@ -579,6 +633,18 @@ export const rawSources: RawSourceMap = {
 		binanceQuota.execute(() => fetchOIHistory(symbol, '5m', OI_5M_LIMIT)),
 	[KnownRawId.OI_HIST_1H]: async ({ symbol }) =>
 		binanceQuota.execute(() => fetchOIHistory(symbol, '1h', OI_1H_LIMIT)),
+	// B11 — display-TF OI history. Caller supplies the interval from
+	// the `OIHistoryInterval` union; the per-interval limit is locked
+	// above in `OI_DISPLAY_TF_LIMITS` so the §10 Q1 "adapter authorizes
+	// limits" principle still holds. No memoization: mirrors the
+	// sibling fixed-TF OI atoms above. The `binanceQuota.execute`
+	// wrapper owns concurrency on the engine path. Errors propagate —
+	// the research view is responsible for catching them the same way
+	// it handles the other OI raws.
+	[KnownRawId.OI_HIST_DISPLAY_TF]: async ({ symbol, interval }) =>
+		binanceQuota.execute(() =>
+			fetchOIHistory(symbol, interval, OI_DISPLAY_TF_LIMITS[interval])
+		),
 	[KnownRawId.LONG_SHORT_GLOBAL]: async ({ symbol }) =>
 		binanceQuota.execute(() => fetchGlobalLS(symbol, '1h', LS_1H_LIMIT)),
 	[KnownRawId.TAKER_BUY_SELL_RATIO]: async ({ symbol }) =>
