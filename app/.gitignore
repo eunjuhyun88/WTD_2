@@ -1,0 +1,66 @@
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Editor temp files
+*.swp
+*.swo
+*~
+
+# Claude Code — local session state stays local, but swarm-v1 committed
+# surface (agents, commands, slash-defs) is tracked. Git cannot re-include
+# children if the parent directory itself is ignored, so we ignore
+# `.claude/*` (contents) instead of `.claude/` (directory).
+.claude/*
+!.claude/agents/
+!.claude/agents/**
+!.claude/commands/
+!.claude/commands/**
+
+# Agent context — runtime state stays local, policy files are tracked.
+# Same "ignore contents, not directory" trick as above so `policy/` can
+# be selectively re-included.
+.agent-context/*
+!.agent-context/policy/
+!.agent-context/policy/**
+context-kit.local.json
+.codex/
+
+# Local context evidence (runtime-only)
+/docs/generated/agent-usage-report.json
+/docs/generated/agent-usage-report.md
+/docs/generated/context-ab-report.md
+/docs/generated/context-validation-report.json
+/docs/generated/context-validation-report.md
+/docs/task-contracts/active/*.md
+!/docs/task-contracts/active/README.md
+# Local UI verification artifacts
+.playwright-cli/
+output/
+tmp/
+.mcp.json
+.env*.local
+
+# MemKraft — runtime state stays local, knowledge pages are tracked.
+memory/.memkraft/
+memory/sessions/

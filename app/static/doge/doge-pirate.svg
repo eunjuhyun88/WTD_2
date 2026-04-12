@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Pirate Doge - Eye patch and pirate hat -->
+  <!-- Head base -->
+  <ellipse cx="100" cy="110" rx="65" ry="60" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <!-- Inner face lighter area -->
+  <ellipse cx="100" cy="118" rx="42" ry="38" fill="#f0d06e"/>
+  <!-- Ears -->
+  <path d="M45 75 L25 30 L65 60 Z" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <path d="M155 75 L175 30 L135 60 Z" fill="#d4a33e" stroke="#000" stroke-width="3.5"/>
+  <path d="M50 72 L38 42 L63 62 Z" fill="#c4922e"/>
+  <path d="M150 72 L162 42 L137 62 Z" fill="#c4922e"/>
+  <!-- Pirate Hat -->
+  <path d="M30 72 Q100 20 170 72 Q150 35 100 25 Q50 35 30 72Z" fill="#222" stroke="#000" stroke-width="3"/>
+  <path d="M35 72 Q100 30 165 72" fill="none" stroke="#000" stroke-width="3"/>
+  <!-- Hat skull decoration -->
+  <circle cx="100" cy="52" r="8" fill="#fff" stroke="#000" stroke-width="2"/>
+  <path d="M92 60 L96 65 L100 60 L104 65 L108 60" fill="none" stroke="#fff" stroke-width="2"/>
+  <circle cx="97" cy="51" r="1.5" fill="#000"/>
+  <circle cx="103" cy="51" r="1.5" fill="#000"/>
+  <path d="M96 55 L104 55" stroke="#000" stroke-width="1.5"/>
+  <!-- Left eye (visible) -->
+  <ellipse cx="78" cy="102" rx="10" ry="11" fill="#fff" stroke="#000" stroke-width="3"/>
+  <circle cx="80" cy="103" r="5" fill="#1a1a1a"/>
+  <circle cx="82" cy="101" r="2" fill="#fff"/>
+  <!-- Right eye (eye patch) -->
+  <ellipse cx="122" cy="102" rx="10" ry="11" fill="#222" stroke="#000" stroke-width="3"/>
+  <!-- Eye patch strap -->
+  <path d="M112 96 Q100 88 88 82" stroke="#222" stroke-width="4" fill="none"/>
+  <path d="M132 96 Q145 88 160 82" stroke="#222" stroke-width="4" fill="none"/>
+  <!-- Nose -->
+  <ellipse cx="100" cy="120" rx="8" ry="6" fill="#1a1a1a" stroke="#000" stroke-width="2"/>
+  <ellipse cx="97" cy="118" rx="2" ry="1.5" fill="#444"/>
+  <!-- Mouth - smirk -->
+  <path d="M85 132 Q100 142 118 130" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+  <!-- Gold tooth -->
+  <rect x="98" y="132" width="5" height="6" rx="1" fill="#ffd700" stroke="#000" stroke-width="1"/>
+  <!-- Scar on cheek -->
+  <path d="M130 115 L140 125" stroke="#c44" stroke-width="2" stroke-linecap="round"/>
+</svg>

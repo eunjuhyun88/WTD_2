@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+#
+# .githooks/pre-commit — swarm-v1 path enforcement (§6 Rule #3, load-bearing)
+#
+# If the current branch has an active slice claim under
+# .agent-context/ownership/branch-<sanitized-branch>.json, every staged
+# file must be covered by that claim's "paths" globs. Otherwise the
+# commit is rejected.
+#
+# If there is no active claim (e.g. solo work on main, or a worktree
+# that was not created by `slice new`), the hook is a no-op — it
+# silently exits 0. This keeps the hook safe to ship to devs who are
+# not yet using swarm-v1 workflows.
+#
+# Design: docs/exec-plans/active/swarm-v1-design-2026-04-11.md §3.1
+#         (Scheduler) + §6 invariant 3 + §10 "Two agents same file" row.
+#
+# Why a POSIX shell hook instead of a Node script?
+#   - Runs inside git's own hook env (fast, no npm required).
+#   - No node_modules dependency — fresh clones work.
+#   - `jq` is the only external dep and is standard on dev machines.
+#
+# If `jq` is missing, the hook logs a one-line warning and exits 0
+# (fail-open) so contributors are never blocked by missing tooling.
+
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT_DIR"
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'detached')"
+if [ "$BRANCH" = "detached" ] || [ "$BRANCH" = "HEAD" ]; then
+	exit 0
+fi
+
+SANITIZED="$(printf '%s' "$BRANCH" | sed 's/[^a-zA-Z0-9._-]/_/g')"
+CLAIM_FILE=".agent-context/ownership/branch-${SANITIZED}.json"
+
+if [ ! -f "$CLAIM_FILE" ]; then
+	# No active slice claim for this branch — nothing to enforce.
+	exit 0
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+	echo "[pre-commit] jq not found; skipping swarm-v1 path enforcement for branch ${BRANCH}" >&2
+	exit 0
+fi
+
+SLICE_ID="$(jq -r '.slice_id // "unknown"' "$CLAIM_FILE")"
+
+# --- Cross-worktree duplicate claim check (Z5) ---
+# Walk sibling worktrees; if ANY other worktree also holds a claim for
+# this slice-id, reject — two worktrees working on the same slice is
+# the root cause of most sibling collisions.
+CROSS_CONFLICT=""
+while IFS= read -r wt_line; do
+	[ -z "$wt_line" ] && continue
+	wt_path="${wt_line#worktree }"
+	# Skip ourselves
+	[ "$wt_path" = "$ROOT_DIR" ] && continue
+	sibling_claim="${wt_path}/.agent-context/ownership/${SLICE_ID}.json"
+	if [ -f "$sibling_claim" ]; then
+		sibling_branch="$(jq -r '.branch // "unknown"' "$sibling_claim" 2>/dev/null || echo 'unknown')"
+		CROSS_CONFLICT="${wt_path} (branch: ${sibling_branch})"
+		break
+	fi
+done < <(git worktree list --porcelain 2>/dev/null | grep '^worktree ')
+
+if [ -n "$CROSS_CONFLICT" ]; then
+	{
+		echo "[pre-commit] Cross-worktree conflict: slice '${SLICE_ID}' is also claimed by:"
+		echo "  ${CROSS_CONFLICT}"
+		echo ""
+		echo "Two worktrees must not work on the same slice. Kill the stale claim"
+		echo "in the other worktree (\`slice kill ${SLICE_ID}\`) before committing here."
+	} >&2
+	exit 1
+fi
+
+# macOS ships bash 3.2 which lacks `readarray` (bash 4+ builtin). Use a
+# while-read loop instead so the hook works on every Apple silicon dev box.
+OWNED=()
+while IFS= read -r line; do
+	[ -n "$line" ] && OWNED+=("$line")
+done < <(jq -r '.paths[]?' "$CLAIM_FILE")
+
+if [ "${#OWNED[@]}" -eq 0 ]; then
+	echo "[pre-commit] claim ${CLAIM_FILE} has no paths[]; refusing commit to avoid wide-open commits" >&2
+	exit 1
+fi
+
+# Cross-worktree duplicate check (Z5 §16.2 — fail if sibling owns same slice)
+SIBLING_CONFLICT=""
+while IFS= read -r WT_LINE; do
+	WT_PATH="${WT_LINE#worktree }"
+	[ "$WT_PATH" = "$ROOT_DIR" ] && continue
+	SIBLING_CLAIM="$WT_PATH/.agent-context/ownership/${SLICE_ID}.json"
+	if [ -f "$SIBLING_CLAIM" ]; then
+		SIBLING_CONFLICT="$WT_PATH"
+		break
+	fi
+done < <(git worktree list --porcelain 2>/dev/null | grep '^worktree ')
+
+if [ -n "$SIBLING_CONFLICT" ]; then
+	{
+		echo "[pre-commit] CROSS-WORKTREE CONFLICT: slice '${SLICE_ID}' is also claimed in:"
+		echo "  worktree: $SIBLING_CONFLICT"
+		echo "  claim: $SIBLING_CONFLICT/.agent-context/ownership/${SLICE_ID}.json"
+		echo ""
+		echo "Release the claim there first (slice kill / slice merge) before committing here."
+	} >&2
+	exit 1
+fi
+
+# Collect staged files (A, M, R — additions, modifications, renames).
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+if [ -z "$STAGED" ]; then
+	exit 0
+fi
+
+match_owned() {
+	local file="$1"
+	local glob
+	for glob in "${OWNED[@]}"; do
+		# Exact path match
+		if [ "$file" = "$glob" ]; then
+			return 0
+		fi
+		# Directory prefix (glob ends with /**): strip **, match prefix
+		case "$glob" in
+			*/\*\*)
+				prefix="${glob%/\*\*}"
+				case "$file" in
+					"$prefix"/*) return 0 ;;
+				esac
+				;;
+			*/\*)
+				prefix="${glob%/\*}"
+				# Single-level match: file's dirname must equal prefix
+				if [ "$(dirname "$file")" = "$prefix" ]; then
+					return 0
+				fi
+				;;
+		esac
+		# Bash glob match (covers patterns like src/lib/contracts/*.ts)
+		# shellcheck disable=SC2053
+		if [[ $file == $glob ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+VIOLATIONS=()
+while IFS= read -r file; do
+	[ -z "$file" ] && continue
+	if ! match_owned "$file"; then
+		VIOLATIONS+=("$file")
+	fi
+done <<< "$STAGED"
+
+if [ "${#VIOLATIONS[@]}" -gt 0 ]; then
+	{
+		echo "[pre-commit] Slice '${SLICE_ID}' on branch '${BRANCH}' touched paths outside its claim:"
+		for v in "${VIOLATIONS[@]}"; do
+			echo "  - ${v}"
+		done
+		echo ""
+		echo "Owned paths:"
+		for o in "${OWNED[@]}"; do
+			echo "  + ${o}"
+		done
+		echo ""
+		echo "Either:"
+		echo "  1) unstage the out-of-scope files and commit separately, or"
+		echo "  2) edit ${CLAIM_FILE} to include the paths if they legitimately belong to this slice, or"
+		echo "  3) \`slice kill ${SLICE_ID}\` if the scope was wrong and start a new slice."
+		echo ""
+		echo "See docs/exec-plans/active/swarm-v1-design-2026-04-11.md §6 Rule #3."
+	} >&2
+	exit 1
+fi
+
+exit 0

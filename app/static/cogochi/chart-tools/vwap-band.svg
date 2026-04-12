@@ -1,0 +1,11 @@
+<svg width="320" height="180" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="12" y="12" width="296" height="156" rx="24" fill="#0B1020" fill-opacity="0.92" stroke="#27406E" stroke-width="4"/>
+  <path d="M34 124H286" stroke="#94A3B8" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round"/>
+  <path d="M36 124L68 100L92 108L118 84L144 92L174 66L206 72L232 50L284 60" stroke="#7EE7C6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M36 138H284" stroke="#4F7FFF" stroke-opacity="0.35" stroke-width="2" stroke-dasharray="8 10"/>
+  <path d="M96 50H214" stroke="#F6C667" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="96" cy="50" r="8" fill="#F6C667"/>
+  <circle cx="214" cy="50" r="8" fill="#F6C667"/>
+  <rect x="24" y="24" width="78" height="30" rx="15" fill="#111827" stroke="#F6C667" stroke-opacity="0.7"/>
+  <text x="63" y="44" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="middle">VWAP</text>
+</svg>
