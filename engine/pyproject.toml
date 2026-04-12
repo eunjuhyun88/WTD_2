@@ -1,6 +1,6 @@
 [project]
 name = "cogochi-autoresearch"
-version = "0.2.0"
+version = "0.1.0"
 description = "Shared models and feature calculators for the Cogochi LoRA pipeline (Track A) and the pattern-scanner swarm challenge (Track B)"
 requires-python = ">=3.11"
 dependencies = [
@@ -8,26 +8,24 @@ dependencies = [
     "pandas>=2.0",
     "numpy>=1.24",
     "pyyaml>=6.0",
-    # --- API server ---
-    "fastapi>=0.111",
-    "uvicorn[standard]>=0.29",
-    "httpx>=0.27",
-    # --- ML ---
-    "lightgbm>=4.3",
-    "scikit-learn>=1.4",
-    "scipy>=1.12",
-    # --- Scheduling (background scanner) ---
-    "apscheduler>=3.10",
+    "lightgbm[apple]>=4.6.0",
+    "scikit-learn>=1.8.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
-    "pytest-asyncio>=0.23",
+]
+ml = [
+    "lightgbm>=4.0",
+    "scikit-learn>=1.4",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# "." → cogochi imports (models.signal, scanner.feature_calc, etc.)
+# ".." → wizard imports (wizard.composer, wizard.schema, etc.) tested from
+#        the same env without needing a separate wizard pyproject.
 pythonpath = [".", ".."]
 
 [dependency-groups]
