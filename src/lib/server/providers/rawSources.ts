@@ -75,6 +75,17 @@ import { fetchFearGreed } from '$lib/server/feargreed';
 import { fetchKlinesServer, fetch24hrServer } from './binance';
 import type { BinanceKline, Binance24hr } from '$lib/engine/types';
 import { binanceQuota } from './binanceQuota';
+import {
+	fetchOIHistoryServer,
+	fetchFundingHistoryServer,
+	fetchLSRatioHistoryServer,
+	fetchLiquidationHistoryServer,
+	type OIDataPoint,
+	type FundingDataPoint,
+	type LSRatioDataPoint,
+	type LiquidationDataPoint
+} from './coinalyze';
+import { SECTOR_MAP_FROZEN, SECTOR_OVERRIDE_EMPTY, type SectorLabel } from './sectorTable';
 
 // ---------------------------------------------------------------------------
 // Per-raw input + output type maps
@@ -88,6 +99,10 @@ import { binanceQuota } from './binanceQuota';
 // for the runtime behavior in that case.
 
 type EmptyInput = Record<string, never>;
+
+// B14 sector taxonomy (SectorLabel union + SECTOR_MAP_FROZEN +
+// SECTOR_OVERRIDE_EMPTY) lives in `./sectorTable` — see the module
+// comment there for the 7-bucket rationale and the full base table.
 
 /**
  * Kline fetches carry a caller-supplied `limit` because different feature
@@ -134,6 +149,12 @@ export interface RawSourceInputs {
 	[KnownRawId.UPBIT_VOLUME_MAP]: EmptyInput;
 	[KnownRawId.BITHUMB_PRICE_MAP]: EmptyInput;
 	[KnownRawId.BTC_DOMINANCE]: EmptyInput;
+	// B14: internal sector classification. Both atoms are EmptyInput;
+	// map composition is caller-side (override layer takes priority
+	// over the base map). See the fetcher entries below for the
+	// taxonomy rationale and the base table.
+	[KnownRawId.SECTOR_MAP]: EmptyInput;
+	[KnownRawId.SECTOR_OVERRIDE]: EmptyInput;
 	// B12: futures-wide 24hr ticker field slices. All seven atoms share
 	// one memoized `/fapi/v1/ticker/24hr` roundtrip and return map/set
 	// shapes keyed by symbol, so callers can look up O(1) without
@@ -145,7 +166,26 @@ export interface RawSourceInputs {
 	[KnownRawId.TICKER_LOW_PRICE]: EmptyInput;
 	[KnownRawId.TICKER_LAST_PRICE]: EmptyInput;
 	[KnownRawId.UNIVERSE_IS_USDT]: EmptyInput;
+	// B13-b: Coinalyze cross-exchange aggregated history. All four
+	// share the same `(pair, tf, limit)` call shape, mirroring the
+	// underlying `fetchXXXHistoryServer` signatures in coinalyze.ts.
+	// `pair` is the canonical `BASE/QUOTE` string (e.g. `BTC/USDT`),
+	// matching what toolExecutor.ts already computes for DOUNI inputs.
+	[KnownRawId.COINALYZE_OI_HIST_TF]: CoinalyzeHistoryInput;
+	[KnownRawId.COINALYZE_FUNDING_HIST_TF]: CoinalyzeHistoryInput;
+	[KnownRawId.COINALYZE_LSRATIO_HIST_TF]: CoinalyzeHistoryInput;
+	[KnownRawId.COINALYZE_LIQ_HIST_TF]: CoinalyzeHistoryInput;
 }
+
+/**
+ * Coinalyze history input tuple. `pair` is `BASE/QUOTE` (slashed),
+ * `tf` is a human timeframe like `1h` / `4h` / `1d` (the coinalyze
+ * adapter maps to its internal `1hour` / `4hour` / `daily` vocabulary
+ * via `toCoinalyzeInterval`), and `limit` is the history depth in
+ * bars. Default of 60 at the call site mirrors the existing
+ * toolExecutor invocations we are migrating.
+ */
+export type CoinalyzeHistoryInput = { pair: string; tf: string; limit: number };
 
 export interface RawSourceOutputs {
 	[KnownRawId.FEAR_GREED_VALUE]: number | null;
@@ -186,6 +226,12 @@ export interface RawSourceOutputs {
 	[KnownRawId.UPBIT_VOLUME_MAP]: Map<string, number>;
 	[KnownRawId.BITHUMB_PRICE_MAP]: Map<string, number>;
 	[KnownRawId.BTC_DOMINANCE]: number | null;
+	// B14: base symbol -> sector label. Keys are the stripped base
+	// (e.g. `BTC`, `ETH`), not the full perpetual symbol (`BTCUSDT`).
+	// Labels come from the fixed `SectorLabel` union below so consumers
+	// can exhaustively switch over them without a `string` fallback.
+	[KnownRawId.SECTOR_MAP]: Map<string, SectorLabel>;
+	[KnownRawId.SECTOR_OVERRIDE]: Map<string, SectorLabel>;
 	// B12: each entry is the USDT-filtered futures universe view of one
 	// field on Binance's `/fapi/v1/ticker/24hr` response. Keys are the
 	// normalized perpetual symbol (e.g. `BTCUSDT`); values are the
@@ -201,10 +247,159 @@ export interface RawSourceOutputs {
 	[KnownRawId.TICKER_LOW_PRICE]: Map<string, number>;
 	[KnownRawId.TICKER_LAST_PRICE]: Map<string, number>;
 	[KnownRawId.UNIVERSE_IS_USDT]: Set<string>;
+	// B13-b: Coinalyze history return shapes are the existing
+	// `XXXDataPoint[]` arrays exported from coinalyze.ts. Re-exporting
+	// them through `readRaw()` does not change the row shape — it
+	// only relocates the fetch path into the provenance chain so
+	// buildResearchBlocks.ts can cite a sourceId the type system
+	// actually knows about.
+	[KnownRawId.COINALYZE_OI_HIST_TF]: OIDataPoint[];
+	[KnownRawId.COINALYZE_FUNDING_HIST_TF]: FundingDataPoint[];
+	[KnownRawId.COINALYZE_LSRATIO_HIST_TF]: LSRatioDataPoint[];
+	[KnownRawId.COINALYZE_LIQ_HIST_TF]: LiquidationDataPoint[];
 }
 
 /** The subset of `KnownRawId` values this slice implements. */
 export type SupportedRawId = keyof RawSourceInputs & keyof RawSourceOutputs;
+
+// ---------------------------------------------------------------------------
+// B-series closeout: deferred-with-rationale atoms
+// ---------------------------------------------------------------------------
+//
+// The B-series (B10 … B14) exists to close the gap where `KnownRawId`
+// declares a raw atom but `rawSources` has no entry wiring it to a
+// fetcher. Every such dangling atom is a broken link in the provenance
+// chain the verdict engine cites.
+//
+// B10/B11/B12 wired new data paths. B13-a/B13-b migrated existing
+// consumers onto `readRaw()`. B14 closed the SECTOR_* gap with an
+// internal taxonomy. The slice you are reading now (B-final) closes
+// the **last 11** unwired atoms — but it does so by **explicitly
+// deferring them with rationale** rather than writing code we would
+// have to throw away when the real consumer lands.
+//
+// The two unwired groups:
+//
+//   1. `*_LIVE` atoms (3):  AGG_TRADES_LIVE / BOOK_TICKER_LIVE /
+//      DEPTH_LIVE. Their semantic is "sub-second streaming feed",
+//      which implies a WebSocket transport. We have no WS consumer
+//      in the engine yet, and wiring them as REST-polled shims
+//      would produce misleading "live" data (REST gives you a
+//      snapshot, not every update). Wiring is premature; we leave
+//      the atom contracts in place so that when a streaming
+//      consumer lands (E7 live scan loop or similar), the catalog
+//      already has the right identifiers reserved.
+//
+//   2. `SESSION_*` atoms (8): SCAN_MODE / TOP_N / CUSTOM_SYMBOLS /
+//      DISPLAY_TIMEFRAME / MIN_ALPHA / ACTIVE_FILTER / SELECTED_SYMBOL /
+//      INTENT_FOCUS. These are not fetched from any upstream — they
+//      are session-scoped inputs (per-user or per-device state).
+//      Wiring them requires resolving a contract-level question
+//      that is out of scope for the providers layer: where does
+//      session state live (per-user DB row? per-device localStorage?
+//      per-request header?). Until that lands (COGOCHI §10 Q3),
+//      `readRaw(SESSION_*)` should not exist because there is
+//      nothing to "read" — session inputs flow in from the request
+//      pipeline, not from a provider.
+//
+// The enforcement mechanism: a set-algebra derivation. `DeferredRawId`
+// is defined as `Exclude<KnownRawId, SupportedRawId>` — the catalog
+// minus the wired set. `DEFERRED_RAW_IDS: Record<DeferredRawId, ...>`
+// then forces the developer to supply a rationale entry for every
+// unwired atom. Both directions of the equality `KnownRawId ===
+// SupportedRawId ∪ DeferredRawId` are enforced automatically:
+//
+//   - Adding a new member to `KnownRawId` without wiring it makes
+//     `Exclude` pick it up; `Record` then demands an entry or the
+//     check fails with "Property 'NEW_ATOM' is missing in type".
+//   - Wiring an atom (adding to `RawSourceInputs` / `rawSources`)
+//     removes it from `DeferredRawId`; the orphan entry in
+//     `DEFERRED_RAW_IDS` then fails with "Object literal may only
+//     specify known properties".
+//
+// No hand-rolled assertion is needed — TypeScript's structural
+// typing does the work. This is the load-bearing "B-series is
+// done" invariant.
+
+/**
+ * `KnownRawId` values the B-series intentionally leaves unwired.
+ * Derived as the set-theoretic complement of `SupportedRawId`
+ * inside `KnownRawId`, so adding or wiring an atom in `ids.ts` /
+ * `rawSources.ts` automatically reshapes this union — there is
+ * no manual list to maintain. Each member has a machine-readable
+ * rationale in `DEFERRED_RAW_IDS` below. Consumers should **not**
+ * call `readRaw()` on these atoms — doing so is a type error
+ * because `DeferredRawId` is disjoint from `SupportedRawId`.
+ */
+export type DeferredRawId = Exclude<KnownRawId, SupportedRawId>;
+
+/**
+ * Per-atom deferral rationale. `reason` says why the slice is not
+ * wired right now; `unblocker` says what has to land before it can
+ * be wired. Both fields are required — the whole point of the
+ * closeout is that "deferred" is never an empty gesture.
+ *
+ * The `Record<DeferredRawId, ...>` signature is the invariant: if a
+ * new `KnownRawId` is added without wiring, TypeScript demands an
+ * entry here; if an existing deferred atom is wired, the entry
+ * becomes an orphan property and is rejected. Either direction of
+ * the catalog equality is enforced by this single line.
+ */
+export const DEFERRED_RAW_IDS: Readonly<
+	Record<DeferredRawId, { readonly reason: string; readonly unblocker: string }>
+> = {
+	[KnownRawId.AGG_TRADES_LIVE]: {
+		reason:
+			'Live aggregated trade feed implies WebSocket streaming; REST polling would produce misleading "live" semantics.',
+		unblocker:
+			'Streaming consumer (engine E7 live scan loop or equivalent) + a WS transport layer in providers/.'
+	},
+	[KnownRawId.BOOK_TICKER_LIVE]: {
+		reason:
+			'Top-of-book updates every tick; REST snapshot breaks the contract of "current best bid/ask right now".',
+		unblocker: 'Same WS transport layer as AGG_TRADES_LIVE.'
+	},
+	[KnownRawId.DEPTH_LIVE]: {
+		reason:
+			'Order book deltas stream in, they do not poll. A REST depth snapshot is a distinct atom (DEPTH_L2_20) and is already wired.',
+		unblocker: 'Same WS transport layer as AGG_TRADES_LIVE.'
+	},
+	[KnownRawId.SESSION_SCAN_MODE]: {
+		reason:
+			'Session input, not a provider fetch. Scan mode ("topN" / "custom" / preset) is chosen by the user and flows in from the request pipeline.',
+		unblocker: 'COGOCHI §10 Q3 — per-user vs per-device session storage contract decision.'
+	},
+	[KnownRawId.SESSION_TOP_N]: {
+		reason: 'Session input — user-chosen universe size, not a fetchable value.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_CUSTOM_SYMBOLS]: {
+		reason: 'Session input — user-supplied explicit symbol list, not a fetchable value.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_DISPLAY_TIMEFRAME]: {
+		reason:
+			'Session input — user-chosen display timeframe. The engine consumes it as a parameter to other reads (KLINES_*, COINALYZE_*_HIST_TF), not as a fetch of its own.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_MIN_ALPHA]: {
+		reason: 'Session input — user-chosen alpha filter threshold for scanner results.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_ACTIVE_FILTER]: {
+		reason: 'Session input — user-toggled "only show X" filter state on scanner/terminal.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_SELECTED_SYMBOL]: {
+		reason: 'Session input — which symbol the user is currently focused on in the terminal.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	},
+	[KnownRawId.SESSION_INTENT_FOCUS]: {
+		reason:
+			'Session input — which intent slot ("watch" / "trade" / "research") the user is in.',
+		unblocker: 'Same as SESSION_SCAN_MODE.'
+	}
+};
 
 /**
  * Narrowed union of every `KLINES_*` raw id. Callers that dispatch a
@@ -316,41 +511,98 @@ const OI_DISPLAY_TF_LIMITS = {
 export type OIHistoryInterval = keyof typeof OI_DISPLAY_TF_LIMITS;
 
 // ---------------------------------------------------------------------------
+// Compound memo helpers
+// ---------------------------------------------------------------------------
+//
+// Every compound fetch in this file shares the same two-hand memo shape:
+//
+//   1. In-flight promise dedup. Requests that arrive while a fetch is
+//      already pending share the same promise, so the N atom-level
+//      consumers of a compound payload (e.g. the 7 TICKER_* atoms all
+//      deriving from one /fapi/v1/ticker/24hr roundtrip) cost exactly
+//      one network call inside the TTL window.
+//
+//   2. TTL-based staleness. After the window closes, the next caller
+//      triggers a fresh fetch. Windows are intentionally short because
+//      the persistent cache layer lives elsewhere (coinalyze.ts cache,
+//      binanceQuota concurrency gate, etc.) — this memo is only for
+//      in-flight dedupe on the hot path.
+//
+// Error policy is caller-controlled via the fetcher closure:
+//
+//   - Throw variant: the fetcher rejects on error. `compoundMemo`
+//     clears the in-flight slot so the NEXT caller retries immediately
+//     (no sticky cached error). Used for futuresTickers / premiumIndex
+//     / upbit / btcOnchain / mempool where the engine path wants to
+//     see real failures.
+//
+//   - Null variant: the fetcher swallows errors internally via
+//     `.catch(() => null)` and returns a resolved-null. The helper's
+//     clearing path is never triggered; the null-resolved promise
+//     stays cached for the TTL window so failure is sticky within one
+//     window. Used for openInterest / longShortTop where the engine
+//     degrades gracefully rather than propagating a scanner-killing
+//     throw from one symbol's fetch.
+//
+// Both variants share the same helper function. The only difference is
+// what the caller passes into the fetcher closure.
+
+/**
+ * Singleton compound memo. Shares one in-flight promise across all
+ * callers for `ttlMs` milliseconds. On fetch rejection, clears the
+ * cached promise so the next call retries.
+ */
+function compoundMemo<T>(ttlMs: number, fetcher: () => Promise<T>): () => Promise<T> {
+	let inflight: Promise<T> | null = null;
+	let at = 0;
+	return () => {
+		const now = Date.now();
+		if (inflight && now - at < ttlMs) return inflight;
+		at = now;
+		inflight = fetcher().catch((err) => {
+			inflight = null;
+			throw err;
+		});
+		return inflight;
+	};
+}
+
+/**
+ * Keyed compound memo — one in-flight slot per key (e.g. per-symbol).
+ * Same semantics as `compoundMemo` but each key has its own pending
+ * promise + timestamp.
+ */
+function compoundMemoKeyed<K, T>(
+	ttlMs: number,
+	fetcher: (key: K) => Promise<T>
+): (key: K) => Promise<T> {
+	const inflight = new Map<K, Promise<T>>();
+	const lastAt = new Map<K, number>();
+	return (key: K) => {
+		const now = Date.now();
+		const existing = inflight.get(key);
+		const prevAt = lastAt.get(key) ?? 0;
+		if (existing && now - prevAt < ttlMs) return existing;
+		lastAt.set(key, now);
+		const promise = fetcher(key).catch((err) => {
+			inflight.delete(key);
+			throw err;
+		});
+		inflight.set(key, promise);
+		return promise;
+	};
+}
+
+// ---------------------------------------------------------------------------
 // Shared fetch + memoize for compound sources
 // ---------------------------------------------------------------------------
 //
 // `fetchBtcOnchain` and `fetchMempool` each return a compound payload that
-// is sliced into 3 and 5 raws respectively. We wrap them in a 30-second
-// promise memo so one compound request fills every slice without spamming
-// the upstream. This memo is intentionally simple — the provider-level
-// `cache.ts` layer owns the persistent TTL cache. This is only the
-// in-flight dedupe.
+// is sliced into 3 and 5 raws respectively. 30-second window matches the
+// other compound memos in this file.
 
-let btcOnchainInflight: Promise<Awaited<ReturnType<typeof fetchBtcOnchain>>> | null = null;
-let btcOnchainAt = 0;
-function getBtcOnchain() {
-	const now = Date.now();
-	if (btcOnchainInflight && now - btcOnchainAt < 30_000) return btcOnchainInflight;
-	btcOnchainAt = now;
-	btcOnchainInflight = fetchBtcOnchain().catch((err) => {
-		btcOnchainInflight = null;
-		throw err;
-	});
-	return btcOnchainInflight;
-}
-
-let mempoolInflight: Promise<Awaited<ReturnType<typeof fetchMempool>>> | null = null;
-let mempoolAt = 0;
-function getMempool() {
-	const now = Date.now();
-	if (mempoolInflight && now - mempoolAt < 30_000) return mempoolInflight;
-	mempoolAt = now;
-	mempoolInflight = fetchMempool().catch((err) => {
-		mempoolInflight = null;
-		throw err;
-	});
-	return mempoolInflight;
-}
+const getBtcOnchain = compoundMemo(30_000, fetchBtcOnchain);
+const getMempool = compoundMemo(30_000, fetchMempool);
 
 // ---------------------------------------------------------------------------
 // Upbit ticker memo (prices + volumes in one roundtrip)
@@ -427,20 +679,7 @@ async function fetchUpbitTickers(): Promise<UpbitTickerPayload> {
 	return { prices, volumes };
 }
 
-let upbitTickersInflight: Promise<UpbitTickerPayload> | null = null;
-let upbitTickersAt = 0;
-function getUpbitTickers(): Promise<UpbitTickerPayload> {
-	const now = Date.now();
-	if (upbitTickersInflight && now - upbitTickersAt < 30_000) {
-		return upbitTickersInflight;
-	}
-	upbitTickersAt = now;
-	upbitTickersInflight = fetchUpbitTickers().catch((err) => {
-		upbitTickersInflight = null;
-		throw err;
-	});
-	return upbitTickersInflight;
-}
+const getUpbitTickers = compoundMemo(30_000, fetchUpbitTickers);
 
 // ---------------------------------------------------------------------------
 // Binance futures-wide 24hr ticker memo (B12)
@@ -546,22 +785,9 @@ async function fetchFuturesTickers(): Promise<FuturesTickerPayload> {
 	return payload;
 }
 
-let futuresTickersInflight: Promise<FuturesTickerPayload> | null = null;
-let futuresTickersAt = 0;
-function getFuturesTickers(): Promise<FuturesTickerPayload> {
-	const now = Date.now();
-	if (futuresTickersInflight && now - futuresTickersAt < 30_000) {
-		return futuresTickersInflight;
-	}
-	futuresTickersAt = now;
-	futuresTickersInflight = binanceQuota
-		.execute(() => fetchFuturesTickers())
-		.catch((err) => {
-			futuresTickersInflight = null;
-			throw err;
-		});
-	return futuresTickersInflight;
-}
+const getFuturesTickers = compoundMemo(30_000, () =>
+	binanceQuota.execute(() => fetchFuturesTickers())
+);
 
 // ---------------------------------------------------------------------------
 // premiumIndex memo (funding rate + mark price)
@@ -584,9 +810,6 @@ interface PremiumIndexPayload {
 	markPrice: number | null;
 }
 
-const premiumIndexInflight = new Map<string, Promise<PremiumIndexPayload>>();
-const premiumIndexAt = new Map<string, number>();
-
 async function fetchPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
 	const res = await fetch(
 		`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${symbol}`,
@@ -602,19 +825,9 @@ async function fetchPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
 	};
 }
 
-function getPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
-	const now = Date.now();
-	const existing = premiumIndexInflight.get(symbol);
-	const lastAt = premiumIndexAt.get(symbol) ?? 0;
-	if (existing && now - lastAt < 5_000) return existing;
-	premiumIndexAt.set(symbol, now);
-	const promise = binanceQuota.execute(() => fetchPremiumIndex(symbol)).catch((err) => {
-		premiumIndexInflight.delete(symbol);
-		throw err;
-	});
-	premiumIndexInflight.set(symbol, promise);
-	return promise;
-}
+const getPremiumIndex = compoundMemoKeyed(5_000, (symbol: string) =>
+	binanceQuota.execute(() => fetchPremiumIndex(symbol))
+);
 
 // ---------------------------------------------------------------------------
 // openInterest (point-in-time) memo
@@ -627,9 +840,6 @@ function getPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
 // within a 5-second window (matches the binance OI update cadence on the
 // engine path). Errors return null so callers can degrade gracefully — OI
 // is a supporting signal, not a gating one.
-
-const openInterestInflight = new Map<string, Promise<number | null>>();
-const openInterestAt = new Map<string, number>();
 
 async function fetchOpenInterestPoint(symbol: string): Promise<number | null> {
 	try {
@@ -646,16 +856,12 @@ async function fetchOpenInterestPoint(symbol: string): Promise<number | null> {
 	}
 }
 
-function getOpenInterestPoint(symbol: string): Promise<number | null> {
-	const now = Date.now();
-	const existing = openInterestInflight.get(symbol);
-	const lastAt = openInterestAt.get(symbol) ?? 0;
-	if (existing && now - lastAt < 5_000) return existing;
-	openInterestAt.set(symbol, now);
-	const promise = binanceQuota.execute(() => fetchOpenInterestPoint(symbol)).catch(() => null);
-	openInterestInflight.set(symbol, promise);
-	return promise;
-}
+// Null-variant memo: the fetcher catches internally so the helper's
+// clear-on-reject path is never triggered; a null-resolved promise
+// stays cached for the full TTL window (failure is sticky per window).
+const getOpenInterestPoint = compoundMemoKeyed(5_000, (symbol: string) =>
+	binanceQuota.execute(() => fetchOpenInterestPoint(symbol)).catch(() => null)
+);
 
 // ---------------------------------------------------------------------------
 // topLongShortAccountRatio (1h, 1 bar) memo
@@ -667,9 +873,6 @@ function getOpenInterestPoint(symbol: string): Promise<number | null> {
 // cannot override. Previously this endpoint was fetched inline from 3
 // different call sites with slightly different error handling. This memo
 // gives one canonical path + 5-second in-flight dedupe + null-on-error.
-
-const longShortTopInflight = new Map<string, Promise<number | null>>();
-const longShortTopAt = new Map<string, number>();
 
 async function fetchLongShortTop1h(symbol: string): Promise<number | null> {
 	try {
@@ -687,16 +890,10 @@ async function fetchLongShortTop1h(symbol: string): Promise<number | null> {
 	}
 }
 
-function getLongShortTop1h(symbol: string): Promise<number | null> {
-	const now = Date.now();
-	const existing = longShortTopInflight.get(symbol);
-	const lastAt = longShortTopAt.get(symbol) ?? 0;
-	if (existing && now - lastAt < 5_000) return existing;
-	longShortTopAt.set(symbol, now);
-	const promise = binanceQuota.execute(() => fetchLongShortTop1h(symbol)).catch(() => null);
-	longShortTopInflight.set(symbol, promise);
-	return promise;
-}
+// Null-variant memo — same rationale as getOpenInterestPoint.
+const getLongShortTop1h = compoundMemoKeyed(5_000, (symbol: string) =>
+	binanceQuota.execute(() => fetchLongShortTop1h(symbol)).catch(() => null)
+);
 
 // ---------------------------------------------------------------------------
 // Adapter map
@@ -831,7 +1028,46 @@ export const rawSources: RawSourceMap = {
 	[KnownRawId.TICKER_HIGH_PRICE]: async () => (await getFuturesTickers()).highPrice,
 	[KnownRawId.TICKER_LOW_PRICE]: async () => (await getFuturesTickers()).lowPrice,
 	[KnownRawId.TICKER_LAST_PRICE]: async () => (await getFuturesTickers()).lastPrice,
-	[KnownRawId.UNIVERSE_IS_USDT]: async () => (await getFuturesTickers()).symbols
+	[KnownRawId.UNIVERSE_IS_USDT]: async () => (await getFuturesTickers()).symbols,
+
+	// B13-b: Coinalyze cross-exchange history. Thin shims over the
+	// existing `fetchXXXHistoryServer` helpers in coinalyze.ts — they
+	// already own their own cache (`coinalyze:*` keys with
+	// `DERIV_CACHE_TTL`) and their own error handling (return empty
+	// arrays on failure), so we do not wrap them in another memo.
+	//
+	// The provenance motivation: buildResearchBlocks.ts's metric_strip
+	// research block cited Binance-family sourceIds (`raw.symbol.oi_hist.display_tf`,
+	// `raw.symbol.funding_rate`, `raw.symbol.long_short.global`,
+	// `raw.symbol.force_orders.1h`) but was fed Coinalyze data from
+	// toolExecutor.ts. Routing those four history reads through `readRaw`
+	// under dedicated Coinalyze atoms lets the research view cite an
+	// honest sourceId that matches its actual data source.
+	//
+	// The Binance-only atoms (`OI_HIST_DISPLAY_TF`, `FUNDING_RATE`,
+	// `LONG_SHORT_GLOBAL`, `FORCE_ORDERS_1H`) remain in the catalog
+	// with their single-venue semantic; this slice does not touch them.
+	[KnownRawId.COINALYZE_OI_HIST_TF]: async ({ pair, tf, limit }) =>
+		fetchOIHistoryServer(pair, tf, limit),
+	[KnownRawId.COINALYZE_FUNDING_HIST_TF]: async ({ pair, tf, limit }) =>
+		fetchFundingHistoryServer(pair, tf, limit),
+	[KnownRawId.COINALYZE_LSRATIO_HIST_TF]: async ({ pair, tf, limit }) =>
+		fetchLSRatioHistoryServer(pair, tf, limit),
+	[KnownRawId.COINALYZE_LIQ_HIST_TF]: async ({ pair, tf, limit }) =>
+		fetchLiquidationHistoryServer(pair, tf, limit),
+
+	// B14: internal sector classification. Both atoms return a fresh
+	// Map<string, SectorLabel> on every call so callers can mutate
+	// their local copy (e.g. union-merge with user-defined extras)
+	// without poisoning the frozen source-of-truth tables. The base
+	// table is defined at module scope above; overrides are a empty
+	// placeholder pending a future per-user settings wiring slice.
+	//
+	// Composition rule for consumers:
+	//   sectorOverride.get(base) ?? sectorMap.get(base) ?? 'other'
+	// — i.e. user overrides win, then the base table, then fallback.
+	[KnownRawId.SECTOR_MAP]: async () => new Map(SECTOR_MAP_FROZEN),
+	[KnownRawId.SECTOR_OVERRIDE]: async () => new Map(SECTOR_OVERRIDE_EMPTY)
 };
 
 // ---------------------------------------------------------------------------
