@@ -42,11 +42,11 @@
       <MetricStripBlock block={envelope.block} presentation={presentation} />
     {:else if envelope.block.kind === 'inline_price_chart'}
       <InlinePriceChartBlock block={envelope.block} presentation={presentation} />
-  {:else if envelope.block.kind === 'dual_pane_flow_chart'}
-    <DualPaneFlowChartBlock block={envelope.block} presentation={presentation} />
-  {:else if envelope.block.kind === 'heatmap_flow_chart'}
-    <HeatmapFlowChartBlock block={envelope.block} presentation={presentation} />
-  {/if}
+    {:else if envelope.block.kind === 'dual_pane_flow_chart'}
+      <DualPaneFlowChartBlock block={envelope.block} presentation={presentation} />
+    {:else if envelope.block.kind === 'heatmap_flow_chart'}
+      <HeatmapFlowChartBlock block={envelope.block} presentation={presentation} />
+    {/if}
 
     {#if envelope.summary}
       <div class="rbs-summary">{envelope.summary}</div>
@@ -71,6 +71,8 @@
       <InlinePriceChartBlock block={envelope.block} presentation={presentation} />
     {:else if envelope.block.kind === 'dual_pane_flow_chart'}
       <DualPaneFlowChartBlock block={envelope.block} presentation={presentation} />
+    {:else if envelope.block.kind === 'heatmap_flow_chart'}
+      <HeatmapFlowChartBlock block={envelope.block} presentation={presentation} />
     {/if}
 
     {#if envelope.summary}

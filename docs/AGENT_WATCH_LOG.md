@@ -11938,3 +11938,40 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - pending feature-branch push for `codex/chart-engine-core-pick`
 - Final working tree status:
   - pending commit of `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, and `src/lib/chart-engine/**`
+
+## [2026-04-12 21:12:30 +0900] START W-20260412-2112-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/CHATBATTLE-chart-engine-core-pick-chart-engine-renderers-pick`
+- Branch:
+  - `codex/chart-engine-renderers-pick`
+- Base `origin/main` hash:
+  - `c44bda628abbb4437c4fd9aca99a2253417e8d64`
+- Working tree status:
+  - `## codex/chart-engine-renderers-pick`
+  - clean before this task
+- Task summary:
+  - promote the remaining chart-engine renderer and shared chart UI layer from `codex/ui-feature-inventory` onto a fresh `main`-based branch, keeping DOUNI/CVD/intent changes out of scope
+- Owned files / overlap check result:
+  - owning `src/components/chart/**` plus the minimum chart-consuming surfaces needed to adopt those renderers on `main`
+  - explicitly excluding `src/lib/server/douni/*`, `src/lib/terminal/analysisIntent.ts`, `src/lib/engine/cogochi/cvd.ts`, and related terminal intent/CVD API changes from this slice
+- Safe status:
+  - `npm run safe:status`: PASS
+
+## [2026-04-12 21:16:00 +0900] FINISH W-20260412-2112-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - promoted `src/components/chart/ChartStage.svelte` and the three renderer components so chart specs now mount through a shared Svelte UI layer on top of the chart-engine core already on `main`
+  - rewired existing component-level consumers (`LabChart`, `CgChart`, terminal research chart blocks, and `WalletMarketOverlay`) to adapt their local payloads into chart-engine specs instead of creating raw chart instances inline
+  - updated `docs/FRONTEND.md` so shared chart chrome ownership is explicitly assigned to `src/components/chart/ChartStage.svelte`
+  - intentionally kept route-level Terminal adoption and all DOUNI/CVD/analysis-intent changes out of this slice
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; same pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same pre-existing unused CSS warnings; existing dynamic import/chunking notice remains)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - to be created by the atomic commit that includes this FINISH entry
+- Push status:
+  - not requested in this task; branch will remain local after commit
+- Final working tree status:
+  - pending commit of renderer/UI layer files, `docs/FRONTEND.md`, and `docs/AGENT_WATCH_LOG.md`
