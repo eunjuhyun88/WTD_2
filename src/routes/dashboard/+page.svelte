@@ -9,12 +9,12 @@
     {
       title: 'BTC momentum watch',
       query: 'btc 4h recent_rally 10% bollinger_expansion',
-      note: 'Open Terminal with a saved-style momentum search.'
+      note: '저장해둔 리듬을 다시 확인하는 빠른 진입점입니다.'
     },
     {
       title: 'ETH compression watch',
       query: 'eth 1d squeeze expansion cvd uptick',
-      note: 'Jump back into a slower timeframe setup and inspect price context.'
+      note: '느린 타임프레임에서 다시 볼 세팅을 바로 엽니다.'
     }
   ] as const;
 
@@ -22,11 +22,9 @@
     {
       title: 'Adapter deployment',
       state: 'Phase 2 placeholder',
-      note: 'Validation-gated adapters will surface here once the training flow is wired end-to-end.'
+      note: '검증을 통과한 어댑터 상태가 이곳에 모일 예정입니다.'
     }
   ] as const;
-
-  // ─── Derived ──────────────────────────────────────────────
 
   const strategies = $derived($allStrategies);
   const prices = $derived($priceStore);
@@ -39,8 +37,6 @@
       ? timeSince(Math.max(...strategies.map((entry) => entry.lastModified)))
       : '아직 없음'
   );
-
-  // ─── Helpers ──────────────────────────────────────────────
 
   function fmtPct(v: number | null | undefined): string {
     if (v == null) return '—';
@@ -96,327 +92,386 @@
   <section class="hero-card">
     <div class="hero-copy">
       <span class="hero-kicker">DASHBOARD</span>
-      <h1>Your current inbox.</h1>
+      <h1>저장된 판단과 바뀐 상태가 다시 모이는 곳.</h1>
       <p>
-        Return to what you saved, what still needs a run, and what changed since the last time you opened Cogochi.
+        Dashboard는 새 기능을 설명하는 곳이 아니라, 내가 남긴 세팅과 최근 변화만 빠르게 다시 읽는 inbox입니다.
       </p>
     </div>
+
     <div class="hero-stats">
       <article class="hero-stat">
         <span class="hero-stat-label">Challenges</span>
         <strong>{strategies.length}</strong>
+        <p>저장된 세팅</p>
       </article>
       <article class="hero-stat">
         <span class="hero-stat-label">Tested</span>
         <strong>{testedChallengeCount}</strong>
+        <p>최근 검증 완료</p>
       </article>
       <article class="hero-stat">
         <span class="hero-stat-label">Last activity</span>
         <strong>{latestActivityText}</strong>
+        <p>마지막 변화</p>
       </article>
     </div>
   </section>
 
-  <!-- Market context -->
-  <div class="market-bar">
-    <div class="market-price">
-      <span class="price-label">BTC</span>
-      <span class="price-value">{fmtPrice(btcPrice)}</span>
+  <section class="market-card">
+    <div class="market-copy">
+      <span class="section-kicker">Market context</span>
+      <strong>BTC {fmtPrice(btcPrice)}</strong>
     </div>
     <button class="market-link" onclick={() => goto('/terminal')}>
-      Terminal에서 자세히 →
+      Open Terminal
     </button>
-  </div>
+  </section>
 
-  <!-- Strategy cards -->
-  <div class="section-header">
-    <h2 class="section-title">My Challenges</h2>
-    <span class="section-count">{strategies.length}</span>
-  </div>
-
-  {#if strategies.length === 0}
-    <div class="empty-card">
-      <p>아직 저장된 챌린지가 없습니다.</p>
-      <button class="action-btn" onclick={() => goto('/terminal')}>Terminal에서 시작 →</button>
+  <section class="section-block">
+    <div class="section-head">
+      <div>
+        <span class="section-kicker">My Challenges</span>
+        <h2>지금 이어서 볼 세팅</h2>
+      </div>
+      <span class="section-count">{strategies.length}</span>
     </div>
-  {:else}
-    <div class="strat-grid">
-      {#each strategies as entry (entry.strategy.id)}
-        {@const s = entry.strategy}
-        {@const r = entry.lastResult}
-        <button class="strat-card" onclick={() => goToLab(s.id)}>
-          <div class="sc-top">
-            <span class="sc-name">{s.name}</span>
-            <span class="sc-ver">v{s.version}</span>
-          </div>
 
-          {#if r}
-            <div class="sc-stats">
-              <div class="sc-stat">
-                <span class="sc-stat-label">Win</span>
-                <span class="sc-stat-value {pnlClass(r.winRate >= 55 ? 1 : r.winRate < 45 ? -1 : 0)}">{r.winRate.toFixed(0)}%</span>
+    {#if strategies.length === 0}
+      <div class="empty-card">
+        <p>아직 저장된 챌린지가 없습니다.</p>
+        <button class="action-btn" onclick={() => goto('/terminal')}>Terminal에서 시작</button>
+      </div>
+    {:else}
+      <div class="strat-grid">
+        {#each strategies as entry (entry.strategy.id)}
+          {@const s = entry.strategy}
+          {@const r = entry.lastResult}
+          <button class="strat-card" onclick={() => goToLab(s.id)}>
+            <div class="sc-top">
+              <div class="sc-title">
+                <span class="sc-kicker">Challenge</span>
+                <strong>{s.name}</strong>
               </div>
-              <div class="sc-stat">
-                <span class="sc-stat-label">Sharpe</span>
-                <span class="sc-stat-value {pnlClass(r.sharpeRatio)}">{fmtNum(r.sharpeRatio)}</span>
-              </div>
-              <div class="sc-stat">
-                <span class="sc-stat-label">MDD</span>
-                <span class="sc-stat-value negative">-{r.maxDrawdownPercent.toFixed(1)}%</span>
-              </div>
-              <div class="sc-stat">
-                <span class="sc-stat-label">PnL</span>
-                <span class="sc-stat-value {pnlClass(r.totalPnlPercent)}">{fmtPct(r.totalPnlPercent)}</span>
-              </div>
+              <span class="sc-ver">v{s.version}</span>
             </div>
 
-            <div class="sc-progress">
-              <div class="sc-progress-bar">
-                <div class="sc-progress-fill" style:width="{(cyclesTested(entry) / MARKET_CYCLES.length) * 100}%"></div>
+            {#if r}
+              <div class="sc-stats">
+                <div class="sc-stat">
+                  <span class="sc-stat-label">Win</span>
+                  <span class="sc-stat-value {pnlClass(r.winRate >= 55 ? 1 : r.winRate < 45 ? -1 : 0)}">{r.winRate.toFixed(0)}%</span>
+                </div>
+                <div class="sc-stat">
+                  <span class="sc-stat-label">Sharpe</span>
+                  <span class="sc-stat-value {pnlClass(r.sharpeRatio)}">{fmtNum(r.sharpeRatio)}</span>
+                </div>
+                <div class="sc-stat">
+                  <span class="sc-stat-label">MDD</span>
+                  <span class="sc-stat-value negative">-{r.maxDrawdownPercent.toFixed(1)}%</span>
+                </div>
+                <div class="sc-stat">
+                  <span class="sc-stat-label">PnL</span>
+                  <span class="sc-stat-value {pnlClass(r.totalPnlPercent)}">{fmtPct(r.totalPnlPercent)}</span>
+                </div>
               </div>
-              <span class="sc-progress-text">{cyclesTested(entry)}/{MARKET_CYCLES.length} 사이클</span>
-            </div>
-          {:else}
-            <div class="sc-untested">Waiting for first run in Lab</div>
-          {/if}
 
-          <div class="sc-footer">
-            <span class="sc-time">{timeSince(entry.lastModified)}</span>
-            <span class="sc-cta">이어서 작업 →</span>
+              <div class="sc-progress">
+                <div class="sc-progress-bar">
+                  <div class="sc-progress-fill" style:width="{(cyclesTested(entry) / MARKET_CYCLES.length) * 100}%"></div>
+                </div>
+                <span class="sc-progress-text">{cyclesTested(entry)}/{MARKET_CYCLES.length} cycles</span>
+              </div>
+            {:else}
+              <div class="sc-untested">아직 첫 검증 전입니다.</div>
+            {/if}
+
+            <div class="sc-footer">
+              <span class="sc-time">{timeSince(entry.lastModified)}</span>
+              <span class="sc-cta">Open Lab</span>
+            </div>
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </section>
+
+  <section class="section-block">
+    <div class="section-head">
+      <div>
+        <span class="section-kicker">Watching</span>
+        <h2>다시 볼 검색</h2>
+      </div>
+      <span class="section-count">{WATCHING_QUERIES.length}</span>
+    </div>
+
+    <div class="aux-grid">
+      {#each WATCHING_QUERIES as item}
+        <button class="aux-card" onclick={() => openWatching(item.query)}>
+          <div class="aux-top">
+            <span class="aux-label">Terminal</span>
+            <span class="aux-chip">Saved query</span>
           </div>
+          <strong>{item.title}</strong>
+          <p>{item.note}</p>
+          <code>{item.query}</code>
         </button>
       {/each}
     </div>
-  {/if}
+  </section>
 
-  <div class="section-header">
-    <h2 class="section-title">Watching</h2>
-    <span class="section-count">{WATCHING_QUERIES.length}</span>
-  </div>
+  <section class="section-block">
+    <div class="section-head">
+      <div>
+        <span class="section-kicker">My Adapters</span>
+        <h2>검증 이후에 모일 상태</h2>
+      </div>
+      <span class="section-count">{waitingChallengeCount}</span>
+    </div>
 
-  <div class="aux-grid">
-    {#each WATCHING_QUERIES as item}
-      <button class="aux-card" onclick={() => openWatching(item.query)}>
-        <div class="aux-top">
-          <span class="aux-label">LIVE SEARCH</span>
-          <span class="aux-chip">Terminal</span>
-        </div>
-        <strong>{item.title}</strong>
-        <p>{item.note}</p>
-        <code>{item.query}</code>
-      </button>
-    {/each}
-  </div>
+    <div class="aux-grid">
+      {#each ADAPTER_STATES as item}
+        <article class="aux-card static">
+          <div class="aux-top">
+            <span class="aux-label">Status</span>
+            <span class="aux-chip muted">{item.state}</span>
+          </div>
+          <strong>{item.title}</strong>
+          <p>{item.note}</p>
+        </article>
+      {/each}
+    </div>
+  </section>
 
-  <div class="section-header">
-    <h2 class="section-title">My Adapters</h2>
-    <span class="section-count">{waitingChallengeCount}</span>
-  </div>
-
-  <div class="aux-grid">
-    {#each ADAPTER_STATES as item}
-      <article class="aux-card static">
-        <div class="aux-top">
-          <span class="aux-label">STATUS</span>
-          <span class="aux-chip muted">{item.state}</span>
-        </div>
-        <strong>{item.title}</strong>
-        <p>{item.note}</p>
-      </article>
-    {/each}
-  </div>
-
-  <!-- Quick actions -->
-  <div class="quick-bar">
+  <section class="quick-bar">
+    <button class="quick-btn primary" onclick={() => goto('/terminal')}>
+      <span class="qb-copy">
+        <span class="qb-kicker">Next move</span>
+        <strong>Open Terminal</strong>
+      </span>
+    </button>
     <button class="quick-btn" onclick={() => goto('/lab')}>
-      <span class="qb-icon">⚗</span>
-      <span class="qb-label">Open Lab</span>
+      <span class="qb-copy">
+        <span class="qb-kicker">Review</span>
+        <strong>Open Lab</strong>
+      </span>
     </button>
-    <button class="quick-btn" onclick={() => goto('/terminal')}>
-      <span class="qb-icon">📊</span>
-      <span class="qb-label">Open Terminal</span>
-    </button>
-  </div>
+  </section>
 </div>
 
 <style>
   .dash-page {
-    max-width: 960px;
+    width: min(1120px, 100%);
     margin: 0 auto;
-    padding: 20px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    padding: 24px 20px 40px;
+    display: grid;
+    gap: 22px;
+    font-family: var(--sc-font-body);
+  }
+
+  .hero-card,
+  .market-card,
+  .strat-card,
+  .aux-card,
+  .empty-card,
+  .quick-btn {
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(18, 18, 20, 0.82), rgba(10, 10, 12, 0.78));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 18px 42px rgba(0, 0, 0, 0.18);
   }
 
   .hero-card {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 20px;
-    border-radius: 14px;
-    border: 1px solid rgba(255 255 255 / 0.08);
-    background:
-      radial-gradient(circle at top left, rgba(219 154 159 / 0.12), transparent 28%),
-      linear-gradient(180deg, rgba(20 25 36 / 0.96), rgba(11 14 22 / 0.96));
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
+    gap: 18px;
+    padding: 24px;
+    align-items: start;
   }
 
   .hero-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-width: 560px;
+    display: grid;
+    gap: 10px;
+    max-width: 36rem;
   }
 
-  .hero-kicker {
+  .hero-kicker,
+  .section-kicker,
+  .hero-stat-label,
+  .aux-label,
+  .aux-chip,
+  .sc-kicker,
+  .sc-ver,
+  .sc-stat-label,
+  .sc-progress-text,
+  .qb-kicker {
     font-family: var(--sc-font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    color: var(--lis-accent);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .hero-kicker,
+  .section-kicker,
+  .aux-chip,
+  .sc-ver,
+  .qb-kicker {
+    color: rgba(var(--lis-rgb-pink), 0.92);
+  }
+
+  .hero-copy h1,
+  .section-head h2 {
+    margin: 0;
+    font-family: var(--sc-font-body);
+    letter-spacing: -0.05em;
+    color: rgba(255, 247, 244, 0.97);
   }
 
   .hero-copy h1 {
-    margin: 0;
-    font-family: var(--sc-font-display);
-    font-size: clamp(26px, 4vw, 36px);
-    line-height: 1;
-    color: rgba(255 255 255 / 0.94);
+    font-size: clamp(2.2rem, 4vw, 3.8rem);
+    line-height: 0.98;
+    max-width: 11ch;
   }
 
   .hero-copy p {
     margin: 0;
-    font-size: 14px;
-    line-height: 1.6;
-    color: rgba(255 255 255 / 0.62);
+    color: rgba(255, 247, 244, 0.78);
+    font-size: 1.08rem;
+    line-height: 1.7;
   }
 
   .hero-stats {
     display: grid;
-    grid-template-columns: repeat(3, minmax(100px, 1fr));
+    grid-template-columns: 1fr;
     gap: 10px;
-    min-width: min(100%, 360px);
   }
 
   .hero-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 14px;
-    border-radius: 10px;
-    background: rgba(255 255 255 / 0.03);
-    border: 1px solid rgba(255 255 255 / 0.06);
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  .hero-stat-label {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    color: rgba(255 255 255 / 0.42);
-    text-transform: uppercase;
+  .hero-stat-label,
+  .aux-label,
+  .sc-kicker,
+  .sc-stat-label,
+  .sc-progress-text,
+  .qb-kicker {
+    color: rgba(255, 247, 244, 0.46);
   }
 
   .hero-stat strong {
-    font-size: 16px;
-    color: rgba(255 255 255 / 0.92);
+    color: rgba(255, 247, 244, 0.94);
+    font-size: 1.3rem;
+    line-height: 1.2;
   }
 
-  /* ── Market bar ── */
-  .market-bar {
+  .hero-stat p {
+    margin: 0;
+    color: rgba(255, 247, 244, 0.7);
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+
+  .market-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+  }
+
+  .market-copy {
+    display: grid;
+    gap: 4px;
+  }
+
+  .market-copy strong {
+    color: rgba(255, 247, 244, 0.94);
+    font-size: 1.16rem;
+    line-height: 1.25;
+  }
+
+  .market-link,
+  .action-btn {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(180deg, rgba(248, 243, 236, 0.96), rgba(231, 224, 216, 0.94));
+    color: #0a0908;
+    font-family: var(--sc-font-body);
+    font-size: 0.96rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .section-block {
+    display: grid;
+    gap: 14px;
+  }
+
+  .section-head {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-    background: var(--lis-surface-0);
-    border: 1px solid var(--lis-border-soft);
-    border-radius: 10px;
+    align-items: end;
+    gap: 12px;
   }
 
-  .market-price {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
+  .section-head div {
+    display: grid;
+    gap: 4px;
   }
 
-  .price-label {
-    font-family: var(--sc-font-mono);
-    font-size: 11px;
-    color: rgba(255 255 255 / 0.35);
-  }
-
-  .price-value {
-    font-family: var(--sc-font-mono);
-    font-size: 20px;
-    font-weight: 600;
-    color: rgba(255 255 255 / 0.9);
-  }
-
-  .market-link {
-    font-family: var(--sc-font-body);
-    font-size: 12px;
-    color: var(--lis-accent);
-    background: none;
-    border: none;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-  }
-
-  .market-link:hover { opacity: 1; }
-
-  /* ── Section header ── */
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .section-title {
-    font-family: var(--sc-font-body);
-    font-size: 16px;
-    font-weight: 600;
-    color: rgba(255 255 255 / 0.85);
-    margin: 0;
+  .section-head h2 {
+    font-size: clamp(1.55rem, 2.4vw, 2.25rem);
+    line-height: 1.06;
   }
 
   .section-count {
+    min-width: 34px;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(var(--lis-rgb-pink), 0.1);
+    color: rgba(var(--lis-rgb-pink), 0.92);
     font-family: var(--sc-font-mono);
-    font-size: 11px;
-    background: rgba(var(--lis-rgb-pink), 0.12);
-    color: var(--lis-accent);
-    padding: 2px 7px;
-    border-radius: 8px;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
   }
 
-  /* ── Strategy grid ── */
-  .strat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 10px;
-  }
-
+  .strat-grid,
   .aux-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
+  .strat-card,
   .aux-card {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 14px;
-    border-radius: 10px;
-    border: 1px solid var(--lis-border-soft);
-    background: var(--lis-surface-0);
+    display: grid;
+    gap: 12px;
+    padding: 18px;
     text-align: left;
     cursor: pointer;
-    transition: all 0.2s;
+    transition:
+      transform var(--sc-duration-fast),
+      border-color var(--sc-duration-fast),
+      background var(--sc-duration-fast);
   }
 
+  .strat-card:hover,
   .aux-card:hover {
-    border-color: var(--lis-border);
-    background: var(--lis-surface-1);
     transform: translateY(-1px);
+    border-color: rgba(var(--lis-rgb-pink), 0.18);
+    background: linear-gradient(180deg, rgba(22, 22, 24, 0.84), rgba(11, 11, 13, 0.8));
   }
 
   .aux-card.static {
@@ -427,275 +482,235 @@
     transform: none;
   }
 
+  .sc-top,
   .aux-top {
     display: flex;
+    align-items: start;
     justify-content: space-between;
-    align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
 
-  .aux-label {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    color: rgba(255 255 255 / 0.42);
+  .sc-title {
+    display: grid;
+    gap: 4px;
   }
 
+  .sc-title strong,
+  .aux-card strong {
+    color: rgba(255, 247, 244, 0.94);
+    font-size: 1.14rem;
+    line-height: 1.28;
+  }
+
+  .sc-ver,
   .aux-chip {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    padding: 2px 7px;
+    padding: 4px 8px;
     border-radius: 999px;
-    color: var(--lis-accent);
-    background: rgba(var(--lis-rgb-pink), 0.12);
+    background: rgba(var(--lis-rgb-pink), 0.1);
   }
 
   .aux-chip.muted {
-    color: rgba(255 255 255 / 0.62);
-    background: rgba(255 255 255 / 0.06);
-  }
-
-  .aux-card strong {
-    color: rgba(255 255 255 / 0.9);
-  }
-
-  .aux-card p {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.5;
-    color: rgba(255 255 255 / 0.6);
-  }
-
-  .aux-card code {
-    font-family: var(--sc-font-mono);
-    font-size: 11px;
-    color: rgba(255 255 255 / 0.72);
-    word-break: break-word;
-  }
-
-  .strat-card {
-    background: var(--lis-surface-0);
-    border: 1px solid var(--lis-border-soft);
-    border-radius: 10px;
-    padding: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .strat-card:hover {
-    border-color: var(--lis-border);
-    background: var(--lis-surface-1);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(0 0 0 / 0.3);
-  }
-
-  .sc-top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .sc-name {
-    font-family: var(--sc-font-body);
-    font-size: 14px;
-    font-weight: 600;
-    color: rgba(255 255 255 / 0.9);
-    flex: 1;
-  }
-
-  .sc-ver {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    color: var(--lis-accent);
-    background: rgba(var(--lis-rgb-pink), 0.1);
-    padding: 2px 6px;
-    border-radius: 4px;
+    color: rgba(255, 247, 244, 0.62);
+    background: rgba(255, 255, 255, 0.06);
   }
 
   .sc-stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .sc-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-  }
-
-  .sc-stat-label {
-    font-family: var(--sc-font-body);
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: rgba(255 255 255 / 0.3);
+    display: grid;
+    gap: 4px;
   }
 
   .sc-stat-value {
-    font-family: var(--sc-font-mono);
-    font-size: 14px;
+    font-family: var(--sc-font-body);
+    font-size: 1.04rem;
     font-weight: 600;
-    color: rgba(255 255 255 / 0.8);
+    color: rgba(255, 247, 244, 0.88);
   }
 
-  .sc-stat-value.positive { color: var(--lis-positive); }
-  .sc-stat-value.negative { color: var(--sc-bad); }
+  .sc-stat-value.positive {
+    color: var(--lis-positive);
+  }
+
+  .sc-stat-value.negative {
+    color: var(--sc-bad);
+  }
 
   .sc-progress {
-    display: flex;
-    align-items: center;
+    display: grid;
     gap: 8px;
   }
 
   .sc-progress-bar {
-    flex: 1;
-    height: 3px;
-    background: rgba(255 255 255 / 0.06);
-    border-radius: 2px;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
     overflow: hidden;
   }
 
   .sc-progress-fill {
     height: 100%;
     background: var(--lis-accent);
-    border-radius: 2px;
-    transition: width 0.3s;
-  }
-
-  .sc-progress-text {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    color: rgba(255 255 255 / 0.3);
-    flex-shrink: 0;
+    border-radius: 999px;
   }
 
   .sc-untested {
-    font-size: 12px;
-    color: rgba(255 255 255 / 0.2);
-    font-style: italic;
-    padding: 8px 0;
+    color: rgba(255, 247, 244, 0.58);
+    font-size: 1rem;
+    line-height: 1.5;
+    padding: 6px 0;
   }
 
   .sc-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 4px;
-    border-top: 1px solid rgba(255 255 255 / 0.04);
+    gap: 10px;
   }
 
   .sc-time {
-    font-family: var(--sc-font-body);
-    font-size: 10px;
-    color: rgba(255 255 255 / 0.2);
+    color: rgba(255, 247, 244, 0.52);
+    font-size: 0.92rem;
   }
 
   .sc-cta {
-    font-family: var(--sc-font-body);
-    font-size: 11px;
-    color: var(--lis-accent);
-    opacity: 0;
-    transition: opacity 0.2s;
+    color: rgba(var(--lis-rgb-pink), 0.92);
+    font-size: 0.94rem;
+    font-weight: 500;
   }
 
-  .strat-card:hover .sc-cta { opacity: 1; }
+  .aux-card p {
+    margin: 0;
+    color: rgba(255, 247, 244, 0.72);
+    font-size: 0.98rem;
+    line-height: 1.62;
+  }
 
-  /* ── Empty ── */
+  .aux-card code {
+    color: rgba(255, 247, 244, 0.62);
+    font-family: var(--sc-font-mono);
+    font-size: 0.84rem;
+    line-height: 1.6;
+    word-break: break-word;
+  }
+
   .empty-card {
-    background: var(--lis-surface-0);
-    border: 1px dashed var(--lis-border-soft);
-    border-radius: 10px;
-    padding: 40px 20px;
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    padding: 36px 20px;
     text-align: center;
-    color: rgba(255 255 255 / 0.25);
-    font-size: 14px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
   }
 
-  .empty-card p { margin: 0; }
-
-  .action-btn {
-    font-family: var(--sc-font-body);
-    font-size: 13px;
-    padding: 10px 20px;
-    background: rgba(var(--lis-rgb-pink), 0.12);
-    border: 1px solid rgba(var(--lis-rgb-pink), 0.25);
-    border-radius: 7px;
-    color: var(--lis-accent);
-    cursor: pointer;
-    transition: all 0.2s;
+  .empty-card p {
+    margin: 0;
+    color: rgba(255, 247, 244, 0.68);
+    font-size: 1.04rem;
+    line-height: 1.6;
   }
 
-  .action-btn:hover {
-    background: rgba(var(--lis-rgb-pink), 0.2);
-    box-shadow: var(--lis-glow-pink);
-  }
-
-  /* ── Quick actions ── */
   .quick-bar {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .quick-btn {
-    flex: 1;
     display: flex;
+    justify-content: flex-start;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px;
-    background: var(--lis-surface-0);
-    border: 1px solid var(--lis-border-soft);
-    border-radius: 10px;
+    padding: 18px;
+    text-align: left;
     cursor: pointer;
-    transition: all 0.2s;
+    transition:
+      transform var(--sc-duration-fast),
+      border-color var(--sc-duration-fast),
+      background var(--sc-duration-fast);
   }
 
   .quick-btn:hover {
-    border-color: var(--lis-border);
-    background: var(--lis-surface-1);
+    transform: translateY(-1px);
+    border-color: rgba(var(--lis-rgb-pink), 0.18);
   }
 
-  .qb-icon { font-size: 18px; }
-
-  .qb-label {
-    font-family: var(--sc-font-body);
-    font-size: 13px;
-    color: rgba(255 255 255 / 0.6);
+  .quick-btn.primary {
+    background: linear-gradient(180deg, rgba(248, 243, 236, 0.96), rgba(231, 224, 216, 0.94));
+    color: #0a0908;
   }
 
-  .quick-btn:hover .qb-label { color: rgba(255 255 255 / 0.85); }
+  .quick-btn.primary .qb-kicker,
+  .quick-btn.primary strong {
+    color: #0a0908;
+  }
+
+  .qb-copy {
+    display: grid;
+    gap: 4px;
+  }
+
+  .qb-copy strong {
+    font-size: 1.08rem;
+    line-height: 1.2;
+    color: rgba(255, 247, 244, 0.94);
+  }
+
+  @media (max-width: 900px) {
+    .hero-card {
+      grid-template-columns: 1fr;
+    }
+  }
 
   @media (max-width: 768px) {
-    .hero-card {
-      flex-direction: column;
+    .dash-page {
+      padding: 18px 16px 28px;
+      gap: 18px;
     }
 
-    .hero-stats {
-      grid-template-columns: 1fr;
-      min-width: 0;
-    }
-
-    .strat-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .aux-grid {
+    .strat-grid,
+    .aux-grid,
+    .quick-bar {
       grid-template-columns: 1fr;
     }
 
     .sc-stats {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 540px) {
+    .dash-page {
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+
+    .hero-card,
+    .market-card,
+    .strat-card,
+    .aux-card,
+    .quick-btn,
+    .empty-card {
+      padding: 16px;
+      border-radius: 18px;
+    }
+
+    .market-card,
+    .section-head,
+    .sc-footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .market-link,
+    .action-btn {
+      width: 100%;
     }
   }
 </style>
