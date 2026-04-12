@@ -77,10 +77,29 @@ export interface SignalSnapshotRaw {
   day_of_week: number;
 }
 
+export interface EnsembleSignal {
+  direction: 'strong_long' | 'long' | 'neutral' | 'short' | 'strong_short';
+  ensemble_score: number;        // [0, 1] overall conviction
+  ml_contribution: number;
+  block_contribution: number;
+  regime_contribution: number;
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+  block_analysis: {
+    entries: string[];
+    triggers: string[];
+    confirmations: string[];
+    disqualifiers: string[];
+    n_categories_active: number;
+    net_direction: string;
+  };
+}
+
 export interface ScoreResult {
   snapshot: SignalSnapshotRaw;
   p_win: number | null;          // null until LightGBM trained
   blocks_triggered: string[];    // active building block names
+  ensemble: EnsembleSignal | null;  // fused ML + blocks signal
 }
 
 // ---------------------------------------------------------------------------
