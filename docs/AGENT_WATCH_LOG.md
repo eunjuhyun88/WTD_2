@@ -11975,3 +11975,342 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - not requested in this task; branch will remain local after commit
 - Final working tree status:
   - pending commit of renderer/UI layer files, `docs/FRONTEND.md`, and `docs/AGENT_WATCH_LOG.md`
+
+## [2026-04-12 18:50:00 +0900] START W-20260412-1844-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+- Branch:
+  - `codex/load-security-architecture`
+- Base `origin/main` hash:
+  - `520ecfd084fa9d8cfd2ad777b66b1b641878ed5c`
+- Working tree status:
+  - `## codex/load-security-architecture`
+  - clean before this task
+- Task summary:
+  - design launch-ready traffic scaling, abuse controls, and admin-access hardening for Cogochi/ChatBattle so burst traffic and admin-account compromise do not take the app down or hand over control
+- Owned files / overlap check result:
+  - planned: `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`, `docs/AGENT_WATCH_LOG.md`
+  - no product-surface implementation files claimed in this design pass
+  - `docs/SYSTEM_INTENT.md` is not present in the current repo; current product intent is consolidated into `docs/COGOCHI.md`
+  - moved into clean split worktree `CHATBATTLE-load-security-architecture` because the primary worktree contained unrelated in-progress changes
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: PASS
+- Checkpoint:
+  - `.agent-context/checkpoints/w-20260412-1844-chatbattle-codex.md`
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 19:17:00 +0900] FINISH W-20260412-1844-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - added launch-day traffic and privileged-access hardening design in `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`
+  - promoted the new launch design into canonical routing docs `docs/RELIABILITY.md` and `docs/SECURITY.md`
+  - documented repo-specific launch blockers from current code: public heavy compute routes without shared abuse controls, `lab/autorun` running as in-process background work, deferred auth/quota on `wizard`, and missing privileged control-plane separation
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings in 2 files`; pre-existing unused CSS selectors in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same unused CSS warnings; client chunk-size warning; `adapter-auto` noted no explicit production environment configured)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no commit created in this design-only task
+- Push status:
+  - not attempted (implementation, commit, and push require explicit user approval)
+- Final working tree status:
+  - `## codex/load-security-architecture`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`
+  - untracked: `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`
+- Status:
+  - DONE
+
+## [2026-04-12 19:21:00 +0900] START W-20260412-1921-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+- Branch:
+  - `codex/load-security-architecture`
+- Base `origin/main` hash:
+  - `520ecfd084fa9d8cfd2ad777b66b1b641878ed5c`
+- Working tree status:
+  - `## codex/load-security-architecture`
+  - modified from the immediately prior design task: `docs/AGENT_WATCH_LOG.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`
+  - untracked from the immediately prior design task: `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`
+- Task summary:
+  - convert the approved launch load and admin-security design into an active execution plan with phased implementation slices, priorities, owners, and exit criteria
+- Owned files / overlap check result:
+  - planned: `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`, `docs/exec-plans/index.md`, `docs/PLANS.md`, `docs/exec-plans/active/README.md`, `docs/AGENT_WATCH_LOG.md`
+  - continuing from the prior design task on the same branch; no application source files claimed in this planning pass
+- Safe status:
+  - `npm run safe:status`: PASS
+- Checkpoint:
+  - `.agent-context/checkpoints/w-20260412-1921-chatbattle-codex.md`
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 20:08:00 +0900] FINISH W-20260412-1921-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - added active execution plan `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`
+  - linked the new plan from `docs/PLANS.md`, `docs/exec-plans/active/README.md`, and `docs/exec-plans/index.md`
+  - translated the design into ordered workstreams, phase gates, first-ticket set, and launch/privileged-access exit criteria
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings in 2 files`; same pre-existing unused CSS selectors in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same unused CSS warnings; large client chunk warning; `adapter-auto` still reports no explicit production environment configured)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no commit created in this planning-only task
+- Push status:
+  - not attempted
+- Final working tree status:
+  - `## codex/load-security-architecture`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/PLANS.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/exec-plans/active/README.md`, `docs/exec-plans/index.md`
+  - untracked: `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`, `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`
+- Status:
+  - DONE
+
+## [2026-04-12 20:15:00 +0900] START W-20260412-2015-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+- Branch:
+  - `codex/load-security-architecture`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/load-security-architecture`
+  - continuing from existing launch-hardening design/plan docs on this branch
+- Task summary:
+  - implement Phase 0 launch hardening: protect public heavy routes, require auth/quota for wizard, disable lab autorun on the web origin, and make runtime boundary explicit
+- Owned files / overlap check result:
+  - planned: `src/lib/server/rateLimit.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/api/terminal/intel-agent-shadow/+server.ts`, `src/routes/api/wizard/+server.ts`, `src/routes/api/lab/autorun/+server.ts`, `src/routes/healthz/+server.ts`, `svelte.config.js`, `package.json`, `package-lock.json`, `docs/AGENT_WATCH_LOG.md`
+  - existing launch design/plan docs on this branch are retained and carried forward
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: PASS after temporary stash + restore of branch-local launch hardening docs
+- Checkpoint:
+  - `.agent-context/checkpoints/w-20260412-2015-chatbattle-codex.md`
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 20:34:00 +0900] FINISH W-20260412-2015-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - promoted the runtime boundary from `adapter-auto` to `@sveltejs/adapter-node`, added `npm start`, and added a cheap `/healthz` endpoint for load balancer health checks
+  - added explicit Phase 0 rate-limit policies for wallet intel, intel shadow, wizard composition, and lab autorun launch paths
+  - protected `/api/wallet/intel` with IP/distributed abuse guard and stronger shared-cache-friendly headers
+  - protected `/api/terminal/intel-agent-shadow` with IP/distributed abuse guard, stricter forced-refresh limit, and stronger cache headers
+  - changed `/api/wizard` to require authenticated user context plus hourly per-user quota and request-size enforcement
+  - changed `/api/lab/autorun` to be disabled on the public web origin by default unless `LAB_AUTORUN_WEB_ENABLED=true`, and when enabled require authenticated ownership instead of open public job launch/list access
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: PASS
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings in 2 files`; same pre-existing unused CSS selector warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same unused CSS warnings; existing dynamic-import chunk warnings; adapter now resolves as `@sveltejs/adapter-node`)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no commit created in this implementation task
+- Push status:
+  - not attempted
+- Final working tree status:
+  - `## codex/load-security-architecture`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/PLANS.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/exec-plans/active/README.md`, `docs/exec-plans/index.md`, `package-lock.json`, `package.json`, `src/lib/server/rateLimit.ts`, `src/routes/api/lab/autorun/+server.ts`, `src/routes/api/terminal/intel-agent-shadow/+server.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/api/wizard/+server.ts`, `svelte.config.js`
+  - untracked: `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`, `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`, `src/routes/healthz/+server.ts`
+- Status:
+  - DONE
+
+## [2026-04-12 21:10:49 +0900] START W-20260412-2110-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+- Branch:
+  - `codex/load-security-architecture`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/load-security-architecture`
+  - continuing from existing uncommitted Phase 0 launch-hardening changes on this branch
+- Task summary:
+  - continue Phase 0 launch hardening from the existing implementation state, inspect remaining gaps, and finish the next missing slice without discarding the current branch-local work
+- Owned files / overlap check result:
+  - carrying forward existing Phase 0 implementation files: `docs/PLANS.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/exec-plans/active/README.md`, `docs/exec-plans/index.md`, `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`, `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`, `src/lib/server/rateLimit.ts`, `src/routes/api/lab/autorun/+server.ts`, `src/routes/api/terminal/intel-agent-shadow/+server.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/api/wizard/+server.ts`, `src/routes/healthz/+server.ts`, `svelte.config.js`, `package.json`, `package-lock.json`, `docs/AGENT_WATCH_LOG.md`
+  - no overlap check conflict found beyond this branch-local in-progress launch-hardening set
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL because the worktree is intentionally dirty with the in-progress Phase 0 changes being resumed
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:22:29 +0900] FINISH W-20260412-2110-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - added `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md` to classify all current `/api/*` endpoints into Tier A/B/C/D with owner and abuse-policy guidance
+  - linked the new route-tier inventory from `docs/API_CONTRACT.md`, `docs/SECURITY.md`, and `docs/RELIABILITY.md`
+  - hardened `src/routes/api/exchange/connect/+server.ts` so exchange credential registration/listing now requires authenticated user context, blocks `userId` spoofing, enforces shared IP rate limiting, and returns `no-store`
+  - hardened `src/routes/api/exchange/import/+server.ts` so trade import now requires authenticated user context, blocks `userId` spoofing, enforces shared IP rate limiting, and returns `no-store`
+  - added explicit exchange credential/import limiters in `src/lib/server/rateLimit.ts`
+  - refreshed branch brief/handoff via `npm run ctx:compact -- --docs-check pass --check pass --build pass --gate pass`
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings in 2 files`; same pre-existing unused CSS selector warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same existing unused CSS warnings and large client chunk/dynamic import warnings; build completes on `@sveltejs/adapter-node`)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no commit created
+- Push status:
+  - not attempted
+- Final working tree status:
+  - `## codex/load-security-architecture`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/API_CONTRACT.md`, `docs/PLANS.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/exec-plans/active/README.md`, `docs/exec-plans/index.md`, `package-lock.json`, `package.json`, `src/lib/server/rateLimit.ts`, `src/routes/api/exchange/connect/+server.ts`, `src/routes/api/exchange/import/+server.ts`, `src/routes/api/lab/autorun/+server.ts`, `src/routes/api/terminal/intel-agent-shadow/+server.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/api/wizard/+server.ts`, `svelte.config.js`
+  - untracked: `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`, `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`, `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`, `src/routes/healthz/+server.ts`
+- Status:
+  - DONE
+
+## [2026-04-12 21:28:39 +0900] START W-20260412-2128-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+- Branch:
+  - `codex/load-security-architecture`
+- Base `origin/main` hash:
+  - `c44bda628abbb4437c4fd9aca99a2253417e8d64`
+- Working tree status:
+  - `## codex/load-security-architecture`
+  - continuing from the existing uncommitted Phase 0 launch-hardening set on this branch
+- Task summary:
+  - continue Phase 0 by reducing public worker/control exposure and hardening remaining heavy scan routes that still rely on per-instance memory behavior
+- Owned files / overlap check result:
+  - planned: `src/routes/api/profile/passport/learning/workers/run/+server.ts`, `src/routes/api/terminal/compare/+server.ts`, `src/routes/api/terminal/opportunity-scan/+server.ts`, related limiter/support files, relevant canonical docs, and `docs/AGENT_WATCH_LOG.md`
+  - carrying forward the existing branch-local Phase 0 changes without reverting or splitting them
+- Safe status:
+  - `npm run safe:status`: PASS
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:36:18 +0900] FINISH W-20260412-2128-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - hardened `src/routes/api/profile/passport/learning/workers/run/+server.ts` so worker execution is disabled on the public web origin by default unless `PASSPORT_WORKER_WEB_ENABLED=true`, adds shared IP abuse guard, request-size enforcement, and `no-store`
+  - hardened `src/routes/api/terminal/compare/+server.ts` with distributed/IP abuse guard, bounded JSON request body parsing, and `no-store`
+  - hardened `src/routes/api/terminal/opportunity-scan/+server.ts` with distributed/IP abuse guard and stronger shared-cache-friendly headers
+  - added `passportWorkerRunLimiter` in `src/lib/server/rateLimit.ts`
+  - updated `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md` to reflect the newly hardened Phase 0 routes and the remaining follow-up gap around shared cache / internal control-plane migration
+  - refreshed the branch checkpoint/brief/handoff so strict context quality passes again
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings in 2 files`; same pre-existing unused CSS selector warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same existing unused CSS warnings and dynamic-import/client chunk warnings; build completes on `@sveltejs/adapter-node`)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no commit created
+- Push status:
+  - not attempted
+- Final working tree status:
+  - `## codex/load-security-architecture`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/API_CONTRACT.md`, `docs/PLANS.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/exec-plans/active/README.md`, `docs/exec-plans/index.md`, `package-lock.json`, `package.json`, `src/lib/server/rateLimit.ts`, `src/routes/api/exchange/connect/+server.ts`, `src/routes/api/exchange/import/+server.ts`, `src/routes/api/lab/autorun/+server.ts`, `src/routes/api/profile/passport/learning/workers/run/+server.ts`, `src/routes/api/terminal/compare/+server.ts`, `src/routes/api/terminal/intel-agent-shadow/+server.ts`, `src/routes/api/terminal/opportunity-scan/+server.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/api/wizard/+server.ts`, `svelte.config.js`
+  - untracked: `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`, `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`, `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`, `src/routes/healthz/+server.ts`
+- Status:
+  - DONE
+
+## [2026-04-12 21:41:27 +0900] START W-20260412-2141-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+- Branch:
+  - `codex/load-security-architecture`
+- Base `origin/main` hash:
+  - `c44bda628abbb4437c4fd9aca99a2253417e8d64`
+- Working tree status:
+  - `## codex/load-security-architecture`
+  - continuing from the existing uncommitted Phase 0 launch-hardening set on this branch
+- Task summary:
+  - continue Phase 0 by removing the remaining passport learning job control routes from default public web-origin execution and updating the route-tier inventory accordingly
+- Owned files / overlap check result:
+  - planned: `src/routes/api/profile/passport/learning/reports/generate/+server.ts`, `src/routes/api/profile/passport/learning/train-jobs/+server.ts`, related limiter/support files, relevant canonical docs, and `docs/AGENT_WATCH_LOG.md`
+  - carrying forward the existing branch-local Phase 0 changes without reverting or splitting them
+- Safe status:
+  - `npm run safe:status`: PASS
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:43:46 +0900] FINISH W-20260412-2141-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - hardened `src/routes/api/profile/passport/learning/reports/generate/+server.ts` so report generation is disabled on the public web origin by default unless `PASSPORT_LEARNING_CONTROL_WEB_ENABLED=true`, adds shared IP abuse guard, request-size enforcement, and `no-store`
+  - hardened `src/routes/api/profile/passport/learning/train-jobs/+server.ts` so train-job creation is disabled on the public web origin by default unless `PASSPORT_LEARNING_CONTROL_WEB_ENABLED=true`, while authenticated job listing remains available with shared IP abuse guard and `no-store`
+  - added explicit passport learning report/train-job limiters in `src/lib/server/rateLimit.ts`
+  - updated `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md` to reflect the tightened Tier D handling for passport learning job-control routes
+  - refreshed branch checkpoint/brief/handoff and confirmed strict context quality passes
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings in 2 files`; same pre-existing unused CSS selector warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same existing unused CSS warnings and dynamic-import/client chunk warnings; build completes on `@sveltejs/adapter-node`)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no commit created
+- Push status:
+  - not attempted
+- Final working tree status:
+  - `## codex/load-security-architecture`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/API_CONTRACT.md`, `docs/PLANS.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/exec-plans/active/README.md`, `docs/exec-plans/index.md`, `package-lock.json`, `package.json`, `src/lib/server/rateLimit.ts`, `src/routes/api/exchange/connect/+server.ts`, `src/routes/api/exchange/import/+server.ts`, `src/routes/api/lab/autorun/+server.ts`, `src/routes/api/profile/passport/learning/reports/generate/+server.ts`, `src/routes/api/profile/passport/learning/train-jobs/+server.ts`, `src/routes/api/profile/passport/learning/workers/run/+server.ts`, `src/routes/api/terminal/compare/+server.ts`, `src/routes/api/terminal/intel-agent-shadow/+server.ts`, `src/routes/api/terminal/opportunity-scan/+server.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/api/wizard/+server.ts`, `svelte.config.js`
+  - untracked: `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`, `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`, `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`, `src/routes/healthz/+server.ts`
+- Status:
+  - DONE
+
+## [2026-04-12 21:44:43 +0900] START W-20260412-2144-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+- Branch:
+  - `codex/load-security-architecture`
+- Base `origin/main` hash:
+  - `c44bda628abbb4437c4fd9aca99a2253417e8d64`
+- Working tree status:
+  - `## codex/load-security-architecture`
+  - continuing from the existing uncommitted Phase 0 launch-hardening set on this branch
+- Task summary:
+  - continue launch hardening by replacing remaining per-instance cache/coalescing reliance on heavy terminal routes with a shared-cache-capable server path where feasible
+- Owned files / overlap check result:
+  - planned: shared cache/support files plus `src/routes/api/terminal/opportunity-scan/+server.ts`, `src/routes/api/terminal/intel-agent-shadow/+server.ts`, relevant docs, and `docs/AGENT_WATCH_LOG.md`
+  - carrying forward the existing branch-local Phase 0 changes without reverting or splitting them
+- Safe status:
+  - `npm run safe:status`: PASS
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:48:15 +0900] FINISH W-20260412-2144-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - added `src/lib/server/sharedCache.ts` as a shared-cache-capable helper backed by Redis REST when configured, with local fallback when not configured
+  - updated `src/routes/api/terminal/intel-agent-shadow/+server.ts` to read/write through the shared cache helper before falling back to instance-local cache
+  - updated `src/routes/api/terminal/opportunity-scan/+server.ts` to read/write through the shared cache helper before falling back to instance-local cache/coalescing
+  - updated `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md` to reflect that `intel-agent-shadow` and `opportunity-scan` now have shared-cache-capable server paths, while `compare` still remains a follow-up item
+  - refreshed branch checkpoint/brief/handoff and confirmed strict context quality passes
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings in 2 files`; same pre-existing unused CSS selector warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+  - `npm run build`: PASS (same existing unused CSS warnings and dynamic-import/client chunk warnings; build completes on `@sveltejs/adapter-node`)
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no commit created
+- Push status:
+  - not attempted
+- Final working tree status:
+  - `## codex/load-security-architecture`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/API_CONTRACT.md`, `docs/PLANS.md`, `docs/RELIABILITY.md`, `docs/SECURITY.md`, `docs/exec-plans/active/README.md`, `docs/exec-plans/index.md`, `package-lock.json`, `package.json`, `src/lib/server/rateLimit.ts`, `src/routes/api/exchange/connect/+server.ts`, `src/routes/api/exchange/import/+server.ts`, `src/routes/api/lab/autorun/+server.ts`, `src/routes/api/profile/passport/learning/reports/generate/+server.ts`, `src/routes/api/profile/passport/learning/train-jobs/+server.ts`, `src/routes/api/profile/passport/learning/workers/run/+server.ts`, `src/routes/api/terminal/compare/+server.ts`, `src/routes/api/terminal/intel-agent-shadow/+server.ts`, `src/routes/api/terminal/opportunity-scan/+server.ts`, `src/routes/api/wallet/intel/+server.ts`, `src/routes/api/wizard/+server.ts`, `svelte.config.js`
+  - untracked: `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`, `docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`, `docs/references/active/LAUNCH_LOAD_SECURITY_DESIGN_2026-04-12.md`, `src/lib/server/sharedCache.ts`, `src/routes/healthz/+server.ts`
+- Status:
+  - DONE
+
+## [2026-04-12 22:49:10 +0900] START W-20260412-2249-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+- Branch:
+  - `codex/load-security-architecture`
+- Base `origin/main` hash:
+  - `0dc7f4e0702f1ee036e21ac29187b1096e25fbd2`
+- Working tree status:
+  - `## codex/load-security-architecture`
+  - continuing from the existing uncommitted Phase 0 launch-security hardening set on this branch
+- Task summary:
+  - sync the launch-security worktree with the latest remote base, preserve current local changes, and carry the branch through commit, verification, push, and merge
+- Owned files / overlap check result:
+  - owning the existing branch-local Phase 0 launch-hardening changes plus `docs/AGENT_WATCH_LOG.md` for sync/push bookkeeping
+  - overlap risk is limited to latest `origin/main`; sync will be done after committing current local work
+- Safe status:
+  - `npm run safe:status`: PASS
+- Status:
+  - IN_PROGRESS

@@ -20,6 +20,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
+import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { checkDistributedRateLimit } from '$lib/server/distributedRateLimit';
+import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { wizardLimiter } from '$lib/server/rateLimit';
+import { isRequestBodyTooLargeError, readJsonBody } from '$lib/server/requestGuards';
 import {
 	BlockParamsSchema,
 	BlockRoleSchema,
@@ -180,11 +185,48 @@ function buildAnswers(
 // HTTP handler
 // ---------------------------------------------------------------------------
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, cookies, getClientAddress }) => {
+	const guard = await runIpRateLimitGuard({
+		request,
+		fallbackIp: getClientAddress(),
+		limiter: wizardLimiter,
+		scope: 'wizard:compose:ip',
+		max: 10,
+		tooManyMessage: 'Too many challenge composition requests. Please wait.'
+	});
+	if (!guard.ok) return guard.response;
+
+	const user = await getAuthUserFromCookies(cookies);
+	if (!user) {
+		return json(
+			{ ok: false, error: 'authentication_required', reason: 'login required to create challenges' },
+			{ status: 401 }
+		);
+	}
+
+	const userAllowed = await checkDistributedRateLimit({
+		scope: 'wizard:compose:user',
+		key: user.id,
+		windowMs: 60 * 60 * 1000,
+		max: 20
+	});
+	if (!userAllowed) {
+		return json(
+			{ ok: false, error: 'quota_exceeded', reason: 'hourly challenge composition quota exceeded' },
+			{ status: 429 }
+		);
+	}
+
 	let raw: unknown;
 	try {
-		raw = await request.json();
-	} catch {
+		raw = await readJsonBody(request, 16 * 1024);
+	} catch (error) {
+		if (isRequestBodyTooLargeError(error)) {
+			return json(
+				{ ok: false, error: 'request_too_large', reason: 'request body exceeds 16KB limit' },
+				{ status: 413 }
+			);
+		}
 		return json(
 			{ ok: false, error: 'invalid_json', reason: 'request body is not valid JSON' },
 			{ status: 400 }
