@@ -859,6 +859,20 @@ active       → /terminal full experience
 
 ## § 16. Home Landing Page (implementation spec)
 
+### 2026-04-12 refinement
+
+Home now follows this combined direction:
+
+- **clean hierarchy first**: one thesis, one proof story, one visible next action
+- **immediate start second**: the user should feel they can begin work from Home, not just read about the product
+
+The practical result:
+
+- no builder/copier split
+- no onboarding-first framing
+- no card explosion above the fold
+- one strong hero + one start bar + one proof panel
+
 ### Current contract
 
 Home is **not** a route explainer and not a game lobby.  
@@ -876,12 +890,15 @@ The approved visual direction is:
 - no 3D logo
 - no floating orbit cards
 - no global market dock on the home route
+- minimal above-the-fold copy
+- action surface visible immediately
+- stronger spacing and hierarchy than the current dense mixed layout
 
 ### Sections (current approved implementation)
 
 **1. Hero — thesis first**
 
-- Eyebrow: `COGOTCHI`
+- Eyebrow: `COGOCHI`
 - H1: the strongest single statement on home
   - Cogochi is the AI that learns how this user judges the market
 - Sub copy:
@@ -889,10 +906,19 @@ The approved visual direction is:
   - let the scanner watch while the user is away
   - judge hits
   - deploy a better adapter
-- Primary CTA: start as builder
-  - `/onboard?path=builder`
-- Secondary CTA: inspect proof / copier path
-  - `/market`
+- Primary interaction: a **start bar**
+  - prompt: `What setup do you want to track?`
+  - submit routes into `/terminal`
+  - helper example chips can prefill likely intents
+- Primary CTA:
+  - `Open Terminal`
+  - `/terminal`
+- Secondary CTA:
+  - `See How Lab Scores It`
+  - `/lab`
+- Tertiary return action:
+  - `Return to Dashboard`
+  - quiet text-link treatment only
 - Hero visual:
   - one device-like proof panel
   - panel shows the learning loop as evidence, not decoration
@@ -910,9 +936,12 @@ The approved visual direction is:
   - per-user adapter
   - proof-before-trust
   - rollback if worse
-- Entry chooser:
-  - builder and copier stay visible above the fold
-  - existing-user actions stay secondary and text-level
+- Above-the-fold priority:
+  - thesis
+  - start bar
+  - proof panel
+  - supporting proof rail
+  - nothing else should compete with those 4 elements
 
 **2. Learning Loop**
 
@@ -932,28 +961,47 @@ The approved visual direction is:
 - 3-card grid with crisp role language:
   - `Terminal` — where the user sees and judges signals
   - `Lab` — where the model improves and gets evaluated
-  - `Agent` — where doctrine, memory, and record persist
+  - `Dashboard` — where saved work and recent runs wait
 - This section is for orientation only; it must not overpower the hero
+
+**4. Final CTA**
+
+- a quiet closing section at the bottom of the landing page
+- repeats the 3-surface loop in compressed form
+- offers:
+  - `Open Terminal`
+  - `Open Lab`
+  - `Return to Dashboard`
 
 ### Layout rules
 
-- Desktop hero: left thesis + right proof panel
-- Tablet/mobile hero: stack vertically, copy first
+- Desktop hero: left thesis + start bar, right proof panel
+- Tablet/mobile hero: stack vertically, copy first, then start bar, then proof panel
 - The first content section must start within one natural scroll from hero
 - Home must feel quieter than `/terminal`
 - Accent color can appear as a restrained signal line, not as a page wash
 - The logo watermark should read like an embossed background mark, not a foreground object
 - Typography should do most of the work; cards support the message rather than carrying it alone
 - If something competes with the H1 for attention, remove or weaken it
+- the start bar should feel like a working surface, not like decorative chrome
+- one decisive desktop screen should explain the product and offer a first move without forcing a long read
 
 ### Content rules
 
 - Home speaks in product truth, then mechanism, then route
 - Avoid long research explanations, jargon blocks, or feature inventories
-- Avoid using Terminal as the hero CTA
-- Builder and Copier should both remain visible above the fold
+- Avoid route-first copy before the thesis is understood
+- Avoid builder/copier framing in Day-1
 - Existing-user return paths should exist, but stay visually secondary
 - Copy should feel assured, compressed, and premium. No hype phrasing and no dashboard-ish labels as hero copy
+
+### Interaction rules
+
+- The start bar must work with or without typed input
+- Empty submit routes to `/terminal`
+- Filled submit routes to `/terminal` carrying the prompt into the initial compose state
+- Helper chips should be examples, not tabs or navigation detours
+- Home should make starting feel immediate while keeping the visual tone restrained
 
 ### Future extension note
 

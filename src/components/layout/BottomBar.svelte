@@ -1,9 +1,19 @@
 <script lang="ts">
+  import AlphaMarketBar from '../cogochi/AlphaMarketBar.svelte';
+  import { EMPTY_THERMO_DATA, type ThermoData } from '$lib/cogochi/marketPulse';
   import { gameState } from '$lib/stores/gameState';
   import { openTradeCount } from '$lib/stores/quickTradeStore';
   import { activeSignalCount } from '$lib/stores/trackedSignalStore';
   import { livePrices } from '$lib/stores/priceStore';
   import { getAppSurface } from '$lib/navigation/appSurfaces';
+
+  let {
+    thermo = EMPTY_THERMO_DATA,
+    buckets = null
+  }: {
+    thermo?: ThermoData;
+    buckets?: import('$lib/stores/alphaBuckets').AlphaBuckets | null;
+  } = $props();
 
   const state = $derived($gameState);
   const openPos = $derived($openTradeCount);
@@ -25,6 +35,12 @@
 
 <div id="status-bar">
   <div class="sb-section">
+    <div class="sb-market-lead">
+      <span class="sb-pair">{state.pair}</span>
+      {#if priceText}
+        <span class="sb-price">{priceText}</span>
+      {/if}
+    </div>
     {#if openPos > 0}
       <a class="sb-badge sb-pos" href="/agent">
         <span class="sb-dot dot-good"></span>
@@ -40,10 +56,7 @@
   </div>
 
   <div class="sb-center">
-    <span class="sb-pair">{state.pair}</span>
-    {#if priceText}
-      <span class="sb-price">{priceText}</span>
-    {/if}
+    <AlphaMarketBar thermo={thermo} buckets={buckets} />
   </div>
 
   <div class="sb-section sb-right">
@@ -94,6 +107,16 @@
     display: flex;
     align-items: center;
     gap: var(--sc-sp-1_5);
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sb-market-lead {
+    display: flex;
+    align-items: center;
+    gap: var(--sc-sp-1_5);
+    padding-right: 2px;
+    white-space: nowrap;
   }
   .sb-pair {
     color: var(--sc-text-3);
@@ -175,9 +198,31 @@
     font-size: var(--sc-fs-2xs);
   }
 
+  .sb-center :global(.market-pulse) {
+    min-width: 0;
+  }
+
+  .sb-center :global(.pulse-marquee) {
+    background:
+      linear-gradient(180deg, rgba(8, 13, 23, 0.9), rgba(8, 13, 23, 0.6)),
+      radial-gradient(circle at left center, rgba(255, 118, 181, 0.06), transparent 28%);
+  }
+
   @media (max-width: 768px) {
     .sb-center { display: none; }
     .sb-lp-track { width: 36px; }
+  }
+
+  @media (max-width: 1100px) {
+    .sb-section {
+      gap: var(--sc-sp-1);
+    }
+    .sb-market-lead {
+      margin-right: 2px;
+    }
+    .sb-center :global(.pulse-label) {
+      display: none;
+    }
   }
 
   @media (max-width: 480px) {

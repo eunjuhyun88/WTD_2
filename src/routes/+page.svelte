@@ -12,20 +12,28 @@
 
   const pathChoices = [
     {
-      id: 'builder',
-      label: 'Builder',
-      title: 'Train your first market memory',
-      copy: 'Start with DOUNI, save the first pattern, and let Cogochi learn what you actually trust.',
-      path: '/onboard?path=builder',
-      action: 'START BUILDING'
+      id: 'terminal',
+      label: 'Observe',
+      title: 'Search the market in Terminal',
+      copy: 'Type the setup you care about, inspect the chart, and save the pattern without leaving the workspace.',
+      path: '/terminal',
+      action: 'OPEN TERMINAL'
     },
     {
-      id: 'copier',
-      label: 'Copier',
-      title: 'Inspect proven specialists first',
-      copy: 'Browse the market, read the record, and decide later without committing to setup on day one.',
-      path: '/market',
-      action: 'INSPECT THE MARKET'
+      id: 'lab',
+      label: 'Evaluate',
+      title: 'Review saved challenges in Lab',
+      copy: 'Open what you saved, run the evaluation loop, and inspect whether the pattern deserves another pass.',
+      path: '/lab',
+      action: 'OPEN LAB'
+    },
+    {
+      id: 'dashboard',
+      label: 'Return',
+      title: 'Pick up from your inbox',
+      copy: 'Jump back into your saved challenges, watches, and recent runs without hunting through old screens.',
+      path: '/dashboard',
+      action: 'OPEN DASHBOARD'
     }
   ];
 
@@ -37,8 +45,8 @@
     },
     {
       id: '02',
-      title: 'Scan',
-      copy: 'The scanner watches while you sleep and sends back the moments worth judging.'
+      title: 'Watch',
+      copy: 'Saved challenges stay live so the system can surface the moments worth your attention.'
     },
     {
       id: '03',
@@ -64,9 +72,9 @@
       copy: 'Runs, comparisons, and gates live here. It is the workbench, not the stage prop.'
     },
     {
-      label: 'Agent',
-      title: 'Keep doctrine, memory, and record',
-      copy: 'The model history, the saved patterns, and the performance trail stay in one durable home.'
+      label: 'Dashboard',
+      title: 'Return to the work that matters',
+      copy: 'Saved challenges, watching context, and recent run status live in one inbox instead of scattered routes.'
     }
   ];
 
@@ -74,8 +82,8 @@
     {
       title: 'Start',
       links: [
-        { label: 'Build your first agent', path: '/onboard?path=builder', cta: 'footer_builder' },
-        { label: 'Inspect the market', path: '/market', cta: 'footer_market' }
+        { label: 'Open Terminal', path: '/terminal', cta: 'footer_terminal_start' },
+        { label: 'Open Lab', path: '/lab', cta: 'footer_lab_start' }
       ]
     },
     {
@@ -83,7 +91,7 @@
       links: [
         { label: 'Terminal', path: '/terminal', cta: 'footer_terminal' },
         { label: 'Lab', path: '/lab', cta: 'footer_lab' },
-        { label: 'Agent', path: '/agent', cta: 'footer_agent' }
+        { label: 'Dashboard', path: '/dashboard', cta: 'footer_dashboard_product' }
       ]
     },
     {
@@ -243,15 +251,15 @@
         <div class="eyebrow">COGOCHI</div>
         <h1 class:visible={mounted}>The AI that learns your judgment.</h1>
         <p class:visible={mounted} class="hero-lead">
-          Save a setup. Let the scanner watch while you are away. Judge the hit. Deploy a model that gets closer to how you actually read the market.
+          Type a setup. Save it from Terminal. Review the run in Lab. Return through Dashboard when the system has something worth your judgment.
         </p>
 
         <div class="hero-actions">
-          <button type="button" class="primary" onclick={() => openPath('/onboard?path=builder', 'primary_builder')}>
-            START WITH YOUR FIRST AGENT
+          <button type="button" class="primary" onclick={() => openPath('/terminal', 'primary_terminal')}>
+            OPEN TERMINAL
           </button>
-          <button type="button" class="secondary" onclick={() => openPath('/market', 'secondary_market')}>
-            SEE THE PROOF FIRST
+          <button type="button" class="secondary" onclick={() => openPath('/lab', 'secondary_lab')}>
+            VIEW LAB
           </button>
         </div>
 
@@ -305,7 +313,7 @@
             <p class="panel-kicker">Proof before trust</p>
             <h2>Your edge becomes system behavior.</h2>
             <p>
-              Cogochi does not ask you to trust a generic market bot. It keeps the memory, the verdicts, and the deployment gate tied to one user.
+              Cogochi does not ask you to trust a generic market bot. It ties saved setups, verdicts, and deployment gates back to one trader and one evolving record.
             </p>
           </div>
 
@@ -361,7 +369,7 @@
       <span class="section-label">SURFACES</span>
       <h2>Three places. One proof system.</h2>
       <p>
-        Terminal is where you judge. Lab is where the model earns deployment. Agent is where the record stays coherent.
+        Terminal is where you search and save. Lab is where the pattern earns another run. Dashboard is where you come back to what changed.
       </p>
     </div>
 
@@ -420,8 +428,8 @@
         <button type="button" class="footer-cta footer-cta-primary" onclick={() => openPath('/terminal', 'footer_open_terminal')}>
           OPEN TERMINAL
         </button>
-        <button type="button" class="footer-cta footer-cta-secondary" onclick={() => openPath('/onboard?path=builder', 'footer_start_douni')}>
-          START WITH DOUNI
+        <button type="button" class="footer-cta footer-cta-secondary" onclick={() => openPath('/dashboard', 'footer_open_dashboard')}>
+          OPEN DASHBOARD
         </button>
       </div>
     </div>

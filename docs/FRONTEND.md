@@ -39,12 +39,22 @@ Purpose:
 ## Current Hot Files
 
 - `src/routes/terminal/+page.svelte`
+- `src/components/cogochi/QuickPanel.svelte`
 - `src/components/terminal/IntelPanel.svelte`
 - `src/routes/arena/+page.svelte`
 - `src/components/arena/ChartPanel.svelte`
 - `src/routes/passport/+page.svelte`
 
 When editing these, update the relevant canonical doc if authority or behavior changed.
+
+## Terminal Shell Contract
+
+- `src/routes/terminal/+page.svelte` owns the Terminal workspace shell and breakpoint switching.
+- Desktop layout is a 3-pane grid: scanner rail, DOUNI feed, chart stage.
+- Desktop supports direct drag-resize between scanner/feed and feed/chart; those split widths remain route-local UI state.
+- Tablet keeps the scanner rail on the left and stacks feed over chart on the right; scanner width and chart height are independently resizable.
+- Mobile does not keep all three panes visible at once; it switches between scanner, feed, and chart to preserve readability.
+- `src/components/cogochi/QuickPanel.svelte` must follow parent width/height and must not hard-code the Terminal shell width.
 
 ## Wallet Intel Route / Component Blueprint
 
@@ -128,3 +138,167 @@ Use this shape if wallet-address investigation lands.
 - `docs/generated/route-map.md`
 - `docs/generated/store-authority-map.md`
 - `docs/generated/api-group-map.md`
+
+## Day-1 IA Sitemap (2026-04-11)
+
+This is an execution-facing materialization of the current canonical product direction in `docs/COGOCHI.md`.
+
+### Primary routes
+
+| Route | Role | Primary user question |
+| --- | --- | --- |
+| `/` | landing | "What is this product and where do I start?" |
+| `/terminal` | observe + compose | "What setup am I seeing right now, and do I want to save it?" |
+| `/lab` | evaluate + inspect + iterate | "Did this saved challenge actually earn another run?" |
+| `/dashboard` | my stuff inbox | "What changed since I was last here?" |
+
+### Secondary / deferred routes
+
+| Route | Status | Rule |
+| --- | --- | --- |
+| `/passport` | secondary | durable profile / dossier, not a primary Day-1 tab |
+| `/passport/wallet/[chain]/[address]` | secondary | dossier endpoint from Terminal wallet investigation |
+| `/create`, `/onboard`, `/agent`, `/agent/[id]`, `/scanner`, `/cogochi/scanner`, `/market`, `/battle` | deferred / legacy / later-phase | do not expose as first-order Day-1 navigation |
+
+## Day-1 Wireframes
+
+### Home
+
+```
+[Header]
+  Logo | Terminal | Lab | Dashboard
+
+[Hero]
+  eyebrow
+  headline
+  compressed value proposition
+  start bar: "What setup do you want to track?"
+  helper prompt chips
+  CTA 1: Open Terminal
+  CTA 2: See How Lab Scores It
+  CTA 3: Return to Dashboard (text-level)
+  proof panel
+
+[Proof rail]
+  per-user adapter / proof before trust / rollback if worse
+
+[Learning loop]
+  Capture -> Watch -> Judge -> Deploy
+
+[3 cards]
+  Terminal / Lab / Dashboard
+
+[Final CTA]
+  Open Terminal / Open Lab / Return to Dashboard
+```
+
+### Terminal
+
+```
+[Header bar]
+  current symbol / mode / quick status
+
+[Main shell]
+  Left: quick list / watch context
+  Center: feed / results / research blocks
+  Right: chart / focused inspection
+
+[Bottom input]
+  query entry
+  parsed hint
+  save challenge
+
+[Wallet mode]
+  stays inside Terminal shell
+  strong mode label + exit affordance
+```
+
+### Lab
+
+```
+[Intro summary]
+  selected challenge / tested / waiting
+
+[Toolbar]
+  challenge picker
+  cycle picker
+  mode
+  interval
+  run action
+
+[Main]
+  Left: chart / replay canvas
+  Right: challenge config or run result
+
+[Bottom]
+  position / run navigation bar
+```
+
+### Dashboard
+
+```
+[Hero summary]
+  challenge count / tested count / last activity
+
+[Section 1]
+  My Challenges
+
+[Section 2]
+  Watching
+
+[Section 3]
+  My Adapters
+
+[Quick actions]
+  Open Lab / Open Terminal
+```
+
+## Implementation-Priority PRD
+
+### Objective
+
+Reduce product-surface ambiguity by making the visible Day-1 experience consistently read as `Terminal / Lab / Dashboard`.
+
+### Problem
+
+- The canonical product doc already collapsed Day-1 to 3 surfaces, but the UI still exposes older route language and journey models.
+- Users currently encounter mixed concepts such as agent, onboarding, market, scanner, and battle even when they are not the primary path.
+- This weakens comprehension and makes the product feel larger and less intentional than it is.
+
+### Non-goals
+
+- Do not remove legacy routes in this pass.
+- Do not resolve wallet-intel or Terminal merge conflicts inside this IA pass.
+- Do not redesign Phase 2 / Phase 3 surfaces yet.
+
+### Scope
+
+1. Home copy and CTA realignment
+2. Home start-bar interaction and Terminal handoff
+3. Home component split (`hero`, `proof-panel`, `surface-cards`, `final-cta`)
+4. Navigation metadata realignment
+5. Lab surface reframing around saved challenges and runs
+6. Dashboard reframing as inbox
+7. Profile/menu cleanup to remove Agent-first language
+
+### Success criteria
+
+- The top nav exposes only `Terminal`, `Lab`, and `Dashboard` as the primary Day-1 routes.
+- Home explains the product using those same 3 surfaces.
+- Lab reads as an evaluation workspace, not a disconnected strategy toy.
+- Dashboard reads as a return/inbox surface, not a legacy performance board.
+- Legacy routes remain reachable but are no longer the main story.
+
+### Execution order
+
+1. Home direction and wireframe lock
+2. Home CTA and start-bar implementation
+3. Home component split and file-size reduction
+4. Navigation labels and route hierarchy
+5. Dashboard inbox framing
+6. Lab evaluation framing
+7. Terminal mode clarity after conflict resolution
+
+### Open risk
+
+- `src/routes/terminal/+page.svelte` still has unresolved merge markers and should be stabilized before the final Terminal shell cleanup pass.
