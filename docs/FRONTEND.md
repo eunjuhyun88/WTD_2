@@ -166,7 +166,9 @@ This is an execution-facing materialization of the current canonical product dir
 
 ```
 [Header]
-  Logo | Terminal | Lab | Dashboard
+  Desktop: Logo | Terminal | Lab | Dashboard | Open Terminal
+  Tablet: Logo | Terminal | Lab | Open Terminal
+  Mobile: Logo | Open Terminal
 
 [Hero]
   eyebrow
@@ -178,6 +180,7 @@ This is an execution-facing materialization of the current canonical product dir
   CTA 2: See How Lab Scores It
   CTA 3: Return to Dashboard (text-level)
   proof panel
+  right-biased watermark / color field
 
 [Proof rail]
   per-user adapter / proof before trust / rollback if worse

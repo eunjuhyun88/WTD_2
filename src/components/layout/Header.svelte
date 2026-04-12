@@ -107,6 +107,10 @@
       <span class="nav-logo-main">COGOCHI</span>
     </a>
 
+    {#if isHomeRoute}
+      <span class="home-route-pill">HOME</span>
+    {/if}
+
     <!-- Ticker (desktop + mobile) -->
     <div class="selected-ticker">
       <span class="st-pair">{selectedToken}</span>
@@ -131,6 +135,16 @@
   </div>
 
   <div class="nav-right">
+    {#if isHomeRoute}
+      <a
+        class="home-start-btn"
+        aria-label="Open Terminal"
+        href={buildDeepLink('/terminal')}
+      >
+        OPEN TERMINAL
+      </a>
+    {/if}
+
     <!-- Score badge (desktop only) -->
     <div class="score-badge desktop-only">
       <span class="score-label">XP</span>
@@ -231,6 +245,52 @@
     font-size: 1.12rem;
     letter-spacing: 0.07em;
     text-shadow: 0 0 10px rgba(219, 154, 159, 0.1);
+  }
+
+  .home-route-pill,
+  .home-start-btn {
+    display: none;
+  }
+
+  .home-route-pill {
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 247, 244, 0.7);
+    font-family: var(--sc-font-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .home-start-btn {
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 79, 163, 0.24);
+    background: linear-gradient(135deg, #ff4fa3, #ff8a63);
+    color: #070707;
+    font-family: var(--sc-font-mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-decoration: none;
+    box-shadow: 0 10px 28px rgba(255, 79, 163, 0.24);
+    transition:
+      transform var(--sc-duration-fast),
+      box-shadow var(--sc-duration-fast),
+      opacity var(--sc-duration-fast);
+  }
+
+  .home-start-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(255, 79, 163, 0.3);
   }
 
   /* Ticker */
@@ -466,6 +526,10 @@
     margin-left: 4px;
   }
 
+  #nav.home-mode .home-start-btn {
+    display: inline-flex;
+  }
+
   #nav.home-mode .wallet-btn {
     min-height: 28px;
     padding: 0 10px;
@@ -555,6 +619,14 @@
     #nav.home-mode {
       width: calc(100vw - 20px);
     }
+    #nav.home-mode .nav-tab-desktop:nth-of-type(3) {
+      display: none;
+    }
+    #nav.home-mode .home-start-btn {
+      min-height: 28px;
+      padding: 0 10px;
+      font-size: 0.62rem;
+    }
   }
 
   /* ═══ MOBILE (<=768px) — compact top chrome, tabs move to bottom nav ═══ */
@@ -590,6 +662,10 @@
     #nav.home-mode .selected-ticker {
       display: none;
     }
+    #nav.home-mode .home-route-pill {
+      display: inline-flex;
+      margin-left: 6px;
+    }
     .st-pair {
       font-size: 8px;
     }
@@ -610,9 +686,18 @@
       padding: 0 12px;
       border-radius: var(--sc-radius-md);
     }
+    #nav.home-mode .profile-dropdown-wrap,
     #nav.home-mode .wallet-btn {
+      display: none;
+    }
+    #nav.home-mode .nav-right {
+      margin-left: auto;
+    }
+    #nav.home-mode .home-start-btn {
       min-height: 26px;
-      padding: 0 8px;
+      padding: 0 10px;
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
     }
   }
 

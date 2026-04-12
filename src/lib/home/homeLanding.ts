@@ -20,6 +20,7 @@ export interface SurfaceCard {
   copy: string;
   path: string;
   cta: string;
+  actionLabel: string;
 }
 
 export interface ProofRow {
@@ -30,8 +31,8 @@ export interface ProofRow {
 
 export const HOME_PROOF_PILLARS: ProofPillar[] = [
   { label: 'PERSONAL', value: 'One adapter per trader' },
-  { label: 'PROOF', value: 'Improves before it asks for trust' },
-  { label: 'SAFETY', value: 'Rollback if validation slips' }
+  { label: 'PROOF', value: 'Validation before deploy' },
+  { label: 'SAFETY', value: 'Rollback if the score slips' }
 ];
 
 export const HOME_EXAMPLE_PROMPTS: ExamplePrompt[] = [
@@ -44,22 +45,22 @@ export const HOME_LEARNING_STEPS: LearningStep[] = [
   {
     id: '01',
     title: 'Capture',
-    copy: 'Turn a market setup into something the system can remember instead of a note you lose tomorrow.'
+    copy: 'Save one setup in language you would actually use again, not a note you forget tomorrow.'
   },
   {
     id: '02',
     title: 'Watch',
-    copy: 'Cogochi keeps that setup alive and surfaces the moments that look close enough to deserve your attention.'
+    copy: 'Terminal keeps it alive and surfaces the moments that look close enough to deserve your attention.'
   },
   {
     id: '03',
     title: 'Judge',
-    copy: 'Your yes and no calls become usable training signal instead of disappearing into chat history.'
+    copy: 'Your yes and no calls become training signal instead of disappearing into chat history.'
   },
   {
     id: '04',
     title: 'Deploy',
-    copy: 'Lab only ships the stronger adapter and rolls back the weaker one when the evidence says so.'
+    copy: 'Lab ships the stronger adapter and rolls back the weaker one when the evidence says so.'
   }
 ];
 
@@ -69,21 +70,24 @@ export const HOME_SURFACES: SurfaceCard[] = [
     title: 'Search the market and save the setup',
     copy: 'This is the fast workspace. Type what you are looking for, inspect the chart, and pin the pattern without leaving the flow.',
     path: '/terminal',
-    cta: 'surface_terminal'
+    cta: 'surface_terminal',
+    actionLabel: 'Open Terminal'
   },
   {
     label: 'Lab',
     title: 'See whether the pattern earned another run',
     copy: 'Runs, comparisons, and validation live here. Lab is where evidence decides whether the model actually improved.',
     path: '/lab',
-    cta: 'surface_lab'
+    cta: 'surface_lab',
+    actionLabel: 'Open Lab'
   },
   {
     label: 'Dashboard',
     title: 'Come back to what changed',
     copy: 'Saved challenges, watched setups, and recent runs return as one inbox instead of scattered old routes.',
     path: '/dashboard',
-    cta: 'surface_dashboard'
+    cta: 'surface_dashboard',
+    actionLabel: 'Return to Dashboard'
   }
 ];
 
@@ -101,7 +105,7 @@ export const HOME_PROOF_ROWS: ProofRow[] = [
   {
     stage: 'VERDICT',
     title: 'Two good calls, one bad call',
-    detail: 'Your actual yes and no decisions become training signal tied to one trader record.'
+    detail: 'Those yes and no decisions become reusable signal tied to one trader record.'
   },
   {
     stage: 'DEPLOY',

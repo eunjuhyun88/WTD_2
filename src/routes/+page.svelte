@@ -185,8 +185,41 @@
     z-index: 2;
     overflow: visible;
     color: var(--sc-text-0);
+    --home-black: #070707;
+    --home-white: #fff7f4;
+    --home-pink: #ff4fa3;
+    --home-orange: #ff8a63;
+    --home-cyan: #79e4ff;
+    --home-acid: #d7ff6a;
     background:
-      radial-gradient(circle at top, rgba(255, 255, 255, 0.025), transparent 34%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.16) 42%, rgba(0, 0, 0, 0.34) 100%);
+      radial-gradient(circle at 12% 2%, rgba(255, 79, 163, 0.22), transparent 24%),
+      radial-gradient(circle at 82% 16%, rgba(121, 228, 255, 0.15), transparent 28%),
+      radial-gradient(circle at 20% 76%, rgba(215, 255, 106, 0.08), transparent 24%),
+      radial-gradient(circle at 74% 58%, rgba(255, 138, 99, 0.1), transparent 30%),
+      linear-gradient(180deg, rgba(8, 8, 10, 0.18), rgba(0, 0, 0, 0.34) 42%, rgba(0, 0, 0, 0.56) 100%);
+  }
+
+  .page::before {
+    content: '';
+    position: fixed;
+    inset: -8%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 10% 8%, rgba(255, 79, 163, 0.16), transparent 18%),
+      radial-gradient(circle at 88% 22%, rgba(121, 228, 255, 0.12), transparent 22%),
+      radial-gradient(circle at 18% 80%, rgba(215, 255, 106, 0.07), transparent 18%);
+    filter: blur(30px) saturate(1.18);
+    opacity: 0.9;
+  }
+
+  @media (max-width: 768px) {
+    .page {
+      background:
+        radial-gradient(circle at 14% 4%, rgba(255, 79, 163, 0.18), transparent 26%),
+        radial-gradient(circle at 84% 16%, rgba(121, 228, 255, 0.11), transparent 26%),
+        radial-gradient(circle at 20% 74%, rgba(215, 255, 106, 0.06), transparent 22%),
+        linear-gradient(180deg, rgba(8, 8, 10, 0.18), rgba(0, 0, 0, 0.38) 44%, rgba(0, 0, 0, 0.58) 100%);
+    }
   }
 </style>
