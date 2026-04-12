@@ -380,20 +380,25 @@
   }
 
   @media (max-width: 960px) {
-    .challenge-grid,
-    .challenge-stats {
-      grid-template-columns: 1fr;
-    }
-
     .market-banner {
       align-items: start;
       flex-direction: column;
+    }
+
+    /* 4-col stats → 2-col on tablet */
+    .challenge-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   @media (max-width: 640px) {
     .dashboard-page {
       padding-top: 4px;
+    }
+
+    /* card grid stays 2-col until very small; stats 2-col always */
+    .challenge-grid {
+      grid-template-columns: 1fr;
     }
 
     .challenge-card,

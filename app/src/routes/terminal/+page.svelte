@@ -3164,28 +3164,40 @@
     .mobile-mode-tabs {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
-      background: rgba(5, 9, 14, 0.96);
+      gap: 4px;
+      padding: 8px 12px 6px;
+      border-bottom: 1px solid rgba(249, 216, 194, 0.06);
+      background:
+        linear-gradient(180deg, rgba(8, 8, 10, 0.96), rgba(5, 5, 7, 0.98)),
+        radial-gradient(circle at center top, rgba(249, 216, 194, 0.025), transparent 36%);
+      flex-shrink: 0;
     }
     .mobile-mode-tabs button {
-      min-height: 36px;
-      border-radius: 8px;
-      border: 1px solid var(--sc-line-soft, rgba(219,154,159,0.16));
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--sc-text-2, rgba(247, 242, 234, 0.72));
+      min-height: 38px;
+      border-radius: 12px;
+      border: 1px solid rgba(249, 216, 194, 0.07);
+      background: rgba(255, 255, 255, 0.025);
+      color: rgba(250, 247, 235, 0.44);
       font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: background 100ms ease, color 100ms ease, border-color 100ms ease;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     .mobile-mode-tabs button.active {
-      border-color: rgba(219, 154, 159, 0.46);
-      background: rgba(219, 154, 159, 0.12);
-      color: var(--sc-text-0, #f7f2ea);
+      border-color: rgba(219, 154, 159, 0.18);
+      background: linear-gradient(180deg, rgba(219, 154, 159, 0.1), rgba(219, 154, 159, 0.05));
+      color: rgba(250, 247, 235, 0.96);
     }
     .mobile-mode-tabs button:disabled {
-      opacity: 0.38;
+      opacity: 0.3;
+      cursor: default;
+    }
+    .mobile-mode-tabs button:active:not(:disabled) {
+      transform: scale(0.96);
     }
     .main-content {
       display: block;
@@ -3260,17 +3272,18 @@
     }
     .input-bar {
       position: sticky;
-      bottom: calc(var(--sc-mobile-nav-h, 64px) + 10px);
+      bottom: calc(var(--sc-mobile-nav-h, 68px) + 8px);
       z-index: 4;
-      padding: 0 14px 10px;
+      padding: 0 12px 8px;
       border-top: none;
       background: transparent;
     }
     .input-box {
       max-width: none;
       padding: 8px 8px 8px 16px;
-      border-radius: 22px;
-      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.16);
+      border-radius: 20px;
+      border-color: rgba(249, 216, 194, 0.1);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(249, 216, 194, 0.06) inset;
     }
   }
 
