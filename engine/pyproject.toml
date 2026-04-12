@@ -21,3 +21,8 @@ testpaths = ["tests"]
 # ".." → wizard imports (wizard.composer, wizard.schema, etc.) tested from
 #        the same env without needing a separate wizard pyproject.
 pythonpath = [".", ".."]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
