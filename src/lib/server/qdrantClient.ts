@@ -5,7 +5,7 @@
  */
 
 import { env } from '$env/dynamic/private';
-import type { MemoryCard } from '$lib/engine/cogochiTypes';
+import type { MemoryCard } from '$lib/contracts/signals';
 
 const QDRANT_URL = env.QDRANT_URL || 'http://localhost:6333';
 const COLLECTION = 'cogochi_memories';

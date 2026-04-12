@@ -8,7 +8,7 @@
   import ToastStack from '../components/shared/ToastStack.svelte';
   import P0Banner from '../components/shared/P0Banner.svelte';
   import { page } from '$app/stores';
-  import { gameState } from '$lib/stores/gameState';
+  import { activePairState, setActiveView } from '$lib/stores/activePairStore';
   import { alphaBuckets } from '$lib/stores/alphaBuckets';
   import { EMPTY_THERMO_DATA, type ThermoData, startThermoPolling } from '$lib/cogochi/marketPulse';
   import { startGlobalPriceFeed } from '$lib/layout/globalPriceFeed';
@@ -41,10 +41,7 @@
       : path.startsWith('/arena') || path.startsWith('/arena-war') || path.startsWith('/arena-v2') ? 'arena'
       : null;
     if (!view) return;
-    gameState.update(s => {
-      if (s.currentView !== view) return { ...s, currentView: view };
-      return s;
-    });
+    setActiveView(view);
   });
 
   let stopThermoPolling: (() => void) | null = null;
