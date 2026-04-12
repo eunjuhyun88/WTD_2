@@ -17,6 +17,7 @@ export interface MemorySearchOptions {
   topK?: number;
   maxAgeMs?: number;             // filter by recency
   excludeScenarioId?: string;    // prevent future leakage
+  symbol?: string;               // current symbol for relevance scoring
 }
 
 export interface MemorySearchResult {
@@ -88,7 +89,7 @@ export async function searchMemories(
 
     const result = await query<DbMemoryRow>(sql, params);
 
-    const memories = result.rows.map((row: DbMemoryRow) => rowToMemoryRecord(row, opts.query));
+    const memories = result.rows.map((row: DbMemoryRow) => rowToMemoryRecord(row, opts.query, opts.symbol));
 
     return {
       memories,
@@ -102,7 +103,7 @@ export async function searchMemories(
 
 // ─── Score a memory against the current query ──────────────────
 
-function scoreMemory(row: DbMemoryRow, q: RetrievalQuery): number {
+function scoreMemory(row: DbMemoryRow, q: RetrievalQuery, currentSymbol?: string): number {
   let score = 0;
   const now = Date.now();
   const createdAt = new Date(row.created_at).getTime();
@@ -132,8 +133,15 @@ function scoreMemory(row: DbMemoryRow, q: RetrievalQuery): number {
   // Regime match (0.08)
   score += 0.08 * (row.regime === q.regime ? 1 : 0);
 
-  // Symbol match (0.05)
-  score += 0.05 * 1; // always BTCUSDT for now
+  // Symbol match (0.05) — exact match > same base asset > no match
+  if (currentSymbol && row.symbol) {
+    const normalize = (s: string) => s.toUpperCase().replace('USDT', '').replace('PERP', '');
+    const rowBase = normalize(row.symbol);
+    const queryBase = normalize(currentSymbol);
+    score += 0.05 * (rowBase === queryBase ? 1 : 0);
+  } else {
+    score += 0.05 * 0.5; // unknown — neutral
+  }
 
   return score;
 }
@@ -162,8 +170,8 @@ interface DbMemoryRow {
   updated_at: string;
 }
 
-function rowToMemoryRecord(row: DbMemoryRow, q: RetrievalQuery): MemoryRecord {
-  const score = scoreMemory(row, q);
+function rowToMemoryRecord(row: DbMemoryRow, q: RetrievalQuery, currentSymbol?: string): MemoryRecord {
+  const score = scoreMemory(row, q, currentSymbol);
 
   return {
     id: row.id,

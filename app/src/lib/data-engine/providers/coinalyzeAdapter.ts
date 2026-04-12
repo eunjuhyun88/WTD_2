@@ -1,5 +1,5 @@
 import type { DataEngineProvider } from './providerAdapter'
-import type { NormalizedSeries, NormalizedSnapshot, DataCadence } from '../types'
+import type { NormalizedSeries, NormalizedSnapshot } from '../types'
 import { normalizeSymbol } from '../normalization/normalizeSymbol'
 import { normalizeTimestamp } from '../normalization/normalizeTimestamp'
 
@@ -16,31 +16,27 @@ export function createCoinalyzeAdapter(deps: {
   return {
     name: 'coinalyze',
 
-    async fetchSeries(symbol, metric, tf, limit) {
+    async fetchSeries(symbol: string, metric: string, tf: string, limit: number): Promise<NormalizedSeries | null> {
       const normalized = normalizeSymbol(symbol)
       try {
         if (metric === 'oi') {
           const data = await deps.fetchOIHistory(normalized, tf, limit)
           return {
-            id: `coinalyze:oi:${normalized}:${tf}`,
+            rawId: `coinalyze:oi:${normalized}:${tf}`,
             symbol: normalized,
-            timeframe: tf,
-            provider: 'coinalyze',
-            unit: 'usd',
-            points: data.map(d => ({ ts: normalizeTimestamp(d.time), value: d.value })),
-            meta: { fetchedAt: normalizeTimestamp(Date.now()), ttlMs: 60_000, cadence: '5m' as DataCadence },
+            tf,
+            points: data.map(d => ({ t: normalizeTimestamp(d.time), v: d.value })),
+            updatedAt: Date.now(),
           }
         }
         if (metric === 'funding') {
           const data = await deps.fetchFundingHistory(normalized, tf, limit)
           return {
-            id: `coinalyze:funding:${normalized}:${tf}`,
+            rawId: `coinalyze:funding:${normalized}:${tf}`,
             symbol: normalized,
-            timeframe: tf,
-            provider: 'coinalyze',
-            unit: 'ratio',
-            points: data.map(d => ({ ts: normalizeTimestamp(d.time), value: d.value })),
-            meta: { fetchedAt: normalizeTimestamp(Date.now()), ttlMs: 60_000, cadence: '5m' as DataCadence },
+            tf,
+            points: data.map(d => ({ t: normalizeTimestamp(d.time), v: d.value })),
+            updatedAt: Date.now(),
           }
         }
         return null
@@ -49,29 +45,27 @@ export function createCoinalyzeAdapter(deps: {
       }
     },
 
-    async fetchSnapshot(symbol, metric) {
+    async fetchSnapshot(symbol: string, metric: string): Promise<NormalizedSnapshot | null> {
       const normalized = normalizeSymbol(symbol)
       try {
         if (metric === 'oi') {
           const data = await deps.fetchCurrentOI(normalized)
           if (!data) return null
           return {
-            id: `coinalyze:oi:${normalized}`,
+            rawId: `coinalyze:oi:${normalized}`,
             symbol: normalized,
-            provider: 'coinalyze',
-            ts: normalizeTimestamp(data.update),
-            values: { oi_usd: data.value } as Record<string, number | null>,
+            value: data.value,
+            updatedAt: normalizeTimestamp(data.update),
           }
         }
         if (metric === 'funding') {
           const data = await deps.fetchCurrentFunding(normalized)
           if (!data) return null
           return {
-            id: `coinalyze:funding:${normalized}`,
+            rawId: `coinalyze:funding:${normalized}`,
             symbol: normalized,
-            provider: 'coinalyze',
-            ts: normalizeTimestamp(data.update),
-            values: { funding_rate: data.value } as Record<string, number | null>,
+            value: data.value,
+            updatedAt: normalizeTimestamp(data.update),
           }
         }
         return null

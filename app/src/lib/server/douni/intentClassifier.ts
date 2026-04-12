@@ -75,7 +75,7 @@ const PATTERN_SAVE_PATTERNS = [
   /기억해|저장해|패턴\s*저장|이거\s*저장|save\s*pattern|remember\s*this/i,
 ];
 
-// Known crypto symbols — fast Set lookup
+// Known crypto symbols — fast path (자주 쓰이는 것만, 전수 커버리지 불필요)
 const KNOWN_SYMBOLS = new Set([
   'BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC',
   'DOGE', 'SHIB', 'PEPE', 'WIF', 'BONK', 'FLOKI', 'MEME', 'BOME',
@@ -87,17 +87,48 @@ const KNOWN_SYMBOLS = new Set([
   'BITCOIN', 'ETHEREUM', 'SOLANA', 'RIPPLE', 'DOGECOIN',
 ]);
 
-const SYMBOL_PATTERN = /\b([A-Z]{2,8})(USDT)?\b|비트코인|이더리움|솔라나|리플|도지코인/gi;
+// 일반 영단어 — 티커로 오탐되지 않도록 제외
+const COMMON_WORDS = new Set([
+  'I','A','AN','THE','AND','OR','IS','IT','TO','OF','IN','FOR','ON','AT','BY','UP',
+  'DO','GO','BE','AS','NO','SO','IF','MY','WE','HE','ME','US','AM','PM','OK',
+  'BUT','NOT','ALL','CAN','GET','HOW','WHO','OUT','NEW','NOW','ANY','TWO','WAY',
+  'MAY','SAY','USE','HER','HIS','HAD','HAS','WAS','ARE','YES','YEP','NAH',
+  'BEEN','HAVE','WITH','FROM','THIS','THAT','THEY','WHAT','WHEN','WILL',
+  'JUST','VERY','ALSO','WELL','INTO','OVER','SOME','MAKE','TAKE','GOOD',
+  'FULL','LONG','HIGH','LAST','NEXT','SHOW','OPEN','GIVE','LOOK','KNOW',
+  'NEED','WANT','KEEP','WORK','MUCH','MORE','MOST','LOL','LMAO','NICE',
+  'TEST','HELP','INFO','DATA','TIME','FAST','HOLD','SAME','WAIT','REAL',
+  'MOVE','NEWS','BULL','BEAR','TOP','LOW','HMM','WOW','YO','HEY','HI',
+]);
+
+// 트레이딩/시장 맥락 단어 — 긴 메시지에서 미지 티커 확정용
+const TRADE_CONTEXT = /어때|분석|봐|봐줘|체크|확인|지금|현재|가격|전망|올라|내려|펌핑|덤핑|숏|롱|매수|매도|들어가|진입|타겟|수익|손절|\b(analysis|analyze|check|price|pump|dump|long|short|buy|sell|entry|target|chart)\b/i;
 
 function detectSymbol(text: string): boolean {
-  // Check known symbols first
   const upper = text.toUpperCase();
+
+  // 1. 빠른 경로: 알려진 심볼
   for (const sym of KNOWN_SYMBOLS) {
     if (upper.includes(sym)) return true;
   }
-  // Regex fallback for pattern like "XXX 어때", "XXX USDT"
-  const matches = text.toUpperCase().match(SYMBOL_PATTERN);
-  return matches !== null && matches.length > 0;
+
+  // 2. 명시적 USDT 쌍: TRUMPUSDT, TRUMP/USDT, FARTCOINUSDT 등
+  if (/\b[A-Z]{2,12}(\/USDT|USDT)\b/i.test(text)) return true;
+
+  // 3. 한국어 코인명
+  if (/비트코인|이더리움|솔라나|리플|도지코인|에이다|폴카닷|체인링크|아발란체|수이|앱토스/.test(text)) return true;
+
+  // 4. 미지 티커 감지: 대문자 2~12자 중 일반 영단어 아닌 것
+  const words = upper.match(/\b[A-Z]{2,12}\b/g) ?? [];
+  const hasTicker = words.some(w => !COMMON_WORDS.has(w));
+
+  if (!hasTicker) return false;
+
+  // 짧은 메시지(≤20자)는 티커 쿼리로 간주: "TRUMP?", "FARTCOIN 봐"
+  if (text.trim().length <= 20) return true;
+
+  // 긴 메시지는 트레이딩 맥락 단어가 있어야 확정
+  return TRADE_CONTEXT.test(text);
 }
 
 // ─── Intent config table ─────────────────────────────────────
