@@ -52,10 +52,13 @@ class RiskConfig:
     max_consecutive_losses: int = 5
     consecutive_loss_pause_bars: int = 24
     kelly_fraction: float = 0.25
+    regime_skip: tuple[str, ...] = ()
 
     # ------------------------------------------------------------------
     # Validation
     # ------------------------------------------------------------------
+    _VALID_REGIMES = frozenset({"bull", "bear", "chop", "unknown"})
+
     def validate(self) -> None:
         """Raise ``ConfigValidationError`` on any out-of-range field."""
         self._check("initial_equity", self.initial_equity > 0)
@@ -88,6 +91,12 @@ class RiskConfig:
         self._check("max_consecutive_losses", self.max_consecutive_losses >= 1)
         self._check("consecutive_loss_pause_bars", self.consecutive_loss_pause_bars >= 0)
         self._check("kelly_fraction", 0 < self.kelly_fraction <= 1.0)
+        for r in self.regime_skip:
+            if r not in self._VALID_REGIMES:
+                raise ConfigValidationError(
+                    f"regime_skip contains invalid regime {r!r}; "
+                    f"valid: {sorted(self._VALID_REGIMES)}"
+                )
 
     def _check(self, name: str, ok: bool, hint: str | None = None) -> None:
         if not ok:

@@ -35,6 +35,7 @@ import pandas as pd
 from backtest.config import RiskConfig
 from backtest.metrics import BacktestMetrics, compute_metrics
 from backtest.portfolio import EquityPoint, Portfolio
+from backtest.regime import Regime
 from backtest.types import EntrySignal, ExecutedTrade
 from exceptions import InsufficientDataError
 from observability.logging import StructuredLogger
@@ -62,6 +63,7 @@ def run_backtest(
     logger: StructuredLogger,
     *,
     intrabar_order: IntrabarOrder = "pessimistic",
+    regime_labels: dict[pd.Timestamp, Regime] | None = None,
 ) -> BacktestResult:
     """Run a portfolio-constrained backtest over ``entries``.
 
@@ -133,6 +135,12 @@ def run_backtest(
 
     for sig in filtered:
         _flush_exits_until(sig.timestamp)
+
+        if regime_labels and risk_cfg.regime_skip:
+            regime = regime_labels.get(sig.timestamp)
+            if regime is not None and regime in risk_cfg.regime_skip:
+                _record_block(sig, f"regime_{regime}")
+                continue
 
         ok, reason = portfolio.can_enter(sig.symbol, sig.timestamp)
         if not ok:
