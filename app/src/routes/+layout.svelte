@@ -1,5 +1,7 @@
 <script lang="ts">
   import '../app.css';
+  import { dev } from '$app/environment';
+  import { injectAnalytics } from '@vercel/analytics/sveltekit';
   import Header from '../components/layout/Header.svelte';
   import BottomBar from '../components/layout/BottomBar.svelte';
   import MobileBottomNav from '../components/layout/MobileBottomNav.svelte';
@@ -14,6 +16,8 @@
   import { startGlobalPriceFeed } from '$lib/layout/globalPriceFeed';
   import { derived } from 'svelte/store';
   import { onMount, onDestroy } from 'svelte';
+
+  injectAnalytics({ mode: dev ? 'development' : 'production' });
 
   let { children } = $props();
 
