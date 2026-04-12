@@ -38,7 +38,7 @@ export interface WalletState {
 
   // UI state
   showWalletModal: boolean;
-  walletModalStep: 'welcome' | 'wallet-select' | 'connecting' | 'sign-message' | 'connected' | 'signup' | 'login' | 'demo-intro' | 'profile';
+  walletModalStep: 'wallet-select' | 'connecting' | 'sign-message' | 'connected' | 'signup' | 'login' | 'profile';
   signature: string | null;
 }
 
@@ -71,7 +71,7 @@ const defaultWallet: WalletState = {
   matchesPlayed: 0,
   totalLP: 0,
   showWalletModal: false,
-  walletModalStep: 'welcome',
+  walletModalStep: 'wallet-select',
   signature: null
 };
 
@@ -151,7 +151,7 @@ export function clearAuthenticatedUser() {
     nickname: null,
     tier: w.connected ? 'connected' : 'guest',
     showWalletModal: false,
-    walletModalStep: w.connected ? 'connected' : 'welcome',
+    walletModalStep: w.connected ? 'connected' : 'wallet-select',
   }));
 }
 
@@ -190,8 +190,8 @@ export function openWalletModal() {
     // connected only => choose login/signup from connected step
     // account only (session restored) but no wallet => reconnect wallet first
     const step = w.connected
-      ? (w.email ? 'profile' : 'connected')
-      : (w.email ? 'wallet-select' : 'welcome');
+      ? ((w.email || w.nickname) ? 'profile' : 'connected')
+      : 'wallet-select';
     return { ...w, showWalletModal: true, walletModalStep: step };
   });
 }
