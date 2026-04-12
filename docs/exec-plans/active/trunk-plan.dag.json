@@ -860,6 +860,101 @@
       ],
       "kill_gate": { "gate_fail_max": 3, "age_days_max": 7 },
       "notes": "Phase 2 critical path — makes the ORPO pair generator possible. Depends on P1.C-schema-migration because it writes outcome fields to the trajectory table."
+    },
+    {
+      "id": "Z1-hook-subagent-autospawn",
+      "title": "SubagentStop hook emits next-ready-slice notice to daily digest",
+      "track": "product",
+      "phase": "Z1",
+      "priority": 990,
+      "agent_type": "implementer",
+      "depends_on": [],
+      "mutex": [],
+      "paths": [
+        "scripts/swarm/auto-spawn.sh",
+        ".claude/hooks/subagent-auto-spawn.sh",
+        ".claude/settings.json",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".claude/agents/scheduler.md",
+        "scripts/slice/cli.mjs",
+        ".claude/hooks/stop-context.sh"
+      ],
+      "dod": [
+        "scripts/swarm/auto-spawn.sh exists and is executable; reads `slice ready --json`, picks highest priority, checks WIP cap vs active_phase, appends to .agent-context/digest/YYYY-MM-DD.md",
+        ".claude/hooks/subagent-auto-spawn.sh is a thin wrapper that cd's to repo root and invokes scripts/swarm/auto-spawn.sh with stderr capture",
+        ".claude/settings.json SubagentStop hook chain includes the new hook AFTER stop-context.sh (context save must run first)",
+        "Smoke verification: running scripts/swarm/auto-spawn.sh produces a digest entry of shape `- HH:MM:SSZ scheduler: next ready slice=<id> track=<t> (WIP a/b, phase=week_N)`",
+        "Rollout log in docs/swarm-v1-rollout-log.md updated with Z1 landing entry + auto-spawn usage notes",
+        "npm run check exits 0; npm run gate exits 0",
+        "1000-user perf budget: hook runs in < 200ms wall-clock (bash + one jq + one node CLI call); no blocking I/O; zero network",
+        "Security: no new network egress, no new creds, no PII in digest; auto-spawn script refuses to execute outside the repo root; hook aborts silently if scripts/swarm/auto-spawn.sh is missing (no error spam for non-swarm branches)"
+      ],
+      "kill_gate": { "gate_fail_max": 2, "age_days_max": 1 },
+      "notes": "Scope is intentionally NARROW: this slice does NOT auto-invoke the Scheduler subagent (which would require spawning a whole Claude process). It only makes the scheduler state OBSERVABLE after every SubagentStop so the human operator (or a future slice) can react. Full auto-spawn via `claude -p scheduler` is deferred until cost-ceiling-guard (Z3) lands. Uses observability, not automation."
+    },
+    {
+      "id": "Z2-slice-new-worktree-provision",
+      "title": "slice new --worktree flag auto-creates isolated git worktree",
+      "track": "product",
+      "phase": "Z2",
+      "priority": 985,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z1-hook-subagent-autospawn"],
+      "mutex": [],
+      "paths": [
+        "scripts/slice/cli.mjs",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        "scripts/slice/cli.mjs"
+      ],
+      "dod": [
+        "cmdNew gains optional --worktree flag that runs `git worktree add .claude/worktrees/<slice-id> -b <branch>` after writing brief + claim",
+        "Without --worktree, cmdNew behaves exactly as before (backward compat)",
+        "With --worktree, cmdNew refuses to create if target path already exists and prints the existing worktree info",
+        "Smoke: `node scripts/slice/cli.mjs new <id> --worktree` on a test slice creates the worktree, then slice kill cleans it up",
+        "Help text in scripts/slice/cli.mjs lists the new flag",
+        "npm run check exits 0",
+        "1000-user perf budget: one extra shell-out per slice-new; no runtime impact on /api/* or /terminal rendering",
+        "Security: git worktree add is a local-only operation; no network; auto-provision does NOT clone keys or env files into the new worktree (git worktree shares .git but working tree starts clean)"
+      ],
+      "kill_gate": { "gate_fail_max": 2, "age_days_max": 2 },
+      "notes": "Depends on Z1 because hook-driven observability is more valuable once each slice runs in its own worktree. Keep flag optional so existing slice flows on shared worktrees stay unchanged."
+    },
+    {
+      "id": "Z3-cost-ceiling-guard",
+      "title": "CLAUDE_API_DAILY_CEILING_USD guard + daily digest spend tracking",
+      "track": "product",
+      "phase": "Z3",
+      "priority": 980,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z1-hook-subagent-autospawn"],
+      "mutex": [],
+      "paths": [
+        "scripts/swarm/cost-check.sh",
+        "scripts/swarm/auto-spawn.sh",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".claude/agents/scheduler.md",
+        "scripts/swarm/auto-spawn.sh"
+      ],
+      "dod": [
+        "scripts/swarm/cost-check.sh reads CLAUDE_API_DAILY_CEILING_USD env var (default empty = guard disabled)",
+        "When set, computes today's spend from .agent-context/digest/YYYY-MM-DD.md cost lines (if present) and emits status: OK / NEAR (>=80%) / OVER (>=100%)",
+        "scripts/swarm/auto-spawn.sh short-circuits at OVER and writes a digest warning instead of picking a slice",
+        "When CLAUDE_API_DAILY_CEILING_USD is unset, cost-check.sh prints 'disabled' and exits 0 (no guard)",
+        "Smoke: export CLAUDE_API_DAILY_CEILING_USD=0 then cost-check.sh reports OVER, then auto-spawn.sh short-circuits",
+        "1000-user perf budget: cost-check.sh runs in <50ms; no network; pure file read + awk math",
+        "Security: env var is read-only; no cost data is exfiltrated; digest cost lines are human-appended only (no automatic API polling)"
+      ],
+      "kill_gate": { "gate_fail_max": 2, "age_days_max": 2 },
+      "notes": "Honest boundary: this slice does NOT auto-compute cost from the Claude API — that would require an API key and polling. Instead it reads a digest file that the human operator (or a future cron) appends cost snapshots to. The value is the SHORT-CIRCUIT: once OVER, auto-spawn.sh stops picking new work until the operator resolves the budget."
     }
   ],
   "parking_lot": [
