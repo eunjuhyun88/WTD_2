@@ -896,8 +896,8 @@
       "notes": "Scope is intentionally NARROW: this slice does NOT auto-invoke the Scheduler subagent (which would require spawning a whole Claude process). It only makes the scheduler state OBSERVABLE after every SubagentStop so the human operator (or a future slice) can react. Full auto-spawn via `claude -p scheduler` is deferred until cost-ceiling-guard (Z3) lands. Uses observability, not automation."
     },
     {
-      "id": "Z2-slice-new-worktree-provision",
-      "title": "slice new --worktree flag auto-creates isolated git worktree",
+      "id": "Z2-slice-worktree-lifecycle",
+      "title": "slice new --worktree + slice merge/kill teardown (full lifecycle)",
       "track": "product",
       "phase": "Z2",
       "priority": 985,
@@ -916,14 +916,18 @@
         "cmdNew gains optional --worktree flag that runs `git worktree add .claude/worktrees/<slice-id> -b <branch>` after writing brief + claim",
         "Without --worktree, cmdNew behaves exactly as before (backward compat)",
         "With --worktree, cmdNew refuses to create if target path already exists and prints the existing worktree info",
-        "Smoke: `node scripts/slice/cli.mjs new <id> --worktree` on a test slice creates the worktree, then slice kill cleans it up",
-        "Help text in scripts/slice/cli.mjs lists the new flag",
+        "cmdMerge detects whether the slice owns a worktree (claim has worktree_path field) and runs `git worktree remove <path>` after the merged event lands — teardown half of the lifecycle",
+        "cmdKill runs the same teardown; accepts --keep-worktree opt-out for debugging",
+        "Claim JSON schema extended to include optional worktree_path field written by cmdNew and read by cmdMerge/cmdKill",
+        "Smoke: `slice new <id> --worktree` creates worktree; `slice approve` + `slice merge` removes it; `git worktree list` no longer shows it",
+        "Smoke 2: `slice new <id> --worktree` then `slice kill --keep-worktree` leaves the worktree for inspection",
+        "Help text in scripts/slice/cli.mjs lists --worktree and --keep-worktree",
         "npm run check exits 0",
-        "1000-user perf budget: one extra shell-out per slice-new; no runtime impact on /api/* or /terminal rendering",
-        "Security: git worktree add is a local-only operation; no network; auto-provision does NOT clone keys or env files into the new worktree (git worktree shares .git but working tree starts clean)"
+        "1000-user perf budget: one extra shell-out per slice-new and per slice-merge/kill; no runtime impact on /api/* or /terminal rendering; total CLI overhead < 500ms per lifecycle command even at n=10 worktrees",
+        "Security: git worktree add/remove are local-only operations; no network; provisioning does NOT copy keys or env files (git worktree shares .git but working tree starts clean); removal refuses to delete worktrees with uncommitted changes unless --force is explicit"
       ],
       "kill_gate": { "gate_fail_max": 2, "age_days_max": 2 },
-      "notes": "Depends on Z1 because hook-driven observability is more valuable once each slice runs in its own worktree. Keep flag optional so existing slice flows on shared worktrees stay unchanged."
+      "notes": "Rewritten from v1.1 (provisioning-only) to v1.2 (full lifecycle) per design §16.3. Cleanup half is the binding piece: without teardown, the 15+ orphan directories observed at 2026-04-12 just keep growing. Keep all new flags optional so existing shared-worktree flows stay unchanged."
     },
     {
       "id": "Z3-cost-ceiling-guard",
@@ -955,6 +959,106 @@
       ],
       "kill_gate": { "gate_fail_max": 2, "age_days_max": 2 },
       "notes": "Honest boundary: this slice does NOT auto-compute cost from the Claude API — that would require an API key and polling. Instead it reads a digest file that the human operator (or a future cron) appends cost snapshots to. The value is the SHORT-CIRCUIT: once OVER, auto-spawn.sh stops picking new work until the operator resolves the budget."
+    },
+    {
+      "id": "Z4-worktree-orphan-sweep",
+      "title": "Orphan worktree sweep + Main-Keeper Task 4 integration",
+      "track": "product",
+      "phase": "Z4",
+      "priority": 975,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z2-slice-worktree-lifecycle"],
+      "mutex": [],
+      "paths": [
+        "scripts/swarm/orphan-sweep.sh",
+        ".claude/agents/main-keeper.md",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".claude/agents/main-keeper.md",
+        "scripts/slice/cli.mjs"
+      ],
+      "dod": [
+        "scripts/swarm/orphan-sweep.sh exists and is executable",
+        "Reconciles `git worktree list --porcelain` against `.claude/worktrees/` filesystem entries",
+        "Classifies each directory as: TRACKED (in git worktree list), ORPHAN (on disk only), STALE (in git but last commit > 14 days ago), or ACTIVE_CLAIM (has .agent-context/ownership/branch-*.json)",
+        "Default mode is dry-run — prints the plan with color-coded categories",
+        "`--apply` flag required to actually `git worktree remove` orphans and `rm -rf` untracked directories",
+        "Refuses to remove any directory that matches ACTIVE_CLAIM, even with --apply",
+        "Main-Keeper spec gains Task 4: `scripts/swarm/orphan-sweep.sh --apply --stale-days 14` run every 24h per cron",
+        "Smoke: create a test orphan directory, run dry-run, verify it's flagged; run --apply, verify it's removed",
+        "One-time cleanup of the 15+ current orphans documented in rollout log with before/after counts",
+        "1000-user perf budget: orphan-sweep.sh scans ≤100 directories in <200ms; no network; pure filesystem + `git worktree list` (one subprocess)",
+        "Security: refuses to rm anything outside `.claude/worktrees/`; uses absolute path prefix check; no follow-symlinks; dry-run default prevents accidents"
+      ],
+      "kill_gate": { "gate_fail_max": 2, "age_days_max": 3 },
+      "notes": "Per design §16.3. Depends on Z2 because cleanup lifecycle must exist before orphan sweep — otherwise Z4 would flag in-flight worktrees as orphans. Main-Keeper Task 4 is the scheduled integration; standalone script usage is the fallback when cron is disabled."
+    },
+    {
+      "id": "Z5-cross-worktree-state-read",
+      "title": "slice new + slice ready walk sibling worktrees for cross-claim awareness",
+      "track": "product",
+      "phase": "Z5",
+      "priority": 970,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z2-slice-worktree-lifecycle"],
+      "mutex": [],
+      "paths": [
+        "scripts/slice/cli.mjs",
+        ".githooks/pre-commit",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        "scripts/slice/cli.mjs",
+        ".githooks/pre-commit"
+      ],
+      "dod": [
+        "scripts/slice/cli.mjs gains a loadCrossWorktreeClaims() helper that walks `git worktree list --porcelain`, reads each worktree's `.agent-context/ownership/branch-*.json`, and returns a Map<slice-id, {worktree, branch, paths}>",
+        "cmdNew refuses to create a slice whose ID is already claimed in another worktree; prints the conflicting worktree + branch",
+        "cmdReady filters the ready set to exclude cross-worktree-claimed slices",
+        "Pre-commit hook gains a cross-worktree check: before enforcing local claim paths, verify the current slice-id is not also claimed by a sibling worktree — if it is, reject with a clear error naming the other worktree",
+        "Smoke: create worktree A + slice new X + worktree B + slice new X (expected: second new fails with cross-claim error)",
+        "Smoke 2: create worktree A + slice new X + worktree B + slice ready --json (expected: X is NOT in ready set from B)",
+        "1000-user perf budget: loadCrossWorktreeClaims() runs in <500ms even at n=10 worktrees (one subprocess for git worktree list + N small JSON reads); cached per-CLI-invocation to avoid repeated scans",
+        "Security: read-only access to sibling worktrees; never writes across worktree boundaries; sibling claim files parsed with strict JSON (rejects malformed)"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 3 },
+      "notes": "The single most important slice for n>=5 parallel. Per design §16.2 sub-problem 2, option (c) 'origin/main + sibling walk' is the recommended architecture. If this slice's smoke reveals that sibling walk is fragile or too slow, fallback to option (a) — commit state journal to git — documented in design §16.4."
+    },
+    {
+      "id": "Z6-claude-p-spawn-mechanism",
+      "title": "Real claude -p scheduler invocation path (gated behind Z3 cost guard)",
+      "track": "product",
+      "phase": "Z6",
+      "priority": 965,
+      "agent_type": "api-surgeon",
+      "depends_on": ["Z3-cost-ceiling-guard", "Z5-cross-worktree-state-read"],
+      "mutex": [],
+      "paths": [
+        "scripts/swarm/spawn.sh",
+        "scripts/swarm/auto-spawn.sh",
+        "docs/swarm-v1-rollout-log.md"
+      ],
+      "context_files": [
+        "docs/exec-plans/active/swarm-v1-design-2026-04-11.md",
+        ".claude/agents/scheduler.md",
+        "scripts/swarm/auto-spawn.sh"
+      ],
+      "dod": [
+        "scripts/swarm/spawn.sh invokes `claude -p` with the scheduler agent + the next ready slice id + a fresh worktree path",
+        "spawn.sh checks Z3 cost guard status FIRST — refuses to spawn if cost-check.sh reports OVER or if CLAUDE_API_DAILY_CEILING_USD is unset (no guard = no spawn)",
+        "scripts/swarm/auto-spawn.sh (Z1 observability script) gains a new --spawn mode that writes a spawn-request file to .agent-context/spawn-requests/<ts>-<slice-id>.json instead of invoking claude -p directly",
+        "spawn.sh reads spawn-request files in order, invokes claude -p, captures stdout+stderr to .agent-context/digest/YYYY-MM-DD.md, and deletes the request file on success",
+        "Rate limit stagger: spawn.sh waits >= 10s between consecutive claude -p invocations (design §9)",
+        "Smoke: set CLAUDE_API_DAILY_CEILING_USD=100, write a test spawn-request, run spawn.sh, verify claude -p launches and the digest gets a spawn event line",
+        "Smoke 2: set CLAUDE_API_DAILY_CEILING_USD=0, write a spawn-request, run spawn.sh, verify it short-circuits without invoking claude -p",
+        "1000-user perf budget: spawn.sh itself runs in <100ms (claude -p is asynchronous in the background); rate limit stagger 10s between spawns is a HARD wall",
+        "Security: refuses to spawn without Z3 cost guard armed; refuses to spawn without a valid sibling worktree path (prevents spawning into main); claude -p output goes ONLY to the digest file, never to untrusted locations; spawn requests are consumed once then deleted to prevent replay"
+      ],
+      "kill_gate": { "gate_fail_max": 3, "age_days_max": 5 },
+      "notes": "The riskiest slice in DAG v1.2 — first slice that actually consumes Claude API budget automatically. Depends on BOTH Z3 (cost guard must be armed) AND Z5 (cross-worktree state read must prevent double-spawn). Execution order per §16.4: Z2 → Z5 → Z4 → Z6. Z3 can run in parallel with Z4/Z5 because its mutex is different, but Z6 must wait for both."
     }
   ],
   "parking_lot": [
