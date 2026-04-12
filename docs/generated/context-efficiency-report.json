@@ -49,10 +49,10 @@
   },
   "allDocs": {
     "files": 180,
-    "lines": 60415,
-    "words": 333362,
-    "chars": 2533060,
-    "approxTokens": 633328,
+    "lines": 60408,
+    "words": 333350,
+    "chars": 2533098,
+    "approxTokens": 633338,
     "paths": [
       "README.md",
       "AGENTS.md",
@@ -238,18 +238,18 @@
   },
   "reductions": {
     "smallVsCanonicalPct": 55.180168668540766,
-    "smallVsAllDocsPct": 98.61540939292121,
-    "worstSurfaceReductionVsAllDocsPct": 98.06103630346361
+    "smallVsAllDocsPct": 98.61543125471707,
+    "worstSurfaceReductionVsAllDocsPct": 98.08490884804006
   },
   "surfaceBundles": [
     {
       "id": "core",
       "stats": {
         "files": 8,
-        "lines": 1320,
-        "words": 6556,
-        "chars": 49110,
-        "approxTokens": 12280,
+        "lines": 1309,
+        "words": 6482,
+        "chars": 48507,
+        "approxTokens": 12129,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -261,8 +261,8 @@
           "docs/generated/api-group-map.md"
         ]
       },
-      "reductionVsCanonicalPct": 37.23485816509072,
-      "reductionVsAllDocsPct": 98.06103630346361
+      "reductionVsCanonicalPct": 38.006644518272424,
+      "reductionVsAllDocsPct": 98.08490884804006
     }
   ],
   "structuralScorecard": [

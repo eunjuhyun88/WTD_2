@@ -45,24 +45,12 @@ const routeMeta = [
     keyState: '`agentData`, `doctrineStore`',
     deepDocs: '`docs/page-specs/agent-detail-page.md`'
   },
-  {
-    route: '/agents',
-    role: 'agent collection surface',
-    primaryConcern: 'stats, memory, roster legibility',
-    keyState: '`agentData`',
-    deepDocs: '`docs/PRODUCT_SENSE.md`'
-  },
+  // /agents — ARCHIVED (Batch 9)
   // /create — ARCHIVED (Batch 3)
   // /arena — ARCHIVED (Batch 3)
   // /arena-v2 — ARCHIVED (Batch 3)
   // /arena-war — ARCHIVED (Batch 3)
-  {
-    route: '/holdings',
-    role: 'redirect route',
-    primaryConcern: 'redirect to canonical profile/holdings experience',
-    keyState: 'none',
-    deepDocs: '`docs/product-specs/passport.md`'
-  },
+  // /holdings — ARCHIVED (Batch 9)
   // /live — ARCHIVED (Batch 3)
   {
     route: '/lab',
@@ -115,7 +103,7 @@ const storeMeta = [
   ['authSessionStore', 'server-authoritative projection', 'authenticated session mirror and cookie-backed identity', 'Session authority should stay separate from wallet UX and route-local control state.'],
   ['walletStore', 'route/session transient', 'wallet connection transport and signed-wallet shell', 'Connection UX state should stay separate from durable profile or trade truth.'],
   ['walletModalStore', 'route/session transient', 'wallet modal visibility and step flow', 'Modal UX state is split from wallet transport and progression state.'],
-  ['remoteSessionGuard', 'derived/support', 'remote-session gate helpers', 'Utility helpers around authenticated remote-backed store access.'],
+  // remoteSessionGuard — ARCHIVED (Batch 10)
   ['userProfileStore', 'server-authoritative projection', 'profile projection and progression read model', 'Current unified profile surface remains the durable profile-facing store.'],
   ['quickTradeStore', 'server-authoritative projection', 'quick trades with optimistic staging', 'Reconcile optimistic IDs to server truth.'],
   ['trackedSignalStore', 'server-authoritative projection', 'tracked signals and conversion state', 'Local cache/fallback only.'],

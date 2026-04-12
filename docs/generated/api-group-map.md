@@ -7,10 +7,10 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 
 | Group | Purpose | Representative routes | Count |
 | --- | --- | --- | --- |
-| Auth & Session | login, wallet auth, session lifecycle | `/api/auth/login`, `/api/auth/logout`, `/api/auth/nonce`, `/api/auth/register` | 7 |
+| Auth & Session | login, wallet auth, session lifecycle | `/api/auth/login`, `/api/auth/logout`, `/api/auth/nonce`, `/api/auth/register` | 6 |
 | Market Data | market snapshot, flow, news, and dex data | `/api/cycles/klines`, `/api/market/derivatives/[pair]`, `/api/market/dex/ads`, `/api/market/dex/community-takeovers` | 16 |
 | Terminal Scanner | scan and intel orchestration | `/api/terminal/compare`, `/api/terminal/intel-agent-shadow`, `/api/terminal/intel-agent-shadow/execute`, `/api/terminal/intel-policy` | 10 |
-| Signals | signal objects and action conversion | `/api/signal-actions`, `/api/signals`, `/api/signals/[id]`, `/api/signals/[id]/convert` | 5 |
+| Signals | signal objects and action conversion | `/api/signals`, `/api/signals/[id]`, `/api/signals/[id]/convert`, `/api/signals/track` | 4 |
 | Quick Trades | fast trade lifecycle | `/api/quick-trades`, `/api/quick-trades/[id]/close`, `/api/quick-trades/open`, `/api/quick-trades/prices` | 4 |
 | GMX V2 | GMX position lifecycle | `/api/gmx/balance`, `/api/gmx/close`, `/api/gmx/confirm`, `/api/gmx/markets` | 6 |
 | Polymarket | prediction market and related positions | `/api/polymarket/markets`, `/api/polymarket/orderbook`, `/api/positions/polymarket`, `/api/positions/polymarket/[id]/close` | 8 |
@@ -20,11 +20,10 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 | Wallet Intel | wallet investigation aggregate and dossier truth | `/api/wallet/intel` | 1 |
 | User Profile | profile, progression, preferences, and agent stats | `/api/doctrine`, `/api/portfolio/holdings`, `/api/preferences`, `/api/profile` | 6 |
 | Predictions | prediction positions and voting | `/api/predictions`, `/api/predictions/positions/[id]/close`, `/api/predictions/positions/open`, `/api/predictions/vote` | 4 |
-| Community | activity, posts, and reactions | `/api/activity`, `/api/activity/reaction` | 2 |
 | Notifications | notification lifecycle | `/api/notifications`, `/api/notifications/[id]`, `/api/notifications/read` | 3 |
 | Market Alerts | specialized market alert surface | `/api/market/alerts/onchain` | 1 |
 | Cogochi | DOUNI AI agent — terminal chat, analysis, social tools | `/api/cogochi/analyze`, `/api/cogochi/terminal/message`, `/api/cogochi/thermometer` | 3 |
-| Proxies & Infra | third-party proxy and support endpoints | `/api/chat/messages`, `/api/coinalyze`, `/api/coingecko/global`, `/api/etherscan/onchain` | 16 |
+| Proxies & Infra | third-party proxy and support endpoints | `/api/coinalyze`, `/api/coingecko/global`, `/api/etherscan/onchain`, `/api/exchange/analysis` | 15 |
 
 ## Current Route Inventory Snapshot
 
@@ -35,7 +34,6 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/auth/register`
 - `/api/auth/session`
 - `/api/auth/verify-wallet`
-- `/api/auth/wallet`
 
 ### Market Data
 - `/api/cycles/klines`
@@ -68,7 +66,6 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/wizard`
 
 ### Signals
-- `/api/signal-actions`
 - `/api/signals`
 - `/api/signals/[id]`
 - `/api/signals/[id]/convert`
@@ -132,10 +129,6 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/predictions/positions/open`
 - `/api/predictions/vote`
 
-### Community
-- `/api/activity`
-- `/api/activity/reaction`
-
 ### Notifications
 - `/api/notifications`
 - `/api/notifications/[id]`
@@ -150,7 +143,6 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/cogochi/thermometer`
 
 ### Proxies & Infra
-- `/api/chat/messages`
 - `/api/coinalyze`
 - `/api/coingecko/global`
 - `/api/etherscan/onchain`
