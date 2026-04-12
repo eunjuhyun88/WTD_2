@@ -19,9 +19,6 @@ Source of truth remains store implementations plus canonical state-authority doc
 | `priceStore` | canonical client truth | live market prices and stats | Header, Chart, and Terminal should consume this directly. |
 | `activePairStore` | canonical client truth | active pair/timeframe/prices/view for Day-1 surfaces | Extracted from gameState (Batch 2). Active surfaces import this, not gameState. |
 | `gameState` | route/session transient | arena phase/view/hypothesis/session UI (legacy) | Must not become market-truth owner. Active code migrated to activePairStore. |
-| `arenaV2State` | route/session transient | simplified arena v2 local flow | Route-specific state. |
-| `arenaWarStore` | route/session transient | arena-war state machine and local orchestration | Durable record still belongs to server persistence. |
-| `activeGamesStore` | route/session transient | local multi-game runtime tracking | Coordination state, not durable truth. |
 | `authSessionStore` | server-authoritative projection | authenticated session mirror and cookie-backed identity | Session authority should stay separate from wallet UX and route-local control state. |
 | `walletStore` | route/session transient | wallet connection transport and signed-wallet shell | Connection UX state should stay separate from durable profile or trade truth. |
 | `walletModalStore` | route/session transient | wallet modal visibility and step flow | Modal UX state is split from wallet transport and progression state. |
@@ -36,8 +33,6 @@ Source of truth remains store implementations plus canonical state-authority doc
 | `communityStore` | server-authoritative projection | community posts and reactions | Local storage is convenience, not source of truth. |
 | `notificationStore` | server-authoritative projection | durable notifications with optimistic staging | Canonical notification records come from the server. |
 | `pnlStore` | derived/support | pnl summaries and derived display state | Depends on durable trade/outcome data. |
-| `battleFeedStore` | route/session transient | live battle feed | Runtime-only presentation state. |
-| `battleStore` | route/session transient | standalone battle runtime and round state | Owns `/battle` route play state; durable records still belong to server-backed history. |
 | `agentData` | derived/support | agent stats and learning presentation layer | Should not silently redefine server truth. |
 | `doctrineStore` | derived/support | per-agent doctrine editor state and version history | Editable doctrine state should reconcile with durable agent truth when server APIs land. |
 | `warRoomStore` | route/session transient | war-room discussion state | Runtime coordination state. |

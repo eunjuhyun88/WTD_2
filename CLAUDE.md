@@ -53,6 +53,37 @@ If the task is purely operational (CI, security, context engineering, agent coor
 - Operational changes (CI, engineering discipline, etc.) still update the relevant `docs/*.md` — COGOCHI.md is product-scoped only.
 - Keep pre-push hooks active via `npm run safe:hooks`.
 
+## Advisor Pattern (Executor–Advisor model split)
+
+This repo uses a two-model strategy to optimize cost and quality:
+
+- **Executor (Sonnet)**: Default. Handles file moves, grep, edits, type checks, test runs — all mechanical execution.
+- **Advisor (Opus)**: On-demand. Called via `Agent tool` with `model: opus` (or `subagent_type: advisor` if available) for architecture decisions, cross-dependency analysis, extraction order, and risk assessment.
+
+### When to call the Advisor
+
+- Cross-boundary refactors (archiving files that might break active code)
+- Extraction order decisions (which module to extract first)
+- Ambiguous dependency graphs (3+ files with unclear ownership)
+- Any decision where getting it wrong means rework
+
+### When NOT to call the Advisor
+
+- Single file edits, renames, simple archive moves
+- Running checks, tests, git operations
+- Grep/glob searches
+- Following an already-approved plan
+
+### How to call
+
+```
+Agent tool:
+  model: "opus"
+  prompt: "[describe the decision needed]"
+```
+
+The Advisor returns structured advice (Decision → Analysis → Recommendation → Confidence) and **never writes code**.
+
 ## Product Surface Boundaries (from COGOCHI.md § 7)
 
 Day-1 active:
