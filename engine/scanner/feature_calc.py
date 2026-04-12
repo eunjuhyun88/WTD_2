@@ -649,18 +649,54 @@ def compute_features_table(
         macro_defaults, onchain_defaults,
     )
 
+    # Level features that carry absolute-price information and must be
+    # normalised to a rolling percentile rank before the model sees them.
+    # Momentum/slope features (dxy_slope_5d, spx_slope_5d) are already
+    # relative and do NOT need this treatment.
+    # fear_greed is excluded (already normalised to fear_greed_norm).
+    # active_addr is excluded (already normalised to active_addr_norm).
+    _LEVEL_COLS: frozenset[str] = frozenset({
+        "btc_dominance", "vix_close", "spx_close", "dxy_close", "tx_count",
+    })
+    _RANK_WINDOW = 252  # ~1 calendar year of daily bars
+
+    def _rolling_pct_rank(series: pd.Series, window: int) -> pd.Series:
+        """Rolling percentile rank (0-1) over the past `window` bars.
+
+        Uses a past-only window (min_periods=window//2 to avoid NaN flood
+        at series start). At each bar t, rank = fraction of past `window`
+        values that are ≤ current value.
+        """
+        def _rank_last(arr: np.ndarray) -> float:
+            return float(np.mean(arr[:-1] <= arr[-1]))
+
+        return series.rolling(window, min_periods=window // 2).apply(
+            _rank_last, raw=True
+        )
+
     def _align_bundle(
         bundle: pd.DataFrame | None,
         sources: list,
         defaults: dict,
     ) -> dict[str, np.ndarray]:
-        """Forward-fill a daily bundle onto hourly index, fill NaN with defaults."""
+        """Forward-fill a daily bundle onto hourly index, fill NaN with defaults.
+
+        Level columns in _LEVEL_COLS are replaced with their rolling
+        percentile rank on the daily series before alignment so the model
+        receives scale-invariant 0–1 values instead of absolute levels.
+        """
         n = len(index)
         if bundle is not None and len(bundle) > 0:
             bundle_idx = bundle.index
             if bundle_idx.tz is None:
                 bundle_idx = bundle_idx.tz_localize("UTC")
-            aligned = bundle.set_index(bundle_idx).reindex(index, method="ffill")
+            # Work on a copy so the original bundle is not mutated.
+            bundle_work = bundle.copy()
+            bundle_work.index = bundle_idx
+            for col in _LEVEL_COLS:
+                if col in bundle_work.columns:
+                    bundle_work[col] = _rolling_pct_rank(bundle_work[col], _RANK_WINDOW)
+            aligned = bundle_work.reindex(index, method="ffill")
         else:
             aligned = pd.DataFrame(index=index)
 
