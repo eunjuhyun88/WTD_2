@@ -99,7 +99,19 @@
     "orch:check": "node scripts/dev/check-orchestration-work.mjs",
     "pilot:start": "node scripts/dev/autopilot-work.mjs --mode start",
     "pilot:sync": "node scripts/dev/autopilot-work.mjs --mode sync",
-    "validate:forward-walk": "node scripts/dev/forward-walk.mjs"
+    "validate:forward-walk": "node scripts/dev/forward-walk.mjs",
+    "mk:extract": "cd memory && memkraft extract",
+    "mk:search": "cd memory && memkraft search",
+    "mk:lookup": "cd memory && memkraft lookup --brain-first",
+    "mk:dream": "cd memory && memkraft dream",
+    "mk:dream:dry": "cd memory && memkraft dream --dry-run",
+    "mk:track": "cd memory && memkraft track",
+    "mk:update": "cd memory && memkraft update",
+    "mk:query": "cd memory && memkraft query",
+    "mk:brief": "cd memory && memkraft brief",
+    "mk:log": "cd memory && memkraft log",
+    "mk:loops": "cd memory && memkraft open-loops",
+    "mk:health": "cd memory && memkraft dream --dry-run && echo 'Memory health OK'"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.0",
