@@ -454,8 +454,8 @@ def _rolling_swing_pivot_distance(
     return out
 
 
-# Column order matches the SignalSnapshot field order (trend → meta).
-FEATURE_COLUMNS: tuple[str, ...] = (
+# Core TA + perp columns — fixed, order matters for downstream models.
+_CORE_FEATURE_COLUMNS: tuple[str, ...] = (
     "ema20_slope",
     "ema50_slope",
     "ema_alignment",
@@ -486,11 +486,24 @@ FEATURE_COLUMNS: tuple[str, ...] = (
     "day_of_week",
 )
 
+# Registry-driven columns — auto-expands when new sources are added to
+# data_cache/registry.py. No edits needed here.
+from data_cache.registry import all_macro_columns, all_onchain_columns  # noqa: E402
+
+_REGISTRY_COLUMNS: tuple[str, ...] = tuple(
+    all_macro_columns() + all_onchain_columns()
+)
+
+# Public API: full feature column list used by Context, blocks, and models.
+FEATURE_COLUMNS: tuple[str, ...] = _CORE_FEATURE_COLUMNS + _REGISTRY_COLUMNS
+
 
 def compute_features_table(
     klines: pd.DataFrame,
     symbol: str,
     perp: Optional[pd.DataFrame] = None,
+    macro: Optional[pd.DataFrame] = None,
+    onchain: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     """Vectorized counterpart to compute_snapshot — one row per bar.
 
@@ -505,6 +518,14 @@ def compute_features_table(
     When perp data exists, it is reindexed onto klines.index with
     forward-fill (so a single funding event sticks for its interval) and
     remaining NaN are filled with the same neutral defaults.
+
+    Macro features (fear_greed, btc_dominance, dxy_slope_5d, vix_close,
+    spx_slope_5d): loaded from `macro` DataFrame if provided. Neutral
+    defaults used when missing (fear_greed=50, btc_dominance=50, slopes=0,
+    vix_close=20). Macro data is daily — forward-filled onto hourly index.
+
+    On-chain features (active_addr_norm): loaded from `onchain` DataFrame
+    if provided. Neutral default=0.5 when missing.
 
     The first MIN_HISTORY_BARS rows are dropped (warmup): EMA200 and the
     20d-high/low window need at least ~500 hourly bars to stabilise.
@@ -621,6 +642,41 @@ def compute_features_table(
         np.where(taker_buy_ratio_1h <= 0.45, CVDState.SELLING.value, CVDState.NEUTRAL.value),
     )
 
+    # --- Macro + On-chain (registry-driven, daily → ffill onto hourly) ---
+    # Uses data_cache.registry defaults for any missing column.
+    from data_cache.registry import (  # noqa: PLC0415
+        MACRO_SOURCES, ONCHAIN_SOURCES,
+        macro_defaults, onchain_defaults,
+    )
+
+    def _align_bundle(
+        bundle: pd.DataFrame | None,
+        sources: list,
+        defaults: dict,
+    ) -> dict[str, np.ndarray]:
+        """Forward-fill a daily bundle onto hourly index, fill NaN with defaults."""
+        n = len(index)
+        if bundle is not None and len(bundle) > 0:
+            bundle_idx = bundle.index
+            if bundle_idx.tz is None:
+                bundle_idx = bundle_idx.tz_localize("UTC")
+            aligned = bundle.set_index(bundle_idx).reindex(index, method="ffill")
+        else:
+            aligned = pd.DataFrame(index=index)
+
+        result: dict[str, np.ndarray] = {}
+        for src in sources:
+            for col in src.columns:
+                default = defaults.get(col, 0.0)
+                if col in aligned.columns:
+                    result[col] = aligned[col].fillna(default).to_numpy(dtype=np.float64)
+                else:
+                    result[col] = np.full(n, default, dtype=np.float64)
+        return result
+
+    macro_arrays = _align_bundle(macro, MACRO_SOURCES, macro_defaults())
+    onchain_arrays = _align_bundle(onchain, ONCHAIN_SOURCES, onchain_defaults())
+
     # --- Meta — regime ---
     close_slope_50 = _slope_pct_vec(close, 50)
     risk_on = (atr_pct <= 0.05) & (close_slope_50 > 0.03)
@@ -668,6 +724,9 @@ def compute_features_table(
             "regime": regime,
             "hour_of_day": hour_of_day,
             "day_of_week": day_of_week,
+            # Registry-driven macro + on-chain (auto-expands with new sources)
+            **macro_arrays,
+            **onchain_arrays,
             "price": close.to_numpy(),
             "symbol": symbol,
         },
