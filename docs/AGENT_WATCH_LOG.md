@@ -20,6 +20,60 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## Entries
 
+## [2026-04-12 12:08:00 +0900] START W-20260412-1208-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `3eea02706e9e2b4ad9f097673118b4bca53d891b`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/components/home/HomeFinalCta.svelte`
+  - `M src/components/home/HomeHero.svelte`
+  - `M src/components/home/HomeLearningLoop.svelte`
+  - `M src/components/home/HomeSurfaceCards.svelte`
+  - `M src/components/home/WebGLAsciiBackground.svelte`
+  - `M src/lib/home/homeLanding.ts`
+  - `M src/routes/+page.svelte`
+- Task summary: define the next home-page visual direction before implementation, covering palette, primary accent, stronger chromatic background behavior, watermark placement, and responsive header/footer structure as a text-first layout proposal.
+- Owned files / overlap check:
+  - no product-code edits planned before user approves the layout direction
+  - review focus: `src/routes/+page.svelte`, `src/components/home/*`, `src/components/layout/Header.svelte`
+  - current dirty set is the active home slice; no new unrelated files will be introduced in this design pass
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - current dirty home slice confirmed before design planning
+- `safe:sync`: FAIL
+  - blocked because the current branch already contains uncommitted home changes
+  - proceeding with design-only planning on the existing in-progress slice without syncing
+- Status: IN_PROGRESS
+
+## [2026-04-12 12:42:24 +0900] FINISH W-20260412-1208-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - kept the Home header visible at every breakpoint by adding a home-specific `OPEN TERMINAL` action and a compact mobile home marker
+  - reduced the hero visual weight, increased hero/body text emphasis, and moved the watermark into a right-biased layered treatment behind the proof panel
+  - strengthened the chromatic field with pink/white/ssscript-style support colors in the page background, WebGL layer, and footer glow while keeping CTA colors constrained
+  - updated the final CTA/footer and home section typography to follow the new responsive action hierarchy
+  - refreshed the frontend home wireframe doc to match the new breakpoint behavior
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `6a42bae`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/home/HomeFinalCta.svelte`
+  - `M src/components/home/HomeHero.svelte`
+  - `M src/components/home/HomeLearningLoop.svelte`
+  - `M src/components/home/HomeSurfaceCards.svelte`
+  - `M src/components/home/WebGLAsciiBackground.svelte`
+  - `M src/components/layout/Header.svelte`
+  - `M src/lib/home/homeLanding.ts`
+  - `M src/routes/+page.svelte`
+- Status: DONE
+
 ## [2026-04-12 10:04:39 +0900] START W-20260412-1004-CHATBATTLE-codex (CHATBATTLE)
 - Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
@@ -10822,3 +10876,275 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - directly modified by this task: `src/routes/+page.svelte`, `src/routes/terminal/+page.svelte`
   - new files by this task: `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/HomeFinalCta.svelte`, `src/lib/home/homeLanding.ts`
   - broader pre-existing branch work remains in place outside this slice
+
+## [2026-04-12 10:10:21 +0900] START W-20260412-1009-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `25d3e15f7c85fcc07a131ca44dfaf429180b93ec`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis [ahead 8]`
+  - uncommitted files before this task: `clean`
+- Task summary:
+  - analyze why refactor scope has grown too large and identify decomposition points before any implementation
+- Owned files / overlap check result:
+  - analysis-only task; no product/code ownership claimed yet
+  - overlap risk exists because this branch already contains multiple prior changes vs `origin/main`; treat findings as branch-scoped until isolated
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: PASS
+  - `npm run safe:hooks`: PASS
+
+## [2026-04-12 10:13:31 +0900] FINISH W-20260412-1009-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - analyzed refactor scope growth without touching product code
+  - measured code size distribution across `src/routes`, `src/components`, `src/lib`, and `cogochi/`
+  - verified product/code drift between `docs/COGOCHI.md` Day-1 surface model and active legacy surfaces still present in layout, stores, routes, and server modules
+  - updated `docs/AGENT_WATCH_LOG.md` for this analysis task only
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `60460c8`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis [ahead 8]`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`
+  - unrelated/generated change observed during mandatory hook setup: `.githooks/pre-commit`
+
+## [2026-04-12 10:11:00 +0900] START W-20260412-1011-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `25d3e15f7c85fcc07a131ca44dfaf429180b93ec`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis [ahead 8]`
+  - uncommitted files before this task: `.githooks/pre-commit`, `docs/AGENT_WATCH_LOG.md`
+- Task summary:
+  - analyze the Terminal page refactor surface, identify decomposition points, and map current code/doc drift before proposing implementation
+- Owned files / overlap check result:
+  - analysis focus: `src/routes/terminal/+page.svelte`, `src/components/terminal/*`, `src/components/cogochi/QuickPanel.svelte`, related terminal stores/utils/docs
+  - overlap risk exists because the current branch already contains prior Terminal and home-route changes; treat findings as branch-scoped until isolated
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL (`Working tree has uncommitted changes. Commit or stash first.`)
+  - `npm run safe:hooks`: PASS
+
+## [2026-04-12 11:32:01 +0900] START W-20260412-1132-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `0c931fc745f1eb11be955259629f38ea66ee53d6`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - uncommitted files before this task: `docs/AGENT_WATCH_LOG.md`
+- Task summary:
+  - design and refactor the home landing only so it combines Vercel-style clarity with Airbnb-style immediate start, while reducing hero dominance and tightening typography hierarchy
+- Owned files / overlap check result:
+  - planned ownership: `src/routes/+page.svelte`, `src/components/home/*`, `src/lib/home/*`, and home-adjacent layout/style surfaces only if required for consistency
+  - overlap risk exists because this branch already carries prior home-route changes vs `origin/main`; keep edits scoped to the current landing contract in `docs/COGOCHI.md § 16`
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL (`Working tree has uncommitted changes. Commit or stash first.`)
+  - `npm run safe:hooks`: PASS
+
+## [2026-04-12 11:36:52 +0900] FINISH W-20260412-1132-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - refactored the home landing hierarchy so the hero is shorter, the thesis is more direct, and the start bar reads as the primary action surface
+  - tightened home typography by explicitly using `var(--sc-font-body)` for headline/body layers and `var(--sc-font-mono)` for labels/actions across the home components
+  - restructured the Learning Loop and Surfaces sections for stronger scanability with smaller headings, left-aligned copy, and clearer action labels
+  - softened the home WebGL/ASCII background so the landing reads quieter and the foreground content wins
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `6a42bae`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/home/homeLanding.ts`
+
+## [2026-04-12 11:41:27 +0900] START W-20260412-1141-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `bf188db4e1427741b50f7be35fc48a6ff6306a4a`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - uncommitted files before this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/home/homeLanding.ts`
+- Task summary:
+  - keep the home information hierarchy but shift the visual language toward `ssscript.app`: quieter black field, mac app-window framing, stronger object-centric composition, and more editorial whitespace
+- Owned files / overlap check result:
+  - planned ownership remains home-only: `src/components/home/*`, `src/lib/home/*`, and route-level home composition if needed
+  - this task intentionally builds on the in-flight home refactor already present in the working tree; no other surface ownership claimed
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL (`Working tree has uncommitted changes. Commit or stash first.`)
+  - visual reference inspected: `https://ssscript.app/`
+
+## [2026-04-12 11:45:06 +0900] FINISH W-20260412-1141-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - shifted the home landing visual language toward `ssscript.app` while keeping the already-approved information hierarchy intact
+  - converted the hero proof panel into a mac window-like object with title bar, window controls, and split editorial/object composition
+  - restyled the learning loop and surface cards as window/tool panes instead of generic glass cards
+  - simplified the home background treatment so the page reads more like a quiet product canvas and less like an effects-heavy landing
+- Validation results:
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `6a42bae`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`
+
+## [2026-04-12 11:58:12 +0900] START W-20260412-1158-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `7d10ea68d814c8c7aa17b592e054423f39474ec3`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - uncommitted files before this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`
+- Task summary:
+  - polish the home landing by reducing hero dominance, increasing text legibility, and making the primary action surface visibly stronger
+- Owned files / overlap check result:
+  - home-only polish: `src/components/home/*`, `src/lib/home/*`, and `src/routes/+page.svelte`
+  - this task is an incremental refinement on top of the in-flight home branch changes; no other surface ownership claimed
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL (`Working tree has uncommitted changes. Commit or stash first.`)
+
+## [2026-04-12 12:02:03 +0900] FINISH W-20260412-1158-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - reduced hero dominance by lowering hero height, tightening the hero grid, and shrinking the proof window footprint
+  - increased legibility by scaling up hero lead copy, section intros, and surface/loop body text
+  - made the primary action more obvious by adding a dedicated `Open Terminal` and `Open Lab` CTA row outside the input bar while keeping prompt submission intact
+  - cleaned up stale hero CSS selectors introduced during prior iterations
+- Validation results:
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `6a42bae`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`
+
+## [2026-04-12 13:02:00 +0900] START W-20260412-1302-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `4aea7586ff1c5835285c0d678829f18666f06c5d`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - uncommitted files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`
+- Task summary:
+  - inspect the current Codex git state for this repository, including branch position, existing in-flight changes, and recent branch history before any new edits
+- Owned files / overlap check result:
+  - no product-surface ownership claimed; inspection-only task
+  - log-only write in `docs/AGENT_WATCH_LOG.md`; all existing home-landing edits are treated as pre-existing in-flight work
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: FAIL (`Working tree has uncommitted changes. Commit or stash first.`)
+
+## [2026-04-12 13:03:42 +0900] FINISH W-20260412-1302-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - inspected the current git state for `codex/home-visualization-analysis`, including branch divergence, recent branch-only commits, and uncommitted file scope
+  - appended start/finish evidence to `docs/AGENT_WATCH_LOG.md`
+- Validation results:
+  - no `docs:check`, `check`, `build`, or `ctx:check` run in this task
+  - reason: inspection-only request; no push/merge attempted
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `6a42bae`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified after this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`
+  - branch brief/handoff present: `.agent-context/briefs/codex-home-visualization-analysis-latest.md`, `.agent-context/handoffs/codex-home-visualization-analysis-latest.md`
+
+## [2026-04-12 13:05:00 +0900] START W-20260412-1305-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `4aea7586ff1c5835285c0d678829f18666f06c5d`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - uncommitted files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`
+- Task summary:
+  - review the current uncommitted diffs on `codex/home-visualization-analysis` and summarize what each changed file is doing
+- Owned files / overlap check result:
+  - inspection-only task; no product-surface ownership claimed
+  - log-only write in `docs/AGENT_WATCH_LOG.md`; all other modified files are treated as pre-existing in-flight work
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: FAIL (`Working tree has uncommitted changes. Commit or stash first.`)
+
+## [2026-04-12 13:07:00 +0900] FINISH W-20260412-1305-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - reviewed the current uncommitted home-landing diffs file by file
+  - summarized the scope as visual-language polish around the home route: stronger hero CTA, mac-window framing, branded color field, quieter terminal-first messaging, and home-specific header tweaks
+  - appended start/finish evidence to `docs/AGENT_WATCH_LOG.md`
+- Validation results:
+  - no `docs:check`, `check`, `build`, or `ctx:check` run in this task
+  - `npm run ctx:checkpoint`: PASS
+  - reason: inspection-only request; no push/merge attempted
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `6a42bae`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified after this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`
+
+## [2026-04-12 13:10:00 +0900] START W-20260412-1310-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `4aea7586ff1c5835285c0d678829f18666f06c5d`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - uncommitted files before this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/WebGLAsciiBackground.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`
+- Task summary:
+  - validate, commit, sync, and merge the in-flight home landing polish from `codex/home-visualization-analysis` into `main`
+- Owned files / overlap check result:
+  - commit scope matches the existing home landing polish plus required log/doc updates only
+  - no additional product-surface edits planned beyond validation or conflict resolution if sync requires it
+- Safe status:
+  - pending: `npm run safe:status`
+  - pending: `npm run safe:hooks`
+  - pending: `npm run safe:sync`
