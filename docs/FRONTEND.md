@@ -167,7 +167,7 @@ This is an execution-facing materialization of the current canonical product dir
 
 | Route | Status | Rule |
 | --- | --- | --- |
-| `/passport` | secondary | durable profile / dossier, not a primary Day-1 tab |
+| `/passport` | secondary | durable profile / wallet continuity page, reachable from header profile and wallet/auth flow |
 | `/passport/wallet/[chain]/[address]` | secondary | dossier endpoint from Terminal wallet investigation |
 | `/create`, `/onboard`, `/agent`, `/agent/[id]`, `/scanner`, `/cogochi/scanner`, `/market`, `/battle` | deferred / legacy / later-phase | do not expose as first-order Day-1 navigation |
 
@@ -795,6 +795,16 @@ This is the cleanup inventory that should drive actual folder reorganization. It
   - `src/lib/wallet-intel/walletIntelTypes.ts`
   - `src/lib/api/profileApi.ts`
   - `src/lib/api/passportLearningApi.ts`
+
+#### Wallet connect modal
+
+- Shared UI files:
+  - `src/components/layout/Header.svelte`
+  - `src/components/modals/WalletModal.svelte`
+- State / glue:
+  - `src/lib/stores/walletStore.ts`
+  - `src/lib/stores/walletModalStore.ts`
+  - `src/lib/wallet/providers.ts`
 
 #### Settings
 
