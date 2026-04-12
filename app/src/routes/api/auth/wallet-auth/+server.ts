@@ -1,18 +1,18 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Unified Wallet-First Auth API
+// Cogochi — Unified Wallet-First Auth API
 // POST /api/auth/wallet-auth
 // Body: { walletAddress, walletMessage, walletSignature }
 //
 // Flow:
 //   1. Verify wallet signature (consume nonce)
 //   2. Look up user by wallet_address
-//   3a. If found → auto-login, return { action: 'login', user }
-//   3b. If not found → return { action: 'signup' } (client shows email form)
+//   3a. If found → auto-login
+//   3b. If not found → auto-register (wallet-only), then login
 // ═══════════════════════════════════════════════════════════════
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createAuthSession, findAuthUserByWallet } from '$lib/server/authRepository';
+import { createAuthSession, createWalletOnlyUser, findAuthUserByWallet } from '$lib/server/authRepository';
 import {
   buildSessionCookieValue,
   SESSION_COOKIE_NAME,
@@ -62,7 +62,6 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
         ? body.signature.trim()
         : '';
 
-    // ── Validate wallet fields ──
     if (!isValidEthAddress(walletAddressRaw)) {
       return json({ error: 'Valid EVM wallet address required' }, { status: 400 });
     }
@@ -78,7 +77,6 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
 
     const walletAddress = normalizeEthAddress(walletAddressRaw);
 
-    // ── Verify signature & consume nonce ──
     const verification = await verifyAndConsumeEvmNonce({
       address: walletAddress,
       message: walletMessage,
@@ -95,49 +93,50 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
       return json({ error: 'Challenge is expired or already used' }, { status: 401 });
     }
 
-    // ── Check if user exists ──
-    const existingUser = await findAuthUserByWallet(walletAddress);
+    // Look up or auto-create user by wallet
+    let user = await findAuthUserByWallet(walletAddress);
 
-    if (existingUser) {
-      // Auto-login: create session and return user
-      const sessionToken = crypto.randomUUID().toLowerCase();
-      const createdAt = Date.now();
-      const expiresAtMs = createdAt + SESSION_MAX_AGE_SEC * 1000;
-      await createAuthSession({
-        token: sessionToken,
-        userId: existingUser.id,
-        expiresAtIso: new Date(expiresAtMs).toISOString(),
-        userAgent: request.headers.get('user-agent'),
-        ipAddress: guard.ip,
-      });
-
-      cookies.set(
-        SESSION_COOKIE_NAME,
-        buildSessionCookieValue(sessionToken, existingUser.id),
-        SESSION_COOKIE_OPTIONS
-      );
-
-      return json({
-        success: true,
-        action: 'login',
-        user: {
-          id: existingUser.id,
-          email: existingUser.email,
-          nickname: existingUser.nickname,
-          tier: existingUser.tier,
-          phase: existingUser.phase,
-          walletAddress: existingUser.wallet_address,
-          loggedInAt: new Date(createdAt).toISOString(),
-        },
-      });
+    if (!user) {
+      try {
+        user = await createWalletOnlyUser(walletAddress, walletSignature);
+      } catch (createError: any) {
+        // Race condition: another request created the same wallet — retry lookup
+        if (createError?.code === '23505') {
+          user = await findAuthUserByWallet(walletAddress);
+        }
+        if (!user) throw createError;
+      }
     }
 
-    // ── New user: tell client to show signup form ──
+    const sessionToken = crypto.randomUUID().toLowerCase();
+    const createdAt = Date.now();
+    const expiresAtMs = createdAt + SESSION_MAX_AGE_SEC * 1000;
+    await createAuthSession({
+      token: sessionToken,
+      userId: user.id,
+      expiresAtIso: new Date(expiresAtMs).toISOString(),
+      userAgent: request.headers.get('user-agent'),
+      ipAddress: guard.ip,
+    });
+
+    cookies.set(
+      SESSION_COOKIE_NAME,
+      buildSessionCookieValue(sessionToken, user.id),
+      SESSION_COOKIE_OPTIONS
+    );
+
     return json({
       success: true,
-      action: 'signup',
-      walletAddress,
-      message: 'Wallet verified. Please provide email and nickname to complete registration.',
+      action: 'login',
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        tier: user.tier,
+        phase: user.phase,
+        walletAddress: user.wallet_address,
+        loggedInAt: new Date(createdAt).toISOString(),
+      },
     });
   } catch (error: any) {
     if (typeof error?.message === 'string' && error.message.includes('DATABASE_URL is not set')) {
