@@ -85,6 +85,7 @@ import {
 	type LSRatioDataPoint,
 	type LiquidationDataPoint
 } from './coinalyze';
+import { SECTOR_MAP_FROZEN, SECTOR_OVERRIDE_EMPTY, type SectorLabel } from './sectorTable';
 
 // ---------------------------------------------------------------------------
 // Per-raw input + output type maps
@@ -99,119 +100,9 @@ import {
 
 type EmptyInput = Record<string, never>;
 
-// ---------------------------------------------------------------------------
-// B14: internal sector taxonomy (SECTOR_MAP / SECTOR_OVERRIDE)
-// ---------------------------------------------------------------------------
-//
-// A pragmatic 7-bucket classification of the USDT-perp universe. The goal
-// is to give the research view / scanner rotation features a `sector` slot
-// in the provenance chain WITHOUT introducing an external dependency (the
-// alternative — CoinGecko categories or Messari sector tags — would add a
-// rate-limited API call and a nightly refresh path for data that moves
-// roughly once a quarter). Users can override via `SECTOR_OVERRIDE`,
-// which the composition layer treats as the authoritative source.
-//
-// Labels are intentionally coarse. The point is "is this a BTC story, an
-// L1 rotation, a DeFi story, a meme rotation, or an AI story" — not to
-// enumerate every subsector. If a layer wants finer buckets it should
-// subclass this map, not reshape it.
-//
-// Base keys are the stripped symbol (e.g. `BTC`, not `BTCUSDT`) so this
-// table can be used for both perpetual universes (where the quote is
-// always `USDT`) and spot universes (where the quote varies).
-//
-// Unknown symbols fall back to `'other'` at the consumer edge. Adding a
-// new symbol to the table is a one-line edit here; no migration required.
-
-export type SectorLabel =
-	| 'btc'
-	| 'l1'
-	| 'l2'
-	| 'defi'
-	| 'meme'
-	| 'ai'
-	| 'other';
-
-const SECTOR_BASE_TABLE: ReadonlyArray<readonly [string, SectorLabel]> = [
-	// Reserve currency
-	['BTC', 'btc'],
-
-	// Layer-1 smart contract platforms
-	['ETH', 'l1'],
-	['SOL', 'l1'],
-	['BNB', 'l1'],
-	['AVAX', 'l1'],
-	['ADA', 'l1'],
-	['DOT', 'l1'],
-	['NEAR', 'l1'],
-	['ATOM', 'l1'],
-	['APT', 'l1'],
-	['SUI', 'l1'],
-	['SEI', 'l1'],
-	['TIA', 'l1'],
-	['ICP', 'l1'],
-	['INJ', 'l1'],
-	['TON', 'l1'],
-	['TRX', 'l1'],
-	['FTM', 'l1'],
-
-	// Layer-2 rollups / scaling
-	['MATIC', 'l2'],
-	['ARB', 'l2'],
-	['OP', 'l2'],
-	['STRK', 'l2'],
-	['IMX', 'l2'],
-	['MANTA', 'l2'],
-	['METIS', 'l2'],
-
-	// DeFi blue chips
-	['UNI', 'defi'],
-	['AAVE', 'defi'],
-	['MKR', 'defi'],
-	['COMP', 'defi'],
-	['CRV', 'defi'],
-	['SNX', 'defi'],
-	['LDO', 'defi'],
-	['GMX', 'defi'],
-	['DYDX', 'defi'],
-	['PENDLE', 'defi'],
-	['JUP', 'defi'],
-	['RUNE', 'defi'],
-	['CAKE', 'defi'],
-	['SUSHI', 'defi'],
-	['1INCH', 'defi'],
-
-	// Memes
-	['DOGE', 'meme'],
-	['SHIB', 'meme'],
-	['PEPE', 'meme'],
-	['FLOKI', 'meme'],
-	['BONK', 'meme'],
-	['WIF', 'meme'],
-	['BOME', 'meme'],
-	['MEME', 'meme'],
-	['BRETT', 'meme'],
-	['POPCAT', 'meme'],
-
-	// AI / data / compute
-	['FET', 'ai'],
-	['RENDER', 'ai'],
-	['TAO', 'ai'],
-	['GRT', 'ai'],
-	['OCEAN', 'ai'],
-	['AGIX', 'ai'],
-	['RLC', 'ai'],
-	['WLD', 'ai'],
-	['AKT', 'ai'],
-	['ARKM', 'ai']
-];
-
-const SECTOR_MAP_FROZEN: ReadonlyMap<string, SectorLabel> = new Map(SECTOR_BASE_TABLE);
-
-// User-authored overrides are currently empty. A later slice can wire
-// this up to a per-user settings store; the atom contract is stable, so
-// that change is a pure fetcher swap at this line.
-const SECTOR_OVERRIDE_EMPTY: ReadonlyMap<string, SectorLabel> = new Map();
+// B14 sector taxonomy (SectorLabel union + SECTOR_MAP_FROZEN +
+// SECTOR_OVERRIDE_EMPTY) lives in `./sectorTable` — see the module
+// comment there for the 7-bucket rationale and the full base table.
 
 /**
  * Kline fetches carry a caller-supplied `limit` because different feature
