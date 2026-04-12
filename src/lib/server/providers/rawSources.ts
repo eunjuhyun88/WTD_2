@@ -134,6 +134,17 @@ export interface RawSourceInputs {
 	[KnownRawId.UPBIT_VOLUME_MAP]: EmptyInput;
 	[KnownRawId.BITHUMB_PRICE_MAP]: EmptyInput;
 	[KnownRawId.BTC_DOMINANCE]: EmptyInput;
+	// B12: futures-wide 24hr ticker field slices. All seven atoms share
+	// one memoized `/fapi/v1/ticker/24hr` roundtrip and return map/set
+	// shapes keyed by symbol, so callers can look up O(1) without
+	// re-scanning the 500+ row payload.
+	[KnownRawId.TICKER_SYMBOL]: EmptyInput;
+	[KnownRawId.TICKER_QUOTE_VOLUME]: EmptyInput;
+	[KnownRawId.TICKER_PRICE_CHANGE_PCT]: EmptyInput;
+	[KnownRawId.TICKER_HIGH_PRICE]: EmptyInput;
+	[KnownRawId.TICKER_LOW_PRICE]: EmptyInput;
+	[KnownRawId.TICKER_LAST_PRICE]: EmptyInput;
+	[KnownRawId.UNIVERSE_IS_USDT]: EmptyInput;
 }
 
 export interface RawSourceOutputs {
@@ -175,6 +186,21 @@ export interface RawSourceOutputs {
 	[KnownRawId.UPBIT_VOLUME_MAP]: Map<string, number>;
 	[KnownRawId.BITHUMB_PRICE_MAP]: Map<string, number>;
 	[KnownRawId.BTC_DOMINANCE]: number | null;
+	// B12: each entry is the USDT-filtered futures universe view of one
+	// field on Binance's `/fapi/v1/ticker/24hr` response. Keys are the
+	// normalized perpetual symbol (e.g. `BTCUSDT`); values are the
+	// field at that row. TICKER_SYMBOL and UNIVERSE_IS_USDT return the
+	// set of symbols rather than a map because their job is membership,
+	// not value lookup — they are distinct contract IDs even though
+	// the underlying data is identical (see §7 / §8 of the notes in
+	// `getFuturesTickers()` below).
+	[KnownRawId.TICKER_SYMBOL]: Set<string>;
+	[KnownRawId.TICKER_QUOTE_VOLUME]: Map<string, number>;
+	[KnownRawId.TICKER_PRICE_CHANGE_PCT]: Map<string, number>;
+	[KnownRawId.TICKER_HIGH_PRICE]: Map<string, number>;
+	[KnownRawId.TICKER_LOW_PRICE]: Map<string, number>;
+	[KnownRawId.TICKER_LAST_PRICE]: Map<string, number>;
+	[KnownRawId.UNIVERSE_IS_USDT]: Set<string>;
 }
 
 /** The subset of `KnownRawId` values this slice implements. */
@@ -414,6 +440,127 @@ function getUpbitTickers(): Promise<UpbitTickerPayload> {
 		throw err;
 	});
 	return upbitTickersInflight;
+}
+
+// ---------------------------------------------------------------------------
+// Binance futures-wide 24hr ticker memo (B12)
+// ---------------------------------------------------------------------------
+//
+// `/fapi/v1/ticker/24hr` returns one row per USDT-margined perpetual
+// contract — roughly 500+ entries, ~1 MB payload. Scanner.ts already
+// owns a private `fetchAllFuturesTickers` helper that hits the same
+// endpoint to drive its 3-group universe selection. B12 lifts the same
+// call into `rawSources` as a memoized compound fetch so the seven
+// cataloged-but-unwired atoms below can share one roundtrip:
+//
+//   - TICKER_SYMBOL          → Set<string> of USDT-perp symbols
+//   - TICKER_QUOTE_VOLUME    → Map<symbol, usd_volume_24h>
+//   - TICKER_PRICE_CHANGE_PCT→ Map<symbol, percent_change_24h>
+//   - TICKER_HIGH_PRICE      → Map<symbol, high_24h>
+//   - TICKER_LOW_PRICE       → Map<symbol, low_24h>
+//   - TICKER_LAST_PRICE      → Map<symbol, last_24h>
+//   - UNIVERSE_IS_USDT       → Set<string> of USDT-perp symbols
+//
+// TICKER_SYMBOL and UNIVERSE_IS_USDT are intentional duplicates at the
+// contract layer: TICKER_SYMBOL is a `raw.scan.ticker_24h.*` field
+// slice (the identity field of the 24hr ticker row), while
+// UNIVERSE_IS_USDT is a `raw.scan.universe.*` membership predicate.
+// Consumers that want to cite "which symbols are in the universe"
+// should use `UNIVERSE_IS_USDT`; consumers that want a field slice of
+// the 24hr ticker should use `TICKER_SYMBOL`. The data is identical
+// because the USDT-perp filter happens once at the fetcher edge.
+//
+// USDT-perp filter: `symbol.endsWith('USDT') && !symbol.includes('_')`
+// — matches scanner.ts:86 exactly. The `_` guard drops quarterly /
+// delivery contracts like `BTCUSDT_230929`.
+//
+// 30-second memo TTL matches the other compound memos in this file
+// (btcOnchain, mempool, upbit). Binance's 24hr ticker stats refresh
+// every second on the bulk endpoint, but the engine path does not
+// need sub-second freshness for universe selection. Scanner.ts is
+// intentionally NOT migrated in this slice — B12 is additive-only,
+// mirroring B10 / B11. A later slice can point scanner.ts at
+// `readRaw(KnownRawId.TICKER_*)` and delete its private fetcher.
+
+interface FuturesTickerRow {
+	symbol?: string;
+	lastPrice?: string;
+	priceChangePercent?: string;
+	highPrice?: string;
+	lowPrice?: string;
+	quoteVolume?: string;
+}
+
+interface FuturesTickerPayload {
+	symbols: Set<string>;
+	quoteVolume: Map<string, number>;
+	priceChangePct: Map<string, number>;
+	highPrice: Map<string, number>;
+	lowPrice: Map<string, number>;
+	lastPrice: Map<string, number>;
+}
+
+function emptyFuturesTickerPayload(): FuturesTickerPayload {
+	return {
+		symbols: new Set(),
+		quoteVolume: new Map(),
+		priceChangePct: new Map(),
+		highPrice: new Map(),
+		lowPrice: new Map(),
+		lastPrice: new Map()
+	};
+}
+
+async function fetchFuturesTickers(): Promise<FuturesTickerPayload> {
+	const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr', {
+		signal: AbortSignal.timeout(10_000)
+	});
+	if (!res.ok) return emptyFuturesTickerPayload();
+	const rows = (await res.json()) as FuturesTickerRow[];
+	if (!Array.isArray(rows)) return emptyFuturesTickerPayload();
+
+	const payload = emptyFuturesTickerPayload();
+	for (const row of rows) {
+		if (typeof row.symbol !== 'string') continue;
+		// USDT-perp filter: same rule scanner.ts applies to drop
+		// quarterly / delivery contracts (they carry an underscore).
+		if (!row.symbol.endsWith('USDT') || row.symbol.includes('_')) continue;
+		const sym = row.symbol;
+		payload.symbols.add(sym);
+
+		const qv = row.quoteVolume != null ? parseFloat(row.quoteVolume) : NaN;
+		if (Number.isFinite(qv)) payload.quoteVolume.set(sym, qv);
+
+		const pct = row.priceChangePercent != null ? parseFloat(row.priceChangePercent) : NaN;
+		if (Number.isFinite(pct)) payload.priceChangePct.set(sym, pct);
+
+		const high = row.highPrice != null ? parseFloat(row.highPrice) : NaN;
+		if (Number.isFinite(high)) payload.highPrice.set(sym, high);
+
+		const low = row.lowPrice != null ? parseFloat(row.lowPrice) : NaN;
+		if (Number.isFinite(low)) payload.lowPrice.set(sym, low);
+
+		const last = row.lastPrice != null ? parseFloat(row.lastPrice) : NaN;
+		if (Number.isFinite(last)) payload.lastPrice.set(sym, last);
+	}
+	return payload;
+}
+
+let futuresTickersInflight: Promise<FuturesTickerPayload> | null = null;
+let futuresTickersAt = 0;
+function getFuturesTickers(): Promise<FuturesTickerPayload> {
+	const now = Date.now();
+	if (futuresTickersInflight && now - futuresTickersAt < 30_000) {
+		return futuresTickersInflight;
+	}
+	futuresTickersAt = now;
+	futuresTickersInflight = binanceQuota
+		.execute(() => fetchFuturesTickers())
+		.catch((err) => {
+			futuresTickersInflight = null;
+			throw err;
+		});
+	return futuresTickersInflight;
 }
 
 // ---------------------------------------------------------------------------
@@ -669,7 +816,22 @@ export const rawSources: RawSourceMap = {
 	[KnownRawId.BTC_DOMINANCE]: async () => {
 		const v = await fetchBtcDominance();
 		return v > 0 ? v : null;
-	}
+	},
+
+	// B12 — futures-wide 24hr ticker field slices. All seven atoms
+	// share one memoized `getFuturesTickers()` call (30s TTL) so a
+	// scan cycle that touches multiple fields produces exactly one
+	// `/fapi/v1/ticker/24hr` roundtrip. USDT-perp filter applied at
+	// the fetcher edge. See the memo comment block above for why
+	// TICKER_SYMBOL and UNIVERSE_IS_USDT carry identical data under
+	// distinct contract IDs.
+	[KnownRawId.TICKER_SYMBOL]: async () => (await getFuturesTickers()).symbols,
+	[KnownRawId.TICKER_QUOTE_VOLUME]: async () => (await getFuturesTickers()).quoteVolume,
+	[KnownRawId.TICKER_PRICE_CHANGE_PCT]: async () => (await getFuturesTickers()).priceChangePct,
+	[KnownRawId.TICKER_HIGH_PRICE]: async () => (await getFuturesTickers()).highPrice,
+	[KnownRawId.TICKER_LOW_PRICE]: async () => (await getFuturesTickers()).lowPrice,
+	[KnownRawId.TICKER_LAST_PRICE]: async () => (await getFuturesTickers()).lastPrice,
+	[KnownRawId.UNIVERSE_IS_USDT]: async () => (await getFuturesTickers()).symbols
 };
 
 // ---------------------------------------------------------------------------
