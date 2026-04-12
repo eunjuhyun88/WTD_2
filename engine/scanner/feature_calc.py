@@ -86,7 +86,9 @@ def _atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int) -> pd.S
 
 def _bollinger(close: pd.Series, window: int = 20, k: float = 2.0):
     mid = _sma(close, window)
-    std = close.rolling(window=window, min_periods=window).std(ddof=0)
+    # ddof=1 (sample std) matches Bloomberg / TradingView / IBKR standard.
+    # TA-Lib uses ddof=0; we prefer the more widely-visible convention.
+    std = close.rolling(window=window, min_periods=window).std(ddof=1)
     upper = mid + k * std
     lower = mid - k * std
     return lower, mid, upper
@@ -205,14 +207,26 @@ def _aroon(
     high: pd.Series, low: pd.Series, period: int = 25,
 ) -> tuple[pd.Series, pd.Series]:
     """Aroon Up and Down, 0..100.
-    aroon_up  = argmax_in_window / period * 100  (high Aroon Up → recent highest high → bullish)
-    aroon_down = argmin_in_window / period * 100  (high Aroon Down → recent lowest low → bearish)
+
+    Standard Tushar Chande formula:
+        Aroon Up   = ((N − bars_since_N-period_high) / N) × 100
+        Aroon Down = ((N − bars_since_N-period_low)  / N) × 100
+
+    With a rolling window of `period + 1` bars (index 0 = oldest, period = newest):
+        bars_since_high = period − original_argmax_index
+        Aroon Up = original_argmax_index / period × 100
+
+    We search the REVERSED window (newest first) so that when two bars share
+    the same extreme value we credit the MOST RECENT occurrence — which is
+    the standard interpretation used by Bloomberg, TradingView, and Reuters.
+    argmax on the reversed window returns the reversed-index of the first
+    (= most recent) maximum; original_argmax = period − reversed_argmax.
     """
     aroon_up = high.rolling(period + 1, min_periods=period + 1).apply(
-        lambda x: float(np.argmax(x)) / period * 100.0, raw=True
+        lambda x: float(period - np.argmax(x[::-1])) / period * 100.0, raw=True
     ).fillna(50.0)
     aroon_down = low.rolling(period + 1, min_periods=period + 1).apply(
-        lambda x: float(np.argmin(x)) / period * 100.0, raw=True
+        lambda x: float(period - np.argmin(x[::-1])) / period * 100.0, raw=True
     ).fillna(50.0)
     return aroon_up, aroon_down
 
@@ -326,9 +340,12 @@ def _supertrend(
 
 
 def _vol_zscore(volume: pd.Series, period: int = 20) -> pd.Series:
-    """Volume Z-score: (vol − rolling_mean) / rolling_std, clipped ±4."""
+    """Volume Z-score: (vol − rolling_mean) / rolling_std, clipped ±4.
+    Uses sample std (ddof=1) — the conventional choice for Z-scores in
+    financial statistics (Bloomberg, QuantLib, scipy.stats.zscore default).
+    """
     mean = volume.rolling(period, min_periods=period).mean()
-    std = volume.rolling(period, min_periods=period).std(ddof=0)
+    std = volume.rolling(period, min_periods=period).std(ddof=1)
     return ((volume - mean) / std.replace(0, np.nan)).fillna(0.0).clip(-4.0, 4.0)
 
 
