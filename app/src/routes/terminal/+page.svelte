@@ -539,6 +539,10 @@
         annotations: data.annotations ?? [],
         indicators: data.indicators ?? null,
         researchBlocks: data.researchBlocks ?? [],
+        // Engine outputs — top-level in API response, not inside snapshot
+        p_win: data.p_win ?? null,
+        blocks_triggered: data.blocks_triggered ?? [],
+        _fallback: data._fallback ?? false,
         ...data.snapshot,
       };
     }

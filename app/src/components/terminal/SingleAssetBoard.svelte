@@ -38,6 +38,18 @@
     return 'var(--sc-text-1, #d9d3cb)';
   }
 
+  function pwinColor(p: number | null | undefined): string {
+    if (p == null) return 'rgba(255,255,255,.28)';
+    if (p >= 0.6) return 'var(--sc-good, #adca7c)';
+    if (p <= 0.4) return 'var(--sc-bad, #cf7f8f)';
+    return 'var(--sc-text-1, #d9d3cb)';
+  }
+
+  // Format block names: "ema_cross_up" → "EMA CROSS UP"
+  function fmtBlock(name: string): string {
+    return name.replace(/_/g, ' ').toUpperCase();
+  }
+
   function fundingTone(funding: number | null | undefined): string {
     if (funding == null) return 'var(--sc-text-2, rgba(247, 242, 234, 0.72))';
     if (funding > 0.0005) return 'var(--sc-bad, #cf7f8f)';
@@ -141,7 +153,7 @@
     { label: 'Fear', value: snapshot?.l7?.fear_greed ?? '--', tone: 'var(--sc-text-1, #d9d3cb)' },
     { label: 'Regime', value: snapshot?.regime ?? '--', tone: 'var(--sc-text-1, #d9d3cb)' },
     { label: 'BB Width', value: snapshot?.l14?.bb_width != null ? `${snapshot.l14.bb_width}` : '--', tone: 'var(--sc-text-1, #d9d3cb)' },
-    { label: 'Bars', value: `${chartData.length}`, tone: 'var(--sc-text-1, #d9d3cb)' },
+    { label: 'P(Win)', value: snapshot?.p_win != null ? `${(snapshot.p_win * 100).toFixed(0)}%` : '학습前', tone: pwinColor(snapshot?.p_win ?? null) },
   ]);
 
   const modeOrder: BoardMode[] = ['board', 'strip', 'tv'];
@@ -330,6 +342,28 @@
         </div>
       {/each}
     </div>
+
+    {#if snapshot?.blocks_triggered?.length > 0}
+      <div class="engine-blocks-row">
+        <span class="engine-blocks-label">ENGINE</span>
+        {#each snapshot.blocks_triggered as block}
+          <span class="engine-block-chip">{fmtBlock(block)}</span>
+        {/each}
+        {#if snapshot?._fallback}
+          <span class="engine-block-chip engine-block-fallback">FALLBACK</span>
+        {/if}
+      </div>
+    {:else if snapshot && !snapshot._fallback}
+      <div class="engine-blocks-row engine-blocks-quiet">
+        <span class="engine-blocks-label">ENGINE</span>
+        <span class="engine-blocks-none">no blocks triggered</span>
+        {#if snapshot?.p_win != null}
+          <span class="engine-pwin-inline" style={`color:${pwinColor(snapshot.p_win)}`}>
+            P(Win) {(snapshot.p_win * 100).toFixed(0)}%
+          </span>
+        {/if}
+      </div>
+    {/if}
   {:else if boardMode === 'strip'}
     <div class="asset-layout asset-layout-strip">
       <section class="strip-main">
@@ -957,5 +991,38 @@
     .tv-frame-wrap iframe {
       min-height: 360px;
     }
+  }
+
+  /* ── Engine blocks row ────────────────────────────────────────── */
+  .engine-blocks-row {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    padding: 6px 0;
+    border-top: 1px solid rgba(255,255,255,.06);
+    margin-top: 4px;
+  }
+  .engine-blocks-label {
+    font-size: 8px; font-weight: 700; letter-spacing: .8px;
+    color: rgba(255,255,255,.25);
+    flex-shrink: 0; margin-right: 2px;
+  }
+  .engine-block-chip {
+    font-size: 8px; font-weight: 600; letter-spacing: .4px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(173,202,124,.12);
+    color: #adca7c;
+    border: 1px solid rgba(173,202,124,.25);
+  }
+  .engine-block-fallback {
+    background: rgba(207,127,143,.1);
+    color: #cf7f8f;
+    border-color: rgba(207,127,143,.25);
+  }
+  .engine-blocks-quiet { opacity: .55; }
+  .engine-blocks-none {
+    font-size: 8px; color: rgba(255,255,255,.3);
+  }
+  .engine-pwin-inline {
+    font-size: 9px; font-weight: 700; margin-left: 4px;
   }
 </style>
