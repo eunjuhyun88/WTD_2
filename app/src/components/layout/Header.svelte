@@ -195,7 +195,7 @@
     background:
       radial-gradient(circle at 12% 0%, rgba(249, 216, 194, 0.08), transparent 28%),
       radial-gradient(circle at 88% 0%, rgba(219, 154, 159, 0.06), transparent 22%),
-      linear-gradient(180deg, rgba(10, 10, 11, 0.88), rgba(6, 6, 7, 0.82));
+      linear-gradient(180deg, rgba(10, 10, 11, 0.92), rgba(6, 6, 7, 0.88));
     border-bottom: 1px solid rgba(249, 216, 194, 0.08);
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -203,12 +203,13 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    height: 50px;
-    padding: 0 14px;
+    height: var(--sc-header-h, 52px);
+    padding: 0 20px;
     font-family: var(--sc-font-body);
     color: var(--sc-text-0);
-    backdrop-filter: blur(18px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 1px 0 rgba(249, 216, 194, 0.06), 0 8px 24px rgba(0, 0, 0, 0.18);
   }
 
   .nav-main {
@@ -577,11 +578,11 @@
     opacity: 0.85;
   }
 
-  /* ═══ COMPACT DESKTOP / TABLET (769-1024px) ═══
-     Keep one line, hide ticker/score, show short labels */
+  /* ═══ COMPACT DESKTOP / TABLET (769-1024px) ═══ */
   @media (max-width: 1024px) and (min-width: 769px) {
     .desktop-only { display: none; }
     .selected-ticker { display: none; }
+    #nav { padding: 0 16px; }
     .nav-tab-desktop {
       padding: 0 var(--sc-sp-2);
       font-size: var(--sc-fs-xs);
@@ -589,78 +590,52 @@
     }
     .tab-full { display: none; }
     .tab-short { display: inline; }
-    .nav-logo {
-      gap: 6px;
-    }
     .nav-logo-main { font-size: 1.02rem; }
     .nav-right { gap: var(--sc-sp-1); }
-    #nav.home-mode {
-      width: calc(100vw - 20px);
-    }
-    #nav.home-mode .nav-tab-desktop:nth-of-type(3) {
-      display: none;
-    }
+    #nav.home-mode { width: calc(100vw - 20px); }
+    #nav.home-mode .nav-tab-desktop:nth-of-type(3) { display: none; }
   }
 
   /* ═══ MOBILE (<=768px) — compact top chrome, tabs move to bottom nav ═══ */
   @media (max-width: 768px) {
     #nav {
-      height: 56px;
+      height: var(--sc-header-h-mobile, 52px);
       flex-wrap: nowrap;
-      padding: 0 14px;
+      padding: 0 16px;
     }
     #nav.home-mode {
       width: calc(100vw - 20px);
-      height: 50px;
-      padding: 0 12px;
+      height: 46px;
+      padding: 0 14px;
       border-radius: 22px;
     }
-    #nav.home-mode .nav-tab-desktop:nth-of-type(3) {
-      display: none;
-    }
+    #nav.home-mode .nav-tab-desktop:nth-of-type(3) { display: none; }
     .desktop-only { display: none; }
     .nav-tab-desktop { display: none; }
-
-    .nav-main {
-      height: 56px;
-      gap: 10px;
-    }
-    .nav-logo { gap: 0; }
-    .nav-logo-main {
-      font-size: 0.96rem;
-      letter-spacing: 1.35px;
-    }
-
-    .selected-ticker {
-      display: none;
-    }
+    .nav-logo-main { font-size: 0.95rem; letter-spacing: 1.3px; }
+    .selected-ticker { display: none; }
     .mobile-page-chip {
       display: inline-flex;
       padding: 0 14px;
       height: 32px;
       font-size: 12px;
     }
-
-    .nav-right {
-      margin-left: auto;
-      height: 56px;
-    }
     .settings-btn {
       padding: var(--sc-sp-2);
-      min-width: var(--sc-touch-sm, 36px);
-      min-height: var(--sc-touch-sm, 36px);
+      min-width: 40px;
+      min-height: 40px;
     }
     .wallet-btn {
       padding: 0 16px;
-      border-radius: var(--sc-radius-md);
+      border-radius: 999px;
       min-width: auto;
-      min-height: 34px;
+      min-height: 36px;
     }
-    #nav.home-mode .profile-dropdown-wrap {
-      display: none;
-    }
-    #nav.home-mode .nav-right {
-      margin-left: auto;
+    #nav.home-mode .profile-dropdown-wrap { display: none; }
+    #nav.home-mode .wallet-btn {
+      min-height: 32px;
+      padding: 0 14px;
+      font-size: 11px;
     }
     #nav.home-mode .wallet-btn {
       min-height: 34px;
@@ -671,32 +646,13 @@
 
   /* ═══ SMALL MOBILE (<=480px) ═══ */
   @media (max-width: 480px) {
-    #nav {
-      padding: 0 12px;
-    }
+    #nav { padding: 0 12px; }
     #nav.home-mode {
-      width: calc(100vw - 18px);
-      height: 48px;
-      padding: 0 11px;
-    }
-    .nav-main {
-      height: 52px;
-    }
-    .nav-right {
-      height: 52px;
-    }
-    .nav-logo { gap: 0; }
-    .nav-logo-main {
-      font-size: 0.9rem;
-      letter-spacing: 1.08px;
-    }
-    .mobile-page-chip {
+      width: calc(100vw - 16px);
+      height: 44px;
       padding: 0 12px;
-      font-size: 11px;
     }
-    .wallet-btn {
-      padding: 0 14px;
-      min-height: 34px;
-    }
+    .mobile-page-chip { padding: 0 12px; font-size: 11px; }
+    .wallet-btn { padding: 0 12px; min-height: 34px; font-size: 10px; }
   }
 </style>

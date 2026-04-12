@@ -1,5 +1,6 @@
 <script lang="ts">
   // ─── Quick Panel: Left sidebar for scan presets, filters, mini results ───
+  import { priceStore } from '$lib/stores/priceStore';
 
   type ScanItem = {
     symbol: string;
@@ -42,6 +43,19 @@
     { label: 'Meme', key: 'meme' },
     { label: 'AI', key: 'ai' },
   ];
+
+  // Default watchlist shown before any scan is run
+  const DEFAULT_WATCHLIST = [
+    'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT',
+    'DOGEUSDT', 'AVAXUSDT', 'ADAUSDT', 'DOTUSDT', 'LINKUSDT',
+    'MATICUSDT', 'NEARUSDT', 'ATOMUSDT', 'UNIUSDT', 'LTCUSDT',
+  ];
+
+  // Show default list when no scan has been run yet
+  const showDefault = $derived(items.length === 0 && !scanning);
+
+  // Live prices from priceStore — keyed by BASE symbol (BTC, ETH, ...)
+  const livePrices = $derived($priceStore);
 
   const FILTERS: { key: FilterTab; label: string }[] = [
     { key: 'ALL', label: 'ALL' },
@@ -90,8 +104,8 @@
 <aside class="qp">
   <div class="qp-header">
     <div class="qp-head-copy">
-      <span class="qp-title">SCANNER</span>
-      <span class="qp-sub">Quick preview on click, analyze on double click</span>
+      <span class="qp-title">WATCHLIST</span>
+      <span class="qp-sub">Click to analyze · scan presets below</span>
     </div>
     <button class="qp-collapse" onclick={onToggle} aria-label="Collapse panel">«</button>
   </div>
@@ -126,15 +140,36 @@
         <div class="qp-scan-bar"></div>
         <span class="qp-scan-text">Scanning...</span>
       </div>
-    {:else if filtered.length === 0}
-      <div class="qp-empty">No results</div>
+    {:else if showDefault}
+      <!-- Default watchlist: click to analyze immediately -->
+      {#each DEFAULT_WATCHLIST as sym}
+        {@const base = sym.replace('USDT', '')}
+        {@const lp = livePrices[base]}
+        {@const p = lp?.price ?? 0}
+        {@const ch = lp?.change24h ?? null}
+        <button
+          class="qp-row"
+          class:selected={selectedSymbol === sym}
+          onclick={() => onAnalyze(sym)}
+          title="Click to analyze {base}"
+        >
+          <span class="qr-sym">{base}</span>
+          {#if p > 0}
+            <span class="qr-price">${p >= 1 ? p.toLocaleString(undefined, { maximumFractionDigits: 1 }) : p.toFixed(4)}</span>
+            {#if ch != null}
+              <span class="qr-ch" class:up={ch >= 0} class:dn={ch < 0}>{ch >= 0 ? '+' : ''}{ch.toFixed(1)}%</span>
+            {/if}
+          {:else}
+            <span class="qr-price qr-price-dim">—</span>
+          {/if}
+        </button>
+      {/each}
     {:else}
       {#each filtered as item}
         <button
           class="qp-row"
           class:selected={selectedSymbol === item.symbol}
-          onclick={() => onPreview(item.symbol)}
-          ondblclick={() => onAnalyze(item.symbol)}
+          onclick={() => onAnalyze(item.symbol)}
         >
           <span class="qr-main">
             <span class="qr-topline">
@@ -157,11 +192,18 @@
           </span>
         </button>
       {/each}
+      {#if filtered.length === 0}
+        <div class="qp-empty">No results</div>
+      {/if}
     {/if}
   </div>
 
   <div class="qp-count">
-    <span>{filtered.length}/{items.length} visible</span>
+    {#if showDefault}
+      <span>watchlist · {DEFAULT_WATCHLIST.length} pairs</span>
+    {:else}
+      <span>{filtered.length}/{items.length} visible</span>
+    {/if}
     <span>4H desk</span>
   </div>
 </aside>
@@ -323,6 +365,20 @@
     font-size: 10px;
     color: var(--sc-text-3);
   }
+  .qr-price-dim {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    color: var(--sc-text-3);
+    opacity: 0.35;
+    margin-left: auto;
+  }
+  .qr-ch {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    margin-left: auto;
+  }
+  .qr-ch.up { color: var(--sc-good, #adca7c); }
+  .qr-ch.dn { color: var(--sc-bad, #cf7f8f); }
   .qr-flags {
     display: flex;
     gap: 4px;
@@ -417,12 +473,9 @@
   @media (max-width: 900px) {
     .qp {
       width: 100%;
-      border: 1px solid rgba(249, 216, 194, 0.12);
-      border-radius: 22px;
-      background:
-        linear-gradient(180deg, rgba(14, 14, 16, 0.92), rgba(9, 9, 11, 0.9)),
-        radial-gradient(circle at top right, rgba(219, 154, 159, 0.06), transparent 38%);
-      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.026);
     }
     .qp-expand {
       display: none;
@@ -474,7 +527,7 @@
 
   @media (max-width: 540px) {
     .qp {
-      border-radius: 20px;
+      border-radius: 6px;
     }
     .qp-header {
       padding: 14px 14px 10px;
