@@ -27,12 +27,14 @@
   type WalletFunnelStatus = 'view' | 'success' | 'error';
 
   const STEP_TITLE: Record<WalletState['walletModalStep'], string> = {
+    welcome: 'WALLET ACCESS',
     'wallet-select': 'CONNECT WALLET',
     connecting: 'CONNECTING',
     'sign-message': 'VERIFY OWNERSHIP',
     connected: 'WALLET READY',
     signup: 'CREATE ACCOUNT',
     login: 'LOG IN',
+    'demo-intro': 'DEMO',
     profile: 'MY PROFILE'
   };
 
@@ -101,8 +103,7 @@
     return value === 'metamask'
       || value === 'coinbase'
       || value === 'walletconnect'
-      || value === 'phantom'
-      || value === 'base';
+      || value === 'phantom';
   }
 
   function isEvmAddress(address: string): boolean {
@@ -377,27 +378,21 @@
 
       trackWalletFunnel('sign', 'success', { provider, chain: state.chain });
 
-      // ── Wallet-first: auto-login or show signup form ──
+      // Wallet-first: auto-login or auto-register
       try {
         const authResult = await walletAuth({
           walletAddress: state.address!,
           walletMessage: noncePayload.message,
           walletSignature: signature,
         });
-
         if (authResult.action === 'login' && authResult.user) {
-          // Existing user → auto-login
           applyAuthenticatedUser(authResult.user);
           trackWalletFunnel('auth', 'success', { action: 'auto_login' });
-          setWalletModalStep('profile');
-        } else {
-          // New user → show signup form
-          setWalletModalStep('signup');
         }
+        setWalletModalStep('profile');
       } catch (walletAuthError) {
-        // wallet-auth API failed (nonce already consumed) — fallback to signup form
-        console.warn('[WalletModal] wallet-auth fallback to signup', walletAuthError);
-        setWalletModalStep('signup');
+        console.warn('[WalletModal] wallet-auth error', walletAuthError);
+        setWalletModalStep('profile');
       }
     } catch (error) {
       clearWalletProof();
@@ -442,7 +437,7 @@
   }
 
   function authStepState(): 'active' | 'done' | 'idle' {
-    if (state.email) return 'done';
+    if (state.nickname || state.email) return 'done';
     if (step === 'signup' || step === 'login' || step === 'connected') return 'active';
     return 'idle';
   }
@@ -471,31 +466,6 @@
         <span class="wht">{headerTitle}</span>
       </div>
 
-      {#if !state.email}
-        <div class="mode-toggle" role="tablist" aria-label="Auth mode">
-          <button
-            type="button"
-            class="mode-btn"
-            class:active={authMode === 'login'}
-            role="tab"
-            aria-selected={authMode === 'login'}
-            on:click={() => setAuthMode('login')}
-          >
-            LOG IN
-          </button>
-          <button
-            type="button"
-            class="mode-btn"
-            class:active={authMode === 'signup'}
-            role="tab"
-            aria-selected={authMode === 'signup'}
-            on:click={() => setAuthMode('signup')}
-          >
-            SIGN UP
-          </button>
-        </div>
-      {/if}
-
       <button class="whc" type="button" aria-label="Close wallet modal" on:click={handleClose}>✕</button>
     </div>
 
@@ -506,15 +476,14 @@
     <div class="progress-row" aria-hidden="true">
       <div class="pstep" class:active={connectStepState() === 'active'} class:done={connectStepState() === 'done'}>1 CONNECT</div>
       <div class="pstep" class:active={signStepState() === 'active'} class:done={signStepState() === 'done'}>2 SIGN</div>
-      <div class="pstep" class:active={authStepState() === 'active'} class:done={authStepState() === 'done'}>3 AUTH</div>
+      <div class="pstep" class:active={authStepState() === 'active'} class:done={authStepState() === 'done'}>3 ACCOUNT</div>
     </div>
-
     {#if step === 'wallet-select'}
       <div class="wb">
         <div class="step-hero">
           <span class="hero-kicker">STEP 1</span>
           <h3 class="hero-title">Connect your wallet</h3>
-          <p class="hero-sub">{authMode === 'login' ? 'Login requires wallet ownership verification.' : 'Signup requires wallet ownership verification.'}</p>
+          <p class="hero-sub">Connect your wallet to access or create your account automatically.</p>
         </div>
 
         <div class="wallet-list">
@@ -543,11 +512,6 @@
             <span class="wo-icon">👻</span>
             <span class="wo-name">Phantom</span>
             <span class="wo-chain">SOL/EVM</span>
-          </button>
-          <button class="wopt" type="button" on:click={() => handleConnect('base')}>
-            <span class="wo-icon">🟦</span>
-            <span class="wo-name">Base Smart Wallet</span>
-            <span class="wo-chain">BASE</span>
           </button>
         </div>
       </div>
@@ -579,8 +543,8 @@
             <span class="info-v">{state.chain}</span>
           </div>
           <div class="info-row">
-            <span class="info-k">ACTION</span>
-            <span class="info-v">VERIFY OWNERSHIP</span>
+            <span class="info-k">MODE</span>
+            <span class="info-v">{authMode === 'login' ? 'LOG IN' : 'SIGN UP'}</span>
           </div>
         </div>
 
