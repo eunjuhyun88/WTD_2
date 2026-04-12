@@ -85,12 +85,14 @@ def test_snapshot_constructs_with_valid_fields():
     assert snap.ema_alignment is EMAAlignment.BULLISH
 
 
-def test_snapshot_has_28_feature_fields():
-    """Guard against accidental add/remove of feature fields."""
+def test_snapshot_has_39_feature_fields():
+    """Guard against accidental add/remove of feature fields.
+    28 original + 11 quick-win indicators (H-K groups).
+    """
     meta = {"symbol", "timestamp", "price"}
     feature_fields = set(SignalSnapshot.model_fields.keys()) - meta
-    assert len(feature_fields) == 28, (
-        f"expected 28 feature fields, got {len(feature_fields)}: "
+    assert len(feature_fields) == 39, (
+        f"expected 39 feature fields, got {len(feature_fields)}: "
         f"{sorted(feature_fields)}"
     )
 
