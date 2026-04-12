@@ -33,6 +33,18 @@ If the task is purely operational (CI, security, context engineering, agent coor
 - Task-level doc router: `docs/README.md`
 - Operational docs: `docs/{DESIGN,FRONTEND,PLANS,QUALITY_SCORE,RELIABILITY,SECURITY}.md`
 
+## MemKraft (Accumulated Knowledge)
+
+- Knowledge base: `memory/` directory (plain Markdown, git-tracked)
+- Auto-extract on session end (fail-open hook)
+- `npm run mk:dream:dry` — memory health check (7 automated checks)
+- `npm run mk:search "query"` — knowledge search
+- `npm run mk:lookup "entity"` — entity lookup (brain-first priority)
+- `npm run mk:extract "text" --source "src"` — manual extraction
+- `npm run mk:track "Name" --type concept` — track new entity
+- `npm run mk:log --event "description" --tags "tag1,tag2"` — log event
+- Entities: Compiled Truth (current state, mutable) + Timeline (history, append-only)
+
 ## Guardrails
 
 - `~/Downloads/기타_문서/cogochi-v3-archive-2026-04-11/` is **historical reference**, not current authority. Do not treat v3 specs as active. Any useful technical content from v3 has already been absorbed into `docs/COGOCHI.md` (see its § 11 Data Contracts and § 17 Phase 2/3 Roadmap).
