@@ -73,7 +73,13 @@ const routeMeta = [
   },
   // /battle — ARCHIVED (Batch 3)
   // /oracle — ARCHIVED (Batch 3)
-  // /passport — ARCHIVED (Batch 5)
+  {
+    route: '/passport',
+    role: 'profile and wallet record',
+    primaryConcern: 'identity continuity, wallet state, and durable performance summary',
+    keyState: '`walletStore`, `/api/profile/passport`',
+    deepDocs: '`docs/FRONTEND.md`'
+  },
   // /passport/wallet/[chain]/[address] — ARCHIVED (Batch 5)
   {
     route: '/settings',

@@ -11938,3 +11938,57 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - pending feature-branch push for `codex/chart-engine-core-pick`
 - Final working tree status:
   - pending commit of `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, and `src/lib/chart-engine/**`
+
+## [2026-04-12 21:16:00 +0900] START W-20260412-2113-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-ui-home-pattern-unify`
+- Branch:
+  - `codex/ui-home-pattern-unify`
+- Base `origin/main` hash:
+  - `eafbe229d155c37d947cb7be06aa6bbe69f77a64`
+- Working tree status:
+  - `## codex/ui-home-pattern-unify`
+  - clean before this task after rebasing to latest `origin/main`
+- Task summary:
+  - unify the UI/UX language for `lab`, `dashboard`, missing `/passport`, and wallet connect around the home surface design system, with home as the visual reference pattern
+- Owned files / overlap check result:
+  - isolated to the dedicated `codex/ui-home-pattern-unify` worktree created from `main`
+  - expected ownership: `src/routes/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/passport/+page.svelte`, `src/components/layout/Header.svelte`, `src/components/modals/WalletModal.svelte`, and any new shared home-style UI shell files
+  - overlap with dirty `codex/terminal-shell-redesign` worktree avoided by branch/worktree split; no direct file overlap in this task workspace
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: PASS after `npm install` in the fresh worktree (`svelte-check` passed with 16 pre-existing unused CSS warnings in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`)
+- Checkpoint:
+  - `.agent-context/checkpoints/w-20260412-2113-chatbattle-codex.md`
+- Notes:
+  - `docs/SYSTEM_INTENT.md` is absent in this repo snapshot; current product intent is routed through `docs/COGOCHI.md` per `docs/README.md`
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-12 21:54:19 +0900] FINISH W-20260412-2113-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - unified `lab` and `dashboard` around the home visual language with a shared editorial surface shell, lower chrome density, larger readable typography, and calmer card/panel hierarchy
+  - added a real `/passport` page so the existing header/profile and wallet flows no longer point at a missing route
+  - redesigned shared chrome in `Header.svelte` and `WalletModal.svelte` so wallet connect/auth now visually belongs to the same home-derived system instead of the older green auth panel style
+  - added global home-reference surface tokens in `src/app.css` and updated frontend/generated route metadata so docs gates understand the revived `/passport` route
+- Validation results:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: PASS
+  - `npm run safe:sync`: PASS after installing dependencies in the fresh worktree; same pre-existing unused CSS warnings remained in `src/components/layout/BottomBar.svelte` and `src/routes/settings/+page.svelte`
+  - `npm run docs:refresh`: PASS (required escalated write to refresh generated docs)
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 16 warnings`; warnings are the same pre-existing unused CSS selectors in `BottomBar.svelte` and `settings/+page.svelte`)
+  - `npm run build`: PASS (same pre-existing unused CSS warnings during build)
+  - `npm run ctx:check -- --strict`: PASS
+  - `git diff --check`: PASS
+- Commit hash:
+  - not created yet
+- Push status:
+  - not pushed; waiting for explicit user approval
+- Final working tree status:
+  - `## codex/ui-home-pattern-unify`
+  - modified: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `docs/generated/context-efficiency-report.json`, `docs/generated/context-efficiency-report.md`, `docs/generated/route-map.md`, `docs/generated/task-contract-report.md`, `scripts/dev/refresh-generated-context.mjs`, `src/app.css`, `src/components/layout/Header.svelte`, `src/components/modals/WalletModal.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`
+  - untracked: `src/routes/passport/+page.svelte`
+- Status:
+  - READY_FOR_REVIEW

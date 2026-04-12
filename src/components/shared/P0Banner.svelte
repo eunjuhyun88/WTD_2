@@ -33,8 +33,9 @@
 <style>
   .p0-banner {
     width: 100%;
-    background: linear-gradient(90deg, #cc0022, #ff2d55, #cc0022);
-    border-bottom: 3px solid #000;
+    background:
+      linear-gradient(90deg, rgba(163, 35, 58, 0.96), rgba(208, 70, 100, 0.92), rgba(163, 35, 58, 0.96));
+    border-bottom: 1px solid rgba(255,255,255,0.08);
     padding: 0;
     z-index: 105;
     animation: p0ShakeIn .5s ease;
@@ -60,8 +61,8 @@
   .p0-inner {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
+    gap: 10px;
+    padding: 8px 14px;
     position: relative;
     z-index: 1;
   }
@@ -73,10 +74,10 @@
   }
 
   .p0-text {
-    font-family: var(--fm);
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: 2px;
+    font-family: var(--sc-font-body);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     color: #fff;
     text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
     white-space: nowrap;
@@ -85,37 +86,37 @@
   }
 
   .p0-recommendation {
-    font-family: var(--fd);
-    font-size: 8px;
-    font-weight: 900;
-    letter-spacing: 2px;
-    color: #000;
-    background: #E8967D;
-    padding: 2px 8px;
-    border-radius: 4px;
-    border: 2px solid #000;
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #fff;
+    background: rgba(255,255,255,0.12);
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.14);
     flex-shrink: 0;
     animation: p0Pulse 1.5s ease infinite;
   }
 
   .p0-time {
-    font-family: var(--fm);
-    font-size: 7px;
-    color: rgba(255,255,255,0.6);
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    color: rgba(255,255,255,0.72);
     flex-shrink: 0;
   }
 
   .p0-dismiss {
     margin-left: auto;
-    font-family: var(--fm);
-    font-size: 7px;
-    font-weight: 900;
-    letter-spacing: 1px;
+    font-family: var(--sc-font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     color: #fff;
     background: rgba(0,0,0,0.4);
-    border: 2px solid rgba(255,255,255,0.3);
-    border-radius: 6px;
-    padding: 3px 10px;
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 999px;
+    padding: 6px 12px;
     cursor: pointer;
     transition: all .15s;
     flex-shrink: 0;
@@ -123,6 +124,27 @@
   .p0-dismiss:hover {
     background: rgba(0,0,0,0.7);
     border-color: #fff;
+  }
+
+  @media (max-width: 640px) {
+    .p0-inner {
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .p0-recommendation {
+      order: 3;
+    }
+
+    .p0-time {
+      order: 4;
+    }
+
+    .p0-dismiss {
+      margin-left: 0;
+      width: 100%;
+      justify-content: center;
+    }
   }
 
   @keyframes p0ShakeIn {

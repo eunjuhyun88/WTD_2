@@ -48,17 +48,16 @@
     ]
   },
   "allDocs": {
-    "files": 180,
-    "lines": 60415,
-    "words": 333362,
-    "chars": 2533060,
-    "approxTokens": 633328,
+    "files": 177,
+    "lines": 60320,
+    "words": 332976,
+    "chars": 2533220,
+    "approxTokens": 633369,
     "paths": [
       "README.md",
       "AGENTS.md",
       "CLAUDE.md",
       "ARCHITECTURE.md",
-      ".claude/README.md",
       ".claude/agents/README.md",
       ".claude/agents/advisor.md",
       ".claude/agents/implementer.md",
@@ -71,8 +70,6 @@
       ".claude/commands/checkpoint-context.md",
       ".claude/commands/gc-context.md",
       ".claude/commands/resume-context.md",
-      ".claude/hooks/README.md",
-      ".claude/plan.md",
       "docs/AGENT3_FE_BE_BRIDGE_DESIGN_2026-02-24.md",
       "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md",
       "docs/AGENT_CONTEXT_PROTOCOL.md",
@@ -238,18 +235,18 @@
   },
   "reductions": {
     "smallVsCanonicalPct": 55.180168668540766,
-    "smallVsAllDocsPct": 98.61540939292121,
-    "worstSurfaceReductionVsAllDocsPct": 98.06103630346361
+    "smallVsAllDocsPct": 98.6154990218972,
+    "worstSurfaceReductionVsAllDocsPct": 98.05421484158524
   },
   "surfaceBundles": [
     {
       "id": "core",
       "stats": {
         "files": 8,
-        "lines": 1320,
-        "words": 6556,
-        "chars": 49110,
-        "approxTokens": 12280,
+        "lines": 1321,
+        "words": 6578,
+        "chars": 49285,
+        "approxTokens": 12324,
         "paths": [
           "README.md",
           "AGENTS.md",
@@ -261,8 +258,8 @@
           "docs/generated/api-group-map.md"
         ]
       },
-      "reductionVsCanonicalPct": 37.23485816509072,
-      "reductionVsAllDocsPct": 98.06103630346361
+      "reductionVsCanonicalPct": 37.009966777408636,
+      "reductionVsAllDocsPct": 98.05421484158524
     }
   ],
   "structuralScorecard": [

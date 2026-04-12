@@ -14,6 +14,7 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/agents` | agent collection surface | stats, memory, roster legibility | `agentData` | `docs/PRODUCT_SENSE.md` |
 | `/holdings` | redirect route | redirect to canonical profile/holdings experience | none | `docs/product-specs/passport.md` |
 | `/lab` | model training workbench | agent doctrine, retained memory, release readiness | `agentData` | `docs/page-specs/lab-page.md` |
+| `/passport` | profile and wallet record | identity continuity, wallet state, and durable performance summary | `walletStore`, `/api/profile/passport` | `docs/FRONTEND.md` |
 | `/settings` | preferences surface | local settings and user controls | `gameState` and preference state | `docs/FRONTEND.md` |
 | `/terminal` | intel/action surface | scan, intel, action orchestration | route shell + `copyTradeStore`, `trackedSignalStore`, live prices | `docs/product-specs/terminal.md` |
 | `/scanner` | top-level scanner redirect/surface | canonical scanner entry — may redirect to /cogochi/scanner | none | `docs/product-specs/terminal.md` |
