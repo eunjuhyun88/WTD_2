@@ -8,7 +8,7 @@
 
 import { computeTerminalScanEmbedding } from './ragEmbedding';
 import { searchRAG, saveRAGEntry as saveRAGEntryAPI } from './gameRecordStore';
-import type { Finding } from '$lib/stores/arenaV2State';
+import type { Finding } from '$lib/contracts/signals';
 import type { V2BattleResult } from './v2BattleTypes';
 import type { RAGEntry, RAGRecall, PairQuality } from './arenaWarTypes';
 import type { Direction } from './types';

@@ -3,7 +3,7 @@
   import VerdictCard from './VerdictCard.svelte';
   import { communityPosts, hydrateCommunityPosts, likeCommunityPost } from '$lib/stores/communityStore';
   import { openTrades, closeQuickTrade, hydrateQuickTrades } from '$lib/stores/quickTradeStore';
-  import { gameState } from '$lib/stores/gameState';
+  import { activePairState } from '$lib/stores/activePairStore';
   import { predictMarkets, loadPolymarkets } from '$lib/stores/predictStore';
   import {
     polymarketPositions,
@@ -470,7 +470,7 @@
   function handleClosePos(id: string) {
     const trade = opens.find(t => t.id === id);
     if (!trade) return;
-    const state = $gameState;
+    const state = $activePairState;
     const token = trade.pair.split('/')[0] as keyof typeof state.prices;
     const price = state.prices[token] || state.prices.BTC;
     closeQuickTrade(id, price);
@@ -567,7 +567,7 @@
   }
 
   // ═══ Filter headlines by current chart ticker ═══
-  $: currentToken = $gameState.pair.split('/')[0] || 'BTC';
+  $: currentToken = $activePairState.pair.split('/')[0] || 'BTC';
   $: tokenAliases = getTokenAliases(currentToken);
   $: headlineSource = liveHeadlines;
   $: filteredHeadlines = headlineSource.filter(hl =>
@@ -584,7 +584,7 @@
     if (headlineLoading) return;
     headlineLoading = true;
     try {
-      const token = ($gameState.pair || 'BTC/USDT').split('/')[0];
+      const token = ($activePairState.pair || 'BTC/USDT').split('/')[0];
       const offset = append ? headlineOffset : 0;
       const res = await fetch(
         `/api/market/news?limit=20&offset=${offset}&token=${encodeURIComponent(token)}&sort=${headlineSortBy}&interval=1m`
@@ -659,8 +659,8 @@
     policyLoading = true;
     shadowLoading = true;
     try {
-      const pair = $gameState.pair || 'BTC/USDT';
-      const timeframe = $gameState.timeframe || '4h';
+      const pair = $activePairState.pair || 'BTC/USDT';
+      const timeframe = $activePairState.timeframe || '4h';
       const qs = `pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`;
 
       const shadowRes = await fetch(`/api/terminal/intel-agent-shadow?${qs}`, {
@@ -710,10 +710,10 @@
     shadowExecMessage = '';
 
     try {
-      const pair = $gameState.pair || 'BTC/USDT';
-      const timeframe = $gameState.timeframe || '4h';
+      const pair = $activePairState.pair || 'BTC/USDT';
+      const timeframe = $activePairState.timeframe || '4h';
       const token = pair.split('/')[0] || 'BTC';
-      const prices = ($gameState.prices ?? {}) as Record<string, number>;
+      const prices = ($activePairState.prices ?? {}) as Record<string, number>;
       const currentPrice = Number(prices[token] ?? prices.BTC ?? 0);
 
       if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
@@ -755,7 +755,7 @@
 
   async function fetchLiveEvents() {
     try {
-      const pair = $gameState.pair || 'BTC/USDT';
+      const pair = $activePairState.pair || 'BTC/USDT';
       const res = await fetch(`/api/market/events?pair=${encodeURIComponent(pair)}`);
       const json = await res.json();
       if (json.ok && json.data?.records?.length > 0) {
@@ -770,7 +770,7 @@
 
   async function fetchLiveFlow() {
     try {
-      const pair = $gameState.pair || 'BTC/USDT';
+      const pair = $activePairState.pair || 'BTC/USDT';
       const res = await fetch(`/api/market/flow?pair=${encodeURIComponent(pair)}`);
       const json = await res.json();
       if (json.ok && json.data) {
@@ -914,7 +914,7 @@
   let _prevPair = '';
   let _pairRefetchTimer: ReturnType<typeof setTimeout> | null = null;
   $: {
-    const pair = $gameState.pair || 'BTC/USDT';
+    const pair = $activePairState.pair || 'BTC/USDT';
     if (_prevPair && pair !== _prevPair) {
       // pair 바뀌면 debounce 후 refetch (빠른 전환 스팸 방지)
       if (_pairRefetchTimer) clearTimeout(_pairRefetchTimer);
@@ -1024,8 +1024,8 @@
         <VerdictCard
           bias={shadowDecision?.enforced.bias ?? policyDecision?.bias ?? 'wait'}
           confidence={shadowDecision?.proposal.confidence ?? policyDecision?.confidence ?? 0}
-          pair={$gameState.pair || 'BTC/USDT'}
-          timeframe={$gameState.timeframe || '4h'}
+          pair={$activePairState.pair || 'BTC/USDT'}
+          timeframe={$activePairState.timeframe || '4h'}
           reason={shadowDecision?.proposal.nowWhat ?? policyDecision?.reasons?.[0] ?? ''}
           edgePct={policyDecision?.edgePct ?? null}
           gateScore={policyDecision?.qualityGateScore ?? null}

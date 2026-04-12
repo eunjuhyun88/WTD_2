@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { gameState } from '$lib/stores/gameState';
+  import { activePairState, setActivePair, setActiveTimeframe, setActiveSpeed } from '$lib/stores/activePairStore';
   import { RESETTABLE_STORAGE_KEYS } from '$lib/stores/storageKeys';
   import { CORE_TIMEFRAME_OPTIONS, normalizeTimeframe } from '$lib/utils/timeframe';
 
   export let onClose: () => void = () => {};
 
-  let state = $gameState;
-  $: state = $gameState;
+  let state = $activePairState;
+  $: state = $activePairState;
 
   let speed = state.speed;
   let audioOn = true;
@@ -14,7 +14,7 @@
 
   function setSpeed(s: number) {
     speed = s;
-    gameState.update(st => ({ ...st, speed: s }));
+    setActiveSpeed(s);
   }
 
   function resetData() {
@@ -74,7 +74,7 @@
         <div class="st-btns">
           {#each ['BTC/USDT', 'ETH/USDT', 'SOL/USDT'] as p}
             <button class="pair-btn" class:active={state.pair === p}
-              on:click={() => gameState.update(s => ({...s, pair: p}))}>
+              on:click={() => setActivePair(p)}>
               {p.split('/')[0]}
             </button>
           {/each}
@@ -87,7 +87,7 @@
         <div class="st-btns">
           {#each CORE_TIMEFRAME_OPTIONS as tf}
             <button class="tf-btn" class:active={normalizeTimeframe(state.timeframe) === tf.value}
-              on:click={() => gameState.update(s => ({...s, timeframe: tf.value}))}>
+              on:click={() => setActiveTimeframe(tf.value)}>
               {tf.label}
             </button>
           {/each}
