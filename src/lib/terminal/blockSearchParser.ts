@@ -23,7 +23,7 @@ import {
 	type Direction,
 	type ParsedBlock,
 	type ParsedQuery
-} from '$lib/contracts';
+} from '../contracts/challenge.ts';
 
 // ---------------------------------------------------------------------------
 // NL → block dictionary
@@ -168,9 +168,13 @@ function extractPct(input: string): number | null {
 
 /**
  * Extracts multiplier (`5x`, `5배`) → 5.0. Returns null if not found.
+ *
+ * Uses a Unicode-aware negative lookahead instead of `\b` so the Korean
+ * suffix `배` ends at space / end-of-string correctly — `\b` is
+ * ASCII-word-only and never fires after a Hangul syllable (PR2 smoke).
  */
 function extractMultiplier(input: string): number | null {
-	const match = input.match(/(\d+(?:\.\d+)?)\s*(?:x|배)\b/i);
+	const match = input.match(/(\d+(?:\.\d+)?)\s*(?:x|배)(?![\p{L}\p{N}_])/iu);
 	if (!match) return null;
 	const value = Number.parseFloat(match[1]);
 	if (!Number.isFinite(value) || value <= 0) return null;
@@ -194,8 +198,9 @@ function extractLookbackBars(input: string, timeframe: ChallengeTimeframe): numb
 		if (Number.isFinite(value) && value > 0 && value <= 1000) return value;
 	}
 
-	// Then days.
-	const daysMatch = input.match(/(\d+)\s*(?:days?|일)\b/i);
+	// Then days. Unicode lookahead instead of `\b` so `일` ends at whitespace
+	// or end-of-string — `\b` is ASCII-only (PR2 smoke).
+	const daysMatch = input.match(/(\d+)\s*(?:days?|일)(?![\p{L}\p{N}_])/iu);
 	if (daysMatch) {
 		const days = Number.parseInt(daysMatch[1], 10);
 		if (!Number.isFinite(days) || days <= 0 || days > 365) return null;
@@ -211,10 +216,15 @@ function extractLookbackBars(input: string, timeframe: ChallengeTimeframe): numb
 // Symbol / timeframe / direction extraction
 // ---------------------------------------------------------------------------
 
+// Unicode-aware token boundaries so Korean aliases (`1시간`, `4시간`, `일봉`)
+// terminate correctly. `\b` is ASCII-word-only and silently fails after any
+// Hangul syllable (PR2 smoke).
+const TF_BOUNDARY_BEFORE = '(?<![\\p{L}\\p{N}_])';
+const TF_BOUNDARY_AFTER = '(?![\\p{L}\\p{N}_])';
 const TIMEFRAME_PATTERNS: Array<[RegExp, ChallengeTimeframe]> = [
-	[/\b(1h|1시간)\b/i, '1h'],
-	[/\b(4h|4시간)\b/i, '4h'],
-	[/\b(1d|일봉|daily)\b/i, '1d']
+	[new RegExp(`${TF_BOUNDARY_BEFORE}(1h|1시간)${TF_BOUNDARY_AFTER}`, 'iu'), '1h'],
+	[new RegExp(`${TF_BOUNDARY_BEFORE}(4h|4시간)${TF_BOUNDARY_AFTER}`, 'iu'), '4h'],
+	[new RegExp(`${TF_BOUNDARY_BEFORE}(1d|일봉|daily)${TF_BOUNDARY_AFTER}`, 'iu'), '1d']
 ];
 
 function extractTimeframe(input: string): ChallengeTimeframe | null {
@@ -228,8 +238,12 @@ function extractDirection(input: string): Direction | null {
 	const lower = input.toLowerCase();
 	// Short wins over long if both are present because "long short ratio" is
 	// a false positive for long; we prefer the user's explicit 'short' token.
-	if (/\b(short|숏|하락)\b/.test(lower)) return 'short';
-	if (/\b(long|롱|상승)\b/.test(lower)) return 'long';
+	//
+	// Unicode-aware boundaries so `롱` / `숏` / `상승` / `하락` end at whitespace
+	// or end-of-string — `\b` is ASCII-only and silently fails for Hangul
+	// (PR2 smoke).
+	if (/(?<![\p{L}\p{N}_])(short|숏|하락)(?![\p{L}\p{N}_])/u.test(lower)) return 'short';
+	if (/(?<![\p{L}\p{N}_])(long|롱|상승)(?![\p{L}\p{N}_])/u.test(lower)) return 'long';
 	return null;
 }
 
