@@ -9,6 +9,7 @@
 // - New short entry (OI↑ + price↓)
 
 import type { L19Result } from '../types';
+import { Thresholds } from '../thresholds';
 
 interface OIPoint {
   timestamp: number;
@@ -38,12 +39,12 @@ export function computeL19OIAccel(
   let score = 0;
   let label = 'STABLE';
 
-  const priceUp = priceChangePct > 0.3;
-  const priceDown = priceChangePct < -0.3;
-  const oiUp = oiChangePct > 2;
-  const oiDown = oiChangePct < -2;
-  const oiBigUp = oiChangePct > 5;
-  const oiBigDown = oiChangePct < -5;
+  const priceUp = priceChangePct > Thresholds.oiAccel.price_threshold_pct;
+  const priceDown = priceChangePct < -Thresholds.oiAccel.price_threshold_pct;
+  const oiUp = oiChangePct > Thresholds.oiAccel.change_pct;
+  const oiDown = oiChangePct < -Thresholds.oiAccel.change_pct;
+  const oiBigUp = oiChangePct > Thresholds.oiAccel.big_change_pct;
+  const oiBigDown = oiChangePct < -Thresholds.oiAccel.big_change_pct;
 
   if (oiBigUp && priceUp) {
     signal = 'LONG_ENTRY';

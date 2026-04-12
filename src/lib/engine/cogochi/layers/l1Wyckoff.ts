@@ -6,6 +6,7 @@
 
 import type { BinanceKline } from '../../types';
 import type { L1Result, WyckoffPhase } from '../types';
+import { Thresholds } from '../thresholds';
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -68,16 +69,16 @@ function analyzeWindow(candles: WyckoffCandle[], cfg: WindowConfig): WyckoffAnal
   const rPct = rL > 0 ? ((rH - rL) / rL) * 100 : 0;
 
   // Validate range: 1.5% ~ 38%
-  if (rPct < 1.5 || rPct > 38) return none;
+  if (rPct < Thresholds.wyckoff.range_pct_min || rPct > Thresholds.wyckoff.range_pct_max) return none;
 
   // Determine pattern
   let pattern: 'ACCUMULATION' | 'DISTRIBUTION' | 'NONE' = 'NONE';
-  if (tPct < -0.05) pattern = 'ACCUMULATION';
-  else if (tPct > 0.05) pattern = 'DISTRIBUTION';
+  if (tPct < -Thresholds.wyckoff.trend_threshold) pattern = 'ACCUMULATION';
+  else if (tPct > Thresholds.wyckoff.trend_threshold) pattern = 'DISTRIBUTION';
   else return none;
 
   // Base score
-  let s = pattern === 'ACCUMULATION' ? 12 : -12;
+  let s = pattern === 'ACCUMULATION' ? Thresholds.wyckoff.score_base : -Thresholds.wyckoff.score_base;
 
   // Climax volume (first 5 candles of range vs range average)
   const avgVol = rangeSlice.reduce((a, c) => a + c.v, 0) / rangeSlice.length;
@@ -85,9 +86,9 @@ function analyzeWindow(candles: WyckoffCandle[], cfg: WindowConfig): WyckoffAnal
   const climVol = Math.max(...firstVols.map(c => c.v));
   const climVolRel = avgVol > 0 ? climVol / avgVol : 0;
 
-  if (climVolRel >= 3.5) s += pattern === 'ACCUMULATION' ? 10 : -10;
-  else if (climVolRel >= 2.0) s += pattern === 'ACCUMULATION' ? 7 : -7;
-  else if (climVolRel >= 1.2) s += pattern === 'ACCUMULATION' ? 4 : -4;
+  if (climVolRel >= Thresholds.wyckoff.clim_vol_extreme) s += pattern === 'ACCUMULATION' ? 10 : -10;
+  else if (climVolRel >= Thresholds.wyckoff.clim_vol_strong) s += pattern === 'ACCUMULATION' ? 7 : -7;
+  else if (climVolRel >= Thresholds.wyckoff.clim_vol_moderate) s += pattern === 'ACCUMULATION' ? 4 : -4;
 
   // ST (Secondary Test) counting
   let stCount = 0;
@@ -95,14 +96,14 @@ function analyzeWindow(candles: WyckoffCandle[], cfg: WindowConfig): WyckoffAnal
   for (let i = 5; i < rangeSlice.length - 7; i++) {
     const c = rangeSlice[i];
     if (pattern === 'ACCUMULATION') {
-      if (c.l <= rL * 1.01 && c.c > rL) {
+      if (c.l <= rL * Thresholds.wyckoff.st_near_low_pct && c.c > rL) {
         stCount++;
-        if (c.v < avgVol * 0.8) stVolQ++;
+        if (c.v < avgVol * Thresholds.wyckoff.st_low_vol_ratio) stVolQ++;
       }
     } else {
-      if (c.h >= rH * 0.99 && c.c < rH) {
+      if (c.h >= rH * Thresholds.wyckoff.st_near_high_pct && c.c < rH) {
         stCount++;
-        if (c.v < avgVol * 0.8) stVolQ++;
+        if (c.v < avgVol * Thresholds.wyckoff.st_low_vol_ratio) stVolQ++;
       }
     }
   }
@@ -117,12 +118,12 @@ function analyzeWindow(candles: WyckoffCandle[], cfg: WindowConfig): WyckoffAnal
 
   for (const c of rangeSlice.slice(-10)) {
     // Spring: dip below range low then recover
-    if (c.l < rL * 0.9975 && c.c > rL * 0.994) {
+    if (c.l < rL * Thresholds.wyckoff.spring_dip_pct && c.c > rL * Thresholds.wyckoff.spring_recover_pct) {
       hasSpring = true;
       if (c.v < avgVol * 0.9) springLowVol = true;
     }
     // UTAD: spike above range high then pull back
-    if (c.h > rH * 1.0025 && c.c < rH * 1.006) {
+    if (c.h > rH * Thresholds.wyckoff.utad_spike_pct && c.c < rH * Thresholds.wyckoff.utad_pullback_pct) {
       hasUtad = true;
       if (c.v < avgVol * 0.9) utadLowVol = true;
     }
@@ -139,10 +140,10 @@ function analyzeWindow(candles: WyckoffCandle[], cfg: WindowConfig): WyckoffAnal
   let hasSos = false;
   let hasSow = false;
   for (const c of rangeSlice.slice(-7)) {
-    if (pattern === 'ACCUMULATION' && c.c > rH * 1.004 && c.c > c.o && c.v > avgVol * 1.1) {
+    if (pattern === 'ACCUMULATION' && c.c > rH * Thresholds.wyckoff.sos_break_pct && c.c > c.o && c.v > avgVol * 1.1) {
       hasSos = true;
     }
-    if (pattern === 'DISTRIBUTION' && c.c < rL * 0.996 && c.c < c.o && c.v > avgVol * 1.1) {
+    if (pattern === 'DISTRIBUTION' && c.c < rL * Thresholds.wyckoff.sow_break_pct && c.c < c.o && c.v > avgVol * 1.1) {
       hasSow = true;
     }
   }
@@ -154,7 +155,7 @@ function analyzeWindow(candles: WyckoffCandle[], cfg: WindowConfig): WyckoffAnal
   const secondHalfVol = rangeSlice.slice(Math.floor(rangeSlice.length / 2));
   const fhAvg = firstHalfVol.reduce((a, c) => a + c.v, 0) / firstHalfVol.length;
   const shAvg = secondHalfVol.reduce((a, c) => a + c.v, 0) / secondHalfVol.length;
-  const volDec = fhAvg > 0 && shAvg < fhAvg * 0.85;
+  const volDec = fhAvg > 0 && shAvg < fhAvg * Thresholds.wyckoff.vol_decrease_ratio;
   if (volDec) s += pattern === 'ACCUMULATION' ? 4 : -4;
 
   // Trend strength bonus
@@ -163,7 +164,7 @@ function analyzeWindow(candles: WyckoffCandle[], cfg: WindowConfig): WyckoffAnal
 
   return {
     pattern,
-    score: clamp(Math.round(s), -28, 28),
+    score: clamp(Math.round(s), -Thresholds.wyckoff.score_max, Thresholds.wyckoff.score_max),
     hasSpring,
     hasUtad,
     hasSos,

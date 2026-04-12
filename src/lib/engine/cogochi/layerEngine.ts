@@ -7,6 +7,7 @@
 import type { MarketContext } from '../factorEngine';
 import type { BinanceKline } from '../types';
 import { calcEMA, calcBollingerBands } from '../indicators';
+import type { MetricStore } from '../metrics/store';
 
 import type {
   SignalSnapshot, IndicatorSeries, ExtendedMarketData,
@@ -167,12 +168,12 @@ function computeL4(ext: ExtendedMarketData): L4Result {
   let score = 0;
   let label = 'BALANCED';
 
-  if (ratio > 3.5) { score = 12; label = 'EXTREME BID'; }
-  else if (ratio > 2.0) { score = 8; label = 'STRONG BID'; }
-  else if (ratio > 1.3) { score = 4; label = 'BID LEAN'; }
-  else if (ratio > 0.8) { score = 0; label = 'BALANCED'; }
-  else if (ratio > 0.5) { score = -4; label = 'ASK LEAN'; }
-  else if (ratio > 0.3) { score = -8; label = 'STRONG ASK'; }
+  if (ratio > Thresholds.ob.extreme_bid) { score = 12; label = 'EXTREME BID'; }
+  else if (ratio > Thresholds.ob.strong_bid) { score = 8; label = 'STRONG BID'; }
+  else if (ratio > Thresholds.ob.bid_lean) { score = 4; label = 'BID LEAN'; }
+  else if (ratio > Thresholds.ob.balanced_upper) { score = 0; label = 'BALANCED'; }
+  else if (ratio > Thresholds.ob.ask_lean) { score = -4; label = 'ASK LEAN'; }
+  else if (ratio > Thresholds.ob.strong_ask) { score = -8; label = 'STRONG ASK'; }
   else { score = -12; label = 'EXTREME ASK'; }
 
   return { bid_ask_ratio: Math.round(ratio * 100) / 100, score, label };
@@ -188,19 +189,19 @@ function computeL5(ctx: MarketContext, ext: ExtendedMarketData): L5Result {
   let score = 0;
   let label = 'NEUTRAL';
 
-  if (fr > 0.08 && oiPct > 4) { score = -12; label = 'LONG OVERCROWDED'; }
-  else if (fr > 0.05 && oiPct > 2) { score = -8; label = 'LONG BUILDUP'; }
-  else if (fr < -0.08 && oiPct > 4) { score = 12; label = 'SHORT OVERCROWDED'; }
-  else if (fr < -0.05 && oiPct > 2) { score = 8; label = 'SHORT BUILDUP'; }
-  else if (fr > 0.03) { score = -4; label = 'LONG LEAN'; }
-  else if (fr < -0.03) { score = 4; label = 'SHORT LEAN'; }
+  if (fr > Thresholds.liqEst.fr_overcrowded && oiPct > Thresholds.liqEst.oi_overcrowded) { score = -12; label = 'LONG OVERCROWDED'; }
+  else if (fr > Thresholds.liqEst.fr_buildup && oiPct > Thresholds.liqEst.oi_buildup) { score = -8; label = 'LONG BUILDUP'; }
+  else if (fr < -Thresholds.liqEst.fr_overcrowded && oiPct > Thresholds.liqEst.oi_overcrowded) { score = 12; label = 'SHORT OVERCROWDED'; }
+  else if (fr < -Thresholds.liqEst.fr_buildup && oiPct > Thresholds.liqEst.oi_buildup) { score = 8; label = 'SHORT BUILDUP'; }
+  else if (fr > Thresholds.liqEst.fr_lean) { score = -4; label = 'LONG LEAN'; }
+  else if (fr < -Thresholds.liqEst.fr_lean) { score = 4; label = 'SHORT LEAN'; }
 
   return {
     basis_pct: Math.round(Math.abs(fr) * 10000) / 100,
     score,
     label,
-    liq_long_est: cp > 0 ? Math.round(cp * 0.90) : undefined,
-    liq_short_est: cp > 0 ? Math.round(cp * 1.10) : undefined,
+    liq_long_est: cp > 0 ? Math.round(cp * (1 - Thresholds.liqEst.liq_dist_pct)) : undefined,
+    liq_short_est: cp > 0 ? Math.round(cp * (1 + Thresholds.liqEst.liq_dist_pct)) : undefined,
   };
 }
 
@@ -215,20 +216,20 @@ function computeL6(ext: ExtendedMarketData): L6Result {
   let score = 0;
   const details: string[] = [];
 
-  if (nTx > 450000) { score += 4; details.push('very active'); }
-  else if (nTx > 300000) { score += 2; details.push('active'); }
-  else if (nTx < 150000 && nTx > 0) { score -= 3; details.push('slow'); }
+  if (nTx > Thresholds.onchain.ntx_very_active) { score += 4; details.push('very active'); }
+  else if (nTx > Thresholds.onchain.ntx_active) { score += 2; details.push('active'); }
+  else if (nTx < Thresholds.onchain.ntx_slow && nTx > 0) { score -= 3; details.push('slow'); }
 
-  if (avgTxV > 3.0) { score -= 4; details.push('whale movement'); }
-  else if (avgTxV > 1.5) { score -= 2; details.push('whale activity up'); }
+  if (avgTxV > Thresholds.onchain.avg_tx_whale) { score -= 4; details.push('whale movement'); }
+  else if (avgTxV > Thresholds.onchain.avg_tx_whale_up) { score -= 2; details.push('whale activity up'); }
   else if (avgTxV > 0) { score += 2; details.push('retail dominant'); }
 
-  if (pending > 100000) { score += 4; details.push('extreme congestion'); }
-  else if (pending > 50000) { score += 2; details.push('congested'); }
+  if (pending > Thresholds.onchain.mempool_extreme) { score += 4; details.push('extreme congestion'); }
+  else if (pending > Thresholds.onchain.mempool_congested) { score += 2; details.push('congested'); }
   else if (pending > 0) { score -= 1; details.push('low demand'); }
 
-  if (fast > 100) { score += 3; details.push('fees surging'); }
-  else if (fast > 50) { score += 2; details.push('fees high'); }
+  if (fast > Thresholds.onchain.fee_surge) { score += 3; details.push('fees surging'); }
+  else if (fast > Thresholds.onchain.fee_high) { score += 2; details.push('fees high'); }
   else if (fast > 0) { score -= 1; details.push('fees low'); }
 
   return {
@@ -249,12 +250,12 @@ function computeL7(ctx: MarketContext): L7Result {
   let score = 0;
   let label = 'NEUTRAL';
 
-  if (fgVal != null && fgVal <= 15) { score = 8; label = 'EXTREME FEAR'; }
-  else if (fgVal != null && fgVal <= 30) { score = 5; label = 'FEAR'; }
-  else if (fgVal != null && fgVal <= 45) { score = 2; label = 'MILD FEAR'; }
-  else if (fgVal != null && fgVal <= 55) { score = 0; label = 'NEUTRAL'; }
-  else if (fgVal != null && fgVal <= 70) { score = -3; label = 'GREED'; }
-  else if (fgVal != null && fgVal <= 85) { score = -5; label = 'HIGH GREED'; }
+  if (fgVal != null && fgVal <= Thresholds.fearGreed.extreme_fear) { score = 8; label = 'EXTREME FEAR'; }
+  else if (fgVal != null && fgVal <= Thresholds.fearGreed.fear) { score = 5; label = 'FEAR'; }
+  else if (fgVal != null && fgVal <= Thresholds.fearGreed.mild_fear) { score = 2; label = 'MILD FEAR'; }
+  else if (fgVal != null && fgVal <= Thresholds.fearGreed.neutral_upper) { score = 0; label = 'NEUTRAL'; }
+  else if (fgVal != null && fgVal <= Thresholds.fearGreed.greed) { score = -3; label = 'GREED'; }
+  else if (fgVal != null && fgVal <= Thresholds.fearGreed.high_greed) { score = -5; label = 'HIGH GREED'; }
   else if (fgVal != null) { score = -8; label = 'EXTREME GREED'; }
 
   return { fear_greed: fgVal ?? 50, score, label };
@@ -268,24 +269,19 @@ function computeL8(ext: ExtendedMarketData): L8Result {
   let score = 0;
   let label = 'NEUTRAL';
 
-  if (prem > 5) { score = -10; label = 'EXTREME PREMIUM'; }
-  else if (prem > 3) { score = -7; label = 'HIGH PREMIUM'; }
-  else if (prem > 1.5) { score = -4; label = 'PREMIUM'; }
-  else if (prem > 0.5) { score = -2; label = 'MILD PREMIUM'; }
-  else if (prem > -0.5) { score = 0; label = 'NEUTRAL'; }
-  else if (prem > -2) { score = 2; label = 'MILD DISCOUNT'; }
-  else if (prem > -4) { score = 5; label = 'DISCOUNT'; }
+  if (prem > Thresholds.kimchi.extreme_premium) { score = -10; label = 'EXTREME PREMIUM'; }
+  else if (prem > Thresholds.kimchi.high_premium) { score = -7; label = 'HIGH PREMIUM'; }
+  else if (prem > Thresholds.kimchi.premium) { score = -4; label = 'PREMIUM'; }
+  else if (prem > Thresholds.kimchi.mild_premium) { score = -2; label = 'MILD PREMIUM'; }
+  else if (prem > Thresholds.kimchi.neutral_upper) { score = 0; label = 'NEUTRAL'; }
+  else if (prem > Thresholds.kimchi.mild_discount) { score = 2; label = 'MILD DISCOUNT'; }
+  else if (prem > Thresholds.kimchi.discount) { score = 5; label = 'DISCOUNT'; }
   else { score = 8; label = 'DEEP DISCOUNT'; }
 
   return { kimchi: Math.round(prem * 100) / 100, score, label };
 }
 
 // ─── L9: Real Liquidation ±12 ─────��─────────────────────────
-
-// Pinned real-liq thresholds — dissection §4 L9 row. Lifted to named
-// constants for E6 registry migration.
-const L9_LIQ_HIGH_USD = 500_000;
-const L9_LIQ_DOMINANCE_HIGH = 2;
 
 function computeL9(ext: ExtendedMarketData): L9Result {
   const orders = ext.forceOrders ?? [];
@@ -306,7 +302,7 @@ function computeL9(ext: ExtendedMarketData): L9Result {
   let label = 'QUIET';
   const events: EventPayload[] = [];
 
-  if (shortLiqUSD > L9_LIQ_HIGH_USD && shortLiqUSD > longLiqUSD * L9_LIQ_DOMINANCE_HIGH) {
+  if (shortLiqUSD > Thresholds.realLiq.liq_high_usd && shortLiqUSD > longLiqUSD * Thresholds.realLiq.liq_dominance_high) {
     score = 10;
     label = 'SHORT SQUEEZE ACTIVE';
     events.push({
@@ -321,9 +317,9 @@ function computeL9(ext: ExtendedMarketData): L9Result {
           longLiqUSD > 0 ? shortLiqUSD / longLiqUSD : shortLiqUSD,
       },
     });
-  } else if (shortLiqUSD > 100000 && shortLiqUSD > longLiqUSD * 1.5) {
+  } else if (shortLiqUSD > Thresholds.realLiq.liq_moderate_usd && shortLiqUSD > longLiqUSD * Thresholds.realLiq.liq_dominance_moderate) {
     score = 6; label = 'SHORT LIQ DOMINANT';
-  } else if (longLiqUSD > L9_LIQ_HIGH_USD && longLiqUSD > shortLiqUSD * L9_LIQ_DOMINANCE_HIGH) {
+  } else if (longLiqUSD > Thresholds.realLiq.liq_high_usd && longLiqUSD > shortLiqUSD * Thresholds.realLiq.liq_dominance_high) {
     score = -10;
     label = 'LONG CASCADE';
     events.push({
@@ -338,7 +334,7 @@ function computeL9(ext: ExtendedMarketData): L9Result {
           shortLiqUSD > 0 ? longLiqUSD / shortLiqUSD : longLiqUSD,
       },
     });
-  } else if (longLiqUSD > 100000 && longLiqUSD > shortLiqUSD * 1.5) {
+  } else if (longLiqUSD > Thresholds.realLiq.liq_moderate_usd && longLiqUSD > shortLiqUSD * Thresholds.realLiq.liq_dominance_moderate) {
     score = -6; label = 'LONG LIQ DOMINANT';
   }
 
@@ -385,11 +381,6 @@ function computeL10(ctx: MarketContext): L10Result {
 
 // ─── L11: CVD ±12 ───────────────────────────────────────────
 
-// Pinned CVD thresholds — dissection §4 L11 row. Lifted to named
-// constants for E6 registry migration.
-const L11_ABSORPTION_PRICE_BAND = 0.008;
-const L11_ABSORPTION_CVD_TREND_RATIO = 0.3;
-
 function computeL11(klines: BinanceKline[], ext: ExtendedMarketData): L11Result {
   // Prefer 5-min klines for real-time CVD
   type AnyCandle = { open?: number; close?: number; high?: number; low?: number; volume?: number; buyVolume?: number };
@@ -433,16 +424,16 @@ function computeL11(klines: BinanceKline[], ext: ExtendedMarketData): L11Result 
   const priceEnd = prices[prices.length - 1];
   const priceChange = priceStart > 0 ? (priceEnd - priceStart) / priceStart : 0;
 
-  const absorption = Math.abs(priceChange) < L11_ABSORPTION_PRICE_BAND &&
-    Math.abs(cvdTrend) > Math.abs(cvd[0]) * L11_ABSORPTION_CVD_TREND_RATIO;
+  const absorption = Math.abs(priceChange) < Thresholds.cvd.absorption_price_band &&
+    Math.abs(cvdTrend) > Math.abs(cvd[0]) * Thresholds.cvd.absorption_cvd_trend_ratio;
 
   let score = 0;
   let cvdState: CvdState = 'NEUTRAL';
 
-  if (priceChange > 0.005 && cvdTrend > 0) { score = 8; cvdState = 'BULLISH'; }
-  else if (priceChange > 0.005 && cvdTrend < 0) { score = -6; cvdState = 'BEARISH_DIVERGENCE'; }
-  else if (priceChange < -0.005 && cvdTrend < 0) { score = -8; cvdState = 'BEARISH'; }
-  else if (priceChange < -0.005 && cvdTrend > 0) { score = 6; cvdState = 'BULLISH_DIVERGENCE'; }
+  if (priceChange > Thresholds.cvd.price_trend_threshold && cvdTrend > 0) { score = 8; cvdState = 'BULLISH'; }
+  else if (priceChange > Thresholds.cvd.price_trend_threshold && cvdTrend < 0) { score = -6; cvdState = 'BEARISH_DIVERGENCE'; }
+  else if (priceChange < -Thresholds.cvd.price_trend_threshold && cvdTrend < 0) { score = -8; cvdState = 'BEARISH'; }
+  else if (priceChange < -Thresholds.cvd.price_trend_threshold && cvdTrend > 0) { score = 6; cvdState = 'BULLISH_DIVERGENCE'; }
 
   if (absorption) {
     score += cvdTrend > 0 ? 4 : -4;
@@ -478,7 +469,7 @@ function computeL11(klines: BinanceKline[], ext: ExtendedMarketData): L11Result 
     cvd_raw: Math.round(cum),
     price_change: Math.round(priceChange * 10000) / 10000,
     absorption,
-    score: clamp(score, -12, 12),
+    score: clamp(score, -Thresholds.cvd.score_max, Thresholds.cvd.score_max),
     events,
   };
 }
@@ -521,18 +512,18 @@ function computeL15(klines: BinanceKline[], ext: ExtendedMarketData): L15Result 
 
   let volState: VolatilityState = 'NORMAL';
   if (atrOld > 0) {
-    if (atrRecent < atrOld * 0.6) volState = 'ULTRA_LOW';
-    else if (atrRecent < atrOld * 0.8) volState = 'LOW';
-    else if (atrRecent > atrOld * 1.8) volState = 'EXTREME';
-    else if (atrRecent > atrOld * 1.3) volState = 'HIGH';
+    if (atrRecent < atrOld * Thresholds.atr.ultra_low_ratio) volState = 'ULTRA_LOW';
+    else if (atrRecent < atrOld * Thresholds.atr.low_ratio) volState = 'LOW';
+    else if (atrRecent > atrOld * Thresholds.atr.extreme_ratio) volState = 'EXTREME';
+    else if (atrRecent > atrOld * Thresholds.atr.high_ratio) volState = 'HIGH';
   }
 
-  const stopLong = cp - atrRecent * 1.5;
-  const stopShort = cp + atrRecent * 1.5;
-  const tp1Long = cp + atrRecent * 2.0;
-  const tp2Long = cp + atrRecent * 3.0;
-  const slDist = atrRecent * 1.5;
-  const rrRatio = slDist > 0 ? (atrRecent * 3.0) / slDist : 0;
+  const stopLong = cp - atrRecent * Thresholds.atr.stop_multiplier;
+  const stopShort = cp + atrRecent * Thresholds.atr.stop_multiplier;
+  const tp1Long = cp + atrRecent * Thresholds.atr.tp1_multiplier;
+  const tp2Long = cp + atrRecent * Thresholds.atr.tp2_multiplier;
+  const slDist = atrRecent * Thresholds.atr.stop_multiplier;
+  const rrRatio = slDist > 0 ? (atrRecent * Thresholds.atr.tp2_multiplier) / slDist : 0;
 
   let score = 0;
   if (volState === 'ULTRA_LOW') score = 5;
@@ -590,6 +581,7 @@ export function computeSignalSnapshot(
   symbol: string,
   timeframe: string,
   ext: ExtendedMarketData = {},
+  _metricStore?: MetricStore,
 ): SignalSnapshot {
   const cp = ext.currentPrice ?? ctx.klines[ctx.klines.length - 1]?.close ?? 0;
 
