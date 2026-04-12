@@ -9,38 +9,23 @@
 </script>
 
 <section class="section">
-  <div class="section-shell">
+  <div class="section-shell rail-shell">
     <div class="section-head">
-      <span class="section-label">HOW IT LEARNS</span>
-      <h2>The system should read in one pass.</h2>
-      <p>
-        Home should explain the loop quickly: save the setup, watch for it, judge the hit, and only keep the stronger adapter.
-      </p>
+      <span class="section-label">HOW IT WORKS</span>
+      <h2>Keep the mechanism short. Keep the promise clear.</h2>
+      <p>Store it, watch it, keep the judgment, and only ship the stronger version.</p>
     </div>
 
-    <div class="learning-grid">
-      <div class="learning-window">
-        <div class="window-bar">
-          <div class="window-controls" aria-hidden="true">
-            <span class="window-dot red"></span>
-            <span class="window-dot amber"></span>
-            <span class="window-dot green"></span>
+    <div class="learning-rail">
+      {#each steps as step}
+        <article class="learning-step">
+          <span class="learning-id">{step.id}</span>
+          <div class="learning-body">
+            <h3>{step.title}</h3>
+            <p>{step.copy}</p>
           </div>
-          <div class="window-title">learning.loop</div>
-        </div>
-
-        <div class="learning-list">
-          {#each steps as step}
-            <article class="learning-card">
-              <span class="learning-id">{step.id}</span>
-              <div class="learning-copy">
-                <h3>{step.title}</h3>
-                <p>{step.copy}</p>
-              </div>
-            </article>
-          {/each}
-        </div>
-      </div>
+        </article>
+      {/each}
     </div>
   </div>
 </section>
@@ -49,24 +34,25 @@
   .section {
     position: relative;
     z-index: 3;
-    padding: 0 clamp(22px, 4vw, 48px) clamp(42px, 6vw, 68px);
+    padding: 10px clamp(22px, 4vw, 48px) 30px;
     font-family: var(--sc-font-body);
   }
 
   .section-shell {
-    width: min(1180px, 100%);
+    width: min(1160px, 100%);
     margin: 0 auto;
+  }
+
+  .rail-shell {
     display: grid;
-    grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
-    gap: clamp(20px, 3vw, 36px);
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
+    gap: 28px;
     align-items: start;
   }
 
   .section-head {
     display: grid;
     gap: 10px;
-    margin: 0;
-    text-align: left;
   }
 
   .section-label,
@@ -74,113 +60,72 @@
     font-family: var(--sc-font-mono);
     text-transform: uppercase;
     letter-spacing: 0.16em;
-    font-size: 0.72rem;
-    color: rgba(255, 79, 163, 0.88);
+    font-size: 0.7rem;
+  }
+
+  .section-label {
+    color: rgba(var(--home-accent-rgb), 0.84);
   }
 
   .section-head h2,
-  .learning-card h3 {
+  .learning-body h3 {
     margin: 0;
-    font-family: var(--sc-font-body);
     letter-spacing: -0.045em;
+    color: rgba(255, 247, 244, 0.96);
   }
 
   .section-head h2 {
-    max-width: 12ch;
-    font-size: clamp(2.2rem, 3.4vw, 3.35rem);
-    color: rgba(255, 247, 244, 0.97);
+    font-size: clamp(1.7rem, 2.4vw, 2.4rem);
+    line-height: 1.06;
   }
 
   .section-head p,
-  .learning-card p {
+  .learning-body p {
     margin: 0;
-    color: rgba(255, 247, 244, 0.76);
-    font-size: 1.05rem;
-    line-height: 1.6;
+    color: rgba(255, 247, 244, 0.68);
+    line-height: 1.62;
   }
 
-  .learning-grid {
-    display: block;
+  .section-head p {
+    max-width: 31rem;
+    font-size: 1.02rem;
   }
 
-  .learning-window {
-    border-radius: 22px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background:
-      linear-gradient(180deg, rgba(34, 34, 36, 0.9), rgba(16, 16, 18, 0.88));
-    overflow: hidden;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  .learning-rail {
+    display: grid;
+    gap: 0;
+    border-top: 1px solid rgba(250, 247, 235, 0.1);
   }
 
-  .window-bar {
-    min-height: 42px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
+  .learning-step {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
     gap: 12px;
-    background: linear-gradient(180deg, rgba(72, 72, 74, 0.95), rgba(46, 46, 48, 0.95));
-    border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(250, 247, 235, 0.08);
   }
 
-  .window-controls {
-    display: inline-flex;
-    gap: 7px;
+  .learning-id {
+    color: rgba(var(--home-accent-rgb), 0.82);
+    padding-top: 2px;
   }
 
-  .window-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 999px;
-    background: #777;
-  }
-
-  .window-dot.red {
-    background: #ff5f57;
-  }
-
-  .window-dot.amber {
-    background: #febc2e;
-  }
-
-  .window-dot.green {
-    background: #28c840;
-  }
-
-  .window-title {
-    margin-left: auto;
-    color: rgba(255, 255, 255, 0.62);
-    font-family: var(--sc-font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-  }
-
-  .learning-list {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .learning-card {
-    display: grid;
-    grid-template-columns: 70px minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-    padding: 16px 18px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
-  }
-
-  .learning-card h3 {
-    font-size: 1.22rem;
-    line-height: 1.24;
-    color: rgba(255, 247, 244, 0.95);
-  }
-
-  .learning-copy {
+  .learning-body {
     display: grid;
     gap: 6px;
   }
 
-  @media (max-width: 960px) {
-    .section-shell {
+  .learning-body h3 {
+    font-size: 1rem;
+    line-height: 1.24;
+  }
+
+  .learning-body p {
+    font-size: 0.92rem;
+  }
+
+  @media (max-width: 900px) {
+    .rail-shell {
       grid-template-columns: 1fr;
     }
   }
@@ -189,13 +134,12 @@
     .section {
       padding-left: 18px;
       padding-right: 18px;
-      padding-bottom: 40px;
+      padding-bottom: 28px;
     }
 
-    .learning-card {
+    .learning-step {
       grid-template-columns: 1fr;
-      gap: 8px;
-      padding: 14px 16px;
+      gap: 6px;
     }
   }
 </style>

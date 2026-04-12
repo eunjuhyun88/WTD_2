@@ -10,7 +10,6 @@
   import {
     HOME_EXAMPLE_PROMPTS,
     HOME_LEARNING_STEPS,
-    HOME_PROOF_PILLARS,
     HOME_PROOF_ROWS,
     HOME_SURFACES
   } from '$lib/home/homeLanding';
@@ -131,15 +130,15 @@
 </script>
 
 <svelte:head>
-  <title>Cogochi — Teach The Market AI Your Judgment</title>
+  <title>Cogochi — Your Personal Market Memory</title>
   <meta
     name="description"
-    content="Start from a setup you care about, save it in Terminal, score it in Lab, and return through Dashboard when the system has something worth your judgment."
+    content="Cogochi stores how you judge the market, watches for similar setups, and only reflects stronger decisions back to you."
   />
-  <meta property="og:title" content="Cogochi — Teach The Market AI Your Judgment" />
+  <meta property="og:title" content="Cogochi — Your Personal Market Memory" />
   <meta
     property="og:description"
-    content="Per-user market memory for crypto traders. Capture a setup, judge the signal, and ship a model that gets closer to how you think."
+    content="Per-user market memory for traders. Save your judgment once, then let Cogochi bring similar moments back with proof."
   />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -154,11 +153,10 @@
     {mounted}
     promptText={promptText}
     examplePrompts={HOME_EXAMPLE_PROMPTS}
-    proofPillars={HOME_PROOF_PILLARS}
     proofRows={HOME_PROOF_ROWS}
     {mx}
     {my}
-    onPromptInput={(value) => { promptText = value; }}
+    onPromptInput={(value: string) => { promptText = value; }}
     onPromptSubmit={handlePromptSubmit}
     onPickPrompt={handlePromptChip}
     onOpen={openPath}
@@ -186,17 +184,17 @@
     overflow: visible;
     color: var(--sc-text-0);
     --home-black: #070707;
-    --home-white: #fff7f4;
-    --home-pink: #ff4fa3;
-    --home-orange: #ff8a63;
-    --home-cyan: #79e4ff;
-    --home-acid: #d7ff6a;
+    --home-salmon: #ff7f85;
+    --home-apricot: #f9d8c2;
+    --home-paper: #faf7eb;
+    --home-cream: #f9f6f1;
+    --home-rose: #ec9393;
+    --home-accent: #db9a9f;
+    --home-accent-rgb: 219, 154, 159;
+    --home-accent-strong-rgb: 255, 127, 133;
     background:
-      radial-gradient(circle at 12% 2%, rgba(255, 79, 163, 0.22), transparent 24%),
-      radial-gradient(circle at 82% 16%, rgba(121, 228, 255, 0.15), transparent 28%),
-      radial-gradient(circle at 20% 76%, rgba(215, 255, 106, 0.08), transparent 24%),
-      radial-gradient(circle at 74% 58%, rgba(255, 138, 99, 0.1), transparent 30%),
-      linear-gradient(180deg, rgba(8, 8, 10, 0.18), rgba(0, 0, 0, 0.34) 42%, rgba(0, 0, 0, 0.56) 100%);
+      radial-gradient(circle at 86% 14%, rgba(249, 216, 194, 0.06), transparent 16%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.16) 42%, rgba(0, 0, 0, 0.3) 100%);
   }
 
   .page::before {
@@ -206,20 +204,16 @@
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(circle at 10% 8%, rgba(255, 79, 163, 0.16), transparent 18%),
-      radial-gradient(circle at 88% 22%, rgba(121, 228, 255, 0.12), transparent 22%),
-      radial-gradient(circle at 18% 80%, rgba(215, 255, 106, 0.07), transparent 18%);
-    filter: blur(30px) saturate(1.18);
-    opacity: 0.9;
+      radial-gradient(circle at 84% 20%, rgba(249, 216, 194, 0.05), transparent 16%);
+    filter: blur(46px) saturate(1);
+    opacity: 0.42;
   }
 
   @media (max-width: 768px) {
     .page {
       background:
-        radial-gradient(circle at 14% 4%, rgba(255, 79, 163, 0.18), transparent 26%),
-        radial-gradient(circle at 84% 16%, rgba(121, 228, 255, 0.11), transparent 26%),
-        radial-gradient(circle at 20% 74%, rgba(215, 255, 106, 0.06), transparent 22%),
-        linear-gradient(180deg, rgba(8, 8, 10, 0.18), rgba(0, 0, 0, 0.38) 44%, rgba(0, 0, 0, 0.58) 100%);
+        radial-gradient(circle at 84% 14%, rgba(249, 216, 194, 0.05), transparent 16%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.26) 100%);
     }
   }
 </style>
