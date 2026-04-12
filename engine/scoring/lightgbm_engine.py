@@ -54,11 +54,15 @@ class LightGBMEngine:
     # ------------------------------------------------------------------
 
     def predict_one(self, snap: SignalSnapshot) -> Optional[float]:
-        """Return P(win) ∈ [0, 1] or None if model not trained yet."""
+        """Return P(win) ∈ [0, 1] or None if model not trained yet.
+
+        Uses predict_proba()[:, 1] — NOT predict() — because LGBMClassifier.predict()
+        returns class labels (0 or 1), making any threshold between 0 and 1 meaningless.
+        """
         if self._model is None:
             return None
         vec = snapshot_to_vector(snap).reshape(1, -1)
-        return float(self._model.predict(vec)[0])
+        return float(self._model.predict_proba(vec)[0, 1])
 
     def predict_batch(self, X: np.ndarray) -> Optional[np.ndarray]:
         """Score a 2-D feature matrix. Returns None if untrained."""

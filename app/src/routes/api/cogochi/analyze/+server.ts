@@ -106,6 +106,7 @@ export const GET: RequestHandler = async ({ url }) => {
       p_win: engineResult.p_win,
       blocks_triggered: engineResult.blocks_triggered,
       ensemble: engineResult.ensemble ?? null,
+      ensemble_triggered: engineResult.ensemble_triggered ?? false,
 
       // UI extras
       chart: chartKlines,
@@ -191,6 +192,7 @@ async function _fallbackToLayerEngine(symbol: string, tf: string): Promise<Respo
       snapshot,
       p_win: null,             // no ML scoring in fallback
       blocks_triggered: [],
+      ensemble_triggered: false,
       _fallback: true,         // flag so UI can show "engine offline" badge
       chart: klines.slice(-100).map((k: any) => ({ t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume })),
       price: currentPrice,
