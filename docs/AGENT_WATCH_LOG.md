@@ -20,6 +20,281 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## Entries
 
+## [2026-04-12 10:04:39 +0900] START W-20260412-1004-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `25d3e15f7c85fcc07a131ca44dfaf429180b93ec`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/home/HomeFinalCta.svelte`
+  - `?? src/components/home/HomeHero.svelte`
+  - `?? src/components/home/HomeLearningLoop.svelte`
+  - `?? src/components/home/HomeSurfaceCards.svelte`
+  - `?? src/lib/home/homeLanding.ts`
+- Task summary: package the current home-page refactor and terminal query-seeding changes into a single commit, then cherry-pick that commit onto clean `main`.
+- Owned files / overlap check:
+  - planned: `src/routes/+page.svelte`
+  - planned: `src/routes/terminal/+page.svelte`
+  - planned: `src/components/home/*`
+  - planned: `src/lib/home/homeLanding.ts`
+  - planned: `docs/AGENT_WATCH_LOG.md`
+  - current dirty set reads as one coherent home-surface slice; no separate unrelated product files are mixed into this commit candidate
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty files and untracked home components recorded before commit/cherry-pick work
+- Status: IN_PROGRESS
+
+## [2026-04-12 10:07:07 +0900] FINISH W-20260412-1004-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - split the large home route into dedicated section components and a shared home landing data module
+  - added start-bar prompt handoff so Home can seed `/terminal?q=...` directly into the compose input
+  - preserved the current home visual system while making the route easier to cherry-pick as an isolated slice
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: `220b3c8`
+- Push status: not requested
+- Final working tree status:
+  - clean immediately after commit `220b3c8`
+  - watch log reopened only to append this finish entry before cherry-pick
+- Status: DONE
+
+## [2026-04-12 10:03:29 +0900] START W-20260412-1003-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `25d3e15f7c85fcc07a131ca44dfaf429180b93ec`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/home/HomeFinalCta.svelte`
+  - `?? src/components/home/HomeHero.svelte`
+  - `?? src/components/home/HomeLearningLoop.svelte`
+  - `?? src/components/home/HomeSurfaceCards.svelte`
+  - `?? src/lib/home/`
+- Task summary: start the local development server for this repository without modifying the existing in-progress branch changes.
+- Owned files / overlap check:
+  - no product-code edits planned
+  - existing dirty files are acknowledged and will be left untouched while the dev server runs
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - existing dirty files recorded before server startup
+- Status: IN_PROGRESS
+
+## [2026-04-12 10:04:07 +0900] FINISH W-20260412-1003-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - started the local Vite development server for the current workspace
+  - left all existing in-progress branch changes untouched
+- Validation results:
+  - `npm run dev`: PASS
+  - local URL: `http://localhost:5173/`
+- Commit hash: not created in this turn (`HEAD` remains `9cfc7bf`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/components/home/HomeFinalCta.svelte`
+  - `?? src/components/home/HomeHero.svelte`
+  - `?? src/components/home/HomeLearningLoop.svelte`
+  - `?? src/components/home/HomeSurfaceCards.svelte`
+  - `?? src/lib/home/`
+  - dev server remains running in session `17108`
+- Status: DONE
+
+## [2026-04-12 09:51:21 +0900] START W-20260412-0950-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `ee68a33fe815ae1ea1ea2d4473cebc5afad82622`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/COGOCHI.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/lab/LabToolbar.svelte`
+  - `M src/components/layout/BottomBar.svelte`
+  - `M src/components/layout/Header.svelte`
+  - `M src/lib/navigation/appSurfaces.ts`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/dashboard/+page.svelte`
+  - `M src/routes/lab/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - `?? src/lib/cogochi/marketPulse.ts`
+  - `?? src/lib/layout/globalPriceFeed.ts`
+- Task summary: validate, commit, sync, and merge the current Day-1 IA / terminal shell changes from `codex/home-visualization-analysis`.
+- Owned files / overlap check:
+  - planned: all currently modified files on `codex/home-visualization-analysis`
+  - current dirty set reads as one coherent Day-1 IA + shell refinement slice; no separate unrelated worktree overlap detected inside this branch snapshot
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - current dirty files and untracked additions captured before commit/merge work
+- `safe:hooks`: PASS
+- `safe:sync`: BLOCKED by active uncommitted worktree changes before commit
+- Checkpoint: `w-20260412-0950-chatbattle-codex.md`
+- Status: IN_PROGRESS
+
+## [2026-04-12 09:54:59 +0900] FINISH W-20260412-0950-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - realigned the Day-1 IA so Home, Header, Dashboard, and Lab consistently present `Terminal / Lab / Dashboard` as the primary story
+  - refined the Terminal desktop shell with direct panel-boundary resizing and moved the global market pulse into the bottom status bar
+  - extracted shared layout polling helpers into `src/lib/cogochi/marketPulse.ts` and `src/lib/layout/globalPriceFeed.ts`, and updated canonical docs to match the new surface model
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: `5415b48`
+- Push status: not requested
+- Final working tree status:
+  - clean after `safe:sync` and final branch validation at commit `5415b48`
+  - watch log reopened only to append this finish entry before merge
+- Status: DONE
+
+## [2026-04-12 09:17:00 +0900] START W-20260412-0012-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `1236803f758db135ea32e5b6d55ff3588e11cba6`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/lab/LabToolbar.svelte`
+  - `M src/components/layout/Header.svelte`
+  - `M src/lib/navigation/appSurfaces.ts`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/dashboard/+page.svelte`
+  - `M src/routes/lab/+page.svelte`
+- Task summary: adjust the current terminal layout from the screenshot by adding subtle split resizing at the actual panel boundaries without introducing thick visible resize handles.
+- Owned files / overlap check:
+  - planned: `src/routes/terminal/+page.svelte`
+  - planned: `docs/AGENT_WATCH_LOG.md`
+- current terminal file is clean in git status and can be edited independently from the other dirty branch files
+- Checkpoint: `w-20260412-0012-chatbattle-codex.md`
+- Status: IN_PROGRESS
+
+## [2026-04-12 09:19:40 +0900] FINISH W-20260412-0012-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - added route-local split-width state in `src/routes/terminal/+page.svelte` so the current desktop scanner/feed/chart shell can be resized without changing its visual language
+  - inserted very thin divider handles at the actual panel boundaries instead of thick labeled resize rails
+  - kept the current screenshot-like arrangement intact by limiting the change to desktop boundary drag behavior and leaving the stacked mobile/tablet fallback untouched
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `7d47534`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M src/routes/terminal/+page.svelte`
+  - unrelated pre-existing branch changes remain dirty in `docs/FRONTEND.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/lab/LabToolbar.svelte`, `src/components/layout/Header.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, and `src/routes/lab/+page.svelte`
+- Status: DONE
+
+## [2026-04-12 00:05:00 +0900] START W-20260412-0005-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `58c502f1e7e77c32705b2a1bfc58c6faeb159972`
+- Working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/components/lab/LabToolbar.svelte`
+  - `M src/components/layout/Header.svelte`
+  - `M src/lib/navigation/appSurfaces.ts`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/+page.svelte`
+  - `M src/routes/dashboard/+page.svelte`
+  - `M src/routes/lab/+page.svelte`
+  - `M src/routes/terminal/+page.svelte`
+- Task summary: tighten the terminal panel-resize behavior and fix the overlapping / low-legibility Market Pulse dock in the shared layout.
+- Owned files / overlap check:
+  - planned: `src/routes/terminal/+page.svelte`
+  - planned: `src/components/cogochi/QuickPanel.svelte`
+  - planned: `src/components/cogochi/AlphaMarketBar.svelte`
+  - planned: `src/routes/+layout.svelte`
+  - active branch already contains edits in these areas; changes will extend them without reverting unrelated branch work
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - dirty branch state understood before refinement work
+- Status: IN_PROGRESS
+
+## [2026-04-12 00:09:08 +0900] FINISH W-20260412-0005-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - improved `src/routes/terminal/+page.svelte` panel resizing by making split sizes persist in local storage and by making drag handles larger and visibly labeled
+  - refined `src/components/cogochi/QuickPanel.svelte` to keep behaving correctly inside the resizable terminal shell
+  - rebuilt `src/components/cogochi/AlphaMarketBar.svelte` as a stacked Market Pulse dock with wrapping chips and clearer summary/header separation to reduce visual overlap
+  - adjusted `src/routes/+layout.svelte` market rail spacing/z-index/background so the dock reads as its own layer instead of blending into adjacent chrome
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `7d47534`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/routes/+layout.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - unrelated pre-existing branch changes remain dirty in `src/components/lab/LabToolbar.svelte`, `src/components/layout/Header.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, and `src/routes/lab/+page.svelte`
+- Status: DONE
+
+## [2026-04-11 23:53:00 +0900] START W-20260411-2353-CHATBATTLE-codex (CHATBATTLE)
+- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch: `codex/home-visualization-analysis`
+- Base `origin/main` hash: `0819216fecc050df325e81ff60d7dbdf754c0d38`
+- Working tree status:
+  - `M src/components/cogochi/AlphaMarketBar.svelte`
+  - `M src/routes/+layout.svelte`
+- Task summary: completely refactor the `/terminal` UI spacing and placement, and make adjacent panels resizable so the scanner, feed, and chart can be rebalanced by the user.
+- Owned files / overlap check:
+  - planned: `src/routes/terminal/+page.svelte`
+  - planned: `src/components/terminal/terminalLayoutController.ts`
+  - planned: `src/components/cogochi/QuickPanel.svelte`
+  - existing dirty files are outside the terminal surface; no direct overlap detected yet
+- `safe:status`: PASS
+  - branch/worktree inspected
+  - current dirty files are understood before terminal work starts
+- `safe:hooks`: PASS
+- `safe:sync`: BLOCKED by active uncommitted worktree changes before implementation
+- Checkpoint: `w-20260411-2353-chatbattle-codex.md`
+- Status: IN_PROGRESS
+
+## [2026-04-12 00:04:28 +0900] FINISH W-20260411-2353-CHATBATTLE-codex (CHATBATTLE)
+- Branch: `codex/home-visualization-analysis`
+- What changed:
+  - rebuilt `src/routes/terminal/+page.svelte` into a breakpoint-aware terminal workspace shell with scanner/feed/chart panels, cleaner spacing, desktop drag splitters, tablet split resizing, and mobile panel switching
+  - updated `src/components/cogochi/QuickPanel.svelte` so the scanner follows parent sizing instead of enforcing a fixed terminal width, and added a proper collapsed rail state
+  - updated `docs/FRONTEND.md` with the canonical terminal shell contract for desktop, tablet, and mobile behavior
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash: not created in this turn (`HEAD` remains `7d47534`)
+- Push status: not requested
+- Final working tree status:
+  - `M docs/AGENT_WATCH_LOG.md`
+  - `M docs/FRONTEND.md`
+  - `M src/components/cogochi/QuickPanel.svelte`
+  - `M src/routes/terminal/+page.svelte`
+  - unrelated pre-existing branch changes remain dirty in `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/lab/LabToolbar.svelte`, `src/components/layout/Header.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, and `src/routes/lab/+page.svelte`
+- Status: DONE
+
 ## [2026-04-11 19:57:54 +0900] START W-20260411-1957-CHATBATTLE-codex (CHATBATTLE)
 - Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
@@ -10368,3 +10643,182 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Safe status:
   - `npm run safe:status`: PASS
   - `npm run safe:hooks`: PASS
+
+## [2026-04-12 00:11:00 +0900] FINISH W-20260411-2345-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - updated `docs/FRONTEND.md` with the requested Day-1 IA sitemap, per-surface wireframes, and implementation-priority PRD so the restructuring brief lives in a canonical operational doc
+  - realigned navigation metadata in `src/lib/navigation/appSurfaces.ts` to describe the Day-1 `Terminal / Lab / Dashboard` model instead of older mixed-surface language
+  - updated the shared header in `src/components/layout/Header.svelte` to use `COGOCHI` branding and replaced the legacy `Agent` profile shortcut with `Dashboard` + `Passport`
+  - rewrote the home route `src/routes/+page.svelte` so the entry story, CTA hierarchy, and surface explanations now point to `Terminal`, `Lab`, and `Dashboard`
+  - reframed Lab via `src/components/lab/LabToolbar.svelte` and `src/routes/lab/+page.svelte` so it reads as a saved-challenge evaluation workspace rather than only a generic strategy tool
+  - rebuilt `src/routes/dashboard/+page.svelte` into an inbox-style surface with `My Challenges`, `Watching`, and `My Adapters` sections plus updated quick actions
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `0819216fecc050df325e81ff60d7dbdf754c0d38`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified by this task: `docs/FRONTEND.md`, `src/lib/navigation/appSurfaces.ts`, `src/components/layout/Header.svelte`, `src/components/lab/LabToolbar.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`
+  - unrelated pre-existing modifications remain in place, including `src/components/cogochi/AlphaMarketBar.svelte`, `src/routes/+layout.svelte`, and `src/routes/terminal/+page.svelte`
+
+## [2026-04-12 09:10:00 +0900] START W-20260412-0910-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `58c502f1e7e77c32705b2a1bfc58c6faeb159972`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/cogochi/QuickPanel.svelte`, `src/components/lab/LabToolbar.svelte`, `src/components/layout/Header.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/terminal/+page.svelte`
+- Task summary:
+  - keep the broader IA cleanup, but restore the Terminal shell structure to the earlier simpler layout that felt better to use
+- Owned files / overlap check result:
+  - this task only targets terminal shell structure and closely related panel chrome
+  - no unrelated modified files will be reverted
+- Safe status:
+  - `npm run safe:status`: PASS
+
+## [2026-04-12 09:17:00 +0900] FINISH W-20260412-0910-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - restored `src/routes/terminal/+page.svelte` to the branch’s earlier simpler Terminal shell structure by removing the newer `workspace-shell` / resizable multi-pane layout changes
+  - restored `src/components/cogochi/QuickPanel.svelte` to the earlier sidebar-style scanner panel so Terminal feels like the previous structure again
+  - kept the broader IA cleanup from the previous task intact (`Home`, nav, `Lab`, `Dashboard`, and `docs/FRONTEND.md`)
+  - refreshed local brief/handoff context so strict context quality passes again
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+  - `npm run ctx:check -- --strict`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `7d47534`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - Terminal-only structural diffs are removed from `src/routes/terminal/+page.svelte` and `src/components/cogochi/QuickPanel.svelte`
+  - remaining modified files are the broader IA cleanup files plus pre-existing unrelated edits: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/lab/LabToolbar.svelte`, `src/components/layout/Header.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`
+
+## [2026-04-12 09:18:00 +0900] START W-20260412-0918-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `1236803f758db135ea32e5b6d55ff3588e11cba6`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/lab/LabToolbar.svelte`, `src/components/layout/Header.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/terminal/+page.svelte`
+- Task summary:
+  - move `Market Pulse` into the fixed top header strip and turn it into a compact horizontal looping marquee matching the screenshot placement
+- Owned files / overlap check result:
+  - this task is limited to shared header chrome and the market pulse component
+  - existing IA cleanup changes remain untouched outside those shared files
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:sync`: BLOCKED because the branch already has uncommitted tracked changes; no stash/reset performed
+
+## [2026-04-12 09:26:00 +0900] FINISH W-20260412-0918-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - reverted the mistaken header integration and restored `Market Pulse` placement to the footer/status bar flow instead
+  - rebuilt `src/components/cogochi/AlphaMarketBar.svelte` into a compact looping marquee strip suitable for the thin footer chrome
+  - wired `src/components/layout/BottomBar.svelte` to render the pair/price lead-in plus the new moving `Market Pulse` strip in the center lane
+  - updated `src/routes/+layout.svelte` so thermometer/breadth data now flows into `BottomBar` instead of a separate top rail
+- Validation results:
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `7d47534`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified by this task: `docs/AGENT_WATCH_LOG.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/layout/BottomBar.svelte`, `src/routes/+layout.svelte`
+  - broader pre-existing IA cleanup edits remain in place, including `docs/FRONTEND.md`, `src/components/layout/Header.svelte`, `src/components/lab/LabToolbar.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/terminal/+page.svelte`
+
+## [2026-04-12 09:28:00 +0900] START W-20260412-0928-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `1236803f758db135ea32e5b6d55ff3588e11cba6`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/lab/LabToolbar.svelte`, `src/components/layout/BottomBar.svelte`, `src/components/layout/Header.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/terminal/+page.svelte`
+- Task summary:
+  - define and begin the first slice of an overall refactor, starting with shared shell authority and route composition rather than visual redesign
+- Owned files / overlap check result:
+  - slice 1 will target shared app-shell/layout responsibilities first and avoid route-behavior rewrites where possible
+  - branch already contains mixed WIP, so no stash/reset/rebase will be performed during this slice
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `docs/SYSTEM_INTENT.md`: missing in current repo; current canonical product truth is `docs/COGOCHI.md` plus operational docs such as `docs/FRONTEND.md`
+
+## [2026-04-12 09:36:00 +0900] FINISH W-20260412-0928-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - extracted shared `Market Pulse` thermometer type/defaults/fetch-polling into `src/lib/cogochi/marketPulse.ts`
+  - extracted global REST+WS market bootstrap out of `src/routes/+layout.svelte` into `src/lib/layout/globalPriceFeed.ts`
+  - reduced `src/routes/+layout.svelte` from 306 lines to 159 lines so it mainly owns shell composition, route visibility, and lifecycle wiring
+  - updated `src/components/layout/BottomBar.svelte` and `src/components/cogochi/AlphaMarketBar.svelte` to consume the shared thermometer contract instead of duplicating local interfaces/defaults
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `7d47534`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - new files by this slice: `src/lib/cogochi/marketPulse.ts`, `src/lib/layout/globalPriceFeed.ts`
+  - directly modified by this slice: `docs/AGENT_WATCH_LOG.md`, `src/routes/+layout.svelte`, `src/components/layout/BottomBar.svelte`, `src/components/cogochi/AlphaMarketBar.svelte`
+  - broader pre-existing IA cleanup edits remain in place, including `docs/FRONTEND.md`, `src/components/layout/Header.svelte`, `src/components/lab/LabToolbar.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/terminal/+page.svelte`
+
+## [2026-04-12 09:47:00 +0900] START W-20260412-0947-CHATBATTLE-codex (CHATBATTLE)
+- Repo path:
+  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Branch:
+  - `codex/home-visualization-analysis`
+- Base `origin/main` hash:
+  - `1236803f758db135ea32e5b6d55ff3588e11cba6`
+- Working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis`
+  - modified before this task: `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/cogochi/AlphaMarketBar.svelte`, `src/components/lab/LabToolbar.svelte`, `src/components/layout/BottomBar.svelte`, `src/components/layout/Header.svelte`, `src/lib/navigation/appSurfaces.ts`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`, `src/routes/lab/+page.svelte`, `src/routes/terminal/+page.svelte`, `src/lib/cogochi/marketPulse.ts`, `src/lib/layout/globalPriceFeed.ts`
+- Task summary:
+  - define the new Home landing direction before implementation by combining cleaner information hierarchy with an immediate-start interaction model
+- Owned files / overlap check result:
+  - this task starts with canonical home spec updates in `docs/COGOCHI.md` and `docs/FRONTEND.md`
+  - implementation should follow only after the home direction is made explicit in docs
+- Safe status:
+  - `npm run safe:status`: PASS earlier in this branch session
+
+## [2026-04-12 10:02:00 +0900] FINISH W-20260412-0947-CHATBATTLE-codex (CHATBATTLE)
+- What changed:
+  - rewrote the Home route around the new design direction: cleaner thesis-first hierarchy plus an immediate-start hero bar
+  - split the previous 1194-line `src/routes/+page.svelte` into a smaller route shell plus dedicated home sections: `HomeHero`, `HomeLearningLoop`, `HomeSurfaceCards`, and `HomeFinalCta`
+  - introduced `src/lib/home/homeLanding.ts` to hold canonical home copy/data instead of embedding all arrays directly in the route file
+  - added a Home start-bar → Terminal handoff using `/terminal?q=...`, and updated `src/routes/terminal/+page.svelte` to seed the compose input from that query when present
+- Validation results:
+  - `npm run docs:check`: PASS
+  - `npm run check`: PASS (`svelte-check found 0 errors and 0 warnings`)
+  - `npm run build`: PASS
+- Commit hash:
+  - no new repo commit created in this task
+  - current branch head: `9cfc7bf`
+- Push status:
+  - no push attempted
+- Final working tree status:
+  - `## codex/home-visualization-analysis...origin/codex/home-visualization-analysis [ahead 6]`
+  - directly modified by this task: `src/routes/+page.svelte`, `src/routes/terminal/+page.svelte`
+  - new files by this task: `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/home/HomeFinalCta.svelte`, `src/lib/home/homeLanding.ts`
+  - broader pre-existing branch work remains in place outside this slice

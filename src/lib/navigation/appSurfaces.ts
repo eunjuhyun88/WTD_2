@@ -40,8 +40,8 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     label: 'Dashboard',
     shortLabel: 'DASH',
     mobileIcon: '◻',
-    description: 'daily hub — agent status, battle quota, revenue',
-    homeDetail: 'daily hub',
+    description: 'my stuff inbox — saved challenges, watching, adapter status',
+    homeDetail: 'my inbox',
     href: buildDashboardLink(),
     activePatterns: ['/dashboard'],
   },
@@ -50,8 +50,8 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     label: 'Terminal',
     shortLabel: 'TERM',
     mobileIcon: '~',
-    description: 'chart analysis — CVD, OI, Funding, Zone social',
-    homeDetail: 'chart analysis',
+    description: 'observe + compose — chart, search, save challenge',
+    homeDetail: 'observe & compose',
     href: buildTerminalLink(),
     activePatterns: ['/terminal'],
   },
@@ -70,8 +70,8 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     label: 'Lab',
     shortLabel: 'LAB',
     mobileIcon: '⚗',
-    description: 'main screen — backtest, delta, Run Again',
-    homeDetail: 'backtest & train',
+    description: 'evaluate + inspect + iterate — run and compare challenges',
+    homeDetail: 'evaluate challenges',
     href: buildLabLink(),
     activePatterns: ['/lab'],
     highlight: true,
@@ -118,7 +118,7 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
   },
 };
 
-// 제품 재구성: TERMINAL > SCANNER > LAB > DASHBOARD
+// Day-1 IA: TERMINAL > LAB > DASHBOARD
 export const DESKTOP_NAV_SURFACES = [
   SURFACE_MAP.terminal,
   SURFACE_MAP.lab,

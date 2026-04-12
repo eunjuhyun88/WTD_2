@@ -104,7 +104,7 @@
   <div class="nav-main">
     <!-- Logo -->
     <a class="nav-logo" href={buildDeepLink(connected ? '/dashboard' : '/')} aria-label="Home">
-      <span class="nav-logo-main">COGOTCHI</span>
+      <span class="nav-logo-main">COGOCHI</span>
     </a>
 
     <!-- Ticker (desktop + mobile) -->
@@ -162,7 +162,8 @@
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div class="dropdown-backdrop" onclick={closeProfileDropdown}></div>
           <div class="profile-dropdown">
-            <button class="dropdown-item" onclick={() => handleProfileNav('/agent')}>Agent</button>
+            <button class="dropdown-item" onclick={() => handleProfileNav('/dashboard')}>Dashboard</button>
+            <button class="dropdown-item" onclick={() => handleProfileNav('/passport')}>Passport</button>
             <button class="dropdown-item" onclick={() => handleProfileNav('/settings')}>Settings</button>
             <button class="dropdown-item" onclick={() => { closeProfileDropdown(); openWalletModal(); }}>Wallet</button>
             <div class="dropdown-sep"></div>
