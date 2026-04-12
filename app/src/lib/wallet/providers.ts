@@ -191,8 +191,7 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mod: any;
   try {
-    const moduleName = '@coinbase/wallet-sdk';
-    mod = await import(/* @vite-ignore */ moduleName);
+    mod = await import('@coinbase/wallet-sdk');
   } catch {
     throw new Error('Coinbase Wallet SDK is not installed. Add @coinbase/wallet-sdk.');
   }
