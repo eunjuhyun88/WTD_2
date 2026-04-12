@@ -300,3 +300,113 @@ Once Z2 + Z3 land, the system crosses the line from "CTO manually runs
 each slice" to "scheduler auto-picks, cost-guard short-circuits, worker
 runs in isolated worktree". That is the prerequisite for advancing the
 rollout phase past week_1.
+
+---
+
+## 2026-04-12 (late afternoon) — Gap discovery + DAG v1.2 + Z2 lifecycle shipped
+
+### What the previous entry missed
+
+PRs #35 and #37 claimed to close the "10+ parallel dev environment" blockers. A direct user challenge ("병렬 세션 관리와 워크트리 정리 부재 라는데 너가 작업하는게 그게 맞아?") forced a more honest audit. Findings:
+
+- `git worktree list` reports 28 registered worktrees on 2026-04-12
+- `.claude/worktrees/` filesystem holds 43 directories
+- **15+ orphan directories** (on disk, not in git worktree list)
+- **Zero cleanup automation** anywhere in the codebase
+- Each worktree owns its OWN `.agent-context/state/slices.jsonl` (gitignored) — two parallel Claude sessions in different worktrees would independently `slice new` the same slice ID without detection
+- Within-worktree path ownership IS enforced (pre-commit hook + DAG mutex). Cross-worktree has zero enforcement.
+- No mechanism actually spawns `claude -p` from anywhere. Z1 is pure observability.
+
+Conclusion: Z1 + Z2 (provisioning only) + Z3 (cost guard) cover HALF of the 10+ parallel story. The other half (cleanup, cross-worktree state, real spawn) was completely absent.
+
+### DAG v1.2 — four slice categories to close the gap
+
+Committed in CTO prep pass (commit `9f4ad94` before Z2 started):
+
+- **Design doc §16 added** to `docs/exec-plans/active/swarm-v1-design-2026-04-11.md`. Six subsections covering the problem, four candidate architectures for cross-worktree state coordination (tradeoff table), three candidates for session-spawn mechanism, binding execution order Z2 → Z5 → Z4 → Z6, and non-goals.
+- **Z2 rewritten** from `Z2-slice-new-worktree-provision` to `Z2-slice-worktree-lifecycle`. Scope widened from provisioning-only to provisioning + teardown on merge/kill + `--keep-worktree` debugging opt-out. Claim JSON schema gains optional `worktree_path` + `worktree_branch` fields.
+- **Z4-worktree-orphan-sweep** (pri 975, depends on Z2) — reconciles git worktree list vs filesystem, classifies TRACKED / ORPHAN / STALE / ACTIVE_CLAIM, dry-run default, Main-Keeper Task 4 integration.
+- **Z5-cross-worktree-state-read** (pri 970, depends on Z2) — walks sibling worktrees, reads each claim file, blocks duplicate slice-id claims. Pre-commit hook gains cross-worktree check. The single most important slice for n≥5 parallel.
+- **Z6-claude-p-spawn-mechanism** (pri 965, depends on Z3 AND Z5) — FIRST slice that actually consumes Claude API budget automatically. Rate-limit stagger ≥ 10s. Short-circuits on Z3 OVER.
+
+DAG total: 30 → 34 slices.
+
+### Z2 lifecycle — what shipped (this slice)
+
+`scripts/slice/cli.mjs` gains six surgical edits. Other files touched by Z2: this rollout log.
+
+1. **`writeClaim(slice, extras)`** — claim JSON now carries optional `worktree_path` and `worktree_branch` fields when `--worktree` is used.
+2. **`readClaim(sliceId)`** — helper used by merge/kill to capture the claim BEFORE release so teardown knows the path.
+3. **`mainRepoRoot()`** — uses `git rev-parse --git-common-dir` to find the shared `.git` directory even when invoked from a worktree, then strips `/.git`. Prevents nested worktrees (a bug caught during Smoke A — first provision landed at `<focused-pike>/.claude/worktrees/...` instead of the main repo).
+4. **`provisionWorktree(sliceId)`** — creates `<main-repo>/.claude/worktrees/<slice-id>` with a fresh `claude/<slice-id>` branch. Refuses if directory or branch already exists. Dies with clear error on any git failure (no rollback needed — no state mutation before provision).
+5. **`teardownWorktree(claim, {keepWorktree, force})`** — reads `worktree_path` from the captured claim snapshot, runs `git worktree remove`. Silent no-op when no path. Kept when `--keep-worktree`. Failure is logged but non-fatal (Z4 orphan sweep will reconcile).
+6. **`cmdNew` / `cmdMerge` / `cmdKill`** — all three accept the new flags and invoke the helpers. `cmdNew` provisions BEFORE any state mutation. `cmdMerge` and `cmdKill` capture the claim snapshot BEFORE release.
+
+Help text updated to document `--worktree` and `--keep-worktree`.
+
+### Smoke evidence (four scenarios, all passed)
+
+**Smoke A — provisioning at main repo location** (initially failed, then fixed):
+- First run: worktree landed at `<focused-pike>/.claude/worktrees/Z3-cost-ceiling-guard` (bug: `REPO_ROOT` via `git rev-parse --show-toplevel` returns current worktree, not main)
+- Fix: added `mainRepoRoot()` helper using `--git-common-dir`
+- Second run: worktree lands at `/Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard` ✓
+- `git worktree list` confirmed
+
+**Smoke B — default kill tears down**:
+```
+[slice] kill Z3-cost-ceiling-guard (Z2 smoke B: default kill should tear down worktree)
+  worktree removed: /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard
+```
+`git worktree list | grep Z3` → removed. Filesystem → removed.
+
+**Smoke C — `--keep-worktree` preserves**:
+```
+[slice] kill Z3-cost-ceiling-guard (smoke C: keep-worktree test)
+  worktree kept: /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard (use this for post-mortem)
+```
+Worktree still registered, still on disk. Manual cleanup verified.
+
+**Smoke D — full merge lifecycle tears down**:
+```
+[slice] approve Z3-cost-ceiling-guard
+[slice] merge Z3-cost-ceiling-guard (wip 1)
+  worktree removed: /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard
+```
+
+**Smoke cleanup**: all 10 synthetic Z3 events (4 smokes) removed from `slices.jsonl` via `grep -v`. Z3 status back to UNKNOWN. WIP back to `product=1` (Z2 itself, this slice).
+
+### Known limitation — branch leakage on smoke re-runs
+
+Each `slice new --worktree` creates a new branch `claude/<slice-id>`. `slice kill` (default or with `--keep-worktree`) does NOT delete that branch. Consequence: a second `slice new --worktree <same-id>` after a kill will fail with "branch already exists" until the operator runs `git branch -D` manually.
+
+Deliberate for `slice kill` — the branch may hold unmerged commits the operator wants for post-mortem. For `slice merge`, the FF-merge has already happened and the branch is safe to delete, but automatic branch deletion is out of scope for Z2. A future slice may add `slice merge --delete-branch` if leakage becomes annoying.
+
+### 1000-user perf budget — Z2
+
+- `provisionWorktree()` ≈ 500ms cold (one `git worktree add` + one `git rev-parse --verify`)
+- `teardownWorktree()` ≈ 200ms (one `git worktree remove`)
+- Neither touches `/api/*` or `/terminal` hot paths. Zero runtime impact on the 1000-concurrent-user product surface.
+- At n=10 parallel workers, total CLI overhead 10 × 700ms = 7s wall-clock across all lifecycle commands combined. Within "hook never blocks" budget.
+
+### Security — Z2
+
+- `git worktree add/remove` are local-only. No network egress.
+- Provisioning does NOT copy keys or env files. `git worktree` shares `.git` but working tree starts from a fresh commit base.
+- `teardownWorktree` refuses to force-remove worktrees with uncommitted changes unless `force=true` is passed explicitly.
+- Branch name sanitized via `[^a-zA-Z0-9._-]` → `_` so malicious slice IDs cannot escape the git ref namespace.
+- Worktree path confined to `<main-repo>/.claude/worktrees/` via `mainRepoRoot()`. No path traversal possible.
+
+### Execution order for remaining DAG v1.2
+
+Per design §16.4 (binding):
+
+```
+Z2 (lifecycle, THIS slice) ──▶ Z4 (orphan sweep) ─▶ (end)
+                          └──▶ Z5 (cross-worktree) ─▶ Z6 (spawn) ─▶ (end)
+                                                      ▲
+                                                      │ also depends on
+                                                      │
+Z3 (cost guard, parallel) ─────────────────────────────┘
+```
+
+Next session: Z4 OR Z5 (either can run after Z2 lands). Z5 is the more critical path — it unlocks Z6. Z4 is hygiene that also cleans up the existing 15+ orphans.
