@@ -309,7 +309,8 @@ def _week_key(ts: pd.Timestamp) -> date_t:
     Used as the key for weekly PnL accounting so calendar weeks line up
     regardless of intra-week exit timing.
     """
-    py_date = ts.date() if hasattr(ts, "date") else ts
+    py_date: date_t = ts.date() if hasattr(ts, "date") else ts
     # isoweekday(): Monday=1 ... Sunday=7
     days_from_monday = py_date.isoweekday() - 1
-    return py_date - timedelta(days=days_from_monday)
+    result: date_t = py_date - timedelta(days=days_from_monday)
+    return result

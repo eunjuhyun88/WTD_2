@@ -106,7 +106,7 @@ def _compute_slippage_pct(
     frac = notional_usd / adv_notional_usd
     if frac < costs.adv_notional_fraction_threshold:
         return base
-    return base + costs.impact_k * (frac ** 0.5)
+    return float(base + costs.impact_k * (frac ** 0.5))
 
 
 def _resolve_fee_single_side(costs: ExecutionCosts) -> float:
