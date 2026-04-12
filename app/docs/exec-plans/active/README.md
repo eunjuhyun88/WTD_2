@@ -4,6 +4,7 @@ Purpose:
 - Keep actively steering plans in one discoverable place.
 
 Current active plan set:
+- `launch-load-security-implementation-plan-2026-04-12.md`
 - `alpha-terminal-harness-engine-spec-2026-04-09.md`
 - `alpha-terminal-harness-methodology-2026-04-09.md`
 - `alpha-terminal-harness-html-dissection-2026-04-10.md`

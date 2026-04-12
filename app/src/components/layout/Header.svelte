@@ -98,6 +98,19 @@
         })
       : '---'
   );
+  const mobileContextLabel = $derived(
+    activePath === '/'
+      ? 'Home'
+      : activePath.startsWith('/lab')
+        ? 'Lab'
+        : activePath.startsWith('/dashboard')
+          ? 'Dashboard'
+          : activePath.startsWith('/passport')
+            ? 'Passport'
+            : activePath.startsWith('/settings')
+              ? 'Settings'
+              : 'Terminal'
+  );
 </script>
 
 <nav id="nav" class:home-mode={isHomeRoute}>
@@ -107,11 +120,14 @@
       <span class="nav-logo-main">COGOCHI</span>
     </a>
 
-    <!-- Ticker (desktop + mobile) -->
+    <!-- Ticker / mobile page context -->
     <div class="selected-ticker">
       <span class="st-pair">{selectedToken}</span>
       <span class="st-price">${selectedPriceText}</span>
     </div>
+    {#if !isHomeRoute}
+      <div class="mobile-page-chip">{mobileContextLabel}</div>
+    {/if}
 
     <!-- Desktop/Tablet Nav Tabs -->
     {#each DESKTOP_NAV_SURFACES as item}
@@ -177,27 +193,28 @@
 <style>
   #nav {
     background:
-      radial-gradient(circle at 10% 0%, rgba(219, 154, 159, 0.1), transparent 28%),
-      linear-gradient(180deg, rgba(10, 10, 10, 0.96), rgba(0, 0, 0, 0.94));
-    border-bottom: 1px solid var(--sc-line-soft);
+      radial-gradient(circle at 12% 0%, rgba(249, 216, 194, 0.08), transparent 28%),
+      radial-gradient(circle at 88% 0%, rgba(219, 154, 159, 0.06), transparent 22%),
+      linear-gradient(180deg, rgba(10, 10, 11, 0.88), rgba(6, 6, 7, 0.82));
+    border-bottom: 1px solid rgba(249, 216, 194, 0.08);
     position: fixed;
     top: 0; left: 0; right: 0;
     z-index: var(--sc-z-header);
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    height: var(--sc-header-h);
-    padding: 0 10px;
+    height: 50px;
+    padding: 0 14px;
     font-family: var(--sc-font-body);
     color: var(--sc-text-0);
     backdrop-filter: blur(18px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
   }
 
   .nav-main {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 10px;
     min-width: 0;
     flex: 1 1 auto;
     overflow: hidden;
@@ -222,10 +239,10 @@
 
   .nav-logo-main {
     font-family: var(--sc-font-body);
-    font-size: 1.04rem;
+    font-size: 1.02rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-    text-shadow: 0 0 10px rgba(219, 154, 159, 0.08);
+    text-shadow: 0 0 10px rgba(219, 154, 159, 0.06);
   }
 
   /* Ticker */
@@ -234,10 +251,25 @@
     align-items: center;
     gap: 6px;
     padding: 0 8px;
-    height: 24px;
+    height: 28px;
     border-radius: 999px;
-    background: rgba(12, 18, 29, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(249, 216, 194, 0.08);
+    flex-shrink: 0;
+  }
+  .mobile-page-chip {
+    display: none;
+    align-items: center;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(249, 216, 194, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(250, 247, 235, 0.72);
+    font-family: var(--sc-font-body);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     flex-shrink: 0;
   }
   .st-pair {
@@ -256,17 +288,17 @@
   /* Desktop Nav Tabs */
   .nav-tab-desktop {
     font-family: var(--sc-font-body);
-    font-weight: 700;
-    font-size: var(--sc-fs-xs);
-    letter-spacing: 0.1em;
-    color: var(--sc-text-3);
-    padding: 0 9px;
-    height: 22px;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: rgba(250, 247, 235, 0.42);
+    padding: 0 8px;
+    height: 28px;
     display: flex;
     align-items: center;
-    border: 1px solid rgba(219, 154, 159, 0.08);
+    border: 1px solid rgba(249, 216, 194, 0.08);
     border-radius: 999px;
-    background: rgba(13, 19, 31, 0.72);
+    background: rgba(255, 255, 255, 0.02);
     cursor: pointer;
     transition: color var(--sc-duration-fast), background var(--sc-duration-fast);
     white-space: nowrap;
@@ -285,34 +317,34 @@
   }
 
   .nav-tab-desktop:hover {
-    color: var(--sc-text-0);
-    background: rgba(219, 154, 159, 0.08);
+    color: rgba(250, 247, 235, 0.88);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   /* Highlight tab (LAB) */
   .nav-tab-desktop.highlight {
-    color: var(--sc-accent);
-    border-color: rgba(219, 154, 159, 0.18);
+    color: rgba(var(--home-ref-accent-rgb, 219, 154, 159), 0.88);
+    border-color: rgba(219, 154, 159, 0.16);
   }
   .nav-tab-desktop.highlight:hover {
-    color: var(--sc-text-0);
-    background: rgba(219, 154, 159, 0.12);
+    color: rgba(250, 247, 235, 0.96);
+    background: rgba(219, 154, 159, 0.08);
   }
 
   /* Active tab */
   .nav-tab-desktop.active {
-    color: var(--sc-text-0);
-    background: linear-gradient(135deg, rgba(219, 154, 159, 0.14), rgba(219, 154, 159, 0.06));
-    text-shadow: 0 0 10px rgba(219, 154, 159, 0.12);
+    color: rgba(250, 247, 235, 0.96);
+    background: linear-gradient(180deg, rgba(250, 247, 235, 0.08), rgba(255, 255, 255, 0.03));
+    text-shadow: none;
   }
   .nav-tab-desktop.active::after {
     content: '';
     position: absolute;
     inset: auto 10px -4px;
-    height: 2px;
+    height: 1px;
     border-radius: 999px;
-    background: linear-gradient(90deg, rgba(219, 154, 159, 0.9), rgba(219, 154, 159, 0.42));
-    box-shadow: 0 0 8px rgba(219, 154, 159, 0.18);
+    background: linear-gradient(90deg, rgba(219, 154, 159, 0.9), rgba(249, 216, 194, 0.62));
+    box-shadow: none;
   }
   .nav-tab-desktop.active.highlight {
     color: var(--sc-accent);
@@ -327,15 +359,15 @@
     margin-left: 8px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     flex-shrink: 0;
   }
 
   /* Settings */
   .settings-btn {
-    color: var(--sc-text-2);
-    background: rgba(13, 19, 31, 0.52);
-    border: 1px solid var(--sc-line-soft);
+    color: rgba(250, 247, 235, 0.58);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(249, 216, 194, 0.08);
     border-radius: var(--sc-radius-sm);
     cursor: pointer;
     padding: 5px;
@@ -351,22 +383,23 @@
     text-decoration: none;
   }
   .settings-btn:hover {
-    color: var(--sc-text-0);
+    color: rgba(250, 247, 235, 0.96);
     border-color: rgba(219, 154, 159, 0.28);
-    background: rgba(219, 154, 159, 0.08);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   /* Wallet */
   .wallet-btn {
     font-family: var(--sc-font-body);
-    font-weight: 700;
-    font-size: var(--sc-fs-xs);
-    background: var(--sc-accent);
-    color: #000;
+    font-weight: 600;
+    font-size: 11px;
+    background: linear-gradient(180deg, rgba(250, 247, 235, 0.98), rgba(249, 246, 241, 0.96));
+    color: #0e0e12;
     border: 1px solid rgba(219, 154, 159, 0.34);
     border-radius: 999px;
     padding: 0 11px;
     min-height: 30px;
+    min-width: 90px;
     cursor: pointer;
     letter-spacing: 0.06em;
     transition:
@@ -376,21 +409,21 @@
       box-shadow var(--sc-duration-fast),
       transform var(--sc-duration-fast),
       opacity var(--sc-duration-fast);
-    box-shadow: var(--sc-shadow-glow);
+    box-shadow: 0 10px 20px rgba(219, 154, 159, 0.12);
     display: flex;
     align-items: center;
     gap: var(--sc-sp-1);
   }
   .wallet-btn:hover {
-    box-shadow: 0 0 20px rgba(219, 154, 159, 0.24);
+    box-shadow: 0 14px 26px rgba(219, 154, 159, 0.16);
     transform: translateY(-1px);
   }
   .wallet-btn.connected {
     background: rgba(255, 255, 255, 0.04);
-    color: var(--sc-text-0);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(250, 247, 235, 0.92);
+    border: 1px solid rgba(249, 216, 194, 0.08);
     box-shadow: none;
-    font-size: var(--sc-fs-2xs);
+    font-size: 10px;
   }
   .wallet-dot {
     width: 5px; height: 5px;
@@ -495,20 +528,22 @@
     right: 0;
     z-index: 100;
     min-width: 150px;
-    background: rgba(10, 15, 25, 0.98);
-    border: 1px solid rgba(219, 154, 159, 0.2);
-    border-radius: var(--sc-radius-md);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    padding: var(--sc-sp-1) 0;
+    background:
+      linear-gradient(180deg, rgba(18, 18, 20, 0.94), rgba(10, 10, 12, 0.92)),
+      radial-gradient(circle at top right, rgba(249, 216, 194, 0.05), transparent 36%);
+    border: 1px solid rgba(249, 216, 194, 0.1);
+    border-radius: 18px;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+    padding: 6px 0;
     display: flex;
     flex-direction: column;
   }
   .dropdown-item {
     font-family: var(--sc-font-body);
     font-weight: 600;
-    font-size: var(--sc-fs-2xs);
-    letter-spacing: 0.04em;
-    color: var(--sc-text-1);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+    color: rgba(250, 247, 235, 0.78);
     background: none;
     border: none;
     padding: var(--sc-sp-2) var(--sc-sp-3);
@@ -517,8 +552,8 @@
     transition: background var(--sc-duration-fast), color var(--sc-duration-fast);
   }
   .dropdown-item:hover {
-    background: rgba(219, 154, 159, 0.08);
-    color: var(--sc-text-0);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(250, 247, 235, 0.96);
   }
   .dropdown-item-danger:hover {
     background: rgba(255, 89, 89, 0.1);
@@ -570,13 +605,15 @@
   /* ═══ MOBILE (<=768px) — compact top chrome, tabs move to bottom nav ═══ */
   @media (max-width: 768px) {
     #nav {
-      height: var(--sc-header-h-mobile, 40px);
+      height: 56px;
       flex-wrap: nowrap;
+      padding: 0 14px;
     }
     #nav.home-mode {
-      width: calc(100vw - 16px);
-      height: 38px;
-      padding: 0 9px;
+      width: calc(100vw - 20px);
+      height: 50px;
+      padding: 0 12px;
+      border-radius: 22px;
     }
     #nav.home-mode .nav-tab-desktop:nth-of-type(3) {
       display: none;
@@ -585,34 +622,28 @@
     .nav-tab-desktop { display: none; }
 
     .nav-main {
-      height: var(--sc-header-h-mobile, 40px);
+      height: 56px;
+      gap: 10px;
     }
     .nav-logo { gap: 0; }
     .nav-logo-main {
       font-size: 0.96rem;
-      letter-spacing: 1.2px;
+      letter-spacing: 1.35px;
     }
 
-    /* Show ticker on mobile */
     .selected-ticker {
-      display: flex;
-      margin-left: auto;
-      padding-inline: 8px;
-      height: 24px;
-    }
-    #nav.home-mode .selected-ticker {
       display: none;
     }
-    .st-pair {
-      font-size: 8px;
-    }
-    .st-price {
-      font-size: 10px;
+    .mobile-page-chip {
+      display: inline-flex;
+      padding: 0 14px;
+      height: 32px;
+      font-size: 12px;
     }
 
     .nav-right {
-      margin-left: var(--sc-sp-2);
-      height: var(--sc-header-h-mobile, 40px);
+      margin-left: auto;
+      height: 56px;
     }
     .settings-btn {
       padding: var(--sc-sp-2);
@@ -620,8 +651,10 @@
       min-height: var(--sc-touch-sm, 36px);
     }
     .wallet-btn {
-      padding: 0 12px;
+      padding: 0 16px;
       border-radius: var(--sc-radius-md);
+      min-width: auto;
+      min-height: 34px;
     }
     #nav.home-mode .profile-dropdown-wrap {
       display: none;
@@ -629,24 +662,41 @@
     #nav.home-mode .nav-right {
       margin-left: auto;
     }
+    #nav.home-mode .wallet-btn {
+      min-height: 34px;
+      padding: 0 16px;
+      font-size: 11px;
+    }
   }
 
   /* ═══ SMALL MOBILE (<=480px) ═══ */
   @media (max-width: 480px) {
+    #nav {
+      padding: 0 12px;
+    }
+    #nav.home-mode {
+      width: calc(100vw - 18px);
+      height: 48px;
+      padding: 0 11px;
+    }
     .nav-main {
-      height: var(--sc-touch-sm, 36px);
+      height: 52px;
     }
     .nav-right {
-      height: var(--sc-touch-sm, 36px);
+      height: 52px;
     }
     .nav-logo { gap: 0; }
     .nav-logo-main {
-      font-size: 0.84rem;
-      letter-spacing: 1px;
+      font-size: 0.9rem;
+      letter-spacing: 1.08px;
+    }
+    .mobile-page-chip {
+      padding: 0 12px;
+      font-size: 11px;
     }
     .wallet-btn {
-      padding: var(--sc-sp-1) var(--sc-sp-2);
-      min-height: var(--sc-touch-sm, 36px);
+      padding: 0 14px;
+      min-height: 34px;
     }
   }
 </style>

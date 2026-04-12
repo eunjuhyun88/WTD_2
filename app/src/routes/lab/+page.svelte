@@ -18,7 +18,13 @@
     saveResult,
     PRESET_STRATEGIES,
   } from '$lib/stores/strategyStore';
-  import type { ConditionBlock, ExitConfig, RiskConfig, BacktestResult, Strategy, TradeRecord } from '$lib/engine/backtestEngine';
+  import type {
+    ConditionBlock,
+    ExitConfig,
+    RiskConfig,
+    BacktestResult,
+    Strategy
+  } from '$lib/engine/backtestEngine';
   import { runMultiCycleBacktest } from '$lib/engine/backtestEngine';
   import type { BinanceKline } from '$lib/engine/types';
   import LabChart from '../../components/lab/LabChart.svelte';
@@ -28,37 +34,39 @@
   import StrategyBuilder from '../../components/lab/StrategyBuilder.svelte';
   import ResultPanel from '../../components/lab/ResultPanel.svelte';
 
-  // ─── Core State ─────────────────────────────────────────
-
   let mode = $state<'auto' | 'manual'>('auto');
   let activeTab = $state<'strategy' | 'result' | 'order' | 'trades'>('strategy');
   let interval = $state('4h');
   let isRunning = $state(false);
   let error = $state<string | null>(null);
 
-  // Chart data
   let klines = $state<BinanceKline[]>([]);
   let chartMarkers = $state<ChartMarker[]>([]);
   let chartPriceLines = $state<PriceLine[]>([]);
   let revealedBars = $state(0);
 
-  // Auto mode
   let backtestResult = $state<BacktestResult | null>(null);
   let selectedTradeIndex = $state(-1);
 
-  // Manual mode
-  let manualPosition = $state<{ direction: string; entryPrice: number; currentPrice: number; pnlPercent: number; slPrice: number; tpPrice: number } | null>(null);
+  let manualPosition = $state<{
+    direction: string;
+    entryPrice: number;
+    currentPrice: number;
+    pnlPercent: number;
+    slPrice: number;
+    tpPrice: number;
+  } | null>(null);
 
-  // Store derived
   const entry = $derived($activeStrategy);
   const strat = $derived(entry?.strategy ?? null);
-  const selectedCycles = $derived(entry?.selectedCycles ?? ['2020-covid', '2021-bull', '2022-bear', '2023-recovery']);
+  const selectedCycles = $derived(
+    entry?.selectedCycles ?? ['2020-covid', '2021-bull', '2022-bear', '2023-recovery']
+  );
   const strategies = $derived($allStrategies);
   const testedChallengeCount = $derived(strategies.filter((item) => item.lastResult).length);
   const pendingChallengeCount = $derived(Math.max(strategies.length - testedChallengeCount, 0));
   const activeChallengeLabel = $derived(strat?.name ?? 'No challenge selected');
 
-  // Init
   $effect(() => {
     const store = $strategyStore;
     if (Object.keys(store.entries).length === 0) {
@@ -76,8 +84,6 @@
       chartPriceLines = [];
     }
   });
-
-  // ─── Auto Mode: Backtest ────────────────────────────────
 
   async function runBacktest() {
     if (!strat || selectedCycles.length === 0) return;
@@ -100,10 +106,9 @@
         allKlines.push(...data.klines);
       }
 
-      // Sort all klines by time for chart
       allKlines.sort((a: BinanceKline, b: BinanceKline) => a.time - b.time);
       klines = allKlines;
-      revealedBars = allKlines.length; // auto mode: show all
+      revealedBars = allKlines.length;
 
       const btResult = runMultiCycleBacktest(strat, cycleKlines, { interval });
       backtestResult = btResult;
@@ -120,7 +125,6 @@
   function buildMarkersFromResult(result: BacktestResult) {
     const marks: ChartMarker[] = [];
     for (const t of result.trades) {
-      // Entry marker
       marks.push({
         time: t.entryTime,
         position: t.direction === 'long' ? 'belowBar' : 'aboveBar',
@@ -128,7 +132,6 @@
         shape: t.direction === 'long' ? 'arrowUp' : 'arrowDown',
         text: t.direction === 'long' ? 'L' : 'S',
       });
-      // Exit marker
       marks.push({
         time: t.exitTime,
         position: t.netPnlPercent >= 0 ? 'aboveBar' : 'belowBar',
@@ -145,7 +148,6 @@
     selectedTradeIndex = idx;
     const trade = backtestResult.trades[idx];
 
-    // Show SL/TP lines for this trade
     chartPriceLines = [
       { price: trade.slPrice, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: `SL ${trade.slPrice.toFixed(0)}` },
       { price: trade.tpPrice, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: `TP ${trade.tpPrice.toFixed(0)}` },
@@ -153,17 +155,15 @@
     ];
   }
 
-  // ─── Manual Mode ────────────────────────────────────────
-
   async function loadCycleForManual() {
     if (selectedCycles.length === 0) return;
-    const cycleId = selectedCycles[0]; // Use first selected cycle
+    const cycleId = selectedCycles[0];
     try {
       const res = await fetch(`/api/cycles/klines?cycleId=${cycleId}&interval=${interval}`);
       if (!res.ok) return;
       const data = await res.json();
       klines = data.klines;
-      revealedBars = Math.min(50, data.klines.length); // Show 50 bars context
+      revealedBars = Math.min(50, data.klines.length);
       chartMarkers = [];
       chartPriceLines = [];
       manualPosition = null;
@@ -173,15 +173,15 @@
   function nextBar() {
     if (revealedBars < klines.length) {
       revealedBars++;
-      // Check if position needs to be updated
       if (manualPosition && revealedBars > 0) {
         const currentBar = klines[revealedBars - 1];
         manualPosition = {
           ...manualPosition,
           currentPrice: currentBar.close,
-          pnlPercent: manualPosition.direction === 'long'
-            ? ((currentBar.close - manualPosition.entryPrice) / manualPosition.entryPrice) * 100
-            : ((manualPosition.entryPrice - currentBar.close) / manualPosition.entryPrice) * 100,
+          pnlPercent:
+            manualPosition.direction === 'long'
+              ? ((currentBar.close - manualPosition.entryPrice) / manualPosition.entryPrice) * 100
+              : ((manualPosition.entryPrice - currentBar.close) / manualPosition.entryPrice) * 100,
         };
       }
     }
@@ -197,8 +197,6 @@
     }
   }
 
-  // ─── Handlers ───────────────────────────────────────────
-
   function handleAddCondition(cond: ConditionBlock) { if (strat) addCondition(strat.id, cond); }
   function handleRemoveCondition(i: number) { if (strat) removeCondition(strat.id, i); }
   function handleToggleCondition(i: number) { if (strat) toggleCondition(strat.id, i); }
@@ -210,7 +208,7 @@
   function handleSave() { if (strat && backtestResult) saveResult(strat.id, backtestResult); }
   function handleViewChart() { if (backtestResult && backtestResult.trades.length > 0) selectTrade(0); }
   function handleNewStrategy() { createStrategy('New Strategy'); }
-  function handleImport() { /* TODO: open import sheet */ }
+  function handleImport() {}
   function handleClosePosition() { manualPosition = null; chartPriceLines = []; }
 </script>
 
@@ -218,63 +216,93 @@
   <title>Lab — Cogochi</title>
 </svelte:head>
 
-<div class="lab-page">
-  <section class="lab-intro">
-    <div class="lab-intro-copy">
-      <span class="lab-kicker">LAB</span>
-      <h1>Evaluate saved challenges.</h1>
-      <p>
-        Terminal is where a pattern gets captured. Lab is where it gets rerun, inspected, and judged against real market history.
+<div class="surface-page lab-page">
+  <section class="surface-hero split">
+    <div class="surface-copy">
+      <span class="surface-kicker">Lab</span>
+      <h1 class="surface-title">저장된 챌린지를 다시 돌리고, 증거가 남는 쪽만 남긴다.</h1>
+      <p class="surface-subtitle">
+        Terminal이 포착한 판단을 Lab이 재연한다. 이 surface의 역할은 기능을 많이 보여주는 것이 아니라,
+        같은 세팅이 다른 구간에서도 버티는지 조용히 검증하는 것이다.
       </p>
     </div>
-    <div class="lab-summary">
-      <article class="lab-stat">
-        <span class="lab-stat-label">Selected</span>
+
+    <div class="surface-stats">
+      <article class="surface-stat">
+        <span class="surface-meta">Selected</span>
         <strong>{activeChallengeLabel}</strong>
+        <p>현재 검사 중인 챌린지</p>
       </article>
-      <article class="lab-stat">
-        <span class="lab-stat-label">Tested</span>
+      <article class="surface-stat">
+        <span class="surface-meta">Tested</span>
         <strong>{testedChallengeCount}</strong>
+        <p>검증 결과가 남아 있는 세팅</p>
       </article>
-      <article class="lab-stat">
-        <span class="lab-stat-label">Waiting</span>
+      <article class="surface-stat">
+        <span class="surface-meta">Waiting</span>
         <strong>{pendingChallengeCount}</strong>
+        <p>첫 실행을 기다리는 세팅</p>
       </article>
     </div>
   </section>
 
-  <!-- Toolbar -->
-  <LabToolbar
-    {strategies}
-    activeStrategy={strat}
-    {selectedCycles}
-    {mode}
-    {interval}
-    {isRunning}
-    onSelectStrategy={setActiveStrategy}
-    onSelectCycles={handleCycleChange}
-    onToggleMode={toggleMode}
-    onChangeInterval={(v) => { interval = v; }}
-    onRun={runBacktest}
-    onNextBar={nextBar}
-    onNewStrategy={handleNewStrategy}
-    onImport={handleImport}
-  />
-
-  <!-- Main: Chart + Panel -->
-  <div class="lab-main">
-    <div class="chart-area">
-      <LabChart
-        {klines}
-        revealedCount={revealedBars}
-        markers={chartMarkers}
-        priceLines={chartPriceLines}
+  <section class="surface-card soft">
+    <div class="surface-section-head">
+      <div>
+        <span class="surface-kicker">Run Controls</span>
+        <h2>챌린지 선택과 실행</h2>
+        <p>실행 도구는 조용히 뒤로 물리고, 차트와 결과가 앞에 오게 정렬한다.</p>
+      </div>
+      <span class="surface-chip">{mode === 'auto' ? 'Auto mode' : 'Manual mode'}</span>
+    </div>
+    <div class="toolbar-shell">
+      <LabToolbar
+        {strategies}
+        activeStrategy={strat}
+        {selectedCycles}
         {mode}
+        {interval}
+        {isRunning}
+        onSelectStrategy={setActiveStrategy}
+        onSelectCycles={handleCycleChange}
+        onToggleMode={toggleMode}
+        onChangeInterval={(v) => { interval = v; }}
+        onRun={runBacktest}
+        onNextBar={nextBar}
+        onNewStrategy={handleNewStrategy}
+        onImport={handleImport}
       />
     </div>
+  </section>
 
-    <div class="panel-area">
-      <!-- Tab bar -->
+  <section class="lab-workspace">
+    <div class="surface-panel chart-shell">
+      <div class="workspace-head">
+        <div>
+          <span class="surface-kicker">Replay Canvas</span>
+          <h2>시장 구간 위에서 결과를 다시 읽기</h2>
+        </div>
+        <span class="surface-chip">{interval}</span>
+      </div>
+      <div class="chart-area">
+        <LabChart
+          {klines}
+          revealedCount={revealedBars}
+          markers={chartMarkers}
+          priceLines={chartPriceLines}
+          {mode}
+        />
+      </div>
+    </div>
+
+    <div class="surface-panel panel-shell">
+      <div class="workspace-head tabs-head">
+        <div>
+          <span class="surface-kicker">Context Panel</span>
+          <h2>{mode === 'auto' ? '챌린지와 런 결과' : '리플레이와 로그'}</h2>
+        </div>
+      </div>
+
       <div class="tab-bar">
         {#if mode === 'auto'}
           <button class="tab" class:active={activeTab === 'strategy'} onclick={() => activeTab = 'strategy'}>챌린지</button>
@@ -285,7 +313,6 @@
         {/if}
       </div>
 
-      <!-- Tab content -->
       <div class="tab-content">
         {#if activeTab === 'strategy' && strat}
           <StrategyBuilder
@@ -306,82 +333,78 @@
             onViewChart={handleViewChart}
           />
         {:else if activeTab === 'order'}
-          <!-- Manual mode: simple order buttons -->
           <div class="manual-order">
-            <div class="order-section">
-              <div class="order-label">Quick Order</div>
-              <div class="order-buttons">
-                <button class="order-btn long" disabled={!!manualPosition}
-                  onclick={() => {
-                    if (klines.length > 0 && revealedBars > 0) {
-                      const price = klines[revealedBars - 1].close;
-                      const sl = price * 0.985;
-                      const tp = price * 1.03;
-                      manualPosition = { direction: 'long', entryPrice: price, currentPrice: price, pnlPercent: 0, slPrice: sl, tpPrice: tp };
-                      chartPriceLines = [
-                        { price: sl, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: 'SL' },
-                        { price: tp, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: 'TP' },
-                        { price, color: '#f2d193', lineWidth: 1, lineStyle: 1, title: 'Entry' },
-                      ];
-                      chartMarkers = [...chartMarkers, {
-                        time: klines[revealedBars - 1].time,
-                        position: 'belowBar', color: '#adca7c', shape: 'arrowUp', text: 'L',
-                      }];
-                    }
-                  }}>LONG</button>
-                <button class="order-btn short" disabled={!!manualPosition}
-                  onclick={() => {
-                    if (klines.length > 0 && revealedBars > 0) {
-                      const price = klines[revealedBars - 1].close;
-                      const sl = price * 1.015;
-                      const tp = price * 0.97;
-                      manualPosition = { direction: 'short', entryPrice: price, currentPrice: price, pnlPercent: 0, slPrice: sl, tpPrice: tp };
-                      chartPriceLines = [
-                        { price: sl, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: 'SL' },
-                        { price: tp, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: 'TP' },
-                        { price, color: '#f2d193', lineWidth: 1, lineStyle: 1, title: 'Entry' },
-                      ];
-                      chartMarkers = [...chartMarkers, {
-                        time: klines[revealedBars - 1].time,
-                        position: 'aboveBar', color: '#cf7f8f', shape: 'arrowDown', text: 'S',
-                      }];
-                    }
-                  }}>SHORT</button>
-              </div>
+            <div class="manual-hero">
+              <span class="surface-meta">Quick Replay</span>
+              <p>현재 바를 기준으로 롱/숏을 열고 한 바씩 전개한다.</p>
             </div>
+            <div class="order-buttons">
+              <button
+                class="order-btn long"
+                disabled={!!manualPosition}
+                onclick={() => {
+                  if (klines.length > 0 && revealedBars > 0) {
+                    const price = klines[revealedBars - 1].close;
+                    const sl = price * 0.985;
+                    const tp = price * 1.03;
+                    manualPosition = { direction: 'long', entryPrice: price, currentPrice: price, pnlPercent: 0, slPrice: sl, tpPrice: tp };
+                    chartPriceLines = [
+                      { price: sl, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: 'SL' },
+                      { price: tp, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: 'TP' },
+                      { price, color: '#f2d193', lineWidth: 1, lineStyle: 1, title: 'Entry' },
+                    ];
+                    chartMarkers = [...chartMarkers, {
+                      time: klines[revealedBars - 1].time,
+                      position: 'belowBar', color: '#adca7c', shape: 'arrowUp', text: 'L',
+                    }];
+                  }
+                }}>LONG</button>
+              <button
+                class="order-btn short"
+                disabled={!!manualPosition}
+                onclick={() => {
+                  if (klines.length > 0 && revealedBars > 0) {
+                    const price = klines[revealedBars - 1].close;
+                    const sl = price * 1.015;
+                    const tp = price * 0.97;
+                    manualPosition = { direction: 'short', entryPrice: price, currentPrice: price, pnlPercent: 0, slPrice: sl, tpPrice: tp };
+                    chartPriceLines = [
+                      { price: sl, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: 'SL' },
+                      { price: tp, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: 'TP' },
+                      { price, color: '#f2d193', lineWidth: 1, lineStyle: 1, title: 'Entry' },
+                    ];
+                    chartMarkers = [...chartMarkers, {
+                      time: klines[revealedBars - 1].time,
+                      position: 'aboveBar', color: '#cf7f8f', shape: 'arrowDown', text: 'S',
+                    }];
+                  }
+                }}>SHORT</button>
+            </div>
+
             {#if manualPosition}
-              <div class="pos-info">
-                <div class="pos-row">
-                  <span class="pos-label">방향</span>
-                  <span class="pos-val" class:long={manualPosition.direction === 'long'} class:short={manualPosition.direction === 'short'}>
-                    {manualPosition.direction.toUpperCase()}
-                  </span>
-                </div>
-                <div class="pos-row">
-                  <span class="pos-label">진입가</span>
-                  <span class="pos-val">{manualPosition.entryPrice.toFixed(0)}</span>
-                </div>
-                <div class="pos-row">
-                  <span class="pos-label">현재가</span>
-                  <span class="pos-val">{manualPosition.currentPrice.toFixed(0)}</span>
-                </div>
-                <div class="pos-row">
-                  <span class="pos-label">미실현</span>
-                  <span class="pos-val {manualPosition.pnlPercent >= 0 ? 'positive' : 'negative'}">
+              <div class="manual-stats">
+                <div><span class="surface-meta">방향</span><strong>{manualPosition.direction.toUpperCase()}</strong></div>
+                <div><span class="surface-meta">진입가</span><strong>{manualPosition.entryPrice.toFixed(0)}</strong></div>
+                <div><span class="surface-meta">현재가</span><strong>{manualPosition.currentPrice.toFixed(0)}</strong></div>
+                <div>
+                  <span class="surface-meta">미실현</span>
+                  <strong class={manualPosition.pnlPercent >= 0 ? 'surface-value-positive' : 'surface-value-negative'}>
                     {manualPosition.pnlPercent >= 0 ? '+' : ''}{manualPosition.pnlPercent.toFixed(2)}%
-                  </span>
+                  </strong>
                 </div>
               </div>
             {/if}
           </div>
         {:else if activeTab === 'trades'}
-          <div class="trades-empty">수동 트레이드 내역</div>
+          <div class="trades-empty">
+            <span class="surface-meta">Manual Log</span>
+            <p>수동 리플레이 로그는 여기서 확인한다.</p>
+          </div>
         {/if}
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Position Bar -->
   <PositionBar
     {mode}
     {backtestResult}
@@ -395,253 +418,170 @@
   />
 
   {#if error}
-    <div class="error-bar">{error}</div>
+    <div class="surface-card error-bar">{error}</div>
   {/if}
 </div>
 
 <style>
   .lab-page {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    height: calc(100vh - 60px);
-    max-height: calc(100vh - 60px);
-    overflow: hidden;
+    padding-top: 10px;
   }
 
-  .lab-intro {
-    display: flex;
-    justify-content: space-between;
-    gap: 14px;
-    padding: 16px 18px;
-    border-radius: 12px;
-    border: 1px solid rgba(255 255 255 / 0.08);
-    background:
-      radial-gradient(circle at top left, rgba(219 154 159 / 0.12), transparent 32%),
-      linear-gradient(180deg, rgba(20 25 36 / 0.96), rgba(12 16 24 / 0.96));
+  .toolbar-shell {
+    margin-top: 20px;
+    overflow: auto;
   }
 
-  .lab-intro-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-width: 620px;
-  }
-
-  .lab-kicker {
-    font-family: var(--sc-font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    color: var(--lis-accent);
-  }
-
-  .lab-intro-copy h1 {
-    margin: 0;
-    font-family: var(--sc-font-display);
-    font-size: clamp(24px, 3vw, 34px);
-    line-height: 1;
-    color: rgba(255 255 255 / 0.95);
-  }
-
-  .lab-intro-copy p {
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.6;
-    color: rgba(255 255 255 / 0.62);
-  }
-
-  .lab-summary {
+  .lab-workspace {
     display: grid;
-    grid-template-columns: repeat(3, minmax(120px, 1fr));
-    gap: 10px;
-    min-width: min(100%, 420px);
-  }
-
-  .lab-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 14px;
-    border-radius: 10px;
-    background: rgba(255 255 255 / 0.03);
-    border: 1px solid rgba(255 255 255 / 0.06);
-  }
-
-  .lab-stat-label {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    color: rgba(255 255 255 / 0.42);
-    text-transform: uppercase;
-  }
-
-  .lab-stat strong {
-    font-size: 15px;
-    line-height: 1.3;
-    color: rgba(255 255 255 / 0.92);
-  }
-
-  /* ── Main (chart + panel) ── */
-  .lab-main {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 8px;
-    flex: 1;
+    grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+    gap: 20px;
     min-height: 0;
+  }
+
+  .chart-shell,
+  .panel-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-height: 0;
+  }
+
+  .workspace-head h2 {
+    margin: 6px 0 0;
+    color: rgba(250, 247, 235, 0.98);
+    font-size: clamp(1.2rem, 2vw, 1.7rem);
+    line-height: 1.06;
+    letter-spacing: -0.045em;
   }
 
   .chart-area {
-    min-height: 0;
-    border-radius: 8px;
+    flex: 1;
+    min-height: 560px;
     overflow: hidden;
-    border: 1px solid var(--lis-border-soft);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
   }
 
-  .panel-area {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background: var(--lis-surface-0);
-    border: 1px solid var(--lis-border-soft);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  /* ── Tab bar ── */
   .tab-bar {
-    display: flex;
-    border-bottom: 1px solid rgba(255 255 255 / 0.06);
-    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .tab {
-    flex: 1;
-    padding: 10px 0;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
+    min-height: 40px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(250, 247, 235, 0.72);
     font-family: var(--sc-font-body);
-    font-size: 12px;
-    color: rgba(255 255 255 / 0.4);
-    cursor: pointer;
-    transition: all 0.15s;
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: background var(--sc-duration-fast), border-color var(--sc-duration-fast), color var(--sc-duration-fast);
   }
 
-  .tab:hover { color: rgba(255 255 255 / 0.6); }
   .tab.active {
-    color: var(--lis-accent);
-    border-bottom-color: var(--lis-accent);
+    background: linear-gradient(180deg, rgba(250, 247, 235, 0.98), rgba(249, 246, 241, 0.96));
+    border-color: rgba(219, 154, 159, 0.28);
+    color: #0f0f12;
   }
 
   .tab-content {
     flex: 1;
-    overflow-y: auto;
-    padding: 10px;
+    min-height: 0;
+    overflow: auto;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 18px;
   }
 
-  .tab-content::-webkit-scrollbar { width: 3px; }
-  .tab-content::-webkit-scrollbar-thumb { background: rgba(var(--lis-rgb-pink), 0.15); border-radius: 2px; }
-
-  /* ── Manual order ── */
-  .manual-order {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  .manual-order,
+  .trades-empty {
+    display: grid;
+    gap: 18px;
   }
 
-  .order-label {
-    font-family: var(--sc-font-body);
-    font-size: 11px;
-    color: rgba(255 255 255 / 0.35);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 8px;
+  .manual-hero p,
+  .trades-empty p {
+    margin: 6px 0 0;
+    color: rgba(250, 247, 235, 0.64);
+    line-height: 1.6;
   }
 
   .order-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .order-btn {
-    padding: 14px;
-    border-radius: 6px;
-    font-family: var(--sc-font-mono);
-    font-size: 14px;
+    min-height: 46px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: var(--sc-font-body);
     font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s;
-    border: 1px solid;
+    transition: transform var(--sc-duration-fast), opacity var(--sc-duration-fast);
   }
 
   .order-btn.long {
-    background: rgba(173, 202, 124, 0.12);
-    border-color: rgba(173, 202, 124, 0.3);
-    color: var(--lis-positive);
-  }
-  .order-btn.long:hover:not(:disabled) {
-    background: rgba(173, 202, 124, 0.22);
-    box-shadow: var(--lis-glow-lime);
+    background: rgba(74, 222, 128, 0.12);
+    color: var(--sc-good);
   }
 
   .order-btn.short {
-    background: rgba(207, 127, 143, 0.12);
-    border-color: rgba(207, 127, 143, 0.3);
-    color: var(--sc-bad);
-  }
-  .order-btn.short:hover:not(:disabled) {
-    background: rgba(207, 127, 143, 0.22);
-    box-shadow: var(--lis-glow-pink);
+    background: rgba(248, 113, 113, 0.1);
+    color: #ff9ca0;
   }
 
-  .order-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-
-  .pos-info {
-    background: var(--lis-bg-0);
-    border: 1px solid rgba(255 255 255 / 0.06);
-    border-radius: 6px;
-    padding: 10px;
+  .manual-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 
-  .pos-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
+  .manual-stats > div {
+    display: grid;
+    gap: 4px;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
   }
 
-  .pos-label { font-size: 11px; color: rgba(255 255 255 / 0.35); }
-  .pos-val { font-family: var(--sc-font-mono); font-size: 12px; color: rgba(255 255 255 / 0.8); }
-  .pos-val.long { color: var(--lis-positive); }
-  .pos-val.short { color: var(--sc-bad); }
-  .pos-val.positive { color: var(--lis-positive); }
-  .pos-val.negative { color: var(--sc-bad); }
-
-  .trades-empty {
-    text-align: center;
-    padding: 40px 0;
-    color: rgba(255 255 255 / 0.2);
-    font-size: 12px;
+  .manual-stats strong {
+    color: rgba(250, 247, 235, 0.96);
+    font-size: 1.04rem;
   }
 
-  /* ── Error ── */
   .error-bar {
-    padding: 8px 14px;
-    background: rgba(var(--lis-rgb-pink), 0.08);
-    border: 1px solid rgba(var(--lis-rgb-pink), 0.2);
-    border-radius: 6px;
-    font-size: 12px;
-    color: var(--sc-bad);
+    color: #ffb8bc;
   }
 
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    .lab-page { padding: 6px; height: auto; max-height: none; }
-    .lab-intro { flex-direction: column; }
-    .lab-summary { grid-template-columns: 1fr; min-width: 0; }
-    .lab-main { grid-template-columns: 1fr; }
-    .chart-area { height: 50vh; }
-    .panel-area { max-height: 40vh; }
+  @media (max-width: 1024px) {
+    .lab-workspace {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .chart-area {
+      min-height: 340px;
+    }
+
+    .manual-stats,
+    .order-buttons {
+      grid-template-columns: 1fr;
+    }
+
+    .tab-content {
+      padding: 14px;
+    }
+
+    .lab-page {
+      padding-top: 4px;
+    }
   }
 </style>

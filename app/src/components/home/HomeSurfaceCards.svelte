@@ -37,7 +37,7 @@
   .section {
     position: relative;
     z-index: 3;
-    padding: 2px clamp(22px, 4vw, 48px) 34px;
+    padding: 10px clamp(22px, 4vw, 48px) 42px;
     font-family: var(--sc-font-body);
   }
 
@@ -45,7 +45,7 @@
     width: min(1160px, 100%);
     margin: 0 auto;
     display: grid;
-    gap: 18px;
+    gap: 22px;
   }
 
   .section-head {
@@ -104,9 +104,9 @@
     display: grid;
     grid-template-columns: minmax(120px, 0.32fr) minmax(0, 1fr) auto;
     align-items: center;
-    gap: 18px;
-    min-height: 102px;
-    padding: 14px 0;
+    gap: 22px;
+    min-height: 120px;
+    padding: 18px 0;
     text-align: left;
     border: 0;
     border-bottom: 1px solid rgba(250, 247, 235, 0.08);
@@ -122,18 +122,18 @@
 
   .surface-body {
     display: grid;
-    gap: 8px;
-    max-width: 34rem;
+    gap: 10px;
+    max-width: 38rem;
   }
 
   .surface-body h3 {
-    font-size: 1.08rem;
+    font-size: 1.16rem;
     line-height: 1.22;
     color: rgba(250, 247, 235, 0.96);
   }
 
   .surface-body p {
-    font-size: 0.94rem;
+    font-size: 0.98rem;
   }
 
   .surface-action {
@@ -146,7 +146,7 @@
       grid-template-columns: 1fr;
       align-items: start;
       gap: 8px;
-      padding: 16px 0;
+      padding: 18px 0;
     }
 
     .surface-action {
@@ -158,7 +158,35 @@
     .section {
       padding-left: 18px;
       padding-right: 18px;
-      padding-bottom: 28px;
+      padding-bottom: 34px;
+    }
+
+    .section-head {
+      gap: 12px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(1.94rem, 8.5vw, 2.28rem);
+      line-height: 1.04;
+    }
+
+    .section-head p {
+      font-size: 0.98rem;
+      line-height: 1.68;
+    }
+
+    .surface-row {
+      gap: 10px;
+      padding: 20px 0;
+    }
+
+    .surface-body {
+      gap: 12px;
+    }
+
+    .surface-body h3 {
+      font-size: 1.12rem;
+      line-height: 1.2;
     }
   }
 </style>

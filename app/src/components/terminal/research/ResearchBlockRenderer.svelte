@@ -24,12 +24,10 @@
 </script>
 
 {#if interactive}
-  <button
-    type="button"
+  <div
     class:clickable={interactive}
     class:focus={presentation === 'focus'}
     class="research-block-shell"
-    onclick={handleSelect}
   >
     <div class="rbs-header">
       {#if envelope.title}
@@ -51,7 +49,13 @@
     {#if envelope.summary}
       <div class="rbs-summary">{envelope.summary}</div>
     {/if}
-  </button>
+
+    <div class="rbs-actions">
+      <button type="button" class="rbs-detail-btn" onclick={handleSelect}>
+        More detail
+      </button>
+    </div>
+  </div>
 {:else}
   <div
     class:clickable={interactive}
@@ -94,10 +98,10 @@
     color: inherit;
   }
   .research-block-shell.clickable {
-    cursor: pointer;
-  }
-  .research-block-shell.clickable:hover {
-    opacity: 0.98;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
   .rbs-header {
     display: flex;
@@ -119,5 +123,33 @@
   }
   .rbs-summary {
     line-height: 1.5;
+  }
+  .rbs-actions {
+    display: flex;
+    justify-content: flex-start;
+  }
+  .rbs-detail-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(219, 154, 159, 0.9);
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      color 120ms ease;
+  }
+  .rbs-detail-btn::after {
+    content: '→';
+    margin-left: 6px;
+    font-size: 11px;
+  }
+  .rbs-detail-btn:hover {
+    color: var(--sc-text-0, #f7f2ea);
   }
 </style>
