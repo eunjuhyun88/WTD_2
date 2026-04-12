@@ -67,15 +67,15 @@
     position: relative;
     display: grid;
     place-items: center;
-    gap: 5px;
+    gap: 4px;
     border: 1px solid rgba(249, 216, 194, 0.06);
-    border-radius: 16px;
+    border-radius: 6px;
     background: rgba(255, 255, 255, 0.025);
     color: rgba(250, 247, 235, 0.44);
     font-family: var(--sc-font-body);
     font-weight: 600;
     cursor: pointer;
-    min-height: 52px;
+    min-height: 48px;
     text-decoration: none;
     transition:
       color 100ms ease,

@@ -65,43 +65,36 @@
   <title>Passport — Cogochi</title>
 </svelte:head>
 
-<div class="surface-page passport-page">
-  <section class="surface-hero split">
+<div class="surface-page passport">
+  <!-- Compact Topbar -->
+  <header class="surface-hero">
     <div class="surface-copy">
       <span class="surface-kicker">Passport</span>
-      <h1 class="surface-title">지갑과 계정, 검증 기록이 한 사용자 서사로 모이는 곳.</h1>
-      <p class="surface-subtitle">
-        Passport는 새로운 기능을 설명하지 않는다. 연결된 지갑, 인증 상태, 누적 결과, 그리고
-        지금까지 남긴 기록을 하나의 읽기 좋은 profile surface로 묶는다.
-      </p>
-      <div class="surface-inline-actions">
-        {#if wallet.connected}
-          <button class="surface-button" onclick={openWalletModal}>Wallet 상태 보기</button>
-        {:else}
-          <button class="surface-button" onclick={openWalletModal}>Connect Wallet</button>
-        {/if}
-        <button class="surface-button-secondary" onclick={() => goto('/dashboard')}>Open Dashboard</button>
-      </div>
+      <h1 class="surface-title">My Profile</h1>
     </div>
-
     <div class="surface-stats">
       <article class="surface-stat">
         <span class="surface-meta">Wallet</span>
         <strong>{wallet.connected ? wallet.shortAddr : 'Not connected'}</strong>
-        <p>{wallet.connected ? `${wallet.chain} · ${wallet.provider ?? 'wallet'}` : 'Connect to unlock identity continuity'}</p>
       </article>
       <article class="surface-stat">
         <span class="surface-meta">Tier</span>
         <strong>{wallet.tier.toUpperCase()}</strong>
-        <p>현재 인증/접속 상태</p>
       </article>
       <article class="surface-stat">
         <span class="surface-meta">Phase</span>
         <strong>P{wallet.phase}</strong>
-        <p>진행 상태와 학습 수준</p>
       </article>
     </div>
-  </section>
+    <div class="topbar-actions">
+      {#if wallet.connected}
+        <button class="surface-button" onclick={openWalletModal}>Wallet</button>
+      {:else}
+        <button class="surface-button" onclick={openWalletModal}>Connect</button>
+      {/if}
+      <button class="surface-button-secondary" onclick={() => goto('/dashboard')}>Dashboard</button>
+    </div>
+  </header>
 
   {#if loading}
     <section class="surface-card">
@@ -203,82 +196,96 @@
           {/each}
         </div>
       {:else}
-        <p class="body-copy">아직 배지가 없습니다. 검증 기록이 쌓이면 이곳에 상태가 누적됩니다.</p>
+        <p class="body-copy">아직 배지가 없습니다. 검증 기록이 쌓이면 이곳에 누적됩니다.</p>
       {/if}
     </section>
   {/if}
 </div>
 
 <style>
-  .passport-page {
-    padding-top: 10px;
+  .topbar-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .topbar-actions .surface-button,
+  .topbar-actions .surface-button-secondary {
+    min-height: 34px;
+    padding: 0 14px;
+    font-size: 0.82rem;
   }
 
   .body-copy,
   .error-card h2 {
     margin: 0;
-    color: rgba(250, 247, 235, 0.72);
-    line-height: 1.6;
+    color: var(--sc-text-1);
+    line-height: 1.5;
+    font-size: 0.92rem;
   }
 
   .error-card {
     display: grid;
-    gap: 14px;
+    gap: 12px;
   }
 
   .error-card h2 {
-    font-size: clamp(1.2rem, 2.2vw, 1.6rem);
-    letter-spacing: -0.04em;
-    color: rgba(250, 247, 235, 0.94);
+    font-size: clamp(1rem, 2vw, 1.3rem);
+    letter-spacing: -0.03em;
+    color: rgba(250, 247, 235, 0.92);
   }
 
   .metric-grid,
   .info-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: 10px;
+    margin-top: 14px;
   }
 
   .metric-grid > div,
   .info-list > div {
     display: grid;
-    gap: 6px;
-    padding: 16px;
-    border-radius: 16px;
+    gap: 4px;
+    padding: 12px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.02);
   }
 
   .metric-grid strong,
   .info-list strong {
-    color: rgba(250, 247, 235, 0.98);
-    font-size: 1.05rem;
-    line-height: 1.12;
+    color: var(--sc-text-0);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.1;
   }
 
   .badge-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 8px;
+    margin-top: 12px;
   }
 
   .badge-chip {
-    padding: 10px 14px;
+    padding: 6px 12px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    color: rgba(250, 247, 235, 0.88);
+    color: rgba(250, 247, 235, 0.82);
   }
 
   @media (max-width: 640px) {
-    .passport-page {
-      padding-top: 4px;
-    }
-
-    /* metric-grid / info-list stay 2-col on mobile — compact cells work fine */
     .metric-grid,
     .info-list {
-      gap: 10px;
+      gap: 8px;
+    }
+    .topbar-actions {
+      width: 100%;
+    }
+    .topbar-actions .surface-button,
+    .topbar-actions .surface-button-secondary {
+      flex: 1;
     }
   }
 </style>

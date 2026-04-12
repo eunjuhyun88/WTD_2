@@ -135,9 +135,9 @@ button {
 .surface-page {
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 40px 0 56px;
+  padding: 24px 0 56px;
   display: grid;
-  gap: 32px;
+  gap: 24px;
   position: relative;
   z-index: 2;
 }
@@ -172,20 +172,23 @@ button {
 }
 
 .surface-hero {
-  padding: 24px;
-  display: grid;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .surface-hero.split {
-  grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
-  align-items: start;
+  /* No longer a two-column grid — compact inline topbar */
 }
 
 .surface-copy {
-  display: grid;
+  display: flex;
+  align-items: center;
   gap: 12px;
-  max-width: 42rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .surface-kicker,
@@ -194,48 +197,53 @@ button {
 .surface-code,
 .surface-eyebrow {
   font-family: var(--sc-font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .surface-kicker,
 .surface-chip,
 .surface-eyebrow {
-  color: rgba(var(--home-ref-accent-rgb), 0.88);
+  color: rgba(var(--home-ref-accent-rgb), 0.92);
 }
 
 .surface-meta {
-  color: rgba(250, 247, 235, 0.48);
+  color: var(--sc-text-2);
+  font-weight: 600;
 }
 
 .surface-title {
   margin: 0;
-  color: rgba(250, 247, 235, 0.98);
+  color: var(--sc-text-0);
   font-family: var(--sc-font-body);
-  font-size: clamp(2rem, 4vw, 3.4rem);
-  line-height: 0.96;
-  letter-spacing: -0.065em;
-  text-wrap: balance;
+  font-size: clamp(1.2rem, 2.4vw, 1.6rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 
 .surface-subtitle {
   margin: 0;
-  color: rgba(250, 247, 235, 0.72);
-  font-size: 1.03rem;
-  line-height: 1.72;
+  color: var(--sc-text-1);
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .surface-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .surface-stat {
-  display: grid;
+  display: flex;
+  align-items: center;
   gap: 6px;
-  padding: 14px 16px;
+  padding: 6px 12px;
   min-height: 0;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -243,17 +251,15 @@ button {
 }
 
 .surface-stat strong {
-  color: rgba(250, 247, 235, 0.96);
-  font-size: clamp(1.15rem, 2vw, 1.6rem);
-  line-height: 1.08;
-  letter-spacing: -0.04em;
+  color: var(--sc-text-0);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .surface-stat p {
-  margin: 0;
-  color: rgba(250, 247, 235, 0.6);
-  font-size: 0.92rem;
-  line-height: 1.55;
+  display: none;
 }
 
 .surface-grid {
@@ -278,23 +284,30 @@ button {
 
 .surface-section-head h2 {
   margin: 0;
-  color: rgba(250, 247, 235, 0.98);
-  font-size: clamp(1.35rem, 2.6vw, 2.2rem);
-  line-height: 1.02;
-  letter-spacing: -0.05em;
+  color: var(--sc-text-0);
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
 }
 
 .surface-section-head p {
-  margin: 8px 0 0;
-  color: rgba(250, 247, 235, 0.64);
-  line-height: 1.68;
+  margin: 4px 0 0;
+  color: var(--sc-text-1);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .surface-card,
 .surface-panel,
 .surface-tile,
 .surface-cta {
-  padding: 20px;
+  padding: 20px 22px;
+}
+
+.surface-card > .surface-section-head,
+.surface-panel > .surface-section-head {
+  margin-bottom: 6px;
 }
 
 .surface-button,
@@ -361,20 +374,25 @@ button {
 
 @media (max-width: 960px) {
   .surface-page {
-    width: min(100%, calc(100% - 32px));
-    padding-top: 28px;
-    padding-bottom: 44px;
-    gap: 24px;
+    width: min(100%, calc(100% - 28px));
+    padding-top: 20px;
+    padding-bottom: 36px;
+    gap: 20px;
   }
 
-  .surface-hero.split,
+  .surface-hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
   .surface-grid.cols-2,
   .surface-grid.cols-3 {
     grid-template-columns: 1fr;
   }
 
   .surface-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .surface-section-head {
@@ -386,9 +404,9 @@ button {
 @media (max-width: 540px) {
   .surface-page {
     width: min(100%, calc(100% - 20px));
-    padding-top: 16px;
-    padding-bottom: 32px;
-    gap: 16px;
+    padding-top: 12px;
+    padding-bottom: 24px;
+    gap: 14px;
   }
 
   .surface-hero,
@@ -396,35 +414,32 @@ button {
   .surface-panel,
   .surface-tile,
   .surface-cta {
-    padding: 16px;
+    padding: 14px;
     border-radius: 6px;
   }
 
   .surface-title {
-    font-size: clamp(1.8rem, 9vw, 2.5rem);
+    font-size: 1.1rem;
+    white-space: normal;
   }
 
   .surface-subtitle {
-    font-size: 0.95rem;
-    line-height: 1.65;
+    font-size: 0.78rem;
   }
 
   .surface-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 6px;
   }
 
   .surface-stat {
-    min-height: 0;
-    padding: 12px 14px;
-    border-radius: 4px;
+    padding: 5px 10px;
   }
 
   .surface-button,
   .surface-button-secondary,
   .surface-button-ghost {
-    width: 100%;
-    min-height: 46px;
+    min-height: 40px;
+    font-size: 0.84rem;
   }
 
   .surface-inline-actions {
@@ -432,7 +447,7 @@ button {
   }
 
   .surface-section-head h2 {
-    font-size: clamp(1.15rem, 5.5vw, 1.6rem);
+    font-size: 1rem;
   }
 }
 

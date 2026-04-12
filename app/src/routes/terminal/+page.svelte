@@ -2241,16 +2241,17 @@
   .hb-change.dn { color: var(--sc-bad, #cf7f8f); }
   .hb-note {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 12px;
-    color: rgba(247, 242, 234, 0.6);
+    font-size: 13px;
+    color: var(--sc-text-1, rgba(247, 242, 234, 0.84));
   }
   .hb-right { display: flex; align-items: center; gap: 6px; }
   .wallet-head-right { white-space: nowrap; }
   .hb-alpha-label {
     font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
-    font-size: 9px;
+    font-size: 10px;
+    font-weight: 600;
     letter-spacing: 1.5px;
-    color: var(--sc-text-3);
+    color: var(--sc-text-2);
     text-transform: uppercase;
   }
   .hb-alpha {
@@ -2346,12 +2347,14 @@
   }
   .pane-titlebar strong {
     color: var(--sc-text-0, #f7f2ea);
-    font-size: 14px;
-    line-height: 1.2;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
   }
   .pane-state {
-    color: var(--sc-text-3);
+    color: var(--sc-text-2);
     white-space: nowrap;
+    font-size: 11px;
   }
   .scanner-quick {
     flex: 1;
@@ -2495,21 +2498,23 @@
     text-transform: uppercase;
   }
   .feed-start-kicker {
-    font-size: 10px;
-    color: rgba(219, 154, 159, 0.9);
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(219, 154, 159, 0.94);
   }
   .feed-start-copy h2 {
     margin: 0;
-    color: rgba(250, 247, 235, 0.98);
-    font-size: clamp(1.5rem, 3.2vw, 2.1rem);
-    line-height: 1.02;
-    letter-spacing: -0.05em;
+    color: var(--sc-text-0);
+    font-size: clamp(1.3rem, 2.8vw, 1.8rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.04em;
   }
   .feed-start-copy p {
     margin: 0;
-    color: rgba(250, 247, 235, 0.68);
-    font-size: 0.98rem;
-    line-height: 1.64;
+    color: var(--sc-text-1);
+    font-size: 0.94rem;
+    line-height: 1.6;
   }
   .feed-start-actions {
     display: flex;
@@ -3243,16 +3248,13 @@
     }
     .header-bar {
       height: auto;
-      margin: 14px 14px 0;
-      padding: 14px 16px;
-      gap: 10px;
-      align-items: flex-start;
-      border: 1px solid rgba(249, 216, 194, 0.1);
-      border-radius: 22px;
-      background:
-        linear-gradient(180deg, rgba(16, 16, 18, 0.9), rgba(10, 10, 12, 0.86)),
-        radial-gradient(circle at top right, rgba(219, 154, 159, 0.05), transparent 36%);
-      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.14);
+      margin: 8px 10px 0;
+      padding: 10px 14px;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid rgba(249, 216, 194, 0.08);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.026);
     }
     .hb-left,
     .hb-center,
@@ -3295,9 +3297,8 @@
         radial-gradient(circle at top left, rgba(219, 154, 159, 0.08), transparent 36%);
     }
     .header-bar {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .hb-left,
     .hb-center,
@@ -3305,15 +3306,16 @@
       justify-content: space-between;
     }
     .hb-note {
-      line-height: 1.5;
+      font-size: 11px;
+      line-height: 1.4;
     }
     .feed-start-panel {
-      padding: 20px;
-      gap: 16px;
-      border-radius: 22px;
+      padding: 18px;
+      gap: 14px;
+      border-radius: 6px;
     }
     .feed-start-copy h2 {
-      font-size: clamp(1.44rem, 7vw, 1.92rem);
+      font-size: clamp(1.1rem, 5vw, 1.4rem);
     }
     .feed-start-copy p {
       font-size: 0.94rem;
@@ -3343,26 +3345,26 @@
       gap: 10px;
     }
     .header-bar {
-      margin: 12px 12px 0;
-      padding: 12px 14px;
-      border-radius: 20px;
+      margin: 6px 8px 0;
+      padding: 8px 12px;
+      border-radius: 6px;
     }
     .hb-symbol {
       font-size: 18px;
     }
     .hb-note {
-      font-size: 11px;
+      font-size: 10px;
     }
     .data-feed,
     .chart-panel {
-      border-radius: 20px;
+      border-radius: 6px;
     }
     .feed-inner {
-      padding: 12px 12px 16px;
+      padding: 10px 10px 14px;
     }
     .feed-start-panel {
-      padding: 18px;
-      border-radius: 20px;
+      padding: 14px;
+      border-radius: 6px;
     }
     .feed-start-actions {
       display: grid;
