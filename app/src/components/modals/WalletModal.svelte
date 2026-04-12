@@ -10,7 +10,7 @@
     disconnectWallet
   } from '$lib/stores/walletStore';
   import type { WalletState } from '$lib/stores/walletStore';
-  import { loginAuth, logoutAuth, registerAuth, requestWalletNonce, verifyWalletSignature } from '$lib/api/auth';
+  import { loginAuth, logoutAuth, registerAuth, requestWalletNonce, verifyWalletSignature, walletAuth } from '$lib/api/auth';
   import {
     WALLET_PROVIDER_LABEL,
     getPreferredEvmChainCode,
@@ -27,14 +27,12 @@
   type WalletFunnelStatus = 'view' | 'success' | 'error';
 
   const STEP_TITLE: Record<WalletState['walletModalStep'], string> = {
-    welcome: 'WALLET ACCESS',
     'wallet-select': 'CONNECT WALLET',
     connecting: 'CONNECTING',
     'sign-message': 'VERIFY OWNERSHIP',
     connected: 'WALLET READY',
     signup: 'CREATE ACCOUNT',
     login: 'LOG IN',
-    'demo-intro': 'DEMO',
     profile: 'MY PROFILE'
   };
 
@@ -103,7 +101,8 @@
     return value === 'metamask'
       || value === 'coinbase'
       || value === 'walletconnect'
-      || value === 'phantom';
+      || value === 'phantom'
+      || value === 'base';
   }
 
   function isEvmAddress(address: string): boolean {
@@ -378,10 +377,27 @@
 
       trackWalletFunnel('sign', 'success', { provider, chain: state.chain });
 
-      if (state.email) {
-        setWalletModalStep('profile');
-      } else {
-        setWalletModalStep(authMode);
+      // ── Wallet-first: auto-login or show signup form ──
+      try {
+        const authResult = await walletAuth({
+          walletAddress: state.address!,
+          walletMessage: noncePayload.message,
+          walletSignature: signature,
+        });
+
+        if (authResult.action === 'login' && authResult.user) {
+          // Existing user → auto-login
+          applyAuthenticatedUser(authResult.user);
+          trackWalletFunnel('auth', 'success', { action: 'auto_login' });
+          setWalletModalStep('profile');
+        } else {
+          // New user → show signup form
+          setWalletModalStep('signup');
+        }
+      } catch (walletAuthError) {
+        // wallet-auth API failed (nonce already consumed) — fallback to signup form
+        console.warn('[WalletModal] wallet-auth fallback to signup', walletAuthError);
+        setWalletModalStep('signup');
       }
     } catch (error) {
       clearWalletProof();
@@ -414,7 +430,7 @@
 
   function connectStepState(): 'active' | 'done' | 'idle' {
     if (state.connected) return 'done';
-    if (step === 'welcome' || step === 'wallet-select' || step === 'connecting') return 'active';
+    if (step === 'wallet-select' || step === 'connecting') return 'active';
     return 'idle';
   }
 
@@ -493,29 +509,7 @@
       <div class="pstep" class:active={authStepState() === 'active'} class:done={authStepState() === 'done'}>3 AUTH</div>
     </div>
 
-    {#if step === 'welcome'}
-      <div class="wb">
-        <div class="step-hero">
-          <span class="hero-kicker">SECURE WEB3 ACCESS</span>
-          <h3 class="hero-title">Wallet-first auth with one signature.</h3>
-          <p class="hero-sub">Use wallet ownership as base identity. Then continue with login or account creation.</p>
-        </div>
-
-        <div class="flow-card">
-          <div class="flow-item">CONNECT WALLET</div>
-          <div class="flow-item">SIGN MESSAGE</div>
-          <div class="flow-item">{authMode === 'login' ? 'LOG IN ACCOUNT' : 'CREATE ACCOUNT'}</div>
-        </div>
-
-        <button class="btn-primary" type="button" on:click={() => startAuthFlow('signup')}>
-          CONTINUE WITH SIGN UP
-        </button>
-        <button class="btn-secondary" type="button" on:click={() => startAuthFlow('login')}>
-          CONTINUE WITH LOG IN
-        </button>
-      </div>
-
-    {:else if step === 'wallet-select'}
+    {#if step === 'wallet-select'}
       <div class="wb">
         <div class="step-hero">
           <span class="hero-kicker">STEP 1</span>
@@ -550,6 +544,11 @@
             <span class="wo-name">Phantom</span>
             <span class="wo-chain">SOL/EVM</span>
           </button>
+          <button class="wopt" type="button" on:click={() => handleConnect('base')}>
+            <span class="wo-icon">🟦</span>
+            <span class="wo-name">Base Smart Wallet</span>
+            <span class="wo-chain">BASE</span>
+          </button>
         </div>
       </div>
 
@@ -580,8 +579,8 @@
             <span class="info-v">{state.chain}</span>
           </div>
           <div class="info-row">
-            <span class="info-k">MODE</span>
-            <span class="info-v">{authMode === 'login' ? 'LOG IN' : 'SIGN UP'}</span>
+            <span class="info-k">ACTION</span>
+            <span class="info-v">VERIFY OWNERSHIP</span>
           </div>
         </div>
 

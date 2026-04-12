@@ -1,9 +1,24 @@
 export interface RegisterAuthPayload {
   email: string;
   nickname: string;
+  walletAddress: string;
+  walletMessage: string;
+  walletSignature: string;
+}
+
+/** Unified wallet-first auth: verify signature → auto-login or request signup */
+export interface WalletAuthPayload {
+  walletAddress: string;
+  walletMessage: string;
+  walletSignature: string;
+}
+
+export interface WalletAuthResponse {
+  success: boolean;
+  action: 'login' | 'signup';
+  user?: AuthUserPayload;
   walletAddress?: string;
-  walletMessage?: string;
-  walletSignature?: string;
+  message?: string;
 }
 
 export interface LoginAuthPayload {
@@ -122,4 +137,12 @@ export function verifyWalletSignature(payload: VerifyWalletPayload) {
 
 export function logoutAuth() {
   return postJson<{ success: boolean }>('/api/auth/logout', {});
+}
+
+/**
+ * Unified wallet-first auth: verify wallet signature, then auto-login
+ * existing users or signal that signup is needed.
+ */
+export function walletAuth(payload: WalletAuthPayload) {
+  return postJson<WalletAuthResponse>('/api/auth/wallet-auth', payload);
 }

@@ -126,7 +126,10 @@
     "vite": "^7.3.1"
   },
   "dependencies": {
+    "@base-org/account": "^2.5.3",
     "@coinbase/wallet-sdk": "^4.3.7",
+    "@metamask/sdk": "^0.34.0",
+    "@phantom/browser-sdk": "^2.0.0",
     "@supabase/supabase-js": "^2.97.0",
     "@walletconnect/ethereum-provider": "^2.23.6",
     "lightweight-charts": "^5.1.0",

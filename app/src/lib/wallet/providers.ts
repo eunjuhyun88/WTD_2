@@ -1,12 +1,13 @@
 import { env as publicEnv } from '$env/dynamic/public';
 
-export type WalletProviderKey = 'metamask' | 'coinbase' | 'walletconnect' | 'phantom';
+export type WalletProviderKey = 'metamask' | 'coinbase' | 'walletconnect' | 'phantom' | 'base';
 
 export const WALLET_PROVIDER_LABEL: Record<WalletProviderKey, string> = {
   metamask: 'MetaMask',
   coinbase: 'Coinbase Wallet',
   walletconnect: 'WalletConnect',
   phantom: 'Phantom',
+  base: 'Base Smart Wallet',
 };
 
 type Eip1193RequestArgs = {
@@ -74,6 +75,7 @@ function isProviderMatch(provider: Eip1193Provider, key: WalletProviderKey): boo
   if (key === 'coinbase') return provider.isCoinbaseWallet === true;
   if (key === 'walletconnect') return provider.isWalletConnect === true;
   if (key === 'phantom') return provider.isPhantom === true || provider.isPhantomEthereum === true;
+  if (key === 'base') return false; // Base Smart Wallet is SDK-only, never injected
   return false;
 }
 
@@ -89,6 +91,8 @@ function resolveInjectedEvmProvider(key: WalletProviderKey): Eip1193Provider | n
 
 let _walletConnectProvider: Eip1193Provider | null = null;
 let _coinbaseProvider: Eip1193Provider | null = null;
+let _metamaskSdkProvider: Eip1193Provider | null = null;
+let _phantomSdkInstance: unknown = null;
 const PUBLIC_ENV = publicEnv as Record<string, string | undefined>;
 
 function isPlaceholderWalletConnectProjectId(value: string): boolean {
@@ -202,6 +206,7 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
   if (typeof CoinbaseWalletSDK === 'function') {
     const sdk = new CoinbaseWalletSDK({
       appName: 'Stockclaw',
+      appChainIds: [getPreferredChainId()],
     });
     provider = typeof sdk?.makeWeb3Provider === 'function'
       ? sdk.makeWeb3Provider(rpcUrl, chainId)
@@ -211,6 +216,7 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
   } else if (typeof mod?.createCoinbaseWalletSDK === 'function') {
     const sdk = mod.createCoinbaseWalletSDK({
       appName: 'Stockclaw',
+      appChainIds: [getPreferredChainId()],
     });
     provider = typeof sdk?.makeWeb3Provider === 'function'
       ? sdk.makeWeb3Provider(rpcUrl, chainId)
@@ -229,8 +235,131 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
   return _coinbaseProvider;
 }
 
+/**
+ * MetaMask SDK fallback — creates a provider via @metamask/sdk when
+ * the browser extension is not injected (e.g. mobile browsers).
+ */
+async function getMetaMaskSdkProvider(): Promise<Eip1193Provider> {
+  if (_metamaskSdkProvider) return _metamaskSdkProvider;
+
+  let mod: any;
+  try {
+    const moduleName = '@metamask/sdk';
+    mod = await import(/* @vite-ignore */ moduleName);
+  } catch {
+    throw new Error('MetaMask SDK not available. Install the MetaMask browser extension or @metamask/sdk.');
+  }
+
+  const MetaMaskSDK = mod?.default ?? mod?.MetaMaskSDK;
+  if (!MetaMaskSDK || typeof MetaMaskSDK !== 'function') {
+    throw new Error('MetaMask SDK initialization failed.');
+  }
+
+  const sdk = new MetaMaskSDK({
+    dappMetadata: { name: 'Stockclaw', url: typeof window !== 'undefined' ? window.location.origin : '' },
+    checkInstallationImmediately: false,
+  });
+
+  await sdk.init();
+  const provider = sdk.getProvider?.();
+  if (!provider || typeof provider.request !== 'function') {
+    throw new Error('MetaMask SDK could not create a provider.');
+  }
+
+  _metamaskSdkProvider = provider as Eip1193Provider;
+  return _metamaskSdkProvider;
+}
+
+/**
+ * Phantom Browser SDK fallback — creates an embedded wallet provider
+ * when the Phantom browser extension is not installed.
+ */
+async function getPhantomSdkProvider(): Promise<Eip1193Provider> {
+  if (_phantomSdkInstance) return _phantomSdkInstance as Eip1193Provider;
+
+  let mod: any;
+  try {
+    const moduleName = '@phantom/browser-sdk';
+    mod = await import(/* @vite-ignore */ moduleName);
+  } catch {
+    throw new Error('Phantom Browser SDK not available. Install the Phantom extension or @phantom/browser-sdk.');
+  }
+
+  const BrowserSDK = mod?.BrowserSDK ?? mod?.default;
+  if (!BrowserSDK) {
+    throw new Error('Phantom Browser SDK initialization failed.');
+  }
+
+  const appId = PUBLIC_ENV.PUBLIC_PHANTOM_APP_ID || '';
+  const sdk = new BrowserSDK({
+    providerType: 'embedded',
+    addressTypes: ['ethereum', 'solana'],
+    appId: appId || undefined,
+    authOptions: {
+      authUrl: 'https://connect.phantom.app/login',
+      redirectUrl: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+    },
+  });
+
+  // The Phantom Browser SDK exposes an EIP-1193-compatible ethereum provider.
+  const provider = sdk.ethereum ?? sdk;
+  if (typeof provider.request !== 'function') {
+    throw new Error('Phantom Browser SDK did not expose an EIP-1193 provider.');
+  }
+
+  _phantomSdkInstance = provider;
+  return provider as Eip1193Provider;
+}
+
+/**
+ * Base Smart Wallet — uses @base-org/account SDK.
+ * Single-step connect + SIWE signing, no extension needed.
+ */
+let _baseAccountProvider: Eip1193Provider | null = null;
+
+async function getBaseAccountProvider(): Promise<Eip1193Provider> {
+  if (_baseAccountProvider) return _baseAccountProvider;
+
+  let mod: any;
+  try {
+    const moduleName = '@base-org/account';
+    mod = await import(/* @vite-ignore */ moduleName);
+  } catch {
+    throw new Error('Base Account SDK not available. Install @base-org/account.');
+  }
+
+  const createBaseAccountSDK = mod?.createBaseAccountSDK ?? mod?.default?.createBaseAccountSDK;
+  if (typeof createBaseAccountSDK !== 'function') {
+    // Fallback: the SDK may expose getProvider directly
+    if (typeof mod?.getProvider === 'function') {
+      const provider = mod.getProvider();
+      if (provider && typeof provider.request === 'function') {
+        _baseAccountProvider = provider as Eip1193Provider;
+        return _baseAccountProvider;
+      }
+    }
+    throw new Error('Base Account SDK initialization failed.');
+  }
+
+  const sdk = createBaseAccountSDK({
+    appName: 'Stockclaw',
+  });
+
+  const provider = sdk.getProvider?.() ?? sdk;
+  if (!provider || typeof provider.request !== 'function') {
+    throw new Error('Base Account provider could not be created.');
+  }
+
+  _baseAccountProvider = provider as Eip1193Provider;
+  return _baseAccountProvider;
+}
+
 /** Exposed for EIP-712 signing and chain switching modules */
 export async function resolveEvmProvider(key: WalletProviderKey): Promise<Eip1193Provider | null> {
+  if (key === 'base') {
+    return getBaseAccountProvider();
+  }
+
   if (key === 'walletconnect') {
     return getWalletConnectProvider();
   }
@@ -249,12 +378,35 @@ export async function resolveEvmProvider(key: WalletProviderKey): Promise<Eip119
     }
   }
 
+  // MetaMask: try injected first, fallback to SDK
+  if (key === 'metamask') {
+    const injected = resolveInjectedEvmProvider(key);
+    if (injected) return injected;
+    try {
+      return await getMetaMaskSdkProvider();
+    } catch {
+      throw new Error('MetaMask not detected. Install the MetaMask browser extension or use the MetaMask mobile app.');
+    }
+  }
+
+  // Phantom: try injected first, fallback to Browser SDK
+  if (key === 'phantom') {
+    const injected = resolveInjectedEvmProvider(key);
+    if (injected) return injected;
+    try {
+      return await getPhantomSdkProvider();
+    } catch {
+      throw new Error('Phantom not detected. Install the Phantom extension or use an embedded wallet.');
+    }
+  }
+
   return resolveInjectedEvmProvider(key);
 }
 
 export function hasInjectedEvmProvider(key: WalletProviderKey): boolean {
   if (key === 'walletconnect') return isWalletConnectConfigured();
-  if (key === 'coinbase') return true;
+  // Coinbase, MetaMask, Phantom, Base all have SDK fallbacks — always available
+  if (key === 'coinbase' || key === 'metamask' || key === 'phantom' || key === 'base') return true;
   return resolveInjectedEvmProvider(key) !== null;
 }
 
