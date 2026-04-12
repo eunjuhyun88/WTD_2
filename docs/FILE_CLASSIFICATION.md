@@ -808,23 +808,21 @@ Classifies every file in `src/` across 4 axes for the Cogochi day-1 cleanup plan
 - **Files archived**: ~90 files
 - **Risk**: Resolved — 0 type errors after archive
 
-### Batch 5 -- Unlink parked surfaces
-- Unlink cogochi route pages, cogochi components, passport components
-- Unlink parked API routes (cogochi/chat, cogochi/scan, copy-trades/*, community/*, marketplace/*)
-- Unlink parked client wrappers (communityApi, passportLearningApi)
-- **Files touched**: ~30 files
-- **Risk**: MEDIUM (some may have active server-side consumers)
+### Batch 5 -- Unlink parked surfaces ✅ DONE (5a)
+- Archived 3 passport routes, 5 cogochi routes, 10 API routes
+- Archived 7 passport/wallet components + passportHelpers + 6 safe cogochi components
+- Archived passportLearningApi
+- **5 blocked cogochi components kept**: AlphaMarketBar (BottomBar dep), CgChart (terminal+wallet-intel), DataCard/QuickPanel (terminal)
+- **1 blocked API kept**: communityApi (communityStore→IntelPanel→Header chain)
+- **Files archived**: 32
 
-### Batch 6 -- Redirect remaining legacy pages
-- Replace `scanner/+page.ts` body with redirect to /terminal
-- Replace `agent/+page.svelte`, `agent/[id]/+page.svelte`, `agents/+page.svelte` with redirect to /lab
-- **Files touched**: 4 route files
-- **Risk**: Low
+### Batch 6 -- Redirect remaining legacy pages ✅ DONE
+- scanner/+page.ts: already had 301 redirect to /terminal
+- agent/+page.svelte, agent/[id]/+page.svelte, agents/+page.svelte: redirected to /lab in Batch 4
 
-### Batch 7 -- Archive legacy engine files
-- Archive all legacy-delete engine files (battleEngine, v2/v3/v4 battle engines, game loop, FSM, douni character, etc.)
-- **Files touched**: ~36 files
-- **Risk**: MEDIUM (verify no active engine imports remain)
+### Batch 7 -- Archive legacy engine files ✅ DONE (7a)
+- Archived 20 safe engine files (battleEngine, gameLoop, phases, scoring, teamSynergy, replay, mockArenaData, agentPipeline, c02Pipeline, warroomScan, v2BattleEngine, v2RagBridge, v3BattleEngine, v3BattleTypes, cogochiBattleFSM, cogochiContextBuilder, cogochiDoctrine, cogochiGameEngine, gameRecordStore, douniSprite)
+- **14 blocked engine files kept** (active server consumers): agents.ts, v4/types.ts, v4/battleStateMachine.ts + 7 states, battleResolver.ts, arenaWarTypes.ts, agentCharacter.ts, v2BattleTypes.ts, douniPersonality.ts + douniState.ts
 
 ### Batch 8 -- Archive legacy server files
 - Archive legacy server services (battleStore, arenaService, tournamentService, cogochiBattleService, douni/*)
