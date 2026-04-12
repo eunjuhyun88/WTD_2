@@ -599,55 +599,54 @@
   /* ═══ MOBILE (<=768px) — compact top chrome, tabs move to bottom nav ═══ */
   @media (max-width: 768px) {
     #nav {
-      height: var(--sc-header-h-mobile, 52px);
+      height: var(--sc-header-h-mobile, 48px);
       flex-wrap: nowrap;
-      padding: 0 16px;
+      padding: 0 14px;
+      transition: none;
     }
     #nav.home-mode {
       width: calc(100vw - 20px);
-      height: 46px;
-      padding: 0 14px;
-      border-radius: 22px;
+      height: 42px;
+      padding: 0 12px;
+      border-radius: 6px;
     }
     #nav.home-mode .nav-tab-desktop:nth-of-type(3) { display: none; }
     .desktop-only { display: none; }
     .nav-tab-desktop { display: none; }
-    .nav-logo-main { font-size: 0.95rem; letter-spacing: 1.3px; }
+    .nav-logo-main { font-size: 0.92rem; letter-spacing: 1px; }
     .selected-ticker { display: none; }
     .mobile-page-chip {
       display: inline-flex;
-      padding: 0 14px;
-      height: 32px;
-      font-size: 12px;
-    }
-    .settings-btn {
-      padding: var(--sc-sp-2);
-      min-width: 40px;
-      min-height: 40px;
+      padding: 0 10px;
+      height: 28px;
+      font-size: 11px;
+      border-radius: 6px;
     }
     .wallet-btn {
-      padding: 0 16px;
-      border-radius: 999px;
+      padding: 0 14px;
+      border-radius: 6px;
       min-width: auto;
-      min-height: 36px;
+      min-height: 32px;
+      font-size: 11px;
     }
     #nav.home-mode .profile-dropdown-wrap { display: none; }
     #nav.home-mode .wallet-btn {
-      min-height: 32px;
-      padding: 0 14px;
-      font-size: 11px;
+      min-height: 28px;
+      padding: 0 12px;
+      font-size: 10px;
+      border-radius: 6px;
     }
   }
 
   /* ═══ SMALL MOBILE (<=480px) ═══ */
   @media (max-width: 480px) {
-    #nav { padding: 0 12px; }
+    #nav { padding: 0 10px; }
     #nav.home-mode {
       width: calc(100vw - 16px);
-      height: 44px;
-      padding: 0 12px;
+      height: 40px;
+      padding: 0 10px;
     }
-    .mobile-page-chip { padding: 0 12px; font-size: 11px; }
-    .wallet-btn { padding: 0 12px; min-height: 34px; font-size: 10px; }
+    .mobile-page-chip { padding: 0 8px; font-size: 10px; height: 26px; }
+    .wallet-btn { padding: 0 10px; min-height: 30px; font-size: 10px; }
   }
 </style>

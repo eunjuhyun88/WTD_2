@@ -216,42 +216,35 @@
   <title>Lab — Cogochi</title>
 </svelte:head>
 
-<div class="surface-page lab-page">
-  <section class="surface-hero split">
+<div class="surface-page lab">
+  <!-- Compact Topbar -->
+  <header class="surface-hero">
     <div class="surface-copy">
       <span class="surface-kicker">Lab</span>
-      <h1 class="surface-title">저장된 챌린지를 다시 돌리고, 증거가 남는 쪽만 남긴다.</h1>
-      <p class="surface-subtitle">
-        Terminal이 포착한 판단을 Lab이 재연한다. 이 surface의 역할은 기능을 많이 보여주는 것이 아니라,
-        같은 세팅이 다른 구간에서도 버티는지 조용히 검증하는 것이다.
-      </p>
+      <h1 class="surface-title">Challenge Lab</h1>
     </div>
-
     <div class="surface-stats">
       <article class="surface-stat">
         <span class="surface-meta">Selected</span>
         <strong>{activeChallengeLabel}</strong>
-        <p>현재 검사 중인 챌린지</p>
       </article>
       <article class="surface-stat">
         <span class="surface-meta">Tested</span>
         <strong>{testedChallengeCount}</strong>
-        <p>검증 결과가 남아 있는 세팅</p>
       </article>
       <article class="surface-stat">
         <span class="surface-meta">Waiting</span>
         <strong>{pendingChallengeCount}</strong>
-        <p>첫 실행을 기다리는 세팅</p>
       </article>
     </div>
-  </section>
+  </header>
 
+  <!-- Run Controls -->
   <section class="surface-card soft">
     <div class="surface-section-head">
       <div>
         <span class="surface-kicker">Run Controls</span>
         <h2>챌린지 선택과 실행</h2>
-        <p>실행 도구는 조용히 뒤로 물리고, 차트와 결과가 앞에 오게 정렬한다.</p>
       </div>
       <span class="surface-chip">{mode === 'auto' ? 'Auto mode' : 'Manual mode'}</span>
     </div>
@@ -275,12 +268,13 @@
     </div>
   </section>
 
+  <!-- Workspace -->
   <section class="lab-workspace">
     <div class="surface-panel chart-shell">
       <div class="workspace-head">
         <div>
           <span class="surface-kicker">Replay Canvas</span>
-          <h2>시장 구간 위에서 결과를 다시 읽기</h2>
+          <h2>시장 구간 위에서 결과 읽기</h2>
         </div>
         <span class="surface-chip">{interval}</span>
       </div>
@@ -298,7 +292,7 @@
     <div class="surface-panel panel-shell">
       <div class="workspace-head tabs-head">
         <div>
-          <span class="surface-kicker">Context Panel</span>
+          <span class="surface-kicker">Context</span>
           <h2>{mode === 'auto' ? '챌린지와 런 결과' : '리플레이와 로그'}</h2>
         </div>
       </div>
@@ -423,19 +417,15 @@
 </div>
 
 <style>
-  .lab-page {
-    padding-top: 10px;
-  }
-
   .toolbar-shell {
-    margin-top: 20px;
+    margin-top: 14px;
     overflow: auto;
   }
 
   .lab-workspace {
     display: grid;
-    grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
-    gap: 20px;
+    grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.82fr);
+    gap: 16px;
     min-height: 0;
   }
 
@@ -443,23 +433,30 @@
   .panel-shell {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
     min-height: 0;
   }
 
+  .workspace-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
   .workspace-head h2 {
-    margin: 6px 0 0;
+    margin: 4px 0 0;
     color: rgba(250, 247, 235, 0.98);
-    font-size: clamp(1.2rem, 2vw, 1.7rem);
-    line-height: 1.06;
-    letter-spacing: -0.045em;
+    font-size: clamp(1rem, 1.8vw, 1.2rem);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
   }
 
   .chart-area {
     flex: 1;
-    min-height: 560px;
+    min-height: 480px;
     overflow: hidden;
-    border-radius: 18px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(255, 255, 255, 0.02);
   }
@@ -467,17 +464,17 @@
   .tab-bar {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
 
   .tab {
-    min-height: 40px;
-    border-radius: 999px;
+    min-height: 36px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
-    color: rgba(250, 247, 235, 0.72);
+    color: rgba(250, 247, 235, 0.62);
     font-family: var(--sc-font-body);
-    font-size: 0.92rem;
+    font-size: 0.84rem;
     font-weight: 600;
     transition: background var(--sc-duration-fast), border-color var(--sc-duration-fast), color var(--sc-duration-fast);
   }
@@ -492,34 +489,35 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border-radius: 18px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(255, 255, 255, 0.02);
-    padding: 18px;
+    padding: 16px;
   }
 
   .manual-order,
   .trades-empty {
     display: grid;
-    gap: 18px;
+    gap: 14px;
   }
 
   .manual-hero p,
   .trades-empty p {
-    margin: 6px 0 0;
-    color: rgba(250, 247, 235, 0.64);
-    line-height: 1.6;
+    margin: 4px 0 0;
+    color: var(--sc-text-1);
+    font-size: 0.88rem;
+    line-height: 1.5;
   }
 
   .order-buttons {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
   }
 
   .order-btn {
-    min-height: 46px;
-    border-radius: 16px;
+    min-height: 42px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     font-family: var(--sc-font-body);
     font-weight: 700;
@@ -539,21 +537,22 @@
   .manual-stats {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    gap: 10px;
   }
 
   .manual-stats > div {
     display: grid;
     gap: 4px;
-    padding: 14px;
-    border-radius: 16px;
+    padding: 12px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.02);
   }
 
   .manual-stats strong {
-    color: rgba(250, 247, 235, 0.96);
-    font-size: 1.04rem;
+    color: var(--sc-text-0);
+    font-size: 1rem;
+    font-weight: 700;
   }
 
   .error-bar {
@@ -568,21 +567,14 @@
 
   @media (max-width: 640px) {
     .chart-area {
-      min-height: 300px;
+      min-height: 280px;
     }
-
-    /* keep 2-col order buttons and manual stats on mobile */
     .manual-stats,
     .order-buttons {
-      gap: 8px;
+      gap: 6px;
     }
-
     .tab-content {
-      padding: 14px;
-    }
-
-    .lab-page {
-      padding-top: 4px;
+      padding: 12px;
     }
   }
 </style>
