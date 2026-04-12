@@ -36,6 +36,7 @@ Purpose:
 4. Shared utilities should centralize invariants, not duplicate behavior.
 5. Server contracts must be validated at the boundary.
 6. Shared chart model/runtime contracts must live under `src/lib/chart-engine/*`; surfaces should adapt app payloads into chart-engine specs instead of duplicating chart primitives or runtime helpers ad hoc.
+7. Shared chart chrome belongs in `src/components/chart/ChartStage.svelte`; renderer components should only draw panes/series and must not reimplement workbench headers, metric chips, signal badges, or note rails.
 
 ## Current Hot Files
 
@@ -45,6 +46,10 @@ Purpose:
 - `src/routes/arena/+page.svelte`
 - `src/components/arena/ChartPanel.svelte`
 - `src/lib/chart-engine/*`
+- `src/components/chart/ChartStage.svelte`
+- `src/components/lab/LabChart.svelte`
+- `src/components/terminal/research/*`
+- `src/components/wallet-intel/WalletMarketOverlay.svelte`
 - `src/routes/passport/+page.svelte`
 
 When editing these, update the relevant canonical doc if authority or behavior changed.
