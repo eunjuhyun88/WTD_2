@@ -16,7 +16,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import backtest, challenge, score, train, verdict, scanner, deep, universe
+from api.routes import backtest, challenge, ctx, score, train, verdict, scanner, deep, universe
+from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
 
 logging.basicConfig(
@@ -32,8 +33,13 @@ log = logging.getLogger("engine")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
+    # Warm up L0 GlobalCtx cache before serving requests
+    try:
+        await refresh_global_ctx()
+    except Exception as exc:
+        log.warning("GlobalCtx warm-up failed (non-fatal): %s", exc)
     start_scheduler()
-    log.info("Engine started — background scanner active")
+    log.info("Engine started — GlobalCtx warm, background scanner active")
     yield
     stop_scheduler()
     log.info("Engine shutdown — scanner stopped")
@@ -76,6 +82,7 @@ app.add_middleware(
 
 app.include_router(score.router,    prefix="/score",    tags=["scoring"])
 app.include_router(deep.router,     prefix="/deep",     tags=["deep"])
+app.include_router(ctx.router,      prefix="/ctx",      tags=["context"])
 app.include_router(universe.router, prefix="/universe", tags=["universe"])
 app.include_router(backtest.router, prefix="/backtest", tags=["backtest"])
 app.include_router(challenge.router,prefix="/challenge",tags=["challenge"])
