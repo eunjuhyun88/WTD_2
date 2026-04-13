@@ -11,9 +11,14 @@ from building_blocks.confirmations.dead_cross import dead_cross
 from building_blocks.confirmations.ema_pullback import ema_pullback
 from building_blocks.confirmations.fib_retracement import fib_retracement
 from building_blocks.confirmations.funding_extreme import funding_extreme
+from building_blocks.confirmations.funding_flip import funding_flip
 from building_blocks.confirmations.golden_cross import golden_cross
+from building_blocks.confirmations.higher_lows_sequence import higher_lows_sequence
 from building_blocks.confirmations.oi_change import oi_change
+from building_blocks.confirmations.oi_hold_after_spike import oi_hold_after_spike
+from building_blocks.confirmations.oi_spike_with_dump import oi_spike_with_dump
 from building_blocks.confirmations.range_break_retest import range_break_retest
+from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.volume_dryup import volume_dryup
 
 __all__ = [
@@ -24,8 +29,13 @@ __all__ = [
     "ema_pullback",
     "fib_retracement",
     "funding_extreme",
+    "funding_flip",
     "golden_cross",
+    "higher_lows_sequence",
     "oi_change",
+    "oi_hold_after_spike",
+    "oi_spike_with_dump",
     "range_break_retest",
+    "sideways_compression",
     "volume_dryup",
 ]

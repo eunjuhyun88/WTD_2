@@ -42,7 +42,12 @@ from building_blocks.confirmations.ema_pullback import ema_pullback
 from building_blocks.confirmations.bollinger_squeeze import bollinger_squeeze
 from building_blocks.confirmations.bollinger_expansion import bollinger_expansion
 from building_blocks.confirmations.funding_extreme import funding_extreme
+from building_blocks.confirmations.funding_flip import funding_flip
+from building_blocks.confirmations.higher_lows_sequence import higher_lows_sequence
 from building_blocks.confirmations.oi_change import oi_change
+from building_blocks.confirmations.oi_hold_after_spike import oi_hold_after_spike
+from building_blocks.confirmations.oi_spike_with_dump import oi_spike_with_dump
+from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
 from building_blocks.confirmations.volume_dryup import volume_dryup
 
@@ -79,7 +84,12 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("bollinger_squeeze",  bollinger_squeeze),
     ("bollinger_expansion", bollinger_expansion),
     ("funding_extreme",    funding_extreme),
+    ("funding_flip",       funding_flip),
+    ("higher_lows_sequence", higher_lows_sequence),
     ("oi_change",          oi_change),
+    ("oi_hold_after_spike", oi_hold_after_spike),
+    ("oi_spike_with_dump", oi_spike_with_dump),
+    ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
     ("volume_dryup",       volume_dryup),
     # disqualifiers

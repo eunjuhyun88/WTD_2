@@ -22,6 +22,12 @@ def load_universe(name: str) -> list[str]:
     """
     if name == "binance_30":
         return list(_BINANCE_30)
+    if name == "binance_dynamic":
+        from universe.dynamic import load_dynamic_universe
+        return load_dynamic_universe()
+    if name == "binance_all":
+        from universe.dynamic import load_dynamic_universe
+        return load_dynamic_universe(min_volume_usd=0, max_symbols=500)
     raise KeyError(
-        f"unknown universe {name!r} (available: 'binance_30')"
+        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all')"
     )
