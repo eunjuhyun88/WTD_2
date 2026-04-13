@@ -35,7 +35,7 @@
   const latestActivityText = $derived(
     strategies.length > 0
       ? timeSince(Math.max(...strategies.map((entry) => entry.lastModified)))
-      : '아직 없음'
+      : '—'
   );
 
   function fmtPct(v: number | null | undefined): string {
@@ -88,32 +88,43 @@
   <title>Dashboard — Cogochi</title>
 </svelte:head>
 
-<div class="surface-page dashboard-page">
-  <div class="dash-topbar">
-    <span class="dash-title">DASHBOARD</span>
-    <div class="dash-stats">
-      <span class="ds-item"><span class="ds-label">CHALLENGES</span><strong class="ds-value">{strategies.length}</strong></span>
-      <span class="ds-sep">·</span>
-      <span class="ds-item"><span class="ds-label">TESTED</span><strong class="ds-value">{testedChallengeCount}</strong></span>
-      <span class="ds-sep">·</span>
-      <span class="ds-item"><span class="ds-label">LAST</span><strong class="ds-value">{latestActivityText}</strong></span>
-      {#if btcPrice > 0}
-        <span class="ds-sep">·</span>
-        <span class="ds-item"><span class="ds-label">BTC</span><strong class="ds-value ds-btc">{fmtPrice(btcPrice)}</strong></span>
-      {/if}
+<div class="surface-page dash">
+  <!-- Compact Topbar -->
+  <header class="surface-hero">
+    <div class="surface-copy">
+      <span class="surface-kicker">Dashboard</span>
+      <h1 class="surface-title">My Workspace</h1>
     </div>
-    <div class="dash-actions">
-      <button class="surface-button-secondary" onclick={() => goto('/terminal')}>Terminal</button>
-      <button class="surface-button" onclick={() => goto('/lab')}>Lab</button>
+    <div class="surface-stats">
+      <article class="surface-stat">
+        <span class="surface-meta">BTC</span>
+        <strong>{fmtPrice(btcPrice)}</strong>
+      </article>
+      <article class="surface-stat">
+        <span class="surface-meta">Challenges</span>
+        <strong>{strategies.length}</strong>
+      </article>
+      <article class="surface-stat">
+        <span class="surface-meta">Tested</span>
+        <strong>{testedChallengeCount}</strong>
+      </article>
+      <article class="surface-stat">
+        <span class="surface-meta">Activity</span>
+        <strong>{latestActivityText}</strong>
+      </article>
     </div>
-  </div>
+    <div class="topbar-actions">
+      <button class="surface-button" onclick={() => goto('/terminal')}>Open Terminal</button>
+      <button class="surface-button-secondary" onclick={() => goto('/lab')}>Open Lab</button>
+    </div>
+  </header>
 
+  <!-- My Challenges -->
   <section class="surface-grid">
     <div class="surface-section-head">
       <div>
         <span class="surface-kicker">My Challenges</span>
-        <h2>지금 이어서 볼 세팅</h2>
-        <p>Terminal에서 저장한 판단을 Lab으로 다시 열 수 있다.</p>
+        <h2>저장된 세팅</h2>
       </div>
       <span class="surface-chip">{strategies.length} saved</span>
     </div>
@@ -164,7 +175,7 @@
                 <span class="surface-meta">{cyclesTested(entry)}/{MARKET_CYCLES.length} cycles</span>
               </div>
             {:else}
-              <p class="untested-copy">아직 첫 검증 전입니다. Lab에서 첫 실행을 시작하세요.</p>
+              <p class="untested-copy">아직 첫 검증 전입니다. Lab에서 실행하세요.</p>
             {/if}
 
             <div class="challenge-footer">
@@ -177,6 +188,7 @@
     {/if}
   </section>
 
+  <!-- Watching + Adapters -->
   <section class="surface-grid cols-2">
     <div class="surface-grid">
       <div class="surface-section-head">
@@ -223,7 +235,7 @@
       <div class="surface-cta">
         <span class="surface-kicker">Next Move</span>
         <h2>새로운 세팅을 저장하거나 기존 결과를 재검토한다.</h2>
-        <div class="surface-inline-actions">
+        <div class="surface-inline-actions" style="margin-top:12px">
           <button class="surface-button" onclick={() => goto('/terminal')}>Open Terminal</button>
           <button class="surface-button-secondary" onclick={() => goto('/lab')}>Review in Lab</button>
         </div>
@@ -233,80 +245,28 @@
 </div>
 
 <style>
-  .dashboard-page {
-    padding-top: 12px;
-  }
-
-  /* ── Topbar ──────────────────────────────────────── */
-  .dash-topbar {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 10px 20px 12px;
-    border-bottom: 1px solid var(--sc-line-soft, rgba(219,154,159,0.12));
-    flex-wrap: wrap;
-  }
-  .dash-title {
-    font-family: var(--sc-font-display, 'Bebas Neue', sans-serif);
-    font-size: 22px;
-    letter-spacing: 2px;
-    color: var(--sc-text-0);
-    flex-shrink: 0;
-  }
-  .dash-stats {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-  }
-  .ds-item {
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
-  }
-  .ds-label {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 8px;
-    letter-spacing: 0.5px;
-    color: var(--sc-text-3);
-    text-transform: uppercase;
-  }
-  .ds-value {
-    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--sc-text-1);
-  }
-  .ds-btc { color: var(--sc-accent, #db9a9f); }
-  .ds-sep {
-    color: var(--sc-text-3);
-    font-size: 10px;
-    opacity: 0.4;
-  }
-  .dash-actions {
+  .topbar-actions {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
   }
-
-  .surface-cta h2 {
-    margin: 6px 0 0;
-    font-size: clamp(1.5rem, 2.6vw, 2.2rem);
-    line-height: 1.02;
-    letter-spacing: -0.05em;
-    color: rgba(250, 247, 235, 0.98);
+  .topbar-actions .surface-button,
+  .topbar-actions .surface-button-secondary {
+    min-height: 34px;
+    padding: 0 14px;
+    font-size: 0.82rem;
   }
 
   .challenge-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
+    gap: 14px;
   }
 
   .challenge-card,
   .watcher-card {
     display: grid;
-    gap: 16px;
+    gap: 14px;
     text-align: left;
     cursor: pointer;
     transition: transform var(--sc-duration-fast), border-color var(--sc-duration-fast);
@@ -330,33 +290,35 @@
   .challenge-top strong,
   .watcher-card strong {
     display: block;
-    margin-top: 4px;
-    color: rgba(250, 247, 235, 0.98);
-    font-size: 1.14rem;
-    line-height: 1.14;
-    letter-spacing: -0.03em;
+    margin-top: 2px;
+    color: var(--sc-text-0);
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
   .challenge-stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
+    gap: 10px;
   }
 
   .challenge-stats strong {
     display: block;
-    margin-top: 5px;
+    margin-top: 3px;
     font-size: 1rem;
-    color: rgba(250, 247, 235, 0.96);
+    font-weight: 700;
+    color: var(--sc-text-0);
   }
 
   .progress-block {
     display: grid;
-    gap: 8px;
+    gap: 6px;
   }
 
   .progress-track {
-    height: 7px;
+    height: 5px;
     overflow: hidden;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.06);
@@ -372,8 +334,9 @@
   .watcher-card p,
   .empty-card p {
     margin: 0;
-    color: rgba(250, 247, 235, 0.64);
-    line-height: 1.6;
+    color: var(--sc-text-1);
+    font-size: 0.88rem;
+    line-height: 1.5;
   }
 
   .surface-code {
@@ -382,56 +345,52 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding: 10px 12px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    color: rgba(250, 247, 235, 0.82);
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--sc-text-1);
+    font-size: 0.82rem;
   }
 
   .empty-card {
     display: grid;
-    gap: 14px;
+    gap: 12px;
     justify-items: start;
   }
 
-  @media (max-width: 960px) {
-    .market-banner {
-      align-items: start;
-      flex-direction: column;
-    }
+  .surface-cta h2 {
+    margin: 6px 0 0;
+    font-size: clamp(1rem, 2vw, 1.3rem);
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    color: rgba(250, 247, 235, 0.92);
+  }
 
-    /* 4-col stats → 2-col on tablet */
+  @media (max-width: 960px) {
     .challenge-stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   @media (max-width: 640px) {
-    .dashboard-page {
-      padding-top: 4px;
-    }
-
-    /* card grid stays 2-col until very small; stats 2-col always */
     .challenge-grid {
       grid-template-columns: 1fr;
     }
-
     .challenge-card,
     .watcher-card {
-      gap: 14px;
+      gap: 12px;
     }
-
-    .challenge-top,
-    .watcher-top,
-    .challenge-footer {
-      flex-direction: column;
-      align-items: start;
-    }
-
     .surface-code {
       white-space: normal;
       word-break: break-word;
+    }
+    .topbar-actions {
+      width: 100%;
+    }
+    .topbar-actions .surface-button,
+    .topbar-actions .surface-button-secondary {
+      flex: 1;
     }
   }
 </style>
