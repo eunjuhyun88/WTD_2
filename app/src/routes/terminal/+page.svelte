@@ -22,6 +22,8 @@
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import WorkspaceGrid from '../../components/terminal/workspace/WorkspaceGrid.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
+  import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
+  import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
 
   // Mobile components
   import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
@@ -508,6 +510,26 @@
 
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board">
+
+        <!-- Pattern entry signal bar -->
+        <PatternStatusBar />
+
+        <!-- Chart pane — always visible in terminal desktop view -->
+        <div class="chart-pane">
+          <ChartBoard
+            symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+            onSaveSetup={async (snap) => {
+              try {
+                await fetch('/api/engine/challenge/create', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(snap),
+                });
+              } catch {}
+            }}
+          />
+        </div>
+
         {#if isLoadingActive && !heroVerdict}
           <div class="board-loading">
             <div class="loading-ring"></div>
@@ -674,6 +696,13 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+  }
+
+  /* Chart pane — sits above VerdictCard */
+  .chart-pane {
+    flex-shrink: 0;
+    height: 580px;
+    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
   }
 
   /* Focus slot — wraps VerdictCard in scrollable container */
