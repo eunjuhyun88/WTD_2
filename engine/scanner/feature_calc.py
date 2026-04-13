@@ -358,20 +358,29 @@ def _price_accel(close: pd.Series, period: int = 5) -> pd.Series:
 # ── Groups V-AB primitives ───────────────────────────────────────────────────
 
 
-def _hist_vol(close: pd.Series, period: int) -> pd.Series:
-    """Realized volatility: std of log-returns × sqrt(24×365), annualised for 1h bars."""
+def _hist_vol(close: pd.Series, period: int, bars_per_year: int = 24 * 365) -> pd.Series:
+    """Realized volatility: std(log-returns) × sqrt(bars_per_year), annualised.
+
+    bars_per_year defaults to 24×365 for 1-hour bars. Pass the correct value
+    when using other timeframes, e.g. 6×365 for 4h, 365 for daily.
+    """
     log_ret = np.log(close / close.shift(1)).fillna(0.0)
-    return (log_ret.rolling(period, min_periods=period).std(ddof=1) * np.sqrt(24 * 365)).fillna(0.0)
+    return (log_ret.rolling(period, min_periods=period).std(ddof=1) * np.sqrt(bars_per_year)).fillna(0.0)
 
 
-def _parkinson_vol(high: pd.Series, low: pd.Series, period: int = 24) -> pd.Series:
+def _parkinson_vol(
+    high: pd.Series, low: pd.Series, period: int = 24,
+    bars_per_year: int = 24 * 365,
+) -> pd.Series:
     """Parkinson's High-Low volatility estimator — more efficient than close-close.
-    σ_P = sqrt(1/(4·N·ln 2) · Σ(ln(H/L))²) × sqrt(24·365) annualised.
+    σ_P = sqrt(1/(4·N·ln 2) · Σ(ln(H/L))²) × sqrt(bars_per_year) annualised.
+
+    bars_per_year defaults to 24×365 for 1-hour bars.
     """
     log_hl = np.log((high / low.replace(0, np.nan)).replace(0, np.nan)).fillna(0.0)
     factor = 1.0 / (4.0 * np.log(2))
     var = (log_hl ** 2).rolling(period, min_periods=period).mean() * factor
-    return (np.sqrt(var * 24 * 365)).fillna(0.0)
+    return (np.sqrt(var * bars_per_year)).fillna(0.0)
 
 
 def _lr_slope_norm(close: pd.Series, period: int = 20) -> pd.Series:
@@ -567,12 +576,19 @@ def compute_snapshot(
     klines: pd.DataFrame,
     symbol: str,
     perp: Optional[dict] = None,
+    tf_minutes: int = 60,
 ) -> SignalSnapshot:
     """Compute a SignalSnapshot for the LAST row of `klines`.
 
     `klines` must be a DataFrame with columns
     [open, high, low, close, volume, taker_buy_base_volume] and a
     DatetimeIndex in UTC. Only rows 0..-1 are consulted (no look-ahead).
+
+    `tf_minutes` — bar size in minutes. Defaults to 60 (hourly).
+    Supported: 1, 3, 5, 15, 30, 60, 240 (4h), 480 (8h), 1440 (daily).
+    All "time-labelled" periods (volume_24h, price_change_1h, hist_vol,
+    annualisation factor, etc.) automatically scale to the correct bar
+    counts for the given timeframe.
 
     `perp` is an optional dict that may contain any of:
         - funding_rate: float
@@ -583,10 +599,29 @@ def compute_snapshot(
 
     Missing perp data falls back to neutral defaults.
     """
-    if len(klines) < MIN_HISTORY_BARS:
+    # ── Timeframe-derived constants ────────────────────────────────────────
+    # BPD  = bars per day   (24 for 1h, 6 for 4h, 1 for 1d)
+    # BPY  = bars per year  — used for volatility annualisation
+    # D7 / D20 — bars in 7 / 20 calendar days
+    # HTF_WIN  — HTF-structure window (~5 trading days)
+    # _b1h/_b4h/_b24h — bar counts closest to 1h / 4h / 24h durations
+    BPD     = max(1, 1440 // tf_minutes)  # bars per day: 24 for 1h, 6 for 4h, 1 for 1d
+    BPY     = BPD * 365                   # bars per year (volatility annualisation)
+    D7      = 7  * BPD                    # 7-day lookback in bars
+    D20     = 20 * BPD                    # 20-day lookback in bars
+    HTF_WIN = max(30, 5 * BPD)            # HTF structure window (~5 trading days)
+    _b1h    = max(1, round(60   / tf_minutes))   # closest bar count to 1h
+    _b4h    = max(1, round(240  / tf_minutes))   # closest bar count to 4h
+    _b24h   = BPD                                # bars for 24h window
+    _b7d    = D7                                 # bars for 7d window
+    # MIN_HISTORY_BARS (500) is sufficient for any TF: on 1h it gives ~20d,
+    # on 4h ~83d, on 1d ~500d — all comfortably above any indicator warmup.
+    min_bars = MIN_HISTORY_BARS
+
+    if len(klines) < min_bars:
         raise ValueError(
-            f"compute_snapshot needs ≥{MIN_HISTORY_BARS} bars of history, "
-            f"got {len(klines)}"
+            f"compute_snapshot needs ≥{min_bars} bars of history "
+            f"(tf={tf_minutes}m), got {len(klines)}"
         )
 
     close = klines["close"].astype(float)
@@ -641,9 +676,9 @@ def compute_snapshot(
     bb_position = (price - bb_lower_v) / bb_range if bb_range else 0.5
 
     # --- Volume ---
-    # Rolling 24h volume on 1h bars = sum of last 24 bars.
-    if len(volume) >= 24:
-        volume_24h = float(volume.iloc[-24:].sum())
+    # Rolling 24h volume — uses BPD bars so it is always 24 calendar hours.
+    if len(volume) >= _b24h:
+        volume_24h = float(volume.iloc[-_b24h:].sum())
     else:
         volume_24h = float(volume.sum())
     if len(volume) >= 4:
@@ -655,11 +690,10 @@ def compute_snapshot(
     obv_slope = _slope_pct(obv_series, 20) if len(obv_series) > 20 else 0.0
 
     # --- Structure / MTF ---
-    htf_structure = _htf_structure(close, window=120)
-    high_20d_window = 20 * 24  # 480 hourly bars = ~20 trading days
-    if len(high) >= high_20d_window:
-        high_20d = float(high.iloc[-high_20d_window:].max())
-        low_20d = float(low.iloc[-high_20d_window:].min())
+    htf_structure = _htf_structure(close, window=HTF_WIN)   # always ~5-day window
+    if len(high) >= D20:
+        high_20d = float(high.iloc[-D20:].max())
+        low_20d = float(low.iloc[-D20:].min())
     else:
         high_20d = float(high.max())
         low_20d = float(low.min())
@@ -701,10 +735,11 @@ def compute_snapshot(
         past = float(close.iloc[-1 - n])
         return float((price - past) / past) if past else 0.0
 
-    price_change_1h = _pct_change_scalar(1)
-    price_change_4h = _pct_change_scalar(4)
-    price_change_24h = _pct_change_scalar(24)
-    price_change_7d = _pct_change_scalar(168)
+    # _b1h/_b4h/_b24h/_b7d are tf-scaled bar counts for time-labelled fields.
+    price_change_1h = _pct_change_scalar(_b1h)
+    price_change_4h = _pct_change_scalar(_b4h)
+    price_change_24h = _pct_change_scalar(_b24h)
+    price_change_7d = _pct_change_scalar(_b7d)
 
     # --- I. Additional momentum oscillators ---
     stoch_rsi_val = float(_stoch_rsi(rsi_series, 14).iloc[-1])
@@ -712,7 +747,7 @@ def compute_snapshot(
     cci_val = float(_cci(high, low, close, 20).iloc[-1])
 
     # --- J. Price relative ---
-    vwap_ratio_val = float(_vwap_ratio(close, volume, 24).iloc[-1])
+    vwap_ratio_val = float(_vwap_ratio(close, volume, _b24h).iloc[-1])
     price_vs_ema200 = (price - ema200) / ema200 if ema200 else 0.0
 
     # --- K. Candle structure (last bar only) ---
@@ -803,12 +838,15 @@ def compute_snapshot(
     price_vs_ema20 = (price - ema20_v) / ema20_v if ema20_v else 0.0
     price_vs_ema100 = (price - ema100_v) / ema100_v if ema100_v else 0.0
 
-    # --- W. Historical volatility ---
-    hvol24 = float(_hist_vol(close, 24).iloc[-1])
-    hvol7d = float(_hist_vol(close, 168).iloc[-1])
+    # --- W. Historical volatility — all periods and annualisation scale with TF ---
+    # Minimum period of 2 ensures std(ddof=1) is defined (1 bar → NaN/0 otherwise).
+    _vol_p24 = max(2, _b24h)
+    _vol_p7d = max(2, _b7d)
+    hvol24 = float(_hist_vol(close, _vol_p24, BPY).iloc[-1])
+    hvol7d = float(_hist_vol(close, _vol_p7d, BPY).iloc[-1])
     vol_regime_val = (hvol24 / hvol7d) if hvol7d > 0 else 1.0
     vol_regime_val = max(0.1, min(5.0, vol_regime_val))
-    parkinson_val = float(_parkinson_vol(high, low, 24).iloc[-1])
+    parkinson_val = float(_parkinson_vol(high, low, _vol_p24, BPY).iloc[-1])
 
     # --- X. MACD extensions ---
     _ema12_v = float(_ema(close, 12).iloc[-1])
@@ -818,18 +856,17 @@ def compute_snapshot(
     macd_hist_slope_val = float(macd_h_series.iloc[-1]) - _mh_prev
 
     # --- Y. Volume profile ---
-    volume_7d = float(volume.iloc[-168:].sum()) if len(volume) >= 168 else float(volume.sum())
-    mean_vol_24 = float(volume.iloc[-25:-1].mean()) if len(volume) >= 25 else float(volume.mean())
+    volume_7d = float(volume.iloc[-_b7d:].sum()) if len(volume) >= _b7d else float(volume.sum())
+    mean_vol_24 = float(volume.iloc[-(_b24h + 1):-1].mean()) if len(volume) > _b24h else float(volume.mean())
     vol_ratio_24_val = float(volume.iloc[-1]) / mean_vol_24 if mean_vol_24 > 0 else 1.0
-    taker_24h = float(taker_buy.iloc[-24:].sum()) if len(taker_buy) >= 24 else float(taker_buy.sum())
-    vol_24h_sum = float(volume.iloc[-24:].sum()) if len(volume) >= 24 else float(volume.sum())
+    taker_24h = float(taker_buy.iloc[-_b24h:].sum()) if len(taker_buy) >= _b24h else float(taker_buy.sum())
+    vol_24h_sum = float(volume.iloc[-_b24h:].sum()) if len(volume) >= _b24h else float(volume.sum())
     taker_buy_ratio_24h_val = max(0.0, min(1.0, taker_24h / vol_24h_sum if vol_24h_sum > 0 else 0.5))
     vol_acceleration_val = max(0.1, min(10.0, vol_ratio_3 / vol_ratio_24_val if vol_ratio_24_val > 0 else 1.0))
 
     # --- Z. Price structure ---
-    n_7d = 168
-    high_7d = float(high.iloc[-n_7d:].max()) if len(high) >= n_7d else float(high.max())
-    low_7d = float(low.iloc[-n_7d:].min()) if len(low) >= n_7d else float(low.min())
+    high_7d = float(high.iloc[-_b7d:].max()) if len(high) >= _b7d else float(high.max())
+    low_7d = float(low.iloc[-_b7d:].min()) if len(low) >= _b7d else float(low.min())
     range_7d = high_7d - low_7d
     range_7d_pos = (price - low_7d) / range_7d if range_7d > 0 else 0.5
     prev_close_val = float(close.iloc[-2]) if len(close) >= 2 else price
@@ -1192,12 +1229,17 @@ def compute_features_table(
     perp: Optional[pd.DataFrame] = None,
     macro: Optional[pd.DataFrame] = None,
     onchain: Optional[pd.DataFrame] = None,
+    tf_minutes: int = 60,
 ) -> pd.DataFrame:
     """Vectorized counterpart to compute_snapshot — one row per bar.
 
     For each bar t in `klines`, the returned row's feature values are equal
     to what compute_snapshot would produce if called on klines.iloc[:t+1].
     Verified by tests/test_features.py.
+
+    `tf_minutes` — bar size in minutes. Defaults to 60 (hourly). Supported:
+    1, 3, 5, 15, 30, 60, 240 (4h), 480 (8h), 1440 (daily). All time-labelled
+    lookback periods and the volatility annualisation factor auto-scale.
 
     Microstructure features (funding_rate, oi_change_*, long_short_ratio):
     if `perp` is None, `load_perp(symbol, offline=False)` is tried (graceful
@@ -1215,13 +1257,25 @@ def compute_features_table(
     On-chain features (active_addr_norm): loaded from `onchain` DataFrame
     if provided. Neutral default=0.5 when missing.
 
-    The first MIN_HISTORY_BARS rows are dropped (warmup): EMA200 and the
-    20d-high/low window need at least ~500 hourly bars to stabilise.
+    The first min_bars rows are dropped (warmup): EMA200 and the 20d-high/low
+    window need at least ~500 hourly-equivalent bars to stabilise.
     """
-    if len(klines) < MIN_HISTORY_BARS:
+    # ── Timeframe-derived constants (mirrors compute_snapshot) ────────────
+    BPD     = max(1, 1440 // tf_minutes)  # bars per day
+    BPY     = BPD * 365                   # bars per year
+    D7      = 7  * BPD
+    D20     = 20 * BPD
+    HTF_WIN = max(30, 5 * BPD)
+    _b1h    = max(1, round(60  / tf_minutes))
+    _b4h    = max(1, round(240 / tf_minutes))
+    _b24h   = BPD
+    _b7d    = D7
+    min_bars = MIN_HISTORY_BARS   # 500 bars regardless of TF
+
+    if len(klines) < min_bars:
         raise ValueError(
-            f"compute_features_table needs ≥{MIN_HISTORY_BARS} bars of history, "
-            f"got {len(klines)}"
+            f"compute_features_table needs ≥{min_bars} bars of history "
+            f"(tf={tf_minutes}m), got {len(klines)}"
         )
 
     close = klines["close"].astype(float)
@@ -1264,10 +1318,8 @@ def compute_features_table(
     bb_position = ((close - bb_lower) / bb_range.replace(0, np.nan)).fillna(0.5)
 
     # --- Volume ---
-    # 24h rolling volume on 1h bars. Match compute_snapshot which uses
-    # sum of last 24 (or all if <24) — this matches rolling().sum() with
-    # min_periods=1 after the warmup drop.
-    volume_24h = volume.rolling(24, min_periods=1).sum()
+    # 24h rolling volume — BPD bars regardless of timeframe.
+    volume_24h = volume.rolling(_b24h, min_periods=1).sum()
     # vol_ratio_3 = vol[t] / mean(vol[t-1..t-3]) — past 3 bars excluding t
     mean_prev3 = volume.shift(1).rolling(3, min_periods=3).mean()
     vol_ratio_3 = (volume / mean_prev3.replace(0, np.nan)).fillna(1.0)
@@ -1276,16 +1328,15 @@ def compute_features_table(
 
     # --- Structure ---
     log_close_arr = np.log(close.to_numpy())
-    htf_slope = _rolling_linear_slope(log_close_arr, window=120)
+    htf_slope = _rolling_linear_slope(log_close_arr, window=HTF_WIN)   # ~5-day window
     htf_thresh = 0.001
     htf_structure = np.where(
         htf_slope > htf_thresh, HTFStructure.UPTREND.value,
         np.where(htf_slope < -htf_thresh, HTFStructure.DOWNTREND.value, HTFStructure.RANGE.value),
     )
 
-    high_20d_window = 20 * 24  # 480 hourly bars
-    high_20d = high.rolling(high_20d_window, min_periods=1).max()
-    low_20d = low.rolling(high_20d_window, min_periods=1).min()
+    high_20d = high.rolling(D20, min_periods=1).max()
+    low_20d  = low.rolling(D20, min_periods=1).min()
     dist_from_20d_high = ((close - high_20d) / high_20d.replace(0, np.nan)).fillna(0.0)
     dist_from_20d_low = ((close - low_20d) / low_20d.replace(0, np.nan)).fillna(0.0)
     swing_pivot_distance = _rolling_swing_pivot_distance(
@@ -1331,11 +1382,11 @@ def compute_features_table(
         np.where(taker_buy_ratio_1h <= 0.45, CVDState.SELLING.value, CVDState.NEUTRAL.value),
     )
 
-    # --- H. Price changes (pure klines) ---
-    price_change_1h = close.pct_change(1).fillna(0.0)
-    price_change_4h = close.pct_change(4).fillna(0.0)
-    price_change_24h = close.pct_change(24).fillna(0.0)
-    price_change_7d = close.pct_change(168).fillna(0.0)
+    # --- H. Price changes — tf-scaled bar counts ---
+    price_change_1h  = close.pct_change(_b1h).fillna(0.0)
+    price_change_4h  = close.pct_change(_b4h).fillna(0.0)
+    price_change_24h = close.pct_change(_b24h).fillna(0.0)
+    price_change_7d  = close.pct_change(_b7d).fillna(0.0)
 
     # --- I. Additional momentum oscillators ---
     stoch_rsi_series = _stoch_rsi(rsi14, 14)
@@ -1343,7 +1394,7 @@ def compute_features_table(
     cci_series = _cci(high, low, close, 20)
 
     # --- J. Price relative ---
-    vwap_ratio_series = _vwap_ratio(close, volume, 24)
+    vwap_ratio_series = _vwap_ratio(close, volume, _b24h)
     price_vs_ema200 = ((close - ema200) / ema200.replace(0, np.nan)).fillna(0.0)
 
     # --- K. Candle structure ---
@@ -1413,11 +1464,13 @@ def compute_features_table(
     price_vs_ema20_col = ((close - ema20) / ema20.replace(0, np.nan)).fillna(0.0)
     price_vs_ema100_col = ((close - ema100_s) / ema100_s.replace(0, np.nan)).fillna(0.0)
 
-    # --- W. Historical volatility ---
-    hvol24_col = _hist_vol(close, 24)
-    hvol7d_col = _hist_vol(close, 168)
+    # --- W. Historical volatility — tf-scaled periods + annualisation ---
+    _vol_p24 = max(2, _b24h)
+    _vol_p7d = max(2, _b7d)
+    hvol24_col = _hist_vol(close, _vol_p24, BPY)
+    hvol7d_col = _hist_vol(close, _vol_p7d, BPY)
     vol_regime_col = (hvol24_col / hvol7d_col.replace(0, np.nan)).fillna(1.0).clip(0.1, 5.0)
-    parkinson_col = _parkinson_vol(high, low, 24)
+    parkinson_col = _parkinson_vol(high, low, _vol_p24, BPY)
 
     # --- X. MACD extensions ---
     ema12_col = _ema(close, 12)
@@ -1425,19 +1478,19 @@ def compute_features_table(
     macd_line_col = ((ema12_col - ema26_col) / close.replace(0, np.nan)).fillna(0.0)
     macd_hist_slope_col = macd_hist.diff(3).fillna(0.0)
 
-    # --- Y. Volume profile ---
-    volume_7d_col = volume.rolling(168, min_periods=1).sum()
-    mean_vol_24_col = volume.shift(1).rolling(24, min_periods=24).mean()
+    # --- Y. Volume profile — tf-scaled ---
+    volume_7d_col = volume.rolling(_b7d, min_periods=1).sum()
+    mean_vol_24_col = volume.shift(1).rolling(_b24h, min_periods=_b24h).mean()
     vol_ratio_24_col = (volume / mean_vol_24_col.replace(0, np.nan)).fillna(1.0)
-    taker_buy_24h_col = taker_buy.rolling(24, min_periods=1).sum()
-    vol_24h_col = volume.rolling(24, min_periods=1).sum()
+    taker_buy_24h_col = taker_buy.rolling(_b24h, min_periods=1).sum()
+    vol_24h_col = volume.rolling(_b24h, min_periods=1).sum()
     taker_buy_ratio_24h_col = (taker_buy_24h_col / vol_24h_col.replace(0, np.nan)).clip(0.0, 1.0).fillna(0.5)
     # vol_ratio_3 already computed above
     vol_acceleration_col = (vol_ratio_3 / vol_ratio_24_col.replace(0, np.nan)).fillna(1.0).clip(0.1, 10.0)
 
     # --- Z. Price structure ---
-    high_7d_col = high.rolling(168, min_periods=1).max()
-    low_7d_col = low.rolling(168, min_periods=1).min()
+    high_7d_col = high.rolling(_b7d, min_periods=1).max()
+    low_7d_col = low.rolling(_b7d, min_periods=1).min()
     range_7d_col = (high_7d_col - low_7d_col).replace(0, np.nan)
     range_7d_pos_col = ((close - low_7d_col) / range_7d_col).fillna(0.5).clip(0.0, 1.0)
     gap_pct_col = ((open_ - close.shift(1)) / close.shift(1).replace(0, np.nan)).fillna(0.0)
