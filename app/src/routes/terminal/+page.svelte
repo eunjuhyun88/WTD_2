@@ -45,6 +45,7 @@
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
   let trendingData = $state<any>(null);
   let scannerAlerts = $state<any[]>([]);
+  let ohlcvBars = $state<any[]>([]);
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -314,9 +315,22 @@
     if (!activeSymbol) activeSymbol = symbol;
 
     try {
-      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`);
-      if (!res.ok) throw new Error(`analyze ${res.status}`);
-      const data = await res.json();
+      // Fetch analysis + OHLCV in parallel
+      const interval = tf === '1d' ? '4h' : tf === '4h' ? '1h' : tf === '1h' ? '15m' : '5m';
+      const [analyzeRes, ohlcvRes] = await Promise.allSettled([
+        fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
+        fetch(`/api/market/ohlcv?symbol=${symbol}&interval=${interval}&limit=100`),
+      ]);
+
+      if (analyzeRes.status !== 'fulfilled' || !analyzeRes.value.ok)
+        throw new Error(`analyze ${analyzeRes.status === 'fulfilled' ? analyzeRes.value.status : 'failed'}`);
+      const data = await analyzeRes.value.json();
+
+      // Load OHLCV bars (non-blocking)
+      if (ohlcvRes.status === 'fulfilled' && ohlcvRes.value.ok) {
+        const ohlcv = await ohlcvRes.value.json();
+        ohlcvBars = ohlcv.bars ?? [];
+      }
 
       analysisData = data;
       const asset = buildAssetFromAnalysis(symbol, data);
@@ -643,6 +657,7 @@
               asset={heroAsset}
               verdict={heroVerdict}
               evidence={heroEvidence}
+              bars={ohlcvBars}
               onPin={() => {}}
               onViewDetail={() => { selectAsset(heroAsset!.symbol); rightPanelTab = 'summary'; showRightPanel = true; }}
             />
