@@ -173,6 +173,21 @@ class PatternStateMachine:
                 result[sym] = self.pattern.phases[state.current_phase_idx].phase_id
         return result
 
+    def get_all_states_rich(self) -> dict[str, dict]:
+        """Return rich state dict {symbol: {phase_id, phase_idx, entered_at, bars_in_phase}}."""
+        result = {}
+        for sym, state in self._states.items():
+            if state.invalidated:
+                continue
+            phase = self.pattern.phases[state.current_phase_idx]
+            result[sym] = {
+                "phase_id": phase.phase_id,
+                "phase_idx": state.current_phase_idx,
+                "entered_at": state.phase_entered_at.isoformat() if state.phase_entered_at else None,
+                "bars_in_phase": state.bars_in_phase,
+            }
+        return result
+
     def reset_symbol(self, symbol: str) -> None:
         """Force reset a specific symbol."""
         if symbol in self._states:
