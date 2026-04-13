@@ -40,14 +40,6 @@
   const blocksPositive = $derived(blocksTriggered.filter((b: string) => !DISQUALIFIERS.has(b)));
   const blocksNegative = $derived(blocksTriggered.filter((b: string) => DISQUALIFIERS.has(b)));
 
-  function pWinColor(p: number | null): string {
-    if (p == null) return 'rgba(247, 242, 234, 0.4)';
-    if (p >= 0.60) return 'var(--sc-good, #adca7c)';
-    if (p >= 0.55) return 'rgba(173, 202, 124, 0.72)';
-    if (p <= 0.45) return 'var(--sc-bad, #cf7f8f)';
-    return 'rgba(247, 242, 234, 0.72)';
-  }
-
   function pWinLabel(p: number | null): string {
     if (p == null) return 'untrained';
     return `${(p * 100).toFixed(1)}%`;
