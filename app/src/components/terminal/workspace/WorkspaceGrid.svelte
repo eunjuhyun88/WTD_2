@@ -2,7 +2,6 @@
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import VerdictCard from './VerdictCard.svelte';
   import AssetInsightCard from './AssetInsightCard.svelte';
-  import ChartBoard from './ChartBoard.svelte';
 
   interface Props {
     layout: 'hero3' | 'compare2x2' | 'focus';
@@ -10,7 +9,6 @@
     verdicts: Record<string, TerminalVerdict>;
     evidence: Record<string, TerminalEvidence[]>;
     activeSymbol?: string;
-    showChart?: boolean;
     onSelect?: (symbol: string) => void;
     onViewDetail?: (symbol: string) => void;
   }
@@ -21,32 +19,9 @@
     verdicts = {},
     evidence = {},
     activeSymbol,
-    showChart = true,
     onSelect,
     onViewDetail,
   }: Props = $props();
-
-  async function handleSaveSetup(snap: { symbol: string; timestamp: number; tf: string }) {
-    try {
-      // POST to engine catch-all proxy → engine /challenge/create
-      const res = await fetch('/api/engine/challenge/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: snap.symbol,
-          timestamp: snap.timestamp,
-          tf: snap.tf,
-          label: 'setup',
-        }),
-      });
-      if (res.ok) {
-        console.log('[Challenge] Setup saved:', snap);
-        // TODO: show toast notification
-      }
-    } catch (e) {
-      console.warn('[Challenge] Save failed:', e);
-    }
-  }
 
   // Hero asset = first in list, or the activeSymbol
   let heroAsset = $derived(
@@ -76,12 +51,6 @@
     <!-- ── Hero+3: large card left, 3 compact right ── -->
     <div class="hero-slot">
       {#if heroAsset && verdicts[heroAsset.symbol]}
-        {#if showChart}
-          <ChartBoard
-            symbol={heroAsset.symbol}
-            onSaveSetup={handleSaveSetup}
-          />
-        {/if}
         <VerdictCard
           asset={heroAsset}
           verdict={verdicts[heroAsset.symbol]}
