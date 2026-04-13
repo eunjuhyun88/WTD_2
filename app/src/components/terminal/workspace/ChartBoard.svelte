@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
   import type { UTCTimestamp } from 'lightweight-charts';
 
@@ -67,10 +67,11 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+      loading = false;       // show chart divs first
+      await tick();          // wait for DOM update
       renderCharts(data);
     } catch (e) {
       error = String(e);
-    } finally {
       loading = false;
     }
   }
