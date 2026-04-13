@@ -290,6 +290,7 @@ function groupApiRoute(route) {
   if (
     route === '/api/coinalyze' ||
     route.startsWith('/api/coingecko/') ||
+    route.startsWith('/api/engine/') ||
     route.startsWith('/api/etherscan/') ||
     route === '/api/feargreed' ||
     route.startsWith('/api/macro/') ||

@@ -4108,7 +4108,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
     - UI/문구: `MAXI⚡DOGE`, `MAXI DOGE`, `MAXI-DOGE`, `MAXIDOGE` -> `STOCKCLAW`
     - 소문자 식별자: `maxidoge*`, `maxi-doge*` -> `stockclaw*`
   - 대표 변경 파일:
-    - `package.json`, `package-lock.json` (`stockclaw-unified`)
+    - `package.json`, `package-lock.json` (legacy Stockclaw package name)
     - `src/lib/server/session.ts` (`stockclaw_session`)
     - `src/lib/stores/storageKeys.ts` (`stockclaw_*` localStorage key)
     - `src/lib/server/polymarketClob.ts` (`User-Agent: STOCKCLAW/1.0`)
