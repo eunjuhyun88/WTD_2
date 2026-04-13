@@ -25,6 +25,8 @@
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
+  import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
+  import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
 
   // Mobile components
   import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
@@ -53,6 +55,13 @@
   let isStreaming = $state(false);
   let streamText = $state('');
   let loadingSymbols = $state(new Set<string>());
+
+  // ── Pattern Engine state ───────────────────────────────────
+  interface PatternPhaseRow { slug: string; phaseName: string; symbols: string[]; }
+  let patternPhases = $state<PatternPhaseRow[]>([]);
+
+  // ── Capture modal ──────────────────────────────────────────
+  let showCaptureModal = $state(false);
 
   // ── Chart price-level overlays (entry / target / stop) ───────
   // Extracted from deep.atr_levels after each analysis; passed to ChartBoard
@@ -418,6 +427,25 @@
     } catch {}
   }
 
+  async function loadPatternPhases() {
+    try {
+      const res = await fetch('/api/patterns/states');
+      if (!res.ok) return;
+      const data = await res.json();
+      // data: { states: { symbol: { slug: { current_phase, phase_name, ... } } } }
+      const states: Record<string, Record<string, any>> = data.states ?? {};
+      // Invert: slug → { phaseName, symbols[] }
+      const bySlug: Record<string, { phaseName: string; symbols: string[] }> = {};
+      for (const [sym, slugMap] of Object.entries(states)) {
+        for (const [slug, info] of Object.entries(slugMap as Record<string, any>)) {
+          if (!bySlug[slug]) bySlug[slug] = { phaseName: info.phase_name ?? info.current_phase ?? '', symbols: [] };
+          bySlug[slug].symbols.push(sym.replace('USDT', ''));
+        }
+      }
+      patternPhases = Object.entries(bySlug).map(([slug, v]) => ({ slug, ...v }));
+    } catch {}
+  }
+
   // ─── SSE Command Flow ─────────────────────────────────────────
 
   async function sendCommand(text: string, _files?: File[]) {
@@ -561,9 +589,11 @@
     loadTrending();
     loadNews();
     loadAlerts();
+    loadPatternPhases();
     flowInterval = setInterval(() => loadFlow(gPair, symbolToTF(gTf)), 15_000);
     trendingInterval = setInterval(loadTrending, 60_000);
-    setInterval(loadAlerts, 5 * 60_000);  // refresh alerts every 5 min
+    setInterval(loadAlerts, 5 * 60_000);
+    setInterval(loadPatternPhases, 60_000);  // refresh pattern states every 1 min
   });
 
   onDestroy(() => {
@@ -678,6 +708,7 @@
     assetsCount={boardAssets.length}
     onLayout={switchLayout}
     onClear={clearBoard}
+    onCapture={() => showCaptureModal = true}
   />
 
   <!-- 3-column body -->
@@ -691,6 +722,8 @@
       <TerminalLeftRail
         {trendingData}
         alerts={scannerAlerts}
+        {patternPhases}
+        {activeSymbol}
         onQuery={handleQueryChip}
       />
     </aside>
@@ -704,23 +737,18 @@
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board">
 
-        <!-- ── Chart area — center, full height ── -->
+        <!-- ── Chart area — hero, full height ── -->
         <div class="chart-area">
-          <PatternStatusBar />
           <ChartBoard
             symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
             tf={symbolToTF(gTf)}
             verdictLevels={chartLevels}
             onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
-            onSaveSetup={async (snap) => {
-              try {
-                await fetch('/api/engine/challenge/create', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(snap),
-                });
-              } catch {}
-            }}
+          />
+          <PatternStatusBar />
+          <EvidenceStrip
+            evidence={activeEvidence}
+            onExpand={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
           />
         </div>
 
@@ -787,21 +815,82 @@
               </div>
             {/if}
 
-          <!-- MODE A — Single asset full analysis -->
+          <!-- MODE A — Single asset compact verdict -->
           {:else if isLoadingActive && !heroVerdict}
             <div class="board-loading">
               <div class="loading-ring"></div>
               <p class="loading-msg">Analyzing {activePairDisplay}…</p>
             </div>
           {:else if heroAsset && heroVerdict}
-            <VerdictCard
-              asset={heroAsset}
-              verdict={heroVerdict}
-              evidence={heroEvidence}
-              bars={ohlcvBars}
-              onPin={() => {}}
-              onViewDetail={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
-            />
+            <div class="compact-verdict">
+              <!-- Bias header -->
+              <div class="cv-bias" class:bullish={heroVerdict.direction === 'bullish'} class:bearish={heroVerdict.direction === 'bearish'}>
+                <span class="cv-dot">●</span>
+                <span class="cv-dir">{heroVerdict.direction?.toUpperCase() ?? 'NEUTRAL'}</span>
+                <span class="cv-conf">{heroVerdict.confidence}</span>
+                <span class="cv-sym">{heroAsset.symbol.replace('USDT','')} · {$activePairState.timeframe.toUpperCase()}</span>
+              </div>
+
+              <!-- Price strip -->
+              <div class="cv-price">
+                <span class="cv-last">{heroAsset.lastPrice > 0 ? heroAsset.lastPrice.toLocaleString('en-US',{maximumFractionDigits:2}) : '—'}</span>
+                <span class="cv-meta">Vol {heroAsset.volumeRatio1h.toFixed(1)}×</span>
+                <span class="cv-meta">F {(heroAsset.fundingRate*100).toFixed(3)}%</span>
+              </div>
+
+              <!-- Action -->
+              {#if heroVerdict.action && heroVerdict.action !== '—'}
+                <div class="cv-action">{heroVerdict.action}</div>
+              {/if}
+
+              <!-- WHY -->
+              {#if heroVerdict.reason}
+                <div class="cv-section">
+                  <span class="cv-label">WHY</span>
+                  <p class="cv-text">{heroVerdict.reason}</p>
+                </div>
+              {/if}
+
+              <!-- AGAINST -->
+              {#if heroVerdict.against?.length}
+                <div class="cv-section">
+                  <span class="cv-label">AGAINST</span>
+                  <div class="cv-tags">
+                    {#each heroVerdict.against as a}
+                      <span class="cv-tag warn">{a}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+
+              <!-- LEVELS -->
+              {#if chartLevels.entry || chartLevels.stop || chartLevels.target}
+                <div class="cv-section">
+                  <span class="cv-label">LEVELS</span>
+                  <div class="cv-levels">
+                    {#if chartLevels.entry}
+                      <div class="cv-level"><span class="lv-name">Entry</span><span class="lv-val">{chartLevels.entry.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
+                    {/if}
+                    {#if chartLevels.stop}
+                      <div class="cv-level bad"><span class="lv-name">Stop</span><span class="lv-val">{chartLevels.stop.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
+                    {/if}
+                    {#if chartLevels.target}
+                      <div class="cv-level good"><span class="lv-name">TP1</span><span class="lv-val">{chartLevels.target.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
+                    {/if}
+                  </div>
+                </div>
+              {/if}
+
+              <!-- Invalidation -->
+              {#if heroVerdict.invalidation && heroVerdict.invalidation !== '—'}
+                <div class="cv-invalidation">{heroVerdict.invalidation}</div>
+              {/if}
+
+              <!-- Expand to full panel -->
+              <button class="cv-expand" onclick={() => { rightPanelTab = 'summary'; showRightPanel = true; }}>
+                Evidence + Detail →
+              </button>
+            </div>
           {:else}
             <div class="board-empty">
               <p class="empty-icon">◈</p>
@@ -855,6 +944,16 @@
 
   </div>
 </div>
+
+<!-- Capture modal — uses SaveSetupModal which handles its own POST -->
+<SaveSetupModal
+  open={showCaptureModal}
+  symbol={activeSymbol || pairToSymbol(gPair)}
+  timestamp={Math.floor(Date.now() / 1000)}
+  tf={symbolToTF(gTf)}
+  onClose={() => showCaptureModal = false}
+  onSaved={() => showCaptureModal = false}
+/>
 
 <!-- Mobile detail sheet (portal-style, outside grid) -->
 <MobileDetailSheet
@@ -1172,4 +1271,121 @@
   .mobile-board-wrap {
     display: none;
   }
+
+  /* ── Compact Verdict Panel (analysis-rail MODE A) ────────── */
+  .compact-verdict {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .cv-bias {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--sc-terminal-border);
+  }
+  .cv-bias.bullish { background: rgba(74,222,128,0.04); }
+  .cv-bias.bearish { background: rgba(248,113,113,0.04); }
+
+  .cv-dot { font-size: 8px; }
+  .cv-bias.bullish .cv-dot { color: #4ade80; }
+  .cv-bias.bearish .cv-dot { color: #f87171; }
+  .cv-bias:not(.bullish):not(.bearish) .cv-dot { color: rgba(247,242,234,0.3); }
+
+  .cv-dir {
+    font-family: var(--sc-font-mono); font-size: 12px; font-weight: 700;
+    color: var(--sc-text-0);
+  }
+  .cv-conf {
+    font-family: var(--sc-font-mono); font-size: 9px; letter-spacing: 0.06em;
+    color: var(--sc-text-2);
+    background: rgba(255,255,255,0.06); border-radius: 3px; padding: 1px 5px;
+  }
+  .cv-sym {
+    font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-2);
+    margin-left: auto;
+  }
+
+  .cv-price {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--sc-terminal-border);
+  }
+  .cv-last {
+    font-family: var(--sc-font-mono); font-size: 18px; font-weight: 700;
+    color: var(--sc-text-0);
+  }
+  .cv-meta {
+    font-family: var(--sc-font-mono); font-size: 10px;
+    color: var(--sc-text-2);
+  }
+
+  .cv-action {
+    padding: 8px 14px;
+    font-family: var(--sc-font-mono); font-size: 11px; font-weight: 600;
+    color: rgba(173,202,124,0.9);
+    border-bottom: 1px solid var(--sc-terminal-border);
+    background: rgba(173,202,124,0.04);
+  }
+
+  .cv-section {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--sc-terminal-border);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .cv-label {
+    font-family: var(--sc-font-mono); font-size: 8px; font-weight: 700;
+    letter-spacing: 0.12em; color: var(--sc-text-3);
+  }
+  .cv-text {
+    font-family: var(--sc-font-mono); font-size: 11px;
+    color: var(--sc-text-1); margin: 0; line-height: 1.5;
+  }
+
+  .cv-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .cv-tag {
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600;
+    padding: 2px 7px; border-radius: 3px;
+  }
+  .cv-tag.warn { background: rgba(251,191,36,0.1); color: #fbbf24; }
+
+  .cv-levels { display: flex; flex-direction: column; gap: 4px; }
+  .cv-level {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0;
+  }
+  .cv-level.good .lv-val { color: #4ade80; }
+  .cv-level.bad  .lv-val { color: #f87171; }
+  .lv-name {
+    font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2);
+  }
+  .lv-val {
+    font-family: var(--sc-font-mono); font-size: 11px; font-weight: 700;
+    color: var(--sc-text-1);
+  }
+
+  .cv-invalidation {
+    padding: 7px 14px;
+    font-family: var(--sc-font-mono); font-size: 10px;
+    color: rgba(248,113,113,0.7);
+    border-bottom: 1px solid var(--sc-terminal-border);
+  }
+
+  .cv-expand {
+    margin: 10px 14px;
+    font-family: var(--sc-font-mono); font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px; padding: 6px 12px; cursor: pointer;
+    text-align: center; transition: all 0.12s;
+  }
+  .cv-expand:hover { color: var(--sc-text-0); border-color: rgba(255,255,255,0.2); }
 </style>
