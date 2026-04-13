@@ -1,4 +1,11 @@
-"""Result Ledger types — records outcomes of PatternObject instances."""
+"""Result Ledger types — records outcomes of PatternObject instances.
+
+v2 improvements:
+- feature_snapshot: 92-dim vector at entry for reproducibility
+- evaluation_window_hours: configurable verdict evaluation period
+- Expected value calculation in PatternStats
+- BTC-conditional stats in PatternStats
+"""
 from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
@@ -25,11 +32,13 @@ class PatternOutcome:
     phase2_price: float | None = None
     entry_price: float | None = None         # price at ACCUMULATION entry
     peak_price: float | None = None          # highest after entry
+    exit_price: float | None = None          # price at evaluation window close
     invalidation_price: float | None = None
 
     # Result
     outcome: Outcome = "pending"
     max_gain_pct: float | None = None        # (peak - entry) / entry
+    exit_return_pct: float | None = None     # (exit - entry) / entry
     duration_hours: float | None = None
 
     # Market context
@@ -39,12 +48,17 @@ class PatternOutcome:
     user_verdict: Literal["valid", "invalid", "missed"] | None = None
     user_note: str | None = None
 
+    # v2: Feature snapshot for reproducibility
+    feature_snapshot: dict | None = None     # 92-dim features at entry
+
+    # v2: Evaluation config
+    evaluation_window_hours: float = 72.0    # configurable per pattern
+
     created_at: datetime = field(default_factory=lambda: datetime.now())
     updated_at: datetime = field(default_factory=lambda: datetime.now())
 
     def to_dict(self) -> dict:
         d = asdict(self)
-        # Convert datetimes to ISO strings
         for k, v in d.items():
             if isinstance(v, datetime):
                 d[k] = v.isoformat()
@@ -53,7 +67,10 @@ class PatternOutcome:
 
 @dataclass
 class PatternStats:
-    """Aggregated stats for a pattern."""
+    """Aggregated stats for a pattern.
+
+    v2: includes expected_value, avg_loss, btc-conditional rates, decay analysis.
+    """
     pattern_slug: str
     total_instances: int
     pending_count: int
@@ -61,6 +78,14 @@ class PatternStats:
     failure_count: int
     success_rate: float             # success / (success + failure)
     avg_gain_pct: float | None      # avg of successful max_gain_pct
+    avg_loss_pct: float | None      # avg of failure exit_return_pct (negative)
+    expected_value: float | None    # success_rate * avg_gain + failure_rate * avg_loss
     avg_duration_hours: float | None
     recent_30d_count: int
     recent_30d_success_rate: float | None
+    # v2: BTC-conditional stats
+    btc_bullish_rate: float | None
+    btc_bearish_rate: float | None
+    btc_sideways_rate: float | None
+    # v2: Edge decay — is the pattern losing effectiveness?
+    decay_direction: str | None     # "improving" | "stable" | "decaying" | None
