@@ -72,6 +72,20 @@
   interface VerdictLevels { entry?: number; target?: number; stop?: number; }
   let chartLevels = $state<VerdictLevels>({});
 
+  function formatCompactUsd(value: number | null | undefined): string {
+    if (value == null || !Number.isFinite(value)) return '—';
+    const abs = Math.abs(value);
+    if (abs >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
+    if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+    return `$${value.toFixed(0)}`;
+  }
+
+  function formatSignedPct(value: number | null | undefined, digits = 1): string {
+    if (value == null || !Number.isFinite(value)) return '—';
+    return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}%`;
+  }
+
   function extractLevels(data: any): VerdictLevels {
     const deep = data?.deep;
     if (!deep?.atr_levels) return {};
@@ -821,6 +835,22 @@
     ];
   });
 
+  let microstructure = $derived(analysisData?.microstructure ?? null);
+  let depthSnapshot = $derived(microstructure?.depth ?? null);
+  let liqClusters = $derived((microstructure?.liqClusters ?? []).slice(0, 4));
+  let orderbookTone = $derived.by(() => {
+    const ratio = depthSnapshot?.ratio ?? 1;
+    if (ratio >= 1.15) return 'bull';
+    if (ratio <= 0.85) return 'bear';
+    return 'neutral';
+  });
+  let orderbookBiasLabel = $derived.by(() => {
+    const ratio = depthSnapshot?.ratio ?? 1;
+    if (ratio >= 1.15) return 'Bid Heavy';
+    if (ratio <= 0.85) return 'Ask Heavy';
+    return 'Balanced';
+  });
+
   let statusStripItems = $derived.by(() => {
     const regime = metricValue(['Regime', 'Breakout'], flowBias);
     return [
@@ -927,6 +957,70 @@
                   <span class="hero-metric-note">{tile.note}</span>
                 </div>
               {/each}
+            </div>
+          {/if}
+          {#if microstructure}
+            <div class="microstructure-row">
+              <section class="micro-card orderbook-card" data-tone={orderbookTone}>
+                <div class="micro-card-header">
+                  <span class="micro-title">Orderbook</span>
+                  <span class="micro-meta">{orderbookBiasLabel}</span>
+                </div>
+                <div class="micro-stat-row">
+                  <span>Spread {microstructure.spreadBps != null ? `${microstructure.spreadBps.toFixed(1)} bps` : '—'}</span>
+                  <span>Imbalance {formatSignedPct(microstructure.imbalancePct)}</span>
+                  <span>Taker {microstructure.takerRatio != null ? microstructure.takerRatio.toFixed(2) : '—'}</span>
+                </div>
+                {#if depthSnapshot}
+                  <div class="depth-ladders">
+                    <div class="depth-side bids">
+                      {#each depthSnapshot.bids.slice(0, 5) as level}
+                        <div class="depth-row">
+                          <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                          <div class="depth-bar-wrap">
+                            <div class="depth-bar bid" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                    <div class="depth-side asks">
+                      {#each depthSnapshot.asks.slice(0, 5) as level}
+                        <div class="depth-row ask-row">
+                          <div class="depth-bar-wrap ask-wrap">
+                            <div class="depth-bar ask" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
+                          </div>
+                          <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+              </section>
+
+              <section class="micro-card liquidity-card">
+                <div class="micro-card-header">
+                  <span class="micro-title">Liquidity</span>
+                  <span class="micro-meta">Recent force orders</span>
+                </div>
+                <div class="micro-stat-row">
+                  <span>Short Liq {formatCompactUsd(microstructure.liqTotals?.shortUsd)}</span>
+                  <span>Long Liq {formatCompactUsd(microstructure.liqTotals?.longUsd)}</span>
+                </div>
+                <div class="liq-cluster-list">
+                  {#if liqClusters.length > 0}
+                    {#each liqClusters as cluster}
+                      <div class="liq-cluster-row">
+                        <span class="liq-side" data-side={cluster.side}>{cluster.side === 'BUY' ? 'Shorts' : 'Longs'}</span>
+                        <span class="liq-price">{cluster.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                        <span class="liq-distance">{formatSignedPct(cluster.distancePct, 2)}</span>
+                        <span class="liq-usd">{formatCompactUsd(cluster.usd)}</span>
+                      </div>
+                    {/each}
+                  {:else}
+                    <p class="liq-empty">No forced liquidation spikes in the recent window.</p>
+                  {/if}
+                </div>
+              </section>
             </div>
           {/if}
           {#if companionAssets.length > 0}
@@ -1480,6 +1574,132 @@
     padding: 8px 12px 12px;
     overflow: hidden;
   }
+
+  .microstructure-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 12px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.01);
+  }
+  .micro-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.025);
+  }
+  .micro-card[data-tone='bull'] { background: rgba(74,222,128,0.05); }
+  .micro-card[data-tone='bear'] { background: rgba(248,113,113,0.05); }
+  .micro-card-header,
+  .micro-stat-row,
+  .depth-row,
+  .liq-cluster-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .micro-card-header {
+    justify-content: space-between;
+  }
+  .micro-title,
+  .micro-meta,
+  .micro-stat-row span,
+  .depth-price,
+  .liq-side,
+  .liq-price,
+  .liq-distance,
+  .liq-usd {
+    font-family: var(--sc-font-mono);
+  }
+  .micro-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--sc-text-2);
+    text-transform: uppercase;
+  }
+  .micro-meta,
+  .micro-stat-row span,
+  .depth-price,
+  .liq-price,
+  .liq-distance,
+  .liq-usd {
+    font-size: 9px;
+    color: var(--sc-text-2);
+  }
+  .micro-stat-row {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .depth-ladders {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .depth-side {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .depth-row {
+    min-width: 0;
+  }
+  .ask-row {
+    justify-content: flex-end;
+  }
+  .depth-price {
+    width: 78px;
+    flex-shrink: 0;
+  }
+  .depth-bar-wrap {
+    flex: 1;
+    height: 10px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+  .ask-wrap {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .depth-bar {
+    height: 100%;
+    border-radius: 3px;
+  }
+  .depth-bar.bid { background: linear-gradient(90deg, rgba(52,196,112,0.25), rgba(52,196,112,0.75)); }
+  .depth-bar.ask { background: linear-gradient(90deg, rgba(232,85,85,0.75), rgba(232,85,85,0.25)); }
+  .liq-cluster-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .liq-cluster-row {
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.03);
+  }
+  .liq-side {
+    width: 44px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .liq-side[data-side='BUY'] { color: #4ade80; }
+  .liq-side[data-side='SELL'] { color: #f87171; }
+  .liq-price { flex: 1; }
+  .liq-distance { width: 58px; text-align: right; }
+  .liq-usd { width: 64px; text-align: right; color: var(--sc-text-1); }
+  .liq-empty {
+    margin: 0;
+    font-size: 10px;
+    color: var(--sc-text-3);
+  }
   .mini-asset-card {
     display: flex;
     flex-direction: column;
@@ -1603,6 +1823,7 @@
   @media (max-width: 1200px) and (min-width: 769px) {
     .analysis-rail { width: 320px; min-width: 280px; }
     .hero-metrics-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .microstructure-row { grid-template-columns: 1fr; }
   }
 
   /* Mobile */
