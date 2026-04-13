@@ -31,6 +31,28 @@
 
   let boardMode = $state<BoardMode>('board');
 
+  // ── ML Score derived state ──────────────────────────────────────────────
+  const pWin: number | null = $derived(snapshot?.p_win ?? null);
+  const blocksTriggered: string[] = $derived(snapshot?.blocks_triggered ?? []);
+  const ensembleTriggered: boolean = $derived(snapshot?.ensemble_triggered ?? false);
+
+  const DISQUALIFIERS = new Set(['volume_below_average', 'extreme_volatility', 'extended_from_ma']);
+  const blocksPositive = $derived(blocksTriggered.filter((b: string) => !DISQUALIFIERS.has(b)));
+  const blocksNegative = $derived(blocksTriggered.filter((b: string) => DISQUALIFIERS.has(b)));
+
+  function pWinColor(p: number | null): string {
+    if (p == null) return 'rgba(247, 242, 234, 0.4)';
+    if (p >= 0.60) return 'var(--sc-good, #adca7c)';
+    if (p >= 0.55) return 'rgba(173, 202, 124, 0.72)';
+    if (p <= 0.45) return 'var(--sc-bad, #cf7f8f)';
+    return 'rgba(247, 242, 234, 0.72)';
+  }
+
+  function pWinLabel(p: number | null): string {
+    if (p == null) return 'untrained';
+    return `${(p * 100).toFixed(1)}%`;
+  }
+
   function alphaColor(score: number | null | undefined): string {
     if (score == null) return 'var(--sc-text-2, rgba(247, 242, 234, 0.72))';
     if (score >= 20) return 'var(--sc-good, #adca7c)';
@@ -273,6 +295,13 @@
             search {previewCounts.score}
           </span>
         {/if}
+        {#if ensembleTriggered}
+          <span class="headline-ensemble">⬥ ENSEMBLE</span>
+        {:else if pWin != null}
+          <span class="headline-pwin" style={`color:${pWinColor(pWin)}`}>
+            ml {pWinLabel(pWin)}
+          </span>
+        {/if}
       </div>
     </div>
   </div>
@@ -367,6 +396,43 @@
               <strong style={`color:${stat.tone}`}>{stat.value}</strong>
             </div>
           {/each}
+        </div>
+
+        <!-- ML Score Panel -->
+        <div class="ml-score-panel" class:ml-ensemble={ensembleTriggered}>
+          <div class="ml-score-head">
+            <span class="asset-side-title">ML Score</span>
+            {#if ensembleTriggered}
+              <span class="ml-ensemble-badge">ENSEMBLE ⬥</span>
+            {/if}
+          </div>
+          <div class="ml-score-row">
+            <span class="ml-label">P(win)</span>
+            <strong class="ml-value" style={`color:${pWinColor(pWin)}`}>{pWinLabel(pWin)}</strong>
+          </div>
+          {#if blocksPositive.length > 0}
+            <div class="ml-blocks-section">
+              <span class="ml-blocks-label">Active Blocks</span>
+              <div class="ml-chip-row">
+                {#each blocksPositive as block}
+                  <span class="ml-chip ml-chip-active">{block.replace(/_/g, ' ')}</span>
+                {/each}
+              </div>
+            </div>
+          {/if}
+          {#if blocksNegative.length > 0}
+            <div class="ml-blocks-section">
+              <span class="ml-blocks-label ml-blocks-label-warn">Disqualifiers</span>
+              <div class="ml-chip-row">
+                {#each blocksNegative as block}
+                  <span class="ml-chip ml-chip-warn">{block.replace(/_/g, ' ')}</span>
+                {/each}
+              </div>
+            </div>
+          {/if}
+          {#if pWin == null}
+            <p class="ml-untrained-note">Engine not trained yet. Run /train to enable scoring.</p>
+          {/if}
         </div>
       </aside>
     </div>
@@ -954,6 +1020,140 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  /* ── ML Score Panel ─────────────────────────────────────────────────── */
+  .ml-score-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.025);
+    transition: border-color 0.25s;
+  }
+
+  .ml-score-panel.ml-ensemble {
+    border-color: rgba(173, 202, 124, 0.35);
+    background: rgba(173, 202, 124, 0.04);
+  }
+
+  .ml-score-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .ml-ensemble-badge {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sc-good, #adca7c);
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(173, 202, 124, 0.12);
+    border: 1px solid rgba(173, 202, 124, 0.28);
+  }
+
+  .ml-score-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .ml-label {
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 10px;
+    color: rgba(247, 242, 234, 0.5);
+  }
+
+  .ml-value {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .ml-blocks-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ml-blocks-label {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(247, 242, 234, 0.42);
+  }
+
+  .ml-blocks-label-warn {
+    color: rgba(207, 127, 143, 0.72);
+  }
+
+  .ml-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .ml-chip {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .ml-chip-active {
+    background: rgba(173, 202, 124, 0.10);
+    color: rgba(173, 202, 124, 0.88);
+    border: 1px solid rgba(173, 202, 124, 0.18);
+  }
+
+  .ml-chip-warn {
+    background: rgba(207, 127, 143, 0.10);
+    color: rgba(207, 127, 143, 0.88);
+    border: 1px solid rgba(207, 127, 143, 0.18);
+  }
+
+  .ml-untrained-note {
+    margin: 0;
+    font-family: var(--sc-font-body, 'Space Grotesk', sans-serif);
+    font-size: 10px;
+    color: rgba(247, 242, 234, 0.35);
+    line-height: 1.5;
+  }
+
+  /* headline badges */
+  .headline-ensemble {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sc-good, #adca7c);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(173, 202, 124, 0.12);
+    border: 1px solid rgba(173, 202, 124, 0.28);
+    animation: ensemblePulse 2s ease-in-out infinite;
+  }
+
+  .headline-pwin {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  @keyframes ensemblePulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.65; }
   }
 
   .tv-frame-wrap {

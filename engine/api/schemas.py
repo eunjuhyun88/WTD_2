@@ -68,10 +68,11 @@ class EnsembleSignal(BaseModel):
 
 
 class ScoreResponse(BaseModel):
-    snapshot: dict[str, Any]   # SignalSnapshot.model_dump()
-    p_win: Optional[float]     # None until LightGBM is trained
-    blocks_triggered: list[str]  # building blocks that fire on this bar
+    snapshot: dict[str, Any]      # SignalSnapshot.model_dump()
+    p_win: Optional[float]        # None until LightGBM is trained
+    blocks_triggered: list[str]   # building blocks that fire on this bar
     ensemble: Optional[EnsembleSignal] = None  # fused ML + blocks signal
+    ensemble_triggered: bool = False  # convenience: True iff ensemble.confidence in (high, medium) and direction != neutral
 
 
 # =========================================================================

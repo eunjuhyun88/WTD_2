@@ -32,6 +32,30 @@ from scoring.ensemble import compute_ensemble
 log = logging.getLogger("engine.score")
 router = APIRouter()
 
+# Building blocks that disqualify a signal — their presence should NOT count
+# as "confirmation" for the ensemble gate.
+_DISQUALIFIERS = frozenset({"volume_below_average", "extreme_volatility", "extended_from_ma"})
+
+# Minimum ML probability to pass the ensemble gate.
+_ENSEMBLE_P_WIN_THRESHOLD = 0.55
+
+
+def _compute_ensemble(p_win: float | None, blocks_triggered: list[str]) -> bool:
+    """Return True iff ML prob ≥ threshold AND ≥1 non-disqualifier block active
+    AND no disqualifier block is active.
+
+    The dual condition (ML + pattern agreement) is the core of the ensemble
+    filter: a high ML score alone can be spurious; requiring at least one
+    structural block to also fire forces cross-layer consensus.
+    """
+    if p_win is None or p_win < _ENSEMBLE_P_WIN_THRESHOLD:
+        return False
+    triggered_set = set(blocks_triggered)
+    if triggered_set & _DISQUALIFIERS:
+        return False
+    non_disq = triggered_set - _DISQUALIFIERS
+    return len(non_disq) >= 1
+
 
 def _klines_to_df(bars: list) -> pd.DataFrame:
     """Convert list[KlineBar] → DataFrame expected by feature_calc.
@@ -156,10 +180,15 @@ async def score(req: ScoreRequest) -> ScoreResponse:
         regime=snapshot.regime.value if hasattr(snapshot.regime, "value") else str(snapshot.regime),
     )
     ensemble_signal = EnsembleSignal(**ensemble_result.to_dict())
+    ensemble_triggered = (
+        ensemble_signal.confidence in ("high", "medium")
+        and ensemble_signal.direction != "neutral"
+    )
 
     return ScoreResponse(
         snapshot=snapshot.model_dump(mode="json"),
         p_win=p_win,
         blocks_triggered=blocks_triggered,
         ensemble=ensemble_signal,
+        ensemble_triggered=ensemble_triggered,
     )
