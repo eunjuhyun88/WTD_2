@@ -15,6 +15,7 @@
    */
   import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
+  import { normalizeTimeframe } from '$lib/utils/timeframe';
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
@@ -67,8 +68,10 @@
   }
 
   function symbolToTF(tf: string): string {
-    const map: Record<string, string> = { '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d' };
-    return map[tf] ?? '4h';
+    // Normalize both "4H" (CommandBar format) and "4h" (chart format) → lowercase chart format
+    const norm = tf.toLowerCase();
+    const valid = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
+    return valid.includes(norm) ? norm : '4h';
   }
 
   function buildStubAsset(symbol: string): TerminalAsset {
@@ -649,13 +652,13 @@
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board">
 
-        <!-- Pattern entry signal bar -->
-        <PatternStatusBar />
-
-        <!-- Chart pane — always visible in terminal desktop view -->
-        <div class="chart-pane">
+        <!-- ── Chart area — center, full height ── -->
+        <div class="chart-area">
+          <PatternStatusBar />
           <ChartBoard
             symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+            tf={symbolToTF(gTf)}
+            onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
             onSaveSetup={async (snap) => {
               try {
                 await fetch('/api/engine/challenge/create', {
@@ -668,13 +671,14 @@
           />
         </div>
 
-        {#if isLoadingActive && !heroVerdict}
-          <div class="board-loading">
-            <div class="loading-ring"></div>
-            <p class="loading-msg">Analyzing {activePairDisplay}…</p>
-          </div>
-        {:else if heroAsset && heroVerdict}
-          <div class="focus-slot">
+        <!-- ── Analysis rail — right side, always visible ── -->
+        <div class="analysis-rail">
+          {#if isLoadingActive && !heroVerdict}
+            <div class="board-loading">
+              <div class="loading-ring"></div>
+              <p class="loading-msg">Analyzing {activePairDisplay}…</p>
+            </div>
+          {:else if heroAsset && heroVerdict}
             <VerdictCard
               asset={heroAsset}
               verdict={heroVerdict}
@@ -683,27 +687,28 @@
               onPin={() => {}}
               onViewDetail={() => { selectAsset(heroAsset!.symbol); rightPanelTab = 'summary'; showRightPanel = true; }}
             />
-          </div>
-        {:else}
-          <div class="board-empty">
-            <p class="empty-icon">◈</p>
-            <p class="empty-text">Type a query below to analyze {activePairDisplay}</p>
-          </div>
-        {/if}
-
-        {#if isStreaming && streamText}
-          <div class="stream-overlay">
-            <div class="stream-inner">
-              <span class="stream-dot">●</span>
-              <p class="stream-text">{streamText}</p>
+          {:else}
+            <div class="board-empty">
+              <p class="empty-icon">◈</p>
+              <p class="empty-text">{activePairDisplay} 분석을 시작하려면 아래에 입력하세요</p>
             </div>
-          </div>
-        {:else if isStreaming}
-          <div class="stream-overlay minimal">
-            <span class="stream-dot pulsing">●</span>
-            <span class="stream-label">Analyzing…</span>
-          </div>
-        {/if}
+          {/if}
+
+          {#if isStreaming && streamText}
+            <div class="stream-overlay">
+              <div class="stream-inner">
+                <span class="stream-dot">●</span>
+                <p class="stream-text">{streamText}</p>
+              </div>
+            </div>
+          {:else if isStreaming}
+            <div class="stream-overlay minimal">
+              <span class="stream-dot pulsing">●</span>
+              <span class="stream-label">Analyzing…</span>
+            </div>
+          {/if}
+        </div>
+
       </div>
 
       <!-- Desktop bottom dock -->
@@ -825,32 +830,39 @@
     overflow: hidden;
     position: relative;
     display: flex;
+    flex-direction: row;   /* ← chart + analysis side by side */
+    min-height: 0;
+  }
+
+  /* Chart area — center, takes all available width */
+  .chart-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
     flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+  }
+
+  /* Analysis rail — always visible right panel, scrollable */
+  .analysis-rail {
+    width: 380px;
+    min-width: 320px;
+    max-width: 480px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--sc-terminal-bg, #000);
+    position: relative;   /* for stream-overlay */
   }
 
   .right-panel {
     background: var(--sc-terminal-bg, #000);
-    /* border handled by panel-resizer */
     overflow: hidden;
     display: flex;
     flex-direction: column;
     min-height: 0;
-  }
-
-  /* Chart pane — sits above VerdictCard */
-  .chart-pane {
-    flex-shrink: 0;
-    height: 580px;
-    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
-  }
-
-  /* Focus slot — wraps VerdictCard in scrollable container */
-  .focus-slot {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
   }
 
   /* Empty state */
@@ -937,17 +949,23 @@
     }
   }
 
+  /* Tablet — analysis rail gets narrower */
+  @media (max-width: 1200px) and (min-width: 769px) {
+    .analysis-rail { width: 320px; min-width: 280px; }
+  }
+
   /* Mobile */
   @media (max-width: 768px) {
     .terminal-body {
       grid-template-columns: 1fr !important;
     }
-    .left-rail { display: none; }
-    .right-panel { display: none; }
+    .left-rail     { display: none; }
+    .right-panel   { display: none; }
     .panel-resizer { display: none; }
-    .center-board { height: 100%; }
+    .analysis-rail { display: none; }   /* mobile uses MobileActiveBoard instead */
+    .center-board  { height: 100%; }
     .desktop-board { display: none; }
-    .desktop-dock { display: none; }
+    .desktop-dock  { display: none; }
     .mobile-board-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
   }
 
