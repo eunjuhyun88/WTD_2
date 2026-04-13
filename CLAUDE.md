@@ -36,6 +36,41 @@ app/      SvelteKit — frontend + Supabase + API routes
 
 ---
 
+## ✅ CHECKPOINT — 2026-04-13 (SESSION 4 — DOUNI Phase 2: Runtime + 4-mode routing)
+
+### 현재 상태
+- **브랜치**: `claude/cool-darwin`
+- **마지막 커밋**: `6b90865` — feat(douni): Phase 2 runtime store + 4-mode routing
+- **Phase 2 완료**: 4개 파일 (douniRuntime, settings AI탭, terminal 분기, server 처리)
+- **Phase 3**: 다음 세션 (fallback chain + delta 감지)
+
+### Phase 2 완료 파일
+
+| 파일 | 경로 | 역할 |
+|------|------|------|
+| `douniRuntime.ts` | `app/src/lib/stores/` | 4-mode store (TERMINAL/HEURISTIC/OLLAMA/API) + localStorage 영속 |
+| `settings/+page.svelte` | `app/src/routes/settings/` | AI 탭: 모드 선택, provider, API 키, ollama 설정, 테스트 버튼 |
+| `terminal/+page.svelte` | `app/src/routes/terminal/` | sendCommand() 분기 — TERMINAL 배너, runtimeConfig body 전송 |
+| `message/+server.ts` | `app/src/routes/api/cogochi/terminal/message/` | HEURISTIC 템플릿, API user-key 스트림, OLLAMA provider 강제 |
+
+### 4-mode 동작 정리
+
+| 모드 | 서버 동작 | 비고 |
+|------|-----------|------|
+| TERMINAL | 클라이언트 배너만 표시 | 서버 미호출 |
+| HEURISTIC | `buildHeuristicText()` → SSE 스트림 | LLM 없음, 스냅샷 템플릿 |
+| OLLAMA | `resolvedProvider = 'ollama'` | 서버 env OLLAMA_BASE_URL 사용 |
+| API | `streamWithUserKey()` — 사용자 키로 직접 호출 | tool loop 없음 (MVP) |
+
+### 다음 세션 작업 (Phase 3)
+
+1. **fallback chain** — API 실패 → HEURISTIC 자동 전환 → 침묵 버그 완전 제거
+2. **delta 감지** — prevSnapshot vs currentSnapshot diff → 변화 없으면 "변화 없음" 한 줄
+3. **API mode tool support** — `callLLMStreamWithTools`에 `userApiKey` 오버라이드 추가
+4. **OLLAMA custom endpoint** — runtimeConfig.ollamaEndpoint → 서버 전달
+
+---
+
 ## ✅ CHECKPOINT — 2026-04-13 (SESSION 3 — DOUNI AI Researcher 설계)
 
 ### 현재 상태
