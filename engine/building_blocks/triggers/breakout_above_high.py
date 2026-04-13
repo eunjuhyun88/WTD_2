@@ -33,7 +33,15 @@ def breakout_above_high(
     if lookback_days <= 0:
         raise ValueError(f"lookback_days must be > 0, got {lookback_days}")
 
-    lookback_bars = lookback_days * 24
+    # Infer bar duration from klines index to convert days → bars correctly.
+    # For 1H klines: 24 bars/day; for 4H: 6; for 1D: 1. Fall back to 24 (1H).
+    idx = ctx.klines.index
+    if len(idx) >= 2:
+        delta = (idx[1] - idx[0]).total_seconds()
+        bars_per_day = max(1, round(86400 / delta))
+    else:
+        bars_per_day = 24
+    lookback_bars = lookback_days * bars_per_day
     close = ctx.klines["close"]
     high = ctx.klines["high"]
     prev_high_max = high.shift(1).rolling(lookback_bars, min_periods=lookback_bars).max()
