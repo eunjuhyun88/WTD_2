@@ -183,3 +183,84 @@ class TrainResponse(BaseModel):
     auc: float
     n_samples: int
     model_version: str           # timestamp-based version identifier
+
+
+# =========================================================================
+# POST /deep  — full market_engine DeepResult
+# =========================================================================
+
+
+class DeepPerpData(BaseModel):
+    """Extended derivatives data for the market_engine pipeline.
+
+    All fields optional — missing values score 0 in the corresponding layer.
+    Units follow Binance perpetual API conventions:
+      fr         : raw decimal (0.0001 = 0.01% / 8h)
+      oi_pct     : percent change (5.0 = +5%)
+      oi_notional: USD notional (raw OI coins × mark_price)
+      vol_24h    : 24h quote volume in USD
+    """
+
+    fr: Optional[float] = None            # funding rate (raw decimal)
+    oi_pct: Optional[float] = None        # OI % change vs 1h ago
+    ls_ratio: Optional[float] = None      # top-trader long/short ratio
+    taker_ratio: Optional[float] = None   # taker buy / sell volume ratio
+    price_pct: Optional[float] = None     # price % change last period
+
+    oi_notional: Optional[float] = None   # OI in USD (raw OI × mark_price)
+    vol_24h: Optional[float] = None       # 24h volume in USD (quoteVolume)
+    mark_price: Optional[float] = None    # mark price (perpetual)
+    index_price: Optional[float] = None   # underlying index price
+
+    short_liq_usd: float = 0.0   # forceOrders BUY side (shorts force-closed → USD)
+    long_liq_usd: float = 0.0    # forceOrders SELL side (longs force-closed → USD)
+
+
+class DeepRequest(BaseModel):
+    symbol: str
+    klines: list[KlineBar] = Field(..., min_length=1)
+    perp: DeepPerpData = Field(default_factory=DeepPerpData)
+
+
+class LayerOut(BaseModel):
+    """Serialisable form of market_engine.types.LayerResult."""
+    score: float
+    sigs: list[dict[str, str]]  # [{"t": "...", "type": "bull|bear|neut|warn"}]
+    meta: dict[str, Any]
+
+
+class DeepResponse(BaseModel):
+    symbol: str
+    total_score: float           # clipped to [-100, 100]
+    verdict: str                 # STRONG BULL | BULLISH | ... | STRONG BEAR
+    layers: dict[str, LayerOut]  # per-layer breakdown
+    atr_levels: dict[str, Any]   # Chandelier stop/TP levels from l15_atr
+    alpha: Optional[dict[str, Any]] = None    # S-series alpha (if spot data provided)
+    hunt_score: Optional[int] = None
+
+
+# =========================================================================
+# GET /universe  — CoinMarketCap-style token list
+# =========================================================================
+
+
+class TokenInfo(BaseModel):
+    """Single token row in the universe response."""
+    rank: int
+    symbol: str           # e.g. "BTCUSDT"
+    base: str             # e.g. "BTC"
+    name: str             # e.g. "Bitcoin"
+    sector: str           # e.g. "L1" | "DeFi" | "AI" | "Meme" | ...
+    price: float
+    pct_24h: float        # % price change 24h
+    vol_24h_usd: float    # 24h quote volume USD
+    market_cap: float     # approx: price × circulating supply (0 if unknown)
+    oi_usd: float         # open interest USD (futures only, 0 for spot-only)
+    is_futures: bool      # True if Binance perpetual exists
+    trending_score: float # composite rank score for "hot" ordering
+
+
+class UniverseResponse(BaseModel):
+    total: int
+    tokens: list[TokenInfo]
+    updated_at: str  # ISO-8601

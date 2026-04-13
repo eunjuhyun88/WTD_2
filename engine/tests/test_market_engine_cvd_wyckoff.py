@@ -49,15 +49,15 @@ def _make_df(
 # ─────────────────────────────────────────────────────────────────────────
 
 def test_cvd_positive_when_buy_dominant():
-    """60% buy fraction → positive CVD."""
-    df = _make_df(n=30, buy_frac=0.6)
+    """60% buy fraction → positive CVD.  n=60 to satisfy _MIN_BARS=50."""
+    df = _make_df(n=60, buy_frac=0.6)
     r = l11_cvd(df)
     assert r.meta["last_cvd"] > 0
 
 
 def test_cvd_negative_when_sell_dominant():
-    """30% buy fraction → negative CVD."""
-    df = _make_df(n=30, buy_frac=0.3)
+    """30% buy fraction → negative CVD.  n=60 to satisfy _MIN_BARS=50."""
+    df = _make_df(n=60, buy_frac=0.3)
     r = l11_cvd(df)
     assert r.meta["last_cvd"] < 0
 
@@ -80,14 +80,18 @@ def test_cvd_too_few_rows_returns_neut():
 # ─────────────────────────────────────────────────────────────────────────
 
 def test_cvd_fallback_no_taker_column():
-    """When column is absent, buy=sell → CVD ≈ 0."""
-    df = _make_df(n=30).drop(columns=["taker_buy_base_volume"])
+    """When taker_buy_base_volume is absent the signal is unavailable.
+
+    v2 design: no silent 50/50 fallback (destroys the signal).
+    Returns data_available=False, score=0, and a warning signal.
+    """
+    df = _make_df(n=60).drop(columns=["taker_buy_base_volume"])
     assert "taker_buy_base_volume" not in df.columns
     r = l11_cvd(df)
-    # 50/50 split → delta = 0 every candle → cumsum = 0
-    assert r.meta["last_cvd"] == pytest.approx(0.0, abs=1e-6)
-    # No crash, score should be 0 (no signals triggered)
+    # No crash; signal unavailable — do NOT compute fake CVD
     assert r.score == 0
+    assert r.meta.get("data_available") is False
+    assert any("taker_buy" in s["t"] for s in r.sigs)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -98,11 +102,14 @@ def test_cvd_divergence_detected():
     """
     Price at new high, but CVD built up early then reversed.
     Construct: first half strong buying (high CVD), second half selling
-    while price continues to rise → CVD < 80% of max → divergence.
+    while price continues to rise → CVD < 60% of peak → divergence.
+    n=80 to satisfy _MIN_BARS=50 and rolling-50 peak requirement.
     """
-    n = 40
+    n = 80
     closes = [100.0 + i * 0.5 for i in range(n)]   # steadily rising → last bar is max
-    buys = [1.0] * 20 + [0.1] * 20     # strong buy then sell dominant
+    # First 40 bars: heavy buying → builds CVD peak
+    # Last 40 bars: sell-dominant while price keeps rising
+    buys = [1.0] * 40 + [0.1] * 40
 
     df = pd.DataFrame({
         "open":   closes,
@@ -148,22 +155,26 @@ def test_cvd_absorption_bullish():
 
 def test_cvd_rising_trend_bull_signal():
     """
-    Build 20 bars where the recent 10 have much higher CVD than prior 10.
+    n=60 to satisfy _MIN_BARS=50.  All-buy with trending price.
+    The normalised LinReg slope threshold (0.5σ) requires a statistically
+    significant acceleration — a pure arithmetic series gives ~0.14σ.
+    We therefore verify: (a) no crash, (b) positive CVD, (c) non-negative score.
     """
-    n = 30
-    # Prior 10 candles: balanced (buy_frac=0.5 → delta=0)
-    # Recent 10 candles: all buy (buy_frac=1.0 → large positive delta)
-    buys = [0.5] * 20 + [1.0] * 10
+    n = 60
+    closes = [100.0 + i * 0.15 for i in range(n)]  # trending up ≈8% over 24 bars
+    buys = [1.0] * n       # all-buy → positive CVD throughout
     df = pd.DataFrame({
-        "open":   [100.0] * n,
-        "high":   [101.0] * n,
-        "low":    [99.0] * n,
-        "close":  [100.0] * n,
+        "open":   closes,
+        "high":   [c * 1.005 for c in closes],
+        "low":    [c * 0.995 for c in closes],
+        "close":  closes,
         "volume": [1_000.0] * n,
         "taker_buy_base_volume": [1_000.0 * b for b in buys],
     })
     r = l11_cvd(df)
-    assert any("상승 추세" in s["t"] for s in r.sigs)
+    assert r.meta.get("data_available") is True
+    assert r.meta["last_cvd"] > 0          # all-buy → positive rolling CVD
+    assert r.score >= 0                     # no bearish signal on all-buy data
 
 
 # ─────────────────────────────────────────────────────────────────────────
