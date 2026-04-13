@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "main-dev",
+      "name": "worktree-5180",
       "runtimeExecutable": "/bin/bash",
-      "runtimeArgs": ["-c", "cd /Users/ej/Projects/wtd-v2/app && node_modules/.bin/vite dev --port 5173"],
-      "port": 5173
+      "runtimeArgs": ["-c", "cd /Users/ej/Projects/wtd-v2/.claude/worktrees/jovial-cori/app && node_modules/.bin/vite dev --port 5180"],
+      "port": 5180
     }
   ]
 }

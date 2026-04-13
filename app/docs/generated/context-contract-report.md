@@ -2,4 +2,4 @@
 
 | Surface | Kind | Value | Status |
 | --- | --- | --- | --- |
-| `core` | route | `/` | ok |
+| `core` | spec-missing | `docs/product-specs/core.md` | fail |

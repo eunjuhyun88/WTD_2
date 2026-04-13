@@ -1,0 +1,28 @@
+# env
+.env
+.env.local
+.env.production.local
+.env*.local
+
+# deps
+node_modules/
+.venv/
+__pycache__/
+
+# build
+.svelte-kit/
+build/
+dist/
+
+# IDE
+.DS_Store
+.idea/
+.vscode/
+
+# claude
+.claude/worktrees/
+
+# local agent/worktree artifacts
+.claire/
+app/memory/memory/
+engine/data_cache/cache/
