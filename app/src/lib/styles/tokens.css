@@ -151,6 +151,47 @@
   --sc-bottom-bar-h: 28px;
   --sc-tab-strip-h: 34px;
 
+  /* ── TERMINAL LAYOUT ── */
+  --terminal-left-w: 240px;
+  --terminal-right-w: 320px;
+  --terminal-cmd-bar-h: 40px;
+  --terminal-bottom-dock-h: 72px;
+
+  /* ── TERMINAL SURFACES (pure black, Bloomberg-style) ── */
+  --sc-terminal-bg: #000000;
+  --sc-terminal-surface: #0a0a0a;
+  --sc-terminal-surface-hi: #111111;
+  --sc-terminal-panel: #0d0d0d;
+  --sc-terminal-border: rgba(255, 255, 255, 0.07);
+  --sc-terminal-border-soft: rgba(255, 255, 255, 0.04);
+  --sc-terminal-border-hard: rgba(255, 255, 255, 0.12);
+
+  /* ── TERMINAL SOURCE CATEGORY COLORS ── */
+  /* Market: blue-gray — live price/depth data */
+  --sc-source-market-rgb: 99, 179, 237;
+  --sc-source-market: rgb(99, 179, 237);
+  --sc-source-market-bg: rgba(99, 179, 237, 0.10);
+  /* Derived: amber — computed from market data */
+  --sc-source-derived-rgb: 251, 191, 36;
+  --sc-source-derived: rgb(251, 191, 36);
+  --sc-source-derived-bg: rgba(251, 191, 36, 0.10);
+  /* News: neutral gray — external news/events */
+  --sc-source-news-rgb: 156, 163, 175;
+  --sc-source-news: rgb(156, 163, 175);
+  --sc-source-news-bg: rgba(156, 163, 175, 0.10);
+  /* Model: violet — AI model outputs */
+  --sc-source-model-rgb: 167, 139, 250;
+  --sc-source-model: rgb(167, 139, 250);
+  --sc-source-model-bg: rgba(167, 139, 250, 0.10);
+
+  /* ── TERMINAL BIAS COLORS ── */
+  --sc-bias-bull: #4ade80;
+  --sc-bias-bull-bg: rgba(74, 222, 128, 0.10);
+  --sc-bias-bear: #f87171;
+  --sc-bias-bear-bg: rgba(248, 113, 113, 0.10);
+  --sc-bias-neutral: rgba(247, 242, 234, 0.48);
+  --sc-bias-neutral-bg: rgba(247, 242, 234, 0.06);
+
   /* ── BREAKPOINTS (reference — use in @media queries) ── */
   /* xs: 0-479 | sm: 480-767 | md: 768-1023 | lg: 1024+ | xl: 1280+ */
   --sc-bp-xs: 480px;

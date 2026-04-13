@@ -97,7 +97,11 @@ async function cqFetch<T>(path: string): Promise<T | null> {
 // ─── Data Fetchers ────────────────────────────────────────────
 
 export async function fetchExchangeReserve(token: 'btc' | 'eth' = 'btc'): Promise<CQExchangeReserve | null> {
-  const data = await cqFetch<any>(`/${token}/exchange-flows/reserve?window=day&limit=2`);
+  // Try primary path, then fallback
+  let data = await cqFetch<any>(`/${token}/exchange-flows/reserve?window=day&limit=2`);
+  if (!data) {
+    data = await cqFetch<any>(`/${token}/exchange-flows/transactions?window=day&limit=2`);
+  }
   if (!data) return null;
 
   const rows = Array.isArray(data) ? data : data?.data ?? [];
@@ -121,34 +125,52 @@ export async function fetchExchangeReserve(token: 'btc' | 'eth' = 'btc'): Promis
 }
 
 export async function fetchOnchainMetrics(): Promise<CQOnchainMetrics | null> {
-  // Fetch MVRV and NUPL in parallel
-  const [mvrvData, nuplData] = await Promise.allSettled([
+  // CryptoQuant v1 endpoint paths:
+  //   MVRV:  /v1/btc/market-data/mvrv
+  //   NUPL:  /v1/btc/market-data/nupl
+  //   SOPR:  /v1/btc/market-data/sopr
+  //   Puell: /v1/btc/mining/puell-multiple
+  // All accept ?window=day&limit=1
+  const [mvrvData, nuplData, soprData, puellData] = await Promise.allSettled([
     cqFetch<any>('/btc/market-data/mvrv?window=day&limit=1'),
     cqFetch<any>('/btc/market-data/nupl?window=day&limit=1'),
+    cqFetch<any>('/btc/market-data/sopr?window=day&limit=1'),
+    cqFetch<any>('/btc/mining/puell-multiple?window=day&limit=1'),
   ]);
 
-  const mvrvRows = mvrvData.status === 'fulfilled' && mvrvData.value
-    ? (Array.isArray(mvrvData.value) ? mvrvData.value : mvrvData.value?.data ?? [])
-    : [];
-  const nuplRows = nuplData.status === 'fulfilled' && nuplData.value
-    ? (Array.isArray(nuplData.value) ? nuplData.value : nuplData.value?.data ?? [])
-    : [];
+  function extractFirst(result: PromiseSettledResult<any>): any {
+    if (result.status !== 'fulfilled' || !result.value) return null;
+    const d = result.value;
+    const rows = Array.isArray(d) ? d : d?.data ?? [];
+    return rows[0] ?? null;
+  }
 
-  const mvrv = mvrvRows[0] ? Number(mvrvRows[0]?.mvrv ?? mvrvRows[0]?.value) : null;
-  const nupl = nuplRows[0] ? Number(nuplRows[0]?.nupl ?? nuplRows[0]?.value) : null;
+  const mvrvRow = extractFirst(mvrvData);
+  const nuplRow = extractFirst(nuplData);
+  const soprRow = extractFirst(soprData);
+  const puellRow = extractFirst(puellData);
 
-  if (mvrv == null && nupl == null) return null;
+  const mvrv = mvrvRow ? Number(mvrvRow?.mvrv ?? mvrvRow?.value) : null;
+  const nupl = nuplRow ? Number(nuplRow?.nupl ?? nuplRow?.value) : null;
+  const sopr = soprRow ? Number(soprRow?.sopr ?? soprRow?.value) : null;
+  const puell = puellRow ? Number(puellRow?.puell_multiple ?? puellRow?.value) : null;
+
+  if (mvrv == null && nupl == null && sopr == null && puell == null) return null;
 
   return {
     mvrv: Number.isFinite(mvrv) ? mvrv : null,
     nupl: Number.isFinite(nupl) ? nupl : null,
-    sopr: null,            // TODO: add SOPR endpoint
-    puellMultiple: null,   // TODO: add Puell Multiple
+    sopr: Number.isFinite(sopr) ? sopr : null,
+    puellMultiple: Number.isFinite(puell) ? puell : null,
   };
 }
 
 export async function fetchWhaleData(): Promise<CQWhaleData | null> {
-  const data = await cqFetch<any>('/btc/network-data/whale?window=day&limit=1');
+  // Try primary path, then fallback
+  let data = await cqFetch<any>('/btc/network-data/whale?window=day&limit=1');
+  if (!data) {
+    data = await cqFetch<any>('/btc/network-data/addresses?window=day&limit=1');
+  }
   if (!data) return null;
 
   const rows = Array.isArray(data) ? data : data?.data ?? [];
@@ -164,7 +186,10 @@ export async function fetchWhaleData(): Promise<CQWhaleData | null> {
 }
 
 export async function fetchMinerData(): Promise<CQMinerData | null> {
-  const data = await cqFetch<any>('/btc/miner-flows/reserve?window=day&limit=1');
+  let data = await cqFetch<any>('/btc/miner-flows/reserve?window=day&limit=1');
+  if (!data) {
+    data = await cqFetch<any>('/btc/mining/miner-reserve?window=day&limit=1');
+  }
   if (!data) return null;
 
   const rows = Array.isArray(data) ? data : data?.data ?? [];
@@ -251,6 +276,34 @@ export function exchangeReserveToScore(change7dPct: number | null, netflow24h: n
   }
 
   return Math.round(Math.max(-35, Math.min(35, score)));
+}
+
+/**
+ * SOPR score: Spent Output Profit Ratio
+ * >1.05 = holders in profit selling (bearish pressure)
+ * <0.95 = holders selling at loss (capitulation = bullish)
+ * Range: -30 to +30
+ */
+export function soprToScore(sopr: number): number {
+  if (sopr > 1.1) return -30;    // heavy profit-taking
+  if (sopr > 1.05) return -15;   // moderate profit-taking
+  if (sopr > 1.0) return -5;     // slight profit
+  if (sopr > 0.95) return 10;    // slight loss (accumulation zone)
+  if (sopr > 0.9) return 25;     // capitulation
+  return 30;                      // deep capitulation
+}
+
+/**
+ * Puell Multiple score: daily miner revenue / 365-day MA
+ * >4 = miners overpaid (sell), <0.5 = miners underpaid (buy)
+ * Range: -30 to +30
+ */
+export function puellToScore(puell: number): number {
+  if (puell > 4.0) return -30;   // extreme top
+  if (puell > 2.0) return -15;   // overvalued
+  if (puell > 1.0) return 0;     // fair
+  if (puell > 0.5) return 15;    // undervalued
+  return 30;                      // deep value
 }
 
 /**

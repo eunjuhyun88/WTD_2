@@ -1,5 +1,13 @@
 # Engineering Authority
 
+Canonical boundary doc for this repo split:
+- [`APP_ENGINE_BOUNDARY.md`](./APP_ENGINE_BOUNDARY.md) — `app` vs `engine` ownership and migration policy
+- [`APP_ENGINE_REFACTOR_PLAN.md`](./APP_ENGINE_REFACTOR_PLAN.md) — migration order and concrete refactor targets
+  - includes deletion tiers:
+    - immediately deletable
+    - deletable after reference cutover
+    - must keep for now
+
 ## Current Inventory Snapshot
 <!-- BEGIN MEMENTO MANAGED INVENTORY -->
 Refreshed: `2026-03-21`

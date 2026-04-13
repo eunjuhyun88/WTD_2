@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
 // Stockclaw — User Registration API (PostgreSQL backed)
 // POST /api/auth/register
-// Body: { email, nickname, walletAddress?, walletMessage?, walletSignature? }
+// Body: { email, nickname, walletAddress, walletMessage, walletSignature }
+// Wallet is REQUIRED — wallet-first auth flow
 // ═══════════════════════════════════════════════════════════════
 
 import { json } from '@sveltejs/kit';
@@ -71,42 +72,40 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
       return json({ error: 'Nickname must be 32 characters or less' }, { status: 400 });
     }
 
-    let walletAddress: string | null = null;
-    let walletSignature: string | null = null;
+    // ── Wallet is REQUIRED (wallet-first auth) ──
+    if (!walletAddressRaw) {
+      return json({ error: 'Wallet address is required for registration' }, { status: 400 });
+    }
+    if (!isValidEthAddress(walletAddressRaw)) {
+      return json({ error: 'Valid EVM wallet address required' }, { status: 400 });
+    }
+    if (!walletMessage) {
+      return json({ error: 'Signed wallet message is required' }, { status: 400 });
+    }
+    if (walletMessage.length > 2048) {
+      return json({ error: 'Signed wallet message is too long' }, { status: 400 });
+    }
+    if (!EVM_SIGNATURE_RE.test(walletSignatureRaw)) {
+      return json({ error: 'Valid wallet signature is required' }, { status: 400 });
+    }
 
-    if (walletAddressRaw) {
-      if (!isValidEthAddress(walletAddressRaw)) {
-        return json({ error: 'Valid EVM wallet address required' }, { status: 400 });
-      }
-      if (!walletMessage) {
-        return json({ error: 'Signed wallet message is required when walletAddress is provided' }, { status: 400 });
-      }
-      if (walletMessage.length > 2048) {
-        return json({ error: 'Signed wallet message is too long' }, { status: 400 });
-      }
-      if (!EVM_SIGNATURE_RE.test(walletSignatureRaw)) {
-        return json({ error: 'Valid wallet signature is required when walletAddress is provided' }, { status: 400 });
-      }
+    const walletAddress = normalizeEthAddress(walletAddressRaw);
+    const walletSignature = walletSignatureRaw;
 
-      const normalizedAddress = normalizeEthAddress(walletAddressRaw);
-      walletAddress = normalizedAddress;
-      walletSignature = walletSignatureRaw;
+    const verification = await verifyAndConsumeEvmNonce({
+      address: walletAddress,
+      message: walletMessage,
+      signature: walletSignatureRaw,
+    });
 
-      const verification = await verifyAndConsumeEvmNonce({
-        address: normalizedAddress,
-        message: walletMessage,
-        signature: walletSignatureRaw,
-      });
-
-      if (verification === 'missing_nonce') {
-        return json({ error: 'Nonce not found in signed message' }, { status: 400 });
-      }
-      if (verification === 'invalid_signature') {
-        return json({ error: 'Signature does not match wallet address' }, { status: 401 });
-      }
-      if (verification === 'invalid_nonce') {
-        return json({ error: 'Signup challenge is expired or already used' }, { status: 401 });
-      }
+    if (verification === 'missing_nonce') {
+      return json({ error: 'Nonce not found in signed message' }, { status: 400 });
+    }
+    if (verification === 'invalid_signature') {
+      return json({ error: 'Signature does not match wallet address' }, { status: 401 });
+    }
+    if (verification === 'invalid_nonce') {
+      return json({ error: 'Signup challenge is expired or already used' }, { status: 401 });
     }
 
     const conflict = await findAuthUserConflict(email, nickname);

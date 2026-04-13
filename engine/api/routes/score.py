@@ -22,11 +22,12 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
-from api.schemas import ScoreRequest, ScoreResponse
+from api.schemas import ScoreRequest, ScoreResponse, EnsembleSignal
 from models.signal import SignalSnapshot
 from scanner.feature_calc import compute_features_table, MIN_HISTORY_BARS
 from scoring.lightgbm_engine import get_engine as get_lgbm
 from scoring.block_evaluator import evaluate_blocks
+from scoring.ensemble import compute_ensemble
 
 log = logging.getLogger("engine.score")
 router = APIRouter()
@@ -148,8 +149,17 @@ async def score(req: ScoreRequest) -> ScoreResponse:
     # --- 5. Evaluate building blocks --------------------------------------
     blocks_triggered = evaluate_blocks(snapshot, features_df, klines_df)
 
+    # --- 6. Ensemble: fuse ML + blocks + regime ---------------------------
+    ensemble_result = compute_ensemble(
+        p_win=p_win,
+        blocks_triggered=blocks_triggered,
+        regime=snapshot.regime.value if hasattr(snapshot.regime, "value") else str(snapshot.regime),
+    )
+    ensemble_signal = EnsembleSignal(**ensemble_result.to_dict())
+
     return ScoreResponse(
         snapshot=snapshot.model_dump(mode="json"),
         p_win=p_win,
         blocks_triggered=blocks_triggered,
+        ensemble=ensemble_signal,
     )

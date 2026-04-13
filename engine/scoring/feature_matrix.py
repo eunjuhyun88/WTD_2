@@ -1,114 +1,58 @@
-"""SignalSnapshot → numpy feature matrix for LightGBM.
+"""Encode the features DataFrame into a float64 numpy matrix for LightGBM.
 
-Design:
-  - Categorical enum fields (ema_alignment, htf_structure, cvd_state, regime)
-    are label-encoded to integers deterministically.
-  - Column order is fixed (FEATURE_NAMES) so the model is stable across
-    Python sessions.
-  - No look-ahead: all inputs come from past-only SignalSnapshot fields.
+Categorical columns (stored as strings in features_df) are label-encoded
+to ordinal integers ordered by expected signal strength. All numeric columns
+are passed through after NaN fill with 0.
+
+The encoding is deterministic and stateless — no fit step required —
+so the same mapping applies at train and inference time.
 """
 from __future__ import annotations
-
-from models.signal import (
-    CVDState,
-    EMAAlignment,
-    HTFStructure,
-    Regime,
-    SignalSnapshot,
-)
 
 import numpy as np
 import pandas as pd
 
-# --- Label encodings (stable across sessions) ---
+from scanner.feature_calc import FEATURE_COLUMNS
 
-_EMA_ALIGNMENT = {EMAAlignment.BULLISH: 2, EMAAlignment.NEUTRAL: 1, EMAAlignment.BEARISH: 0}
-_HTF_STRUCTURE = {HTFStructure.UPTREND: 2, HTFStructure.RANGE: 1, HTFStructure.DOWNTREND: 0}
-_CVD_STATE     = {CVDState.BUYING: 2, CVDState.NEUTRAL: 1, CVDState.SELLING: 0}
-_REGIME        = {Regime.RISK_ON: 2, Regime.CHOP: 1, Regime.RISK_OFF: 0}
+# Ordinal encoding for string-typed categorical features.
+# Direction: higher integer = more bullish (for long-bias intuition).
+_CAT_MAPS: dict[str, dict[str, int]] = {
+    "ema_alignment": {"bearish": 0, "neutral": 1, "bullish": 2},
+    "htf_structure": {"downtrend": 0, "range": 1, "uptrend": 2},
+    "cvd_state":     {"selling": 0, "neutral": 1, "buying": 2},
+    "regime":        {"risk_off": 0, "chop": 1, "risk_on": 2},
+}
 
-# Canonical column order — matches SignalSnapshot field order.
-FEATURE_NAMES: tuple[str, ...] = (
-    "ema20_slope",
-    "ema50_slope",
-    "ema_alignment",
-    "price_vs_ema50",
-    "rsi14",
-    "rsi14_slope",
-    "macd_hist",
-    "roc_10",
-    "atr_pct",
-    "atr_ratio_short_long",
-    "bb_width",
-    "bb_position",
-    "volume_24h",
-    "vol_ratio_3",
-    "obv_slope",
-    "htf_structure",
-    "dist_from_20d_high",
-    "dist_from_20d_low",
-    "swing_pivot_distance",
-    "funding_rate",
-    "oi_change_1h",
-    "oi_change_24h",
-    "long_short_ratio",
-    "cvd_state",
-    "taker_buy_ratio_1h",
-    "regime",
-    "hour_of_day",
-    "day_of_week",
-)
+_CATEGORICAL_COLS: frozenset[str] = frozenset(_CAT_MAPS)
 
-N_FEATURES = len(FEATURE_NAMES)
+# Canonical feature order exposed to the model.
+# Excludes the metadata columns (price, symbol) appended by feature_calc.
+FEATURE_NAMES: tuple[str, ...] = FEATURE_COLUMNS
 
 
-def snapshot_to_vector(snap: SignalSnapshot) -> np.ndarray:
-    """Convert one SignalSnapshot → 1-D float64 array of length N_FEATURES."""
-    return np.array(
-        [
-            snap.ema20_slope,
-            snap.ema50_slope,
-            _EMA_ALIGNMENT[snap.ema_alignment],
-            snap.price_vs_ema50,
-            snap.rsi14,
-            snap.rsi14_slope,
-            snap.macd_hist,
-            snap.roc_10,
-            snap.atr_pct,
-            snap.atr_ratio_short_long,
-            snap.bb_width,
-            snap.bb_position,
-            snap.volume_24h,
-            snap.vol_ratio_3,
-            snap.obv_slope,
-            _HTF_STRUCTURE[snap.htf_structure],
-            snap.dist_from_20d_high,
-            snap.dist_from_20d_low,
-            snap.swing_pivot_distance,
-            snap.funding_rate,
-            snap.oi_change_1h,
-            snap.oi_change_24h,
-            snap.long_short_ratio,
-            _CVD_STATE[snap.cvd_state],
-            snap.taker_buy_ratio_1h,
-            _REGIME[snap.regime],
-            float(snap.hour_of_day),
-            float(snap.day_of_week),
-        ],
-        dtype=np.float64,
-    )
+def encode_features_df(df: pd.DataFrame) -> np.ndarray:
+    """Encode a features DataFrame to a float64 matrix.
 
+    Args:
+        df: output of compute_features_table() or any slice thereof.
+            Must contain all FEATURE_NAMES columns; extra columns are ignored.
 
-def features_df_to_matrix(df: pd.DataFrame) -> np.ndarray:
-    """Convert a features DataFrame (from compute_features_table) → 2-D matrix.
-
-    Categorical columns are encoded in-place. The DataFrame must contain all
-    columns in FEATURE_NAMES. Used for batch scoring and training data prep.
+    Returns:
+        float64 ndarray of shape (len(df), len(FEATURE_NAMES)).
+        Unknown categorical values map to 0. Missing columns stay 0.
     """
-    df = df.copy()
-    df["ema_alignment"]  = df["ema_alignment"].map(_EMA_ALIGNMENT).astype(float)
-    df["htf_structure"]  = df["htf_structure"].map(_HTF_STRUCTURE).astype(float)
-    df["cvd_state"]      = df["cvd_state"].map(_CVD_STATE).astype(float)
-    df["regime"]         = df["regime"].map(_REGIME).astype(float)
+    n = len(df)
+    k = len(FEATURE_NAMES)
+    out = np.zeros((n, k), dtype=np.float64)
 
-    return df[list(FEATURE_NAMES)].to_numpy(dtype=np.float64)
+    for j, col in enumerate(FEATURE_NAMES):
+        if col not in df.columns:
+            continue  # column missing → stays 0.0
+        series = df[col]
+        if col in _CATEGORICAL_COLS:
+            mapping = _CAT_MAPS[col]
+            out[:, j] = series.map(mapping).fillna(0).to_numpy(dtype=np.float64)
+        else:
+            out[:, j] = pd.to_numeric(series, errors="coerce").fillna(0).to_numpy(dtype=np.float64)
+
+    return out

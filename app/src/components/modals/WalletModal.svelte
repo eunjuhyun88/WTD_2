@@ -10,7 +10,7 @@
     disconnectWallet
   } from '$lib/stores/walletStore';
   import type { WalletState } from '$lib/stores/walletStore';
-  import { loginAuth, logoutAuth, registerAuth, requestWalletNonce, verifyWalletSignature } from '$lib/api/auth';
+  import { loginAuth, logoutAuth, registerAuth, requestWalletNonce, verifyWalletSignature, walletAuth } from '$lib/api/auth';
   import {
     WALLET_PROVIDER_LABEL,
     getPreferredEvmChainCode,
@@ -377,10 +377,21 @@
 
       trackWalletFunnel('sign', 'success', { provider, chain: state.chain });
 
-      if (state.email) {
+      // Wallet-first: auto-login or auto-register
+      try {
+        const authResult = await walletAuth({
+          walletAddress: state.address!,
+          walletMessage: noncePayload.message,
+          walletSignature: signature,
+        });
+        if (authResult.action === 'login' && authResult.user) {
+          applyAuthenticatedUser(authResult.user);
+          trackWalletFunnel('auth', 'success', { action: 'auto_login' });
+        }
         setWalletModalStep('profile');
-      } else {
-        setWalletModalStep(authMode);
+      } catch (walletAuthError) {
+        console.warn('[WalletModal] wallet-auth error', walletAuthError);
+        setWalletModalStep('profile');
       }
     } catch (error) {
       clearWalletProof();
@@ -413,7 +424,7 @@
 
   function connectStepState(): 'active' | 'done' | 'idle' {
     if (state.connected) return 'done';
-    if (step === 'welcome' || step === 'wallet-select' || step === 'connecting') return 'active';
+    if (step === 'wallet-select' || step === 'connecting') return 'active';
     return 'idle';
   }
 
@@ -425,7 +436,7 @@
   }
 
   function authStepState(): 'active' | 'done' | 'idle' {
-    if (state.email) return 'done';
+    if (state.nickname || state.email) return 'done';
     if (step === 'signup' || step === 'login' || step === 'connected') return 'active';
     return 'idle';
   }
@@ -454,31 +465,6 @@
         <span class="wht">{headerTitle}</span>
       </div>
 
-      {#if !state.email}
-        <div class="mode-toggle" role="tablist" aria-label="Auth mode">
-          <button
-            type="button"
-            class="mode-btn"
-            class:active={authMode === 'login'}
-            role="tab"
-            aria-selected={authMode === 'login'}
-            on:click={() => setAuthMode('login')}
-          >
-            LOG IN
-          </button>
-          <button
-            type="button"
-            class="mode-btn"
-            class:active={authMode === 'signup'}
-            role="tab"
-            aria-selected={authMode === 'signup'}
-            on:click={() => setAuthMode('signup')}
-          >
-            SIGN UP
-          </button>
-        </div>
-      {/if}
-
       <button class="whc" type="button" aria-label="Close wallet modal" on:click={handleClose}>✕</button>
     </div>
 
@@ -489,37 +475,14 @@
     <div class="progress-row" aria-hidden="true">
       <div class="pstep" class:active={connectStepState() === 'active'} class:done={connectStepState() === 'done'}>1 CONNECT</div>
       <div class="pstep" class:active={signStepState() === 'active'} class:done={signStepState() === 'done'}>2 SIGN</div>
-      <div class="pstep" class:active={authStepState() === 'active'} class:done={authStepState() === 'done'}>3 AUTH</div>
+      <div class="pstep" class:active={authStepState() === 'active'} class:done={authStepState() === 'done'}>3 ACCOUNT</div>
     </div>
-
-    {#if step === 'welcome'}
-      <div class="wb">
-        <div class="step-hero">
-          <span class="hero-kicker">SECURE WEB3 ACCESS</span>
-          <h3 class="hero-title">Wallet-first auth with one signature.</h3>
-          <p class="hero-sub">Use wallet ownership as base identity. Then continue with login or account creation.</p>
-        </div>
-
-        <div class="flow-card">
-          <div class="flow-item">CONNECT WALLET</div>
-          <div class="flow-item">SIGN MESSAGE</div>
-          <div class="flow-item">{authMode === 'login' ? 'LOG IN ACCOUNT' : 'CREATE ACCOUNT'}</div>
-        </div>
-
-        <button class="btn-primary" type="button" on:click={() => startAuthFlow('signup')}>
-          CONTINUE WITH SIGN UP
-        </button>
-        <button class="btn-secondary" type="button" on:click={() => startAuthFlow('login')}>
-          CONTINUE WITH LOG IN
-        </button>
-      </div>
-
-    {:else if step === 'wallet-select'}
+    {#if step === 'wallet-select'}
       <div class="wb">
         <div class="step-hero">
           <span class="hero-kicker">STEP 1</span>
           <h3 class="hero-title">Connect your wallet</h3>
-          <p class="hero-sub">{authMode === 'login' ? 'Login requires wallet ownership verification.' : 'Signup requires wallet ownership verification.'}</p>
+          <p class="hero-sub">Connect your wallet to access or create your account automatically.</p>
         </div>
 
         <div class="wallet-list">

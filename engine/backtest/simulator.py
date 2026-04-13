@@ -164,7 +164,10 @@ def run_backtest(
         if isinstance(loc, (slice, np.ndarray)):
             _record_block(sig, "duplicate_timestamp")
             continue
-        entry_pos = int(loc)
+        # Signal fires at bar T close → execute at bar T+1 open.
+        # Using bar T's open would be lookahead (open precedes the close
+        # that triggered the signal).
+        entry_pos = int(loc) + 1
 
         entry_price_raw = float(klines.iloc[entry_pos]["open"])
         equity = portfolio.current_equity()

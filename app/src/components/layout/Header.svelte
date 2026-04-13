@@ -637,11 +637,6 @@
       padding: 0 14px;
       font-size: 11px;
     }
-    #nav.home-mode .wallet-btn {
-      min-height: 34px;
-      padding: 0 16px;
-      font-size: 11px;
-    }
   }
 
   /* ═══ SMALL MOBILE (<=480px) ═══ */
