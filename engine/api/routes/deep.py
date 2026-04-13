@@ -24,8 +24,8 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException
 
 from api.schemas import DeepRequest, DeepResponse, LayerOut
+from market_engine.ctx_cache import ensure_fresh_ctx
 from market_engine.pipeline import run_deep_analysis
-from market_engine.types import GlobalCtx
 
 log = logging.getLogger("engine.deep")
 router = APIRouter()
@@ -82,10 +82,10 @@ async def deep(req: DeepRequest) -> DeepResponse:
     perp["short_liq_usd"] = p.short_liq_usd
     perp["long_liq_usd"]  = p.long_liq_usd
 
-    # --- Empty GlobalCtx (L0 cache not run in on-demand path) ---------------
-    # Fear-greed, kimchi premium, sector scores are 0 unless ctx is pre-loaded.
-    # TODO: expose a /ctx refresh endpoint and cache GlobalCtx in memory.
-    ctx = GlobalCtx()
+    # --- GlobalCtx from in-memory cache (refreshed every 10 min on startup) --
+    # Provides fear_greed, usd_krw, upbit_map, bithumb_map, btc_onchain.
+    # Non-blocking: returns current cache; refresh happens in background.
+    ctx = await ensure_fresh_ctx()
 
     # --- Run pipeline --------------------------------------------------------
     try:
