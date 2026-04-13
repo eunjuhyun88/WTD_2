@@ -40,6 +40,11 @@ export interface CompactResult {
  * 히스토리가 COMPACT_THRESHOLD 초과 시:
  *   - 오래된 턴 → 결정론적 요약 (LLM 없이)
  *   - 최근 COMPACT_KEEP_RECENT 턴만 유지
+ *
+ * ⚠ Market snapshot 보존 규칙:
+ *   마지막 analysis 턴(meta.kind === 'analysis')은 KEEP_RECENT 윈도우
+ *   밖에 있어도 반드시 recentHistory 앞에 pinning.
+ *   → compact 직후 "OI 어때?" 질문 시 market data 없는 상황 방지.
  */
 export function maybeCompactHistory(
   history: CompressedHistoryEntry[],
@@ -48,9 +53,32 @@ export function maybeCompactHistory(
     return { compacted: false, summary: null, recentHistory: history };
   }
 
-  const toCompress = history.slice(0, -COMPACT_KEEP_RECENT);
-  const recentHistory = history.slice(-COMPACT_KEEP_RECENT);
+  const recentWindow = history.slice(-COMPACT_KEEP_RECENT);
+  const toCompress   = history.slice(0, -COMPACT_KEEP_RECENT);
+
+  // 마지막 analysis 턴이 이미 recentWindow 안에 있는지 확인
+  const lastAnalysisInWindow = recentWindow.some(
+    h => h.role === 'assistant' && h.meta?.kind === 'analysis',
+  );
+
+  // recentWindow 밖에 있으면 toCompress에서 찾아서 pinning
+  let pinnedAnalysis: CompressedHistoryEntry | null = null;
+  if (!lastAnalysisInWindow) {
+    for (let i = toCompress.length - 1; i >= 0; i--) {
+      const h = toCompress[i];
+      if (h.role === 'assistant' && h.meta?.kind === 'analysis') {
+        pinnedAnalysis = h;
+        break;
+      }
+    }
+  }
+
   const summary = buildSessionSummary(toCompress);
+
+  // pinned analysis를 recentHistory 맨 앞에 붙여 시장 맥락 유지
+  const recentHistory: CompressedHistoryEntry[] = pinnedAnalysis
+    ? [pinnedAnalysis, ...recentWindow]
+    : recentWindow;
 
   return { compacted: true, summary, recentHistory };
 }

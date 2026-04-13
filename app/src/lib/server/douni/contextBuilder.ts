@@ -223,7 +223,7 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
 
   let systemPrompt = buildDouniSystemPrompt(profile, promptOpts);
 
-  // ── Step 3: Snapshot injection ────────────────────────────
+  // ── Step 3a: Snapshot injection ───────────────────────────
   const injectSnap = shouldInjectSnapshot(budget, snapshot, snapshotTs, detectedSymbol);
   if (injectSnap && snapshot) {
     try {
@@ -233,6 +233,18 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
   } else if (budget.tools.includes('analyze_market') || budget.tools.includes('scan_market')) {
     // Only add this hint when the LLM has tools to fetch data
     systemPrompt += `\n\n[NO DATA YET]\nUse analyze_market or scan_market to get fresh data.`;
+  }
+
+  // ── Step 3b: Pattern Memory → Evidence Chain Layer C ──────
+  // 백테스트 기반 패턴 통계를 Evidence Chain의 BASE RATE 섹션 직전에 주입.
+  // LLM이 "이 조합 내 히스토리에서 67% 맞았어" 같은 근거 있는 발언 가능.
+  // signal_stats.py가 연결되면 여기에 실시간 조회 결과가 들어옴.
+  if (memory?.patterns && memory.patterns.length > 0) {
+    const patternLines = memory.patterns
+      .slice(0, 4)  // 최대 4개 (토큰 절약)
+      .map(p => `  • ${p}`)
+      .join('\n');
+    systemPrompt += `\n\n[Historical Pattern Match]\n${patternLines}\nUse these as BASE RATE when relevant. Do NOT cite if current symbol/blocks differ.`;
   }
 
   // ── Step 4: Build messages array ──────────────────────────
