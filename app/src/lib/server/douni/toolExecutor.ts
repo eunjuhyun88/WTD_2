@@ -80,6 +80,9 @@ export async function executeTool(
       case 'scan_market':
         data = await executeScanMarket(args, events);
         break;
+      case 'check_pattern_status':
+        data = await executeCheckPatternStatus(args, events);
+        break;
       case 'chart_control':
         data = executeChartControl(args, events);
         break;
@@ -725,3 +728,100 @@ async function executeQueryMemory(
 // fetchFearGreed removed — callers now go through
 // readRaw(KnownRawId.FEAR_GREED_VALUE, {}) which bridges to
 // $lib/server/feargreed with cached TTL.
+
+
+// ─── check_pattern_status ─────────────────────────────────────
+// Pattern Engine 상태 조회 — DOUNI가 "PTBUSDT가 ACCUMULATION에 있어" 같은 설명 제공
+
+async function executeCheckPatternStatus(
+  args: Record<string, unknown>,
+  events: DouniSSEEvent[],
+): Promise<Record<string, unknown>> {
+  const symbol = (args.symbol as string)?.toUpperCase();
+  const includeStats = (args.include_stats as boolean) ?? false;
+
+  events.push({ type: 'tool_call_delta', message: 'Checking pattern engine states...' });
+
+  try {
+    // Fetch entry candidates + all states in parallel
+    const [candRes, stateRes] = await Promise.all([
+      fetch(`${getEngineUrl()}/patterns/candidates`),
+      fetch(`${getEngineUrl()}/patterns/states`),
+    ]);
+
+    const candidates: Record<string, string[]> = candRes.ok
+      ? (await candRes.json()).entry_candidates ?? {}
+      : {};
+
+    const allStates: Record<string, Record<string, unknown>> = stateRes.ok
+      ? (await stateRes.json()).patterns ?? {}
+      : {};
+
+    // If specific symbol requested, filter
+    let symbolPhases: Record<string, unknown> = {};
+    if (symbol) {
+      for (const [slug, states] of Object.entries(allStates)) {
+        const st = (states as Record<string, unknown>)[symbol];
+        if (st) symbolPhases[slug] = st;
+      }
+    }
+
+    // Entry candidates summary
+    const entryCandidates: Array<{ symbol: string; pattern: string }> = [];
+    for (const [slug, syms] of Object.entries(candidates)) {
+      for (const s of syms) {
+        entryCandidates.push({ symbol: s, pattern: slug });
+      }
+    }
+
+    // Optional stats
+    let stats: Record<string, unknown> | null = null;
+    if (includeStats) {
+      try {
+        const statsRes = await fetch(`${getEngineUrl()}/patterns/library`);
+        if (statsRes.ok) {
+          const lib = await statsRes.json();
+          const slugs = (lib.patterns as Array<{ slug: string }>).map(p => p.slug);
+          const statsResults = await Promise.all(
+            slugs.map(s => fetch(`${getEngineUrl()}/patterns/${s}/stats`).then(r => r.ok ? r.json() : null))
+          );
+          stats = {};
+          for (let i = 0; i < slugs.length; i++) {
+            if (statsResults[i]) (stats as Record<string, unknown>)[slugs[i]] = statsResults[i];
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    const result: Record<string, unknown> = {
+      entry_candidates: entryCandidates,
+      n_entry_candidates: entryCandidates.length,
+    };
+
+    if (symbol) {
+      result.symbol = symbol;
+      result.phases = symbolPhases;
+      result.is_entry_candidate = entryCandidates.some(c => c.symbol === symbol);
+    } else {
+      // Summary: count active symbols per phase
+      const phaseCounts: Record<string, number> = {};
+      for (const states of Object.values(allStates)) {
+        for (const st of Object.values(states as Record<string, any>)) {
+          const pid = st.phase_id ?? 'NONE';
+          phaseCounts[pid] = (phaseCounts[pid] ?? 0) + 1;
+        }
+      }
+      result.phase_distribution = phaseCounts;
+    }
+
+    if (stats) result.stats = stats;
+
+    return result;
+  } catch (err: any) {
+    return { error: `Pattern engine unreachable: ${err.message}`, entry_candidates: [], n_entry_candidates: 0 };
+  }
+}
+
+function getEngineUrl(): string {
+  return (process.env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+}

@@ -260,12 +260,45 @@ Flags each coin may carry: wyckoff (MARKUP/MARKDOWN), mtf_triple (MTF ★), bb_s
   },
 };
 
+// ─── check_pattern_status ────────────────────────────────────
+// Pattern Engine 상태 조회 — 어떤 심볼이 어떤 Phase에 있는지
+
+export const TOOL_CHECK_PATTERN_STATUS: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'check_pattern_status',
+    description: `Check the Pattern Engine state machine for active pattern detections across the symbol universe. Returns which symbols are currently in which phase (FAKE_DUMP, ARCH_ZONE, REAL_DUMP, ACCUMULATION, BREAKOUT) and any entry candidates.
+
+Use when:
+- User asks about OI-reversal patterns ("OI 패턴 뜬 거 있어?", "축적 구간 심볼?")
+- User asks "어디가 entry 구간이야?" or "패턴 상태 보여줘"
+- You need Pattern Engine context to enhance market analysis
+- User asks about a specific symbol's pattern phase
+
+Returns: entry candidates (ACCUMULATION phase = act now), all tracked symbol states, and pattern stats (hit rate, EV).`,
+    parameters: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Optional: check a specific symbol (e.g. "PTBUSDT"). Omit for all symbols.',
+        },
+        include_stats: {
+          type: 'boolean',
+          description: 'Include pattern hit rate and EV stats (default: false)',
+        },
+      },
+    },
+  },
+};
+
 // ─── All Tools ──────────────────────────────────────────────
 
 export const DOUNI_TOOLS: ToolDefinition[] = [
   TOOL_ANALYZE_MARKET,
   TOOL_CHECK_SOCIAL,
   TOOL_SCAN_MARKET,
+  TOOL_CHECK_PATTERN_STATUS,
   TOOL_CHART_CONTROL,
   TOOL_SAVE_PATTERN,
   TOOL_SUBMIT_FEEDBACK,
@@ -277,6 +310,7 @@ export type DouniToolName =
   | 'analyze_market'
   | 'check_social'
   | 'scan_market'
+  | 'check_pattern_status'
   | 'chart_control'
   | 'save_pattern'
   | 'submit_feedback'
@@ -286,6 +320,7 @@ export const VALID_TOOL_NAMES = new Set<string>([
   'analyze_market',
   'check_social',
   'scan_market',
+  'check_pattern_status',
   'chart_control',
   'save_pattern',
   'submit_feedback',
