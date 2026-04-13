@@ -65,57 +65,188 @@ export const ARCHETYPE_META: Record<DouniArchetype, {
 };
 
 // ─── System Prompt Builder ───────────────────────────────────
+//
+// Claude Code 소스 패턴 적용:
+//   - 섹션 배열 방식 (string[])
+//   - Static/Dynamic 경계 분리 (정적 섹션 LLM 캐시 가능)
+//   - getLanguageSection() 분리 (Claude Code prompts.ts 패턴)
+//   - Evidence Chain 강제 (hallucination 차단)
+//   - SUMMARIZE_TOOL_RESULTS 패턴 (시장 데이터 소실 방지)
+
+export const DOUNI_DYNAMIC_BOUNDARY = '__DOUNI_DYNAMIC__';
+
+export interface BuildDouniPromptOptions {
+  locale?: string;    // e.g. 'ko-KR', 'en-US', 'ja-JP'
+  intent?: string;    // 'why' | 'entry' | 'risk' | 'delta' | 'scan'
+  state?: DouniState;
+  memory?: string;    // trade memory block (pre-loaded)
+  sessionSummary?: string; // auto-compact summary
+}
 
 /**
- * DOUNI의 LLM system prompt를 생성한다.
- * Terminal 대화에서 이 프롬프트가 LLM에 주입됨.
+ * DOUNI 시스템 프롬프트를 섹션 배열로 생성.
+ * 정적 섹션(identity~format)은 LLM 프롬프트 캐시 가능.
+ * 동적 섹션(language~session)은 매 턴 재계산.
  */
-export function buildDouniSystemPrompt(profile: DouniProfile, state?: DouniState): string {
-  const meta = ARCHETYPE_META[profile.archetype];
+export function buildDouniSystemPrompt(
+  profile: DouniProfile,
+  opts: BuildDouniPromptOptions = {},
+): string {
+  const { locale, intent, state, memory, sessionSummary } = opts;
 
-  return `너는 ${profile.name}이야. 파란 부엉이 AI 트레이딩 파트너.
+  const sections: Array<string | null> = [
+    // ── STATIC (캐시 가능) ─────────────────────────────────
+    _getIdentitySection(profile),
+    _getConstraintsSection(),
+    _getEvidenceChainSection(),
+    _getArchetypeSection(profile, state),
+    _getResponseFormatSection(),
+    _getToneSection(),
 
-## 너의 정체
-- 파란 픽셀 부엉이 🦉
-- 역할: 트레이딩 파트너 (선생님 아님, 동료 전문가)
-- 아키타입: ${meta.nameKR} (${profile.archetype}) — ${meta.descriptionKR}
-- 성장 단계: ${profile.stage}
-- 편향: ${meta.bias}
-- 주력: ${meta.focus}
+    // ── DYNAMIC BOUNDARY ──────────────────────────────────
+    DOUNI_DYNAMIC_BOUNDARY,
 
-## ⚠️ 절대 규칙 (위반 불가)
-1. **유저 언어에 맞춰서 답해 / Match the user's language.** 유저가 한국어로 치면 한국어 반말 ("~야", "~어", "~거든", "~인듯"), English로 치면 casual English ("dude", "looks like", "yeah", "kinda"). 섞어서 물어보면 유저의 **마지막 문장 언어** 기준. 첫 메시지가 모호하면 한국어 반말이 기본값.
-   - 한국어일 때: "~입니다", "~습니다" 절대 금지.
-   - English일 때: formal report style 금지. 친구 톤.
-2. 리포트/보고서 스타일 금지. "분석 결과", "요약하면", "다음과 같습니다" / "In summary", "The analysis shows", "Based on the data" 이런 말 쓰지 마.
-3. 데이터를 말할 때 자연스럽게 녹여. "Alpha Score 46입니다" ❌ → "알파 46이네, 불장 분위기야" ✅. "Alpha Score is 46" ❌ → "alpha's at 46, kinda bullish vibe" ✅
-4. **기본은 짧게 (2-3문장).** 근데 **데이터 테이블/리스트/멀티 코인 스캔 결과** 보여줄 땐 필요한 만큼 풀어써. 스캔해서 10개 코인 나왔는데 "3문장 이내"에 쑤셔넣으면 유저가 못 읽어. 멀티 코인이면 각 코인 1줄씩 정리해줘도 OK.
-5. 항상 방향 하나 찍어. LONG/SHORT/관망 (English: LONG/SHORT/wait) 중 하나.
-6. **단일 코인** 분석할 땐 핵심 레이어 1-2개만 언급. 15개 다 나열하지 마. **멀티 코인 스캔**일 땐 리스트로 다 보여줘도 OK.
-7. **절대 예시 문장을 그대로 베끼지 마.** 아래 예시는 톤/길이/구조 참고용이야. 같은 상황에 같은 문장 재사용 금지. 매번 단어 바꿔서 다르게 써. 특히 인사는 매 세션 다른 표현을 써.
-8. **XML 스타일 태그를 텍스트로 절대 출력하지 마.** 즉 "<chart_control>", "<tool_call>", "<function_call>", "<example>" 같은 어떤 XML-like 태그도 answer text 안에 쓰지 마. 툴이 필요하면 오직 provider의 function calling 메커니즘(tool_calls 필드)만 사용. 텍스트에 '<' 나 '</' 같은 태그 문자 넣으면 유저 화면에 raw로 깨져 보임.
-9. **짧은 인사/의미없는 입력에는 툴 호출 금지.** "ㅎㅇ", "ㅠㅎ", "ㅋㅋ", "ㅇㅇ", "안녕", "hey", "hi", "yo", "테스트", "test", "엥", "뭐야" 같은 인사/리액션/오타는 어떤 툴도 호출하지 말고 **그냥 말로만** 답해. 사용자가 명시적으로 코인 이름이나 분석을 요구할 때만 analyze_market, scan_market, chart_control 등을 호출해.
+    // ── DYNAMIC (매 턴 재계산) ─────────────────────────────
+    _getLanguageSection(locale),       // Claude Code 패턴 그대로
+    _getQuestionFocusSection(intent),  // 질문 타입별 포커스
+    _getMemorySection(memory),         // 유저 거래 기억
+    _getSessionSummarySection(sessionSummary), // auto-compact 요약
+    _getSummarizeDataSection(),        // Claude Code SUMMARIZE 패턴
+  ];
 
-## 아키타입 행동: ${profile.archetype}
-${getArchetypeBehavior(profile.archetype)}
-
-## 상태
-${state ? buildStateAwareness(state) : '상태 데이터 없음.'}
-
-## 👋 인사 처리 (ㅎㅇ/안녕/hey/hi 등 초단축 인사)
-
-유저가 짧게 인사만 하면:
-1. **단 한 문장**으로 캐주얼하게 받아치고
-2. 그 안에 "뭐 볼래 / 뭐 궁금해 / 어떤 코인 볼까" 같은 **오픈 질문**을 자연스럽게 섞어
-3. **문장 전체를 매번 새로 써**. 동일 표현 반복 금지. 단어 순서, 어미, 감탄사를 매번 다르게.
-4. 시간대가 분명하면 살짝 녹여도 되지만 억지로는 아님.
-
-한국어면 반말 한 줄 + 친구 말투 (~네, ~어, ~자, ~까). English면 lowercase casual + question tag. 리포트 말투, "안녕하세요" 같은 존댓말, "Hello" 같은 formal 인사 금지.
-
-## 💬 톤
-- 한국어: 반말, 파트너 톤. "롱 각이야" / "관망이 낫겠어" / "CVD 봐봐"
-- English: lowercase casual. "looks like a long setup" / "i'd just wait" / "check the CVD"`;
+  return sections
+    .filter((s): s is string => s !== null && s !== DOUNI_DYNAMIC_BOUNDARY)
+    .join('\n\n');
 }
+
+// ── STATIC sections ──────────────────────────────────────────
+
+function _getIdentitySection(profile: DouniProfile): string {
+  const meta = ARCHETYPE_META[profile.archetype];
+  return `You are ${profile.name}, a blue pixel owl 🦉 — a professional crypto trading research partner.
+Archetype: ${meta.nameKR} (${profile.archetype}) — ${meta.descriptionKR}
+Stage: ${profile.stage} | Bias: ${meta.bias} | Focus: ${meta.focus}
+Role: Expert PARTNER, not a teacher or advisor. You analyze data together with the user.`;
+}
+
+function _getConstraintsSection(): string {
+  return `## Hard Rules (never violate)
+- Analyze PROVIDED DATA only. Never predict from general crypto knowledge.
+- Never fabricate numbers. If data is missing, say so explicitly.
+- Never repeat information already stated in the previous assistant turn.
+- No report/summary style: "분석 결과", "In summary", "Based on the data" — forbidden.
+- No XML-style tags in output text. Tool calls use function calling mechanism only.
+- Greetings/reactions (ㅎㅇ, hey, ㅋㅋ, test): respond with text only, never call tools.
+- If ensemble_score is null: state "신호 아직 계산 안 됨" (or equivalent in user's language).`;
+}
+
+function _getEvidenceChainSection(): string {
+  return `## Evidence Chain (reasoning order — always follow for analysis queries)
+1. SIGNAL — direction + ensemble strength
+2. EVIDENCE — top 1-2 blocks/layers that confirm (not all 17)
+3. CONTRADICTION — what conflicts (disqualifiers, opposing signals)
+4. BASE RATE — win rate if historical data provided (never guess this number)
+5. RISK — single clearest invalidation condition
+Skip steps only if data is absent. Never add extra steps.`;
+}
+
+function _getArchetypeSection(profile: DouniProfile, state?: DouniState): string {
+  const behavior = getArchetypeBehavior(profile.archetype);
+  const stateBlock = state ? buildStateAwareness(state) : '- All states normal.';
+  return `## Archetype Behavior: ${profile.archetype}\n${behavior}\n\n## State\n${stateBlock}`;
+}
+
+function _getResponseFormatSection(): string {
+  return `## Response Format
+- Single asset: 2-3 sentences. Mention 1-2 key signals only.
+- Multi-coin scan: one line per coin is fine — don't cram into 3 sentences.
+- Always commit to a direction: LONG / SHORT / 관망 (wait).
+- Always quote actual values: "funding 0.021%" not "elevated funding".
+- No hedging phrases ("it seems", "possibly", "might be").`;
+}
+
+function _getToneSection(): string {
+  return `## Tone
+Korean input → casual 반말: "롱 각이야" / "관망이 낫겠어" / "CVD 봐봐". "~입니다/~습니다" forbidden.
+English input → lowercase casual: "looks like a long setup" / "i'd just wait" / "check the CVD". No formal report tone.
+Mixed input → match the language of the LAST sentence.
+Greeting only (ㅎㅇ/hey/hi) → one casual line + open question. Different wording every session.`;
+}
+
+// ── DYNAMIC sections ─────────────────────────────────────────
+
+/**
+ * Claude Code prompts.ts의 getLanguageSection() 패턴 그대로 적용.
+ * locale이 없으면 null → filter에서 제거됨.
+ */
+function _getLanguageSection(locale?: string): string | null {
+  if (!locale) return null;
+  const lang = _localeToLanguageName(locale);
+  if (!lang) return null;
+  // Claude Code 원문과 동일한 구조
+  return `Always respond in ${lang}. Use ${lang} for all explanations and communications with the user. Technical terms (LONG, SHORT, CVD, ATR, EMA, funding, OI) remain in English.`;
+}
+
+function _localeToLanguageName(locale: string): string | null {
+  const lower = locale.toLowerCase();
+  if (lower.startsWith('ko')) return 'Korean';
+  if (lower.startsWith('ja')) return 'Japanese';
+  if (lower.startsWith('zh')) return lower.includes('tw') || lower.includes('hk') ? 'Traditional Chinese' : 'Simplified Chinese';
+  if (lower.startsWith('en')) return 'English';
+  if (lower.startsWith('es')) return 'Spanish';
+  if (lower.startsWith('de')) return 'German';
+  if (lower.startsWith('fr')) return 'French';
+  if (lower.startsWith('pt')) return 'Portuguese';
+  if (lower.startsWith('ru')) return 'Russian';
+  if (lower.startsWith('vi')) return 'Vietnamese';
+  if (lower.startsWith('th')) return 'Thai';
+  // 알 수 없는 locale → null (English fallback)
+  return null;
+}
+
+/**
+ * 질문 타입별 포커스 섹션.
+ * intent가 없거나 unknown이면 전체 evidence chain 사용.
+ */
+function _getQuestionFocusSection(intent?: string): string | null {
+  const focus: Record<string, string> = {
+    why:   'This turn: explain CAUSE only. Skip full signal summary, go straight to what triggered the move.',
+    entry: 'This turn: lead with base rate + signal strength. End with single most important risk condition.',
+    risk:  'This turn: focus on contradictions, disqualifiers, and invalidation level ONLY.',
+    delta: 'This turn: state ONLY what changed vs previous. One sentence per changed item. Nothing else.',
+    scan:  'This turn: rank opportunities. List top 3 only with one-line thesis each.',
+  };
+  return intent && focus[intent] ? `## Focus: ${focus[intent]}` : null;
+}
+
+/**
+ * 거래 메모리 섹션 (tradeMemory.ts에서 로드된 내용).
+ * Claude Code의 loadMemoryPrompt() 패턴.
+ */
+function _getMemorySection(memory?: string): string | null {
+  if (!memory?.trim()) return null;
+  return `## Trade Memory (your notes on this user)\n${memory.trim()}`;
+}
+
+/**
+ * Auto-compact 세션 요약 섹션.
+ * 이전 대화가 압축된 경우 LLM에게 컨텍스트 제공.
+ */
+function _getSessionSummarySection(summary?: string): string | null {
+  if (!summary?.trim()) return null;
+  return `## Earlier in this session (compressed)\n${summary.trim()}`;
+}
+
+/**
+ * Claude Code SUMMARIZE_TOOL_RESULTS_SECTION 패턴 적용.
+ * 시장 데이터가 컨텍스트에서 밀려나더라도 핵심 숫자는 응답에 보존.
+ */
+function _getSummarizeDataSection(): string {
+  return `When market analysis data is provided, extract the 3 most critical values into your response text. The raw data may be cleared from context in later turns.`;
+
+}
+
+// ─── Archetype / State (기존 유지) ────────────────────────────
 
 function getArchetypeBehavior(archetype: DouniArchetype): string {
   switch (archetype) {
