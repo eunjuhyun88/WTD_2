@@ -15,6 +15,8 @@
    */
   import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
+  import { get } from 'svelte/store';
+  import { douniRuntimeStore } from '$lib/stores/douniRuntime';
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
@@ -389,6 +391,17 @@
   async function sendCommand(text: string, _files?: File[]) {
     if (!text.trim() || isStreaming) return;
 
+    const runtime = get(douniRuntimeStore);
+
+    // TERMINAL mode: data only, no AI call
+    if (runtime.mode === 'TERMINAL') {
+      const banner = '[터미널 모드] AI 분석 없음 — Settings > AI에서 모드를 변경하세요.';
+      chatHistory = ([...chatHistory, { role: 'user' as const, content: text }, { role: 'assistant' as const, content: banner }] as HistoryEntry[]).slice(-10);
+      streamText = banner;
+      setTimeout(() => { streamText = ''; }, 4000);
+      return;
+    }
+
     isStreaming = true;
     streamText = '';
     showRightPanel = true;  // reveal context panel on first query
@@ -405,6 +418,13 @@
         snapshotTs: analysisData ? Date.now() : undefined,
         detectedSymbol: symbol,
         locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+        runtimeConfig: {
+          mode: runtime.mode,
+          provider: runtime.provider,
+          apiKey: runtime.apiKey,
+          ollamaModel: runtime.ollamaModel,
+          ollamaEndpoint: runtime.ollamaEndpoint,
+        },
       };
 
       const res = await fetch('/api/cogochi/terminal/message', {
