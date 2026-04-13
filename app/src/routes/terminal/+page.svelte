@@ -13,7 +13,7 @@
    *   [MobileCommandDock — fixed bottom input + quick chips]
    *   [MobileDetailSheet — bottom sheet for 5-tab detail]
    */
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
@@ -21,6 +21,7 @@
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import WorkspaceGrid from '../../components/terminal/workspace/WorkspaceGrid.svelte';
+  import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
 
   // Mobile components
   import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
@@ -51,7 +52,9 @@
   type HistoryEntry = { role: 'user' | 'assistant'; content: string };
   let chatHistory = $state<HistoryEntry[]>([]);
 
-  const gState = $derived($activePairState);
+  // Narrow deriveds: only pair+tf — price changes must NOT re-trigger $effect
+  const gPair = $derived($activePairState.pair);
+  const gTf   = $derived($activePairState.timeframe);
 
   // ─── Helpers ────────────────────────────────────────────────
 
@@ -254,9 +257,10 @@
 
     isStreaming = true;
     streamText = '';
+    showRightPanel = true;  // reveal context panel on first query
 
-    const symbol = pairToSymbol(gState.pair);
-    const tf = symbolToTF(gState.timeframe);
+    const symbol = pairToSymbol(gPair);
+    const tf = symbolToTF(gTf);
     chatHistory = ([...chatHistory, { role: 'user' as const, content: text }] as HistoryEntry[]).slice(-10);
 
     try {
@@ -353,7 +357,7 @@
 
   function selectAsset(symbol: string) {
     activeSymbol = symbol;
-    if (!verdictMap[symbol]) loadAnalysis(symbol, symbolToTF(gState.timeframe));
+    if (!verdictMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
     setActivePair(symbol.replace('USDT', '/USDT'));
   }
 
@@ -362,7 +366,7 @@
   function clearBoard() {
     boardAssets = []; verdictMap = {}; evidenceMap = {};
     activeSymbol = ''; layout = 'focus';
-    loadAnalysis(pairToSymbol(gState.pair), symbolToTF(gState.timeframe));
+    loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
   function switchToCompare() { if (boardAssets.length >= 2) layout = 'compare2x2'; }
@@ -373,14 +377,10 @@
   let trendingInterval: ReturnType<typeof setInterval>;
 
   onMount(() => {
-    const symbol = pairToSymbol(gState.pair);
-    const tf = symbolToTF(gState.timeframe);
-    activeSymbol = symbol;
-    loadAnalysis(symbol, tf);
-    loadFlow(gState.pair, tf);
+    // $effect handles initial loadAnalysis + loadFlow — only set up intervals and one-shot fetches here
     loadTrending();
     loadNews();
-    flowInterval = setInterval(() => loadFlow(gState.pair, symbolToTF(gState.timeframe)), 15_000);
+    flowInterval = setInterval(() => loadFlow(gPair, symbolToTF(gTf)), 15_000);
     trendingInterval = setInterval(loadTrending, 60_000);
   });
 
@@ -392,14 +392,16 @@
   let prevPair = '';
   let prevTf = '';
   $effect(() => {
-    const pair = gState.pair;
-    const tf = gState.timeframe;
+    // Track ONLY pair + tf — price updates in activePairState must not re-trigger this
+    const pair = gPair;
+    const tf   = gTf;
     if (pair !== prevPair) {
       prevPair = pair;
       prevTf = tf;
       const symbol = pairToSymbol(pair);
       activeSymbol = symbol;
-      if (!boardAssets.find(a => a.symbol === symbol)) {
+      const alreadyLoaded = untrack(() => boardAssets.find(a => a.symbol === symbol));
+      if (!alreadyLoaded) {
         boardAssets = []; verdictMap = {}; evidenceMap = {}; layout = 'focus';
       }
       loadAnalysis(symbol, symbolToTF(tf));
@@ -407,7 +409,6 @@
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
-      // Clear stale analysis so loading state appears for the new TF
       verdictMap = {}; evidenceMap = {};
       loadAnalysis(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
@@ -415,23 +416,60 @@
   });
 
   let isLoadingActive = $derived(loadingSymbols.has(activeSymbol));
-  let activePairDisplay = $derived(gState.pair.split('/')[0] ?? 'BTC');
+  let activePairDisplay = $derived(gPair.split('/')[0] ?? 'BTC');
+
+  // ─── Panel visibility + resize ───────────────────────────────
+  let showRightPanel = $state(false);
+  let leftWidth  = $state(240);
+  let rightWidth = $state(320);
+
+  function startResize(side: 'left' | 'right', e: MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = side === 'left' ? leftWidth : rightWidth;
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientX - startX;
+      if (side === 'left') {
+        leftWidth = Math.max(160, Math.min(400, startW + delta));
+      } else {
+        rightWidth = Math.max(240, Math.min(520, startW - delta));
+      }
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
 
   // ─── Mobile ─────────────────────────────────────────────────
   let showDetailSheet = $state(false);
+
+  // Computed hero asset — computed HERE in parent scope so boardAssets
+  // reactivity is tracked directly (bypasses WorkspaceGrid prop chain issue)
+  let heroAsset = $derived(boardAssets.find(a => a.symbol === activeSymbol) ?? boardAssets[0] ?? null);
+  let heroVerdict = $derived(heroAsset ? verdictMap[heroAsset.symbol] ?? null : null);
+  let heroEvidence = $derived(heroAsset ? evidenceMap[heroAsset.symbol] ?? [] : []);
 
   let activeAsset = $derived(boardAssets.find(a => a.symbol === activeSymbol) ?? boardAssets[0] ?? null);
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
   let activeEvidence = $derived(activeSymbol ? evidenceMap[activeSymbol] ?? [] : []);
 
   // Quick chips for mobile dock
-  const MOBILE_CHIPS = [
+  const MOBILE_CHIPS = $derived([
     { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
     { id: 'alts',      label: 'Hot Alts',        action: 'Show hot altcoins with breakout signals' },
     { id: 'long-bias', label: 'LONG setups',     action: 'Show best long setups with high confluence' },
-    { id: 'risk',      label: 'Risk check',      action: `What are the main risks for ${gState.pair.split('/')[0]}?` },
+    { id: 'risk',      label: 'Risk check',      action: `What are the main risks for ${gPair.split('/')[0]}?` },
     { id: 'compare',   label: 'BTC vs ETH',      action: 'Compare BTC and ETH side by side' },
-  ];
+  ]);
 </script>
 
 <!-- ═══════════════════════════════════════════════════ -->
@@ -449,7 +487,10 @@
   />
 
   <!-- 3-column body -->
-  <div class="terminal-body">
+  <div class="terminal-body"
+    class:has-right-panel={showRightPanel}
+    style="--terminal-left-w: {leftWidth}px; --terminal-right-w: {rightWidth}px"
+  >
 
     <!-- Left Rail -->
     <aside class="left-rail">
@@ -459,26 +500,34 @@
       />
     </aside>
 
+    <!-- Left resize handle -->
+    <div class="panel-resizer" onmousedown={(e) => startResize('left', e)} role="separator" aria-label="Resize left panel"></div>
+
     <!-- Center Board -->
     <main class="center-board">
 
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board">
-        {#if isLoadingActive && boardAssets.length === 0}
+        {#if isLoadingActive && !heroVerdict}
           <div class="board-loading">
             <div class="loading-ring"></div>
             <p class="loading-msg">Analyzing {activePairDisplay}…</p>
           </div>
+        {:else if heroAsset && heroVerdict}
+          <div class="focus-slot">
+            <VerdictCard
+              asset={heroAsset}
+              verdict={heroVerdict}
+              evidence={heroEvidence}
+              onPin={() => {}}
+              onViewDetail={() => { selectAsset(heroAsset!.symbol); rightPanelTab = 'summary'; showRightPanel = true; }}
+            />
+          </div>
         {:else}
-          <WorkspaceGrid
-            {layout}
-            assets={boardAssets}
-            verdicts={verdictMap}
-            evidence={evidenceMap}
-            {activeSymbol}
-            onSelect={selectAsset}
-            onViewDetail={(sym) => { selectAsset(sym); rightPanelTab = 'summary'; }}
-          />
+          <div class="board-empty">
+            <p class="empty-icon">◈</p>
+            <p class="empty-text">Type a query below to analyze {activePairDisplay}</p>
+          </div>
         {/if}
 
         {#if isStreaming && streamText}
@@ -499,7 +548,7 @@
       <!-- Desktop bottom dock -->
       <div class="desktop-dock">
         <TerminalBottomDock
-          loading={isStreaming}
+          loading={isStreaming || isLoadingActive}
           onSend={sendCommand}
         />
       </div>
@@ -522,7 +571,10 @@
       </div>
     </main>
 
-    <!-- Right Context Panel -->
+    <!-- Right Context Panel — appears only after first search -->
+    {#if showRightPanel}
+    <!-- Right resize handle -->
+    <div class="panel-resizer" onmousedown={(e) => startResize('right', e)} role="separator" aria-label="Resize right panel"></div>
     <aside class="right-panel">
       <TerminalContextPanel
         analysisData={activeSymbol ? analysisData : null}
@@ -531,6 +583,7 @@
         onTabChange={(t) => rightPanelTab = t}
       />
     </aside>
+    {/if}
 
   </div>
 </div>
@@ -559,14 +612,38 @@
   .terminal-body {
     flex: 1;
     display: grid;
-    grid-template-columns: var(--terminal-left-w, 240px) 1fr var(--terminal-right-w, 320px);
+    /* left | handle | center */
+    grid-template-columns: var(--terminal-left-w, 240px) 4px 1fr;
     overflow: hidden;
     min-height: 0;
   }
 
+  .terminal-body.has-right-panel {
+    /* left | handle | center | handle | right */
+    grid-template-columns: var(--terminal-left-w, 240px) 4px 1fr 4px var(--terminal-right-w, 320px);
+  }
+
+  /* Resize handles */
+  .panel-resizer {
+    width: 4px;
+    background: var(--sc-terminal-border, rgba(255,255,255,0.07));
+    cursor: col-resize;
+    position: relative;
+    z-index: 20;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .panel-resizer:hover { background: rgba(255,255,255,0.18); }
+  /* Widen hit area without changing visual size */
+  .panel-resizer::before {
+    content: '';
+    position: absolute;
+    inset: 0 -5px;
+  }
+
   .left-rail {
     background: var(--sc-terminal-bg, #000);
-    border-right: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+    /* border handled by panel-resizer */
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -592,11 +669,42 @@
 
   .right-panel {
     background: var(--sc-terminal-bg, #000);
-    border-left: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+    /* border handled by panel-resizer */
     overflow: hidden;
     display: flex;
     flex-direction: column;
     min-height: 0;
+  }
+
+  /* Focus slot — wraps VerdictCard in scrollable container */
+  .focus-slot {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Empty state */
+  .board-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0.5;
+  }
+  .empty-icon {
+    font-size: 28px;
+    color: var(--sc-text-3);
+    margin: 0;
+  }
+  .empty-text {
+    font-family: var(--sc-font-mono);
+    font-size: 13px;
+    color: var(--sc-text-2);
+    margin: 0;
   }
 
   /* Loading */
@@ -656,17 +764,19 @@
   /* Tablet */
   @media (max-width: 1024px) and (min-width: 769px) {
     .terminal-body {
-      grid-template-columns: 200px 1fr 280px;
+      --terminal-left-w: 200px;
+      --terminal-right-w: 280px;
     }
   }
 
   /* Mobile */
   @media (max-width: 768px) {
     .terminal-body {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr !important;
     }
     .left-rail { display: none; }
     .right-panel { display: none; }
+    .panel-resizer { display: none; }
     .center-board { height: 100%; }
     .desktop-board { display: none; }
     .desktop-dock { display: none; }
