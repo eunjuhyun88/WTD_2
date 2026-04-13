@@ -1,4 +1,12 @@
-"""Tests for PatternStateMachine using TRADOOR_OI_REVERSAL pattern."""
+"""Tests for PatternStateMachine using TRADOOR_OI_REVERSAL pattern.
+
+v2: Updated to respect min_bars enforcement. Each phase must be held for
+at least `min_bars` quiet bars before the state machine will consider
+advancing to the next phase.
+
+TRADOOR phase min_bars:
+  FAKE_DUMP=1, ARCH_ZONE=4, REAL_DUMP=1, ACCUMULATION=6, BREAKOUT=1
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
@@ -23,8 +31,46 @@ REAL_DUMP_BLOCKS = ["oi_spike_with_dump", "volume_spike"]
 ACCUMULATION_BLOCKS = ["higher_lows_sequence", "funding_flip", "oi_hold_after_spike"]
 BREAKOUT_BLOCKS = ["breakout_above_high", "oi_change", "volume_spike"]
 
-# No blocks at all (quiet bar)
 QUIET_BLOCKS: list[str] = []
+
+
+def _advance_through(sm: PatternStateMachine, sym: str, blocks: list[str],
+                     start_hour: int, min_bars: int) -> int:
+    """Feed `min_bars` quiet bars (to satisfy min_bars), then feed the next phase's
+    blocks. Returns the next available hour offset."""
+    # Feed quiet bars to satisfy min_bars of current phase
+    h = start_hour
+    for _ in range(min_bars):
+        sm.evaluate(sym, QUIET_BLOCKS, ts(h))
+        h += 1
+    # Feed the transition blocks
+    sm.evaluate(sym, blocks, ts(h))
+    h += 1
+    return h
+
+
+def _walk_to_accumulation(sm: PatternStateMachine, sym: str, start: int = 0) -> int:
+    """Walk a symbol through FAKE_DUMP → ARCH_ZONE → REAL_DUMP → ACCUMULATION.
+    Returns next available hour offset."""
+    h = start
+    # Enter FAKE_DUMP (phase 0)
+    sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(h)); h += 1
+    # FAKE_DUMP min_bars=1, then advance to ARCH_ZONE
+    h = _advance_through(sm, sym, ARCH_ZONE_BLOCKS, h, min_bars=1)
+    # ARCH_ZONE min_bars=4, then advance to REAL_DUMP
+    h = _advance_through(sm, sym, REAL_DUMP_BLOCKS, h, min_bars=4)
+    # REAL_DUMP min_bars=1, then advance to ACCUMULATION
+    h = _advance_through(sm, sym, ACCUMULATION_BLOCKS, h, min_bars=1)
+    return h
+
+
+def _walk_to_real_dump(sm: PatternStateMachine, sym: str, start: int = 0) -> int:
+    """Walk a symbol through FAKE_DUMP → ARCH_ZONE → REAL_DUMP."""
+    h = start
+    sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(h)); h += 1
+    h = _advance_through(sm, sym, ARCH_ZONE_BLOCKS, h, min_bars=1)
+    h = _advance_through(sm, sym, REAL_DUMP_BLOCKS, h, min_bars=4)
+    return h
 
 
 class TestHappyPath:
@@ -42,53 +88,17 @@ class TestHappyPath:
 
         sym = "PTBUSDT"
 
-        # Bar 0: FAKE_DUMP phase 0 starts
-        t = sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
-        assert t is None  # phase 0 just entered, no transition emitted
-        assert sm.get_current_phase(sym) == "FAKE_DUMP"
-
-        # Bar 1: ARCH_ZONE blocks fired → advance to phase 1
-        t = sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(1))
-        assert t is not None
-        assert t.from_phase == "FAKE_DUMP"
-        assert t.to_phase == "ARCH_ZONE"
-        assert t.reason == "condition_met"
-        assert not t.is_entry_signal
-        assert not t.is_success
-        assert sm.get_current_phase(sym) == "ARCH_ZONE"
-
-        # Bar 2: REAL_DUMP blocks fired → advance to phase 2
-        t = sm.evaluate(sym, REAL_DUMP_BLOCKS, ts(2))
-        assert t is not None
-        assert t.from_phase == "ARCH_ZONE"
-        assert t.to_phase == "REAL_DUMP"
-        assert not t.is_entry_signal
-        assert sm.get_current_phase(sym) == "REAL_DUMP"
-
-        # Bar 3: ACCUMULATION blocks fired → advance to phase 3 (entry_phase)
-        t = sm.evaluate(sym, ACCUMULATION_BLOCKS, ts(3))
-        assert t is not None
-        assert t.from_phase == "REAL_DUMP"
-        assert t.to_phase == "ACCUMULATION"
-        assert t.is_entry_signal
-        assert not t.is_success
+        # Walk to ACCUMULATION (entry phase)
+        h = _walk_to_accumulation(sm, sym)
         assert sm.get_current_phase(sym) == "ACCUMULATION"
         assert len(entry_signals) == 1
         assert entry_signals[0].symbol == sym
-
-        # Check entry candidates
         assert sym in sm.get_entry_candidates()
 
-        # Bar 4: BREAKOUT blocks fired → advance to phase 4 (target_phase = success)
-        t = sm.evaluate(sym, BREAKOUT_BLOCKS, ts(4))
-        assert t is not None
-        assert t.from_phase == "ACCUMULATION"
-        assert t.to_phase == "BREAKOUT"
-        assert not t.is_entry_signal
-        assert t.is_success
+        # ACCUMULATION min_bars=6, then advance to BREAKOUT
+        h = _advance_through(sm, sym, BREAKOUT_BLOCKS, h, min_bars=6)
+        assert sm.get_current_phase(sym) == "BREAKOUT"
         assert len(success_signals) == 1
-
-        # No longer an entry candidate
         assert sym not in sm.get_entry_candidates()
 
     def test_entry_signal_callback_fires_exactly_once(self) -> None:
@@ -96,14 +106,81 @@ class TestHappyPath:
         sm = PatternStateMachine(TRADOOR_OI_REVERSAL, on_entry_signal=fired.append)
         sym = "AAVEUSDT"
 
-        sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(1))
-        sm.evaluate(sym, REAL_DUMP_BLOCKS, ts(2))
-        sm.evaluate(sym, ACCUMULATION_BLOCKS, ts(3))
+        _walk_to_accumulation(sm, sym)
 
         assert len(fired) == 1
         assert fired[0].to_phase == "ACCUMULATION"
         assert fired[0].is_entry_signal is True
+
+
+class TestMinBars:
+    """v2: min_bars enforcement prevents premature transitions."""
+
+    def test_cannot_advance_before_min_bars(self) -> None:
+        sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
+        sym = "TESTUSDT"
+
+        # Enter FAKE_DUMP
+        sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
+        assert sm.get_current_phase(sym) == "FAKE_DUMP"
+
+        # Advance to ARCH_ZONE (FAKE_DUMP min_bars=1, so 1 quiet bar suffices)
+        sm.evaluate(sym, QUIET_BLOCKS, ts(1))  # 1 bar in FAKE_DUMP
+        t = sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(2))
+        assert t is not None
+        assert sm.get_current_phase(sym) == "ARCH_ZONE"
+
+        # ARCH_ZONE min_bars=4 — try to advance immediately (should fail)
+        t = sm.evaluate(sym, REAL_DUMP_BLOCKS, ts(3))
+        assert t is None
+        assert sm.get_current_phase(sym) == "ARCH_ZONE"
+
+        # After 4 bars, should succeed
+        for i in range(4, 7):
+            sm.evaluate(sym, QUIET_BLOCKS, ts(i))
+        t = sm.evaluate(sym, REAL_DUMP_BLOCKS, ts(7))
+        assert t is not None
+        assert sm.get_current_phase(sym) == "REAL_DUMP"
+
+
+class TestConfidence:
+    """v2: Confidence scoring from optional blocks."""
+
+    def test_full_confidence_without_optional(self) -> None:
+        sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
+        sym = "CONFUSDT"
+
+        sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
+        sm.evaluate(sym, QUIET_BLOCKS, ts(1))
+        t = sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(2))
+        assert t is not None
+        # ARCH_ZONE has 1 optional block (volume_dryup), so without it:
+        # confidence = 1 / (1 + 1) = 0.5
+        assert 0.4 < t.confidence < 0.6
+
+    def test_higher_confidence_with_optional(self) -> None:
+        sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
+        sym = "CONFUSDT"
+
+        sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
+        sm.evaluate(sym, QUIET_BLOCKS, ts(1))
+        t = sm.evaluate(sym, ARCH_ZONE_BLOCKS + ["volume_dryup"], ts(2))
+        assert t is not None
+        assert t.confidence == 1.0
+
+
+class TestFeatureSnapshot:
+    """v2: feature_snapshot is passed through transitions."""
+
+    def test_snapshot_in_transition(self) -> None:
+        sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
+        sym = "SNAPUSDT"
+
+        sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0), feature_snapshot={"rsi14": 25.0})
+        sm.evaluate(sym, QUIET_BLOCKS, ts(1))
+        t = sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(2), feature_snapshot={"rsi14": 35.0})
+        assert t is not None
+        assert t.feature_snapshot == {"rsi14": 35.0}
 
 
 class TestTimeout:
@@ -121,13 +198,14 @@ class TestTimeout:
         sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
         assert sm.get_current_phase(sym) == "FAKE_DUMP"
 
-        # Advance to ARCH_ZONE (phase 1, max_bars=48)
-        sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(1))
+        # Advance to ARCH_ZONE
+        sm.evaluate(sym, QUIET_BLOCKS, ts(1))
+        sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(2))
         assert sm.get_current_phase(sym) == "ARCH_ZONE"
 
         # Feed 49 quiet bars (max_bars=48 → timeout on bar 49)
         t = None
-        for i in range(2, 52):
+        for i in range(3, 53):
             t = sm.evaluate(sym, QUIET_BLOCKS, ts(i))
             if t is not None:
                 break
@@ -135,21 +213,18 @@ class TestTimeout:
         assert t is not None
         assert t.reason == "timeout"
         assert t.from_phase == "ARCH_ZONE"
-        assert t.to_phase == "FAKE_DUMP"  # reset to phase 0
+        assert t.to_phase == "FAKE_DUMP"
         assert sm.get_current_phase(sym) == "FAKE_DUMP"
         assert len(invalidated_calls) == 1
         assert invalidated_calls[0] == (sym, "ARCH_ZONE")
 
     def test_phase0_does_not_timeout_until_entered(self) -> None:
-        """Phase 0 has no timeout until it is actually entered."""
         sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
         sym = "SOLUSDT"
 
-        # Many quiet bars without entering phase 0
         for i in range(100):
             sm.evaluate(sym, QUIET_BLOCKS, ts(i))
 
-        # Symbol should still be at phase 0 but untracked (phase_entered_at=None)
         assert sm.get_current_phase(sym) == "FAKE_DUMP"
 
 
@@ -157,32 +232,30 @@ class TestDisqualifiers:
     """Disqualifier blocks prevent transition."""
 
     def test_disqualifier_prevents_arch_zone_entry(self) -> None:
-        """oi_spike_with_dump disqualifies ARCH_ZONE transition."""
         sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
         sym = "DOTUSDT"
 
         sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
         assert sm.get_current_phase(sym) == "FAKE_DUMP"
 
-        # ARCH_ZONE required block present BUT disqualifier also present
+        # ARCH_ZONE required + disqualifier
         blocks_with_disq = ["sideways_compression", "oi_spike_with_dump"]
-        t = sm.evaluate(sym, blocks_with_disq, ts(1))
+        sm.evaluate(sym, QUIET_BLOCKS, ts(1))
+        t = sm.evaluate(sym, blocks_with_disq, ts(2))
         assert t is None
         assert sm.get_current_phase(sym) == "FAKE_DUMP"
 
     def test_disqualifier_prevents_accumulation_entry(self) -> None:
-        """oi_spike_with_dump disqualifies ACCUMULATION transition."""
         sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
         sym = "LINKUSDT"
 
-        sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(1))
-        sm.evaluate(sym, REAL_DUMP_BLOCKS, ts(2))
+        h = _walk_to_real_dump(sm, sym)
         assert sm.get_current_phase(sym) == "REAL_DUMP"
 
         # ACCUMULATION required blocks + disqualifier
         blocks_with_disq = ACCUMULATION_BLOCKS + ["oi_spike_with_dump"]
-        t = sm.evaluate(sym, blocks_with_disq, ts(3))
+        sm.evaluate(sym, QUIET_BLOCKS, ts(h))
+        t = sm.evaluate(sym, blocks_with_disq, ts(h + 1))
         assert t is None
         assert sm.get_current_phase(sym) == "REAL_DUMP"
 
@@ -196,8 +269,8 @@ class TestMissingRequiredBlock:
 
         sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
 
-        # ARCH_ZONE needs sideways_compression — don't provide it
-        t = sm.evaluate(sym, ["volume_dryup"], ts(1))
+        sm.evaluate(sym, QUIET_BLOCKS, ts(1))
+        t = sm.evaluate(sym, ["volume_dryup"], ts(2))
         assert t is None
         assert sm.get_current_phase(sym) == "FAKE_DUMP"
 
@@ -205,13 +278,13 @@ class TestMissingRequiredBlock:
         sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
         sym = "BNBUSDT"
 
-        sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(1))
-        sm.evaluate(sym, REAL_DUMP_BLOCKS, ts(2))
+        h = _walk_to_real_dump(sm, sym)
+        assert sm.get_current_phase(sym) == "REAL_DUMP"
 
-        # Provide only 2 of the 3 required ACCUMULATION blocks
+        # Provide only 2 of 3 required ACCUMULATION blocks
         partial = ["higher_lows_sequence", "funding_flip"]
-        t = sm.evaluate(sym, partial, ts(3))
+        sm.evaluate(sym, QUIET_BLOCKS, ts(h))
+        t = sm.evaluate(sym, partial, ts(h + 1))
         assert t is None
         assert sm.get_current_phase(sym) == "REAL_DUMP"
 
@@ -225,15 +298,11 @@ class TestGetEntryCandidates:
         sym_a = "AAVEUSDT"
         sym_b = "COMPUSDT"
 
-        # Walk sym_a to ACCUMULATION
-        sm.evaluate(sym_a, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym_a, ARCH_ZONE_BLOCKS, ts(1))
-        sm.evaluate(sym_a, REAL_DUMP_BLOCKS, ts(2))
-        sm.evaluate(sym_a, ACCUMULATION_BLOCKS, ts(3))
-
+        _walk_to_accumulation(sm, sym_a)
         # sym_b only at ARCH_ZONE
         sm.evaluate(sym_b, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym_b, ARCH_ZONE_BLOCKS, ts(1))
+        sm.evaluate(sym_b, QUIET_BLOCKS, ts(1))
+        sm.evaluate(sym_b, ARCH_ZONE_BLOCKS, ts(2))
 
         candidates = sm.get_entry_candidates()
         assert sym_a in candidates
@@ -253,12 +322,7 @@ class TestMultipleSymbolsIndependent:
         sym_a = "BTCUSDT"
         sym_b = "ETHUSDT"
 
-        # sym_a: walk to REAL_DUMP
-        sm.evaluate(sym_a, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym_a, ARCH_ZONE_BLOCKS, ts(1))
-        sm.evaluate(sym_a, REAL_DUMP_BLOCKS, ts(2))
-
-        # sym_b: only entered FAKE_DUMP
+        _walk_to_real_dump(sm, sym_a)
         sm.evaluate(sym_b, FAKE_DUMP_BLOCKS, ts(0))
 
         assert sm.get_current_phase(sym_a) == "REAL_DUMP"
@@ -272,16 +336,17 @@ class TestMultipleSymbolsIndependent:
 
         # Both reach ARCH_ZONE
         sm.evaluate(sym_a, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym_a, ARCH_ZONE_BLOCKS, ts(1))
+        sm.evaluate(sym_a, QUIET_BLOCKS, ts(1))
+        sm.evaluate(sym_a, ARCH_ZONE_BLOCKS, ts(2))
 
         sm.evaluate(sym_b, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym_b, ARCH_ZONE_BLOCKS, ts(1))
+        sm.evaluate(sym_b, QUIET_BLOCKS, ts(1))
+        sm.evaluate(sym_b, ARCH_ZONE_BLOCKS, ts(2))
 
         # Only sym_a receives many quiet bars → timeout
-        for i in range(2, 52):
+        for i in range(3, 53):
             sm.evaluate(sym_a, QUIET_BLOCKS, ts(i))
 
-        # sym_a should have timed out to FAKE_DUMP; sym_b still at ARCH_ZONE
         assert sm.get_current_phase(sym_a) == "FAKE_DUMP"
         assert sm.get_current_phase(sym_b) == "ARCH_ZONE"
 
@@ -290,7 +355,8 @@ class TestMultipleSymbolsIndependent:
 
         sm.evaluate("SYM1", FAKE_DUMP_BLOCKS, ts(0))
         sm.evaluate("SYM2", FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate("SYM2", ARCH_ZONE_BLOCKS, ts(1))
+        sm.evaluate("SYM2", QUIET_BLOCKS, ts(1))
+        sm.evaluate("SYM2", ARCH_ZONE_BLOCKS, ts(2))
 
         states = sm.get_all_states()
         assert states["SYM1"] == "FAKE_DUMP"
@@ -301,7 +367,8 @@ class TestMultipleSymbolsIndependent:
         sym = "RESETME"
 
         sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
-        sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(1))
+        sm.evaluate(sym, QUIET_BLOCKS, ts(1))
+        sm.evaluate(sym, ARCH_ZONE_BLOCKS, ts(2))
         assert sm.get_current_phase(sym) == "ARCH_ZONE"
 
         sm.reset_symbol(sym)

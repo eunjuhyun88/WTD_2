@@ -8,6 +8,10 @@ Endpoints:
   GET  /patterns/{slug}/stats         — ledger stats for one pattern
   GET  /patterns/{slug}/library       — return pattern definition
   POST /patterns/scan                 — trigger a scan cycle
+  POST /patterns/{slug}/verdict       — user verdict on outcome
+  POST /patterns/{slug}/evaluate      — v2: auto-evaluate pending outcomes
+  POST /patterns/register             — v2: register user-defined pattern
+  GET  /patterns/data-quality         — v2: perp coverage and scan health
 """
 from __future__ import annotations
 
@@ -28,10 +32,24 @@ router = APIRouter()
 _ledger = LedgerStore()
 
 
+# ── Request models ───────────────────────────────────────────────────────────
+
 class _VerdictBody(BaseModel):
     symbol: str
     verdict: str  # "valid" | "invalid" | "missed"
 
+class _RegisterPatternBody(BaseModel):
+    slug: str
+    name: str
+    description: str
+    phases: list[dict]  # [{phase_id, label, required_blocks, ...}]
+    entry_phase: str
+    target_phase: str
+    timeframe: str = "1h"
+    tags: list[str] = []
+
+
+# ── Library & States ─────────────────────────────────────────────────────────
 
 @router.get("/library")
 async def list_patterns() -> dict:
@@ -41,9 +59,21 @@ async def list_patterns() -> dict:
             {
                 "slug": p.slug,
                 "name": p.name,
+                "description": p.description,
                 "tags": p.tags,
                 "entry_phase": p.entry_phase,
-                "phases": [ph.phase_id for ph in p.phases],
+                "target_phase": p.target_phase,
+                "timeframe": p.timeframe,
+                "n_phases": len(p.phases),
+                "phases": [
+                    {
+                        "phase_id": ph.phase_id,
+                        "label": ph.label,
+                        "required_blocks": ph.required_blocks,
+                        "n_required": len(ph.required_blocks),
+                    }
+                    for ph in p.phases
+                ],
             }
             for p in PATTERN_LIBRARY.values()
         ]
@@ -64,8 +94,11 @@ async def get_all_states() -> dict:
 async def get_all_candidates() -> dict:
     """Entry candidates across all patterns."""
     candidates = get_entry_candidates_all()
-    return {"entry_candidates": candidates}
+    total = sum(len(v) for v in candidates.values())
+    return {"entry_candidates": candidates, "total_count": total}
 
+
+# ── Scan ─────────────────────────────────────────────────────────────────────
 
 @router.post("/scan")
 async def trigger_pattern_scan(background_tasks: BackgroundTasks) -> dict:
@@ -73,6 +106,8 @@ async def trigger_pattern_scan(background_tasks: BackgroundTasks) -> dict:
     background_tasks.add_task(run_pattern_scan)
     return {"status": "scan_started", "patterns": list(PATTERN_LIBRARY.keys())}
 
+
+# ── Per-pattern endpoints ────────────────────────────────────────────────────
 
 @router.get("/{slug}/candidates")
 async def get_candidates(slug: str) -> dict:
@@ -98,7 +133,7 @@ async def get_candidates(slug: str) -> dict:
 
 @router.get("/{slug}/stats")
 async def get_stats(slug: str) -> dict:
-    """Ledger statistics for a pattern."""
+    """Ledger statistics for a pattern. v2: includes EV, BTC-conditional, decay."""
     try:
         get_pattern(slug)
     except KeyError:
@@ -113,9 +148,18 @@ async def get_stats(slug: str) -> dict:
         "failure": stats.failure_count,
         "success_rate": round(stats.success_rate, 3),
         "avg_gain_pct": round(stats.avg_gain_pct, 3) if stats.avg_gain_pct is not None else None,
+        "avg_loss_pct": round(stats.avg_loss_pct, 3) if stats.avg_loss_pct is not None else None,
+        "expected_value": round(stats.expected_value, 4) if stats.expected_value is not None else None,
         "avg_duration_hours": round(stats.avg_duration_hours, 1) if stats.avg_duration_hours is not None else None,
         "recent_30d_count": stats.recent_30d_count,
         "recent_30d_success_rate": round(stats.recent_30d_success_rate, 3) if stats.recent_30d_success_rate is not None else None,
+        # v2: BTC-conditional
+        "btc_conditional": {
+            "bullish": round(stats.btc_bullish_rate, 3) if stats.btc_bullish_rate is not None else None,
+            "bearish": round(stats.btc_bearish_rate, 3) if stats.btc_bearish_rate is not None else None,
+            "sideways": round(stats.btc_sideways_rate, 3) if stats.btc_sideways_rate is not None else None,
+        },
+        "decay_direction": stats.decay_direction,
     }
 
 
@@ -135,6 +179,8 @@ async def get_pattern_def(slug: str) -> dict:
         "target_phase": p.target_phase,
         "timeframe": p.timeframe,
         "tags": p.tags,
+        "version": p.version,
+        "created_by": p.created_by,
         "phases": [
             {
                 "phase_id": ph.phase_id,
@@ -142,12 +188,16 @@ async def get_pattern_def(slug: str) -> dict:
                 "required_blocks": ph.required_blocks,
                 "optional_blocks": ph.optional_blocks,
                 "disqualifier_blocks": ph.disqualifier_blocks,
+                "min_bars": ph.min_bars,
                 "max_bars": ph.max_bars,
+                "timeframe": ph.timeframe,
             }
             for ph in p.phases
         ],
     }
 
+
+# ── Verdict & Evaluation ────────────────────────────────────────────────────
 
 @router.post("/{slug}/verdict")
 async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
@@ -162,12 +212,10 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
     matching = [o for o in pending if o.symbol == body.symbol]
 
     if not matching:
-        # Fall back to any outcome (any status)
         all_outcomes = _ledger.list_all(slug)
         matching = [o for o in all_outcomes if o.symbol == body.symbol]
 
     if not matching:
-        # No existing outcome — create a stub with the user verdict
         new_outcome = PatternOutcome(
             pattern_slug=slug,
             symbol=body.symbol,
@@ -176,7 +224,95 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
         _ledger.save(new_outcome)
         return {"ok": True, "created": True, "outcome_id": new_outcome.id}
 
-    outcome = matching[0]  # most recent (sorted by created_at desc)
+    outcome = matching[0]
     outcome.user_verdict = body.verdict  # type: ignore[assignment]
     _ledger.save(outcome)
     return {"ok": True, "outcome_id": outcome.id}
+
+
+@router.post("/{slug}/evaluate")
+async def auto_evaluate(slug: str) -> dict:
+    """v2: Auto-evaluate pending outcomes past their evaluation window.
+
+    Checks Binance prices and applies HIT/MISS/EXPIRED verdicts.
+    """
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+
+    evaluated = _ledger.auto_evaluate_pending(slug)
+    return {
+        "slug": slug,
+        "evaluated_count": len(evaluated),
+        "results": [
+            {"id": o.id, "symbol": o.symbol, "verdict": o.outcome}
+            for o in evaluated
+        ],
+    }
+
+
+# ── v2: Pattern Registration ────────────────────────────────────────────────
+
+@router.post("/register")
+async def register_pattern(body: _RegisterPatternBody) -> dict:
+    """Register a user-defined pattern into the library.
+
+    Validates block names against the block evaluator registry.
+    """
+    from patterns.types import PatternObject, PhaseCondition
+    from scoring.block_evaluator import _BLOCKS
+
+    known_blocks = {name for name, _ in _BLOCKS}
+
+    # Validate phases
+    phases = []
+    for i, ph in enumerate(body.phases):
+        required = ph.get("required_blocks", [])
+        optional = ph.get("optional_blocks", [])
+        disqualifiers = ph.get("disqualifier_blocks", [])
+
+        # Check all referenced blocks exist
+        all_refs = required + optional + disqualifiers
+        unknown = [b for b in all_refs if b not in known_blocks]
+        if unknown:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Phase {i}: unknown blocks: {unknown}. Available: {sorted(known_blocks)}",
+            )
+
+        phases.append(PhaseCondition(
+            phase_id=ph.get("phase_id", f"PHASE_{i}"),
+            label=ph.get("label", f"Phase {i}"),
+            required_blocks=required,
+            optional_blocks=optional,
+            disqualifier_blocks=disqualifiers,
+            min_bars=ph.get("min_bars", 1),
+            max_bars=ph.get("max_bars", 48),
+            timeframe=ph.get("timeframe", body.timeframe),
+        ))
+
+    # Validate entry/target phases exist
+    phase_ids = {p.phase_id for p in phases}
+    if body.entry_phase not in phase_ids:
+        raise HTTPException(400, f"entry_phase '{body.entry_phase}' not in phases: {phase_ids}")
+    if body.target_phase not in phase_ids:
+        raise HTTPException(400, f"target_phase '{body.target_phase}' not in phases: {phase_ids}")
+
+    if body.slug in PATTERN_LIBRARY:
+        raise HTTPException(409, f"Pattern '{body.slug}' already exists")
+
+    pattern = PatternObject(
+        slug=body.slug,
+        name=body.name,
+        description=body.description,
+        phases=phases,
+        entry_phase=body.entry_phase,
+        target_phase=body.target_phase,
+        timeframe=body.timeframe,
+        tags=body.tags,
+        created_by="user",
+    )
+
+    PATTERN_LIBRARY[body.slug] = pattern
+    return {"ok": True, "slug": body.slug, "n_phases": len(phases)}

@@ -5,11 +5,15 @@ Design:
 - evaluate() is called each bar for each symbol with fired block names
 - Phase transitions are sequential (phase[0] → phase[1] → ...)
 - timeout: if max_bars exceeded without transition → reset to phase[0]
+- min_bars: phase must persist at least N bars before advancing (v2)
 - entry_signal: emitted when entering entry_phase
 - success: emitted when reaching target_phase
 
-Block names are checked by string: the StateMachine doesn't call blocks itself.
-The caller (scanner) runs blocks and passes the list of triggered block names.
+v2 improvements (CTO review):
+- min_bars enforcement: prevent premature phase transitions
+- feature_snapshot: captured at each transition for reproducibility
+- optional_blocks tracking: confidence scoring (how many optional blocks fired)
+- phase duration logging: track how long each symbol spent per phase
 """
 from __future__ import annotations
 
@@ -43,15 +47,15 @@ class PatternStateMachine:
         symbol: str,
         blocks_triggered: list[str],
         timestamp: datetime,
+        feature_snapshot: dict | None = None,
     ) -> PhaseTransition | None:
-        """
-        Evaluate one bar for a symbol.
+        """Evaluate one bar for a symbol.
 
         Args:
             symbol: e.g. "PTBUSDT"
             blocks_triggered: list of block names that fired this bar
-                e.g. ["oi_spike_with_dump", "volume_spike", "recent_decline"]
             timestamp: bar open time (UTC)
+            feature_snapshot: 92-dim feature dict at this bar (v2)
 
         Returns:
             PhaseTransition if a phase change occurred, None otherwise.
@@ -71,6 +75,11 @@ class PatternStateMachine:
             state.bars_in_phase += 1
             if state.bars_in_phase > current_phase.max_bars:
                 old_phase_id = current_phase.phase_id
+                log.debug(
+                    "TIMEOUT: %s in %s for %d bars (max %d) [%s]",
+                    symbol, old_phase_id, state.bars_in_phase,
+                    current_phase.max_bars, self.pattern.slug,
+                )
                 self._reset(symbol, state)
                 t = PhaseTransition(
                     symbol=symbol,
@@ -79,6 +88,7 @@ class PatternStateMachine:
                     to_phase=self.pattern.phases[0].phase_id,
                     timestamp=timestamp,
                     reason="timeout",
+                    feature_snapshot=feature_snapshot,
                 )
                 if self.on_invalidated:
                     self.on_invalidated(symbol, old_phase_id)
@@ -88,7 +98,14 @@ class PatternStateMachine:
         next_phase_idx = state.current_phase_idx + 1
         if next_phase_idx < len(self.pattern.phases):
             next_phase = self.pattern.phases[next_phase_idx]
-            if self._phase_satisfied(next_phase, blocks_triggered):
+
+            # v2: min_bars enforcement — must stay in current phase long enough
+            if state.phase_entered_at is not None and state.bars_in_phase < current_phase.min_bars:
+                # Not enough bars in current phase yet — don't advance
+                return None
+
+            satisfied, confidence = self._phase_satisfied(next_phase, blocks_triggered)
+            if satisfied:
                 old_phase_id = current_phase.phase_id
                 state.current_phase_idx = next_phase_idx
                 state.phase_entered_at = timestamp
@@ -107,6 +124,14 @@ class PatternStateMachine:
                     reason="condition_met",
                     is_entry_signal=is_entry,
                     is_success=is_success,
+                    confidence=confidence,
+                    feature_snapshot=feature_snapshot,
+                )
+
+                log.info(
+                    "TRANSITION: %s %s → %s (conf=%.0f%%) [%s]",
+                    symbol, old_phase_id, next_phase.phase_id,
+                    confidence * 100, self.pattern.slug,
                 )
 
                 if is_entry and self.on_entry_signal:
@@ -124,21 +149,42 @@ class PatternStateMachine:
         # check if phase 0 conditions are met to "start" tracking
         if state.current_phase_idx == 0 and state.phase_entered_at is None:
             phase0 = self.pattern.phases[0]
-            if self._phase_satisfied(phase0, blocks_triggered):
+            satisfied, _ = self._phase_satisfied(phase0, blocks_triggered)
+            if satisfied:
                 state.phase_entered_at = timestamp
                 state.bars_in_phase = 1
                 state.phase_history.append((phase0.phase_id, timestamp))
 
         return None
 
-    def _phase_satisfied(self, phase: PhaseCondition, blocks: list[str]) -> bool:
-        """Check if all required blocks fired and no disqualifiers fired."""
+    def _phase_satisfied(
+        self, phase: PhaseCondition, blocks: list[str]
+    ) -> tuple[bool, float]:
+        """Check if all required blocks fired and no disqualifiers fired.
+
+        v2: returns (satisfied, confidence) where confidence includes optional blocks.
+        """
         blocks_set = set(blocks)
+
+        # All required must fire
         if not all(b in blocks_set for b in phase.required_blocks):
-            return False
+            return False, 0.0
+
+        # No disqualifier may fire
         if any(b in blocks_set for b in phase.disqualifier_blocks):
-            return False
-        return True
+            return False, 0.0
+
+        # v2: Confidence = required (base) + optional (bonus)
+        n_required = len(phase.required_blocks)
+        n_optional = len(phase.optional_blocks)
+        n_optional_hit = sum(1 for b in phase.optional_blocks if b in blocks_set)
+
+        if n_optional > 0:
+            confidence = (n_required + n_optional_hit) / (n_required + n_optional)
+        else:
+            confidence = 1.0
+
+        return True, confidence
 
     def _reset(self, symbol: str, state: SymbolPhaseState) -> None:
         """Reset a symbol back to phase 0."""
@@ -174,7 +220,7 @@ class PatternStateMachine:
         return result
 
     def get_all_states_rich(self) -> dict[str, dict]:
-        """Return rich state dict {symbol: {phase_id, phase_idx, entered_at, bars_in_phase}}."""
+        """Return rich state dict with phase timing and progress info."""
         result = {}
         for sym, state in self._states.items():
             if state.invalidated:
@@ -183,8 +229,12 @@ class PatternStateMachine:
             result[sym] = {
                 "phase_id": phase.phase_id,
                 "phase_idx": state.current_phase_idx,
+                "phase_label": phase.label,
                 "entered_at": state.phase_entered_at.isoformat() if state.phase_entered_at else None,
                 "bars_in_phase": state.bars_in_phase,
+                "max_bars": phase.max_bars,
+                "progress_pct": round(state.bars_in_phase / phase.max_bars * 100, 1) if phase.max_bars > 0 else 0,
+                "total_phases": len(self.pattern.phases),
             }
         return result
 
