@@ -7,12 +7,22 @@
 //      (200 tok analysis response → ~15 tok summary)
 //   2. Gate snapshot injection based on intent + staleness
 //   3. Select tool subset based on IntentBudget
-//   4. Return final messages array ready for LLM call
+//   4. Auto-compact history when it exceeds COMPACT_THRESHOLD
+//   5. Inject TradeMemory + sessionSummary into system prompt
+//   6. Return final messages array ready for LLM call
+//
+// Static / Dynamic boundary (Claude Code SYSTEM_PROMPT_DYNAMIC_BOUNDARY 패턴):
+//   - Static prefix (identity, constraints, Evidence Chain, tone) → Anthropic cache
+//   - Dynamic suffix (locale, snapshot, memory, sessionSummary) → per-turn rebuild
 
 import type { ToolDefinition, LLMMessageWithTools } from './types';
 import type { IntentBudget } from './intentClassifier';
 import { SNAPSHOT_MAX_AGE_MS } from './intentClassifier';
-import { buildDouniSystemPrompt, buildAnalysisContext } from '$lib/engine/cogochi/douni/douniPersonality';
+import {
+  buildDouniSystemPrompt,
+  buildAnalysisContext,
+  type BuildDouniPromptOptions,
+} from '$lib/engine/cogochi/douni/douniPersonality';
 import type { DouniProfile } from '$lib/engine/cogochi/douni/douniPersonality';
 import type { SignalSnapshot } from '$lib/engine/cogochi/types';
 import {
@@ -24,6 +34,13 @@ import {
   TOOL_SUBMIT_FEEDBACK,
   TOOL_QUERY_MEMORY,
 } from './tools';
+import {
+  maybeCompactHistory,
+  clearStaleMarketData,
+  shouldCompactByTokens,
+} from './contextCompact';
+import { formatMemoryForPrompt } from './tradeMemory';
+import type { TradeMemory } from './tradeMemory';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -50,6 +67,10 @@ export interface BuildContextResult {
   systemPrompt: string;
   messages: LLMMessageWithTools[];
   tools: ToolDefinition[];
+  /** true if history was auto-compacted this turn — client should reset chatHistory to recentHistory */
+  compacted: boolean;
+  /** Surviving history after compact (client should replace its chatHistory with this) */
+  recentHistory: CompressedHistoryEntry[];
 }
 
 // ─── Tool map ────────────────────────────────────────────────
@@ -140,15 +161,69 @@ export interface BuildContextOptions {
   snapshotTs?: number;
   /** Symbol detected from classifier (for snapshot gating) */
   detectedSymbol?: string;
+
+  // ── New: Claude Code pattern integrations ─────────────────
+  /**
+   * User's locale (e.g. 'ko-KR', 'en-US', 'ja-JP').
+   * Passed to _getLanguageSection() in douniPersonality.
+   * Defaults to 'en' if omitted.
+   */
+  locale?: string;
+  /**
+   * Serialized TradeMemory object.
+   * If provided, injected into the dynamic prompt section.
+   */
+  memory?: TradeMemory;
+  /**
+   * Intent string detected by classifier (for _getQuestionFocusSection).
+   * e.g. 'analysis', 'scan', 'social', 'greeting', 'question'
+   */
+  intent?: string;
 }
 
 export function buildContext(opts: BuildContextOptions): BuildContextResult {
-  const { profile, budget, history, message, snapshot, snapshotTs, detectedSymbol } = opts;
+  const {
+    profile,
+    budget,
+    message,
+    snapshot,
+    snapshotTs,
+    detectedSymbol,
+    locale,
+    memory,
+    intent,
+  } = opts;
 
-  // 1. System prompt (static personality — Anthropic will auto-cache the prefix)
-  let systemPrompt = buildDouniSystemPrompt(profile);
+  // ── Step 1: Auto-compact history ──────────────────────────
+  // Claude Code autoCompact.ts 패턴:
+  //   turn 수 초과 OR 토큰 초과 시 오래된 턴을 deterministic summary로 압축
+  const rawHistory = opts.history;
+  const byTokens = shouldCompactByTokens(rawHistory);
 
-  // 2. Conditionally inject snapshot context
+  const compactResult = byTokens
+    ? { compacted: true, summary: 'Earlier conversation compressed (token budget).', recentHistory: rawHistory.slice(-8) }
+    : maybeCompactHistory(rawHistory);
+
+  const { compacted, summary: sessionSummary, recentHistory } = compactResult;
+
+  // ── Step 2: System prompt (Static + Dynamic sections) ─────
+  // Static prefix: identity, constraints, Evidence Chain, tone
+  //   → Anthropic prefix cache applies to everything before DOUNI_DYNAMIC_BOUNDARY
+  // Dynamic suffix: locale, memory, sessionSummary, snapshot hint
+  //   → rebuilt every turn, not cached
+  const memorySection = memory ? formatMemoryForPrompt(memory) : undefined;
+
+  const promptOpts: BuildDouniPromptOptions = {
+    locale,
+    intent,
+    state: opts.profile.archetype as never, // DouniState is same shape as archetype
+    memory: memorySection,
+    sessionSummary: sessionSummary ?? undefined,
+  };
+
+  let systemPrompt = buildDouniSystemPrompt(profile, promptOpts);
+
+  // ── Step 3: Snapshot injection ────────────────────────────
   const injectSnap = shouldInjectSnapshot(budget, snapshot, snapshotTs, detectedSymbol);
   if (injectSnap && snapshot) {
     try {
@@ -160,26 +235,40 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
     systemPrompt += `\n\n[NO DATA YET]\nUse analyze_market or scan_market to get fresh data.`;
   }
 
-  // 3. Build messages array
-  const messages: LLMMessageWithTools[] = [
+  // ── Step 4: Build messages array ──────────────────────────
+  // clearStaleMarketData: Claude Code clear_tool_uses 패턴
+  //   — stale [Current Analysis] 섹션이 system message에 누적되면 제거
+  const rawMessages: Array<{ role: string; content: string }> = [
     { role: 'system', content: systemPrompt },
   ];
 
-  // 4. Compressed history (most recent N turns)
   const depth = budget.historyDepth;
-  if (depth > 0 && history.length > 0) {
-    for (const h of history.slice(-depth)) {
-      messages.push({ role: h.role, content: h.content });
+  if (depth > 0 && recentHistory.length > 0) {
+    for (const h of recentHistory.slice(-depth)) {
+      rawMessages.push({ role: h.role, content: h.content });
     }
   }
 
-  // 5. Current user message
-  messages.push({ role: 'user', content: message });
+  rawMessages.push({ role: 'user', content: message });
 
-  // 6. Tool subset
+  // Remove stale market data from earlier system messages
+  const cleanMessages = clearStaleMarketData(rawMessages, detectedSymbol);
+
+  const messages: LLMMessageWithTools[] = cleanMessages.map(m => ({
+    role: m.role as 'user' | 'assistant' | 'system',
+    content: m.content,
+  }));
+
+  // ── Step 5: Tool subset ───────────────────────────────────
   const tools: ToolDefinition[] = budget.tools
     .map(name => ALL_TOOLS[name])
     .filter((t): t is ToolDefinition => t != null);
 
-  return { systemPrompt, messages, tools };
+  return {
+    systemPrompt,
+    messages,
+    tools,
+    compacted,
+    recentHistory,
+  };
 }
