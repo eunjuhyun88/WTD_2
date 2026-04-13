@@ -1,9 +1,10 @@
-# Archive
+# Archive Moved
 
-## Archive Rules
+Legacy archive documents were moved out of the repository on 2026-04-13.
 
-- archived docs are historical context only
-- archived docs are not current design authority
-- if a rule is still active, promote it into canonical docs
-- `archive/historical/root-cleanup-2026-03-17/` is the March 17 root-draft sweep
-- `archive/retire-candidates/root-cleanup-2026-03-17/` is the March 17 low-value review bucket
+Local archive copy:
+
+`/Users/ej/Downloads/wtd-v2-doc-archive-2026-04-13/app-docs-archive/`
+
+Do not use the moved documents as current product or engineering authority.
+Use `app/docs/COGOCHI.md`, `app/ARCHITECTURE.md`, and active docs under `app/docs/references/active/` instead.

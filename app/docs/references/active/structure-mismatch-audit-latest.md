@@ -1,7 +1,7 @@
 # STOCKCLAW 구조 정합성 감사서 (최신 기준 분리본)
 
 작성일: 2026-02-22  
-대상 코드베이스: `stockclaw-unified`  
+대상 코드베이스: legacy Stockclaw-era app  
 목적: 최신 스펙 기준으로 현재 구현의 구조 불일치를 분리 정리
 
 ---
