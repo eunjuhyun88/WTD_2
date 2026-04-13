@@ -16,6 +16,8 @@
   import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
   import { normalizeTimeframe } from '$lib/utils/timeframe';
+  import { get } from 'svelte/store';
+  import { douniRuntimeStore } from '$lib/stores/douniRuntime';
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
@@ -90,6 +92,9 @@
   type HistoryEntry = { role: 'user' | 'assistant'; content: string };
   let chatHistory = $state<HistoryEntry[]>([]);
 
+  /** Fingerprint of the snapshot used in the last completed AI response */
+  let prevSnapshotFingerprint = $state('');
+
   // Narrow deriveds: only pair+tf — price changes must NOT re-trigger $effect
   const gPair = $derived($activePairState.pair);
   const gTf   = $derived($activePairState.timeframe);
@@ -132,6 +137,26 @@
     ob: 'Order Book', onchain: 'On-chain', fg: 'Fear/Greed',
     kimchi: 'Kimchi', sector: 'Sector',
   };
+
+  /** Stable fingerprint of key snapshot fields — changes only when market data actually updates */
+  function snapshotFingerprint(snap: any): string {
+    if (!snap) return '';
+    return [
+      snap.symbol ?? '',
+      snap.timeframe ?? '',
+      snap.rsi14 != null ? snap.rsi14.toFixed(1) : '',
+      snap.funding_rate != null ? snap.funding_rate.toFixed(5) : '',
+      snap.oi_change_1h != null ? snap.oi_change_1h.toFixed(3) : '',
+      snap.cvd_state ?? '',
+      snap.regime ?? '',
+    ].join('|');
+  }
+
+  /** True when the message looks like an analysis / market-data question */
+  function isAnalysisQuery(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return /분석|어때|어떻게|펀딩|oi\b|rsi|추세|시그널|진입|패턴|레짐|regime|signal|analysis|how.*(look|doing)|what.*(think|say)|check/.test(lower);
+  }
 
   function _deepBias(verdict: string): 'bullish' | 'bearish' | 'neutral' {
     if (!verdict) return 'neutral';
@@ -451,6 +476,35 @@
   async function sendCommand(text: string, _files?: File[]) {
     if (!text.trim() || isStreaming) return;
 
+    const runtime = get(douniRuntimeStore);
+
+    // TERMINAL mode: data only, no AI call
+    if (runtime.mode === 'TERMINAL') {
+      const banner = '[터미널 모드] AI 분석 없음 — Settings > AI에서 모드를 변경하세요.';
+      chatHistory = ([...chatHistory, { role: 'user' as const, content: text }, { role: 'assistant' as const, content: banner }] as HistoryEntry[]).slice(-10);
+      streamText = banner;
+      setTimeout(() => { streamText = ''; }, 4000);
+      return;
+    }
+
+    // Delta detection: if snapshot hasn't changed since last AI response and
+    // the question is purely about current market data, skip the LLM call
+    const currentFingerprint = snapshotFingerprint(analysisData?.snapshot);
+    if (
+      prevSnapshotFingerprint &&
+      currentFingerprint &&
+      prevSnapshotFingerprint === currentFingerprint &&
+      isAnalysisQuery(text)
+    ) {
+      const noChange = typeof navigator !== 'undefined' && navigator.language.startsWith('ko')
+        ? '변화 없음 — 마지막 분석 이후 시장 데이터가 업데이트되지 않았어.'
+        : 'No change — market data has not updated since the last analysis.';
+      chatHistory = ([...chatHistory, { role: 'user' as const, content: text }, { role: 'assistant' as const, content: noChange }] as HistoryEntry[]).slice(-10);
+      streamText = noChange;
+      setTimeout(() => { streamText = ''; }, 4000);
+      return;
+    }
+
     isStreaming = true;
     streamText = '';
     showRightPanel = true;  // reveal context panel on first query
@@ -467,6 +521,13 @@
         snapshotTs: analysisData ? Date.now() : undefined,
         detectedSymbol: symbol,
         locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+        runtimeConfig: {
+          mode: runtime.mode,
+          provider: runtime.provider,
+          apiKey: runtime.apiKey,
+          ollamaModel: runtime.ollamaModel,
+          ollamaEndpoint: runtime.ollamaEndpoint,
+        },
       };
 
       const res = await fetch('/api/cogochi/terminal/message', {
@@ -506,6 +567,8 @@
 
       if (assistantText) {
         chatHistory = ([...chatHistory, { role: 'assistant' as const, content: assistantText }] as HistoryEntry[]).slice(-10);
+        // Record snapshot fingerprint so identical follow-up questions get the delta guard
+        prevSnapshotFingerprint = snapshotFingerprint(analysisData?.snapshot);
       }
     } catch (e) {
       console.error('SSE error:', e);
