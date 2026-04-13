@@ -36,16 +36,28 @@ app/      SvelteKit — frontend + Supabase + API routes
 
 ---
 
-## ✅ CHECKPOINT — 2026-04-13 (SESSION 2)
+## ✅ CHECKPOINT — 2026-04-13 (PR #18 merged)
 
 ### 현재 상태
 - **브랜치**: `main` (최신)
-- **마지막 커밋**: `49e59e3` — Merge claude/funny-roentgen (Bloomberg UI design system)
-- **서버**: `npm --prefix app run dev` → `http://localhost:5175/` (5173/5174 좀비 가능)
+- **마지막 커밋**: `7e8f728` — fix(engine): add fastapi and apscheduler to pyproject.toml
+- **Engine 테스트**: 415/415 pass
 
 ---
 
-### Engine ✅ (main에 병합됨)
+### PR 히스토리
+
+| PR | 제목 | 상태 |
+|----|------|------|
+| #13 | Terminal Bloomberg Cockpit | merged |
+| #14 | market_engine 4-layer pipeline + 108 tests | merged |
+| #16 | /deep pipeline wire-up + CMC token universe | merged |
+| #17 | GlobalCtx cache + deep.layers UI + scanner alerts | merged |
+| #18 | SymbolPicker + 17-layer visual proof charts | merged |
+
+---
+
+### Engine ✅
 
 | 모듈 | 상태 |
 |------|------|
@@ -55,114 +67,72 @@ app/      SvelteKit — frontend + Supabase + API routes
 | `data_cache/resample.py` | `resample_klines(df_1h, target_minutes)` |
 | `data_cache/fetch_onchain.py` | MVRV Z-score, Puell Multiple, Etherscan |
 | `data_cache/registry.py` | mvrv_zscore, puell_multiple DataSource 등록 |
-| `api/main.py` | verdict + scanner routes, scheduler lifespan |
-| Tests | 45/45 formula ✅, 302 total |
-
-**MTF pipeline**: `fetch_klines_max(1h)` → `resample_klines(df, 240)` → `load_klines(symbol, '4h')`
+| `market_engine/pipeline.py` | `run_deep_analysis()` — 17-layer pipeline |
+| `market_engine/ctx_cache.py` | GlobalCtx singleton (10분 TTL, asyncio.Lock) |
+| `api/main.py` | verdict + scanner + /ctx routes, startup warm-up |
+| `api/routes/deep.py` | `ensure_fresh_ctx()` |
+| `api/routes/ctx.py` | `GET /ctx/status` + `POST /ctx/refresh` |
+| `api/routes/universe.py` | CMC 30 token universe |
+| Tests | 415/415 pass |
 
 ---
 
-### App — Terminal Bloomberg Cockpit ✅ (main에 병합됨)
+### App — Terminal Bloomberg Cockpit ✅
 
-#### Desktop (Bloomberg 3-column)
+#### 신규 (PR #18)
 ```
-[TerminalCommandBar]   symbol · TF · flow bias badge · layout switch
-[LeftRail 240px]  [WorkspaceGrid: Focus/Hero+3/2×2]  [ContextPanel 320px]
-[TerminalBottomDock]   multimodal textarea + SSE streaming
-```
+app/src/components/terminal/workspace/
+  SymbolPicker.svelte       — 토큰 검색/섹터필터/정렬 + 스파크라인
+  Sparkline.svelte          — SVG 미니 스파크라인
+  MiniIndicatorChart.svelte — 17개 레이어별 증빙 미니차트
 
-#### Mobile
-```
-[TerminalCommandBar]
-[MobileActiveBoard]    price · TF alignment · verdict · evidence · sources
-[MobileCommandDock]    fixed bottom · quick chips · textarea
-[MobileDetailSheet]    bottom sheet · 5탭
+app/src/routes/api/market/
+  sparklines/+server.ts     — Binance 24h klines 배치 (상위 20 토큰)
+  ohlcv/+server.ts          — OHLCV + taker buy volume → CVD 계산
 ```
 
-#### 컴포넌트 경로
-```
-app/src/components/terminal/workspace/   17개
-  VerdictCard, AssetInsightCard, WorkspaceGrid, BoardToolbar
-  EvidenceGrid, EvidenceCard, VerdictHeader, ActionStrip, WhyPanel
-  SourceRow, SourcePill, FreshnessBadge
-  TerminalCommandBar, TerminalLeftRail, TerminalContextPanel, TerminalBottomDock
-
-app/src/components/terminal/mobile/      4개
-  MobileActiveBoard, MobileDetailSheet, MobileCommandDock, index.ts
-
-app/src/components/states/               5개
-  LoadingState, EmptyState, StaleState, DisconnectedState, index.ts
-
-app/src/lib/types/terminal.ts
-  TerminalAsset, TerminalVerdict, TerminalEvidence, TerminalSource, FreshnessStatus
-```
+#### EvidenceCard 시각화 매핑
+| 레이어 | 차트 타입 |
+|--------|-----------|
+| wyckoff, mtf, breakout | 미니 캔들차트 |
+| cvd | CVD 라인 (제로라인) |
+| vsurge, onchain | 볼륨 델타 바 (green/red) |
+| flow, liq_est, real_liq | 볼륨 델타 바 |
+| oi | 가격 + 볼륨 오버레이 |
+| bb14, bb16 | 볼린저밴드 스파크라인 (violet) |
+| atr | 범위 스파크라인 (amber) |
+| fear/greed | 게이지 아크 |
+| basis, kimchi | 스프레드 라인 (제로라인) |
 
 #### API 연결
 | 엔드포인트 | 주기 | 용도 |
 |-----------|------|------|
 | `/api/cogochi/analyze` | mount + pair change | 버딕트/에비던스 |
+| `/api/market/ohlcv` | 분석 시 병렬 fetch | 17-layer 증빙 차트 데이터 |
+| `/api/market/sparklines` | SymbolPicker open | 상위 20 토큰 스파크라인 |
+| `/api/cogochi/alerts` | 5분 폴링 | scanner alerts (left rail) |
 | `/api/market/flow` | 15초 폴링 | flow bias badge |
 | `/api/market/trending` | 60초 폴링 | left rail movers |
 | `/api/market/news` | mount | catalysts 탭 |
 | `/api/cogochi/terminal/message` | SSE | 보드 리렌더 |
 
-#### 디자인 토큰
-```css
-/* 레이아웃 */
---terminal-left-w: 240px
---terminal-right-w: 320px
---terminal-cmd-bar-h: 40px
-
-/* 서피스 */
---sc-terminal-bg: #000000
---sc-terminal-surface: #0a0a0a
---sc-terminal-border: rgba(255,255,255,0.07)
-
-/* 소스 카테고리 */
---sc-source-market-rgb: 99,179,237    (blue)
---sc-source-derived-rgb: 251,191,36   (amber)
---sc-source-news-rgb: 156,163,175     (neutral)
---sc-source-model-rgb: 167,139,250    (violet)
-
-/* 바이어스 */
---sc-bias-bull: #4ade80
---sc-bias-bear: #f87171
-```
-
-#### 네비게이션
-- `AppSurfaceId` → `home | terminal | dashboard | scanner | lab | passport`
-- `MOBILE_NAV_SURFACES` → 5탭 `[home, terminal, dashboard, passport]` + More sheet
-- Terminal 라우트에서 MobileBottomNav 숨김
-
 ---
 
-### Terminal 현황 (Session 2 완료)
+### 알려진 제한사항
 
-#### 수정된 내용
-| 항목 | 내용 |
+| 항목 | 현황 |
 |------|------|
-| 빈 보드 버그 수정 | `heroAsset`/`heroVerdict`를 부모 `$derived`로 계산 — WorkspaceGrid $.prop ACCESSOR 문제 우회 |
-| 패널 리사이징 | 좌우 드래그 핸들 (좌: 160–400px, 우: 240–520px) |
-| Right panel | 기본 숨김 → 첫 쿼리 이후 표시 (`showRightPanel`) |
-| TerminalBottomDock | 2줄 → 1줄 인라인 바 (슬림화) |
-| BottomBar 제거 | `/terminal`에서 숨김 (CommandBar에 이미 가격 표시) |
-| PageSense 제거 | 한국어 쿠키 배너 2개 뜨던 문제 해결 |
-| `$effect` 최적화 | `gPair`/`gTf` narrow derived — 가격 틱으로 분석 재트리거 방지 |
-| UI 디자인 복구 | `claude/funny-roentgen` 미머지 커밋 복구 — settings/dashboard/passport/lab Bloomberg 스타일 |
-
-#### 알려진 이슈
-- `ensemble: null` — Python 엔진이 BTC 1D에서 앙상블 스코어 미생성 (API는 정상, 데이터 문제)
-- 서버 포트 충돌 — 5173/5174 좀비 프로세스 존재, 현재 5175에서 실행 중
+| `sector` 레이어 | 항상 0점 — `compute_sector_scores()` 결과가 ctx에 없음 |
+| MiniIndicatorChart | OHLCV 데이터 공유 — 레이어별 전용 데이터(OI/펀딩 히스토리) 미구현 |
+| 모바일 증빙차트 | MobileActiveBoard에 bars 미전달 |
 
 ---
 
 ### 다음 작업 후보
 
-1. **ensemble null 해결** — Python 엔진 1D/4H BTC 앙상블 트리거 조건 디버깅
-2. **Symbol picker 드롭다운** — TerminalCommandBar 심볼 클릭 시 검색 UI
-3. **Book Panel** — `DEPTH_L2_20` websocket → 오더북 패널 (TerminalContextPanel Metrics 탭)
-4. **Trade Tape** — `AGG_TRADES_LIVE` → 체결 테이프 실시간 패널
-5. **Liquidation Feed** — `FORCE_ORDERS` → 청산 표시
-6. **engine → app 직결** — `app/cogochi/` Python bridge 대신 `engine/` 직접 import
-7. **CitationDrawer** — SourcePill 클릭 시 인라인 확장 (현재 미구현)
-8. **WalletModal UI** — 기존 리팩토링 검증 (funny-roentgen 머지 후 상태 확인 필요)
+1. **레이어별 전용 데이터** — OI 히스토리, 펀딩레이트, Fear/Greed 히스토리 별도 fetch
+2. **Book Panel** — `DEPTH_L2_20` websocket → 오더북 패널
+3. **Trade Tape** — `AGG_TRADES_LIVE` → 체결 테이프
+4. **Liquidation Feed** — `FORCE_ORDERS` → 청산 표시
+5. **sector 레이어 활성화** — `compute_sector_scores()` → ctx_cache
+6. **모바일 증빙차트** — MobileActiveBoard에 bars 전달
