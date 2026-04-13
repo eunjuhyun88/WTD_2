@@ -249,6 +249,15 @@ export const POST: RequestHandler = async ({ request }) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
       };
 
+      // Fallback helper — emit HEURISTIC template when LLM produced nothing
+      const emitHeuristicFallback = () => {
+        const fallback = buildHeuristicText(snapshot, locale);
+        emit({ type: 'text_delta', text: fallback });
+        emit({ type: 'done', provider: 'ollama' });
+      };
+
+      let textEmitted = false;
+
       try {
         const messages: LLMMessageWithTools[] = builtMessages;
 
@@ -261,8 +270,14 @@ export const POST: RequestHandler = async ({ request }) => {
             budget.maxTokens,
             0.85,
           )) {
+            if (ev.type === 'text_delta') textEmitted = true;
+            if (ev.type === 'error' && !textEmitted) {
+              emitHeuristicFallback();
+              return;
+            }
             emit(ev);
           }
+          if (!textEmitted) emitHeuristicFallback();
           return;
         }
 
@@ -287,6 +302,7 @@ export const POST: RequestHandler = async ({ request }) => {
           })) {
             switch (chunk.type) {
               case 'text_delta':
+                textEmitted = true;
                 emit({ type: 'text_delta', text: chunk.text });
                 break;
               case 'tool_call_start':
@@ -326,9 +342,17 @@ export const POST: RequestHandler = async ({ request }) => {
           }
         }
 
-        emit({ type: 'done', provider: resolvedProvider });
+        if (!textEmitted) {
+          emitHeuristicFallback();
+        } else {
+          emit({ type: 'done', provider: resolvedProvider });
+        }
       } catch (err: any) {
-        emit({ type: 'error', message: err.message || 'Stream failed' });
+        if (!textEmitted) {
+          emitHeuristicFallback();
+        } else {
+          emit({ type: 'error', message: err.message || 'Stream failed' });
+        }
       } finally {
         controller.close();
       }
