@@ -123,3 +123,19 @@ export function verifyWalletSignature(payload: VerifyWalletPayload) {
 export function logoutAuth() {
   return postJson<{ success: boolean }>('/api/auth/logout', {});
 }
+
+export interface WalletAuthPayload {
+  walletAddress: string;
+  walletMessage: string;
+  walletSignature: string;
+}
+
+export interface WalletAuthResponse {
+  success: boolean;
+  action: 'login';
+  user: AuthUserPayload;
+}
+
+export function walletAuth(payload: WalletAuthPayload) {
+  return postJson<WalletAuthResponse>('/api/auth/wallet-auth', payload);
+}

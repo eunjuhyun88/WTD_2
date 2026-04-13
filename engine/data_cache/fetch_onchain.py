@@ -1,11 +1,19 @@
 """On-chain data fetchers for the Python engine.
 
 Sources:
-  - CoinMetrics Community API: active addresses, tx count (free, no key)
+  - CoinMetrics Community API: active addresses, tx count, MVRV Z-score,
+    Puell Multiple (free, no key required)
   - Etherscan: gas oracle, ETH whale txs (requires ETHERSCAN_API_KEY env var;
     gracefully returns None if key is absent)
 
-Each fetcher returns a daily DataFrame.
+Each fetcher returns a daily DataFrame indexed by UTC date.
+
+CoinMetrics Community API metrics used:
+  AdrActCnt   — active address count
+  TxCnt       — transaction count
+  CapMrktCurUSD — market cap (USD)
+  CapRealUSD  — realised cap (USD) → MVRV ratio
+  IssTotUSD   — total daily issuance (USD) → Puell Multiple
 """
 from __future__ import annotations
 
@@ -152,6 +160,127 @@ def fetch_tx_count(symbol: str, days: int = 365) -> pd.DataFrame | None:
         return None
 
     return pd.DataFrame(records).set_index("date").sort_index()
+
+
+def _fetch_cm_metrics(
+    symbol: str, metrics: list[str], days: int
+) -> pd.DataFrame | None:
+    """Generic CoinMetrics time-series fetch for one asset, multiple metrics.
+
+    Returns a daily DataFrame indexed by UTC date, columns = metric names.
+    Returns None on any failure or if the symbol has no CoinMetrics mapping.
+    """
+    asset = _symbol_to_cm_asset(symbol)
+    if asset is None:
+        return None
+
+    end_dt = datetime.now(tz=timezone.utc).date()
+    start_dt = end_dt - timedelta(days=days)
+    metrics_str = ",".join(metrics)
+
+    url = (
+        f"{_CM_BASE}/timeseries/asset-metrics"
+        f"?assets={asset}&metrics={metrics_str}"
+        f"&start_time={start_dt.isoformat()}"
+        f"&end_time={end_dt.isoformat()}"
+        f"&page_size=10000"
+    )
+
+    try:
+        payload = _get_json(url)
+    except Exception as e:
+        print(f"  [onchain] CoinMetrics {metrics_str} failed for {symbol}: {e}")
+        return None
+
+    rows = payload.get("data", []) if isinstance(payload, dict) else []
+    records = []
+    for row in rows:
+        ts = row.get("time")
+        if ts is None:
+            continue
+        rec: dict = {"date": pd.Timestamp(ts, tz="UTC").normalize()}
+        for m in metrics:
+            v = row.get(m)
+            if v is not None:
+                try:
+                    rec[m] = float(v)
+                except (TypeError, ValueError):
+                    pass
+        if len(rec) > 1:  # at least one metric present
+            records.append(rec)
+
+    if not records:
+        return None
+
+    df = pd.DataFrame(records).set_index("date").sort_index()
+    # Ensure all requested metric columns exist (fill with NaN if absent)
+    for m in metrics:
+        if m not in df.columns:
+            df[m] = float("nan")
+    return df
+
+
+def fetch_mvrv_zscore(symbol: str, days: int = 730) -> pd.DataFrame | None:
+    """Fetch MVRV Z-score from CoinMetrics Community API.
+
+    MVRV ratio = CapMrktCurUSD / CapRealUSD
+    MVRV Z-score = (MVRV − 2yr_rolling_mean) / 2yr_rolling_std
+
+    Returns a daily DataFrame with columns:
+        mvrv         — raw MVRV ratio (> 3.5 = overvalued, < 1 = undervalued)
+        mvrv_zscore  — Z-score, typically ranges −2 to +7 for BTC
+    Returns None if the symbol is unsupported or the request fails.
+    """
+    df = _fetch_cm_metrics(symbol, ["CapMrktCurUSD", "CapRealUSD"], days=days)
+    if df is None:
+        return None
+
+    # Drop rows where either cap is NaN or zero
+    df = df.dropna(subset=["CapMrktCurUSD", "CapRealUSD"])
+    df = df[(df["CapMrktCurUSD"] > 0) & (df["CapRealUSD"] > 0)]
+    if df.empty:
+        return None
+
+    df["mvrv"] = df["CapMrktCurUSD"] / df["CapRealUSD"]
+
+    # Rolling 2-year (730 trading days) Z-score — past-only, no look-ahead
+    window = min(730, len(df))
+    rolling_mean = df["mvrv"].rolling(window, min_periods=max(30, window // 4)).mean()
+    rolling_std = df["mvrv"].rolling(window, min_periods=max(30, window // 4)).std(ddof=0)
+    df["mvrv_zscore"] = (
+        (df["mvrv"] - rolling_mean) / rolling_std.replace(0, float("nan"))
+    ).fillna(0.0).clip(-4.0, 10.0)
+
+    return df[["mvrv", "mvrv_zscore"]]
+
+
+def fetch_puell_multiple(symbol: str, days: int = 730) -> pd.DataFrame | None:
+    """Fetch Puell Multiple from CoinMetrics Community API.
+
+    Puell Multiple = daily_issuance_USD / rolling_365d_mean(daily_issuance_USD)
+
+    Originally BTC-specific (miner revenue / 1yr avg), but generalised here
+    to any asset with CoinMetrics `IssTotUSD` coverage.
+
+    Returns a daily DataFrame with column:
+        puell_multiple  — ratio; > 4 = historically overheated, < 0.5 = undervalued
+    Returns None if the symbol is unsupported or the request fails.
+    """
+    df = _fetch_cm_metrics(symbol, ["IssTotUSD"], days=days)
+    if df is None:
+        return None
+
+    df = df.dropna(subset=["IssTotUSD"])
+    df = df[df["IssTotUSD"] > 0]
+    if df.empty:
+        return None
+
+    rolling_365 = df["IssTotUSD"].rolling(365, min_periods=30).mean()
+    df["puell_multiple"] = (
+        df["IssTotUSD"] / rolling_365.replace(0, float("nan"))
+    ).fillna(1.0).clip(0.0, 20.0)
+
+    return df[["puell_multiple"]]
 
 
 # ─── Etherscan (optional — requires ETHERSCAN_API_KEY) ───────────────────────

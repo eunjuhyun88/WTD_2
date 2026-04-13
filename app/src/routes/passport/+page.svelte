@@ -275,9 +275,10 @@
       padding-top: 4px;
     }
 
+    /* metric-grid / info-list stay 2-col on mobile — compact cells work fine */
     .metric-grid,
     .info-list {
-      grid-template-columns: 1fr;
+      gap: 10px;
     }
   }
 </style>

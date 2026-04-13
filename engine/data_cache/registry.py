@@ -49,6 +49,8 @@ from data_cache.fetch_macro import (
 from data_cache.fetch_onchain import (
     fetch_active_addresses,
     fetch_tx_count,
+    fetch_mvrv_zscore,
+    fetch_puell_multiple,
 )
 
 
@@ -117,6 +119,22 @@ ONCHAIN_SOURCES: list[DataSource] = [
         defaults={"tx_count": 0.0},
         scope="per_symbol",
         cache_file="src_{symbol}_tx_count.csv",
+    ),
+    DataSource(
+        name="mvrv_zscore",
+        fetcher=fetch_mvrv_zscore,
+        columns=["mvrv", "mvrv_zscore"],
+        defaults={"mvrv": 1.0, "mvrv_zscore": 0.0},
+        scope="per_symbol",
+        cache_file="src_{symbol}_mvrv.csv",
+    ),
+    DataSource(
+        name="puell_multiple",
+        fetcher=fetch_puell_multiple,
+        columns=["puell_multiple"],
+        defaults={"puell_multiple": 1.0},
+        scope="per_symbol",
+        cache_file="src_{symbol}_puell.csv",
     ),
     # ── Add new per-symbol sources here ──────────────────────────────────────
     # Example:

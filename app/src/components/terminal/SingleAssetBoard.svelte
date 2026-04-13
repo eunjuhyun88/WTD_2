@@ -145,15 +145,52 @@
     { label: 'ATR', value: formatPercent(snapshot?.l15?.atr_pct ?? null), tone: snapshot?.l15?.score ?? 0 },
   ]);
 
+  // Ensemble signal from engine (ML + blocks fused)
+  const ensembleDirection = $derived(snapshot?.ensemble?.direction ?? null);
+  const ensembleScore = $derived(snapshot?.ensemble?.ensemble_score ?? null);
+  const ensembleConfidence = $derived(snapshot?.ensemble?.confidence ?? null);
+
+  function ensembleColor(dir: string | null): string {
+    if (!dir) return 'var(--sc-text-1, #d9d3cb)';
+    if (dir === 'strong_long') return '#22c55e';
+    if (dir === 'long') return '#4ade80';
+    if (dir === 'short') return '#f87171';
+    if (dir === 'strong_short') return '#ef4444';
+    return 'var(--sc-text-1, #d9d3cb)';
+  }
+
+  function pWinColor(p: number | null): string {
+    if (p == null) return 'var(--sc-text-1, #d9d3cb)';
+    if (p >= 0.60) return '#22c55e';
+    if (p >= 0.55) return '#4ade80';
+    if (p <= 0.40) return '#ef4444';
+    if (p <= 0.45) return '#f87171';
+    return 'var(--sc-text-1, #d9d3cb)';
+  }
+
+  function directionLabel(dir: string | null): string {
+    if (!dir) return '--';
+    const labels: Record<string, string> = {
+      strong_long: 'STRONG LONG',
+      long: 'LONG',
+      neutral: 'NEUTRAL',
+      short: 'SHORT',
+      strong_short: 'STRONG SHORT',
+    };
+    return labels[dir] ?? '--';
+  }
+
   const statCards = $derived.by(() => [
+    { label: 'Signal', value: directionLabel(ensembleDirection), tone: ensembleColor(ensembleDirection) },
+    { label: 'Score', value: ensembleScore != null ? `${(ensembleScore * 100).toFixed(0)}%` : '--', tone: ensembleColor(ensembleDirection) },
+    { label: 'P(Win)', value: snapshot?.p_win != null ? `${(snapshot.p_win * 100).toFixed(1)}%` : '--', tone: pWinColor(snapshot?.p_win ?? null) },
+    { label: 'Blocks', value: Array.isArray(snapshot?.blocks_triggered) ? `${snapshot.blocks_triggered.length}` : '--', tone: (snapshot?.blocks_triggered?.length ?? 0) >= 3 ? '#4ade80' : 'var(--sc-text-1, #d9d3cb)' },
     { label: 'Funding', value: formatFunding(derivatives?.funding ?? null), tone: fundingTone(derivatives?.funding ?? null) },
     { label: 'OI', value: formatOi(derivatives?.oi ?? null), tone: 'var(--sc-text-1, #d9d3cb)' },
     { label: 'L/S', value: derivatives?.lsRatio != null ? derivatives.lsRatio.toFixed(2) : '--', tone: fundingTone((derivatives?.lsRatio ?? 1) - 1) },
     { label: 'Alpha', value: snapshot?.alphaScore != null ? `${snapshot.alphaScore > 0 ? '+' : ''}${snapshot.alphaScore}` : '--', tone: alphaColor(snapshot?.alphaScore ?? null) },
-    { label: 'Fear', value: snapshot?.l7?.fear_greed ?? '--', tone: 'var(--sc-text-1, #d9d3cb)' },
-    { label: 'Regime', value: snapshot?.regime ?? '--', tone: 'var(--sc-text-1, #d9d3cb)' },
-    { label: 'BB Width', value: snapshot?.l14?.bb_width != null ? `${snapshot.l14.bb_width}` : '--', tone: 'var(--sc-text-1, #d9d3cb)' },
-    { label: 'P(Win)', value: snapshot?.p_win != null ? `${(snapshot.p_win * 100).toFixed(0)}%` : '학습前', tone: pwinColor(snapshot?.p_win ?? null) },
+    { label: 'Regime', value: snapshot?.regime ?? snapshot?.snapshot?.regime ?? '--', tone: 'var(--sc-text-1, #d9d3cb)' },
+    { label: 'Conf.', value: ensembleConfidence ?? '--', tone: ensembleConfidence === 'high' ? '#22c55e' : ensembleConfidence === 'medium' ? '#eab308' : 'var(--sc-text-1, #d9d3cb)' },
   ]);
 
   const modeOrder: BoardMode[] = ['board', 'strip', 'tv'];

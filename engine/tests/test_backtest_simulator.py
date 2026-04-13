@@ -120,15 +120,17 @@ def test_second_signal_blocked_by_max_concurrent():
 
 
 def test_daily_halt_blocks_later_signals_same_day():
-    # Both of the first two signals lose 2%. Daily limit 3% → second
-    # close triggers the halt. Third signal later the same day is
-    # blocked with reason=daily_loss_halt.
+    # Signal fires at bar T close; entry executes at bar T+1 open.
+    # Both A and B lose ~2%. Daily limit 3% → halt after B closes.
+    # C's signal (bar 2) is blocked before it can enter at bar 3.
     losing_rows = [
-        # bar 0 (00:00): A enters open=100, stop at 98 is hit (low 97).
+        # bar 0 (00:00): A's signal bar — quiet, no action.
+        (100.0, 100.5, 99.5, 100.0),
+        # bar 1 (01:00): A enters open=100, low=97 hits stop at 98 → −2%.
         (100.0, 100.5, 97.0, 98.0),
-        # bar 1 (01:00): B enters open=98, stop at 96.04 is hit (low 95.0).
+        # bar 2 (02:00): B enters open=98, low=95 hits stop at 96.04 → −2%.
         (98.0, 98.5, 95.0, 96.0),
-        # bar 2 (02:00): C's entry bar — doesn't matter, should be blocked.
+        # bar 3 (03:00): C would enter here — blocked by daily_loss_halt.
         (96.0, 96.5, 95.5, 96.0),
         (96.0, 96.5, 95.5, 96.0),
     ]

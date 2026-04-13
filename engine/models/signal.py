@@ -55,7 +55,7 @@ class Regime(str, Enum):
 
 
 # =========================================================================
-# SignalSnapshot — 28 features + metadata
+# SignalSnapshot — 92 features + metadata
 # =========================================================================
 
 
@@ -107,6 +107,112 @@ class SignalSnapshot(BaseModel):
     # ---- G. Order flow (2) ----
     cvd_state: CVDState
     taker_buy_ratio_1h: float  # taker buy base vol / total base vol, 0..1
+
+    # ---- H. Price changes (4) ----
+    price_change_1h: float = 0.0    # pct change over 1 bar
+    price_change_4h: float = 0.0    # pct change over 4 bars
+    price_change_24h: float = 0.0   # pct change over 24 bars
+    price_change_7d: float = 0.0    # pct change over 168 bars
+
+    # ---- I. Additional momentum oscillators (3) ----
+    stoch_rsi: float = 50.0         # stochastic RSI, 0..100
+    williams_r: float = -50.0       # Williams %R, -100..0
+    cci: float = 0.0                # Commodity Channel Index (unbounded)
+
+    # ---- J. Price relative (2) ----
+    vwap_ratio: float = 0.0         # (price - vwap_24h) / vwap_24h
+    price_vs_ema200: float = 0.0    # (price - ema200) / ema200
+
+    # ---- K. Candle structure (2) ----
+    upper_wick_pct: float = 0.0     # upper wick / total candle range, 0..1
+    lower_wick_pct: float = 0.0     # lower wick / total candle range, 0..1
+
+    # ---- L. Extended RSI + Stochastic (4) ----
+    rsi7: float = 50.0              # RSI 7-period, 0..100
+    rsi21: float = 50.0             # RSI 21-period, 0..100
+    stoch_k: float = 50.0           # Stochastic %K 14-period, 0..100
+    stoch_d: float = 50.0           # Stochastic %D (3-bar SMA of %K), 0..100
+
+    # ---- M. Volume quality (3) ----
+    mfi: float = 50.0               # Money Flow Index 14-period, 0..100
+    cmf: float = 0.0                # Chaikin Money Flow 20-period, -1..1
+    vol_zscore: float = 0.0         # Volume Z-score 20-period (clipped ±4)
+
+    # ---- N. Directional movement (3) ----
+    adx: float = 20.0               # Average Directional Index 14-period, 0..100
+    dmi_plus: float = 20.0          # +DI (positive directional indicator), 0..100
+    dmi_minus: float = 20.0         # −DI (negative directional indicator), 0..100
+
+    # ---- O. Aroon (2) ----
+    aroon_up: float = 50.0          # Aroon Up 25-period, 0..100
+    aroon_down: float = 50.0        # Aroon Down 25-period, 0..100
+
+    # ---- P. Channel + squeeze (4) ----
+    kc_position: float = 0.0        # Keltner Channel position: (close−mid)/half_width
+    donchian_position: float = 0.5  # Donchian position 20-period, 0..1
+    bb_squeeze: float = 0.0         # 1 when BB bands inside KC bands (squeeze on)
+    pvt_slope: float = 0.0          # PVT cumulative 20-bar fractional slope
+
+    # ---- Q. Ichimoku (3) ----
+    ichimoku_tenkan: float = 0.0    # (close − Tenkan-sen 9) / close
+    ichimoku_kijun: float = 0.0     # (close − Kijun-sen 26) / close
+    ichimoku_cloud_dist: float = 0.0  # (close − cloud midpoint) / close
+
+    # ---- R. Daily pivot points (2) ----
+    pivot_r1_dist: float = 0.0      # (close − R1) / close
+    pivot_s1_dist: float = 0.0      # (close − S1) / close
+
+    # ---- S. Supertrend (2) ----
+    supertrend_signal: float = 1.0  # +1.0 uptrend, −1.0 downtrend
+    supertrend_dist: float = 0.0    # (close − supertrend line) / close
+
+    # ---- T. Price acceleration (1) ----
+    price_accel: float = 0.0        # 2nd derivative of 5-bar ROC
+
+    # ---- U. On-chain valuation (3) — filled from CoinMetrics via registry ----
+    mvrv: float = 1.0               # Market cap / Realised cap ratio
+    mvrv_zscore: float = 0.0        # MVRV Z-score (2yr rolling); > 7 = top, < −0.5 = bottom
+    puell_multiple: float = 1.0     # Daily issuance USD / 365d avg; > 4 = overheated
+
+    # ---- V. EMA multi-period (4) ----
+    ema9_slope: float = 0.0         # EMA-9 slope over 5 bars (fractional)
+    ema100_slope: float = 0.0       # EMA-100 slope over 10 bars (fractional)
+    price_vs_ema20: float = 0.0     # (close − EMA-20) / EMA-20
+    price_vs_ema100: float = 0.0    # (close − EMA-100) / EMA-100
+
+    # ---- W. Historical volatility (4) ----
+    hist_vol_24h: float = 0.0       # 24-bar realized vol, annualised (hourly)
+    hist_vol_7d: float = 0.0        # 168-bar realized vol, annualised
+    vol_regime: float = 1.0         # hist_vol_24h / hist_vol_7d; > 1 = vol spike
+    parkinson_vol: float = 0.0      # Parkinson H/L vol estimator, 24-bar, annualised
+
+    # ---- X. MACD extensions (2) ----
+    macd_line: float = 0.0          # Raw MACD = (EMA12 − EMA26) / price
+    macd_hist_slope: float = 0.0    # 3-bar difference of MACD histogram
+
+    # ---- Y. Volume profile (4) ----
+    volume_7d: float = 0.0          # Rolling 168h volume sum
+    vol_ratio_24: float = 1.0       # vol[t] / mean(vol[t-1..t-24])
+    taker_buy_ratio_24h: float = 0.5  # sum(taker_buy_24h) / sum(vol_24h), 0..1
+    vol_acceleration: float = 1.0   # vol_ratio_3 / vol_ratio_24 (short vs long spike)
+
+    # ---- Z. Price structure (5) ----
+    range_7d_position: float = 0.5  # (close − low_7d) / (high_7d − low_7d), 0..1
+    gap_pct: float = 0.0            # (open − prev_close) / prev_close
+    close_above_open_ratio: float = 0.5  # fraction of last 20 bars with close > open
+    consecutive_bars: float = 0.0   # signed count of consecutive same-direction closes, ±7
+    body_ratio: float = 0.5         # |close − open| / (high − low), 0..1
+
+    # ---- AA. Candle patterns (4) ----
+    engulfing_bull: float = 0.0     # 1 = bullish engulfing, else 0
+    engulfing_bear: float = 0.0     # 1 = bearish engulfing, else 0
+    doji: float = 0.0               # 1 = doji (tiny body relative to range), else 0
+    hammer: float = 0.0             # +1 = hammer (bullish pin), −1 = shooting star, 0 = neither
+
+    # ---- AB. Trend quality (3) ----
+    lr_slope_20: float = 0.0        # Linear regression slope over 20 bars, normalised by price
+    efficiency_ratio: float = 0.5   # Kaufman's Efficiency Ratio over 20 bars, 0..1
+    trend_consistency: float = 0.5  # |Σ signed returns| / Σ|returns| over 20 bars, 0..1
 
     # ---- Meta (3) ----
     regime: Regime

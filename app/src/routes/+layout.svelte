@@ -37,7 +37,8 @@
   // - Terminal routes ≤1024px: terminal has its own bottom nav
   // - All routes ≤768px: status bar adds no value on phones
   let windowWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  const showMobileBottomNav = $derived(windowWidth <= 768 && !$isHome);
+  // Hide mobile nav on terminal — terminal has its own TerminalBottomDock
+  const showMobileBottomNav = $derived(windowWidth <= 768 && !$isHome && !$isTerminal);
   const showBottomBar = $derived(
     windowWidth > 768 && !$isHome && !($isTerminal && windowWidth <= 1024)
   );
