@@ -1,5 +1,6 @@
-// GET /api/patterns — proxies to engine GET /patterns/states + /patterns/candidates
-// Returns combined data for the frontend
+// GET /api/patterns — returns entry candidates across all patterns
+// Format: { candidates: Candidate[], last_scan: string | null }
+// Candidate: { symbol, pattern_id, phase, phase_name, since, features }
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -7,23 +8,34 @@ import { env } from '$env/dynamic/private';
 
 const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
+const ENTRY_PHASE_INFO: Record<string, { phase_idx: number; phase_name: string }> = {
+  'tradoor-oi-reversal-v1': { phase_idx: 3, phase_name: 'ACCUMULATION' },
+};
+const DEFAULT_PHASE = { phase_idx: 3, phase_name: 'ACCUMULATION' };
+
 export const GET: RequestHandler = async () => {
   try {
-    const [statesRes, candidatesRes] = await Promise.all([
-      fetch(`${ENGINE_URL}/patterns/states`),
-      fetch(`${ENGINE_URL}/patterns/candidates`),
-    ]);
+    const res = await fetch(`${ENGINE_URL}/patterns/candidates`);
+    if (!res.ok) return json({ candidates: [], last_scan: null, ok: false });
 
-    const states = statesRes.ok ? await statesRes.json() : { patterns: {} };
-    const candidates = candidatesRes.ok ? await candidatesRes.json() : { entry_candidates: {} };
+    const data: { entry_candidates: Record<string, string[]> } = await res.json();
+    const entry_candidates = data.entry_candidates ?? {};
 
-    return json({
-      patterns: states.patterns ?? {},
-      entry_candidates: candidates.entry_candidates ?? {},
-      ok: true,
+    // Flatten to Candidate[]
+    const candidates = Object.entries(entry_candidates).flatMap(([slug, symbols]) => {
+      const { phase_idx, phase_name } = ENTRY_PHASE_INFO[slug] ?? DEFAULT_PHASE;
+      return (symbols as string[]).map(symbol => ({
+        symbol,
+        pattern_id: slug,
+        phase:      phase_idx,
+        phase_name,
+        since:      new Date().toISOString(), // state machine doesn't expose entry time via this endpoint
+        features:   {},
+      }));
     });
+
+    return json({ candidates, last_scan: null, ok: true });
   } catch (err) {
-    // Engine down — return empty
-    return json({ patterns: {}, entry_candidates: {}, ok: false, error: String(err) });
+    return json({ candidates: [], last_scan: null, ok: false, error: String(err) });
   }
 };

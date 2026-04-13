@@ -10,8 +10,9 @@
     onLayout?: (l: LayoutId) => void;
     assetsCount?: number;
     onClear?: () => void;
+    onCapture?: () => void;
   }
-  let { flowBias = 'NEUTRAL', layout = 'hero3', onLayout, assetsCount = 0, onClear }: Props = $props();
+  let { flowBias = 'NEUTRAL', layout = 'hero3', onLayout, assetsCount = 0, onClear, onCapture }: Props = $props();
 
   const tfs = ['15m', '1H', '4H', '1D'];
   const layouts: { id: LayoutId; label: string }[] = [
@@ -56,6 +57,10 @@
       </button>
     {/each}
   </div>
+
+  <button class="capture-btn" onclick={onCapture} title="Capture this setup as PatternSeed">
+    ⚡ CAPTURE
+  </button>
 
   {#if assetsCount > 0}
     <button class="clear-btn" onclick={onClear} title="Clear board">CLR</button>
@@ -114,4 +119,16 @@
     transition: all 0.15s;
   }
   .clear-btn:hover { color: #f87171; border-color: rgba(248,113,113,0.3); }
+
+  .capture-btn {
+    font-family: var(--sc-font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #000;
+    background: rgba(173,202,124,0.9);
+    border: none; border-radius: 3px;
+    padding: 4px 11px; cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .capture-btn:hover { background: #adca7c; }
 </style>
