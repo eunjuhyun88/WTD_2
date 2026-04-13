@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import backtest, challenge, ctx, score, train, verdict, scanner, deep, universe
+from api.routes import backtest, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
 
@@ -85,10 +85,11 @@ app.include_router(deep.router,     prefix="/deep",     tags=["deep"])
 app.include_router(ctx.router,      prefix="/ctx",      tags=["context"])
 app.include_router(universe.router, prefix="/universe", tags=["universe"])
 app.include_router(backtest.router, prefix="/backtest", tags=["backtest"])
-app.include_router(challenge.router,prefix="/challenge",tags=["challenge"])
-app.include_router(train.router,    prefix="/train",    tags=["training"])
-app.include_router(verdict.router,  prefix="/verdict",  tags=["verdict"])
-app.include_router(scanner.router,  prefix="/scanner",  tags=["scanner"])
+app.include_router(challenge.router, prefix="/challenge", tags=["challenge"])
+app.include_router(train.router,     prefix="/train",    tags=["training"])
+app.include_router(verdict.router,   prefix="/verdict",  tags=["verdict"])
+app.include_router(scanner.router,   prefix="/scanner",  tags=["scanner"])
+app.include_router(patterns.router,  prefix="/patterns", tags=["patterns"])
 
 
 @app.get("/healthz", tags=["meta"])
