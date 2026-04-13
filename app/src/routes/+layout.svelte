@@ -39,8 +39,9 @@
   let windowWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1200);
   // Hide mobile nav on terminal — terminal has its own TerminalBottomDock
   const showMobileBottomNav = $derived(windowWidth <= 768 && !$isHome && !$isTerminal);
+  // Terminal has its own CommandBar with price — BottomBar would duplicate it
   const showBottomBar = $derived(
-    windowWidth > 768 && !$isHome && !($isTerminal && windowWidth <= 1024)
+    windowWidth > 768 && !$isHome && !$isTerminal
   );
 
   // Sync currentView store from URL via effect
