@@ -27,6 +27,7 @@ import type { RequestHandler } from './$types';
 import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
 import type { BinanceKline } from '$lib/engine/types';
+import type { OIHistoryPoint } from '$lib/server/marketDataService';
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
 import {
@@ -41,16 +42,16 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
+type BinanceKlineWithTaker = BinanceKline & { takerBuyBaseAssetVolume?: number };
+
 /** Compute OI % change vs N bars ago from the OI history array. */
 function oiChangePct(
-	oiHistory: Array<{ openInterest: string }> | null,
+	oiHistory: OIHistoryPoint[] | null,
 	barsAgo: number,
 ): number {
 	if (!oiHistory || oiHistory.length < barsAgo + 1) return 0;
-	const now  = parseFloat(oiHistory[oiHistory.length - 1]?.openInterest ?? '0');
-	const past = parseFloat(
-		oiHistory[Math.max(0, oiHistory.length - 1 - barsAgo)]?.openInterest ?? '0',
-	);
+	const now = oiHistory[oiHistory.length - 1]?.sumOpenInterest ?? 0;
+	const past = oiHistory[Math.max(0, oiHistory.length - 1 - barsAgo)]?.sumOpenInterest ?? 0;
 	if (past === 0) return 0;
 	return ((now - past) / past) * 100; // percent
 }
@@ -82,7 +83,7 @@ function lastPricePct(klines: BinanceKline[]): number {
 }
 
 /** Taker buy ratio from last klines bar (takerBuyBaseAssetVolume / volume). */
-function lastTakerRatio(klines: BinanceKline[]): number | undefined {
+function lastTakerRatio(klines: BinanceKlineWithTaker[]): number | undefined {
 	const last = klines[klines.length - 1];
 	if (!last || last.volume <= 0) return undefined;
 	const tbv = last.takerBuyBaseAssetVolume ?? last.volume * 0.5;
@@ -147,7 +148,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// OI % change vs 1h ago (percent, not fraction)
 		const oiHistArr = Array.isArray(oiHistory1h)
-			? (oiHistory1h as Array<{ openInterest: string }>)
+			? (oiHistory1h as OIHistoryPoint[])
 			: null;
 		const oi_pct = oiChangePct(oiHistArr, 1);
 
@@ -194,7 +195,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		};
 
 		// --- 4. Call Python engine (deep + score in parallel) -----------------
-		const engineKlines: KlineBar[] = klines.map((k) => ({
+		const engineKlines: KlineBar[] = (klines as BinanceKlineWithTaker[]).map((k) => ({
 			t:   k.time,
 			o:   k.open,
 			h:   k.high,

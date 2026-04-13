@@ -1,7 +1,7 @@
 """Background scanner — L4 real-time alert engine.
 
 Runs inside the FastAPI process via APScheduler (AsyncIOScheduler).
-Every 15 minutes it scans every symbol in the Binance-30 universe,
+Every 15 minutes it scans every symbol in the configured universe,
 computes features, evaluates all building blocks, and pushes any
 signal hit to the `engine_alerts` Supabase table.
 
@@ -28,10 +28,15 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from data_cache.loader import load_klines, load_macro_bundle, load_perp
 from exceptions import CacheMiss
+from scanner.alerts import (
+    send_pattern_engine_alert,
+    send_pattern_scan_summary,
+    send_scan_summary,
+)
 from scanner.feature_calc import compute_features_table, compute_snapshot
 from scoring.block_evaluator import evaluate_blocks
 from scoring.lightgbm_engine import get_engine
-from universe.loader import load_universe
+from universe.loader import load_universe, load_universe_async
 
 log = logging.getLogger("engine.scanner")
 
@@ -42,6 +47,9 @@ _scheduler: AsyncIOScheduler | None = None
 SCAN_INTERVAL = int(os.environ.get("SCAN_INTERVAL_SECONDS", "900"))
 MIN_BLOCKS     = int(os.environ.get("SCAN_MIN_BLOCKS", "1"))
 UNIVERSE_NAME  = os.environ.get("SCAN_UNIVERSE", "binance_30")
+SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().lower() not in {
+    "0", "false", "no", "off",
+}
 
 SUPABASE_URL      = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -75,7 +83,7 @@ async def _push_alert(payload: dict[str, Any]) -> None:
 async def _scan_universe() -> None:
     """Scan all universe symbols and push alerts for any block hits."""
     t_start = time.monotonic()
-    universe = load_universe(UNIVERSE_NAME)
+    universe = await load_universe_async(UNIVERSE_NAME)
     if not universe:
         log.warning("Empty universe '%s' — skipping scan", UNIVERSE_NAME)
         return
@@ -159,9 +167,17 @@ async def _scan_universe() -> None:
             payload["p_win"] = round(p_win, 4)
 
         await _push_alert(payload)
+        if SCAN_TELEGRAM_ENABLED:
+            await send_pattern_engine_alert(payload)
         hits += 1
 
     elapsed = time.monotonic() - t_start
+    if SCAN_TELEGRAM_ENABLED:
+        await send_scan_summary({
+            "n_signals": hits,
+            "n_symbols": len(universe),
+            "duration_sec": elapsed,
+        })
     log.info(
         "Scanner: scan complete in %.1fs — %d/%d symbols hit",
         elapsed, hits, len(universe),
@@ -179,11 +195,13 @@ async def _pattern_scan_job() -> None:
     from patterns.scanner import run_pattern_scan, prewarm_perp_cache
 
     # Prewarm perp cache so OI/funding blocks have real data
-    universe = load_universe(UNIVERSE_NAME)
+    universe = await load_universe_async(UNIVERSE_NAME)
     prewarm_perp_cache(universe, max_workers=5)
 
-    result = await run_pattern_scan(UNIVERSE_NAME, prewarm=False)  # already prewarmed
+    result = await run_pattern_scan(UNIVERSE_NAME, prewarm=False, symbols=universe)  # already prewarmed
     n_candidates = sum(len(v) for v in result.get("entry_candidates", {}).values())
+    if SCAN_TELEGRAM_ENABLED and n_candidates > 0:
+        await send_pattern_scan_summary(result, universe_name=UNIVERSE_NAME)
     log.info(
         "Pattern scan: %d symbols, %d evaluated, %d entry candidates, %dms",
         result.get("n_symbols", 0),

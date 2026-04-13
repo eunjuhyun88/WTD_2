@@ -27,14 +27,12 @@
   type WalletFunnelStatus = 'view' | 'success' | 'error';
 
   const STEP_TITLE: Record<WalletState['walletModalStep'], string> = {
-    welcome: 'WALLET ACCESS',
     'wallet-select': 'CONNECT WALLET',
     connecting: 'CONNECTING',
     'sign-message': 'VERIFY OWNERSHIP',
     connected: 'WALLET READY',
     signup: 'CREATE ACCOUNT',
     login: 'LOG IN',
-    'demo-intro': 'DEMO',
     profile: 'MY PROFILE'
   };
 

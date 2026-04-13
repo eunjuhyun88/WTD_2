@@ -68,6 +68,13 @@ const routeMeta = [
     keyState: '`walletStore`, `/api/profile/passport`',
     deepDocs: '`docs/FRONTEND.md`'
   },
+  {
+    route: '/patterns',
+    role: 'pattern engine dashboard',
+    primaryConcern: 'entry candidates, state-machine status, and pattern stats',
+    keyState: '`douniRuntime`, `/api/patterns/*`',
+    deepDocs: '`docs/PATTERN_ENGINE.md`'
+  },
   // /passport/wallet/[chain]/[address] — ARCHIVED (Batch 5)
   {
     route: '/settings',
@@ -124,6 +131,7 @@ const storeMeta = [
   // battleStore — ARCHIVED (Batch 4)
   ['agentData', 'derived/support', 'agent stats and learning presentation layer', 'Should not silently redefine server truth.'],
   ['doctrineStore', 'derived/support', 'per-agent doctrine editor state and version history', 'Editable doctrine state should reconcile with durable agent truth when server APIs land.'],
+  ['douniRuntime', 'route/session transient', 'client-side AI runtime mode and provider config', 'Terminal-local runtime preference store; not durable market or user truth.'],
   ['warRoomStore', 'route/session transient', 'war-room discussion state', 'Runtime coordination state.'],
   ['dbStore', 'derived/support', 'localStorage CRUD helpers and table adapters', 'Utility persistence layer for local fallback tables; not durable server truth.'],
   ['hydration', 'derived/support', 'orchestrates initial store hydration', 'Not domain truth itself.'],
@@ -235,6 +243,8 @@ function discoverApiRoutes() {
 
 function groupApiRoute(route) {
   if (route.startsWith('/api/auth/')) return 'Auth & Session';
+  if (route === '/api/chart/klines') return 'Market Data';
+  if (route.startsWith('/api/engine/')) return 'Proxies & Infra';
   if (route.startsWith('/api/market/alerts/')) return 'Market Alerts';
   if (route.startsWith('/api/market/')) return 'Market Data';
   if (route.startsWith('/api/terminal/') || route === '/api/wizard') return 'Terminal Scanner';
@@ -247,6 +257,7 @@ function groupApiRoute(route) {
     route.startsWith('/api/positions/polymarket/')
   ) return 'Polymarket';
   if (route === '/api/positions/unified') return 'Unified Positions';
+  if (route === '/api/patterns' || route.startsWith('/api/patterns/')) return 'Cogochi';
   if (route.startsWith('/api/cogochi/')) return 'Cogochi';
   if (route.startsWith('/api/arena-war')) return 'Arena War';
   if (route.startsWith('/api/arena/') || route === '/api/matches') return 'Arena';

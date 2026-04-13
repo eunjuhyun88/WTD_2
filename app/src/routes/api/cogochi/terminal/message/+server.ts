@@ -11,6 +11,7 @@ import type { RequestHandler } from './$types';
 import { callLLMStreamWithTools, type LLMMessage } from '$lib/server/llmService';
 import type { DouniProfile } from '$lib/engine/cogochi/douni/douniPersonality';
 import type { SignalSnapshot } from '$lib/engine/cogochi/types';
+import type { SignalSnapshotRaw } from '$lib/server/engineClient';
 import { type LLMProvider, getAvailableProvider } from '$lib/server/llmConfig';
 import type { DouniSSEEvent, LLMMessageWithTools } from '$lib/server/douni/types';
 import { executeTool } from '$lib/server/douni/toolExecutor';
@@ -27,9 +28,14 @@ const SSE_HEADERS = {
   'X-Accel-Buffering': 'no',
 } as const;
 
+type HeuristicSnapshot = Partial<SignalSnapshotRaw> & {
+  symbol?: string;
+  timeframe?: string;
+};
+
 // ── HEURISTIC mode: template synthesis from snapshot (no LLM) ──
 
-function buildHeuristicText(snapshot: SignalSnapshot | undefined, locale: string): string {
+function buildHeuristicText(snapshot: HeuristicSnapshot | undefined, locale: string): string {
   const isKo = locale.startsWith('ko') || locale.startsWith('kr');
   const footer = isKo
     ? '\n\n▶ 전체 AI 분석: Settings > AI에서 Groq 키 입력. (무료, 30초)'
@@ -156,7 +162,7 @@ export const POST: RequestHandler = async ({ request }) => {
   } = body as {
     message: string;
     history?: CompressedHistoryEntry[];
-    snapshot?: SignalSnapshot;
+      snapshot?: HeuristicSnapshot;
     /** Unix ms when snapshot was computed — used for staleness check */
     snapshotTs?: number;
     provider?: LLMProvider;

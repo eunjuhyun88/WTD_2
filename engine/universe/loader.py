@@ -31,3 +31,18 @@ def load_universe(name: str) -> list[str]:
     raise KeyError(
         f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all')"
     )
+
+
+async def load_universe_async(name: str) -> list[str]:
+    """Async variant for callers that want the shared token-universe dataset."""
+    if name in {"binance_30", ""}:
+        return load_universe("binance_30")
+    if name == "binance_dynamic":
+        from universe.dynamic import load_dynamic_universe_async
+        return await load_dynamic_universe_async()
+    if name == "binance_all":
+        from universe.dynamic import load_dynamic_universe_async
+        return await load_dynamic_universe_async(min_volume_usd=0, max_symbols=500)
+    raise KeyError(
+        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all')"
+    )

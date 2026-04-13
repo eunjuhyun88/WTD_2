@@ -12938,3 +12938,55 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run safe:status`: PASS
 - Status:
   - IN_PROGRESS
+## [2026-04-13 23:31:00 +0900] START W-20260413-2327-wtdv2-codex (WTD-V2)
+- Repo path:
+  - `/Users/ej/Projects/wtd-v2/.claude/worktrees/xenodochial-poincare`
+- Branch:
+  - `claude/xenodochial-poincare`
+- Base `origin/main` hash:
+  - `f41cfdbf5a8255a4ec66c8cce3d39a3029cfa4d2`
+- Working tree status:
+  - `## claude/xenodochial-poincare`
+  - modified: `.claude/launch.json`
+  - untracked: `app/docs/PATTERN_ENGINE_FINAL_DESIGN.md`
+- Task summary:
+  - resume the xenodochial-poincare worktree, preserve the existing local launch/design changes, and implement the next Pattern Engine milestones: dynamic scanner universe expansion and Telegram notification wiring
+- Owned files / overlap check result:
+  - planned ownership: `engine/scanner/*`, `engine/universe/*`, related `engine/tests/*`, and minimal docs/log updates only if needed
+  - existing uncommitted overlap is limited to `.claude/launch.json` and `app/docs/PATTERN_ENGINE_FINAL_DESIGN.md`; both are treated as pre-existing branch context and will not be reverted
+  - branch is user-requested and does not follow the usual `codex/*` naming convention; continuing in place to avoid losing local worktree state
+- Safe status:
+  - `npm run safe:status`: PASS
+  - `npm run safe:hooks`: FAIL (`.githooks/pre-push` missing in this repo snapshot)
+  - `npm run safe:sync`: BLOCKED (pre-existing uncommitted changes in `.claude/launch.json` and `app/docs/PATTERN_ENGINE_FINAL_DESIGN.md`)
+- Notes:
+  - `README.md` at repo root is a placeholder; active collaboration/docs entrypoints for this worktree are `app/README.md`, `app/docs/README.md`, `app/docs/COGOCHI.md`, and `app/ARCHITECTURE.md`
+- Status:
+  - IN_PROGRESS
+
+## [2026-04-13 23:49:00 +0900] FINISH W-20260413-2327-wtdv2-codex (WTD-V2)
+- What changed:
+  - added async universe loading so scheduler-facing jobs can consume the shared 300+ symbol token universe instead of the legacy fixed 30-symbol list
+  - extended `engine/universe/dynamic.py` to reuse `data_cache.token_universe.get_universe()` for async scanner selection while keeping the old sync fallback path for legacy callers
+  - wired background scheduler alerts to Telegram with Pattern Engine-specific message formatting plus pattern-scan candidate summaries
+  - updated `patterns.scanner.run_pattern_scan()` to accept pre-resolved symbol lists so scheduler prewarm and scan operate on the same universe snapshot
+  - added regression tests for async universe loading and scheduler alert dispatch behavior
+- Validation results:
+  - `uv run pytest tests/test_universe.py tests/test_scheduler.py`: PASS
+  - `uv run pytest $(rg --files tests -g 'test_*.py' | rg -v 'test_param_sweep\.py|test_regime_analysis\.py|test_scoring_trainer\.py|test_wizard_composer\.py|test_wizard_schema\.py')`: PASS (492 passed)
+  - `uv run pytest`: BLOCKED by pre-existing environment/import issues unrelated to this change
+  - blocked collection files:
+    - `tests/test_param_sweep.py` → `ModuleNotFoundError: param_sweep`
+    - `tests/test_regime_analysis.py` → `ModuleNotFoundError: regime_analysis`
+    - `tests/test_wizard_composer.py` / `tests/test_wizard_schema.py` → `ModuleNotFoundError: wizard`
+    - `tests/test_scoring_trainer.py` → missing `libomp.dylib` for LightGBM
+- Commit hash:
+  - not created
+- Push status:
+  - not pushed
+- Final working tree status:
+  - `## claude/xenodochial-poincare`
+  - modified: `.claude/launch.json`, `app/docs/AGENT_WATCH_LOG.md`, `engine/patterns/scanner.py`, `engine/scanner/alerts.py`, `engine/scanner/scheduler.py`, `engine/tests/test_universe.py`, `engine/universe/__init__.py`, `engine/universe/dynamic.py`, `engine/universe/loader.py`
+  - untracked: `.agent-context/`, `.gitignore`, `AGENTS.md`, `app/docs/PATTERN_ENGINE_FINAL_DESIGN.md`, `app/supabase/migrations/016_wallet_address_unique.sql`, `engine/tests/test_scheduler.py`
+- Status:
+  - READY_FOR_REVIEW

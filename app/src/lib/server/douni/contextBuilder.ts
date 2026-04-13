@@ -16,6 +16,7 @@
 //   - Dynamic suffix (locale, snapshot, memory, sessionSummary) → per-turn rebuild
 
 import type { ToolDefinition, LLMMessageWithTools } from './types';
+import type { DouniSnapshot } from './types';
 import type { IntentBudget } from './intentClassifier';
 import { SNAPSHOT_MAX_AGE_MS } from './intentClassifier';
 import {
@@ -128,7 +129,7 @@ export function compressAssistantTurn(
 
 function shouldInjectSnapshot(
   budget: IntentBudget,
-  snapshot: SignalSnapshot | undefined,
+  snapshot: DouniSnapshot | undefined,
   snapshotTs: number | undefined,
   detectedSymbol?: string,
 ): boolean {
@@ -148,6 +149,10 @@ function shouldInjectSnapshot(
   return false;
 }
 
+function isFullSignalSnapshot(snapshot: DouniSnapshot | undefined): snapshot is SignalSnapshot {
+  return Boolean(snapshot && typeof snapshot === 'object' && 'l1' in snapshot && 'alphaScore' in snapshot);
+}
+
 // ─── Main builder ────────────────────────────────────────────
 
 export interface BuildContextOptions {
@@ -158,7 +163,7 @@ export interface BuildContextOptions {
   /** Current message (may be synthesized for greeting mode) */
   message: string;
   /** Current snapshot (may be undefined if no analysis yet) */
-  snapshot?: SignalSnapshot;
+  snapshot?: DouniSnapshot;
   /** Unix ms when snapshot was computed */
   snapshotTs?: number;
   /** Symbol detected from classifier (for snapshot gating) */
@@ -227,7 +232,7 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
 
   // ── Step 3a: Snapshot injection ───────────────────────────
   const injectSnap = shouldInjectSnapshot(budget, snapshot, snapshotTs, detectedSymbol);
-  if (injectSnap && snapshot) {
+  if (injectSnap && isFullSignalSnapshot(snapshot)) {
     try {
       const ctx = buildAnalysisContext(snapshot, profile.archetype);
       systemPrompt += `\n\n[Current Analysis]\n${ctx}`;

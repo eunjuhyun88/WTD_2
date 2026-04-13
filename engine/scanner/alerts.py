@@ -71,6 +71,38 @@ def format_signal_message(signal: dict) -> str:
     return "\n".join(lines)
 
 
+def format_pattern_engine_message(alert: dict) -> str:
+    """Format a Pattern Engine scheduler alert for Telegram.
+
+    Unlike realtime scanner alerts, the background scheduler does not produce
+    an ensemble direction/confidence object. The message therefore sticks to
+    concrete facts: symbol, timeframe, triggered blocks, regime, and p(win).
+    """
+    snapshot = alert.get("snapshot") or {}
+    blocks = list(alert.get("blocks_triggered") or [])
+    symbol = str(alert.get("symbol", "UNKNOWN"))
+    timeframe = str(alert.get("timeframe", "4h"))
+    price = snapshot.get("price")
+    regime = snapshot.get("regime", "unknown")
+    p_win = alert.get("p_win")
+
+    block_preview = ", ".join(blocks[:6]) if blocks else "none"
+    if len(blocks) > 6:
+        block_preview += f" +{len(blocks) - 6} more"
+
+    lines = [
+        "\U0001f989 <b>Pattern Engine Alert</b>",
+        f"<b>{symbol}</b> · <code>{timeframe}</code>",
+    ]
+    if price is not None:
+        lines.append(f"Price: <code>${float(price):,.2f}</code>")
+    if p_win is not None:
+        lines.append(f"ML P(win): <code>{float(p_win):.0%}</code>")
+    lines.append(f"Regime: <code>{regime}</code>")
+    lines.append(f"Blocks: <code>{block_preview}</code>")
+    return "\n".join(lines)
+
+
 async def send_telegram_alert(
     signal: dict,
     *,
@@ -162,4 +194,84 @@ async def send_scan_summary(
             }, timeout=10.0)
             return resp.status_code == 200
     except Exception:
+        return False
+
+
+async def send_pattern_engine_alert(
+    alert: dict,
+    *,
+    token: Optional[str] = None,
+    chat_id: Optional[str] = None,
+) -> bool:
+    """Send one Pattern Engine scheduler hit to Telegram."""
+    _token = token or _get_config()[0]
+    _chat_id = chat_id or _get_config()[1]
+
+    if not _token or not _chat_id:
+        log.debug("Telegram not configured — skipping pattern alert")
+        return False
+
+    url = f"{TELEGRAM_API.format(token=_token)}/sendMessage"
+    payload = {
+        "chat_id": _chat_id,
+        "text": format_pattern_engine_message(alert),
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json=payload, timeout=10.0)
+            return resp.status_code == 200
+    except Exception as exc:
+        log.warning("Telegram pattern alert failed: %s", exc)
+        return False
+
+
+async def send_pattern_scan_summary(
+    scan_result: dict,
+    *,
+    universe_name: str | None = None,
+    token: Optional[str] = None,
+    chat_id: Optional[str] = None,
+) -> bool:
+    """Send a compact summary for state-machine entry candidates."""
+    _token = token or _get_config()[0]
+    _chat_id = chat_id or _get_config()[1]
+
+    if not _token or not _chat_id:
+        return False
+
+    entry_candidates = scan_result.get("entry_candidates", {}) or {}
+    total_candidates = sum(len(v) for v in entry_candidates.values())
+    preview_lines: list[str] = []
+    for slug, symbols in entry_candidates.items():
+        preview = ", ".join(symbols[:5])
+        suffix = f" +{len(symbols) - 5}" if len(symbols) > 5 else ""
+        preview_lines.append(f"{slug}: {preview}{suffix}")
+
+    lines = [
+        "\U0001f989 Pattern scan summary",
+        f"Universe: {universe_name or 'default'}",
+        f"Symbols: {scan_result.get('n_symbols', 0)}",
+        f"Evaluated: {scan_result.get('n_evaluated', 0)}",
+        f"Entry candidates: {total_candidates}",
+    ]
+    if preview_lines:
+        lines.extend(preview_lines[:4])
+
+    url = f"{TELEGRAM_API.format(token=_token)}/sendMessage"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                json={
+                    "chat_id": _chat_id,
+                    "text": "\n".join(lines),
+                    "disable_web_page_preview": True,
+                },
+                timeout=10.0,
+            )
+            return resp.status_code == 200
+    except Exception as exc:
+        log.warning("Telegram pattern summary failed: %s", exc)
         return False

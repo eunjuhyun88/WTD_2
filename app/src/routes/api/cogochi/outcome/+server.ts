@@ -75,14 +75,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 async function triggerTraining(userId: string, count: number): Promise<void> {
   console.log(`[outcome] triggering LightGBM train for user=${userId} count=${count}`);
 
-  const rows = await query<{ snapshot: any; outcome: number }>(
+  const rows = await query<{ snapshot: unknown; outcome: number }>(
     `SELECT snapshot, outcome FROM engine_trade_records
      WHERE user_id = $1 AND outcome IN (0, 1)
      ORDER BY created_at ASC`,
     [userId]
   );
 
-  const records = rows.rows.map((r) => ({
+  const records = rows.rows.map((r: { snapshot: unknown; outcome: number }) => ({
     snapshot: typeof r.snapshot === 'string' ? JSON.parse(r.snapshot) : r.snapshot,
     outcome: r.outcome as 1 | 0,
   }));

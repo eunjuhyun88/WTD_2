@@ -4,6 +4,7 @@
 
 import type { LLMProvider } from '../llmConfig';
 import type { SignalSnapshot } from '$lib/engine/cogochi/types';
+import type { SignalSnapshotRaw } from '$lib/server/engineClient';
 import type { ResearchBlockEnvelope } from '$lib/contracts';
 
 // ─── OpenAI-compatible Tool Definition ───────────────────────
@@ -90,7 +91,8 @@ export interface ToolExecutorContext {
   /** Current timeframe */
   timeframe?: string;
   /** Cached snapshot (avoid re-fetching if recent) */
-  cachedSnapshot?: SignalSnapshot;
+  cachedSnapshot?: DouniSnapshot;
   /** User ID for pattern/feedback storage */
   userId?: string;
 }
+export type DouniSnapshot = SignalSnapshot | Partial<SignalSnapshotRaw>;

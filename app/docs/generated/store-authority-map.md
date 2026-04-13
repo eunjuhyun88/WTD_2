@@ -34,6 +34,7 @@ Source of truth remains store implementations plus canonical state-authority doc
 | `pnlStore` | derived/support | pnl summaries and derived display state | Depends on durable trade/outcome data. |
 | `agentData` | derived/support | agent stats and learning presentation layer | Should not silently redefine server truth. |
 | `doctrineStore` | derived/support | per-agent doctrine editor state and version history | Editable doctrine state should reconcile with durable agent truth when server APIs land. |
+| `douniRuntime` | route/session transient | client-side AI runtime mode and provider config | Terminal-local runtime preference store; not durable market or user truth. |
 | `warRoomStore` | route/session transient | war-room discussion state | Runtime coordination state. |
 | `dbStore` | derived/support | localStorage CRUD helpers and table adapters | Utility persistence layer for local fallback tables; not durable server truth. |
 | `hydration` | derived/support | orchestrates initial store hydration | Not domain truth itself. |
