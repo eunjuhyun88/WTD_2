@@ -75,7 +75,7 @@
   });
 </script>
 
-<div id="app" class:cogochi-mode={$isCogochi} class:home-mode={$isHome}>
+<div id="app" class:cogochi-mode={$isCogochi} class:terminal-mode={$isTerminal} class:home-mode={$isHome}>
   {#if !$isCogochi}<Header />{/if}
   {#if !$isCogochi}<P0Banner />{/if}
   <div
@@ -154,6 +154,10 @@
     }
     #app.home-mode {
       min-height: 100svh;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    /* Terminal has its own bottom dock — no MobileBottomNav padding needed */
+    #app.terminal-mode {
       padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     #main-content {

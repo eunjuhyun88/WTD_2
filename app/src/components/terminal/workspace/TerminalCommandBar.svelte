@@ -7,8 +7,10 @@
     flowBias?: 'LONG' | 'SHORT' | 'NEUTRAL';
     layout?: LayoutId;
     onLayout?: (l: LayoutId) => void;
+    assetsCount?: number;
+    onClear?: () => void;
   }
-  let { flowBias = 'NEUTRAL', layout = 'hero3', onLayout }: Props = $props();
+  let { flowBias = 'NEUTRAL', layout = 'hero3', onLayout, assetsCount = 0, onClear }: Props = $props();
 
   const tfs = ['15m', '1H', '4H', '1D'];
   const layouts: { id: LayoutId; label: string }[] = [
@@ -54,6 +56,10 @@
       </button>
     {/each}
   </div>
+
+  {#if assetsCount > 0}
+    <button class="clear-btn" onclick={onClear} title="Clear board">CLR</button>
+  {/if}
 </nav>
 
 <style>
@@ -89,4 +95,13 @@
     padding: 3px 8px; cursor: pointer;
   }
   .layout-btn.active, .layout-btn:hover { color: var(--sc-text-0); border-color: rgba(255,255,255,0.12); }
+
+  .clear-btn {
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 0.08em; color: var(--sc-text-2);
+    background: none; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px; padding: 3px 8px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .clear-btn:hover { color: #f87171; border-color: rgba(248,113,113,0.3); }
 </style>
