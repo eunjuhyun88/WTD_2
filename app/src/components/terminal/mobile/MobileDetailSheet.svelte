@@ -12,6 +12,8 @@
     asset?: TerminalAsset | null;
     verdict?: TerminalVerdict | null;
     evidence?: TerminalEvidence[];
+    bars?: any[];
+    layerBarsMap?: Record<string, any[]>;
     newsItems?: Array<{ title: string; source: string; time: string; url?: string }>;
     onClose?: () => void;
   }
@@ -21,6 +23,8 @@
     asset = null,
     verdict = null,
     evidence = [],
+    bars = [],
+    layerBarsMap = {},
     newsItems = [],
     onClose,
   }: Props = $props();
@@ -48,13 +52,13 @@
 
   // Metric groups for metrics tab
   let fundingMetrics = $derived(
-    evidence.filter(e => ['Funding Rate', 'Funding Pct'].includes(e.metric))
+    evidence.filter(e => ['Funding Rate', 'Funding Pct', 'FR / Flow', 'Funding'].includes(e.metric))
   );
   let oiMetrics = $derived(
-    evidence.filter(e => ['OI Change', 'OI Momentum'].includes(e.metric))
+    evidence.filter(e => ['OI Change', 'OI Momentum', 'OI Squeeze', 'OI 1H'].includes(e.metric))
   );
   let structureMetrics = $derived(
-    evidence.filter(e => !['Funding Rate', 'Funding Pct', 'OI Change', 'OI Momentum'].includes(e.metric))
+    evidence.filter(e => !fundingMetrics.includes(e) && !oiMetrics.includes(e))
   );
 </script>
 
@@ -65,7 +69,9 @@
   role="dialog"
   aria-modal="true"
   aria-label="Asset detail"
+  tabindex="-1"
   onclick={handleBackdropClick}
+  onkeydown={(e) => e.key === 'Escape' && onClose?.()}
 >
   <div class="detail-sheet" class:open>
     <!-- Handle bar -->
@@ -122,7 +128,7 @@
             {#if evidence.length > 0}
               <div class="section-gap">
                 <p class="section-label">EVIDENCE</p>
-                <EvidenceGrid {evidence} cols={2} />
+                <EvidenceGrid {evidence} cols={2} {bars} {layerBarsMap} />
               </div>
             {/if}
             <div class="section-gap">
@@ -212,18 +218,18 @@
           <div class="metrics-content">
             {#if structureMetrics.length > 0}
               <p class="section-label">STRUCTURE</p>
-              <EvidenceGrid evidence={structureMetrics} cols={2} />
+              <EvidenceGrid evidence={structureMetrics} cols={2} {bars} {layerBarsMap} />
             {/if}
             {#if oiMetrics.length > 0}
               <div class="metrics-group">
                 <p class="section-label">OPEN INTEREST</p>
-                <EvidenceGrid evidence={oiMetrics} cols={2} />
+                <EvidenceGrid evidence={oiMetrics} cols={2} {bars} {layerBarsMap} />
               </div>
             {/if}
             {#if fundingMetrics.length > 0}
               <div class="metrics-group">
                 <p class="section-label">FUNDING</p>
-                <EvidenceGrid evidence={fundingMetrics} cols={2} />
+                <EvidenceGrid evidence={fundingMetrics} cols={2} {bars} {layerBarsMap} />
               </div>
             {/if}
             {#if evidence.length === 0}
