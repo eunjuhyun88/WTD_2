@@ -54,6 +54,30 @@
   let streamText = $state('');
   let loadingSymbols = $state(new Set<string>());
 
+  // ── Chart price-level overlays (entry / target / stop) ───────
+  // Extracted from deep.atr_levels after each analysis; passed to ChartBoard
+  interface VerdictLevels { entry?: number; target?: number; stop?: number; }
+  let chartLevels = $state<VerdictLevels>({});
+
+  function extractLevels(data: any): VerdictLevels {
+    const deep = data?.deep;
+    if (!deep?.atr_levels) return {};
+    const bias = _deepBias(deep.verdict ?? '');
+    const price = data?.price ?? data?.snapshot?.last_close;
+    if (bias === 'bearish') {
+      return {
+        entry:  price  ? Number(price)                            : undefined,
+        target: deep.atr_levels.tp1_short  ? Number(deep.atr_levels.tp1_short)  : undefined,
+        stop:   deep.atr_levels.stop_short ? Number(deep.atr_levels.stop_short) : undefined,
+      };
+    }
+    return {
+      entry:  price  ? Number(price)                           : undefined,
+      target: deep.atr_levels.tp1_long  ? Number(deep.atr_levels.tp1_long)  : undefined,
+      stop:   deep.atr_levels.stop_long ? Number(deep.atr_levels.stop_long) : undefined,
+    };
+  }
+
   type HistoryEntry = { role: 'user' | 'assistant'; content: string };
   let chatHistory = $state<HistoryEntry[]>([]);
 
@@ -348,6 +372,11 @@
       }
       verdictMap = { ...verdictMap, [symbol]: verdict };
       evidenceMap = { ...evidenceMap, [symbol]: evidence };
+
+      // Extract price levels → chart overlay (entry / target / stop)
+      if (symbol === activeSymbol || boardAssets.length === 1) {
+        chartLevels = extractLevels(data);
+      }
     } catch (e) {
       console.error('loadAnalysis error:', e);
     } finally {
@@ -478,6 +507,8 @@
         verdictMap = { ...verdictMap, [sym]: verdict };
         evidenceMap = { ...evidenceMap, [sym]: evidence };
         if (!activeSymbol) activeSymbol = sym;
+        // Update chart levels for active symbol
+        if (sym === activeSymbol || !activeSymbol) chartLevels = extractLevels(envelope);
       }
     }
     if (event.type === 'tool_result' && event.name === 'analyze' && event.data) {
@@ -489,6 +520,7 @@
       boardAssets = boardAssets.map(a => a.symbol === sym ? asset : a);
       verdictMap = { ...verdictMap, [sym]: verdict };
       evidenceMap = { ...evidenceMap, [sym]: evidence };
+      if (sym === activeSymbol) chartLevels = extractLevels(event.data);
     }
   }
 
@@ -505,6 +537,7 @@
   function clearBoard() {
     boardAssets = []; verdictMap = {}; evidenceMap = {};
     activeSymbol = ''; layout = 'focus';
+    chartLevels = {};
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -669,6 +702,7 @@
           <ChartBoard
             symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
             tf={symbolToTF(gTf)}
+            verdictLevels={chartLevels}
             onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
             onSaveSetup={async (snap) => {
               try {
