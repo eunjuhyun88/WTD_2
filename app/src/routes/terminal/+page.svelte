@@ -56,6 +56,9 @@
   type HistoryEntry = { role: 'user' | 'assistant'; content: string };
   let chatHistory = $state<HistoryEntry[]>([]);
 
+  /** Fingerprint of the snapshot used in the last completed AI response */
+  let prevSnapshotFingerprint = $state('');
+
   // Narrow deriveds: only pair+tf — price changes must NOT re-trigger $effect
   const gPair = $derived($activePairState.pair);
   const gTf   = $derived($activePairState.timeframe);
@@ -96,6 +99,26 @@
     ob: 'Order Book', onchain: 'On-chain', fg: 'Fear/Greed',
     kimchi: 'Kimchi', sector: 'Sector',
   };
+
+  /** Stable fingerprint of key snapshot fields — changes only when market data actually updates */
+  function snapshotFingerprint(snap: any): string {
+    if (!snap) return '';
+    return [
+      snap.symbol ?? '',
+      snap.timeframe ?? '',
+      snap.rsi14 != null ? snap.rsi14.toFixed(1) : '',
+      snap.funding_rate != null ? snap.funding_rate.toFixed(5) : '',
+      snap.oi_change_1h != null ? snap.oi_change_1h.toFixed(3) : '',
+      snap.cvd_state ?? '',
+      snap.regime ?? '',
+    ].join('|');
+  }
+
+  /** True when the message looks like an analysis / market-data question */
+  function isAnalysisQuery(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return /분석|어때|어떻게|펀딩|oi\b|rsi|추세|시그널|진입|패턴|레짐|regime|signal|analysis|how.*(look|doing)|what.*(think|say)|check/.test(lower);
+  }
 
   function _deepBias(verdict: string): 'bullish' | 'bearish' | 'neutral' {
     if (!verdict) return 'neutral';
@@ -402,6 +425,24 @@
       return;
     }
 
+    // Delta detection: if snapshot hasn't changed since last AI response and
+    // the question is purely about current market data, skip the LLM call
+    const currentFingerprint = snapshotFingerprint(analysisData?.snapshot);
+    if (
+      prevSnapshotFingerprint &&
+      currentFingerprint &&
+      prevSnapshotFingerprint === currentFingerprint &&
+      isAnalysisQuery(text)
+    ) {
+      const noChange = typeof navigator !== 'undefined' && navigator.language.startsWith('ko')
+        ? '변화 없음 — 마지막 분석 이후 시장 데이터가 업데이트되지 않았어.'
+        : 'No change — market data has not updated since the last analysis.';
+      chatHistory = ([...chatHistory, { role: 'user' as const, content: text }, { role: 'assistant' as const, content: noChange }] as HistoryEntry[]).slice(-10);
+      streamText = noChange;
+      setTimeout(() => { streamText = ''; }, 4000);
+      return;
+    }
+
     isStreaming = true;
     streamText = '';
     showRightPanel = true;  // reveal context panel on first query
@@ -464,6 +505,8 @@
 
       if (assistantText) {
         chatHistory = ([...chatHistory, { role: 'assistant' as const, content: assistantText }] as HistoryEntry[]).slice(-10);
+        // Record snapshot fingerprint so identical follow-up questions get the delta guard
+        prevSnapshotFingerprint = snapshotFingerprint(analysisData?.snapshot);
       }
     } catch (e) {
       console.error('SSE error:', e);
