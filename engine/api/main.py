@@ -86,17 +86,10 @@ app.include_router(ctx.router,      prefix="/ctx",      tags=["context"])
 app.include_router(universe.router, prefix="/universe", tags=["universe"])
 app.include_router(backtest.router, prefix="/backtest", tags=["backtest"])
 app.include_router(challenge.router, prefix="/challenge", tags=["challenge"])
-<<<<<<< HEAD
 app.include_router(train.router,     prefix="/train",    tags=["training"])
 app.include_router(verdict.router,   prefix="/verdict",  tags=["verdict"])
 app.include_router(scanner.router,   prefix="/scanner",  tags=["scanner"])
 app.include_router(patterns.router,  prefix="/patterns", tags=["patterns"])
-=======
-app.include_router(train.router, prefix="/train", tags=["training"])
-app.include_router(verdict.router, prefix="/verdict", tags=["verdict"])
-app.include_router(scanner.router, prefix="/scanner", tags=["scanner"])
-app.include_router(patterns.router, prefix="/patterns", tags=["patterns"])
->>>>>>> ff2ede4 (feat(pattern-engine): TRADOOR pattern engine — StateMachine, Ledger, ChartBoard, 5 blocks)
 
 
 @app.get("/healthz", tags=["meta"])
