@@ -14,7 +14,7 @@ Environment variables used:
   SUPABASE_SERVICE_ROLE_KEY — Service-role key (bypasses RLS)
   SCAN_INTERVAL_SECONDS    — Override default 900 (15 min)
   SCAN_MIN_BLOCKS          — Minimum blocks to fire an alert (default 1)
-  SCAN_UNIVERSE            — Universe name for load_universe() (default "binance_30")
+  SCAN_UNIVERSE            — Universe name for load_universe() (default "binance_dynamic")
 """
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ from exceptions import CacheMiss
 from scanner.feature_calc import compute_features_table, compute_snapshot
 from scoring.block_evaluator import evaluate_blocks
 from scoring.lightgbm_engine import get_engine
+from universe.config import DEFAULT_SCAN_UNIVERSE
 from universe.loader import load_universe
 
 log = logging.getLogger("engine.scanner")
@@ -41,7 +42,7 @@ _scheduler: AsyncIOScheduler | None = None
 
 SCAN_INTERVAL = int(os.environ.get("SCAN_INTERVAL_SECONDS", "900"))
 MIN_BLOCKS     = int(os.environ.get("SCAN_MIN_BLOCKS", "1"))
-UNIVERSE_NAME  = os.environ.get("SCAN_UNIVERSE", "binance_30")
+UNIVERSE_NAME  = DEFAULT_SCAN_UNIVERSE
 
 SUPABASE_URL      = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")

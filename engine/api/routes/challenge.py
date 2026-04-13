@@ -46,13 +46,11 @@ from challenge.types import (
 from data_cache.loader import load_klines, load_perp, CacheMiss
 from scanner.feature_calc import compute_features_table
 from scoring.lightgbm_engine import get_engine as get_lgbm
+from universe.config import DEFAULT_CHALLENGE_FIT_UNIVERSE, DEFAULT_CHALLENGE_SCAN_UNIVERSE
 from universe.loader import load_universe
 
 log = logging.getLogger("engine.challenge")
 router = APIRouter()
-
-_DEFAULT_UNIVERSE = "binance_30"
-
 
 @router.post("/create", response_model=ChallengeCreateResponse)
 async def create_challenge(req: ChallengeCreateRequest) -> ChallengeCreateResponse:
@@ -70,7 +68,7 @@ async def create_challenge(req: ChallengeCreateRequest) -> ChallengeCreateRespon
     # --- 1. Load features for all relevant symbols -----------------------
     symbols_needed = list({s.symbol for s in snaps})
     # Also load the full universe for finding similar bars.
-    universe = load_universe(_DEFAULT_UNIVERSE)
+    universe = load_universe(DEFAULT_CHALLENGE_FIT_UNIVERSE)
     all_symbols = list(set(symbols_needed) | set(universe))
 
     features_db: dict[str, pd.DataFrame] = {}
@@ -161,7 +159,7 @@ async def scan_challenge(slug: str) -> ChallengeScanResponse:
     pv_norm = pv / (np.linalg.norm(pv) + 1e-10)
 
     lgbm = get_lgbm()
-    universe = load_universe(_DEFAULT_UNIVERSE)
+    universe = load_universe(DEFAULT_CHALLENGE_SCAN_UNIVERSE)
     matches: list[ScanMatch] = []
 
     for symbol in universe:

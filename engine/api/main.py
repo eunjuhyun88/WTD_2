@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routes import backtest, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
+from universe.config import DEFAULT_SCAN_UNIVERSE
 
 logging.basicConfig(
     level=logging.INFO,
@@ -103,7 +104,7 @@ def scanner_status() -> dict:
         "running": is_running(),
         "next_scan": next_run_time(),
         "interval_seconds": int(os.getenv("SCAN_INTERVAL_SECONDS", "900")),
-        "universe": os.getenv("SCAN_UNIVERSE", "binance_30"),
+        "universe": DEFAULT_SCAN_UNIVERSE,
     }
 
 

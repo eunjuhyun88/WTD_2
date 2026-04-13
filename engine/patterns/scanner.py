@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -34,6 +33,7 @@ from patterns.state_machine import PatternStateMachine
 from patterns.types import PhaseTransition
 from scanner.feature_calc import compute_features_table, compute_snapshot
 from scoring.block_evaluator import evaluate_blocks
+from universe.config import DEFAULT_SCAN_UNIVERSE
 from universe.loader import load_universe
 
 log = logging.getLogger("engine.patterns.scanner")
@@ -301,7 +301,7 @@ async def run_pattern_scan(
     - Parallel evaluation with ThreadPoolExecutor
     - Data quality metrics in response
     """
-    universe_name = universe_name or os.environ.get("SCAN_UNIVERSE", "binance_30")
+    universe_name = universe_name or DEFAULT_SCAN_UNIVERSE
     symbols = load_universe(universe_name)
     t0 = time.monotonic()
 

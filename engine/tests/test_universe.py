@@ -1,4 +1,4 @@
-"""Tests for universe.load_universe and the binance_30 roster."""
+"""Tests for universe.load_universe and the supported universe roster."""
 from __future__ import annotations
 
 import pytest
@@ -44,3 +44,31 @@ def test_load_universe_returns_mutable_list():
 def test_load_universe_unknown_raises_keyerror():
     with pytest.raises(KeyError):
         load_universe("nonexistent_universe")
+
+
+def test_load_universe_binance_dynamic_dispatches(monkeypatch: pytest.MonkeyPatch):
+    from universe import dynamic
+
+    def fake_load_dynamic_universe(*, min_volume_usd: float = 500_000.0, max_symbols: int = 300, fallback: bool = True):
+        assert min_volume_usd == 500_000.0
+        assert max_symbols == 300
+        assert fallback is True
+        return ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+    monkeypatch.setattr(dynamic, "load_dynamic_universe", fake_load_dynamic_universe)
+
+    assert load_universe("binance_dynamic") == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+
+def test_load_universe_binance_all_dispatches(monkeypatch: pytest.MonkeyPatch):
+    from universe import dynamic
+
+    def fake_load_dynamic_universe(*, min_volume_usd: float = 500_000.0, max_symbols: int = 300, fallback: bool = True):
+        assert min_volume_usd == 0
+        assert max_symbols == 500
+        assert fallback is True
+        return ["BTCUSDT", "ETHUSDT"]
+
+    monkeypatch.setattr(dynamic, "load_dynamic_universe", fake_load_dynamic_universe)
+
+    assert load_universe("binance_all") == ["BTCUSDT", "ETHUSDT"]

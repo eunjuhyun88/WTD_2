@@ -6,9 +6,6 @@ filtered by minimum 24h volume. Falls back to binance_30 if fetch fails.
 from __future__ import annotations
 import json
 import urllib.request
-import urllib.error
-from functools import lru_cache
-import time
 
 _FUTURES_BASE = "https://fapi.binance.com"
 _UA = "cogochi-universe/1.0"

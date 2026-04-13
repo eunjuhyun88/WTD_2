@@ -3,9 +3,9 @@
 Public API:
     load_universe(name: str) -> list[str]
 
-Phase D ships one universe: "binance_30" (tier-balanced 10 large + 10 mid
-+ 10 small cap Binance spot pairs). Phase F adds "binance_top100",
-"coinalyze_filtered", and user-provided manual lists.
+Phase D shipped one static universe: "binance_30". The live scanner now
+defaults to "binance_dynamic" while keeping the static list as a fallback
+and a narrower refinement set.
 """
 from universe.loader import load_universe
 
