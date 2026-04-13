@@ -36,6 +36,12 @@ export const GET: RequestHandler = async () => {
         pending_count:   raw.pending      ?? 0,
         hit_rate:        raw.success_rate ?? null,
         avg_gain_pct:    raw.avg_gain_pct ?? null,
+        avg_loss_pct:    raw.avg_loss_pct ?? null,
+        expected_value:  raw.expected_value ?? null,
+        btc_conditional: raw.btc_conditional ?? null,
+        decay_direction: raw.decay_direction ?? null,
+        recent_30d_count: raw.recent_30d_count ?? 0,
+        recent_30d_success_rate: raw.recent_30d_success_rate ?? null,
       });
     }
 

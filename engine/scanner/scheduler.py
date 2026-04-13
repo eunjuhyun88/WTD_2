@@ -117,10 +117,8 @@ async def _scan_universe() -> None:
             perp_dict = {
                 "funding_rate":    float(last.get("funding_rate", 0.0)),
                 "long_short_ratio": float(last.get("long_short_ratio", 1.0)),
-                # oi_change_1h / oi_change_24h come from FAPI — treat as
-                # pseudo oi_now for compute_snapshot's oi_now/oi_1h_ago path.
-                "oi_now":    float(last.get("oi_change_1h", 0.0)),
-                "oi_1h_ago": 0.0,
+                # NOTE: We do NOT set oi_now/oi_1h_ago from change rates.
+                # features_df has the correct oi_change columns for blocks.
             }
 
         try:
@@ -172,6 +170,44 @@ async def _scan_universe() -> None:
 
 # ── Lifecycle API (called from api/main.py lifespan) ─────────────────────────
 
+async def _pattern_scan_job() -> None:
+    """Run pattern state machine scan across all symbols.
+
+    This is a separate job from _scan_universe (block alerts).
+    Pattern scan tracks multi-phase progression (FAKE_DUMP → BREAKOUT).
+    """
+    from patterns.scanner import run_pattern_scan, prewarm_perp_cache
+
+    # Prewarm perp cache so OI/funding blocks have real data
+    universe = load_universe(UNIVERSE_NAME)
+    prewarm_perp_cache(universe, max_workers=5)
+
+    result = await run_pattern_scan(UNIVERSE_NAME, prewarm=False)  # already prewarmed
+    n_candidates = sum(len(v) for v in result.get("entry_candidates", {}).values())
+    log.info(
+        "Pattern scan: %d symbols, %d evaluated, %d entry candidates, %dms",
+        result.get("n_symbols", 0),
+        result.get("n_evaluated", 0),
+        n_candidates,
+        result.get("elapsed_ms", 0),
+    )
+
+
+async def _auto_evaluate_job() -> None:
+    """Auto-evaluate pending ledger outcomes past their 72h evaluation window."""
+    from ledger.store import LedgerStore
+    from patterns.library import PATTERN_LIBRARY
+
+    store = LedgerStore()
+    total_evaluated = 0
+    for slug in PATTERN_LIBRARY:
+        evaluated = store.auto_evaluate_pending(slug)
+        total_evaluated += len(evaluated)
+
+    if total_evaluated > 0:
+        log.info("Auto-evaluate: %d outcomes evaluated across all patterns", total_evaluated)
+
+
 def start_scheduler() -> None:
     """Start the APScheduler background scan loop."""
     global _scheduler
@@ -180,20 +216,47 @@ def start_scheduler() -> None:
         return
 
     _scheduler = AsyncIOScheduler(timezone="UTC")
+
+    # Job 1: Universe block scanner (existing) — every 15 min
     _scheduler.add_job(
         _scan_universe,
         trigger="interval",
         seconds=SCAN_INTERVAL,
         id="universe_scan",
         name="Universe block scanner",
-        max_instances=1,          # never overlap
-        coalesce=True,            # skip missed runs
+        max_instances=1,
+        coalesce=True,
         misfire_grace_time=120,
     )
+
+    # Job 2: Pattern state machine scan — every 15 min (offset by 5 min)
+    _scheduler.add_job(
+        _pattern_scan_job,
+        trigger="interval",
+        seconds=SCAN_INTERVAL,
+        id="pattern_scan",
+        name="Pattern state machine scanner",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=120,
+    )
+
+    # Job 3: Auto-evaluate pending ledger outcomes — every 1 hour
+    _scheduler.add_job(
+        _auto_evaluate_job,
+        trigger="interval",
+        seconds=3600,
+        id="auto_evaluate",
+        name="Ledger auto-evaluator",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
+    )
+
     _scheduler.start()
     log.info(
-        "Scanner started: interval=%ds universe=%s min_blocks=%d",
-        SCAN_INTERVAL, UNIVERSE_NAME, MIN_BLOCKS,
+        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s universe=%s",
+        SCAN_INTERVAL, SCAN_INTERVAL, UNIVERSE_NAME,
     )
 
 

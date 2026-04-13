@@ -35,6 +35,12 @@
     pending_count:   number;
     hit_rate:        number | null;
     avg_gain_pct:    number | null;
+    avg_loss_pct:    number | null;
+    expected_value:  number | null;
+    btc_conditional: { bullish: number | null; bearish: number | null; sideways: number | null } | null;
+    decay_direction: string | null;
+    recent_30d_count: number;
+    recent_30d_success_rate: number | null;
   }
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -257,13 +263,44 @@
               </span>
             </div>
             <div class="stat-row">
-              <span class="stat-label">평균 수익</span>
-              <span class="stat-value">{s.avg_gain_pct != null ? `+${s.avg_gain_pct.toFixed(1)}%` : '—'}</span>
+              <span class="stat-label">평균 수익 / 손실</span>
+              <span class="stat-value">
+                {s.avg_gain_pct != null ? `+${(s.avg_gain_pct * 100).toFixed(1)}%` : '—'}
+                {#if s.avg_loss_pct != null}
+                  <span class="stat-loss"> / {(s.avg_loss_pct * 100).toFixed(1)}%</span>
+                {/if}
+              </span>
             </div>
+            {#if s.expected_value != null}
+            <div class="stat-row">
+              <span class="stat-label">기대값 (EV)</span>
+              <span class="stat-value {s.expected_value >= 0 ? 'good' : 'bad'}">
+                {s.expected_value >= 0 ? '+' : ''}{(s.expected_value * 100).toFixed(2)}%
+              </span>
+            </div>
+            {/if}
             <div class="stat-row">
               <span class="stat-label">총 인스턴스</span>
               <span class="stat-value">{s.total_instances} <span class="stat-sub">(성공 {s.success_count} / 실패 {s.failure_count} / 대기 {s.pending_count})</span></span>
             </div>
+            {#if s.btc_conditional}
+            <div class="stat-row">
+              <span class="stat-label">BTC 시장별</span>
+              <span class="stat-value stat-sub">
+                상승 {s.btc_conditional.bullish != null ? `${(s.btc_conditional.bullish * 100).toFixed(0)}%` : '—'}
+                · 횡보 {s.btc_conditional.sideways != null ? `${(s.btc_conditional.sideways * 100).toFixed(0)}%` : '—'}
+                · 하락 {s.btc_conditional.bearish != null ? `${(s.btc_conditional.bearish * 100).toFixed(0)}%` : '—'}
+              </span>
+            </div>
+            {/if}
+            {#if s.decay_direction}
+            <div class="stat-row">
+              <span class="stat-label">Edge 추세</span>
+              <span class="stat-value" class:good={s.decay_direction === 'improving'} class:bad={s.decay_direction === 'decaying'}>
+                {s.decay_direction === 'improving' ? '개선 중' : s.decay_direction === 'decaying' ? '약화 중' : '안정'}
+              </span>
+            </div>
+            {/if}
           </div>
         {/each}
         {#if stats.length === 0}
@@ -425,6 +462,7 @@
   .stat-label { font-size: 11px; color: rgba(255,255,255,0.3); }
   .stat-value { font-family: var(--sc-font-mono, monospace); font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
   .stat-value.good { color: #26a69a; }
+  .stat-loss { color: #ef5350; opacity: 0.7; }
   .stat-value.mid  { color: #fbbf24; }
   .stat-value.bad  { color: #ef5350; }
   .stat-sub { font-size: 9px; color: rgba(255,255,255,0.25); font-weight: 400; }
