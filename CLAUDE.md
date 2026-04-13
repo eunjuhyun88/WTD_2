@@ -39,9 +39,10 @@ app/      SvelteKit — frontend + Supabase + API routes
 ## ✅ CHECKPOINT — 2026-04-13 (SESSION 3 — DOUNI AI Researcher 설계)
 
 ### 현재 상태
-- **브랜치**: `main` (최신, 미커밋 작업 있음)
+- **브랜치**: `main` (최신)
+- **마지막 커밋**: `92cf3a9` — fix(douni): market snapshot pinning + pattern memory
 - **설계 문서**: `app/docs/DOUNI_AI_RESEARCHER_DESIGN.md`
-- **Phase 1**: 완료 (4개 파일)
+- **Phase 1**: 완료 + 리뷰 수정 완료
 - **Phase 2**: 대기 중 (`douniRuntime.ts`부터 시작)
 
 ### DOUNI Phase 1 완료 파일
@@ -50,8 +51,15 @@ app/      SvelteKit — frontend + Supabase + API routes
 |------|------|------|
 | `douniPersonality.ts` | `app/src/lib/engine/cogochi/douni/` | 섹션 배열 시스템 프롬프트, Evidence Chain, 다국어 |
 | `tradeMemory.ts` | `app/src/lib/server/douni/` | 4타입 메모리 (user/feedback/patterns/market) |
-| `contextCompact.ts` | `app/src/lib/server/douni/` | Auto-compact (20턴) + market data clearing |
-| `contextBuilder.ts` | `app/src/lib/server/douni/` | 전체 통합 — compact + memory + locale + boundary |
+| `contextCompact.ts` | `app/src/lib/server/douni/` | Auto-compact (20턴) + market snapshot pinning |
+| `contextBuilder.ts` | `app/src/lib/server/douni/` | 전체 통합 + pattern memory → Evidence Chain Layer C |
+
+### 설계 리뷰 반영 수정사항 (`92cf3a9`)
+
+| 항목 | 내용 |
+|------|------|
+| **market snapshot 보존** | compact 후 마지막 analysis 턴 pinning — compact 직후 "OI 어때?" 시 market data 유실 방지 |
+| **pattern memory → Evidence Chain** | `memory.patterns` → `[Historical Pattern Match]` — LLM BASE RATE 근거 제공, `signal_stats.py` 연결 대응 구조 |
 
 ### DOUNI Phase 2 다음 세션 작업 (우선순위 순)
 
