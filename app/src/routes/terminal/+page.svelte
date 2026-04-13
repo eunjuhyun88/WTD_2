@@ -15,6 +15,7 @@
    */
   import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
+  import { normalizeTimeframe } from '$lib/utils/timeframe';
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
@@ -22,6 +23,10 @@
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import WorkspaceGrid from '../../components/terminal/workspace/WorkspaceGrid.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
+  import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
+  import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
+  import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
+  import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
 
   // Mobile components
   import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
@@ -51,6 +56,37 @@
   let streamText = $state('');
   let loadingSymbols = $state(new Set<string>());
 
+  // ── Pattern Engine state ───────────────────────────────────
+  interface PatternPhaseRow { slug: string; phaseName: string; symbols: string[]; }
+  let patternPhases = $state<PatternPhaseRow[]>([]);
+
+  // ── Capture modal ──────────────────────────────────────────
+  let showCaptureModal = $state(false);
+
+  // ── Chart price-level overlays (entry / target / stop) ───────
+  // Extracted from deep.atr_levels after each analysis; passed to ChartBoard
+  interface VerdictLevels { entry?: number; target?: number; stop?: number; }
+  let chartLevels = $state<VerdictLevels>({});
+
+  function extractLevels(data: any): VerdictLevels {
+    const deep = data?.deep;
+    if (!deep?.atr_levels) return {};
+    const bias = _deepBias(deep.verdict ?? '');
+    const price = data?.price ?? data?.snapshot?.last_close;
+    if (bias === 'bearish') {
+      return {
+        entry:  price  ? Number(price)                            : undefined,
+        target: deep.atr_levels.tp1_short  ? Number(deep.atr_levels.tp1_short)  : undefined,
+        stop:   deep.atr_levels.stop_short ? Number(deep.atr_levels.stop_short) : undefined,
+      };
+    }
+    return {
+      entry:  price  ? Number(price)                           : undefined,
+      target: deep.atr_levels.tp1_long  ? Number(deep.atr_levels.tp1_long)  : undefined,
+      stop:   deep.atr_levels.stop_long ? Number(deep.atr_levels.stop_long) : undefined,
+    };
+  }
+
   type HistoryEntry = { role: 'user' | 'assistant'; content: string };
   let chatHistory = $state<HistoryEntry[]>([]);
 
@@ -65,8 +101,10 @@
   }
 
   function symbolToTF(tf: string): string {
-    const map: Record<string, string> = { '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d' };
-    return map[tf] ?? '4h';
+    // Normalize both "4H" (CommandBar format) and "4h" (chart format) → lowercase chart format
+    const norm = tf.toLowerCase();
+    const valid = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
+    return valid.includes(norm) ? norm : '4h';
   }
 
   function buildStubAsset(symbol: string): TerminalAsset {
@@ -343,6 +381,11 @@
       }
       verdictMap = { ...verdictMap, [symbol]: verdict };
       evidenceMap = { ...evidenceMap, [symbol]: evidence };
+
+      // Extract price levels → chart overlay (entry / target / stop)
+      if (symbol === activeSymbol || boardAssets.length === 1) {
+        chartLevels = extractLevels(data);
+      }
     } catch (e) {
       console.error('loadAnalysis error:', e);
     } finally {
@@ -381,6 +424,25 @@
       if (!res.ok) return;
       const data = await res.json();
       scannerAlerts = data.alerts ?? [];
+    } catch {}
+  }
+
+  async function loadPatternPhases() {
+    try {
+      const res = await fetch('/api/patterns/states');
+      if (!res.ok) return;
+      const data = await res.json();
+      // data: { states: { symbol: { slug: { current_phase, phase_name, ... } } } }
+      const states: Record<string, Record<string, any>> = data.states ?? {};
+      // Invert: slug → { phaseName, symbols[] }
+      const bySlug: Record<string, { phaseName: string; symbols: string[] }> = {};
+      for (const [sym, slugMap] of Object.entries(states)) {
+        for (const [slug, info] of Object.entries(slugMap as Record<string, any>)) {
+          if (!bySlug[slug]) bySlug[slug] = { phaseName: info.phase_name ?? info.current_phase ?? '', symbols: [] };
+          bySlug[slug].symbols.push(sym.replace('USDT', ''));
+        }
+      }
+      patternPhases = Object.entries(bySlug).map(([slug, v]) => ({ slug, ...v }));
     } catch {}
   }
 
@@ -473,6 +535,8 @@
         verdictMap = { ...verdictMap, [sym]: verdict };
         evidenceMap = { ...evidenceMap, [sym]: evidence };
         if (!activeSymbol) activeSymbol = sym;
+        // Update chart levels for active symbol
+        if (sym === activeSymbol || !activeSymbol) chartLevels = extractLevels(envelope);
       }
     }
     if (event.type === 'tool_result' && event.name === 'analyze' && event.data) {
@@ -484,6 +548,7 @@
       boardAssets = boardAssets.map(a => a.symbol === sym ? asset : a);
       verdictMap = { ...verdictMap, [sym]: verdict };
       evidenceMap = { ...evidenceMap, [sym]: evidence };
+      if (sym === activeSymbol) chartLevels = extractLevels(event.data);
     }
   }
 
@@ -500,6 +565,7 @@
   function clearBoard() {
     boardAssets = []; verdictMap = {}; evidenceMap = {};
     activeSymbol = ''; layout = 'focus';
+    chartLevels = {};
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -511,13 +577,23 @@
   let trendingInterval: ReturnType<typeof setInterval>;
 
   onMount(() => {
+    // ── URL param: ?symbol=BTCUSDT jumps straight to that asset ──────────────
+    const searchParams = new URLSearchParams(window.location.search);
+    const symbolParam = searchParams.get('symbol');
+    if (symbolParam) {
+      const pairStr = symbolParam.toUpperCase().replace(/USDT$/, '') + '/USDT';
+      setActivePair(pairStr);
+    }
+
     // $effect handles initial loadAnalysis + loadFlow — only set up intervals and one-shot fetches here
     loadTrending();
     loadNews();
     loadAlerts();
+    loadPatternPhases();
     flowInterval = setInterval(() => loadFlow(gPair, symbolToTF(gTf)), 15_000);
     trendingInterval = setInterval(loadTrending, 60_000);
-    setInterval(loadAlerts, 5 * 60_000);  // refresh alerts every 5 min
+    setInterval(loadAlerts, 5 * 60_000);
+    setInterval(loadPatternPhases, 60_000);  // refresh pattern states every 1 min
   });
 
   onDestroy(() => {
@@ -599,6 +675,17 @@
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
   let activeEvidence = $derived(activeSymbol ? evidenceMap[activeSymbol] ?? [] : []);
 
+  // ── Analysis rail mode ────────────────────────────────────────
+  // SINGLE: ≤1 asset or active symbol has a verdict → show full VerdictCard
+  // SCAN:   >1 assets returned (multi-asset prompt) → show compact scan list
+  let isScanMode = $derived(boardAssets.length > 1);
+  let scanAssets = $derived(
+    boardAssets.map(a => ({
+      asset: a,
+      verdict: verdictMap[a.symbol] ?? null,
+    }))
+  );
+
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
     { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
@@ -621,6 +708,7 @@
     assetsCount={boardAssets.length}
     onLayout={switchLayout}
     onClear={clearBoard}
+    onCapture={() => showCaptureModal = true}
   />
 
   <!-- 3-column body -->
@@ -634,6 +722,8 @@
       <TerminalLeftRail
         {trendingData}
         alerts={scannerAlerts}
+        {patternPhases}
+        {activeSymbol}
         onQuery={handleQueryChip}
       />
     </aside>
@@ -646,42 +736,170 @@
 
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board">
-        {#if isLoadingActive && !heroVerdict}
-          <div class="board-loading">
-            <div class="loading-ring"></div>
-            <p class="loading-msg">Analyzing {activePairDisplay}…</p>
-          </div>
-        {:else if heroAsset && heroVerdict}
-          <div class="focus-slot">
-            <VerdictCard
-              asset={heroAsset}
-              verdict={heroVerdict}
-              evidence={heroEvidence}
-              bars={ohlcvBars}
-              onPin={() => {}}
-              onViewDetail={() => { selectAsset(heroAsset!.symbol); rightPanelTab = 'summary'; showRightPanel = true; }}
-            />
-          </div>
-        {:else}
-          <div class="board-empty">
-            <p class="empty-icon">◈</p>
-            <p class="empty-text">Type a query below to analyze {activePairDisplay}</p>
-          </div>
-        {/if}
 
-        {#if isStreaming && streamText}
-          <div class="stream-overlay">
-            <div class="stream-inner">
-              <span class="stream-dot">●</span>
-              <p class="stream-text">{streamText}</p>
+        <!-- ── Chart area — hero, full height ── -->
+        <div class="chart-area">
+          <ChartBoard
+            symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+            tf={symbolToTF(gTf)}
+            verdictLevels={chartLevels}
+            onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+          />
+          <PatternStatusBar />
+          <EvidenceStrip
+            evidence={activeEvidence}
+            onExpand={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
+          />
+        </div>
+
+        <!-- ── Analysis rail — single verdict or scan list ── -->
+        <div class="analysis-rail">
+
+          <!-- Rail header: mode indicator + streaming badge -->
+          <div class="rail-header">
+            {#if isStreaming}
+              <span class="rail-badge streaming">
+                <span class="stream-dot pulsing">●</span>
+                Analyzing…
+              </span>
+            {:else if isScanMode}
+              <span class="rail-badge scan">{boardAssets.length} RESULTS</span>
+              <button class="rail-back" onclick={clearBoard}>← Back</button>
+            {:else}
+              <span class="rail-mode">ANALYSIS</span>
+              <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
+            {/if}
+          </div>
+
+          <!-- MODE B — Scan results list -->
+          {#if isScanMode}
+            <div class="scan-list">
+              {#each scanAssets as { asset, verdict } (asset.symbol)}
+                {@const sym = asset.symbol.replace('USDT','')}
+                {@const dir = verdict?.direction ?? asset.bias}
+                {@const active = asset.symbol === activeSymbol}
+                <button
+                  class="scan-card"
+                  class:active
+                  class:bullish={dir === 'bullish'}
+                  class:bearish={dir === 'bearish'}
+                  onclick={() => selectAsset(asset.symbol)}
+                >
+                  <div class="sc-left">
+                    <span class="sc-sym">{sym}</span>
+                    <span class="sc-venue">USDT·PERP</span>
+                  </div>
+                  <div class="sc-right">
+                    <span class="sc-dir">{dir?.toUpperCase() ?? '—'}</span>
+                    {#if verdict?.reason}
+                      <span class="sc-reason">{verdict.reason.slice(0, 48)}{verdict.reason.length > 48 ? '…' : ''}</span>
+                    {:else if verdictMap[asset.symbol] === undefined && loadingSymbols.has(asset.symbol)}
+                      <span class="sc-loading">analyzing…</span>
+                    {/if}
+                  </div>
+                </button>
+              {/each}
             </div>
-          </div>
-        {:else if isStreaming}
-          <div class="stream-overlay minimal">
-            <span class="stream-dot pulsing">●</span>
-            <span class="stream-label">Analyzing…</span>
-          </div>
-        {/if}
+
+            <!-- Also show active symbol's VerdictCard below the list if loaded -->
+            {#if heroAsset && heroVerdict}
+              <div class="scan-detail">
+                <VerdictCard
+                  asset={heroAsset}
+                  verdict={heroVerdict}
+                  evidence={heroEvidence}
+                  bars={ohlcvBars}
+                  onPin={() => {}}
+                  onViewDetail={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
+                />
+              </div>
+            {/if}
+
+          <!-- MODE A — Single asset compact verdict -->
+          {:else if isLoadingActive && !heroVerdict}
+            <div class="board-loading">
+              <div class="loading-ring"></div>
+              <p class="loading-msg">Analyzing {activePairDisplay}…</p>
+            </div>
+          {:else if heroAsset && heroVerdict}
+            <div class="compact-verdict">
+              <!-- Bias header -->
+              <div class="cv-bias" class:bullish={heroVerdict.direction === 'bullish'} class:bearish={heroVerdict.direction === 'bearish'}>
+                <span class="cv-dot">●</span>
+                <span class="cv-dir">{heroVerdict.direction?.toUpperCase() ?? 'NEUTRAL'}</span>
+                <span class="cv-conf">{heroVerdict.confidence}</span>
+                <span class="cv-sym">{heroAsset.symbol.replace('USDT','')} · {$activePairState.timeframe.toUpperCase()}</span>
+              </div>
+
+              <!-- Price strip -->
+              <div class="cv-price">
+                <span class="cv-last">{heroAsset.lastPrice > 0 ? heroAsset.lastPrice.toLocaleString('en-US',{maximumFractionDigits:2}) : '—'}</span>
+                <span class="cv-meta">Vol {heroAsset.volumeRatio1h.toFixed(1)}×</span>
+                <span class="cv-meta">F {(heroAsset.fundingRate*100).toFixed(3)}%</span>
+              </div>
+
+              <!-- Action -->
+              {#if heroVerdict.action && heroVerdict.action !== '—'}
+                <div class="cv-action">{heroVerdict.action}</div>
+              {/if}
+
+              <!-- WHY -->
+              {#if heroVerdict.reason}
+                <div class="cv-section">
+                  <span class="cv-label">WHY</span>
+                  <p class="cv-text">{heroVerdict.reason}</p>
+                </div>
+              {/if}
+
+              <!-- AGAINST -->
+              {#if heroVerdict.against?.length}
+                <div class="cv-section">
+                  <span class="cv-label">AGAINST</span>
+                  <div class="cv-tags">
+                    {#each heroVerdict.against as a}
+                      <span class="cv-tag warn">{a}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+
+              <!-- LEVELS -->
+              {#if chartLevels.entry || chartLevels.stop || chartLevels.target}
+                <div class="cv-section">
+                  <span class="cv-label">LEVELS</span>
+                  <div class="cv-levels">
+                    {#if chartLevels.entry}
+                      <div class="cv-level"><span class="lv-name">Entry</span><span class="lv-val">{chartLevels.entry.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
+                    {/if}
+                    {#if chartLevels.stop}
+                      <div class="cv-level bad"><span class="lv-name">Stop</span><span class="lv-val">{chartLevels.stop.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
+                    {/if}
+                    {#if chartLevels.target}
+                      <div class="cv-level good"><span class="lv-name">TP1</span><span class="lv-val">{chartLevels.target.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
+                    {/if}
+                  </div>
+                </div>
+              {/if}
+
+              <!-- Invalidation -->
+              {#if heroVerdict.invalidation && heroVerdict.invalidation !== '—'}
+                <div class="cv-invalidation">{heroVerdict.invalidation}</div>
+              {/if}
+
+              <!-- Expand to full panel -->
+              <button class="cv-expand" onclick={() => { rightPanelTab = 'summary'; showRightPanel = true; }}>
+                Evidence + Detail →
+              </button>
+            </div>
+          {:else}
+            <div class="board-empty">
+              <p class="empty-icon">◈</p>
+              <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
+            </div>
+          {/if}
+
+        </div>
+
       </div>
 
       <!-- Desktop bottom dock -->
@@ -726,6 +944,16 @@
 
   </div>
 </div>
+
+<!-- Capture modal — uses SaveSetupModal which handles its own POST -->
+<SaveSetupModal
+  open={showCaptureModal}
+  symbol={activeSymbol || pairToSymbol(gPair)}
+  timestamp={Math.floor(Date.now() / 1000)}
+  tf={symbolToTF(gTf)}
+  onClose={() => showCaptureModal = false}
+  onSaved={() => showCaptureModal = false}
+/>
 
 <!-- Mobile detail sheet (portal-style, outside grid) -->
 <MobileDetailSheet
@@ -803,25 +1031,132 @@
     overflow: hidden;
     position: relative;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;   /* ← chart + analysis side by side */
+    min-height: 0;
   }
+
+  /* Chart area — center, takes all available width */
+  .chart-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+  }
+
+  /* Analysis rail — always visible right panel, scrollable */
+  .analysis-rail {
+    width: 380px;
+    min-width: 320px;
+    max-width: 480px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--sc-terminal-bg, #000);
+    position: relative;
+  }
+
+  /* Rail header */
+  .rail-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+    flex-shrink: 0;
+    min-height: 34px;
+  }
+  .rail-mode {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.2);
+  }
+  .rail-sym {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.7);
+    margin-left: auto;
+  }
+  .rail-badge {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .rail-badge.streaming {
+    background: rgba(74,222,128,0.08);
+    color: #4ade80;
+    border: 1px solid rgba(74,222,128,0.2);
+  }
+  .rail-badge.scan {
+    background: rgba(99,179,237,0.08);
+    color: #63b3ed;
+    border: 1px solid rgba(99,179,237,0.2);
+  }
+  .rail-back {
+    margin-left: auto;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.4);
+    border-radius: 3px;
+    padding: 2px 7px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .rail-back:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
+
+  /* Scan list (Mode B) */
+  .scan-list {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+  }
+  .scan-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+    width: 100%;
+  }
+  .scan-card:hover  { background: rgba(255,255,255,0.04); }
+  .scan-card.active { background: rgba(255,255,255,0.06); }
+  .scan-card.bullish .sc-dir { color: #4ade80; }
+  .scan-card.bearish .sc-dir { color: #f87171; }
+  .sc-left { display: flex; flex-direction: column; gap: 2px; min-width: 52px; }
+  .sc-sym  { font-family: var(--sc-font-mono, monospace); font-size: 12px; font-weight: 700; color: #fff; }
+  .sc-venue{ font-size: 9px; color: rgba(255,255,255,0.25); font-family: var(--sc-font-mono, monospace); }
+  .sc-right{ display: flex; flex-direction: column; gap: 3px; flex: 1; align-items: flex-end; }
+  .sc-dir  { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); }
+  .sc-reason { font-size: 10px; color: rgba(255,255,255,0.35); text-align: right; line-height: 1.4; }
+  .sc-loading{ font-size: 9px; color: rgba(255,255,255,0.2); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
+
+  /* Scan detail (VerdictCard below scan list) */
+  .scan-detail { flex: 1; }
 
   .right-panel {
     background: var(--sc-terminal-bg, #000);
-    /* border handled by panel-resizer */
     overflow: hidden;
     display: flex;
     flex-direction: column;
     min-height: 0;
-  }
-
-  /* Focus slot — wraps VerdictCard in scrollable container */
-  .focus-slot {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
   }
 
   /* Empty state */
@@ -908,17 +1243,23 @@
     }
   }
 
+  /* Tablet — analysis rail gets narrower */
+  @media (max-width: 1200px) and (min-width: 769px) {
+    .analysis-rail { width: 320px; min-width: 280px; }
+  }
+
   /* Mobile */
   @media (max-width: 768px) {
     .terminal-body {
       grid-template-columns: 1fr !important;
     }
-    .left-rail { display: none; }
-    .right-panel { display: none; }
+    .left-rail     { display: none; }
+    .right-panel   { display: none; }
     .panel-resizer { display: none; }
-    .center-board { height: 100%; }
+    .analysis-rail { display: none; }   /* mobile uses MobileActiveBoard instead */
+    .center-board  { height: 100%; }
     .desktop-board { display: none; }
-    .desktop-dock { display: none; }
+    .desktop-dock  { display: none; }
     .mobile-board-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
   }
 
@@ -930,4 +1271,121 @@
   .mobile-board-wrap {
     display: none;
   }
+
+  /* ── Compact Verdict Panel (analysis-rail MODE A) ────────── */
+  .compact-verdict {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .cv-bias {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--sc-terminal-border);
+  }
+  .cv-bias.bullish { background: rgba(74,222,128,0.04); }
+  .cv-bias.bearish { background: rgba(248,113,113,0.04); }
+
+  .cv-dot { font-size: 8px; }
+  .cv-bias.bullish .cv-dot { color: #4ade80; }
+  .cv-bias.bearish .cv-dot { color: #f87171; }
+  .cv-bias:not(.bullish):not(.bearish) .cv-dot { color: rgba(247,242,234,0.3); }
+
+  .cv-dir {
+    font-family: var(--sc-font-mono); font-size: 12px; font-weight: 700;
+    color: var(--sc-text-0);
+  }
+  .cv-conf {
+    font-family: var(--sc-font-mono); font-size: 9px; letter-spacing: 0.06em;
+    color: var(--sc-text-2);
+    background: rgba(255,255,255,0.06); border-radius: 3px; padding: 1px 5px;
+  }
+  .cv-sym {
+    font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-2);
+    margin-left: auto;
+  }
+
+  .cv-price {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--sc-terminal-border);
+  }
+  .cv-last {
+    font-family: var(--sc-font-mono); font-size: 18px; font-weight: 700;
+    color: var(--sc-text-0);
+  }
+  .cv-meta {
+    font-family: var(--sc-font-mono); font-size: 10px;
+    color: var(--sc-text-2);
+  }
+
+  .cv-action {
+    padding: 8px 14px;
+    font-family: var(--sc-font-mono); font-size: 11px; font-weight: 600;
+    color: rgba(173,202,124,0.9);
+    border-bottom: 1px solid var(--sc-terminal-border);
+    background: rgba(173,202,124,0.04);
+  }
+
+  .cv-section {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--sc-terminal-border);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .cv-label {
+    font-family: var(--sc-font-mono); font-size: 8px; font-weight: 700;
+    letter-spacing: 0.12em; color: var(--sc-text-3);
+  }
+  .cv-text {
+    font-family: var(--sc-font-mono); font-size: 11px;
+    color: var(--sc-text-1); margin: 0; line-height: 1.5;
+  }
+
+  .cv-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .cv-tag {
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600;
+    padding: 2px 7px; border-radius: 3px;
+  }
+  .cv-tag.warn { background: rgba(251,191,36,0.1); color: #fbbf24; }
+
+  .cv-levels { display: flex; flex-direction: column; gap: 4px; }
+  .cv-level {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0;
+  }
+  .cv-level.good .lv-val { color: #4ade80; }
+  .cv-level.bad  .lv-val { color: #f87171; }
+  .lv-name {
+    font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2);
+  }
+  .lv-val {
+    font-family: var(--sc-font-mono); font-size: 11px; font-weight: 700;
+    color: var(--sc-text-1);
+  }
+
+  .cv-invalidation {
+    padding: 7px 14px;
+    font-family: var(--sc-font-mono); font-size: 10px;
+    color: rgba(248,113,113,0.7);
+    border-bottom: 1px solid var(--sc-terminal-border);
+  }
+
+  .cv-expand {
+    margin: 10px 14px;
+    font-family: var(--sc-font-mono); font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px; padding: 6px 12px; cursor: pointer;
+    text-align: center; transition: all 0.12s;
+  }
+  .cv-expand:hover { color: var(--sc-text-0); border-color: rgba(255,255,255,0.2); }
 </style>
