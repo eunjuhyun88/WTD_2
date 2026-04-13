@@ -740,7 +740,7 @@ async function executeCheckPatternStatus(
   const symbol = (args.symbol as string)?.toUpperCase();
   const includeStats = (args.include_stats as boolean) ?? false;
 
-  events.push({ type: 'tool_call_delta', message: 'Checking pattern engine states...' });
+  events.push({ type: 'text_delta', text: 'Checking pattern engine states...' });
 
   try {
     // Fetch entry candidates + all states in parallel

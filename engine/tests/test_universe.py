@@ -1,9 +1,11 @@
 """Tests for universe.load_universe and the binance_30 roster."""
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
-from universe import load_universe
+from universe import load_universe, load_universe_async
 from universe.binance_30 import LARGE_CAP, MID_CAP, SMALL_CAP, SYMBOLS
 
 
@@ -44,3 +46,26 @@ def test_load_universe_returns_mutable_list():
 def test_load_universe_unknown_raises_keyerror():
     with pytest.raises(KeyError):
         load_universe("nonexistent_universe")
+
+
+def test_load_universe_async_dynamic_uses_async_loader(monkeypatch):
+    async def fake_loader(**kwargs):
+        assert kwargs == {}
+        return ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+    monkeypatch.setattr("universe.dynamic.load_dynamic_universe_async", fake_loader)
+    syms = asyncio.run(load_universe_async("binance_dynamic"))
+    assert syms == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+
+def test_load_universe_async_all_expands_limits(monkeypatch):
+    seen: dict[str, object] = {}
+
+    async def fake_loader(**kwargs):
+        seen.update(kwargs)
+        return ["BTCUSDT"]
+
+    monkeypatch.setattr("universe.dynamic.load_dynamic_universe_async", fake_loader)
+    syms = asyncio.run(load_universe_async("binance_all"))
+    assert syms == ["BTCUSDT"]
+    assert seen == {"min_volume_usd": 0, "max_symbols": 500}

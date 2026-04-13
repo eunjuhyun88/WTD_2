@@ -600,7 +600,6 @@ async function _runServerScanInternal(pair: string, timeframe: string): Promise<
   const fundingAvg7d = Array.isArray(fundingHist) && fundingHist.length > 0
     ? fundingHist.reduce((sum, d) => sum + (d.value ?? 0), 0) / fundingHist.length
     : null;
-  const fundingAnnualized = funding != null ? funding * 3 * 365 : null; // 8h periods per year
 
   // ── Quick-win price changes from klines ──
   const change1h = closes.length >= 2
@@ -617,8 +616,7 @@ async function _runServerScanInternal(pair: string, timeframe: string): Promise<
   const athRatio = highestClose > 0 ? latestClose / highestClose : null;
   // Market cap from CoinGecko (will be extracted below)
   // Volume change: current 24h vs previous 24h (from ticker)
-  const prevVolume = Number(ticker.prevClosePrice || 0) > 0 && avgVolume20 > 0
-    ? avgVolume20 : null;
+  const prevVolume = avgVolume20 > 0 ? avgVolume20 : null;
   const volumeChange24 = prevVolume != null && prevVolume > 0
     ? ((quoteVolume24 - prevVolume * 24) / (prevVolume * 24)) * 100
     : null;
@@ -626,6 +624,7 @@ async function _runServerScanInternal(pair: string, timeframe: string): Promise<
   // Derivatives
   const oi = oiRaw.status === 'fulfilled' && oiRaw.value ? oiRaw.value.value : null;
   const funding = fundingRaw.status === 'fulfilled' && fundingRaw.value ? fundingRaw.value.value : null;
+  const fundingAnnualized = funding != null ? funding * 3 * 365 : null; // 8h periods per year
   const predFunding = predFundingRaw.status === 'fulfilled' && predFundingRaw.value ? predFundingRaw.value.value : null;
   const lsRatio = lsRaw.status === 'fulfilled' && lsRaw.value.length > 0
     ? lsRaw.value[lsRaw.value.length - 1].value : null;

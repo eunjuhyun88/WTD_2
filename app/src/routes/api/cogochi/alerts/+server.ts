@@ -74,7 +74,15 @@ export const GET: RequestHandler = async ({ url }) => {
       params,
     );
 
-    const alerts: AlertRow[] = rows.map((r) => {
+    const alerts: AlertRow[] = rows.rows.map((r: {
+      id: string;
+      symbol: string;
+      timeframe: string;
+      blocks_triggered: string[];
+      p_win: number | null;
+      created_at: string;
+      snapshot: Record<string, unknown> | null;
+    }) => {
       const snap = r.snapshot ?? {};
       return {
         id:               r.id,

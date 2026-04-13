@@ -34,7 +34,7 @@ from patterns.state_machine import PatternStateMachine
 from patterns.types import PhaseTransition
 from scanner.feature_calc import compute_features_table, compute_snapshot
 from scoring.block_evaluator import evaluate_blocks
-from universe.loader import load_universe
+from universe.loader import load_universe_async
 
 log = logging.getLogger("engine.patterns.scanner")
 
@@ -293,6 +293,7 @@ def prewarm_perp_cache(symbols: list[str], max_workers: int = 5) -> dict:
 async def run_pattern_scan(
     universe_name: str | None = None,
     prewarm: bool = True,
+    symbols: list[str] | None = None,
 ) -> dict:
     """Scan all symbols in the universe for pattern phase states.
 
@@ -302,7 +303,8 @@ async def run_pattern_scan(
     - Data quality metrics in response
     """
     universe_name = universe_name or os.environ.get("SCAN_UNIVERSE", "binance_30")
-    symbols = load_universe(universe_name)
+    if symbols is None:
+        symbols = await load_universe_async(universe_name)
     t0 = time.monotonic()
 
     # v2: Prewarm perp cache so OI/funding blocks have real data

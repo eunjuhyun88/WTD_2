@@ -13,6 +13,7 @@ Source of truth remains `src/routes/` plus canonical docs under `docs/`.
 | `/agent/[id]` | agent hq detail route | doctrine, memory, history, and record for one agent | `agentData`, `doctrineStore` | `docs/page-specs/agent-detail-page.md` |
 | `/lab` | model training workbench | agent doctrine, retained memory, release readiness | `agentData` | `docs/page-specs/lab-page.md` |
 | `/passport` | profile and wallet record | identity continuity, wallet state, and durable performance summary | `walletStore`, `/api/profile/passport` | `docs/FRONTEND.md` |
+| `/patterns` | pattern engine dashboard | entry candidates, state-machine status, and pattern stats | `douniRuntime`, `/api/patterns/*` | `docs/PATTERN_ENGINE.md` |
 | `/settings` | preferences surface | local settings and user controls | `gameState` and preference state | `docs/FRONTEND.md` |
 | `/terminal` | intel/action surface | scan, intel, action orchestration | route shell + `copyTradeStore`, `trackedSignalStore`, live prices | `docs/product-specs/terminal.md` |
 | `/scanner` | top-level scanner redirect/surface | canonical scanner entry — may redirect to /cogochi/scanner | none | `docs/product-specs/terminal.md` |

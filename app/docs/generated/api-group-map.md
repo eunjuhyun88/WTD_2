@@ -7,8 +7,8 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 
 | Group | Purpose | Representative routes | Count |
 | --- | --- | --- | --- |
-| Auth & Session | login, wallet auth, session lifecycle | `/api/auth/login`, `/api/auth/logout`, `/api/auth/nonce`, `/api/auth/register` | 6 |
-| Market Data | market snapshot, flow, news, and dex data | `/api/cycles/klines`, `/api/market/derivatives/[pair]`, `/api/market/dex/ads`, `/api/market/dex/community-takeovers` | 16 |
+| Auth & Session | login, wallet auth, session lifecycle | `/api/auth/login`, `/api/auth/logout`, `/api/auth/nonce`, `/api/auth/register` | 7 |
+| Market Data | market snapshot, flow, news, and dex data | `/api/chart/klines`, `/api/cycles/klines`, `/api/market/derivatives/[pair]`, `/api/market/dex/ads` | 21 |
 | Terminal Scanner | scan and intel orchestration | `/api/terminal/compare`, `/api/terminal/intel-agent-shadow`, `/api/terminal/intel-agent-shadow/execute`, `/api/terminal/intel-policy` | 10 |
 | Signals | signal objects and action conversion | `/api/signals`, `/api/signals/[id]`, `/api/signals/[id]/convert`, `/api/signals/track` | 4 |
 | Quick Trades | fast trade lifecycle | `/api/quick-trades`, `/api/quick-trades/[id]/close`, `/api/quick-trades/open`, `/api/quick-trades/prices` | 4 |
@@ -22,8 +22,8 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 | Predictions | prediction positions and voting | `/api/predictions`, `/api/predictions/positions/[id]/close`, `/api/predictions/positions/open`, `/api/predictions/vote` | 4 |
 | Notifications | notification lifecycle | `/api/notifications`, `/api/notifications/[id]`, `/api/notifications/read` | 3 |
 | Market Alerts | specialized market alert surface | `/api/market/alerts/onchain` | 1 |
-| Cogochi | DOUNI AI agent — terminal chat, analysis, social tools | `/api/cogochi/analyze`, `/api/cogochi/terminal/message`, `/api/cogochi/thermometer` | 3 |
-| Proxies & Infra | third-party proxy and support endpoints | `/api/coinalyze`, `/api/coingecko/global`, `/api/etherscan/onchain`, `/api/exchange/analysis` | 15 |
+| Cogochi | DOUNI AI agent — terminal chat, analysis, social tools | `/api/cogochi/alerts`, `/api/cogochi/analyze`, `/api/cogochi/outcome`, `/api/cogochi/terminal/message` | 11 |
+| Proxies & Infra | third-party proxy and support endpoints | `/api/coinalyze`, `/api/coingecko/global`, `/api/engine/[...path]`, `/api/etherscan/onchain` | 16 |
 
 ## Current Route Inventory Snapshot
 
@@ -34,8 +34,10 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/auth/register`
 - `/api/auth/session`
 - `/api/auth/verify-wallet`
+- `/api/auth/wallet-auth`
 
 ### Market Data
+- `/api/chart/klines`
 - `/api/cycles/klines`
 - `/api/market/derivatives/[pair]`
 - `/api/market/dex/ads`
@@ -49,8 +51,12 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/market/dex/tokens/[chainId]/[tokenAddresses]`
 - `/api/market/events`
 - `/api/market/flow`
+- `/api/market/funding`
 - `/api/market/news`
+- `/api/market/ohlcv`
+- `/api/market/oi`
 - `/api/market/snapshot`
+- `/api/market/sparklines`
 - `/api/market/trending`
 
 ### Terminal Scanner
@@ -138,13 +144,22 @@ Source of truth remains `src/routes/api/**` and `docs/API_CONTRACT.md`.
 - `/api/market/alerts/onchain`
 
 ### Cogochi
+- `/api/cogochi/alerts`
 - `/api/cogochi/analyze`
+- `/api/cogochi/outcome`
 - `/api/cogochi/terminal/message`
 - `/api/cogochi/thermometer`
+- `/api/patterns`
+- `/api/patterns/[slug]/stats`
+- `/api/patterns/[slug]/verdict`
+- `/api/patterns/scan`
+- `/api/patterns/states`
+- `/api/patterns/stats`
 
 ### Proxies & Infra
 - `/api/coinalyze`
 - `/api/coingecko/global`
+- `/api/engine/[...path]`
 - `/api/etherscan/onchain`
 - `/api/exchange/analysis`
 - `/api/exchange/connect`
