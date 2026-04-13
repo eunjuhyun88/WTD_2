@@ -9,10 +9,15 @@ so the same mapping applies at train and inference time.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
 
 from scanner.feature_calc import FEATURE_COLUMNS
+
+if TYPE_CHECKING:
+    from models.signal import SignalSnapshot
 
 # Ordinal encoding for string-typed categorical features.
 # Direction: higher integer = more bullish (for long-bias intuition).
@@ -28,6 +33,9 @@ _CATEGORICAL_COLS: frozenset[str] = frozenset(_CAT_MAPS)
 # Canonical feature order exposed to the model.
 # Excludes the metadata columns (price, symbol) appended by feature_calc.
 FEATURE_NAMES: tuple[str, ...] = FEATURE_COLUMNS
+
+# Convenience constant — number of model input features.
+N_FEATURES: int = len(FEATURE_NAMES)
 
 
 def encode_features_df(df: pd.DataFrame) -> np.ndarray:
@@ -56,3 +64,28 @@ def encode_features_df(df: pd.DataFrame) -> np.ndarray:
             out[:, j] = pd.to_numeric(series, errors="coerce").fillna(0).to_numpy(dtype=np.float64)
 
     return out
+
+
+# ---------------------------------------------------------------------------
+# Aliases and snapshot helpers
+# ---------------------------------------------------------------------------
+
+# Backward-compatible alias used by train.py and historical_matcher.py.
+features_df_to_matrix = encode_features_df
+
+
+def snapshot_to_vector(snap: "SignalSnapshot") -> np.ndarray:
+    """Convert a SignalSnapshot to a 1-D float64 feature vector.
+
+    Fields that exist in SignalSnapshot but not in FEATURE_NAMES are ignored.
+    Feature columns present in FEATURE_NAMES but absent from the snapshot
+    (e.g. registry macro/on-chain columns not yet populated) default to 0.0.
+
+    Args:
+        snap: a fully-populated SignalSnapshot instance.
+
+    Returns:
+        float64 ndarray of shape (N_FEATURES,).
+    """
+    row = pd.DataFrame([snap.model_dump()])
+    return encode_features_df(row)[0]

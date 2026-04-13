@@ -153,16 +153,12 @@
 
 <style>
   .command-dock {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
+    flex-shrink: 0;
     background: var(--sc-bg-1);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 6px 12px 8px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
-    transition: all 0.2s ease;
+    padding: 6px 12px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    transition: height 0.2s ease;
   }
 
   /* ── Chip strip ── */

@@ -9,8 +9,8 @@ export default defineConfig({
 		allowedHosts: ['localhost', '127.0.0.1', '.ngrok-free.app', '.ngrok.app'],
 		fs: {
 			allow: [
-				// worktree 환경에서 메인 레포의 node_modules 접근 허용
-				path.resolve(__dirname, '../../..'),
+				// worktree 환경에서 메인 레포의 node_modules 접근 허용 (심링크 실경로 포함)
+				path.resolve(__dirname, '../../../..'),
 			]
 		}
 	}
