@@ -46,6 +46,8 @@
 
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
   let trendingData = $state<any>(null);
+  let scannerAlerts = $state<any[]>([]);
+  let ohlcvBars = $state<any[]>([]);
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -85,74 +87,184 @@
     };
   }
 
+  // ── Layer label map ──────────────────────────────────────────
+  const LAYER_LABELS: Record<string, string> = {
+    wyckoff: 'Wyckoff', mtf: 'MTF Conf', breakout: 'Breakout',
+    vsurge: 'Vol Surge', cvd: 'CVD', flow: 'FR / Flow',
+    liq_est: 'Liq Est', real_liq: 'Real Liq', oi: 'OI Squeeze',
+    basis: 'Basis', bb14: 'BB(14)', bb16: 'BB Sqz', atr: 'ATR',
+    ob: 'Order Book', onchain: 'On-chain', fg: 'Fear/Greed',
+    kimchi: 'Kimchi', sector: 'Sector',
+  };
+
+  function _deepBias(verdict: string): 'bullish' | 'bearish' | 'neutral' {
+    if (!verdict) return 'neutral';
+    if (verdict.includes('BULL')) return 'bullish';
+    if (verdict.includes('BEAR')) return 'bearish';
+    return 'neutral';
+  }
+
+  function _deepConfidence(score: number): 'high' | 'medium' | 'low' {
+    const abs = Math.abs(score);
+    return abs >= 50 ? 'high' : abs >= 20 ? 'medium' : 'low';
+  }
+
+  function _deepAction(verdict: string, ensDir: string): string {
+    if (verdict === 'STRONG BULL' || ensDir === 'strong_long') return 'Strong buy on pullback';
+    if (verdict === 'BULLISH'     || ensDir === 'long')        return 'Buy on pullback';
+    if (verdict === 'BEARISH'     || ensDir === 'short')       return 'Avoid / short';
+    if (verdict === 'STRONG BEAR' || ensDir === 'strong_short') return 'Strong short / avoid';
+    return 'Wait for clarity';
+  }
+
   function buildAssetFromAnalysis(symbol: string, data: any): TerminalAsset {
+    const deep = data?.deep;
     const snap = data?.snapshot ?? {};
-    const ens = data?.ensemble ?? {};
+    const ens  = data?.ensemble ?? {};
     const price = data?.price ?? snap?.last_close ?? 0;
-    const direction = ens.direction ?? '';
 
-    const bias: 'bullish' | 'bearish' | 'neutral' =
-      direction.includes('long') ? 'bullish'
-      : direction.includes('short') ? 'bearish'
-      : 'neutral';
+    const verdict  = deep?.verdict ?? '';
+    const score    = deep?.total_score ?? 0;
+    const bias     = _deepBias(verdict) || (ens.direction?.includes('long') ? 'bullish' : ens.direction?.includes('short') ? 'bearish' : 'neutral') as 'bullish' | 'bearish' | 'neutral';
+    const confidence = _deepConfidence(score);
 
-    const absScore = Math.abs(ens.ensemble_score ?? 0);
-    const confidence: 'high' | 'medium' | 'low' =
-      absScore > 0.6 ? 'high' : absScore > 0.3 ? 'medium' : 'low';
+    // ATR stop → invalidation price
+    const stopLong = deep?.atr_levels?.stop_long;
+    const invalidation = stopLong
+      ? `$${Number(stopLong).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+      : '—';
 
-    const sources: TerminalSource[] = [
-      { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-      { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-      { label: 'Model v2', category: 'Model', freshness: 'recent', updatedAt: Date.now() },
-    ];
+    // Per-layer sources
+    const sources: TerminalSource[] = deep?.layers
+      ? [
+          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
+          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
+          { label: 'Market Engine', category: 'Model', freshness: 'recent', updatedAt: Date.now(),
+            method: `17-layer pipeline · score ${score > 0 ? '+' : ''}${score}` },
+        ]
+      : [
+          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
+          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
+          { label: 'Model v2', category: 'Model', freshness: 'recent', updatedAt: Date.now() },
+        ];
 
-    // TF arrows from real engine fields — ema_alignment for intraday, htf_structure for 4h/daily
     const tfArrow = (val: string | undefined, pos: string, neg: string): '↑' | '↓' | '→' =>
       val === pos ? '↑' : val === neg ? '↓' : '→';
+
+    const mtfMeta = deep?.layers?.mtf?.meta ?? {};
 
     return {
       symbol, venue: 'USDT Perp',
       lastPrice: price,
-      changePct15m: 0,  // not available from analyze API — no fake proxy
-      changePct1h: 0,   // not available from analyze API — no fake proxy
-      changePct4h: 0,   // not available from analyze API — no fake proxy
-      volumeRatio1h: snap.vol_ratio_3 ?? 1,
+      changePct15m: 0,
+      changePct1h: 0,
+      changePct4h: data?.change24h ?? 0,
+      volumeRatio1h: snap.vol_ratio_3 ?? deep?.layers?.vsurge?.meta?.vol_ratio ?? 1,
       oiChangePct1h: (snap.oi_change_1h ?? 0) * 100,
-      fundingRate: snap.funding_rate ?? 0,
+      fundingRate: snap.funding_rate ?? data?.derivatives?.funding_rate ?? 0,
       fundingPercentile7d: 50,
       spreadBps: 0,
       bias, confidence,
-      action: direction === 'strong_long' ? 'Strong buy on pullback'
-            : direction === 'long' ? 'Buy on pullback'
-            : direction === 'short' ? 'Avoid / short' : 'Wait for clarity',
-      invalidation: '—',
+      action: _deepAction(verdict, ens.direction ?? ''),
+      invalidation,
       sources,
       freshnessStatus: 'recent',
-      tf15m: tfArrow(snap.ema_alignment, 'bullish', 'bearish'),
-      tf1h:  tfArrow(snap.ema_alignment, 'bullish', 'bearish'),
-      tf4h:  tfArrow(snap.htf_structure, 'uptrend', 'downtrend'),
+      tf15m: tfArrow(snap.ema_alignment ?? mtfMeta.tf15m, 'bullish', 'bearish'),
+      tf1h:  tfArrow(snap.ema_alignment ?? mtfMeta.tf1h,  'bullish', 'bearish'),
+      tf4h:  tfArrow(snap.htf_structure  ?? mtfMeta.tf4h, 'uptrend', 'downtrend'),
     };
   }
 
   function buildVerdict(data: any): TerminalVerdict {
-    const ens = data?.ensemble ?? {};
+    const deep = data?.deep;
+    const ens  = data?.ensemble ?? {};
+
+    // Primary: deep verdict
+    if (deep?.verdict) {
+      const score   = deep.total_score ?? 0;
+      const verdict = deep.verdict as string;
+
+      // Top 3 active layers as reason
+      const topLayers = deep.layers
+        ? (Object.entries(deep.layers as Record<string, any>))
+            .filter(([, lr]) => lr.score !== 0)
+            .sort(([, a], [, b]) => Math.abs(b.score) - Math.abs(a.score))
+            .slice(0, 3)
+            .map(([name, lr]) => `${LAYER_LABELS[name] ?? name} ${lr.score > 0 ? '+' : ''}${lr.score}`)
+            .join(' · ')
+        : '';
+
+      const stopLong  = deep.atr_levels?.stop_long;
+      const tp1       = deep.atr_levels?.tp1_long;
+
+      return {
+        direction: _deepBias(verdict),
+        confidence: _deepConfidence(score),
+        reason: topLayers || ens.reason || verdict,
+        against: ens.block_analysis?.disqualifiers ?? [],
+        action: _deepAction(verdict, ens.direction ?? ''),
+        invalidation: stopLong
+          ? `Stop $${Number(stopLong).toLocaleString('en-US', { maximumFractionDigits: 2 })}${tp1 ? ` · TP1 $${Number(tp1).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : ''}`
+          : '—',
+        updatedAt: Date.now(),
+      };
+    }
+
+    // Fallback: ensemble ML signal
     const direction = ens.direction ?? '';
-    const absScore = Math.abs(ens.ensemble_score ?? 0);
+    const absScore  = Math.abs(ens.ensemble_score ?? 0);
     return {
       direction: direction.includes('long') ? 'bullish' : direction.includes('short') ? 'bearish' : 'neutral',
       confidence: absScore > 0.6 ? 'high' : absScore > 0.3 ? 'medium' : 'low',
       reason: ens.reason || 'Analysis pending…',
       against: ens.block_analysis?.disqualifiers ?? [],
-      action: direction === 'strong_long' ? 'Strong buy on pullback'
-            : direction === 'long' ? 'Buy on pullback'
-            : direction === 'short' ? 'Avoid / short' : 'Wait for clarity',
+      action: _deepAction('', direction),
       invalidation: '—',
       updatedAt: Date.now(),
     };
   }
 
   function buildEvidence(data: any): TerminalEvidence[] {
+    const deep = data?.deep;
     const snap = data?.snapshot;
+
+    // PRIMARY: deep.layers — full 17-layer breakdown
+    if (deep?.layers) {
+      const ev: TerminalEvidence[] = [];
+      const LAYER_ORDER = [
+        'wyckoff', 'mtf', 'cvd', 'vsurge', 'breakout',
+        'flow', 'oi', 'real_liq', 'liq_est', 'basis',
+        'bb14', 'bb16', 'atr',
+        'fg', 'onchain', 'kimchi', 'sector', 'ob',
+      ];
+
+      for (const name of LAYER_ORDER) {
+        const lr = (deep.layers as Record<string, any>)[name];
+        if (!lr) continue;
+        if (lr.score === 0 && lr.sigs.length === 0) continue;
+
+        const topSig = (lr.sigs as Array<{t: string; type: string}>)[0];
+        const state: TerminalEvidence['state'] =
+          lr.score >= 5  ? 'bullish'
+          : lr.score <= -5 ? 'bearish'
+          : topSig?.type === 'warn' ? 'warning'
+          : topSig?.type === 'bull' ? 'bullish'
+          : topSig?.type === 'bear' ? 'bearish'
+          : 'neutral';
+
+        ev.push({
+          metric: LAYER_LABELS[name] ?? name,
+          value: (lr.score >= 0 ? '+' : '') + lr.score,
+          delta: '',
+          interpretation: topSig?.t?.slice(0, 70) ?? '',
+          state,
+          sourceCount: lr.sigs.length,
+        });
+      }
+      return ev;
+    }
+
+    // FALLBACK: snapshot fields
     if (!snap) return [];
     const ev: TerminalEvidence[] = [];
     if (snap.rsi14 != null) ev.push({
@@ -205,9 +317,22 @@
     if (!activeSymbol) activeSymbol = symbol;
 
     try {
-      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`);
-      if (!res.ok) throw new Error(`analyze ${res.status}`);
-      const data = await res.json();
+      // Fetch analysis + OHLCV in parallel
+      const interval = tf === '1d' ? '4h' : tf === '4h' ? '1h' : tf === '1h' ? '15m' : '5m';
+      const [analyzeRes, ohlcvRes] = await Promise.allSettled([
+        fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
+        fetch(`/api/market/ohlcv?symbol=${symbol}&interval=${interval}&limit=100`),
+      ]);
+
+      if (analyzeRes.status !== 'fulfilled' || !analyzeRes.value.ok)
+        throw new Error(`analyze ${analyzeRes.status === 'fulfilled' ? analyzeRes.value.status : 'failed'}`);
+      const data = await analyzeRes.value.json();
+
+      // Load OHLCV bars (non-blocking)
+      if (ohlcvRes.status === 'fulfilled' && ohlcvRes.value.ok) {
+        const ohlcv = await ohlcvRes.value.json();
+        ohlcvBars = ohlcv.bars ?? [];
+      }
 
       analysisData = data;
       const asset = buildAssetFromAnalysis(symbol, data);
@@ -249,6 +374,15 @@
       const res = await fetch('/api/market/news');
       if (!res.ok) return;
       newsData = await res.json();
+    } catch {}
+  }
+
+  async function loadAlerts() {
+    try {
+      const res = await fetch('/api/cogochi/alerts?limit=12');
+      if (!res.ok) return;
+      const data = await res.json();
+      scannerAlerts = data.alerts ?? [];
     } catch {}
   }
 
@@ -382,8 +516,10 @@
     // $effect handles initial loadAnalysis + loadFlow — only set up intervals and one-shot fetches here
     loadTrending();
     loadNews();
+    loadAlerts();
     flowInterval = setInterval(() => loadFlow(gPair, symbolToTF(gTf)), 15_000);
     trendingInterval = setInterval(loadTrending, 60_000);
+    setInterval(loadAlerts, 5 * 60_000);  // refresh alerts every 5 min
   });
 
   onDestroy(() => {
@@ -402,6 +538,7 @@
       prevTf = tf;
       const symbol = pairToSymbol(pair);
       activeSymbol = symbol;
+      analysisData = null;  // clear stale snapshot so chat context resets
       const alreadyLoaded = untrack(() => boardAssets.find(a => a.symbol === symbol));
       if (!alreadyLoaded) {
         boardAssets = []; verdictMap = {}; evidenceMap = {}; layout = 'focus';
@@ -498,6 +635,7 @@
     <aside class="left-rail">
       <TerminalLeftRail
         {trendingData}
+        alerts={scannerAlerts}
         onQuery={handleQueryChip}
       />
     </aside>
@@ -541,6 +679,7 @@
               asset={heroAsset}
               verdict={heroVerdict}
               evidence={heroEvidence}
+              bars={ohlcvBars}
               onPin={() => {}}
               onViewDetail={() => { selectAsset(heroAsset!.symbol); rightPanelTab = 'summary'; showRightPanel = true; }}
             />

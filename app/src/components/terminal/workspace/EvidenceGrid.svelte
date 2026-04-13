@@ -2,13 +2,13 @@
   import type { TerminalEvidence } from '$lib/types/terminal';
   import EvidenceCard from './EvidenceCard.svelte';
 
-  interface Props { evidence: TerminalEvidence[]; cols?: number }
-  let { evidence, cols = 3 }: Props = $props();
+  interface Props { evidence: TerminalEvidence[]; cols?: number; bars?: any[] }
+  let { evidence, cols = 3, bars = [] }: Props = $props();
 </script>
 
 <div class="evidence-grid" style="--cols: {cols}">
   {#each evidence as item}
-    <EvidenceCard evidence={item} />
+    <EvidenceCard evidence={item} {bars} />
   {/each}
 </div>
 

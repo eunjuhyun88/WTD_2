@@ -107,10 +107,9 @@
         {#if activeTab === 'summary'}
           {#if verdict}
             <VerdictHeader
+              verdict={verdict}
               symbol={asset.symbol}
-              direction={verdict.direction}
               timeframe="4H"
-              updatedAt={verdict.updatedAt}
             />
             <ActionStrip
               action={verdict.action}
@@ -118,12 +117,12 @@
               invalidation={verdict.invalidation}
             />
             <div class="section-gap">
-              <WhyPanel reason={verdict.reason} against={verdict.against} />
+              <WhyPanel why={verdict.reason} against={verdict.against} />
             </div>
             {#if evidence.length > 0}
               <div class="section-gap">
                 <p class="section-label">EVIDENCE</p>
-                <EvidenceGrid {evidence} columns={2} />
+                <EvidenceGrid {evidence} cols={2} />
               </div>
             {/if}
             <div class="section-gap">
@@ -213,18 +212,18 @@
           <div class="metrics-content">
             {#if structureMetrics.length > 0}
               <p class="section-label">STRUCTURE</p>
-              <EvidenceGrid evidence={structureMetrics} columns={2} />
+              <EvidenceGrid evidence={structureMetrics} cols={2} />
             {/if}
             {#if oiMetrics.length > 0}
               <div class="metrics-group">
                 <p class="section-label">OPEN INTEREST</p>
-                <EvidenceGrid evidence={oiMetrics} columns={2} />
+                <EvidenceGrid evidence={oiMetrics} cols={2} />
               </div>
             {/if}
             {#if fundingMetrics.length > 0}
               <div class="metrics-group">
                 <p class="section-label">FUNDING</p>
-                <EvidenceGrid evidence={fundingMetrics} columns={2} />
+                <EvidenceGrid evidence={fundingMetrics} cols={2} />
               </div>
             {/if}
             {#if evidence.length === 0}
