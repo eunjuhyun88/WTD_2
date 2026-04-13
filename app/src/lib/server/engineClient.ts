@@ -40,6 +40,86 @@ export interface PerpSnapshot {
 }
 
 // ---------------------------------------------------------------------------
+// /deep — extended perp data for market_engine pipeline
+// ---------------------------------------------------------------------------
+
+/**
+ * Extended derivatives data for the full market_engine pipeline (POST /deep).
+ *
+ * fr         : raw Binance decimal (0.0001 = 0.01%/8h; max ±0.0075)
+ * oi_pct     : percent change, e.g. 5.0 = +5%
+ * oi_notional: OI in USD = raw OI coins × mark_price
+ * vol_24h    : 24h quote volume in USD (ticker.quoteVolume)
+ * short_liq_usd: forceOrders BUY side sum in USD (shorts force-closed)
+ * long_liq_usd : forceOrders SELL side sum in USD (longs force-closed)
+ */
+export interface DeepPerpData {
+  fr?: number;
+  oi_pct?: number;
+  ls_ratio?: number;
+  taker_ratio?: number;
+  price_pct?: number;
+  oi_notional?: number;
+  vol_24h?: number;
+  mark_price?: number;
+  index_price?: number;
+  short_liq_usd?: number;
+  long_liq_usd?: number;
+}
+
+export interface LayerOut {
+  score: number;
+  sigs: Array<{ t: string; type: 'bull' | 'bear' | 'neut' | 'warn' }>;
+  meta: Record<string, unknown>;
+}
+
+export interface DeepResult {
+  symbol: string;
+  total_score: number;
+  verdict: string;
+  layers: Record<string, LayerOut>;
+  atr_levels: {
+    atr?: number;
+    atr_pct?: number;
+    pct_rank?: number;
+    tier?: string;
+    stop_long?: number;
+    stop_short?: number;
+    tp1_long?: number;
+    tp2_long?: number;
+    tp1_short?: number;
+    [key: string]: unknown;
+  };
+  alpha: Record<string, unknown> | null;
+  hunt_score: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// /universe — CoinMarketCap-level token list
+// ---------------------------------------------------------------------------
+
+export interface TokenInfo {
+  rank: number;
+  symbol: string;
+  base: string;
+  name: string;
+  sector: string;
+  price: number;
+  pct_24h: number;
+  vol_24h_usd: number;
+  market_cap: number;
+  oi_usd: number;
+  is_futures: boolean;
+  trending_score: number;
+}
+
+export interface UniverseResult {
+  total: number;
+  tokens: TokenInfo[];
+  updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
 // /score
 // ---------------------------------------------------------------------------
 
@@ -253,6 +333,28 @@ export const engine = {
   /** Compute feature snapshot + P(win) for the latest kline bar. */
   async score(symbol: string, klines: KlineBar[], perp: PerpSnapshot = {}): Promise<ScoreResult> {
     return call<ScoreResult>('POST', '/score', { symbol, klines, perp });
+  },
+
+  /**
+   * Run full market_engine L2 pipeline (17 layers).
+   * Returns DeepResult with per-layer scores, verdict, ATR stop/TP levels.
+   * Requires ≥120 klines; 500 recommended for ATR percentile warmup.
+   */
+  async deep(symbol: string, klines: KlineBar[], perp: DeepPerpData = {}): Promise<DeepResult> {
+    return call<DeepResult>('POST', '/deep', { symbol, klines, perp });
+  },
+
+  /**
+   * CoinMarketCap-style ranked token universe.
+   * Options: limit (default 200), sector filter, sort field.
+   */
+  async universe(opts: { limit?: number; sector?: string; sort?: string } = {}): Promise<UniverseResult> {
+    const params = new URLSearchParams();
+    if (opts.limit)  params.set('limit',  String(opts.limit));
+    if (opts.sector) params.set('sector', opts.sector);
+    if (opts.sort)   params.set('sort',   opts.sort);
+    const qs = params.size ? `?${params}` : '';
+    return call<UniverseResult>('GET', `/universe${qs}`);
   },
 
   /** Run a portfolio backtest for a block set over the cached universe. */
