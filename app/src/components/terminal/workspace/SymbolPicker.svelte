@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import Sparkline from './Sparkline.svelte';
 
   interface Token {
     rank: number;
@@ -16,6 +17,13 @@
     trending_score: number;
   }
 
+  interface SparklineData {
+    prices: number[];
+    high: number;
+    low: number;
+    volume: number;
+  }
+
   interface Props {
     activePair: string;
     onSelect: (pair: string) => void;
@@ -24,6 +32,7 @@
   let { activePair, onSelect, onClose }: Props = $props();
 
   let tokens = $state<Token[]>([]);
+  let sparklines = $state<Record<string, SparklineData>>({});
   let loading = $state(true);
   let error = $state('');
   let query = $state('');
@@ -45,17 +54,33 @@
     loading = true;
     error = '';
     try {
-      const params = new URLSearchParams({ limit: '100', sort });
+      const params = new URLSearchParams({ limit: '50', sort });
       if (sector) params.set('sector', sector);
       const res = await fetch(`/api/engine/universe?${params}`);
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       tokens = data.tokens ?? [];
+
+      // Fetch sparklines for top 20 tokens
+      if (tokens.length > 0) {
+        fetchSparklines(tokens.slice(0, 20).map(t => t.symbol));
+      }
     } catch (e: any) {
       error = e.message || 'Failed to load';
       tokens = [];
     } finally {
       loading = false;
+    }
+  }
+
+  async function fetchSparklines(symbols: string[]) {
+    try {
+      const res = await fetch(`/api/market/sparklines?symbols=${symbols.join(',')}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      sparklines = data.sparklines ?? {};
+    } catch {
+      // sparklines are optional, fail silently
     }
   }
 
@@ -93,6 +118,13 @@
   function fmtPct(p: number): string {
     const s = p >= 0 ? '+' : '';
     return `${s}${p.toFixed(2)}%`;
+  }
+
+  function fmtMcap(v: number): string {
+    if (v >= 1e12) return `$${(v / 1e12).toFixed(1)}T`;
+    if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+    if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+    return `$${(v / 1e3).toFixed(0)}K`;
   }
 
   // Refetch when sort/sector changes
@@ -154,11 +186,10 @@
     <!-- Header -->
     <div class="list-header">
       <span class="col-rank">#</span>
-      <span class="col-symbol">Symbol</span>
-      <span class="col-sector">Sector</span>
+      <span class="col-info">Symbol</span>
+      <span class="col-chart">24h</span>
       <span class="col-price">Price</span>
-      <span class="col-pct">24h</span>
-      <span class="col-vol">Vol</span>
+      <span class="col-metrics">Chg / Vol</span>
     </div>
 
     <!-- Token list -->
@@ -171,22 +202,48 @@
         <div class="list-msg">No tokens found</div>
       {:else}
         {#each filtered as t (t.symbol)}
+          {@const spark = sparklines[t.symbol]}
           <button
             class="token-row"
             class:selected={t.base === activeBase}
             onclick={() => selectToken(t)}
           >
+            <!-- Rank -->
             <span class="col-rank">{t.rank}</span>
-            <span class="col-symbol">
-              <span class="token-base">{t.base}</span>
+
+            <!-- Symbol + Name + Sector badge -->
+            <div class="col-info">
+              <div class="info-top">
+                <span class="token-base">{t.base}</span>
+                {#if t.sector && t.sector !== 'Other'}
+                  <span class="sector-badge">{t.sector}</span>
+                {/if}
+              </div>
               <span class="token-name">{t.name}</span>
-            </span>
-            <span class="col-sector">{t.sector}</span>
+            </div>
+
+            <!-- Sparkline chart -->
+            <div class="col-chart">
+              {#if spark?.prices}
+                <Sparkline prices={spark.prices} width={72} height={24} positive={t.pct_24h >= 0} />
+              {:else}
+                <div class="spark-placeholder"></div>
+              {/if}
+            </div>
+
+            <!-- Price -->
             <span class="col-price">{fmtPrice(t.price)}</span>
-            <span class="col-pct" class:up={t.pct_24h >= 0} class:down={t.pct_24h < 0}>
-              {fmtPct(t.pct_24h)}
-            </span>
-            <span class="col-vol">{fmtVol(t.vol_24h_usd)}</span>
+
+            <!-- Change + Volume + MCap -->
+            <div class="col-metrics">
+              <span class="metric-pct" class:up={t.pct_24h >= 0} class:down={t.pct_24h < 0}>
+                {fmtPct(t.pct_24h)}
+              </span>
+              <span class="metric-sub">V {fmtVol(t.vol_24h_usd)}</span>
+              {#if t.market_cap > 0}
+                <span class="metric-sub">MC {fmtMcap(t.market_cap)}</span>
+              {/if}
+            </div>
           </button>
         {/each}
       {/if}
@@ -197,13 +254,13 @@
 <style>
   .picker-backdrop {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.55);
     z-index: var(--sc-z-dropdown, 150);
     display: flex; justify-content: center;
     padding-top: 56px;
   }
   .picker-panel {
-    width: 560px; max-height: calc(100vh - 80px);
+    width: 620px; max-height: calc(100vh - 80px);
     background: var(--sc-bg-1, #0a0a0a);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 8px;
@@ -252,19 +309,19 @@
   /* List header */
   .list-header {
     display: grid;
-    grid-template-columns: 36px 1fr 64px 80px 64px 64px;
-    gap: 4px; padding: 4px 12px;
+    grid-template-columns: 32px 1fr 80px 80px 88px;
+    gap: 6px; padding: 5px 12px;
     font-family: var(--sc-font-mono, monospace); font-size: 10px;
     color: var(--sc-text-3, rgba(247,242,234,0.4));
     text-transform: uppercase; letter-spacing: 0.08em;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  .col-price, .col-pct, .col-vol { text-align: right; }
+  .list-header .col-price, .list-header .col-metrics { text-align: right; }
 
   /* List body */
   .list-body {
     overflow-y: auto; flex: 1;
-    min-height: 120px; max-height: 420px;
+    min-height: 120px; max-height: 480px;
   }
   .list-body::-webkit-scrollbar { width: 4px; }
   .list-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
@@ -279,50 +336,67 @@
   /* Token row */
   .token-row {
     display: grid;
-    grid-template-columns: 36px 1fr 64px 80px 64px 64px;
-    gap: 4px; padding: 6px 12px;
+    grid-template-columns: 32px 1fr 80px 80px 88px;
+    gap: 6px; padding: 7px 12px;
     width: 100%; text-align: left;
-    background: none; border: none; cursor: pointer;
+    background: none; border: none; border-bottom: 1px solid rgba(255,255,255,0.03);
+    cursor: pointer;
     font-family: var(--sc-font-mono, monospace);
     transition: background 0.1s;
   }
   .token-row:hover { background: rgba(255,255,255,0.04); }
-  .token-row.selected { background: rgba(255,255,255,0.06); }
+  .token-row.selected { background: rgba(255,255,255,0.06); border-left: 2px solid var(--sc-accent, #db9a9f); }
 
-  .col-rank { font-size: 10px; color: var(--sc-text-3); align-self: center; }
+  .col-rank { font-size: 10px; color: var(--sc-text-3); align-self: center; text-align: center; }
 
-  .col-symbol { display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+  /* Symbol info */
+  .col-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; justify-content: center; }
+  .info-top { display: flex; align-items: center; gap: 5px; }
   .token-base { font-size: 12px; font-weight: 700; color: var(--sc-text-0); }
+  .sector-badge {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.05em;
+    color: rgba(167,139,250,0.9); /* violet */
+    background: rgba(167,139,250,0.1);
+    border: 1px solid rgba(167,139,250,0.2);
+    border-radius: 2px; padding: 1px 4px;
+    text-transform: uppercase;
+  }
   .token-name {
     font-size: 10px; color: var(--sc-text-3);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
-  .col-sector {
-    font-size: 10px; color: var(--sc-text-2); align-self: center;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Sparkline column */
+  .col-chart { align-self: center; display: flex; align-items: center; justify-content: center; }
+  .spark-placeholder {
+    width: 72px; height: 24px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 2px;
   }
 
+  /* Price */
   .col-price {
     font-size: 12px; color: var(--sc-text-1, rgba(247,242,234,0.84));
     text-align: right; align-self: center;
   }
-  .col-pct {
-    font-size: 11px; font-weight: 600; text-align: right; align-self: center;
-  }
-  .col-pct.up { color: var(--sc-good, #4ade80); }
-  .col-pct.down { color: var(--sc-bad, #f87171); }
 
-  .col-vol {
-    font-size: 10px; color: var(--sc-text-2); text-align: right; align-self: center;
+  /* Metrics column */
+  .col-metrics {
+    display: flex; flex-direction: column; gap: 1px;
+    text-align: right; align-self: center;
   }
+  .metric-pct { font-size: 11px; font-weight: 700; }
+  .metric-pct.up { color: var(--sc-good, #4ade80); }
+  .metric-pct.down { color: var(--sc-bad, #f87171); }
+  .metric-sub { font-size: 9px; color: var(--sc-text-3); }
 
   /* Mobile responsive */
   @media (max-width: 640px) {
     .picker-panel { width: calc(100vw - 16px); margin: 0 8px; }
     .list-header, .token-row {
-      grid-template-columns: 28px 1fr 56px 56px;
+      grid-template-columns: 28px 1fr 64px 64px;
     }
-    .col-sector, .col-vol { display: none; }
+    .col-chart { display: none; }
+    .metric-sub { display: none; }
   }
 </style>
