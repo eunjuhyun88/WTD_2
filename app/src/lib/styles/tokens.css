@@ -65,11 +65,11 @@
   --sc-warn-bg: rgba(var(--lis-rgb-pink), 0.12);
   --sc-info: rgba(var(--lis-rgb-pink), 0.88);          /* informational */
 
-  /* ── COLORS: Text ── */
-  --sc-text-0: var(--lis-ivory);        /* primary text (warm ivory) */
-  --sc-text-1: rgba(247, 242, 234, 0.72);  /* secondary text */
-  --sc-text-2: rgba(247, 242, 234, 0.48);  /* muted text */
-  --sc-text-3: rgba(247, 242, 234, 0.28);  /* dim text (a11y floor) */
+  /* ── COLORS: Text (Bloomberg-tier readability) ── */
+  --sc-text-0: var(--lis-ivory);              /* primary text (warm ivory) */
+  --sc-text-1: rgba(247, 242, 234, 0.84);    /* secondary — clearly readable */
+  --sc-text-2: rgba(247, 242, 234, 0.58);    /* muted — still legible */
+  --sc-text-3: rgba(247, 242, 234, 0.40);    /* dim — labels, hints */
 
   /* ── TYPOGRAPHY: Font Families ── */
   --sc-font-display: 'Bebas Neue', 'Orbitron', monospace;
@@ -78,14 +78,14 @@
   --sc-font-pixel: 'Press Start 2P', monospace;
   --sc-font-retro: 'VT323', monospace;
 
-  /* ── TYPOGRAPHY: Font Sizes (WCAG: min 9px) ── */
-  --sc-fs-2xs: 9px;
-  --sc-fs-xs: 10px;
-  --sc-fs-sm: 11px;
-  --sc-fs-base: 12px;
-  --sc-fs-md: 13px;
-  --sc-fs-lg: 15px;
-  --sc-fs-xl: 18px;
+  /* ── TYPOGRAPHY: Font Sizes (WCAG: min 9px, Bloomberg readability) ── */
+  --sc-fs-2xs: 10px;
+  --sc-fs-xs: 11px;
+  --sc-fs-sm: 12px;
+  --sc-fs-base: 13px;
+  --sc-fs-md: 14px;
+  --sc-fs-lg: 16px;
+  --sc-fs-xl: 19px;
   --sc-fs-2xl: 22px;
   --sc-fs-3xl: 28px;
   --sc-fs-4xl: 36px;
@@ -150,47 +150,6 @@
   --sc-mobile-nav-h: 68px;
   --sc-bottom-bar-h: 28px;
   --sc-tab-strip-h: 34px;
-
-  /* ── TERMINAL LAYOUT ── */
-  --terminal-left-w: 240px;
-  --terminal-right-w: 320px;
-  --terminal-cmd-bar-h: 40px;
-  --terminal-bottom-dock-h: 72px;
-
-  /* ── TERMINAL SURFACES (pure black, Bloomberg-style) ── */
-  --sc-terminal-bg: #000000;
-  --sc-terminal-surface: #0a0a0a;
-  --sc-terminal-surface-hi: #111111;
-  --sc-terminal-panel: #0d0d0d;
-  --sc-terminal-border: rgba(255, 255, 255, 0.07);
-  --sc-terminal-border-soft: rgba(255, 255, 255, 0.04);
-  --sc-terminal-border-hard: rgba(255, 255, 255, 0.12);
-
-  /* ── TERMINAL SOURCE CATEGORY COLORS ── */
-  /* Market: blue-gray — live price/depth data */
-  --sc-source-market-rgb: 99, 179, 237;
-  --sc-source-market: rgb(99, 179, 237);
-  --sc-source-market-bg: rgba(99, 179, 237, 0.10);
-  /* Derived: amber — computed from market data */
-  --sc-source-derived-rgb: 251, 191, 36;
-  --sc-source-derived: rgb(251, 191, 36);
-  --sc-source-derived-bg: rgba(251, 191, 36, 0.10);
-  /* News: neutral gray — external news/events */
-  --sc-source-news-rgb: 156, 163, 175;
-  --sc-source-news: rgb(156, 163, 175);
-  --sc-source-news-bg: rgba(156, 163, 175, 0.10);
-  /* Model: violet — AI model outputs */
-  --sc-source-model-rgb: 167, 139, 250;
-  --sc-source-model: rgb(167, 139, 250);
-  --sc-source-model-bg: rgba(167, 139, 250, 0.10);
-
-  /* ── TERMINAL BIAS COLORS ── */
-  --sc-bias-bull: #4ade80;
-  --sc-bias-bull-bg: rgba(74, 222, 128, 0.10);
-  --sc-bias-bear: #f87171;
-  --sc-bias-bear-bg: rgba(248, 113, 113, 0.10);
-  --sc-bias-neutral: rgba(247, 242, 234, 0.48);
-  --sc-bias-neutral-bg: rgba(247, 242, 234, 0.06);
 
   /* ── BREAKPOINTS (reference — use in @media queries) ── */
   /* xs: 0-479 | sm: 480-767 | md: 768-1023 | lg: 1024+ | xl: 1280+ */

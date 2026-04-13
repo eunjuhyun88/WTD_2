@@ -14,7 +14,6 @@
   let saving = false;
   let loadedRemote = false;
 
-  // Settings
   let settings = {
     defaultTF: normalizeTimeframe(state.timeframe),
     signals: true,
@@ -102,19 +101,33 @@
   });
 </script>
 
-<div class="settings-page">
-  <div class="settings-header">
-    <h1 class="settings-title">⚙️ SETTINGS</h1>
-    <p class="settings-sub">Configure your Stockclaw experience</p>
-    <p class="settings-sync">
-      {#if saving}Saving to cloud...{:else if loadedRemote}Synced with account settings{:else}Local mode{/if}
-    </p>
-  </div>
+<svelte:head>
+  <title>Settings — Cogochi</title>
+</svelte:head>
+
+<div class="surface-page settings">
+  <!-- Compact Topbar -->
+  <header class="surface-hero">
+    <div class="surface-copy">
+      <span class="surface-kicker">Settings</span>
+      <h1 class="surface-title">Preferences</h1>
+    </div>
+    <div class="surface-stats">
+      <article class="surface-stat">
+        <span class="surface-meta">Sync</span>
+        <strong>
+          {#if saving}Saving...{:else if loadedRemote}Cloud{:else}Local{/if}
+        </strong>
+      </article>
+    </div>
+  </header>
 
   <div class="settings-body">
-    <!-- Trading Settings -->
-    <div class="settings-section">
-      <div class="ss-title">📊 TRADING</div>
+    <!-- Trading -->
+    <section class="settings-section">
+      <div class="ss-head">
+        <span class="surface-kicker">Trading</span>
+      </div>
 
       <div class="setting-row">
         <div class="sr-info">
@@ -154,11 +167,13 @@
           {/each}
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Display Settings -->
-    <div class="settings-section">
-      <div class="ss-title">🎨 DISPLAY</div>
+    <!-- Display -->
+    <section class="settings-section">
+      <div class="ss-head">
+        <span class="surface-kicker">Display</span>
+      </div>
 
       <div class="setting-row">
         <div class="sr-info">
@@ -181,11 +196,13 @@
           <option value="en">English</option>
         </select>
       </div>
-    </div>
+    </section>
 
     <!-- Notifications -->
-    <div class="settings-section">
-      <div class="ss-title">🔔 NOTIFICATIONS</div>
+    <section class="settings-section">
+      <div class="ss-head">
+        <span class="surface-kicker">Notifications</span>
+      </div>
 
       <div class="setting-row">
         <div class="sr-info">
@@ -216,159 +233,154 @@
           <div class="toggle-dot"></div>
         </button>
       </div>
-    </div>
-
-    <!-- Account Stats (arena stats removed — Day-1 has no arena) -->
+    </section>
 
     <!-- Danger Zone -->
-    <div class="settings-section danger">
-      <div class="ss-title">⚠️ DANGER ZONE</div>
+    <section class="settings-section danger">
+      <div class="ss-head">
+        <span class="surface-kicker danger-kicker">Danger Zone</span>
+      </div>
       <div class="setting-row">
         <div class="sr-info">
           <div class="sr-label">Reset All Data</div>
           <div class="sr-desc">Delete all saved progress and start fresh</div>
         </div>
-        <button class="reset-btn" on:click={resetAllData}>🗑 RESET</button>
+        <button class="reset-btn" on:click={resetAllData}>RESET</button>
       </div>
-    </div>
+    </section>
   </div>
 </div>
 
 <style>
-  .settings-page {
-    height: 100%;
-    overflow-y: auto;
-    background: #00120a;
-  }
-
-  .settings-header {
-    padding: 24px 30px;
-    border-bottom: 1px solid rgba(232,150,125,.15);
-    background: linear-gradient(135deg, rgba(232,150,125,.15), rgba(232,150,125,.05));
-  }
-  .settings-title {
-    font-family: var(--fc);
-    font-size: 28px;
-    color: #E8967D;
-    letter-spacing: 3px;
-  }
-  .settings-sub {
-    font-family: var(--fm);
-    font-size: 10px;
-    color: rgba(240,237,228,.5);
-    letter-spacing: 2px;
-    margin-top: 4px;
-  }
-  .settings-sync {
-    font-family: var(--fm);
-    font-size: 8px;
-    color: rgba(240,237,228,.35);
-    margin-top: 4px;
-    letter-spacing: 1px;
-  }
-
   .settings-body {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
+    max-width: 640px;
     display: flex;
     flex-direction: column;
     gap: 16px;
   }
 
   .settings-section {
-    background: rgba(255,255,255,.03);
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 12px;
-    box-shadow: none;
+    background: rgba(255, 255, 255, 0.026);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
     overflow: hidden;
   }
   .settings-section.danger {
-    border-color: rgba(255,45,85,.3);
-    box-shadow: none;
+    border-color: rgba(255, 100, 100, 0.2);
   }
 
-  .ss-title {
-    font-family: var(--fc);
-    font-size: 14px;
-    letter-spacing: 2px;
-    color: #E8967D;
-    padding: 10px 14px;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-    background: rgba(255,255,255,.02);
+  .ss-head {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .danger-kicker {
+    color: #ff9ca0;
   }
 
   .setting-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(255,255,255,.04);
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   }
   .setting-row:last-child { border-bottom: none; }
 
-  .sr-info { flex: 1; }
-  .sr-label { font-family: var(--fm); font-size: 10px; font-weight: 900; color: #F0EDE4; }
-  .sr-desc { font-family: var(--fm); font-size: 7px; color: rgba(240,237,228,.4); margin-top: 1px; }
+  .sr-info { flex: 1; min-width: 0; }
+  .sr-label {
+    font-family: var(--sc-font-body);
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--sc-text-0);
+  }
+  .sr-desc {
+    font-family: var(--sc-font-body);
+    font-size: 0.78rem;
+    color: var(--sc-text-2);
+    margin-top: 2px;
+  }
 
   .sr-select {
-    font-family: var(--fm); font-size: 9px; font-weight: 700;
-    padding: 4px 10px; border: 1px solid rgba(255,255,255,.15); border-radius: 8px;
-    background: rgba(255,255,255,.05); color: #F0EDE4; cursor: pointer;
+    font-family: var(--sc-font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(250, 247, 235, 0.88);
+    cursor: pointer;
   }
 
-  .speed-btns { display: flex; gap: 3px; }
+  .speed-btns { display: flex; gap: 4px; }
   .speed-btn {
-    font-family: var(--fm); font-size: 9px; font-weight: 900;
-    width: 32px; height: 28px;
-    border: 1px solid rgba(255,255,255,.15); border-radius: 6px;
-    background: rgba(255,255,255,.05); color: rgba(240,237,228,.55);
-    cursor: pointer; transition: all .15s;
+    font-family: var(--sc-font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+    width: 36px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(250, 247, 235, 0.52);
+    cursor: pointer;
+    transition: all 0.15s;
   }
-  .speed-btn.active { background: rgba(232,150,125,.2); color: #E8967D; border-color: rgba(232,150,125,.4); }
+  .speed-btn.active {
+    background: rgba(219, 154, 159, 0.14);
+    color: var(--sc-accent);
+    border-color: rgba(219, 154, 159, 0.28);
+  }
 
   .toggle-btn {
-    width: 42px; height: 22px;
-    border-radius: 11px;
-    border: 1px solid rgba(255,255,255,.15);
-    background: rgba(255,255,255,.08);
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.06);
     cursor: pointer;
     position: relative;
-    transition: background .2s, border-color .2s;
+    transition: background 0.2s, border-color 0.2s;
     padding: 0;
+    flex-shrink: 0;
   }
-  .toggle-btn.on { background: var(--grn); border-color: rgba(0,255,136,.4); }
+  .toggle-btn.on {
+    background: var(--sc-good, #adca7c);
+    border-color: rgba(173, 202, 124, 0.4);
+  }
   .toggle-dot {
-    width: 16px; height: 16px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    background: #F0EDE4;
-    border: 1px solid rgba(0,0,0,.2);
+    background: rgba(250, 247, 235, 0.96);
+    border: 1px solid rgba(0, 0, 0, 0.12);
     position: absolute;
-    top: 2px; left: 2px;
-    transition: left .2s;
+    top: 2px;
+    left: 2px;
+    transition: left 0.2s;
   }
   .toggle-btn.on .toggle-dot { left: 22px; }
 
-  /* Account Stats */
-  .account-stats { padding: 10px 14px; }
-  .as-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 4px 0;
-    font-family: var(--fm); font-size: 9px; color: rgba(240,237,228,.45);
-    border-bottom: 1px solid rgba(255,255,255,.04);
-  }
-  .as-row:last-child { border-bottom: none; }
-  .as-val { font-weight: 900; color: #F0EDE4; }
-  .as-val.up { color: var(--grn); }
-  .as-val.dn { color: var(--red); }
-  .as-val.fire { color: #E8967D; }
-
   .reset-btn {
-    font-family: var(--fm); font-size: 9px; font-weight: 900; letter-spacing: 1px;
-    padding: 6px 14px; border-radius: 8px;
-    background: rgba(255,45,85,.2); color: var(--red);
-    border: 1px solid rgba(255,45,85,.35);
-    cursor: pointer; transition: all .15s;
+    font-family: var(--sc-font-body);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 6px 16px;
+    border-radius: 6px;
+    background: rgba(255, 100, 100, 0.1);
+    color: #ff9ca0;
+    border: 1px solid rgba(255, 100, 100, 0.2);
+    cursor: pointer;
+    transition: all 0.15s;
   }
-  .reset-btn:hover { background: rgba(255,45,85,.3); }
+  .reset-btn:hover { background: rgba(255, 100, 100, 0.18); }
+
+  @media (max-width: 540px) {
+    .setting-row {
+      padding: 10px 14px;
+    }
+  }
 </style>
