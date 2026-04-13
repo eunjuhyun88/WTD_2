@@ -112,6 +112,7 @@ export const KnownRawId = {
 
 	// Derivatives / liquidity
 	MARK_PRICE: 'raw.symbol.mark_price',
+	INDEX_PRICE: 'raw.symbol.index_price',
 	FUNDING_RATE: 'raw.symbol.funding_rate',
 	OPEN_INTEREST_POINT: 'raw.symbol.open_interest.point',
 	OI_HIST_5M: 'raw.symbol.oi_hist.5m',

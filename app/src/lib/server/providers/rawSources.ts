@@ -134,6 +134,7 @@ export interface RawSourceInputs {
 	[KnownRawId.TICKER_24HR]: { symbol: string };
 	[KnownRawId.FUNDING_RATE]: { symbol: string };
 	[KnownRawId.MARK_PRICE]: { symbol: string };
+	[KnownRawId.INDEX_PRICE]: { symbol: string };
 	[KnownRawId.OPEN_INTEREST_POINT]: { symbol: string };
 	[KnownRawId.DEPTH_L2_20]: { symbol: string };
 	[KnownRawId.OI_HIST_5M]: { symbol: string };
@@ -209,6 +210,7 @@ export interface RawSourceOutputs {
 	[KnownRawId.TICKER_24HR]: Binance24hr;
 	[KnownRawId.FUNDING_RATE]: number | null;
 	[KnownRawId.MARK_PRICE]: number | null;
+	[KnownRawId.INDEX_PRICE]: number | null;
 	[KnownRawId.OPEN_INTEREST_POINT]: number | null;
 	[KnownRawId.DEPTH_L2_20]: OrderBookSnapshot;
 	[KnownRawId.OI_HIST_5M]: OIHistoryPoint[];
@@ -808,6 +810,7 @@ const getFuturesTickers = compoundMemo(30_000, () =>
 interface PremiumIndexPayload {
 	fundingRate: number | null;
 	markPrice: number | null;
+	indexPrice: number | null;
 }
 
 async function fetchPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
@@ -816,12 +819,18 @@ async function fetchPremiumIndex(symbol: string): Promise<PremiumIndexPayload> {
 		{ signal: AbortSignal.timeout(5000) }
 	);
 	if (!res.ok) throw new Error(`premiumIndex ${res.status}`);
-	const data = (await res.json()) as { lastFundingRate?: string; markPrice?: string };
+	const data = (await res.json()) as {
+		lastFundingRate?: string;
+		markPrice?: string;
+		indexPrice?: string;
+	};
 	const fundingRate = data.lastFundingRate != null ? parseFloat(data.lastFundingRate) : null;
-	const markPrice = data.markPrice != null ? parseFloat(data.markPrice) : null;
+	const markPrice   = data.markPrice   != null ? parseFloat(data.markPrice)   : null;
+	const indexPrice  = data.indexPrice  != null ? parseFloat(data.indexPrice)  : null;
 	return {
 		fundingRate: Number.isFinite(fundingRate as number) ? fundingRate : null,
-		markPrice: Number.isFinite(markPrice as number) ? markPrice : null
+		markPrice:   Number.isFinite(markPrice   as number) ? markPrice   : null,
+		indexPrice:  Number.isFinite(indexPrice  as number) ? indexPrice  : null,
 	};
 }
 
@@ -957,10 +966,11 @@ export const rawSources: RawSourceMap = {
 	[KnownRawId.TICKER_24HR]: async ({ symbol }) =>
 		binanceQuota.execute(() => fetch24hrServer(symbol)),
 
-	// FUNDING_RATE + MARK_PRICE share one upstream (`fapi/v1/premiumIndex`).
-	// The memo dedupes paired reads for the same symbol within a 5s window.
+	// FUNDING_RATE + MARK_PRICE + INDEX_PRICE all share one upstream
+	// (`fapi/v1/premiumIndex`). The memo dedupes reads for the same symbol.
 	[KnownRawId.FUNDING_RATE]: async ({ symbol }) => (await getPremiumIndex(symbol)).fundingRate,
-	[KnownRawId.MARK_PRICE]: async ({ symbol }) => (await getPremiumIndex(symbol)).markPrice,
+	[KnownRawId.MARK_PRICE]:   async ({ symbol }) => (await getPremiumIndex(symbol)).markPrice,
+	[KnownRawId.INDEX_PRICE]:  async ({ symbol }) => (await getPremiumIndex(symbol)).indexPrice,
 
 	// Point-in-time open interest + top-trader long/short ratio.
 	// Both return `number | null` and are memoized for 5s to dedupe the
