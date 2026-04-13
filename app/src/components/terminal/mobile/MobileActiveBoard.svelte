@@ -134,7 +134,7 @@
       {#if evidence.length > 0}
         <div class="evidence-section">
           <p class="section-label">EVIDENCE</p>
-          <EvidenceGrid {evidence} columns={2} />
+          <EvidenceGrid {evidence} cols={2} />
         </div>
       {/if}
 

@@ -11,8 +11,7 @@ dependencies = [
     "lightgbm[apple]>=4.6.0",
     "scikit-learn>=1.8.0",
     "httpx>=0.27",
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.32",
+    "uvicorn>=0.44.0",
 ]
 
 [project.optional-dependencies]
