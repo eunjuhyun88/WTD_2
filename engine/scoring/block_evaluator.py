@@ -110,6 +110,10 @@ def evaluate_blocks(
     for name, fn in _BLOCKS:
         try:
             result = fn(ctx)
+            # Blocks return pd.Series (vectorised over features_df).
+            # We only care about the last bar — the current signal bar.
+            if isinstance(result, pd.Series):
+                result = bool(result.iloc[-1]) if len(result) > 0 else False
             if result:
                 active.append(name)
         except Exception as exc:
