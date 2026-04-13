@@ -43,6 +43,7 @@ import {
 // ---------------------------------------------------------------------------
 
 type BinanceKlineWithTaker = BinanceKline & { takerBuyBaseAssetVolume?: number };
+type ForceOrderLite = { side: 'BUY' | 'SELL'; price: number; origQty: number };
 
 /** Compute OI % change vs N bars ago from the OI history array. */
 function oiChangePct(
@@ -62,7 +63,7 @@ function oiChangePct(
  * SELL = longs force-closed → long_liq_usd  (bearish pressure)
  */
 function aggregateLiquidations(
-	orders: Array<{ side: 'BUY' | 'SELL'; price: number; origQty: number }>,
+	orders: ForceOrderLite[],
 ): { short_liq_usd: number; long_liq_usd: number } {
 	let short_liq_usd = 0;
 	let long_liq_usd  = 0;
@@ -72,6 +73,56 @@ function aggregateLiquidations(
 		else                   long_liq_usd  += usd;
 	}
 	return { short_liq_usd, long_liq_usd };
+}
+
+function buildDepthView(
+	depth: { bids: Array<[number, number]>; asks: Array<[number, number]>; bidVolume: number; askVolume: number; ratio: number } | null,
+	maxLevels = 8,
+) {
+	if (!depth) return null;
+	const bidLevels = depth.bids.slice(0, maxLevels).map(([price, qty]) => ({
+		price,
+		qty,
+		notional: price * qty,
+	}));
+	const askLevels = depth.asks.slice(0, maxLevels).map(([price, qty]) => ({
+		price,
+		qty,
+		notional: price * qty,
+	}));
+	const maxNotional = Math.max(
+		1,
+		...bidLevels.map((level) => level.notional),
+		...askLevels.map((level) => level.notional),
+	);
+	return {
+		bids: bidLevels.map((level) => ({ ...level, weight: level.notional / maxNotional })),
+		asks: askLevels.map((level) => ({ ...level, weight: level.notional / maxNotional })),
+		bidVolume: depth.bidVolume,
+		askVolume: depth.askVolume,
+		ratio: depth.ratio,
+	};
+}
+
+function buildLiquidationClusters(
+	orders: ForceOrderLite[],
+	currentPrice: number,
+	maxClusters = 4,
+) {
+	return orders
+		.map((order) => {
+			const usd = (order.price || 0) * (order.origQty || 0);
+			const distancePct = currentPrice > 0 ? ((order.price - currentPrice) / currentPrice) * 100 : 0;
+			return {
+				side: order.side,
+				price: order.price,
+				usd,
+				distancePct,
+			};
+		})
+		.filter((cluster) => cluster.usd > 0)
+		.sort((a, b) => b.usd - a.usd)
+		.slice(0, maxClusters);
 }
 
 /** 1-bar price % change from the raw klines array. */
@@ -110,6 +161,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			oiPoint,
 			oiHistory1h,
 			lsTop,
+			depth,
 			takerPoints,
 			forceOrders,
 		] = await Promise.all([
@@ -121,6 +173,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			readRaw(KnownRawId.OPEN_INTEREST_POINT, { symbol }).catch(() => null),
 			readRaw(KnownRawId.OI_HIST_1H,          { symbol }).catch(() => null),
 			readRaw(KnownRawId.LONG_SHORT_TOP_1H,   { symbol }).catch(() => null),
+			readRaw(KnownRawId.DEPTH_L2_20,         { symbol }).catch(() => null),
 			readRaw(KnownRawId.TAKER_BUY_SELL_RATIO,{ symbol }).catch(() => []),
 			readRaw(KnownRawId.FORCE_ORDERS_1H,     { symbol }).catch(() => []),
 		]);
@@ -142,9 +195,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				: undefined;
 
 		// Liquidation aggregation
-		const { short_liq_usd, long_liq_usd } = aggregateLiquidations(
-			(forceOrders ?? []) as Array<{ side: 'BUY' | 'SELL'; price: number; origQty: number }>
-		);
+		const normalizedForceOrders = (forceOrders ?? []) as ForceOrderLite[];
+		const { short_liq_usd, long_liq_usd } = aggregateLiquidations(normalizedForceOrders);
 
 		// OI % change vs 1h ago (percent, not fraction)
 		const oiHistArr = Array.isArray(oiHistory1h)
@@ -167,6 +219,18 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Funding rate (premiumIndex memo → zero extra HTTP call)
 		const fundingRate = await readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null);
+		const depthView = buildDepthView(depth);
+		const bestBid = depthView?.bids[0]?.price ?? null;
+		const bestAsk = depthView?.asks[0]?.price ?? null;
+		const spreadBps =
+			bestBid != null && bestAsk != null && currentPrice > 0
+				? ((bestAsk - bestBid) / currentPrice) * 10_000
+				: null;
+		const imbalancePct =
+			depthView && depthView.bidVolume + depthView.askVolume > 0
+				? ((depthView.bidVolume - depthView.askVolume) / (depthView.bidVolume + depthView.askVolume)) * 100
+				: null;
+		const liqClusters = buildLiquidationClusters(normalizedForceOrders, currentPrice);
 
 		// --- 3. Build perp payloads -------------------------------------------
 
@@ -253,6 +317,17 @@ export const GET: RequestHandler = async ({ url }) => {
 				long_liq_usd,
 				oi:            oiPoint,
 				lsRatio:       lsTop,
+			},
+			microstructure: {
+				spreadBps,
+				imbalancePct,
+				takerRatio: taker_ratio ?? null,
+				depth: depthView,
+				liqClusters,
+				liqTotals: {
+					shortUsd: short_liq_usd,
+					longUsd: long_liq_usd,
+				},
 			},
 			annotations,
 			indicators: {
