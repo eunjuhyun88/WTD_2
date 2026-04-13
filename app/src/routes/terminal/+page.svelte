@@ -549,6 +549,14 @@
   let trendingInterval: ReturnType<typeof setInterval>;
 
   onMount(() => {
+    // ── URL param: ?symbol=BTCUSDT jumps straight to that asset ──────────────
+    const searchParams = new URLSearchParams(window.location.search);
+    const symbolParam = searchParams.get('symbol');
+    if (symbolParam) {
+      const pairStr = symbolParam.toUpperCase().replace(/USDT$/, '') + '/USDT';
+      setActivePair(pairStr);
+    }
+
     // $effect handles initial loadAnalysis + loadFlow — only set up intervals and one-shot fetches here
     loadTrending();
     loadNews();

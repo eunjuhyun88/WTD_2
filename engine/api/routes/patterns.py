@@ -12,10 +12,13 @@ Endpoints:
 from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel
 
 from ledger.store import LedgerStore
+from ledger.types import PatternOutcome
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.scanner import (
+    _get_machine,
     get_entry_candidates_all,
     get_pattern_states,
     run_pattern_scan,
@@ -23,6 +26,11 @@ from patterns.scanner import (
 
 router = APIRouter()
 _ledger = LedgerStore()
+
+
+class _VerdictBody(BaseModel):
+    symbol: str
+    verdict: str  # "valid" | "invalid" | "missed"
 
 
 @router.get("/library")
@@ -44,14 +52,12 @@ async def list_patterns() -> dict:
 
 @router.get("/states")
 async def get_all_states() -> dict:
-    """Current phase for all tracked symbols across all patterns."""
-    states = get_pattern_states()
-    # Filter to non-NONE phases for a cleaner response
-    active = {
-        slug: {sym: phase for sym, phase in sym_phases.items() if phase != "NONE"}
-        for slug, sym_phases in states.items()
-    }
-    return {"patterns": active}
+    """Current phase (rich) for all tracked symbols across all patterns."""
+    patterns_rich: dict = {}
+    for slug in PATTERN_LIBRARY:
+        machine = _get_machine(slug)
+        patterns_rich[slug] = machine.get_all_states_rich()
+    return {"patterns": patterns_rich}
 
 
 @router.get("/candidates")
@@ -141,3 +147,36 @@ async def get_pattern_def(slug: str) -> dict:
             for ph in p.phases
         ],
     }
+
+
+@router.post("/{slug}/verdict")
+async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
+    """Set user_verdict on the most recent outcome for (slug, symbol)."""
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+
+    # Find the most recent pending outcome for this symbol
+    pending = _ledger.list_pending(slug)
+    matching = [o for o in pending if o.symbol == body.symbol]
+
+    if not matching:
+        # Fall back to any outcome (any status)
+        all_outcomes = _ledger.list_all(slug)
+        matching = [o for o in all_outcomes if o.symbol == body.symbol]
+
+    if not matching:
+        # No existing outcome — create a stub with the user verdict
+        new_outcome = PatternOutcome(
+            pattern_slug=slug,
+            symbol=body.symbol,
+            user_verdict=body.verdict,  # type: ignore[arg-type]
+        )
+        _ledger.save(new_outcome)
+        return {"ok": True, "created": True, "outcome_id": new_outcome.id}
+
+    outcome = matching[0]  # most recent (sorted by created_at desc)
+    outcome.user_verdict = body.verdict  # type: ignore[assignment]
+    _ledger.save(outcome)
+    return {"ok": True, "outcome_id": outcome.id}

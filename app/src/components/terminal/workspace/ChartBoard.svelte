@@ -2,6 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
+  import SaveSetupModal from './SaveSetupModal.svelte';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -38,6 +39,10 @@
   let error    = $state<string | null>(null);
   let currentPrice = $state<number | null>(null);
   let currentTime  = $state<number | null>(null);
+
+  // Save Setup modal
+  let showSaveModal = $state(false);
+  let savedSlug     = $state<string | null>(null);   // shown as toast after save
 
   // Indicator toggles
   let showVWAP = $state(true);
@@ -318,7 +323,17 @@
   }
 
   function handleSaveSetup() {
+    // Open modal instead of direct POST — user selects phase label + note
+    showSaveModal = true;
+  }
+
+  function handleModalSaved(slug: string) {
+    showSaveModal = false;
+    savedSlug = slug;
+    // Also fire parent callback if provided
     onSaveSetup?.({ symbol, timestamp: currentTime ?? Math.floor(Date.now() / 1000), tf });
+    // Clear toast after 4s
+    setTimeout(() => { savedSlug = null; }, 4000);
   }
 
   function selectTf(t: string) {
@@ -414,6 +429,23 @@
   {/if}
 
 </div>
+
+<!-- Save Setup Modal -->
+<SaveSetupModal
+  symbol={symbol}
+  timestamp={currentTime ?? Math.floor(Date.now() / 1000)}
+  tf={tf}
+  open={showSaveModal}
+  onClose={() => { showSaveModal = false; }}
+  onSaved={handleModalSaved}
+/>
+
+<!-- Toast: saved confirmation -->
+{#if savedSlug}
+  <div class="save-toast">
+    ✓ 셋업 저장됨 — <a href="/patterns" class="toast-link">패턴 대시보드 →</a>
+  </div>
+{/if}
 
 <style>
   .chart-board {
@@ -574,6 +606,26 @@
   .pane-vol  { flex-shrink: 0; height: 60px; }
   .pane-sub  { flex-shrink: 0; height: 80px; }
   .pane-oi   { flex-shrink: 0; height: 60px; }
+  .save-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f0f0f;
+    border: 1px solid rgba(38,166,154,0.5);
+    color: #26a69a;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    z-index: 2000;
+    white-space: nowrap;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    animation: toast-in 0.2s ease;
+  }
+  .toast-link { color: #63b3ed; text-decoration: underline; }
+  @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
   .pane-label {
     flex-shrink: 0;
     padding: 1px 8px;
