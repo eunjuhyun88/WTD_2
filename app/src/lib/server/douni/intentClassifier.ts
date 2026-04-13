@@ -19,6 +19,7 @@ export type Intent =
   | 'social'        // "커뮤니티 어때" — check_social
   | 'chart_ctrl'    // "4H로 바꿔" — chart_control only
   | 'pattern_save'  // "기억해", "패턴 저장" — save_pattern
+  | 'pattern_check' // "패턴 상태", "축적 구간" — check_pattern_status
   | 'convo';        // everything else — no tools
 
 export interface IntentBudget {
@@ -73,6 +74,11 @@ const CHART_CTRL_PATTERNS = [
 
 const PATTERN_SAVE_PATTERNS = [
   /기억해|저장해|패턴\s*저장|이거\s*저장|save\s*pattern|remember\s*this/i,
+];
+
+const PATTERN_CHECK_PATTERNS = [
+  /패턴\s*상태|패턴\s*뭐|OI\s*패턴|축적\s*구간|entry\s*후보|ACCUMULATION|진입\s*(구간|후보|신호)|TRADOOR/i,
+  /pattern\s*(status|check|state)|entry\s*(candidate|signal|zone)|accumulation\s*phase/i,
 ];
 
 // Known crypto symbols — fast path (자주 쓰이는 것만, 전수 커버리지 불필요)
@@ -152,7 +158,7 @@ const INTENT_CONFIG: Record<Intent, IntentBudget> = {
   },
   deep_analyze: {
     intent: 'deep_analyze',
-    tools: ['analyze_market', 'chart_control', 'save_pattern'],
+    tools: ['analyze_market', 'check_pattern_status', 'chart_control', 'save_pattern'],
     maxTokens: 600,
     historyDepth: 4,
     includeSnapshot: 'always',
@@ -160,7 +166,7 @@ const INTENT_CONFIG: Record<Intent, IntentBudget> = {
   },
   scan: {
     intent: 'scan',
-    tools: ['scan_market'],
+    tools: ['scan_market', 'check_pattern_status'],
     maxTokens: 450,
     historyDepth: 0,
     includeSnapshot: 'never',
@@ -187,6 +193,14 @@ const INTENT_CONFIG: Record<Intent, IntentBudget> = {
     tools: ['save_pattern', 'query_memory'],
     maxTokens: 200,
     historyDepth: 4,
+    includeSnapshot: 'if_same_symbol',
+    preferredProvider: 'cerebras',
+  },
+  pattern_check: {
+    intent: 'pattern_check',
+    tools: ['check_pattern_status', 'analyze_market'],
+    maxTokens: 350,
+    historyDepth: 2,
     includeSnapshot: 'if_same_symbol',
     preferredProvider: 'cerebras',
   },
@@ -227,6 +241,11 @@ export function classifyIntent(message: string): IntentBudget {
   // Pattern save
   if (PATTERN_SAVE_PATTERNS.some(p => p.test(text))) {
     return INTENT_CONFIG.pattern_save;
+  }
+
+  // Pattern check (OI 패턴 상태, 축적 구간 등)
+  if (PATTERN_CHECK_PATTERNS.some(p => p.test(text))) {
+    return INTENT_CONFIG.pattern_check;
   }
 
   // Scan
