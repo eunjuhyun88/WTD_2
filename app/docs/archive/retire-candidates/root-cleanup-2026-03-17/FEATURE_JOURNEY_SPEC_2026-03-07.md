@@ -1,4 +1,4 @@
-# STOCKCLAW Feature Journey Design Spec
+# WTD Feature Journey Design Spec
 
 작성일: 2026-03-07  
 범위: `frontend/` target-state 기능 단위 UX / PM / GTM 설계  

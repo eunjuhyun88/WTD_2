@@ -1,4 +1,4 @@
-# **StockHoo 완전 무료 데이터 소스 종합 가이드**
+# **WTD 완전 무료 데이터 소스 종합 가이드**
 
 ## **1\. 거래소 무료 API (실시간 데이터)**
 
@@ -641,7 +641,7 @@ https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3
 2. RSS 피드 통합  
 3. Reddit API
 
-# **StockHoo 확장 데이터 레이어 – 누락 영역 완전 보강판**
+# **WTD 확장 데이터 레이어 – 누락 영역 완전 보강판**
 
 ## **A. 소셜 / 커뮤니티 데이터 (공식 \+ 반공식 혼합)**
 
@@ -666,7 +666,7 @@ https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3
   * retweet\_velocity  
   * influencer\_ratio (팔로워 상위 N%)
 
-**StockHoo용 파생 지표**
+**WTD용 파생 지표**
 
 * narrative\_acceleration\_score  
 * meme\_virality\_index  
@@ -855,7 +855,7 @@ Web3 프로젝트의 실제 활동성 지표
 
 ---
 
-## **D. 종합 “코인 생애주기 스캐너” (StockHoo 핵심 기능)**
+## **D. 종합 “코인 생애주기 스캐너” (WTD 핵심 기능)**
 
 ### **D1. Coin Lifecycle State Machine**
 
@@ -888,7 +888,7 @@ Web3 프로젝트의 실제 활동성 지표
 
 ---
 
-## **E. StockHoo용 최종 통합 데이터 스키마 (추가분)**
+## **E. WTD용 최종 통합 데이터 스키마 (추가분)**
 
 ```json
 social_metrics: {
@@ -932,7 +932,7 @@ lifecycle_state: "early_pump"
 
 ## **결론**
 
-이 보강으로 StockHoo는:
+이 보강으로 WTD는:
 
 * **시장 데이터**: 이미 완비  
 * **소셜 데이터**: 실시간 내러티브 추적 가능  
@@ -940,7 +940,7 @@ lifecycle_state: "early_pump"
 * **차별화 포인트**:  
   → *“가격이 움직이기 전, 왜 움직일지 먼저 감지”*
 
-이제 StockHoo는 \*\*단순 AI 트레이딩 툴이 아니라  
+이제 WTD는 \*\*단순 AI 트레이딩 툴이 아니라  
 ‘코인 탄생부터 죽음까지 추적하는 Crypto Intelligence OS’\*\*가 됩니다.
 
 다음 단계로 원하시면:

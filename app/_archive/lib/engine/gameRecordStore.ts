@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — GameRecord Persistence (Server API)
+// WTD — GameRecord Persistence (Server API)
 // ═══════════════════════════════════════════════════════════════
 //
 // GameRecord를 서버 API(/api/arena-war)를 통해 저장/조회

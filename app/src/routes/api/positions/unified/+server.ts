@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Unified Positions API
+// Unified Positions API
 // ═══════════════════════════════════════════════════════════════
 // Returns QuickTrades + Polymarket + GMX positions in unified format.
 //

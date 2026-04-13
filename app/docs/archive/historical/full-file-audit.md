@@ -22,7 +22,7 @@ Date: 2026-02-21
 2. Auth and match APIs use in-memory stores, so server restart drops records.
    - `src/routes/api/auth/register/+server.ts:11`
    - `src/routes/api/matches/+server.ts:11`
-3. Settings reset key mismatch: one reset path clears `agentData` instead of `stockclaw_agents`.
+3. Settings reset key mismatch: one reset path clears `agentData` instead of `wtd_agents`.
    - `src/routes/settings/+page.svelte:28`
    - `src/components/modals/SettingsModal.svelte:21`
 4. Timeframe representation is inconsistent (`1h/4h` and `1H/4H`) across domains.
@@ -54,7 +54,7 @@ Date: 2026-02-21
 | `src/routes/+page.svelte` | 883 | P1 | Large file, likely multi-responsibility |
 | `src/routes/api/auth/register/+server.ts` | 76 | P1 | In-memory users map and weak durability |
 | `src/routes/api/matches/+server.ts` | 75 | P1 | In-memory matches persistence |
-| `src/routes/settings/+page.svelte` | 307 | P1 | Reset key mismatch risk (agentData vs stockclaw_agents) |
+| `src/routes/settings/+page.svelte` | 307 | P1 | Reset key mismatch risk (agentData vs wtd_agents) |
 | `src/components/arena/HypothesisPanel.svelte` | 567 | P2 | Medium complexity; regression surface exists |
 | `src/components/arena/MatchHistory.svelte` | 410 | P2 | Medium complexity; regression surface exists |
 | `src/components/arena/SquadConfig.svelte` | 497 | P2 | Medium complexity; regression surface exists |

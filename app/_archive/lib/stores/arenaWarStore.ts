@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Arena War Store (7-Phase State Machine)
+// WTD — Arena War Store (7-Phase State Machine)
 // ═══════════════════════════════════════════════════════════════
 //
 // Svelte 4 writable store pattern (matching existing codebase)

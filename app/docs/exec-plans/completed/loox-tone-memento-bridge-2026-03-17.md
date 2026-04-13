@@ -63,8 +63,8 @@ Take the current space-game direction and make it feel more disciplined:
 - add `npm run memento:resume`
 - add `npm run memento:relay`
 - bridge `.agent-context` branch artifacts into:
-  - `/Users/ej/Downloads/maxidoge-clones/.memento/memories/*`
-  - `/Users/ej/Downloads/maxidoge-clones/.memento/runtime/stockclaw/handoff-inbox`
+  - `/Users/ej/Downloads/wtd-clones/.memento/memories/*`
+  - `/Users/ej/Downloads/wtd-clones/.memento/runtime/wtd/handoff-inbox`
 
 ## Definition Of Done
 

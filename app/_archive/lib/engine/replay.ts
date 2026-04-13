@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Match Replay Engine
+// WTD — Match Replay Engine
 // Replays recorded match data through the phase system
 // ═══════════════════════════════════════════════════════════════
 

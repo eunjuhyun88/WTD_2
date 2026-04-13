@@ -1,5 +1,5 @@
 // =================================================================
-// STOCKCLAW Arena v3 — Battle Engine
+// WTD Arena v3 — Battle Engine
 // =================================================================
 // v2BattleEngine 위에 HP + 차트 리딩 챌린지 래핑
 // v2는 canonical — processTick() 그대로 호출 후 HP 변환

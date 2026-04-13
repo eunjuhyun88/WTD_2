@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — CoinGecko Raw Loader (providers/ home, P1.A0 slice 2)
+// CoinGecko Raw Loader (providers/ home, P1.A0 slice 2)
 // ═══════════════════════════════════════════════════════════════
 //
 // Canonical location for CoinGecko REST fetchers. This file is the

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — LLM Configuration (server-side only)
+// LLM Configuration (server-side only)
 // ═══════════════════════════════════════════════════════════════
 //
 // 모든 LLM 호출은 이 모듈을 통해 키/엔드포인트를 가져온다.
@@ -205,7 +205,7 @@ export const OPENROUTER_API_KEY = openrouterPool.primary;
 export const OPENROUTER_MODEL = env.OPENROUTER_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b:free';
 export const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1';
 export const OPENROUTER_SITE_URL = env.OPENROUTER_SITE_URL ?? 'http://localhost:5173';
-export const OPENROUTER_APP_NAME = env.OPENROUTER_APP_NAME ?? 'STOCKCLAW';
+export const OPENROUTER_APP_NAME = env.OPENROUTER_APP_NAME ?? 'WTD';
 
 export function openrouterUrl(path = '/chat/completions'): string {
   return `${OPENROUTER_ENDPOINT}${path}`;

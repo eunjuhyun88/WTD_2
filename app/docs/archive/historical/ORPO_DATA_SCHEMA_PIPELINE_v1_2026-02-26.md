@@ -1,7 +1,7 @@
 # ORPO Data Schema and Pair Generation Pipeline v1
 
 작성일: 2026-02-26
-대상 리포지토리: `/Users/ej/Downloads/maxidoge-clones/backend`
+대상 리포지토리: `/Users/ej/Downloads/wtd-clones/backend`
 
 ## 1) Scope and Goal
 

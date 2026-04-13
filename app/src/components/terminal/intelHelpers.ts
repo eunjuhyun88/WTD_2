@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  STOCKCLAW — Intel Panel Pure Helper Functions
+//  WTD — Intel Panel Pure Helper Functions
 //  Extracted from IntelPanel.svelte for maintainability
 // ═══════════════════════════════════════════════════════════════
 

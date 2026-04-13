@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — localStorage Persistence Utilities
+// WTD — localStorage Persistence Utilities
 // Replaces repeated load/save/debounce boilerplate across 11 stores
 // ═══════════════════════════════════════════════════════════════
 

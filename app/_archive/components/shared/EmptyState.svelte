@@ -1,5 +1,5 @@
 <!-- ═══════════════════════════════════════════════════════════════
-     STOCKCLAW — EmptyState Component
+     WTD — EmptyState Component
      Displays character illustration + message + CTA for empty data
 ═══════════════════════════════════════════════════════════════ -->
 <script lang="ts">

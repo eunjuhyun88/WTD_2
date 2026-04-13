@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — GeckoTerminal DEX Whale Tracker (server-side)
+// GeckoTerminal DEX Whale Tracker (server-side)
 // ═══════════════════════════════════════════════════════════════
 // CoinGecko 고래 추적 가이드 기반 구현
 // GeckoTerminal 무료 API → DEX 대규모 거래 추적 → CQWhaleData 매핑

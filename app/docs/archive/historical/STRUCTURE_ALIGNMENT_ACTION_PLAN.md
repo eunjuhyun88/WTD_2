@@ -1,4 +1,4 @@
-# STOCKCLAW 구조 정합성 액션 플랜
+# WTD 구조 정합성 액션 플랜
 
 작성일: 2026-02-22
 근거: `docs/references/active/structure-mismatch-audit-latest.md` 9개 불일치 항목
@@ -321,7 +321,7 @@ export async function runScan(pair: string, timeframe: string): Promise<ScanResu
 **7-2. 패널 상태 영속화**
 ```ts
 // localStorage에 패널 폭/접힘 저장
-const PANEL_STATE_KEY = 'stockclaw.terminal.panels.v1';
+const PANEL_STATE_KEY = 'wtd.terminal.panels.v1';
 interface PanelState {
   leftWidth: number;
   rightWidth: number;

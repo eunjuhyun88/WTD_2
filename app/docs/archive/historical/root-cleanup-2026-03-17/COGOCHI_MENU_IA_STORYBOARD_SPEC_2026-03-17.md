@@ -1,12 +1,12 @@
 # COGOCHI 메뉴 구조 · IA · 스토리보드 상세 설계
 
 목적:
-- `Cogochi + Stockclaw` 통합 방향을 실제 제품 설계 수준으로 구체화한다.
+- `Cogochi + wtd` 통합 방향을 실제 제품 설계 수준으로 구체화한다.
 - 메뉴 구조, 메뉴별 기능, IA, 대표 유저 스토리보드, 페이지 구성요소를 한 문서에서 정의한다.
 - 앞으로의 화면 설계와 라우트 개편의 기준점으로 사용한다.
 
 관련 상위 문서:
-- [COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md)
+- [COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md)
 
 ---
 

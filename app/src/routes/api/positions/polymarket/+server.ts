@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Polymarket Positions List API
+// Polymarket Positions List API
 // ═══════════════════════════════════════════════════════════════
 // GET /api/positions/polymarket?settled=false&limit=50&offset=0
 

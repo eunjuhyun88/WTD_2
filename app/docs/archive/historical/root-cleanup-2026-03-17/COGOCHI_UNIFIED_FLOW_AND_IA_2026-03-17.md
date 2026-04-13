@@ -1,7 +1,7 @@
 # Cogochi Unified Flow And IA
 
 Purpose:
-- Collapse the current Cogochi + Stockclaw document set into one coherent product flow.
+- Collapse the current Cogochi + wtd document set into one coherent product flow.
 - Resolve route and page-purpose conflicts before more UI or implementation work lands.
 - Define a single user journey and page IA that future specs should inherit from.
 

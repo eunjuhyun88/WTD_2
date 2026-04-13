@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — FRED Client (client-side)
+// WTD — FRED Client (client-side)
 // ═══════════════════════════════════════════════════════════════
 // Wraps /api/macro/fred proxy for MACRO agent use
 

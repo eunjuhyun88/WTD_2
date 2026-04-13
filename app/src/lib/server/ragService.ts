@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — RAG Service: Decision Memory Save, Search, Analyze
+// WTD — RAG Service: Decision Memory Save, Search, Analyze
 // ═══════════════════════════════════════════════════════════════
 //
 // 모든 의사결정 활동을 256d 벡터로 저장/검색.

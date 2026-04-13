@@ -1,4 +1,4 @@
-# STOCKCLAW v3 FE State Map
+# WTD v3 FE State Map
 
 작성일: 2026-02-22  
 목적: FE에서 상태 소스를 단일화하고, Phase 기반 UI 흐름을 고정한다.
@@ -220,7 +220,7 @@ phase별 UI:
 CURRENT:
 1. `WarRoom.scanTabs[]`가 스캔 히스토리 원본
 2. `activeScanId`로 활성 히스토리 선택
-3. `localStorage(stockclaw.warroom.scanstate.v1)`로 복원
+3. `localStorage(wtd.warroom.scanstate.v1)`로 복원
 
 TARGET:
 1. `scanHistoryStore`를 분리하고 서버 동기화 상태를 포함

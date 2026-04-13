@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — On-chain Data API (Coin Metrics → CryptoQuant fallback)
+// On-chain Data API (Coin Metrics → CryptoQuant fallback)
 // ═══════════════════════════════════════════════════════════════
 // Exchange reserves, MVRV, NUPL, whale + miner data
 

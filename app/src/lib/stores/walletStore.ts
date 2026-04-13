@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Wallet & User State Store
+// WTD — Wallet & User State Store
 // Per UserJourney Lifecycle spec: P0→P5 progression
 // ═══════════════════════════════════════════════════════════════
 

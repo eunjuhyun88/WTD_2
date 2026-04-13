@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Real-Time Battle Resolver
+// WTD — Real-Time Battle Resolver
 // ═══════════════════════════════════════════════════════════════
 //
 // Subscribes to live Binance price feed (via priceStore) and

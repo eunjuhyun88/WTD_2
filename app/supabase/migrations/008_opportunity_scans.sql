@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- Stockclaw — Opportunity Scans Table
+-- Opportunity Scans Table
 -- ═══════════════════════════════════════════════════════════════
 -- Stores multi-asset opportunity scan results for history tracking
 

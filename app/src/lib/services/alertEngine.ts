@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Background Alert Engine (client-side)
+// WTD — Background Alert Engine (client-side)
 // ═══════════════════════════════════════════════════════════════
 // Periodically polls the opportunity scan API + onchain alerts,
 // detects changes, and fires notifications + toasts.

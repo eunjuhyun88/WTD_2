@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Etherscan On-chain Client (B-05)
+// WTD — Etherscan On-chain Client (B-05)
 // ═══════════════════════════════════════════════════════════════
 // Client-side wrapper for /api/etherscan/onchain proxy
 // Maps to: FLOW agent → EXCHANGE_FLOW, VALUATION agent → network activity

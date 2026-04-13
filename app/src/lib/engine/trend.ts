@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Trend Analysis Engine (pure functions)
+// WTD — Trend Analysis Engine (pure functions)
 // ═══════════════════════════════════════════════════════════════
 
 import type {

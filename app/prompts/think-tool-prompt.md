@@ -65,7 +65,7 @@
 아래 내용을 위 `{YOUR_DOMAIN_EXAMPLE_*}` 에 넣어라.
 예시가 구체적일수록 성능이 높아짐 (Anthropic 측정: 54% 향상).
 
-### StockClaw 예시
+### WTD 예시
 ```
 요청: 사용자가 특정 코인 알림 설정 변경 요청
 - 필요 확인: user_id, coin_symbol, alert_type, threshold_value

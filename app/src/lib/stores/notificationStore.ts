@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Notification & Toast Store
+// Notification & Toast Store
 // ═══════════════════════════════════════════════════════════════
 
 import { writable, derived } from 'svelte/store';
@@ -279,7 +279,7 @@ export function seedNotifications() {
   notifications.addNotification({
     type: 'info',
     title: 'SESSION STARTED',
-    body: 'Stockclaw arena is live. Good luck, trader.',
+    body: 'wtd arena is live. Good luck, trader.',
     dismissable: true,
   });
   notifications.addNotification({

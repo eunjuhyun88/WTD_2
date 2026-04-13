@@ -1,4 +1,4 @@
-# STOCKCLAW v3 Persistence Design
+# WTD v3 Persistence Design
 
 작성일: 2026-02-22
 수정일: 2026-02-23 (Arena v3 PvP/Tournament 영속성 반영)
@@ -707,17 +707,17 @@ async function sendChat(text: string) {
 
 | 현재 key | v3 역할 | 변경 |
 |---------|---------|------|
-| `stockclaw_state` | 매치 상태 캐시 | Supabase primary → 로컬 캐시 |
-| `stockclaw_agents` | 에이전트 stats 캐시 | user_agent_progress 캐시 |
-| `stockclaw_wallet` | 지갑 연결 상태 | 유지 (로컬 전용, 보안) |
-| `stockclaw_match_history` | 매치 히스토리 캐시 | arena_matches 캐시 |
-| `stockclaw_quicktrades` | 포지션 캐시 | quick_trades 캐시 |
-| `stockclaw_tracked` | 추적 시그널 캐시 | tracked_signals 캐시 |
-| `stockclaw_community` | 커뮤니티 캐시 | community_posts 캐시 |
-| `stockclaw_profile` | 프로필 캐시 | user_passports 캐시 |
-| `stockclaw_pnl` | PnL 캐시 | lp_transactions 캐시 |
-| (신규) `stockclaw_scans` | 스캔 탭 캐시 | terminal_scan_runs 캐시 |
-| (신규) `stockclaw_chat` | 채팅 캐시 | agent_chat_messages 캐시 |
+| `wtd_state` | 매치 상태 캐시 | Supabase primary → 로컬 캐시 |
+| `wtd_agents` | 에이전트 stats 캐시 | user_agent_progress 캐시 |
+| `wtd_wallet` | 지갑 연결 상태 | 유지 (로컬 전용, 보안) |
+| `wtd_match_history` | 매치 히스토리 캐시 | arena_matches 캐시 |
+| `wtd_quicktrades` | 포지션 캐시 | quick_trades 캐시 |
+| `wtd_tracked` | 추적 시그널 캐시 | tracked_signals 캐시 |
+| `wtd_community` | 커뮤니티 캐시 | community_posts 캐시 |
+| `wtd_profile` | 프로필 캐시 | user_passports 캐시 |
+| `wtd_pnl` | PnL 캐시 | lp_transactions 캐시 |
+| (신규) `wtd_scans` | 스캔 탭 캐시 | terminal_scan_runs 캐시 |
+| (신규) `wtd_chat` | 채팅 캐시 | agent_chat_messages 캐시 |
 
 ---
 

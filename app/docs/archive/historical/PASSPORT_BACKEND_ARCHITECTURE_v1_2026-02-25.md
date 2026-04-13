@@ -4,7 +4,7 @@
 
 ## 1) 목적
 
-이 문서는 STOCKCLAW 기준으로 `Terminal -> 저장 -> 집계/분석 -> Passport 표시 -> AI 학습 확장`을 하나의 백엔드 흐름으로 고정하기 위한 설계안이다.
+이 문서는 WTD 기준으로 `Terminal -> 저장 -> 집계/분석 -> Passport 표시 -> AI 학습 확장`을 하나의 백엔드 흐름으로 고정하기 위한 설계안이다.
 
 핵심 목표:
 
@@ -15,16 +15,16 @@
 
 ## 2) 설계 기준 (근거 문서)
 
-- `/Users/ej/Downloads/stockclaw-unified.backup-20260224-055018/docs/STOCKCLAW_FlowSpec_v2_0.md`
+- `/Users/ej/Downloads/wtd-app.backup-20260224-055018/docs/WTD_FlowSpec_v2_0.md`
   - F-TERM-002/003/004/005: Track/Quick Trade/Copy Trade/Convert 저장 플로우
   - F-PASS-002/007: Passport 메트릭 계산식 + 트리거 시점
-- `/Users/ej/Desktop/항목을 포함하는 새로운 폴더/젠베리파이/Stockclaw/STOCKCLAW_PassportUX_v1_20260220 (1).html`
+- `/Users/ej/Desktop/항목을 포함하는 새로운 폴더/젠베리파이/wtd/WTD_PassportUX_v1_20260220 (1).html`
   - 트리거 표 + "이벤트 즉시 트랜잭션, 실패 시 재시도 큐" 원칙
-- `/Users/ej/Desktop/항목을 포함하는 새로운 폴더/젠베리파이/Stockclaw/STOCKCLAW_PassportUX_v1_20260220.docx`
+- `/Users/ej/Desktop/항목을 포함하는 새로운 폴더/젠베리파이/wtd/WTD_PassportUX_v1_20260220.docx`
   - `passport_records` 확장 스키마, 온체인 동기화 지연 처리
-- `/Users/ej/Downloads/항목을 포함하는 새로운 폴더 9/STOCKCLAW_WHITEPAPER_EN_v1_20260218.md`
+- `/Users/ej/Downloads/항목을 포함하는 새로운 폴더 9/WTD_WHITEPAPER_EN_v1_20260218.md`
   - 의사결정 해시/검증 실적/모델 학습 플라이휠 방향
-- `/Users/ej/Downloads/stockclaw_whitepaper_v2_STCLAW_updated.docx`
+- `/Users/ej/Downloads/wtd_whitepaper_v2_STCLAW_updated.docx`
   - ORPO/LoRA 주기학습을 위한 outcome-labeled 데이터 축적 요구
 
 ## 3) 현재 코드 기준 As-Is

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  STOCKCLAW — Arena State Logic
+//  WTD — Arena State Logic
 //  Pure business logic extracted from arena/+page.svelte
 // ═══════════════════════════════════════════════════════════════
 

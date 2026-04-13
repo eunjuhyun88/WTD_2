@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — User Registration API (PostgreSQL backed)
+// User Registration API (PostgreSQL backed)
 // POST /api/auth/register
 // Body: { email, nickname, walletAddress, walletMessage, walletSignature }
 // Wallet is REQUIRED — wallet-first auth flow

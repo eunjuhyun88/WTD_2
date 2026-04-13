@@ -1,11 +1,11 @@
-# STOCKCLAW 최종 구조 제안서 (User Flow + UIUX + Front/Back)
+# WTD 최종 구조 제안서 (User Flow + UIUX + Front/Back)
 
 - 작성일: 2026-02-23
 - 기준: 제공 파일 30개 분석 (중복 제거 후 25개 기준)
 
 ## 1) 최종 제품 구조 (Canonical)
 
-STOCKCLAW는 아래 4개 축으로 통합한다.
+WTD는 아래 4개 축으로 통합한다.
 
 1. Terminal: 전략 지휘, 상황판, 시그널 해석, 실행 진입점
 2. Arena: 5단계 실전 시뮬레이션/리그, Entry Score 기반 의사결정 훈련

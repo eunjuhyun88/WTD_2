@@ -1,4 +1,4 @@
-# STOCKCLAW Target UX User Journey Spec
+# WTD Target UX User Journey Spec
 
 작성일: 2026-03-07  
 범위: `frontend/` 기준 target-state UX / GTM / PM 설계  

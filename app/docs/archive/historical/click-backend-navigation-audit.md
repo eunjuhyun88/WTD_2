@@ -22,12 +22,12 @@ Required auth flow (server-authoritative):
 ### P0 (must wire now)
 
 1. Wallet connect / sign / signup clicks are still local simulation
-- UI: `/Users/ej/Downloads/stockclaw-unified/src/components/modals/WalletModal.svelte:19`
-- Local simulation call path: `/Users/ej/Downloads/stockclaw-unified/src/lib/stores/walletStore.ts:127`
+- UI: `/Users/ej/Downloads/wtd-app/src/components/modals/WalletModal.svelte:19`
+- Local simulation call path: `/Users/ej/Downloads/wtd-app/src/lib/stores/walletStore.ts:127`
 - Existing server endpoints exist but are not used by this UI path:
-  - `/Users/ej/Downloads/stockclaw-unified/src/routes/api/auth/register/+server.ts:3`
-  - `/Users/ej/Downloads/stockclaw-unified/src/routes/api/auth/session/+server.ts:3`
-  - `/Users/ej/Downloads/stockclaw-unified/src/routes/api/auth/wallet/+server.ts:3`
+  - `/Users/ej/Downloads/wtd-app/src/routes/api/auth/register/+server.ts:3`
+  - `/Users/ej/Downloads/wtd-app/src/routes/api/auth/session/+server.ts:3`
+  - `/Users/ej/Downloads/wtd-app/src/routes/api/auth/wallet/+server.ts:3`
 - Needed API binding:
   - `POST /api/auth/register`
   - `GET /api/auth/session` on app boot
@@ -35,31 +35,31 @@ Required auth flow (server-authoritative):
   - `POST /api/auth/logout` (new)
 
 2. Arena result writes only local store path
-- Local write point: `/Users/ej/Downloads/stockclaw-unified/src/routes/arena/+page.svelte:830`
-- Match API exists: `/Users/ej/Downloads/stockclaw-unified/src/routes/api/matches/+server.ts:132`
+- Local write point: `/Users/ej/Downloads/wtd-app/src/routes/arena/+page.svelte:830`
+- Match API exists: `/Users/ej/Downloads/wtd-app/src/routes/api/matches/+server.ts:132`
 - Needed:
   - call `POST /api/matches` on result
   - add `POST /api/pnl` for `addPnLEntry` path
 
 3. Quick trade open/close clicks are local only
-- Trade action source: `/Users/ej/Downloads/stockclaw-unified/src/components/terminal/WarRoom.svelte:148`
-- Local store mutations: `/Users/ej/Downloads/stockclaw-unified/src/lib/stores/quickTradeStore.ts:83`
+- Trade action source: `/Users/ej/Downloads/wtd-app/src/components/terminal/WarRoom.svelte:148`
+- Local store mutations: `/Users/ej/Downloads/wtd-app/src/lib/stores/quickTradeStore.ts:83`
 - Needed:
   - `POST /api/trades/open`
   - `POST /api/trades/{id}/close`
   - `PATCH /api/trades/prices` (batch)
 
 4. Track signal / convert signal clicks are local only
-- Track click source: `/Users/ej/Downloads/stockclaw-unified/src/components/terminal/WarRoom.svelte:136`
-- Signal store local mutation: `/Users/ej/Downloads/stockclaw-unified/src/lib/stores/trackedSignalStore.ts:88`
+- Track click source: `/Users/ej/Downloads/wtd-app/src/components/terminal/WarRoom.svelte:136`
+- Signal store local mutation: `/Users/ej/Downloads/wtd-app/src/lib/stores/trackedSignalStore.ts:88`
 - Needed:
   - `POST /api/signals/track`
   - `POST /api/signals/{id}/convert`
   - `POST /api/signal-actions` (audit)
 
 5. Copy-trade publish click is local only (opens local trade+signal)
-- Modal publish action: `/Users/ej/Downloads/stockclaw-unified/src/components/modals/CopyTradeModal.svelte:30`
-- Local publish implementation: `/Users/ej/Downloads/stockclaw-unified/src/lib/stores/copyTradeStore.ts:125`
+- Modal publish action: `/Users/ej/Downloads/wtd-app/src/components/modals/CopyTradeModal.svelte:30`
+- Local publish implementation: `/Users/ej/Downloads/wtd-app/src/lib/stores/copyTradeStore.ts:125`
 - Needed:
   - `POST /api/copytrade/publish`
   - server-side transaction: create trade + tracked signal + signal action
@@ -67,37 +67,37 @@ Required auth flow (server-authoritative):
 ### P1 (should wire next)
 
 6. Agent chat send click is in-memory only
-- Chat dispatch: `/Users/ej/Downloads/stockclaw-unified/src/components/terminal/IntelPanel.svelte:304`
-- Chat state local only: `/Users/ej/Downloads/stockclaw-unified/src/routes/terminal/+page.svelte:164`
+- Chat dispatch: `/Users/ej/Downloads/wtd-app/src/components/terminal/IntelPanel.svelte:304`
+- Chat state local only: `/Users/ej/Downloads/wtd-app/src/routes/terminal/+page.svelte:164`
 - Needed:
   - `POST /api/chat/messages`
   - `GET /api/chat/messages?channel=terminal`
 
 7. Predict vote clicks are local state only
-- Vote click: `/Users/ej/Downloads/stockclaw-unified/src/components/terminal/PredictPanel.svelte:30`
-- Local vote storage only: `/Users/ej/Downloads/stockclaw-unified/src/lib/stores/predictStore.ts:96`
+- Vote click: `/Users/ej/Downloads/wtd-app/src/components/terminal/PredictPanel.svelte:30`
+- Local vote storage only: `/Users/ej/Downloads/wtd-app/src/lib/stores/predictStore.ts:96`
 - Needed:
   - `POST /api/predictions/vote`
   - `POST /api/predictions/positions/open`
   - `POST /api/predictions/positions/{id}/close`
 
 8. Settings clicks are local-only and reset is localStorage wipe
-- Settings mutation: `/Users/ej/Downloads/stockclaw-unified/src/routes/settings/+page.svelte:30`
-- Reset action: `/Users/ej/Downloads/stockclaw-unified/src/routes/settings/+page.svelte:41`
+- Settings mutation: `/Users/ej/Downloads/wtd-app/src/routes/settings/+page.svelte:30`
+- Reset action: `/Users/ej/Downloads/wtd-app/src/routes/settings/+page.svelte:41`
 - Needed:
   - `PUT /api/preferences`
   - `GET /api/preferences`
   - `POST /api/account/reset-local-cache` (optional)
 
 9. Profile clicks (avatar/name/tab) are local-only
-- Avatar/name edit: `/Users/ej/Downloads/stockclaw-unified/src/routes/passport/+page.svelte:110`
+- Avatar/name edit: `/Users/ej/Downloads/wtd-app/src/routes/passport/+page.svelte:110`
 - Needed:
   - `PATCH /api/profile`
   - `PUT /api/ui-state` (active tab)
 
 10. Notifications tray clicks are memory-only store
-- Tray actions: `/Users/ej/Downloads/stockclaw-unified/src/components/shared/NotificationTray.svelte:24`
-- Store is volatile writable array: `/Users/ej/Downloads/stockclaw-unified/src/lib/stores/notificationStore.ts:42`
+- Tray actions: `/Users/ej/Downloads/wtd-app/src/components/shared/NotificationTray.svelte:24`
+- Store is volatile writable array: `/Users/ej/Downloads/wtd-app/src/lib/stores/notificationStore.ts:42`
 - Needed:
   - `GET /api/notifications`
   - `POST /api/notifications/read`
@@ -106,44 +106,44 @@ Required auth flow (server-authoritative):
 ### P2 (analytics / feed quality)
 
 11. Live reaction clicks are ephemeral animation only
-- Reaction click: `/Users/ej/Downloads/stockclaw-unified/src/routes/live/+page.svelte:111`
+- Reaction click: `/Users/ej/Downloads/wtd-app/src/routes/live/+page.svelte:111`
 - Needed:
   - `POST /api/activity/reaction`
   - optional aggregate endpoint for emoji heatmap
 
 12. Community post reactions in Intel panel have buttons but no handlers
-- No click handlers bound: `/Users/ej/Downloads/stockclaw-unified/src/components/terminal/IntelPanel.svelte:181`
+- No click handlers bound: `/Users/ej/Downloads/wtd-app/src/components/terminal/IntelPanel.svelte:181`
 - Needed:
   - bind handlers + `POST /api/community/posts/{id}/react`
 
 ## 3) Navigation gaps (page movement / UX flow gaps)
 
 1. `Signals -> COPY TRADE` only routes to terminal, no deep-link context
-- Source: `/Users/ej/Downloads/stockclaw-unified/src/routes/signals/+page.svelte:158`
+- Source: `/Users/ej/Downloads/wtd-app/src/routes/signals/+page.svelte:158`
 - Gap: selected signal is not carried to modal/draft
 - Fix: navigate with params or event bus, e.g. `/terminal?copyTradeSignalId=...`
 
 2. Home quick-nav has duplicate destination to passport
-- Source: `/Users/ej/Downloads/stockclaw-unified/src/routes/+page.svelte:252` and `/Users/ej/Downloads/stockclaw-unified/src/routes/+page.svelte:266`
+- Source: `/Users/ej/Downloads/wtd-app/src/routes/+page.svelte:252` and `/Users/ej/Downloads/wtd-app/src/routes/+page.svelte:266`
 - Gap: `PASSPORT` and `PORTFOLIO` both route to `/passport`
 - Fix: either split into separate portfolio route or rename/remove one CTA
 
 3. Community reaction buttons render as clickable but do nothing
-- Source: `/Users/ej/Downloads/stockclaw-unified/src/components/terminal/IntelPanel.svelte:181`
+- Source: `/Users/ej/Downloads/wtd-app/src/components/terminal/IntelPanel.svelte:181`
 - Gap: missing `on:click`
 
 4. Header back button can fail on direct-entry sessions
-- Source: `/Users/ej/Downloads/stockclaw-unified/src/components/layout/Header.svelte:100`
+- Source: `/Users/ej/Downloads/wtd-app/src/components/layout/Header.svelte:100`
 - Gap: `history.back()` has no fallback route
 - Fix: if history length <= 1 then `goto('/')`
 
 5. Arena wallet-gate connect bypasses full signup/auth sequence
-- Source: `/Users/ej/Downloads/stockclaw-unified/src/routes/arena/+page.svelte:1002`
+- Source: `/Users/ej/Downloads/wtd-app/src/routes/arena/+page.svelte:1002`
 - Gap: direct `connectWallet()` local transition, no auth/session handshake
 - Fix: open wallet modal flow and route through auth API
 
 6. `holdings` page is only redirect shell
-- Source: `/Users/ej/Downloads/stockclaw-unified/src/routes/holdings/+page.svelte:5`
+- Source: `/Users/ej/Downloads/wtd-app/src/routes/holdings/+page.svelte:5`
 - Gap: menu/links can imply dedicated page but it always redirects
 - Fix: remove route or map explicit dedicated holdings tab route
 

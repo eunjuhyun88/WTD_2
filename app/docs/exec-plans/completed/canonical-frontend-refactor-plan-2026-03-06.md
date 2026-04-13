@@ -2,7 +2,7 @@
 
 Date: 2026-03-06  
 Status: active  
-Scope: `/Users/ej/Downloads/maxidoge-clones/frontend`  
+Scope: `/Users/ej/Downloads/wtd-clones/frontend`  
 Assumption: `frontend/` is the only canonical implementation target. `backend/` is reference-only.
 
 ## Goal

@@ -105,7 +105,7 @@
 <div class="settings-page">
   <div class="settings-header">
     <h1 class="settings-title">⚙️ SETTINGS</h1>
-    <p class="settings-sub">Configure your Stockclaw experience</p>
+    <p class="settings-sub">Configure your wtd experience</p>
     <p class="settings-sync">
       {#if saving}Saving to cloud...{:else if loadedRemote}Synced with account settings{:else}Local mode{/if}
     </p>

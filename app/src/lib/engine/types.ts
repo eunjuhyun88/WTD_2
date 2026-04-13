@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Agent Engine v3 Core Types
+// WTD — Agent Engine v3 Core Types
 // ═══════════════════════════════════════════════════════════════
 
 // ─── Market Data (shared between client & server) ────────────

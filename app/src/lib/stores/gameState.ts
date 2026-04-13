@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Game State Store
+// WTD — Game State Store
 // ═══════════════════════════════════════════════════════════════
 
 import { writable, derived } from 'svelte/store';

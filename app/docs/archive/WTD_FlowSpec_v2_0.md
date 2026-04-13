@@ -1,4 +1,4 @@
-# STOCKCLAW — FlowSpec v2.0
+# WTD — FlowSpec v2.0
 
 > **기능 플로우 설계서 · Agent Engine v3 통합**
 > 각 기능 ID별 Before → Action → After · 상태전이 · 에러 처리
@@ -30,7 +30,7 @@
 
 | 항목 | 값 / 조건 |
 |------|----------|
-| 세션 상태 | 미인증 (`stockclaw_session` 쿠키 없음 또는 만료) |
+| 세션 상태 | 미인증 (`wtd_session` 쿠키 없음 또는 만료) |
 | 사용자 티어 | guest |
 | UI 상태 | `WalletModal.svelte` 오픈 상태 |
 | 기기 조건 | 브라우저에 MetaMask 확장 또는 지원 provider 설치됨 |
@@ -46,15 +46,15 @@
 7. 클라이언트: `POST /api/auth/verify-wallet { address, message, signature, provider }` 호출
 8. 서버: `ecrecover`로 서명 검증 → nonce 사용 처리(재사용 방지) → 세션 쿠키 발급
 9. 서버: `{ verified: true, linkedToUser, wallet }` 반환
-10. 클라이언트: `stockclaw_wallet` store 갱신, 사용자 티어 `connected`/`verified` 업데이트, 모달 닫힘
+10. 클라이언트: `wtd_wallet` store 갱신, 사용자 티어 `connected`/`verified` 업데이트, 모달 닫힘
 
 **After (사후 조건)**
 
 | 항목 | 기대 값 |
 |------|--------|
-| 세션 쿠키 | `stockclaw_session` 발급됨 (HttpOnly) |
+| 세션 쿠키 | `wtd_session` 발급됨 (HttpOnly) |
 | 사용자 티어 | `connected` (지갑만) 또는 `verified` (이메일+지갑) |
-| `stockclaw_wallet` store | `{ address, provider, connected: true }` 저장 |
+| `wtd_wallet` store | `{ address, provider, connected: true }` 저장 |
 | WalletModal | 닫힘 |
 | 보호 API 접근 | 정상 200 응답 |
 
@@ -99,7 +99,7 @@
 15. 서버: **v3 추가** — `user_passports` 신규 row 생성 (LP=0, tier=BRONZE)
 16. 서버: **v3 추가** — 8개 에이전트에 대한 `user_agent_progress` 초기 row 생성 (base Spec만 해금)
 17. 서버: `{ success: true, user, passport }` 반환
-18. 클라이언트: `stockclaw_profile` store 초기화, `passportStore` 초기화, 모달 닫힘
+18. 클라이언트: `wtd_profile` store 초기화, `passportStore` 초기화, 모달 닫힘
 
 **After**
 
@@ -164,7 +164,7 @@
 26. 사용자가 시그널 카드의 'Track' 버튼 클릭
 27. `POST /api/signals/track { pair, dir, confidence, entryPrice, currentPrice, source, note, ttlHours? }`
 28. 서버: `tracked_signals` 테이블에 신규 row 생성, 만료 시각 설정
-29. 클라이언트: `stockclaw_tracked` store 낙관적 업데이트 → 서버 ID로 교체
+29. 클라이언트: `wtd_tracked` store 낙관적 업데이트 → 서버 ID로 교체
 30. Signals/Community 피드에 tracked 항목 추가됨
 
 ---
@@ -183,7 +183,7 @@
 35. 사용자가 Passport > Positions에서 종료 버튼 클릭 (또는 TP/SL 자동)
 36. `POST /api/quick-trades/{id}/close { closePrice, status? }`
 37. 서버: status=closed/stopped, PnL 계산 저장
-38. 클라이언트: `stockclaw_quicktrades` 상태 갱신
+38. 클라이언트: `wtd_quicktrades` 상태 갱신
 
 **상태전이: 퀵트레이드**
 
@@ -201,7 +201,7 @@
 39. 사용자: 복수 시그널 선택 후 'Copy Trade' 클릭
 40. `POST /api/copy-trades/publish { selectedSignalIds[], draft, confidence? }`
 41. 서버: copy-trade run + quick_trade + signal converted 동시 처리
-42. 클라이언트: `stockclaw_signals`, `stockclaw_quicktrades` 동시 갱신
+42. 클라이언트: `wtd_signals`, `wtd_quicktrades` 동시 갱신
 
 ---
 
@@ -1358,19 +1358,19 @@ interface PassportAgentStats {
 
 | localStorage 키 | 저장 내용 | 갱신 트리거 |
 |-----------------|---------|-----------|
-| `stockclaw_state` | 앱 전역 상태 (pair, phase 등) | store 변경 시 |
-| `stockclaw_wallet` | 지갑 주소/연결 상태 | 인증 성공/로그아웃 |
-| `stockclaw_profile` | 사용자 프로필 캐시 | 로그인/프로필 수정 |
-| `stockclaw_match_history` | 과거 Arena 매치 기록 | result Phase 완료 |
-| `stockclaw_quicktrades` | 퀵트레이드 목록/상태 | open/close 액션 |
-| `stockclaw_tracked` | 추적 시그널 목록 | Track/convert 액션 |
-| `stockclaw_pnl` | 누적 PnL 데이터 | 포지션 종료 시 |
-| `stockclaw_signals` | 시그널 허브 데이터 | signals 페이지 진입 |
-| `stockclaw_community` | 커뮤니티 포스트 캐시 | posts API 응답 |
-| **`stockclaw_passport`** | Passport 메트릭 캐시 (v3) | 매치 결과/일배치 |
-| **`stockclaw_agents`** | 에이전트 진행도 + Spec 해금 (v3) | 매치 결과/Spec 해금 |
-| **`stockclaw_draft`** | 최근 드래프트 조합 캐시 (v3) | 드래프트 제출 시 |
-| **`stockclaw_lp`** | LP 잔액 + 티어 캐시 (v3) | LP 변동 시 |
+| `wtd_state` | 앱 전역 상태 (pair, phase 등) | store 변경 시 |
+| `wtd_wallet` | 지갑 주소/연결 상태 | 인증 성공/로그아웃 |
+| `wtd_profile` | 사용자 프로필 캐시 | 로그인/프로필 수정 |
+| `wtd_match_history` | 과거 Arena 매치 기록 | result Phase 완료 |
+| `wtd_quicktrades` | 퀵트레이드 목록/상태 | open/close 액션 |
+| `wtd_tracked` | 추적 시그널 목록 | Track/convert 액션 |
+| `wtd_pnl` | 누적 PnL 데이터 | 포지션 종료 시 |
+| `wtd_signals` | 시그널 허브 데이터 | signals 페이지 진입 |
+| `wtd_community` | 커뮤니티 포스트 캐시 | posts API 응답 |
+| **`wtd_passport`** | Passport 메트릭 캐시 (v3) | 매치 결과/일배치 |
+| **`wtd_agents`** | 에이전트 진행도 + Spec 해금 (v3) | 매치 결과/Spec 해금 |
+| **`wtd_draft`** | 최근 드래프트 조합 캐시 (v3) | 드래프트 제출 시 |
+| **`wtd_lp`** | LP 잔액 + 티어 캐시 (v3) | LP 변동 시 |
 
 ---
 
@@ -1476,7 +1476,7 @@ matchStore 갱신 흐름:
 ### 9.7 전체 데이터 초기화
 
 194. 사용자: 설정 > '전체 초기화' 버튼
-195. 클라이언트: 모든 `stockclaw_*` localStorage 키 삭제
+195. 클라이언트: 모든 `wtd_*` localStorage 키 삭제
 196. `window.location.reload()` 실행
 197. 앱이 기본값 상태로 재시작
 198. 서버 DB 데이터(matches, passports, memories, lp 등) 유지됨

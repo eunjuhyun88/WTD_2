@@ -4,8 +4,8 @@ Date: 2026-03-06
 Scope: `/terminal` 전면 UIUX 최적화 + 구조 리팩토링 (Design-First)
 
 ## 0) 기준 문서
-- Root guide: `/Users/ej/Downloads/maxidoge-clones/CLAUDE.md`
-- Active codebase guide: `/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md`
+- Root guide: `/Users/ej/Downloads/wtd-clones/CLAUDE.md`
+- Active codebase guide: `/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md`
 - Local authority:
   - `docs/product-specs/terminal.md`
   - `docs/FRONTEND.md`
@@ -14,7 +14,7 @@ Scope: `/terminal` 전면 UIUX 최적화 + 구조 리팩토링 (Design-First)
   - `docs/design-docs/arena-domain-model.md`
   - `docs/design-docs/learning-loop.md`
 - External fallback only for edge-case semantics:
-  - `STOCKCLAW_UNIFIED_DESIGN.md`
+  - `WTD_UNIFIED_DESIGN.md`
 
 ---
 

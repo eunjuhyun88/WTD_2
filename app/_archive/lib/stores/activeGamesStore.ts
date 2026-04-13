@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Active Games Store (Concurrent Match Manager)
+// WTD — Active Games Store (Concurrent Match Manager)
 // ═══════════════════════════════════════════════════════════════
 //
 // Manages up to 3 simultaneous Living Arena games.

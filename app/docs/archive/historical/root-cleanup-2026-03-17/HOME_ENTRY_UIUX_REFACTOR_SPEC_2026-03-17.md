@@ -10,9 +10,9 @@ Purpose:
 - and give the refactor a stable interaction model instead of another temporary landing page.
 
 Related docs:
-- [COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md)
-- [COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md)
-- [COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md)
+- [COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md)
+- [COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md)
+- [COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md)
 
 ---
 

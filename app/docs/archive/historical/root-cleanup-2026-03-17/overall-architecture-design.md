@@ -1,7 +1,7 @@
-# STOCKCLAW 전체 구조 설계 문서
+# WTD 전체 구조 설계 문서
 
 Date: 2026-02-21  
-Workspace: `/Users/ej/Downloads/stockclaw-unified`
+Workspace: `/Users/ej/Downloads/wtd-app`
 
 ## 1) 목적
 

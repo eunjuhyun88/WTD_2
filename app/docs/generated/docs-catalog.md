@@ -56,12 +56,12 @@
 | `docs/archive/MASTER_DESIGN.md` | `archive` | `tracked-only` | Historical artifact only. |
 | `docs/archive/PERSISTENCE_DESIGN.md` | `archive` | `tracked-only` | Historical artifact only. |
 | `docs/archive/README.md` | `archive-router` | `tracked-only` | Archive interpretation policy. |
-| `docs/archive/STOCKCLAW_DesignDoc_v1.md` | `archive` | `tracked-only` | Historical artifact only. |
-| `docs/archive/STOCKCLAW_Final_Integrated_Spec_v1.md` | `archive` | `tracked-only` | Historical artifact only. |
-| `docs/archive/STOCKCLAW_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.md` | `archive` | `tracked-only` | Historical artifact only. |
-| `docs/archive/STOCKCLAW_FlowSpec_v2_0.md` | `archive` | `tracked-only` | Historical artifact only. |
-| `docs/archive/STOCKCLAW_Implementation_Priority_v1.md` | `archive` | `tracked-only` | Historical artifact only. |
-| `docs/archive/STOCKCLAW_UserJourney_v1.md` | `archive` | `tracked-only` | Historical artifact only. |
+| `docs/archive/WTD_DesignDoc_v1.md` | `archive` | `tracked-only` | Historical artifact only. |
+| `docs/archive/WTD_Final_Integrated_Spec_v1.md` | `archive` | `tracked-only` | Historical artifact only. |
+| `docs/archive/WTD_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.md` | `archive` | `tracked-only` | Historical artifact only. |
+| `docs/archive/WTD_FlowSpec_v2_0.md` | `archive` | `tracked-only` | Historical artifact only. |
+| `docs/archive/WTD_Implementation_Priority_v1.md` | `archive` | `tracked-only` | Historical artifact only. |
+| `docs/archive/WTD_UserJourney_v1.md` | `archive` | `tracked-only` | Historical artifact only. |
 | `docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md` | `archive` | `tracked-only` | Historical artifact only. |
 | `docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_ARCHITECTURE_SPEC_2026-03-17.md` | `archive` | `tracked-only` | Historical artifact only. |
 | `docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md` | `archive` | `tracked-only` | Historical artifact only. |
@@ -82,11 +82,11 @@
 | `docs/archive/retire-candidates/root-cleanup-2026-03-17/github-issues-refactor.md` | `archive` | `tracked-only` | Historical artifact only. |
 | `docs/archive/retire-candidates/root-cleanup-2026-03-17/p0-alignment-checklist-latest.md` | `archive` | `tracked-only` | Historical artifact only. |
 | `docs/archive/retire-candidates/root-cleanup-2026-03-17/v3-direct-rewrite-status-2026-02-22.md` | `archive` | `tracked-only` | Historical artifact only. |
-| `docs/archive/retire-candidates/root-cleanup-2026-03-17/✅StockHoo_ The Complete Crypto Intelligence OS (3).md` | `archive` | `tracked-only` | Historical artifact only. |
+| `docs/archive/retire-candidates/root-cleanup-2026-03-17/✅WTD_ The Complete Crypto Intelligence OS (3).md` | `archive` | `tracked-only` | Historical artifact only. |
 | `docs/click-backend-navigation-audit.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
 | `docs/database-design.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
 | `docs/decisions/0001-shared-memento-memory-layer-2026-03-17.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
-| `docs/decisions/0002-cogochi-stockclaw-source-placement-2026-03-17.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
+| `docs/decisions/0002-cogochi-wtd-source-placement-2026-03-17.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
 | `docs/decisions/README.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
 | `docs/design-docs/arena-domain-model.md` | `design-doc` | `canonical` | Structured design document. |
 | `docs/design-docs/core-beliefs.md` | `design-doc` | `canonical` | Structured design document. |
@@ -171,5 +171,5 @@
 | `docs/terminal-uiux-optimization-v2.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
 | `docs/v3-direct-rewrite-status-2026-02-22.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
 | `docs/warning-priority-2026-03-06.md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
-| `docs/✅StockHoo_ The Complete Crypto Intelligence OS (3).md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
+| `docs/✅WTD_ The Complete Crypto Intelligence OS (3).md` | `unclassified` | `unknown` | Needs promotion or archive placement. |
 | `tools/README.md` | `tool-router` | `canonical` | Tool manifest authoring router. |

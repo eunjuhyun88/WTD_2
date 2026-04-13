@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Dune Analytics API Client (server-side) (B-05)
+// Dune Analytics API Client (server-side) (B-05)
 // ═══════════════════════════════════════════════════════════════
 // Pre-built queries for on-chain metrics
 

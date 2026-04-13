@@ -1,4 +1,4 @@
-# STOCKCLAW — System Design Document v1.0
+# WTD — System Design Document v1.0
 
 > **Crypto Decision Intelligence OS**
 > 2026-02-22
@@ -13,7 +13,7 @@
 
 ## 1. 설계 철학 — 왜 이렇게 만드는가
 
-### 1.1 핵심 사상 (StockHoo 비전에서 유래)
+### 1.1 핵심 사상 (WTD 비전에서 유래)
 
 ```
 "차트를 해석하는 AI가 아니라,
@@ -45,8 +45,8 @@ v3 (현재):
   ├── RAG 기억 → "경험이 쌓이되 P2W는 아닌 구조"
   ├── LLM Spec → "skill은 클로드나 gpt에 있는 걸 의미"
   ├── VPA + VALUATION + MACRO 에이전트 추가
-  ├── Exit Optimizer (StockHoo F09)
-  └── Stockclaw 4문서 통합 (Passport, Arena, Journey, Engagement)
+  ├── Exit Optimizer (WTD F09)
+  └── wtd 4문서 통합 (Passport, Arena, Journey, Engagement)
 ```
 
 ---
@@ -124,7 +124,7 @@ Cron:      Supabase Edge Functions / Vercel Cron
 ### 3.1 8 Agent Pool
 
 **왜 8개인가?**
-- StockHoo F10 "6관점 해석"에서 출발 (추세/파생/온체인/VPA/밸류/ICT)
+- WTD F10 "6관점 해석"에서 출발 (추세/파생/온체인/VPA/밸류/ICT)
 - VPA를 STRUCTURE에서 분리 (볼륨 가격 분석은 독자적 관점)
 - MACRO 추가 (DXY, S&P, 금리 — 크립토 상관관계 핵심)
 - SENTI 유지 (F&G + 소셜)
@@ -563,7 +563,7 @@ LP 보상:
 
 ## 8. Exit Optimizer
 
-**StockHoo F09에서 유래 — 현재 플랜에 없었던 것 추가**
+**WTD F09에서 유래 — 현재 플랜에 없었던 것 추가**
 
 ```typescript
 interface ExitRecommendation {
@@ -809,9 +809,9 @@ agent_challenges     — Challenge 기록 (user_dir, agent_dir, outcome)
 
 ---
 
-## 17. StockHoo 매핑 참조
+## 17. WTD 매핑 참조
 
-| StockHoo 기능 | 우리 구현 |
+| WTD 기능 | 우리 구현 |
 |-------------|---------|
 | F07 Entry Score | 3 에이전트 가중 합산 → confidence |
 | F08 Direction Score | 에이전트 합의 → direction |
