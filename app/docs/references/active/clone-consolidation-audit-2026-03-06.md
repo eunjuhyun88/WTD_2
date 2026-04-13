@@ -1,7 +1,7 @@
-# STOCKCLAW Clone Consolidation Audit (2026-03-06)
+# WTD Clone Consolidation Audit (2026-03-06)
 
 작성일: 2026-03-06  
-대상: `/Users/ej/Downloads/maxidoge-clones/frontend`, `/Users/ej/Downloads/maxidoge-clones/backend`  
+대상: `/Users/ej/Downloads/wtd-clones/frontend`, `/Users/ej/Downloads/wtd-clones/backend`  
 목적: `frontend/`와 `backend/`가 실제로 무엇인지 판별하고, 정본을 기준으로 어떤 파일을 가져오고 어떤 파일을 버릴지 결정한다.
 
 ---
@@ -12,14 +12,14 @@
 
 - `frontend/`와 `backend/`는 둘 다 **SvelteKit 풀스택 앱**이다.
 - 둘 다 `src/routes`, `src/routes/api`, `src/lib/server`, `src/components`를 갖고 있다.
-- 둘 다 같은 원격 저장소 `git@github.com:eunjuhyun88/Maxidoge.git`를 바라본다.
+- 둘 다 같은 원격 저장소 `git@github.com:eunjuhyun88/WTD.git`를 바라본다.
 - 따라서 현재 구조는 "프론트/백엔드 분리"가 아니라 **같은 앱의 복제본 두 벌을 병렬로 수정한 상태**로 보는 것이 맞다.
 
 정본 판정은 문서 기준으로 이미 내려져 있다.
 
 - 루트 [`CLAUDE.md`](../CLAUDE.md)는 `frontend/`를 메인 코드베이스로 지정한다.
 - [`README.md`](../README.md)와 [`docs/README.md`](./README.md)는 sibling clone을 비정본으로 간주한다.
-- [`backend/CLAUDE.md`](/Users/ej/Downloads/maxidoge-clones/backend/CLAUDE.md)는 `backend/`가 deprecated이며 `frontend/`로 통합되었다고 명시한다.
+- [`backend/CLAUDE.md`](/Users/ej/Downloads/wtd-clones/backend/CLAUDE.md)는 `backend/`가 deprecated이며 `frontend/`로 통합되었다고 명시한다.
 
 따라서 **앞으로의 정본은 `frontend/` 하나로 고정**한다.
 
@@ -53,10 +53,10 @@
 
 ### 3.1 Git / 저장소 근거
 
-- `frontend/` git top-level: `/Users/ej/Downloads/maxidoge-clones/frontend`
-- `backend/` git top-level: `/Users/ej/Downloads/maxidoge-clones/backend`
+- `frontend/` git top-level: `/Users/ej/Downloads/wtd-clones/frontend`
+- `backend/` git top-level: `/Users/ej/Downloads/wtd-clones/backend`
 - 두 repo의 remote는 동일:
-  - `git@github.com:eunjuhyun88/Maxidoge.git`
+  - `git@github.com:eunjuhyun88/WTD.git`
 - 현재 브랜치:
   - `frontend`: `codex/terminal-uiux-gtm-wip`
   - `backend`: `feat/chart-trade-overlay`

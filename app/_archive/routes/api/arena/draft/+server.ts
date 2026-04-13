@@ -1,4 +1,4 @@
-// Stockclaw — Arena Draft Submit
+// Arena Draft Submit
 // POST /api/arena/draft — Submit agent draft for a match
 
 import { json } from '@sveltejs/kit';

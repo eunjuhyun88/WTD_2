@@ -1,4 +1,4 @@
-# STOCKCLAW v3 Interaction Call Map
+# WTD v3 Interaction Call Map
 
 작성일: 2026-02-22  
 목적: "무엇을 누르면 어디가 호출되고, 어떤 상태가 바뀌며, 어떤 탭/패널이 같이 바뀌는지"를 코드 기준으로 고정한다.

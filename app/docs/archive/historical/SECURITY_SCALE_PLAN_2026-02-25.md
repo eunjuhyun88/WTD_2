@@ -18,7 +18,7 @@
 2. Set env:
    - `RATE_LIMIT_REDIS_REST_URL`
    - `RATE_LIMIT_REDIS_REST_TOKEN`
-   - `RATE_LIMIT_REDIS_PREFIX=stockclaw:rl:prod`
+   - `RATE_LIMIT_REDIS_PREFIX=wtd:rl:prod`
 3. Observe 429 rate, latency, fallback hit count
 4. Disable DB cleanup cron if Redis-only 운영으로 전환 시 별도 정책 수립
 

@@ -1,9 +1,9 @@
-# STOCKCLAW — Usability Redesign Spec
+# WTD — Usability Redesign Spec
 
 > Date: 2026-03-09
 > Status: active design authority for usability decisions
 > 기준: "실제 유저가 얼마나 빠르고 편하게 원하는 걸 할 수 있는가"
-> 선행 문서: `STOCKCLAW_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.md` (원칙), `product-specs/` (페이지별 Job)
+> 선행 문서: `WTD_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.md` (원칙), `product-specs/` (페이지별 Job)
 
 ---
 
@@ -838,4 +838,4 @@ Engagement 레이어는 usability 위에 얹는다. v1에서 가져올 것:
 | `page-specs/*.md` | 현재 코드 동작 계약 |
 | `UserJourney v1` (archive) | Engagement 레이어 참고 |
 | `full-system-redesign-blueprint` | 기술 아키텍처 참고 |
-| `STOCKCLAW_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.md` | UX 원칙 원본 |
+| `WTD_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.md` | UX 원칙 원본 |

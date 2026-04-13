@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Coin Metrics Community API Client (server-side)
+// Coin Metrics Community API Client (server-side)
 // ═══════════════════════════════════════════════════════════════
 // On-chain analytics for FLOW + VALUATION agents (CryptoQuant 대체)
 // Community API — 무료, API 키 불필요

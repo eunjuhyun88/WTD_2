@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — War Room Store (Client-side State)
+// WTD — War Room Store (Client-side State)
 // ═══════════════════════════════════════════════════════════════
 //
 // Manages the 3-round War Room debate UI state.

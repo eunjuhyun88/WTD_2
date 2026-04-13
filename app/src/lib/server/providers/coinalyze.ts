@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Coinalyze Raw Loader (providers/ home, P1.A0 slice 3)
+// Coinalyze Raw Loader (providers/ home, P1.A0 slice 3)
 // ═══════════════════════════════════════════════════════════════
 //
 // Canonical location for Coinalyze REST fetchers. This file is the

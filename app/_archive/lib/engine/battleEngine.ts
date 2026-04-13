@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Living Battle Engine
+// WTD — Living Battle Engine
 // ═══════════════════════════════════════════════════════════════
 //
 // Replaces the legacy random-walk battle simulation with:

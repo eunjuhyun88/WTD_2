@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Terminal feature public types
+// Terminal feature public types
 // ═══════════════════════════════════════════════════════════════
 //
 // This is the first file of the `src/lib/features/terminal/` layer,

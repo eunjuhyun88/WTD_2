@@ -1,10 +1,10 @@
-# STOCKCLAW P0 정렬 체크리스트 (Latest Baseline)
+# WTD P0 정렬 체크리스트 (Latest Baseline)
 
 작성일: 2026-02-22  
 기준 문서:
-1. `docs/STOCKCLAW_Final_Integrated_Spec_v1.md`
-2. `docs/STOCKCLAW_FlowSpec_v2_0.md`
-3. `docs/STOCKCLAW_UserJourney_v1.md`
+1. `docs/WTD_Final_Integrated_Spec_v1.md`
+2. `docs/WTD_FlowSpec_v2_0.md`
+3. `docs/WTD_UserJourney_v1.md`
 4. `docs/archive/historical/root-cleanup-2026-03-17/terminal-ia-reset-v1.md`
 5. `docs/references/active/structure-mismatch-audit-latest.md`
 

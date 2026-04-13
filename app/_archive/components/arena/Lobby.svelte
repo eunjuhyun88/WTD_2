@@ -550,7 +550,7 @@
 
 <style>
   /* ═══════════════════════════════════════════════════════════════
-     STOCKCLAW — Arena Lobby v3
+     WTD — Arena Lobby v3
      Fighting Game Select Screen × Crypto Terminal
      ═══════════════════════════════════════════════════════════════ */
 

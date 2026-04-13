@@ -1,7 +1,7 @@
-# STOCKCLAW — Final Integrated System Spec v1.0
+# WTD — Final Integrated System Spec v1.0
 
 > **Crypto Intelligence OS × Arena Battle × Passport Progression**
-> 2026-02-22 · 모든 Stockclaw 문서 + StockHoo 비전 + Agent Engine v3 통합
+> 2026-02-22 · 모든 wtd 문서 + Agent Engine v3 통합
 
 ---
 
@@ -744,7 +744,7 @@ Oracle = 에이전트별 적중률 + Spec별 성과 공개 리더보드
 
 #### Oracle 확장 — Spec별 표시
 
-기존 Stockclaw 5개 에이전트 → 8개 에이전트 × 4 Spec = 32개 행
+기존 wtd 5개 에이전트 → 8개 에이전트 × 4 Spec = 32개 행
 
 ```
 Oracle 리더보드 (30일 기준):

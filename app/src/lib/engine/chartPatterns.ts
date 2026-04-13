@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — 8 Chart Pattern Generators
+// WTD — 8 Chart Pattern Generators
 // ═══════════════════════════════════════════════════════════════
 
 export interface Candle {

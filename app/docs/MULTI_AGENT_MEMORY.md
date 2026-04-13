@@ -1,4 +1,4 @@
-# STOCKCLAW Multi-Agent Memory Layout
+# WTD Multi-Agent Memory Layout
 
 Purpose:
 - keep `CHATBATTLE/` as the canonical implementation repo
@@ -14,13 +14,13 @@ Status:
 There are three different sources of truth:
 
 1. Repo truth
-   - path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+   - path: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
    - contains code, canonical docs, specs, decisions, and generated maps
 2. Agent memory
-   - path: `/Users/ej/Downloads/maxidoge-clones/.memento/memories/*`
+   - path: `/Users/ej/Downloads/wtd-clones/.memento/memories/*`
    - contains per-agent durable notes, working preferences, and role memory
 3. Runtime relay
-   - path: `/Users/ej/Downloads/maxidoge-clones/.memento/runtime/stockclaw`
+   - path: `/Users/ej/Downloads/wtd-clones/.memento/runtime/wtd`
    - contains cross-agent relay, retrieval, distill, and handoff inbox material
 
 Non-negotiable rule:
@@ -30,7 +30,7 @@ Non-negotiable rule:
 ## 2. Current Shared Layout
 
 ```text
-/Users/ej/Downloads/maxidoge-clones/
+/Users/ej/Downloads/wtd-clones/
   CHATBATTLE/                         # canonical repo
   CHATBATTLE/.claude/worktrees/*      # agent worktrees
   .memento/
@@ -40,13 +40,13 @@ Non-negotiable rule:
       implementer-systems/
       reviewer/
     runtime/
-      stockclaw/
+      wtd/
         relay/
         retrieval/
         distill/
         handoff-inbox/
     registry/
-      stockclaw-memory-map.md
+      wtd-memory-map.md
 ```
 
 ## 3. Agent Roles
@@ -123,7 +123,7 @@ Use `.memento/memories/<agent>/MEMORY.md` for:
 - repeated lessons
 - stable working assumptions
 
-Use `.memento/runtime/stockclaw/handoff-inbox/` for:
+Use `.memento/runtime/wtd/handoff-inbox/` for:
 - cross-worktree relay payloads
 - normalized summaries for retrieval
 
@@ -166,9 +166,9 @@ What it does:
 
 - packages the current branch checkpoint, brief, and handoff
 - writes a Markdown and JSON relay payload into:
-  - `/Users/ej/Downloads/maxidoge-clones/.memento/runtime/stockclaw/handoff-inbox`
+  - `/Users/ej/Downloads/wtd-clones/.memento/runtime/wtd/handoff-inbox`
 - refreshes a latest relay pointer for the branch under:
-  - `/Users/ej/Downloads/maxidoge-clones/.memento/runtime/stockclaw/relay`
+  - `/Users/ej/Downloads/wtd-clones/.memento/runtime/wtd/relay`
 
 Rule:
 

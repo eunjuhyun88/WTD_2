@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — GMX V2 Close Position API
+// GMX V2 Close Position API
 // ═══════════════════════════════════════════════════════════════
 // POST /api/gmx/close
 // Builds MarketDecrease calldata for closing a GMX position.

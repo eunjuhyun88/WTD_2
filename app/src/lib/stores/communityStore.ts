@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Community Posts Store (localStorage persisted)
+// WTD — Community Posts Store (localStorage persisted)
 // ═══════════════════════════════════════════════════════════════
 
 import { writable, derived, get } from 'svelte/store';

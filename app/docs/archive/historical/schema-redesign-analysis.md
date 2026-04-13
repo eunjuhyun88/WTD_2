@@ -1,4 +1,4 @@
-# STOCKCLAW Schema Redesign Analysis (Page/Reaction Based)
+# WTD Schema Redesign Analysis (Page/Reaction Based)
 
 ## 1) Scope
 

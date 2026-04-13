@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Chart Coordinate Utilities
+// Chart Coordinate Utilities
 // ═══════════════════════════════════════════════════════════════
 // Shared formatting + time normalization for chart modules.
 // Coordinate conversion (toChartPrice, toChartX, etc.) lives in

@@ -1,4 +1,4 @@
-// Stockclaw — Arena Analysis
+// Arena Analysis
 // POST /api/arena/analyze — Run agent pipeline for a match
 
 import { json } from '@sveltejs/kit';

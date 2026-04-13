@@ -24,7 +24,7 @@
 
 <div class="phase-bar">
   <div class="pb-left">
-    <span class="pb-logo">STOCKCLAW</span>
+    <span class="pb-logo">WTD</span>
     <span class="pb-sep">|</span>
     <span class="pb-price">{fmtPrice}</span>
   </div>

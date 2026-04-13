@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Raw Source Adapters (Phase 1 A-P0 slice 1)
+// Raw Source Adapters (Phase 1 A-P0 slice 1)
 // ═══════════════════════════════════════════════════════════════
 //
 // Typed binding between `KnownRawId` (from `src/lib/contracts/ids.ts`)

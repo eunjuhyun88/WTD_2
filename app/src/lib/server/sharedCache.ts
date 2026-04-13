@@ -35,7 +35,7 @@ function getRedisRestConfig(): RedisRestConfig | null {
   );
   if (!url || !token) return null;
 
-  const keyPrefix = env.SHARED_CACHE_REDIS_PREFIX?.trim() || 'stockclaw:cache';
+  const keyPrefix = env.SHARED_CACHE_REDIS_PREFIX?.trim() || 'wtd:cache';
   const timeoutRaw = env.SHARED_CACHE_REDIS_TIMEOUT_MS;
   const timeoutParsed = typeof timeoutRaw === 'string' ? Number.parseInt(timeoutRaw, 10) : Number.NaN;
   const timeoutMs = Number.isFinite(timeoutParsed) ? Math.max(500, Math.min(10_000, timeoutParsed)) : 3_000;

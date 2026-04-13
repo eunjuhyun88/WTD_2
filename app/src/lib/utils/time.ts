@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  STOCKCLAW — Shared Time Formatting Utilities
+//  WTD — Shared Time Formatting Utilities
 // ═══════════════════════════════════════════════════════════════
 
 /**

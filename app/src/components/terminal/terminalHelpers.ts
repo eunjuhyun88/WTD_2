@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  STOCKCLAW — Terminal Pure Helper Functions
+//  WTD — Terminal Pure Helper Functions
 //  Extracted from terminal/+page.svelte for maintainability
 // ═══════════════════════════════════════════════════════════════
 

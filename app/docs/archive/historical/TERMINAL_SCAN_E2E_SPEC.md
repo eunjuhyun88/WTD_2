@@ -1,4 +1,4 @@
-# STOCKCLAW Terminal Scan E2E Spec
+# WTD Terminal Scan E2E Spec
 
 작성일: 2026-02-22
 목적: 차트 변경 -> SCAN 클릭 1회 기준으로, 좌/중앙/우 패널과 히스토리/채팅/타 페이지 반영까지 제품 동작을 고정한다.
@@ -104,7 +104,7 @@ type ScanTab = {
 1. 동일 `pair+timeframe` 재스캔 시 같은 탭에 결과 prepend
 2. 탭 최대 개수 `6`
 3. 탭당 시그널 최대 `60`
-4. `localStorage` 키 `stockclaw.warroom.scanstate.v1`에 저장/복원
+4. `localStorage` 키 `wtd.warroom.scanstate.v1`에 저장/복원
 
 UI 정책:
 1. `LIVE FEED` + 스캔 탭 버튼을 가로 스크롤로 유지

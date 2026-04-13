@@ -11,7 +11,7 @@ Purpose:
 2. `docs/SYSTEM_INTENT.md`
    - Repo-local product thesis and architectural invariants aligned to the official IA.
 3. `docs/design-docs/unified-product-model.md`
-   - Merged StockClaw + Cogochi surface model, object model, and product loops.
+   - Merged WTD + Cogochi surface model, object model, and product loops.
 4. `docs/CONTEXT_ENGINEERING.md`
    - Stable context-loading and retrieval policy.
 5. `docs/design-docs/core-beliefs.md`

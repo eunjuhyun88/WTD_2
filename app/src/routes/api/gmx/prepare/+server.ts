@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — GMX V2 Order Prepare API
+// GMX V2 Order Prepare API
 // ═══════════════════════════════════════════════════════════════
 // POST /api/gmx/prepare
 // Builds multicall calldata for opening a GMX position.

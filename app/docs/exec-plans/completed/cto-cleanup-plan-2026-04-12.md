@@ -128,7 +128,7 @@ git fetch origin --prune
 git log main..origin/main --oneline | wc -l        # 기대: 13
 git rev-parse origin/main                           # 기대: bf188db...
 git worktree list | wc -l                           # 기대: 28 (registered + root + /private/tmp)
-ls /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/ | wc -l  # 기대: 43
+ls /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/ | wc -l  # 기대: 43
 gh pr list --repo eunjuhyun88/CHATBATTLE --state open --json number | jq length  # 기대: 3
 ```
 
@@ -202,7 +202,7 @@ report.push(sh('git worktree list'));
 report.push('```');
 
 // 2. Filesystem vs git delta (orphan detection)
-const fs = sh('ls /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/')
+const fs = sh('ls /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/')
   .split('\n').filter(Boolean).sort();
 const registered = sh('git worktree list --porcelain')
   .split('\n').filter(l => l.startsWith('worktree '))
@@ -262,7 +262,7 @@ console.log(`[observer] orphans: ${orphans.length}, registered: ${registered.len
 
 ### 분석 단계
 ```bash
-cd /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/zealous-goodall
+cd /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/zealous-goodall
 git fetch origin
 git show 5415b48 --stat
 # cb21830 (origin 의 #36 merge) 위치 확인
@@ -331,10 +331,10 @@ git commit
 - `git log main..origin/main | wc -l == 0`
 
 ### 액션
-1. 현재 `/Users/ej/Projects/maxidoge-clones/CLAUDE.md` 백업:
+1. 현재 `/Users/ej/Projects/wtd-clones/CLAUDE.md` 백업:
    ```bash
-   cp /Users/ej/Projects/maxidoge-clones/CLAUDE.md \
-      /Users/ej/Projects/maxidoge-clones/CLAUDE.md.bak-2026-04-12
+   cp /Users/ej/Projects/wtd-clones/CLAUDE.md \
+      /Users/ej/Projects/wtd-clones/CLAUDE.md.bak-2026-04-12
    ```
 2. **rewrite proposal 2026-04-12 의 새 내용** 으로 전체 덮어쓰기 (`root-claude-md-rewrite-proposal-2026-04-12.md` 의 "Proposed New Content" 섹션)
 3. 차이 `git diff` 로 검증
@@ -418,7 +418,7 @@ git log origin/main..HEAD --oneline  # empty 확인 (merged 재확인)
 
 ### 액션 (한 워크트리 당)
 ```bash
-cd /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/heuristic-knuth
+cd /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/heuristic-knuth
 git worktree remove <name>
 git branch -d claude/<name>       # merged 이므로 -d 로 충분
 ```
@@ -485,7 +485,7 @@ git log origin/feat/zoom1-terminal-deeplink --oneline -5
 
 ### 액션
 ```bash
-git worktree remove /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/zoom1-terminal --force
+git worktree remove /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/zoom1-terminal --force
 # --force 이유: feat branch 가 아직 ancestor 아니지만 내 것임을 명시적으로 override
 
 git branch -D feat/zoom1-terminal-deeplink
@@ -572,8 +572,8 @@ HEAD = (P9.1 에서 확인)
 **실행 (YES 케이스, 사용자 명시 승인 후)**:
 ```bash
 # zealous-goodall 에서
-cd /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/zealous-goodall
-git worktree remove /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/heuristic-knuth
+cd /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/zealous-goodall
+git worktree remove /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/heuristic-knuth
 git branch -d claude/heuristic-knuth
 ```
 
@@ -712,5 +712,5 @@ DONE
 ## References
 
 - Rewrite proposal: `root-claude-md-rewrite-proposal-2026-04-12.md` (same dir)
-- Memory: `~/.claude/projects/-Users-ej-Projects-maxidoge-clones-CHATBATTLE/memory/MEMORY.md`
+- Memory: `~/.claude/projects/-Users-ej-Projects-wtd-clones-CHATBATTLE/memory/MEMORY.md`
 - AGENT_WATCH_LOG: `docs/AGENT_WATCH_LOG.md`

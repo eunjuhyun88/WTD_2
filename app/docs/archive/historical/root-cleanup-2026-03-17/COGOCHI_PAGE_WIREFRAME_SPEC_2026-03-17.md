@@ -6,8 +6,8 @@
 - 디자인, 프론트엔드, PM이 같은 화면 언어를 쓰도록 만든다.
 
 관련 문서:
-- [COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md)
-- [COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md)
+- [COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md)
+- [COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md)
 
 ---
 

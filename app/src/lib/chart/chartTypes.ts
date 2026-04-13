@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Chart Type Definitions
+// Chart Type Definitions
 // ═══════════════════════════════════════════════════════════════
 // TypeScript interfaces for lightweight-charts integration.
 // type-only imports are SSR-safe (erased at compile time).

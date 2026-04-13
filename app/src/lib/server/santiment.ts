@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Santiment GraphQL API Client (server-side)
+// Santiment GraphQL API Client (server-side)
 // ═══════════════════════════════════════════════════════════════
 // Social sentiment via Santiment (LunarCrush 대체)
 // Provides: sentiment_balance, social_volume, social_dominance

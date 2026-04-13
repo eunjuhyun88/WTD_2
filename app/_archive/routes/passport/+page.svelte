@@ -556,7 +556,7 @@
     <div class="passport-card">
       <!-- ═══ RIBBON ═══ -->
       <div class="card-ribbon">
-        <span class="ribbon-text">Stockclaw TRADER PASSPORT</span>
+        <span class="ribbon-text">wtd TRADER PASSPORT</span>
       </div>
 
       <!-- ═══ UNIFIED HEADER: PROFILE + PORTFOLIO ═══ -->

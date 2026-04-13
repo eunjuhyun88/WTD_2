@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — EIP-712 Typed Data Signing
+// WTD — EIP-712 Typed Data Signing
 // ═══════════════════════════════════════════════════════════════
 // Signs EIP-712 typed data using the user's connected wallet.
 // This is the ONE crypto operation that MUST happen in the browser

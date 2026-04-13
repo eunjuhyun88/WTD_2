@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — On-chain Alert Rules Engine (server-side)
+// On-chain Alert Rules Engine (server-side)
 // ═══════════════════════════════════════════════════════════════
 // 텔레그램 봇 스타일 실시간 알림 규칙:
 //   @bitcoin_mvrv  → MVRV zone 전환 알림

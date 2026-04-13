@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — CryptoQuant Client (client-side)
+// WTD — CryptoQuant Client (client-side)
 // ═══════════════════════════════════════════════════════════════
 // Wraps /api/onchain/cryptoquant proxy for FLOW + VALUATION agents
 

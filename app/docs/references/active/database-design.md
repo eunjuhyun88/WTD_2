@@ -5,7 +5,7 @@
 > - `docs/references/active/schema-redesign-analysis.md`
 > - `db/migrations/0002_unify_legacy_plus_events.sql`
 
-이 문서는 STOCKCLAW의 현재 in-memory/localStorage 상태를 서버 DB로 옮기기 위한 기준 스키마입니다.
+이 문서는 WTD의 현재 in-memory/localStorage 상태를 서버 DB로 옮기기 위한 기준 스키마입니다.
 
 ## 1) Design Goals
 
@@ -104,7 +104,7 @@ psql "$DATABASE_URL" -f db/migrations/0001_init_postgres.sql
 
 - in-memory 데이터는 서버 재시작 시 유실되므로 과거 데이터 백필은 제한적
 - localStorage 데이터는 사용자 로그인 후 `import` API로 업로드하는 방식 권장
-- 키 불일치(`agentData` vs `stockclaw_agents`)는 import 전에 정규화 필요
+- 키 불일치(`agentData` vs `wtd_agents`)는 import 전에 정규화 필요
 
 ## 9) Open Decisions
 

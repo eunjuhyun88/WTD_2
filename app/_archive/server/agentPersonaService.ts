@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Agent Persona Service (War Room LLM Debate)
+// WTD — Agent Persona Service (War Room LLM Debate)
 // ═══════════════════════════════════════════════════════════════
 //
 // Defines agent personas used by warRoomService.ts for the

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — LunarCrush Social Client
+// WTD — LunarCrush Social Client
 // ═══════════════════════════════════════════════════════════════
 // Client-side wrapper for /api/senti/social proxy
 // Maps to: SENTI agent → SOCIAL_VOLUME, SOCIAL_SENTIMENT

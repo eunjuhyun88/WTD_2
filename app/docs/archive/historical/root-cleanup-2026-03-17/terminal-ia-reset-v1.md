@@ -1,10 +1,10 @@
-# STOCKCLAW Terminal IA Reset v1
+# WTD Terminal IA Reset v1
 
 Updated: 2026-02-22  
 Source alignment:
-- `/Users/ej/Downloads/STOCKCLAW_Final_Integrated_Spec_v1.md`
-- `/Users/ej/Downloads/STOCKCLAW_DesignDoc_v1.md`
-- `/Users/ej/Downloads/STOCKCLAW_UserJourney_v1.md`
+- `/Users/ej/Downloads/WTD_Final_Integrated_Spec_v1.md`
+- `/Users/ej/Downloads/WTD_DesignDoc_v1.md`
+- `/Users/ej/Downloads/WTD_UserJourney_v1.md`
 
 ## 1. 목적
 현재 `/terminal`은 기능이 계속 추가되며 "보여줘야 할 핵심"과 "상황별 보조 정보"가 섞였습니다.  
@@ -33,7 +33,7 @@ Source alignment:
 ---
 
 ## 3. 설계 원칙 (상위 문서 반영)
-`STOCKCLAW_DesignDoc_v1.md`와 `STOCKCLAW_UserJourney_v1.md`를 반영한 Terminal 원칙입니다.
+`WTD_DesignDoc_v1.md`와 `WTD_UserJourney_v1.md`를 반영한 Terminal 원칙입니다.
 
 1. 독립 판단 우선: 방향/합의 노출은 사용자 행동 단계와 맞춰야 함
 2. 한 화면 한 목표: 화면 영역별 1차 책임을 고정

@@ -203,7 +203,7 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
 
   if (typeof CoinbaseWalletSDK === 'function') {
     const sdk = new CoinbaseWalletSDK({
-      appName: 'Stockclaw',
+      appName: 'wtd',
       appChainIds: [getPreferredChainId()],
     });
     provider = typeof sdk?.makeWeb3Provider === 'function'
@@ -213,7 +213,7 @@ async function getCoinbaseProvider(): Promise<Eip1193Provider> {
         : null;
   } else if (typeof mod?.createCoinbaseWalletSDK === 'function') {
     const sdk = mod.createCoinbaseWalletSDK({
-      appName: 'Stockclaw',
+      appName: 'wtd',
       appChainIds: [getPreferredChainId()],
     });
     provider = typeof sdk?.makeWeb3Provider === 'function'
@@ -254,7 +254,7 @@ async function getMetaMaskSdkProvider(): Promise<Eip1193Provider> {
   }
 
   const sdk = new MetaMaskSDK({
-    dappMetadata: { name: 'Stockclaw', url: typeof window !== 'undefined' ? window.location.origin : '' },
+    dappMetadata: { name: 'wtd', url: typeof window !== 'undefined' ? window.location.origin : '' },
     checkInstallationImmediately: false,
   });
 
@@ -340,7 +340,7 @@ async function getBaseAccountProvider(): Promise<Eip1193Provider> {
   }
 
   const sdk = createBaseAccountSDK({
-    appName: 'Stockclaw',
+    appName: 'wtd',
   });
 
   const provider = sdk.getProvider?.() ?? sdk;

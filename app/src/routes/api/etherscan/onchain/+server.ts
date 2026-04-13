@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — On-chain Data Proxy (Etherscan + Dune)
+// On-chain Data Proxy (Etherscan + Dune)
 // ═══════════════════════════════════════════════════════════════
 // Exposes server-side on-chain data to client via REST
 // Gas oracle + exchange netflow + ETH supply/price + Dune whale/active addr

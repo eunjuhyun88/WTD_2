@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — RAG Embedding: Deterministic 256d Vector Builder
+// WTD — RAG Embedding: Deterministic 256d Vector Builder
 // ═══════════════════════════════════════════════════════════════
 //
 // 48개 팩터 + 메타데이터로부터 256차원 벡터를 결정론적으로 생성.

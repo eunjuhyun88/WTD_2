@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — 5-Phase Match Engine (v3)
+// WTD — 5-Phase Match Engine (v3)
 // ═══════════════════════════════════════════════════════════════
 
 import type { Phase } from '$lib/stores/gameState';

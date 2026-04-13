@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Match History Store (localStorage persisted)
+// WTD — Match History Store (localStorage persisted)
 // ═══════════════════════════════════════════════════════════════
 
 import { writable, derived } from 'svelte/store';

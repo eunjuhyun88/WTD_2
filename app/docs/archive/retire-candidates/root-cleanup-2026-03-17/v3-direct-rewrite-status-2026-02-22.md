@@ -1,4 +1,4 @@
-# STOCKCLAW v3 Direct Rewrite Status (2026-02-22)
+# WTD v3 Direct Rewrite Status (2026-02-22)
 
 ## Scope
 - Arena page: 11-phase 분기 제거, 5-phase(`DRAFT → ANALYSIS → HYPOTHESIS → BATTLE → RESULT`) 기준으로 전환

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Agent Bridge (v3 AGENT_POOL → AgentDef[])
+// WTD — Agent Bridge (v3 AGENT_POOL → AgentDef[])
 // ═══════════════════════════════════════════════════════════════
 //
 // S-01: data/agents.ts를 AGENT_POOL 기반 브릿지로 교체.

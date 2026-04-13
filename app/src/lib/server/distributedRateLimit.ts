@@ -56,7 +56,7 @@ function getRedisRestConfig(): RedisRestConfig | null {
   const token = env.RATE_LIMIT_REDIS_REST_TOKEN?.trim() || env.UPSTASH_REDIS_REST_TOKEN?.trim() || '';
   if (!url || !token) return null;
 
-  const keyPrefix = env.RATE_LIMIT_REDIS_PREFIX?.trim() || 'stockclaw:rl';
+  const keyPrefix = env.RATE_LIMIT_REDIS_PREFIX?.trim() || 'wtd:rl';
   const timeoutRaw = env.RATE_LIMIT_REDIS_TIMEOUT_MS;
   const timeoutParsed = typeof timeoutRaw === 'string' ? Number.parseInt(timeoutRaw, 10) : Number.NaN;
   const timeoutMs = Number.isFinite(timeoutParsed) ? Math.max(500, Math.min(10_000, timeoutParsed)) : 3_000;

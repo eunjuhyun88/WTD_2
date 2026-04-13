@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Multi-Asset Opportunity Scanner
+// WTD — Multi-Asset Opportunity Scanner
 // ═══════════════════════════════════════════════════════════════
 // Lightweight scanning of trending coins → composite opportunity score
 // Used by: auto multi-scan, comparison mode, alert engine

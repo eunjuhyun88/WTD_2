@@ -1,4 +1,4 @@
-# STOCKCLAW Current User Journey Design
+# WTD Current User Journey Design
 
 작성일: 2026-03-07  
 기준 워크스페이스: `frontend/`  
@@ -18,7 +18,7 @@
 
 ## 2. 제품 경험 한 줄 요약
 
-STOCKCLAW의 현재 경험은 아래 루프로 읽는 것이 가장 정확하다.
+WTD의 현재 경험은 아래 루프로 읽는 것이 가장 정확하다.
 
 ```mermaid
 flowchart LR

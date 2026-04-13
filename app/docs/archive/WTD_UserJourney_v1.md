@@ -1,4 +1,4 @@
-# STOCKCLAW — User Journey & Lifecycle v1.0
+# WTD — User Journey & Lifecycle v1.0
 
 > **유저가 경험하는 전체 여정 — 첫 접속부터 마스터까지**
 > 2026-02-22
@@ -62,7 +62,7 @@ P0-1: 노출
 
 P0-2: 랜딩 스캔 (30초)
 ├── 헤드라인: "내 판단 먼저, AI와 비교"
-└── 즉시 비교표: "기존 AI 시그널 봇 vs STOCKCLAW"
+└── 즉시 비교표: "기존 AI 시그널 봇 vs WTD"
 
 P0-3: 차별화 납득 ⚡
 ├── 인터랙티브 미니 데모

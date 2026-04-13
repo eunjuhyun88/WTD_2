@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Tracked Signal Store
+// WTD — Tracked Signal Store
 // WarRoom TRACK 버튼 → 시그널 추적 → TRACKED 탭에 표시
 // 24h 자동 만료, QuickTrade로 전환 가능
 // ═══════════════════════════════════════════════════════════════

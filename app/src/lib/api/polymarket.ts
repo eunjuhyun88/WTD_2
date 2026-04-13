@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Polymarket API Client
+// WTD — Polymarket API Client
 // Fetches from local proxy to avoid CORS
 // ═══════════════════════════════════════════════════════════════
 

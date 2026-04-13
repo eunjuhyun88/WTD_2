@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Arena War RAG API
+// WTD — Arena War RAG API
 // ═══════════════════════════════════════════════════════════════
 //
 // POST /api/arena-war/rag?action=search — 유사 게임 검색 + RAGRecall

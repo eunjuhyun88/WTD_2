@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Market Snapshot + Context Assembler (B-05)
+// Market Snapshot + Context Assembler (B-05)
 // ═══════════════════════════════════════════════════════════════
 
 import type { MarketContext } from '$lib/engine/factorEngine';

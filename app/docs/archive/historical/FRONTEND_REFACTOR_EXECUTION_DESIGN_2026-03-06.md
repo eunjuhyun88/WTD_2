@@ -1,12 +1,12 @@
 # Frontend Refactor Execution Design — 2026-03-06
 
 Date: 2026-03-06
-Scope: `/Users/ej/Downloads/maxidoge-clones/frontend`
+Scope: `/Users/ej/Downloads/wtd-clones/frontend`
 Status: Design locked before implementation
 
 ## 0. Canonical Inputs
-- Root guide: `/Users/ej/Downloads/maxidoge-clones/CLAUDE.md`
-- Active guide: `/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md`
+- Root guide: `/Users/ej/Downloads/wtd-clones/CLAUDE.md`
+- Active guide: `/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md`
 - Local design authority:
   - `docs/SYSTEM_INTENT.md`
   - `docs/DESIGN.md`
@@ -14,7 +14,7 @@ Status: Design locked before implementation
   - `docs/design-docs/arena-domain-model.md`
   - `docs/design-docs/learning-loop.md`
 - External fallback only if local docs are insufficient:
-  - `/Users/ej/Downloads/maxidoge-clones/STOCKCLAW_UNIFIED_DESIGN.md`
+  - `/Users/ej/Downloads/wtd-clones/WTD_UNIFIED_DESIGN.md`
 - Related working docs:
   - `docs/references/active/terminal-refactor-master-plan-2026-03-06.md`
   - `docs/references/active/terminal-uiux-refactor-design-v3-2026-03-06.md`
