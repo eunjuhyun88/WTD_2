@@ -5,7 +5,7 @@ import {
   buildDashboardLink,
 } from '$lib/utils/deepLinks';
 
-export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'scanner' | 'lab';
+export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'scanner' | 'lab' | 'passport';
 
 export interface AppSurface {
   id: AppSurfaceId;
@@ -72,6 +72,16 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     activePatterns: ['/lab'],
     highlight: true,
   },
+  passport: {
+    id: 'passport',
+    label: 'Passport',
+    shortLabel: 'PASS',
+    mobileIcon: '◈',
+    description: 'your identity — wallet, achievements, strategy passport',
+    homeDetail: 'my passport',
+    href: buildDeepLink('/passport'),
+    activePatterns: ['/passport'],
+  },
 };
 
 // Day-1 IA: TERMINAL > LAB > DASHBOARD
@@ -81,10 +91,12 @@ export const DESKTOP_NAV_SURFACES = [
   SURFACE_MAP.dashboard,
 ] as const;
 
+// Mobile nav: Home | Terminal | Dashboard | Passport (+ More popover in component)
 export const MOBILE_NAV_SURFACES = [
+  SURFACE_MAP.home,
   SURFACE_MAP.terminal,
-  SURFACE_MAP.lab,
   SURFACE_MAP.dashboard,
+  SURFACE_MAP.passport,
 ] as const;
 
 export const HOME_SURFACES = [
