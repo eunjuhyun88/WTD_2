@@ -1,5 +1,6 @@
 <script lang="ts">
   // ─── Quick Panel: Left sidebar for scan presets, filters, mini results ───
+  import { priceStore } from '$lib/stores/priceStore';
 
   type ScanItem = {
     symbol: string;
@@ -52,6 +53,9 @@
 
   // Show default list when no scan has been run yet
   const showDefault = $derived(items.length === 0 && !scanning);
+
+  // Live prices from priceStore — keyed by BASE symbol (BTC, ETH, ...)
+  const livePrices = $derived($priceStore);
 
   const FILTERS: { key: FilterTab; label: string }[] = [
     { key: 'ALL', label: 'ALL' },
@@ -139,14 +143,25 @@
     {:else if showDefault}
       <!-- Default watchlist: click to analyze immediately -->
       {#each DEFAULT_WATCHLIST as sym}
+        {@const base = sym.replace('USDT', '')}
+        {@const lp = livePrices[base]}
+        {@const p = lp?.price ?? 0}
+        {@const ch = lp?.change24h ?? null}
         <button
           class="qp-row"
           class:selected={selectedSymbol === sym}
           onclick={() => onAnalyze(sym)}
-          title="Click to analyze {sym.replace('USDT', '')}"
+          title="Click to analyze {base}"
         >
-          <span class="qr-sym">{sym.replace('USDT', '')}</span>
-          <span class="qr-price qr-price-dim">—</span>
+          <span class="qr-sym">{base}</span>
+          {#if p > 0}
+            <span class="qr-price">${p >= 1 ? p.toLocaleString(undefined, { maximumFractionDigits: 1 }) : p.toFixed(4)}</span>
+            {#if ch != null}
+              <span class="qr-ch" class:up={ch >= 0} class:dn={ch < 0}>{ch >= 0 ? '+' : ''}{ch.toFixed(1)}%</span>
+            {/if}
+          {:else}
+            <span class="qr-price qr-price-dim">—</span>
+          {/if}
         </button>
       {/each}
     {:else}
@@ -357,6 +372,13 @@
     opacity: 0.35;
     margin-left: auto;
   }
+  .qr-ch {
+    font-family: var(--sc-font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    margin-left: auto;
+  }
+  .qr-ch.up { color: var(--sc-good, #adca7c); }
+  .qr-ch.dn { color: var(--sc-bad, #cf7f8f); }
   .qr-flags {
     display: flex;
     gap: 4px;

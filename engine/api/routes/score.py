@@ -45,7 +45,7 @@ def _klines_to_df(bars: list) -> pd.DataFrame:
         "low":    [b.l for b in bars],
         "close":  [b.c for b in bars],
         "volume": [b.v for b in bars],
-        "taker_buy_base_volume": [b.tbv * b.v for b in bars],  # ratio→absolute
+        "taker_buy_base_volume": [b.tbv for b in bars],  # absolute volume from exchange
     }
     timestamps = pd.to_datetime([b.t for b in bars], unit="ms", utc=True)
     return pd.DataFrame(data, index=timestamps)

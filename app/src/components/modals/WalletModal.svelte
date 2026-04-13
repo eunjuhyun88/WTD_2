@@ -312,7 +312,7 @@
           const walletAddress = await requestInjectedEvmAccount('phantom');
           connectWallet(provider, walletAddress, preferredEvmChain);
         } else {
-          throw new Error('Phantom EVM wallet required. Enable EVM in Phantom settings or use MetaMask.');
+          throw new Error('Phantom EVM required. Enable "Ethereum" in Phantom wallet settings and reload.');
         }
       } else {
         const walletAddress = await requestInjectedEvmAccount(provider);
@@ -510,7 +510,7 @@
           <button class="wopt" type="button" on:click={() => handleConnect('phantom')}>
             <span class="wo-icon">👻</span>
             <span class="wo-name">Phantom</span>
-            <span class="wo-chain">SOL/EVM</span>
+            <span class="wo-chain">EVM</span>
           </button>
         </div>
       </div>

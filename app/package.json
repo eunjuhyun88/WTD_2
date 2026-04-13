@@ -131,6 +131,7 @@
     "@metamask/sdk": "^0.34.0",
     "@phantom/browser-sdk": "^2.0.0",
     "@supabase/supabase-js": "^2.97.0",
+    "@vercel/analytics": "^2.0.1",
     "@walletconnect/ethereum-provider": "^2.23.6",
     "lightweight-charts": "^5.1.0",
     "pg": "^8.18.0",
