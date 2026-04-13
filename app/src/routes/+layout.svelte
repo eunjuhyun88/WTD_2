@@ -1,11 +1,14 @@
 <script lang="ts">
   import '../app.css';
+  import { dev } from '$app/environment';
+  import { injectAnalytics } from '@vercel/analytics/sveltekit';
   import Header from '../components/layout/Header.svelte';
   import BottomBar from '../components/layout/BottomBar.svelte';
   import MobileBottomNav from '../components/layout/MobileBottomNav.svelte';
   import WalletModal from '../components/modals/WalletModal.svelte';
   import NotificationTray from '../components/shared/NotificationTray.svelte';
   import ToastStack from '../components/shared/ToastStack.svelte';
+  import CookieConsent from '../components/shared/CookieConsent.svelte';
   import P0Banner from '../components/shared/P0Banner.svelte';
   import { page } from '$app/stores';
   import { activePairState, setActiveView } from '$lib/stores/activePairStore';
@@ -14,6 +17,8 @@
   import { startGlobalPriceFeed } from '$lib/layout/globalPriceFeed';
   import { derived } from 'svelte/store';
   import { onMount, onDestroy } from 'svelte';
+
+  injectAnalytics({ mode: dev ? 'development' : 'production' });
 
   let { children } = $props();
 
@@ -98,6 +103,9 @@
 
 <!-- Global Toast Stack (bottom-right, above bell) -->
 <ToastStack />
+
+<!-- Cookie Consent Banner -->
+<CookieConsent />
 
 <style>
   #app {
