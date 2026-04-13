@@ -1,5 +1,6 @@
 <script lang="ts">
   import { activePair, activeTimeframe, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
+  import SymbolPicker from './SymbolPicker.svelte';
 
   type LayoutId = 'hero3' | 'compare2x2' | 'focus';
 
@@ -19,7 +20,6 @@
     { id: 'focus', label: 'Focus' },
   ];
 
-  let symbolInput = $state($activePair || 'BTC/USDT');
   let showSymbolDrop = $state(false);
 
   const biasColor = { LONG: '#4ade80', SHORT: '#f87171', NEUTRAL: 'rgba(247,242,234,0.4)' };
@@ -62,6 +62,14 @@
   {/if}
 </nav>
 
+{#if showSymbolDrop}
+  <SymbolPicker
+    activePair={$activePair || 'BTC/USDT'}
+    onSelect={(pair) => setActivePair(pair)}
+    onClose={() => showSymbolDrop = false}
+  />
+{/if}
+
 <style>
   .command-bar {
     display: flex; align-items: center; gap: 12px;
@@ -75,7 +83,9 @@
     color: var(--sc-text-0); background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;
     padding: 4px 10px; cursor: pointer;
+    transition: all 0.12s;
   }
+  .symbol-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
   .tf-ladder { display: flex; gap: 2px; background: rgba(255,255,255,0.04); padding: 3px; border-radius: 5px; }
   .tf-btn {
     font-family: var(--sc-font-mono); font-size: 11px; font-weight: 600;
