@@ -14,8 +14,10 @@ def load_universe(name: str) -> list[str]:
     """Return the list of symbols for a named universe.
 
     Supported names:
-        "binance_30" — tier-balanced 10 large + 10 mid + 10 small Binance
-                       spot pairs. See universe/binance_30.py.
+        "binance_30"      — tier-balanced 10 large + 10 mid + 10 small
+                            Binance spot pairs. See universe/binance_30.py.
+        "binance_dynamic" — active USDT-M perps filtered by 24h volume.
+        "binance_all"     — broader dynamic set with a looser cap/filter.
 
     Raises:
         KeyError: if name is unknown.
