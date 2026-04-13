@@ -48,6 +48,7 @@
   let trendingData = $state<any>(null);
   let scannerAlerts = $state<any[]>([]);
   let ohlcvBars = $state<any[]>([]);
+  let layerBarsMap = $state<Record<string, any[]>>({});
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -340,11 +341,14 @@
     if (!activeSymbol) activeSymbol = symbol;
 
     try {
-      // Fetch analysis + OHLCV in parallel
+      // Fetch analysis + OHLCV + OI + Funding in parallel
       const interval = tf === '1d' ? '4h' : tf === '4h' ? '1h' : tf === '1h' ? '15m' : '5m';
-      const [analyzeRes, ohlcvRes] = await Promise.allSettled([
+      const oiPeriod = tf === '1d' ? '4h' : tf === '4h' ? '1h' : tf === '1h' ? '15m' : '5m';
+      const [analyzeRes, ohlcvRes, oiRes, fundingRes] = await Promise.allSettled([
         fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
         fetch(`/api/market/ohlcv?symbol=${symbol}&interval=${interval}&limit=100`),
+        fetch(`/api/market/oi?symbol=${symbol}&period=${oiPeriod}&limit=96`),
+        fetch(`/api/market/funding?symbol=${symbol}&limit=96`),
       ]);
 
       if (analyzeRes.status !== 'fulfilled' || !analyzeRes.value.ok)
@@ -356,6 +360,18 @@
         const ohlcv = await ohlcvRes.value.json();
         ohlcvBars = ohlcv.bars ?? [];
       }
+
+      // Build per-layer bars map — OI and funding get dedicated data
+      const newLayerBarsMap: Record<string, any[]> = {};
+      if (oiRes.status === 'fulfilled' && oiRes.value.ok) {
+        const oi = await oiRes.value.json();
+        if (oi.bars?.length) newLayerBarsMap['oi'] = oi.bars;
+      }
+      if (fundingRes.status === 'fulfilled' && fundingRes.value.ok) {
+        const funding = await fundingRes.value.json();
+        if (funding.bars?.length) newLayerBarsMap['flow'] = funding.bars;
+      }
+      layerBarsMap = newLayerBarsMap;
 
       analysisData = data;
       const asset = buildAssetFromAnalysis(symbol, data);
@@ -721,6 +737,7 @@
               verdict={heroVerdict}
               evidence={heroEvidence}
               bars={ohlcvBars}
+              {layerBarsMap}
               onPin={() => {}}
               onViewDetail={() => { selectAsset(heroAsset!.symbol); rightPanelTab = 'summary'; showRightPanel = true; }}
             />

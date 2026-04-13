@@ -5,8 +5,10 @@
   interface Props {
     evidence: TerminalEvidence;
     bars?: any[];
+    /** Per-layer override bars — takes priority over shared bars */
+    layerBarsMap?: Record<string, any[]>;
   }
-  let { evidence, bars = [] }: Props = $props();
+  let { evidence, bars = [], layerBarsMap = {} }: Props = $props();
 
   const stateColor: Record<string, string> = {
     bullish: '#4ade80', bearish: '#f87171', warning: '#fbbf24', neutral: 'rgba(247,242,234,0.72)'
@@ -35,6 +37,7 @@
   };
 
   const layerKey = $derived(METRIC_TO_LAYER[evidence.metric] ?? evidence.metric.toLowerCase());
+  const activeBars = $derived(layerBarsMap[layerKey] ?? bars);
 </script>
 
 <div class="evidence-card" data-state={evidence.state} style="--state-color: {stateColor[evidence.state]}">
@@ -43,9 +46,9 @@
       <span class="metric">{evidence.metric}</span>
       <span class="value">{evidence.value}</span>
     </div>
-    {#if bars.length > 2}
+    {#if activeBars.length > 2}
       <div class="card-chart">
-        <MiniIndicatorChart {layerKey} {bars} width={120} height={32} />
+        <MiniIndicatorChart {layerKey} bars={activeBars} width={120} height={32} />
       </div>
     {/if}
   </div>
