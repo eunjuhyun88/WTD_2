@@ -1,15 +1,24 @@
-"""L11 — Cumulative Volume Delta (candle-based).
+"""L11 — Cumulative Volume Delta (Rolling Window).
 
-CVD = cumsum(buyVol×2 - totalVol)   for each candle.
-Equivalent to: buyVol - sellVol accumulated.
+References:
+    [1] Steidlmayer, J.P. (1989). Markets and Market Logic.
+        Chicago Board of Trade.  (Market Profile + delta concept)
+    [2] Bright, T. (2012). Order Flow Trading for Fun and Profit.
+        Jigsaw Trading.  (practical CVD interpretation)
+    [3] Dalton, J., Dalton, E. & Jones, T. (1990). Mind Over Markets.
+        Probus Publishing.
 
-Detects:
-  - Trend divergence: price making new highs but CVD falling → weak
-  - Absorption:       price flat + strong one-directional CVD
-  - Distribution:     price at highs + CVD declining sharply
+Improvements over prior implementation:
+    - Rolling 24-bar CVD (not cumulative from 2017 — meaningless at scale)
+    - Volume delta = taker_buy_vol - taker_sell_vol (not approximation)
+    - Divergence measured vs rolling peak within window (not all-time high)
+    - Trend via linear regression slope on normalized delta series (not 10-bar avg)
+    - All thresholds expressed in Z-score / percentage terms (asset-agnostic)
 
-Input: DataFrame with columns 'close', 'volume', 'taker_buy_base_volume'
-       (taker_buy_base_volume is the standard Binance klines field)
+Score ∈ [-20, +20]:
+    Divergence (new price high, CVD not confirming) : -12
+    Absorption  (price flat, large net delta)        : ±10
+    Trend       (rising / falling rolling CVD)       : ±5
 """
 from __future__ import annotations
 
@@ -18,69 +27,159 @@ import pandas as pd
 
 from market_engine.types import LayerResult
 
+# Rolling window for CVD accumulation (bars).  24 × 1H = 24h; adjust as needed.
+_CVD_WINDOW: int = 24
+# Minimum bars needed before we trust the signal
+_MIN_BARS:   int = 50
+
+
+def _rolling_cvd(df: pd.DataFrame, window: int) -> pd.Series:
+    """Rolling-window CVD.
+
+    CVD[i] = sum of (buy_vol - sell_vol) over bars [i-window, i].
+
+    buy_vol  = taker_buy_base_volume × close   (USD-denominated delta)
+    sell_vol = (volume - taker_buy_base_volume) × close
+
+    If taker_buy_base_volume is missing / all-zero we raise a warning
+    instead of silently using a 50/50 fallback which destroys the signal.
+    """
+    close = df["close"].astype(float)
+    vol   = df["volume"].astype(float)
+
+    # Prefer taker_buy_base_volume; fallback only if truly unavailable
+    if ("taker_buy_base_volume" in df.columns
+            and df["taker_buy_base_volume"].abs().sum() > 0):
+        tbv = df["taker_buy_base_volume"].astype(float).clip(lower=0)
+    else:
+        # Mark as unavailable so caller knows to discard this signal
+        return pd.Series(np.nan, index=df.index, name="cvd")
+
+    # USD-denominated delta per bar
+    buy_usd  = tbv * close
+    sell_usd = (vol - tbv).clip(lower=0) * close
+    delta    = buy_usd - sell_usd
+
+    return delta.rolling(window, min_periods=max(1, window // 2)).sum()
+
+
+def _linreg_slope(series: np.ndarray) -> float:
+    """Least-squares slope of a short series, normalised by its std-dev.
+
+    Returns a standardised slope: positive = rising, negative = falling.
+    |value| > 1 is a strong trend.
+    """
+    n = len(series)
+    if n < 3:
+        return 0.0
+    x  = np.arange(n, dtype=float)
+    xm = x.mean()
+    ym = series.mean()
+    num   = ((x - xm) * (series - ym)).sum()
+    denom = ((x - xm) ** 2).sum()
+    slope = num / (denom + 1e-10)
+    std   = series.std(ddof=0) or 1.0
+    return float(slope / std)           # normalised: asset-agnostic
+
 
 def l11_cvd(df: pd.DataFrame) -> LayerResult:
-    r = LayerResult()
-    if len(df) < 10:
-        r.sig("데이터 부족", "neut")
-        return r
+    """Rolling CVD analysis.  Score ∈ [-20, +20]."""
+    lr = LayerResult()
 
-    total_vol = df["volume"] * df["close"]
-    if "taker_buy_base_volume" in df.columns:
-        buy_vol = df["taker_buy_base_volume"] * df["close"]
-    else:
-        # Fallback: assume 50/50 split (zero net CVD signal but at least no crash)
-        buy_vol = total_vol * 0.5
-    delta     = buy_vol * 2 - total_vol
-    cvd       = delta.cumsum()
+    if len(df) < _MIN_BARS:
+        lr.sig("CVD: 데이터 부족", "warn")
+        return lr
 
-    last_cvd   = cvd.iloc[-1]
-    max_price  = df["close"].max()
-    max_cvd    = cvd.max()
-    cur_price  = df["close"].iloc[-1]
+    cvd = _rolling_cvd(df, _CVD_WINDOW)
 
-    # ── Divergence: price at new high but CVD below 80% of its peak ───────
-    at_price_high = cur_price >= max_price * 0.999
-    cvd_lagging   = last_cvd < max_cvd * 0.80
+    if cvd.isna().all():
+        lr.sig("CVD: taker_buy 데이터 없음 — 신호 불가", "warn")
+        lr.meta["data_available"] = False
+        return lr
 
-    if at_price_high and cvd_lagging:
-        r.score -= 12
-        r.sig(f"CVD 다이버전스 — 가격 신고가({cur_price:.4f}) + CVD 후퇴 (-12)", "bear")
-        r.meta["divergence"] = True
-    else:
-        r.meta["divergence"] = False
+    lr.meta["data_available"] = True
+    score = 0
 
-    # ── Absorption: price range-bound + CVD > 30% of total volume ─────────
-    price_pct_range = (df["close"].max() - df["close"].min()) / df["close"].mean()
-    cvd_magnitude   = abs(last_cvd) / (total_vol.sum() + 1e-9)
-    is_flat         = price_pct_range < 0.05
+    # ── 1. Divergence: new price high, CVD not confirming ────────────
+    # Use a rolling 50-bar window for the "peak", not all-time high
+    close       = df["close"].astype(float)
+    roll_window = 50
+    price_peak  = close.rolling(roll_window, min_periods=20).max()
+    cvd_peak    = cvd.rolling(roll_window, min_periods=20).max()
+    cvd_min     = cvd.rolling(roll_window, min_periods=20).min()
 
-    if is_flat and cvd_magnitude > 0.30:
-        if last_cvd > 0:
-            r.score += 10
-            r.sig(f"흡수 감지 — 횡보 중 강한 매수 CVD (+10)", "bull")
+    cur_price = float(close.iloc[-1])
+    cur_cvd   = float(cvd.iloc[-1])
+    p_peak    = float(price_peak.iloc[-1])
+    c_peak    = float(cvd_peak.iloc[-1])
+    c_min     = float(cvd_min.iloc[-1])
+
+    # Bearish divergence: price at / near 50-bar high but CVD below its peak
+    at_price_high = cur_price >= p_peak * 0.995
+    cvd_range     = c_peak - c_min
+    cvd_lag_pct   = ((c_peak - cur_cvd) / cvd_range) if cvd_range > 0 else 0.0
+
+    divergence = False
+    if at_price_high and cvd_lag_pct > 0.40:   # CVD at most 60% of its window peak
+        divergence = True
+        score -= 12
+        lr.sig(f"CVD 약세 다이버전스 — 신고가 불확인 (CVD lag {cvd_lag_pct:.0%})", "bear")
+
+    # Bullish divergence: price at / near 50-bar low but CVD above its trough
+    price_trough = close.rolling(roll_window, min_periods=20).min()
+    p_trough     = float(price_trough.iloc[-1])
+    at_price_low = cur_price <= p_trough * 1.005
+    cvd_rise_pct = ((cur_cvd - c_min) / cvd_range) if cvd_range > 0 else 0.0
+
+    if at_price_low and cvd_rise_pct > 0.40 and not divergence:
+        score += 10
+        lr.sig(f"CVD 강세 다이버전스 — 신저가 불확인 (CVD lift {cvd_rise_pct:.0%})", "bull")
+
+    # ── 2. Absorption: price range < 3% but |CVD| large ─────────────
+    # Price is going nowhere but buyers/sellers are absorbing supply/demand
+    recent_n = min(24, len(df))
+    recent_c = close.iloc[-recent_n:]
+    pr        = (recent_c.max() - recent_c.min()) / recent_c.mean() * 100
+
+    recent_delta = (df["taker_buy_base_volume"].astype(float) * close
+                    - (df["volume"] - df["taker_buy_base_volume"]).clip(lower=0) * close
+                    ).iloc[-recent_n:] if "taker_buy_base_volume" in df.columns else pd.Series([0.0])
+    net_delta = float(recent_delta.sum())
+    vol_usd   = float((df["volume"].astype(float) * close).iloc[-recent_n:].sum())
+    net_ratio = abs(net_delta) / (vol_usd + 1e-10)
+
+    absorption = False
+    if pr < 3.0 and net_ratio > 0.15:
+        absorption = True
+        if net_delta > 0:
+            score += 10
+            lr.sig(f"CVD 매수 흡수 — 레인지 {pr:.1f}% + 순매수 {net_ratio:.0%}", "bull")
         else:
-            r.score -= 8
-            r.sig(f"분산 감지 — 횡보 중 강한 매도 CVD (-8)", "bear")
-        r.meta["absorption"] = True
-    else:
-        r.meta["absorption"] = False
+            score -= 8
+            lr.sig(f"CVD 매도 흡수 — 레인지 {pr:.1f}% + 순매도 {net_ratio:.0%}", "bear")
 
-    # ── Raw CVD trend (last 10 vs previous 10) ────────────────────────────
-    if len(cvd) >= 20:
-        recent_mean = cvd.iloc[-10:].mean()
-        prior_mean  = cvd.iloc[-20:-10].mean()
-        if recent_mean > prior_mean * 1.1:
-            r.score += 5
-            r.sig("CVD 상승 추세 (+5)", "bull")
-        elif recent_mean < prior_mean * 0.9:
-            r.score -= 5
-            r.sig("CVD 하락 추세 (-5)", "bear")
+    # ── 3. Trend: linear regression slope on normalised rolling CVD ──
+    cvd_vals = cvd.dropna().values[-_CVD_WINDOW:]
+    if len(cvd_vals) >= 5:
+        # Normalise by the window's own standard deviation to be asset-agnostic
+        slope = _linreg_slope(cvd_vals)
+        if slope > 0.5 and not absorption and not divergence:
+            score += 5
+            lr.sig("CVD 상승 추세 (LinReg slope > 0.5σ)", "bull")
+        elif slope < -0.5 and not absorption and not divergence:
+            score -= 5
+            lr.sig("CVD 하락 추세 (LinReg slope < -0.5σ)", "bear")
+        elif abs(slope) <= 0.5:
+            lr.sig("CVD 횡보 — 추세 없음", "neut")
 
-    r.meta.update({
-        "last_cvd":   round(float(last_cvd), 2),
-        "max_cvd":    round(float(max_cvd), 2),
-        "cvd_series": cvd.round(2).tolist()[-20:],   # last 20 for charting
+    lr.score = float(max(-20, min(20, score)))
+    lr.meta.update({
+        "divergence":   divergence,
+        "absorption":   absorption,
+        "cvd_24h":      round(cur_cvd, 2),
+        "last_cvd":     round(cur_cvd, 2),   # backward-compat alias
+        "cvd_peak_50":  round(c_peak,  2),
+        "cvd_lag_pct":  round(cvd_lag_pct, 3),
+        "price_range_pct_24h": round(pr, 2),
     })
-    r.score = max(-20, min(20, round(r.score)))
-    return r
+    return lr

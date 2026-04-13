@@ -180,6 +180,7 @@ def run_deep_analysis(
     layers["real_liq"] = l9_real_liq(
         short_liq_usd = p.get("short_liq_usd", 0),
         long_liq_usd  = p.get("long_liq_usd",  0),
+        oi_notional   = p.get("oi_notional"),   # enables OI-relative thresholds
     )
     layers["oi"]       = s19_oi_squeeze(p.get("oi_notional"), p.get("vol_24h"), p.get("fr"))
     layers["basis"]    = s20_basis(p.get("mark_price"), p.get("index_price"))
