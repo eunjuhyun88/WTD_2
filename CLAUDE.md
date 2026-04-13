@@ -17,9 +17,11 @@ app/      SvelteKit — frontend + Supabase + API routes
 ## Engine (Python)
 
 - Entry: `engine/scanner/feature_calc.py` — compute_features_table() (92 features)
-- Blocks: `engine/building_blocks/` — 29 blocks (triggers, confirmations, entries, disqualifiers)
+- Blocks: `engine/building_blocks/` — 34 blocks (triggers, confirmations, entries, disqualifiers)
+- Patterns: `engine/patterns/` — StateMachine, library, scanner (TRADOOR OI-reversal v1)
+- Ledger: `engine/ledger/` — result store (auto-verdict, EV, BTC-conditional, decay)
 - Data: `engine/data_cache/` — Binance klines fetch + CSV cache + MTF resample
-- Tests: `engine/tests/` — 302 tests, run with `cd engine && python -m pytest`
+- Tests: `engine/tests/` — 488 tests, run with `cd engine && uv run pytest`
 
 ## App (SvelteKit)
 
@@ -33,6 +35,57 @@ app/      SvelteKit — frontend + Supabase + API routes
 - Engine changes: edit `engine/` directly, run tests before commit
 - App changes: edit `app/` directly
 - Never commit `.env*` files
+
+---
+
+## ✅ CHECKPOINT — 2026-04-13 (SESSION 5 — Pattern Engine v2 CTO Review + jovial-cori 머지)
+
+### 현재 상태
+- **브랜치**: `main` (최신)
+- **마지막 커밋**: `7c97dc8` — fix(engine): CTO/AI-researcher review — pattern engine v2
+- **Engine 테스트**: 488/488 pass
+- **설계 문서**: `app/docs/PATTERN_ENGINE_FINAL_DESIGN.md` (통합 설계)
+
+### 이번 세션 작업
+
+1. **jovial-cori → main 머지** (`d84e4c1`)
+   - Pattern Engine: state_machine, ledger, 5 OI-reversal blocks, dynamic universe
+   - App: patterns 대시보드, API proxies, chart-first terminal
+   - 충돌 0건, DOUNI 파일 전부 보존
+
+2. **CTO/AI-Researcher 리뷰 6개 개선** (`7c97dc8`)
+   - BUG: scanner.py perp_dict oi_now 매핑 수정
+   - BUG: prewarm_perp_cache() cold-start fix
+   - STATE MACHINE: min_bars 강제 + confidence scoring + feature_snapshot
+   - LEDGER: auto_evaluate_pending(72h) + Expected Value + BTC-conditional + decay
+   - SCANNER: 8-worker parallel + data quality metrics
+   - API: POST /patterns/register + POST /patterns/{slug}/evaluate
+
+3. **통합 설계 문서 작성**
+   - 설계 v2.0 vs 코드베이스 vs jovial-cori gap 분석
+   - 두 시스템(Pattern Engine + AutoResearch) 통합 아키텍처
+   - 수정된 Sprint Plan (Sprint 0~6)
+
+### Engine 현황 (머지 후)
+
+| 모듈 | 파일 수 | 상태 |
+|------|---------|------|
+| building_blocks/ | 34 blocks (29 기존 + 5 신규) | ✅ |
+| patterns/ | types, library, state_machine, scanner | ✅ v2 |
+| ledger/ | types, store (auto-verdict, EV, decay) | ✅ v2 |
+| challenge/ | types, historical_matcher, pattern_refiner | ✅ |
+| universe/ | binance_30 + dynamic | ✅ |
+| api/routes/patterns.py | library, states, scan, register, evaluate, verdict | ✅ v2 |
+
+### 다음 작업 (Sprint Plan)
+
+| Sprint | 내용 | 기간 |
+|--------|------|------|
+| **0** | feature_calc OI/funding zero-stub 해제 (캐시 없으면 여전히 zero) | 반나절 |
+| **1** | Save Setup UI (CaptureModal — candle click → challenge create) | 2일 |
+| **2** | Result Ledger UI (verdict display, override buttons) | 2일 |
+| **3** | Live scanner + Telegram alerts | 2일 |
+| **4** | AutoResearch ↔ Pattern 통합 | 3일 |
 
 ---
 
