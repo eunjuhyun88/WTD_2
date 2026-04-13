@@ -21,7 +21,6 @@
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import WorkspaceGrid from '../../components/terminal/workspace/WorkspaceGrid.svelte';
-  import BoardToolbar from '../../components/terminal/workspace/BoardToolbar.svelte';
 
   // Mobile components
   import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
@@ -96,23 +95,22 @@
     const confidence: 'high' | 'medium' | 'low' =
       absScore > 0.6 ? 'high' : absScore > 0.3 ? 'medium' : 'low';
 
-    const tfAlign = (v: number): '↑' | '↓' | '→' =>
-      v > 0.3 ? '↑' : v < -0.3 ? '↓' : '→';
-
     const sources: TerminalSource[] = [
       { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
       { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
       { label: 'Model v2', category: 'Model', freshness: 'recent', updatedAt: Date.now() },
     ];
 
-    const change24h = data?.change24h ?? 0;
+    // TF arrows from real engine fields — ema_alignment for intraday, htf_structure for 4h/daily
+    const tfArrow = (val: string | undefined, pos: string, neg: string): '↑' | '↓' | '→' =>
+      val === pos ? '↑' : val === neg ? '↓' : '→';
 
     return {
       symbol, venue: 'USDT Perp',
       lastPrice: price,
-      changePct15m: snap.rsi14 != null ? (snap.rsi14 - 50) / 100 : 0,
-      changePct1h: change24h / 24,
-      changePct4h: change24h / 6,
+      changePct15m: 0,  // not available from analyze API — no fake proxy
+      changePct1h: 0,   // not available from analyze API — no fake proxy
+      changePct4h: 0,   // not available from analyze API — no fake proxy
       volumeRatio1h: snap.vol_ratio_3 ?? 1,
       oiChangePct1h: (snap.oi_change_1h ?? 0) * 100,
       fundingRate: snap.funding_rate ?? 0,
@@ -125,9 +123,9 @@
       invalidation: '—',
       sources,
       freshnessStatus: 'recent',
-      tf15m: tfAlign(snap.rsi14 ? (snap.rsi14 - 50) / 100 : 0),
-      tf1h: tfAlign(change24h / 24),
-      tf4h: tfAlign(snap.oi_change_1h ?? 0),
+      tf15m: tfArrow(snap.ema_alignment, 'bullish', 'bearish'),
+      tf1h:  tfArrow(snap.ema_alignment, 'bullish', 'bearish'),
+      tf4h:  tfArrow(snap.htf_structure, 'uptrend', 'downtrend'),
     };
   }
 
@@ -392,16 +390,25 @@
   });
 
   let prevPair = '';
+  let prevTf = '';
   $effect(() => {
     const pair = gState.pair;
     const tf = gState.timeframe;
     if (pair !== prevPair) {
       prevPair = pair;
+      prevTf = tf;
       const symbol = pairToSymbol(pair);
       activeSymbol = symbol;
       if (!boardAssets.find(a => a.symbol === symbol)) {
         boardAssets = []; verdictMap = {}; evidenceMap = {}; layout = 'focus';
       }
+      loadAnalysis(symbol, symbolToTF(tf));
+      loadFlow(pair, symbolToTF(tf));
+    } else if (tf !== prevTf) {
+      prevTf = tf;
+      const symbol = pairToSymbol(pair);
+      // Clear stale analysis so loading state appears for the new TF
+      verdictMap = {}; evidenceMap = {};
       loadAnalysis(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
     }
@@ -436,7 +443,9 @@
   <TerminalCommandBar
     {flowBias}
     {layout}
+    assetsCount={boardAssets.length}
     onLayout={switchLayout}
+    onClear={clearBoard}
   />
 
   <!-- 3-column body -->
@@ -452,14 +461,6 @@
 
     <!-- Center Board -->
     <main class="center-board">
-      <BoardToolbar
-        name="Board"
-        {layout}
-        assetsCount={boardAssets.length}
-        onLayout={switchLayout}
-        onCompare={switchToCompare}
-        onClear={clearBoard}
-      />
 
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board">
@@ -569,6 +570,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    min-height: 0;
   }
 
   .center-board {
@@ -576,6 +578,7 @@
     flex-direction: column;
     overflow: hidden;
     min-width: 0;
+    min-height: 0;
     position: relative;
   }
 
@@ -593,6 +596,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    min-height: 0;
   }
 
   /* Loading */
@@ -666,7 +670,7 @@
     .center-board { height: 100%; }
     .desktop-board { display: none; }
     .desktop-dock { display: none; }
-    .mobile-board-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+    .mobile-board-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
   }
 
   /* Hide mobile wrap on desktop */
