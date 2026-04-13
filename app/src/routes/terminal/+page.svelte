@@ -604,6 +604,17 @@
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
   let activeEvidence = $derived(activeSymbol ? evidenceMap[activeSymbol] ?? [] : []);
 
+  // ── Analysis rail mode ────────────────────────────────────────
+  // SINGLE: ≤1 asset or active symbol has a verdict → show full VerdictCard
+  // SCAN:   >1 assets returned (multi-asset prompt) → show compact scan list
+  let isScanMode = $derived(boardAssets.length > 1);
+  let scanAssets = $derived(
+    boardAssets.map(a => ({
+      asset: a,
+      verdict: verdictMap[a.symbol] ?? null,
+    }))
+  );
+
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
     { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
@@ -671,9 +682,71 @@
           />
         </div>
 
-        <!-- ── Analysis rail — right side, always visible ── -->
+        <!-- ── Analysis rail — single verdict or scan list ── -->
         <div class="analysis-rail">
-          {#if isLoadingActive && !heroVerdict}
+
+          <!-- Rail header: mode indicator + streaming badge -->
+          <div class="rail-header">
+            {#if isStreaming}
+              <span class="rail-badge streaming">
+                <span class="stream-dot pulsing">●</span>
+                Analyzing…
+              </span>
+            {:else if isScanMode}
+              <span class="rail-badge scan">{boardAssets.length} RESULTS</span>
+              <button class="rail-back" onclick={clearBoard}>← Back</button>
+            {:else}
+              <span class="rail-mode">ANALYSIS</span>
+              <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
+            {/if}
+          </div>
+
+          <!-- MODE B — Scan results list -->
+          {#if isScanMode}
+            <div class="scan-list">
+              {#each scanAssets as { asset, verdict } (asset.symbol)}
+                {@const sym = asset.symbol.replace('USDT','')}
+                {@const dir = verdict?.direction ?? asset.bias}
+                {@const active = asset.symbol === activeSymbol}
+                <button
+                  class="scan-card"
+                  class:active
+                  class:bullish={dir === 'bullish'}
+                  class:bearish={dir === 'bearish'}
+                  onclick={() => selectAsset(asset.symbol)}
+                >
+                  <div class="sc-left">
+                    <span class="sc-sym">{sym}</span>
+                    <span class="sc-venue">USDT·PERP</span>
+                  </div>
+                  <div class="sc-right">
+                    <span class="sc-dir">{dir?.toUpperCase() ?? '—'}</span>
+                    {#if verdict?.reason}
+                      <span class="sc-reason">{verdict.reason.slice(0, 48)}{verdict.reason.length > 48 ? '…' : ''}</span>
+                    {:else if verdictMap[asset.symbol] === undefined && loadingSymbols.has(asset.symbol)}
+                      <span class="sc-loading">analyzing…</span>
+                    {/if}
+                  </div>
+                </button>
+              {/each}
+            </div>
+
+            <!-- Also show active symbol's VerdictCard below the list if loaded -->
+            {#if heroAsset && heroVerdict}
+              <div class="scan-detail">
+                <VerdictCard
+                  asset={heroAsset}
+                  verdict={heroVerdict}
+                  evidence={heroEvidence}
+                  bars={ohlcvBars}
+                  onPin={() => {}}
+                  onViewDetail={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
+                />
+              </div>
+            {/if}
+
+          <!-- MODE A — Single asset full analysis -->
+          {:else if isLoadingActive && !heroVerdict}
             <div class="board-loading">
               <div class="loading-ring"></div>
               <p class="loading-msg">Analyzing {activePairDisplay}…</p>
@@ -685,28 +758,15 @@
               evidence={heroEvidence}
               bars={ohlcvBars}
               onPin={() => {}}
-              onViewDetail={() => { selectAsset(heroAsset!.symbol); rightPanelTab = 'summary'; showRightPanel = true; }}
+              onViewDetail={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
             />
           {:else}
             <div class="board-empty">
               <p class="empty-icon">◈</p>
-              <p class="empty-text">{activePairDisplay} 분석을 시작하려면 아래에 입력하세요</p>
+              <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
             </div>
           {/if}
 
-          {#if isStreaming && streamText}
-            <div class="stream-overlay">
-              <div class="stream-inner">
-                <span class="stream-dot">●</span>
-                <p class="stream-text">{streamText}</p>
-              </div>
-            </div>
-          {:else if isStreaming}
-            <div class="stream-overlay minimal">
-              <span class="stream-dot pulsing">●</span>
-              <span class="stream-label">Analyzing…</span>
-            </div>
-          {/if}
         </div>
 
       </div>
@@ -854,8 +914,101 @@
     flex-direction: column;
     overflow-y: auto;
     background: var(--sc-terminal-bg, #000);
-    position: relative;   /* for stream-overlay */
+    position: relative;
   }
+
+  /* Rail header */
+  .rail-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+    flex-shrink: 0;
+    min-height: 34px;
+  }
+  .rail-mode {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.2);
+  }
+  .rail-sym {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.7);
+    margin-left: auto;
+  }
+  .rail-badge {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .rail-badge.streaming {
+    background: rgba(74,222,128,0.08);
+    color: #4ade80;
+    border: 1px solid rgba(74,222,128,0.2);
+  }
+  .rail-badge.scan {
+    background: rgba(99,179,237,0.08);
+    color: #63b3ed;
+    border: 1px solid rgba(99,179,237,0.2);
+  }
+  .rail-back {
+    margin-left: auto;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.4);
+    border-radius: 3px;
+    padding: 2px 7px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .rail-back:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
+
+  /* Scan list (Mode B) */
+  .scan-list {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+  }
+  .scan-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+    width: 100%;
+  }
+  .scan-card:hover  { background: rgba(255,255,255,0.04); }
+  .scan-card.active { background: rgba(255,255,255,0.06); }
+  .scan-card.bullish .sc-dir { color: #4ade80; }
+  .scan-card.bearish .sc-dir { color: #f87171; }
+  .sc-left { display: flex; flex-direction: column; gap: 2px; min-width: 52px; }
+  .sc-sym  { font-family: var(--sc-font-mono, monospace); font-size: 12px; font-weight: 700; color: #fff; }
+  .sc-venue{ font-size: 9px; color: rgba(255,255,255,0.25); font-family: var(--sc-font-mono, monospace); }
+  .sc-right{ display: flex; flex-direction: column; gap: 3px; flex: 1; align-items: flex-end; }
+  .sc-dir  { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); }
+  .sc-reason { font-size: 10px; color: rgba(255,255,255,0.35); text-align: right; line-height: 1.4; }
+  .sc-loading{ font-size: 9px; color: rgba(255,255,255,0.2); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
+
+  /* Scan detail (VerdictCard below scan list) */
+  .scan-detail { flex: 1; }
 
   .right-panel {
     background: var(--sc-terminal-bg, #000);
