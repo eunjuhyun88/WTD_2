@@ -19,6 +19,11 @@ import pandas as pd
 from data_cache.fetch_binance import fetch_klines_max
 from data_cache.fetch_binance_perp import fetch_perp_max
 from data_cache.registry import MACRO_SOURCES, ONCHAIN_SOURCES
+from data_cache.resample import (  # noqa: F401  (re-exported)
+    SUPPORTED_TF_STRINGS,
+    resample_klines,
+    tf_string_to_minutes,
+)
 # Re-export the canonical CacheMiss from the top-level exceptions
 # taxonomy so the symbol remains importable from data_cache without
 # forcing callers to know about the new module layout.
@@ -29,7 +34,10 @@ from exceptions import CacheMiss  # noqa: F401  (re-exported)
 # the repo-root .gitignore.
 CACHE_DIR = Path(__file__).parent / "cache"
 
-_SUPPORTED_TIMEFRAMES = frozenset({"1h"})
+# Only 1-hour bars are stored on-disk; all other timeframes are derived
+# on the fly via resample_klines().  See data_cache.resample for the full
+# set of supported TF strings.
+_SUPPORTED_TIMEFRAMES = SUPPORTED_TF_STRINGS
 
 
 def cache_path(symbol: str, timeframe: str) -> Path:
@@ -62,27 +70,42 @@ def load_klines(
     *,
     offline: bool = False,
 ) -> pd.DataFrame:
-    """Load OHLCV klines for (symbol, timeframe) from the local cache.
+    """Load OHLCV klines for (symbol, timeframe).
+
+    Only 1-hour klines are stored on disk (the canonical Binance format).
+    All other timeframes are derived on the fly by resampling the 1h base:
+
+        load_klines("BTCUSDT", "4h")   →  loads 1h CSV, resamples to 4h
+        load_klines("BTCUSDT", "1d")   →  loads 1h CSV, resamples to 1d
 
     Behaviour:
-      - cached           → read the CSV and return the DataFrame
-      - not cached, offline=False → fetch from Binance, persist, return
+      - cached 1h            → read the CSV and return (or resample)
+      - not cached, offline=False → fetch from Binance, persist 1h, return
       - not cached, offline=True  → raise CacheMiss
+      - unknown timeframe string  → raise ValueError (from tf_string_to_minutes)
     """
-    if timeframe not in _SUPPORTED_TIMEFRAMES:
-        raise NotImplementedError(
-            f"timeframe={timeframe!r} not supported yet; "
-            f"only {sorted(_SUPPORTED_TIMEFRAMES)}"
-        )
-    path = cache_path(symbol, timeframe)
-    if path.exists():
-        return pd.read_csv(path, index_col="timestamp", parse_dates=True)
-    if offline:
-        raise CacheMiss(f"{symbol}_{timeframe} not cached at {path} and offline=True")
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    df = fetch_klines_max(symbol, timeframe)
-    df.to_csv(path)
-    return df
+    # Validate the timeframe string early; unknown values raise ValueError.
+    tf_min = tf_string_to_minutes(timeframe)
+
+    if timeframe == "1h":
+        path = cache_path(symbol, "1h")
+        if path.exists():
+            df = pd.read_csv(path, index_col="timestamp", parse_dates=True)
+            if df.index.tz is None:
+                df.index = df.index.tz_localize("UTC")
+            return df
+        if offline:
+            raise CacheMiss(
+                f"{symbol}_1h not cached at {path} and offline=True"
+            )
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        df = fetch_klines_max(symbol, "1h")
+        df.to_csv(path)
+        return df
+
+    # ── Non-1h: resample from the 1h base on the fly ──────────────────────
+    df_1h = load_klines(symbol, "1h", offline=offline)
+    return resample_klines(df_1h, tf_min)
 
 
 # ─── Perp ────────────────────────────────────────────────────────────────────

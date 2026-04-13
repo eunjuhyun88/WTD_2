@@ -4,9 +4,10 @@ No network I/O — we monkeypatch CACHE_DIR to a tmp_path and seed/read
 files directly. Covers:
   1. offline=True + missing file → CacheMiss
   2. offline=True + cached file  → returns DataFrame with expected shape
-  3. unsupported timeframe       → NotImplementedError
-  4. cache_path filename shape
-  5. round-trip through load_klines preserves numeric columns
+  3. non-1h timeframe            → resample from 1h base (CacheMiss if 1h absent)
+  4. unknown timeframe string    → ValueError
+  5. cache_path filename shape
+  6. round-trip through load_klines preserves numeric columns
 """
 from __future__ import annotations
 
@@ -57,11 +58,35 @@ def test_offline_reads_existing_cache(tmp_path, monkeypatch):
     assert out["taker_buy_base_volume"].iloc[0] == pytest.approx(50.0)
 
 
-def test_unsupported_timeframe_rejected():
-    with pytest.raises(NotImplementedError):
+def test_non_1h_timeframe_resamples_from_1h_base(tmp_path, monkeypatch):
+    """4h / 1d etc. are now derived from 1h on the fly.
+
+    When offline=True and the 1h cache is missing, we get CacheMiss (not
+    NotImplementedError). When the 1h cache is present, resampling succeeds.
+    """
+    # 1) 1h base not cached → CacheMiss
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    with pytest.raises(CacheMiss):
         load_klines("BTCUSDT", "4h", offline=True)
-    with pytest.raises(NotImplementedError):
-        load_klines("BTCUSDT", "15m", offline=True)
+
+    # 2) Seed 1h cache → resample to 4h succeeds
+    n = 12  # 12 × 1h bars → 3 × 4h bars
+    df_1h = _make_fake_klines(n)
+    csv_path = tmp_path / "BTCUSDT_1h.csv"
+    df_1h.index.name = "timestamp"
+    df_1h.to_csv(csv_path)
+
+    df_4h = load_klines("BTCUSDT", "4h", offline=True)
+    assert len(df_4h) == 3  # 12 / 4 = 3 bars
+    assert list(df_4h.columns) == list(df_1h.columns)
+
+
+def test_unknown_timeframe_raises_value_error():
+    """Completely unknown TF strings raise ValueError from tf_string_to_minutes."""
+    with pytest.raises(ValueError):
+        load_klines("BTCUSDT", "99h", offline=True)
+    with pytest.raises(ValueError):
+        load_klines("BTCUSDT", "garbage", offline=True)
 
 
 def test_offline_flag_is_keyword_only():
