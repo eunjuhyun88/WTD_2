@@ -36,6 +36,41 @@ app/      SvelteKit — frontend + Supabase + API routes
 
 ---
 
+## ✅ CHECKPOINT — 2026-04-13 (SESSION 3 — DOUNI AI Researcher 설계)
+
+### 현재 상태
+- **브랜치**: `main` (최신, 미커밋 작업 있음)
+- **설계 문서**: `app/docs/DOUNI_AI_RESEARCHER_DESIGN.md`
+- **Phase 1**: 완료 (4개 파일)
+- **Phase 2**: 대기 중 (`douniRuntime.ts`부터 시작)
+
+### DOUNI Phase 1 완료 파일
+
+| 파일 | 경로 | 역할 |
+|------|------|------|
+| `douniPersonality.ts` | `app/src/lib/engine/cogochi/douni/` | 섹션 배열 시스템 프롬프트, Evidence Chain, 다국어 |
+| `tradeMemory.ts` | `app/src/lib/server/douni/` | 4타입 메모리 (user/feedback/patterns/market) |
+| `contextCompact.ts` | `app/src/lib/server/douni/` | Auto-compact (20턴) + market data clearing |
+| `contextBuilder.ts` | `app/src/lib/server/douni/` | 전체 통합 — compact + memory + locale + boundary |
+
+### DOUNI Phase 2 다음 세션 작업 (우선순위 순)
+
+1. `app/src/lib/stores/douniRuntime.ts` — 4-mode store (TERMINAL/HEURISTIC/OLLAMA/API)
+2. `app/src/routes/settings/+page.svelte` — Settings > AI 탭 (모드 선택 + 키 + 테스트)
+3. `app/src/routes/terminal/+page.svelte` — `sendCommand()` 4-mode 분기
+4. `app/src/routes/api/cogochi/terminal/message/+server.ts` — `runtimeConfig` 수신
+5. `engine/scoring/signal_stats.py` — 블록 조합 승률 조회 (backtest 재활용)
+6. Delta 감지 — prevSnapshot diff → 반복 버그 제거
+7. Fallback 체인 — 침묵 버그 완전 제거
+
+### 핵심 설계 원칙 (변경 불가)
+- **LLM = 핵심, optional 아님** — LLM 없으면 데이터 터미널, AI researcher 아님
+- **LLM 역할 = 번역, 예측 X** — 엔진 팩트 → 자연어 설명만
+- **기본 모드 = HEURISTIC** — 설정 없어도 템플릿 합성으로 의미있는 출력
+- **진입 장벽 최소화** — Groq 무료 키 30초 설정으로 full AI 모드 진입
+
+---
+
 ## ✅ CHECKPOINT — 2026-04-13 (PR #18 merged)
 
 ### 현재 상태
