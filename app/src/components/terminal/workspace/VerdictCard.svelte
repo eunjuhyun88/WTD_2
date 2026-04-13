@@ -11,10 +11,11 @@
     verdict: TerminalVerdict;
     evidence: TerminalEvidence[];
     bars?: any[];
+    layerBarsMap?: Record<string, any[]>;
     onPin?: () => void;
     onViewDetail?: () => void;
   }
-  let { asset, verdict, evidence, bars = [], onPin, onViewDetail }: Props = $props();
+  let { asset, verdict, evidence, bars = [], layerBarsMap = {}, onPin, onViewDetail }: Props = $props();
 
   function formatPrice(p: number): string {
     return p >= 1000 ? p.toLocaleString('en-US', { maximumFractionDigits: 2 }) : p.toFixed(4);
@@ -72,7 +73,7 @@
   <ActionStrip action={verdict.action} invalidation={verdict.invalidation} avoid={verdict.against[0]} />
 
   <!-- Evidence grid -->
-  <EvidenceGrid {evidence} {bars} />
+  <EvidenceGrid {evidence} {bars} {layerBarsMap} />
 
   <!-- Why panel -->
   <WhyPanel why={verdict.reason} against={verdict.against} />

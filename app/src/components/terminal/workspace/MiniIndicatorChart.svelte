@@ -185,12 +185,11 @@
     {/each}
 
   {:else if chartType === 'line_overlay'}
-    <!-- Price line + OI/volume area underneath -->
-    <path d={areaPath(volumes)} fill="rgba(99,179,237,0.06)" />
+    <!-- OI line — closes = OI values, cyan accent -->
+    {@const oiUp = closes.length > 1 ? closes[closes.length - 1] >= closes[0] : true}
+    <path d={areaPath(closes)} fill="rgba(99,179,237,0.08)" />
     <path d={linePath(closes)} fill="none"
-      stroke="rgba(247,242,234,0.5)" stroke-width="0.8" stroke-linecap="round" />
-    <path d={linePath(volumes)} fill="none"
-      stroke="rgba(99,179,237,0.5)" stroke-width="1" stroke-linecap="round" />
+      stroke={oiUp ? 'rgba(99,179,237,0.9)' : 'rgba(248,113,113,0.8)'} stroke-width="1.2" stroke-linecap="round" />
 
   {:else if chartType === 'bands'}
     <!-- Price line (simulates BB visual) -->
