@@ -20,6 +20,120 @@ import type { ToolCall } from '$lib/server/douni/types';
 
 const MAX_TOOL_ROUNDS = 3;
 
+const SSE_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  'Connection': 'keep-alive',
+  'X-Accel-Buffering': 'no',
+} as const;
+
+// ── HEURISTIC mode: template synthesis from snapshot (no LLM) ──
+
+function buildHeuristicText(snapshot: SignalSnapshot | undefined, locale: string): string {
+  const isKo = locale.startsWith('ko') || locale.startsWith('kr');
+  const footer = isKo
+    ? '\n\n▶ 전체 AI 분석: Settings > AI에서 Groq 키 입력. (무료, 30초)'
+    : '\n\n▶ Full AI: add Groq key in Settings > AI. (free, 30s)';
+
+  if (!snapshot) {
+    return (isKo
+      ? '[DOUNI HEURISTIC]\n심볼을 선택하면 분석 데이터를 로드해요.'
+      : '[DOUNI HEURISTIC]\nSelect a symbol to load market data.') + footer;
+  }
+
+  const sym = (snapshot.symbol ?? '?').replace('USDT', '');
+  const tf = (snapshot.timeframe ?? '4H').toUpperCase();
+  const lines: string[] = [`[DOUNI HEURISTIC — ${sym} ${tf}]`];
+
+  if (snapshot.funding_rate != null) {
+    const pct = ((snapshot.funding_rate >= 0 ? '+' : '') + (snapshot.funding_rate * 100).toFixed(3) + '%');
+    const note = snapshot.funding_rate > 0.01 ? (isKo ? '롱 과열' : 'longs overheated')
+      : snapshot.funding_rate < -0.005 ? (isKo ? '숏 우세' : 'shorts dominate')
+      : isKo ? '중립' : 'neutral';
+    lines.push(`• ${isKo ? '펀딩' : 'Funding'}: ${pct} → ${note}`);
+  }
+  if (snapshot.oi_change_1h != null) {
+    const pct = ((snapshot.oi_change_1h >= 0 ? '+' : '') + (snapshot.oi_change_1h * 100).toFixed(1) + '%');
+    const note = snapshot.oi_change_1h > 0.02 ? (isKo ? '포지션 증가' : 'expanding')
+      : snapshot.oi_change_1h < -0.02 ? (isKo ? '포지션 감소' : 'contracting')
+      : isKo ? '안정' : 'stable';
+    lines.push(`• OI 1H: ${pct} → ${note}`);
+  }
+  if (snapshot.cvd_state) {
+    lines.push(`• CVD: ${snapshot.cvd_state.toUpperCase()}`);
+  }
+  if (snapshot.rsi14 != null) {
+    const note = snapshot.rsi14 > 70 ? (isKo ? '과매수' : 'overbought')
+      : snapshot.rsi14 < 30 ? (isKo ? '과매도' : 'oversold')
+      : isKo ? '중립' : 'neutral';
+    lines.push(`• RSI: ${snapshot.rsi14.toFixed(1)} → ${note}`);
+  }
+  if (snapshot.regime) {
+    lines.push(`• ${isKo ? '레짐' : 'Regime'}: ${snapshot.regime.replace('_', ' ').toUpperCase()}`);
+  }
+
+  return lines.join('\n') + footer;
+}
+
+// ── API mode: user's own key, OpenAI-compatible stream (no tool loop) ──
+
+const USER_KEY_ENDPOINTS: Record<string, { url: string; model: string }> = {
+  groq:       { url: 'https://api.groq.com/openai/v1/chat/completions',          model: 'llama-3.3-70b-versatile' },
+  cerebras:   { url: 'https://api.cerebras.ai/v1/chat/completions',              model: 'qwen-3-235b-a22b-instruct-2507' },
+  mistral:    { url: 'https://api.mistral.ai/v1/chat/completions',               model: 'mistral-medium-latest' },
+  openrouter: { url: 'https://openrouter.ai/api/v1/chat/completions',            model: 'meta-llama/llama-3.3-70b-instruct:free' },
+  deepseek:   { url: 'https://api.deepseek.com/v1/chat/completions',             model: 'deepseek-chat' },
+};
+
+async function* streamWithUserKey(
+  messages: LLMMessage[],
+  provider: string,
+  apiKey: string,
+  maxTokens: number,
+  temperature: number,
+): AsyncGenerator<DouniSSEEvent> {
+  const cfg = USER_KEY_ENDPOINTS[provider];
+  if (!cfg) { yield { type: 'error', message: `Unknown provider: ${provider}` }; return; }
+
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 30_000);
+  try {
+    const res = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: cfg.model, messages, stream: true, max_tokens: maxTokens, temperature }),
+      signal: ac.signal,
+    });
+    if (!res.ok || !res.body) {
+      const err = await res.text().catch(() => '');
+      yield { type: 'error', message: `${provider} ${res.status}: ${err.slice(0, 120)}` };
+      return;
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (!raw || raw === '[DONE]') continue;
+        try {
+          const delta = JSON.parse(raw)?.choices?.[0]?.delta?.content;
+          if (delta) yield { type: 'text_delta', text: delta };
+        } catch {}
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  yield { type: 'done', provider: provider as LLMProvider };
+}
+
 const DEFAULT_PROFILE: DouniProfile = {
   name: 'DOUNI',
   archetype: 'RIDER',
@@ -38,6 +152,7 @@ export const POST: RequestHandler = async ({ request }) => {
     greeting = false,
     locale = 'ko-KR',
     detectedSymbol,
+    runtimeConfig,
   } = body as {
     message: string;
     history?: CompressedHistoryEntry[];
@@ -50,6 +165,13 @@ export const POST: RequestHandler = async ({ request }) => {
     locale?: string;
     /** Symbol detected client-side from parsedQuery, passed for snapshot gating */
     detectedSymbol?: string;
+    runtimeConfig?: {
+      mode: 'TERMINAL' | 'HEURISTIC' | 'OLLAMA' | 'API';
+      provider?: string;
+      apiKey?: string;
+      ollamaModel?: string;
+      ollamaEndpoint?: string;
+    };
   };
 
   // Greeting mode: synthesize a locale-aware greeting prompt
@@ -71,6 +193,25 @@ export const POST: RequestHandler = async ({ request }) => {
 
   const activeProfile: DouniProfile = { ...DEFAULT_PROFILE, ...profile };
 
+  // ── Runtime mode routing ─────────────────────────────────────
+  const runtimeMode = runtimeConfig?.mode;
+
+  // HEURISTIC: template synthesis from snapshot — no LLM call
+  if (runtimeMode === 'HEURISTIC') {
+    const templateText = buildHeuristicText(snapshot, locale);
+    const enc = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const emit = (ev: DouniSSEEvent) =>
+          controller.enqueue(enc.encode(`data: ${JSON.stringify(ev)}\n\n`));
+        emit({ type: 'text_delta', text: templateText });
+        emit({ type: 'done', provider: 'ollama' });
+        controller.close();
+      },
+    });
+    return new Response(stream, { headers: SSE_HEADERS });
+  }
+
   // ── Intent classification (0 LLM cost) ─────────────────────
   // Greeting mode always gets minimum budget (no tools, no snapshot)
   const budget = greeting
@@ -78,8 +219,13 @@ export const POST: RequestHandler = async ({ request }) => {
     : classifyIntent(effectiveMessage);
 
   // ── Provider resolution ─────────────────────────────────────
-  // Explicit provider > intent preference > availability chain
+  // OLLAMA mode: force local provider regardless of env availability
+  const modeOverride: LLMProvider | null =
+    runtimeMode === 'OLLAMA' ? 'ollama' : null;
+
+  // Explicit provider > mode override > intent preference > availability chain
   const resolvedProvider: LLMProvider = provider
+    ?? modeOverride
     ?? (budget.preferredProvider !== 'default' ? budget.preferredProvider as LLMProvider : null)
     ?? getAvailableProvider()
     ?? 'ollama';
@@ -103,8 +249,37 @@ export const POST: RequestHandler = async ({ request }) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
       };
 
+      // Fallback helper — emit HEURISTIC template when LLM produced nothing
+      const emitHeuristicFallback = () => {
+        const fallback = buildHeuristicText(snapshot, locale);
+        emit({ type: 'text_delta', text: fallback });
+        emit({ type: 'done', provider: 'ollama' });
+      };
+
+      let textEmitted = false;
+
       try {
         const messages: LLMMessageWithTools[] = builtMessages;
+
+        // API mode: use user's own key — direct stream, no tool loop
+        if (runtimeMode === 'API' && runtimeConfig?.apiKey && runtimeConfig?.provider) {
+          for await (const ev of streamWithUserKey(
+            messages as LLMMessage[],
+            runtimeConfig.provider,
+            runtimeConfig.apiKey,
+            budget.maxTokens,
+            0.85,
+          )) {
+            if (ev.type === 'text_delta') textEmitted = true;
+            if (ev.type === 'error' && !textEmitted) {
+              emitHeuristicFallback();
+              return;
+            }
+            emit(ev);
+          }
+          if (!textEmitted) emitHeuristicFallback();
+          return;
+        }
 
         // Tool executor context
         const toolCtx = {
@@ -127,6 +302,7 @@ export const POST: RequestHandler = async ({ request }) => {
           })) {
             switch (chunk.type) {
               case 'text_delta':
+                textEmitted = true;
                 emit({ type: 'text_delta', text: chunk.text });
                 break;
               case 'tool_call_start':
@@ -166,21 +342,22 @@ export const POST: RequestHandler = async ({ request }) => {
           }
         }
 
-        emit({ type: 'done', provider: resolvedProvider });
+        if (!textEmitted) {
+          emitHeuristicFallback();
+        } else {
+          emit({ type: 'done', provider: resolvedProvider });
+        }
       } catch (err: any) {
-        emit({ type: 'error', message: err.message || 'Stream failed' });
+        if (!textEmitted) {
+          emitHeuristicFallback();
+        } else {
+          emit({ type: 'error', message: err.message || 'Stream failed' });
+        }
       } finally {
         controller.close();
       }
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
-  });
+  return new Response(stream, { headers: SSE_HEADERS });
 };
