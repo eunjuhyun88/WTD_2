@@ -11,6 +11,13 @@
     preview: { price?: number; rsi14?: number; funding_rate?: number; regime?: string };
   }
 
+  interface PatternPhaseRow {
+    slug: string;
+    phaseName: string;
+    symbols: string[];
+    daysIn?: number;
+  }
+
   interface Props {
     trendingData?: {
       trending?: any[];
@@ -18,9 +25,11 @@
       losers?: any[];
     } | null;
     alerts?: AlertRow[];
+    patternPhases?: PatternPhaseRow[];
+    activeSymbol?: string;
     onQuery?: (q: string) => void;
   }
-  let { trendingData, alerts = [], onQuery }: Props = $props();
+  let { trendingData, alerts = [], patternPhases = [], activeSymbol = '', onQuery }: Props = $props();
 
   const QUICK_QUERIES = [
     { id: 'buy',      label: 'Buy Candidates', action: 'Show me the best buy candidates right now' },
@@ -57,6 +66,40 @@
 </script>
 
 <aside class="left-rail">
+
+  <!-- Pattern Engine -->
+  {#if patternPhases.length > 0}
+  <section class="rail-section pattern-section">
+    <h3 class="section-title">
+      <span class="section-dot">●</span>
+      Pattern Engine
+      <a href="/patterns" class="section-link">all →</a>
+    </h3>
+    {#each patternPhases as row}
+      <div class="pattern-row">
+        <div class="pattern-top">
+          <span class="pattern-slug">{row.slug.replace('tradoor-','').replace('-v1','').toUpperCase()}</span>
+          <span class="pattern-phase phase-{row.phaseName.toLowerCase()}">{row.phaseName}</span>
+        </div>
+        <div class="pattern-syms">
+          {#each row.symbols.slice(0,4) as sym}
+            <button
+              class="sym-chip"
+              class:active={activeSymbol === sym + 'USDT' || activeSymbol === sym}
+              onclick={() => onQuery?.(`Analyze ${sym}USDT`)}
+            >
+              {sym}
+            </button>
+          {/each}
+          {#if row.symbols.length > 4}
+            <span class="sym-more">+{row.symbols.length - 4}</span>
+          {/if}
+        </div>
+      </div>
+    {/each}
+  </section>
+  {/if}
+
   <!-- Quick Queries -->
   <section class="rail-section">
     <h3 class="section-title">Quick Queries</h3>
@@ -191,4 +234,41 @@
   .alert-time { font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-2); }
   .alert-blocks { font-size: 10px; color: rgba(251,191,36,0.7); margin: 0; line-height: 1.3;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+
+  /* Pattern Engine section */
+  .pattern-section { background: rgba(173,202,124,0.03); border-bottom: 1px solid rgba(173,202,124,0.1) !important; }
+  .section-dot { color: #4ade80; margin-right: 3px; }
+  .section-link {
+    margin-left: auto; font-size: 9px; color: rgba(255,255,255,0.25);
+    text-decoration: none; letter-spacing: 0; font-weight: 400; text-transform: none;
+  }
+  .section-link:hover { color: rgba(255,255,255,0.5); }
+  .section-title { display: flex; align-items: center; }
+
+  .pattern-row { margin-bottom: 8px; }
+  .pattern-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .pattern-slug {
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 0.06em; color: rgba(173,202,124,0.9);
+  }
+  .pattern-phase {
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600;
+    padding: 1px 5px; border-radius: 2px; letter-spacing: 0.04em;
+  }
+  .pattern-phase.phase-accumulation { background: rgba(74,222,128,0.1); color: #4ade80; }
+  .pattern-phase.phase-fake_dump    { background: rgba(248,113,113,0.1); color: #f87171; }
+  .pattern-phase.phase-real_dump    { background: rgba(248,113,113,0.15); color: #f87171; }
+  .pattern-phase.phase-breakout     { background: rgba(251,191,36,0.1); color: #fbbf24; }
+  .pattern-phase.phase-arch_zone    { background: rgba(99,179,237,0.1); color: #63b3ed; }
+
+  .pattern-syms { display: flex; flex-wrap: wrap; gap: 3px; }
+  .sym-chip {
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600;
+    color: rgba(247,242,234,0.5); background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 3px;
+    padding: 1px 6px; cursor: pointer; transition: all 0.1s;
+  }
+  .sym-chip:hover { color: var(--sc-text-0); border-color: rgba(173,202,124,0.3); }
+  .sym-chip.active { color: #adca7c; border-color: rgba(173,202,124,0.4); background: rgba(173,202,124,0.08); }
+  .sym-more { font-size: 9px; color: var(--sc-text-3); padding: 1px 4px; }
 </style>
