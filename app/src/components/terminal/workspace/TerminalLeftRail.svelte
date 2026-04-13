@@ -27,9 +27,10 @@
     alerts?: AlertRow[];
     patternPhases?: PatternPhaseRow[];
     activeSymbol?: string;
+    newsItems?: Array<{ title?: string; source?: string; created_at?: string; published_at?: string }>;
     onQuery?: (q: string) => void;
   }
-  let { trendingData, alerts = [], patternPhases = [], activeSymbol = '', onQuery }: Props = $props();
+  let { trendingData, alerts = [], patternPhases = [], activeSymbol = '', newsItems = [], onQuery }: Props = $props();
 
   const QUICK_QUERIES = [
     { id: 'buy',      label: 'Buy Candidates', action: 'Show me the best buy candidates right now' },
@@ -63,6 +64,41 @@
 
   let movers = $derived(trendingData?.trending?.slice(0, 6) ?? []);
   let recentAlerts = $derived(alerts.slice(0, 8));
+  let watchlist = $derived.by(() => {
+    const ordered = [
+      ...(trendingData?.trending ?? []),
+      ...(trendingData?.gainers ?? []),
+      ...(trendingData?.losers ?? []),
+    ];
+    const seen = new Set<string>();
+    return ordered
+      .filter((coin) => {
+        const symbol = coin.symbol ?? '';
+        if (!symbol || seen.has(symbol)) return false;
+        seen.add(symbol);
+        return true;
+      })
+      .slice(0, 6);
+  });
+  let anomalyItems = $derived.by(() => {
+    const items: Array<{ tone: 'warn' | 'bear' | 'info'; label: string; value: string }> = [];
+    for (const alert of recentAlerts.slice(0, 3)) {
+      items.push({
+        tone: alert.p_win != null && alert.p_win >= 0.58 ? 'warn' : 'info',
+        label: `${alert.symbol.replace('USDT', '')} ${blockLabel(alert.blocks_triggered[0] ?? 'signal')}`,
+        value: alert.p_win != null ? `${(alert.p_win * 100).toFixed(0)}%` : relativeTime(alert.created_at),
+      });
+    }
+    for (const coin of (trendingData?.losers ?? []).slice(0, 2)) {
+      items.push({
+        tone: 'bear',
+        label: `${coin.symbol} pressure`,
+        value: formatPct(coin.percentChange24h ?? coin.change24h ?? 0),
+      });
+    }
+    return items.slice(0, 5);
+  });
+  let macroItems = $derived(newsItems.slice(0, 2));
 </script>
 
 <aside class="left-rail">
@@ -112,6 +148,47 @@
     </div>
   </section>
 
+  <!-- Watchlist -->
+  <section class="rail-section">
+    <h3 class="section-title">Watchlist</h3>
+    <div class="watchlist">
+      {#each watchlist as coin}
+        <button
+          class="watch-item"
+          class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT'}
+          onclick={() => setActivePair(coin.symbol + '/USDT')}
+        >
+          <span class="watch-sym">{coin.symbol}</span>
+          <div class="watch-right">
+            <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
+            <span class="watch-chg" style="color:{pctColor(coin.change24h ?? coin.percentChange24h ?? 0)}">
+              {formatPct(coin.change24h ?? coin.percentChange24h ?? 0)}
+            </span>
+          </div>
+        </button>
+      {/each}
+      {#if watchlist.length === 0}
+        <p class="empty-text">Loading watchlist…</p>
+      {/if}
+    </div>
+  </section>
+
+  <!-- Anomalies -->
+  <section class="rail-section">
+    <h3 class="section-title">Anomalies</h3>
+    <div class="anomaly-list">
+      {#each anomalyItems as item}
+        <div class="anomaly-item {item.tone}">
+          <span class="anomaly-label">{item.label}</span>
+          <span class="anomaly-value">{item.value}</span>
+        </div>
+      {/each}
+      {#if anomalyItems.length === 0}
+        <p class="empty-text">No unusual flows detected</p>
+      {/if}
+    </div>
+  </section>
+
   <!-- Scanner Alerts -->
   <section class="rail-section">
     <h3 class="section-title">
@@ -145,33 +222,32 @@
     </div>
   </section>
 
-  <!-- Top Movers -->
-  <section class="rail-section">
-    <h3 class="section-title">Top Movers</h3>
-    <div class="mover-list">
-      {#each movers as coin}
+  <!-- Macro / News -->
+  {#if macroItems.length > 0}
+    <section class="rail-section">
+      <h3 class="section-title">Macro / News</h3>
+      <div class="macro-list">
+        {#each macroItems as item}
+          <div class="macro-item">
+            <span class="macro-title">{item.title ?? 'Headline'}</span>
+            <span class="macro-meta">{item.source ?? 'News'} · {relativeTime(item.created_at ?? item.published_at ?? new Date().toISOString())}</span>
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
+  <!-- Movers -->
+  {#if movers.length > 0}
+    <section class="rail-section">
+      <h3 class="section-title">Momentum</h3>
+      {#each movers.slice(0, 4) as coin}
         <button class="mover-item" onclick={() => setActivePair(coin.symbol + '/USDT')}>
           <span class="mover-sym">{coin.symbol}</span>
           <div class="mover-right">
             <span class="mover-price">{formatPrice(coin.price ?? 0)}</span>
             <span class="mover-chg" style="color:{pctColor(coin.change24h ?? 0)}">{formatPct(coin.change24h ?? 0)}</span>
           </div>
-        </button>
-      {/each}
-      {#if movers.length === 0}
-        <p class="empty-text">Loading movers…</p>
-      {/if}
-    </div>
-  </section>
-
-  <!-- Gainers -->
-  {#if trendingData?.gainers?.length}
-    <section class="rail-section">
-      <h3 class="section-title">Gainers</h3>
-      {#each trendingData.gainers.slice(0, 3) as coin}
-        <button class="mover-item" onclick={() => setActivePair(coin.symbol + '/USDT')}>
-          <span class="mover-sym">{coin.symbol}</span>
-          <span class="mover-chg" style="color:#4ade80">{formatPct(coin.percentChange24h ?? coin.change24h ?? 0)}</span>
         </button>
       {/each}
     </section>
@@ -199,7 +275,34 @@
   }
   .query-chip:hover { background: rgba(255,255,255,0.06); color: var(--sc-text-0); }
 
-  .mover-list { display: flex; flex-direction: column; gap: 2px; }
+  .watchlist, .anomaly-list, .macro-list, .mover-list { display: flex; flex-direction: column; gap: 3px; }
+  .watch-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: none; border: none; cursor: pointer; padding: 5px 8px;
+    border-radius: 4px; transition: background 0.12s;
+  }
+  .watch-item:hover, .watch-item.active { background: rgba(77,143,245,0.08); }
+  .watch-sym { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 600; color: var(--sc-text-0); }
+  .watch-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+  .watch-price, .watch-chg { font-family: var(--sc-font-mono); font-size: 10px; }
+
+  .anomaly-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.03);
+  }
+  .anomaly-item.warn { background: rgba(251,191,36,0.08); }
+  .anomaly-item.bear { background: rgba(248,113,113,0.08); }
+  .anomaly-item.info { background: rgba(77,143,245,0.08); }
+  .anomaly-label { font-size: 11px; color: var(--sc-text-1); line-height: 1.35; }
+  .anomaly-value { font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2); white-space: nowrap; }
+
+  .macro-item {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.03);
+  }
+  .macro-title { font-size: 11px; color: var(--sc-text-1); line-height: 1.35; }
+  .macro-meta { font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-3); }
+
   .mover-item {
     display: flex; align-items: center; justify-content: space-between;
     background: none; border: none; cursor: pointer; padding: 5px 8px;

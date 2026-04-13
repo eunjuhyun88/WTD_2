@@ -29,6 +29,7 @@
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
+  import SourceRow from '../../components/terminal/workspace/SourceRow.svelte';
 
   // Mobile components
   import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
@@ -753,6 +754,84 @@
   let activeAsset = $derived(boardAssets.find(a => a.symbol === activeSymbol) ?? boardAssets[0] ?? null);
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
   let activeEvidence = $derived(activeSymbol ? evidenceMap[activeSymbol] ?? [] : []);
+  let analysisEvidence = $derived(activeEvidence.slice(0, 6));
+  let companionAssets = $derived(
+    boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
+  );
+
+  function metricValue(names: string[], fallback = '—'): string {
+    const hit = activeEvidence.find((item) => names.includes(item.metric));
+    return hit?.value ?? fallback;
+  }
+
+  function metricNote(names: string[], fallback = ''): string {
+    const hit = activeEvidence.find((item) => names.includes(item.metric));
+    return hit?.interpretation ?? fallback;
+  }
+
+  let heroMetricTiles = $derived.by(() => {
+    if (!heroAsset) return [];
+    const flowValue = metricValue(['CVD', 'FR / Flow'], flowBias);
+    const flowTone =
+      flowValue.startsWith('+') || flowValue.toLowerCase().includes('buy')
+        ? 'bull'
+        : flowValue.toLowerCase().includes('sell')
+          ? 'bear'
+          : 'neutral';
+
+    return [
+      {
+        label: 'Last Price',
+        value: heroAsset.lastPrice > 0
+          ? heroAsset.lastPrice.toLocaleString('en-US', { maximumFractionDigits: heroAsset.lastPrice >= 1000 ? 2 : 4 })
+          : '—',
+        note: heroAsset.symbol.replace('USDT', ''),
+        tone: 'neutral',
+      },
+      {
+        label: 'Vol Ratio',
+        value: `${heroAsset.volumeRatio1h.toFixed(1)}x`,
+        note: metricNote(['Vol Surge', 'Volume'], 'vs recent bars'),
+        tone: heroAsset.volumeRatio1h > 1.5 ? 'bull' : 'neutral',
+      },
+      {
+        label: 'OI Change',
+        value: `${heroAsset.oiChangePct1h >= 0 ? '+' : ''}${heroAsset.oiChangePct1h.toFixed(1)}%`,
+        note: metricNote(['OI Squeeze', 'OI 1H'], 'positioning'),
+        tone: heroAsset.oiChangePct1h >= 0 ? 'bull' : 'bear',
+      },
+      {
+        label: 'Funding',
+        value: `${(heroAsset.fundingRate * 100).toFixed(3)}%`,
+        note: metricNote(['FR / Flow', 'Funding'], 'perp skew'),
+        tone: Math.abs(heroAsset.fundingRate) > 0.01 ? 'warn' : 'neutral',
+      },
+      {
+        label: 'CVD / Flow',
+        value: flowValue,
+        note: metricNote(['CVD', 'FR / Flow'], 'orderflow'),
+        tone: flowTone,
+      },
+      {
+        label: 'Range / Regime',
+        value: metricValue(['Regime', 'Breakout'], flowBias),
+        note: metricNote(['Regime', 'Breakout'], 'context'),
+        tone: 'neutral',
+      },
+    ];
+  });
+
+  let statusStripItems = $derived.by(() => {
+    const regime = metricValue(['Regime', 'Breakout'], flowBias);
+    return [
+      { label: 'Mode', value: isScanMode ? 'SCAN' : 'FOCUS', tone: 'info' },
+      { label: 'Flow Bias', value: flowBias, tone: flowBias === 'LONG' ? 'bull' : flowBias === 'SHORT' ? 'bear' : 'neutral' },
+      { label: 'Regime', value: regime, tone: 'neutral' },
+      { label: 'Board', value: `${boardAssets.length} symbols`, tone: 'neutral' },
+      { label: 'Active', value: activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay, tone: 'neutral' },
+      { label: 'Freshness', value: activeAsset?.freshnessStatus ?? 'delayed', tone: activeAsset?.freshnessStatus === 'live' ? 'bull' : 'neutral' },
+    ];
+  });
 
   // ── Analysis rail mode ────────────────────────────────────────
   // SINGLE: ≤1 asset or active symbol has a verdict → show full VerdictCard
@@ -790,6 +869,15 @@
     onCapture={() => showCaptureModal = true}
   />
 
+  <div class="terminal-status-strip">
+    {#each statusStripItems as item}
+      <div class="status-pill" data-tone={item.tone}>
+        <span class="status-label">{item.label}</span>
+        <span class="status-value">{item.value}</span>
+      </div>
+    {/each}
+  </div>
+
   <!-- 3-column body -->
   <div class="terminal-body"
     class:has-right-panel={showRightPanel}
@@ -803,6 +891,7 @@
         alerts={scannerAlerts}
         {patternPhases}
         {activeSymbol}
+        newsItems={newsData?.records ?? []}
         onQuery={handleQueryChip}
       />
     </aside>
@@ -829,6 +918,39 @@
             evidence={activeEvidence}
             onExpand={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
           />
+          {#if heroMetricTiles.length > 0}
+            <div class="hero-metrics-row">
+              {#each heroMetricTiles as tile}
+                <div class="hero-metric" data-tone={tile.tone}>
+                  <span class="hero-metric-label">{tile.label}</span>
+                  <span class="hero-metric-value">{tile.value}</span>
+                  <span class="hero-metric-note">{tile.note}</span>
+                </div>
+              {/each}
+            </div>
+          {/if}
+          {#if companionAssets.length > 0}
+            <div class="market-mini-grid">
+              {#each companionAssets as asset}
+                {@const verdict = verdictMap[asset.symbol]}
+                <button class="mini-asset-card" onclick={() => selectAsset(asset.symbol)}>
+                  <div class="mini-top">
+                    <span class="mini-symbol">{asset.symbol.replace('USDT','')}</span>
+                    <span class:mini-up={asset.changePct1h >= 0} class:mini-down={asset.changePct1h < 0}>
+                      {asset.changePct1h >= 0 ? '+' : ''}{asset.changePct1h.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div class="mini-meta-row">
+                    <span>{asset.volumeRatio1h.toFixed(1)}x vol</span>
+                    <span>OI {asset.oiChangePct1h >= 0 ? '+' : ''}{asset.oiChangePct1h.toFixed(1)}%</span>
+                  </div>
+                  {#if verdict}
+                    <p class="mini-reason">{verdict.reason.slice(0, 72)}{verdict.reason.length > 72 ? '…' : ''}</p>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
 
         <!-- ── Analysis rail — single verdict or scan list ── -->
@@ -923,6 +1045,17 @@
                 <div class="cv-action">{heroVerdict.action}</div>
               {/if}
 
+              {#if heroMetricTiles.length > 0}
+                <div class="cv-metrics-grid">
+                  {#each heroMetricTiles.slice(0, 4) as tile}
+                    <div class="cv-metric">
+                      <span class="cv-metric-label">{tile.label}</span>
+                      <span class="cv-metric-value">{tile.value}</span>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+
               <!-- WHY -->
               {#if heroVerdict.reason}
                 <div class="cv-section">
@@ -938,6 +1071,20 @@
                   <div class="cv-tags">
                     {#each heroVerdict.against as a}
                       <span class="cv-tag warn">{a}</span>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+
+              {#if analysisEvidence.length > 0}
+                <div class="cv-section">
+                  <span class="cv-label">EVIDENCE</span>
+                  <div class="cv-evidence-list">
+                    {#each analysisEvidence as ev}
+                      <div class="cv-evidence-row">
+                        <span class="cv-evidence-metric">{ev.metric}</span>
+                        <span class="cv-evidence-value" data-state={ev.state}>{ev.value}</span>
+                      </div>
                     {/each}
                   </div>
                 </div>
@@ -964,6 +1111,12 @@
               <!-- Invalidation -->
               {#if heroVerdict.invalidation && heroVerdict.invalidation !== '—'}
                 <div class="cv-invalidation">{heroVerdict.invalidation}</div>
+              {/if}
+
+              {#if heroAsset.sources?.length}
+                <div class="cv-sources">
+                  <SourceRow sources={heroAsset.sources.slice(0, 4)} />
+                </div>
               {/if}
 
               <!-- Expand to full panel -->
@@ -996,6 +1149,8 @@
           asset={activeAsset}
           verdict={activeVerdict}
           evidence={activeEvidence}
+          bars={ohlcvBars}
+          {layerBarsMap}
           loading={isLoadingActive}
           onViewDetail={() => showDetailSheet = true}
         />
@@ -1018,6 +1173,8 @@
         {newsData}
         activeTab={rightPanelTab}
         onTabChange={(t) => rightPanelTab = t}
+        bars={ohlcvBars}
+        {layerBarsMap}
       />
     </aside>
     {/if}
@@ -1041,6 +1198,8 @@
   asset={activeAsset}
   verdict={activeVerdict}
   evidence={activeEvidence}
+  bars={ohlcvBars}
+  {layerBarsMap}
   newsItems={newsData?.records ?? []}
   onClose={() => showDetailSheet = false}
 />
@@ -1054,6 +1213,43 @@
     color: var(--sc-text-0);
     overflow: hidden;
     font-family: var(--sc-font-body);
+  }
+
+  .terminal-status-strip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: #0b0e14;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    overflow-x: auto;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    white-space: nowrap;
+  }
+  .status-pill[data-tone='bull'] { border-color: rgba(74,222,128,0.22); background: rgba(74,222,128,0.06); }
+  .status-pill[data-tone='bear'] { border-color: rgba(248,113,113,0.22); background: rgba(248,113,113,0.06); }
+  .status-pill[data-tone='info'] { border-color: rgba(99,179,237,0.22); background: rgba(99,179,237,0.06); }
+  .status-label,
+  .status-value {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+  }
+  .status-label {
+    color: var(--sc-text-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status-value {
+    color: var(--sc-text-1);
+    font-weight: 700;
   }
 
   .terminal-body {
@@ -1127,9 +1323,9 @@
 
   /* Analysis rail — always visible right panel, scrollable */
   .analysis-rail {
-    width: 380px;
-    min-width: 320px;
-    max-width: 480px;
+    width: 340px;
+    min-width: 300px;
+    max-width: 400px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -1143,10 +1339,11 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 12px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
     flex-shrink: 0;
     min-height: 34px;
+    background: rgba(255,255,255,0.02);
   }
   .rail-mode {
     font-family: var(--sc-font-mono, monospace);
@@ -1239,6 +1436,85 @@
     min-height: 0;
   }
 
+  .hero-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.015);
+  }
+  .hero-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.025);
+  }
+  .hero-metric[data-tone='bull'] { background: rgba(74,222,128,0.06); }
+  .hero-metric[data-tone='bear'] { background: rgba(248,113,113,0.06); }
+  .hero-metric[data-tone='warn'] { background: rgba(251,191,36,0.06); }
+  .hero-metric-label,
+  .hero-metric-note {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    color: var(--sc-text-3);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .hero-metric-value {
+    font-family: var(--sc-font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sc-text-0);
+  }
+
+  .market-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 12px 12px;
+    overflow: hidden;
+  }
+  .mini-asset-card {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+    text-align: left;
+    cursor: pointer;
+  }
+  .mini-asset-card:hover { border-color: rgba(255,255,255,0.18); }
+  .mini-top,
+  .mini-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .mini-symbol,
+  .mini-meta-row span {
+    font-family: var(--sc-font-mono);
+  }
+  .mini-symbol { font-size: 11px; font-weight: 700; color: var(--sc-text-0); }
+  .mini-meta-row span { font-size: 9px; color: var(--sc-text-2); }
+  .mini-up { font-family: var(--sc-font-mono); font-size: 10px; color: #4ade80; }
+  .mini-down { font-family: var(--sc-font-mono); font-size: 10px; color: #f87171; }
+  .mini-reason {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.4;
+    color: var(--sc-text-2);
+  }
+
   /* Empty state */
   .board-empty {
     flex: 1;
@@ -1326,10 +1602,12 @@
   /* Tablet — analysis rail gets narrower */
   @media (max-width: 1200px) and (min-width: 769px) {
     .analysis-rail { width: 320px; min-width: 280px; }
+    .hero-metrics-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 
   /* Mobile */
   @media (max-width: 768px) {
+    .terminal-status-strip { display: none; }
     .terminal-body {
       grid-template-columns: 1fr !important;
     }
@@ -1346,6 +1624,13 @@
   /* Hide mobile wrap on desktop */
   @media (min-width: 769px) {
     .mobile-board-wrap { display: none; }
+    .terminal-body.has-right-panel {
+      grid-template-columns: var(--terminal-left-w, 240px) 4px 1fr !important;
+    }
+    .terminal-body.has-right-panel > .panel-resizer:last-of-type,
+    .right-panel {
+      display: none !important;
+    }
   }
 
   .mobile-board-wrap {
@@ -1360,6 +1645,7 @@
     padding: 0;
     overflow-y: auto;
     flex: 1;
+    background: rgba(255,255,255,0.01);
   }
 
   .cv-bias {
@@ -1395,6 +1681,7 @@
     display: flex; align-items: baseline; gap: 8px;
     padding: 8px 14px;
     border-bottom: 1px solid var(--sc-terminal-border);
+    background: rgba(255,255,255,0.015);
   }
   .cv-last {
     font-family: var(--sc-font-mono); font-size: 18px; font-weight: 700;
@@ -1411,6 +1698,36 @@
     color: rgba(173,202,124,0.9);
     border-bottom: 1px solid var(--sc-terminal-border);
     background: rgba(173,202,124,0.04);
+  }
+
+  .cv-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--sc-terminal-border);
+    border-bottom: 1px solid var(--sc-terminal-border);
+  }
+  .cv-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.02);
+    min-width: 0;
+  }
+  .cv-metric-label,
+  .cv-evidence-metric {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    color: var(--sc-text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .cv-metric-value {
+    font-family: var(--sc-font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sc-text-1);
   }
 
   .cv-section {
@@ -1436,10 +1753,31 @@
   }
   .cv-tag.warn { background: rgba(251,191,36,0.1); color: #fbbf24; }
 
+  .cv-evidence-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .cv-evidence-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .cv-evidence-value {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--sc-text-1);
+  }
+  .cv-evidence-value[data-state='bullish'] { color: #4ade80; }
+  .cv-evidence-value[data-state='bearish'] { color: #f87171; }
+  .cv-evidence-value[data-state='warning'] { color: #fbbf24; }
+
   .cv-levels { display: flex; flex-direction: column; gap: 4px; }
   .cv-level {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 3px 0;
+    padding: 4px 0;
   }
   .cv-level.good .lv-val { color: #4ade80; }
   .cv-level.bad  .lv-val { color: #f87171; }
@@ -1455,6 +1793,11 @@
     padding: 7px 14px;
     font-family: var(--sc-font-mono); font-size: 10px;
     color: rgba(248,113,113,0.7);
+    border-bottom: 1px solid var(--sc-terminal-border);
+  }
+
+  .cv-sources {
+    padding: 0 14px 8px;
     border-bottom: 1px solid var(--sc-terminal-border);
   }
 

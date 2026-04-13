@@ -11,8 +11,10 @@
     newsData?: any;
     activeTab?: string;
     onTabChange?: (t: string) => void;
+    bars?: any[];
+    layerBarsMap?: Record<string, any[]>;
   }
-  let { analysisData, newsData, activeTab = 'summary', onTabChange }: Props = $props();
+  let { analysisData, newsData, activeTab = 'summary', onTabChange, bars = [], layerBarsMap = {} }: Props = $props();
 
   const TABS = [
     { id: 'summary', label: 'Summary' },
@@ -160,12 +162,22 @@
     return ev;
   })());
 
-  const SOURCES: TerminalSource[] = [
+  const SOURCES: TerminalSource[] = $derived([
     { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
     { label: 'Binance Perp', category: 'Market', freshness: 'recent', updatedAt: Date.now() - 15000 },
     { label: 'Market Engine', category: 'Model', freshness: 'recent', updatedAt: Date.now() - 30000,
       method: deep ? `17-layer pipeline · ${deepVerdict}` : 'Feature calc + ensemble' },
-  ];
+  ]);
+
+  const fundingMetrics = $derived(
+    evidence.filter(e => ['Funding Rate', 'Funding Pct', 'FR / Flow', 'Funding'].includes(e.metric))
+  );
+  const oiMetrics = $derived(
+    evidence.filter(e => ['OI Change', 'OI Momentum', 'OI Squeeze', 'OI 1H'].includes(e.metric))
+  );
+  const structureMetrics = $derived(
+    evidence.filter(e => !fundingMetrics.includes(e) && !oiMetrics.includes(e))
+  );
 </script>
 
 <aside class="context-panel">
@@ -215,7 +227,7 @@
         <div class="divider"></div>
         <ActionStrip action={verdict.action} avoid={verdict.against[0]} />
         <div class="divider"></div>
-        <EvidenceGrid {evidence} cols={2} />
+        <EvidenceGrid {evidence} cols={2} {bars} {layerBarsMap} />
         <div class="divider"></div>
         <WhyPanel why={verdict.reason} against={verdict.against} />
         <div class="divider"></div>
@@ -297,15 +309,24 @@
     {:else if activeTab === 'metrics'}
       {#if evidence.length}
         <div class="metrics-detail">
-          {#each evidence as ev}
-            <div class="metric-row">
-              <span class="metric-label">{ev.metric}</span>
-              <span class="metric-val" style="color:{ev.state==='bullish'?'#4ade80':ev.state==='bearish'?'#f87171':ev.state==='warning'?'#fbbf24':'var(--sc-text-1)'}">
-                {ev.value}
-              </span>
-              <span class="metric-interp">{ev.interpretation}</span>
+          {#if structureMetrics.length > 0}
+            <div class="metrics-group">
+              <p class="section-label">Structure</p>
+              <EvidenceGrid evidence={structureMetrics} cols={2} {bars} {layerBarsMap} />
             </div>
-          {/each}
+          {/if}
+          {#if oiMetrics.length > 0}
+            <div class="metrics-group">
+              <p class="section-label">Open Interest</p>
+              <EvidenceGrid evidence={oiMetrics} cols={2} {bars} {layerBarsMap} />
+            </div>
+          {/if}
+          {#if fundingMetrics.length > 0}
+            <div class="metrics-group">
+              <p class="section-label">Funding</p>
+              <EvidenceGrid evidence={fundingMetrics} cols={2} {bars} {layerBarsMap} />
+            </div>
+          {/if}
         </div>
         <SourceRow sources={SOURCES} />
       {:else}
@@ -345,6 +366,7 @@
   .empty-panel p { font-size: 12px; color: var(--sc-text-2); text-align: center; }
 
   .entry-section, .risk-section, .metrics-detail { display: flex; flex-direction: column; gap: 8px; }
+  .metrics-group { display: flex; flex-direction: column; gap: 6px; }
   .section-label { font-family: var(--sc-font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sc-text-2); margin: 0; }
   .mono-val { font-family: var(--sc-font-mono); font-size: 12px; color: var(--sc-text-0); margin: 0; }
   .text-val { font-size: 12px; color: var(--sc-text-1); margin: 0; }
@@ -399,8 +421,4 @@
   .news-time { font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2); }
   .news-title { font-size: 12px; color: var(--sc-text-1); margin: 0; line-height: 1.4; }
 
-  .metric-row { display: grid; grid-template-columns: 80px 80px 1fr; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .metric-label { font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2); text-transform: uppercase; }
-  .metric-val { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 700; }
-  .metric-interp { font-size: 11px; color: var(--sc-text-2); }
 </style>

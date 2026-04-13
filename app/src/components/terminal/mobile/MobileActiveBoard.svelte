@@ -3,12 +3,15 @@
   import FreshnessBadge from '../workspace/FreshnessBadge.svelte';
   import ActionStrip from '../workspace/ActionStrip.svelte';
   import EvidenceGrid from '../workspace/EvidenceGrid.svelte';
+  import MiniIndicatorChart from '../workspace/MiniIndicatorChart.svelte';
   import SourceRow from '../workspace/SourceRow.svelte';
 
   interface Props {
     asset?: TerminalAsset | null;
     verdict?: TerminalVerdict | null;
     evidence?: TerminalEvidence[];
+    bars?: any[];
+    layerBarsMap?: Record<string, any[]>;
     loading?: boolean;
     onViewDetail?: () => void;
   }
@@ -17,6 +20,8 @@
     asset = null,
     verdict = null,
     evidence = [],
+    bars = [],
+    layerBarsMap = {},
     loading = false,
     onViewDetail,
   }: Props = $props();
@@ -43,6 +48,14 @@
     if (v >= 100) return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
     return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
   }
+
+  const primaryEvidence = $derived(evidence.slice(0, 6));
+  const summaryMetrics = $derived(asset ? [
+    { label: 'VOL 1H', value: `${asset.volumeRatio1h.toFixed(1)}x`, tone: 'neutral' },
+    { label: 'OI 1H', value: fmtPct(asset.oiChangePct1h), tone: asset.oiChangePct1h >= 0 ? 'bull' : 'bear' },
+    { label: 'FUNDING', value: `${(asset.fundingRate * 100).toFixed(3)}%`, tone: Math.abs(asset.fundingRate) > 0.01 ? 'warn' : 'neutral' },
+    { label: 'SPREAD', value: `${asset.spreadBps.toFixed(1)} bps`, tone: asset.spreadBps > 5 ? 'warn' : 'neutral' },
+  ] : []);
 </script>
 
 <div class="mobile-board">
@@ -108,6 +121,18 @@
       </div>
     </div>
 
+    {#if bars.length > 2}
+      <div class="price-chart-card">
+        <div class="card-head">
+          <span class="section-label">PRICE</span>
+          <span class="card-meta">Last 100 bars</span>
+        </div>
+        <div class="chart-frame">
+          <MiniIndicatorChart layerKey="price" {bars} width={320} height={92} />
+        </div>
+      </div>
+    {/if}
+
     <!-- ── Verdict Block ── -->
     {#if verdict}
       <div class="verdict-block">
@@ -130,11 +155,27 @@
         />
       </div>
 
+      {#if summaryMetrics.length > 0}
+        <div class="metrics-section">
+          <p class="section-label">CORE METRICS</p>
+          <div class="metrics-grid">
+            {#each summaryMetrics as metric}
+              <div class="metric-card">
+                <span class="metric-label">{metric.label}</span>
+                <span class="metric-value" class:bull={metric.tone === 'bull'} class:bear={metric.tone === 'bear'} class:warn={metric.tone === 'warn'}>
+                  {metric.value}
+                </span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
       <!-- ── Evidence ── -->
-      {#if evidence.length > 0}
+      {#if primaryEvidence.length > 0}
         <div class="evidence-section">
           <p class="section-label">EVIDENCE</p>
-          <EvidenceGrid {evidence} cols={2} />
+          <EvidenceGrid evidence={primaryEvidence} cols={2} {bars} {layerBarsMap} />
         </div>
       {/if}
 
@@ -218,7 +259,6 @@
   /* ── Asset Header ── */
   .asset-header {
     padding: 16px 16px 12px;
-    border-bottom: 1px solid var(--sc-terminal-border);
   }
 
   .asset-main {
@@ -321,8 +361,11 @@
 
   /* ── Verdict ── */
   .verdict-block {
+    margin: 0 16px 12px;
     padding: 14px 16px;
-    border-bottom: 1px solid var(--sc-terminal-border);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -366,9 +409,14 @@
   }
 
   /* ── Evidence ── */
+  .price-chart-card,
+  .metrics-section,
   .evidence-section {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--sc-terminal-border);
+    margin: 0 16px 12px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
   }
 
   .section-label {
@@ -380,10 +428,74 @@
     margin: 0 0 10px;
   }
 
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .card-meta {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: var(--sc-text-3);
+  }
+
+  .chart-frame {
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.18);
+    padding: 4px;
+  }
+
+  .chart-frame :global(svg) {
+    width: 100%;
+    height: 84px;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .metric-card {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 10px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.03);
+    min-width: 0;
+  }
+
+  .metric-label {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    color: var(--sc-text-3);
+  }
+
+  .metric-value {
+    font-family: var(--sc-font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sc-text-1);
+  }
+
+  .metric-value.bull { color: var(--sc-bias-bull); }
+  .metric-value.bear { color: var(--sc-bias-bear); }
+  .metric-value.warn { color: #fbbf24; }
+
   /* ── Sources ── */
   .sources-section {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--sc-terminal-border);
+    margin: 0 16px 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
   }
 
   /* ── CTA ── */
