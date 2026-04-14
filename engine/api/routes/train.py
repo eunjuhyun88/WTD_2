@@ -103,3 +103,22 @@ async def train(req: TrainRequest) -> TrainResponse:
         n_samples=result["n_samples"],
         model_version=model_version,
     )
+
+
+@router.get("/report")
+async def train_report(user_id: str | None = None, top_k: int = 20) -> dict:
+    """Model report endpoint with feature importance ranking."""
+    engine = get_engine(user_id)
+    if not engine.is_trained:
+        return {
+            "trained": False,
+            "message": "Model not trained yet.",
+            "user_id": user_id or "global",
+        }
+
+    report = engine.feature_importance_report(top_k=top_k) or {}
+    return {
+        "trained": True,
+        "user_id": user_id or "global",
+        **report,
+    }

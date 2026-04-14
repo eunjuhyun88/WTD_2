@@ -79,6 +79,7 @@ Implication:
 - `W-0012-runtime-split-and-state-plane.md`: target runtime topology and state-plane definition
 - `W-0013-launch-readiness-program.md`: launch-critical blocker inventory and execution order
 - `W-0015-research-pipeline-canonicalization.md`: canonical thesis/eval/experiment record layer for the local research loop
+- `W-0016-engine-modularization-and-local-research.md`: engine-side layer split, feature/model lineage primitives, and local research tracking
 - future child items should be created per phase or per bounded subsystem
 
 ## Repository Verification Snapshot

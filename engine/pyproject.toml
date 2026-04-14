@@ -25,6 +25,9 @@ ml = [
     "scikit-learn>=1.4",
 ]
 
+[project.scripts]
+research-cli = "research.cli:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # "." → cogochi imports (models.signal, scanner.feature_calc, etc.)

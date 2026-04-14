@@ -30,16 +30,14 @@ except ModuleNotFoundError:
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from data_cache.loader import load_klines, load_macro_bundle, load_perp
-from exceptions import CacheMiss
 from scanner.alerts import (
     send_pattern_engine_alert,
     send_pattern_scan_summary,
     send_scan_summary,
 )
-from scanner.jobs import (
-    auto_evaluate_job,
-    filter_new_pattern_entries,
-    pattern_scan_job,
+from scanner.jobs.auto_evaluate import auto_evaluate_job
+from scanner.jobs.pattern_scan import pattern_scan_job
+from scanner.jobs.universe_scan import (
     push_alert,
     scan_universe_job,
 )

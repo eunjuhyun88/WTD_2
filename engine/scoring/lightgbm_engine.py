@@ -31,6 +31,7 @@ from scoring.feature_matrix import (
     encode_features_df,
     snapshot_to_vector,
 )
+from scoring.feature_analysis import approximate_feature_contribution
 
 log = logging.getLogger("engine.lgbm")
 
@@ -203,6 +204,32 @@ class LightGBMEngine:
             return None
         importances = self._model.booster_.feature_importance(importance_type="gain")
         return dict(zip(FEATURE_NAMES, importances.tolist()))
+
+    def feature_importance_report(self, top_k: int = 20) -> Optional[dict]:
+        """Return ranked feature importance report for API consumers."""
+        importance = self.feature_importance()
+        if importance is None:
+            return None
+        ranked = sorted(importance.items(), key=lambda kv: kv[1], reverse=True)
+        return {
+            "model_version": self._model_version,
+            "auc": self._auc,
+            "total_features": len(FEATURE_NAMES),
+            "top_features": ranked[:top_k],
+            "bottom_features": ranked[-top_k:],
+            "zero_importance_count": sum(1 for _, v in ranked if v == 0),
+        }
+
+    def feature_contribution(self, snap: SignalSnapshot, top_k: int = 20) -> Optional[list[dict]]:
+        """Approximate per-feature contribution for one prediction."""
+        if self._model is None:
+            return None
+        contribs = approximate_feature_contribution(self._model, snap)
+        ranked = sorted(contribs, key=lambda c: abs(c.contribution), reverse=True)
+        return [
+            {"name": c.name, "value": c.value, "contribution": c.contribution}
+            for c in ranked[:top_k]
+        ]
 
     @property
     def is_trained(self) -> bool:
