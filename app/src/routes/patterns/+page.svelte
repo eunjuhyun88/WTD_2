@@ -8,8 +8,10 @@
    * 3. Pattern stats (hit rate, avg gain)
    * 4. Pending ledger records — VALID / INVALID override buttons
    */
+  import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
+  import AppSurfaceHeader from '$lib/components/surfaces/AppSurfaceHeader.svelte';
 
   // ── Types ──────────────────────────────────────────────────────────────────
   interface PhaseState {
@@ -148,6 +150,14 @@
     return `${Math.round(diff / 1440)}d 전`;
   }
 
+  function fmtPct(value: number | null | undefined, digits = 0): string {
+    if (value == null) return '—';
+    return `${(value * 100).toFixed(digits)}%`;
+  }
+
+  const accumulationCount = $derived(candidates.filter((c) => c.phase === 3).length);
+  const breakoutCount = $derived(states.filter((s) => s.current_phase === 4).length);
+
   let refreshInterval: ReturnType<typeof setInterval>;
   onMount(() => {
     loadAll();
@@ -165,274 +175,226 @@
   <link rel="canonical" href={buildCanonicalHref('/patterns')} />
 </svelte:head>
 
-<div class="patterns-shell">
-
-  <!-- ── Top bar ── -->
-  <div class="top-bar">
-    <div class="top-left">
-      <span class="page-title">PATTERN ENGINE</span>
-      {#if lastScan}
-        <span class="scan-time">마지막 스캔 {sinceHours(lastScan)}</span>
-      {/if}
-    </div>
-    <button class="scan-btn" onclick={triggerScan} disabled={scanning}>
-      {scanning ? '스캔 중…' : '▶ 지금 스캔'}
-    </button>
-  </div>
-
-  {#if loading}
-    <div class="page-loading">
-      <span class="pulse"></span>
-      <span>패턴 데이터 로딩 중…</span>
-    </div>
-
-  {:else if error}
-    <div class="page-error">
-      <p>⚠ 엔진 연결 실패 — Python 엔진이 실행 중인지 확인하세요</p>
-      <p class="error-detail">{error}</p>
-      <button onclick={loadAll}>재시도</button>
-    </div>
-
-  {:else}
-
-    <!-- ── Section 1: ACCUMULATION alerts (act now) ── -->
-    <section class="section">
-      <div class="section-header">
-        <span class="section-title">⚡ 진입 후보 — ACCUMULATION</span>
-        <span class="section-count">{candidates.filter(c => c.phase === 3).length}개</span>
+<div class="surface-page patterns-page">
+  <AppSurfaceHeader active="patterns" />
+  <header class="surface-hero">
+    <div class="surface-copy patterns-copy">
+      <div>
+        <span class="surface-kicker">Patterns</span>
+        <h1 class="surface-title">Pattern Engine</h1>
       </div>
+      <p class="surface-subtitle">
+        Track accumulation candidates, live phase transitions, and model readiness in the same product shell as Dashboard.
+      </p>
+    </div>
+    <div class="surface-stats">
+      <article class="surface-stat">
+        <span class="surface-meta">Candidates</span>
+        <strong>{accumulationCount}</strong>
+      </article>
+      <article class="surface-stat">
+        <span class="surface-meta">Active</span>
+        <strong>{states.length}</strong>
+      </article>
+      <article class="surface-stat">
+        <span class="surface-meta">Breakout</span>
+        <strong>{breakoutCount}</strong>
+      </article>
+      <article class="surface-stat">
+        <span class="surface-meta">Last Scan</span>
+        <strong>{lastScan ? sinceHours(lastScan) : '—'}</strong>
+      </article>
+    </div>
+    <div class="topbar-actions">
+      <button class="surface-button" onclick={triggerScan} disabled={scanning}>
+        {scanning ? 'Scanning…' : 'Run Scan'}
+      </button>
+      <button class="surface-button-secondary" onclick={() => goto('/terminal')}>Open Terminal</button>
+    </div>
+  </header>
 
-      {#if candidates.filter(c => c.phase === 3).length === 0}
-        <p class="empty-hint">현재 ACCUMULATION 진입 후보 없음 — 15분마다 스캔</p>
-      {:else}
-        <div class="candidate-grid">
-          {#each candidates.filter(c => c.phase === 3) as cand}
-            <div class="candidate-card">
-              <div class="cand-top">
-                <span class="cand-sym">{cand.symbol.replace('USDT','')}</span>
-                <span class="cand-badge accum">ACCUMULATION</span>
-              </div>
-              <div class="cand-meta">
-                <span>{cand.pattern_id.replace(/_/g,' ')}</span>
-                <span>{sinceHours(cand.since)}</span>
-              </div>
-              {#if cand.features}
-                <div class="cand-features">
-                  {#if cand.features.oi_change_1h != null}
-                    <span class="feat">OI {cand.features.oi_change_1h > 0 ? '+' : ''}{(cand.features.oi_change_1h * 100).toFixed(1)}%</span>
-                  {/if}
-                  {#if cand.features.funding_rate != null}
-                    <span class="feat">FR {cand.features.funding_rate > 0 ? '+' : ''}{(cand.features.funding_rate * 100).toFixed(4)}%</span>
-                  {/if}
-                  {#if cand.features.volume_ratio_1h != null}
-                    <span class="feat">Vol {cand.features.volume_ratio_1h.toFixed(1)}x</span>
-                  {/if}
+  <div class="patterns-content">
+    {#if loading}
+      <section class="surface-card page-loading">
+        <span class="pulse"></span>
+        <span>패턴 데이터 로딩 중…</span>
+      </section>
+
+    {:else if error}
+      <section class="surface-card page-error">
+        <p>⚠ 엔진 연결 실패 — Python 엔진이 실행 중인지 확인하세요</p>
+        <p class="error-detail">{error}</p>
+        <button class="surface-button-secondary" onclick={loadAll}>재시도</button>
+      </section>
+
+    {:else}
+      <section class="surface-grid">
+        <div class="surface-section-head">
+          <div>
+            <span class="surface-kicker">Entry Candidates</span>
+            <h2>Accumulation alerts</h2>
+          </div>
+          <span class="surface-chip">{accumulationCount} active</span>
+        </div>
+
+        {#if accumulationCount === 0}
+          <div class="surface-card empty-card">
+            <p>현재 ACCUMULATION 진입 후보 없음 — 15분마다 스캔</p>
+          </div>
+        {:else}
+          <div class="candidate-grid">
+            {#each candidates.filter((c) => c.phase === 3) as cand}
+              <div class="surface-card candidate-card">
+                <div class="cand-top">
+                  <span class="cand-sym">{cand.symbol.replace('USDT','')}</span>
+                  <span class="surface-chip accum-chip">Accumulation</span>
                 </div>
-              {/if}
-              <div class="cand-actions">
-                <a class="cand-chart-link" href="/terminal?symbol={cand.symbol}">차트 →</a>
-                <button class="verdict-btn valid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'valid')}>✓ VALID</button>
-                <button class="verdict-btn invalid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'invalid')}>✗ SKIP</button>
+                <div class="cand-meta">
+                  <span>{cand.pattern_id.replace(/_/g,' ')}</span>
+                  <span>{sinceHours(cand.since)}</span>
+                </div>
+                {#if cand.features}
+                  <div class="cand-features">
+                    {#if cand.features.oi_change_1h != null}
+                      <span class="feat">OI {cand.features.oi_change_1h > 0 ? '+' : ''}{(cand.features.oi_change_1h * 100).toFixed(1)}%</span>
+                    {/if}
+                    {#if cand.features.funding_rate != null}
+                      <span class="feat">FR {cand.features.funding_rate > 0 ? '+' : ''}{(cand.features.funding_rate * 100).toFixed(4)}%</span>
+                    {/if}
+                    {#if cand.features.volume_ratio_1h != null}
+                      <span class="feat">Vol {cand.features.volume_ratio_1h.toFixed(1)}x</span>
+                    {/if}
+                  </div>
+                {/if}
+                <div class="cand-actions">
+                  <a class="surface-button-ghost compact-action" href="/terminal?symbol={cand.symbol}">Open Chart</a>
+                  <button class="surface-button-secondary compact-action valid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'valid')}>Valid</button>
+                  <button class="surface-button-ghost compact-action invalid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'invalid')}>Skip</button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </section>
+
+      <section class="surface-grid cols-2 patterns-lower">
+        <div class="surface-grid">
+          <div class="surface-section-head">
+            <div>
+              <span class="surface-kicker">Live States</span>
+              <h2>전체 심볼 상태</h2>
+            </div>
+            <span class="surface-chip">활성 {states.length}개</span>
+          </div>
+
+          {#if states.length === 0}
+            <div class="surface-card empty-card">
+              <p>추적 중인 심볼 없음 — 스캔을 실행하면 상태가 채워집니다</p>
+            </div>
+          {:else}
+            <div class="surface-card states-shell">
+              <div class="states-table">
+                <div class="table-header">
+                  <span>심볼</span>
+                  <span>패턴</span>
+                  <span>현재 페이즈</span>
+                  <span>진입 시간</span>
+                  <span>캔들 수</span>
+                </div>
+                {#each states as s}
+                  {@const meta = PHASE_META[s.current_phase] ?? { label: String(s.current_phase), color: 'rgba(255,255,255,0.4)' }}
+                  <div class="table-row" class:highlight={s.current_phase === 3}>
+                    <span class="row-sym">
+                      <a href="/terminal?symbol={s.symbol}">{s.symbol.replace('USDT','')}</a>
+                    </span>
+                    <span class="row-pattern">{s.pattern_id.replace(/_/g,' ')}</span>
+                    <span class="row-phase" style="--phase-color:{meta.color}">{meta.label}</span>
+                    <span class="row-time">{sinceHours(s.entered_at)}</span>
+                    <span class="row-candles">{s.candles_in_phase}</span>
+                  </div>
+                {/each}
               </div>
             </div>
-          {/each}
+          {/if}
         </div>
-      {/if}
-    </section>
 
-    <!-- ── Section 2: All active states ── -->
-    <section class="section">
-      <div class="section-header">
-        <span class="section-title">📊 전체 심볼 상태</span>
-        <span class="section-count">활성 {states.length}개</span>
-      </div>
-
-      {#if states.length === 0}
-        <p class="empty-hint">추적 중인 심볼 없음 — 스캔을 실행하면 상태가 채워집니다</p>
-      {:else}
-        <div class="states-table">
-          <div class="table-header">
-            <span>심볼</span>
-            <span>패턴</span>
-            <span>현재 페이즈</span>
-            <span>진입 시간</span>
-            <span>캔들 수</span>
+        <div class="surface-grid">
+          <div class="surface-section-head">
+            <div>
+              <span class="surface-kicker">Pattern Stats</span>
+              <h2>성과와 준비도</h2>
+            </div>
+            <span class="surface-chip">{stats.length} patterns</span>
           </div>
-          {#each states as s}
-            {@const meta = PHASE_META[s.current_phase] ?? { label: String(s.current_phase), color: 'rgba(255,255,255,0.4)' }}
-            <div class="table-row" class:highlight={s.current_phase === 3}>
-              <span class="row-sym">
-                <a href="/terminal?symbol={s.symbol}">{s.symbol.replace('USDT','')}</a>
-              </span>
-              <span class="row-pattern">{s.pattern_id.replace(/_/g,' ')}</span>
-              <span class="row-phase" style="--phase-color:{meta.color}">{meta.label}</span>
-              <span class="row-time">{sinceHours(s.entered_at)}</span>
-              <span class="row-candles">{s.candles_in_phase}</span>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </section>
 
-    <!-- ── Section 3: Pattern stats ── -->
-    <section class="section">
-      <div class="section-header">
-        <span class="section-title">📈 패턴 통계</span>
-      </div>
-      <div class="stats-grid">
-        {#each stats as s}
-          <div class="stat-card">
-            <span class="stat-name">{s.pattern_slug.replace(/_/g,' ')}</span>
-            <div class="stat-row">
-              <span class="stat-label">적중률</span>
-              <span class="stat-value {(s.hit_rate ?? 0) >= 0.6 ? 'good' : (s.hit_rate ?? 0) >= 0.4 ? 'mid' : 'bad'}">
-                {s.hit_rate != null ? `${(s.hit_rate * 100).toFixed(0)}%` : '—'}
-              </span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">평균 수익 / 손실</span>
-              <span class="stat-value">
-                {s.avg_gain_pct != null ? `+${(s.avg_gain_pct * 100).toFixed(1)}%` : '—'}
-                {#if s.avg_loss_pct != null}
-                  <span class="stat-loss"> / {(s.avg_loss_pct * 100).toFixed(1)}%</span>
+          <div class="stats-grid">
+            {#each stats as s}
+              <div class="surface-card stat-card">
+                <span class="stat-name">{s.pattern_slug.replace(/_/g,' ')}</span>
+                <div class="stat-row">
+                  <span class="stat-label">적중률</span>
+                  <span class="stat-value {(s.hit_rate ?? 0) >= 0.6 ? 'good' : (s.hit_rate ?? 0) >= 0.4 ? 'mid' : 'bad'}">
+                    {fmtPct(s.hit_rate)}
+                  </span>
+                </div>
+                <div class="stat-row">
+                  <span class="stat-label">평균 수익 / 손실</span>
+                  <span class="stat-value">
+                    {s.avg_gain_pct != null ? `+${fmtPct(s.avg_gain_pct, 1)}` : '—'}
+                    {#if s.avg_loss_pct != null}
+                      <span class="stat-loss"> / {fmtPct(s.avg_loss_pct, 1)}</span>
+                    {/if}
+                  </span>
+                </div>
+                {#if s.expected_value != null}
+                  <div class="stat-row">
+                    <span class="stat-label">기대값</span>
+                    <span class="stat-value {s.expected_value >= 0 ? 'good' : 'bad'}">
+                      {s.expected_value >= 0 ? '+' : ''}{fmtPct(s.expected_value, 2)}
+                    </span>
+                  </div>
                 {/if}
-              </span>
-            </div>
-            {#if s.expected_value != null}
-            <div class="stat-row">
-              <span class="stat-label">기대값 (EV)</span>
-              <span class="stat-value {s.expected_value >= 0 ? 'good' : 'bad'}">
-                {s.expected_value >= 0 ? '+' : ''}{(s.expected_value * 100).toFixed(2)}%
-              </span>
-            </div>
-            {/if}
-            <div class="stat-row">
-              <span class="stat-label">총 인스턴스</span>
-              <span class="stat-value">{s.total_instances} <span class="stat-sub">(성공 {s.success_count} / 실패 {s.failure_count} / 대기 {s.pending_count})</span></span>
-            </div>
-            {#if s.btc_conditional}
-            <div class="stat-row">
-              <span class="stat-label">BTC 시장별</span>
-              <span class="stat-value stat-sub">
-                상승 {s.btc_conditional.bullish != null ? `${(s.btc_conditional.bullish * 100).toFixed(0)}%` : '—'}
-                · 횡보 {s.btc_conditional.sideways != null ? `${(s.btc_conditional.sideways * 100).toFixed(0)}%` : '—'}
-                · 하락 {s.btc_conditional.bearish != null ? `${(s.btc_conditional.bearish * 100).toFixed(0)}%` : '—'}
-              </span>
-            </div>
-            {/if}
-            {#if s.decay_direction}
-            <div class="stat-row">
-              <span class="stat-label">Edge 추세</span>
-              <span class="stat-value" class:good={s.decay_direction === 'improving'} class:bad={s.decay_direction === 'decaying'}>
-                {s.decay_direction === 'improving' ? '개선 중' : s.decay_direction === 'decaying' ? '약화 중' : '안정'}
-              </span>
-            </div>
-            {/if}
-            {#if s.ml_shadow}
-            <div class="stat-row">
-              <span class="stat-label">ML shadow</span>
-              <span class="stat-value {s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.8 ? 'good' : s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.4 ? 'mid' : 'bad'}">
-                {s.ml_shadow.score_coverage != null ? `${(s.ml_shadow.score_coverage * 100).toFixed(0)}%` : '—'}
-                <span class="stat-sub"> ({s.ml_shadow.scored_entries}/{s.ml_shadow.total_entries})</span>
-              </span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">P(win) / 통과율</span>
-              <span class="stat-value stat-sub">
-                평균 {s.ml_shadow.avg_p_win != null ? `${(s.ml_shadow.avg_p_win * 100).toFixed(0)}%` : '—'}
-                · 통과 {s.ml_shadow.threshold_pass_rate != null ? `${(s.ml_shadow.threshold_pass_rate * 100).toFixed(0)}%` : '—'}
-              </span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">임계값 위/아래 적중</span>
-              <span class="stat-value stat-sub">
-                위 {s.ml_shadow.above_threshold_success_rate != null ? `${(s.ml_shadow.above_threshold_success_rate * 100).toFixed(0)}%` : '—'}
-                · 아래 {s.ml_shadow.below_threshold_success_rate != null ? `${(s.ml_shadow.below_threshold_success_rate * 100).toFixed(0)}%` : '—'}
-              </span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">학습 준비</span>
-              <span class="stat-value" class:good={s.ml_shadow.ready_to_train} class:mid={!s.ml_shadow.ready_to_train && s.ml_shadow.training_usable_count >= 10} class:bad={!s.ml_shadow.ready_to_train && s.ml_shadow.training_usable_count < 10}>
-                {s.ml_shadow.ready_to_train ? 'READY' : 'SHADOW'}
-                <span class="stat-sub"> ({s.ml_shadow.training_usable_count}건 / 승 {s.ml_shadow.training_win_count} / 패 {s.ml_shadow.training_loss_count})</span>
-              </span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">준비 상태</span>
-              <span class="stat-value stat-sub">
-                {s.ml_shadow.readiness_reason}
-                {#if s.ml_shadow.last_model_version}
-                  <span class="stat-sub"> · 모델 {s.ml_shadow.last_model_version}</span>
+                <div class="stat-row">
+                  <span class="stat-label">총 인스턴스</span>
+                  <span class="stat-value">{s.total_instances}</span>
+                </div>
+                {#if s.ml_shadow}
+                  <div class="stat-row">
+                    <span class="stat-label">ML coverage</span>
+                    <span class="stat-value {s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.8 ? 'good' : s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.4 ? 'mid' : 'bad'}">
+                      {fmtPct(s.ml_shadow.score_coverage)}
+                    </span>
+                  </div>
+                  <div class="stat-row">
+                    <span class="stat-label">학습 준비</span>
+                    <span class="stat-value" class:good={s.ml_shadow.ready_to_train} class:mid={!s.ml_shadow.ready_to_train && s.ml_shadow.training_usable_count >= 10} class:bad={!s.ml_shadow.ready_to_train && s.ml_shadow.training_usable_count < 10}>
+                      {s.ml_shadow.ready_to_train ? 'Ready' : 'Shadow'}
+                    </span>
+                  </div>
+                  <p class="stat-footnote">{s.ml_shadow.readiness_reason}</p>
                 {/if}
-              </span>
-            </div>
+              </div>
+            {/each}
+            {#if stats.length === 0}
+              <div class="surface-card empty-card">
+                <p>아직 판정 데이터 없음 — VALID/INVALID 판정이 쌓이면 통계가 생성됩니다</p>
+              </div>
             {/if}
           </div>
-        {/each}
-        {#if stats.length === 0}
-          <p class="empty-hint">아직 판정 데이터 없음 — VALID/INVALID 판정이 쌓이면 통계가 생성됩니다</p>
-        {/if}
-      </div>
-    </section>
-
-  {/if}
+        </div>
+      </section>
+    {/if}
+  </div>
 </div>
 
 <style>
-  .patterns-shell {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow-y: auto;
-    background: #000;
-    color: rgba(255,255,255,0.85);
-    font-family: var(--sc-font-body, sans-serif);
-    padding: 0 0 60px;
+  .patterns-copy {
+    align-items: flex-start;
   }
 
-  /* Top bar */
-  .top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 24px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
-    position: sticky;
-    top: 0;
-    background: #000;
-    z-index: 10;
-  }
-  .top-left { display: flex; align-items: center; gap: 14px; }
-  .page-title {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    color: #fff;
-  }
-  .scan-time {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    color: rgba(255,255,255,0.3);
-  }
-  .scan-btn {
-    padding: 6px 14px;
-    background: rgba(38,166,154,0.12);
-    border: 1px solid rgba(38,166,154,0.4);
-    color: #26a69a;
-    border-radius: 4px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-  .scan-btn:hover:not(:disabled) { background: rgba(38,166,154,0.25); }
-  .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  /* Loading / Error */
-  .page-loading, .page-error {
-    flex: 1;
+  .page-loading,
+  .page-error,
+  .empty-card {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -440,51 +402,40 @@
     gap: 12px;
     font-family: var(--sc-font-mono, monospace);
     font-size: 12px;
-    color: rgba(255,255,255,0.3);
-    padding: 60px;
+    color: rgba(255,255,255,0.55);
+    padding: 48px 24px;
+    text-align: center;
   }
   .pulse { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:.2} 50%{opacity:1} }
   .page-error { color: #f87171; }
   .error-detail { font-size: 10px; color: rgba(248,113,113,0.6); max-width: 400px; text-align: center; }
-  .page-error button { padding: 6px 14px; background: transparent; border: 1px solid rgba(248,113,113,0.3); color: #f87171; border-radius: 4px; cursor: pointer; font-size: 11px; }
+  .patterns-lower {
+    align-items: start;
+  }
 
-  /* Sections */
-  .section { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-  .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .section-title { font-family: var(--sc-font-mono, monospace); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: rgba(255,255,255,0.7); }
-  .section-count { font-family: var(--sc-font-mono, monospace); font-size: 10px; color: rgba(255,255,255,0.3); margin-left: auto; }
-  .empty-hint { font-size: 11px; color: rgba(255,255,255,0.2); font-family: var(--sc-font-mono, monospace); margin: 0; }
-
-  /* Candidate cards */
   .candidate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
   .candidate-card {
-    background: rgba(38,166,154,0.05);
-    border: 1px solid rgba(38,166,154,0.2);
-    border-radius: 6px;
-    padding: 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
   .cand-top { display: flex; align-items: center; justify-content: space-between; }
   .cand-sym { font-family: var(--sc-font-mono, monospace); font-size: 16px; font-weight: 700; color: #fff; }
-  .cand-badge { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; }
-  .cand-badge.accum { background: rgba(38,166,154,0.2); color: #26a69a; border: 1px solid rgba(38,166,154,0.4); }
+  .accum-chip { color: #26a69a; border-color: rgba(38,166,154,0.28); background: rgba(38,166,154,0.08); }
   .cand-meta { display: flex; justify-content: space-between; font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace); }
   .cand-features { display: flex; gap: 6px; flex-wrap: wrap; }
   .feat { font-family: var(--sc-font-mono, monospace); font-size: 10px; background: rgba(255,255,255,0.06); border-radius: 3px; padding: 2px 6px; color: rgba(255,255,255,0.6); }
   .cand-actions { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
-  .cand-chart-link { font-family: var(--sc-font-mono, monospace); font-size: 10px; color: #63b3ed; text-decoration: none; margin-right: auto; }
-  .cand-chart-link:hover { text-decoration: underline; }
-  .verdict-btn { padding: 4px 10px; border-radius: 3px; font-family: var(--sc-font-mono, monospace); font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.1s; border: 1px solid; }
-  .verdict-btn.valid { background: rgba(38,166,154,0.1); border-color: rgba(38,166,154,0.4); color: #26a69a; }
-  .verdict-btn.valid:hover { background: rgba(38,166,154,0.25); }
-  .verdict-btn.invalid { background: rgba(239,83,80,0.08); border-color: rgba(239,83,80,0.3); color: #ef5350; }
-  .verdict-btn.invalid:hover { background: rgba(239,83,80,0.2); }
+  .compact-action { min-height: 34px; padding: 0 12px; font-size: 0.8rem; }
+  .compact-action.valid { color: #26a69a; border-color: rgba(38,166,154,0.28); }
+  .compact-action.invalid { color: #ef5350; border-color: rgba(239,83,80,0.2); }
 
-  /* States table */
-  .states-table { display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .states-shell {
+    padding: 0;
+    overflow: hidden;
+  }
+  .states-table { display: flex; flex-direction: column; overflow: hidden; }
   .table-header {
     display: grid;
     grid-template-columns: 80px 1fr 140px 80px 60px;
@@ -512,13 +463,8 @@
   .row-phase { font-family: var(--sc-font-mono, monospace); font-size: 10px; font-weight: 700; color: var(--phase-color); }
   .row-time, .row-candles { font-family: var(--sc-font-mono, monospace); font-size: 10px; color: rgba(255,255,255,0.3); }
 
-  /* Stats */
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
   .stat-card {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 6px;
-    padding: 14px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -531,5 +477,32 @@
   .stat-loss { color: #ef5350; opacity: 0.7; }
   .stat-value.mid  { color: #fbbf24; }
   .stat-value.bad  { color: #ef5350; }
-  .stat-sub { font-size: 9px; color: rgba(255,255,255,0.25); font-weight: 400; }
+  .stat-footnote {
+    margin: 0;
+    color: var(--sc-text-1);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  @media (max-width: 960px) {
+    .table-header,
+    .table-row {
+      grid-template-columns: 70px 1fr 120px 70px 56px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .cand-actions {
+      flex-wrap: wrap;
+    }
+    .table-header,
+    .table-row {
+      grid-template-columns: 72px 1fr;
+      gap: 8px;
+    }
+    .table-header span:nth-child(n + 3),
+    .table-row span:nth-child(n + 3) {
+      display: none;
+    }
+  }
 </style>

@@ -5,6 +5,7 @@
   import type { StrategyEntry } from '$lib/stores/strategyStore';
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
+  import AppSurfaceHeader from '$lib/components/surfaces/AppSurfaceHeader.svelte';
 
   const WATCHING_QUERIES = [
     {
@@ -91,9 +92,9 @@
   <link rel="canonical" href={buildCanonicalHref('/dashboard')} />
 </svelte:head>
 
-<div class="surface-page dash">
-  <!-- Compact Topbar -->
-  <header class="surface-hero">
+<div class="surface-page chrome-layout dash">
+  <AppSurfaceHeader active="dashboard" />
+  <header class="surface-hero surface-fixed-hero">
     <div class="surface-copy">
       <span class="surface-kicker">Dashboard</span>
       <h1 class="surface-title">My Workspace</h1>
@@ -122,7 +123,7 @@
     </div>
   </header>
 
-  <!-- My Challenges -->
+  <div class="surface-scroll-body">
   <section class="surface-grid">
     <div class="surface-section-head">
       <div>
@@ -245,6 +246,7 @@
       </div>
     </div>
   </section>
+  </div>
 </div>
 
 <style>
