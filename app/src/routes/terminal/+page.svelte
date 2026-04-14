@@ -63,6 +63,14 @@
   // ── Pattern Engine state ───────────────────────────────────
   interface PatternPhaseRow { slug: string; phaseName: string; symbols: string[]; }
   let patternPhases = $state<PatternPhaseRow[]>([]);
+  interface PatternTransitionAlert {
+    id: string;
+    symbol: string;
+    slug: string;
+    phase: string;
+    createdAt: number;
+  }
+  let patternTransitionAlerts = $state<PatternTransitionAlert[]>([]);
 
   // ── Capture modal ──────────────────────────────────────────
   let showCaptureModal = $state(false);
@@ -502,6 +510,41 @@
     } catch {}
   }
 
+  function pushPatternTransitions(items: Array<{ symbol: string; slug: string; phase: string }>) {
+    if (items.length === 0) return;
+
+    const now = Date.now();
+    const existing = new Set(patternTransitionAlerts.map((item) => item.id));
+    const fresh = items
+      .map((item) => ({
+        id: `${item.slug}:${item.symbol}:${item.phase}`,
+        symbol: item.symbol,
+        slug: item.slug,
+        phase: item.phase,
+        createdAt: now,
+      }))
+      .filter((item) => !existing.has(item.id));
+
+    if (fresh.length === 0) return;
+
+    patternTransitionAlerts = [...fresh, ...patternTransitionAlerts]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 6);
+
+    setTimeout(() => {
+      patternTransitionAlerts = patternTransitionAlerts.filter((item) => now - item.createdAt < 90_000);
+    }, 95_000);
+  }
+
+  function focusPatternSymbol(item: { symbol: string }) {
+    const pair = item.symbol.replace('USDT', '/USDT');
+    setActivePair(pair);
+  }
+
+  function dismissPatternAlert(id: string) {
+    patternTransitionAlerts = patternTransitionAlerts.filter((item) => item.id !== id);
+  }
+
   // ─── SSE Command Flow ─────────────────────────────────────────
 
   async function sendCommand(text: string, _files?: File[]) {
@@ -908,6 +951,25 @@
     {/each}
   </div>
 
+  {#if patternTransitionAlerts.length > 0}
+    <div class="pattern-alert-tray">
+      <span class="pattern-alert-label">LIVE PATTERN ALERT</span>
+      {#each patternTransitionAlerts as item}
+        <div class="pattern-alert-pill">
+          <button class="pattern-alert-main" onclick={() => focusPatternSymbol(item)}>
+            <span class="pattern-alert-dot"></span>
+            <span class="pattern-alert-symbol">{item.symbol.replace('USDT', '')}</span>
+            <span class="pattern-alert-phase">{item.phase}</span>
+            <span class="pattern-alert-slug">{item.slug.replace(/^tradoor-/, '').replace(/-v\d+$/, '')}</span>
+          </button>
+          <button class="pattern-alert-dismiss" onclick={() => dismissPatternAlert(item.id)} aria-label="Dismiss pattern alert">
+            ×
+          </button>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
   <!-- 3-column body -->
   <div class="terminal-body"
     class:has-right-panel={showRightPanel}
@@ -943,7 +1005,10 @@
             verdictLevels={chartLevels}
             onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
           />
-          <PatternStatusBar />
+          <PatternStatusBar
+            onSelect={focusPatternSymbol}
+            onTransition={pushPatternTransitions}
+          />
           <EvidenceStrip
             evidence={activeEvidence}
             onExpand={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
@@ -1353,6 +1418,85 @@
     grid-template-columns: var(--terminal-left-w, 240px) 4px 1fr;
     overflow: hidden;
     min-height: 0;
+  }
+
+  .pattern-alert-tray {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background:
+      linear-gradient(90deg, rgba(74, 222, 128, 0.12), rgba(74, 222, 128, 0.03));
+    border-bottom: 1px solid rgba(74, 222, 128, 0.16);
+    overflow-x: auto;
+  }
+
+  .pattern-alert-label {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(74, 222, 128, 0.72);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .pattern-alert-pill {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(74, 222, 128, 0.24);
+    background: rgba(6, 22, 12, 0.9);
+    box-shadow: 0 0 24px rgba(74, 222, 128, 0.08);
+  }
+
+  .pattern-alert-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    border: 0;
+    background: transparent;
+    color: rgba(235, 255, 242, 0.92);
+    cursor: pointer;
+  }
+
+  .pattern-alert-dismiss {
+    border: 0;
+    background: transparent;
+    color: rgba(255,255,255,0.32);
+    cursor: pointer;
+    padding: 5px 10px 5px 0;
+  }
+
+  .pattern-alert-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.7);
+  }
+
+  .pattern-alert-symbol,
+  .pattern-alert-phase,
+  .pattern-alert-slug {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+  }
+
+  .pattern-alert-symbol {
+    font-weight: 700;
+    color: #4ade80;
+  }
+
+  .pattern-alert-phase {
+    color: rgba(255,255,255,0.82);
+  }
+
+  .pattern-alert-slug {
+    color: rgba(255,255,255,0.42);
+    text-transform: uppercase;
   }
 
   .terminal-body.has-right-panel {

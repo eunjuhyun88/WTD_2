@@ -1,10 +1,42 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
 
+  interface PatternSignalItem {
+    symbol: string;
+    slug: string;
+    phase: string;
+  }
+
+  interface Props {
+    pollMs?: number;
+    onSelect?: (item: PatternSignalItem) => void;
+    onTransition?: (items: PatternSignalItem[]) => void;
+  }
+  let { pollMs = 60_000, onSelect, onTransition }: Props = $props();
+
   // Poll /api/patterns every 60 seconds
-  let entrySymbols = $state<Array<{symbol: string, slug: string, phase: string}>>([]);
+  let entrySymbols = $state<PatternSignalItem[]>([]);
   let loading = $state(true);
   let interval: ReturnType<typeof setInterval> | null = null;
+  let freshKeys = $state(new Set<string>());
+  let seenKeys = new Set<string>();
+  let hydrated = false;
+
+  function itemKey(item: PatternSignalItem): string {
+    return `${item.slug}:${item.symbol}:${item.phase}`;
+  }
+
+  function markFresh(items: PatternSignalItem[]) {
+    const next = new Set(freshKeys);
+    for (const item of items) next.add(itemKey(item));
+    freshKeys = next;
+
+    setTimeout(() => {
+      const current = new Set(freshKeys);
+      for (const item of items) current.delete(itemKey(item));
+      freshKeys = current;
+    }, 90_000);
+  }
 
   async function fetchPatterns() {
     try {
@@ -12,7 +44,7 @@
       if (!res.ok) return;
       const data = await res.json();
       // Flatten entry_candidates into symbol list
-      const flat: Array<{symbol: string, slug: string, phase: string}> = [];
+      const flat: PatternSignalItem[] = [];
       // Support both response shapes: engine direct (entry_candidates) and proxy (candidates)
       const candidates = data.entry_candidates ?? {};
       if (Object.keys(candidates).length > 0) {
@@ -26,7 +58,23 @@
           flat.push({ symbol: c.symbol, slug: c.pattern_id, phase: c.phase_name ?? 'ACCUMULATION' });
         }
       }
-      entrySymbols = flat;
+
+      const nextKeys = new Set(flat.map(itemKey));
+      if (hydrated) {
+        const fresh = flat.filter((item) => !seenKeys.has(itemKey(item)));
+        if (fresh.length > 0) {
+          markFresh(fresh);
+          onTransition?.(fresh);
+        }
+      }
+
+      seenKeys = nextKeys;
+      hydrated = true;
+      entrySymbols = [...flat].sort((a, b) => {
+        const aFresh = freshKeys.has(itemKey(a)) ? 1 : 0;
+        const bFresh = freshKeys.has(itemKey(b)) ? 1 : 0;
+        return bFresh - aFresh || a.symbol.localeCompare(b.symbol);
+      });
     } catch {
       // silent
     } finally {
@@ -36,7 +84,7 @@
 
   onMount(() => {
     fetchPatterns();
-    interval = setInterval(fetchPatterns, 60_000);
+    interval = setInterval(fetchPatterns, pollMs);
   });
 
   onDestroy(() => { if (interval) clearInterval(interval); });
@@ -46,11 +94,14 @@
 <div class="pattern-bar">
   <span class="bar-label">ENTRY SIGNALS</span>
   {#each entrySymbols as item}
-    <div class="signal-pill">
+    <button class="signal-pill" class:fresh={freshKeys.has(itemKey(item))} onclick={() => onSelect?.(item)}>
       <span class="sig-dot"></span>
       <span class="sig-sym">{item.symbol.replace('USDT', '')}</span>
       <span class="sig-phase">{item.phase}</span>
-    </div>
+      {#if freshKeys.has(itemKey(item))}
+        <span class="sig-new">NEW</span>
+      {/if}
+    </button>
   {/each}
 </div>
 {/if}
@@ -87,10 +138,18 @@
     border-radius: 3px;
     white-space: nowrap;
     cursor: pointer;
+    appearance: none;
+    color: inherit;
   }
 
   .signal-pill:hover {
     background: rgba(74, 222, 128, 0.15);
+  }
+
+  .signal-pill.fresh {
+    background: rgba(74, 222, 128, 0.18);
+    border-color: rgba(74, 222, 128, 0.38);
+    box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.1), 0 0 20px rgba(74, 222, 128, 0.12);
   }
 
   .sig-dot {
@@ -117,5 +176,16 @@
     font-family: var(--sc-font-mono, monospace);
     font-size: 9px;
     color: rgba(74, 222, 128, 0.5);
+  }
+
+  .sig-new {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    font-weight: 700;
+    color: #08130c;
+    background: #4ade80;
+    border-radius: 999px;
+    padding: 1px 5px;
+    letter-spacing: 0.08em;
   }
 </style>
