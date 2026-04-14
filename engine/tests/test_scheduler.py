@@ -119,6 +119,7 @@ def test_pattern_scan_job_prewarms_dynamic_universe_and_sends_summary(monkeypatc
     monkeypatch.setattr(scheduler, "load_universe_async", fake_load_universe_async)
     monkeypatch.setattr(scheduler, "send_pattern_scan_summary", fake_summary)
     monkeypatch.setattr(scheduler, "SCAN_TELEGRAM_ENABLED", True)
+    monkeypatch.setattr(scheduler, "_last_pattern_entry_keys", set())
     monkeypatch.setattr(pattern_scanner, "prewarm_perp_cache", fake_prewarm)
     monkeypatch.setattr(pattern_scanner, "run_pattern_scan", fake_run_pattern_scan)
 
@@ -128,3 +129,44 @@ def test_pattern_scan_job_prewarms_dynamic_universe_and_sends_summary(monkeypatc
     assert run_calls == [(scheduler.UNIVERSE_NAME, False, ["BTCUSDT", "ETHUSDT"])]
     assert len(summaries) == 1
     assert summaries[0][1] == scheduler.UNIVERSE_NAME
+
+
+def test_pattern_scan_job_dedupes_repeated_entry_candidate_summaries(monkeypatch) -> None:
+    import patterns.scanner as pattern_scanner
+
+    summaries: list[dict] = []
+
+    async def fake_load_universe_async(name: str) -> list[str]:
+        return ["BTCUSDT"]
+
+    def fake_prewarm(symbols: list[str], max_workers: int = 5) -> dict:
+        return {"cached": len(symbols)}
+
+    async def fake_run_pattern_scan(
+        universe_name: str | None = None,
+        prewarm: bool = True,
+        symbols: list[str] | None = None,
+    ) -> dict:
+        return {
+            "n_symbols": 1,
+            "n_evaluated": 1,
+            "elapsed_ms": 12,
+            "entry_candidates": {"tradoor-oi-reversal-v1": ["BTCUSDT"]},
+        }
+
+    async def fake_summary(result: dict, *, universe_name: str | None = None) -> bool:
+        summaries.append(result)
+        return True
+
+    monkeypatch.setattr(scheduler, "load_universe_async", fake_load_universe_async)
+    monkeypatch.setattr(scheduler, "send_pattern_scan_summary", fake_summary)
+    monkeypatch.setattr(scheduler, "SCAN_TELEGRAM_ENABLED", True)
+    monkeypatch.setattr(scheduler, "_last_pattern_entry_keys", set())
+    monkeypatch.setattr(pattern_scanner, "prewarm_perp_cache", fake_prewarm)
+    monkeypatch.setattr(pattern_scanner, "run_pattern_scan", fake_run_pattern_scan)
+
+    asyncio.run(scheduler._pattern_scan_job())
+    asyncio.run(scheduler._pattern_scan_job())
+
+    assert len(summaries) == 1
+    assert summaries[0]["entry_candidates"] == {"tradoor-oi-reversal-v1": ["BTCUSDT"]}

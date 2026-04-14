@@ -42,6 +42,7 @@ from universe.loader import load_universe_async
 log = logging.getLogger("engine.scanner")
 
 _scheduler: AsyncIOScheduler | None = None
+_last_pattern_entry_keys: set[str] = set()
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,42 @@ SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().low
 
 SUPABASE_URL      = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+
+
+def _candidate_key(pattern_slug: str, symbol: str) -> str:
+    return f"{pattern_slug}:{symbol}"
+
+
+def _filter_new_pattern_entries(scan_result: dict[str, Any]) -> tuple[dict[str, Any], int]:
+    """Return a scan result containing only newly entered pattern candidates.
+
+    The scheduler runs repeatedly while a symbol may remain in the entry phase
+    for multiple scans. Telegram should notify on entry, not every poll.
+    """
+    global _last_pattern_entry_keys
+
+    entry_candidates = scan_result.get("entry_candidates", {}) or {}
+    current_keys = {
+        _candidate_key(slug, symbol)
+        for slug, symbols in entry_candidates.items()
+        for symbol in symbols
+    }
+    new_keys = current_keys - _last_pattern_entry_keys
+    _last_pattern_entry_keys = current_keys
+
+    if not new_keys:
+        return {**scan_result, "entry_candidates": {}}, 0
+
+    filtered: dict[str, list[str]] = {}
+    for slug, symbols in entry_candidates.items():
+        fresh_symbols = [
+            symbol for symbol in symbols
+            if _candidate_key(slug, symbol) in new_keys
+        ]
+        if fresh_symbols:
+            filtered[slug] = fresh_symbols
+
+    return {**scan_result, "entry_candidates": filtered}, len(new_keys)
 
 # ── Supabase insert ───────────────────────────────────────────────────────────
 
@@ -201,8 +238,9 @@ async def _pattern_scan_job() -> None:
 
     result = await run_pattern_scan(UNIVERSE_NAME, prewarm=False, symbols=universe)  # already prewarmed
     n_candidates = sum(len(v) for v in result.get("entry_candidates", {}).values())
-    if SCAN_TELEGRAM_ENABLED and n_candidates > 0:
-        await send_pattern_scan_summary(result, universe_name=UNIVERSE_NAME)
+    new_candidate_result, n_new_candidates = _filter_new_pattern_entries(result)
+    if SCAN_TELEGRAM_ENABLED and n_new_candidates > 0:
+        await send_pattern_scan_summary(new_candidate_result, universe_name=UNIVERSE_NAME)
     log.info(
         "Pattern scan: %d symbols, %d evaluated, %d entry candidates, %dms",
         result.get("n_symbols", 0),
