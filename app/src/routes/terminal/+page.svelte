@@ -1663,6 +1663,8 @@
                   newsData={newsData}
                   activeTab={activeAnalysisTab}
                   onTabChange={(tab) => activeAnalysisTab = tab as typeof activeAnalysisTab}
+                  onAction={sendCommand}
+                  onCapture={() => showCaptureModal = true}
                   bars={ohlcvBars}
                   {layerBarsMap}
                 />
@@ -1681,6 +1683,8 @@
               newsData={newsData}
               activeTab={activeAnalysisTab}
               onTabChange={(tab) => activeAnalysisTab = tab as typeof activeAnalysisTab}
+              onAction={sendCommand}
+              onCapture={() => showCaptureModal = true}
               bars={ohlcvBars}
               {layerBarsMap}
             />
