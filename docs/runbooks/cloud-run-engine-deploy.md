@@ -4,7 +4,7 @@ Canonical deploy path for `engine-api`.
 
 ## Why This Path
 
-This repository is a monorepo with multiple deployable surfaces. Build the engine image from the `engine/` directory explicitly so Cloud Run and Cloud Build target the Python service only.
+This repository is a monorepo with multiple deployable surfaces. Use an explicit Cloud Build config so GitHub pushes build and deploy the engine service deterministically.
 
 ## Prerequisites
 
@@ -12,7 +12,26 @@ This repository is a monorepo with multiple deployable surfaces. Build the engin
 - Artifact Registry repository named `wtd`
 - authenticated `gcloud` CLI
 
-## Canonical Build
+## Canonical Continuous Deploy
+
+Use a Cloud Build trigger that points at the repository root config file:
+
+- configuration type: `Cloud Build configuration file`
+- configuration path: `/cloudbuild.yaml`
+- branch regex: `^main$`
+
+This matches the official Cloud Build + Cloud Run flow, where a trigger reads a config file that builds the image, pushes it to Artifact Registry, and then deploys to Cloud Run. [Google Cloud Build: Deploying to Cloud Run](https://docs.cloud.google.com/build/docs/deploying-builds/deploy-cloud-run)
+
+Set these substitutions in `cloudbuild.yaml` before enabling the trigger:
+
+- `_AR_REGION`
+- `_AR_REPOSITORY`
+- `_IMAGE_NAME`
+- `_SERVICE_NAME`
+- `_SERVICE_REGION`
+- `_APP_ORIGIN`
+
+## Manual Build
 
 Build the engine container with the `engine/` directory as the Docker build context.
 
@@ -30,8 +49,9 @@ Replace:
 
 If you use the Cloud Run console with source-repo deployment:
 
-- build type: `Dockerfile`
-- source location: `/engine/Dockerfile`
+- do not use the `Dockerfile` configuration mode
+- use `Cloud Build configuration file`
+- point it at `/cloudbuild.yaml`
 
 ## Canonical Deploy
 
