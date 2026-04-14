@@ -18,8 +18,12 @@ import { KnownRawId } from '$lib/contracts/ids';
 import { buildResearchBlocks } from '$lib/server/researchView/buildResearchBlocks';
 import { query } from '$lib/server/db.js';
 import { sendTelegramMessage, formatAlphaAlert } from '$lib/server/telegram';
-import { evaluateToolPolicy } from '$lib/guardrails/runtime/toolPolicy';
-import { getDefaultToolPolicyInput, getToolGuardrailMode } from '$lib/guardrails/runtime/toolPolicyConfig';
+import { evaluateRuntimeExecutionGate } from '$lib/guardrails/runtime/executionGate';
+import {
+  getDefaultChannelPolicyInput,
+  getDefaultToolPolicyInput,
+  getToolGuardrailMode,
+} from '$lib/guardrails/runtime/toolPolicyConfig';
 import { recordGuardrailAudit } from '$lib/guardrails/core/audit';
 function toFiniteNumber(value: number | string): number {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -71,25 +75,30 @@ export async function executeTool(
   events.push({ type: 'tool_call', name, args });
 
   const guardrailMode = getToolGuardrailMode();
-  const toolPolicy = evaluateToolPolicy(getDefaultToolPolicyInput(name));
+  const runtimeGate = evaluateRuntimeExecutionGate({
+    mode: guardrailMode,
+    toolPolicy: getDefaultToolPolicyInput(name),
+    channelPolicy: getDefaultChannelPolicyInput('terminal.douni.tools'),
+  });
   recordGuardrailAudit({
     area: 'runtime',
     action: `douni_tool:${name}`,
     mode: guardrailMode,
-    result: toolPolicy,
+    result: runtimeGate.result,
     metadata: {
       userId: ctx.userId ?? null,
       symbol: ctx.symbol ?? null,
       timeframe: ctx.timeframe ?? null,
+      channel: 'terminal.douni.tools',
+      effectiveDecision: runtimeGate.effectiveDecision,
     },
     createdAt: Date.now(),
   });
 
-  if (toolPolicy.decision === 'deny' || (toolPolicy.decision === 'ask' && guardrailMode === 'enforce')) {
-    const policyError =
-      toolPolicy.decision === 'deny'
-        ? 'Tool denied by runtime policy'
-        : 'Tool requires approval in enforce mode';
+  if (runtimeGate.blocked) {
+    const policyError = runtimeGate.result.decision === 'deny'
+      ? 'Tool denied by runtime policy'
+      : 'Tool requires approval in enforce mode';
     const result: ToolResult = {
       toolCallId: toolCall.id,
       name,
@@ -100,7 +109,7 @@ export async function executeTool(
     return { result, events };
   }
 
-  if (toolPolicy.decision === 'ask' && guardrailMode === 'shadow') {
+  if (runtimeGate.result.decision === 'ask' && guardrailMode === 'shadow') {
     events.push({
       type: 'text_delta',
       text: `[guardrail:shadow] ${name} requires approval policy; execution continued in shadow mode.`,

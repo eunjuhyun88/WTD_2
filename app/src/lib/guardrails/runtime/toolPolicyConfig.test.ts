@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getDefaultToolPolicyInput, getToolGuardrailMode } from './toolPolicyConfig';
+import {
+  getDefaultChannelPolicyInput,
+  getDefaultToolPolicyInput,
+  getToolGuardrailMode,
+} from './toolPolicyConfig';
 
 describe('toolPolicyConfig', () => {
   it('defaults mode to shadow', () => {
@@ -18,5 +22,11 @@ describe('toolPolicyConfig', () => {
     const policy = getDefaultToolPolicyInput('save_pattern');
     expect(policy.allowlist).toContain('save_pattern');
     expect(policy.requiresApproval).toContain('save_pattern');
+  });
+
+  it('returns default channel policy', () => {
+    const policy = getDefaultChannelPolicyInput('terminal.douni.tools');
+    expect(policy.allowlist).toContain('terminal.douni.tools');
+    expect(policy.requiresApproval).toEqual([]);
   });
 });
