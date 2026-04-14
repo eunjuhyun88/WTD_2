@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  engine-api:
+    command: uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./engine:/app/engine
+    environment:
+      ENGINE_PORT: 8000
+      APP_ORIGIN: http://localhost:5173
+
+  app-web:
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    volumes:
+      - ./app:/app/app
+      - /app/app/node_modules
+    environment:
+      NODE_ENV: development
+      ENGINE_URL: http://engine-api:8000
+    ports:
+      - "5173:5173"
+
