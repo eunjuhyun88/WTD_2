@@ -15,9 +15,10 @@ Endpoints:
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
+from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
 from ledger.store import LedgerStore
 from ledger.types import PatternOutcome
 from patterns.library import PATTERN_LIBRARY, get_pattern
@@ -133,13 +134,15 @@ async def get_candidates(slug: str) -> dict:
 
 @router.get("/{slug}/stats")
 async def get_stats(slug: str) -> dict:
-    """Ledger statistics for a pattern. v2: includes EV, BTC-conditional, decay."""
+    """Ledger statistics for a pattern. v3: includes ML shadow readiness."""
     try:
         get_pattern(slug)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
 
     stats = _ledger.compute_stats(slug)
+    outcomes = _ledger.list_all(slug)
+    ml_shadow = summarize_pattern_dataset(outcomes)
     return {
         "pattern_slug": stats.pattern_slug,
         "total": stats.total_instances,
@@ -160,6 +163,45 @@ async def get_stats(slug: str) -> dict:
             "sideways": round(stats.btc_sideways_rate, 3) if stats.btc_sideways_rate is not None else None,
         },
         "decay_direction": stats.decay_direction,
+        "ml_shadow": {
+            "total_entries": ml_shadow.total_entries,
+            "decided_entries": ml_shadow.decided_entries,
+            "state_counts": ml_shadow.state_counts,
+            "scored_entries": ml_shadow.scored_entries,
+            "scored_decided_entries": ml_shadow.scored_decided_entries,
+            "score_coverage": round(ml_shadow.score_coverage, 3) if ml_shadow.score_coverage is not None else None,
+            "avg_p_win": round(ml_shadow.avg_p_win, 4) if ml_shadow.avg_p_win is not None else None,
+            "threshold_pass_count": ml_shadow.threshold_pass_count,
+            "threshold_pass_rate": round(ml_shadow.threshold_pass_rate, 3) if ml_shadow.threshold_pass_rate is not None else None,
+            "above_threshold_success_rate": round(ml_shadow.above_threshold_success_rate, 3) if ml_shadow.above_threshold_success_rate is not None else None,
+            "below_threshold_success_rate": round(ml_shadow.below_threshold_success_rate, 3) if ml_shadow.below_threshold_success_rate is not None else None,
+            "training_usable_count": ml_shadow.training_usable_count,
+            "training_win_count": ml_shadow.training_win_count,
+            "training_loss_count": ml_shadow.training_loss_count,
+            "ready_to_train": ml_shadow.ready_to_train,
+            "readiness_reason": ml_shadow.readiness_reason,
+            "last_model_version": ml_shadow.last_model_version,
+        },
+    }
+
+
+@router.get("/{slug}/training-records")
+async def get_training_records(slug: str, limit: int = Query(default=25, ge=1, le=200)) -> dict:
+    """Preview canonical training rows derived from the ledger."""
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+
+    outcomes = _ledger.list_all(slug)
+    records = build_pattern_training_records(outcomes)
+    summary = summarize_pattern_dataset(outcomes)
+    return {
+        "pattern_slug": slug,
+        "total_records": len(records),
+        "ready_to_train": summary.ready_to_train,
+        "readiness_reason": summary.readiness_reason,
+        "records": records[:limit],
     }
 
 

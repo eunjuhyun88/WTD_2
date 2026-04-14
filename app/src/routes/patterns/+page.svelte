@@ -42,6 +42,25 @@
     decay_direction: string | null;
     recent_30d_count: number;
     recent_30d_success_rate: number | null;
+    ml_shadow: {
+      total_entries: number;
+      decided_entries: number;
+      state_counts: Record<string, number>;
+      scored_entries: number;
+      scored_decided_entries: number;
+      score_coverage: number | null;
+      avg_p_win: number | null;
+      threshold_pass_count: number;
+      threshold_pass_rate: number | null;
+      above_threshold_success_rate: number | null;
+      below_threshold_success_rate: number | null;
+      training_usable_count: number;
+      training_win_count: number;
+      training_loss_count: number;
+      ready_to_train: boolean;
+      readiness_reason: string;
+      last_model_version: string | null;
+    } | null;
   }
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -306,6 +325,45 @@
               <span class="stat-label">Edge 추세</span>
               <span class="stat-value" class:good={s.decay_direction === 'improving'} class:bad={s.decay_direction === 'decaying'}>
                 {s.decay_direction === 'improving' ? '개선 중' : s.decay_direction === 'decaying' ? '약화 중' : '안정'}
+              </span>
+            </div>
+            {/if}
+            {#if s.ml_shadow}
+            <div class="stat-row">
+              <span class="stat-label">ML shadow</span>
+              <span class="stat-value {s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.8 ? 'good' : s.ml_shadow.score_coverage != null && s.ml_shadow.score_coverage >= 0.4 ? 'mid' : 'bad'}">
+                {s.ml_shadow.score_coverage != null ? `${(s.ml_shadow.score_coverage * 100).toFixed(0)}%` : '—'}
+                <span class="stat-sub"> ({s.ml_shadow.scored_entries}/{s.ml_shadow.total_entries})</span>
+              </span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">P(win) / 통과율</span>
+              <span class="stat-value stat-sub">
+                평균 {s.ml_shadow.avg_p_win != null ? `${(s.ml_shadow.avg_p_win * 100).toFixed(0)}%` : '—'}
+                · 통과 {s.ml_shadow.threshold_pass_rate != null ? `${(s.ml_shadow.threshold_pass_rate * 100).toFixed(0)}%` : '—'}
+              </span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">임계값 위/아래 적중</span>
+              <span class="stat-value stat-sub">
+                위 {s.ml_shadow.above_threshold_success_rate != null ? `${(s.ml_shadow.above_threshold_success_rate * 100).toFixed(0)}%` : '—'}
+                · 아래 {s.ml_shadow.below_threshold_success_rate != null ? `${(s.ml_shadow.below_threshold_success_rate * 100).toFixed(0)}%` : '—'}
+              </span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">학습 준비</span>
+              <span class="stat-value" class:good={s.ml_shadow.ready_to_train} class:mid={!s.ml_shadow.ready_to_train && s.ml_shadow.training_usable_count >= 10} class:bad={!s.ml_shadow.ready_to_train && s.ml_shadow.training_usable_count < 10}>
+                {s.ml_shadow.ready_to_train ? 'READY' : 'SHADOW'}
+                <span class="stat-sub"> ({s.ml_shadow.training_usable_count}건 / 승 {s.ml_shadow.training_win_count} / 패 {s.ml_shadow.training_loss_count})</span>
+              </span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">준비 상태</span>
+              <span class="stat-value stat-sub">
+                {s.ml_shadow.readiness_reason}
+                {#if s.ml_shadow.last_model_version}
+                  <span class="stat-sub"> · 모델 {s.ml_shadow.last_model_version}</span>
+                {/if}
               </span>
             </div>
             {/if}

@@ -42,6 +42,7 @@ export const GET: RequestHandler = async () => {
         decay_direction: raw.decay_direction ?? null,
         recent_30d_count: raw.recent_30d_count ?? 0,
         recent_30d_success_rate: raw.recent_30d_success_rate ?? null,
+        ml_shadow: raw.ml_shadow ?? null,
       });
     }
 
