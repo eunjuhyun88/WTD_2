@@ -1,35 +1,66 @@
-# WTD v2 Monorepo
+# AGENTS
 
-## Structure
+Execution rules for humans and coding agents.
 
-```
-engine/   Python — feature calc, building blocks, backtest, data cache
-app/      SvelteKit — frontend + Supabase + API routes
-```
+## Core Rules
 
-## Read Order
+1. `engine/` is the only backend truth.
+2. `app/` is surface + orchestration only.
+3. Contracts define app-engine coupling.
+4. Work continues via `work/active/*.md`, not chat history.
 
-1. This file
-2. `engine/pyproject.toml` — Python engine dependencies
-3. `app/docs/COGOCHI.md` — product truth (single source)
-4. `app/ARCHITECTURE.md` — app structure overview
+## Default Read Scope
 
-## Engine (Python)
+Read in this order:
 
-- Entry: `engine/scanner/feature_calc.py` — compute_features_table() (28 features)
-- Blocks: `engine/building_blocks/` — 29 blocks (triggers, confirmations, entries, disqualifiers)
-- Data: `engine/data_cache/` — Binance klines fetch + CSV cache
-- Tests: `engine/tests/` — 302 tests, run with `cd engine && python -m pytest`
+1. `AGENTS.md`
+2. Relevant `work/active/*.md`
+3. Relevant `docs/domains/*.md`
+4. Relevant `docs/product/*.md`
+5. Minimal required code files
 
-## App (SvelteKit)
+## Default Exclude Scope
 
-- Dev: `npm --prefix app run dev` (port 5173)
-- Product docs: `app/docs/COGOCHI.md`
-- Frontend: `app/src/routes/`, `app/src/components/`
-- Python bridge: `app/cogochi/` — thin wrapper (to be replaced by engine/ imports)
+Do not read these unless explicitly required:
 
-## Rules
+- `app/node_modules/`
+- `app/build/`
+- `app/.svelte-kit/`
+- `engine/.venv/`
+- `**/__pycache__/`
+- `**/.pytest_cache/`
+- `docs/archive/`
+- `app/_archive/`
+- `docs/generated/`
 
-- Engine changes: edit `engine/` directly, run tests before commit
-- App changes: edit `app/` directly
-- Never commit `.env*` files
+## Work Item Discipline
+
+Every non-trivial task must have one active work item:
+
+- Path: `work/active/W-xxxx-<slug>.md`
+- Required sections: Goal, Scope, Non-Goals, Canonical Files, Decisions, Next Steps, Exit Criteria
+- Keep one owner per work item: `engine`, `app`, `contract`, or `research`
+
+## Change Type Tags
+
+Each PR/change should be one primary type:
+
+- Product surface change
+- Engine logic change
+- Contract change
+- Research or eval change
+
+Avoid mixing types in one change set when possible.
+
+## Verification Minimum
+
+- Engine changes: run targeted engine tests first, then broader suite if needed.
+- App changes: run app check/lint relevant to touched area.
+- Contract changes: validate both route and engine caller/callee shapes.
+
+## Canonical Docs
+
+- Product: `docs/product/*.md`
+- Domains: `docs/domains/*.md`
+- Decisions: `docs/decisions/*.md`
+- Runbooks: `docs/runbooks/*.md`
