@@ -107,10 +107,16 @@ REQUIRED_DIRS=(
 REQUIRED_FILES=(
 	"README.md"
 	"AGENTS.md"
+	"CLAUDE.md"
+	".claudeignore"
+	".cursorignore"
+	".ignore"
+	".rgignore"
 	"docs/README.md"
 	"docs/domains/contracts.md"
 	"docs/decisions/ADR-000-operating-system-baseline.md"
 	"app/docs/COGOCHI.md"
+	"work/active/W-0000-template.md"
 )
 
 for dir in "${REQUIRED_DIRS[@]}"; do
@@ -130,9 +136,10 @@ require_text "README.md" "## Canonical Structure" "canonical structure"
 require_text "README.md" "## Read Order (Default)" "default read order"
 require_text "docs/README.md" "## Read Order" "docs read order"
 require_text "docs/archive/README.md" "reference-only" "archive reference-only marker"
+require_text "CLAUDE.md" "## Canonical Read Order" "claude canonical read order"
 
-require_text "app/docs/COGOCHI.md" "Legacy reference during docs transition" "legacy reference banner"
-require_text "app/docs/COGOCHI.md" "Canonical product and operating truth is now split into layered root docs." "layered root docs notice"
+require_text "app/docs/COGOCHI.md" "legacy reference only" "legacy reference banner"
+require_text "app/docs/COGOCHI.md" "Do not rebuild a monolithic PRD here." "no monolith rule"
 
 CONTRACT_PATHS=(
 	"app/src/lib/contracts/index.ts"
@@ -145,6 +152,12 @@ CONTRACT_PATHS=(
 
 for path in "${CONTRACT_PATHS[@]}"; do
 	require_file "$path"
+done
+
+for ignore_file in ".claudeignore" ".cursorignore" ".ignore" ".rgignore"; do
+	require_text "$ignore_file" "app/node_modules/" "exclude app node_modules in $ignore_file"
+	require_text "$ignore_file" "engine/.venv/" "exclude engine venv in $ignore_file"
+	require_text "$ignore_file" "docs/archive/" "exclude docs archive in $ignore_file"
 done
 
 ACTIVE_WORK_ITEMS=()

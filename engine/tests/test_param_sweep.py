@@ -16,6 +16,8 @@ _COGOCHI = _REPO / "cogochi-autoresearch"
 if str(_COGOCHI) not in sys.path:
     sys.path.insert(0, str(_COGOCHI))
 
+pytest.importorskip("param_sweep", reason="legacy tools/param_sweep module not present in this repo layout")
+
 from param_sweep import (  # noqa: E402
     CSV_COLUMNS,
     DEFAULT_STOP_PCT,

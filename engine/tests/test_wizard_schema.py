@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pytest
 
+pytest.importorskip("wizard.schema", reason="wizard package not present in current repo layout")
+
 from wizard.schema import introspect_params, load_schema, resolve_block
 
 

@@ -21,6 +21,49 @@ Define and stabilize app-engine interfaces to reduce cross-layer reads and break
 4. Instance detail contract (per-outcome result rows)
 5. Error contract (uniform envelope)
 
+## Route Ownership Policy
+
+Every app-facing route must declare one of the following ownership types:
+
+1. **Proxy route**
+   - Example: `app/src/routes/api/engine/[...path]/+server.ts`
+   - Rule: pass-through only (transport, timeout, error normalization)
+   - Must not implement product decision logic.
+
+2. **Orchestrated route**
+   - Example: `app/src/routes/api/cogochi/analyze/+server.ts`
+   - Rule: app may collect upstream raw data, call multiple services, and shape response.
+   - Must keep engine as decision authority for scoring/verdict logic.
+
+3. **App-domain route**
+   - Example: `app/src/routes/api/terminal/scan/+server.ts`
+   - Rule: full app ownership (auth/session/rate-limit/persistence/workflow).
+   - Engine integration is optional and explicit.
+
+All new routes should document their ownership type in route-level comments and relevant work items.
+
+## Failure-Mode Contract Policy
+
+The caller-facing contract must make degradation explicit. Silent fallback is disallowed.
+
+### Analyze policy matrix
+
+1. `deep=ok`, `score=ok`
+   - return full payload with standard confidence semantics.
+2. `deep=ok`, `score=fail`
+   - return deep-authoritative payload, set ML-specific fields nullable.
+3. `deep=fail`, `score=ok`
+   - return score-limited payload and mark reduced confidence/degraded mode.
+4. `deep=fail`, `score=fail`
+   - return explicit degraded error/limited payload with machine-readable status.
+
+### Error envelope requirements
+
+- include stable top-level fields: `ok`, `error`
+- include optional diagnosis fields: `reason`, `issues`, `upstream`
+- do not expose raw internal stack traces to clients
+- keep HTTP status aligned with failure class (4xx input, 5xx system/upstream)
+
 ## Challenge Input Contract
 
 ### Request shape (app)

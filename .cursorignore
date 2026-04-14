@@ -1,19 +1,12 @@
-# Repository/runtime noise
 .git/
-.claude/worktrees/
+.claude/
 .uv-cache/
 .agent-context/
-
-# Generated dependencies and build outputs
 app/node_modules/
 app/build/
 app/.svelte-kit/
 engine/.venv/
 engine/data_cache/cache/
-**/__pycache__/
-**/.pytest_cache/
-
-# Legacy and archive content
 docs/archive/
 app/_archive/
 app/docs/generated/
@@ -21,6 +14,5 @@ app/docs/COGOCHI.md
 app/docs/AGENT_WATCH_LOG.md
 docs/exec-plans/
 docs/references/
-
-# Root-only canonical mode
-app/docs/design-docs/
+**/__pycache__/
+**/.pytest_cache/

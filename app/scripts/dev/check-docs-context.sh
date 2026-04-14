@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$ROOT_DIR"
-
-node scripts/dev/refresh-generated-context.mjs --check
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+cd "$REPO_ROOT"
 
 FAIL=0
 
@@ -70,44 +68,43 @@ require_absent() {
 REQUIRED_DIRS=(
 	"docs"
 	"docs/archive"
-	"docs/design-docs"
-	"docs/exec-plans"
-	"docs/exec-plans/active"
-	"docs/exec-plans/completed"
-	"docs/generated"
-	"docs/references"
+	"docs/decisions"
+	"docs/domains"
+	"docs/product"
+	"docs/runbooks"
+	"research"
+	"work"
+	"work/active"
 )
 
 REQUIRED_FILES=(
 	"README.md"
 	"AGENTS.md"
 	"CLAUDE.md"
-	"ARCHITECTURE.md"
+	".claudeignore"
+	".cursorignore"
+	".ignore"
+	".rgignore"
 	"docs/README.md"
-	"docs/COGOCHI.md"
-	"docs/DESIGN.md"
-	"docs/FRONTEND.md"
-	"docs/PLANS.md"
-	"docs/QUALITY_SCORE.md"
-	"docs/RELIABILITY.md"
-	"docs/SECURITY.md"
-	"docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md"
-	"docs/design-docs/index.md"
-	"docs/design-docs/core-beliefs.md"
-	"docs/exec-plans/index.md"
-	"docs/exec-plans/active/README.md"
-	# context-system-rollout moved to completed/ (2026-04-12)
-	"docs/exec-plans/completed/README.md"
-	"docs/exec-plans/tech-debt-tracker.md"
-	"docs/generated/README.md"
-	"docs/generated/db-schema.md"
-	"docs/generated/game-record-schema.md"
-	"docs/generated/route-map.md"
-	"docs/generated/store-authority-map.md"
-	"docs/generated/api-group-map.md"
-	"docs/references/index.md"
-	"scripts/dev/context-checkpoint.sh"
-	"scripts/dev/check-context-quality.sh"
+	"docs/product/brief.md"
+	"docs/product/surfaces.md"
+	"docs/product/research-thesis.md"
+	"docs/domains/contracts.md"
+	"docs/domains/terminal.md"
+	"docs/domains/lab.md"
+	"docs/domains/dashboard.md"
+	"docs/domains/engine-pipeline.md"
+	"docs/domains/evaluation.md"
+	"docs/decisions/ADR-000-operating-system-baseline.md"
+	"docs/decisions/ADR-001-engine-is-canonical.md"
+	"docs/decisions/ADR-002-app-engine-boundary.md"
+	"docs/decisions/ADR-003-challenge-contract.md"
+	"work/active/W-0000-template.md"
+	"app/docs/COGOCHI.md"
+	"app/docs/README.md"
+	"app/docs/design-docs/index.md"
+	"app/AGENTS.md"
+	"app/ARCHITECTURE.md"
 )
 
 for dir in "${REQUIRED_DIRS[@]}"; do
@@ -118,71 +115,39 @@ for file in "${REQUIRED_FILES[@]}"; do
 	require_file "$file"
 done
 
-# ── Context routing + collaboration entry points ────────────────────
-require_text "AGENTS.md" "docs/README.md" "task-level docs router"
-require_text "AGENTS.md" "ARCHITECTURE.md" "architecture map"
-require_text "AGENTS.md" "ctx:checkpoint" "semantic checkpoint command"
-require_text "AGENTS.md" "ctx:check -- --strict" "strict context quality command"
-require_text "README.md" "## 1.1) Context Routing" "context routing section"
-require_text "README.md" "### Context Artifact Model" "context artifact model section"
-require_text "README.md" "ctx:checkpoint" "checkpoint command in readme"
-require_text "README.md" "ctx:check -- --strict" "strict context quality command in readme"
-require_text "CLAUDE.md" "current git worktree rooted at this repository" "worktree-aware claude guide"
+require_text "AGENTS.md" '`engine/` is the only backend truth' "engine canonical rule"
+require_text "AGENTS.md" "## Default Read Scope" "default read scope"
+require_text "AGENTS.md" "## Default Exclude Scope" "default exclude scope"
+require_text "AGENTS.md" "## Work Item Discipline" "work item discipline"
+require_text "README.md" "## Canonical Structure" "canonical structure"
+require_text "README.md" "## Read Order (Default)" "default read order"
+require_text "CLAUDE.md" "## Canonical Read Order" "claude canonical read order"
+require_text "app/AGENTS.md" 'root `AGENTS.md`' "app agents points to root"
+require_text "app/ARCHITECTURE.md" 'Those remain canonical in `../engine/`.' "app architecture engine boundary"
+require_text "docs/README.md" "docs/product/*.md" "docs router product path"
+require_text "docs/README.md" "docs/domains/*.md" "docs router domains path"
+require_text "app/docs/README.md" "legacy/reference-first" "legacy docs router banner"
+require_text "app/docs/design-docs/index.md" "not the canonical product entry point" "legacy design docs banner"
+require_text "app/docs/COGOCHI.md" "legacy reference only" "legacy stub banner"
+require_text "app/docs/COGOCHI.md" "Do not rebuild a monolithic PRD here." "stub migration rule"
 
-# ── Canonical product doc (COGOCHI.md) — single source of truth ─────
-require_text "docs/COGOCHI.md" "Executive Summary" "COGOCHI executive summary section"
-require_text "docs/COGOCHI.md" "Core Learning Loop" "COGOCHI core learning loop section"
-require_text "docs/COGOCHI.md" "Surface Model" "COGOCHI surface model section"
-require_text "docs/COGOCHI.md" "H1 Research Claim" "COGOCHI H1 claim section"
-require_text "docs/COGOCHI.md" "Home Landing Page" "COGOCHI home landing spec section"
-require_text "docs/COGOCHI.md" "Kill Criteria" "COGOCHI kill criteria section"
+require_absent "app/docs/README.md" "single source of truth" "legacy readme single-source claim"
+require_absent "app/docs/design-docs/index.md" "single source of truth" "design index single-source claim"
+require_absent "app/docs/COGOCHI.md" "/Users/ej/Projects/WTD/" "external backend repo claim"
+require_absent "CLAUDE.md" '1. `app/docs/COGOCHI.md`' "root claude legacy-prd first read"
+require_absent "CLAUDE.md" '2. `app/docs/COGOCHI.md`' "root claude legacy-prd second read"
+require_absent "CLAUDE.md" '3. `app/docs/COGOCHI.md`' "root claude legacy-prd third read"
 
-# ── COGOCHI.md is the single canonical pointer target ──────────────
-require_text "docs/README.md" "COGOCHI.md" "docs readme points at COGOCHI"
-require_text "CLAUDE.md" "COGOCHI.md" "CLAUDE read-first points at COGOCHI"
-require_text "ARCHITECTURE.md" "COGOCHI.md" "architecture points at COGOCHI"
-require_text "docs/design-docs/index.md" "COGOCHI.md" "design-docs index points at COGOCHI"
-
-# ── Operational / infra docs (unchanged) ────────────────────────────
-require_text "docs/DESIGN.md" "## Design Authority Stack" "design authority stack"
-require_text "docs/FRONTEND.md" "## State Authority" "state authority section"
-require_text "docs/PLANS.md" "## Current Active Planning Surface" "active planning section"
-require_text "docs/QUALITY_SCORE.md" "Scale:" "quality scale"
-require_text "docs/QUALITY_SCORE.md" "Context handoff quality" "context handoff quality row"
-require_text "docs/RELIABILITY.md" "## Reliability Rules" "reliability rules"
-require_text "docs/SECURITY.md" "## Security Non-Negotiables" "security non-negotiables"
-require_text "docs/design-docs/core-beliefs.md" "## Beliefs" "beliefs section"
-
-# ── Generated maps (unchanged) ──────────────────────────────────────
-require_text "docs/generated/game-record-schema.md" "## Primary Structure" "game record schema structure"
-require_text "docs/generated/route-map.md" "## App Routes" "route map section"
-require_text "docs/generated/store-authority-map.md" "## Stores" "store authority section"
-require_text "docs/generated/api-group-map.md" "## API Group Overview" "api group overview"
-require_text "docs/exec-plans/index.md" "## Active" "active plans section"
-
-# ── Context protocol (unchanged) ────────────────────────────────────
-require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "Scope: current git worktree rooted at this repository" "worktree-aware scope"
-require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "## 2) Context Architecture" "context architecture section"
-require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "ctx:checkpoint" "checkpoint command in protocol"
-require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "brief" "brief mode in protocol"
-
-# ── Drift absence checks (unchanged) ────────────────────────────────
-require_absent "AGENTS.md" "/Users/ej/Downloads/wtd-clones/frontend" "hardcoded frontend path in agents"
-require_absent "AGENTS.md" "/Users/ej/Downloads/maxi-doge-unified/README.md" "broken external ssot readme path in agents"
-require_absent "CLAUDE.md" "DEPRECATED" "deprecated claude banner"
-require_absent "CLAUDE.md" "/Users/ej/Downloads/wtd-clones/frontend" "hardcoded frontend path in claude guide"
-require_absent "docs/README.md" "/Users/ej/Downloads/wtd-clones/frontend" "hardcoded frontend path in docs router"
-require_absent "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "/Users/ej/Downloads/wtd-clones/frontend" "hardcoded frontend path in compaction protocol"
-# context-system-rollout moved to completed/ — check removed (2026-04-12)
-require_absent "docs/DESIGN.md" "../WTD_UNIFIED_DESIGN.md" "external arena design ref in design entry doc"
-
-# Note: historical references to SYSTEM_INTENT.md / PRODUCT_SENSE.md inside
-# docs/README.md, CLAUDE.md, and docs/archive/ are allowed — they document
-# what was consolidated into COGOCHI.md and where the v3 originals live.
+for ignore_file in ".claudeignore" ".cursorignore" ".ignore" ".rgignore"; do
+	require_text "$ignore_file" "app/node_modules/" "exclude app node_modules in $ignore_file"
+	require_text "$ignore_file" "engine/.venv/" "exclude engine venv in $ignore_file"
+	require_text "$ignore_file" "docs/archive/" "exclude docs archive in $ignore_file"
+	require_text "$ignore_file" "app/docs/COGOCHI.md" "exclude legacy prd in $ignore_file"
+done
 
 if [ "$FAIL" -ne 0 ]; then
 	echo "[docs:check] failed."
 	exit 1
 fi
 
-echo "[docs:check] all context-system checks passed."
+echo "[docs:check] all operating-doc checks passed."

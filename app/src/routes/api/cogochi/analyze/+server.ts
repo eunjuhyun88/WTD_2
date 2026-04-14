@@ -24,123 +24,25 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSources';
-import { KnownRawId } from '$lib/contracts/ids';
-import type { BinanceKline } from '$lib/engine/types';
-import type { OIHistoryPoint } from '$lib/server/marketDataService';
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
 import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
 import {
-	engine,
 	EngineError,
 	type KlineBar,
 	type PerpSnapshot,
 	type DeepPerpData,
 } from '$lib/server/engineClient';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-type BinanceKlineWithTaker = BinanceKline & { takerBuyBaseAssetVolume?: number };
-type ForceOrderLite = { side: 'BUY' | 'SELL'; price: number; origQty: number };
-
-/** Compute OI % change vs N bars ago from the OI history array. */
-function oiChangePct(
-	oiHistory: OIHistoryPoint[] | null,
-	barsAgo: number,
-): number {
-	if (!oiHistory || oiHistory.length < barsAgo + 1) return 0;
-	const now = oiHistory[oiHistory.length - 1]?.sumOpenInterest ?? 0;
-	const past = oiHistory[Math.max(0, oiHistory.length - 1 - barsAgo)]?.sumOpenInterest ?? 0;
-	if (past === 0) return 0;
-	return ((now - past) / past) * 100; // percent
-}
-
-/**
- * Aggregate forceOrders into USD totals by side.
- * BUY = shorts force-closed → short_liq_usd (bullish pressure)
- * SELL = longs force-closed → long_liq_usd  (bearish pressure)
- */
-function aggregateLiquidations(
-	orders: ForceOrderLite[],
-): { short_liq_usd: number; long_liq_usd: number } {
-	let short_liq_usd = 0;
-	let long_liq_usd  = 0;
-	for (const o of orders) {
-		const usd = (o.price || 0) * (o.origQty || 0);
-		if (o.side === 'BUY') short_liq_usd += usd;
-		else                   long_liq_usd  += usd;
-	}
-	return { short_liq_usd, long_liq_usd };
-}
-
-function buildDepthView(
-	depth: { bids: Array<[number, number]>; asks: Array<[number, number]>; bidVolume: number; askVolume: number; ratio: number } | null,
-	maxLevels = 8,
-) {
-	if (!depth) return null;
-	const bidLevels = depth.bids.slice(0, maxLevels).map(([price, qty]) => ({
-		price,
-		qty,
-		notional: price * qty,
-	}));
-	const askLevels = depth.asks.slice(0, maxLevels).map(([price, qty]) => ({
-		price,
-		qty,
-		notional: price * qty,
-	}));
-	const maxNotional = Math.max(
-		1,
-		...bidLevels.map((level) => level.notional),
-		...askLevels.map((level) => level.notional),
-	);
-	return {
-		bids: bidLevels.map((level) => ({ ...level, weight: level.notional / maxNotional })),
-		asks: askLevels.map((level) => ({ ...level, weight: level.notional / maxNotional })),
-		bidVolume: depth.bidVolume,
-		askVolume: depth.askVolume,
-		ratio: depth.ratio,
-	};
-}
-
-function buildLiquidationClusters(
-	orders: ForceOrderLite[],
-	currentPrice: number,
-	maxClusters = 4,
-) {
-	return orders
-		.map((order) => {
-			const usd = (order.price || 0) * (order.origQty || 0);
-			const distancePct = currentPrice > 0 ? ((order.price - currentPrice) / currentPrice) * 100 : 0;
-			return {
-				side: order.side,
-				price: order.price,
-				usd,
-				distancePct,
-			};
-		})
-		.filter((cluster) => cluster.usd > 0)
-		.sort((a, b) => b.usd - a.usd)
-		.slice(0, maxClusters);
-}
-
-/** 1-bar price % change from the raw klines array. */
-function lastPricePct(klines: BinanceKline[]): number {
-	if (klines.length < 2) return 0;
-	const prev = klines[klines.length - 2].close;
-	const curr = klines[klines.length - 1].close;
-	return prev > 0 ? ((curr - prev) / prev) * 100 : 0;
-}
-
-/** Taker buy ratio from last klines bar (takerBuyBaseAssetVolume / volume). */
-function lastTakerRatio(klines: BinanceKlineWithTaker[]): number | undefined {
-	const last = klines[klines.length - 1];
-	if (!last || last.volume <= 0) return undefined;
-	const tbv = last.takerBuyBaseAssetVolume ?? last.volume * 0.5;
-	const r = tbv / last.volume;
-	return Number.isFinite(r) ? r : undefined;
-}
+import { collectAnalyzeInputs } from '$lib/server/analyze/collector';
+import {
+	aggregateLiquidations,
+	buildDepthView,
+	buildLiquidationClusters,
+	lastPricePct,
+	lastTakerRatio,
+	oiChangePct,
+} from '$lib/server/analyze/helpers';
+import { runEngineAnalysis } from '$lib/server/analyze/orchestrator';
+import type { BinanceKlineWithTaker } from '$lib/server/analyze/types';
 
 // ---------------------------------------------------------------------------
 // Main handler
@@ -152,9 +54,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	try {
 		// --- 1. Fetch all raw data in parallel ---------------------------------
-		const [
+		const {
 			klines,
-			klines1h,         // kept for future MTF use
+			klines1h, // kept for future MTF use
 			ticker,
 			markPrice,
 			indexPrice,
@@ -164,19 +66,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			depth,
 			takerPoints,
 			forceOrders,
-		] = await Promise.all([
-			readRaw(klinesRawIdForTimeframe(tf), { symbol, limit: 600 }),
-			readRaw(KnownRawId.KLINES_1H, { symbol, limit: 100 }).catch((): BinanceKline[] => []),
-			readRaw(KnownRawId.TICKER_24HR, { symbol }).catch(() => null),
-			readRaw(KnownRawId.MARK_PRICE,  { symbol }).catch(() => null),
-			readRaw(KnownRawId.INDEX_PRICE, { symbol }).catch(() => null),
-			readRaw(KnownRawId.OPEN_INTEREST_POINT, { symbol }).catch(() => null),
-			readRaw(KnownRawId.OI_HIST_1H,          { symbol }).catch(() => null),
-			readRaw(KnownRawId.LONG_SHORT_TOP_1H,   { symbol }).catch(() => null),
-			readRaw(KnownRawId.DEPTH_L2_20,         { symbol }).catch(() => null),
-			readRaw(KnownRawId.TAKER_BUY_SELL_RATIO,{ symbol }).catch(() => []),
-			readRaw(KnownRawId.FORCE_ORDERS_1H,     { symbol }).catch(() => []),
-		]);
+			fundingRate,
+		} = await collectAnalyzeInputs(symbol, tf);
 
 		if (!klines.length) {
 			return json({ error: 'No kline data' }, { status: 400 });
@@ -195,13 +86,11 @@ export const GET: RequestHandler = async ({ url }) => {
 				: undefined;
 
 		// Liquidation aggregation
-		const normalizedForceOrders = (forceOrders ?? []) as ForceOrderLite[];
+		const normalizedForceOrders = forceOrders ?? [];
 		const { short_liq_usd, long_liq_usd } = aggregateLiquidations(normalizedForceOrders);
 
 		// OI % change vs 1h ago (percent, not fraction)
-		const oiHistArr = Array.isArray(oiHistory1h)
-			? (oiHistory1h as OIHistoryPoint[])
-			: null;
+		const oiHistArr = oiHistory1h ?? null;
 		const oi_pct = oiChangePct(oiHistArr, 1);
 
 		// Taker ratio: prefer live takerPoints over kline-derived
@@ -217,8 +106,6 @@ export const GET: RequestHandler = async ({ url }) => {
 		// 24h USD volume (for OI/volume ratio in s19_oi_squeeze)
 		const vol_24h = ticker?.quoteVolume ? parseFloat(ticker.quoteVolume) : undefined;
 
-		// Funding rate (premiumIndex memo → zero extra HTTP call)
-		const fundingRate = await readRaw(KnownRawId.FUNDING_RATE, { symbol }).catch(() => null);
 		const depthView = buildDepthView(depth);
 		const bestBid = depthView?.bids[0]?.price ?? null;
 		const bestAsk = depthView?.asks[0]?.price ?? null;
@@ -269,21 +156,13 @@ export const GET: RequestHandler = async ({ url }) => {
 			tbv: k.takerBuyBaseAssetVolume ?? k.volume * 0.5,
 		}));
 
-		const [deepSettled, scoreSettled] = await Promise.allSettled([
-			engine.deep(symbol, engineKlines, perpDeep),
-			engine.score(symbol, engineKlines, perpScore),
-		]);
-
-		const deepResult  = deepSettled.status  === 'fulfilled' ? deepSettled.value  : null;
-		const scoreResult = scoreSettled.status === 'fulfilled' ? scoreSettled.value : null;
+		const { deepResult, scoreResult, deepError } = await runEngineAnalysis(symbol, engineKlines, perpDeep, perpScore);
 
 		if (!deepResult && !scoreResult) {
-			const err = deepSettled.status === 'rejected' ? deepSettled.reason : null;
-			if (err instanceof EngineError && (err.status === 502 || err.status === 504)) {
+			if (deepError instanceof EngineError && (deepError.status === 502 || deepError.status === 504)) {
 				return _fallbackToLayerEngine(symbol, tf);
 			}
-			const msg = err instanceof Error ? err.message : 'Both /deep and /score failed';
-			return json({ error: msg }, { status: 500 });
+			return json({ error: 'Both /deep and /score failed' }, { status: 500 });
 		}
 
 		// --- 5. Build UI extras -----------------------------------------------
