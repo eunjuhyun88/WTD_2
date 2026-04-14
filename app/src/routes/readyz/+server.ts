@@ -8,6 +8,9 @@ export const GET: RequestHandler = async () => {
   const startedAt = Date.now();
   let engineReady = false;
   let engineStatus = 0;
+  const redisConfigured = Boolean(
+    env.SHARED_CACHE_REDIS_REST_URL && env.SHARED_CACHE_REDIS_REST_TOKEN && env.RATE_LIMIT_REDIS_REST_URL
+  );
 
   try {
     const res = await fetch(`${ENGINE_URL}/readyz`, {
@@ -28,6 +31,9 @@ export const GET: RequestHandler = async () => {
       engine: {
         ready: engineReady,
         status: engineStatus
+      },
+      redis: {
+        configured: redisConfigured
       },
       latency_ms: Date.now() - startedAt,
       at: new Date().toISOString()
