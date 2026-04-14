@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-node';
+import adapter from '@sveltejs/adapter-vercel';
 
 const trustedOrigins = (process.env.CSRF_TRUSTED_ORIGINS ?? '')
 	.split(',')
@@ -8,9 +8,7 @@ const trustedOrigins = (process.env.CSRF_TRUSTED_ORIGINS ?? '')
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter({
-			precompress: true
-		}),
+		adapter: adapter(),
 		csrf: {
 			trustedOrigins
 		}
