@@ -11,17 +11,28 @@
     newsData?: any;
     activeTab?: string;
     onTabChange?: (t: string) => void;
+    onAction?: (text: string) => void;
+    onCapture?: () => void;
     bars?: any[];
     layerBarsMap?: Record<string, any[]>;
   }
-  let { analysisData, newsData, activeTab = 'summary', onTabChange, bars = [], layerBarsMap = {} }: Props = $props();
+  let {
+    analysisData,
+    newsData,
+    activeTab = 'summary',
+    onTabChange,
+    onAction,
+    onCapture,
+    bars = [],
+    layerBarsMap = {},
+  }: Props = $props();
 
   const TABS = [
     { id: 'summary', label: 'Summary' },
     { id: 'entry', label: 'Entry' },
     { id: 'risk', label: 'Risk' },
-    { id: 'catalysts', label: 'Catalysts' },
-    { id: 'metrics', label: 'Metrics' },
+    { id: 'metrics', label: 'Flow' },
+    { id: 'catalysts', label: 'News' },
   ];
 
   // ── Deep pipeline data ──────────────────────────────────────────────────
@@ -211,6 +222,78 @@
         : 'NEUTRAL'
   );
   const panelSourceCount = $derived(SOURCES.length + evidence.reduce((sum, item) => sum + item.sourceCount, 0));
+  const panelTimeframe = $derived(String(analysisData?.snapshot?.timeframe ?? analysisData?.timeframe ?? '4h').toUpperCase());
+  const mtfCells = $derived.by(() => {
+    const direction = verdict?.direction ?? 'neutral';
+    const labels = ['5m', '15m', '1H', '4H'];
+    return labels.map((label, index) => {
+      let tone: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+      if (direction === 'bullish' && index < 3) tone = 'bullish';
+      if (direction === 'bearish' && index < 3) tone = 'bearish';
+      return {
+        label,
+        tone,
+        value: tone === 'bullish' ? '↑ Bull' : tone === 'bearish' ? '↓ Bear' : '→ Flat',
+      };
+    });
+  });
+  const entryPlan = $derived.by(() => {
+    const price = Number(panelPrice ?? 0);
+    const entry = Number(atrLevels.entry_long ?? atrLevels.entry ?? (price ? price * 0.994 : 0));
+    const stop = Number(atrLevels.stop_long ?? atrLevels.stop ?? (price ? price * 0.988 : 0));
+    const tp1 = Number(atrLevels.tp1_long ?? atrLevels.target ?? (price ? price * 1.008 : 0));
+    const tp2 = Number(atrLevels.tp2_long ?? (price ? price * 1.016 : 0));
+    const risk = entry && stop ? Math.abs(entry - stop) : 0;
+    const reward = entry && tp2 ? Math.abs(tp2 - entry) : 0;
+    const rr = risk > 0 ? Math.max(0.1, reward / risk) : 0;
+    const confidencePct = pWin != null
+      ? pWin * 100
+      : verdict?.confidence === 'high'
+        ? 72
+        : verdict?.confidence === 'medium'
+          ? 58
+          : 44;
+    return { price, entry, stop, tp1, tp2, rr, confidencePct };
+  });
+  const entryLevels = $derived.by(() => [
+    { label: 'TP2', value: entryPlan.tp2, tone: 'good', distance: entryPlan.price ? ((entryPlan.tp2 - entryPlan.price) / entryPlan.price) * 100 : 0 },
+    { label: 'TP1', value: entryPlan.tp1, tone: 'good', distance: entryPlan.price ? ((entryPlan.tp1 - entryPlan.price) / entryPlan.price) * 100 : 0 },
+    { label: 'NOW', value: entryPlan.price, tone: 'info', distance: 0 },
+    { label: 'ENTRY', value: entryPlan.entry, tone: 'good', distance: entryPlan.price ? ((entryPlan.entry - entryPlan.price) / entryPlan.price) * 100 : 0 },
+    { label: 'STOP', value: entryPlan.stop, tone: 'bad', distance: entryPlan.price ? ((entryPlan.stop - entryPlan.price) / entryPlan.price) * 100 : 0 },
+  ]);
+  const riskRows = $derived.by(() => [
+    { label: 'Bias', value: verdict?.direction ? `${verdict.direction} continuation` : 'Neutral', tone: verdict?.direction === 'bearish' ? 'bad' : verdict?.direction === 'bullish' ? 'good' : 'neutral' },
+    { label: 'Action', value: verdict?.action || 'Wait for confirmation', tone: 'good' },
+    { label: 'Avoid', value: verdict?.against?.[0] || 'Chasing extension', tone: 'warn' },
+    { label: 'Risk Trigger', value: fundingMetrics[0]?.value ? `Funding ${fundingMetrics[0].value}` : 'Funding / CVD flip', tone: 'warn' },
+    { label: 'Invalidation', value: verdict?.invalidation || (entryPlan.stop ? `$${formatPanelPrice(entryPlan.stop)}` : 'Structure break'), tone: 'bad' },
+    { label: 'Valid Until', value: 'Next candle close', tone: 'neutral' },
+  ]);
+  const flowRows = $derived.by(() => {
+    const rows = [
+      evidence.find((item) => item.metric.includes('CVD')),
+      evidence.find((item) => item.metric.includes('OI')),
+      evidence.find((item) => item.metric.includes('Funding') || item.metric.includes('FR')),
+      evidence.find((item) => item.metric.includes('Volume') || item.metric.includes('Vol')),
+    ].filter(Boolean) as TerminalEvidence[];
+    return rows.length > 0 ? rows : evidence.slice(0, 4);
+  });
+  function formatDistance(value: number): string {
+    if (!Number.isFinite(value)) return '—';
+    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+  }
+
+  function requestBackendAction(kind: 'compare' | 'alert' | 'entry' | 'risk') {
+    const symbol = `${panelSymbol}USDT`;
+    const prompts = {
+      compare: `Compare ${symbol} against ETHUSDT and SOLUSDT using backend terminal evidence. Return verdict, action, evidence, and sources.`,
+      alert: `Draft backend scanner alert conditions for ${symbol} on ${panelTimeframe}. Include trigger, confirmation, disqualifiers, and invalidation.`,
+      entry: `Review the entry plan for ${symbol} on ${panelTimeframe} using current backend analysis. Do not execute trades; return entry, stop, targets, risk, and evidence.`,
+      risk: `Run a risk check for ${symbol} on ${panelTimeframe}. Return crowding, liquidity, invalidation, avoid actions, and sources.`,
+    } satisfies Record<typeof kind, string>;
+    onAction?.(prompts[kind]);
+  }
 
   const panelConclusion = $derived(
     verdict
@@ -238,10 +321,10 @@
       <small>Sources {panelSourceCount}</small>
     </div>
     <div class="panel-actions">
-      <button type="button" onclick={() => onTabChange?.('summary')}>Pin</button>
-      <button type="button" onclick={() => onTabChange?.('summary')}>Compare</button>
-      <button type="button" onclick={() => onTabChange?.('metrics')}>Chart</button>
-      <button type="button" onclick={() => onTabChange?.('risk')}>Alert+</button>
+      <button type="button" onclick={() => onTabChange?.('summary')}>Summary</button>
+      <button type="button" onclick={() => requestBackendAction('compare')}>Compare</button>
+      <button type="button" onclick={() => onTabChange?.('metrics')}>Flow</button>
+      <button type="button" onclick={() => requestBackendAction('alert')}>Alert Draft</button>
     </div>
   </div>
 
@@ -295,6 +378,25 @@
         <div class="divider"></div>
         <WhyPanel why={verdict.reason} against={verdict.against} />
         <div class="divider"></div>
+        <p class="section-label">Multi-timeframe alignment</p>
+        <div class="mtf-row">
+          {#each mtfCells as cell}
+            <button type="button" class="mtf-cell" data-tone={cell.tone}>
+              <span>{cell.label}</span>
+              <strong>{cell.value}</strong>
+            </button>
+          {/each}
+        </div>
+        <div class="divider"></div>
+        <p class="section-label">Evidence sources · {SOURCES.length} cited</p>
+        <div class="source-grid">
+          {#each SOURCES as source}
+            <button type="button" class="source-grid-item" data-category={source.category}>
+              <span>{source.label}</span>
+              <small>{source.freshness}</small>
+            </button>
+          {/each}
+        </div>
         <SourceRow sources={SOURCES} />
       {:else}
         <div class="empty-panel">
@@ -305,29 +407,44 @@
     {:else if activeTab === 'entry'}
       {#if analysisData}
         <div class="entry-section">
-          {#if atrLevels.stop_long}
-            <p class="section-label">Stop Loss (Chandelier)</p>
-            <p class="mono-val stop">${Number(atrLevels.stop_long).toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
-            <p class="section-label">TP1 (2× ATR)</p>
-            <p class="mono-val tp">{atrLevels.tp1_long ? '$' + Number(atrLevels.tp1_long).toLocaleString('en-US', {maximumFractionDigits: 2}) : '—'}</p>
-            <p class="section-label">TP2 (3.5× ATR)</p>
-            <p class="mono-val tp">{atrLevels.tp2_long ? '$' + Number(atrLevels.tp2_long).toLocaleString('en-US', {maximumFractionDigits: 2}) : '—'}</p>
-            {#if atrLevels.atr_pct}
-              <p class="section-label">ATR Volatility</p>
-              <p class="mono-val">{Number(atrLevels.atr_pct).toFixed(2)}% <span class="tier-badge">{atrLevels.tier ?? ''}</span></p>
-            {/if}
-            {#if atrLevels.stop_short}
-              <p class="section-label">Stop Short (Chandelier)</p>
-              <p class="mono-val stop">${Number(atrLevels.stop_short).toLocaleString('en-US', {maximumFractionDigits: 2})}</p>
-            {/if}
-          {:else}
-            <p class="section-label">Entry Zone</p>
-            <p class="mono-val">Near VWAP or support</p>
-            <p class="section-label">Stop / Invalidation</p>
-            <p class="mono-val">Below swing low</p>
-          {/if}
+          <p class="section-label">Entry levels</p>
+          <div class="entry-grid">
+            <div class="entry-cell"><span>Entry</span><strong class="tp">{formatPanelPrice(entryPlan.entry)}</strong></div>
+            <div class="entry-cell"><span>Stop</span><strong class="stop">{formatPanelPrice(entryPlan.stop)}</strong></div>
+            <div class="entry-cell"><span>TP1</span><strong class="tp">{formatPanelPrice(entryPlan.tp1)}</strong></div>
+            <div class="entry-cell"><span>TP2</span><strong class="tp">{formatPanelPrice(entryPlan.tp2)}</strong></div>
+          </div>
+          <div class="rr-card">
+            <div class="rr-head">
+              <span>Risk : Reward</span>
+              <strong>1 : {entryPlan.rr ? entryPlan.rr.toFixed(1) : '—'}</strong>
+            </div>
+            <div class="rr-bar">
+              <span class="rr-risk" style={`width:${entryPlan.rr ? Math.min(45, 100 / (entryPlan.rr + 1)) : 25}%`}></span>
+              <span class="rr-reward" style={`left:${entryPlan.rr ? Math.min(45, 100 / (entryPlan.rr + 1)) + 2 : 27}%;width:${entryPlan.rr ? Math.max(20, 96 - Math.min(45, 100 / (entryPlan.rr + 1))) : 69}%`}></span>
+            </div>
+          </div>
+          <div class="level-stack">
+            {#each entryLevels as level}
+              <div class="level-row" data-tone={level.tone}>
+                <span class="level-dot"></span>
+                <span class="level-label">{level.label}</span>
+                <strong>{formatPanelPrice(level.value)}</strong>
+                <small>{formatDistance(level.distance)}</small>
+              </div>
+            {/each}
+          </div>
+          <div class="prob-row">
+            <span>P(win)</span>
+            <div class="prob-track"><span style={`width:${Math.max(5, Math.min(95, entryPlan.confidencePct))}%`}></span></div>
+            <strong>{entryPlan.confidencePct.toFixed(0)}%</strong>
+          </div>
+          <div class="panel-action-row">
+            <button type="button" class="panel-primary" onclick={() => requestBackendAction('entry')}>Review Entry</button>
+            <button type="button" onclick={() => onCapture?.()}>Save Challenge</button>
+          </div>
           <p class="section-label">Venue</p>
-          <p class="text-val">Binance Perp · Spot</p>
+          <p class="text-val">Binance Perp · Spot · Market engine recent</p>
           <SourceRow sources={SOURCES.slice(0, 2)} />
         </div>
       {:else}
@@ -335,14 +452,25 @@
       {/if}
 
     {:else if activeTab === 'risk'}
-      {#if verdict && verdict.against.length > 0}
+      {#if verdict}
         <div class="risk-section">
-          <p class="section-label">Risk Factors</p>
+          <p class="section-label">Action plan</p>
+          <div class="action-block">
+            {#each riskRows as row}
+              <div class="action-line" data-tone={row.tone}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+              </div>
+            {/each}
+          </div>
+          {#if verdict.against.length > 0}
+          <p class="section-label">Risk factors</p>
           <ul class="risk-list">
             {#each verdict.against as r}
               <li class="risk-item">⚠ {r}</li>
             {/each}
           </ul>
+          {/if}
           {#if analysisData?.ensemble?.block_analysis?.disqualifiers?.length}
             <p class="section-label">Disqualifiers Active</p>
             <ul class="risk-list">
@@ -351,6 +479,10 @@
               {/each}
             </ul>
           {/if}
+          <div class="panel-action-row">
+            <button type="button" class="panel-primary" onclick={() => requestBackendAction('risk')}>Review Risk</button>
+            <button type="button" onclick={() => requestBackendAction('alert')}>Draft Alert</button>
+          </div>
         </div>
       {:else}
         <div class="empty-panel"><p>No risk flags detected.</p></div>
@@ -373,6 +505,26 @@
     {:else if activeTab === 'metrics'}
       {#if evidence.length}
         <div class="metrics-detail">
+          <p class="section-label">Order flow · current window</p>
+          <div class="flow-list">
+            {#each flowRows as item}
+              <div class="flow-row" data-state={item.state}>
+                <span>{item.metric}</span>
+                <strong>{item.value}</strong>
+                <small>{item.interpretation}</small>
+              </div>
+            {/each}
+          </div>
+          <div class="prob-row">
+            <span>Funding heat</span>
+            <div class="prob-track amber"><span style="width:64%"></span></div>
+            <strong>{fundingMetrics[0]?.value ?? '—'}</strong>
+          </div>
+          <div class="prob-row">
+            <span>Crowding</span>
+            <div class="prob-track"><span style="width:45%"></span></div>
+            <strong>{oiMetrics[0]?.value ?? '—'}</strong>
+          </div>
           {#if structureMetrics.length > 0}
             <div class="metrics-group">
               <p class="section-label">Structure</p>
@@ -558,8 +710,226 @@
   .entry-section, .risk-section, .metrics-detail { display: flex; flex-direction: column; gap: 5px; }
   .metrics-group { display: flex; flex-direction: column; gap: 4px; }
   .section-label { font-family: var(--sc-font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sc-text-2); margin: 0; }
-  .mono-val { font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-0); margin: 0; }
   .text-val { font-size: 10px; color: var(--sc-text-1); margin: 0; }
+
+  .mtf-row,
+  .entry-grid,
+  .source-grid {
+    display: grid;
+    gap: 3px;
+  }
+  .mtf-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .entry-grid,
+  .source-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mtf-cell,
+  .entry-cell,
+  .source-grid-item,
+  .level-row,
+  .prob-row,
+  .action-line,
+  .flow-row {
+    border: 1px solid rgba(255,255,255,0.055);
+    background: rgba(255,255,255,0.018);
+    border-radius: 2px;
+  }
+  .mtf-cell,
+  .source-grid-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 4px 5px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .mtf-cell span,
+  .entry-cell span,
+  .source-grid-item small,
+  .level-label,
+  .prob-row span,
+  .action-line span,
+  .flow-row span {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(247,242,234,0.34);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .mtf-cell strong,
+  .source-grid-item span {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    color: rgba(247,242,234,0.74);
+  }
+  .mtf-cell[data-tone='bullish'] strong { color: #8fdd9d; }
+  .mtf-cell[data-tone='bearish'] strong { color: #f19999; }
+  .mtf-cell[data-tone='neutral'] strong { color: rgba(247,242,234,0.55); }
+  .source-grid-item[data-category='Market'] span { color: #83bcff; }
+  .source-grid-item[data-category='Model'] span { color: #c4a4ff; }
+  .source-grid-item[data-category='News'] span { color: rgba(247,242,234,0.74); }
+
+  .entry-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 5px 6px;
+  }
+  .entry-cell strong {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+  }
+  .rr-card {
+    display: grid;
+    gap: 4px;
+    padding: 5px 6px;
+    border: 1px solid rgba(255,255,255,0.055);
+    border-radius: 2px;
+    background: rgba(255,255,255,0.018);
+  }
+  .rr-head,
+  .level-row,
+  .prob-row,
+  .action-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .rr-head span,
+  .rr-head strong {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+  }
+  .rr-head span { color: rgba(247,242,234,0.34); text-transform: uppercase; letter-spacing: 0.08em; }
+  .rr-head strong { color: #8fdd9d; }
+  .rr-bar {
+    position: relative;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.055);
+  }
+  .rr-risk,
+  .rr-reward {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 2px;
+  }
+  .rr-risk { left: 0; background: #f19999; }
+  .rr-reward { background: #8fdd9d; }
+  .level-stack,
+  .flow-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .level-row {
+    padding: 3px 5px;
+  }
+  .level-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(247,242,234,0.32);
+    flex-shrink: 0;
+  }
+  .level-row[data-tone='good'] .level-dot { background: #8fdd9d; }
+  .level-row[data-tone='bad'] .level-dot { background: #f19999; }
+  .level-row[data-tone='info'] .level-dot { background: #83bcff; }
+  .level-row strong,
+  .level-row small {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+  }
+  .level-row strong { color: rgba(247,242,234,0.78); }
+  .level-row small { color: rgba(247,242,234,0.34); min-width: 42px; text-align: right; }
+  .prob-row {
+    padding: 4px 5px;
+  }
+  .prob-track {
+    flex: 1;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+  }
+  .prob-track span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: #83bcff;
+  }
+  .prob-track.amber span { background: #e9c167; }
+  .prob-row strong {
+    min-width: 42px;
+    text-align: right;
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    color: rgba(247,242,234,0.76);
+  }
+  .panel-action-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .panel-action-row button {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    color: rgba(247,242,234,0.6);
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.075);
+    border-radius: 2px;
+    padding: 4px 5px;
+    cursor: pointer;
+  }
+  .panel-action-row .panel-primary {
+    color: #06100b;
+    border-color: rgba(143,221,157,0.28);
+    background: #8fdd9d;
+  }
+  .action-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .action-line {
+    padding: 4px 5px;
+    background: rgba(255,255,255,0.015);
+  }
+  .action-line strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    color: rgba(247,242,234,0.72);
+  }
+  .action-line[data-tone='good'] strong { color: #8fdd9d; }
+  .action-line[data-tone='bad'] strong { color: #f19999; }
+  .action-line[data-tone='warn'] strong { color: #e9c167; }
+  .flow-row {
+    display: grid;
+    grid-template-columns: 64px 52px minmax(0, 1fr);
+    gap: 5px;
+    align-items: center;
+    padding: 4px 5px;
+  }
+  .flow-row strong {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(247,242,234,0.76);
+  }
+  .flow-row small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 8px;
+    color: rgba(247,242,234,0.38);
+  }
+  .flow-row[data-state='bullish'] strong { color: #8fdd9d; }
+  .flow-row[data-state='bearish'] strong { color: #f19999; }
+  .flow-row[data-state='warning'] strong { color: #e9c167; }
 
   .risk-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .risk-item { font-size: 9px; color: #fbbf24; padding: 3px 5px; background: rgba(251,191,36,0.06); border-radius: 2px; }
@@ -600,12 +970,6 @@
 
   .stop { color: var(--sc-bad, #cf7f8f) !important; }
   .tp   { color: var(--sc-good, #adca7c) !important; }
-  .tier-badge {
-    font-family: var(--sc-font-mono); font-size: 8px;
-    padding: 1px 4px; border-radius: 2px;
-    background: rgba(255,255,255,0.06); color: var(--sc-text-2);
-  }
-
   .news-list { display: flex; flex-direction: column; gap: 4px; }
   .news-item { display: flex; flex-direction: column; gap: 2px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }
   .news-time { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); }
