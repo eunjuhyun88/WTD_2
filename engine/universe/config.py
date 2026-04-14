@@ -3,6 +3,11 @@ from __future__ import annotations
 
 import os
 
+try:
+    import env_bootstrap  # noqa: F401
+except ModuleNotFoundError:
+    from engine import env_bootstrap  # type: ignore  # noqa: F401
+
 DEFAULT_SCAN_UNIVERSE = os.environ.get("SCAN_UNIVERSE", "binance_dynamic")
 
 # Keep refinement narrower by default so Save Setup stays responsive.
