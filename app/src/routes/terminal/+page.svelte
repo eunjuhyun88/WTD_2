@@ -34,6 +34,7 @@
   import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
   import MobileDetailSheet from '../../components/terminal/mobile/MobileDetailSheet.svelte';
   import MobileCommandDock from '../../components/terminal/mobile/MobileCommandDock.svelte';
+  import AppSurfaceHeader from '$lib/components/surfaces/AppSurfaceHeader.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence, TerminalSource } from '$lib/types/terminal';
 
@@ -1170,41 +1171,37 @@
 <!-- ═══════════════════════════════════════════════════ -->
 <!-- Terminal Shell                                      -->
 <!-- ═══════════════════════════════════════════════════ -->
-<div class="terminal-shell">
-  <div class="terminal-shell-head">
-    <section class="terminal-hero">
-      <div class="terminal-hero-main">
-        <nav class="surface-nav" aria-label="Surface navigation">
-          <a class="surface-link" href="/dashboard">Dashboard</a>
-          <a class="surface-link" href="/lab">Lab</a>
-          <a class="surface-link active" href="/terminal" aria-current="page">Terminal</a>
-        </nav>
+<div class="surface-page terminal-page">
+  <AppSurfaceHeader active="terminal" />
 
-        <div class="terminal-title-wrap">
-          <div class="terminal-mark" aria-hidden="true">CG</div>
-          <div class="terminal-title-copy">
-            <span class="terminal-kicker">Cogochi Research Cockpit</span>
-            <div class="terminal-title-row">
-              <h1 class="terminal-title">Terminal</h1>
-              <span class="terminal-context-pill">{activeFocusLabel}/USDT</span>
-              <span class="terminal-context-pill muted">{timeframeBadgeLabel}</span>
-            </div>
-            <p class="terminal-subtitle">{terminalSubtitle}</p>
-          </div>
+  <header class="surface-hero terminal-topbar">
+    <div class="surface-copy terminal-topbar-copy">
+      <div class="terminal-title-copy">
+        <span class="surface-kicker">Terminal</span>
+        <div class="terminal-title-row">
+          <h1 class="surface-title terminal-topbar-title">Research Cockpit</h1>
+          <span class="terminal-context-pill">{activeFocusLabel}/USDT</span>
+          <span class="terminal-context-pill muted">{timeframeBadgeLabel}</span>
         </div>
+        <p class="surface-subtitle terminal-subtitle">{terminalSubtitle}</p>
       </div>
+    </div>
 
-      <div class="terminal-hero-stats">
-        {#each shellSummaryCards as card}
-          <div class="hero-stat-card" data-tone={card.tone}>
-            <span class="hero-stat-label">{card.label}</span>
-            <strong class="hero-stat-value">{card.value}</strong>
-            <span class="hero-stat-meta">{card.meta}</span>
-          </div>
-        {/each}
-      </div>
-    </section>
+    <div class="surface-stats terminal-topbar-stats">
+      {#each shellSummaryCards as card}
+        <article class="surface-stat terminal-stat" data-tone={card.tone}>
+          <span class="surface-meta">{card.label}</span>
+          <strong>{card.value}</strong>
+        </article>
+      {/each}
+    </div>
 
+    <div class="topbar-actions terminal-topbar-actions">
+      <span class="terminal-header-note">Trading workspace</span>
+    </div>
+  </header>
+
+  <section class="surface-card terminal-shell-head">
     {#if assistantBannerText}
       <div class="assistant-ribbon" data-state={isStreaming ? 'streaming' : 'ready'}>
         <span class="assistant-ribbon-label">{isStreaming ? 'AI Stream' : 'Assistant'}</span>
@@ -1212,7 +1209,6 @@
       </div>
     {/if}
 
-    <!-- Command Bar -->
     <TerminalCommandBar
       {flowBias}
       {layout}
@@ -1237,7 +1233,7 @@
 
     {#if patternTransitionAlerts.length > 0}
       <div class="pattern-alert-tray">
-        <span class="pattern-alert-label">LIVE PATTERN ALERT</span>
+        <span class="pattern-alert-label">Live Pattern Alert</span>
         {#each patternTransitionAlerts as item}
           <div class="pattern-alert-pill">
             <button class="pattern-alert-main" onclick={() => focusPatternSymbol(item)}>
@@ -1253,13 +1249,14 @@
         {/each}
       </div>
     {/if}
-  </div>
+  </section>
 
-  <!-- 3-column body -->
-  <div class="terminal-body"
-    class:left-collapsed={!showLeftRail}
-    style="--terminal-left-w: {leftWidth}px"
-  >
+  <section class="surface-panel terminal-workspace">
+    <div class="terminal-shell">
+      <div class="terminal-body"
+        class:left-collapsed={!showLeftRail}
+        style="--terminal-left-w: {leftWidth}px"
+      >
 
     <!-- Left Rail -->
     {#if showLeftRail}
@@ -1630,7 +1627,9 @@
       </div>
     </main>
 
-  </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <!-- Capture modal — uses SaveSetupModal which handles its own POST -->
@@ -1656,31 +1655,204 @@
 />
 
 <style>
+  .terminal-page {
+    width: min(100%, calc(100% - 24px));
+    height: calc(100dvh - 18px);
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  .terminal-topbar {
+    align-items: center;
+    padding: 10px 16px;
+    background:
+      linear-gradient(180deg, rgba(12, 15, 20, 0.98), rgba(10, 13, 18, 0.94));
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    border-radius: 10px;
+  }
+
+  .terminal-topbar-copy {
+    align-items: flex-start;
+  }
+
+  .terminal-title-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .terminal-topbar-title {
+    white-space: normal;
+  }
+
+  .terminal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .terminal-context-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(250,247,235,0.88);
+    text-transform: uppercase;
+  }
+
+  .terminal-context-pill.muted {
+    color: rgba(250,247,235,0.52);
+    background: rgba(255,255,255,0.03);
+  }
+
+  .terminal-subtitle {
+    margin: 0;
+    max-width: 68ch;
+    font-size: 0.82rem;
+    color: rgba(250,247,235,0.52);
+  }
+
+  .terminal-topbar-stats {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .terminal-stat[data-tone='bull'] {
+    border-color: rgba(74,222,128,0.18);
+    background: rgba(74,222,128,0.06);
+  }
+  .terminal-stat[data-tone='bear'] {
+    border-color: rgba(248,113,113,0.18);
+    background: rgba(248,113,113,0.06);
+  }
+  .terminal-stat[data-tone='info'] {
+    border-color: rgba(99,179,237,0.18);
+    background: rgba(99,179,237,0.07);
+  }
+  .terminal-stat[data-tone='warn'] {
+    border-color: rgba(251,191,36,0.18);
+    background: rgba(251,191,36,0.07);
+  }
+
+  .terminal-topbar-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .terminal-header-note {
+    color: rgba(250,247,235,0.42);
+    font-family: var(--sc-font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .terminal-shell-head {
+    display: grid;
+    gap: 10px;
+    padding: 12px 14px;
+    background:
+      linear-gradient(180deg, rgba(9, 12, 17, 0.98), rgba(9, 12, 17, 0.92));
+    position: sticky;
+    top: 72px;
+    z-index: 25;
+    border-radius: 10px;
+    backdrop-filter: blur(18px);
+  }
+
+  .terminal-workspace {
+    padding: 0;
+    overflow: hidden;
+    min-height: 0;
+    flex: 1;
+  }
+
   .terminal-shell {
     display: flex;
     flex-direction: column;
+    min-height: 0;
     height: 100%;
-    background: var(--sc-terminal-bg, #000);
+    background:
+      radial-gradient(circle at top left, rgba(99, 179, 237, 0.08), transparent 30%),
+      radial-gradient(circle at top right, rgba(173, 202, 124, 0.06), transparent 24%),
+      linear-gradient(180deg, #06080d 0%, #05070b 18%, #020304 100%);
     color: var(--sc-text-0);
     overflow: hidden;
     font-family: var(--sc-font-body);
   }
 
+  .assistant-ribbon {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(99,179,237,0.14);
+    background: rgba(8, 17, 26, 0.82);
+  }
+
+  .assistant-ribbon[data-state='streaming'] {
+    border-color: rgba(74,222,128,0.2);
+    background: rgba(8, 22, 15, 0.84);
+  }
+
+  .assistant-ribbon-label {
+    flex-shrink: 0;
+    padding-top: 2px;
+    color: rgba(99,179,237,0.82);
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .assistant-ribbon[data-state='streaming'] .assistant-ribbon-label {
+    color: rgba(74,222,128,0.88);
+  }
+
+  .assistant-ribbon-text {
+    margin: 0;
+    color: rgba(247,242,234,0.82);
+    font-size: 13px;
+    line-height: 1.55;
+    display: -webkit-box;
+    overflow: hidden;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
   .terminal-status-strip {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    background: #0b0e14;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    gap: 8px;
+    padding: 0;
+    background: transparent;
     overflow-x: auto;
   }
   .status-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 8px;
-    border-radius: 4px;
+    padding: 6px 10px;
+    border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.08);
     background: rgba(255,255,255,0.03);
     white-space: nowrap;
@@ -1688,6 +1860,7 @@
   .status-pill[data-tone='bull'] { border-color: rgba(74,222,128,0.22); background: rgba(74,222,128,0.06); }
   .status-pill[data-tone='bear'] { border-color: rgba(248,113,113,0.22); background: rgba(248,113,113,0.06); }
   .status-pill[data-tone='info'] { border-color: rgba(99,179,237,0.22); background: rgba(99,179,237,0.06); }
+  .status-pill[data-tone='warn'] { border-color: rgba(251,191,36,0.22); background: rgba(251,191,36,0.06); }
   .status-label,
   .status-value {
     font-family: var(--sc-font-mono);
@@ -1716,10 +1889,11 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 14px;
+    padding: 10px 12px;
     background:
       linear-gradient(90deg, rgba(74, 222, 128, 0.12), rgba(74, 222, 128, 0.03));
-    border-bottom: 1px solid rgba(74, 222, 128, 0.16);
+    border: 1px solid rgba(74, 222, 128, 0.16);
+    border-radius: 12px;
     overflow-x: auto;
   }
 
@@ -2231,9 +2405,33 @@
 
   /* Mobile */
   @media (max-width: 768px) {
+    .terminal-page {
+      width: min(100%, calc(100% - 16px));
+      height: auto;
+      min-height: calc(100dvh - 12px);
+      overflow: visible;
+    }
+    .assistant-ribbon {
+      padding: 10px;
+    }
+    .terminal-shell-head {
+      padding: 14px;
+      position: relative;
+      top: auto;
+    }
+    .terminal-topbar-actions {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .terminal-topbar-stats {
+      width: 100%;
+    }
     .terminal-status-strip { display: none; }
     .terminal-body {
       grid-template-columns: 1fr !important;
+    }
+    .pattern-alert-tray {
+      padding: 8px 10px;
     }
     .left-rail     { display: none; }
     .panel-resizer { display: none; }
@@ -2247,6 +2445,12 @@
   /* Hide mobile wrap on desktop */
   @media (min-width: 769px) {
     .mobile-board-wrap { display: none; }
+  }
+
+  @media (max-width: 540px) {
+    .terminal-page {
+      width: min(100%, calc(100% - 12px));
+    }
   }
 
   .mobile-board-wrap {

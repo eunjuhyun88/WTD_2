@@ -154,6 +154,28 @@ button {
   opacity: 0.8;
 }
 
+.surface-page.chrome-layout {
+  width: min(100%, calc(100% - 24px));
+  height: calc(100dvh - 18px);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  padding-top: 12px;
+  padding-bottom: 12px;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.surface-fixed-hero {
+  flex-shrink: 0;
+}
+
+.surface-scroll-body {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 24px;
+  padding-bottom: 12px;
+}
+
 .surface-hero,
 .surface-card,
 .surface-panel,
@@ -380,6 +402,21 @@ button {
     gap: 20px;
   }
 
+  .surface-page.chrome-layout {
+    width: min(100%, calc(100% - 16px));
+    height: auto;
+    min-height: calc(100dvh - 12px);
+    padding-top: 8px;
+    padding-bottom: 8px;
+    overflow: visible;
+  }
+
+  .surface-scroll-body {
+    overflow: visible;
+    gap: 20px;
+    padding-bottom: 8px;
+  }
+
   .surface-hero {
     flex-direction: column;
     align-items: stretch;
@@ -407,6 +444,12 @@ button {
     padding-top: 12px;
     padding-bottom: 24px;
     gap: 14px;
+  }
+
+  .surface-page.chrome-layout {
+    width: min(100%, calc(100% - 12px));
+    min-height: calc(100dvh - 8px);
+    gap: 8px;
   }
 
   .surface-hero,
