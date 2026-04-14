@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — DexScreener Raw Loader (providers/ home, P1.A0 slice 4)
+// DexScreener Raw Loader (providers/ home, P1.A0 slice 4)
 // ═══════════════════════════════════════════════════════════════
 //
 // Canonical location for DexScreener REST fetchers. This file is the

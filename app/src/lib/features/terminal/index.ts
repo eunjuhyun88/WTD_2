@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Terminal feature barrel
+// Terminal feature barrel
 // ═══════════════════════════════════════════════════════════════
 //
 // Public entry point for the terminal feature. Consumers (route

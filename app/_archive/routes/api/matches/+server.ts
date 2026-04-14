@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Match History API (B-08 하위호환 어댑터)
+// Match History API (B-08 하위호환 어댑터)
 // GET /api/matches — legacy matches + arena_matches 병합 반환
 // POST /api/matches — legacy matches 테이블 INSERT (v2 호환)
 // ═══════════════════════════════════════════════════════════════

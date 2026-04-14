@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Polymarket Auth API
+// Polymarket Auth API
 // ═══════════════════════════════════════════════════════════════
 // Two endpoints:
 //   GET  → Returns EIP-712 typed data for ClobAuth (L1 signing)

@@ -2,7 +2,7 @@
 
 Date: 2026-03-20
 Status: active
-Scope: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+Scope: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 
 ## Goal
 
@@ -292,7 +292,7 @@ Definition:
 
 ## What Not To Mix Into Slice A
 
-- full rebrand from `STOCKCLAW` to `CHATBATTLE`
+- full rebrand from `WTD` to `CHATBATTLE`
 - archive-wide doc cleanup
 - arena-v2 warning cleanup
 - unrelated a11y sweeps across every surface

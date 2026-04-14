@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — War Room Service (3-Round Agent LLM Debate)
+// WTD — War Room Service (3-Round Agent LLM Debate)
 // ═══════════════════════════════════════════════════════════════
 //
 // Replaces the static Emergency Meeting with a 3-round interactive debate.

@@ -1,5 +1,5 @@
 <!--
-  STOCKCLAW — MVP / Traitor Vote (Post-Match Agent Review)
+  WTD — MVP / Traitor Vote (Post-Match Agent Review)
   After a match concludes, user votes on:
     - MVP: Which agent was most helpful? (+20 XP)
     - Traitor: Which agent gave bad advice? (-5 XP)

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Game Loop (requestAnimationFrame)
+// WTD — Game Loop (requestAnimationFrame)
 // ═══════════════════════════════════════════════════════════════
 
 import { gameState } from '$lib/stores/gameState';

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Macro Indicators Proxy (DXY, SPX, US10Y)
+// Macro Indicators Proxy (DXY, SPX, US10Y)
 // ═══════════════════════════════════════════════════════════════
 
 import { json } from '@sveltejs/kit';

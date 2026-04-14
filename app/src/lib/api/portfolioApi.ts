@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Portfolio API Client
+// WTD — Portfolio API Client
 // ═══════════════════════════════════════════════════════════════
 
 export interface PortfolioHolding {

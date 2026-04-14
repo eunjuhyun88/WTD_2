@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — CoinMarketCap server client
+// CoinMarketCap server client
 // ═══════════════════════════════════════════════════════════════
 // Quotes + Trending (Gainers/Losers, Most Visited, Latest)
 

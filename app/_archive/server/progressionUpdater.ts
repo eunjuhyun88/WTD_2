@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Progression Updater (server-side)
+// Progression Updater (server-side)
 // arena/resolve에서 호출. LP 계산 + DB 반영 + lp_transactions 기록.
 // /api/progression POST와 동일 로직이나 내부 호출용 (HTTP 오버헤드 없음).
 // ═══════════════════════════════════════════════════════════════

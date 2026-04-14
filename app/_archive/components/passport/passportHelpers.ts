@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  STOCKCLAW — Passport Pure Helper Functions
+//  WTD — Passport Pure Helper Functions
 //  Extracted from passport/+page.svelte for maintainability
 // ═══════════════════════════════════════════════════════════════
 

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Polymarket CLOB API Client (server-side)
+// Polymarket CLOB API Client (server-side)
 // ═══════════════════════════════════════════════════════════════
 // Handles all communication with Polymarket's CLOB + Gamma APIs.
 // Architecture: Frontend → Our API → This module → Polymarket
@@ -133,7 +133,7 @@ async function clobFetch<T>(
       ...options,
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Stockclaw/1.0',
+        'User-Agent': 'wtd/1.0',
         ...options.headers,
       },
       signal: options.signal ?? AbortSignal.timeout(8000),
@@ -159,7 +159,7 @@ async function gammaFetch<T>(
       ...options,
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Stockclaw/1.0',
+        'User-Agent': 'wtd/1.0',
         ...options.headers,
       },
       signal: options.signal ?? AbortSignal.timeout(8000),
@@ -556,7 +556,7 @@ export async function submitSignedOrder(
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'User-Agent': 'Stockclaw/1.0',
+        'User-Agent': 'wtd/1.0',
         ...authHeaders,
       },
       body,
@@ -610,7 +610,7 @@ export async function cancelOrder(
       method: 'DELETE',
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Stockclaw/1.0',
+        'User-Agent': 'wtd/1.0',
         ...authHeaders,
       },
       signal: AbortSignal.timeout(8000),

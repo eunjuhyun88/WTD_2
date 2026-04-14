@@ -1,7 +1,7 @@
 # Root CLAUDE.md Rewrite Proposal — 2026-04-12
 
 - Status: PROPOSAL (not yet applied)
-- Target file: `/Users/ej/Projects/maxidoge-clones/CLAUDE.md`
+- Target file: `/Users/ej/Projects/wtd-clones/CLAUDE.md`
 - Author: heuristic-knuth session, 2026-04-12
 - Applied by: Phase 3 of `cto-cleanup-plan-2026-04-12.md`
 - Approval required: yes (sitewide rule change)
@@ -27,26 +27,26 @@
 
 ## Proposed New Content
 
-아래 내용이 P3 에서 `/Users/ej/Projects/maxidoge-clones/CLAUDE.md` 에 **전체 덮어쓰기** 된다.
+아래 내용이 P3 에서 `/Users/ej/Projects/wtd-clones/CLAUDE.md` 에 **전체 덮어쓰기** 된다.
 
 ---
 
 ```markdown
-# STOCKCLAW — Monorepo Root Guide
+# WTD — Monorepo Root Guide
 
 Last rewrite: 2026-04-12 (heuristic-knuth 세션)
 
 ## 1. Repo 구조 (2026-04-12 확정)
 
 ```
-maxidoge-clones/
+wtd-clones/
 ├── frontend/             # 현재 정본 SvelteKit 풀스택 (프론트 + BFF)
 ├── CHATBATTLE/           # Cogochi day-1 product repo (active)
 ├── backend/              # LEGACY reference-only, 신규 작업 금지
 ├── frontend-passport/    # LEGACY reference-only, 신규 작업 금지
 ├── frontend-wallet-merge/# LEGACY reference-only, 신규 작업 금지
 ├── integration/          # 통합 설정
-└── STOCKCLAW_UNIFIED_DESIGN.md
+└── WTD_UNIFIED_DESIGN.md
 ```
 
 **목표 구조** (BE 추출 진행 중, 2026-04-12 ~ ):
@@ -68,7 +68,7 @@ CHATBATTLE/   (또는 frontend/, 타겟 repo 에서)
 
 ## 2. Active Codebase
 
-**현재 정본**: CHATBATTLE (Cogochi day-1) + frontend/ (STOCKCLAW arena)
+**현재 정본**: CHATBATTLE (Cogochi day-1) + frontend/ (WTD arena)
 
 오늘(2026-04-12) 기준:
 - 573 파일, `src/lib/server/` 22K 라인, `src/lib/engine/` 24K 라인
@@ -109,7 +109,7 @@ CHATBATTLE/   (또는 frontend/, 타겟 repo 에서)
 ## 4. Design Authority
 
 1. **C02 아키텍처**: 각 repo 의 `CLAUDE.md` → Design Authority 섹션
-2. **Arena War 통합 설계**: `STOCKCLAW_UNIFIED_DESIGN.md`
+2. **Arena War 통합 설계**: `WTD_UNIFIED_DESIGN.md`
 3. **Cogochi 제품 SSOT**: `CHATBATTLE/docs/COGOCHI.md`
 4. **BE 추출 실행 계획**: `docs/exec-plans/active/be-extraction-design-v0.md`
 
@@ -334,4 +334,4 @@ git push origin --delete <이 세션 브랜치> # 원격도 있었으면
 
 - Exec plan: `cto-cleanup-plan-2026-04-12.md` (same dir)
 - BE 추출 설계: `be-extraction-design-v0.md` (P4 에서 생성 예정)
-- 현재 root CLAUDE.md (rewrite 대상): `/Users/ej/Projects/maxidoge-clones/CLAUDE.md`
+- 현재 root CLAUDE.md (rewrite 대상): `/Users/ej/Projects/wtd-clones/CLAUDE.md`

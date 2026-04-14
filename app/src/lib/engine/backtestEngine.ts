@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Backtest Engine (Production-Grade)
+// WTD — Backtest Engine (Production-Grade)
 // ═══════════════════════════════════════════════════════════════
 //
 // Zero look-ahead bias. All indicators are causal.

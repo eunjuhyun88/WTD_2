@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — GMX V2 Positions API
+// GMX V2 Positions API
 // ═══════════════════════════════════════════════════════════════
 // GET /api/gmx/positions
 // Returns user's GMX positions from DB.

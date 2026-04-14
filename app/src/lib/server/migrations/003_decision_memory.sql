@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- STOCKCLAW — Decision Memory Evolution
+-- WTD — Decision Memory Evolution
 -- ═══════════════════════════════════════════════════════════════
 --
 -- arena_war_rag 테이블을 Decision Memory로 진화.

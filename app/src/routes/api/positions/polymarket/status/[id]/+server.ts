@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Polymarket Position Status API
+// Polymarket Position Status API
 // ═══════════════════════════════════════════════════════════════
 // Poll order status from CLOB and sync to DB.
 //

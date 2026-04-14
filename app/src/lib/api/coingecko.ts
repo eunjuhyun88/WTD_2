@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — CoinGecko API Client (B-05)
+// WTD — CoinGecko API Client (B-05)
 // ═══════════════════════════════════════════════════════════════
 // Free tier: 50 calls/min, no key required
 // https://www.coingecko.com/en/api/documentation

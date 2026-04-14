@@ -71,7 +71,7 @@ CHATBATTLE/
 **Actions**:
 1. Create `packages/contracts/` with `package.json` + `tsconfig.json`
 2. Move files from `src/lib/contracts/` to `packages/contracts/src/`
-3. Add `$lib/contracts` → `@stockclaw/contracts` import shim (tsconfig path alias)
+3. Add `$lib/contracts` → `@wtd/contracts` import shim (tsconfig path alias)
 4. Verify: `npm run check` + `npm run build`
 5. Remove shim once all imports migrated
 
@@ -84,12 +84,12 @@ CHATBATTLE/
 
 **Source**: `src/lib/server/providers/`
 **What moves**: Data source adapters, API clients, catalog, compound memo helpers
-**Dependencies**: `@stockclaw/contracts`
+**Dependencies**: `@wtd/contracts`
 
 **Actions**:
 1. Create `packages/providers/`
 2. Move provider files
-3. Wire `@stockclaw/contracts` dependency in package.json
+3. Wire `@wtd/contracts` dependency in package.json
 4. Shim `$lib/server/providers` import path
 5. Verify gate
 
@@ -99,7 +99,7 @@ CHATBATTLE/
 
 **Source**: `src/lib/engine/` (server-only parts)
 **What moves**: Scoring engine, layer engine, scan engine, factor analysis
-**Dependencies**: `@stockclaw/contracts`, `@stockclaw/providers`
+**Dependencies**: `@wtd/contracts`, `@wtd/providers`
 
 **Risk**: Engine has tight coupling with stores (browser-side) and server services. Need to carefully separate server-only vs browser-shared code. Some engine modules may need to stay in `src/` if they're used by both browser and server.
 

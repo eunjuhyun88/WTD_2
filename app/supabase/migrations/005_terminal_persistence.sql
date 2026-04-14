@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- Stockclaw — Terminal Persistence Migration (S-05)
+-- Terminal Persistence Migration (S-05)
 -- scan_runs / scan_signals / agent_chat_messages
 -- ═══════════════════════════════════════════════════════════════
 BEGIN;

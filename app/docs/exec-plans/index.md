@@ -8,7 +8,7 @@ Purpose:
 - `docs/exec-plans/active/launch-load-security-implementation-plan-2026-04-12.md`
 - `docs/exec-plans/active/chatbattle-foundation-refactor-plan-2026-03-20.md`
 - `docs/exec-plans/active/six-surface-game-loop-ia-2026-03-17.md`
-- `docs/exec-plans/active/cogochi-stockclaw-final-placement-architecture-2026-03-17.md`
+- `docs/exec-plans/active/cogochi-wtd-final-placement-architecture-2026-03-17.md`
 - `docs/exec-plans/active/usability-navigation-sprint-1-2026-03-10.md`
 - `docs/exec-plans/active/usability-foundation-sprint-0-2026-03-10.md`
 - `docs/exec-plans/active/full-system-redesign-blueprint-2026-03-08.md`

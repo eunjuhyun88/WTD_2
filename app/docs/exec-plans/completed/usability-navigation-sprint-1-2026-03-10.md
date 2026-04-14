@@ -2,11 +2,11 @@
 
 Date: 2026-03-10
 Status: active implementation authority
-Scope: `/Users/ej/Downloads/maxidoge-clones/frontend`
+Scope: `/Users/ej/Downloads/wtd-clones/frontend`
 
 ## 1. Purpose
 
-Apply the navigation rules from [usability-redesign-spec-2026-03-09.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md#L497):
+Apply the navigation rules from [usability-redesign-spec-2026-03-09.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md#L497):
 
 1. Header = `Home | Terminal | Arena | Signals | Passport`
 2. mobile primary navigation = fixed bottom bar
@@ -17,17 +17,17 @@ This sprint consumes the Sprint 0 foundation layer but does not yet rework route
 
 Primary sources:
 
-1. [usability-redesign-spec-2026-03-09.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md#L1)
-2. [usability-foundation-sprint-0-2026-03-10.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/usability-foundation-sprint-0-2026-03-10.md#L1)
+1. [usability-redesign-spec-2026-03-09.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md#L1)
+2. [usability-foundation-sprint-0-2026-03-10.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/usability-foundation-sprint-0-2026-03-10.md#L1)
 
 ## 2. Scope
 
 Allowed:
 
-1. change [Header.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte#L1)
-2. change [routes/+layout.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+layout.svelte#L1)
-3. add [MobileBottomNav.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1)
-4. add [deepLinks.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/deepLinks.ts#L1)
+1. change [Header.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte#L1)
+2. change [routes/+layout.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+layout.svelte#L1)
+3. add [MobileBottomNav.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1)
+4. add [deepLinks.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/deepLinks.ts#L1)
 
 Not allowed:
 
@@ -39,7 +39,7 @@ Not allowed:
 
 ## 3.1 Header owns desktop primary navigation only
 
-The old mobile tab strip in [Header.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte#L1) is removed. Mobile primary navigation now belongs only to [MobileBottomNav.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1).
+The old mobile tab strip in [Header.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte#L1) is removed. Mobile primary navigation now belongs only to [MobileBottomNav.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1).
 
 ## 3.2 Home is represented by the logo, not a duplicated nav tab
 
@@ -60,7 +60,7 @@ Active-state rules should keep orientation predictable:
 
 ## 3.4 Deep-link construction is shared
 
-[deepLinks.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/deepLinks.ts#L1) is now the canonical builder for:
+[deepLinks.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/deepLinks.ts#L1) is now the canonical builder for:
 
 1. `/terminal?pair=...&tf=...`
 2. `/terminal?copyTrade=1&...`
@@ -85,5 +85,5 @@ Required before push:
 After this sprint:
 
 1. Sprint 2 can rebuild `/` around the new navigation shell
-2. Signals and terminal handoffs should migrate to [deepLinks.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/deepLinks.ts#L1)
-3. later mobile route work should reuse [MobileBottomNav.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1) instead of recreating page-local nav chrome
+2. Signals and terminal handoffs should migrate to [deepLinks.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/deepLinks.ts#L1)
+3. later mobile route work should reuse [MobileBottomNav.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1) instead of recreating page-local nav chrome

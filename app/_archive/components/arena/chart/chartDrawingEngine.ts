@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Chart Drawing Engine (Canvas Rendering)
+// Chart Drawing Engine (Canvas Rendering)
 // ═══════════════════════════════════════════════════════════════
 // Extracted from ChartPanel.svelte. All functions accept explicit
 // parameters — no component state references.

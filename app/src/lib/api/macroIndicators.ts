@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Macro Indicators Client
+// WTD — Macro Indicators Client
 // ═══════════════════════════════════════════════════════════════
 // DXY, S&P500, US10Y from our Yahoo proxy
 // Maps to: MACRO agent → DXY_TREND, EQUITY_TREND, YIELD_TREND

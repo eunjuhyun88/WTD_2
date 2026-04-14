@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Copy Trade Builder Store
+// WTD — Copy Trade Builder Store
 // War Room signal selection → Copy Trade Modal → Publish to Signal Room
 // ═══════════════════════════════════════════════════════════════
 

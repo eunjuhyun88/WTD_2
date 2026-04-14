@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Polymarket Markets Proxy
+// Polymarket Markets Proxy
 // Proxies to gamma-api.polymarket.com to bypass CORS
 // GET /api/polymarket/markets?limit=20&category=crypto
 // ═══════════════════════════════════════════════════════════════
@@ -31,7 +31,7 @@ export const GET: RequestHandler = async ({ url }) => {
     const res = await fetch(`${GAMMA_API}/markets?${params.toString()}`, {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Stockclaw/1.0'
+        'User-Agent': 'wtd/1.0'
       },
       signal: AbortSignal.timeout(8000),
     });

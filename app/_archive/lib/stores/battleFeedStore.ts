@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Battle Feed Store (Arena real-time feed)
+// WTD — Battle Feed Store (Arena real-time feed)
 // Connected to BottomBar for live agent decisions
 // ═══════════════════════════════════════════════════════════════
 

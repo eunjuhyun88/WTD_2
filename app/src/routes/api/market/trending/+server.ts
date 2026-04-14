@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Unified Trending API
+// Unified Trending API
 // ═══════════════════════════════════════════════════════════════
 // Combines: CoinMarketCap (trending/gainers/most-visited)
 //           + LunarCrush (social volume/sentiment)

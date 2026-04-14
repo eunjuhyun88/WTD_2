@@ -1,7 +1,7 @@
-# STOCKCLAW Frontend / Backend Boundary Map (2026-03-06)
+# WTD Frontend / Backend Boundary Map (2026-03-06)
 
 작성일: 2026-03-06  
-대상 정본: `/Users/ej/Downloads/maxidoge-clones/frontend`  
+대상 정본: `/Users/ej/Downloads/wtd-clones/frontend`
 목적: `frontend/` 정본 내부에서 무엇이 프론트이고 무엇이 백엔드인지, 그리고 어디가 경계 침범 후보인지 분류한다.
 
 ---

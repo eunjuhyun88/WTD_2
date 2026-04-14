@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — LLM Service (server-side only)
+// LLM Service (server-side only)
 // ═══════════════════════════════════════════════════════════════
 //
 // 통합 LLM 호출 서비스. Groq(가장 빠름) → Gemini → DeepSeek 순으로 fallback.
@@ -977,7 +977,7 @@ export interface AgentChatContext {
  */
 export function buildAgentSystemPrompt(ctx: AgentChatContext): string {
   const lines: string[] = [
-    `You are ${ctx.agentId}, a specialized crypto trading analysis agent in the Stockclaw terminal.`,
+    `You are ${ctx.agentId}, a specialized crypto trading analysis agent in the wtd terminal.`,
     `Specialty: ${ctx.agentDescription}`,
     '',
     'Conversation Rules:',
@@ -1044,7 +1044,7 @@ export function buildAgentSystemPrompt(ctx: AgentChatContext): string {
  */
 export function buildOrchestratorSystemPrompt(ctx: Omit<AgentChatContext, 'agentId' | 'agentDescription'>): string {
   const lines: string[] = [
-    'You are the ORCHESTRATOR, the lead AI commander of the Stockclaw 8-agent crypto intelligence system.',
+    'You are the ORCHESTRATOR, the lead AI commander of the wtd 8-agent crypto intelligence system.',
     '',
     'Your agents: STRUCTURE (chart), VPA (volume), ICT (smart money), DERIV (derivatives), VALUATION (on-chain), FLOW (fund flows), SENTI (sentiment), MACRO (macro).',
     '',

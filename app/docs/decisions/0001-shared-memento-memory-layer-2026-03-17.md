@@ -30,11 +30,11 @@ Durable agent memory cannot live only inside one worktree.
 We keep `frontend/` as the only canonical implementation repo and add a shared memory layer outside it:
 
 - repo truth:
-  - `/Users/ej/Downloads/maxidoge-clones/frontend`
+  - `/Users/ej/Downloads/wtd-clones/frontend`
 - shared memory:
-  - `/Users/ej/Downloads/maxidoge-clones/.memento/memories/*`
+  - `/Users/ej/Downloads/wtd-clones/.memento/memories/*`
 - shared runtime relay:
-  - `/Users/ej/Downloads/maxidoge-clones/.memento/runtime/stockclaw`
+  - `/Users/ej/Downloads/wtd-clones/.memento/runtime/wtd`
 
 We also formalize repo-local promotion targets:
 

@@ -167,14 +167,14 @@ require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "ctx:checkpoint" "check
 require_text "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "brief" "brief mode in protocol"
 
 # ── Drift absence checks (unchanged) ────────────────────────────────
-require_absent "AGENTS.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in agents"
+require_absent "AGENTS.md" "/Users/ej/Downloads/wtd-clones/frontend" "hardcoded frontend path in agents"
 require_absent "AGENTS.md" "/Users/ej/Downloads/maxi-doge-unified/README.md" "broken external ssot readme path in agents"
 require_absent "CLAUDE.md" "DEPRECATED" "deprecated claude banner"
-require_absent "CLAUDE.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in claude guide"
-require_absent "docs/README.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in docs router"
-require_absent "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "/Users/ej/Downloads/maxidoge-clones/frontend" "hardcoded frontend path in compaction protocol"
+require_absent "CLAUDE.md" "/Users/ej/Downloads/wtd-clones/frontend" "hardcoded frontend path in claude guide"
+require_absent "docs/README.md" "/Users/ej/Downloads/wtd-clones/frontend" "hardcoded frontend path in docs router"
+require_absent "docs/AGENT_CONTEXT_COMPACTION_PROTOCOL.md" "/Users/ej/Downloads/wtd-clones/frontend" "hardcoded frontend path in compaction protocol"
 # context-system-rollout moved to completed/ — check removed (2026-04-12)
-require_absent "docs/DESIGN.md" "../STOCKCLAW_UNIFIED_DESIGN.md" "external arena design ref in design entry doc"
+require_absent "docs/DESIGN.md" "../WTD_UNIFIED_DESIGN.md" "external arena design ref in design entry doc"
 
 # Note: historical references to SYSTEM_INTENT.md / PRODUCT_SENSE.md inside
 # docs/README.md, CLAUDE.md, and docs/archive/ are allowed — they document

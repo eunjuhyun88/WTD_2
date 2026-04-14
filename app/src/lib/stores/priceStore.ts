@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Unified Price Contract (S-03)
+// WTD — Unified Price Contract (S-03)
 // ═══════════════════════════════════════════════════════════════
 //
 // 단일 소스: 모든 컴포넌트(Header, Chart, Terminal, QuickTrade)는

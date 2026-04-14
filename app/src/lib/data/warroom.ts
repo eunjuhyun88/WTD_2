@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — War Room Data Types (Terminal View)
+// WTD — War Room Data Types (Terminal View)
 // ═══════════════════════════════════════════════════════════════
 
 export interface WRMessage {

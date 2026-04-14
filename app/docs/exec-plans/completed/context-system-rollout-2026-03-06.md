@@ -42,6 +42,6 @@ Turn the repo's current mixed document set into an agent-first context system th
 
 ## Follow-Ups
 
-- Localize remaining Arena/War edge cases from `../STOCKCLAW_UNIFIED_DESIGN.md`.
+- Localize remaining Arena/War edge cases from `../WTD_UNIFIED_DESIGN.md`.
 - Move stable parts of dated working docs into canonical docs.
 - Reduce sibling clone drift operationally.

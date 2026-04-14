@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Strategy Store
+// WTD — Strategy Store
 // ═══════════════════════════════════════════════════════════════
 //
 // Manages trading strategies: condition blocks, exit config, risk config.

@@ -1,4 +1,4 @@
-// Stockclaw — Arena Match Resolve
+// Arena Match Resolve
 // POST /api/arena/resolve — Resolve a match with exit price
 
 import { json } from '@sveltejs/kit';

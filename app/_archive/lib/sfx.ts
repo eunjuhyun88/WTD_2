@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Web Audio API Sound System
+// WTD — Web Audio API Sound System
 // ═══════════════════════════════════════════════════════════════
 
 let ctx: AudioContext | null = null;

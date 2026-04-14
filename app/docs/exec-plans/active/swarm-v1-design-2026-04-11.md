@@ -548,7 +548,7 @@ Beyond the design itself, the session surfaced several facts about the repo that
 2. **`feat/phase0-contracts`** branch already has drafted `src/lib/contracts/ids.ts` with open `RawId` type. Phase 0 work is partially complete but not merged to main.
 3. **`feat/research-spine`** branch (in `jovial-satoshi` worktree) already has measurement spine + R1 baseline stubs installed. This is a working superset of `feat/phase0-contracts` and should be the first merge-train target.
 4. **`/Users/ej/Projects/src/`** is Claude Code's own source (or a very close fork). This is the single most valuable reference implementation for any future dev-agent work in this repo.
-5. **`/Users/ej/Projects/maxidoge-clones/`** contains 25+ `claude/*` worktrees most of which are stale. Part of Phase 0 foundation work is an audit of these (archive or kill).
+5. **`/Users/ej/Projects/wtd-clones/`** contains 25+ `claude/*` worktrees most of which are stale. Part of Phase 0 foundation work is an audit of these (archive or kill).
 6. **`agents/*.json`** at repo root is legacy Memento-format; `.claude/agents/*.md` is the live Claude Code native format. Do not conflate.
 7. Three CHATBATTLE-adjacent projects exist in `/Users/ej/Projects/`: `Cogochi`, `Cogochi_v1`, `cogochi_02`, plus `WTD` for LoRA training. Relationship between these and CHATBATTLE is unclear; this session did not resolve it.
 

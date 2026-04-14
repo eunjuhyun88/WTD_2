@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Data Provider Types (B-05)
+// Data Provider Types (B-05)
 // ═══════════════════════════════════════════════════════════════
 
 // Provider abstraction for all data sources

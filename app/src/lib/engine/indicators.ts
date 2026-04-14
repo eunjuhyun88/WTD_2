@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Indicator Engine (pure functions)
+// WTD — Indicator Engine (pure functions)
 // ═══════════════════════════════════════════════════════════════
 
 type NumArray = number[];

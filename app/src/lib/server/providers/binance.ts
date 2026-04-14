@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Binance Raw Loader (providers/ home, P1.A0 slice 1)
+// Binance Raw Loader (providers/ home, P1.A0 slice 1)
 // ═══════════════════════════════════════════════════════════════
 //
 // Canonical location for Binance REST fetchers. This file is the

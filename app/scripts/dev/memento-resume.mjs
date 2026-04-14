@@ -114,9 +114,9 @@ const handoffPath = workSafe
       : '')
   : path.join(contextDir, 'handoffs', `${branchSafe}-latest.md`);
 const memoryPath = firstExistingPath(mementoDirs.map((dir) => path.join(dir, 'memories', agent, 'MEMORY.md')));
-const branchRelayPath = freshestExistingPath(mementoDirs.map((dir) => path.join(dir, 'runtime', 'stockclaw', 'relay', `${branchSafe}-latest.md`)));
+const branchRelayPath = freshestExistingPath(mementoDirs.map((dir) => path.join(dir, 'runtime', 'wtd', 'relay', `${branchSafe}-latest.md`)));
 const latestRelayPath = branchRelayPath || freshestExistingPath(
-  mementoDirs.map((dir) => latestMarkdownFile(path.join(dir, 'runtime', 'stockclaw', 'handoff-inbox'))).filter(Boolean),
+  mementoDirs.map((dir) => latestMarkdownFile(path.join(dir, 'runtime', 'wtd', 'handoff-inbox'))).filter(Boolean),
 );
 
 const payload = {

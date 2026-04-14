@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Coinalyze API Client
+// WTD — Coinalyze API Client
 // Fetches OI, Funding Rate, Liquidations, L/S Ratio via local proxy
 // ═══════════════════════════════════════════════════════════════
 

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Chart Drawing Session Helpers (Pure State)
+// Chart Drawing Session Helpers (Pure State)
 // ═══════════════════════════════════════════════════════════════
 // Extracted from ChartPanel.svelte. These helpers manage drawing
 // session state transitions and item creation without side effects.

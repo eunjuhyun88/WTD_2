@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Comparison Mode API
+// Comparison Mode API
 // ═══════════════════════════════════════════════════════════════
 // User selects 2-5 pairs → runs full scan on each → side-by-side
 

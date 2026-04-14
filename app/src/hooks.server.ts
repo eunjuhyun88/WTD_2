@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Server Hooks
+// Server Hooks
 // ═══════════════════════════════════════════════════════════════
 // 1. Security headers
 // 2. Static asset cache headers

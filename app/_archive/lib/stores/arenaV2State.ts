@@ -1,5 +1,5 @@
 // =================================================================
-// STOCKCLAW Arena v2 — Game State Store
+// WTD Arena v2 — Game State Store
 // =================================================================
 // Separate from the v1 gameState to avoid conflicts.
 // This store drives the entire /arena-v2 page.

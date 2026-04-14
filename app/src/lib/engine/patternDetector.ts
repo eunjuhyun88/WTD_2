@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Chart Pattern Detector (MVP)
+// WTD — Chart Pattern Detector (MVP)
 // ═══════════════════════════════════════════════════════════════
 
 import type { BinanceKline } from './types';

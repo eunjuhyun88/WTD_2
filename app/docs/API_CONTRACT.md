@@ -1,4 +1,4 @@
-# STOCKCLAW v3 API Contract
+# WTD v3 API Contract
 
 작성일: 2026-02-22  
 수정일: 2026-02-23 (응답 포맷 코드 실태 반영 + Arena v3 PvP/Tournament 계약)  
