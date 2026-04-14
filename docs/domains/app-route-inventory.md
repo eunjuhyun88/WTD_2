@@ -52,4 +52,6 @@ Keep route ownership explicit with these top-level groups:
 
 - This inventory intentionally starts with high-traffic critical paths and expands incrementally.
 - New routes must declare: domain, auth requirement, cache policy, engine dependency.
+- Surface-level behavior must align with `docs/product/pages/00-system-application.md` and page specs under `docs/product/pages/`.
+- Current mounted non-Day-1 surfaces (`/patterns`, `/settings`, `/passport`) should be documented in `docs/product/pages/05-extra-implemented-surfaces.md` when behavior changes.
 
