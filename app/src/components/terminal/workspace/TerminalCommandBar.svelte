@@ -9,12 +9,7 @@
     layout?: LayoutId;
     onLayout?: (l: LayoutId) => void;
     assetsCount?: number;
-    leftRailOpen?: boolean;
-    analysisRailOpen?: boolean;
-    leftWidth?: number;
-    analysisWidth?: number;
-    onToggleLeftRail?: () => void;
-    onToggleAnalysisRail?: () => void;
+    onQuickIntent?: (q: string) => void;
     onClear?: () => void;
     onCapture?: () => void;
   }
@@ -23,12 +18,7 @@
     layout = 'hero3',
     onLayout,
     assetsCount = 0,
-    leftRailOpen = true,
-    analysisRailOpen = true,
-    leftWidth = 248,
-    analysisWidth = 348,
-    onToggleLeftRail,
-    onToggleAnalysisRail,
+    onQuickIntent,
     onClear,
     onCapture,
   }: Props = $props();
@@ -39,6 +29,13 @@
     { id: 'compare2x2', label: '2×2' },
     { id: 'focus', label: 'Focus' },
   ];
+  const quickIntents = [
+    { label: 'Buy Candidates', action: 'Show me the best buy candidates right now', tone: 'info' },
+    { label: 'High OI', action: 'Show assets with the highest open interest expansion', tone: 'warn' },
+    { label: "What's Wrong", action: 'What assets have warning signals right now?', tone: 'risk' },
+    { label: 'Breakout', action: 'Which assets are near breakout conditions?', tone: 'neutral' },
+    { label: 'Liquidation', action: 'Show liquidation risk and nearest clusters', tone: 'neutral' },
+  ];
 
   let showSymbolDrop = $state(false);
 
@@ -48,10 +45,10 @@
 
 <nav class="command-bar">
   <div class="command-main">
-    <div class="command-row command-row-primary">
+    <div class="command-row">
       <div class="workspace-badge">
         <span class="ws-label">Workspace</span>
-        <span class="ws-value">{assetsCount > 1 ? 'Scan Board' : 'Focus Board'}</span>
+        <span class="ws-value">{assetsCount > 1 ? 'Scan' : 'Focus'}</span>
       </div>
 
       <div class="symbol-picker">
@@ -79,6 +76,20 @@
       <div class="board-badge">
         {assetsCount > 0 ? `${assetsCount} Loaded` : 'Ready'}
       </div>
+
+      <div class="quick-intents" aria-label="Quick terminal intents">
+        {#each quickIntents as intent}
+          <button
+            class="intent-chip"
+            data-tone={intent.tone}
+            type="button"
+            onclick={() => onQuickIntent?.(intent.action)}
+          >
+            {intent.label}
+          </button>
+        {/each}
+      </div>
+
       <div class="command-actions">
         <div class="layout-switch">
           {#each layouts as l}
@@ -95,44 +106,6 @@
         {#if assetsCount > 0}
           <button class="clear-btn" onclick={onClear} title="Clear board">Clr</button>
         {/if}
-      </div>
-    </div>
-
-    <div class="command-row command-row-secondary">
-      <div class="shell-switch" aria-label="Toggle terminal rails">
-        <button
-          class="shell-btn"
-          class:active={leftRailOpen}
-          onclick={onToggleLeftRail}
-          title={leftRailOpen ? 'Hide left market rail' : 'Show left market rail'}
-          aria-pressed={leftRailOpen}
-        >
-          <span class="shell-btn-icon">◧</span>
-          <span class="shell-btn-copy">
-            <strong>Market</strong>
-            <small>{leftRailOpen ? `${leftWidth}px` : 'Hidden'}</small>
-          </span>
-        </button>
-        <button
-          class="shell-btn"
-          class:active={analysisRailOpen}
-          onclick={onToggleAnalysisRail}
-          title={analysisRailOpen ? 'Hide right analysis rail' : 'Show right analysis rail'}
-          aria-pressed={analysisRailOpen}
-        >
-          <span class="shell-btn-icon">◨</span>
-          <span class="shell-btn-copy">
-            <strong>Analysis</strong>
-            <small>{analysisRailOpen ? `${analysisWidth}px` : 'Hidden'}</small>
-          </span>
-        </button>
-      </div>
-
-      <div class="chip-strip">
-        <span class="mini-chip"><span>Mode</span><strong>{assetsCount > 1 ? 'Scan' : 'Focus'}</strong></span>
-        <span class="mini-chip ai"><span>AI</span><strong>API</strong></span>
-        <span class="mini-chip"><span>Flow Bias</span><strong>{flowBias}</strong></span>
-        <span class="mini-chip"><span>Board</span><strong>{assetsCount} symbol{assetsCount === 1 ? '' : 's'}</strong></span>
       </div>
     </div>
   </div>
@@ -152,82 +125,66 @@
     background: transparent;
   }
   .command-main {
-    display: grid;
-    gap: 12px;
+    display: block;
     padding: 0;
   }
   .command-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 5px;
     min-width: 0;
     flex-wrap: wrap;
-  }
-  .command-row-primary {
-    padding-bottom: 2px;
-  }
-  .command-row-secondary {
-    padding-top: 2px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-  }
-  .command-row-primary,
-  .command-row-secondary {
-    padding-left: 2px;
-    padding-right: 2px;
   }
   .command-actions,
-  .chip-strip {
+  .quick-intents {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 2px;
     min-width: 0;
     flex-wrap: wrap;
   }
-  .command-row-primary > :first-child,
-  .command-row-secondary > :first-child {
+
+  .command-row > :first-child {
     flex-shrink: 0;
   }
-  .command-row-primary > :last-child,
-  .command-row-secondary > :last-child {
+  .command-row > :last-child {
     margin-left: auto;
   }
   .workspace-badge {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 12px;
-    background: rgba(21, 33, 53, 0.64);
+    gap: 5px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: rgba(21, 33, 53, 0.42);
     border: 1px solid rgba(77,143,245,0.18);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     white-space: nowrap;
   }
   .ws-label,
-  .board-badge,
-  .mini-chip span {
+  .board-badge {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: 8px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--sc-text-3);
   }
   .ws-value {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.06em;
     color: #77b8ff;
   }
   .symbol-btn {
     font-family: var(--sc-font-mono);
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 700;
     color: var(--sc-text-0);
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 10px;
-    padding: 10px 14px;
+    border-radius: 3px;
+    padding: 4px 7px;
     cursor: pointer;
     transition: all 0.12s;
     white-space: nowrap;
@@ -235,20 +192,20 @@
   .symbol-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
   .tf-ladder {
     display: flex;
-    gap: 4px;
+    gap: 1px;
     padding: 0;
     border: none;
     background: transparent;
   }
   .tf-btn {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     color: var(--sc-text-2);
     background: transparent;
     border: 1px solid transparent;
-    padding: 8px 10px;
-    border-radius: 8px;
+    padding: 4px 6px;
+    border-radius: 3px;
     cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;
@@ -257,31 +214,31 @@
   .tf-btn.active { color: #63b3ed; background: rgba(77,143,245,0.12); border-color: rgba(77,143,245,0.14); }
   .bias-badge {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.08em;
     padding: 0 2px;
     white-space: nowrap;
   }
   .board-badge {
-    padding: 8px 12px;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.03);
+    padding: 4px 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.06);
     white-space: nowrap;
   }
   .layout-switch {
     display: flex;
-    gap: 4px;
+    gap: 1px;
   }
   .layout-btn {
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: 9px;
     color: var(--sc-text-3);
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 8px;
-    padding: 8px 10px;
+    border-radius: 3px;
+    padding: 4px 6px;
     cursor: pointer;
     white-space: nowrap;
   }
@@ -290,138 +247,68 @@
     border-color: rgba(77,143,245,0.16);
     background: rgba(77,143,245,0.08);
   }
-  .shell-switch {
-    display: inline-flex;
-    gap: 8px;
-    padding: 8px;
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.04),
-      0 10px 24px rgba(0,0,0,0.22);
-  }
-  .shell-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    font-family: var(--sc-font-mono);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(116, 186, 255, 0.92);
-    background: rgba(37, 53, 84, 0.26);
-    border: 1px solid rgba(77,143,245,0.26);
-    border-radius: 999px;
-    padding: 12px 22px;
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .shell-btn-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    font-size: 12px;
-    line-height: 1;
-    color: rgba(214, 233, 255, 0.92);
-  }
-  .shell-btn-copy {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
-    line-height: 1;
-  }
-  .shell-btn-copy strong,
-  .shell-btn-copy small {
-    font-family: var(--sc-font-mono);
-  }
-  .shell-btn-copy strong {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .shell-btn-copy small {
-    font-size: 9px;
-    font-weight: 600;
-    color: rgba(214, 233, 255, 0.46);
-    letter-spacing: 0.05em;
-    text-transform: none;
-  }
-  .shell-btn:hover {
-    color: rgba(176, 216, 255, 1);
-    border-color: rgba(77,143,245,0.34);
-  }
-  .shell-btn.active {
-    color: rgba(155, 210, 255, 1);
-    border-color: rgba(77,143,245,0.46);
-    background: radial-gradient(circle at top, rgba(77,143,245,0.18), rgba(37, 53, 84, 0.42));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-  }
-  .shell-btn.active .shell-btn-icon {
-    border-color: rgba(77,143,245,0.32);
-    background: rgba(77,143,245,0.14);
-  }
-  .shell-btn.active .shell-btn-copy small {
-    color: rgba(214, 233, 255, 0.72);
-  }
-
   .clear-btn {
-    font-family: var(--sc-font-mono); font-size: 10px; font-weight: 700;
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700;
     letter-spacing: 0.14em; color: var(--sc-text-2);
     background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px; padding: 10px 12px; cursor: pointer;
+    border-radius: 3px; padding: 4px 7px; cursor: pointer;
     transition: all 0.15s;
     text-transform: uppercase;
   }
   .clear-btn:hover { color: #f87171; border-color: rgba(248,113,113,0.3); }
 
   .capture-btn {
-    font-family: var(--sc-font-mono); font-size: 10px; font-weight: 700;
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #0b1015;
     background: linear-gradient(180deg, #c9f27b, #9dcc63);
     border: 1px solid rgba(201,242,123,0.35);
-    border-radius: 8px;
-    padding: 10px 14px;
+    border-radius: 3px;
+    padding: 5px 9px;
     cursor: pointer;
     transition: all 0.15s;
     flex-shrink: 0;
-    box-shadow: 0 10px 24px rgba(157,204,99,0.16);
+    box-shadow: 0 8px 18px rgba(157,204,99,0.16);
   }
   .capture-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(157,204,99,0.2); }
 
-  .mini-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.07);
-    background: rgba(255,255,255,0.02);
-    white-space: nowrap;
-  }
-  .mini-chip strong {
+  .intent-chip {
     font-family: var(--sc-font-mono);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(250,247,235,0.7);
+    font-size: 8px;
+    color: rgba(160,168,180,0.78);
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2px;
+    padding: 3px 5px;
+    cursor: pointer;
+    letter-spacing: 0.035em;
+    white-space: nowrap;
+    transition: all 0.12s ease;
   }
-  .mini-chip.ai {
-    border-color: rgba(102, 187, 106, 0.18);
-    background: rgba(102, 187, 106, 0.06);
+
+  .intent-chip:hover {
+    color: rgba(230,236,246,0.95);
+    border-color: rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.045);
+  }
+
+  .intent-chip[data-tone='info'] {
+    color: rgba(120,184,255,0.86);
+    border-color: rgba(77,143,245,0.14);
+    background: rgba(77,143,245,0.06);
+  }
+
+  .intent-chip[data-tone='warn'] {
+    color: rgba(233,193,103,0.88);
+    border-color: rgba(251,191,36,0.14);
+    background: rgba(251,191,36,0.06);
+  }
+
+  .intent-chip[data-tone='risk'] {
+    color: rgba(241,153,153,0.86);
+    border-color: rgba(248,113,113,0.14);
+    background: rgba(248,113,113,0.055);
   }
 
   @media (max-width: 768px) {
@@ -429,16 +316,12 @@
       padding: 0;
     }
     .command-main {
-      gap: 8px;
+      display: block;
     }
     .command-row {
       gap: 8px;
     }
-    .command-row-secondary {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .chip-strip {
+    .quick-intents {
       width: 100%;
       overflow-x: auto;
       flex-wrap: nowrap;
@@ -449,18 +332,6 @@
     .layout-switch,
     .board-badge {
       display: none;
-    }
-    .shell-switch {
-      width: 100%;
-      justify-content: space-between;
-    }
-    .shell-btn {
-      flex: 1;
-      justify-content: center;
-      text-align: center;
-    }
-    .shell-btn-copy {
-      align-items: center;
     }
     .capture-btn,
     .clear-btn {

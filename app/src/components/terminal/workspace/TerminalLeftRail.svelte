@@ -33,11 +33,11 @@
   let { trendingData, alerts = [], patternPhases = [], activeSymbol = '', newsItems = [], onQuery }: Props = $props();
 
   const QUICK_QUERIES = [
-    { id: 'buy',      label: 'Buy Candidates', action: 'Show me the best buy candidates right now' },
-    { id: 'wrong',    label: "What's Wrong",   action: 'What assets have warning signals right now?' },
-    { id: 'oi',       label: 'High OI',        action: 'Show assets with the highest open interest expansion' },
-    { id: 'breakout', label: 'Breakout Watch', action: 'Which assets are near breakout conditions?' },
-    { id: 'squeeze',  label: 'Short Squeeze',  action: 'Show assets with short squeeze potential' },
+    { id: 'buy',      label: 'Buy Candidates', action: 'Show me the best buy candidates right now', tone: 'info' },
+    { id: 'wrong',    label: "What's Wrong",   action: 'What assets have warning signals right now?', tone: 'risk' },
+    { id: 'oi',       label: 'High OI',        action: 'Show assets with the highest open interest expansion', tone: 'warn' },
+    { id: 'breakout', label: 'Breakout Watch', action: 'Which assets are near breakout conditions?', tone: 'neutral' },
+    { id: 'squeeze',  label: 'Short Squeeze',  action: 'Show assets with short squeeze potential', tone: 'neutral' },
   ];
 
   function pctColor(v: number): string {
@@ -99,6 +99,14 @@
     return items.slice(0, 5);
   });
   let macroItems = $derived(newsItems.slice(0, 2));
+  function queryCount(id: string): number {
+    if (id === 'buy') return watchlist.filter((coin) => (coin.change24h ?? coin.percentChange24h ?? 0) > 0).length;
+    if (id === 'wrong') return anomalyItems.filter((item) => item.tone === 'bear').length + recentAlerts.filter((alert) => (alert.p_win ?? 0) < 0.5).length;
+    if (id === 'oi') return recentAlerts.length;
+    if (id === 'breakout') return patternPhases.reduce((sum, row) => sum + row.symbols.length, 0);
+    if (id === 'squeeze') return anomalyItems.filter((item) => item.label.toLowerCase().includes('oi')).length;
+    return 0;
+  }
 </script>
 
 <aside class="left-rail">
@@ -139,10 +147,14 @@
   <!-- Quick Queries -->
   <section class="rail-section">
     <h3 class="section-title">Quick Queries</h3>
-    <div class="query-chips">
+    <div class="query-list">
       {#each QUICK_QUERIES as q}
-        <button class="query-chip" onclick={() => onQuery?.(q.action)}>
-          {q.label}
+        <button class="query-row" data-tone={q.tone} onclick={() => onQuery?.(q.action)}>
+          <span class="query-left">
+            <span class="query-dot"></span>
+            <span>{q.label}</span>
+          </span>
+          <span class="query-count">{queryCount(q.id)}</span>
         </button>
       {/each}
     </div>
@@ -152,6 +164,13 @@
   <section class="rail-section">
     <h3 class="section-title">Watchlist</h3>
     <div class="watchlist">
+      {#if watchlist.length > 0}
+        <div class="watch-head">
+          <span>SYM</span>
+          <span>PRICE</span>
+          <span>24H</span>
+        </div>
+      {/if}
       {#each watchlist as coin}
         <button
           class="watch-item"
@@ -159,12 +178,10 @@
           onclick={() => setActivePair(coin.symbol + '/USDT')}
         >
           <span class="watch-sym">{coin.symbol}</span>
-          <div class="watch-right">
-            <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
-            <span class="watch-chg" style="color:{pctColor(coin.change24h ?? coin.percentChange24h ?? 0)}">
-              {formatPct(coin.change24h ?? coin.percentChange24h ?? 0)}
-            </span>
-          </div>
+          <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
+          <span class="watch-chg" style="color:{pctColor(coin.change24h ?? coin.percentChange24h ?? 0)}">
+            {formatPct(coin.change24h ?? coin.percentChange24h ?? 0)}
+          </span>
         </button>
       {/each}
       {#if watchlist.length === 0}
@@ -256,86 +273,173 @@
 
 <style>
   .left-rail {
-    background: var(--sc-bg-0);
-    border-right: 1px solid rgba(255,255,255,0.08);
-    overflow-y: auto; padding: 12px 0;
+    background: #0b0e14;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    overflow-y: auto; padding: 3px 0;
     display: flex; flex-direction: column; gap: 0;
   }
-  .rail-section { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .rail-section {
+    padding: 4px 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
   .section-title {
-    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700;
-    letter-spacing: 0.1em; text-transform: uppercase; color: var(--sc-text-2);
-    margin: 0 0 8px;
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.24);
+    margin: 0 0 3px;
   }
-  .query-chips { display: flex; flex-direction: column; gap: 3px; }
-  .query-chip {
-    text-align: left; background: none; border: none; cursor: pointer;
-    font-size: 12px; color: var(--sc-text-1); padding: 5px 8px;
-    border-radius: 4px; transition: all 0.12s;
-  }
-  .query-chip:hover { background: rgba(255,255,255,0.06); color: var(--sc-text-0); }
 
-  .watchlist, .anomaly-list, .macro-list, .mover-list { display: flex; flex-direction: column; gap: 3px; }
-  .watch-item {
-    display: flex; align-items: center; justify-content: space-between;
-    background: none; border: none; cursor: pointer; padding: 5px 8px;
-    border-radius: 4px; transition: background 0.12s;
+  .query-list,
+  .watchlist,
+  .anomaly-list,
+  .macro-list,
+  .mover-list { display: flex; flex-direction: column; gap: 1px; }
+
+  .query-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+    text-align: left;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 9px;
+    color: rgba(200,208,220,0.72);
+    padding: 3px 4px;
+    border-radius: 2px;
+    transition: all 0.12s;
   }
-  .watch-item:hover, .watch-item.active { background: rgba(77,143,245,0.08); }
-  .watch-sym { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 600; color: var(--sc-text-0); }
-  .watch-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-  .watch-price, .watch-chg { font-family: var(--sc-font-mono); font-size: 10px; }
+
+  .query-row:hover {
+    background: rgba(255,255,255,0.035);
+    color: var(--sc-text-0);
+    border-color: rgba(255,255,255,0.06);
+  }
+
+  .query-row[data-tone='info'] { color: rgba(120,184,255,0.86); }
+  .query-row[data-tone='warn'] { color: rgba(233,193,103,0.86); }
+  .query-row[data-tone='risk'] { color: rgba(241,153,153,0.86); }
+
+  .query-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .query-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.55;
+    flex-shrink: 0;
+  }
+
+  .query-count {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(255,255,255,0.24);
+    flex-shrink: 0;
+  }
+
+  .watch-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 52px 38px;
+    gap: 4px;
+    padding: 1px 4px 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.045);
+  }
+
+  .watch-head span {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(255,255,255,0.18);
+    letter-spacing: 0.08em;
+  }
+
+  .watch-head span:nth-child(2),
+  .watch-head span:nth-child(3) {
+    text-align: right;
+  }
+
+  .watch-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 52px 38px;
+    align-items: center;
+    gap: 4px;
+    background: none; border: 1px solid transparent; cursor: pointer; padding: 2px 4px;
+    border-radius: 2px; transition: background 0.12s, border-color 0.12s;
+  }
+  .watch-item:hover, .watch-item.active {
+    background: rgba(77,143,245,0.08);
+    border-color: rgba(77,143,245,0.12);
+  }
+  .watch-sym { font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700; color: var(--sc-text-0); letter-spacing: 0.02em; }
+  .watch-price, .watch-chg { font-family: var(--sc-font-mono); font-size: 8px; text-align: right; }
 
   .anomaly-item {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.03);
+    padding: 3px 4px; border-radius: 2px; background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.04);
   }
   .anomaly-item.warn { background: rgba(251,191,36,0.08); }
   .anomaly-item.bear { background: rgba(248,113,113,0.08); }
   .anomaly-item.info { background: rgba(77,143,245,0.08); }
-  .anomaly-label { font-size: 11px; color: var(--sc-text-1); line-height: 1.35; }
-  .anomaly-value { font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2); white-space: nowrap; }
+  .anomaly-label { font-size: 9px; color: var(--sc-text-1); line-height: 1.22; }
+  .anomaly-value { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); white-space: nowrap; }
 
   .macro-item {
     display: flex; flex-direction: column; gap: 2px;
-    padding: 6px 8px; border-radius: 4px; background: rgba(255,255,255,0.03);
+    padding: 3px 4px; border-radius: 2px; background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.04);
   }
-  .macro-title { font-size: 11px; color: var(--sc-text-1); line-height: 1.35; }
-  .macro-meta { font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-3); }
+  .macro-title { font-size: 8px; color: var(--sc-text-1); line-height: 1.22; }
+  .macro-meta { font-family: var(--sc-font-mono); font-size: 7px; color: var(--sc-text-3); }
 
   .mover-item {
     display: flex; align-items: center; justify-content: space-between;
-    background: none; border: none; cursor: pointer; padding: 5px 8px;
-    border-radius: 4px; transition: background 0.12s;
+    background: none; border: 1px solid transparent; cursor: pointer; padding: 3px 4px;
+    border-radius: 2px; transition: background 0.12s, border-color 0.12s;
   }
-  .mover-item:hover { background: rgba(255,255,255,0.05); }
-  .mover-sym { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 600; color: var(--sc-text-0); }
+  .mover-item:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.06);
+  }
+  .mover-sym { font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700; color: var(--sc-text-0); }
   .mover-right { display: flex; flex-direction: column; align-items: flex-end; }
-  .mover-price { font-family: var(--sc-font-mono); font-size: 11px; color: var(--sc-text-2); }
-  .mover-chg { font-family: var(--sc-font-mono); font-size: 11px; font-weight: 600; }
-  .empty-text { font-size: 11px; color: var(--sc-text-2); padding: 8px; }
+  .mover-price { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); }
+  .mover-chg { font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600; }
+  .empty-text { font-size: 10px; color: var(--sc-text-2); padding: 4px; }
 
   /* Scanner Alerts */
   .alert-count {
-    font-size: 9px; font-weight: 700; background: rgba(251,191,36,0.2);
-    color: #fbbf24; border-radius: 10px; padding: 1px 5px; margin-left: 4px;
+    font-size: 8px; font-weight: 700; background: rgba(251,191,36,0.2);
+    color: #fbbf24; border-radius: 2px; padding: 1px 4px; margin-left: 4px;
   }
-  .alert-list { display: flex; flex-direction: column; gap: 3px; }
+  .alert-list { display: flex; flex-direction: column; gap: 1px; }
   .alert-item {
     display: flex; flex-direction: column; gap: 2px;
-    background: none; border: none; cursor: pointer;
-    padding: 5px 8px; border-radius: 4px; text-align: left;
-    transition: background 0.12s;
+    background: rgba(255,255,255,0.015); border: 1px solid transparent; cursor: pointer;
+    padding: 3px 4px; border-radius: 2px; text-align: left;
+    transition: background 0.12s, border-color 0.12s;
   }
-  .alert-item:hover { background: rgba(251,191,36,0.06); }
+  .alert-item:hover {
+    background: rgba(251,191,36,0.06);
+    border-color: rgba(251,191,36,0.12);
+  }
   .alert-top { display: flex; align-items: center; gap: 4px; }
-  .alert-sym { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 600; color: var(--sc-text-0); }
-  .alert-tf { font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-2);
+  .alert-sym { font-family: var(--sc-font-mono); font-size: 10px; font-weight: 600; color: var(--sc-text-0); }
+  .alert-tf { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2);
     background: rgba(255,255,255,0.06); border-radius: 3px; padding: 1px 4px; }
-  .alert-pwin { font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2); margin-left: auto; }
+  .alert-pwin { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); margin-left: auto; }
   .alert-pwin.good { color: var(--sc-good, #adca7c); }
-  .alert-time { font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-2); }
-  .alert-blocks { font-size: 10px; color: rgba(251,191,36,0.7); margin: 0; line-height: 1.3;
+  .alert-time { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); }
+  .alert-blocks { font-size: 8px; color: rgba(251,191,36,0.7); margin: 0; line-height: 1.2;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
 
   /* Pattern Engine section */
@@ -348,14 +452,14 @@
   .section-link:hover { color: rgba(255,255,255,0.5); }
   .section-title { display: flex; align-items: center; }
 
-  .pattern-row { margin-bottom: 8px; }
-  .pattern-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .pattern-row { margin-bottom: 4px; }
+  .pattern-top { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
   .pattern-slug {
-    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700;
+    font-family: var(--sc-font-mono); font-size: 8px; font-weight: 700;
     letter-spacing: 0.06em; color: rgba(173,202,124,0.9);
   }
   .pattern-phase {
-    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600;
+    font-family: var(--sc-font-mono); font-size: 8px; font-weight: 600;
     padding: 1px 5px; border-radius: 2px; letter-spacing: 0.04em;
   }
   .pattern-phase.phase-accumulation { background: rgba(74,222,128,0.1); color: #4ade80; }
@@ -364,12 +468,12 @@
   .pattern-phase.phase-breakout     { background: rgba(251,191,36,0.1); color: #fbbf24; }
   .pattern-phase.phase-arch_zone    { background: rgba(99,179,237,0.1); color: #63b3ed; }
 
-  .pattern-syms { display: flex; flex-wrap: wrap; gap: 3px; }
+  .pattern-syms { display: flex; flex-wrap: wrap; gap: 2px; }
   .sym-chip {
-    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600;
+    font-family: var(--sc-font-mono); font-size: 8px; font-weight: 600;
     color: rgba(247,242,234,0.5); background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.08); border-radius: 3px;
-    padding: 1px 6px; cursor: pointer; transition: all 0.1s;
+    padding: 1px 4px; cursor: pointer; transition: all 0.1s;
   }
   .sym-chip:hover { color: var(--sc-text-0); border-color: rgba(173,202,124,0.3); }
   .sym-chip.active { color: #adca7c; border-color: rgba(173,202,124,0.4); background: rgba(173,202,124,0.08); }
