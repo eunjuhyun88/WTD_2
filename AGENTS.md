@@ -41,6 +41,15 @@ Every non-trivial task must have one active work item:
 - Required sections: Goal, Scope, Non-Goals, Canonical Files, Decisions, Next Steps, Exit Criteria
 - Keep one owner per work item: `engine`, `app`, `contract`, or `research`
 
+## Multi-Agent Collaboration Guardrails
+
+- Never commit directly on `main`; use task branches only.
+- Start each task in a dedicated git worktree bound to one branch.
+- Keep one branch per agent/task (`agent/<name>/<task>` or `task/<id>-<slug>`).
+- Merge via PR only after user approval; no direct push-to-main flow.
+- Before merge, pass the minimum gate: clean `git status`, scoped tests/checks, and conflict review.
+- If unexpected file changes appear, stop and confirm scope before committing.
+
 ## Change Type Tags
 
 Each PR/change should be one primary type:
