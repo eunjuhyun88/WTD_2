@@ -1,0 +1,4 @@
+{
+  "error": "The 'verbose' parameter of GradientBoostingClassifier must be an int in the range [0, inf), an instance of 'bool' or an instance of 'numpy.bool'. Got -1 instead.",
+  "status": "failed"
+}
