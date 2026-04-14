@@ -29,6 +29,10 @@ const SNAPSHOT_UNAVAILABLE_CODES = new Set(['42P01', '42703', '23503']);
 const API_TIMEOUT_MS = 5_000;
 const SNAPSHOT_CACHE_TTL_MS = 30_000; // 30초 결과 캐시
 
+function buildSnapshotCacheKey(pair: string, timeframe: string, persist: boolean): string {
+  return `snap:${pair}:${timeframe}:${persist ? 'persist' : 'ephemeral'}`;
+}
+
 function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
   return Promise.race([
     promise,
@@ -295,8 +299,8 @@ export async function collectMarketSnapshot(
   const cqAsset = (token.toLowerCase() === 'btc' || token.toLowerCase() === 'eth')
     ? token.toLowerCase() as 'btc' | 'eth' : 'btc';
 
-  // ── 결과 캐시 (30초 TTL) ──
-  const snapKey = `snap:${pair}:${timeframe}`;
+  // Persist side effects and persisted flags must not bleed across anonymous reads.
+  const snapKey = buildSnapshotCacheKey(pair, timeframe, persist);
   const snapCached = getCached<MarketSnapshotResult>(snapKey);
   if (snapCached) return snapCached;
 

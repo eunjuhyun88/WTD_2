@@ -1,11 +1,26 @@
 import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
 import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
+import { createAnalyzePayloadMeta, type AnalyzeEngineMode } from './responseEnvelope';
 import type { AnalyzeDerived, AnalyzeRawBundle, EngineSettled } from './types';
 
 export function mapAnalyzeResponse(raw: AnalyzeRawBundle, derived: AnalyzeDerived, engineSettled: EngineSettled) {
   const { klines, ticker, fundingRate, markPrice, indexPrice, oiPoint, lsTop } = raw;
   const { currentPrice, oi_notional, short_liq_usd, long_liq_usd, taker_ratio, spreadBps, imbalancePct, depthView, liqClusters } = derived;
   const { deepResult, scoreResult } = engineSettled;
+  const engineMode: AnalyzeEngineMode = deepResult && scoreResult
+    ? 'full'
+    : deepResult
+      ? 'deep_only'
+      : 'score_only';
+  const degradedReason = engineMode === 'deep_only'
+    ? 'score_unavailable'
+    : engineMode === 'score_only'
+      ? 'deep_unavailable'
+      : undefined;
+  const upstreamMissing = [
+    ...(deepResult ? [] : ['deep']),
+    ...(scoreResult ? [] : ['score']),
+  ];
 
   const annotations = detectSupportResistance(klines, currentPrice);
   const indicators = computeIndicatorSeries(klines);
@@ -20,6 +35,9 @@ export function mapAnalyzeResponse(raw: AnalyzeRawBundle, derived: AnalyzeDerive
     blocks_triggered: scoreResult?.blocks_triggered ?? [],
     ensemble: scoreResult?.ensemble ?? null,
     ensemble_triggered: scoreResult?.ensemble_triggered ?? false,
+    _fallback: false,
+    _degraded: engineMode !== 'full',
+    ...(degradedReason ? { _degraded_reason: degradedReason } : {}),
     chart: chartKlines,
     price: currentPrice,
     change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
@@ -51,5 +69,10 @@ export function mapAnalyzeResponse(raw: AnalyzeRawBundle, derived: AnalyzeDerive
       bbLower: indicators.bbLower?.slice(-100),
       ema20: indicators.ema20?.slice(-100),
     },
+    meta: createAnalyzePayloadMeta({
+      engineMode,
+      degradedReason,
+      upstreamMissing,
+    }),
   };
 }

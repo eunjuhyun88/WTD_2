@@ -32,8 +32,10 @@ Primary context:
 - Hardened in this branch:
   - `/api/wallet/intel`
   - `/api/terminal/intel-agent-shadow`
+  - `/api/terminal/intel-policy`
   - `/api/terminal/compare`
   - `/api/terminal/opportunity-scan`
+  - `/api/market/snapshot`
   - `/api/wizard`
   - `/api/lab/autorun`
   - `/api/exchange/connect`
@@ -70,7 +72,8 @@ Primary context:
 | `/api/lab/forward-walk` | D | passport-learning | heavy experiment execution | treat as internal/privileged until queue/worker plane exists |
 | `/api/market/alerts/onchain` | A | market-data | public cacheable alert feed | edge cache; short TTL; per-IP shared quota |
 | `/api/market/derivatives/[pair]`<br>`/api/market/events`<br>`/api/market/news`<br>`/api/market/trending` | A | market-data | public market reads | edge cache; stale-while-revalidate; shared rate limit |
-| `/api/market/flow`<br>`/api/market/snapshot` | B | market-data | heavier multi-source aggregation | distributed limiter; normalized cache key; shared cache promotion in Phase 1 |
+| `/api/market/flow` | B | market-data | heavier multi-source aggregation | distributed limiter; normalized cache key; shared cache promotion still needed |
+| `/api/market/snapshot` | B | market-data | heavier multi-source aggregation with optional persistence | fixed in this branch: distributed limiter, anonymous shared public route cache/coalescing, and `no-store` for authenticated or persist-capable responses |
 | `/api/market/dex/ads`<br>`/api/market/dex/community-takeovers`<br>`/api/market/dex/orders/[chainId]/[tokenAddress]`<br>`/api/market/dex/pairs/[chainId]/[pairId]`<br>`/api/market/dex/search`<br>`/api/market/dex/token-boosts`<br>`/api/market/dex/token-pairs/[chainId]/[tokenAddress]`<br>`/api/market/dex/token-profiles`<br>`/api/market/dex/tokens/[chainId]/[tokenAddresses]` | A | market-data | public dex market reads | cache aggressively at edge; normalize query params; shared per-IP quota |
 | `/api/memory/[agentId]` | C | profile | user-scoped or agent-scoped durable state | session-auth; per-user quota; no anonymous access |
 | `/api/notifications`<br>`/api/notifications/[id]`<br>`/api/notifications/read` | C | profile | authenticated user notification state | session-auth; per-user quota; `no-store` |
@@ -91,7 +94,7 @@ Primary context:
 | `/api/terminal/compare`<br>`/api/terminal/opportunity-scan` | B | terminal | public heavy compute | hardened in this branch with distributed/IP abuse guards; `opportunity-scan` now uses the shared public route cache/coalescing path and cache-observable headers, but compare still needs shared cache or queue/caching follow-up |
 | `/api/terminal/intel-agent-shadow` | A | terminal | public cacheable heavy read | fixed in this branch: distributed limiter, shared public route cache/coalescing path, and cache-observable headers; Phase 1 still needs full shared cache promotion in production |
 | `/api/terminal/intel-agent-shadow/execute` | C | terminal | authenticated execution path | session-auth required; strict quota; audit trade creation |
-| `/api/terminal/intel-policy` | B | terminal | compute-heavy terminal policy output | distributed limiter; short timeout; degraded fallback |
+| `/api/terminal/intel-policy` | B | terminal | compute-heavy terminal policy output | fixed in this branch: shared public route cache/coalescing, cache-observable headers, and degraded fallback; add dedicated distributed limiter only if standalone public traffic grows beyond shadow-driven use |
 | `/api/terminal/scan`<br>`/api/terminal/scan/[id]`<br>`/api/terminal/scan/[id]/signals`<br>`/api/terminal/scan/history` | C | terminal | authenticated scan history and user state | session-auth; per-user quota; no anonymous durable writes |
 | `/api/ui-state` | C | profile | authenticated UI preference state | session-auth; per-user quota; `no-store` |
 | `/api/wallet/intel` | A | terminal | public cacheable heavy read | fixed in this branch: distributed limiter, shared public route cache/coalescing path, and stronger cache policy; Phase 1 still needs full production shared cache promotion |
@@ -102,7 +105,7 @@ Primary context:
 - `/api/profile/passport/learning/workers/run` is still a worker trigger on the general app plane even though it is disabled by default on the public origin. Move it behind the future privileged/internal control plane.
 - `/api/profile/passport/learning/reports/generate` and `/api/profile/passport/learning/train-jobs` are now disabled by default on the public origin for write/create triggers, but they still need full queue/control-plane migration once the worker split lands.
 - `/api/terminal/compare` still relies on per-instance execution/coalescing behind the new shared abuse guard. It needs shared cache or queue-backed isolation before burst launch.
-- `/api/cogochi/analyze`, `/api/terminal/opportunity-scan`, `/api/terminal/intel-agent-shadow`, and `/api/wallet/intel` now have shared-cache-capable server paths, but production still needs real Redis/edge cache enablement for the cross-instance benefit to exist.
+- `/api/cogochi/analyze`, `/api/market/snapshot` (anonymous `persist=false` GETs), `/api/terminal/intel-policy`, `/api/terminal/opportunity-scan`, `/api/terminal/intel-agent-shadow`, and `/api/wallet/intel` now have shared-cache-capable server paths, but production still needs real Redis/edge cache enablement for the cross-instance benefit to exist.
 
 ## Rule
 

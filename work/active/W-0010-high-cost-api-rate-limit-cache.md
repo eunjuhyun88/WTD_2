@@ -31,7 +31,10 @@ app
 - `app/src/routes/api/cogochi/analyze/+server.ts`
 - `app/src/routes/api/wallet/intel/+server.ts`
 - `app/src/routes/api/terminal/intel-agent-shadow/+server.ts`
+- `app/src/routes/api/terminal/intel-policy/+server.ts`
 - `app/src/routes/api/terminal/opportunity-scan/+server.ts`
+- `app/src/routes/api/market/snapshot/+server.ts`
+- `app/src/lib/server/marketSnapshotService.ts`
 - `app/src/lib/server/rateLimit.ts`
 - `app/docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`
 
@@ -44,10 +47,10 @@ app
 
 ## Next Steps
 
-- harden `/api/terminal/intel-policy` and `/api/market/snapshot` with the same shared policy primitives
 - add route-level cache hit/miss/429 telemetry aggregation
 - move Tier B long-running or burst-sensitive execution to queue/worker plane
 - promote Redis shared cache config in production instead of relying on fallback behavior
+- revisit dedicated distributed limiter policy for `/api/terminal/intel-policy` if direct standalone traffic grows beyond shadow-driven use
 
 ## Exit Criteria
 

@@ -2,16 +2,15 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { buildIntelPolicyOutput, emptyPanels } from '$lib/server/intelPolicyRuntime';
+import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
+import { createSharedPublicRouteCache } from '$lib/server/publicRouteCache';
 
 const CACHE_TTL_MS = 20_000;
 
-type CacheEntry = {
-  createdAt: number;
-  payload: ReturnType<typeof buildIntelPolicyOutput>;
-};
-
-const cache = new Map<string, CacheEntry>();
-const inflight = new Map<string, Promise<ReturnType<typeof buildIntelPolicyOutput>>>();
+const intelPolicyCache = createSharedPublicRouteCache<ReturnType<typeof buildIntelPolicyOutput>>({
+  scope: 'terminal:intel-policy',
+  ttlMs: CACHE_TTL_MS,
+});
 
 function cacheKey(pair: string, timeframe: string): string {
   return `${pair}:${timeframe}`;
@@ -62,79 +61,39 @@ async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: st
 }
 
 export const GET: RequestHandler = async ({ fetch, url }) => {
+  let pair = 'BTC/USDT';
+  let timeframe = '4h';
+
   try {
-    const pair = normalizePair(url.searchParams.get('pair'));
-    const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
-    const key = cacheKey(pair, timeframe);
-
-    const cached = cache.get(key);
-    if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
-      return json(
-        {
-          ok: true,
-          data: cached.payload,
-          cached: true,
-        },
-        {
-          headers: {
-            'Cache-Control': 'public, max-age=20',
-          },
-        },
-      );
-    }
-
-    const inflightJob = inflight.get(key);
-    if (inflightJob) {
-      const payload = await inflightJob;
-      return json(
-        {
-          ok: true,
-          data: payload,
-          cached: false,
-          coalesced: true,
-        },
-        {
-          headers: {
-            'Cache-Control': 'public, max-age=20',
-          },
-        },
-      );
-    }
-
-    const job = runIntelPolicy(fetch, pair, timeframe)
-      .then((payload) => {
-        cache.set(key, {
-          createdAt: Date.now(),
-          payload,
-        });
-        return payload;
-      })
-      .finally(() => {
-        inflight.delete(key);
-      });
-
-    inflight.set(key, job);
-
-    const payload = await job;
+    pair = normalizePair(url.searchParams.get('pair'));
+    timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
+    const { payload, cacheStatus } = await intelPolicyCache.run(
+      cacheKey(pair, timeframe),
+      () => runIntelPolicy(fetch, pair, timeframe),
+    );
 
     return json(
       {
         ok: true,
         data: payload,
-        cached: false,
+        cached: cacheStatus === 'hit',
+        coalesced: cacheStatus === 'coalesced',
       },
       {
-        headers: {
-          'Cache-Control': 'public, max-age=20',
-        },
+        headers: buildPublicCacheHeaders({
+          browserMaxAge: 15,
+          sharedMaxAge: 20,
+          staleWhileRevalidate: 30,
+          cacheStatus,
+        }),
       },
     );
   } catch (error: any) {
     if (typeof error?.message === 'string' && error.message.includes('pair must be like')) {
-      return json({ error: error.message }, { status: 400 });
+      return json({ error: error.message }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
     }
     if (typeof error?.message === 'string' && error.message.includes('timeframe must be one of')) {
-      return json({ error: error.message }, { status: 400 });
+      return json({ error: error.message }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
     }
 
     console.error('[api/terminal/intel-policy] error:', error);
@@ -163,14 +122,14 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
           },
           panels: emptyPanels(),
           summary: {
-            pair: 'BTC/USDT',
-            timeframe: '4h',
+            pair,
+            timeframe,
             domainsUsed: [],
             avgHelpfulness: 0,
           },
         },
       },
-      { status: 500 },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 };
