@@ -44,6 +44,7 @@ research/                  # Thesis, experiments, evals, datasets, notes
 - Engine tests: `cd engine && uv run pytest`
 - App dev: `npm --prefix app run dev`
 - App checks: `npm --prefix app run check`
+- Repo baseline checks: `bash scripts/check-operating-baseline.sh`
 
 ## Document Policy
 
