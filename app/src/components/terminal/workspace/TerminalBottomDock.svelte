@@ -12,11 +12,35 @@
   let files = $state<File[]>([]);
   let fileInputRef: HTMLInputElement;
 
+  const dockActions = [
+    {
+      label: 'Scan',
+      prompt: () => `Scan the market from ${$activePair || 'BTC/USDT'} ${($activeTimeframe || '4h').toUpperCase()} context. Return buy candidates, high OI, liquidation risk, and warnings with evidence.`,
+    },
+    {
+      label: 'Board',
+      prompt: () => `Refresh the terminal board for ${$activePair || 'BTC/USDT'} on ${($activeTimeframe || '4h').toUpperCase()}. Return compact verdict, active setup, flow metrics, and sources.`,
+    },
+    {
+      label: 'Alerts',
+      prompt: () => `Show active scanner alerts and pattern transitions for ${$activePair || 'BTC/USDT'}. Include trigger state, last scan time, and next action.`,
+    },
+    {
+      label: 'Risk',
+      prompt: () => `Run a backend risk check for ${$activePair || 'BTC/USDT'} on ${($activeTimeframe || '4h').toUpperCase()}. Include funding, OI, CVD, liquidity, invalidation, and avoid actions.`,
+    },
+  ];
+
   function handleSend() {
     if (!inputText.trim() && files.length === 0) return;
     onSend?.(inputText.trim(), files.length > 0 ? files : undefined);
     inputText = '';
     files = [];
+  }
+
+  function runDockAction(prompt: string) {
+    if (loading) return;
+    onSend?.(prompt);
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -46,6 +70,19 @@
   </div>
 
   <div class="dock-bar">
+    <div class="dock-action-strip" aria-label="Backend terminal actions">
+      {#each dockActions as action}
+        <button
+          type="button"
+          class="dock-action-btn"
+          disabled={loading}
+          onclick={() => runDockAction(action.prompt())}
+        >
+          {action.label}
+        </button>
+      {/each}
+    </div>
+
     <!-- Inline context badges -->
     <div class="ctx-badges">
       <span class="ctx-badge">{$activePair || 'BTC/USDT'}</span>
@@ -166,6 +203,48 @@
     padding: 0 6px 0 10px;
     min-height: 36px;
     margin-top: 8px;
+  }
+
+  .dock-action-strip {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  .dock-action-strip::after {
+    content: '';
+    display: block;
+    width: 1px;
+    height: 14px;
+    background: rgba(255,255,255,0.1);
+    margin: 0 3px 0 4px;
+  }
+
+  .dock-action-btn {
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.045);
+    color: rgba(247,242,234,0.68);
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 7px;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  }
+
+  .dock-action-btn:hover:not(:disabled) {
+    background: rgba(77,143,245,0.11);
+    border-color: rgba(77,143,245,0.3);
+    color: rgba(184,212,255,0.95);
+  }
+
+  .dock-action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
   }
 
   /* Context badges */
