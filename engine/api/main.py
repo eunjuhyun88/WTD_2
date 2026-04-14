@@ -6,6 +6,7 @@ Entry point:
 Environment variables:
     ENGINE_PORT     (default: 8000)
     ENGINE_LOG      structured | plain (default: plain)
+    ENGINE_ENABLE_SCHEDULER  true | false (default: true)
 """
 from __future__ import annotations
 
@@ -32,6 +33,15 @@ logging.basicConfig(
 log = logging.getLogger("engine")
 
 
+def scheduler_enabled() -> bool:
+    return os.getenv("ENGINE_ENABLE_SCHEDULER", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
 # ---------------------------------------------------------------------------
 # Lifespan — start/stop background scanner
 # ---------------------------------------------------------------------------
@@ -43,11 +53,17 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
         await refresh_global_ctx()
     except Exception as exc:
         log.warning("GlobalCtx warm-up failed (non-fatal): %s", exc)
-    start_scheduler()
-    log.info("Engine started — GlobalCtx warm, background scanner active")
+    if scheduler_enabled():
+        start_scheduler()
+        log.info("Engine started — GlobalCtx warm, background scanner active")
+    else:
+        log.info("Engine started — GlobalCtx warm, scheduler disabled")
     yield
-    stop_scheduler()
-    log.info("Engine shutdown — scanner stopped")
+    if scheduler_enabled():
+        stop_scheduler()
+        log.info("Engine shutdown — scanner stopped")
+    else:
+        log.info("Engine shutdown")
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +135,7 @@ def healthz() -> dict:
 
 @app.get("/readyz", tags=["meta"])
 def readyz() -> dict:
-    return readiness_payload(app.version)
+    return readiness_payload(app.version, scheduler_enabled=scheduler_enabled())
 
 
 @app.get("/metrics", tags=["meta"])

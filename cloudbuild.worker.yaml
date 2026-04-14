@@ -3,7 +3,7 @@ steps:
     args:
       - build
       - -f
-      - engine/Dockerfile
+      - engine/worker/Dockerfile
       - -t
       - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
       - engine
@@ -25,9 +25,9 @@ steps:
       - ${_SERVICE_REGION}
       - --platform
       - managed
-      - --allow-unauthenticated
+      - --no-allow-unauthenticated
       - --set-env-vars
-      - APP_ORIGIN=${_APP_ORIGIN},ENGINE_PORT=8000,ENGINE_ENABLE_SCHEDULER=false
+      - ENGINE_ENABLE_SCHEDULER=true
 
 images:
   - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
@@ -35,7 +35,6 @@ images:
 substitutions:
   _AR_REGION: us-east4
   _AR_REPOSITORY: cloud-run-source-deploy
-  _IMAGE_NAME: wtd-engine-api
-  _SERVICE_NAME: cogotchi
+  _IMAGE_NAME: wtd-worker-control
+  _SERVICE_NAME: cogotchi-worker
   _SERVICE_REGION: us-east4
-  _APP_ORIGIN: https://example.vercel.app
