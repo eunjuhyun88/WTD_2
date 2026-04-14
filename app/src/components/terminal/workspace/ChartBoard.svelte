@@ -493,11 +493,11 @@
   .chart-board {
     display: flex;
     flex-direction: column;
-    background: #0a0a0a;
-    border: 1px solid rgba(255,255,255,0.07);
+    background: linear-gradient(180deg, #0b0d12, #080a0d);
+    border: 1px solid rgba(255,255,255,0.05);
     border-radius: 4px;
     overflow: hidden;
-    min-height: 580px;
+    min-height: 540px;
     height: 100%;
   }
 
@@ -506,7 +506,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 10px;
+    padding: 5px 9px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
     gap: 12px;
     flex-shrink: 0;
@@ -522,9 +522,10 @@
   }
   .sym-name {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: #fff;
+    letter-spacing: 0.04em;
   }
   .sym-quote {
     font-weight: 400;
@@ -533,7 +534,7 @@
   }
   .sym-price {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
+    font-size: 10px;
     color: rgba(255,255,255,0.65);
   }
   .sym-change,
@@ -564,12 +565,12 @@
     display: flex;
     gap: 2px;
     padding: 2px;
-    border-radius: 4px;
+    border-radius: 3px;
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.06);
   }
   .mode-btn {
-    padding: 2px 7px;
+    padding: 2px 6px;
     font-family: var(--sc-font-mono, monospace);
     font-size: 9px;
     background: transparent;
@@ -591,7 +592,7 @@
     gap: 1px;
   }
   .tf-btn {
-    padding: 2px 6px;
+    padding: 2px 5px;
     font-family: var(--sc-font-mono, monospace);
     font-size: 9px;
     background: transparent;
@@ -608,7 +609,7 @@
   /* Indicator toggles */
   .ind-toggles { display: flex; gap: 2px; }
   .ind-btn {
-    padding: 2px 7px;
+    padding: 2px 6px;
     font-family: var(--sc-font-mono, monospace);
     font-size: 9px;
     background: transparent;
@@ -641,7 +642,7 @@
   }
 
   .save-btn {
-    padding: 3px 9px;
+    padding: 2px 8px;
     font-family: var(--sc-font-mono, monospace);
     font-size: 9px;
     font-weight: 600;
@@ -686,10 +687,10 @@
   .state-text { font-size: 10px; }
 
   /* ── Panes ── */
-  .pane-main { flex-shrink: 0; height: 340px; }
-  .pane-vol  { flex-shrink: 0; height: 60px; }
-  .pane-sub  { flex-shrink: 0; height: 80px; }
-  .pane-oi   { flex-shrink: 0; height: 60px; }
+  .pane-main { flex-shrink: 0; height: 320px; }
+  .pane-vol  { flex-shrink: 0; height: 54px; }
+  .pane-sub  { flex-shrink: 0; height: 72px; }
+  .pane-oi   { flex-shrink: 0; height: 54px; }
   .save-toast {
     position: fixed;
     bottom: 80px;
@@ -716,7 +717,7 @@
 
   .pane-label {
     flex-shrink: 0;
-    padding: 1px 8px;
+    padding: 1px 7px;
     font-family: var(--sc-font-mono, monospace);
     font-size: 8px;
     color: rgba(255,255,255,0.18);

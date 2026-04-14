@@ -34,7 +34,6 @@
   import PositionBar from '../../components/lab/PositionBar.svelte';
   import StrategyBuilder from '../../components/lab/StrategyBuilder.svelte';
   import ResultPanel from '../../components/lab/ResultPanel.svelte';
-  import AppSurfaceHeader from '$lib/components/surfaces/AppSurfaceHeader.svelte';
 
   let mode = $state<'auto' | 'manual'>('auto');
   let activeTab = $state<'strategy' | 'result' | 'order' | 'trades'>('strategy');
@@ -224,7 +223,6 @@
 </svelte:head>
 
 <div class="surface-page chrome-layout lab">
-  <AppSurfaceHeader active="lab" />
   <!-- Compact Topbar -->
   <header class="surface-hero surface-fixed-hero">
     <div class="surface-copy">

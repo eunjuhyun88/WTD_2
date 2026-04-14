@@ -84,21 +84,21 @@
 
 <style>
   .verdict-card {
-    background: var(--sc-bg-1);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
-    padding: 14px;
+    background: linear-gradient(180deg, rgba(13,16,22,0.98), rgba(8,10,14,0.98));
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 6px;
+    padding: 12px;
     display: flex; flex-direction: column; gap: 10px;
   }
-  .verdict-card:hover { border-color: rgba(255,255,255,0.14); }
+  .verdict-card:hover { border-color: rgba(255,255,255,0.12); }
 
   .card-header { display: flex; align-items: center; gap: 10px; }
   .symbol-group { display: flex; flex-direction: column; gap: 1px; }
-  .symbol { font-family: var(--sc-font-mono); font-size: 15px; font-weight: 700; color: var(--sc-text-0); }
-  .venue { font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-2); text-transform: uppercase; }
+  .symbol { font-family: var(--sc-font-mono); font-size: 13px; font-weight: 700; color: var(--sc-text-0); letter-spacing: 0.04em; }
+  .venue { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); text-transform: uppercase; letter-spacing: 0.08em; }
 
   .tf-alignment { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-  .tf-badge { font-family: var(--sc-font-mono); font-size: 10px; font-weight: 600; }
+  .tf-badge { font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600; }
   .sep { color: rgba(255,255,255,0.2); font-size: 10px; }
 
   .card-actions { display: flex; gap: 4px; }
@@ -113,11 +113,12 @@
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  .price { font-family: var(--sc-font-mono); font-size: 18px; font-weight: 700; color: var(--sc-text-0); }
-  .change { font-family: var(--sc-font-mono); font-size: 13px; font-weight: 600; }
+  .price { font-family: var(--sc-font-mono); font-size: 16px; font-weight: 700; color: var(--sc-text-0); }
+  .change { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 600; }
   .meta-badge {
-    font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2);
-    padding: 2px 6px; background: rgba(255,255,255,0.04);
+    font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-2);
+    padding: 2px 5px; background: rgba(255,255,255,0.035);
     border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.05);
   }
 </style>
