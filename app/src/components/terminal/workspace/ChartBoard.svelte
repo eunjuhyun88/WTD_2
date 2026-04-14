@@ -39,6 +39,9 @@
   let error    = $state<string | null>(null);
   let currentPrice = $state<number | null>(null);
   let currentTime  = $state<number | null>(null);
+  let currentChangePct = $state<number | null>(null);
+  let currentRsi = $state<number | null>(null);
+  let currentOiDelta = $state<number | null>(null);
 
   // Save Setup modal
   let showSaveModal = $state(false);
@@ -48,6 +51,7 @@
   let showVWAP = $state(true);
   let showBB   = $state(false);
   let showMACD = $state(false);   // replaces RSI pane when active
+  let chartMode = $state<'candle' | 'line'>('candle');
 
   // ── Chart instances ────────────────────────────────────────────────────────
   let mainChart: IChartApi | null = null;
@@ -56,12 +60,12 @@
   let macdChart: IChartApi | null = null;
   let oiChart:   IChartApi | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
 
   // Level price lines
   let entryLine:  ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
   let targetLine: ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
   let stopLine:   ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
-  let candleSeries: ISeriesApi<'Candlestick'> | null = null;
 
   // ── Timeframes ────────────────────────────────────────────────────────────
   const TIMEFRAMES = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
@@ -132,16 +136,37 @@
 
     const ind = data.indicators as Record<string, Array<{ time: number; value: number }>>;
     const klines = data.klines as Array<{ time: number; open: number; close: number; high: number; low: number; volume: number }>;
+    const oiBars = data.oiBars as Array<{ time: number; value: number; color: string }>;
 
-    candleSeries = mainChart.addSeries(CandlestickSeries, {
-      upColor:        '#26a69a',
-      downColor:      '#ef5350',
-      borderUpColor:  '#26a69a',
-      borderDownColor:'#ef5350',
-      wickUpColor:    'rgba(38,166,154,0.7)',
-      wickDownColor:  'rgba(239,83,80,0.7)',
-    });
-    candleSeries.setData(data.klines as Parameters<typeof candleSeries.setData>[0]);
+    const lastBar = klines[klines.length - 1];
+    const prevBar = klines[klines.length - 2];
+    currentPrice = lastBar?.close ?? null;
+    currentTime = lastBar?.time ?? null;
+    currentChangePct = lastBar && prevBar && prevBar.close > 0 ? ((lastBar.close - prevBar.close) / prevBar.close) * 100 : null;
+    currentRsi = ind.rsi14?.length ? ind.rsi14[ind.rsi14.length - 1]?.value ?? null : null;
+    currentOiDelta = oiBars?.length ? oiBars[oiBars.length - 1]?.value ?? null : null;
+
+    if (chartMode === 'line') {
+      const lineSeries = mainChart.addSeries(LineSeries, {
+        color: '#63b3ed',
+        lineWidth: 2,
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+      lineSeries.setData(klines.map((k) => ({ time: k.time as UTCTimestamp, value: k.close })));
+      priceSeries = lineSeries;
+    } else {
+      const candleSeries = mainChart.addSeries(CandlestickSeries, {
+        upColor:        '#26a69a',
+        downColor:      '#ef5350',
+        borderUpColor:  '#26a69a',
+        borderDownColor:'#ef5350',
+        wickUpColor:    'rgba(38,166,154,0.7)',
+        wickDownColor:  'rgba(239,83,80,0.7)',
+      });
+      candleSeries.setData(data.klines as Parameters<typeof candleSeries.setData>[0]);
+      priceSeries = candleSeries;
+    }
 
     // SMA 20 / 60 — always on
     if (ind.sma20?.length) {
@@ -182,10 +207,11 @@
     mainChart.subscribeCrosshairMove((param) => {
       if (param.time) {
         currentTime = param.time as number;
-        const cs = candleSeries;
-        if (cs) {
-          const d = param.seriesData.get(cs) as { close: number } | undefined;
-          if (d) currentPrice = d.close;
+        const series = priceSeries;
+        if (series) {
+          const d = param.seriesData.get(series) as { close?: number; value?: number } | undefined;
+          if (d?.close != null) currentPrice = d.close;
+          else if (d?.value != null) currentPrice = d.value;
         }
       }
     });
@@ -233,7 +259,6 @@
     }
 
     // ── OI Δ% ────────────────────────────────────────────────────────────────
-    const oiBars = data.oiBars as Array<{ time: number; value: number; color: string }>;
     if (oiEl) {
       oiChart = createChart(oiEl, {
         ...baseTheme, width: w, height: 60,
@@ -250,18 +275,18 @@
 
   // ── Verdict level lines ───────────────────────────────────────────────────
   function updateLevels() {
-    if (!candleSeries) return;
+    if (!priceSeries) return;
 
     // Clear existing lines
-    try { if (entryLine)  candleSeries.removePriceLine(entryLine);  } catch {}
-    try { if (targetLine) candleSeries.removePriceLine(targetLine); } catch {}
-    try { if (stopLine)   candleSeries.removePriceLine(stopLine);   } catch {}
+    try { if (entryLine)  priceSeries.removePriceLine(entryLine);  } catch {}
+    try { if (targetLine) priceSeries.removePriceLine(targetLine); } catch {}
+    try { if (stopLine)   priceSeries.removePriceLine(stopLine);   } catch {}
     entryLine = targetLine = stopLine = null;
 
     if (!verdictLevels) return;
 
     if (verdictLevels.entry != null) {
-      entryLine = candleSeries.createPriceLine({
+      entryLine = priceSeries.createPriceLine({
         price: verdictLevels.entry,
         color: 'rgba(251,191,36,0.9)',
         lineWidth: 1, lineStyle: 0,
@@ -269,7 +294,7 @@
       });
     }
     if (verdictLevels.target != null) {
-      targetLine = candleSeries.createPriceLine({
+      targetLine = priceSeries.createPriceLine({
         price: verdictLevels.target,
         color: 'rgba(38,166,154,0.9)',
         lineWidth: 1, lineStyle: 1,
@@ -277,7 +302,7 @@
       });
     }
     if (verdictLevels.stop != null) {
-      stopLine = candleSeries.createPriceLine({
+      stopLine = priceSeries.createPriceLine({
         price: verdictLevels.stop,
         color: 'rgba(239,83,80,0.9)',
         lineWidth: 1, lineStyle: 1,
@@ -308,7 +333,7 @@
   function destroyCharts() {
     [mainChart, volChart, rsiChart, macdChart, oiChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = null;
-    candleSeries = null;
+    priceSeries = null;
     entryLine = targetLine = stopLine = null;
   }
 
@@ -349,7 +374,7 @@
 
   // Reload on symbol/tf/toggles change
   $effect(() => {
-    void symbol; void tf; void showVWAP; void showBB; void showMACD;
+    void symbol; void tf; void showVWAP; void showBB; void showMACD; void chartMode;
     loadData();
   });
 
@@ -369,9 +394,25 @@
       {#if currentPrice !== null}
         <span class="sym-price">{currentPrice.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
       {/if}
+      {#if currentChangePct !== null}
+        <span class:price-up={currentChangePct >= 0} class:price-down={currentChangePct < 0} class="sym-change">
+          {currentChangePct >= 0 ? '+' : ''}{currentChangePct.toFixed(2)}%
+        </span>
+      {/if}
+      {#if currentRsi !== null}
+        <span class="sym-chip">RSI {currentRsi.toFixed(1)}</span>
+      {/if}
+      {#if currentOiDelta !== null}
+        <span class="sym-chip">OI Δ {currentOiDelta >= 0 ? '+' : ''}{currentOiDelta.toFixed(1)}%</span>
+      {/if}
     </div>
 
     <div class="chart-controls">
+      <div class="mode-switch">
+        <button class="mode-btn" class:active={chartMode === 'candle'} onclick={() => { chartMode = 'candle'; }}>Candle</button>
+        <button class="mode-btn" class:active={chartMode === 'line'} onclick={() => { chartMode = 'line'; }}>Line</button>
+      </div>
+
       <!-- TF row -->
       <div class="tf-group">
         {#each TIMEFRAMES as t}
@@ -396,6 +437,7 @@
         <span class="ld" style="--c:#fbbf24">MA20</span>
         <span class="ld" style="--c:#a78bfa">MA60</span>
         {#if showVWAP}<span class="ld" style="--c:rgba(255,200,60,0.9)">VWAP</span>{/if}
+        {#if showBB}<span class="ld" style="--c:rgba(139,92,246,0.65)">BB</span>{/if}
       </div>
 
       <button class="save-btn" onclick={handleSaveSetup}>+ Save</button>
@@ -476,6 +518,7 @@
     display: flex;
     align-items: baseline;
     gap: 8px;
+    flex-wrap: wrap;
   }
   .sym-name {
     font-family: var(--sc-font-mono, monospace);
@@ -493,12 +536,53 @@
     font-size: 11px;
     color: rgba(255,255,255,0.65);
   }
+  .sym-change,
+  .sym-chip {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+  }
+  .sym-change { font-weight: 700; }
+  .price-up { color: #34c470; }
+  .price-down { color: #e85555; }
+  .sym-chip {
+    color: rgba(255,255,255,0.48);
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
 
   .chart-controls {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .mode-switch {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .mode-btn {
+    padding: 2px 7px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: rgba(255,255,255,0.35);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .mode-btn.active {
+    color: #63b3ed;
+    background: rgba(99,179,237,0.1);
+    border-color: rgba(99,179,237,0.25);
   }
 
   /* TF buttons */
@@ -622,6 +706,10 @@
     white-space: nowrap;
     box-shadow: 0 8px 32px rgba(0,0,0,0.6);
     animation: toast-in 0.2s ease;
+  }
+
+  @media (max-width: 1100px) {
+    .legend { display: none; }
   }
   .toast-link { color: #63b3ed; text-decoration: underline; }
   @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
