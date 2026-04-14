@@ -21,6 +21,39 @@ Define and stabilize app-engine interfaces to reduce cross-layer reads and break
 4. Instance detail contract (per-outcome result rows)
 5. Error contract (uniform envelope)
 
+## Surface-Contract Index (Day-1 Canonical)
+
+Use this table as the first lookup for "which document is source-of-truth for this behavior."
+
+MANDATORY rule:
+
+- Before implementing, reviewing, or QA-ing any surface behavior, you must read this index and then follow the read order below.
+- Do not start coding from route files first.
+- If this order is skipped, the change is considered out-of-contract.
+
+| Surface | Product Spec (behavior) | Domain Spec (ownership/boundary) | Primary Contract Types |
+|---|---|---|---|
+| Global system | `docs/product/pages/00-system-application.md` | `docs/domains/contracts.md` | route ownership, error envelope, shared schema/version policy |
+| Home (`/`) | `docs/product/pages/01-home.md` | n/a (frozen maintenance surface) | start-bar route handoff contract |
+| Terminal (`/terminal`) | `docs/product/pages/02-terminal.md` | `docs/domains/terminal.md` | query/deep-link, evidence/source ordering, tab/result payloads |
+| Lab (`/lab`) | `docs/product/pages/03-lab.md` | `docs/domains/lab.md` | challenge artifacts, evaluate stream summary, instances rows |
+| Dashboard (`/dashboard`) | `docs/product/pages/04-dashboard.md` | `docs/domains/dashboard.md` | challenge summary list, watching state shape, placeholder adapter section |
+
+Read order for implementation or QA:
+
+1. surface product spec (`docs/product/pages/*`)
+2. matching domain spec (`docs/domains/*.md`)
+3. this contracts doc for payload and envelope details
+
+Conflict resolution rule:
+
+- If product/domain behavior text and payload schema appear to conflict, schema safety in this file wins for wire format, and behavior wording should be updated in the corresponding product/domain doc in the same task.
+
+Supporting cross-surface domains:
+
+- `docs/domains/scanner-alerts.md` (scan cadence, dedup, feedback lifecycle)
+- `docs/domains/autoresearch-ml.md` (feedback-to-training, validation, deploy/rollback gates)
+
 ## Route Ownership Policy
 
 Every app-facing route must declare one of the following ownership types:

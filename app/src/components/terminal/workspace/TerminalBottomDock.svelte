@@ -4,8 +4,9 @@
   interface Props {
     onSend?: (text: string, files?: File[]) => void;
     loading?: boolean;
+    feedItems?: string[];
   }
-  let { onSend, loading = false }: Props = $props();
+  let { onSend, loading = false, feedItems = [] }: Props = $props();
 
   let inputText = $state('');
   let files = $state<File[]>([]);
@@ -32,6 +33,18 @@
 </script>
 
 <div class="bottom-dock">
+  <div class="event-tape">
+    {#each feedItems as item, index}
+      <div class="tape-item">
+        <span class="tape-dot"></span>
+        <span class="tape-text">{item}</span>
+      </div>
+      {#if index < feedItems.length - 1}
+        <span class="tape-sep">•</span>
+      {/if}
+    {/each}
+  </div>
+
   <div class="dock-bar">
     <!-- Inline context badges -->
     <div class="ctx-badges">
@@ -96,7 +109,51 @@
     flex-shrink: 0;
     background: var(--sc-bg-1, #0a0a0a);
     border-top: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
-    padding: 6px 12px;
+    padding: 0 10px 8px;
+  }
+
+  .event-tape {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    color: var(--sc-text-3);
+    scrollbar-width: none;
+  }
+
+  .event-tape::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tape-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .tape-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(77, 143, 245, 0.7);
+    box-shadow: 0 0 10px rgba(77, 143, 245, 0.28);
+  }
+
+  .tape-text,
+  .tape-sep {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .tape-sep {
+    opacity: 0.35;
+    flex-shrink: 0;
   }
 
   .dock-bar {
@@ -108,6 +165,7 @@
     border-radius: 7px;
     padding: 0 6px 0 10px;
     min-height: 36px;
+    margin-top: 8px;
   }
 
   /* Context badges */
