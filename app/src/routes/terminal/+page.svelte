@@ -19,6 +19,42 @@
   import { buildCanonicalHref } from '$lib/seo/site';
   import { get } from 'svelte/store';
   import { douniRuntimeStore } from '$lib/stores/douniRuntime';
+  import {
+    buildBoardActionRows,
+    buildDockFeedItems,
+    buildFallbackDepth,
+    buildFallbackLiqClusters,
+    buildHeroMetricTiles,
+    buildShellSummaryCards,
+    buildStatusStripItems,
+    buildTerminalSubtitle,
+    getOrderbookBiasLabel,
+    getOrderbookTone,
+    metricValueFromEvidence,
+  } from '$lib/terminal/terminalDerived';
+  import {
+    fetchNewsData,
+    fetchPatternPhasesData,
+    fetchScannerAlerts,
+    fetchTerminalAnalysisBundle,
+    fetchTrendingData,
+    type TerminalAnalyzeData,
+  } from '$lib/terminal/terminalDataOrchestrator';
+  import {
+    formatAgentFailureMessage,
+    isAnalysisQuery,
+    snapshotFingerprint,
+    streamTerminalMessage,
+  } from '$lib/terminal/terminalActions';
+  import { fetchFlowBias, fetchMarketEvents } from '$lib/api/terminalBackend';
+  import {
+    buildTerminalDecisionBundle,
+    type TerminalDecisionBundle,
+  } from '$lib/terminal/panelAdapter';
+  import type {
+    AnalyzeEnvelope,
+    EventsEnvelope,
+  } from '$lib/contracts/terminalBackend';
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
@@ -35,7 +71,7 @@
   import MobileDetailSheet from '../../components/terminal/mobile/MobileDetailSheet.svelte';
   import MobileCommandDock from '../../components/terminal/mobile/MobileCommandDock.svelte';
 
-  import type { TerminalAsset, TerminalVerdict, TerminalEvidence, TerminalSource } from '$lib/types/terminal';
+  import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
 
   // ─── State ──────────────────────────────────────────────────
 
@@ -45,13 +81,21 @@
   let evidenceMap = $state<Record<string, TerminalEvidence[]>>({});
   let activeSymbol = $state('');
 
-  let analysisData = $state<any>(null);
-  let analysisDataMap = $state<Record<string, any>>({});
+  type TerminalSnapshot = NonNullable<AnalyzeEnvelope['snapshot']> & {
+    rsi14?: number;
+    ema_alignment?: string;
+    htf_structure?: string;
+  };
+
+  let analysisData = $state<TerminalAnalyzeData | null>(null);
+  let analysisDataMap = $state<Record<string, TerminalAnalyzeData>>({});
+  let analysisFingerprintMap = $state<Record<string, string>>({});
   let newsData = $state<any>(null);
 
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
   let trendingData = $state<any>(null);
   let scannerAlerts = $state<any[]>([]);
+  let marketEvents = $state<NonNullable<EventsEnvelope['data']>['records'] extends Array<infer T> ? T[] : Array<{ tag?: string; level?: string; text?: string }>>([]);
   let ohlcvBars = $state<any[]>([]);
   let layerBarsMap = $state<Record<string, any[]>>({});
 
@@ -96,7 +140,7 @@
     return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}%`;
   }
 
-  function extractLevels(data: any): VerdictLevels {
+  function extractLevels(data: TerminalAnalyzeData | null | undefined): VerdictLevels {
     const deep = data?.deep;
     if (!deep?.atr_levels) return {};
     const bias = _deepBias(deep.verdict ?? '');
@@ -154,36 +198,6 @@
     };
   }
 
-  // ── Layer label map ──────────────────────────────────────────
-  const LAYER_LABELS: Record<string, string> = {
-    wyckoff: 'Wyckoff', mtf: 'MTF Conf', breakout: 'Breakout',
-    vsurge: 'Vol Surge', cvd: 'CVD', flow: 'FR / Flow',
-    liq_est: 'Liq Est', real_liq: 'Real Liq', oi: 'OI Squeeze',
-    basis: 'Basis', bb14: 'BB(14)', bb16: 'BB Sqz', atr: 'ATR',
-    ob: 'Order Book', onchain: 'On-chain', fg: 'Fear/Greed',
-    kimchi: 'Kimchi', sector: 'Sector',
-  };
-
-  /** Stable fingerprint of key snapshot fields — changes only when market data actually updates */
-  function snapshotFingerprint(snap: any): string {
-    if (!snap) return '';
-    return [
-      snap.symbol ?? '',
-      snap.timeframe ?? '',
-      snap.rsi14 != null ? snap.rsi14.toFixed(1) : '',
-      snap.funding_rate != null ? snap.funding_rate.toFixed(5) : '',
-      snap.oi_change_1h != null ? snap.oi_change_1h.toFixed(3) : '',
-      snap.cvd_state ?? '',
-      snap.regime ?? '',
-    ].join('|');
-  }
-
-  /** True when the message looks like an analysis / market-data question */
-  function isAnalysisQuery(msg: string): boolean {
-    const lower = msg.toLowerCase();
-    return /분석|어때|어떻게|펀딩|oi\b|rsi|추세|시그널|진입|패턴|레짐|regime|signal|analysis|how.*(look|doing)|what.*(think|say)|check/.test(lower);
-  }
-
   function localizeTerminalText(ko: string, en: string): string {
     if (typeof navigator === 'undefined') return en;
     return navigator.language.toLowerCase().startsWith('ko') ? ko : en;
@@ -200,9 +214,7 @@
   }
 
   function formatAgentFailure(detail?: string): string {
-    const prefix = localizeTerminalText('AI 응답 실패', 'AI response failed');
-    const cleanDetail = detail?.trim();
-    return cleanDetail ? `${prefix}: ${cleanDetail}` : prefix;
+    return formatAgentFailureMessage(detail, localizeTerminalText('AI 응답 실패', 'AI response failed'));
   }
 
   function _deepBias(verdict: string): 'bullish' | 'bearish' | 'neutral' {
@@ -212,307 +224,114 @@
     return 'neutral';
   }
 
-  function _deepConfidence(score: number): 'high' | 'medium' | 'low' {
-    const abs = Math.abs(score);
-    return abs >= 50 ? 'high' : abs >= 20 ? 'medium' : 'low';
+  function applyTerminalDecision(symbol: string, data: TerminalAnalyzeData) {
+    const decision = buildTerminalDecisionBundle(symbol, data);
+    return decision;
   }
 
-  function _deepAction(verdict: string, ensDir: string): string {
-    if (verdict === 'STRONG BULL' || ensDir === 'strong_long') return 'Strong buy on pullback';
-    if (verdict === 'BULLISH'     || ensDir === 'long')        return 'Buy on pullback';
-    if (verdict === 'BEARISH'     || ensDir === 'short')       return 'Avoid / short';
-    if (verdict === 'STRONG BEAR' || ensDir === 'strong_short') return 'Strong short / avoid';
-    return 'Wait for clarity';
+  function analysisFingerprint(data: TerminalAnalyzeData | null | undefined): string {
+    if (!data) return '';
+    const snap = data.snapshot;
+    const deep = data.deep as any;
+    const ens = data.ensemble;
+    return [
+      data.symbol ?? '',
+      data.mode ?? '',
+      data.tf ?? '',
+      data.price != null ? data.price.toFixed(4) : '',
+      data.change24h != null ? data.change24h.toFixed(4) : '',
+      snapshotFingerprint(snap),
+      deep?.verdict ?? '',
+      deep?.total_score != null ? String(deep.total_score) : '',
+      ens?.direction ?? '',
+      ens?.ensemble_score != null ? String(ens.ensemble_score) : '',
+      (ens?.block_analysis?.disqualifiers ?? []).join('|'),
+    ].join('::');
   }
 
-  function buildAssetFromAnalysis(symbol: string, data: any): TerminalAsset {
-    const deep = data?.deep;
-    const snap = data?.snapshot ?? {};
-    const ens  = data?.ensemble ?? {};
-    const isMarketOnly = data?.mode === 'market-only';
-    const price = data?.price ?? snap?.last_close ?? 0;
-
-    const verdict  = deep?.verdict ?? '';
-    const score    = deep?.total_score ?? 0;
-    const bias     = _deepBias(verdict) || (ens.direction?.includes('long') ? 'bullish' : ens.direction?.includes('short') ? 'bearish' : 'neutral') as 'bullish' | 'bearish' | 'neutral';
-    const confidence = isMarketOnly ? 'low' : _deepConfidence(score);
-
-    // ATR stop → invalidation price
-    const stopLong = deep?.atr_levels?.stop_long;
-    const invalidation = stopLong
-      ? `$${Number(stopLong).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
-      : '—';
-
-    // Per-layer sources
-    const sources: TerminalSource[] = isMarketOnly
-      ? [
-          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Market-only Fallback', category: 'Model', freshness: 'disconnected', updatedAt: Date.now(),
-            method: 'Raw market context while engine is unavailable' },
-        ]
-      : deep?.layers
-      ? [
-          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Market Engine', category: 'Model', freshness: 'recent', updatedAt: Date.now(),
-            method: `17-layer pipeline · score ${score > 0 ? '+' : ''}${score}` },
-        ]
-      : [
-          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Model v2', category: 'Model', freshness: 'recent', updatedAt: Date.now() },
-        ];
-
-    const tfArrow = (val: string | undefined, pos: string, neg: string): '↑' | '↓' | '→' =>
-      val === pos ? '↑' : val === neg ? '↓' : '→';
-
-    const mtfMeta = deep?.layers?.mtf?.meta ?? {};
-
-    return {
-      symbol, venue: 'USDT Perp',
-      lastPrice: price,
-      changePct15m: 0,
-      changePct1h: 0,
-      changePct4h: data?.change24h ?? 0,
-      volumeRatio1h: snap.vol_ratio_3 ?? deep?.layers?.vsurge?.meta?.vol_ratio ?? 1,
-      oiChangePct1h: (snap.oi_change_1h ?? 0) * 100,
-      fundingRate: snap.funding_rate ?? data?.derivatives?.funding_rate ?? 0,
-      fundingPercentile7d: 50,
-      spreadBps: 0,
-      bias, confidence,
-      action: isMarketOnly ? 'Track market context' : _deepAction(verdict, ens.direction ?? ''),
-      invalidation,
-      sources,
-      freshnessStatus: isMarketOnly ? 'disconnected' : 'recent',
-      tf15m: tfArrow(snap.ema_alignment ?? mtfMeta.tf15m, 'bullish', 'bearish'),
-      tf1h:  tfArrow(snap.ema_alignment ?? mtfMeta.tf1h,  'bullish', 'bearish'),
-      tf4h:  tfArrow(snap.htf_structure  ?? mtfMeta.tf4h, 'uptrend', 'downtrend'),
-    };
-  }
-
-  function buildVerdict(data: any): TerminalVerdict {
-    const deep = data?.deep;
-    const ens  = data?.ensemble ?? {};
-
-    if (data?.mode === 'market-only') {
-      return {
-        direction: 'neutral',
-        confidence: 'low',
-        reason: ens.reason || 'Market-only context',
-        against: ['engine unavailable'],
-        action: 'Track market context',
-        invalidation: '—',
-        updatedAt: Date.now(),
-      };
-    }
-
-    // Primary: deep verdict
-    if (deep?.verdict) {
-      const score   = deep.total_score ?? 0;
-      const verdict = deep.verdict as string;
-
-      // Top 3 active layers as reason
-      const topLayers = deep.layers
-        ? (Object.entries(deep.layers as Record<string, any>))
-            .filter(([, lr]) => lr.score !== 0)
-            .sort(([, a], [, b]) => Math.abs(b.score) - Math.abs(a.score))
-            .slice(0, 3)
-            .map(([name, lr]) => `${LAYER_LABELS[name] ?? name} ${lr.score > 0 ? '+' : ''}${lr.score}`)
-            .join(' · ')
-        : '';
-
-      const stopLong  = deep.atr_levels?.stop_long;
-      const tp1       = deep.atr_levels?.tp1_long;
-
-      return {
-        direction: _deepBias(verdict),
-        confidence: _deepConfidence(score),
-        reason: topLayers || ens.reason || verdict,
-        against: ens.block_analysis?.disqualifiers ?? [],
-        action: _deepAction(verdict, ens.direction ?? ''),
-        invalidation: stopLong
-          ? `Stop $${Number(stopLong).toLocaleString('en-US', { maximumFractionDigits: 2 })}${tp1 ? ` · TP1 $${Number(tp1).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : ''}`
-          : '—',
-        updatedAt: Date.now(),
-      };
-    }
-
-    // Fallback: ensemble ML signal
-    const direction = ens.direction ?? '';
-    const absScore  = Math.abs(ens.ensemble_score ?? 0);
-    return {
-      direction: direction.includes('long') ? 'bullish' : direction.includes('short') ? 'bearish' : 'neutral',
-      confidence: absScore > 0.6 ? 'high' : absScore > 0.3 ? 'medium' : 'low',
-      reason: ens.reason || 'Analysis pending…',
-      against: ens.block_analysis?.disqualifiers ?? [],
-      action: _deepAction('', direction),
-      invalidation: '—',
-      updatedAt: Date.now(),
-    };
-  }
-
-  function buildEvidence(data: any): TerminalEvidence[] {
-    const deep = data?.deep;
-    const snap = data?.snapshot;
-
-    // PRIMARY: deep.layers — full 17-layer breakdown
-    if (deep?.layers) {
-      const ev: TerminalEvidence[] = [];
-      const LAYER_ORDER = [
-        'wyckoff', 'mtf', 'cvd', 'vsurge', 'breakout',
-        'flow', 'oi', 'real_liq', 'liq_est', 'basis',
-        'bb14', 'bb16', 'atr',
-        'fg', 'onchain', 'kimchi', 'sector', 'ob',
-      ];
-
-      for (const name of LAYER_ORDER) {
-        const lr = (deep.layers as Record<string, any>)[name];
-        if (!lr) continue;
-        if (lr.score === 0 && lr.sigs.length === 0) continue;
-
-        const topSig = (lr.sigs as Array<{t: string; type: string}>)[0];
-        const state: TerminalEvidence['state'] =
-          lr.score >= 5  ? 'bullish'
-          : lr.score <= -5 ? 'bearish'
-          : topSig?.type === 'warn' ? 'warning'
-          : topSig?.type === 'bull' ? 'bullish'
-          : topSig?.type === 'bear' ? 'bearish'
-          : 'neutral';
-
-        ev.push({
-          metric: LAYER_LABELS[name] ?? name,
-          value: (lr.score >= 0 ? '+' : '') + lr.score,
-          delta: '',
-          interpretation: topSig?.t?.slice(0, 70) ?? '',
-          state,
-          sourceCount: lr.sigs.length,
-        });
+  function applyAnalysisState(symbol: string, data: TerminalAnalyzeData) {
+    const nextFingerprint = analysisFingerprint(data);
+    const prevFingerprint = analysisFingerprintMap[symbol] ?? '';
+    const changed = nextFingerprint !== prevFingerprint;
+    if (changed) {
+      analysisDataMap = { ...analysisDataMap, [symbol]: data };
+      analysisFingerprintMap = { ...analysisFingerprintMap, [symbol]: nextFingerprint };
+      if (symbol === activeSymbol || !analysisData) {
+        analysisData = data;
       }
-      return ev;
+    } else if (!analysisData && symbol === activeSymbol) {
+      analysisData = data;
     }
-
-    // FALLBACK: snapshot fields
-    if (!snap) return [];
-    const ev: TerminalEvidence[] = [];
-    if (snap.rsi14 != null) ev.push({
-      metric: 'RSI 14', value: snap.rsi14.toFixed(1), delta: '',
-      interpretation: snap.rsi14 > 70 ? 'Overbought' : snap.rsi14 < 30 ? 'Oversold' : 'Neutral',
-      state: snap.rsi14 > 70 ? 'warning' : snap.rsi14 < 30 ? 'bullish' : 'neutral',
-      sourceCount: 1,
-    });
-    if (snap.funding_rate != null) ev.push({
-      metric: 'Funding', value: (snap.funding_rate * 100).toFixed(3) + '%', delta: '',
-      interpretation: snap.funding_rate > 0.01 ? 'Longs paying' : snap.funding_rate < -0.005 ? 'Shorts paying' : 'Neutral',
-      state: snap.funding_rate > 0.015 ? 'warning' : 'neutral',
-      sourceCount: 1,
-    });
-    if (snap.oi_change_1h != null) ev.push({
-      metric: 'OI 1H', value: (snap.oi_change_1h * 100 >= 0 ? '+' : '') + (snap.oi_change_1h * 100).toFixed(2) + '%', delta: '',
-      interpretation: snap.oi_change_1h > 0.02 ? 'Expanding' : snap.oi_change_1h < -0.02 ? 'Contracting' : 'Stable',
-      state: snap.oi_change_1h > 0.02 ? 'bullish' : snap.oi_change_1h < -0.02 ? 'bearish' : 'neutral',
-      sourceCount: 1,
-    });
-    if (snap.cvd_state) ev.push({
-      metric: 'CVD', value: snap.cvd_state.toUpperCase(), delta: '',
-      interpretation: snap.cvd_state === 'buying' ? 'Aggressive buys' : snap.cvd_state === 'selling' ? 'Aggressive sells' : 'Balanced',
-      state: snap.cvd_state === 'buying' ? 'bullish' : snap.cvd_state === 'selling' ? 'bearish' : 'neutral',
-      sourceCount: 1,
-    });
-    if (snap.regime) ev.push({
-      metric: 'Regime', value: snap.regime.toUpperCase().replace('_', ' '), delta: '',
-      interpretation: snap.regime,
-      state: snap.regime === 'risk_on' ? 'bullish' : snap.regime === 'risk_off' ? 'bearish' : 'neutral',
-      sourceCount: 1,
-    });
-    if (snap.vol_ratio_3 != null) ev.push({
-      metric: 'Volume', value: snap.vol_ratio_3.toFixed(1) + 'x', delta: '',
-      interpretation: snap.vol_ratio_3 > 2 ? 'Spike' : snap.vol_ratio_3 > 1.2 ? 'Above avg' : 'Below avg',
-      state: snap.vol_ratio_3 > 2 ? 'warning' : 'neutral',
-      sourceCount: 1,
-    });
-    return ev;
+    return changed;
   }
 
-  interface MarketSeriesBar {
-    t: number;
-    c: number;
-    v: number;
-    delta: number;
-    cvd: number;
+  function sameAsset(a?: TerminalAsset | null, b?: TerminalAsset | null): boolean {
+    if (!a || !b) return false;
+    return (
+      a.symbol === b.symbol &&
+      a.lastPrice === b.lastPrice &&
+      a.changePct4h === b.changePct4h &&
+      a.volumeRatio1h === b.volumeRatio1h &&
+      a.oiChangePct1h === b.oiChangePct1h &&
+      a.fundingRate === b.fundingRate &&
+      a.bias === b.bias &&
+      a.confidence === b.confidence &&
+      a.action === b.action &&
+      a.invalidation === b.invalidation &&
+      a.tf15m === b.tf15m &&
+      a.tf1h === b.tf1h &&
+      a.tf4h === b.tf4h
+    );
   }
 
-  function avg(values: number[]): number {
-    if (values.length === 0) return 0;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  function sameVerdict(a?: TerminalVerdict | null, b?: TerminalVerdict | null): boolean {
+    if (!a || !b) return false;
+    return (
+      a.direction === b.direction &&
+      a.confidence === b.confidence &&
+      a.reason === b.reason &&
+      a.action === b.action &&
+      a.invalidation === b.invalidation &&
+      (a.against?.join('|') ?? '') === (b.against?.join('|') ?? '')
+    );
   }
 
-  function safePctChange(current?: number, previous?: number): number {
-    if (!current || !previous) return 0;
-    if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) return 0;
-    return (current - previous) / previous;
-  }
-
-  async function readJsonSafe(res: Response): Promise<any | null> {
-    try {
-      return await res.json();
-    } catch {
-      return null;
+  function sameEvidence(a: TerminalEvidence[] = [], b: TerminalEvidence[] = []): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      const x = a[i];
+      const y = b[i];
+      if (
+        x.metric !== y.metric ||
+        x.value !== y.value ||
+        x.interpretation !== y.interpretation ||
+        x.state !== y.state ||
+        x.sourceCount !== y.sourceCount
+      ) return false;
     }
+    return true;
   }
 
-  function buildMarketOnlyEnvelope(
-    symbol: string,
-    tf: string,
-    reason: string,
-    marketBars: MarketSeriesBar[],
-    oiBars: MarketSeriesBar[],
-    fundingBars: MarketSeriesBar[],
-  ) {
-    const latestBar = marketBars.at(-1);
-    const prevBar = marketBars.at(-2);
-    const reference24hBar = marketBars.length > 24 ? marketBars.at(-25) : prevBar;
-    const recentVolumes = marketBars.slice(-21, -1).map((bar) => bar.v).filter((value) => Number.isFinite(value));
-    const volRatio = latestBar?.v && recentVolumes.length > 0 ? latestBar.v / avg(recentVolumes) : 1;
-    const latestOi = oiBars.at(-1)?.c;
-    const prevOi = oiBars.at(-2)?.c;
-    const latestFunding = fundingBars.at(-1)?.c ?? 0;
-    const oiChange1h = safePctChange(latestOi, prevOi);
-    const change24h = safePctChange(latestBar?.c, reference24hBar?.c) * 100;
-    const delta = latestBar?.delta ?? 0;
-    const cvdState = delta > 0 ? 'buying' : delta < 0 ? 'selling' : 'balanced';
-    const regime =
-      change24h >= 2 ? 'risk_on'
-      : change24h <= -2 ? 'risk_off'
-      : 'balanced';
+  function applyDecisionState(symbol: string, decision: TerminalDecisionBundle, allowInsert = true) {
+    const currentAsset = boardAssets.find((a) => a.symbol === symbol) ?? null;
+    const currentVerdict = verdictMap[symbol] ?? null;
+    const currentEvidence = evidenceMap[symbol] ?? [];
+    const assetChanged = !sameAsset(currentAsset, decision.asset);
+    const verdictChanged = !sameVerdict(currentVerdict, decision.verdict);
+    const evidenceChanged = !sameEvidence(currentEvidence, decision.evidence);
 
-    return {
-      symbol,
-      tf,
-      mode: 'market-only',
-      price: latestBar?.c ?? 0,
-      change24h,
-      ensemble: {
-        direction: 'neutral',
-        ensemble_score: 0,
-        reason,
-        block_analysis: { disqualifiers: ['engine unavailable'] },
-      },
-      snapshot: {
-        symbol,
-        timeframe: tf,
-        last_close: latestBar?.c ?? 0,
-        vol_ratio_3: volRatio,
-        oi_change_1h: oiChange1h,
-        funding_rate: latestFunding,
-        cvd_state: cvdState,
-        regime,
-      },
-      derivatives: {
-        funding_rate: latestFunding,
-      },
-      degraded: true,
-    };
+    if (assetChanged) {
+      if (currentAsset) {
+        boardAssets = boardAssets.map((a) => (a.symbol === symbol ? decision.asset : a));
+      } else if (allowInsert) {
+        boardAssets = [decision.asset, ...boardAssets].slice(0, 4);
+      }
+    } else if (!currentAsset && allowInsert) {
+      boardAssets = [decision.asset, ...boardAssets].slice(0, 4);
+    }
+    if (verdictChanged) verdictMap = { ...verdictMap, [symbol]: decision.verdict };
+    if (evidenceChanged) evidenceMap = { ...evidenceMap, [symbol]: decision.evidence };
+    return { assetChanged, verdictChanged, evidenceChanged };
   }
 
   // ─── Data Fetching ───────────────────────────────────────────
@@ -526,68 +345,15 @@
     if (!activeSymbol) activeSymbol = symbol;
 
     try {
-      // Fetch analysis + OHLCV + OI + Funding in parallel
-      const interval = tf === '1d' ? '4h' : tf === '4h' ? '1h' : tf === '1h' ? '15m' : '5m';
-      const oiPeriod = tf === '1d' ? '4h' : tf === '4h' ? '1h' : tf === '1h' ? '15m' : '5m';
-      const [analyzeRes, ohlcvRes, oiRes, fundingRes] = await Promise.allSettled([
-        fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
-        fetch(`/api/market/ohlcv?symbol=${symbol}&interval=${interval}&limit=100`),
-        fetch(`/api/market/oi?symbol=${symbol}&period=${oiPeriod}&limit=96`),
-        fetch(`/api/market/funding?symbol=${symbol}&limit=96`),
-      ]);
+      const bundle = await fetchTerminalAnalysisBundle({ symbol, tf });
+      const data = bundle.analysisData;
+      ohlcvBars = bundle.ohlcvBars;
+      layerBarsMap = bundle.layerBarsMap;
 
-      let marketBars: MarketSeriesBar[] = [];
-      if (ohlcvRes.status === 'fulfilled' && ohlcvRes.value.ok) {
-        const ohlcv = await ohlcvRes.value.json();
-        marketBars = ohlcv.bars ?? [];
-        ohlcvBars = marketBars;
-      }
+      applyAnalysisState(symbol, data);
+      const decision = applyTerminalDecision(symbol, data);
 
-      // Build per-layer bars map — OI and funding get dedicated data
-      const newLayerBarsMap: Record<string, any[]> = {};
-      let oiBars: MarketSeriesBar[] = [];
-      if (oiRes.status === 'fulfilled' && oiRes.value.ok) {
-        const oi = await oiRes.value.json();
-        oiBars = oi.bars ?? [];
-        if (oiBars.length) newLayerBarsMap['oi'] = oiBars;
-      }
-      let fundingBars: MarketSeriesBar[] = [];
-      if (fundingRes.status === 'fulfilled' && fundingRes.value.ok) {
-        const funding = await fundingRes.value.json();
-        fundingBars = funding.bars ?? [];
-        if (fundingBars.length) newLayerBarsMap['flow'] = fundingBars;
-      }
-      layerBarsMap = newLayerBarsMap;
-
-      let data: any;
-      if (analyzeRes.status === 'fulfilled' && analyzeRes.value.ok) {
-        data = await analyzeRes.value.json();
-      } else {
-        const analyzePayload =
-          analyzeRes.status === 'fulfilled'
-            ? await readJsonSafe(analyzeRes.value)
-            : null;
-        const reason =
-          analyzePayload?.reason
-          ?? analyzePayload?.error
-          ?? (analyzeRes.status === 'fulfilled'
-            ? `Engine analysis unavailable (${analyzeRes.value.status})`
-            : 'Engine analysis request failed');
-        data = buildMarketOnlyEnvelope(symbol, tf, reason, marketBars, oiBars, fundingBars);
-      }
-
-      analysisData = data;
-      analysisDataMap = { ...analysisDataMap, [symbol]: data };
-      const asset = buildAssetFromAnalysis(symbol, data);
-      const verdict = buildVerdict(data);
-      const evidence = buildEvidence(data);
-
-      boardAssets = boardAssets.map(a => a.symbol === symbol ? asset : a);
-      if (!boardAssets.find(a => a.symbol === symbol)) {
-        boardAssets = [asset, ...boardAssets].slice(0, 4);
-      }
-      verdictMap = { ...verdictMap, [symbol]: verdict };
-      evidenceMap = { ...evidenceMap, [symbol]: evidence };
+      applyDecisionState(symbol, decision, true);
 
       // Extract price levels → chart overlay (entry / target / stop)
       if (symbol === activeSymbol || boardAssets.length === 1) {
@@ -602,54 +368,39 @@
 
   async function loadFlow(pair: string, tf: string) {
     try {
-      const res = await fetch(`/api/market/flow?pair=${encodeURIComponent(pair)}&timeframe=${tf}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      flowBias = data.bias ?? 'NEUTRAL';
+      flowBias = await fetchFlowBias(pair, tf);
     } catch {}
   }
 
   async function loadTrending() {
     try {
-      const res = await fetch('/api/market/trending');
-      if (!res.ok) return;
-      trendingData = await res.json();
+      trendingData = await fetchTrendingData();
     } catch {}
   }
 
   async function loadNews() {
     try {
-      const res = await fetch('/api/market/news');
-      if (!res.ok) return;
-      newsData = await res.json();
+      newsData = await fetchNewsData();
     } catch {}
   }
 
   async function loadAlerts() {
     try {
-      const res = await fetch('/api/cogochi/alerts?limit=12');
-      if (!res.ok) return;
-      const data = await res.json();
-      scannerAlerts = data.alerts ?? [];
+      scannerAlerts = await fetchScannerAlerts(12);
+    } catch {}
+  }
+
+  async function loadEvents() {
+    try {
+      const pair = gPair || 'BTC/USDT';
+      const tf = symbolToTF(gTf);
+      marketEvents = await fetchMarketEvents(pair, tf);
     } catch {}
   }
 
   async function loadPatternPhases() {
     try {
-      const res = await fetch('/api/patterns/states');
-      if (!res.ok) return;
-      const data = await res.json();
-      // data: { states: { symbol: { slug: { current_phase, phase_name, ... } } } }
-      const states: Record<string, Record<string, any>> = data.states ?? {};
-      // Invert: slug → { phaseName, symbols[] }
-      const bySlug: Record<string, { phaseName: string; symbols: string[] }> = {};
-      for (const [sym, slugMap] of Object.entries(states)) {
-        for (const [slug, info] of Object.entries(slugMap as Record<string, any>)) {
-          if (!bySlug[slug]) bySlug[slug] = { phaseName: info.phase_name ?? info.current_phase ?? '', symbols: [] };
-          bySlug[slug].symbols.push(sym.replace('USDT', ''));
-        }
-      }
-      patternPhases = Object.entries(bySlug).map(([slug, v]) => ({ slug, ...v }));
+      patternPhases = await fetchPatternPhasesData();
     } catch {}
   }
 
@@ -749,53 +500,23 @@
         },
       };
 
-      const res = await fetch('/api/cogochi/terminal/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      const { assistantText, streamError } = await streamTerminalMessage({
+        endpoint: '/api/cogochi/terminal/message',
+        body,
+        onEvent: async (event) => {
+          await handleSSEEvent(event, symbol, tf);
+        },
+        onTextDelta: (nextText) => {
+          streamText = nextText;
+        },
+        onStreamError: (message) => {
+          const formatted = formatAgentFailure(message);
+          streamText = streamText ? `${streamText}\n\n${formatted}` : formatted;
+        },
       });
 
-      if (!res.ok || !res.body) {
-        const errBody = await res.text().catch(() => '');
-        pushAssistantMessage(
-          formatAgentFailure(errBody ? `HTTP ${res.status} ${errBody.slice(0, 120)}` : `HTTP ${res.status}`),
-        );
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let assistantText = '';
-      let streamError = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const raw = line.slice(6).trim();
-          if (!raw || raw === '[DONE]') continue;
-          try {
-            const event = JSON.parse(raw);
-            await handleSSEEvent(event, symbol, tf);
-            if (event.type === 'text_delta') {
-              assistantText += event.text ?? '';
-              streamText = assistantText;
-            } else if (event.type === 'error') {
-              streamError = formatAgentFailure(event.message);
-              streamText = assistantText ? `${assistantText}\n\n${streamError}` : streamError;
-            }
-          } catch {}
-        }
-      }
-
       const finalAssistantText = assistantText
-        ? (streamError ? `${assistantText}\n\n${streamError}` : assistantText)
+        ? (streamError ? `${assistantText}\n\n${formatAgentFailure(streamError)}` : assistantText)
         : '';
 
       if (finalAssistantText) {
@@ -822,20 +543,11 @@
       const envelope = event.payload;
       if (envelope?.snapshot || envelope?.ensemble) {
         const sym = envelope.symbol ?? defaultSymbol;
-        analysisData = envelope;
-        analysisDataMap = { ...analysisDataMap, [sym]: envelope };
-        const asset = buildAssetFromAnalysis(sym, envelope);
-        const verdict = buildVerdict(envelope);
-        const evidence = buildEvidence(envelope);
-        const existing = boardAssets.find(a => a.symbol === sym);
-        if (existing) {
-          boardAssets = boardAssets.map(a => a.symbol === sym ? asset : a);
-        } else {
-          boardAssets = [asset, ...boardAssets].slice(0, 4);
-          if (boardAssets.length > 1) layout = 'hero3';
-        }
-        verdictMap = { ...verdictMap, [sym]: verdict };
-        evidenceMap = { ...evidenceMap, [sym]: evidence };
+        applyAnalysisState(sym, envelope);
+        const decision = applyTerminalDecision(sym, envelope);
+        const hadAsset = boardAssets.some((a) => a.symbol === sym);
+        applyDecisionState(sym, decision, true);
+        if (!hadAsset && boardAssets.length > 1) layout = 'hero3';
         if (!activeSymbol) activeSymbol = sym;
         // Update chart levels for active symbol
         if (sym === activeSymbol || !activeSymbol) chartLevels = extractLevels(envelope);
@@ -843,14 +555,9 @@
     }
     if (event.type === 'tool_result' && event.name === 'analyze' && event.data) {
       const sym = event.data.symbol ?? defaultSymbol;
-      analysisData = event.data;
-      analysisDataMap = { ...analysisDataMap, [sym]: event.data };
-      const asset = buildAssetFromAnalysis(sym, event.data);
-      const verdict = buildVerdict(event.data);
-      const evidence = buildEvidence(event.data);
-      boardAssets = boardAssets.map(a => a.symbol === sym ? asset : a);
-      verdictMap = { ...verdictMap, [sym]: verdict };
-      evidenceMap = { ...evidenceMap, [sym]: evidence };
+      applyAnalysisState(sym, event.data);
+      const decision = applyTerminalDecision(sym, event.data);
+      applyDecisionState(sym, decision, false);
       if (sym === activeSymbol) chartLevels = extractLevels(event.data);
     }
   }
@@ -870,6 +577,7 @@
   function clearBoard() {
     boardAssets = []; verdictMap = {}; evidenceMap = {};
     analysisDataMap = {};
+    analysisFingerprintMap = {};
     activeSymbol = ''; layout = 'focus';
     chartLevels = {};
     activeAnalysisTab = 'summary';
@@ -896,10 +604,12 @@
     loadTrending();
     loadNews();
     loadAlerts();
+    loadEvents();
     loadPatternPhases();
     flowInterval = setInterval(() => loadFlow(gPair, symbolToTF(gTf)), 15_000);
     trendingInterval = setInterval(loadTrending, 60_000);
     setInterval(loadAlerts, 5 * 60_000);
+    setInterval(loadEvents, 60_000);
     setInterval(loadPatternPhases, 60_000);  // refresh pattern states every 1 min
   });
 
@@ -923,10 +633,11 @@
       analysisData = null;  // clear stale snapshot so chat context resets
       const alreadyLoaded = untrack(() => boardAssets.find(a => a.symbol === symbol));
       if (!alreadyLoaded) {
-        boardAssets = []; verdictMap = {}; evidenceMap = {}; analysisDataMap = {}; layout = 'focus';
+        boardAssets = []; verdictMap = {}; evidenceMap = {}; analysisDataMap = {}; analysisFingerprintMap = {}; layout = 'focus';
       }
       loadAnalysis(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
+      loadEvents();
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
@@ -934,6 +645,7 @@
       activeAnalysisTab = 'summary';
       loadAnalysis(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
+      loadEvents();
     }
   });
 
@@ -1013,172 +725,41 @@
     boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
   );
 
-  function metricValue(names: string[], fallback = '—'): string {
-    const hit = activeEvidence.find((item) => names.includes(item.metric));
-    return hit?.value ?? fallback;
-  }
-
-  function metricNote(names: string[], fallback = ''): string {
-    const hit = activeEvidence.find((item) => names.includes(item.metric));
-    return hit?.interpretation ?? fallback;
-  }
-
   let heroMetricTiles = $derived.by(() => {
-    if (!heroAsset) return [];
-    const flowValue = metricValue(['CVD', 'FR / Flow'], flowBias);
-    const flowTone =
-      flowValue.startsWith('+') || flowValue.toLowerCase().includes('buy')
-        ? 'bull'
-        : flowValue.toLowerCase().includes('sell')
-          ? 'bear'
-          : 'neutral';
-
-    return [
-      {
-        label: 'Last Price',
-        value: heroAsset.lastPrice > 0
-          ? heroAsset.lastPrice.toLocaleString('en-US', { maximumFractionDigits: heroAsset.lastPrice >= 1000 ? 2 : 4 })
-          : '—',
-        note: heroAsset.symbol.replace('USDT', ''),
-        tone: 'neutral',
-      },
-      {
-        label: 'Vol Ratio',
-        value: `${heroAsset.volumeRatio1h.toFixed(1)}x`,
-        note: metricNote(['Vol Surge', 'Volume'], 'vs recent bars'),
-        tone: heroAsset.volumeRatio1h > 1.5 ? 'bull' : 'neutral',
-      },
-      {
-        label: 'OI Change',
-        value: `${heroAsset.oiChangePct1h >= 0 ? '+' : ''}${heroAsset.oiChangePct1h.toFixed(1)}%`,
-        note: metricNote(['OI Squeeze', 'OI 1H'], 'positioning'),
-        tone: heroAsset.oiChangePct1h >= 0 ? 'bull' : 'bear',
-      },
-      {
-        label: 'Funding',
-        value: `${(heroAsset.fundingRate * 100).toFixed(3)}%`,
-        note: metricNote(['FR / Flow', 'Funding'], 'perp skew'),
-        tone: Math.abs(heroAsset.fundingRate) > 0.01 ? 'warn' : 'neutral',
-      },
-      {
-        label: 'CVD / Flow',
-        value: flowValue,
-        note: metricNote(['CVD', 'FR / Flow'], 'orderflow'),
-        tone: flowTone,
-      },
-      {
-        label: 'Range / Regime',
-        value: metricValue(['Regime', 'Breakout'], flowBias),
-        note: metricNote(['Regime', 'Breakout'], 'context'),
-        tone: 'neutral',
-      },
-    ];
+    return buildHeroMetricTiles({
+      heroAsset,
+      activeEvidence,
+      flowBias,
+    });
   });
 
   let microstructure = $derived(activeAnalysisData?.microstructure ?? null);
   let depthSnapshot = $derived(microstructure?.depth ?? null);
   let liqClusters = $derived((microstructure?.liqClusters ?? []).slice(0, 4));
-  let fallbackDepth = $derived.by(() => {
-    const price = activeAsset?.lastPrice
-      || activeAnalysisData?.price
-      || activeAnalysisData?.snapshot?.last_close
-      || 0;
-    if (!price) return null;
-    const spread = Math.max(activeAsset?.spreadBps ?? 2.4, 1.2) / 10_000;
-    const weights = [0.92, 0.72, 0.58, 0.42, 0.28];
-    return {
-      bids: weights.map((weight, index) => ({
-        price: price * (1 - spread * (index + 1.2)),
-        weight,
-      })),
-      asks: weights.map((weight, index) => ({
-        price: price * (1 + spread * (index + 1.2)),
-        weight: Math.max(0.18, weight - (activeAsset?.oiChangePct1h ?? 0) / 120),
-      })),
-    };
-  });
-  let fallbackLiqClusters = $derived.by(() => {
-    const price = activeAsset?.lastPrice
-      || activeAnalysisData?.price
-      || activeAnalysisData?.snapshot?.last_close
-      || 0;
-    if (!price) return [];
-    const stop = chartLevels.stop ?? price * 0.984;
-    const target = chartLevels.target ?? price * 1.018;
-    const volumeScale = Math.max(0.6, Math.min(2.8, activeAsset?.volumeRatio1h ?? 1));
-    return [
-      {
-        side: 'SELL',
-        label: 'Longs',
-        price: stop,
-        distancePct: price ? ((stop - price) / price) * 100 : 0,
-        usd: 18_000_000 * volumeScale,
-      },
-      {
-        side: 'BUY',
-        label: 'Shorts',
-        price: target,
-        distancePct: price ? ((target - price) / price) * 100 : 0,
-        usd: 14_000_000 * volumeScale,
-      },
-    ];
-  });
+  let fallbackDepth = $derived.by(() => buildFallbackDepth({ activeAsset, activeAnalysisData }));
+  let fallbackLiqClusters = $derived.by(() => buildFallbackLiqClusters({ activeAsset, activeAnalysisData, chartLevels }));
   let orderbookTone = $derived.by(() => {
-    const ratio = depthSnapshot?.ratio ?? 1;
-    if (ratio >= 1.15) return 'bull';
-    if (ratio <= 0.85) return 'bear';
-    return 'neutral';
+    return getOrderbookTone(depthSnapshot?.ratio);
   });
   let orderbookBiasLabel = $derived.by(() => {
-    const ratio = depthSnapshot?.ratio ?? 1;
-    if (ratio >= 1.15) return 'Bid Heavy';
-    if (ratio <= 0.85) return 'Ask Heavy';
-    return 'Balanced';
+    return getOrderbookBiasLabel(depthSnapshot?.ratio);
   });
   let runtimeModeLabel = $derived($douniRuntimeStore.mode);
 
-  let boardActionRows = $derived.by(() => {
-    if (!activeVerdict) return [];
-    return [
-      {
-        label: 'Verdict',
-        value: activeVerdict.direction?.toUpperCase?.() ?? 'NEUTRAL',
-        tone: activeVerdict.direction === 'bullish' ? 'bull' : activeVerdict.direction === 'bearish' ? 'bear' : 'neutral',
-      },
-      {
-        label: 'Action',
-        value: activeVerdict.action || 'Wait for clarity',
-        tone: activeVerdict.direction === 'bullish' ? 'bull' : activeVerdict.direction === 'bearish' ? 'bear' : 'info',
-      },
-      {
-        label: 'Invalidation',
-        value: activeVerdict.invalidation || '—',
-        tone: 'risk',
-      },
-      {
-        label: 'Confidence',
-        value: activeVerdict.confidence?.toUpperCase?.() ?? 'LOW',
-        tone: activeVerdict.confidence === 'high' ? 'bull' : activeVerdict.confidence === 'medium' ? 'warn' : 'neutral',
-      },
-    ];
-  });
+  let boardActionRows = $derived.by(() => buildBoardActionRows(activeVerdict));
 
   let boardSourceRows = $derived((activeAsset?.sources ?? []).slice(0, 4));
 
-  let statusStripItems = $derived.by(() => {
-    const regime = metricValue(['Regime', 'Breakout'], flowBias);
-    const engineMode = activeAsset?.freshnessStatus === 'disconnected' ? 'MARKET ONLY' : 'FULL';
-    return [
-      { label: 'Mode', value: isScanMode ? 'SCAN' : 'FOCUS', tone: 'info' },
-      { label: 'AI', value: runtimeModeLabel, tone: runtimeModeLabel === 'API' ? 'bull' : runtimeModeLabel === 'OLLAMA' ? 'info' : 'neutral' },
-      { label: 'Engine', value: engineMode, tone: engineMode === 'FULL' ? 'bull' : 'warn' },
-      { label: 'Flow Bias', value: flowBias, tone: flowBias === 'LONG' ? 'bull' : flowBias === 'SHORT' ? 'bear' : 'neutral' },
-      { label: 'Regime', value: regime, tone: 'neutral' },
-      { label: 'Board', value: `${boardAssets.length} symbols`, tone: 'neutral' },
-      { label: 'Active', value: activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay, tone: 'neutral' },
-      { label: 'Freshness', value: activeAsset?.freshnessStatus ?? 'delayed', tone: activeAsset?.freshnessStatus === 'live' ? 'bull' : 'neutral' },
-    ];
-  });
+  let statusStripItems = $derived.by(() => buildStatusStripItems({
+    flowBias,
+    isScanMode,
+    runtimeModeLabel,
+    activeAsset,
+    boardAssetsCount: boardAssets.length,
+    activeSymbol,
+    activePairDisplay,
+    regime: metricValueFromEvidence(activeEvidence, ['Regime', 'Breakout'], flowBias),
+  }));
 
   // ── Analysis rail mode ────────────────────────────────────────
   // SINGLE: ≤1 asset or active symbol has a verdict → show full VerdictCard
@@ -1190,80 +771,39 @@
       verdict: verdictMap[a.symbol] ?? null,
     }))
   );
-  type ShellChromeTone = 'bull' | 'bear' | 'neutral' | 'info' | 'warn';
   let activeFocusLabel = $derived(activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay);
   let timeframeBadgeLabel = $derived(symbolToTF(gTf).toUpperCase());
   let assistantBannerText = $derived(streamText.trim());
-  let shellSummaryCards = $derived.by(() => {
-    const engineMode = activeAsset?.freshnessStatus === 'disconnected' ? 'Market only' : 'Full context';
-    const priceChange = activeAsset?.changePct4h ?? 0;
-    const directionTone: ShellChromeTone =
-      activeVerdict?.direction === 'bullish'
-        ? 'bull'
-        : activeVerdict?.direction === 'bearish'
-          ? 'bear'
-          : 'neutral';
-    const priceTone: ShellChromeTone =
-      priceChange > 0 ? 'bull' : priceChange < 0 ? 'bear' : 'neutral';
-    const regime = metricValue(['Regime', 'Breakout'], flowBias);
+  let shellSummaryCards = $derived.by(() => buildShellSummaryCards({
+    activeAsset,
+    activeVerdict,
+    activeFocusLabel,
+    timeframeBadgeLabel,
+    isScanMode,
+    boardAssetsCount: boardAssets.length,
+    runtimeModeLabel,
+    regime: metricValueFromEvidence(activeEvidence, ['Regime', 'Breakout'], flowBias),
+  }));
+  let terminalSubtitle = $derived.by(() => buildTerminalSubtitle({
+    activeFocusLabel,
+    timeframeBadgeLabel,
+    isScanMode,
+    boardAssetsCount: boardAssets.length,
+    regime: metricValueFromEvidence(activeEvidence, ['Regime', 'Breakout'], flowBias),
+    activeAsset,
+  }));
 
-    return [
-      {
-        label: 'Focus',
-        value: `${activeFocusLabel}/USDT`,
-        meta: `${timeframeBadgeLabel} · ${isScanMode ? `${boardAssets.length} symbols` : 'single board'}`,
-        tone: 'info' as ShellChromeTone,
-      },
-      {
-        label: 'Last Price',
-        value: activeAsset?.lastPrice
-          ? activeAsset.lastPrice.toLocaleString('en-US', {
-              maximumFractionDigits: activeAsset.lastPrice >= 1000 ? 2 : 4,
-            })
-          : '—',
-        meta: `${formatSignedPct(activeAsset?.changePct4h, 1)} 4H`,
-        tone: priceTone,
-      },
-      {
-        label: 'Engine',
-        value: engineMode,
-        meta: `${runtimeModeLabel} · ${activeAsset?.freshnessStatus ?? 'delayed'}`,
-        tone: engineMode === 'Full context' ? 'bull' : 'warn',
-      },
-      {
-        label: 'Primary Read',
-        value: regime,
-        meta: activeVerdict ? `${activeVerdict.confidence} confidence` : 'Awaiting analysis',
-        tone: directionTone,
-      },
-    ];
-  });
-  let terminalSubtitle = $derived.by(() => {
-    const regime = metricValue(['Regime', 'Breakout'], flowBias);
-    const boardMode = isScanMode
-      ? `${boardAssets.length} symbols loaded in scan mode`
-      : 'single-asset focus board';
-    const engineMode = activeAsset?.freshnessStatus === 'disconnected'
-      ? 'market-only fallback active'
-      : 'full engine context available';
-    return `${activeFocusLabel} is pinned on ${timeframeBadgeLabel}. ${boardMode}. ${regime} regime with ${engineMode}.`;
-  });
-
-  let dockFeedItems = $derived.by(() => {
-    const items = [
-      `${activeFocusLabel}/USDT ${activeAsset?.lastPrice ? activeAsset.lastPrice.toLocaleString('en-US', { maximumFractionDigits: activeAsset.lastPrice >= 1000 ? 0 : 2 }) : '—'}`,
-      `Flow ${flowBias}`,
-      `Mode ${boardAssets.length > 1 ? 'Scan' : 'Focus'}`,
-      `TF ${timeframeBadgeLabel}`,
-    ];
-    if (patternTransitionAlerts.length > 0) {
-      items.push(`${patternTransitionAlerts[0].symbol.replace('USDT', '')} ${patternTransitionAlerts[0].phase}`);
-    }
-    if (statusStripItems[0]) {
-      items.push(`${statusStripItems[0].label} ${statusStripItems[0].value}`);
-    }
-    return items;
-  });
+  let dockFeedItems = $derived.by(() => buildDockFeedItems({
+    activeFocusLabel,
+    activeAsset,
+    flowBias,
+    boardAssetsCount: boardAssets.length,
+    timeframeBadgeLabel,
+    runtimeModeLabel,
+    patternTransitionAlerts,
+    statusStripItems,
+    marketEvents,
+  }));
 
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
@@ -1352,6 +892,7 @@
           {patternPhases}
           {activeSymbol}
           newsItems={newsData?.records ?? []}
+          {marketEvents}
           onQuery={handleQueryChip}
         />
       </aside>
@@ -1379,7 +920,6 @@
         <span class="workspace-panel-kicker">Main Board</span>
         <span class="workspace-panel-meta">{layout} layout</span>
       </div>
-
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
@@ -1625,6 +1165,32 @@
             </button>
           </div>
 
+          <div class="rail-snapshot-stack">
+            {#if shellSummaryCards.length > 0}
+              <div class="shell-summary-grid rail">
+                {#each shellSummaryCards as card}
+                  <div class="shell-summary-card" data-tone={card.tone}>
+                    <span class="shell-summary-label">{card.label}</span>
+                    <strong class="shell-summary-value">{card.value}</strong>
+                    <small class="shell-summary-meta">{card.meta}</small>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+
+            <div class="terminal-statusline rail">
+              <span class="terminal-statusline-copy">{terminalSubtitle}</span>
+              <div class="terminal-statusline-pills">
+                {#each statusStripItems.slice(0, 6) as item}
+                  <span class="status-pill" data-tone={item.tone}>
+                    <em>{item.label}</em>
+                    <strong>{item.value}</strong>
+                  </span>
+                {/each}
+              </div>
+            </div>
+          </div>
+
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
             <div class="scan-list">
@@ -1850,6 +1416,157 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
+
+  .shell-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .shell-summary-card {
+    min-width: 0;
+    display: grid;
+    gap: 1px;
+    padding: 4px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.022);
+  }
+
+  .shell-summary-card[data-tone='bull'] {
+    background: rgba(74,222,128,0.08);
+    border-color: rgba(74,222,128,0.2);
+  }
+
+  .shell-summary-card[data-tone='bear'] {
+    background: rgba(248,113,113,0.08);
+    border-color: rgba(248,113,113,0.2);
+  }
+
+  .shell-summary-card[data-tone='warn'] {
+    background: rgba(251,191,36,0.08);
+    border-color: rgba(251,191,36,0.2);
+  }
+
+  .shell-summary-card[data-tone='info'] {
+    background: rgba(99,179,237,0.09);
+    border-color: rgba(99,179,237,0.18);
+  }
+
+  .shell-summary-label,
+  .shell-summary-meta,
+  .status-pill em,
+  .status-pill strong {
+    font-family: var(--sc-font-mono);
+  }
+
+  .shell-summary-label {
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(247,242,234,0.42);
+  }
+
+  .shell-summary-value {
+    font-size: 10px;
+    color: rgba(247,242,234,0.9);
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .shell-summary-meta {
+    font-size: 7px;
+    color: rgba(247,242,234,0.36);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .terminal-statusline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 3px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(6,10,16,0.82);
+    margin: 3px 4px 4px;
+  }
+
+  .rail-snapshot-stack {
+    display: grid;
+    gap: 3px;
+    padding: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.012);
+  }
+
+  .shell-summary-grid.rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .terminal-statusline.rail {
+    margin: 0;
+    padding: 4px;
+    gap: 5px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .terminal-statusline-copy {
+    min-width: 0;
+    flex: 1;
+    font-size: 10px;
+    color: rgba(247,242,234,0.62);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .terminal-statusline-pills {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .terminal-statusline-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .status-pill {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 5px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+  }
+
+  .status-pill em {
+    font-style: normal;
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(247,242,234,0.4);
+  }
+
+  .status-pill strong {
+    font-size: 8px;
+    color: rgba(247,242,234,0.82);
+  }
+
+  .status-pill[data-tone='bull'] strong { color: #8fdd9d; }
+  .status-pill[data-tone='bear'] strong { color: #f19999; }
+  .status-pill[data-tone='warn'] strong { color: #e9c167; }
+  .status-pill[data-tone='info'] strong { color: #83bcff; }
 
   .terminal-body {
     flex: 1;
@@ -2624,11 +2341,30 @@
     }
   }
 
+  /* Narrow desktop / tablet landscape */
+  @media (max-width: 1360px) and (min-width: 769px) {
+    .terminal-body {
+      --terminal-left-w: 156px;
+      --terminal-analysis-w: 248px;
+    }
+    .rail-snapshot-stack {
+      display: none;
+    }
+    .workspace-panel-head {
+      padding-inline: 4px;
+    }
+  }
+
   /* Tablet — analysis rail gets narrower */
   @media (max-width: 1200px) and (min-width: 769px) {
     .analysis-rail { width: var(--terminal-analysis-w, 260px); max-width: 340px; }
     .hero-metrics-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .microstructure-row { grid-template-columns: 1fr; }
+    .shell-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .terminal-body {
+      --terminal-left-w: 144px;
+      --terminal-analysis-w: 232px;
+    }
   }
 
   /* Mobile */
@@ -2641,6 +2377,17 @@
     }
     .assistant-ribbon {
       padding: 10px;
+    }
+    .shell-summary-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .terminal-statusline {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .terminal-statusline-copy {
+      white-space: normal;
     }
     .terminal-shell-head {
       padding: 14px;

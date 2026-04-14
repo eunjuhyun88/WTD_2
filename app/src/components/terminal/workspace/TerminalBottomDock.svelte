@@ -4,7 +4,7 @@
   interface Props {
     onSend?: (text: string, files?: File[]) => void;
     loading?: boolean;
-    feedItems?: string[];
+    feedItems?: Array<string | { symbol: string; message: string; time?: string; tone?: 'bull' | 'bear' | 'warn' | 'info' | 'neutral' }>;
   }
   let { onSend, loading = false, feedItems = [] }: Props = $props();
 
@@ -28,6 +28,10 @@
     {
       label: 'Risk',
       prompt: () => `Run a backend risk check for ${$activePair || 'BTC/USDT'} on ${($activeTimeframe || '4h').toUpperCase()}. Include funding, OI, CVD, liquidity, invalidation, and avoid actions.`,
+    },
+    {
+      label: 'Export',
+      prompt: () => `Prepare an export-ready backend summary for ${$activePair || 'BTC/USDT'} on ${($activeTimeframe || '4h').toUpperCase()} with verdict, entry plan, risk plan, and evidence sources as compact JSON.`,
     },
   ];
 
@@ -59,9 +63,16 @@
 <div class="bottom-dock">
   <div class="event-tape">
     {#each feedItems as item, index}
+      {@const feed = typeof item === 'string'
+        ? { symbol: 'SYS', message: item, time: '—', tone: 'neutral' as const }
+        : item}
       <div class="tape-item">
         <span class="tape-dot"></span>
-        <span class="tape-text">{item}</span>
+        <span class="tape-symbol" data-tone={feed.tone}>{feed.symbol}</span>
+        <span class="tape-text">{feed.message}</span>
+        {#if feed.time}
+          <span class="tape-time">{feed.time}</span>
+        {/if}
       </div>
       {#if index < feedItems.length - 1}
         <span class="tape-sep">•</span>
@@ -181,11 +192,29 @@
   }
 
   .tape-text,
-  .tape-sep {
+  .tape-sep,
+  .tape-symbol,
+  .tape-time {
     font-family: var(--sc-font-mono);
     font-size: 8px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+  }
+
+  .tape-symbol {
+    color: rgba(131,188,255,0.88);
+    font-weight: 700;
+  }
+
+  .tape-symbol[data-tone='bull'] { color: #8fdd9d; }
+  .tape-symbol[data-tone='bear'] { color: #f19999; }
+  .tape-symbol[data-tone='warn'] { color: #e9c167; }
+  .tape-symbol[data-tone='info'] { color: #83bcff; }
+
+  .tape-time {
+    color: rgba(247,242,234,0.28);
+    text-transform: none;
+    letter-spacing: 0.02em;
   }
 
   .tape-sep {
