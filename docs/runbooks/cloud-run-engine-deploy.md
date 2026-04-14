@@ -1,6 +1,6 @@
 # Cloud Run Engine Deploy
 
-Canonical deploy path for `engine-api`.
+Canonical deploy path for `engine-api` and `worker-control`.
 
 ## Why This Path
 
@@ -14,7 +14,7 @@ This repository is a monorepo with multiple deployable surfaces. Use an explicit
 
 ## Canonical Continuous Deploy
 
-Use a Cloud Build trigger that points at the repository root config file:
+Use a Cloud Build trigger that points at the repository root config file for the public API:
 
 - configuration type: `Cloud Build configuration file`
 - configuration path: `/cloudbuild.yaml`
@@ -30,6 +30,20 @@ Set these substitutions in `cloudbuild.yaml` before enabling the trigger:
 - `_SERVICE_NAME`
 - `_SERVICE_REGION`
 - `_APP_ORIGIN`
+
+For `worker-control`, create a second trigger:
+
+- configuration type: `Cloud Build configuration file`
+- configuration path: `/cloudbuild.worker.yaml`
+- branch regex: `^main$`
+
+Set these substitutions in `cloudbuild.worker.yaml` before enabling the trigger:
+
+- `_AR_REGION`
+- `_AR_REPOSITORY`
+- `_IMAGE_NAME`
+- `_SERVICE_NAME`
+- `_SERVICE_REGION`
 
 ## Manual Build
 
@@ -51,7 +65,8 @@ If you use the Cloud Run console with source-repo deployment:
 
 - do not use the `Dockerfile` configuration mode
 - use `Cloud Build configuration file`
-- point it at `/cloudbuild.yaml`
+- point it at `/cloudbuild.yaml` for the public API
+- point it at `/cloudbuild.worker.yaml` for worker-control
 
 ## Canonical Deploy
 
@@ -64,7 +79,7 @@ gcloud run deploy engine-api \
   --set-env-vars APP_ORIGIN=https://YOUR_VERCEL_DOMAIN,ENGINE_PORT=8000
 ```
 
-Recommended starting flags:
+Recommended starting flags for `engine-api`:
 
 - request-based billing
 - minimum instances `0`
@@ -73,12 +88,34 @@ Recommended starting flags:
 - memory `512MiB`
 - container port `8000`
 
+`cloudbuild.yaml` deploys `engine-api` with:
+
+- `ENGINE_ENABLE_SCHEDULER=false`
+- `APP_ORIGIN=https://YOUR_VERCEL_DOMAIN`
+- `ENGINE_PORT=8000`
+
+## Worker Deploy
+
+`cloudbuild.worker.yaml` deploys a separate `worker-control` service using `engine/worker/Dockerfile`.
+
+Recommended starting flags for `worker-control`:
+
+- request-based billing or instance-based depending on run cadence
+- no public access
+- minimum instances `0`
+- maximum instances `1`
+- CPU `1`
+- memory `512MiB`
+- `ENGINE_ENABLE_SCHEDULER=true`
+
 ## Required Environment Variables
 
 - `APP_ORIGIN=https://YOUR_VERCEL_DOMAIN`
 - `ENGINE_PORT=8000`
 
 Optional engine-side env vars should be added as needed for provider keys or background tasks.
+
+If worker jobs need Supabase or provider credentials, add them to the worker service rather than the public API service unless they are also needed by request/response routes.
 
 ## Health Checks
 
@@ -97,4 +134,5 @@ curl -fsS https://engine-api-xxxx.REGION.run.app/readyz
 ## Notes
 
 - `engine-api` is currently a public HTTP service if deployed with `--allow-unauthenticated`
-- route hardening and control-plane extraction are separate tasks
+- `worker-control` should not be exposed publicly
+- route hardening remains a separate task, but control-plane extraction is now represented in the deploy lane

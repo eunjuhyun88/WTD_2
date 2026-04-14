@@ -9,13 +9,13 @@ def health_payload(version: str) -> dict:
     return {"status": "ok", "version": version}
 
 
-def readiness_payload(version: str) -> dict:
+def readiness_payload(version: str, *, scheduler_enabled: bool) -> dict:
     engine = get_engine()
     return {
         "status": "ready",
         "version": version,
+        "scheduler_enabled": scheduler_enabled,
         "scheduler_running": is_running(),
         "model_loaded": engine.is_trained,
         "model_version": engine.model_version,
     }
-
