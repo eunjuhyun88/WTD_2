@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "douni": {
+    "toolPolicy": {
+      "mode": "shadow",
+      "allowlist": [
+        "analyze_market",
+        "check_social",
+        "scan_market",
+        "check_pattern_status",
+        "chart_control",
+        "save_pattern",
+        "submit_feedback",
+        "query_memory"
+      ],
+      "denylist": [],
+      "requiresApproval": [
+        "save_pattern",
+        "submit_feedback"
+      ]
+    }
+  }
+}

@@ -6,6 +6,8 @@ import { toPositiveNumber } from '$lib/server/apiValidation';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import type { ShadowAgentDecision } from '$lib/server/intelShadowAgent';
 import type { IntelPolicyOutput } from '$lib/server/intelPolicyRuntime';
+import { evaluateShadowExecutionGovernance } from '$lib/guardrails/decision/shadowExecutionGate';
+import { recordGuardrailAudit } from '$lib/guardrails/core/audit';
 
 type ShadowPayload = {
   ok?: boolean;
@@ -95,15 +97,33 @@ export const POST: RequestHandler = async ({ cookies, request, fetch }) => {
     const shadow = shadowJson.data.shadow;
     const enforced = shadow.enforced;
     const dir = toTradeDir(enforced.bias);
+    const governance = evaluateShadowExecutionGovernance({
+      shadow,
+      policy: shadowJson.data.policy,
+    });
+    recordGuardrailAudit({
+      area: 'decision',
+      action: 'intel_shadow_execute',
+      mode: governance.mode,
+      result: governance.result,
+      metadata: {
+        pair,
+        timeframe,
+        shadowSource: shadow.source,
+        policyBias: shadowJson.data.policy.decision.bias,
+      },
+      createdAt: Date.now(),
+    });
 
-    if (!enforced.shouldExecute || !dir) {
+    if (governance.blocked || !dir) {
       return json(
         {
           ok: false,
           error: 'Shadow guardrails blocked execution',
           details: {
             bias: enforced.bias,
-            reasons: enforced.reasons,
+            reasons: governance.result.reasons,
+            mode: governance.mode,
           },
         },
         { status: 409 },
@@ -160,6 +180,11 @@ export const POST: RequestHandler = async ({ cookies, request, fetch }) => {
           provider: shadow.provider,
           model: shadow.model,
           enforced,
+          governance: {
+            mode: governance.mode,
+            effectiveDecision: governance.effectiveDecision,
+            reasons: governance.result.reasons,
+          },
         },
         trade: openJson.trade,
       },
