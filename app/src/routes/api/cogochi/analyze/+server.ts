@@ -50,11 +50,15 @@ import { createAnalyzeTimer } from '$lib/server/analyze/timing';
 import { analyzeLimiter } from '$lib/server/rateLimit';
 import {
 	buildAnalyzeCacheKey,
-	getAnalyzeCachedResponse,
-	setAnalyzeCachedResponse,
+	getOrRunAnalyzeResponse,
 } from '$lib/server/analyze/cache';
-
-const inFlightByKey = new Map<string, Promise<Response>>();
+import {
+	attachAnalyzeRequestMeta,
+	buildAnalyzeTraceHeaders,
+	createAnalyzeErrorEnvelope,
+	createAnalyzePayloadMeta,
+} from '$lib/server/analyze/responseEnvelope';
+import { logAnalyzeRouteEvent } from '$lib/server/analyze/telemetry';
 
 // ---------------------------------------------------------------------------
 // Main handler
@@ -71,49 +75,218 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
 		max: 18,
 		tooManyMessage: 'Too many analyze requests. Please retry shortly.',
 	});
-	if (!guard.ok) return guard.response;
+	if (!guard.ok) {
+		const reason = await readErrorReasonFromResponse(
+			guard.response,
+			guard.response.status === 429
+				? 'Too many analyze requests. Please retry shortly.'
+				: 'Request blocked by security policy',
+		);
+		const error = guard.response.status === 429 ? 'rate_limited' : 'request_blocked';
+		logAnalyzeRouteEvent({
+			event: 'blocked',
+			requestId,
+			symbol,
+			tf,
+			status: guard.response.status,
+			error,
+			reason,
+		});
+		return json(
+			createAnalyzeErrorEnvelope({
+				requestId,
+				error,
+				reason,
+				status: guard.response.status,
+				upstream: 'security',
+			}),
+			{
+				status: guard.response.status,
+				headers: {
+					...buildAnalyzeTraceHeaders({ requestId }),
+					'cache-control': 'private, no-store',
+				},
+			},
+		);
+	}
 
 	const cacheKey = buildAnalyzeCacheKey(symbol, tf);
-	const cached = await getAnalyzeCachedResponse<Record<string, unknown>>(cacheKey);
-	if (cached) {
-		return json(cached, {
+	try {
+		const { payload, cacheStatus } = await getOrRunAnalyzeResponse(cacheKey, async () => {
+			return _buildAnalyzePayload({ symbol, tf, requestId });
+		});
+		const responsePayload = attachAnalyzeRequestMeta(payload, { requestId, cacheStatus });
+		logAnalyzeRouteEvent({
+			event: 'success',
+			requestId,
+			symbol,
+			tf,
+			status: 200,
+			cacheStatus,
+			payload: responsePayload,
+		});
+		return json(responsePayload, {
 			headers: buildPublicCacheHeaders({
 				browserMaxAge: 5,
 				sharedMaxAge: 7,
 				staleWhileRevalidate: 10,
-				cacheStatus: 'hit',
-				headers: {
-					'x-request-id': requestId,
-					'x-analyze-cache': 'hit',
-				},
+				cacheStatus,
+				headers: buildAnalyzeTraceHeaders({
+					requestId,
+					cacheStatus,
+					payload: responsePayload,
+				}),
 			}),
 		});
-	}
-	const inFlight = inFlightByKey.get(cacheKey);
-	if (inFlight) {
-		return inFlight;
-	}
-
-	const work = _handleAnalyze({ symbol, tf, requestId, cacheKey });
-	inFlightByKey.set(cacheKey, work);
-	try {
-		return await work;
-	} finally {
-		inFlightByKey.delete(cacheKey);
+	} catch (err: unknown) {
+		if (err instanceof EngineError && (err.status === 502 || err.status === 504)) {
+			try {
+				const fallbackPayload = await _fallbackAnalyzePayload(symbol, tf);
+				const responsePayload = attachAnalyzeRequestMeta(fallbackPayload, {
+					requestId,
+					cacheStatus: 'bypass',
+				});
+				logAnalyzeRouteEvent({
+					event: 'fallback',
+					requestId,
+					symbol,
+					tf,
+					status: 200,
+					cacheStatus: 'bypass',
+					payload: responsePayload,
+				});
+				return json(responsePayload, {
+					headers: {
+						...buildAnalyzeTraceHeaders({
+							requestId,
+							cacheStatus: 'bypass',
+							payload: responsePayload,
+						}),
+						'cache-control': 'private, no-store',
+					},
+				});
+			} catch (fallbackErr: unknown) {
+				const message = fallbackErr instanceof Error ? fallbackErr.message : 'Fallback failed';
+				logAnalyzeRouteEvent({
+					event: 'error',
+					requestId,
+					symbol,
+					tf,
+					status: 503,
+					error: 'fallback_unavailable',
+					reason: message,
+				});
+				return json(
+					createAnalyzeErrorEnvelope({
+						requestId,
+						error: 'fallback_unavailable',
+						reason: message,
+						status: 503,
+						upstream: 'engine',
+					}),
+					{
+						status: 503,
+						headers: {
+							...buildAnalyzeTraceHeaders({ requestId }),
+							'cache-control': 'private, no-store',
+						},
+					},
+				);
+			}
+		}
+		if (err instanceof AnalyzeRouteError) {
+			const error = err.status === 400 ? 'invalid_request' : 'analysis_failed';
+			logAnalyzeRouteEvent({
+				event: 'error',
+				requestId,
+				symbol,
+				tf,
+				status: err.status,
+				error,
+				reason: err.message,
+			});
+			return json(
+				createAnalyzeErrorEnvelope({
+					requestId,
+					error,
+					reason: err.message,
+					status: err.status,
+					upstream: 'route',
+				}),
+				{
+					status: err.status,
+					headers: {
+						...buildAnalyzeTraceHeaders({ requestId }),
+						'cache-control': 'private, no-store',
+					},
+				},
+			);
+		}
+		if (err instanceof EngineError) {
+			logAnalyzeRouteEvent({
+				event: 'error',
+				requestId,
+				symbol,
+				tf,
+				status: err.status,
+				error: 'upstream_error',
+				reason: err.message,
+			});
+			return json(
+				createAnalyzeErrorEnvelope({
+					requestId,
+					error: 'upstream_error',
+					reason: err.message,
+					status: err.status,
+					upstream: 'engine',
+				}),
+				{
+					status: err.status,
+					headers: {
+						...buildAnalyzeTraceHeaders({ requestId }),
+						'cache-control': 'private, no-store',
+					},
+				},
+			);
+		}
+		const message = err instanceof Error ? err.message : 'Analysis failed';
+		logAnalyzeRouteEvent({
+			event: 'error',
+			requestId,
+			symbol,
+			tf,
+			status: 500,
+			error: 'analysis_failed',
+			reason: message,
+		});
+		return json(
+			createAnalyzeErrorEnvelope({
+				requestId,
+				error: 'analysis_failed',
+				reason: message,
+				status: 500,
+				upstream: 'route',
+			}),
+			{
+				status: 500,
+				headers: {
+					...buildAnalyzeTraceHeaders({ requestId }),
+					'cache-control': 'private, no-store',
+				},
+			},
+		);
 	}
 };
 
-async function _handleAnalyze({
+async function _buildAnalyzePayload({
 	symbol,
 	tf,
 	requestId,
-	cacheKey,
 }: {
 	symbol: string;
 	tf: string;
 	requestId: string;
-	cacheKey: string;
-}): Promise<Response> {
+}): Promise<Record<string, unknown>> {
 	const timer = createAnalyzeTimer();
 
 	try {
@@ -135,7 +308,7 @@ async function _handleAnalyze({
 		timer.mark('collector_ms');
 
 		if (!klines.length) {
-			return json({ error: 'No kline data' }, { status: 400 });
+			throw new AnalyzeRouteError(400, 'No kline data');
 		}
 
 		// --- 2. Derive computed values ----------------------------------------
@@ -232,11 +405,11 @@ async function _handleAnalyze({
 
 		if (!deepResult && !scoreResult) {
 			if (deepError instanceof EngineError && (deepError.status === 502 || deepError.status === 504)) {
-				timer.flush({ symbol, tf, fallback_used: true, engine_partial: false });
-				return _fallbackToLayerEngine(symbol, tf, requestId);
+				timer.flush({ request_id: requestId, symbol, tf, fallback_used: true, engine_partial: false });
+				throw deepError;
 			}
-			timer.flush({ symbol, tf, fallback_used: false, engine_partial: false });
-			return json({ error: 'Both /deep and /score failed' }, { status: 500, headers: { 'x-request-id': requestId } });
+			timer.flush({ request_id: requestId, symbol, tf, fallback_used: false, engine_partial: false });
+			throw new AnalyzeRouteError(500, 'Both /deep and /score failed');
 		}
 
 		const payload = mapAnalyzeResponse(
@@ -257,35 +430,51 @@ async function _handleAnalyze({
 			{ deepResult, scoreResult, deepError, scoreError },
 		);
 		timer.mark('merge_ms');
-		timer.flush({ symbol, tf, fallback_used: false, engine_partial: !(deepResult && scoreResult) });
-		await setAnalyzeCachedResponse(cacheKey, payload);
-		return json(payload, {
-			headers: buildPublicCacheHeaders({
-				browserMaxAge: 5,
-				sharedMaxAge: 7,
-				staleWhileRevalidate: 10,
-				cacheStatus: 'miss',
-				headers: {
-					'x-request-id': requestId,
-					'x-analyze-cache': 'miss',
-				},
-			}),
+		timer.flush({
+			request_id: requestId,
+			symbol,
+			tf,
+			fallback_used: false,
+			engine_partial: !(deepResult && scoreResult),
 		});
+		return payload;
 
 	} catch (err: unknown) {
 		if (err instanceof EngineError) {
 			console.error('[analyze] Engine error:', err.status, err.message);
-			if (err.status === 502 || err.status === 504) {
-				timer.flush({ symbol, tf, fallback_used: true, engine_partial: false, error_code: err.status });
-				return _fallbackToLayerEngine(symbol, tf, requestId);
-			}
-			timer.flush({ symbol, tf, fallback_used: false, engine_partial: false, error_code: err.status });
-			return json({ error: err.message }, { status: err.status, headers: { 'x-request-id': requestId } });
+			timer.flush({
+				request_id: requestId,
+				symbol,
+				tf,
+				fallback_used: err.status === 502 || err.status === 504,
+				engine_partial: false,
+				error_code: err.status,
+			});
+			throw err;
+		}
+		if (err instanceof AnalyzeRouteError) {
+			console.error('[analyze] Route error:', err.status, err.message);
+			timer.flush({
+				request_id: requestId,
+				symbol,
+				tf,
+				fallback_used: false,
+				engine_partial: false,
+				error_code: err.status,
+			});
+			throw err;
 		}
 		const message = err instanceof Error ? err.message : 'Analysis failed';
 		console.error('[analyze] Unexpected error:', message);
-		timer.flush({ symbol, tf, fallback_used: false, engine_partial: false, error_code: 'unexpected' });
-		return json({ error: message }, { status: 500, headers: { 'x-request-id': requestId } });
+		timer.flush({
+			request_id: requestId,
+			symbol,
+			tf,
+			fallback_used: false,
+			engine_partial: false,
+			error_code: 'unexpected',
+		});
+		throw err instanceof Error ? err : new Error(message);
 	}
 }
 
@@ -293,13 +482,12 @@ async function _handleAnalyze({
 // Fallback: explicit degraded response (no client-engine decision logic)
 // ---------------------------------------------------------------------------
 
-async function _fallbackToLayerEngine(symbol: string, tf: string, requestId: string): Promise<Response> {
+async function _fallbackAnalyzePayload(symbol: string, tf: string): Promise<Record<string, unknown>> {
 	try {
 		const { readRaw: _readRaw, klinesRawIdForTimeframe: _klinesRaw } = await import(
 			'$lib/server/providers/rawSources'
 		);
 		const { KnownRawId: _Id } = await import('$lib/contracts/ids');
-		const { json: _json } = await import('@sveltejs/kit');
 
 		const [klines, ticker, funding, oiPoint, lsTop] = await Promise.all([
 			_readRaw(_klinesRaw(tf), { symbol, limit: 200 }).catch(() => []),
@@ -311,7 +499,7 @@ async function _fallbackToLayerEngine(symbol: string, tf: string, requestId: str
 
 		const currentPrice = klines.length > 0 ? klines[klines.length - 1].close : null;
 
-		return _json({
+		return {
 			deep: null,
 			snapshot: null,
 			p_win: null,
@@ -330,32 +518,34 @@ async function _fallbackToLayerEngine(symbol: string, tf: string, requestId: str
 			microstructure: null,
 			annotations: [],
 			indicators: { bbUpper: [], bbMiddle: [], bbLower: [], ema20: [] },
-		}, {
-			headers: buildPublicCacheHeaders({
-				browserMaxAge: 5,
-				sharedMaxAge: 7,
-				staleWhileRevalidate: 10,
-				headers: {
-					'x-request-id': requestId,
-					'x-analyze-cache': 'bypass',
-				},
+			meta: createAnalyzePayloadMeta({
+				engineMode: 'fallback',
+				upstreamMissing: ['deep', 'score'],
 			}),
-		});
+		};
 	} catch (fallbackErr: unknown) {
 		const msg = fallbackErr instanceof Error ? fallbackErr.message : 'Fallback also failed';
-		return json(
-			{ error: `Engine offline and fallback failed: ${msg}` },
-			{
-				status: 503,
-				headers: buildPublicCacheHeaders({
-					browserMaxAge: 0,
-					sharedMaxAge: 0,
-					headers: {
-						'x-request-id': requestId,
-						'x-analyze-cache': 'bypass',
-					},
-				}),
-			},
-		);
+		throw new Error(`Engine offline and fallback failed: ${msg}`);
 	}
+}
+
+class AnalyzeRouteError extends Error {
+	constructor(
+		public readonly status: number,
+		message: string,
+	) {
+		super(message);
+		this.name = 'AnalyzeRouteError';
+	}
+}
+
+async function readErrorReasonFromResponse(base: Response, fallback: string): Promise<string> {
+	try {
+		const body = (await base.clone().json()) as { error?: unknown; reason?: unknown };
+		if (typeof body.reason === 'string' && body.reason.trim().length > 0) return body.reason;
+		if (typeof body.error === 'string' && body.error.trim().length > 0) return body.error;
+	} catch {
+		// ignore parse failures and use fallback
+	}
+	return fallback;
 }

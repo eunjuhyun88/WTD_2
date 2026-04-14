@@ -3,11 +3,22 @@ import type { RequestHandler } from './$types';
 import type { Cookies } from '@sveltejs/kit';
 import { collectMarketSnapshot } from '$lib/server/marketSnapshotService';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { marketSnapshotLimiter } from '$lib/server/rateLimit';
 import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
+import { createSharedPublicRouteCache, type PublicRouteCacheStatus } from '$lib/server/publicRouteCache';
 import { isRequestBodyTooLargeError, readJsonBody } from '$lib/server/requestGuards';
 
 type MarketSnapshotResult = Awaited<ReturnType<typeof collectMarketSnapshot>>;
+type MarketSnapshotSuccessPayload = ReturnType<typeof buildSuccessPayload>;
+
+const PUBLIC_CACHE_TTL_MS = 30_000;
+
+const publicMarketSnapshotCache = createSharedPublicRouteCache<MarketSnapshotSuccessPayload>({
+  scope: 'market:snapshot',
+  ttlMs: PUBLIC_CACHE_TTL_MS,
+});
 
 function toValidationMessage(error: any): string | null {
   const message = typeof error?.message === 'string' ? error.message : '';
@@ -51,22 +62,43 @@ function buildSuccessPayload(snapshot: MarketSnapshotResult) {
   };
 }
 
-function successResponse(snapshot: MarketSnapshotResult) {
-  return json(buildSuccessPayload(snapshot), {
+function buildPublicSnapshotCacheKey(pair: string, timeframe: string): string {
+  return `${pair}:${timeframe}`;
+}
+
+function noStoreHeaders(): Record<string, string> {
+  return {
+    'Cache-Control': 'no-store',
+  };
+}
+
+function publicSuccessResponse(payload: MarketSnapshotSuccessPayload, cacheStatus: PublicRouteCacheStatus) {
+  return json(payload, {
     headers: {
-      'Cache-Control': 'public, max-age=30',
+      ...buildPublicCacheHeaders({
+        browserMaxAge: 15,
+        sharedMaxAge: 30,
+        staleWhileRevalidate: 30,
+        cacheStatus,
+      }),
     },
+  });
+}
+
+function privateSuccessResponse(snapshot: MarketSnapshotResult) {
+  return json(buildSuccessPayload(snapshot), {
+    headers: noStoreHeaders(),
   });
 }
 
 function errorResponse(error: any, method: 'get' | 'post') {
   if (isRequestBodyTooLargeError(error)) {
-    return json({ error: 'Request body too large' }, { status: 413 });
+    return json({ error: 'Request body too large' }, { status: 413, headers: noStoreHeaders() });
   }
   const validationMessage = toValidationMessage(error);
-  if (validationMessage) return json({ error: validationMessage }, { status: 400 });
+  if (validationMessage) return json({ error: validationMessage }, { status: 400, headers: noStoreHeaders() });
   console.error(`[market/snapshot/${method}] unexpected error:`, error);
-  return json({ error: 'Failed to build market snapshot' }, { status: 500 });
+  return json({ error: 'Failed to build market snapshot' }, { status: 500, headers: noStoreHeaders() });
 }
 
 async function isAuthenticated(cookies: Cookies): Promise<boolean> {
@@ -91,13 +123,22 @@ export const GET: RequestHandler = async ({ fetch, url, cookies, getClientAddres
   if (!guard.ok) return guard.response;
 
   try {
-    const pair = url.searchParams.get('pair');
-    const timeframe = url.searchParams.get('timeframe');
+    const pair = normalizePair(url.searchParams.get('pair'));
+    const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
+    const authenticated = await isAuthenticated(cookies);
     const requestedPersist = toPersistFlag(url.searchParams.get('persist'), true);
-    const persist = requestedPersist && (await isAuthenticated(cookies));
+    const persist = requestedPersist && authenticated;
+
+    if (!authenticated && !persist) {
+      const { payload, cacheStatus } = await publicMarketSnapshotCache.run(
+        buildPublicSnapshotCacheKey(pair, timeframe),
+        async () => buildSuccessPayload(await collectMarketSnapshot(fetch, { pair, timeframe, persist: false })),
+      );
+      return publicSuccessResponse(payload, cacheStatus);
+    }
 
     const snapshot = await collectMarketSnapshot(fetch, { pair, timeframe, persist });
-    return successResponse(snapshot);
+    return privateSuccessResponse(snapshot);
   } catch (error: any) {
     return errorResponse(error, 'get');
   }
@@ -117,13 +158,14 @@ export const POST: RequestHandler = async ({ fetch, request, cookies, getClientA
 
   try {
     const body = await readJsonBody<Record<string, unknown>>(request, 16 * 1024);
-    const pair = typeof body?.pair === 'string' ? body.pair : null;
-    const timeframe = typeof body?.timeframe === 'string' ? body.timeframe : null;
+    const pair = normalizePair(typeof body?.pair === 'string' ? body.pair : null);
+    const timeframe = normalizeTimeframe(typeof body?.timeframe === 'string' ? body.timeframe : null);
+    const authenticated = await isAuthenticated(cookies);
     const requestedPersist = toPersistFlag(body?.persist, true);
-    const persist = requestedPersist && (await isAuthenticated(cookies));
+    const persist = requestedPersist && authenticated;
 
     const snapshot = await collectMarketSnapshot(fetch, { pair, timeframe, persist });
-    return successResponse(snapshot);
+    return privateSuccessResponse(snapshot);
   } catch (error: any) {
     return errorResponse(error, 'post');
   }
