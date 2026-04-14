@@ -28,9 +28,10 @@
     patternPhases?: PatternPhaseRow[];
     activeSymbol?: string;
     newsItems?: Array<{ title?: string; source?: string; created_at?: string; published_at?: string }>;
+    marketEvents?: Array<{ tag?: string; level?: string; text?: string }>;
     onQuery?: (q: string) => void;
   }
-  let { trendingData, alerts = [], patternPhases = [], activeSymbol = '', newsItems = [], onQuery }: Props = $props();
+  let { trendingData, alerts = [], patternPhases = [], activeSymbol = '', newsItems = [], marketEvents = [], onQuery }: Props = $props();
 
   const QUICK_QUERIES = [
     { id: 'buy',      label: 'Buy Candidates', action: 'Show me the best buy candidates right now', tone: 'info' },
@@ -61,6 +62,12 @@
   function blockLabel(b: string): string {
     return b.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
+  function signalMark(change: number): string {
+    if (change >= 2) return '▲';
+    if (change <= -2) return '▼';
+    if (Math.abs(change) >= 0.8) return '!';
+    return '·';
+  }
 
   let movers = $derived(trendingData?.trending?.slice(0, 6) ?? []);
   let recentAlerts = $derived(alerts.slice(0, 8));
@@ -82,6 +89,13 @@
   });
   let anomalyItems = $derived.by(() => {
     const items: Array<{ tone: 'warn' | 'bear' | 'info'; label: string; value: string }> = [];
+    for (const event of marketEvents.slice(0, 2)) {
+      items.push({
+        tone: event.level === 'warning' ? 'warn' : event.level === 'critical' ? 'bear' : 'info',
+        label: `${event.tag ?? 'EVENT'} ${(event.text ?? 'market event').slice(0, 40)}`,
+        value: 'live',
+      });
+    }
     for (const alert of recentAlerts.slice(0, 3)) {
       items.push({
         tone: alert.p_win != null && alert.p_win >= 0.58 ? 'warn' : 'info',
@@ -162,16 +176,21 @@
 
   <!-- Watchlist -->
   <section class="rail-section">
-    <h3 class="section-title">Watchlist</h3>
+    <h3 class="section-title">
+      Watchlist
+      <span class="alert-count">{watchlist.length}</span>
+    </h3>
     <div class="watchlist">
       {#if watchlist.length > 0}
         <div class="watch-head">
           <span>SYM</span>
           <span>PRICE</span>
           <span>24H</span>
+          <span>SIG</span>
         </div>
       {/if}
       {#each watchlist as coin}
+        {@const chg = coin.change24h ?? coin.percentChange24h ?? 0}
         <button
           class="watch-item"
           class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT'}
@@ -179,9 +198,10 @@
         >
           <span class="watch-sym">{coin.symbol}</span>
           <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
-          <span class="watch-chg" style="color:{pctColor(coin.change24h ?? coin.percentChange24h ?? 0)}">
-            {formatPct(coin.change24h ?? coin.percentChange24h ?? 0)}
+          <span class="watch-chg" style="color:{pctColor(chg)}">
+            {formatPct(chg)}
           </span>
+          <span class="watch-sig">{signalMark(chg)}</span>
         </button>
       {/each}
       {#if watchlist.length === 0}
@@ -349,7 +369,7 @@
 
   .watch-head {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 52px 38px;
+    grid-template-columns: minmax(0, 1fr) 52px 38px 20px;
     gap: 4px;
     padding: 1px 4px 2px;
     border-bottom: 1px solid rgba(255,255,255,0.045);
@@ -363,13 +383,14 @@
   }
 
   .watch-head span:nth-child(2),
-  .watch-head span:nth-child(3) {
+  .watch-head span:nth-child(3),
+  .watch-head span:nth-child(4) {
     text-align: right;
   }
 
   .watch-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 52px 38px;
+    grid-template-columns: minmax(0, 1fr) 52px 38px 20px;
     align-items: center;
     gap: 4px;
     background: none; border: 1px solid transparent; cursor: pointer; padding: 2px 4px;
@@ -381,6 +402,12 @@
   }
   .watch-sym { font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700; color: var(--sc-text-0); letter-spacing: 0.02em; }
   .watch-price, .watch-chg { font-family: var(--sc-font-mono); font-size: 8px; text-align: right; }
+  .watch-sig {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    color: rgba(247,242,234,0.5);
+    text-align: right;
+  }
 
   .anomaly-item {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
