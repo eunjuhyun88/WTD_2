@@ -17,7 +17,7 @@
 
   let inputText = $state('');
   let files = $state<File[]>([]);
-  let fileInputRef: HTMLInputElement;
+  let fileInputRef = $state<HTMLInputElement | null>(null);
   let expanded = $state(false);
 
   function handleSend() {
@@ -90,7 +90,7 @@
           <button
             class="action-btn"
             title="Attach image"
-            onclick={() => fileInputRef.click()}
+            onclick={() => fileInputRef?.click()}
             aria-label="Attach image"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -255,6 +255,7 @@
     line-height: 1.4;
     min-height: 40px;
     max-height: 100px;
+    appearance: none;
     -webkit-appearance: none;
   }
 
