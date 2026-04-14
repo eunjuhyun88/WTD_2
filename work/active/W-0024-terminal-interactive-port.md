@@ -14,6 +14,7 @@ app
 - Add bottom dock quick actions that submit real terminal commands through the existing backend message stream.
 - Keep the global product header intact and avoid adding a second in-page global header.
 - Keep home route untouched.
+- Design the missing backend/app-domain contracts required so every prototype interaction has a real server-side owner.
 
 ## Non-Goals
 
@@ -28,6 +29,7 @@ app
 - `app/src/routes/terminal/+page.svelte`
 - `app/src/components/terminal/workspace/TerminalContextPanel.svelte`
 - `app/src/components/terminal/workspace/TerminalBottomDock.svelte`
+- `docs/domains/terminal-html-backend-parity.md`
 - `/Users/ej/Downloads/cogochi_terminal_interactive.html`
 
 ## Decisions
@@ -36,16 +38,20 @@ app
 - Challenge saving uses the existing capture modal path instead of a fake local save.
 - `metrics` tab remains the internal id, but the visible label is `Flow`.
 - `Execute` language is removed because the product does not execute trades from this UI.
+- SSE terminal messaging remains the conversational path, but deterministic product actions should migrate to dedicated routes as contracts become available.
+- Prototype parity is measured by backend ownership, not by preserving the prototype's local modal implementations.
 
 ## Next Steps
 
-1. Wire any remaining quick actions to dedicated backend APIs as those APIs become available.
-2. Continue porting the interactive prototype into the left rail and center board without duplicating global navigation.
-3. Keep density improvements aligned with the existing dashboard/header shell.
+1. Land contracts for status, presets, anomalies, macro, depth ladder, liquidation clusters, alerts, pins, watchlist, and export jobs.
+2. Rewire quick actions and badges away from mock/local state to dedicated backend routes.
+3. Continue porting the interactive prototype into the left rail and center board without duplicating global navigation.
+4. Keep density improvements aligned with the existing dashboard/header shell.
 
 ## Exit Criteria
 
 - `/terminal` keeps one global header and one compact workspace bar.
 - Action buttons either call the backend stream or open an existing real flow.
 - `/terminal` visibly contains the interactive prototype's right-rail decision structure.
+- The backend parity plan in `docs/domains/terminal-html-backend-parity.md` is the contract reference for remaining prototype actions.
 - `npm --prefix app run check` passes.

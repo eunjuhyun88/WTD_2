@@ -42,6 +42,16 @@
   let currentChangePct = $state<number | null>(null);
   let currentRsi = $state<number | null>(null);
   let currentOiDelta = $state<number | null>(null);
+  let depthRatio = $derived.by(() => {
+    const oi = currentOiDelta ?? 0;
+    const ratio = 1 + oi / 40;
+    return Math.max(0.65, Math.min(1.35, ratio));
+  });
+  let bidPct = $derived(Math.round((depthRatio / (1 + depthRatio)) * 100));
+  let askPct = $derived(100 - bidPct);
+  let liqAnchor = $derived(currentPrice ?? verdictLevels?.entry ?? 0);
+  let liqLong = $derived(liqAnchor ? liqAnchor * 0.985 : 0);
+  let liqShort = $derived(liqAnchor ? liqAnchor * 1.012 : 0);
 
   // Save Setup modal
   let showSaveModal = $state(false);
@@ -456,6 +466,39 @@
       <button onclick={loadData}>Retry</button>
     </div>
   {:else}
+    <div class="micro-bars">
+      <div class="depth-strip">
+        <div class="strip-head">
+          <span>Order Book Depth</span>
+          <small>Spread 0.01% · Mid {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+        </div>
+        <div class="depth-bar">
+          <div class="depth-bid" style={`width:${bidPct}%`}>
+            <span>BID {bidPct}%</span>
+          </div>
+          <div class="depth-ask" style={`width:${askPct}%`}>
+            <span>ASK {askPct}%</span>
+          </div>
+        </div>
+      </div>
+      <div class="liq-strip">
+        <div class="strip-head">
+          <span>Liquidation Clusters</span>
+          <small>{liqLong ? liqLong.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'} — {liqShort ? liqShort.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+        </div>
+        <div class="liq-track">
+          <span class="liq-zone long" style="left:12%;width:14%"></span>
+          <span class="liq-zone warn" style="left:37%;width:18%"></span>
+          <span class="liq-zone short" style="left:68%;width:16%"></span>
+          <span class="liq-now" style="left:52%"></span>
+        </div>
+        <div class="liq-labels">
+          <small class="liq-l">Long liq {liqLong ? liqLong.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+          <small class="liq-c">Now {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+          <small class="liq-s">Short liq {liqShort ? liqShort.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+        </div>
+      </div>
+    </div>
     <div class="pane-main"  bind:this={mainEl}></div>
     <div class="pane-label">VOL</div>
     <div class="pane-vol"   bind:this={volEl}></div>
@@ -724,5 +767,112 @@
     background: #0a0a0a;
     border-top: 1px solid rgba(255,255,255,0.04);
     letter-spacing: 0.06em;
+  }
+
+  .micro-bars {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px 7px 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.01);
+  }
+  .depth-strip,
+  .liq-strip {
+    display: grid;
+    gap: 3px;
+    padding: 4px 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 3px;
+    background: rgba(0,0,0,0.22);
+  }
+  .strip-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+  }
+  .strip-head span,
+  .strip-head small,
+  .depth-bid span,
+  .depth-ask span,
+  .liq-labels small {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+  }
+  .strip-head span {
+    color: rgba(247,242,234,0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .strip-head small {
+    color: rgba(247,242,234,0.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .depth-bar {
+    display: flex;
+    height: 16px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.04);
+  }
+  .depth-bid,
+  .depth-ask {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+  .depth-bid {
+    justify-content: flex-start;
+    background: linear-gradient(90deg, rgba(52,196,112,0.35), rgba(52,196,112,0.7));
+  }
+  .depth-ask {
+    justify-content: flex-end;
+    background: linear-gradient(90deg, rgba(232,85,85,0.72), rgba(232,85,85,0.35));
+  }
+  .depth-bid span,
+  .depth-ask span {
+    color: rgba(255,255,255,0.74);
+    padding: 0 5px;
+    white-space: nowrap;
+  }
+  .liq-track {
+    position: relative;
+    height: 13px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+  .liq-zone {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 1px;
+  }
+  .liq-zone.long { background: rgba(232,85,85,0.8); }
+  .liq-zone.warn { background: rgba(212,135,10,0.75); }
+  .liq-zone.short { background: rgba(52,196,112,0.75); }
+  .liq-now {
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    width: 1px;
+    background: rgba(247,242,234,0.85);
+  }
+  .liq-labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .liq-l { color: rgba(241,153,153,0.85); }
+  .liq-c { color: rgba(247,242,234,0.68); }
+  .liq-s { color: rgba(143,221,157,0.85); }
+
+  @media (max-width: 1200px) {
+    .micro-bars {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
