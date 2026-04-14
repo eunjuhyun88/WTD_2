@@ -44,6 +44,7 @@ contract
 
 ## Next Steps
 
+- verify `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` on a machine with Docker or another Compose-compatible runtime installed
 - decide whether local compose should eventually include a `worker-control` service stub
 - add a short runbook if containerized local development becomes a default path
 - revisit health/readiness depth when Redis/Postgres become real engine dependencies instead of placeholders
@@ -53,3 +54,10 @@ contract
 - the repo has a coherent local multi-service scaffold for app and engine
 - app readiness reflects engine readiness in a machine-readable way
 - the local runtime scaffold is documented as a child step of the broader runtime-split plan
+
+## Verification Notes
+
+- 2026-04-14: `docker`, `podman`, `colima`, and `nerdctl` were not available in the local PATH, so Compose config/build/up verification could not run in this environment.
+- 2026-04-14: app route contract tests passed for `src/routes/api/engine`, `src/routes/api/market/snapshot`, `src/routes/api/auth/session`, and `src/routes/api/cogochi/thermometer`.
+- 2026-04-14: engine contract/observability tests passed for `tests/test_observability_metrics.py`, `tests/test_snapshot_versioning.py`, `tests/test_contract_score_roundtrip.py`, and `tests/test_contract_deep_roundtrip.py`.
+- 2026-04-14: engine OpenAPI type sync check passed with generated app contract types up to date.

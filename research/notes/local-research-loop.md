@@ -41,6 +41,12 @@ npm --prefix app run research:rq-b-core
 - run `research:rq-b-core` when changing the current RQ-B baseline stack or its protocol-facing behavior
 - treat generated reports under `docs/generated/research/` as outputs, not the source of protocol truth
 
+## Latest local run status
+
+- `walk-forward-eval-latest` now has a reproducible completed synthetic baseline from `20260414_121011` onward.
+- The two earlier `20260414` failures were local dependency/config issues: missing `libomp.dylib` for LightGBM, then an invalid `verbose=-1` fallback parameter for scikit-learn.
+- The current canonical metric is recorded in `research/experiments/rq-b-ladder-2026-04-11.md`; do not treat the failed runs as model-quality evidence.
+
 ## Canonical links
 
 - thesis: `research/thesis/current-thesis.md`
