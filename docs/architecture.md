@@ -51,7 +51,7 @@ flowchart LR
 ### Runtime Roles
 
 - `app-web`: public origin for UI, auth/session, public orchestration, SSE, and short-lived cached reads
-- `engine-api`: canonical compute/runtime for deep analysis, scoring, evaluation, and engine-owned APIs
+- `engine-api`: canonical compute/runtime for deep analysis, scoring, evaluation, and engine-owned APIs; scheduler disabled in public Cloud Run deployments
 - `worker-control`: internal-only scheduler, queue consumer, report generation, training trigger, and batch job runtime
 
 ### State Roles
