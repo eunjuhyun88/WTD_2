@@ -18,6 +18,14 @@
         "save_pattern",
         "submit_feedback"
       ]
+    },
+    "channelPolicy": {
+      "allowlist": [
+        "terminal.douni.tools",
+        "terminal.intel-shadow.execute"
+      ],
+      "denylist": [],
+      "requiresApproval": []
     }
   }
 }
