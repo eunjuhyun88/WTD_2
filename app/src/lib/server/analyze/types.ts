@@ -32,3 +32,22 @@ export type EngineSettled = {
   deepError: unknown | null;
   scoreError: unknown | null;
 };
+
+export type AnalyzeRequestInput = {
+  symbol: string;
+  tf: string;
+};
+
+export type AnalyzeDerived = {
+  currentPrice: number;
+  oi_notional: number | undefined;
+  short_liq_usd: number;
+  long_liq_usd: number;
+  oi_pct: number;
+  taker_ratio: number | undefined;
+  vol_24h: number | undefined;
+  spreadBps: number | null;
+  imbalancePct: number | null;
+  depthView: any;
+  liqClusters: Array<{ side: 'BUY' | 'SELL'; price: number; usd: number; distancePct: number }>;
+};

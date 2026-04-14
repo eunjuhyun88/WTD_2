@@ -2,7 +2,7 @@
 
 Pipeline:
   1. Load real Binance data (klines + perp + macro + onchain)
-  2. Compute 39 features
+  2. Compute the canonical feature matrix
   3. Load (or train) a LightGBM scorer
   4. Score every bar → P(win)
   5. Generate EntrySignal wherever prob > threshold

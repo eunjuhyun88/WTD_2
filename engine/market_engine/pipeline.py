@@ -26,9 +26,12 @@ from market_engine.config import (
     SQZ_TICKS, SQZ_PCT, CVD_TARGET_MIN, CVD_TARGET_RATIO, CVD_SQZ_RATIO,
     WHALE_MIN, WHALE_RATIO, FAKEOUT_PRICE_PCT, FAKEOUT_CVD_PCT,
     DEBOUNCE_MS, SQUEEZE_RESET_S, IMBALANCE_RESET_S,
-    SIG_WINDOW_S, HOT_THRESHOLD, FIRE_THRESHOLD,
+    SIG_WINDOW_S,
 )
 from market_engine.types import GlobalCtx, LayerResult
+from market_engine.sector import compute_sector_scores
+from market_engine.signal_history import SignalHistory
+from market_engine.verdict import score_to_verdict
 from market_engine.l2 import (
     l1_wyckoff, l10_mtf,
     l2_flow, l11_cvd,
@@ -325,36 +328,6 @@ def run_deep_analysis(
     return res
 
 
-def score_to_verdict(score: float) -> str:
-    if score >= 60:  return "STRONG BULL"
-    if score >= 30:  return "BULLISH"
-    if score >= 10:  return "WEAK BULL"
-    if score > -10:  return "NEUTRAL"
-    if score > -30:  return "WEAK BEAR"
-    if score > -60:  return "BEARISH"
-    return "STRONG BEAR"
-
-
-def compute_sector_scores(symbol_scores: dict[str, float]) -> dict[str, float]:
-    """Aggregate scores by sector for ctx.sector_scores.
-
-    Call this after a first pass over all symbols (L1 or quick alpha),
-    then attach the result to ctx.sector_scores before running run_deep_analysis.
-
-    Args:
-        symbol_scores : {symbol: score}  e.g. {"BTCUSDT": 25.0, "ETHUSDT": 15.0}
-
-    Returns:
-        {sector_key: avg_score}  e.g. {"BTC": 25.0, "ETH": 15.0, "DEFI": 8.3}
-    """
-    from sector_map import get_sector
-    acc: dict[str, list[float]] = {}
-    for sym, score in symbol_scores.items():
-        sector = get_sector(sym)
-        acc.setdefault(sector, []).append(score)
-    return {s: round(sum(v) / len(v), 1) for s, v in acc.items()}
-
-
 # ── L3 Golden Gate ─────────────────────────────────────────────────────────
 
 class SniperGate:
@@ -543,64 +516,3 @@ class SniperGate:
         return None
 
 
-# ── Signal History / HOT TARGET ranking ───────────────────────────────────
-
-class SignalHistory:
-    """30-min rolling signal counter per symbol.
-
-    Mirrors Signal Radar recordSignal() + updateRankingSidebar():
-      ≥  5 signals in 30 min → 'hot'
-      ≥ 10 signals in 30 min → 'fire'
-
-    Uses deque for O(1) append + O(k) prune from the left.
-    """
-
-    def __init__(self) -> None:
-        # each entry: (timestamp_s, symbol, signal_type)
-        self._events: deque[tuple[float, str, str]] = deque()
-
-    def record(self, symbol: str, signal_type: str) -> None:
-        self._events.append((_time.time(), symbol, signal_type))
-        self._prune()
-
-    def _prune(self) -> None:
-        """Drop events older than SIG_WINDOW_S from the left (O(k) amortised O(1))."""
-        cutoff = _time.time() - SIG_WINDOW_S
-        while self._events and self._events[0][0] < cutoff:
-            self._events.popleft()
-
-    def ranking(self) -> list[dict]:
-        """Symbols ranked by signal count in the last 30 min.
-
-        Each entry:
-          { symbol, total, golden, whale, squeeze, imbalance, heat }
-        heat: 'fire' | 'hot' | ''
-        """
-        self._prune()
-        counts: dict[str, dict] = defaultdict(lambda: {
-            "total": 0, "GOLDEN": 0, "WHALE": 0, "SQUEEZE": 0, "IMBALANCE": 0,
-        })
-        for _, sym, sig in self._events:
-            counts[sym]["total"] += 1
-            if sig in counts[sym]:
-                counts[sym][sig] += 1
-
-        result = []
-        for sym, c in sorted(counts.items(), key=lambda x: -x[1]["total"]):
-            heat = (
-                "fire" if c["total"] >= FIRE_THRESHOLD else
-                "hot"  if c["total"] >= HOT_THRESHOLD  else ""
-            )
-            result.append({
-                "symbol":    sym,
-                "total":     c["total"],
-                "golden":    c["GOLDEN"],
-                "whale":     c["WHALE"],
-                "squeeze":   c["SQUEEZE"],
-                "imbalance": c["IMBALANCE"],
-                "heat":      heat,
-            })
-        return result
-
-    def top(self, n: int = 10) -> list[dict]:
-        return self.ranking()[:n]

@@ -3,8 +3,30 @@ import type { RequestHandler } from './$types';
 import { normalizeWalletModeInput } from '$lib/wallet-intel/walletIntelController';
 import type { WalletIntelApiMeta } from '$lib/wallet-intel/walletIntelTypes';
 import { buildWalletIntelServerDataset } from '$lib/server/walletIntelServer';
+import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
+import { createSharedPublicRouteCache } from '$lib/server/publicRouteCache';
 import { walletIntelLimiter } from '$lib/server/rateLimit';
 import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+
+const CACHE_TTL_MS = 120_000;
+const HEX_ADDRESS_RE = /^0x[a-fA-F0-9]{8,40}$/;
+
+const walletIntelCache = createSharedPublicRouteCache<{
+  ok: true;
+  data: Awaited<ReturnType<typeof buildWalletIntelServerDataset>>['data'];
+  meta: Awaited<ReturnType<typeof buildWalletIntelServerDataset>>['meta'];
+}>({
+  scope: 'wallet:intel',
+  ttlMs: CACHE_TTL_MS,
+});
+
+function cacheKey(address: string, chain: string): string {
+  const trimmedAddress = address.trim();
+  const normalizedAddress = HEX_ADDRESS_RE.test(trimmedAddress)
+    ? trimmedAddress.toLowerCase()
+    : trimmedAddress;
+  return `${chain.trim().toLowerCase() || 'eth'}:${normalizedAddress}`;
+}
 
 export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
   const guard = await runIpRateLimitGuard({
@@ -25,18 +47,25 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
   }
 
   try {
-    const input = normalizeWalletModeInput(address, chain);
-    const result = await buildWalletIntelServerDataset(input);
-    return json(
-      {
-        ok: true,
+    const { payload, cacheStatus } = await walletIntelCache.run(cacheKey(address, chain), async () => {
+      const input = normalizeWalletModeInput(address, chain);
+      const result = await buildWalletIntelServerDataset(input);
+      return {
+        ok: true as const,
         data: result.data,
         meta: result.meta,
-      },
+      };
+    });
+
+    return json(
+      payload,
       {
-        headers: {
-          'Cache-Control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=60',
-        },
+        headers: buildPublicCacheHeaders({
+          browserMaxAge: 30,
+          sharedMaxAge: 120,
+          staleWhileRevalidate: 60,
+          cacheStatus,
+        }),
       }
     );
   } catch (error) {

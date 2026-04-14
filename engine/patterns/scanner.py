@@ -28,6 +28,7 @@ from data_cache.loader import load_klines, load_perp
 from exceptions import CacheMiss
 from ledger.store import LedgerStore
 from ledger.types import PatternOutcome
+from patterns.entry_scorer import score_entry_feature_snapshot
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.state_machine import PatternStateMachine
 from patterns.types import PhaseTransition
@@ -91,18 +92,22 @@ def _get_entry_price(symbol: str) -> float | None:
 def _on_entry_signal(transition: PhaseTransition) -> None:
     """Called when a symbol enters the entry phase (ACCUMULATION).
 
-    v2: captures entry_price and btc_trend for conditional analysis.
+    v3: captures rule context plus shared ML shadow metadata for later training.
     """
     entry_price = _get_entry_price(transition.symbol)
     btc_trend = _detect_btc_trend()
+    entry_score = score_entry_feature_snapshot(transition.feature_snapshot)
 
     log.info(
-        "ENTRY SIGNAL: %s → %s [%s] price=%.4f btc=%s",
+        "ENTRY SIGNAL: %s → %s [%s] price=%.4f btc=%s ml=%s p_win=%s pass=%s",
         transition.symbol,
         transition.to_phase,
         transition.pattern_slug,
         entry_price or 0,
         btc_trend,
+        entry_score.state,
+        f"{entry_score.p_win:.4f}" if entry_score.p_win is not None else "n/a",
+        entry_score.threshold_passed,
     )
     outcome = PatternOutcome(
         pattern_slug=transition.pattern_slug,
@@ -111,6 +116,13 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
         entry_price=entry_price,
         btc_trend_at_entry=btc_trend,
         feature_snapshot=transition.feature_snapshot,
+        entry_block_coverage=transition.confidence,
+        entry_p_win=entry_score.p_win,
+        entry_ml_state=entry_score.state,
+        entry_model_version=entry_score.model_version,
+        entry_threshold=entry_score.threshold,
+        entry_threshold_passed=entry_score.threshold_passed,
+        entry_ml_error=entry_score.error,
     )
     LEDGER_STORE.save(outcome)
 

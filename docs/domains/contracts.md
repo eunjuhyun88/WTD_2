@@ -64,6 +64,17 @@ The caller-facing contract must make degradation explicit. Silent fallback is di
 - do not expose raw internal stack traces to clients
 - keep HTTP status aligned with failure class (4xx input, 5xx system/upstream)
 
+## SignalSnapshot Version Policy
+
+- Canonical version field: `schema_version` on `SignalSnapshot`.
+- Current supported version: `1`.
+- Backward compatibility rule:
+  - missing `schema_version` from legacy clients is normalized to `1`.
+  - unsupported versions are rejected with `400`.
+- Change rule:
+  - increment `schema_version` only on breaking schema changes.
+  - update engine adapters + app type definitions + contract tests in the same change set.
+
 ## Challenge Input Contract
 
 ### Request shape (app)

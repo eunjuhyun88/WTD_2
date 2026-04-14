@@ -8,6 +8,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { runMutatingApiOriginGuard } from '$lib/server/originGuard';
+import { shouldApplyNoIndexHeader } from '$lib/seo/policy';
 
 // Immutable asset path pattern (Vite hashed filenames)
 const IMMUTABLE_ASSET = /\/_app\/immutable\//;
@@ -34,6 +35,10 @@ export const handle: Handle = async ({ event, resolve }) => {
   const url = event.url.pathname;
   if (IMMUTABLE_ASSET.test(url)) {
     response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+
+  if (shouldApplyNoIndexHeader(url)) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   }
 
   return response;

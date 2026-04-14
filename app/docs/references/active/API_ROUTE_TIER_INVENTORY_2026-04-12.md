@@ -42,7 +42,7 @@ Primary context:
   - `/api/profile/passport/learning/reports/generate`
   - `/api/profile/passport/learning/train-jobs`
 - Still requires later phase work:
-  - Tier A shared cache promotion to Redis/edge consistency
+  - Tier A shared cache promotion to production Redis/edge consistency
   - Tier B queue/worker split for heavy scans and learning jobs
   - Tier D separation onto a privileged/internal control plane
 
@@ -55,7 +55,7 @@ Primary context:
 | `/api/auth/logout`<br>`/api/auth/session` | C | platform-auth | authenticated session boundary | session-auth only; `no-store`; per-user + per-IP quota |
 | `/api/activity`<br>`/api/activity/reaction` | C | profile | authenticated community state | session-auth; per-user quota; audit write paths |
 | `/api/chat/messages` | B | cogochi | public or semi-public assistant path | LLM/upstream fan-out; distributed limiter; concurrency cap; degraded fallback |
-| `/api/cogochi/analyze`<br>`/api/cogochi/thermometer` | B | cogochi | public heavy analysis | distributed limiter; cache normalized reads where possible; protect paid upstreams |
+| `/api/cogochi/analyze`<br>`/api/cogochi/thermometer` | B | cogochi | public heavy analysis | `analyze` hardened in this branch with distributed/IP limiter plus shared-cache-backed normalized `symbol+tf` reads; keep short TTL and protect paid upstreams |
 | `/api/cogochi/terminal/message` | B | cogochi | assistant/chat compute | distributed limiter; per-user quota if authenticated; circuit breaker on upstream saturation |
 | `/api/coinalyze`<br>`/api/etherscan/onchain`<br>`/api/onchain/cryptoquant`<br>`/api/senti/social`<br>`/api/pnl`<br>`/api/pnl/summary` | B | market-data | public paid-upstream or compute-heavy reads | distributed limiter; edge shielding; provider timeout budget; treat as expensive |
 | `/api/coingecko/global`<br>`/api/cycles/klines`<br>`/api/feargreed`<br>`/api/macro/fred`<br>`/api/yahoo/[symbol]` | A | market-data | public cacheable read | edge cache + stale-while-revalidate + per-IP shared quota |
@@ -88,13 +88,13 @@ Primary context:
 | `/api/signal-actions`<br>`/api/signals/track` | C | terminal | authenticated signal mutation | session-auth; per-user quota; audit state changes |
 | `/api/signals`<br>`/api/signals/[id]` | A | terminal | public or broadly shared signal reads | edge cache if anonymous/shared; if user-scoped, upgrade to Tier C |
 | `/api/signals/[id]/convert` | C | terminal | authenticated state conversion | session-auth; per-user quota; audit |
-| `/api/terminal/compare`<br>`/api/terminal/opportunity-scan` | B | terminal | public heavy compute | hardened in this branch with distributed/IP abuse guards; `opportunity-scan` now has a shared-cache-capable server path via Redis REST fallback, but compare still needs shared cache or queue/caching follow-up |
-| `/api/terminal/intel-agent-shadow` | A | terminal | public cacheable heavy read | fixed in this branch: distributed limiter, shared-cache-capable server path via Redis REST fallback, and stronger shared-cache-friendly headers; Phase 1 still needs full shared cache promotion |
+| `/api/terminal/compare`<br>`/api/terminal/opportunity-scan` | B | terminal | public heavy compute | hardened in this branch with distributed/IP abuse guards; `opportunity-scan` now uses the shared public route cache/coalescing path and cache-observable headers, but compare still needs shared cache or queue/caching follow-up |
+| `/api/terminal/intel-agent-shadow` | A | terminal | public cacheable heavy read | fixed in this branch: distributed limiter, shared public route cache/coalescing path, and cache-observable headers; Phase 1 still needs full shared cache promotion in production |
 | `/api/terminal/intel-agent-shadow/execute` | C | terminal | authenticated execution path | session-auth required; strict quota; audit trade creation |
 | `/api/terminal/intel-policy` | B | terminal | compute-heavy terminal policy output | distributed limiter; short timeout; degraded fallback |
 | `/api/terminal/scan`<br>`/api/terminal/scan/[id]`<br>`/api/terminal/scan/[id]/signals`<br>`/api/terminal/scan/history` | C | terminal | authenticated scan history and user state | session-auth; per-user quota; no anonymous durable writes |
 | `/api/ui-state` | C | profile | authenticated UI preference state | session-auth; per-user quota; `no-store` |
-| `/api/wallet/intel` | A | terminal | public cacheable heavy read | fixed in this branch: distributed limiter and stronger cache policy; Phase 1 still needs shared cache promotion |
+| `/api/wallet/intel` | A | terminal | public cacheable heavy read | fixed in this branch: distributed limiter, shared public route cache/coalescing path, and stronger cache policy; Phase 1 still needs full production shared cache promotion |
 | `/api/wizard` | C | terminal | authenticated challenge composition | fixed in this branch: auth required, per-user quota, request size guard |
 
 ## Launch Blockers Discovered While Classifying
@@ -102,7 +102,7 @@ Primary context:
 - `/api/profile/passport/learning/workers/run` is still a worker trigger on the general app plane even though it is disabled by default on the public origin. Move it behind the future privileged/internal control plane.
 - `/api/profile/passport/learning/reports/generate` and `/api/profile/passport/learning/train-jobs` are now disabled by default on the public origin for write/create triggers, but they still need full queue/control-plane migration once the worker split lands.
 - `/api/terminal/compare` still relies on per-instance execution/coalescing behind the new shared abuse guard. It needs shared cache or queue-backed isolation before burst launch.
-- `/api/terminal/opportunity-scan` and `/api/terminal/intel-agent-shadow` now have shared-cache-capable server paths, but production still needs real Redis/edge cache enablement for the cross-instance benefit to exist.
+- `/api/cogochi/analyze`, `/api/terminal/opportunity-scan`, `/api/terminal/intel-agent-shadow`, and `/api/wallet/intel` now have shared-cache-capable server paths, but production still needs real Redis/edge cache enablement for the cross-instance benefit to exist.
 
 ## Rule
 

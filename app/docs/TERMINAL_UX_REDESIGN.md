@@ -2,7 +2,7 @@
 
 > **Version:** 1.0 — 2026-04-13
 > **Author:** CPO / UX
-> **Status:** Design spec → implementation pending
+> **Status:** Design spec → chart-first shell implemented, progressive disclosure refinement in progress
 > **Based on:** COGOCHI_ARCHITECTURE_V2.md, COGOCHI.md §8.1, screenshot audit
 
 ---

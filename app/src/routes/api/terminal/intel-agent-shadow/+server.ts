@@ -5,9 +5,10 @@ import { normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService
 import { buildShadowAgentDecision, type ShadowAgentDecision } from '$lib/server/intelShadowAgent';
 import type { IntelPolicyOutput } from '$lib/server/intelPolicyRuntime';
 import { getLLMRuntimeStatus, type LLMRuntimeStatus } from '$lib/server/llmService';
+import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
+import { createSharedPublicRouteCache } from '$lib/server/publicRouteCache';
 import { intelShadowLimiter, intelShadowRefreshLimiter } from '$lib/server/rateLimit';
 import { runIpRateLimitGuard } from '$lib/server/authSecurity';
-import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
 
 const CACHE_TTL_MS = 20_000;
 
@@ -25,8 +26,10 @@ type ShadowCacheEntry = {
   };
 };
 
-const cache = new Map<string, ShadowCacheEntry>();
-const inflight = new Map<string, Promise<ShadowCacheEntry['payload']>>();
+const cache = createSharedPublicRouteCache<ShadowCacheEntry['payload']>({
+  scope: 'terminal:intel-shadow',
+  ttlMs: CACHE_TTL_MS,
+});
 
 function cacheKey(pair: string, timeframe: string): string {
   return `${pair}:${timeframe}`;
@@ -65,23 +68,6 @@ async function buildPayload(fetchFn: typeof fetch, pair: string, timeframe: stri
   };
 }
 
-async function getCachedPayload(key: string) {
-  const local = cache.get(key);
-  if (local && Date.now() - local.createdAt < CACHE_TTL_MS) {
-    return local.payload;
-  }
-
-  const shared = await getSharedCache<ShadowCacheEntry['payload']>('terminal:intel-shadow', key);
-  if (!shared) return null;
-  cache.set(key, { createdAt: Date.now(), payload: shared });
-  return shared;
-}
-
-async function persistPayload(key: string, payload: ShadowCacheEntry['payload']) {
-  cache.set(key, { createdAt: Date.now(), payload });
-  await setSharedCache('terminal:intel-shadow', key, payload, CACHE_TTL_MS);
-}
-
 export const GET: RequestHandler = async ({ fetch, url, request, getClientAddress }) => {
   try {
     const pair = normalizePair(url.searchParams.get('pair'));
@@ -99,65 +85,26 @@ export const GET: RequestHandler = async ({ fetch, url, request, getClientAddres
     });
     if (!guard.ok) return guard.response;
     const key = cacheKey(pair, timeframe);
-
-    if (!refresh) {
-      const cachedPayload = await getCachedPayload(key);
-      if (cachedPayload) {
-        return json(
-          {
-            ok: true,
-            data: cachedPayload,
-            cached: true,
-          },
-          {
-            headers: {
-              'Cache-Control': 'public, max-age=15, s-maxage=20, stale-while-revalidate=30',
-            },
-          },
-        );
-      }
-    }
-
-    const inProgress = inflight.get(key);
-    if (inProgress) {
-      const payload = await inProgress;
-      return json(
-        {
-          ok: true,
-          data: payload,
-          cached: false,
-          coalesced: true,
-        },
-        {
-          headers: {
-            'Cache-Control': 'public, max-age=15, s-maxage=20, stale-while-revalidate=30',
-          },
-        },
-      );
-    }
-
-    const job = buildPayload(fetch, pair, timeframe)
-      .then(async (payload) => {
-        await persistPayload(key, payload);
-        return payload;
-      })
-      .finally(() => {
-        inflight.delete(key);
-      });
-
-    inflight.set(key, job);
-    const payload = await job;
+    const { payload, cacheStatus } = await cache.run(
+      key,
+      () => buildPayload(fetch, pair, timeframe),
+      { bypassCache: refresh },
+    );
 
     return json(
       {
         ok: true,
         data: payload,
-        cached: false,
+        cached: cacheStatus === 'hit',
+        coalesced: cacheStatus === 'coalesced',
       },
       {
-        headers: {
-          'Cache-Control': 'public, max-age=15, s-maxage=20, stale-while-revalidate=30',
-        },
+        headers: buildPublicCacheHeaders({
+          browserMaxAge: 15,
+          sharedMaxAge: 20,
+          staleWhileRevalidate: 30,
+          cacheStatus,
+        }),
       },
     );
   } catch (error: any) {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { buildCanonicalHref } from '$lib/seo/site';
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import {
     strategyStore,
@@ -214,6 +215,11 @@
 
 <svelte:head>
   <title>Lab — Cogochi</title>
+  <meta
+    name="description"
+    content="Build, replay, and validate trading setups across market cycles in the Cogochi lab."
+  />
+  <link rel="canonical" href={buildCanonicalHref('/lab')} />
 </svelte:head>
 
 <div class="surface-page lab">

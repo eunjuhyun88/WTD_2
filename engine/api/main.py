@@ -12,8 +12,9 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import backtest, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns
@@ -76,6 +77,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
+    request_id = request.headers.get("x-request-id") or str(uuid4())
+    response = await call_next(request)
+    response.headers["x-request-id"] = request_id
+    log.info("%s %s status=%s request_id=%s", request.method, request.url.path, response.status_code, request_id)
+    return response
 
 # ---------------------------------------------------------------------------
 # Routes

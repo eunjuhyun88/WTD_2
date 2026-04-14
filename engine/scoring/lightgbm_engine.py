@@ -19,12 +19,18 @@ import os
 import pickle
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import numpy as np
+import pandas as pd
 
 from models.signal import SignalSnapshot
-from scoring.feature_matrix import snapshot_to_vector, FEATURE_NAMES, N_FEATURES
+from scoring.feature_matrix import (
+    FEATURE_NAMES,
+    N_FEATURES,
+    encode_features_df,
+    snapshot_to_vector,
+)
 
 log = logging.getLogger("engine.lgbm")
 
@@ -64,11 +70,23 @@ class LightGBMEngine:
         vec = snapshot_to_vector(snap).reshape(1, -1)
         return float(self._model.predict_proba(vec)[0, 1])
 
-    def predict_batch(self, X: np.ndarray) -> Optional[np.ndarray]:
-        """Score a 2-D feature matrix. Returns None if untrained."""
+    def predict_feature_row(self, row: Mapping[str, Any]) -> Optional[float]:
+        """Score one canonical feature row.
+
+        This is the preferred path for persisted `feature_snapshot` data coming
+        from the pattern engine because it avoids rebuilding a partial
+        `SignalSnapshot` by hand.
+        """
         if self._model is None:
             return None
-        return self._model.predict(X)
+        X = encode_features_df(pd.DataFrame([dict(row)]))
+        return float(self._model.predict_proba(X)[0, 1])
+
+    def predict_batch(self, X: np.ndarray) -> Optional[np.ndarray]:
+        """Score a 2-D feature matrix with probabilities. Returns None if untrained."""
+        if self._model is None:
+            return None
+        return self._model.predict_proba(X)[:, 1]
 
     def train(
         self,

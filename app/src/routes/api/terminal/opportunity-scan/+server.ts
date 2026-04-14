@@ -12,10 +12,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { runOpportunityScan, extractAlerts, type OpportunityScanResult, type OpportunityAlert } from '$lib/engine/opportunityScanner';
+import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
+import { createSharedPublicRouteCache, type PublicRouteCacheStatus } from '$lib/server/publicRouteCache';
 import { query } from '$lib/server/db';
 import { opportunityScanLimiter } from '$lib/server/rateLimit';
 import { runIpRateLimitGuard } from '$lib/server/authSecurity';
-import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
 
 // ── Server-side result cache + coalescing ────────────────────
 
@@ -27,53 +28,29 @@ interface CachedScan {
   cachedAt: number;
 }
 
-let _cachedScan: CachedScan | null = null;
-let _inflightPromise: Promise<CachedScan> | null = null;
+const opportunityScanCache = createSharedPublicRouteCache<CachedScan>({
+  scope: 'terminal:opportunity-scan',
+  ttlMs: CACHE_TTL_MS,
+});
 
 /**
  * Returns a cached or fresh scan result.
  * If a scan is already in progress, callers piggyback on the same promise
  * (request coalescing). This prevents 1000 simultaneous API storms.
  */
-async function getOrRunScan(limit: number): Promise<CachedScan> {
+async function getOrRunScan(limit: number): Promise<{ payload: CachedScan; cacheStatus: PublicRouteCacheStatus }> {
   const sharedKey = `limit:${limit}`;
-
-  // Serve from cache if fresh
-  if (_cachedScan && Date.now() - _cachedScan.cachedAt < CACHE_TTL_MS) {
-    return _cachedScan;
-  }
-
-  const shared = await getSharedCache<CachedScan>('terminal:opportunity-scan', sharedKey);
-  if (shared && Date.now() - shared.cachedAt < CACHE_TTL_MS) {
-    _cachedScan = shared;
-    return shared;
-  }
-
-  // Coalesce: if a scan is already running, wait for it
-  if (_inflightPromise) {
-    return _inflightPromise;
-  }
-
-  // Run a new scan
-  _inflightPromise = (async (): Promise<CachedScan> => {
-    try {
+  return opportunityScanCache.run(sharedKey, async () => {
       const result = await runOpportunityScan(limit);
       const alerts = extractAlerts(result);
 
       const cached: CachedScan = { result, alerts, cachedAt: Date.now() };
-      _cachedScan = cached;
-      await setSharedCache('terminal:opportunity-scan', sharedKey, cached, CACHE_TTL_MS);
 
       // Best-effort DB persist (don't block response)
       persistToDb(result, alerts).catch(() => {});
 
       return cached;
-    } finally {
-      _inflightPromise = null;
-    }
-  })();
-
-  return _inflightPromise;
+  });
 }
 
 async function persistToDb(result: OpportunityScanResult, alerts: OpportunityAlert[]): Promise<void> {
@@ -119,7 +96,8 @@ export const GET: RequestHandler = async ({ url, getClientAddress, request }) =>
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 15, 5), 30);
 
   try {
-    const { result, alerts } = await getOrRunScan(limit);
+    const { payload, cacheStatus } = await getOrRunScan(limit);
+    const { result, alerts } = payload;
 
     return json(
       {
@@ -134,9 +112,12 @@ export const GET: RequestHandler = async ({ url, getClientAddress, request }) =>
         },
       },
       {
-        headers: {
-          'Cache-Control': 'public, max-age=15, s-maxage=60, stale-while-revalidate=60',
-        },
+        headers: buildPublicCacheHeaders({
+          browserMaxAge: 15,
+          sharedMaxAge: 60,
+          staleWhileRevalidate: 60,
+          cacheStatus,
+        }),
       }
     );
   } catch (error: unknown) {

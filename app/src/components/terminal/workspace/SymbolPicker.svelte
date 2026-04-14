@@ -40,7 +40,17 @@
   let sort = $state('rank');
   let searchInput: HTMLInputElement;
 
-  const sectors = ['', 'L1', 'DeFi', 'AI', 'Meme', 'Gaming', 'Infrastructure', 'RWA'];
+  const UNIVERSE_LIMIT = 500;
+  const sectors: Array<{ label: string; value: string }> = [
+    { label: 'All', value: '' },
+    { label: 'L1', value: 'L1' },
+    { label: 'DeFi', value: 'DeFi' },
+    { label: 'AI', value: 'AI' },
+    { label: 'Meme', value: 'Meme' },
+    { label: 'Gaming', value: 'Gaming' },
+    { label: 'Infrastructure', value: 'Infra' },
+    { label: 'RWA', value: 'RWA' },
+  ];
   const sorts: { id: string; label: string }[] = [
     { id: 'rank', label: 'Rank' },
     { id: 'vol', label: 'Volume' },
@@ -54,7 +64,7 @@
     loading = true;
     error = '';
     try {
-      const params = new URLSearchParams({ limit: '50', sort });
+      const params = new URLSearchParams({ limit: String(UNIVERSE_LIMIT), sort });
       if (sector) params.set('sector', sector);
       const res = await fetch(`/api/engine/universe?${params}`);
       if (!res.ok) throw new Error(`${res.status}`);
@@ -160,13 +170,13 @@
     <!-- Filters -->
     <div class="filter-row">
       <div class="sector-chips">
-        {#each sectors as s}
+        {#each sectors as item}
           <button
             class="chip"
-            class:active={sector === s}
-            onclick={() => sector = s}
+            class:active={sector === item.value}
+            onclick={() => sector = item.value}
           >
-            {s || 'All'}
+            {item.label}
           </button>
         {/each}
       </div>
