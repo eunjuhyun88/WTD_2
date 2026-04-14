@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make the Vercel `chatbattle` project deploy from the repository root without failing on a missing `public` output directory.
+Make the Vercel `chatbattle` project deploy cleanly after the workspace root is set to `app`, without stale repo-root output-directory overrides.
 
 ## Owner
 
@@ -10,8 +10,8 @@ app
 
 ## Scope
 
-- document the deployment failure cause and intended Vercel build artifact path
-- update repository-level Vercel configuration so root-based builds expose a deployable output directory
+- document the deployment failure cause and the final `Root Directory = app` resolution
+- remove repo-root Vercel command overrides that conflict with an app-root SvelteKit deployment
 - keep the fix limited to Vercel deployment wiring for the SvelteKit app workspace
 
 ## Non-Goals
@@ -28,18 +28,18 @@ app
 
 ## Decisions
 
-- the active failing Vercel project builds from repository root (`Root Directory = .`), so the repo must expose a root-visible deployment artifact
-- `app/` remains the SvelteKit workspace, but deployment commands should use `npm --prefix app ...` from repo root
-- Vercel should be pointed at `.vercel/output/static` to avoid fallback static-output detection against a stale `public` directory expectation
+- the correct long-term Vercel configuration for `chatbattle` is `Root Directory = app`
+- once the Vercel project root is `app`, repo-root install/build/output overrides become incorrect and must be removed
+- SvelteKit should use its standard adapter-vercel behavior from the app workspace instead of a repo-root output shim
 
 ## Next Steps
 
-- push this branch so Vercel can build a commit that includes the fixed root-level output configuration
-- if the project is later reconfigured to `Root Directory = app`, simplify `vercel.json` back to the standard SvelteKit defaults
-- rerun one production deploy and inspect the next failure, if any, after the output-directory issue is cleared
+- push this follow-up branch so `main` no longer runs repo-root-prefixed npm commands after `Root Directory = app`
+- rerun one production deploy and confirm it uses the app workspace lockfile and standard SvelteKit build flow
+- keep Vercel project settings and repository config aligned so future deploy fixes do not fight each other
 
 ## Exit Criteria
 
-- repository Vercel config produces a root-level `.vercel/output` during build
-- the deployment no longer fails with `No Output Directory named "public" found after the Build completed`
+- repository `vercel.json` no longer overrides install/build/output paths for repo-root deployment shims
+- the production deployment no longer fails on `npm --prefix app ci` after `Root Directory = app` is enabled
 - the change remains isolated to deployment wiring
