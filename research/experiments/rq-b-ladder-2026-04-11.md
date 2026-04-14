@@ -29,6 +29,21 @@ Active canonical experiment family for the current local research loop.
 - expected report: `docs/generated/research/report-rq-b-real-data-2026-04-11.md`
 - current role: readiness probe for the DB source; `INSUFFICIENT_DATA` is a valid current outcome
 
+### 3. Local synthetic walk-forward baseline
+
+- experiment id: `walk-forward-eval-latest`
+- run log: `research/experiments/experiment_log.jsonl`
+- raw artifacts: `research/experiments/20260414_*-walk-forward-eval-latest/`
+- current canonical run: `20260414_124604-walk-forward-eval-latest`
+- status: completed after two local environment/config failures
+
+#### 2026-04-14 run interpretation
+
+- `20260414_120926` failed before model execution because local LightGBM could not load `libomp.dylib`.
+- `20260414_120956` failed after fallback because `GradientBoostingClassifier(verbose=-1)` is invalid for the installed scikit-learn version.
+- `20260414_121011` is the first normalized completed run; later runs through `20260414_124604` reproduced the same metrics.
+- current canonical synthetic baseline: `mean_auc=0.5344047918312625`, `std_auc=0.10504386539429397`, `min_auc=0.3883928571428572`, `max_auc=0.6311111111111112`, `n_samples=120`, `n_splits=3`, `seed=2026`.
+
 ## Fixed protocol
 
 Both experiments use `research/evals/rq-b-baseline-protocol.md`.
