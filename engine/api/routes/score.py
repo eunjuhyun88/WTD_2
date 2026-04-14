@@ -23,6 +23,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException
 
 from api.schemas import ScoreRequest, ScoreResponse, EnsembleSignal
+from models.compat import normalize_signal_snapshot_payload
 from models.signal import SignalSnapshot
 from scanner.feature_calc import compute_features_table, MIN_HISTORY_BARS
 from scoring.lightgbm_engine import get_engine as get_lgbm
@@ -132,10 +133,45 @@ async def score(req: ScoreRequest) -> ScoreResponse:
     last_row = features_df.iloc[-1]
 
     # --- 3. Reconstruct SignalSnapshot from last row -----------------------
+    snapshot_payload = normalize_signal_snapshot_payload(
+        {
+        "symbol": req.symbol,
+        "timestamp": last_row.name.to_pydatetime().replace(tzinfo=timezone.utc),
+        "price": float(last_row["price"]),
+        "ema20_slope": float(last_row["ema20_slope"]),
+        "ema50_slope": float(last_row["ema50_slope"]),
+        "ema_alignment": last_row["ema_alignment"],
+        "price_vs_ema50": float(last_row["price_vs_ema50"]),
+        "rsi14": float(last_row["rsi14"]),
+        "rsi14_slope": float(last_row["rsi14_slope"]),
+        "macd_hist": float(last_row["macd_hist"]),
+        "roc_10": float(last_row["roc_10"]),
+        "atr_pct": float(last_row["atr_pct"]),
+        "atr_ratio_short_long": float(last_row["atr_ratio_short_long"]),
+        "bb_width": float(last_row["bb_width"]),
+        "bb_position": float(last_row["bb_position"]),
+        "volume_24h": float(last_row["volume_24h"]),
+        "vol_ratio_3": float(last_row["vol_ratio_3"]),
+        "obv_slope": float(last_row["obv_slope"]),
+        "htf_structure": last_row["htf_structure"],
+        "dist_from_20d_high": float(last_row["dist_from_20d_high"]),
+        "dist_from_20d_low": float(last_row["dist_from_20d_low"]),
+        "swing_pivot_distance": float(last_row["swing_pivot_distance"]),
+        "funding_rate": float(last_row["funding_rate"]),
+        "oi_change_1h": float(last_row["oi_change_1h"]),
+        "oi_change_24h": float(last_row["oi_change_24h"]),
+        "long_short_ratio": float(last_row["long_short_ratio"]),
+        "cvd_state": last_row["cvd_state"],
+        "taker_buy_ratio_1h": float(last_row["taker_buy_ratio_1h"]),
+        "regime": last_row["regime"],
+        "hour_of_day": int(last_row["hour_of_day"]),
+        "day_of_week": int(last_row["day_of_week"]),
+        }
+    )
     snapshot = SignalSnapshot(
-        symbol=req.symbol,
-        timestamp=last_row.name.to_pydatetime().replace(tzinfo=timezone.utc),
-        price=float(last_row["price"]),
+        symbol=snapshot_payload["symbol"],
+        timestamp=snapshot_payload["timestamp"],
+        price=snapshot_payload["price"],
         ema20_slope=float(last_row["ema20_slope"]),
         ema50_slope=float(last_row["ema50_slope"]),
         ema_alignment=last_row["ema_alignment"],
@@ -163,7 +199,7 @@ async def score(req: ScoreRequest) -> ScoreResponse:
         taker_buy_ratio_1h=float(last_row["taker_buy_ratio_1h"]),
         regime=last_row["regime"],
         hour_of_day=int(last_row["hour_of_day"]),
-        day_of_week=int(last_row["day_of_week"]),
+        day_of_week=snapshot_payload["day_of_week"],
     )
 
     # --- 4. LightGBM P(win) -----------------------------------------------
