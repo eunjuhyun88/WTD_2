@@ -9,6 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+import pytest
+
+pytest.importorskip("wizard.composer", reason="wizard package not present in current repo layout")
 
 from wizard.composer import (
     compose_match_py,

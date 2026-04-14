@@ -1,33 +1,36 @@
-# Architecture
+# App Architecture
 
-This file is a thin entry point. For the canonical repo layout, boundaries, and product→code mapping, open **[`docs/COGOCHI.md § 20`](./docs/COGOCHI.md#§-20-appendix--repo-layout--boundaries)**.
+This file is a thin app-local map. Root docs are canonical for active work.
 
-## 30-second overview
+## Canonical Read Order
 
-Cogochi is a **monorepo** containing two coupled surfaces:
+1. Root `../AGENTS.md`
+2. Relevant `../work/active/*.md`
+3. Root `../docs/domains/contracts.md`
+4. Relevant root `../docs/domains/{terminal,lab,dashboard,engine-pipeline,evaluation}.md`
+5. Root `../docs/product/{brief,surfaces}.md`
 
-```
-src/          SvelteKit 2 full-stack frontend + API layer
-cogochi/      Python AutoResearch service (KTO + LoRA, per-user adapters)
-```
+## App Role
 
-The frontend calls the Python service via HTTP routes under `src/routes/api/autoresearch/` and via a Supabase database shared between both. See `docs/COGOCHI.md § 10 AutoResearch Pipeline` for how the Python layer is structured and which functions (`build_orpo_pair`, `BattleContext`, `guardian_veto`) are currently in the repo vs still to be built.
+`app/` owns:
 
-## Where things live
+- UI surfaces under `src/routes/`
+- shared UI components under `src/components/`
+- API routes and server orchestration under `src/routes/api/`
+- auth/session/SSE/persistence concerns
 
-- **Product truth** — `docs/COGOCHI.md` (single file)
-- **Operational / infra routing** — `docs/{DESIGN,FRONTEND,PLANS,SECURITY,RELIABILITY,QUALITY_SCORE}.md`
-- **Agent discipline** — `docs/AGENT_*.md`, `docs/MULTI_AGENT_*.md`, `docs/CONTEXT_*.md`
-- **Frontend code** — `src/routes/`, `src/components/`, `src/lib/`
-- **Python AutoResearch** — `cogochi/*.py`
-- **v3 historical archive** (outside git) — `~/Downloads/기타_문서/cogochi-v3-archive-2026-04-11/`
+`app/` does not own:
 
-## Read order for new sessions
+- feature calculation
+- building blocks
+- scanner logic
+- scoring/evaluation logic
 
-1. `README.md` (collaboration SSOT)
-2. `AGENTS.md` (execution rules)
-3. `docs/COGOCHI.md` (product truth — read this once, referenced often)
-4. `docs/README.md` (what else is in docs/)
-5. This file (for the repo layout overview)
+Those remain canonical in `../engine/`.
 
-If the task is purely operational, skip step 3 and read the relevant `docs/*.md` operational doc instead.
+## Important Paths
+
+- Surfaces: `src/routes/terminal`, `src/routes/lab`, `src/routes/dashboard`
+- Shared contracts: `src/lib/contracts/`
+- Server orchestration: `src/routes/api/`
+- Legacy docs: `docs/` under `app/` are reference-first, not canonical

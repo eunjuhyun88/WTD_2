@@ -5,7 +5,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytest.importorskip("lightgbm", reason="lightgbm not installed")
+# lightgbm may be importable but fail native load (e.g. missing libomp on macOS).
+try:
+    import lightgbm  # noqa: F401
+except Exception as exc:  # pragma: no cover - environment-specific skip
+    pytest.skip(f"lightgbm unavailable in current environment: {exc}", allow_module_level=True)
+
 pytest.importorskip("sklearn", reason="scikit-learn not installed")
 
 from scoring.trainer import train, train_walkforward, WalkForwardResult

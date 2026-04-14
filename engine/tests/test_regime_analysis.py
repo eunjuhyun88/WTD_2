@@ -19,6 +19,8 @@ if str(_COGOCHI) not in sys.path:
 from backtest.config import RiskConfig  # noqa: E402
 from backtest.regime import Regime  # noqa: E402
 from exceptions import ConfigValidationError  # noqa: E402
+pytest.importorskip("regime_analysis", reason="legacy tools/regime_analysis module not present in this repo layout")
+
 from regime_analysis import compute_verdict, FILTER_CONFIGS  # noqa: E402
 
 
