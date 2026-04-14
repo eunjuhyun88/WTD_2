@@ -751,33 +751,6 @@
     color: var(--wm-text);
   }
 
-  .mode-toggle {
-    margin-left: auto;
-    display: inline-flex;
-    border: 1px solid rgba(249, 216, 194, 0.1);
-    border-radius: 999px;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .mode-btn {
-    border: none;
-    background: transparent;
-    color: var(--wm-muted);
-    font-family: var(--sc-font-body);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 8px 14px;
-    cursor: pointer;
-    transition: background 0.16s ease, color 0.16s ease;
-  }
-
-  .mode-btn.active {
-    background: rgba(255, 255, 255, 0.09);
-    color: var(--wm-text);
-  }
-
   .whc {
     border: 1px solid rgba(249, 216, 194, 0.1);
     background: rgba(255, 255, 255, 0.04);
@@ -882,25 +855,11 @@
     line-height: 1.6;
   }
 
-  .flow-card,
   .info-box {
     border: 1px solid rgba(249, 216, 194, 0.08);
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.03);
     padding: 14px;
-  }
-
-  .flow-item {
-    font-family: var(--sc-font-body);
-    font-size: 14px;
-    font-weight: 600;
-    color: rgba(250, 247, 235, 0.88);
-    padding: 10px 2px;
-    border-bottom: 1px solid rgba(249, 216, 194, 0.08);
-  }
-
-  .flow-item:last-child {
-    border-bottom: none;
   }
 
   .wallet-list {
@@ -1050,7 +1009,6 @@
   }
 
   .btn-primary,
-  .btn-secondary,
   .btn-ghost {
     width: 100%;
     border-radius: 999px;
@@ -1078,16 +1036,6 @@
   .btn-primary:disabled {
     opacity: 0.65;
     cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    border: 1px solid rgba(249, 216, 194, 0.1);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--wm-text);
-  }
-
-  .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.08);
   }
 
   .btn-ghost {
@@ -1123,10 +1071,6 @@
       flex-wrap: wrap;
     }
 
-    .mode-toggle {
-      margin-left: 0;
-    }
-
     .whc {
       margin-left: auto;
     }
@@ -1137,7 +1081,6 @@
     }
 
     .btn-primary,
-    .btn-secondary,
     .btn-ghost {
       font-size: 13px;
       padding: 12px 10px;
