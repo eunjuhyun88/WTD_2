@@ -26,7 +26,7 @@
  * decision. Replaying the same slice twice produces identical metrics.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R1, RQ-D
+ *   `research/thesis/current-thesis.md`
  */
 
 import type { AgentObservation, AgentDecisionProposal } from '../evaluation/types.ts';
@@ -63,7 +63,7 @@ export class HumanDecisionAgent implements BaselineAgent {
 				'When unblocked, will look up the DecisionTrajectory by ' +
 				'verdict.trace_id, filter to decision.actor.kind === "user", ' +
 				'and return the recorded proposal verbatim. ' +
-				'See docs/exec-plans/active/research-spine-2026-04-11.md §R1, RQ-D.'
+				'See research/thesis/current-thesis.md.'
 		);
 	}
 }

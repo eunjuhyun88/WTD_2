@@ -3,7 +3,7 @@
 > **Version:** 1.1 (2026-04-11 mid-transition patch)
 > **Date:** 2026-04-11
 > **Author:** CPO × AI Research Lead
-> **Status:** Legacy reference during docs transition (not primary canonical)
+> **Status:** legacy reference only during docs transition (not primary canonical)
 > **Audience:** historical context lookup only
 
 > [!IMPORTANT]
@@ -18,6 +18,7 @@
 > This file **keeps the full PRD body below** (not a redirect stub). **Split copies** live under `docs/archive/cogochi/`; refresh them after edits: `bash scripts/split-cogochi-archive.sh`. See `docs/archive/cogochi/README.md`.
 >
 > This file may contain historical drift.
+> Do not rebuild a monolithic PRD here.
 
 ---
 
@@ -37,7 +38,7 @@ This document is in **mid-transition** between two designs. When a section contr
 
 **Core pivots (2026-04-11):**
 
-1. **Backend = external repo `/Users/ej/Projects/WTD/`.** The `cogochi-autoresearch/` Python package there (with 29 building blocks, `wizard/`, `challenges/pattern-hunting/`) is the actual engine. The `cogochi/*.py` files in THIS repo are legacy monorepo leftovers.
+1. **Backend = external WTD engine repo.** The `cogochi-autoresearch/` Python package there (with 29 building blocks, `wizard/`, `challenges/pattern-hunting/`) is the actual engine. The `cogochi/*.py` files in THIS repo are legacy monorepo leftovers.
 2. **Character layer DEFERRED.** No DOUNI, no archetype, no Stage. See § 9.
 3. **Day-1 = 3 surfaces only:** `/terminal` (observe + compose via search), `/lab` (evaluate + inspect + iterate), `/dashboard` (my stuff inbox) + `/` (landing). See § 7.
 4. **Search query IS the wizard.** No 5-step svelte form. User types `btc 4h recent_rally 10% + bollinger_expansion`, parser maps to WTD blocks, one click saves as a challenge. See § 8.1.
@@ -47,7 +48,7 @@ This document is in **mid-transition** between two designs. When a section contr
 - New to Cogochi? Read the **Status Patch above**, then § 7, § 8 (the 4 active-surface subsections), § 11.
 - Touching `/terminal`, `/lab`, `/dashboard`? Read § 8.1 / § 8.2 / § 8.7 respectively. Ignore § 8.3–§ 8.5.
 - Need product narrative / thesis? § 0–§ 5 are still useful as intent — just substitute "challenge" for "pattern/feedback/adapter" and ignore the character references.
-- Touching the backend? Go to `/Users/ej/Projects/WTD/cogochi-autoresearch/` directly — § 10 is archival.
+- Touching the backend? Go to the canonical WTD engine repository directly — § 10 is archival.
 - Writing the home landing page? § 16 layout is still valid; § 8.6 has the 2026-04-11 copy deltas.
 - Everything else in `docs/` is operational/infra. This is the only product canonical.
 
@@ -187,7 +188,7 @@ PRIOR ART    OPPU (EMNLP 2024) · Per-Pcs (EMNLP 2024)
 
 ## § 7. Surface Model (Day-1 + Phase 2/3)
 
-> **2026-04-11 patch:** product pivot. Day-1 collapses to **3 active surfaces + landing**. Character layer (DOUNI/archetype/stage) is deferred entirely (see § 9). Wizard, scanner cockpit, and agent HQ are folded into /terminal + /lab. The authoritative backend is now the external repo `/Users/ej/Projects/WTD/` (cogochi-autoresearch package + wizard + challenges/pattern-hunting).
+> **2026-04-11 patch:** product pivot. Day-1 collapses to **3 active surfaces + landing**. Character layer (DOUNI/archetype/stage) is deferred entirely (see § 9). Wizard, scanner cockpit, and agent HQ are folded into /terminal + /lab. The authoritative backend is now the external WTD engine repository (cogochi-autoresearch package + wizard + challenges/pattern-hunting).
 
 ### Day-1 active surfaces (3 + landing)
 
@@ -2425,7 +2426,7 @@ Anomaly types:
 
 ## § 11. Data Contracts
 
-> **2026-04-11 patch:** the 15-layer `SignalSnapshot` structure is dropped entirely. Real data contracts come from the WTD backend (`/Users/ej/Projects/WTD/cogochi-autoresearch/`) and are grounded in what actually runs. `Pattern` → `Challenge`, `Feedback` → `Instance`, `ModelVersion` → Phase 2+.
+> **2026-04-11 patch:** the 15-layer `SignalSnapshot` structure is dropped entirely. Real data contracts come from the WTD backend and are grounded in what actually runs. `Pattern` → `Challenge`, `Feedback` → `Instance`, `ModelVersion` → Phase 2+.
 
 ### 11.1 klines DataFrame (7 columns)
 

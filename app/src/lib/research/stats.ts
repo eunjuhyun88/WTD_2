@@ -17,7 +17,7 @@
  * Those live in a Python worker if and when the project needs them.
  *
  * References:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R2
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 // ---------------------------------------------------------------------------

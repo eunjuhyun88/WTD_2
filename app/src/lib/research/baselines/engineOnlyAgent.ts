@@ -15,7 +15,7 @@
  * with fake zero-PnL rows.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R1
+ *   `research/thesis/current-thesis.md`
  */
 
 import type { AgentObservation, AgentDecisionProposal } from '../evaluation/types.ts';
@@ -54,7 +54,7 @@ export class EngineOnlyAgent implements BaselineAgent {
 				'When unblocked, will map verdict.bias → ' +
 				'{strong_bull|bull: open_long, strong_bear|bear: open_short, neutral: wait} ' +
 				'and derive sizing from verdict.execution. ' +
-				'See docs/exec-plans/active/research-spine-2026-04-11.md §R1.'
+				'See research/thesis/current-thesis.md.'
 		);
 	}
 }

@@ -30,7 +30,7 @@
  * an upstream contract broke, not that the baseline "drifted".
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §D5, §D4 row 9.3, §R4.3
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type { AgentObservation, AgentDecisionProposal } from '../evaluation/types.ts';

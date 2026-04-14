@@ -23,7 +23,7 @@
  * and break the R4.4 boundary.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §D4 row 9.4, §R4.4
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type { UtilityWeights } from './evaluation/types.ts';

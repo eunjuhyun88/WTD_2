@@ -1,7 +1,8 @@
 /**
  * R4.4 schedule + weight sweep smoke test.
  *
- * Acceptance for §R4.4 (from research-spine-2026-04-11.md):
+ * Acceptance for the current schedule/weight-sweep gate in
+ * `research/evals/rq-b-baseline-protocol.md`:
  *
  *   - Each schedule and each sweep produces a typed iterator of cells
  *     with recorded provenance (seed, version, parent strategy).

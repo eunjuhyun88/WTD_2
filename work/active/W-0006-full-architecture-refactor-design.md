@@ -4,7 +4,7 @@ CTO + AI Researcher perspective, covering every folder in the repository.
 
 ## Goal
 
-Produce a comprehensive refactor blueprint that reduces structural debt, hardens contracts, improves research velocity, and makes the system observable — while preserving the `engine` as backend truth and `app` as surface/orchestration boundary.
+Produce a pragmatic local-first refactor blueprint for a solo AI researcher that maximizes ML/research velocity, reproducibility, and inference-path correctness while preserving the `engine` as backend truth and `app` as surface/orchestration boundary.
 
 ## Owner
 
@@ -15,9 +15,24 @@ This is an umbrella architecture-program work item. Execution happens through ch
 ## Scope
 
 - every folder: `engine/`, `app/`, `docs/`, `research/`, `scripts/`, `work/`, root config
-- structural, contract, test, observability, and research-integrity improvements
+- structural, contract, test, observability, and research-integrity improvements with direct research ROI
 - phased execution with measurable gates per phase
 - program-level sequencing and decomposition for child work items
+
+## Project Reality (Verified 2026-04-14)
+
+- local development only
+- no production deployment yet
+- solo developer / solo AI researcher workflow
+- priority order:
+  1. ML/research pipeline
+  2. inference-path correctness and local reliability
+  3. first production deployment readiness
+  4. scale-out architecture
+
+Implication:
+- production-style infrastructure work must justify itself by improving research throughput, local correctness, or future migration cost in a concrete way
+- large infra programs with weak near-term research ROI should be deferred
 
 ## Non-Goals
 
@@ -26,14 +41,23 @@ This is an umbrella architecture-program work item. Execution happens through ch
 - full UI visual redesign
 - migrating off SvelteKit or FastAPI
 - landing all phases in one PR or one branch
+- treating 1000+ user public launch readiness as the current primary driver
+- implementing multi-runtime split before the local research loop is healthy
 
 ## Canonical Files
 
 - `work/active/W-0006-full-architecture-refactor-design.md`
 - `work/active/W-0004-cto-ai-refactor-architecture.md`
 - `work/active/W-0005-phase1-analyze-extraction.md`
+- `work/active/W-0010-high-cost-api-rate-limit-cache.md`
+- `work/active/W-0011-analyze-runtime-hardening.md`
+- `work/active/W-0012-runtime-split-and-state-plane.md`
+- `work/active/W-0013-launch-readiness-program.md`
 - `AGENTS.md`
+- `docs/architecture.md`
 - `docs/domains/contracts.md`
+- `docs/decisions/ADR-004-runtime-split-and-state-plane.md`
+- `docs/runbooks/launch-readiness.md`
 - `docs/domains/engine-pipeline.md`
 - `docs/product/brief.md`
 
@@ -43,11 +67,18 @@ This is an umbrella architecture-program work item. Execution happens through ch
 - Every phase must break into explicit child work items before code edits begin.
 - No phase merges without its gate passing and the affected canonical docs being updated.
 - Any issue below is provisional until the referenced file/path is verified in the current repository.
+- For the current project stage, research-loop ROI beats infrastructure purity.
+- Deployment and scale architecture remain valid design lanes, but they should not outrank ML/eval throughput unless local work is blocked by them.
 
 ## Child Work Items
 
 - `W-0004-cto-ai-refactor-architecture.md`: architecture and refactor framing
 - `W-0005-phase1-analyze-extraction.md`: analyze hot-path extraction
+- `W-0010-high-cost-api-rate-limit-cache.md`: cache/rate-limit hardening for heavy public reads
+- `W-0011-analyze-runtime-hardening.md`: analyze request, cache, degraded-envelope, and telemetry hardening
+- `W-0012-runtime-split-and-state-plane.md`: target runtime topology and state-plane definition
+- `W-0013-launch-readiness-program.md`: launch-critical blocker inventory and execution order
+- `W-0015-research-pipeline-canonicalization.md`: canonical thesis/eval/experiment record layer for the local research loop
 - future child items should be created per phase or per bounded subsystem
 
 ## Repository Verification Snapshot
@@ -60,11 +91,56 @@ This section exists to separate verified reality from architectural intent.
 | `engine/api/routes/patterns.py` | yes | confirmed present |
 | `app/src/routes/terminal`, `lab`, `dashboard` | yes | confirmed present |
 | `app/src/lib/contracts/*` | yes | confirmed present |
+| `docs/architecture.md` | yes | current architecture doc exists and should remain high-level |
+| root CI workflows for app/engine/contract | yes | present; architectural issue is no longer "missing CI", but depth/scope of gates |
 | `work/active/W-0004-cto-ai-refactor-architecture.md` | yes | actual file name differs from earlier shorthand |
 | `work/active/W-0005-phase1-analyze-extraction.md` | yes | actual file name differs from earlier shorthand |
+| `work/active/W-0010-high-cost-api-rate-limit-cache.md` | yes | public heavy-read hardening slice exists |
+| `work/active/W-0011-analyze-runtime-hardening.md` | yes | analyze runtime hardening slice exists |
 | `market_engine/pipeline.py`, `market_engine/l2/alpha.py`, `models/signal.py`, `api/cogochi/analyze/+server.ts` | pending file-by-file verification | treat design claims below as provisional until linked to exact current files |
 
 ---
+
+## Program Delta (Verified 2026-04-14)
+
+This umbrella document started as a broad diagnosis and now needs to distinguish completed foundations from open architecture work.
+
+### Root correction
+
+An earlier version of this umbrella plan overweighted production/launch architecture for the current project reality.
+
+That was a poor fit because:
+
+- the repository is still local-only
+- there is no live production deployment to defend
+- one solo developer must optimize for research throughput first
+- a 50+ item infra program has weak ROI if the ML/eval loop is not yet the main bottleneck
+
+Current stance:
+
+- keep architectural target docs for future deployment
+- prioritize research pipeline, reproducibility, contract safety, and hot-path correctness first
+- treat launch-readiness and runtime split as deferred lanes unless they directly block local research work
+
+### Already landed or partially landed
+
+- root-level app CI exists
+- root-level engine CI exists
+- contract drift check exists between engine OpenAPI output and app generated types
+- `docs/architecture.md` exists
+- vitest exists and targeted server-side tests are now present
+- public heavy-read hardening exists for key routes, including `analyze`
+- `analyze` now has explicit degraded/error envelopes, request tracing, and short TTL shared-cache behavior
+- a launch-readiness runbook now exists to translate architecture debt into release gates
+
+### Still open at architecture level
+
+- local-first research priorities are not yet reflected consistently across all child work ordering
+- runtime split between public web traffic and control-plane workloads is not yet implemented, but this is a future deployment lane rather than the current primary driver
+- Redis and Postgres are present as integration directions, but they should be adopted only where they concretely improve local iteration or future migration cost
+- background scheduler/control-plane work is still too coupled to current runtime assumptions; fix when it blocks local correctness or before first deployment
+- research canonicalization under `research/` is still incomplete
+- large-file decomposition in engine/app hot zones remains unfinished
 
 ## I. Current-State Diagnosis (by area)
 
@@ -89,7 +165,7 @@ This section exists to separate verified reality from architectural intent.
 | E7 | Root scripts | `autoresearch_ml.py`, `autoresearch_real_data.py`, `train_lgbm.py` live at engine root — no clear entry point discipline |
 | E8 | `observability/` | Only `logging.py` — no metrics, no tracing, no structured events |
 | E9 | `models/signal.py` | `SignalSnapshot` is shared contract type but lives deep inside engine with no versioning |
-| E10 | Test isolation | Tests exist but no CI integration visible from engine side; no coverage gate |
+| E10 | Test depth | Engine CI exists, but coverage thresholds, perf gates, and richer observability assertions are still missing |
 
 Execution note:
 - Before implementing any `E*` item, add exact current path references and a `verified: yes/no` marker in the child work item that executes it.
@@ -112,7 +188,7 @@ Execution note:
 | A3 | `lib/engine/` (client-side) | Parallel engine logic (layerEngine, indicators, cogochi layers) risks drift from Python engine truth |
 | A4 | `lib/stores/` | 26 stores with no dependency graph or initialization order — hydration race risks |
 | A5 | `lib/server/scanEngine.ts` vs `lib/services/scanService.ts` | Scan logic split across service + engine with unclear boundary |
-| A6 | No test harness | Zero vitest/playwright — `npm run check` (svelte-check) is the only automated gate |
+| A6 | Test depth | Vitest now exists with targeted tests, but route-level isolation and browser smoke coverage are still too thin for launch confidence |
 | A7 | `lib/server/intelPolicyRuntime.ts` | "Large module" per docs — likely another god-file candidate |
 | A8 | Migration locations | 3 separate migration folders (`server/migrations/`, `db/migrations/`, `supabase/migrations/`) — no unified migration runner |
 | A9 | `lib/data-engine/` | Client data pipeline (alignment, cache, context, normalization, providers, scheduler) — overlaps with server providers layer |
@@ -126,10 +202,10 @@ Execution note:
 
 | ID | Problem |
 |----|---------|
-| C1 | `engineClient.ts` TypeScript types are manually maintained mirrors of `api/schemas.py` Pydantic models — no automated sync |
+| C1 | OpenAPI-driven sync exists, but some caller/callee assumptions still live outside the generated contract path and need stronger route-level validation |
 | C2 | `app/contracts/` Zod schemas and `engine/models/signal.py` can drift independently |
-| C3 | No contract test suite exists |
-| C4 | Mixed routing: some paths use `api/engine/[...path]` proxy, others call engine directly via `engineClient`, others are app-only — no documented policy |
+| C3 | Contract checks exist, but route-level contract tests are still too shallow for the most important orchestrated paths |
+| C4 | Mixed routing: some paths use `api/engine/[...path]` proxy, others call engine directly via `engineClient`, others are app-only — policy is now documented, but enforcement is still incomplete |
 | C5 | `SignalSnapshot` is the most critical shared type but has no versioning or backward-compat policy |
 
 Execution note:
@@ -145,8 +221,8 @@ Execution note:
 
 | ID | Problem |
 |----|---------|
-| D1 | `docs/domains/contracts.md` does not cover failure-mode policies |
-| D2 | No architecture diagram (visual) exists anywhere |
+| D1 | failure-mode policy now exists, but it still needs broader route-by-route adoption and examples outside the first hardened paths |
+| D2 | Architecture doc depth | `docs/architecture.md` exists, but target runtime split and state-plane rules must stay current as implementation advances |
 | D3 | `app/docs/` legacy material still referenced but poorly gated |
 | D4 | Research docs (`research/`) are all placeholder READMEs — no actual thesis/experiment records |
 
@@ -164,10 +240,10 @@ Execution note:
 
 | ID | Problem |
 |----|---------|
-| S1 | Only 2 scripts in `scripts/` — baseline check and archive split |
-| S2 | CI lives only under `app/.github/` — engine has no CI workflow |
+| S1 | Script sprawl | Script inventory is large, but canonical launch/test/runtime wrappers are still not obvious |
+| S2 | CI scope | Root CI exists for app, engine, and contracts, but deployment/control-plane and perf gates remain incomplete |
 | S3 | No unified dev command (separate `cd engine && uv run` vs `npm --prefix app`) |
-| S4 | No contract validation in CI pipeline |
+| S4 | Contract gate depth | Contract drift check exists in CI, but end-to-end caller/callee coverage is still partial |
 | S5 | No performance regression gate |
 
 ### 7. Work Items & Governance
@@ -267,8 +343,8 @@ engine/api/schemas/
 
 #### E10-fix: Engine CI
 
-- add `.github/workflows/engine-ci.yml` at repo root
-- gates: `uv run pytest`, `uv run ruff check`, coverage threshold
+- keep root `engine-ci` canonical and add stronger gates
+- extend with coverage thresholds, contract-aware checks, and perf-sensitive smoke where justified
 
 ### App Refactor Targets
 
@@ -316,10 +392,10 @@ app/src/lib/server/
 
 #### A6-fix: Test harness
 
-- add vitest config with server-side unit test support
-- add playwright config for critical path smoke tests
+- expand the existing vitest harness beyond targeted unit tests
+- add or deepen playwright coverage for critical path smoke tests
 - target: analyze route, auth flow, terminal load
-- add `npm run test` and `npm run test:e2e` scripts
+- keep `npm run test` canonical and add `npm run test:e2e` when browser smoke is ready
 
 #### A7-fix: Intel policy split
 
@@ -399,10 +475,11 @@ Add section to `docs/domains/contracts.md`:
 
 #### D2-fix: Architecture diagram
 
-Add `docs/architecture.md` with Mermaid diagrams:
+Keep `docs/architecture.md` current with Mermaid diagrams for:
 - system context (browser → app → engine → data sources)
 - data flow for analyze hot path
 - component ownership map
+- target runtime split (`app-web`, `engine-api`, `worker-control`) and state-plane roles
 
 #### D3-fix: Legacy docs gating
 
@@ -450,17 +527,16 @@ Add `docs/architecture.md` with Mermaid diagrams:
 
 #### S1-fix: Essential scripts
 
-Add to `scripts/`:
-- `scripts/contract-check.sh` — run OpenAPI type diff + contract tests
-- `scripts/engine-test.sh` — `cd engine && uv run pytest`
-- `scripts/app-check.sh` — `cd app && npm run check && npm run test`
-- `scripts/dev.sh` — unified dev startup (engine + app in parallel)
+Keep the script surface small and canonical:
+- retain `scripts/contract-check.sh` as the contract entrypoint
+- add or standardize `scripts/engine-test.sh`, `scripts/app-check.sh`, and `scripts/dev.sh` only if they reduce ambiguity versus current commands
+- avoid adding more wrappers unless they become the documented default
 
 #### S2-fix: Engine CI
 
-Add `/.github/workflows/engine-ci.yml`:
-- trigger: changes in `engine/`
-- steps: `uv sync`, `ruff check`, `pytest`, coverage report
+Extend the existing `/.github/workflows/engine-ci.yml`:
+- keep trigger scope aligned to `engine/` and shared contract files
+- steps should converge on `uv sync`, lint, pytest, and coverage reporting
 
 #### S3-fix: Unified dev command
 
@@ -474,7 +550,7 @@ make baseline  → scripts/check-operating-baseline.sh
 
 #### S4-fix: Contract CI gate
 
-Add contract check step to `app/.github/workflows/ci.yml`
+Deepen the existing root contract CI gate with route-level fixtures and broader caller/callee validation
 
 #### S5-fix: Performance gate
 
@@ -506,66 +582,65 @@ Add CI label check or commit-message convention enforcement
 
 | Priority | Items | Rationale |
 |----------|-------|-----------|
-| **P0 Critical** | A1, A6, C1, C3, S2 | Hot-path reliability, test coverage, contract safety |
-| **P1 High** | E1, E5, E6, E8, A2, A11, C4, D2, S3 | Maintainability, observability, boundary clarity |
-| **P2 Medium** | E2, E3, E4, E7, E9, A3, A4, A7, A8, C2, C5, D1, R2, R4, S1, S4 | Research velocity, operational quality |
-| **P3 Low** | A5, A9, A10, D3, D4, R1, R3, R5, S5, G1, G2, G3 | Polish, governance, long-term health |
+| **P0 Critical** | R1, R3, R4, A1, A11, C1, C3 | research pipeline clarity, reproducibility, hot-path correctness, contract safety |
+| **P1 High** | E1, E2, E6, E7, E9, A6, D4, S4 | engine decomposition with direct research ROI, test depth, research artifact activation |
+| **P2 Medium** | A2, A7, A8, C2, C5, D1, R2, R5, S1, S2, S3, G2 | maintainability, local ops quality, gradual release discipline |
+| **P3 Deferred** | E3, E4, E5, E8, W-0012, W-0013, S5, G1, G3 | deployment/scale architecture, broader observability, and future launch-readiness lanes |
 
 ---
 
 ## IV. Phased Execution Plan
 
-### Phase 0 — Baseline (1 week)
+### Phase 0 — Reality Alignment (largely completed)
 
-- capture latency/error baselines for analyze path
-- add engine CI workflow (S2)
-- add vitest config to app (A6 — skeleton only)
-- document routing policy (C4)
+- align umbrella docs to the real project stage
+- keep root engine/app/contract CI healthy
+- preserve minimal local test harness and baseline checks
+- keep future deployment architecture documented, but not as the active driver
 
 Deliverables:
 - child work item(s) created and linked
-- baseline metrics document committed
-- engine CI workflow committed
-- app test runner skeleton committed
-- routing policy added to canonical docs
+- local-first priority order documented canonically
+- baseline checks and core CI present
+- future deployment/runbook docs explicitly treated as deferred lanes
 
 Gate:
-- engine tests pass in CI
-- app has `npm run test` command (even if 0 tests)
-- baseline metrics are recorded in a canonical file, not chat
+- project reality and priority order are explicit in canonical docs
+- CI and baseline checks pass
 - all changed paths are linked from the child work item
 
-### Phase 1 — Hot-path extraction (2 weeks)
+### Phase 1 — Research Pipeline Canonicalization
 
-- decompose `analyze/+server.ts` (A1 — per W-0005)
-- split `pipeline.py` (E1)
-- split `scheduler.py` (E5)
-- add timing hooks (E8 — basic)
-- fix fallback boundary (A11)
+- populate `research/thesis/`, `research/evals/`, and `research/experiments/` with real artifacts
+- move or wrap `autoresearch_*.py` and training entry points into a discoverable research CLI path
+- define eval protocol and experiment recording with minimal local overhead
+- define model/version lineage for local research runs
 
 Deliverables:
-- analyze route split into bounded modules
-- engine hot-path file split where verified
-- degraded fallback boundary documented
-- timing instrumentation visible in logs
+- canonical research artifact structure is no longer placeholder-only
+- a solo developer can find and rerun the main research/eval path from docs and scripts
+- experiment inputs/outputs are recorded in files, not only comments or chat
 
 Gate:
-- analyze route output unchanged
-- latency within 10% of baseline
-- integration coverage exists for full, partial, and failure path
-- child work items enumerate moved files and invariants preserved
+- research/eval path is runnable from canonical docs
+- at least one current experiment and one current eval protocol are committed canonically
+- model or experiment lineage can be reconstructed without ad hoc repo archaeology
 
-### Phase 2 — Contract hardening (2 weeks)
+### Phase 2 — Inference Hot Path And Contracts
 
-- generate TypeScript types from engine OpenAPI (C1)
-- add contract test suite (C3)
+- maintain generated TypeScript types from engine OpenAPI (C1)
+- expand the contract test suite beyond drift checks (C3)
+- decompose `analyze/+server.ts` (A1 — per W-0005)
+- split `pipeline.py` where it directly blocks inference iteration (E1)
+- fix fallback boundary (A11)
 - separate `api/schemas.py` (E6)
 - add SignalSnapshot versioning (E9)
-- add contract check to CI (S4)
+- deepen contract CI (S4)
 
 Deliverables:
-- generated or snapshotted contract source of truth
-- contract tests committed
+- generated contract source of truth committed
+- route-level and schema-level contract tests committed
+- analyze hot path is more modular and easier to reason about locally
 - versioning policy documented
 - CI contract gate enabled
 
@@ -573,65 +648,57 @@ Gate:
 - contract tests green in CI
 - no manual type maintenance for the selected contract path
 - docs, app types, engine types, and route validation updated together
+- local inference path remains behaviorally stable while becoming easier to iterate on
 
-### Phase 3 — Test and observability (2 weeks)
+### Phase 3 — Local Reliability And Developer Throughput
 
-- add first vitest tests for extracted modules (A6)
-- add playwright smoke for terminal (A6)
-- add structured observability to engine (E8)
-- add request-id propagation app → engine
+- add targeted tests for extracted modules and route-level failure modes (A6)
+- add minimal smoke coverage only where it protects the research loop
+- improve local observability where it helps debug inference/eval work
 - add failure-mode docs (D1)
+- standardize local dev/test commands only if they reduce friction
 
 Deliverables:
 - vitest coverage on extracted modules
-- playwright smoke for one critical path
-- structured logging and request id propagation
+- at least one local smoke path if it protects a real workflow
+- useful local logs/traceability for inference and eval debugging
 - failure-mode contract policy documented
 
 Gate:
-- >50% coverage on new modules
-- request traces visible in logs
-- at least one smoke path runs in automation
+- new/refactored modules ship with targeted tests
+- debugging the main research/inference loop is easier than before
+- tooling overhead remains proportionate for one developer
 
-### Phase 4 — Structure and research (2 weeks)
+### Phase 4 — First Deployment Readiness (optional lane)
 
-- restructure `app/src/lib/server/` directories (A2)
-- split alpha signals (E2)
-- populate research artifacts (R1, R4)
-- add research CLI (R3)
-- add architecture diagram (D2)
-- unify migration locations (A8)
+- revisit runtime split, launch-readiness, and route inventory before first external deployment
+- move scheduler/control-plane work if it becomes a real deployment blocker
+- promote shared cache/rate-limit config where deployment actually requires it
+- add broader release/runbook checks only when there is something to release externally
 
 Deliverables:
-- server tree reshaped or documented with transition shims
-- research thesis/eval/protocol files populated
-- research CLI path defined
-- architecture diagram committed
+- deployment lane is documented with concrete blockers
+- future-facing runtime docs are refreshed against the then-current repo state
+- no deployment work is done “just in case”
 
 Gate:
-- research eval can run end-to-end
-- server directory matches documented structure
-- research artifacts are stored under `research/`, not only engine root scripts
+- there is a real external deployment target
+- deployment work is justified by an upcoming release rather than architectural anxiety
 
-### Phase 5 — Optimization and polish (1 week)
+### Phase 5 — Scale Architecture (deferred)
 
-- cache contract and health endpoint (E3)
-- ledger store upgrade (E4)
-- store dependency graph (A4)
-- performance baseline script (S5)
-- PR template and governance (G2, G3)
-- cleanup archives (A10)
+- runtime split and worker/control-plane isolation
+- cache/ledger/state-plane upgrades for scale
+- stronger observability and performance gates
+- broader governance and automation
 
 Deliverables:
-- cache/ledger/store-dependency upgrades landed or explicitly deferred
-- performance baseline gate wired
-- governance template/automation added
-- archive cleanup completed or explicitly documented
+- future-scale architecture is implemented only when deployment and usage justify it
+- scale work no longer competes with core research throughput
 
 Gate:
-- all P0-P2 items resolved or explicitly deferred by ADR/work item
-- docs match reality
-- no unowned structural debt remains in hot paths
+- deployment exists and scale pain is real
+- scale work has a measured bottleneck to solve
 
 ---
 
@@ -682,7 +749,9 @@ Execution rule:
 
 ## VII. Success Metrics
 
-- analyze route: p95 latency ≤ 3s (or 20% improvement from baseline)
+- one canonical research/eval path is runnable end-to-end locally
+- one current experiment and one current eval protocol exist under `research/`
+- analyze route: p95 latency ≤ 3s locally or materially lower variance than baseline
 - contract drift incidents: 0 per quarter
 - fallback usage: 100% traced, ≤ 5% of requests
 - test coverage: ≥ 50% on new/refactored modules
@@ -698,22 +767,23 @@ Execution rule:
 - engine remains sole decision authority; app never replicates scoring logic
 - contract checks are mandatory CI gates, not optional
 - research integrity is non-negotiable constraint on every phase
+- local research throughput outranks premature production architecture
 - phases can overlap but gate must pass before next phase merges to main
 - W-0006 remains umbrella-only and should not be closed by a single implementation PR
 
 ## Next Steps
 
-- create/align child work items for Phase 0 with exact file verification
-- update `docs/domains/contracts.md` with routing policy and failure modes
-- record current analyze-path baseline in a canonical artifact before refactor
-- schedule architecture diagram review after Phase 1
+- realign child work items so P0/P1 research-first slices come before deployment/scale slices
+- populate canonical `research/` artifacts instead of leaving them as placeholders
+- continue analyze/contract hardening only where it directly improves local inference and evaluation work
+- defer runtime-split and launch-readiness execution unless they start blocking local progress
 - add per-phase deliverable checklist to each child work item before coding
 
 ## Exit Criteria
 
 - every P0 and P1 item resolved and verified or explicitly deferred by ADR/work item
 - CI pipeline covers engine tests, app checks, contract validation
-- docs accurately reflect actual system structure
+- docs accurately reflect actual system structure and real project stage
 - research eval protocol documented and runnable
-- no god-files remain in hot paths
+- no god-files remain in the research/inference hot paths that actually slow iteration
 - umbrella work item links all completed child work and resulting ADRs

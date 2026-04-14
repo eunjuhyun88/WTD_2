@@ -12,7 +12,7 @@
  *     sequences across machines and Node versions.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R1
+ *   `research/thesis/current-thesis.md`
  */
 
 import type {

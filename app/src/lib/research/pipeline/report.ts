@@ -21,7 +21,7 @@
  * above when consuming a report.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §D3, §R4.2
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type { TemporalFold } from '../evaluation/temporalSplit.ts';

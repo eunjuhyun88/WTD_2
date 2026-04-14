@@ -34,6 +34,8 @@ Measure quality of signals and workflows with reproducible methods.
 
 - `engine/tests/`
 - `research/evals/`
+- `research/evals/rq-b-baseline-protocol.md`
+- `research/experiments/rq-b-ladder-2026-04-11.md`
 - `docs/domains/contracts.md`
 
 ## Non-Goals

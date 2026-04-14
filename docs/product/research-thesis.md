@@ -12,6 +12,7 @@ Structured market signals with transparent evidence improve decision quality ove
 
 ## Traceability
 
-- Hypotheses live in `research/thesis/`.
-- Experiments and outputs live in `research/experiments/` and `research/evals/`.
+- Current thesis lives in `research/thesis/current-thesis.md`.
+- Current fixed protocol lives in `research/evals/rq-b-baseline-protocol.md`.
+- Active experiment lineage lives in `research/experiments/rq-b-ladder-2026-04-11.md`.
 - Product claims should reference measured results, not chat history.

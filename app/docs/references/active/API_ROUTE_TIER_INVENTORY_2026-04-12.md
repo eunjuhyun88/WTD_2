@@ -48,6 +48,21 @@ Primary context:
   - Tier B queue/worker split for heavy scans and learning jobs
   - Tier D separation onto a privileged/internal control plane
 
+## Runtime Plane Summary
+
+This inventory now needs to be read with the runtime split policy from `W-0012`.
+
+| Runtime plane | Intended responsibilities | Current risk notes |
+| --- | --- | --- |
+| `app-web` | public routes, auth/session, thin orchestration, shared cached reads | some heavy reads are hardened, but shared cache promotion still needs production Redis/edge backing |
+| `engine-api` | canonical score/deep/evaluate/pattern compute | scheduler still starts from engine lifespan today, so compute and control concerns are not fully separated yet |
+| `worker-control` | scheduler, queue consumers, training/report generation, batch fan-out | target plane only; several routes are merely disabled on web origin by default rather than fully relocated |
+
+Current launch blockers tied to runtime plane:
+
+- `engine/scanner/scheduler.py` still starts from engine app lifespan, so replica scale-out risks duplicate background execution.
+- `/api/profile/passport/learning/workers/run`, `/api/profile/passport/learning/reports/generate`, `/api/profile/passport/learning/train-jobs`, and `/api/lab/autorun` are control-plane shaped routes that should migrate behind `worker-control`.
+
 ## Inventory
 
 | Routes | Tier | Owner | Access boundary | Abuse policy / notes |

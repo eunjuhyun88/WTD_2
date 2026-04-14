@@ -9,7 +9,7 @@
  * Pure, deterministic. Unit-testable.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R4
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type { DecisionTrajectory } from '../../contracts/index';

@@ -42,6 +42,22 @@ Every app-facing route must declare one of the following ownership types:
 
 All new routes should document their ownership type in route-level comments and relevant work items.
 
+## Runtime Placement Policy
+
+Ownership type and runtime placement are related, but not identical.
+
+1. Public app-facing routes live on `app-web`
+   - Includes proxy routes and thin orchestrated routes.
+   - Must avoid long-running control-plane work.
+
+2. Engine-owned compute routes live on `engine-api`
+   - Deterministic score/deep/evaluate semantics belong here.
+   - App routes may orchestrate around them, but do not replace them.
+
+3. Scheduler, training, report generation, and queue consumers live on `worker-control`
+   - These are not public browser-origin responsibilities.
+   - Public web routes may enqueue or request internal work, but should not execute long-running control-plane jobs inline by default.
+
 ## Failure-Mode Contract Policy
 
 The caller-facing contract must make degradation explicit. Silent fallback is disallowed.

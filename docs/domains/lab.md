@@ -34,6 +34,7 @@ Provide controlled research workflows for testing hypotheses and inspecting outc
 
 - `app/src/routes/lab/+page.svelte`
 - `app/src/routes/api/patterns/*`
+- `research/README.md`
 - `docs/domains/evaluation.md`
 - `docs/domains/contracts.md`
 

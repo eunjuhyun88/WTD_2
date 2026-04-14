@@ -15,7 +15,7 @@
  *    type error at compile time.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R2
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type {
