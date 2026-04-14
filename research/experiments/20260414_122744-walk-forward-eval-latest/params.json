@@ -1,0 +1,7 @@
+{
+  "mode": "synthetic-latest",
+  "seed": 2026,
+  "n_samples": 120,
+  "n_features": 20,
+  "n_splits": 3
+}
