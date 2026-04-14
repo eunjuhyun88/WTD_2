@@ -1,13 +1,21 @@
 <script lang="ts">
-  import type { TerminalVerdict, TerminalEvidence, TerminalSource } from '$lib/types/terminal';
+  import type { TerminalEvidence } from '$lib/types/terminal';
+  import type { DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
   import VerdictHeader from './VerdictHeader.svelte';
   import ActionStrip from './ActionStrip.svelte';
   import EvidenceGrid from './EvidenceGrid.svelte';
   import WhyPanel from './WhyPanel.svelte';
   import SourceRow from './SourceRow.svelte';
+  import {
+    buildEvidenceFromAnalysis,
+    buildPanelModel,
+    buildSourcesFromAnalysis,
+    buildVerdictFromAnalysis,
+    type PanelAnalyzeData,
+  } from '$lib/terminal/panelAdapter';
 
   interface Props {
-    analysisData?: any;
+    analysisData?: PanelAnalyzeData | null;
     newsData?: any;
     activeTab?: string;
     onTabChange?: (t: string) => void;
@@ -26,6 +34,7 @@
     bars = [],
     layerBarsMap = {},
   }: Props = $props();
+  let pinned = $state(false);
 
   const TABS = [
     { id: 'summary', label: 'Summary' },
@@ -64,121 +73,9 @@
     return 'rgba(247,242,234,0.72)';
   }
 
-  // ── Verdict — deep first, ensemble fallback ───────────────────────────
-  let verdict = $derived((() => {
-    if (deep?.verdict) {
-      const score = deep.total_score ?? 0;
-      const v: string = deep.verdict;
-      const direction: 'bullish'|'bearish'|'neutral' =
-        v.includes('BULL') ? 'bullish' : v.includes('BEAR') ? 'bearish' : 'neutral';
-      const topLayers = deep.layers
-        ? Object.entries(deep.layers as Record<string, any>)
-            .filter(([, lr]) => lr.score !== 0)
-            .sort(([, a], [, b]) => Math.abs(b.score) - Math.abs(a.score))
-            .slice(0, 3)
-            .map(([, lr]) => (lr.sigs as Array<{t:string}>)[0]?.t ?? '')
-            .filter(Boolean)
-            .join(' · ')
-        : v;
-      return {
-        direction,
-        confidence: (Math.abs(score) >= 50 ? 'high' : Math.abs(score) >= 20 ? 'medium' : 'low') as 'high'|'medium'|'low',
-        reason: topLayers || v,
-        against: analysisData?.ensemble?.block_analysis?.disqualifiers || [],
-        action: v === 'STRONG BULL' ? 'Strong buy on pullback'
-              : v === 'BULLISH' ? 'Buy on pullback'
-              : v === 'BEARISH' ? 'Avoid / short'
-              : v === 'STRONG BEAR' ? 'Strong short / avoid' : 'Wait for clarity',
-        invalidation: atrLevels.stop_long
-          ? `Stop $${Number(atrLevels.stop_long).toLocaleString('en-US', {maximumFractionDigits: 2})}`
-          : '',
-        updatedAt: Date.now(),
-      };
-    }
-    if (!analysisData?.ensemble) return null;
-    const ens = analysisData.ensemble;
-    const dir = ens.direction ?? '';
-    return {
-      direction: (dir.includes('long') ? 'bullish' : dir.includes('short') ? 'bearish' : 'neutral') as 'bullish'|'bearish'|'neutral',
-      confidence: (Math.abs(ens.ensemble_score) > 0.6 ? 'high' : Math.abs(ens.ensemble_score) > 0.3 ? 'medium' : 'low') as 'high'|'medium'|'low',
-      reason: ens.reason || 'Analysis in progress',
-      against: ens.block_analysis?.disqualifiers || [],
-      action: dir === 'strong_long' ? 'Strong buy on pullback'
-            : dir === 'long' ? 'Buy on pullback'
-            : dir === 'short' ? 'Avoid / short' : 'Wait for clarity',
-      invalidation: '',
-      updatedAt: Date.now(),
-    };
-  })());
-
-  // ── Evidence — deep.layers first, snapshot fallback ──────────────────
-  const LAYER_LABELS: Record<string, string> = {
-    wyckoff:'Wyckoff', mtf:'MTF Conf', breakout:'Breakout',
-    vsurge:'Vol Surge', cvd:'CVD', flow:'FR / Flow',
-    liq_est:'Liq Est', real_liq:'Real Liq', oi:'OI Squeeze',
-    basis:'Basis', bb14:'BB(14)', bb16:'BB Sqz', atr:'ATR',
-    ob:'Order Book', onchain:'On-chain', fg:'Fear/Greed',
-    kimchi:'Kimchi', sector:'Sector',
-  };
-  const LAYER_ORDER = [
-    'wyckoff','mtf','cvd','vsurge','breakout',
-    'flow','oi','real_liq','liq_est','basis',
-    'bb14','bb16','atr','fg','onchain','kimchi','sector','ob',
-  ];
-
-  let evidence = $derived((() => {
-    if (deep?.layers) {
-      const ev: TerminalEvidence[] = [];
-      for (const name of LAYER_ORDER) {
-        const lr = (deep.layers as Record<string, any>)[name];
-        if (!lr) continue;
-        if (lr.score === 0 && lr.sigs.length === 0) continue;
-        const topSig = (lr.sigs as Array<{t:string;type:string}>)[0];
-        const state: TerminalEvidence['state'] =
-          lr.score >= 5 ? 'bullish' : lr.score <= -5 ? 'bearish'
-          : topSig?.type === 'warn' ? 'warning'
-          : topSig?.type === 'bull' ? 'bullish'
-          : topSig?.type === 'bear' ? 'bearish' : 'neutral';
-        ev.push({
-          metric: LAYER_LABELS[name] ?? name,
-          value: (lr.score >= 0 ? '+' : '') + lr.score,
-          delta: '',
-          interpretation: topSig?.t?.slice(0, 70) ?? '',
-          state, sourceCount: lr.sigs.length,
-        });
-      }
-      return ev;
-    }
-    if (!analysisData?.snapshot) return [];
-    const s = analysisData.snapshot;
-    const ev: TerminalEvidence[] = [];
-    if (s.rsi14 != null) ev.push({ metric:'RSI 14', value:s.rsi14.toFixed(1), delta:'',
-      interpretation:s.rsi14>70?'Overbought':s.rsi14<30?'Oversold':'Neutral',
-      state:s.rsi14>70?'warning':s.rsi14<30?'bullish':'neutral', sourceCount:1 });
-    if (s.funding_rate != null) ev.push({ metric:'Funding', value:(s.funding_rate*100).toFixed(3)+'%', delta:'',
-      interpretation:s.funding_rate>0.01?'Longs paying':s.funding_rate<-0.005?'Shorts paying':'Neutral',
-      state:s.funding_rate>0.015?'warning':'neutral', sourceCount:1 });
-    if (s.oi_change_1h != null) ev.push({ metric:'OI 1H',
-      value:(s.oi_change_1h>=0?'+':'')+(s.oi_change_1h*100).toFixed(2)+'%', delta:'',
-      interpretation:s.oi_change_1h>0.02?'Expanding':s.oi_change_1h<-0.02?'Contracting':'Stable',
-      state:s.oi_change_1h>0.02?'bullish':s.oi_change_1h<-0.02?'bearish':'neutral', sourceCount:1 });
-    if (s.cvd_state) ev.push({ metric:'CVD', value:s.cvd_state, delta:'',
-      interpretation:s.cvd_state==='buying'?'Aggressive buys':s.cvd_state==='selling'?'Aggressive sells':'Balanced',
-      state:s.cvd_state==='buying'?'bullish':s.cvd_state==='selling'?'bearish':'neutral', sourceCount:1 });
-    if (s.regime) ev.push({ metric:'Regime', value:s.regime.toUpperCase(), delta:'',
-      interpretation:s.regime, state:s.regime==='risk_on'?'bullish':s.regime==='risk_off'?'bearish':'neutral', sourceCount:1 });
-    if (s.vol_ratio_3 != null) ev.push({ metric:'Volume', value:s.vol_ratio_3.toFixed(1)+'x', delta:'',
-      interpretation:s.vol_ratio_3>2?'Spike':s.vol_ratio_3>1.2?'Above avg':'Below avg',
-      state:s.vol_ratio_3>2?'warning':'neutral', sourceCount:1 });
-    return ev;
-  })());
-
-  const SOURCES: TerminalSource[] = $derived([
-    { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-    { label: 'Binance Perp', category: 'Market', freshness: 'recent', updatedAt: Date.now() - 15000 },
-    { label: 'Market Engine', category: 'Model', freshness: 'recent', updatedAt: Date.now() - 30000,
-      method: deep ? `17-layer pipeline · ${deepVerdict}` : 'Feature calc + ensemble' },
-  ]);
+  const verdict = $derived(buildVerdictFromAnalysis(analysisData));
+  const evidence = $derived(buildEvidenceFromAnalysis(analysisData));
+  const SOURCES = $derived(buildSourcesFromAnalysis(analysisData));
 
   const fundingMetrics = $derived(
     evidence.filter(e => ['Funding Rate', 'Funding Pct', 'FR / Flow', 'Funding'].includes(e.metric))
@@ -214,14 +111,6 @@
       ?? analysisData?.snapshot?.price_change_pct_24h
       ?? null
   );
-  const panelBiasLabel = $derived(
-    verdict?.direction === 'bullish'
-      ? 'LONG BIAS'
-      : verdict?.direction === 'bearish'
-        ? 'SHORT BIAS'
-        : 'NEUTRAL'
-  );
-  const panelSourceCount = $derived(SOURCES.length + evidence.reduce((sum, item) => sum + item.sourceCount, 0));
   const panelTimeframe = $derived(String(analysisData?.snapshot?.timeframe ?? analysisData?.timeframe ?? '4h').toUpperCase());
   const mtfCells = $derived.by(() => {
     const direction = verdict?.direction ?? 'neutral';
@@ -295,6 +184,10 @@
     onAction?.(prompts[kind]);
   }
 
+  function openChartView() {
+    onAction?.(`Open chart-focused view for ${panelSymbol}USDT on ${panelTimeframe} and summarize key levels.`);
+  }
+
   const panelConclusion = $derived(
     verdict
       ? {
@@ -304,6 +197,19 @@
         }
       : { bias: '—', action: '—', invalidation: '—' }
   );
+  const panelModel = $derived(
+    buildPanelModel({
+      analysisData,
+      backendSnapshot: (analysisData?.backendSnapshot as SnapshotEnvelope | null | undefined) ?? null,
+      derivativesSnapshot: (analysisData?.derivativesSnapshot as DerivativesEnvelope | null | undefined) ?? null,
+      verdict,
+      evidence,
+      sources: SOURCES,
+      pWin,
+      panelSymbol,
+      panelTimeframe,
+    })
+  );
 </script>
 
 <aside class="context-panel">
@@ -311,20 +217,20 @@
     <div class="panel-symbol-line">
       <span class="panel-symbol">{panelSymbol}/USDT</span>
       <span class="panel-context">Terminal Analysis</span>
-      <span class="panel-bias" data-bias={verdict?.direction ?? 'neutral'}>{panelBiasLabel}</span>
+      <span class="panel-bias" data-bias={verdict?.direction ?? 'neutral'}>{panelModel.header.biasLabel}</span>
     </div>
     <div class="panel-price-line">
-      <strong>{formatPanelPrice(panelPrice)}</strong>
-      <span class="panel-change" data-tone={panelChange == null ? 'neutral' : panelChange >= 0 ? 'bull' : 'bear'}>
-        {formatPanelChange(panelChange)}
+      <strong>{panelModel.header.priceLabel}</strong>
+      <span class="panel-change" data-tone={panelModel.header.changeTone}>
+        {panelModel.header.changeLabel}
       </span>
-      <small>Sources {panelSourceCount}</small>
+      <small>Sources {panelModel.header.sourceCount}</small>
     </div>
     <div class="panel-actions">
-      <button type="button" onclick={() => onTabChange?.('summary')}>Summary</button>
+      <button type="button" class:active={pinned} onclick={() => pinned = !pinned}>{pinned ? 'Pinned' : 'Pin'}</button>
       <button type="button" onclick={() => requestBackendAction('compare')}>Compare</button>
-      <button type="button" onclick={() => onTabChange?.('metrics')}>Flow</button>
-      <button type="button" onclick={() => requestBackendAction('alert')}>Alert Draft</button>
+      <button type="button" onclick={openChartView}>Chart</button>
+      <button type="button" onclick={() => requestBackendAction('alert')}>Alert+</button>
     </div>
   </div>
 
@@ -373,6 +279,19 @@
         <VerdictHeader {verdict} />
         <div class="divider"></div>
         <ActionStrip action={verdict.action} avoid={verdict.against[0]} />
+        {#if panelModel.summaryBullets.length > 0}
+          <div class="divider"></div>
+          <p class="section-label">Why now</p>
+          <div class="flow-list">
+            {#each panelModel.summaryBullets as bullet}
+              <div class="flow-row" data-state="neutral">
+                <span>Signal</span>
+                <strong>•</strong>
+                <small>{bullet}</small>
+              </div>
+            {/each}
+          </div>
+        {/if}
         <div class="divider"></div>
         <EvidenceGrid {evidence} cols={2} {bars} {layerBarsMap} />
         <div class="divider"></div>
@@ -409,35 +328,35 @@
         <div class="entry-section">
           <p class="section-label">Entry levels</p>
           <div class="entry-grid">
-            <div class="entry-cell"><span>Entry</span><strong class="tp">{formatPanelPrice(entryPlan.entry)}</strong></div>
-            <div class="entry-cell"><span>Stop</span><strong class="stop">{formatPanelPrice(entryPlan.stop)}</strong></div>
-            <div class="entry-cell"><span>TP1</span><strong class="tp">{formatPanelPrice(entryPlan.tp1)}</strong></div>
-            <div class="entry-cell"><span>TP2</span><strong class="tp">{formatPanelPrice(entryPlan.tp2)}</strong></div>
+            <div class="entry-cell"><span>Entry</span><strong class="tp">{formatPanelPrice(panelModel.entry.entry)}</strong></div>
+            <div class="entry-cell"><span>Stop</span><strong class="stop">{formatPanelPrice(panelModel.entry.stop)}</strong></div>
+            <div class="entry-cell"><span>TP1</span><strong class="tp">{formatPanelPrice(panelModel.entry.tp1)}</strong></div>
+            <div class="entry-cell"><span>TP2</span><strong class="tp">{formatPanelPrice(panelModel.entry.tp2)}</strong></div>
           </div>
           <div class="rr-card">
             <div class="rr-head">
               <span>Risk : Reward</span>
-              <strong>1 : {entryPlan.rr ? entryPlan.rr.toFixed(1) : '—'}</strong>
+              <strong>1 : {panelModel.entry.rr ? panelModel.entry.rr.toFixed(1) : '—'}</strong>
             </div>
             <div class="rr-bar">
-              <span class="rr-risk" style={`width:${entryPlan.rr ? Math.min(45, 100 / (entryPlan.rr + 1)) : 25}%`}></span>
-              <span class="rr-reward" style={`left:${entryPlan.rr ? Math.min(45, 100 / (entryPlan.rr + 1)) + 2 : 27}%;width:${entryPlan.rr ? Math.max(20, 96 - Math.min(45, 100 / (entryPlan.rr + 1))) : 69}%`}></span>
+              <span class="rr-risk" style={`width:${panelModel.entry.rr ? Math.min(45, 100 / (panelModel.entry.rr + 1)) : 25}%`}></span>
+              <span class="rr-reward" style={`left:${panelModel.entry.rr ? Math.min(45, 100 / (panelModel.entry.rr + 1)) + 2 : 27}%;width:${panelModel.entry.rr ? Math.max(20, 96 - Math.min(45, 100 / (panelModel.entry.rr + 1))) : 69}%`}></span>
             </div>
           </div>
           <div class="level-stack">
-            {#each entryLevels as level}
-              <div class="level-row" data-tone={level.tone}>
+            {#each panelModel.entry.levels as level}
+              <div class="level-row" data-tone={level.tone === 'bull' ? 'good' : level.tone === 'bear' ? 'bad' : level.tone === 'info' ? 'info' : 'neutral'}>
                 <span class="level-dot"></span>
                 <span class="level-label">{level.label}</span>
                 <strong>{formatPanelPrice(level.value)}</strong>
-                <small>{formatDistance(level.distance)}</small>
+                <small>{formatDistance(level.distancePct)}</small>
               </div>
             {/each}
           </div>
           <div class="prob-row">
             <span>P(win)</span>
-            <div class="prob-track"><span style={`width:${Math.max(5, Math.min(95, entryPlan.confidencePct))}%`}></span></div>
-            <strong>{entryPlan.confidencePct.toFixed(0)}%</strong>
+            <div class="prob-track"><span style={`width:${Math.max(5, Math.min(95, panelModel.entry.confidencePct))}%`}></span></div>
+            <strong>{panelModel.entry.confidencePct.toFixed(0)}%</strong>
           </div>
           <div class="panel-action-row">
             <button type="button" class="panel-primary" onclick={() => requestBackendAction('entry')}>Review Entry</button>
@@ -456,8 +375,8 @@
         <div class="risk-section">
           <p class="section-label">Action plan</p>
           <div class="action-block">
-            {#each riskRows as row}
-              <div class="action-line" data-tone={row.tone}>
+            {#each panelModel.riskRows as row}
+              <div class="action-line" data-tone={row.tone === 'bull' ? 'good' : row.tone === 'bear' ? 'bad' : row.tone}>
                 <span>{row.label}</span>
                 <strong>{row.value}</strong>
               </div>
@@ -507,8 +426,8 @@
         <div class="metrics-detail">
           <p class="section-label">Order flow · current window</p>
           <div class="flow-list">
-            {#each flowRows as item}
-              <div class="flow-row" data-state={item.state}>
+            {#each panelModel.flowRows as item}
+              <div class="flow-row" data-state={item.tone === 'bull' ? 'bullish' : item.tone === 'bear' ? 'bearish' : item.tone === 'warn' ? 'warning' : 'neutral'}>
                 <span>{item.metric}</span>
                 <strong>{item.value}</strong>
                 <small>{item.interpretation}</small>
