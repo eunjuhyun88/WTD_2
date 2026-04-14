@@ -1,0 +1,15 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - engine/Dockerfile
+      - -t
+      - ${_IMAGE}
+      - engine
+
+images:
+  - ${_IMAGE}
+
+substitutions:
+  _IMAGE: us-east4-docker.pkg.dev/$PROJECT_ID/wtd/engine-api:latest
