@@ -165,6 +165,7 @@
     padding: 8px 0;
     min-height: 20px;
     max-height: 80px;
+    appearance: none;
     -webkit-appearance: none;
   }
 

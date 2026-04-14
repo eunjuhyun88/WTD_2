@@ -74,7 +74,7 @@
 
 {#if open}
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="modal-backdrop" onclick={onClose} onkeydown={handleKeydown} role="dialog" aria-modal="true">
+<div class="modal-backdrop" onclick={onClose} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
 

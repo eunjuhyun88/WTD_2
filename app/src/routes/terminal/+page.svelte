@@ -3,8 +3,8 @@
    * Terminal — Bloomberg-style 3-column decision cockpit.
    *
    * Desktop layout:
-   *   [TerminalCommandBar — symbol, TF, flow badge, layout]
-   *   [TerminalLeftRail 240px][WorkspaceGrid (dynamic board)][TerminalContextPanel 320px]
+   *   [TerminalCommandBar — symbol, TF, shell toggles, layout]
+   *   [TerminalLeftRail][ChartZone + AnalysisRail]
    *   [TerminalBottomDock — multimodal input]
    *
    * Mobile layout:
@@ -22,9 +22,7 @@
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
-  import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
-  import WorkspaceGrid from '../../components/terminal/workspace/WorkspaceGrid.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
@@ -47,7 +45,6 @@
   let evidenceMap = $state<Record<string, TerminalEvidence[]>>({});
   let activeSymbol = $state('');
 
-  let rightPanelTab = $state('summary');
   let analysisData = $state<any>(null);
   let newsData = $state<any>(null);
 
@@ -76,6 +73,8 @@
   // ── Capture modal ──────────────────────────────────────────
   let showCaptureModal = $state(false);
   let showFullEvidence = $state(false);
+  let showLeftRail = $state(true);
+  let showAnalysisRail = $state(true);
 
   // ── Chart price-level overlays (entry / target / stop) ───────
   // Extracted from deep.atr_levels after each analysis; passed to ChartBoard
@@ -229,12 +228,13 @@
     const deep = data?.deep;
     const snap = data?.snapshot ?? {};
     const ens  = data?.ensemble ?? {};
+    const isMarketOnly = data?.mode === 'market-only';
     const price = data?.price ?? snap?.last_close ?? 0;
 
     const verdict  = deep?.verdict ?? '';
     const score    = deep?.total_score ?? 0;
     const bias     = _deepBias(verdict) || (ens.direction?.includes('long') ? 'bullish' : ens.direction?.includes('short') ? 'bearish' : 'neutral') as 'bullish' | 'bearish' | 'neutral';
-    const confidence = _deepConfidence(score);
+    const confidence = isMarketOnly ? 'low' : _deepConfidence(score);
 
     // ATR stop → invalidation price
     const stopLong = deep?.atr_levels?.stop_long;
@@ -243,7 +243,14 @@
       : '—';
 
     // Per-layer sources
-    const sources: TerminalSource[] = deep?.layers
+    const sources: TerminalSource[] = isMarketOnly
+      ? [
+          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
+          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
+          { label: 'Market-only Fallback', category: 'Model', freshness: 'disconnected', updatedAt: Date.now(),
+            method: 'Raw market context while engine is unavailable' },
+        ]
+      : deep?.layers
       ? [
           { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
           { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
@@ -273,10 +280,10 @@
       fundingPercentile7d: 50,
       spreadBps: 0,
       bias, confidence,
-      action: _deepAction(verdict, ens.direction ?? ''),
+      action: isMarketOnly ? 'Track market context' : _deepAction(verdict, ens.direction ?? ''),
       invalidation,
       sources,
-      freshnessStatus: 'recent',
+      freshnessStatus: isMarketOnly ? 'disconnected' : 'recent',
       tf15m: tfArrow(snap.ema_alignment ?? mtfMeta.tf15m, 'bullish', 'bearish'),
       tf1h:  tfArrow(snap.ema_alignment ?? mtfMeta.tf1h,  'bullish', 'bearish'),
       tf4h:  tfArrow(snap.htf_structure  ?? mtfMeta.tf4h, 'uptrend', 'downtrend'),
@@ -286,6 +293,18 @@
   function buildVerdict(data: any): TerminalVerdict {
     const deep = data?.deep;
     const ens  = data?.ensemble ?? {};
+
+    if (data?.mode === 'market-only') {
+      return {
+        direction: 'neutral',
+        confidence: 'low',
+        reason: ens.reason || 'Market-only context',
+        against: ['engine unavailable'],
+        action: 'Track market context',
+        invalidation: '—',
+        updatedAt: Date.now(),
+      };
+    }
 
     // Primary: deep verdict
     if (deep?.verdict) {
@@ -414,6 +433,87 @@
     return ev;
   }
 
+  interface MarketSeriesBar {
+    t: number;
+    c: number;
+    v: number;
+    delta: number;
+    cvd: number;
+  }
+
+  function avg(values: number[]): number {
+    if (values.length === 0) return 0;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+
+  function safePctChange(current?: number, previous?: number): number {
+    if (!current || !previous) return 0;
+    if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) return 0;
+    return (current - previous) / previous;
+  }
+
+  async function readJsonSafe(res: Response): Promise<any | null> {
+    try {
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  function buildMarketOnlyEnvelope(
+    symbol: string,
+    tf: string,
+    reason: string,
+    marketBars: MarketSeriesBar[],
+    oiBars: MarketSeriesBar[],
+    fundingBars: MarketSeriesBar[],
+  ) {
+    const latestBar = marketBars.at(-1);
+    const prevBar = marketBars.at(-2);
+    const reference24hBar = marketBars.length > 24 ? marketBars.at(-25) : prevBar;
+    const recentVolumes = marketBars.slice(-21, -1).map((bar) => bar.v).filter((value) => Number.isFinite(value));
+    const volRatio = latestBar?.v && recentVolumes.length > 0 ? latestBar.v / avg(recentVolumes) : 1;
+    const latestOi = oiBars.at(-1)?.c;
+    const prevOi = oiBars.at(-2)?.c;
+    const latestFunding = fundingBars.at(-1)?.c ?? 0;
+    const oiChange1h = safePctChange(latestOi, prevOi);
+    const change24h = safePctChange(latestBar?.c, reference24hBar?.c) * 100;
+    const delta = latestBar?.delta ?? 0;
+    const cvdState = delta > 0 ? 'buying' : delta < 0 ? 'selling' : 'balanced';
+    const regime =
+      change24h >= 2 ? 'risk_on'
+      : change24h <= -2 ? 'risk_off'
+      : 'balanced';
+
+    return {
+      symbol,
+      tf,
+      mode: 'market-only',
+      price: latestBar?.c ?? 0,
+      change24h,
+      ensemble: {
+        direction: 'neutral',
+        ensemble_score: 0,
+        reason,
+        block_analysis: { disqualifiers: ['engine unavailable'] },
+      },
+      snapshot: {
+        symbol,
+        timeframe: tf,
+        last_close: latestBar?.c ?? 0,
+        vol_ratio_3: volRatio,
+        oi_change_1h: oiChange1h,
+        funding_rate: latestFunding,
+        cvd_state: cvdState,
+        regime,
+      },
+      derivatives: {
+        funding_rate: latestFunding,
+      },
+      degraded: true,
+    };
+  }
+
   // ─── Data Fetching ───────────────────────────────────────────
 
   async function loadAnalysis(symbol: string, tf: string) {
@@ -435,27 +535,45 @@
         fetch(`/api/market/funding?symbol=${symbol}&limit=96`),
       ]);
 
-      if (analyzeRes.status !== 'fulfilled' || !analyzeRes.value.ok)
-        throw new Error(`analyze ${analyzeRes.status === 'fulfilled' ? analyzeRes.value.status : 'failed'}`);
-      const data = await analyzeRes.value.json();
-
-      // Load OHLCV bars (non-blocking)
+      let marketBars: MarketSeriesBar[] = [];
       if (ohlcvRes.status === 'fulfilled' && ohlcvRes.value.ok) {
         const ohlcv = await ohlcvRes.value.json();
-        ohlcvBars = ohlcv.bars ?? [];
+        marketBars = ohlcv.bars ?? [];
+        ohlcvBars = marketBars;
       }
 
       // Build per-layer bars map — OI and funding get dedicated data
       const newLayerBarsMap: Record<string, any[]> = {};
+      let oiBars: MarketSeriesBar[] = [];
       if (oiRes.status === 'fulfilled' && oiRes.value.ok) {
         const oi = await oiRes.value.json();
-        if (oi.bars?.length) newLayerBarsMap['oi'] = oi.bars;
+        oiBars = oi.bars ?? [];
+        if (oiBars.length) newLayerBarsMap['oi'] = oiBars;
       }
+      let fundingBars: MarketSeriesBar[] = [];
       if (fundingRes.status === 'fulfilled' && fundingRes.value.ok) {
         const funding = await fundingRes.value.json();
-        if (funding.bars?.length) newLayerBarsMap['flow'] = funding.bars;
+        fundingBars = funding.bars ?? [];
+        if (fundingBars.length) newLayerBarsMap['flow'] = fundingBars;
       }
       layerBarsMap = newLayerBarsMap;
+
+      let data: any;
+      if (analyzeRes.status === 'fulfilled' && analyzeRes.value.ok) {
+        data = await analyzeRes.value.json();
+      } else {
+        const analyzePayload =
+          analyzeRes.status === 'fulfilled'
+            ? await readJsonSafe(analyzeRes.value)
+            : null;
+        const reason =
+          analyzePayload?.reason
+          ?? analyzePayload?.error
+          ?? (analyzeRes.status === 'fulfilled'
+            ? `Engine analysis unavailable (${analyzeRes.value.status})`
+            : 'Engine analysis request failed');
+        data = buildMarketOnlyEnvelope(symbol, tf, reason, marketBars, oiBars, fundingBars);
+      }
 
       analysisData = data;
       const asset = buildAssetFromAnalysis(symbol, data);
@@ -606,7 +724,7 @@
 
     isStreaming = true;
     streamText = '';
-    showRightPanel = true;  // reveal context panel on first query
+    showAnalysisRail = true;
 
     const symbol = pairToSymbol(gPair);
     const tf = symbolToTF(gTf);
@@ -738,6 +856,7 @@
   function selectAsset(symbol: string) {
     activeSymbol = symbol;
     showFullEvidence = false;
+    showAnalysisRail = true;
     if (!verdictMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
     setActivePair(symbol.replace('USDT', '/USDT'));
   }
@@ -817,22 +936,24 @@
   let activePairDisplay = $derived(gPair.split('/')[0] ?? 'BTC');
 
   // ─── Panel visibility + resize ───────────────────────────────
-  let showRightPanel = $state(false);
   let leftWidth  = $state(240);
-  let rightWidth = $state(320);
 
-  function startResize(side: 'left' | 'right', e: MouseEvent) {
+  function toggleLeftRail() {
+    showLeftRail = !showLeftRail;
+  }
+
+  function toggleAnalysisRail() {
+    showAnalysisRail = !showAnalysisRail;
+  }
+
+  function startResize(e: MouseEvent) {
     e.preventDefault();
     const startX = e.clientX;
-    const startW = side === 'left' ? leftWidth : rightWidth;
+    const startW = leftWidth;
 
     const onMove = (ev: MouseEvent) => {
       const delta = ev.clientX - startX;
-      if (side === 'left') {
-        leftWidth = Math.max(160, Math.min(400, startW + delta));
-      } else {
-        rightWidth = Math.max(240, Math.min(520, startW - delta));
-      }
+      leftWidth = Math.max(160, Math.min(400, startW + delta));
     };
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
@@ -945,9 +1066,11 @@
 
   let statusStripItems = $derived.by(() => {
     const regime = metricValue(['Regime', 'Breakout'], flowBias);
+    const engineMode = activeAsset?.freshnessStatus === 'disconnected' ? 'MARKET ONLY' : 'FULL';
     return [
       { label: 'Mode', value: isScanMode ? 'SCAN' : 'FOCUS', tone: 'info' },
       { label: 'AI', value: runtimeModeLabel, tone: runtimeModeLabel === 'API' ? 'bull' : runtimeModeLabel === 'OLLAMA' ? 'info' : 'neutral' },
+      { label: 'Engine', value: engineMode, tone: engineMode === 'FULL' ? 'bull' : 'warn' },
       { label: 'Flow Bias', value: flowBias, tone: flowBias === 'LONG' ? 'bull' : flowBias === 'SHORT' ? 'bear' : 'neutral' },
       { label: 'Regime', value: regime, tone: 'neutral' },
       { label: 'Board', value: `${boardAssets.length} symbols`, tone: 'neutral' },
@@ -996,6 +1119,10 @@
     {flowBias}
     {layout}
     assetsCount={boardAssets.length}
+    leftRailOpen={showLeftRail}
+    analysisRailOpen={showAnalysisRail}
+    onToggleLeftRail={toggleLeftRail}
+    onToggleAnalysisRail={toggleAnalysisRail}
     onLayout={switchLayout}
     onClear={clearBoard}
     onCapture={() => showCaptureModal = true}
@@ -1031,30 +1158,37 @@
 
   <!-- 3-column body -->
   <div class="terminal-body"
-    class:has-right-panel={showRightPanel}
-    style="--terminal-left-w: {leftWidth}px; --terminal-right-w: {rightWidth}px"
+    class:left-collapsed={!showLeftRail}
+    style="--terminal-left-w: {leftWidth}px"
   >
 
     <!-- Left Rail -->
-    <aside class="left-rail">
-      <TerminalLeftRail
-        {trendingData}
-        alerts={scannerAlerts}
-        {patternPhases}
-        {activeSymbol}
-        newsItems={newsData?.records ?? []}
-        onQuery={handleQueryChip}
-      />
-    </aside>
+    {#if showLeftRail}
+      <aside class="left-rail">
+        <TerminalLeftRail
+          {trendingData}
+          alerts={scannerAlerts}
+          {patternPhases}
+          {activeSymbol}
+          newsItems={newsData?.records ?? []}
+          onQuery={handleQueryChip}
+        />
+      </aside>
 
-    <!-- Left resize handle -->
-    <div class="panel-resizer" onmousedown={(e) => startResize('left', e)} role="separator" aria-label="Resize left panel"></div>
+      <!-- Left resize handle -->
+      <button
+        class="panel-resizer"
+        type="button"
+        onmousedown={startResize}
+        aria-label="Resize left panel"
+      ></button>
+    {/if}
 
     <!-- Center Board -->
     <main class="center-board">
 
       <!-- Desktop board (hidden on mobile via CSS) -->
-      <div class="board-content desktop-board">
+      <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
         <!-- ── Chart area — hero, full height ── -->
         <div class="chart-area">
@@ -1070,7 +1204,10 @@
           />
           <EvidenceStrip
             evidence={activeEvidence}
-            onExpand={() => { showFullEvidence = true; }}
+            onExpand={() => {
+              showAnalysisRail = true;
+              showFullEvidence = true;
+            }}
           />
           {#if heroMetricTiles.length > 0}
             <div class="hero-metrics-row">
@@ -1172,6 +1309,7 @@
         </div>
 
         <!-- ── Analysis rail — single verdict or scan list ── -->
+        {#if showAnalysisRail}
         <div class="analysis-rail">
 
           <!-- Rail header: mode indicator + streaming badge -->
@@ -1230,7 +1368,10 @@
                   bars={ohlcvBars}
                   {layerBarsMap}
                   onPin={() => {}}
-                  onViewDetail={() => { showFullEvidence = true; }}
+                  onViewDetail={() => {
+                    showAnalysisRail = true;
+                    showFullEvidence = true;
+                  }}
                 />
               </div>
             {/if}
@@ -1358,6 +1499,7 @@
           {/if}
 
         </div>
+        {/if}
 
       </div>
 
@@ -1388,22 +1530,6 @@
         />
       </div>
     </main>
-
-    <!-- Right Context Panel — appears only after first search -->
-    {#if showRightPanel}
-    <!-- Right resize handle -->
-    <div class="panel-resizer" onmousedown={(e) => startResize('right', e)} role="separator" aria-label="Resize right panel"></div>
-    <aside class="right-panel">
-      <TerminalContextPanel
-        analysisData={activeSymbol ? analysisData : null}
-        {newsData}
-        activeTab={rightPanelTab}
-        onTabChange={(t) => rightPanelTab = t}
-        bars={ohlcvBars}
-        {layerBarsMap}
-      />
-    </aside>
-    {/if}
 
   </div>
 </div>
@@ -1566,19 +1692,20 @@
     text-transform: uppercase;
   }
 
-  .terminal-body.has-right-panel {
-    /* left | handle | center | handle | right */
-    grid-template-columns: var(--terminal-left-w, 240px) 4px 1fr 4px var(--terminal-right-w, 320px);
+  .terminal-body.left-collapsed {
+    grid-template-columns: 1fr;
   }
 
   /* Resize handles */
   .panel-resizer {
     width: 4px;
     background: var(--sc-terminal-border, rgba(255,255,255,0.07));
+    border: none;
     cursor: col-resize;
     position: relative;
     z-index: 20;
     flex-shrink: 0;
+    padding: 0;
     transition: background 0.15s;
   }
   .panel-resizer:hover { background: rgba(255,255,255,0.18); }
@@ -1614,6 +1741,9 @@
     display: flex;
     flex-direction: row;   /* ← chart + analysis side by side */
     min-height: 0;
+  }
+  .board-content.analysis-hidden .chart-area {
+    border-right: none;
   }
 
   /* Chart area — center, takes all available width */
@@ -1732,14 +1862,6 @@
 
   /* Scan detail (VerdictCard below scan list) */
   .scan-detail { flex: 1; }
-
-  .right-panel {
-    background: var(--sc-terminal-bg, #000);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
 
   .hero-metrics-row {
     display: grid;
@@ -1990,34 +2112,6 @@
     font-size: 12px; color: var(--sc-text-2); margin: 0;
   }
 
-  /* Streaming overlay */
-  .stream-overlay {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    background: linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 60%, transparent 100%);
-    padding: 24px 20px 8px;
-    display: flex; align-items: flex-end; gap: 8px;
-    pointer-events: none; z-index: 5;
-  }
-  .stream-overlay.minimal {
-    padding: 12px 20px; background: none;
-  }
-  .stream-inner {
-    display: flex; gap: 8px; align-items: flex-start; max-width: 100%;
-  }
-  .stream-dot {
-    font-size: 8px; color: #4ade80; flex-shrink: 0; margin-top: 4px;
-  }
-  .stream-dot.pulsing { animation: sc-pulse 1s ease-in-out infinite; }
-  .stream-text {
-    font-family: var(--sc-font-body);
-    font-size: 12px; color: var(--sc-text-1); margin: 0;
-    line-height: 1.5; max-height: 80px; overflow: hidden;
-  }
-  .stream-label {
-    font-family: var(--sc-font-mono);
-    font-size: 10px; color: var(--sc-text-2);
-  }
-
   .desktop-dock {
     flex-shrink: 0;
   }
@@ -2026,7 +2120,6 @@
   @media (max-width: 1024px) and (min-width: 769px) {
     .terminal-body {
       --terminal-left-w: 200px;
-      --terminal-right-w: 280px;
     }
   }
 
@@ -2044,7 +2137,6 @@
       grid-template-columns: 1fr !important;
     }
     .left-rail     { display: none; }
-    .right-panel   { display: none; }
     .panel-resizer { display: none; }
     .analysis-rail { display: none; }   /* mobile uses MobileActiveBoard instead */
     .center-board  { height: 100%; }
@@ -2056,13 +2148,6 @@
   /* Hide mobile wrap on desktop */
   @media (min-width: 769px) {
     .mobile-board-wrap { display: none; }
-    .terminal-body.has-right-panel {
-      grid-template-columns: var(--terminal-left-w, 240px) 4px 1fr !important;
-    }
-    .terminal-body.has-right-panel > .panel-resizer:last-of-type,
-    .right-panel {
-      display: none !important;
-    }
   }
 
   .mobile-board-wrap {

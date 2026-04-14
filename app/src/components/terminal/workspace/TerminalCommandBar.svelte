@@ -9,10 +9,25 @@
     layout?: LayoutId;
     onLayout?: (l: LayoutId) => void;
     assetsCount?: number;
+    leftRailOpen?: boolean;
+    analysisRailOpen?: boolean;
+    onToggleLeftRail?: () => void;
+    onToggleAnalysisRail?: () => void;
     onClear?: () => void;
     onCapture?: () => void;
   }
-  let { flowBias = 'NEUTRAL', layout = 'hero3', onLayout, assetsCount = 0, onClear, onCapture }: Props = $props();
+  let {
+    flowBias = 'NEUTRAL',
+    layout = 'hero3',
+    onLayout,
+    assetsCount = 0,
+    leftRailOpen = true,
+    analysisRailOpen = true,
+    onToggleLeftRail,
+    onToggleAnalysisRail,
+    onClear,
+    onCapture,
+  }: Props = $props();
 
   const tfs = ['15m', '1H', '4H', '1D'];
   const layouts: { id: LayoutId; label: string }[] = [
@@ -65,6 +80,27 @@
         {l.label}
       </button>
     {/each}
+  </div>
+
+  <div class="shell-switch" aria-label="Toggle terminal rails">
+    <button
+      class="shell-btn"
+      class:active={leftRailOpen}
+      onclick={onToggleLeftRail}
+      title={leftRailOpen ? 'Hide left market rail' : 'Show left market rail'}
+      aria-pressed={leftRailOpen}
+    >
+      Market
+    </button>
+    <button
+      class="shell-btn"
+      class:active={analysisRailOpen}
+      onclick={onToggleAnalysisRail}
+      title={analysisRailOpen ? 'Hide right analysis rail' : 'Show right analysis rail'}
+      aria-pressed={analysisRailOpen}
+    >
+      Analysis
+    </button>
   </div>
 
   <button class="capture-btn" onclick={onCapture} title="Capture this setup as PatternSeed">
@@ -161,6 +197,38 @@
   }
   .layout-btn.active, .layout-btn:hover { color: #63b3ed; border-color: rgba(77,143,245,0.2); background: rgba(77,143,245,0.06); }
 
+  .shell-switch {
+    display: flex;
+    gap: 4px;
+    margin-left: 8px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255,255,255,0.08);
+  }
+  .shell-btn {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sc-text-3);
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .shell-btn:hover {
+    color: var(--sc-text-1);
+    border-color: rgba(255,255,255,0.18);
+  }
+  .shell-btn.active {
+    color: #63b3ed;
+    border-color: rgba(77,143,245,0.24);
+    background: rgba(77,143,245,0.08);
+  }
+
   .clear-btn {
     font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700;
     letter-spacing: 0.08em; color: var(--sc-text-2);
@@ -185,7 +253,8 @@
   @media (max-width: 768px) {
     .workspace-badge,
     .board-badge,
-    .layout-switch {
+    .layout-switch,
+    .shell-switch {
       display: none;
     }
   }

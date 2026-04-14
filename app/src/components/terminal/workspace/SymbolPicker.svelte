@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { TOKENS, TOKEN_CATEGORIES } from '$lib/data/tokens';
   import Sparkline from './Sparkline.svelte';
 
   interface Token {
@@ -35,6 +36,7 @@
   let sparklines = $state<Record<string, SparklineData>>({});
   let loading = $state(true);
   let error = $state('');
+  let usingFallback = $state(false);
   let query = $state('');
   let sector = $state('');
   let sort = $state('rank');
@@ -60,6 +62,92 @@
 
   const activeBase = $derived(activePair.split('/')[0] ?? 'BTC');
 
+  function tokenSector(base: string): string {
+    if (TOKEN_CATEGORIES.major.includes(base) || TOKEN_CATEGORIES.l1l2.includes(base)) return 'L1';
+    if (TOKEN_CATEGORIES.defi.includes(base)) return 'DeFi';
+    if (TOKEN_CATEGORIES.meme.includes(base)) return 'Meme';
+    if (['FET', 'RNDR', 'GRT'].includes(base)) return 'AI';
+    if (TOKEN_CATEGORIES.ai_gaming.includes(base)) return 'Gaming';
+    if (TOKEN_CATEGORIES.infra.includes(base)) return 'Infra';
+    return 'Other';
+  }
+
+  function filterAndSortTokens(input: Token[]): Token[] {
+    const filteredTokens = sector ? input.filter((token) => token.sector === sector) : input.slice();
+    switch (sort) {
+      case 'vol':
+        return filteredTokens.sort((a, b) => b.vol_24h_usd - a.vol_24h_usd || a.rank - b.rank);
+      case 'trending':
+        return filteredTokens.sort((a, b) => b.trending_score - a.trending_score || a.rank - b.rank);
+      case 'pct24h':
+        return filteredTokens.sort((a, b) => b.pct_24h - a.pct_24h || a.rank - b.rank);
+      case 'rank':
+      default:
+        return filteredTokens.sort((a, b) => a.rank - b.rank);
+    }
+  }
+
+  async function loadFallbackTokens() {
+    const marketBySymbol = new Map<string, {
+      rank: number;
+      price: number;
+      change24h: number;
+      volume24h: number;
+      marketCap: number;
+      trendingScore: number;
+    }>();
+
+    try {
+      const res = await fetch('/api/market/trending?limit=40');
+      if (res.ok) {
+        const raw = await res.json();
+        const payload = raw?.data ?? raw;
+        const sections = [payload?.trending ?? [], payload?.gainers ?? [], payload?.losers ?? []];
+        for (const section of sections) {
+          for (const row of section) {
+            const symbol = String(row?.symbol ?? '').toUpperCase();
+            if (!symbol || marketBySymbol.has(symbol)) continue;
+            marketBySymbol.set(symbol, {
+              rank: Number(row?.rank ?? Number.MAX_SAFE_INTEGER),
+              price: Number(row?.price ?? 0),
+              change24h: Number(row?.change24h ?? 0),
+              volume24h: Number(row?.volume24h ?? 0),
+              marketCap: Number(row?.marketCap ?? 0),
+              trendingScore: Number(row?.galaxyScore ?? row?.socialVolume ?? row?.rank ?? 0),
+            });
+          }
+        }
+      }
+    } catch {
+      // Fallback registry is intentionally local-first.
+    }
+
+    const fallbackTokens = TOKENS.map((token, index) => {
+      const market = marketBySymbol.get(token.symbol);
+      return {
+        rank: market?.rank ?? index + 1,
+        symbol: token.binanceSymbol,
+        base: token.symbol,
+        name: token.name,
+        sector: tokenSector(token.symbol),
+        price: market?.price ?? 0,
+        pct_24h: market?.change24h ?? 0,
+        vol_24h_usd: market?.volume24h ?? 0,
+        market_cap: market?.marketCap ?? 0,
+        oi_usd: 0,
+        is_futures: true,
+        trending_score: market?.trendingScore ?? 0,
+      } satisfies Token;
+    });
+
+    tokens = filterAndSortTokens(fallbackTokens);
+    usingFallback = true;
+    error = '';
+    if (tokens.length > 0) {
+      fetchSparklines(tokens.slice(0, 20).map((token) => token.symbol));
+    }
+  }
+
   async function fetchTokens() {
     loading = true;
     error = '';
@@ -70,14 +158,17 @@
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       tokens = data.tokens ?? [];
+      usingFallback = false;
 
       // Fetch sparklines for top 20 tokens
       if (tokens.length > 0) {
         fetchSparklines(tokens.slice(0, 20).map(t => t.symbol));
       }
     } catch (e: any) {
-      error = e.message || 'Failed to load';
-      tokens = [];
+      await loadFallbackTokens();
+      if (tokens.length === 0) {
+        error = e.message || 'Failed to load';
+      }
     } finally {
       loading = false;
     }
@@ -150,10 +241,9 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="picker-backdrop" onclick={onClose}>
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="picker-panel" onclick={(e) => e.stopPropagation()}>
+<div class="picker-shell" role="presentation">
+  <button class="picker-backdrop" type="button" aria-label="Close symbol picker" onclick={onClose}></button>
+  <div class="picker-panel" role="dialog" aria-modal="true" aria-label="Symbol picker" tabindex="-1">
     <!-- Search -->
     <div class="search-row">
       <input
@@ -192,6 +282,10 @@
         {/each}
       </div>
     </div>
+
+    {#if usingFallback}
+      <div class="fallback-note">Engine universe unavailable. Showing local symbol registry.</div>
+    {/if}
 
     <!-- Header -->
     <div class="list-header">
@@ -262,12 +356,21 @@
 </div>
 
 <style>
-  .picker-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.55);
+  .picker-shell {
+    position: fixed;
+    inset: 0;
     z-index: var(--sc-z-dropdown, 150);
-    display: flex; justify-content: center;
+    display: flex;
+    justify-content: center;
     padding-top: 56px;
+  }
+
+  .picker-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    border: none;
+    padding: 0;
+    margin: 0;
   }
   .picker-panel {
     width: 620px; max-height: calc(100vh - 80px);
@@ -277,6 +380,8 @@
     display: flex; flex-direction: column;
     overflow: hidden;
     box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    position: relative;
+    z-index: 1;
   }
 
   /* Search */
@@ -298,6 +403,18 @@
     display: flex; gap: 8px; align-items: center;
     padding: 4px 12px 8px;
     flex-wrap: wrap;
+  }
+  .fallback-note {
+    margin: 0 16px 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 179, 237, 0.18);
+    background: rgba(99, 179, 237, 0.08);
+    color: rgba(235, 244, 255, 0.82);
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
   .sector-chips, .sort-chips { display: flex; gap: 3px; }
   .sort-chips { margin-left: auto; }
