@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
@@ -21,6 +22,8 @@ from api.routes import backtest, challenge, ctx, score, train, verdict, scanner,
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
 from universe.config import DEFAULT_SCAN_UNIVERSE
+from observability.health import health_payload, readiness_payload
+from observability.metrics import increment, observe_ms, snapshot as metrics_snapshot
 
 logging.basicConfig(
     level=logging.INFO,
@@ -81,8 +84,14 @@ app.add_middleware(
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
+    start = time.perf_counter()
     request_id = request.headers.get("x-request-id") or str(uuid4())
+    increment("http.requests_total")
     response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000.0
+    observe_ms(f"http.route.{request.url.path}", duration_ms)
+    observe_ms("http.request_duration_ms", duration_ms)
+    increment(f"http.status.{response.status_code}")
     response.headers["x-request-id"] = request_id
     log.info("%s %s status=%s request_id=%s", request.method, request.url.path, response.status_code, request_id)
     return response
@@ -105,7 +114,17 @@ app.include_router(patterns.router, prefix="/patterns", tags=["patterns"])
 
 @app.get("/healthz", tags=["meta"])
 def healthz() -> dict:
-    return {"status": "ok", "version": app.version}
+    return health_payload(app.version)
+
+
+@app.get("/readyz", tags=["meta"])
+def readyz() -> dict:
+    return readiness_payload(app.version)
+
+
+@app.get("/metrics", tags=["meta"])
+def metrics() -> dict:
+    return metrics_snapshot()
 
 
 @app.get("/scanner/status", tags=["meta"])

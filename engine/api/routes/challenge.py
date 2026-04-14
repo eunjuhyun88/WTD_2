@@ -29,6 +29,7 @@ from api.schemas import (
     ScanMatch,
     StrategyResult as StrategyResultSchema,
 )
+from models.compat import normalize_signal_snapshot_payload
 from challenge.historical_matcher import (
     build_pattern_vector,
     label_outcomes,
@@ -183,10 +184,18 @@ async def scan_challenge(slug: str) -> ChallengeScanResponse:
         from models.signal import SignalSnapshot, EMAAlignment, HTFStructure, CVDState, Regime
         # Build a minimal snapshot for LightGBM scoring.
         try:
+            snap_payload = normalize_signal_snapshot_payload(
+                {
+                    "symbol": symbol,
+                    "timestamp": last_row.name.to_pydatetime().replace(tzinfo=timezone.utc),
+                    "price": float(last_row["price"]),
+                    "day_of_week": int(last_row["day_of_week"]),
+                }
+            )
             snap = SignalSnapshot(
-                symbol=symbol,
-                timestamp=last_row.name.to_pydatetime().replace(tzinfo=timezone.utc),
-                price=float(last_row["price"]),
+                symbol=snap_payload["symbol"],
+                timestamp=snap_payload["timestamp"],
+                price=snap_payload["price"],
                 ema20_slope=float(last_row["ema20_slope"]),
                 ema50_slope=float(last_row["ema50_slope"]),
                 ema_alignment=EMAAlignment(last_row["ema_alignment"]),
@@ -214,7 +223,7 @@ async def scan_challenge(slug: str) -> ChallengeScanResponse:
                 taker_buy_ratio_1h=float(last_row["taker_buy_ratio_1h"]),
                 regime=Regime(last_row["regime"]),
                 hour_of_day=int(last_row["hour_of_day"]),
-                day_of_week=int(last_row["day_of_week"]),
+                day_of_week=snap_payload["day_of_week"],
             )
             p_win = lgbm.predict_one(snap)
         except Exception:
