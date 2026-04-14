@@ -223,10 +223,10 @@
   <link rel="canonical" href={buildCanonicalHref('/lab')} />
 </svelte:head>
 
-<div class="surface-page lab">
+<div class="surface-page chrome-layout lab">
   <AppSurfaceHeader active="lab" />
   <!-- Compact Topbar -->
-  <header class="surface-hero">
+  <header class="surface-hero surface-fixed-hero">
     <div class="surface-copy">
       <span class="surface-kicker">Lab</span>
       <h1 class="surface-title">Challenge Lab</h1>
@@ -247,181 +247,183 @@
     </div>
   </header>
 
-  <!-- Run Controls -->
-  <section class="surface-card soft">
-    <div class="surface-section-head">
-      <div>
-        <span class="surface-kicker">Run Controls</span>
-        <h2>챌린지 선택과 실행</h2>
-      </div>
-      <span class="surface-chip">{mode === 'auto' ? 'Auto mode' : 'Manual mode'}</span>
-    </div>
-    <div class="toolbar-shell">
-      <LabToolbar
-        {strategies}
-        activeStrategy={strat}
-        {selectedCycles}
-        {mode}
-        {interval}
-        {isRunning}
-        onSelectStrategy={setActiveStrategy}
-        onSelectCycles={handleCycleChange}
-        onToggleMode={toggleMode}
-        onChangeInterval={(v) => { interval = v; }}
-        onRun={runBacktest}
-        onNextBar={nextBar}
-        onNewStrategy={handleNewStrategy}
-        onImport={handleImport}
-      />
-    </div>
-  </section>
-
-  <!-- Workspace -->
-  <section class="lab-workspace">
-    <div class="surface-panel chart-shell">
-      <div class="workspace-head">
+  <div class="surface-scroll-body">
+    <!-- Run Controls -->
+    <section class="surface-card soft">
+      <div class="surface-section-head">
         <div>
-          <span class="surface-kicker">Replay Canvas</span>
-          <h2>시장 구간 위에서 결과 읽기</h2>
+          <span class="surface-kicker">Run Controls</span>
+          <h2>챌린지 선택과 실행</h2>
         </div>
-        <span class="surface-chip">{interval}</span>
+        <span class="surface-chip">{mode === 'auto' ? 'Auto mode' : 'Manual mode'}</span>
       </div>
-      <div class="chart-area">
-        <LabChart
-          {klines}
-          revealedCount={revealedBars}
-          markers={chartMarkers}
-          priceLines={chartPriceLines}
+      <div class="toolbar-shell">
+        <LabToolbar
+          {strategies}
+          activeStrategy={strat}
+          {selectedCycles}
           {mode}
+          {interval}
+          {isRunning}
+          onSelectStrategy={setActiveStrategy}
+          onSelectCycles={handleCycleChange}
+          onToggleMode={toggleMode}
+          onChangeInterval={(v) => { interval = v; }}
+          onRun={runBacktest}
+          onNextBar={nextBar}
+          onNewStrategy={handleNewStrategy}
+          onImport={handleImport}
         />
       </div>
-    </div>
+    </section>
 
-    <div class="surface-panel panel-shell">
-      <div class="workspace-head tabs-head">
-        <div>
-          <span class="surface-kicker">Context</span>
-          <h2>{mode === 'auto' ? '챌린지와 런 결과' : '리플레이와 로그'}</h2>
+    <!-- Workspace -->
+    <section class="lab-workspace">
+      <div class="surface-panel chart-shell">
+        <div class="workspace-head">
+          <div>
+            <span class="surface-kicker">Replay Canvas</span>
+            <h2>시장 구간 위에서 결과 읽기</h2>
+          </div>
+          <span class="surface-chip">{interval}</span>
+        </div>
+        <div class="chart-area">
+          <LabChart
+            {klines}
+            revealedCount={revealedBars}
+            markers={chartMarkers}
+            priceLines={chartPriceLines}
+            {mode}
+          />
         </div>
       </div>
 
-      <div class="tab-bar">
-        {#if mode === 'auto'}
-          <button class="tab" class:active={activeTab === 'strategy'} onclick={() => activeTab = 'strategy'}>챌린지</button>
-          <button class="tab" class:active={activeTab === 'result'} onclick={() => activeTab = 'result'}>런 결과</button>
-        {:else}
-          <button class="tab" class:active={activeTab === 'order'} onclick={() => activeTab = 'order'}>리플레이</button>
-          <button class="tab" class:active={activeTab === 'trades'} onclick={() => activeTab = 'trades'}>로그</button>
-        {/if}
-      </div>
+      <div class="surface-panel panel-shell">
+        <div class="workspace-head tabs-head">
+          <div>
+            <span class="surface-kicker">Context</span>
+            <h2>{mode === 'auto' ? '챌린지와 런 결과' : '리플레이와 로그'}</h2>
+          </div>
+        </div>
 
-      <div class="tab-content">
-        {#if activeTab === 'strategy' && strat}
-          <StrategyBuilder
-            strategy={strat}
-            onAddCondition={handleAddCondition}
-            onRemoveCondition={handleRemoveCondition}
-            onToggleCondition={handleToggleCondition}
-            onUpdateCondition={handleUpdateCondition}
-            onUpdateExit={handleUpdateExit}
-            onUpdateRisk={handleUpdateRisk}
-            onUpdateDirection={handleUpdateDirection}
-          />
-        {:else if activeTab === 'result'}
-          <ResultPanel
-            result={backtestResult}
-            {isRunning}
-            onSave={handleSave}
-            onViewChart={handleViewChart}
-          />
-        {:else if activeTab === 'order'}
-          <div class="manual-order">
-            <div class="manual-hero">
-              <span class="surface-meta">Quick Replay</span>
-              <p>현재 바를 기준으로 롱/숏을 열고 한 바씩 전개한다.</p>
-            </div>
-            <div class="order-buttons">
-              <button
-                class="order-btn long"
-                disabled={!!manualPosition}
-                onclick={() => {
-                  if (klines.length > 0 && revealedBars > 0) {
-                    const price = klines[revealedBars - 1].close;
-                    const sl = price * 0.985;
-                    const tp = price * 1.03;
-                    manualPosition = { direction: 'long', entryPrice: price, currentPrice: price, pnlPercent: 0, slPrice: sl, tpPrice: tp };
-                    chartPriceLines = [
-                      { price: sl, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: 'SL' },
-                      { price: tp, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: 'TP' },
-                      { price, color: '#f2d193', lineWidth: 1, lineStyle: 1, title: 'Entry' },
-                    ];
-                    chartMarkers = [...chartMarkers, {
-                      time: klines[revealedBars - 1].time,
-                      position: 'belowBar', color: '#adca7c', shape: 'arrowUp', text: 'L',
-                    }];
-                  }
-                }}>LONG</button>
-              <button
-                class="order-btn short"
-                disabled={!!manualPosition}
-                onclick={() => {
-                  if (klines.length > 0 && revealedBars > 0) {
-                    const price = klines[revealedBars - 1].close;
-                    const sl = price * 1.015;
-                    const tp = price * 0.97;
-                    manualPosition = { direction: 'short', entryPrice: price, currentPrice: price, pnlPercent: 0, slPrice: sl, tpPrice: tp };
-                    chartPriceLines = [
-                      { price: sl, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: 'SL' },
-                      { price: tp, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: 'TP' },
-                      { price, color: '#f2d193', lineWidth: 1, lineStyle: 1, title: 'Entry' },
-                    ];
-                    chartMarkers = [...chartMarkers, {
-                      time: klines[revealedBars - 1].time,
-                      position: 'aboveBar', color: '#cf7f8f', shape: 'arrowDown', text: 'S',
-                    }];
-                  }
-                }}>SHORT</button>
-            </div>
+        <div class="tab-bar">
+          {#if mode === 'auto'}
+            <button class="tab" class:active={activeTab === 'strategy'} onclick={() => activeTab = 'strategy'}>챌린지</button>
+            <button class="tab" class:active={activeTab === 'result'} onclick={() => activeTab = 'result'}>런 결과</button>
+          {:else}
+            <button class="tab" class:active={activeTab === 'order'} onclick={() => activeTab = 'order'}>리플레이</button>
+            <button class="tab" class:active={activeTab === 'trades'} onclick={() => activeTab = 'trades'}>로그</button>
+          {/if}
+        </div>
 
-            {#if manualPosition}
-              <div class="manual-stats">
-                <div><span class="surface-meta">방향</span><strong>{manualPosition.direction.toUpperCase()}</strong></div>
-                <div><span class="surface-meta">진입가</span><strong>{manualPosition.entryPrice.toFixed(0)}</strong></div>
-                <div><span class="surface-meta">현재가</span><strong>{manualPosition.currentPrice.toFixed(0)}</strong></div>
-                <div>
-                  <span class="surface-meta">미실현</span>
-                  <strong class={manualPosition.pnlPercent >= 0 ? 'surface-value-positive' : 'surface-value-negative'}>
-                    {manualPosition.pnlPercent >= 0 ? '+' : ''}{manualPosition.pnlPercent.toFixed(2)}%
-                  </strong>
-                </div>
+        <div class="tab-content">
+          {#if activeTab === 'strategy' && strat}
+            <StrategyBuilder
+              strategy={strat}
+              onAddCondition={handleAddCondition}
+              onRemoveCondition={handleRemoveCondition}
+              onToggleCondition={handleToggleCondition}
+              onUpdateCondition={handleUpdateCondition}
+              onUpdateExit={handleUpdateExit}
+              onUpdateRisk={handleUpdateRisk}
+              onUpdateDirection={handleUpdateDirection}
+            />
+          {:else if activeTab === 'result'}
+            <ResultPanel
+              result={backtestResult}
+              {isRunning}
+              onSave={handleSave}
+              onViewChart={handleViewChart}
+            />
+          {:else if activeTab === 'order'}
+            <div class="manual-order">
+              <div class="manual-hero">
+                <span class="surface-meta">Quick Replay</span>
+                <p>현재 바를 기준으로 롱/숏을 열고 한 바씩 전개한다.</p>
               </div>
-            {/if}
-          </div>
-        {:else if activeTab === 'trades'}
-          <div class="trades-empty">
-            <span class="surface-meta">Manual Log</span>
-            <p>수동 리플레이 로그는 여기서 확인한다.</p>
-          </div>
-        {/if}
+              <div class="order-buttons">
+                <button
+                  class="order-btn long"
+                  disabled={!!manualPosition}
+                  onclick={() => {
+                    if (klines.length > 0 && revealedBars > 0) {
+                      const price = klines[revealedBars - 1].close;
+                      const sl = price * 0.985;
+                      const tp = price * 1.03;
+                      manualPosition = { direction: 'long', entryPrice: price, currentPrice: price, pnlPercent: 0, slPrice: sl, tpPrice: tp };
+                      chartPriceLines = [
+                        { price: sl, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: 'SL' },
+                        { price: tp, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: 'TP' },
+                        { price, color: '#f2d193', lineWidth: 1, lineStyle: 1, title: 'Entry' },
+                      ];
+                      chartMarkers = [...chartMarkers, {
+                        time: klines[revealedBars - 1].time,
+                        position: 'belowBar', color: '#adca7c', shape: 'arrowUp', text: 'L',
+                      }];
+                    }
+                  }}>LONG</button>
+                <button
+                  class="order-btn short"
+                  disabled={!!manualPosition}
+                  onclick={() => {
+                    if (klines.length > 0 && revealedBars > 0) {
+                      const price = klines[revealedBars - 1].close;
+                      const sl = price * 1.015;
+                      const tp = price * 0.97;
+                      manualPosition = { direction: 'short', entryPrice: price, currentPrice: price, pnlPercent: 0, slPrice: sl, tpPrice: tp };
+                      chartPriceLines = [
+                        { price: sl, color: '#cf7f8f', lineWidth: 1, lineStyle: 2, title: 'SL' },
+                        { price: tp, color: '#adca7c', lineWidth: 1, lineStyle: 2, title: 'TP' },
+                        { price, color: '#f2d193', lineWidth: 1, lineStyle: 1, title: 'Entry' },
+                      ];
+                      chartMarkers = [...chartMarkers, {
+                        time: klines[revealedBars - 1].time,
+                        position: 'aboveBar', color: '#cf7f8f', shape: 'arrowDown', text: 'S',
+                      }];
+                    }
+                  }}>SHORT</button>
+              </div>
+
+              {#if manualPosition}
+                <div class="manual-stats">
+                  <div><span class="surface-meta">방향</span><strong>{manualPosition.direction.toUpperCase()}</strong></div>
+                  <div><span class="surface-meta">진입가</span><strong>{manualPosition.entryPrice.toFixed(0)}</strong></div>
+                  <div><span class="surface-meta">현재가</span><strong>{manualPosition.currentPrice.toFixed(0)}</strong></div>
+                  <div>
+                    <span class="surface-meta">미실현</span>
+                    <strong class={manualPosition.pnlPercent >= 0 ? 'surface-value-positive' : 'surface-value-negative'}>
+                      {manualPosition.pnlPercent >= 0 ? '+' : ''}{manualPosition.pnlPercent.toFixed(2)}%
+                    </strong>
+                  </div>
+                </div>
+              {/if}
+            </div>
+          {:else if activeTab === 'trades'}
+            <div class="trades-empty">
+              <span class="surface-meta">Manual Log</span>
+              <p>수동 리플레이 로그는 여기서 확인한다.</p>
+            </div>
+          {/if}
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <PositionBar
-    {mode}
-    {backtestResult}
-    {selectedTradeIndex}
-    onPrevTrade={() => selectTrade(Math.max(0, selectedTradeIndex - 1))}
-    onNextTrade={() => selectTrade(Math.min((backtestResult?.totalTrades ?? 1) - 1, selectedTradeIndex + 1))}
-    position={manualPosition}
-    {revealedBars}
-    totalBars={klines.length}
-    onClose={handleClosePosition}
-  />
+    <PositionBar
+      {mode}
+      {backtestResult}
+      {selectedTradeIndex}
+      onPrevTrade={() => selectTrade(Math.max(0, selectedTradeIndex - 1))}
+      onNextTrade={() => selectTrade(Math.min((backtestResult?.totalTrades ?? 1) - 1, selectedTradeIndex + 1))}
+      position={manualPosition}
+      {revealedBars}
+      totalBars={klines.length}
+      onClose={handleClosePosition}
+    />
 
-  {#if error}
-    <div class="surface-card error-bar">{error}</div>
-  {/if}
+    {#if error}
+      <div class="surface-card error-bar">{error}</div>
+    {/if}
+  </div>
 </div>
 
 <style>

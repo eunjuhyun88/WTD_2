@@ -11,6 +11,8 @@
     assetsCount?: number;
     leftRailOpen?: boolean;
     analysisRailOpen?: boolean;
+    leftWidth?: number;
+    analysisWidth?: number;
     onToggleLeftRail?: () => void;
     onToggleAnalysisRail?: () => void;
     onClear?: () => void;
@@ -23,6 +25,8 @@
     assetsCount = 0,
     leftRailOpen = true,
     analysisRailOpen = true,
+    leftWidth = 248,
+    analysisWidth = 348,
     onToggleLeftRail,
     onToggleAnalysisRail,
     onClear,
@@ -103,7 +107,11 @@
           title={leftRailOpen ? 'Hide left market rail' : 'Show left market rail'}
           aria-pressed={leftRailOpen}
         >
-          Market
+          <span class="shell-btn-icon">◧</span>
+          <span class="shell-btn-copy">
+            <strong>Market</strong>
+            <small>{leftRailOpen ? `${leftWidth}px` : 'Hidden'}</small>
+          </span>
         </button>
         <button
           class="shell-btn"
@@ -112,7 +120,11 @@
           title={analysisRailOpen ? 'Hide right analysis rail' : 'Show right analysis rail'}
           aria-pressed={analysisRailOpen}
         >
-          Analysis
+          <span class="shell-btn-icon">◨</span>
+          <span class="shell-btn-copy">
+            <strong>Analysis</strong>
+            <small>{analysisRailOpen ? `${analysisWidth}px` : 'Hidden'}</small>
+          </span>
         </button>
       </div>
 
@@ -291,6 +303,9 @@
       0 10px 24px rgba(0,0,0,0.22);
   }
   .shell-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
     font-family: var(--sc-font-mono);
     font-size: 13px;
     font-weight: 700;
@@ -305,6 +320,43 @@
     transition: all 0.15s;
     white-space: nowrap;
   }
+  .shell-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    font-size: 12px;
+    line-height: 1;
+    color: rgba(214, 233, 255, 0.92);
+  }
+  .shell-btn-copy {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    line-height: 1;
+  }
+  .shell-btn-copy strong,
+  .shell-btn-copy small {
+    font-family: var(--sc-font-mono);
+  }
+  .shell-btn-copy strong {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .shell-btn-copy small {
+    font-size: 9px;
+    font-weight: 600;
+    color: rgba(214, 233, 255, 0.46);
+    letter-spacing: 0.05em;
+    text-transform: none;
+  }
   .shell-btn:hover {
     color: rgba(176, 216, 255, 1);
     border-color: rgba(77,143,245,0.34);
@@ -314,6 +366,13 @@
     border-color: rgba(77,143,245,0.46);
     background: radial-gradient(circle at top, rgba(77,143,245,0.18), rgba(37, 53, 84, 0.42));
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .shell-btn.active .shell-btn-icon {
+    border-color: rgba(77,143,245,0.32);
+    background: rgba(77,143,245,0.14);
+  }
+  .shell-btn.active .shell-btn-copy small {
+    color: rgba(214, 233, 255, 0.72);
   }
 
   .clear-btn {
@@ -399,6 +458,9 @@
       flex: 1;
       justify-content: center;
       text-align: center;
+    }
+    .shell-btn-copy {
+      align-items: center;
     }
     .capture-btn,
     .clear-btn {

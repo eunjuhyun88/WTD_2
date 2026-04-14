@@ -937,7 +937,8 @@
   let activePairDisplay = $derived(gPair.split('/')[0] ?? 'BTC');
 
   // ─── Panel visibility + resize ───────────────────────────────
-  let leftWidth  = $state(240);
+  let leftWidth = $state(248);
+  let analysisWidth = $state(348);
 
   function toggleLeftRail() {
     showLeftRail = !showLeftRail;
@@ -955,6 +956,28 @@
     const onMove = (ev: MouseEvent) => {
       const delta = ev.clientX - startX;
       leftWidth = Math.max(160, Math.min(400, startW + delta));
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  function startAnalysisResize(e: MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = analysisWidth;
+
+    const onMove = (ev: MouseEvent) => {
+      const delta = startX - ev.clientX;
+      analysisWidth = Math.max(280, Math.min(520, startW + delta));
     };
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
@@ -1215,6 +1238,8 @@
       assetsCount={boardAssets.length}
       leftRailOpen={showLeftRail}
       analysisRailOpen={showAnalysisRail}
+      leftWidth={leftWidth}
+      analysisWidth={analysisWidth}
       onToggleLeftRail={toggleLeftRail}
       onToggleAnalysisRail={toggleAnalysisRail}
       onLayout={switchLayout}
@@ -1255,7 +1280,8 @@
     <div class="terminal-shell">
       <div class="terminal-body"
         class:left-collapsed={!showLeftRail}
-        style="--terminal-left-w: {leftWidth}px"
+        class:right-collapsed={!showAnalysisRail}
+        style="--terminal-left-w: {leftWidth}px; --terminal-analysis-w: {analysisWidth}px"
       >
 
     <!-- Left Rail -->
@@ -1406,6 +1432,12 @@
 
         <!-- ── Analysis rail — single verdict or scan list ── -->
         {#if showAnalysisRail}
+        <button
+          class="panel-resizer right"
+          type="button"
+          onmousedown={startAnalysisResize}
+          aria-label="Resize analysis panel"
+        ></button>
         <div class="analysis-rail">
 
           <!-- Rail header: mode indicator + streaming badge -->
@@ -1422,6 +1454,7 @@
               <span class="rail-mode">ANALYSIS</span>
               <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
             {/if}
+            <span class="rail-width-indicator">{analysisWidth}px</span>
           </div>
 
           <!-- MODE B — Scan results list -->
@@ -1969,6 +2002,10 @@
     grid-template-columns: 1fr;
   }
 
+  .terminal-body.right-collapsed .board-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   /* Resize handles */
   .panel-resizer {
     width: 4px;
@@ -1988,14 +2025,20 @@
     position: absolute;
     inset: 0 -5px;
   }
+  .panel-resizer.right {
+    width: 5px;
+    border-left: 1px solid rgba(255,255,255,0.04);
+    border-right: 1px solid rgba(255,255,255,0.02);
+  }
 
   .left-rail {
     background: var(--sc-terminal-bg, #000);
-    /* border handled by panel-resizer */
-    overflow: hidden;
+    border-right: 1px solid rgba(255,255,255,0.05);
+    overflow: auto;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    scrollbar-gutter: stable;
   }
 
   .center-board {
@@ -2011,35 +2054,39 @@
     flex: 1;
     overflow: hidden;
     position: relative;
-    display: flex;
-    flex-direction: row;   /* ← chart + analysis side by side */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto var(--terminal-analysis-w, 348px);
     min-height: 0;
   }
   .board-content.analysis-hidden .chart-area {
     border-right: none;
   }
+  .board-content.analysis-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
   /* Chart area — center, takes all available width */
   .chart-area {
-    flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: auto;
     border-right: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+    min-height: 0;
+    scrollbar-gutter: stable;
   }
 
   /* Analysis rail — always visible right panel, scrollable */
   .analysis-rail {
-    width: 340px;
-    min-width: 300px;
-    max-width: 400px;
-    flex-shrink: 0;
+    width: var(--terminal-analysis-w, 348px);
+    min-width: 0;
+    max-width: 520px;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
     background: var(--sc-terminal-bg, #000);
     position: relative;
+    scrollbar-gutter: stable;
   }
 
   /* Rail header */
@@ -2052,6 +2099,16 @@
     flex-shrink: 0;
     min-height: 34px;
     background: rgba(255,255,255,0.02);
+  }
+  .rail-width-indicator {
+    margin-left: auto;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    color: rgba(255,255,255,0.26);
+    letter-spacing: 0.08em;
+  }
+  .rail-header .rail-back + .rail-width-indicator {
+    margin-left: 0;
   }
   .rail-mode {
     font-family: var(--sc-font-mono, monospace);
@@ -2398,7 +2455,7 @@
 
   /* Tablet — analysis rail gets narrower */
   @media (max-width: 1200px) and (min-width: 769px) {
-    .analysis-rail { width: 320px; min-width: 280px; }
+    .analysis-rail { width: var(--terminal-analysis-w, 320px); max-width: 360px; }
     .hero-metrics-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .microstructure-row { grid-template-columns: 1fr; }
   }

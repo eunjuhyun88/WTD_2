@@ -175,9 +175,9 @@
   <link rel="canonical" href={buildCanonicalHref('/patterns')} />
 </svelte:head>
 
-<div class="surface-page patterns-page">
+<div class="surface-page chrome-layout patterns-page">
   <AppSurfaceHeader active="patterns" />
-  <header class="surface-hero">
+  <header class="surface-hero surface-fixed-hero">
     <div class="surface-copy patterns-copy">
       <div>
         <span class="surface-kicker">Patterns</span>
@@ -213,7 +213,7 @@
     </div>
   </header>
 
-  <div class="patterns-content">
+  <div class="surface-scroll-body patterns-content">
     {#if loading}
       <section class="surface-card page-loading">
         <span class="pulse"></span>
