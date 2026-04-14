@@ -40,10 +40,16 @@
     fetchTrendingData,
     type TerminalAnalyzeData,
   } from '$lib/terminal/terminalDataOrchestrator';
+  import {
+    formatAgentFailureMessage,
+    isAnalysisQuery,
+    snapshotFingerprint,
+    streamTerminalMessage,
+  } from '$lib/terminal/terminalActions';
   import { fetchFlowBias, fetchMarketEvents } from '$lib/api/terminalBackend';
   import {
-    buildEvidenceFromAnalysis,
-    buildVerdictFromAnalysis,
+    buildTerminalDecisionBundle,
+    type TerminalDecisionBundle,
   } from '$lib/terminal/panelAdapter';
   import type {
     AnalyzeEnvelope,
@@ -65,7 +71,7 @@
   import MobileDetailSheet from '../../components/terminal/mobile/MobileDetailSheet.svelte';
   import MobileCommandDock from '../../components/terminal/mobile/MobileCommandDock.svelte';
 
-  import type { TerminalAsset, TerminalVerdict, TerminalEvidence, TerminalSource } from '$lib/types/terminal';
+  import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
 
   // ─── State ──────────────────────────────────────────────────
 
@@ -83,6 +89,7 @@
 
   let analysisData = $state<TerminalAnalyzeData | null>(null);
   let analysisDataMap = $state<Record<string, TerminalAnalyzeData>>({});
+  let analysisFingerprintMap = $state<Record<string, string>>({});
   let newsData = $state<any>(null);
 
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
@@ -191,26 +198,6 @@
     };
   }
 
-  /** Stable fingerprint of key snapshot fields — changes only when market data actually updates */
-  function snapshotFingerprint(snap: TerminalSnapshot | null | undefined): string {
-    if (!snap) return '';
-    return [
-      snap.symbol ?? '',
-      snap.timeframe ?? '',
-      snap.rsi14 != null ? snap.rsi14.toFixed(1) : '',
-      snap.funding_rate != null ? snap.funding_rate.toFixed(5) : '',
-      snap.oi_change_1h != null ? snap.oi_change_1h.toFixed(3) : '',
-      snap.cvd_state ?? '',
-      snap.regime ?? '',
-    ].join('|');
-  }
-
-  /** True when the message looks like an analysis / market-data question */
-  function isAnalysisQuery(msg: string): boolean {
-    const lower = msg.toLowerCase();
-    return /분석|어때|어떻게|펀딩|oi\b|rsi|추세|시그널|진입|패턴|레짐|regime|signal|analysis|how.*(look|doing)|what.*(think|say)|check/.test(lower);
-  }
-
   function localizeTerminalText(ko: string, en: string): string {
     if (typeof navigator === 'undefined') return en;
     return navigator.language.toLowerCase().startsWith('ko') ? ko : en;
@@ -227,9 +214,7 @@
   }
 
   function formatAgentFailure(detail?: string): string {
-    const prefix = localizeTerminalText('AI 응답 실패', 'AI response failed');
-    const cleanDetail = detail?.trim();
-    return cleanDetail ? `${prefix}: ${cleanDetail}` : prefix;
+    return formatAgentFailureMessage(detail, localizeTerminalText('AI 응답 실패', 'AI response failed'));
   }
 
   function _deepBias(verdict: string): 'bullish' | 'bearish' | 'neutral' {
@@ -239,97 +224,115 @@
     return 'neutral';
   }
 
-  function _deepConfidence(score: number): 'high' | 'medium' | 'low' {
-    const abs = Math.abs(score);
-    return abs >= 50 ? 'high' : abs >= 20 ? 'medium' : 'low';
+  function applyTerminalDecision(symbol: string, data: TerminalAnalyzeData) {
+    const decision = buildTerminalDecisionBundle(symbol, data);
+    return decision;
   }
 
-  function _deepAction(verdict: string, ensDir: string): string {
-    if (verdict === 'STRONG BULL' || ensDir === 'strong_long') return 'Strong buy on pullback';
-    if (verdict === 'BULLISH'     || ensDir === 'long')        return 'Buy on pullback';
-    if (verdict === 'BEARISH'     || ensDir === 'short')       return 'Avoid / short';
-    if (verdict === 'STRONG BEAR' || ensDir === 'strong_short') return 'Strong short / avoid';
-    return 'Wait for clarity';
+  function analysisFingerprint(data: TerminalAnalyzeData | null | undefined): string {
+    if (!data) return '';
+    const snap = data.snapshot;
+    const deep = data.deep as any;
+    const ens = data.ensemble;
+    return [
+      data.symbol ?? '',
+      data.mode ?? '',
+      data.tf ?? '',
+      data.price != null ? data.price.toFixed(4) : '',
+      data.change24h != null ? data.change24h.toFixed(4) : '',
+      snapshotFingerprint(snap),
+      deep?.verdict ?? '',
+      deep?.total_score != null ? String(deep.total_score) : '',
+      ens?.direction ?? '',
+      ens?.ensemble_score != null ? String(ens.ensemble_score) : '',
+      (ens?.block_analysis?.disqualifiers ?? []).join('|'),
+    ].join('::');
   }
 
-  function buildVerdictOrDefault(data: TerminalAnalyzeData): TerminalVerdict {
-    return buildVerdictFromAnalysis(data) ?? {
-      direction: 'neutral',
-      confidence: 'low',
-      reason: 'Analysis pending…',
-      against: [],
-      action: 'Wait for clarity',
-      invalidation: '—',
-      updatedAt: Date.now(),
-    };
+  function applyAnalysisState(symbol: string, data: TerminalAnalyzeData) {
+    const nextFingerprint = analysisFingerprint(data);
+    const prevFingerprint = analysisFingerprintMap[symbol] ?? '';
+    const changed = nextFingerprint !== prevFingerprint;
+    if (changed) {
+      analysisDataMap = { ...analysisDataMap, [symbol]: data };
+      analysisFingerprintMap = { ...analysisFingerprintMap, [symbol]: nextFingerprint };
+      if (symbol === activeSymbol || !analysisData) {
+        analysisData = data;
+      }
+    } else if (!analysisData && symbol === activeSymbol) {
+      analysisData = data;
+    }
+    return changed;
   }
 
-  function buildAssetFromAnalysis(symbol: string, data: TerminalAnalyzeData): TerminalAsset {
-    const deep = data?.deep as any;
-    const snap = (data?.snapshot ?? {}) as TerminalSnapshot;
-    const ens  = data?.ensemble ?? {};
-    const isMarketOnly = data?.mode === 'market-only';
-    const price = data?.price ?? snap?.last_close ?? 0;
-
-    const verdict  = deep?.verdict ?? '';
-    const score    = deep?.total_score ?? 0;
-    const bias     = _deepBias(verdict) || (ens.direction?.includes('long') ? 'bullish' : ens.direction?.includes('short') ? 'bearish' : 'neutral') as 'bullish' | 'bearish' | 'neutral';
-    const confidence = isMarketOnly ? 'low' : _deepConfidence(score);
-
-    // ATR stop → invalidation price
-    const stopLong = deep?.atr_levels?.stop_long;
-    const invalidation = stopLong
-      ? `$${Number(stopLong).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
-      : '—';
-
-    // Per-layer sources
-    const sources: TerminalSource[] = isMarketOnly
-      ? [
-          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Market-only Fallback', category: 'Model', freshness: 'disconnected', updatedAt: Date.now(),
-            method: 'Raw market context while engine is unavailable' },
-        ]
-      : deep?.layers
-      ? [
-          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Market Engine', category: 'Model', freshness: 'recent', updatedAt: Date.now(),
-            method: `17-layer pipeline · score ${score > 0 ? '+' : ''}${score}` },
-        ]
-      : [
-          { label: 'Binance Spot', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Binance Perp', category: 'Market', freshness: 'live', updatedAt: Date.now() },
-          { label: 'Model v2', category: 'Model', freshness: 'recent', updatedAt: Date.now() },
-        ];
-
-    const tfArrow = (val: string | undefined, pos: string, neg: string): '↑' | '↓' | '→' =>
-      val === pos ? '↑' : val === neg ? '↓' : '→';
-
-    const mtfMeta = deep?.layers?.mtf?.meta ?? {};
-
-    return {
-      symbol, venue: 'USDT Perp',
-      lastPrice: price,
-      changePct15m: 0,
-      changePct1h: 0,
-      changePct4h: data?.change24h ?? 0,
-      volumeRatio1h: snap.vol_ratio_3 ?? deep?.layers?.vsurge?.meta?.vol_ratio ?? 1,
-      oiChangePct1h: (snap.oi_change_1h ?? 0) * 100,
-      fundingRate: snap.funding_rate ?? data?.derivatives?.funding_rate ?? 0,
-      fundingPercentile7d: 50,
-      spreadBps: 0,
-      bias, confidence,
-      action: isMarketOnly ? 'Track market context' : _deepAction(verdict, ens.direction ?? ''),
-      invalidation,
-      sources,
-      freshnessStatus: isMarketOnly ? 'disconnected' : 'recent',
-      tf15m: tfArrow(snap.ema_alignment ?? mtfMeta.tf15m, 'bullish', 'bearish'),
-      tf1h:  tfArrow(snap.ema_alignment ?? mtfMeta.tf1h,  'bullish', 'bearish'),
-      tf4h:  tfArrow(snap.htf_structure  ?? mtfMeta.tf4h, 'uptrend', 'downtrend'),
-    };
+  function sameAsset(a?: TerminalAsset | null, b?: TerminalAsset | null): boolean {
+    if (!a || !b) return false;
+    return (
+      a.symbol === b.symbol &&
+      a.lastPrice === b.lastPrice &&
+      a.changePct4h === b.changePct4h &&
+      a.volumeRatio1h === b.volumeRatio1h &&
+      a.oiChangePct1h === b.oiChangePct1h &&
+      a.fundingRate === b.fundingRate &&
+      a.bias === b.bias &&
+      a.confidence === b.confidence &&
+      a.action === b.action &&
+      a.invalidation === b.invalidation &&
+      a.tf15m === b.tf15m &&
+      a.tf1h === b.tf1h &&
+      a.tf4h === b.tf4h
+    );
   }
 
+  function sameVerdict(a?: TerminalVerdict | null, b?: TerminalVerdict | null): boolean {
+    if (!a || !b) return false;
+    return (
+      a.direction === b.direction &&
+      a.confidence === b.confidence &&
+      a.reason === b.reason &&
+      a.action === b.action &&
+      a.invalidation === b.invalidation &&
+      (a.against?.join('|') ?? '') === (b.against?.join('|') ?? '')
+    );
+  }
+
+  function sameEvidence(a: TerminalEvidence[] = [], b: TerminalEvidence[] = []): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      const x = a[i];
+      const y = b[i];
+      if (
+        x.metric !== y.metric ||
+        x.value !== y.value ||
+        x.interpretation !== y.interpretation ||
+        x.state !== y.state ||
+        x.sourceCount !== y.sourceCount
+      ) return false;
+    }
+    return true;
+  }
+
+  function applyDecisionState(symbol: string, decision: TerminalDecisionBundle, allowInsert = true) {
+    const currentAsset = boardAssets.find((a) => a.symbol === symbol) ?? null;
+    const currentVerdict = verdictMap[symbol] ?? null;
+    const currentEvidence = evidenceMap[symbol] ?? [];
+    const assetChanged = !sameAsset(currentAsset, decision.asset);
+    const verdictChanged = !sameVerdict(currentVerdict, decision.verdict);
+    const evidenceChanged = !sameEvidence(currentEvidence, decision.evidence);
+
+    if (assetChanged) {
+      if (currentAsset) {
+        boardAssets = boardAssets.map((a) => (a.symbol === symbol ? decision.asset : a));
+      } else if (allowInsert) {
+        boardAssets = [decision.asset, ...boardAssets].slice(0, 4);
+      }
+    } else if (!currentAsset && allowInsert) {
+      boardAssets = [decision.asset, ...boardAssets].slice(0, 4);
+    }
+    if (verdictChanged) verdictMap = { ...verdictMap, [symbol]: decision.verdict };
+    if (evidenceChanged) evidenceMap = { ...evidenceMap, [symbol]: decision.evidence };
+    return { assetChanged, verdictChanged, evidenceChanged };
+  }
 
   // ─── Data Fetching ───────────────────────────────────────────
 
@@ -347,18 +350,10 @@
       ohlcvBars = bundle.ohlcvBars;
       layerBarsMap = bundle.layerBarsMap;
 
-      analysisData = data;
-      analysisDataMap = { ...analysisDataMap, [symbol]: data };
-      const asset = buildAssetFromAnalysis(symbol, data);
-      const verdict = buildVerdictOrDefault(data);
-      const evidence = buildEvidenceFromAnalysis(data);
+      applyAnalysisState(symbol, data);
+      const decision = applyTerminalDecision(symbol, data);
 
-      boardAssets = boardAssets.map(a => a.symbol === symbol ? asset : a);
-      if (!boardAssets.find(a => a.symbol === symbol)) {
-        boardAssets = [asset, ...boardAssets].slice(0, 4);
-      }
-      verdictMap = { ...verdictMap, [symbol]: verdict };
-      evidenceMap = { ...evidenceMap, [symbol]: evidence };
+      applyDecisionState(symbol, decision, true);
 
       // Extract price levels → chart overlay (entry / target / stop)
       if (symbol === activeSymbol || boardAssets.length === 1) {
@@ -505,53 +500,23 @@
         },
       };
 
-      const res = await fetch('/api/cogochi/terminal/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      const { assistantText, streamError } = await streamTerminalMessage({
+        endpoint: '/api/cogochi/terminal/message',
+        body,
+        onEvent: async (event) => {
+          await handleSSEEvent(event, symbol, tf);
+        },
+        onTextDelta: (nextText) => {
+          streamText = nextText;
+        },
+        onStreamError: (message) => {
+          const formatted = formatAgentFailure(message);
+          streamText = streamText ? `${streamText}\n\n${formatted}` : formatted;
+        },
       });
 
-      if (!res.ok || !res.body) {
-        const errBody = await res.text().catch(() => '');
-        pushAssistantMessage(
-          formatAgentFailure(errBody ? `HTTP ${res.status} ${errBody.slice(0, 120)}` : `HTTP ${res.status}`),
-        );
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let assistantText = '';
-      let streamError = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const raw = line.slice(6).trim();
-          if (!raw || raw === '[DONE]') continue;
-          try {
-            const event = JSON.parse(raw);
-            await handleSSEEvent(event, symbol, tf);
-            if (event.type === 'text_delta') {
-              assistantText += event.text ?? '';
-              streamText = assistantText;
-            } else if (event.type === 'error') {
-              streamError = formatAgentFailure(event.message);
-              streamText = assistantText ? `${assistantText}\n\n${streamError}` : streamError;
-            }
-          } catch {}
-        }
-      }
-
       const finalAssistantText = assistantText
-        ? (streamError ? `${assistantText}\n\n${streamError}` : assistantText)
+        ? (streamError ? `${assistantText}\n\n${formatAgentFailure(streamError)}` : assistantText)
         : '';
 
       if (finalAssistantText) {
@@ -578,20 +543,11 @@
       const envelope = event.payload;
       if (envelope?.snapshot || envelope?.ensemble) {
         const sym = envelope.symbol ?? defaultSymbol;
-        analysisData = envelope;
-        analysisDataMap = { ...analysisDataMap, [sym]: envelope };
-        const asset = buildAssetFromAnalysis(sym, envelope);
-        const verdict = buildVerdictOrDefault(envelope);
-        const evidence = buildEvidenceFromAnalysis(envelope);
-        const existing = boardAssets.find(a => a.symbol === sym);
-        if (existing) {
-          boardAssets = boardAssets.map(a => a.symbol === sym ? asset : a);
-        } else {
-          boardAssets = [asset, ...boardAssets].slice(0, 4);
-          if (boardAssets.length > 1) layout = 'hero3';
-        }
-        verdictMap = { ...verdictMap, [sym]: verdict };
-        evidenceMap = { ...evidenceMap, [sym]: evidence };
+        applyAnalysisState(sym, envelope);
+        const decision = applyTerminalDecision(sym, envelope);
+        const hadAsset = boardAssets.some((a) => a.symbol === sym);
+        applyDecisionState(sym, decision, true);
+        if (!hadAsset && boardAssets.length > 1) layout = 'hero3';
         if (!activeSymbol) activeSymbol = sym;
         // Update chart levels for active symbol
         if (sym === activeSymbol || !activeSymbol) chartLevels = extractLevels(envelope);
@@ -599,14 +555,9 @@
     }
     if (event.type === 'tool_result' && event.name === 'analyze' && event.data) {
       const sym = event.data.symbol ?? defaultSymbol;
-      analysisData = event.data;
-      analysisDataMap = { ...analysisDataMap, [sym]: event.data };
-      const asset = buildAssetFromAnalysis(sym, event.data);
-      const verdict = buildVerdictOrDefault(event.data);
-      const evidence = buildEvidenceFromAnalysis(event.data);
-      boardAssets = boardAssets.map(a => a.symbol === sym ? asset : a);
-      verdictMap = { ...verdictMap, [sym]: verdict };
-      evidenceMap = { ...evidenceMap, [sym]: evidence };
+      applyAnalysisState(sym, event.data);
+      const decision = applyTerminalDecision(sym, event.data);
+      applyDecisionState(sym, decision, false);
       if (sym === activeSymbol) chartLevels = extractLevels(event.data);
     }
   }
@@ -626,6 +577,7 @@
   function clearBoard() {
     boardAssets = []; verdictMap = {}; evidenceMap = {};
     analysisDataMap = {};
+    analysisFingerprintMap = {};
     activeSymbol = ''; layout = 'focus';
     chartLevels = {};
     activeAnalysisTab = 'summary';
@@ -681,7 +633,7 @@
       analysisData = null;  // clear stale snapshot so chat context resets
       const alreadyLoaded = untrack(() => boardAssets.find(a => a.symbol === symbol));
       if (!alreadyLoaded) {
-        boardAssets = []; verdictMap = {}; evidenceMap = {}; analysisDataMap = {}; layout = 'focus';
+        boardAssets = []; verdictMap = {}; evidenceMap = {}; analysisDataMap = {}; analysisFingerprintMap = {}; layout = 'focus';
       }
       loadAnalysis(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));

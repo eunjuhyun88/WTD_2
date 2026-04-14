@@ -63,3 +63,110 @@ export interface FlowEnvelope {
 export interface EventsEnvelope {
   data?: { records?: Array<{ tag?: string; level?: string; text?: string }> };
 }
+
+export interface TerminalPreset {
+  id: string;
+  label: string;
+  count: number;
+  tone: 'normal' | 'warn' | 'danger';
+  sampleSymbols: string[];
+  freshness: string;
+}
+
+export interface TerminalAnomaly {
+  id: string;
+  symbol: string;
+  type: string;
+  severity: 'info' | 'warning' | 'critical';
+  summary: string;
+  supportingMetrics: Record<string, number | string | null | undefined>;
+  source: 'scanner_alert' | 'opportunity_scan';
+  timestamp: number;
+}
+
+export interface TerminalStatusEnvelope {
+  ok: boolean;
+  data: {
+    regime: {
+      label: string;
+      score: number;
+    };
+    btcDominance: {
+      value: number;
+    };
+    scanner: {
+      running: boolean;
+      nextScan: string | null;
+      intervalSeconds: number | null;
+      universe: string | null;
+    };
+    presets: TerminalPreset[];
+    alertCount: number;
+    anomalyCount: number;
+    scannedAt: number;
+  };
+}
+
+export interface TerminalQueryPresetsEnvelope {
+  ok: boolean;
+  presets: TerminalPreset[];
+  updatedAt: number;
+}
+
+export interface TerminalAnomaliesEnvelope {
+  ok: boolean;
+  anomalies: TerminalAnomaly[];
+  updatedAt: number;
+}
+
+export interface DepthLadderEnvelope {
+  ok: boolean;
+  data: {
+    pair: string;
+    timeframe: string;
+    symbol: string;
+    currentPrice: number | null;
+    bestBid: number | null;
+    bestAsk: number | null;
+    spreadBps: number | null;
+    imbalanceRatio: number | null;
+    bidVolume: number | null;
+    askVolume: number | null;
+    bids: Array<{ price: number; qty: number; notional: number; weight: number }>;
+    asks: Array<{ price: number; qty: number; notional: number; weight: number }>;
+    updatedAt: number;
+  };
+}
+
+export interface LiquidationClustersEnvelope {
+  ok: boolean;
+  data: {
+    pair: string;
+    timeframe: string;
+    symbol: string;
+    currentPrice: number | null;
+    range: {
+      min: number | null;
+      max: number | null;
+    };
+    nearestLong: {
+      liquidatedSide: 'long' | 'short';
+      price: number;
+      usd: number;
+      distancePct: number;
+    } | null;
+    nearestShort: {
+      liquidatedSide: 'long' | 'short';
+      price: number;
+      usd: number;
+      distancePct: number;
+    } | null;
+    clusters: Array<{
+      liquidatedSide: 'long' | 'short';
+      price: number;
+      usd: number;
+      distancePct: number;
+    }>;
+    updatedAt: number;
+  };
+}

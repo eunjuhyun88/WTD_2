@@ -1,4 +1,4 @@
-import type { TerminalEvidence, TerminalSource, TerminalVerdict } from '$lib/types/terminal';
+import type { TerminalAsset, TerminalEvidence, TerminalSource, TerminalVerdict } from '$lib/types/terminal';
 import type { AnalyzeEnvelope, DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
 
 /**
@@ -82,6 +82,13 @@ export type PanelAnalyzeData = AnalyzeEnvelope & {
   derivatives?: { funding_rate?: number };
 };
 
+export interface TerminalDecisionBundle {
+  asset: TerminalAsset;
+  verdict: TerminalVerdict;
+  evidence: TerminalEvidence[];
+  sources: TerminalSource[];
+}
+
 function asToneFromState(state: TerminalEvidence['state']): Tone {
   if (state === 'bullish') return 'bull';
   if (state === 'bearish') return 'bear';
@@ -121,13 +128,73 @@ const LAYER_ORDER = [
   'bb14', 'bb16', 'atr', 'fg', 'onchain', 'kimchi', 'sector', 'ob',
 ];
 
+function deepBias(verdict: string): 'bullish' | 'bearish' | 'neutral' {
+  if (!verdict) return 'neutral';
+  if (verdict.includes('BULL')) return 'bullish';
+  if (verdict.includes('BEAR')) return 'bearish';
+  return 'neutral';
+}
+
+function deepConfidence(score: number): 'high' | 'medium' | 'low' {
+  const abs = Math.abs(score);
+  return abs >= 50 ? 'high' : abs >= 20 ? 'medium' : 'low';
+}
+
+function deepAction(verdict: string, ensDir: string): string {
+  if (verdict === 'STRONG BULL' || ensDir === 'strong_long') return 'Strong buy on pullback';
+  if (verdict === 'BULLISH' || ensDir === 'long') return 'Buy on pullback';
+  if (verdict === 'BEARISH' || ensDir === 'short') return 'Avoid / short';
+  if (verdict === 'STRONG BEAR' || ensDir === 'strong_short') return 'Strong short / avoid';
+  return 'Wait for clarity';
+}
+
+export function buildAssetFromAnalysis(symbol: string, analysisData?: PanelAnalyzeData | null): TerminalAsset {
+  const deep = analysisData?.deep as any;
+  const snap = analysisData?.snapshot ?? {};
+  const ens = analysisData?.ensemble ?? {};
+  const isMarketOnly = analysisData?.mode === 'market-only';
+  const price = analysisData?.price ?? snap?.last_close ?? 0;
+  const verdict = String(deep?.verdict ?? '');
+  const score = deep?.total_score ?? 0;
+  const bias = deepBias(verdict) || (ens.direction?.includes('long') ? 'bullish' : ens.direction?.includes('short') ? 'bearish' : 'neutral');
+  const confidence = isMarketOnly ? 'low' : deepConfidence(score);
+  const stopLong = deep?.atr_levels?.stop_long;
+  const invalidation = stopLong ? `$${Number(stopLong).toLocaleString('en-US', { maximumFractionDigits: 2 })}` : '—';
+  const sources = buildSourcesFromAnalysis(analysisData);
+  const tfArrow = (val: string | undefined, pos: string, neg: string): '↑' | '↓' | '→' => (val === pos ? '↑' : val === neg ? '↓' : '→');
+  const mtfMeta = deep?.layers?.mtf?.meta ?? {};
+
+  return {
+    symbol,
+    venue: 'USDT Perp',
+    lastPrice: price,
+    changePct15m: 0,
+    changePct1h: 0,
+    changePct4h: analysisData?.change24h ?? 0,
+    volumeRatio1h: snap.vol_ratio_3 ?? deep?.layers?.vsurge?.meta?.vol_ratio ?? 1,
+    oiChangePct1h: (snap.oi_change_1h ?? 0) * 100,
+    fundingRate: snap.funding_rate ?? analysisData?.derivatives?.funding_rate ?? analysisData?.derivativesSnapshot?.funding ?? 0,
+    fundingPercentile7d: 50,
+    spreadBps: 0,
+    bias,
+    confidence,
+    action: isMarketOnly ? 'Track market context' : deepAction(verdict, ens.direction ?? ''),
+    invalidation,
+    sources,
+    freshnessStatus: isMarketOnly ? 'disconnected' : 'recent',
+    tf15m: tfArrow((snap as any).ema_alignment ?? mtfMeta.tf15m, 'bullish', 'bearish'),
+    tf1h: tfArrow((snap as any).ema_alignment ?? mtfMeta.tf1h, 'bullish', 'bearish'),
+    tf4h: tfArrow((snap as any).htf_structure ?? mtfMeta.tf4h, 'uptrend', 'downtrend'),
+  };
+}
+
 export function buildVerdictFromAnalysis(analysisData?: PanelAnalyzeData | null): TerminalVerdict | null {
   const deep = analysisData?.deep as any;
+  const ens = analysisData?.ensemble;
   if (deep?.verdict) {
     const score = deep.total_score ?? 0;
     const verdict = String(deep.verdict);
-    const direction: TerminalVerdict['direction'] =
-      verdict.includes('BULL') ? 'bullish' : verdict.includes('BEAR') ? 'bearish' : 'neutral';
+    const direction: TerminalVerdict['direction'] = deepBias(verdict);
     const topLayers = deep.layers
       ? Object.entries(deep.layers as Record<string, any>)
           .filter(([, lr]) => lr.score !== 0)
@@ -140,13 +207,10 @@ export function buildVerdictFromAnalysis(analysisData?: PanelAnalyzeData | null)
 
     return {
       direction,
-      confidence: (Math.abs(score) >= 50 ? 'high' : Math.abs(score) >= 20 ? 'medium' : 'low'),
+      confidence: deepConfidence(score),
       reason: topLayers || verdict,
       against: analysisData?.ensemble?.block_analysis?.disqualifiers || [],
-      action: verdict === 'STRONG BULL' ? 'Strong buy on pullback'
-        : verdict === 'BULLISH' ? 'Buy on pullback'
-        : verdict === 'BEARISH' ? 'Avoid / short'
-        : verdict === 'STRONG BEAR' ? 'Strong short / avoid' : 'Wait for clarity',
+      action: deepAction(verdict, ens?.direction ?? ''),
       invalidation: deep.atr_levels?.stop_long
         ? `Stop $${Number(deep.atr_levels.stop_long).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
         : '',
@@ -154,7 +218,6 @@ export function buildVerdictFromAnalysis(analysisData?: PanelAnalyzeData | null)
     };
   }
 
-  const ens = analysisData?.ensemble;
   if (!ens) return null;
   const dir = ens.direction ?? '';
   const ensembleScore = ens.ensemble_score ?? 0;
@@ -163,9 +226,7 @@ export function buildVerdictFromAnalysis(analysisData?: PanelAnalyzeData | null)
     confidence: Math.abs(ensembleScore) > 0.6 ? 'high' : Math.abs(ensembleScore) > 0.3 ? 'medium' : 'low',
     reason: ens.reason || 'Analysis in progress',
     against: ens.block_analysis?.disqualifiers || [],
-    action: dir === 'strong_long' ? 'Strong buy on pullback'
-      : dir === 'long' ? 'Buy on pullback'
-      : dir === 'short' ? 'Avoid / short' : 'Wait for clarity',
+    action: deepAction('', dir),
     invalidation: '',
     updatedAt: Date.now(),
   };
@@ -349,5 +410,25 @@ export function buildPanelModel(input: {
       { label: 'Window', value: `Active ${panelTimeframe}`, tone: 'neutral' },
     ],
     summaryBullets,
+  };
+}
+
+export function buildTerminalDecisionBundle(symbol: string, analysisData?: PanelAnalyzeData | null): TerminalDecisionBundle {
+  const asset = buildAssetFromAnalysis(symbol, analysisData);
+  const verdict = buildVerdictFromAnalysis(analysisData) ?? {
+    direction: 'neutral',
+    confidence: 'low',
+    reason: 'Analysis pending…',
+    against: [],
+    action: 'Wait for clarity',
+    invalidation: '—',
+    updatedAt: Date.now(),
+  };
+  const evidence = buildEvidenceFromAnalysis(analysisData);
+  return {
+    asset,
+    verdict,
+    evidence,
+    sources: asset.sources,
   };
 }
