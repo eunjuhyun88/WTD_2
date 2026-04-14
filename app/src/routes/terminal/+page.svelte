@@ -28,6 +28,7 @@
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
+  import PatternSeedScout from '../../components/terminal/workspace/PatternSeedScout.svelte';
   import SourceRow from '../../components/terminal/workspace/SourceRow.svelte';
 
   // Mobile components
@@ -1255,6 +1256,13 @@
         </div>
       {/each}
     </div>
+
+    <PatternSeedScout
+      assets={boardAssets}
+      activeSymbol={activeSymbol}
+      timeframe={symbolToTF(gTf)}
+      onPickSymbol={selectAsset}
+    />
 
     {#if patternTransitionAlerts.length > 0}
       <div class="pattern-alert-tray">
