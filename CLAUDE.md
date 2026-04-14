@@ -42,3 +42,11 @@ Do not read these unless explicitly required:
 - Continue non-trivial work through `work/active/*.md`, not chat history.
 - Prefer domain docs and contracts over long legacy PRDs.
 - Keep `app/` free of duplicated engine business logic.
+
+## Branch and Worktree Operating Rules
+
+- Do all non-trivial work on a task branch in a dedicated worktree, not on `main`.
+- Use one active task branch per agent to avoid cross-agent contamination.
+- Do not push or merge without explicit user approval.
+- Prefer PR-based integration to keep review boundaries clear.
+- If unrelated or unexpected diffs appear, pause and confirm before continuing.
