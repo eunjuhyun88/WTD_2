@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta
+import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -46,8 +47,10 @@ class LedgerStore:
         """Create or update a PatternOutcome record."""
         outcome.updated_at = datetime.now()
         path = self._path(outcome.pattern_slug, outcome.id)
-        with open(path, "w") as f:
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False) as f:
             json.dump(outcome.to_dict(), f, indent=2)
+            temp_path = Path(f.name)
+        temp_path.replace(path)
         return path
 
     def load(self, pattern_slug: str, outcome_id: str) -> PatternOutcome | None:
@@ -68,10 +71,34 @@ class LedgerStore:
                     d[k] = None
         # Handle fields that may not exist in older records
         d.setdefault("feature_snapshot", None)
+        d.setdefault("entry_block_coverage", None)
+        d.setdefault("entry_p_win", None)
+        d.setdefault("entry_ml_state", None)
+        d.setdefault("entry_model_version", None)
+        d.setdefault("entry_threshold", None)
+        d.setdefault("entry_threshold_passed", None)
+        d.setdefault("entry_ml_error", None)
         d.setdefault("evaluation_window_hours", 72.0)
         d.setdefault("exit_price", None)
         d.setdefault("exit_return_pct", None)
         return PatternOutcome(**d)
+
+    @staticmethod
+    def _window_now(reference: datetime) -> datetime:
+        """Return `now` with matching awareness to the reference timestamp."""
+        return datetime.now(timezone.utc) if reference.tzinfo else datetime.now()
+
+    @staticmethod
+    def _slice_close_window(close, start: datetime, end: datetime):
+        """Return close prices inside the inclusive evaluation window."""
+        index = close.index
+        if getattr(index, "tz", None) is not None and start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+            end = end.replace(tzinfo=timezone.utc)
+        elif getattr(index, "tz", None) is None and start.tzinfo is not None:
+            start = start.astimezone(timezone.utc).replace(tzinfo=None)
+            end = end.astimezone(timezone.utc).replace(tzinfo=None)
+        return close.loc[(index >= start) & (index <= end)]
 
     def list_all(self, pattern_slug: str) -> list[PatternOutcome]:
         d = self._dir(pattern_slug)
@@ -136,13 +163,13 @@ class LedgerStore:
         """
         from data_cache.loader import load_klines
 
-        now = datetime.now()
         evaluated = []
 
         for outcome in self.list_pending(pattern_slug):
             if not outcome.accumulation_at:
                 continue
             window = timedelta(hours=outcome.evaluation_window_hours)
+            now = self._window_now(outcome.accumulation_at)
             if now - outcome.accumulation_at < window:
                 continue  # still within evaluation window
 
@@ -158,15 +185,26 @@ class LedgerStore:
             entry = outcome.entry_price
             if not entry or entry <= 0:
                 # Can't evaluate without entry price — mark expired
-                self.close_outcome(pattern_slug, outcome.id, "timeout")
-                evaluated.append(outcome)
+                closed = self.close_outcome(pattern_slug, outcome.id, "timeout")
+                if closed:
+                    evaluated.append(closed)
                 continue
 
-            # Find peak and current price within evaluation window
-            current_price = float(close.iloc[-1])
+            window_end = outcome.accumulation_at + window
+            window_close = self._slice_close_window(close, outcome.accumulation_at, window_end)
+            if window_close.empty:
+                log.debug(
+                    "Skip auto-eval for %s/%s: no close data inside %s -> %s",
+                    outcome.symbol,
+                    outcome.id,
+                    outcome.accumulation_at,
+                    window_end,
+                )
+                continue
 
-            # Peak price: max close since entry (approximate from available data)
-            peak = float(close.max()) if len(close) > 0 else current_price
+            # Evaluate only with data inside the post-entry evaluation window.
+            current_price = float(window_close.iloc[-1])
+            peak = max(float(entry), float(window_close.max()))
 
             peak_return = (peak - entry) / entry
             exit_return = (current_price - entry) / entry
@@ -178,7 +216,7 @@ class LedgerStore:
             else:
                 verdict = "timeout"  # EXPIRED — neither threshold reached
 
-            self.close_outcome(
+            closed = self.close_outcome(
                 pattern_slug, outcome.id, verdict,
                 peak_price=peak, exit_price=current_price,
             )
@@ -187,7 +225,8 @@ class LedgerStore:
                 outcome.symbol, outcome.id, verdict,
                 peak_return * 100, exit_return * 100,
             )
-            evaluated.append(outcome)
+            if closed:
+                evaluated.append(closed)
 
         return evaluated
 

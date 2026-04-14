@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { buildCanonicalHref } from '$lib/seo/site';
   import { activePairState, setActivePair, setActiveTimeframe, setActiveSpeed } from '$lib/stores/activePairStore';
   import { RESETTABLE_STORAGE_KEYS } from '$lib/stores/storageKeys';
   import {
@@ -172,6 +173,8 @@
 
 <svelte:head>
   <title>Settings — Cogochi</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href={buildCanonicalHref('/settings')} />
 </svelte:head>
 
 <div class="surface-page settings">
@@ -291,11 +294,11 @@
         {#if aiMode === 'TERMINAL'}
           <p>데이터 터미널만 — AI 없음. Bloomberg 스타일 원시 데이터.</p>
         {:else if aiMode === 'HEURISTIC'}
-          <p>템플릿 합성 — LLM 없이 구조화된 스냅샷 요약. 설정 불필요.</p>
+          <p>템플릿 합성 — LLM 없이 구조화된 스냅샷 요약. 가장 가벼운 백업 모드.</p>
         {:else if aiMode === 'OLLAMA'}
           <p>로컬 Ollama — 내 컴퓨터에서 실행. 프라이버시 완전 보장.</p>
         {:else}
-          <p>외부 API — 본인 API 키로 전체 AI 분석. Groq 무료 키 30초 발급.</p>
+          <p>전체 AI 분석 — 저장된 개인 키가 있으면 우선 사용하고, 없으면 서버에 설정된 provider로 실행.</p>
         {/if}
       </div>
 
@@ -317,7 +320,7 @@
         <div class="setting-row">
           <div class="sr-info">
             <div class="sr-label">API Key</div>
-            <div class="sr-desc">localStorage 저장 · API 호출에만 사용</div>
+            <div class="sr-desc">선택사항 · 있으면 localStorage 저장 후 개인 키를 우선 사용</div>
           </div>
           <input
             type="password"

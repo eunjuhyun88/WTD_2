@@ -24,8 +24,9 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
-import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
+import { randomUUID } from 'node:crypto';
+import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
 import {
 	EngineError,
 	type KlineBar,
@@ -33,6 +34,7 @@ import {
 	type DeepPerpData,
 } from '$lib/server/engineClient';
 import { collectAnalyzeInputs } from '$lib/server/analyze/collector';
+import { parseAnalyzeRequest } from '$lib/server/analyze/requestParser';
 import {
 	aggregateLiquidations,
 	buildDepthView,
@@ -43,14 +45,76 @@ import {
 } from '$lib/server/analyze/helpers';
 import { runEngineAnalysis } from '$lib/server/analyze/orchestrator';
 import type { BinanceKlineWithTaker } from '$lib/server/analyze/types';
+import { mapAnalyzeResponse } from '$lib/server/analyze/responseMapper';
+import { createAnalyzeTimer } from '$lib/server/analyze/timing';
+import { analyzeLimiter } from '$lib/server/rateLimit';
+import {
+	buildAnalyzeCacheKey,
+	getAnalyzeCachedResponse,
+	setAnalyzeCachedResponse,
+} from '$lib/server/analyze/cache';
+
+const inFlightByKey = new Map<string, Promise<Response>>();
 
 // ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
-export const GET: RequestHandler = async ({ url }) => {
-	const symbol = url.searchParams.get('symbol') || 'BTCUSDT';
-	const tf     = url.searchParams.get('tf')     || '4h';
+export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
+	const { symbol, tf } = parseAnalyzeRequest(url);
+	const requestId = request.headers.get('x-request-id') ?? randomUUID();
+	const guard = await runIpRateLimitGuard({
+		request,
+		fallbackIp: getClientAddress(),
+		limiter: analyzeLimiter,
+		scope: 'cogochi:analyze',
+		max: 18,
+		tooManyMessage: 'Too many analyze requests. Please retry shortly.',
+	});
+	if (!guard.ok) return guard.response;
+
+	const cacheKey = buildAnalyzeCacheKey(symbol, tf);
+	const cached = await getAnalyzeCachedResponse<Record<string, unknown>>(cacheKey);
+	if (cached) {
+		return json(cached, {
+			headers: buildPublicCacheHeaders({
+				browserMaxAge: 5,
+				sharedMaxAge: 7,
+				staleWhileRevalidate: 10,
+				cacheStatus: 'hit',
+				headers: {
+					'x-request-id': requestId,
+					'x-analyze-cache': 'hit',
+				},
+			}),
+		});
+	}
+	const inFlight = inFlightByKey.get(cacheKey);
+	if (inFlight) {
+		return inFlight;
+	}
+
+	const work = _handleAnalyze({ symbol, tf, requestId, cacheKey });
+	inFlightByKey.set(cacheKey, work);
+	try {
+		return await work;
+	} finally {
+		inFlightByKey.delete(cacheKey);
+	}
+};
+
+async function _handleAnalyze({
+	symbol,
+	tf,
+	requestId,
+	cacheKey,
+}: {
+	symbol: string;
+	tf: string;
+	requestId: string;
+	cacheKey: string;
+}): Promise<Response> {
+	const timer = createAnalyzeTimer();
 
 	try {
 		// --- 1. Fetch all raw data in parallel ---------------------------------
@@ -68,6 +132,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			forceOrders,
 			fundingRate,
 		} = await collectAnalyzeInputs(symbol, tf);
+		timer.mark('collector_ms');
 
 		if (!klines.length) {
 			return json({ error: 'No kline data' }, { status: 400 });
@@ -156,145 +221,141 @@ export const GET: RequestHandler = async ({ url }) => {
 			tbv: k.takerBuyBaseAssetVolume ?? k.volume * 0.5,
 		}));
 
-		const { deepResult, scoreResult, deepError } = await runEngineAnalysis(symbol, engineKlines, perpDeep, perpScore);
+		const { deepResult, scoreResult, deepError, scoreError } = await runEngineAnalysis(
+			symbol,
+			engineKlines,
+			perpDeep,
+			perpScore,
+			{ requestId },
+		);
+		timer.mark('engine_ms');
 
 		if (!deepResult && !scoreResult) {
 			if (deepError instanceof EngineError && (deepError.status === 502 || deepError.status === 504)) {
-				return _fallbackToLayerEngine(symbol, tf);
+				timer.flush({ symbol, tf, fallback_used: true, engine_partial: false });
+				return _fallbackToLayerEngine(symbol, tf, requestId);
 			}
-			return json({ error: 'Both /deep and /score failed' }, { status: 500 });
+			timer.flush({ symbol, tf, fallback_used: false, engine_partial: false });
+			return json({ error: 'Both /deep and /score failed' }, { status: 500, headers: { 'x-request-id': requestId } });
 		}
 
-		// --- 5. Build UI extras -----------------------------------------------
-		const annotations = detectSupportResistance(klines, currentPrice);
-		const indicators  = computeIndicatorSeries(klines);
-		const chartKlines = klines.slice(-100).map((k) => ({
-			t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume,
-		}));
-
-		return json({
-			// ── Deep (primary — authoritative 17-layer verdict) ─────────────────
-			deep: deepResult,
-
-			// ── Score / ML (secondary — P(win) + building blocks) ───────────────
-			snapshot:           scoreResult?.snapshot   ?? null,
-			p_win:              scoreResult?.p_win       ?? null,
-			blocks_triggered:   scoreResult?.blocks_triggered ?? [],
-			ensemble:           scoreResult?.ensemble    ?? null,
-			ensemble_triggered: scoreResult?.ensemble_triggered ?? false,
-
-			// ── UI extras ─────────────────────────────────────────────────────────
-			chart: chartKlines,
-			price: currentPrice,
-			change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
-			derivatives: {
-				funding_rate:  fundingRate,
-				mark_price:    markPrice,
-				index_price:   indexPrice,
+		const payload = mapAnalyzeResponse(
+			{ klines, klines1h, ticker, markPrice, indexPrice, oiPoint, oiHistory1h, lsTop, depth, takerPoints, forceOrders, fundingRate },
+			{
+				currentPrice,
 				oi_notional,
 				short_liq_usd,
 				long_liq_usd,
-				oi:            oiPoint,
-				lsRatio:       lsTop,
-			},
-			microstructure: {
+				oi_pct,
+				taker_ratio,
+				vol_24h,
 				spreadBps,
 				imbalancePct,
-				takerRatio: taker_ratio ?? null,
-				depth: depthView,
+				depthView,
 				liqClusters,
-				liqTotals: {
-					shortUsd: short_liq_usd,
-					longUsd: long_liq_usd,
+			},
+			{ deepResult, scoreResult, deepError, scoreError },
+		);
+		timer.mark('merge_ms');
+		timer.flush({ symbol, tf, fallback_used: false, engine_partial: !(deepResult && scoreResult) });
+		await setAnalyzeCachedResponse(cacheKey, payload);
+		return json(payload, {
+			headers: buildPublicCacheHeaders({
+				browserMaxAge: 5,
+				sharedMaxAge: 7,
+				staleWhileRevalidate: 10,
+				cacheStatus: 'miss',
+				headers: {
+					'x-request-id': requestId,
+					'x-analyze-cache': 'miss',
 				},
-			},
-			annotations,
-			indicators: {
-				bbUpper:  indicators.bbUpper?.slice(-100),
-				bbMiddle: indicators.bbMiddle?.slice(-100),
-				bbLower:  indicators.bbLower?.slice(-100),
-				ema20:    indicators.ema20?.slice(-100),
-			},
+			}),
 		});
 
 	} catch (err: unknown) {
 		if (err instanceof EngineError) {
 			console.error('[analyze] Engine error:', err.status, err.message);
 			if (err.status === 502 || err.status === 504) {
-				return _fallbackToLayerEngine(symbol, tf);
+				timer.flush({ symbol, tf, fallback_used: true, engine_partial: false, error_code: err.status });
+				return _fallbackToLayerEngine(symbol, tf, requestId);
 			}
-			return json({ error: err.message }, { status: err.status });
+			timer.flush({ symbol, tf, fallback_used: false, engine_partial: false, error_code: err.status });
+			return json({ error: err.message }, { status: err.status, headers: { 'x-request-id': requestId } });
 		}
 		const message = err instanceof Error ? err.message : 'Analysis failed';
 		console.error('[analyze] Unexpected error:', message);
-		return json({ error: message }, { status: 500 });
+		timer.flush({ symbol, tf, fallback_used: false, engine_partial: false, error_code: 'unexpected' });
+		return json({ error: message }, { status: 500, headers: { 'x-request-id': requestId } });
 	}
-};
+}
 
 // ---------------------------------------------------------------------------
-// Fallback: TypeScript layerEngine (when Python engine is unreachable)
+// Fallback: explicit degraded response (no client-engine decision logic)
 // ---------------------------------------------------------------------------
 
-async function _fallbackToLayerEngine(symbol: string, tf: string): Promise<Response> {
+async function _fallbackToLayerEngine(symbol: string, tf: string, requestId: string): Promise<Response> {
 	try {
-		const { computeSignalSnapshot, computeIndicatorSeries } = await import(
-			'$lib/engine/cogochi/layerEngine'
-		);
 		const { readRaw: _readRaw, klinesRawIdForTimeframe: _klinesRaw } = await import(
 			'$lib/server/providers/rawSources'
 		);
 		const { KnownRawId: _Id } = await import('$lib/contracts/ids');
-		const { detectSupportResistance } = await import(
-			'$lib/engine/cogochi/supportResistance'
-		);
-		const { signSnapshot } = await import('$lib/engine/cogochi/hmac');
-		const { MetricStore }  = await import('$lib/engine/metrics');
-		const { json: _json }  = await import('@sveltejs/kit');
+		const { json: _json } = await import('@sveltejs/kit');
 
 		const [klines, ticker, funding, oiPoint, lsTop] = await Promise.all([
-			_readRaw(_klinesRaw(tf),        { symbol, limit: 200 }),
-			_readRaw(_Id.TICKER_24HR,        { symbol }).catch(() => null),
-			_readRaw(_Id.FUNDING_RATE,       { symbol }).catch(() => null),
-			_readRaw(_Id.OPEN_INTEREST_POINT,{ symbol }).catch(() => null),
-			_readRaw(_Id.LONG_SHORT_TOP_1H,  { symbol }).catch(() => null),
+			_readRaw(_klinesRaw(tf), { symbol, limit: 200 }).catch(() => []),
+			_readRaw(_Id.TICKER_24HR, { symbol }).catch(() => null),
+			_readRaw(_Id.FUNDING_RATE, { symbol }).catch(() => null),
+			_readRaw(_Id.OPEN_INTEREST_POINT, { symbol }).catch(() => null),
+			_readRaw(_Id.LONG_SHORT_TOP_1H, { symbol }).catch(() => null),
 		]);
 
-		const ctx = {
-			pair: symbol, timeframe: tf, klines,
-			derivatives: { oi: oiPoint, funding, lsRatio: lsTop },
-		};
-
-		const metricStore = new MetricStore();
-		const snapshot = computeSignalSnapshot(ctx as any, symbol, tf, {}, metricStore);
-		snapshot.hmac = signSnapshot(snapshot);
-
-		const currentPrice = klines[klines.length - 1].close;
-		const annotations  = detectSupportResistance(klines, currentPrice);
-		const indicators   = computeIndicatorSeries(klines);
+		const currentPrice = klines.length > 0 ? klines[klines.length - 1].close : null;
 
 		return _json({
-			deep: null,          // engine offline
-			snapshot,
+			deep: null,
+			snapshot: null,
 			p_win: null,
 			blocks_triggered: [],
+			ensemble: null,
 			ensemble_triggered: false,
 			_fallback: true,
-			chart: klines.slice(-100).map((k: any) => ({
+			_degraded: true,
+			_degraded_reason: 'engine_unreachable',
+			chart: (klines ?? []).slice(-100).map((k: any) => ({
 				t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume,
 			})),
 			price: currentPrice,
 			change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
 			derivatives: { funding, oi: oiPoint, lsRatio: lsTop },
-			annotations,
-			indicators: {
-				bbUpper:  indicators.bbUpper?.slice(-100),
-				bbMiddle: indicators.bbMiddle?.slice(-100),
-				bbLower:  indicators.bbLower?.slice(-100),
-				ema20:    indicators.ema20?.slice(-100),
-			},
+			microstructure: null,
+			annotations: [],
+			indicators: { bbUpper: [], bbMiddle: [], bbLower: [], ema20: [] },
+		}, {
+			headers: buildPublicCacheHeaders({
+				browserMaxAge: 5,
+				sharedMaxAge: 7,
+				staleWhileRevalidate: 10,
+				headers: {
+					'x-request-id': requestId,
+					'x-analyze-cache': 'bypass',
+				},
+			}),
 		});
 	} catch (fallbackErr: unknown) {
 		const msg = fallbackErr instanceof Error ? fallbackErr.message : 'Fallback also failed';
-		return json({ error: `Engine offline and fallback failed: ${msg}` }, { status: 503 });
+		return json(
+			{ error: `Engine offline and fallback failed: ${msg}` },
+			{
+				status: 503,
+				headers: buildPublicCacheHeaders({
+					browserMaxAge: 0,
+					sharedMaxAge: 0,
+					headers: {
+						'x-request-id': requestId,
+						'x-analyze-cache': 'bypass',
+					},
+				}),
+			},
+		);
 	}
 }

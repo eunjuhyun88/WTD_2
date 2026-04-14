@@ -65,6 +65,7 @@ class SignalSnapshot(BaseModel):
     """
 
     # ---- metadata ----
+    schema_version: int = 1
     symbol: str
     timestamp: datetime  # UTC
     price: float         # close of the bar this snapshot refers to

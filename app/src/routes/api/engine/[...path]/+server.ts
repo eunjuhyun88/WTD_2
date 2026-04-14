@@ -23,7 +23,8 @@ const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, ''
 const TIMEOUT_MS = 30_000; // backtest can be slow
 
 async function proxy(request: Request, path: string): Promise<Response> {
-  const url = `${ENGINE_URL}/${path}`;
+  const query = new URL(request.url).search;
+  const url = `${ENGINE_URL}/${path}${query}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

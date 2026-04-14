@@ -28,6 +28,10 @@
   const isTerminal = derived(page, $p => $p.url.pathname.startsWith('/terminal'));
   const isHome = derived(page, $p => $p.url.pathname === '/');
   const isCogochi = derived(page, $p => $p.url.pathname.startsWith('/cogochi'));
+  const showGlobalChrome = derived(page, $p => {
+    const path = $p.url.pathname;
+    return !path.startsWith('/cogochi') && !path.startsWith('/terminal');
+  });
   const isScrollableSurface = derived(
     page,
     $p => !$p.url.pathname.startsWith('/terminal') && !$p.url.pathname.startsWith('/cogochi') && $p.url.pathname !== '/'
@@ -77,8 +81,8 @@
 </script>
 
 <div id="app" class:cogochi-mode={$isCogochi} class:terminal-mode={$isTerminal} class:home-mode={$isHome}>
-  {#if !$isCogochi}<Header />{/if}
-  {#if !$isCogochi}<P0Banner />{/if}
+  {#if $showGlobalChrome}<Header />{/if}
+  {#if $showGlobalChrome}<P0Banner />{/if}
   <div
     id="main-content"
     class:terminal-route={$isTerminal}
@@ -118,7 +122,8 @@
     overflow: hidden;
     position: relative;
   }
-  #app.cogochi-mode {
+  #app.cogochi-mode,
+  #app.terminal-mode {
     padding-top: 0;
   }
   #app.home-mode {

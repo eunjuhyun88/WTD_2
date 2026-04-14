@@ -1,4 +1,4 @@
-"""Train a LightGBM binary classifier on the 39-feature matrix.
+"""Train a LightGBM binary classifier on the canonical feature matrix.
 
 Two training modes:
 

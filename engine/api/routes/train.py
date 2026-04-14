@@ -18,6 +18,7 @@ import numpy as np
 from fastapi import APIRouter, HTTPException
 
 from api.schemas import TrainRequest, TrainResponse
+from models.compat import normalize_signal_snapshot_payload
 from models.signal import (
     CVDState,
     EMAAlignment,
@@ -35,7 +36,7 @@ router = APIRouter()
 def _dict_to_snapshot(d: dict) -> SignalSnapshot:
     """Re-hydrate a SignalSnapshot from its dict representation."""
     # Enums may arrive as strings.
-    d = dict(d)
+    d = normalize_signal_snapshot_payload(d)
     if isinstance(d.get("ema_alignment"), str):
         d["ema_alignment"] = EMAAlignment(d["ema_alignment"])
     if isinstance(d.get("htf_structure"), str):

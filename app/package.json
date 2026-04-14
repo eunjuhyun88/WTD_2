@@ -63,6 +63,8 @@
     "contract:new": "node scripts/dev/scaffold-task-contract.mjs",
     "contract:report": "node scripts/dev/refresh-task-contract-report.mjs",
     "contract:check": "node scripts/dev/check-task-contracts.mjs",
+    "contract:check:engine-types": "node scripts/contracts/sync-engine-types.mjs --check",
+    "contract:sync:engine-types": "node scripts/contracts/sync-engine-types.mjs",
     "coord:claim": "node scripts/dev/claim-work.mjs",
     "coord:list": "node scripts/dev/list-work-claims.mjs",
     "coord:check": "node scripts/dev/check-agent-coordination.mjs",
@@ -126,7 +128,8 @@
     "svelte-check": "^4.3.6",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "openapi-typescript": "^7.10.1"
   },
   "dependencies": {
     "@base-org/account": "^2.5.3",

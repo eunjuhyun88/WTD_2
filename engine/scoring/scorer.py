@@ -5,7 +5,7 @@ Usage:
     prob_series = scorer.score(features_df)      # pd.Series[float] per row
     p = scorer.score_latest(features_df)         # float — last bar only
 
-The scorer converts features_df to the float64 matrix internally using
+The scorer converts features_df to the canonical float64 matrix internally using
 scoring.feature_matrix.encode_features_df so callers don't need to
 pre-encode.
 """

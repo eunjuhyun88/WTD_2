@@ -97,7 +97,7 @@ def test_snapshot_has_92_feature_fields():
     AA: engulfing_bull/bear, doji, hammer.
     AB: lr_slope_20, efficiency_ratio, trend_consistency.
     """
-    meta = {"symbol", "timestamp", "price"}
+    meta = {"schema_version", "symbol", "timestamp", "price"}
     feature_fields = set(SignalSnapshot.model_fields.keys()) - meta
     assert len(feature_fields) == 92, (
         f"expected 92 feature fields, got {len(feature_fields)}: "

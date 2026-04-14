@@ -9,6 +9,7 @@
    * 4. Pending ledger records — VALID / INVALID override buttons
    */
   import { onMount, onDestroy } from 'svelte';
+  import { buildCanonicalHref } from '$lib/seo/site';
 
   // ── Types ──────────────────────────────────────────────────────────────────
   interface PhaseState {
@@ -136,7 +137,14 @@
   onDestroy(() => clearInterval(refreshInterval));
 </script>
 
-<svelte:head><title>COGOCHI · Pattern Dashboard</title></svelte:head>
+<svelte:head>
+  <title>Pattern Dashboard — Cogochi</title>
+  <meta
+    name="description"
+    content="Track active pattern states, accumulation candidates, and evaluation stats from the Cogochi pattern engine."
+  />
+  <link rel="canonical" href={buildCanonicalHref('/patterns')} />
+</svelte:head>
 
 <div class="patterns-shell">
 

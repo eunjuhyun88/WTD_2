@@ -4,9 +4,9 @@
 //
 // Modes:
 //   TERMINAL   — data only, no AI call (Bloomberg-style)
-//   HEURISTIC  — server-side template synthesis, no LLM (default)
+//   HEURISTIC  — server-side template synthesis, no LLM
 //   OLLAMA     — local Ollama LLM (uses server env OLLAMA_BASE_URL)
-//   API        — external provider with user's own API key
+//   API        — full AI path via server provider pool or user's own API key (default)
 
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
@@ -27,21 +27,58 @@ export interface DouniRuntimeConfig {
 
 const STORAGE_KEY = 'douni_runtime';
 const APIKEY_STORAGE = 'douni_api_key';
+const LEGACY_MIGRATION_KEY = 'douni_runtime_migrated_v2';
 
 const DEFAULT: DouniRuntimeConfig = {
-  mode: 'HEURISTIC',
+  mode: 'API',
   provider: 'groq',
   apiKey: '',
   ollamaModel: 'mistral:7b',
   ollamaEndpoint: 'http://localhost:11434',
 };
 
+const LEGACY_DEFAULT: Omit<DouniRuntimeConfig, 'apiKey'> = {
+  mode: 'HEURISTIC',
+  provider: 'groq',
+  ollamaModel: 'mistral:7b',
+  ollamaEndpoint: 'http://localhost:11434',
+};
+
+function matchesLegacyDefault(config: Partial<DouniRuntimeConfig>): boolean {
+  return (
+    config.mode === LEGACY_DEFAULT.mode &&
+    (config.provider ?? LEGACY_DEFAULT.provider) === LEGACY_DEFAULT.provider &&
+    (config.ollamaModel ?? LEGACY_DEFAULT.ollamaModel) === LEGACY_DEFAULT.ollamaModel &&
+    (config.ollamaEndpoint ?? LEGACY_DEFAULT.ollamaEndpoint) === LEGACY_DEFAULT.ollamaEndpoint
+  );
+}
+
 function loadFromStorage(): DouniRuntimeConfig {
   if (!browser) return { ...DEFAULT };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const apiKey = localStorage.getItem(APIKEY_STORAGE) ?? '';
-    return { ...DEFAULT, ...(raw ? JSON.parse(raw) : {}), apiKey };
+    if (!raw) return { ...DEFAULT, apiKey };
+
+    const parsed = JSON.parse(raw) as Partial<DouniRuntimeConfig>;
+    const shouldUpgradeLegacyDefault =
+      localStorage.getItem(LEGACY_MIGRATION_KEY) !== '1' &&
+      !apiKey &&
+      matchesLegacyDefault(parsed);
+
+    const next = {
+      ...DEFAULT,
+      ...parsed,
+      apiKey,
+      mode: shouldUpgradeLegacyDefault ? DEFAULT.mode : (parsed.mode ?? DEFAULT.mode),
+    };
+
+    if (shouldUpgradeLegacyDefault) {
+      persistToStorage(next);
+    }
+    localStorage.setItem(LEGACY_MIGRATION_KEY, '1');
+
+    return next;
   } catch {
     return { ...DEFAULT };
   }

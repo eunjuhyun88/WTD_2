@@ -1,9 +1,10 @@
 """Tests for LedgerStore JSON-based persistence."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from ledger.store import LedgerStore
@@ -159,6 +160,71 @@ class TestCloseOutcome:
         reloaded = store.load(SLUG, o.id)
         assert reloaded is not None
         assert reloaded.outcome == "failure"
+
+
+class TestAutoEvaluatePending:
+    def test_uses_only_post_entry_window_for_peak_and_exit(
+        self,
+        store: LedgerStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        acc_at = datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc)
+        o = _make_outcome(entry_price=100.0, accumulation_at=acc_at)
+        store.save(o)
+
+        index = pd.to_datetime(
+            [
+                "2024-12-31T23:00:00Z",
+                "2025-01-01T00:00:00Z",
+                "2025-01-02T12:00:00Z",
+                "2025-01-03T23:00:00Z",
+                "2025-01-04T00:00:00Z",
+                "2025-01-04T06:00:00Z",
+            ],
+            utc=True,
+        )
+        klines = pd.DataFrame(
+            {"close": [250.0, 100.0, 108.0, 115.0, 110.0, 180.0]},
+            index=index,
+        )
+
+        monkeypatch.setattr("data_cache.loader.load_klines", lambda symbol, offline=True: klines)
+
+        evaluated = store.auto_evaluate_pending(SLUG)
+
+        assert len(evaluated) == 1
+        reloaded = store.load(SLUG, o.id)
+        assert reloaded is not None
+        assert reloaded.outcome == "success"
+        assert reloaded.peak_price == pytest.approx(115.0)
+        assert reloaded.exit_price == pytest.approx(110.0)
+        assert reloaded.max_gain_pct == pytest.approx(0.15)
+        assert reloaded.exit_return_pct == pytest.approx(0.10)
+
+    def test_handles_aware_entry_timestamp_without_time_math_errors(
+        self,
+        store: LedgerStore,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        entry_at = datetime.now(timezone.utc) - timedelta(hours=90)
+        outcome = _make_outcome(
+            symbol="AAVEUSDT",
+            entry_price=100.0,
+            accumulation_at=entry_at,
+        )
+        store.save(outcome)
+
+        index = pd.date_range(entry_at, periods=5, freq="24h", tz="UTC")
+        klines = pd.DataFrame({"close": [100.0, 98.0, 95.0, 89.0, 96.0]}, index=index)
+        monkeypatch.setattr("data_cache.loader.load_klines", lambda symbol, offline=True: klines)
+
+        evaluated = store.auto_evaluate_pending(SLUG)
+
+        assert len(evaluated) == 1
+        reloaded = store.load(SLUG, outcome.id)
+        assert reloaded is not None
+        assert reloaded.outcome == "failure"
+        assert reloaded.exit_price == pytest.approx(89.0)
 
 
 class TestComputeStats:

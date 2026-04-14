@@ -6,10 +6,11 @@ export async function runEngineAnalysis(
   klines: KlineBar[],
   perpDeep: DeepPerpData,
   perpScore: PerpSnapshot,
+  options?: { requestId?: string },
 ): Promise<EngineSettled> {
   const [deepSettled, scoreSettled] = await Promise.allSettled([
-    engine.deep(symbol, klines, perpDeep),
-    engine.score(symbol, klines, perpScore),
+    engine.deep(symbol, klines, perpDeep, options),
+    engine.score(symbol, klines, perpScore, options),
   ]);
 
   return {

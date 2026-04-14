@@ -7,6 +7,7 @@
   import HomeSurfaceCards from '../components/home/HomeSurfaceCards.svelte';
   import WebGLAsciiBackground from '../components/home/WebGLAsciiBackground.svelte';
   import { trackHomeFunnel } from '../components/home/homeData';
+  import { buildCanonicalHref } from '$lib/seo/site';
   import {
     HOME_EXAMPLE_PROMPTS,
     HOME_LEARNING_STEPS,
@@ -141,9 +142,10 @@
     content="Per-user market memory for traders. Save your judgment once, then let Cogochi bring similar moments back with proof."
   />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content={buildCanonicalHref('/')} />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="canonical" href="/" />
+  <link rel="canonical" href={buildCanonicalHref('/')} />
 </svelte:head>
 
 <WebGLAsciiBackground {mouseX} {mouseY} />

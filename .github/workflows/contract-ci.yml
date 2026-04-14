@@ -1,0 +1,56 @@
+name: Contract CI
+
+on:
+  pull_request:
+    paths:
+      - "engine/api/**"
+      - "engine/scripts/export_openapi.py"
+      - "engine/tests/test_contract_*.py"
+      - "app/scripts/contracts/**"
+      - "app/src/lib/contracts/**"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "scripts/contract-check.sh"
+      - ".github/workflows/contract-ci.yml"
+  push:
+    paths:
+      - "engine/api/**"
+      - "engine/scripts/export_openapi.py"
+      - "engine/tests/test_contract_*.py"
+      - "app/scripts/contracts/**"
+      - "app/src/lib/contracts/**"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "scripts/contract-check.sh"
+      - ".github/workflows/contract-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Contract Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run contract check
+        run: ./scripts/contract-check.sh

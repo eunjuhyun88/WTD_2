@@ -139,6 +139,9 @@ export const authVerifyLimiter = createRateLimiter({ windowMs: 60_000, max: 10 }
 /** Market snapshot (heavy fan-out): 20 per minute per IP */
 export const marketSnapshotLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
+/** Analyze route (engine + fan-out): 18 per minute per IP */
+export const analyzeLimiter = createRateLimiter({ windowMs: 60_000, max: 18 });
+
 /** Wallet intel (public heavy read): 12 per minute per IP */
 export const walletIntelLimiter = createRateLimiter({ windowMs: 60_000, max: 12 });
 

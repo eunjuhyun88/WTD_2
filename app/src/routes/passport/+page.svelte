@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { buildCanonicalHref } from '$lib/seo/site';
   import { walletStore } from '$lib/stores/walletStore';
   import { openWalletModal } from '$lib/stores/walletModalStore';
 
@@ -63,6 +64,8 @@
 
 <svelte:head>
   <title>Passport — Cogochi</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href={buildCanonicalHref('/passport')} />
 </svelte:head>
 
 <div class="surface-page passport">

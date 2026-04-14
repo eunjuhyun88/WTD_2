@@ -2,7 +2,7 @@
 
 Pipeline:
   1. Load klines + perp + macro + onchain (from cache or network)
-  2. Compute 39 features via scanner.feature_calc
+  2. Compute the canonical feature matrix via scanner.feature_calc
   3. Generate binary labels: y[t] = 1 if price[t+H] > price[t] * (1+threshold)
   4. Encode features → float64 matrix
   5. Train LightGBM with walk-forward cross-validation

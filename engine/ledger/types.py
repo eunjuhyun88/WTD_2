@@ -51,6 +51,15 @@ class PatternOutcome:
     # v2: Feature snapshot for reproducibility
     feature_snapshot: dict | None = None     # 92-dim features at entry
 
+    # v3: Entry-scoring shadow metadata
+    entry_block_coverage: float | None = None
+    entry_p_win: float | None = None
+    entry_ml_state: Literal["scored", "untrained", "missing_snapshot", "error"] | None = None
+    entry_model_version: str | None = None
+    entry_threshold: float | None = None
+    entry_threshold_passed: bool | None = None
+    entry_ml_error: str | None = None
+
     # v2: Evaluation config
     evaluation_window_hours: float = 72.0    # configurable per pattern
 

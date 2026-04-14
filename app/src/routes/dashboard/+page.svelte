@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { buildCanonicalHref } from '$lib/seo/site';
   import { allStrategies, setActiveStrategy } from '$lib/stores/strategyStore';
   import type { StrategyEntry } from '$lib/stores/strategyStore';
   import { MARKET_CYCLES } from '$lib/data/cycles';
@@ -86,6 +87,8 @@
 
 <svelte:head>
   <title>Dashboard — Cogochi</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href={buildCanonicalHref('/dashboard')} />
 </svelte:head>
 
 <div class="surface-page dash">

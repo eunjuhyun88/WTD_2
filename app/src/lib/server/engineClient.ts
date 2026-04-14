@@ -124,6 +124,7 @@ export interface UniverseResult {
 // ---------------------------------------------------------------------------
 
 export interface SignalSnapshotRaw {
+  schema_version: number;
   symbol: string;
   timestamp: string;
   price: number;
@@ -292,16 +293,21 @@ async function call<T>(
   method: 'GET' | 'POST',
   path: string,
   body?: unknown,
+  options?: { requestId?: string },
 ): Promise<T> {
   const url = `${ENGINE_URL}${path}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
   try {
+    const headers: Record<string, string> = {};
+    if (body) headers['Content-Type'] = 'application/json';
+    if (options?.requestId) headers['x-request-id'] = options.requestId;
+
     const res = await fetch(url, {
       method,
       signal: controller.signal,
-      headers: body ? { 'Content-Type': 'application/json' } : {},
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
 
@@ -331,8 +337,13 @@ async function call<T>(
 
 export const engine = {
   /** Compute feature snapshot + P(win) for the latest kline bar. */
-  async score(symbol: string, klines: KlineBar[], perp: PerpSnapshot = {}): Promise<ScoreResult> {
-    return call<ScoreResult>('POST', '/score', { symbol, klines, perp });
+  async score(
+    symbol: string,
+    klines: KlineBar[],
+    perp: PerpSnapshot = {},
+    options?: { requestId?: string },
+  ): Promise<ScoreResult> {
+    return call<ScoreResult>('POST', '/score', { symbol, klines, perp }, options);
   },
 
   /**
@@ -340,8 +351,13 @@ export const engine = {
    * Returns DeepResult with per-layer scores, verdict, ATR stop/TP levels.
    * Requires ≥120 klines; 500 recommended for ATR percentile warmup.
    */
-  async deep(symbol: string, klines: KlineBar[], perp: DeepPerpData = {}): Promise<DeepResult> {
-    return call<DeepResult>('POST', '/deep', { symbol, klines, perp });
+  async deep(
+    symbol: string,
+    klines: KlineBar[],
+    perp: DeepPerpData = {},
+    options?: { requestId?: string },
+  ): Promise<DeepResult> {
+    return call<DeepResult>('POST', '/deep', { symbol, klines, perp }, options);
   },
 
   /**

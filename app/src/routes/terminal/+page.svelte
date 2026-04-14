@@ -16,6 +16,7 @@
   import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
   import { normalizeTimeframe } from '$lib/utils/timeframe';
+  import { buildCanonicalHref } from '$lib/seo/site';
   import { get } from 'svelte/store';
   import { douniRuntimeStore } from '$lib/stores/douniRuntime';
 
@@ -74,6 +75,7 @@
 
   // ── Capture modal ──────────────────────────────────────────
   let showCaptureModal = $state(false);
+  let showFullEvidence = $state(false);
 
   // ── Chart price-level overlays (entry / target / stop) ───────
   // Extracted from deep.atr_levels after each analysis; passed to ChartBoard
@@ -180,6 +182,27 @@
   function isAnalysisQuery(msg: string): boolean {
     const lower = msg.toLowerCase();
     return /분석|어때|어떻게|펀딩|oi\b|rsi|추세|시그널|진입|패턴|레짐|regime|signal|analysis|how.*(look|doing)|what.*(think|say)|check/.test(lower);
+  }
+
+  function localizeTerminalText(ko: string, en: string): string {
+    if (typeof navigator === 'undefined') return en;
+    return navigator.language.toLowerCase().startsWith('ko') ? ko : en;
+  }
+
+  function pushAssistantMessage(content: string, transient = false) {
+    chatHistory = ([...chatHistory, { role: 'assistant' as const, content }] as HistoryEntry[]).slice(-10);
+    streamText = content;
+    if (transient) {
+      setTimeout(() => {
+        if (streamText === content) streamText = '';
+      }, 4000);
+    }
+  }
+
+  function formatAgentFailure(detail?: string): string {
+    const prefix = localizeTerminalText('AI 응답 실패', 'AI response failed');
+    const cleanDetail = detail?.trim();
+    return cleanDetail ? `${prefix}: ${cleanDetail}` : prefix;
   }
 
   function _deepBias(verdict: string): 'bullish' | 'bearish' | 'neutral' {
@@ -554,10 +577,12 @@
 
     // TERMINAL mode: data only, no AI call
     if (runtime.mode === 'TERMINAL') {
-      const banner = '[터미널 모드] AI 분석 없음 — Settings > AI에서 모드를 변경하세요.';
-      chatHistory = ([...chatHistory, { role: 'user' as const, content: text }, { role: 'assistant' as const, content: banner }] as HistoryEntry[]).slice(-10);
-      streamText = banner;
-      setTimeout(() => { streamText = ''; }, 4000);
+      const banner = localizeTerminalText(
+        '[터미널 모드] AI 분석 없음 — Settings > AI에서 모드를 변경하세요.',
+        '[Terminal mode] No AI analysis — change the mode in Settings > AI.',
+      );
+      chatHistory = ([...chatHistory, { role: 'user' as const, content: text }] as HistoryEntry[]).slice(-10);
+      pushAssistantMessage(banner, true);
       return;
     }
 
@@ -570,12 +595,12 @@
       prevSnapshotFingerprint === currentFingerprint &&
       isAnalysisQuery(text)
     ) {
-      const noChange = typeof navigator !== 'undefined' && navigator.language.startsWith('ko')
-        ? '변화 없음 — 마지막 분석 이후 시장 데이터가 업데이트되지 않았어.'
-        : 'No change — market data has not updated since the last analysis.';
-      chatHistory = ([...chatHistory, { role: 'user' as const, content: text }, { role: 'assistant' as const, content: noChange }] as HistoryEntry[]).slice(-10);
-      streamText = noChange;
-      setTimeout(() => { streamText = ''; }, 4000);
+      const noChange = localizeTerminalText(
+        '변화 없음 — 마지막 분석 이후 시장 데이터가 업데이트되지 않았어.',
+        'No change — market data has not updated since the last analysis.',
+      );
+      chatHistory = ([...chatHistory, { role: 'user' as const, content: text }] as HistoryEntry[]).slice(-10);
+      pushAssistantMessage(noChange, true);
       return;
     }
 
@@ -610,12 +635,19 @@
         body: JSON.stringify(body),
       });
 
-      if (!res.ok || !res.body) { isStreaming = false; return; }
+      if (!res.ok || !res.body) {
+        const errBody = await res.text().catch(() => '');
+        pushAssistantMessage(
+          formatAgentFailure(errBody ? `HTTP ${res.status} ${errBody.slice(0, 120)}` : `HTTP ${res.status}`),
+        );
+        return;
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       let assistantText = '';
+      let streamError = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -634,18 +666,30 @@
             if (event.type === 'text_delta') {
               assistantText += event.text ?? '';
               streamText = assistantText;
+            } else if (event.type === 'error') {
+              streamError = formatAgentFailure(event.message);
+              streamText = assistantText ? `${assistantText}\n\n${streamError}` : streamError;
             }
           } catch {}
         }
       }
 
-      if (assistantText) {
-        chatHistory = ([...chatHistory, { role: 'assistant' as const, content: assistantText }] as HistoryEntry[]).slice(-10);
+      const finalAssistantText = assistantText
+        ? (streamError ? `${assistantText}\n\n${streamError}` : assistantText)
+        : '';
+
+      if (finalAssistantText) {
+        chatHistory = ([...chatHistory, { role: 'assistant' as const, content: finalAssistantText }] as HistoryEntry[]).slice(-10);
         // Record snapshot fingerprint so identical follow-up questions get the delta guard
-        prevSnapshotFingerprint = snapshotFingerprint(analysisData?.snapshot);
+        if (!streamError) {
+          prevSnapshotFingerprint = snapshotFingerprint(analysisData?.snapshot);
+        }
+      } else if (streamError) {
+        pushAssistantMessage(streamError);
       }
     } catch (e) {
       console.error('SSE error:', e);
+      pushAssistantMessage(formatAgentFailure(e instanceof Error ? e.message : undefined));
     } finally {
       isStreaming = false;
       streamText = '';
@@ -693,6 +737,7 @@
 
   function selectAsset(symbol: string) {
     activeSymbol = symbol;
+    showFullEvidence = false;
     if (!verdictMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
     setActivePair(symbol.replace('USDT', '/USDT'));
   }
@@ -703,6 +748,7 @@
     boardAssets = []; verdictMap = {}; evidenceMap = {};
     activeSymbol = ''; layout = 'focus';
     chartLevels = {};
+    showFullEvidence = false;
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -749,6 +795,7 @@
       prevTf = tf;
       const symbol = pairToSymbol(pair);
       activeSymbol = symbol;
+      showFullEvidence = false;
       analysisData = null;  // clear stale snapshot so chat context resets
       const alreadyLoaded = untrack(() => boardAssets.find(a => a.symbol === symbol));
       if (!alreadyLoaded) {
@@ -760,6 +807,7 @@
       prevTf = tf;
       const symbol = pairToSymbol(pair);
       verdictMap = {}; evidenceMap = {};
+      showFullEvidence = false;
       loadAnalysis(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
     }
@@ -811,7 +859,7 @@
   let activeAsset = $derived(boardAssets.find(a => a.symbol === activeSymbol) ?? boardAssets[0] ?? null);
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
   let activeEvidence = $derived(activeSymbol ? evidenceMap[activeSymbol] ?? [] : []);
-  let analysisEvidence = $derived(activeEvidence.slice(0, 6));
+  let analysisEvidence = $derived(showFullEvidence ? activeEvidence : activeEvidence.slice(0, 6));
   let companionAssets = $derived(
     boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
   );
@@ -893,11 +941,13 @@
     if (ratio <= 0.85) return 'Ask Heavy';
     return 'Balanced';
   });
+  let runtimeModeLabel = $derived($douniRuntimeStore.mode);
 
   let statusStripItems = $derived.by(() => {
     const regime = metricValue(['Regime', 'Breakout'], flowBias);
     return [
       { label: 'Mode', value: isScanMode ? 'SCAN' : 'FOCUS', tone: 'info' },
+      { label: 'AI', value: runtimeModeLabel, tone: runtimeModeLabel === 'API' ? 'bull' : runtimeModeLabel === 'OLLAMA' ? 'info' : 'neutral' },
       { label: 'Flow Bias', value: flowBias, tone: flowBias === 'LONG' ? 'bull' : flowBias === 'SHORT' ? 'bear' : 'neutral' },
       { label: 'Regime', value: regime, tone: 'neutral' },
       { label: 'Board', value: `${boardAssets.length} symbols`, tone: 'neutral' },
@@ -926,6 +976,15 @@
     { id: 'compare',   label: 'BTC vs ETH',      action: 'Compare BTC and ETH side by side' },
   ]);
 </script>
+
+<svelte:head>
+  <title>Terminal — Cogochi</title>
+  <meta
+    name="description"
+    content="Analyze live crypto structure, flow, and evidence in the Cogochi terminal before you save or act on a setup."
+  />
+  <link rel="canonical" href={buildCanonicalHref('/terminal')} />
+</svelte:head>
 
 <!-- ═══════════════════════════════════════════════════ -->
 <!-- Terminal Shell                                      -->
@@ -1011,7 +1070,7 @@
           />
           <EvidenceStrip
             evidence={activeEvidence}
-            onExpand={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
+            onExpand={() => { showFullEvidence = true; }}
           />
           {#if heroMetricTiles.length > 0}
             <div class="hero-metrics-row">
@@ -1171,7 +1230,7 @@
                   bars={ohlcvBars}
                   {layerBarsMap}
                   onPin={() => {}}
-                  onViewDetail={() => { rightPanelTab = 'summary'; showRightPanel = true; }}
+                  onViewDetail={() => { showFullEvidence = true; }}
                 />
               </div>
             {/if}
@@ -1237,7 +1296,14 @@
 
               {#if analysisEvidence.length > 0}
                 <div class="cv-section">
-                  <span class="cv-label">EVIDENCE</span>
+                  <div class="cv-section-head">
+                    <span class="cv-label">EVIDENCE</span>
+                    {#if activeEvidence.length > 6}
+                      <button class="cv-toggle" onclick={() => { showFullEvidence = !showFullEvidence; }}>
+                        {showFullEvidence ? 'Collapse' : `Show all ${activeEvidence.length}`}
+                      </button>
+                    {/if}
+                  </div>
                   <div class="cv-evidence-list">
                     {#each analysisEvidence as ev}
                       <div class="cv-evidence-row">
@@ -1278,10 +1344,11 @@
                 </div>
               {/if}
 
-              <!-- Expand to full panel -->
-              <button class="cv-expand" onclick={() => { rightPanelTab = 'summary'; showRightPanel = true; }}>
-                Evidence + Detail →
-              </button>
+              {#if activeEvidence.length > 6}
+                <button class="cv-expand" onclick={() => { showFullEvidence = !showFullEvidence; }}>
+                  {showFullEvidence ? 'Collapse evidence ↑' : 'Show full evidence ↓'}
+                </button>
+              {/if}
             </div>
           {:else}
             <div class="board-empty">
@@ -2072,6 +2139,12 @@
     background: var(--sc-terminal-border);
     border-bottom: 1px solid var(--sc-terminal-border);
   }
+  .cv-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
   .cv-metric {
     display: flex;
     flex-direction: column;
@@ -2093,6 +2166,20 @@
     font-size: 11px;
     font-weight: 700;
     color: var(--sc-text-1);
+  }
+  .cv-toggle {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: var(--sc-text-2);
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px;
+    padding: 2px 6px;
+    cursor: pointer;
+  }
+  .cv-toggle:hover {
+    color: var(--sc-text-0);
+    border-color: rgba(255,255,255,0.22);
   }
 
   .cv-section {
