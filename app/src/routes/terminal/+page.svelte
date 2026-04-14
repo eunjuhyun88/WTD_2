@@ -1089,6 +1089,64 @@
       verdict: verdictMap[a.symbol] ?? null,
     }))
   );
+  type ShellChromeTone = 'bull' | 'bear' | 'neutral' | 'info' | 'warn';
+  let activeFocusLabel = $derived(activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay);
+  let timeframeBadgeLabel = $derived(symbolToTF(gTf).toUpperCase());
+  let assistantBannerText = $derived(streamText.trim());
+  let shellSummaryCards = $derived.by(() => {
+    const engineMode = activeAsset?.freshnessStatus === 'disconnected' ? 'Market only' : 'Full context';
+    const priceChange = activeAsset?.changePct4h ?? 0;
+    const directionTone: ShellChromeTone =
+      activeVerdict?.direction === 'bullish'
+        ? 'bull'
+        : activeVerdict?.direction === 'bearish'
+          ? 'bear'
+          : 'neutral';
+    const priceTone: ShellChromeTone =
+      priceChange > 0 ? 'bull' : priceChange < 0 ? 'bear' : 'neutral';
+    const regime = metricValue(['Regime', 'Breakout'], flowBias);
+
+    return [
+      {
+        label: 'Focus',
+        value: `${activeFocusLabel}/USDT`,
+        meta: `${timeframeBadgeLabel} · ${isScanMode ? `${boardAssets.length} symbols` : 'single board'}`,
+        tone: 'info' as ShellChromeTone,
+      },
+      {
+        label: 'Last Price',
+        value: activeAsset?.lastPrice
+          ? activeAsset.lastPrice.toLocaleString('en-US', {
+              maximumFractionDigits: activeAsset.lastPrice >= 1000 ? 2 : 4,
+            })
+          : '—',
+        meta: `${formatSignedPct(activeAsset?.changePct4h, 1)} 4H`,
+        tone: priceTone,
+      },
+      {
+        label: 'Engine',
+        value: engineMode,
+        meta: `${runtimeModeLabel} · ${activeAsset?.freshnessStatus ?? 'delayed'}`,
+        tone: engineMode === 'Full context' ? 'bull' : 'warn',
+      },
+      {
+        label: 'Primary Read',
+        value: regime,
+        meta: activeVerdict ? `${activeVerdict.confidence} confidence` : 'Awaiting analysis',
+        tone: directionTone,
+      },
+    ];
+  });
+  let terminalSubtitle = $derived.by(() => {
+    const regime = metricValue(['Regime', 'Breakout'], flowBias);
+    const boardMode = isScanMode
+      ? `${boardAssets.length} symbols loaded in scan mode`
+      : 'single-asset focus board';
+    const engineMode = activeAsset?.freshnessStatus === 'disconnected'
+      ? 'market-only fallback active'
+      : 'full engine context available';
+    return `${activeFocusLabel} is pinned on ${timeframeBadgeLabel}. ${boardMode}. ${regime} regime with ${engineMode}.`;
+  });
 
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
@@ -1113,48 +1171,89 @@
 <!-- Terminal Shell                                      -->
 <!-- ═══════════════════════════════════════════════════ -->
 <div class="terminal-shell">
+  <div class="terminal-shell-head">
+    <section class="terminal-hero">
+      <div class="terminal-hero-main">
+        <nav class="surface-nav" aria-label="Surface navigation">
+          <a class="surface-link" href="/dashboard">Dashboard</a>
+          <a class="surface-link" href="/lab">Lab</a>
+          <a class="surface-link active" href="/terminal" aria-current="page">Terminal</a>
+        </nav>
 
-  <!-- Command Bar -->
-  <TerminalCommandBar
-    {flowBias}
-    {layout}
-    assetsCount={boardAssets.length}
-    leftRailOpen={showLeftRail}
-    analysisRailOpen={showAnalysisRail}
-    onToggleLeftRail={toggleLeftRail}
-    onToggleAnalysisRail={toggleAnalysisRail}
-    onLayout={switchLayout}
-    onClear={clearBoard}
-    onCapture={() => showCaptureModal = true}
-  />
-
-  <div class="terminal-status-strip">
-    {#each statusStripItems as item}
-      <div class="status-pill" data-tone={item.tone}>
-        <span class="status-label">{item.label}</span>
-        <span class="status-value">{item.value}</span>
+        <div class="terminal-title-wrap">
+          <div class="terminal-mark" aria-hidden="true">CG</div>
+          <div class="terminal-title-copy">
+            <span class="terminal-kicker">Cogochi Research Cockpit</span>
+            <div class="terminal-title-row">
+              <h1 class="terminal-title">Terminal</h1>
+              <span class="terminal-context-pill">{activeFocusLabel}/USDT</span>
+              <span class="terminal-context-pill muted">{timeframeBadgeLabel}</span>
+            </div>
+            <p class="terminal-subtitle">{terminalSubtitle}</p>
+          </div>
+        </div>
       </div>
-    {/each}
-  </div>
 
-  {#if patternTransitionAlerts.length > 0}
-    <div class="pattern-alert-tray">
-      <span class="pattern-alert-label">LIVE PATTERN ALERT</span>
-      {#each patternTransitionAlerts as item}
-        <div class="pattern-alert-pill">
-          <button class="pattern-alert-main" onclick={() => focusPatternSymbol(item)}>
-            <span class="pattern-alert-dot"></span>
-            <span class="pattern-alert-symbol">{item.symbol.replace('USDT', '')}</span>
-            <span class="pattern-alert-phase">{item.phase}</span>
-            <span class="pattern-alert-slug">{item.slug.replace(/^tradoor-/, '').replace(/-v\d+$/, '')}</span>
-          </button>
-          <button class="pattern-alert-dismiss" onclick={() => dismissPatternAlert(item.id)} aria-label="Dismiss pattern alert">
-            ×
-          </button>
+      <div class="terminal-hero-stats">
+        {#each shellSummaryCards as card}
+          <div class="hero-stat-card" data-tone={card.tone}>
+            <span class="hero-stat-label">{card.label}</span>
+            <strong class="hero-stat-value">{card.value}</strong>
+            <span class="hero-stat-meta">{card.meta}</span>
+          </div>
+        {/each}
+      </div>
+    </section>
+
+    {#if assistantBannerText}
+      <div class="assistant-ribbon" data-state={isStreaming ? 'streaming' : 'ready'}>
+        <span class="assistant-ribbon-label">{isStreaming ? 'AI Stream' : 'Assistant'}</span>
+        <p class="assistant-ribbon-text">{assistantBannerText}</p>
+      </div>
+    {/if}
+
+    <!-- Command Bar -->
+    <TerminalCommandBar
+      {flowBias}
+      {layout}
+      assetsCount={boardAssets.length}
+      leftRailOpen={showLeftRail}
+      analysisRailOpen={showAnalysisRail}
+      onToggleLeftRail={toggleLeftRail}
+      onToggleAnalysisRail={toggleAnalysisRail}
+      onLayout={switchLayout}
+      onClear={clearBoard}
+      onCapture={() => showCaptureModal = true}
+    />
+
+    <div class="terminal-status-strip">
+      {#each statusStripItems as item}
+        <div class="status-pill" data-tone={item.tone}>
+          <span class="status-label">{item.label}</span>
+          <span class="status-value">{item.value}</span>
         </div>
       {/each}
     </div>
-  {/if}
+
+    {#if patternTransitionAlerts.length > 0}
+      <div class="pattern-alert-tray">
+        <span class="pattern-alert-label">LIVE PATTERN ALERT</span>
+        {#each patternTransitionAlerts as item}
+          <div class="pattern-alert-pill">
+            <button class="pattern-alert-main" onclick={() => focusPatternSymbol(item)}>
+              <span class="pattern-alert-dot"></span>
+              <span class="pattern-alert-symbol">{item.symbol.replace('USDT', '')}</span>
+              <span class="pattern-alert-phase">{item.phase}</span>
+              <span class="pattern-alert-slug">{item.slug.replace(/^tradoor-/, '').replace(/-v\d+$/, '')}</span>
+            </button>
+            <button class="pattern-alert-dismiss" onclick={() => dismissPatternAlert(item.id)} aria-label="Dismiss pattern alert">
+              ×
+            </button>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
 
   <!-- 3-column body -->
   <div class="terminal-body"
