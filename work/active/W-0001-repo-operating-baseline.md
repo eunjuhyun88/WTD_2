@@ -37,8 +37,9 @@ contract
 
 - ~~Add canonical contract file~~ — see `docs/domains/contracts.md`.
 - ~~Split `app/docs/COGOCHI.md`~~ — parts in `docs/archive/cogochi/`; stub at `app/docs/COGOCHI.md`.
+- ~~Open `W-0003` for read-scope automation tooling.~~
 - Optional: promote excerpts from archive into `docs/product` / `docs/domains` (no big-bang copy).
-- Open `W-0003` for read-scope automation tooling.
+- Keep tightening baseline checks as docs/contracts evolve.
 
 ## Exit Criteria
 
