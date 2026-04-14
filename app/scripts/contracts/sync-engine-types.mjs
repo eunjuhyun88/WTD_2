@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
-import openapiTS from 'openapi-typescript';
+import openapiTS, { astToString } from 'openapi-typescript';
 
 const OUTPUT_PATH = path.resolve(process.cwd(), 'src/lib/contracts/generated/engine-openapi.d.ts');
 const ENGINE_ROOT = path.resolve(process.cwd(), '..', 'engine');
@@ -30,8 +30,9 @@ async function main() {
   console.log(`[contract:sync] loading engine OpenAPI from ${sourceLabel}`);
 
   const typesAst = await openapiTS(source);
+  const rendered = astToString(typesAst);
   const header = `// AUTO-GENERATED FILE. DO NOT EDIT.\n// Source: ${sourceLabel}\n\n`;
-  const body = header + typesAst;
+  const body = header + rendered;
 
   if (CHECK_MODE) {
     let existing = '';

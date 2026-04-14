@@ -4,6 +4,8 @@ import path from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
+      '$lib': path.resolve('src/lib'),
+      '$env/dynamic/private': path.resolve('src/test/mocks/env-dynamic-private.ts'),
       '$env/dynamic/public': path.resolve('src/test/mocks/env-dynamic-public.ts'),
     },
   },

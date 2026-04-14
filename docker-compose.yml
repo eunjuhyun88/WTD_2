@@ -78,6 +78,26 @@ services:
       timeout: 5s
       retries: 5
 
+  worker-control:
+    build:
+      context: .
+      dockerfile: engine/Dockerfile.worker
+    container_name: wtd-worker-control
+    restart: unless-stopped
+    environment:
+      ENGINE_PORT: 8000
+      APP_ORIGIN: http://localhost:3000
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -q 'worker.main' || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pg_data:
 

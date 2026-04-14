@@ -13,6 +13,7 @@
  */
 
 import { env } from '$env/dynamic/private';
+import type { components, operations } from '$lib/contracts/generated/engine-openapi';
 
 const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -21,23 +22,13 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 // Shared types
 // ---------------------------------------------------------------------------
 
-export interface KlineBar {
-  t: number;   // open-time ms UTC
-  o: number;
-  h: number;
-  l: number;
-  c: number;
-  v: number;
-  tbv: number; // taker buy base volume (absolute, not ratio)
-}
+type JsonResponse<T extends { responses: unknown }> =
+  T extends { responses: { 200: { content: { 'application/json': infer R } } } } ? R : never;
 
-export interface PerpSnapshot {
-  funding_rate?: number;
-  oi_change_1h?: number;
-  oi_change_24h?: number;
-  long_short_ratio?: number;
-  taker_buy_ratio?: number;
-}
+type Schema<K extends keyof components['schemas']> = components['schemas'][K];
+
+export type KlineBar = Schema<'KlineBar'>;
+export type PerpSnapshot = Partial<Schema<'PerpSnapshot'>>;
 
 // ---------------------------------------------------------------------------
 // /deep — extended perp data for market_engine pipeline
@@ -53,19 +44,7 @@ export interface PerpSnapshot {
  * short_liq_usd: forceOrders BUY side sum in USD (shorts force-closed)
  * long_liq_usd : forceOrders SELL side sum in USD (longs force-closed)
  */
-export interface DeepPerpData {
-  fr?: number;
-  oi_pct?: number;
-  ls_ratio?: number;
-  taker_ratio?: number;
-  price_pct?: number;
-  oi_notional?: number;
-  vol_24h?: number;
-  mark_price?: number;
-  index_price?: number;
-  short_liq_usd?: number;
-  long_liq_usd?: number;
-}
+export type DeepPerpData = Partial<Schema<'DeepPerpData'>>;
 
 export interface LayerOut {
   score: number;
@@ -176,13 +155,7 @@ export interface EnsembleSignal {
   };
 }
 
-export interface ScoreResult {
-  snapshot: SignalSnapshotRaw;
-  p_win: number | null;             // null until LightGBM trained
-  blocks_triggered: string[];       // active building block names
-  ensemble: EnsembleSignal | null;  // fused ML + blocks signal
-  ensemble_triggered: boolean;      // convenience: confidence in (high|medium) && direction != neutral
-}
+export type ScoreResult = JsonResponse<operations['score_score_post']>;
 
 // ---------------------------------------------------------------------------
 // /backtest
@@ -212,11 +185,7 @@ export interface BacktestMetrics {
   walk_forward_pass_rate: number;
 }
 
-export interface BacktestResult {
-  metrics: BacktestMetrics;
-  passed: boolean;
-  gate_failures: string[];
-}
+export type BacktestResult = JsonResponse<operations['backtest_backtest_post']>;
 
 // ---------------------------------------------------------------------------
 // /challenge
@@ -235,12 +204,7 @@ export interface StrategyResult {
   expectancy: number;
 }
 
-export interface ChallengeCreateResult {
-  slug: string;
-  strategies: StrategyResult[];
-  recommended: string;
-  feature_vector: number[];
-}
+export type ChallengeCreateResult = JsonResponse<operations['create_challenge_challenge_create_post']>;
 
 export interface ScanMatch {
   symbol: string;
@@ -250,11 +214,7 @@ export interface ScanMatch {
   price: number;
 }
 
-export interface ChallengeScanResult {
-  slug: string;
-  scanned_at: string;
-  matches: ScanMatch[];
-}
+export type ChallengeScanResult = JsonResponse<operations['scan_challenge_challenge__slug__scan_get']>;
 
 // ---------------------------------------------------------------------------
 // /train
@@ -265,11 +225,7 @@ export interface TradeRecord {
   outcome: 1 | 0 | -1;
 }
 
-export interface TrainResult {
-  auc: number;
-  n_samples: number;
-  model_version: string;
-}
+export type TrainResult = JsonResponse<operations['train_train_post']>;
 
 // ---------------------------------------------------------------------------
 // Error type
