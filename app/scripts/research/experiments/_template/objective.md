@@ -72,6 +72,7 @@ cd scripts/research/experiments/rq-b-<slug>-2026-04-11
 
 ## Reference
 
-- `docs/exec-plans/active/research-spine-2026-04-11.md` §D3, §R4.5
+- `research/evals/rq-b-baseline-protocol.md`
+- `research/experiments/rq-b-ladder-2026-04-11.md`
 - `src/lib/research/pipeline/runner.ts` — `runExperiment` implementation
 - `src/lib/research/source/synthetic.ts` — synthetic dataset generator

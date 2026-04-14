@@ -21,7 +21,7 @@
  *   - Schedules do NOT run experiments. They are pure iterators.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §D4 row 9.1, §R4.4
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 export type ScheduleVersion = 'schedule-v1-2026-04-11';

@@ -3,8 +3,9 @@
  * RQ-B Sample-Size Ladder Experiment — R4.6
  *
  * First real experiment through the R4.2 `runExperiment` boundary.
- * Confronts the pre-registered hypothesis in
- * `docs/exec-plans/active/research-rq-b-sample-size-2026-04-11.md`:
+ * Confronts the pre-registered hypothesis recorded in
+ * `research/experiments/rq-b-ladder-2026-04-11.md` and
+ * `research/evals/rq-b-baseline-protocol.md`:
  *
  *   "The smallest N at which CI95(rule_based − random) excludes zero
  *    on jittered synthetic verdicts lies in N ∈ [50, 500]."
@@ -226,7 +227,8 @@ function formatResults(results) {
 	lines.push(`## Pre-registration`);
 	lines.push('');
 	lines.push(`- **Hypothesis**: first-significant-N ∈ [${HYPOTHESIS_BOUND.lower}, ${HYPOTHESIS_BOUND.upper}]`);
-	lines.push(`- **Objective doc**: \`docs/exec-plans/active/research-rq-b-sample-size-2026-04-11.md\``);
+	lines.push(`- **Canonical experiment doc**: \`research/experiments/rq-b-ladder-2026-04-11.md\``);
+	lines.push(`- **Canonical protocol doc**: \`research/evals/rq-b-baseline-protocol.md\``);
 	lines.push(`- **Schedule**: \`${SCHEDULE.strategy}\``);
 	lines.push(`- **Source seed**: ${SOURCE_SEED}`);
 	lines.push(`- **Experiment seed**: ${EXPERIMENT_SEED}`);

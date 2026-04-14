@@ -11,7 +11,7 @@
  * `id` strings here are treated as a public API.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R1
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type { AgentPolicy } from '../evaluation/types.ts';

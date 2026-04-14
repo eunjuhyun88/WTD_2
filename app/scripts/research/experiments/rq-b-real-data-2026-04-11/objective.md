@@ -97,10 +97,8 @@ smoke is that the pipeline executes".
 
 ## Reference
 
-- `docs/exec-plans/active/harness-engine-integration-plan-2026-04-11.md`
-  §3 E5
-- `docs/exec-plans/active/research-rq-b-sample-size-2026-04-11.md` —
-  the synthetic ladder pre-registration this experiment mirrors
+- `research/experiments/rq-b-ladder-2026-04-11.md` — canonical experiment family record
+- `research/evals/rq-b-baseline-protocol.md` — fixed ladder protocol
 - `src/lib/research/source/db.ts` — DB-backed `DatasetSource`
 - `src/lib/server/journal/trajectoryWriter.ts` — E4 v2 row writer +
   parser used by the source

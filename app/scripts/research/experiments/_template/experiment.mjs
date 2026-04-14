@@ -22,7 +22,8 @@
  *   - process exits 0
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R4.5
+ *   research/evals/rq-b-baseline-protocol.md
+ *   research/notes/local-research-loop.md
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';

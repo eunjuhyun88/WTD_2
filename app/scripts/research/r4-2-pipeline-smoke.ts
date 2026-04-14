@@ -1,7 +1,8 @@
 /**
  * R4.2 pipeline smoke test.
  *
- * Acceptance for §R4.2 (from research-spine-2026-04-11.md):
+ * Acceptance for the current pipeline-smoke gate in
+ * `research/evals/rq-b-baseline-protocol.md`:
  *
  *   - `runExperiment(config, source)` runs end-to-end on a 5-trajectory
  *     synthetic source with `RandomAgent`.

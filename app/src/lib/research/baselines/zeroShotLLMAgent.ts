@@ -16,7 +16,7 @@
  * reproducibility reports.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R1, RQ-B
+ *   `research/thesis/current-thesis.md`
  */
 
 import type { AgentObservation, AgentDecisionProposal } from '../evaluation/types.ts';
@@ -58,7 +58,7 @@ export class ZeroShotLLMAgent implements BaselineAgent {
 				`When unblocked, will call model="${this.config.model}" with ` +
 				`prompt="${this.config.promptVersion}", render the VerdictBlock as ` +
 				'context, parse structured output, and return the proposal. ' +
-				'See docs/exec-plans/active/research-spine-2026-04-11.md §R1, RQ-B.'
+				'See research/thesis/current-thesis.md.'
 		);
 	}
 }

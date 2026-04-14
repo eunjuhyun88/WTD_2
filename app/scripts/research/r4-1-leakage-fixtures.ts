@@ -17,7 +17,7 @@
  * `npm run research:r4-1-fixtures`.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R4.1 acceptance
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type { DecisionTrajectory } from '../../src/lib/contracts/index.ts';
@@ -35,7 +35,7 @@ import {
 // happy path (calling `temporalSplit()` end-to-end) is deferred to R4.5 where
 // the synthetic `DatasetSource` lands — this R4.1 script's acceptance is
 // solely "the six IntegrityAssertion codes fire on synthetic leakage
-// fixtures" per research-spine-2026-04-11.md §R4.1.
+// fixtures" per the canonical RQ-B protocol doc.
 import type {
 	TemporalFold,
 	TemporalSplitConfig,

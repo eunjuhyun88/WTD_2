@@ -29,7 +29,7 @@
  *     empty because the R4.2 runner ignores them.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §R4.5
+ *   `research/experiments/rq-b-ladder-2026-04-11.md`
  */
 
 import type { DecisionTrajectory } from '../../contracts/index.ts';

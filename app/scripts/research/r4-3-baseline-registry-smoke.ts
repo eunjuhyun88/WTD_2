@@ -1,7 +1,8 @@
 /**
  * R4.3 baseline registry + RuleSetV1 smoke test.
  *
- * Acceptance for §R4.3 (from research-spine-2026-04-11.md):
+ * Acceptance for the current baseline-registry gate in
+ * `research/evals/rq-b-baseline-protocol.md`:
  *
  *   1. `RuleBasedAgent.decide()` returns a concrete proposal matching
  *      the §D5 decision function — long open, short open, urgency

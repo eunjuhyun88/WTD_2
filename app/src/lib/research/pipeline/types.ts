@@ -14,7 +14,7 @@
  * execution entry point.
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §D3, §R4.2
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type { DecisionTrajectory, DecisionAction } from '../../contracts/index.ts';
@@ -28,7 +28,7 @@ import type { TemporalFold, TemporalSplitConfig } from '../evaluation/temporalSp
 
 /**
  * Research-question identifier. The enum is closed: every new RQ must
- * first land in `research-spine-2026-04-11.md` and then in this type.
+ * first land in the canonical protocol doc and then in this type.
  */
 export type ResearchQuestionId = 'RQ-B' | 'RQ-C' | 'RQ-D';
 

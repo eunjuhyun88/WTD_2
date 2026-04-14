@@ -2,8 +2,8 @@
  * @deprecated — superseded by `temporalSplit.ts` (R4.1, 2026-04-11).
  *
  * The legacy index-count walk-forward splitter had four concrete leakage
- * holes documented in `docs/exec-plans/active/research-spine-2026-04-11.md`
- * §D0:
+ * holes documented during the R4.1 migration and preserved in the
+ * canonical protocol / migration notes:
  *
  *   1. Ignored `outcome.resolved_at` — sort key was `created_at`, so
  *      slow-resolving labels could enter later "train" folds at times the
@@ -26,8 +26,8 @@ const MIGRATION_MESSAGE =
 	'walkForward/* is removed as of R4.1 (2026-04-11). ' +
 	"Use `temporalSplit` from '$lib/research' (or " +
 	"'./temporalSplit' if inside `$lib/research/evaluation`). " +
-	'See docs/exec-plans/active/research-spine-2026-04-11.md §D0 / §R4.1 ' +
-	'for the four leakage holes the legacy splitter had and why it was replaced.';
+	'See research/evals/rq-b-baseline-protocol.md and ' +
+	'research/notes/local-research-loop.md for the current canonical path.';
 
 /** @deprecated — throws. Use `temporalSplit` from `./temporalSplit`. */
 export function walkForward(): never {

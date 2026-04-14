@@ -18,7 +18,7 @@
  *   npm run research:r4-1-scheduled-end-regression
  *
  * Reference:
- *   docs/exec-plans/active/research-spine-2026-04-11.md §D2 (TemporalFoldIntegrity)
+ *   `research/evals/rq-b-baseline-protocol.md`
  */
 
 import type { BaselineAgent } from '../../src/lib/research/baselines/types.ts';

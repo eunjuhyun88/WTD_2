@@ -32,7 +32,7 @@
  *     immutable per `DatasetSource` contract.
  *
  * Reference:
- *   docs/exec-plans/active/harness-engine-integration-plan-2026-04-11.md §3 E5
+ *   `research/experiments/rq-b-ladder-2026-04-11.md`
  *   src/lib/server/journal/trajectoryWriter.ts (E4 parser + select columns)
  *   src/lib/research/pipeline/types.ts (DatasetSource interface)
  */

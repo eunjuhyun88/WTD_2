@@ -1,8 +1,10 @@
 /**
  * `$lib/research` — the research spine's single import surface.
  *
- * Phase 0.5. Installs measurement primitives before Phase 1 engine work.
- * See docs/exec-plans/active/research-spine-2026-04-11.md for the plan.
+ * Canonical references:
+ *   - `research/thesis/current-thesis.md`
+ *   - `research/evals/rq-b-baseline-protocol.md`
+ *   - `research/notes/local-research-loop.md`
  *
  * Import policy:
  *   - Every research / evaluation / baseline module imports from

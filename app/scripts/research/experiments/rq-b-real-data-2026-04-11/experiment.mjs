@@ -26,7 +26,8 @@
  * Mode 5 runs the full ladder and produces a normal RQ-B report.
  *
  * Reference:
- *   docs/exec-plans/active/harness-engine-integration-plan-2026-04-11.md §3 E5
+ *   research/experiments/rq-b-ladder-2026-04-11.md
+ *   research/evals/rq-b-baseline-protocol.md
  *   scripts/research/experiments/rq-b-real-data-2026-04-11/objective.md
  *
  * Run:
