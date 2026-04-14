@@ -9,3 +9,4 @@ Current key runbooks:
 - `engine-tests.md`
 - `release-checklist.md`
 - `launch-readiness.md`
+- `multi-agent-collaboration.md`
