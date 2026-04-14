@@ -25,7 +25,7 @@
 </script>
 
 <svelte:head>
-  <title>STOCKCLAW — Arena War</title>
+  <title>WTD — Arena War</title>
 </svelte:head>
 
 <div class="arena-war-page">

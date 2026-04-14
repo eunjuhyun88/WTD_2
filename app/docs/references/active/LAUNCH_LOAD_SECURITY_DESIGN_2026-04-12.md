@@ -190,7 +190,7 @@ Do not run admin actions from the same trust path as normal user sessions.
 Required:
 - separate admin hostname or access proxy
 - separate auth policy from consumer auth
-- no admin capability inferred from a normal `stockclaw_session`
+- no admin capability inferred from a normal `wtd_session`
 
 ### 6.2 Identity Requirements
 

@@ -2,7 +2,7 @@
 
 Date: 2026-04-12
 Status: active
-Scope: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+Scope: `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 
 ## Goal
 

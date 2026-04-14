@@ -45,7 +45,7 @@
 ```bash
 gh api \
   -X PUT \
-  repos/eunjuhyun88/Stockclaw/branches/main/protection \
+  repos/eunjuhyun88/wtd/branches/main/protection \
   -H "Accept: application/vnd.github+json" \
   -f required_pull_request_reviews.dismiss_stale_reviews=true \
   -f required_pull_request_reviews.required_approving_review_count=1 \

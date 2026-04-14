@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — GMX V2 Markets API
+// GMX V2 Markets API
 // ═══════════════════════════════════════════════════════════════
 // GET /api/gmx/markets
 // Returns available GMX V2 markets on Arbitrum.

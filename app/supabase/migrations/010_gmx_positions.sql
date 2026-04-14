@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- Stockclaw — GMX V2 On-Chain Perpetual Positions
+-- GMX V2 On-Chain Perpetual Positions
 -- ═══════════════════════════════════════════════════════════════
 -- Tracks real on-chain GMX V2 perpetual positions on Arbitrum.
 -- Order lifecycle: pending_tx → tx_sent → order_created → executed → closed/failed

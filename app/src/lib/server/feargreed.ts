@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Fear & Greed server client
+// Fear & Greed server client
 // ═══════════════════════════════════════════════════════════════
 
 import { getCached, setCache } from './providers/cache';

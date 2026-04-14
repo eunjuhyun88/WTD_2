@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — C02 Pipeline Wrapper
+// WTD — C02 Pipeline Wrapper
 // ═══════════════════════════════════════════════════════════════
 //
 // Wraps the existing 8-agent pipeline into the C02 architecture:

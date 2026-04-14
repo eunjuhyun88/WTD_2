@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Shared Deep Link Utilities
+// WTD — Shared Deep Link Utilities
 // Canonical URL builders for reusable route state.
 // ═══════════════════════════════════════════════════════════════
 

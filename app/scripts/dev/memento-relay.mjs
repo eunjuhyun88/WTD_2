@@ -97,7 +97,7 @@ if (writableRoots.length === 0) {
 }
 
 const mementoRoots = [path.resolve(rootDir, '..', '.memento'), ...writableRoots];
-const runtimeName = 'stockclaw';
+const runtimeName = 'wtd';
 
 const checkpointPath = workSafe && fs.existsSync(path.join(contextDir, 'checkpoints', `${workSafe}.md`))
   ? path.join(contextDir, 'checkpoints', `${workSafe}.md`)

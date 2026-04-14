@@ -1,5 +1,5 @@
 <!-- ═══════════════════════════════════════════════════════════════
-     STOCKCLAW — Context Banner
+     WTD — Context Banner
      Cross-page navigation strip showing relevant context info
 ═══════════════════════════════════════════════════════════════ -->
 <script lang="ts">

@@ -1,5 +1,5 @@
 // =================================================================
-// STOCKCLAW Arena v2 — Battle Types
+// WTD Arena v2 — Battle Types
 // =================================================================
 // Core type definitions for the game-mechanic battle system.
 // This layer sits ON TOP of the existing battleResolver (real BTC price)

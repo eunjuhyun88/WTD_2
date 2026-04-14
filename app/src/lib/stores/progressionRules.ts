@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Unified Progression Contract (S-02)
+// WTD — Unified Progression Contract (S-02)
 // ═══════════════════════════════════════════════════════════════
 //
 // 단일 소스: LP 기반 Tier + Phase 통합.

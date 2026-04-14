@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Agent Persistent Data Store
+// WTD — Agent Persistent Data Store
 // ═══════════════════════════════════════════════════════════════
 
 import { writable } from 'svelte/store';

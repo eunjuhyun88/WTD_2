@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Predict Store (Polymarket state)
+// WTD — Predict Store (Polymarket state)
 // ═══════════════════════════════════════════════════════════════
 
 import { writable, derived } from 'svelte/store';

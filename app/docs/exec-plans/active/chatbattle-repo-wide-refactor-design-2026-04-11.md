@@ -2,7 +2,7 @@
 
 Date: 2026-04-11
 Status: active
-Scope: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+Scope: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 
 ## Goal
 

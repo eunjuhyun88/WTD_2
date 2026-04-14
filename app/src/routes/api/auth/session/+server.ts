@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Session Check API
+// Session Check API
 // GET /api/auth/session
 // Returns current user session status from cookie
 // ═══════════════════════════════════════════════════════════════

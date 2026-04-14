@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — DeFiLlama API Client (B-05)
+// WTD — DeFiLlama API Client (B-05)
 // ═══════════════════════════════════════════════════════════════
 // Completely free, no API key, no rate limit
 // https://defillama.com/docs/api

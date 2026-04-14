@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Market Cycle Definitions
+// WTD — Market Cycle Definitions
 // ═══════════════════════════════════════════════════════════════
 //
 // Predefined BTC market cycles for backtesting.

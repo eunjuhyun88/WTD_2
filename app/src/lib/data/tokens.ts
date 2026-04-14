@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// STOCKCLAW — Token Registry (Binance Supported Pairs)
+// WTD — Token Registry (Binance Supported Pairs)
 // ═══════════════════════════════════════════════════════════════
 
 export interface TokenDef {

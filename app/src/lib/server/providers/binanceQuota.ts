@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Binance fapi/spot quota manager (provider-level)
+// Binance fapi/spot quota manager (provider-level)
 // ═══════════════════════════════════════════════════════════════
 //
 // This module replaces the client-side `RateLimiter` that previously

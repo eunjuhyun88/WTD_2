@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Terminal controllers barrel
+// Terminal controllers barrel
 // ═══════════════════════════════════════════════════════════════
 //
 // The controllers layer owns async orchestration for the terminal

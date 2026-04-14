@@ -21,7 +21,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ## Entries
 
 ## [2026-04-12 22:21:00 +0900] START W-20260412-2221-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-shell-redesign`
 - Base `origin/main` hash: `effcdfaf2f66ac9e77668fc7a59c643386d02347`
 - Working tree status:
@@ -77,7 +77,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `?? src/lib/terminal/workspaceCompare.ts`
 
 ## [2026-04-12 22:11:00 +0900] START W-20260412-2211-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-shell-redesign`
 - Base `origin/main` hash: `fe739d2a6b65264d02126e5a7e267de41a995c71`
 - Working tree status:
@@ -134,7 +134,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `?? src/lib/terminal/workspaceCompare.ts`
 
 ## [2026-04-12 20:34:00 +0900] START W-20260412-2022-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-shell-redesign`
 - Base `origin/main` hash: `694ceb22f715ac4515296d3c28beb8c58248d9fc`
 - Working tree status:
@@ -181,7 +181,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `M src/routes/terminal/+page.svelte`
 
 ## [2026-04-12 20:16:00 +0900] START W-20260412-2016-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-shell-redesign`
 - Base `origin/main` hash: `694ceb22f715ac4515296d3c28beb8c58248d9fc`
 - Working tree status:
@@ -229,7 +229,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `M src/routes/terminal/+page.svelte`
 
 ## [2026-04-12 20:08:00 +0900] START W-20260412-2008-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-shell-redesign`
 - Base `origin/main` hash: `694ceb22f715ac4515296d3c28beb8c58248d9fc`
 - Working tree status:
@@ -283,7 +283,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ### Completed phases:
 - **P0** Precondition check — DELTA found (origin moved, divergence resolved by prior session)
 - **P6** Main push — 9 local unpushed commits pushed to origin (home landing refactor)
-- **P3** Root CLAUDE.md rewrite — `/Users/ej/Projects/maxidoge-clones/CLAUDE.md` replaced with new 12-section version (BE extraction, worktree lifecycle, parallel session coordination, decision authority matrix)
+- **P3** Root CLAUDE.md rewrite — `/Users/ej/Projects/wtd-clones/CLAUDE.md` replaced with new 12-section version (BE extraction, worktree lifecycle, parallel session coordination, decision authority matrix)
 - **P5** MERGED 12 worktree cleanup — 12/12 removed + branches deleted (compassionate-jepsen, eager-nash, elated-davinci, hardcore-kapitsa, inspiring-hertz, jovial-newton, nice-driscoll, nostalgic-johnson, objective-vaughan, pensive-bardeen, strange-burnell, upbeat-lovelace)
 - **P7** PR #5 closed — superseded by BE extraction plan
 - **P8** zoom1-terminal removed — worktree + local + remote branch deleted (SHA 5058b1f for recovery)
@@ -309,7 +309,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ---
 ## [2026-04-12 15:56:19 +0900] START W-20260412-1556-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `6f3e67ca367149b431e8821f00c702c8a3ac9e48`
 - Working tree status:
@@ -332,7 +332,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN_PROGRESS
 
 ## [2026-04-12 15:42:32 +0900] START W-20260412-1542-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `66f57a3b1a2828c45aab46042c13a8f8b43d1611`
 - Working tree status:
@@ -376,7 +376,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - modified through this task: `.githooks/pre-commit`, `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`
 
 ## [2026-04-12 15:29:59 +0900] START W-20260412-1530-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `66f57a3b1a2828c45aab46042c13a8f8b43d1611`
 - Working tree status:
@@ -422,7 +422,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - modified through this task: `.githooks/pre-commit`, `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`
 
 ## [2026-04-12 15:13:00 +0900] START W-20260412-1513-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `07aaf8c3cd2f52ec802a1940657f4d948b79114d`
 - Working tree status:
@@ -463,7 +463,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - modified through this task: `.githooks/pre-commit`, `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`
 
 ## [2026-04-12 15:05:00 +0900] START W-20260412-1505-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `07aaf8c3cd2f52ec802a1940657f4d948b79114d`
 - Working tree status:
@@ -505,7 +505,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - modified through this task: `.githooks/pre-commit`, `docs/AGENT_WATCH_LOG.md`, `docs/FRONTEND.md`, `src/components/home/HomeFinalCta.svelte`, `src/components/home/HomeHero.svelte`, `src/components/home/HomeLearningLoop.svelte`, `src/components/home/HomeSurfaceCards.svelte`, `src/components/layout/Header.svelte`, `src/lib/home/homeLanding.ts`, `src/routes/+page.svelte`, `src/routes/dashboard/+page.svelte`
 
 ## [2026-04-12 14:11:00 +0900] START W-20260412-1411-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `4aea7586ff1c5835285c0d678829f18666f06c5d`
 - Working tree status:
@@ -527,7 +527,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN_PROGRESS
 
 ## [2026-04-12 13:41:00 +0900] START W-20260412-1341-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `4aea7586ff1c5835285c0d678829f18666f06c5d`
 - Working tree status:
@@ -576,7 +576,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-12 13:18:43 +0900] START W-20260412-1315-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `4aea7586ff1c5835285c0d678829f18666f06c5d`
 - Working tree status:
@@ -620,7 +620,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-12 13:29:05 +0900] START W-20260412-1329-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `4aea7586ff1c5835285c0d678829f18666f06c5d`
 - Working tree status:
@@ -635,7 +635,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN_PROGRESS
 
 ## [2026-04-12 12:08:00 +0900] START W-20260412-1208-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `3eea02706e9e2b4ad9f097673118b4bca53d891b`
 - Working tree status:
@@ -689,7 +689,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-12 10:04:39 +0900] START W-20260412-1004-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `25d3e15f7c85fcc07a131ca44dfaf429180b93ec`
 - Working tree status:
@@ -733,7 +733,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-12 10:03:29 +0900] START W-20260412-1003-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `25d3e15f7c85fcc07a131ca44dfaf429180b93ec`
 - Working tree status:
@@ -777,7 +777,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-12 09:51:21 +0900] START W-20260412-0950-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `ee68a33fe815ae1ea1ea2d4473cebc5afad82622`
 - Working tree status:
@@ -827,7 +827,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-12 09:17:00 +0900] START W-20260412-0012-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `1236803f758db135ea32e5b6d55ff3588e11cba6`
 - Working tree status:
@@ -869,7 +869,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-12 00:05:00 +0900] START W-20260412-0005-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `58c502f1e7e77c32705b2a1bfc58c6faeb159972`
 - Working tree status:
@@ -922,7 +922,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 23:53:00 +0900] START W-20260411-2353-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `0819216fecc050df325e81ff60d7dbdf754c0d38`
 - Working tree status:
@@ -964,7 +964,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 19:57:54 +0900] START W-20260411-1957-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `ade2487`
 - Working tree status:
@@ -1003,7 +1003,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 20:11:40 +0900] START W-20260411-2011-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `ade2487`
 - Working tree status:
@@ -1045,7 +1045,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 20:30:54 +0900] START W-20260411-2030-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `ade2487`
 - Working tree status:
@@ -1083,7 +1083,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 20:41:19 +0900] START W-20260411-2041-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `ade2487`
 - Working tree status:
@@ -1105,7 +1105,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN_PROGRESS
 
 ## [2026-04-10 23:01:00 +0900] START W-20260410-2301-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-wip-sync-20260410`
 - Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
 - Working tree status:
@@ -1148,7 +1148,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - local-only context artifacts were updated and remain untracked by git
 
 ## [2026-04-11 20:48:00 +0900] START W-20260411-2048-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `ddfc5cc`
 - Working tree status:
@@ -1199,7 +1199,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - local-only context artifacts remain outside git
 
 ## [2026-04-11 21:19:00 +0900] START W-20260411-2119-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `c338d1d`
 - Working tree status:
@@ -1264,7 +1264,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - local-only context artifacts remain outside git
 
 ## [2026-04-11 23:04:00 +0900] START W-20260411-2304-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch: `codex/home-visualization-analysis`
 - Base `origin/main` hash: `ef9c3b6`
 - Working tree status:
@@ -1320,7 +1320,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 04:21:00 +0900] START W-20260411-0421-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-wip-sync-20260410`
 - Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
 - Working tree status:
@@ -1360,7 +1360,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 04:24:00 +0900] START W-20260411-0424-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-wip-sync-20260410`
 - Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
 - Working tree status:
@@ -1402,7 +1402,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 04:48:00 +0900] START W-20260411-0448-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-wip-sync-20260410`
 - Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
 - Working tree status:
@@ -1445,7 +1445,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-04-11 04:56:00 +0900] START W-20260411-0456-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-wip-sync-20260410`
 - Base `origin/main` hash: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
 - Working tree status:
@@ -1467,14 +1467,14 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN_PROGRESS
 
 ## [2026-04-11 05:05:24 +0900] FINISH W-20260411-0456-CHATBATTLE-codex (CHATBATTLE)
-- Repo path: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Repo path: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch: `codex/terminal-wip-sync-20260410`
 - Head: `cc89a46`
 - What changed:
-  - [src/components/layout/Header.svelte](/Users/ej/Downloads/maxidoge-clones/CHATBATTLE/src/components/layout/Header.svelte)
+  - [src/components/layout/Header.svelte](/Users/ej/Downloads/wtd-clones/CHATBATTLE/src/components/layout/Header.svelte)
     - reduced base header density and removed divider-style chrome
     - added a home-only floating compact header mode that hides secondary items and keeps navigation lighter
-  - [src/routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/CHATBATTLE/src/routes/+page.svelte)
+  - [src/routes/+page.svelte](/Users/ej/Downloads/wtd-clones/CHATBATTLE/src/routes/+page.svelte)
     - tightened hero height, spacing, and card density so the landing message sits closer to the center of the viewport
     - shortened builder/copier copy, collapsed highlight cards into compact chips, and reduced section/grid padding
     - switched surface priority cards to a denser 3-column layout on desktop to avoid wasted vertical space
@@ -1501,24 +1501,24 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-10 20:33:42 +0900] FINISH chart-mount-state-split-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep pushing the canonical ChartPanel refactor, preserve layout, and continue executing the remaining runtime/state cleanup with narrow push-safe slices
 - What changed:
-  - Added [chartPanelMountState.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartPanelMountState.ts#L1)
+  - Added [chartPanelMountState.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartPanelMountState.ts#L1)
     - extracted the prepared-mount/bootstrap state apply path from the component shell
     - centralized the series/pane ref assignment and MA period binding injection sequence behind a dedicated mount-state helper
-  - Updated [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
+  - Updated [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
     - rewired `applyBootstrapState()` and `applyPreparedMount()` to the canonical mount-state helper
     - kept all layout and runtime behavior unchanged while reducing mount-state logic inside the component body
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `chartPanelMountState.ts` as the canonical mount-state apply boundary for ChartPanel
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run build`: PASS
   - `npm run gate`: PASS
 - Residual risks:
-  - [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1) still owns the large runtime-bundle option builder and controller option wiring
+  - [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1) still owns the large runtime-bundle option builder and controller option wiring
   - this slice moved mount-state responsibility out of the component, but it did not yet reduce the runtime-bundle builder surface
 - Commit / Push:
   - `610e376` `refactor(chart): split mount state apply`
@@ -1527,140 +1527,140 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-11 02:29:00 +0900] FINISH chart-drawing-runtime-surface-trim-20260311 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep shaving `chartPanelSupportRuntime`, preserve behavior, and remove dead drawing-admin surface from the base drawing runtime instead of inventing another helper-only split
 - What changed:
-  - Updated [chartDrawingRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1)
+  - Updated [chartDrawingRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1)
     - removed unused public wrapper methods for magnet toggle, undo/redo, selected-drawing style mutation, duplicate/lock helpers, and import/export helpers
     - narrowed the runtime contract to the drawing controls actually consumed by `chartPanelSupportRuntime`
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented that admin-only drawing helpers should not come back into the base drawing runtime surface without a real caller and a lazy-boundary plan
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `node node_modules/.bin/vite build`: PASS
   - build snapshot:
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `62.95 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `62.95 kB`
     - previous baseline before this slice: `64.79 kB`
-    - [drawingPrimitiveRegistry.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/drawingPrimitiveRegistry.js) `53.13 kB`
-    - [drawingManager.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/drawingManager.js) `37.86 kB`
+    - [drawingPrimitiveRegistry.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/drawingPrimitiveRegistry.js) `53.13 kB`
+    - [drawingManager.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/drawingManager.js) `37.86 kB`
 - Residual risks:
   - the removed admin API surface appeared dead in the current chart shell; if a hidden consumer exists outside the searched chart/shell path it would need to reintroduce that capability through an explicit, typed boundary
-  - the drawing context menu itself is still an optional surface owned by [ChartAgentSurface.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1), so the next slice should verify whether its state path is fully wired or still partially dormant
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - the drawing context menu itself is still an optional surface owned by [ChartAgentSurface.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1), so the next slice should verify whether its state path is fully wired or still partially dormant
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-11 02:05:00 +0900] FINISH chart-position-primitive-lazy-registry-20260311 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep planning the next chart hotspot, preserve drawing behavior, and narrow the base drawing registry path by moving `PositionPrimitive` behind a real lazy boundary without touching unrelated route WIP
 - What changed:
-  - Added [drawingPositionPrimitiveRegistry.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/primitives/drawingPositionPrimitiveRegistry.ts#L1)
+  - Added [drawingPositionPrimitiveRegistry.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/primitives/drawingPositionPrimitiveRegistry.ts#L1)
     - extracted long/short entry preview construction and serialized position restore into a dedicated position-only registry chunk
-  - Updated [drawingPrimitiveRegistry.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/primitives/drawingPrimitiveRegistry.ts#L1)
+  - Updated [drawingPrimitiveRegistry.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/primitives/drawingPrimitiveRegistry.ts#L1)
     - removed the static `PositionPrimitive` import from the base registry
     - added lazy preload hooks so only position drawings trigger the position registry chunk
-  - Updated [drawingManager.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/primitives/drawingManager.ts#L1)
+  - Updated [drawingManager.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/primitives/drawingManager.ts#L1)
     - moved deferred long/short entry preload ownership into the manager, where drawing-mode state and mouse replay already live
     - keeps pending mouse-down state inside the manager until the position registry is ready
-  - Updated [chartDrawingPersistenceRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingPersistenceRuntime.ts#L1)
+  - Updated [chartDrawingPersistenceRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingPersistenceRuntime.ts#L1)
     - preloads position support only when persisted drawings actually contain `type='position'`
-  - Updated [chartDrawingRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1)
+  - Updated [chartDrawingRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1)
     - removed the temporary route-level deferred mode activation logic and returned to a thinner runtime/controller handoff
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `drawingPositionPrimitiveRegistry.ts` and manager-owned deferred position preload as canonical chart drawing-stack boundaries
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `node node_modules/.bin/vite build`: PASS
   - build snapshot:
-    - [drawingManager.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/drawingManager.js) `37.86 kB`
-    - [drawingPrimitiveRegistry.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/drawingPrimitiveRegistry.js) `53.13 kB`
-    - [drawingPositionPrimitiveRegistry.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/drawingPositionPrimitiveRegistry.js) `11.33 kB`
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `64.79 kB`
+    - [drawingManager.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/drawingManager.js) `37.86 kB`
+    - [drawingPrimitiveRegistry.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/drawingPrimitiveRegistry.js) `53.13 kB`
+    - [drawingPositionPrimitiveRegistry.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/drawingPositionPrimitiveRegistry.js) `11.33 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `64.79 kB`
 - Residual risks:
   - the non-position drawing path is now lighter, but total drawing-stack weight for long/short entry flows is slightly larger once the position chunk loads; that tradeoff is intentional because the position tool is optional
   - `chartPanelSupportRuntime.js` is still a touch heavier than the prior `64.49 kB`, so the next slice should avoid pushing optional preload policy back into base chart runtime code
-  - auth-side dynamic-import reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - auth-side dynamic-import reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-11 01:44:21 +0900] FINISH chart-drawing-primitive-registry-split-20260311 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep planning and shaving the chart drawing hotspot, preserve behavior, and move primitive factory/snapshot weight out of `drawingManager.ts` without touching unrelated route WIP
 - What changed:
-  - Added [drawingManagerTypes.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/primitives/drawingManagerTypes.ts#L1)
+  - Added [drawingManagerTypes.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/primitives/drawingManagerTypes.ts#L1)
     - centralized the shared `DrawingData`, `CandleOHLC`, and `DrawingManagerCallbacks` contracts so drawing runtime, undo stack, and persistence helpers stop depending on the manager file as a type bucket
-  - Added [drawingPrimitiveRegistry.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/primitives/drawingPrimitiveRegistry.ts#L1)
+  - Added [drawingPrimitiveRegistry.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/primitives/drawingPrimitiveRegistry.ts#L1)
     - moved primitive subclass selection, serialized restore, drag-preview construction, and `toJSON()` snapshot parsing into a dedicated registry/factory chunk
-  - Updated [drawingManager.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/primitives/drawingManager.ts#L1)
+  - Updated [drawingManager.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/primitives/drawingManager.ts#L1)
     - narrowed the manager to interaction ownership, selection/undo flow, and runtime lifecycle
     - injected the primitive registry instead of statically importing every primitive subclass and restore/snapshot helper inline
-  - Updated [chartDrawingPersistenceRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingPersistenceRuntime.ts#L1)
+  - Updated [chartDrawingPersistenceRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingPersistenceRuntime.ts#L1)
     - lazy-loads both `drawingManager` and `drawingPrimitiveRegistry` when the drawing stack actually wakes up
     - keeps the registry split behind the existing drawing runtime boundary instead of pulling it into support-runtime imports
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `drawingManagerTypes.ts` and `drawingPrimitiveRegistry.ts` as canonical chart drawing-stack boundaries
     - clarified that the drawing lazy split now includes registry injection, not just manager/persistence bootstrap
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `node node_modules/.bin/vite build`: PASS
   - build snapshot:
-    - [drawingManager.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/drawingManager.js) `36.26 kB`
-    - [drawingPrimitiveRegistry.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/drawingPrimitiveRegistry.js) `62.64 kB`
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `64.49 kB`
-    - [ChartPanel.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
+    - [drawingManager.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/drawingManager.js) `36.26 kB`
+    - [drawingPrimitiveRegistry.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/drawingPrimitiveRegistry.js) `62.64 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `64.49 kB`
+    - [ChartPanel.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
 - Residual risks:
   - this slice removed the heaviest static burden from `drawingManager.js`, but total drawing-stack weight is now split across `drawingManager.js` and `drawingPrimitiveRegistry.js`; the next hotspot is whichever part of the registry can be further narrowed without breaking primitive restore behavior
   - `chartPanelSupportRuntime.js` rose slightly from the previous `64.00 kB` to `64.49 kB`, so future chart slices should prefer real lazy boundaries over helper-only extraction
-  - auth-side dynamic-import reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - auth-side dynamic-import reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 20:15:27 +0900] FINISH chart-client-runtime-assembly-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep executing the canonical refactor, preserve layout, and continue the remaining ChartPanel structural cleanup with push-safe slices
 - What changed:
-  - Added [chartClientRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartClientRuntime.ts#L1)
+  - Added [chartClientRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartClientRuntime.ts#L1)
     - centralized the client-only lazy import and first-instantiation flow for `chartMountRuntime`, `chartPanelController`, `chartPanelSupportRuntime`, and `chartDerivativesRuntime`
     - fixed the assembly order so `ChartPanel` no longer owns module promise/cache wiring directly
-  - Updated [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
+  - Updated [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
     - replaced the route-local module loader glue with the canonical `chartClientRuntime` assembly helper
     - removed duplicated support/controller/derivatives module state from the component shell
     - reduced the file from `1284` to `1258` lines without changing layout or position
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `chartClientRuntime.ts` as the canonical client runtime assembly boundary for ChartPanel
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run build`: PASS
   - `npm run gate`: PASS
 - Residual risks:
-  - [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1) still owns the large runtime-bundle option builder and controller option wiring
+  - [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1) still owns the large runtime-bundle option builder and controller option wiring
   - unrelated chart/home WIP remains in the worktree and must stay out of this slice
 - Commit / Push:
   - pending
 - Status: DONE
 
 ## [2026-03-09 21:52:33 +0900] FINISH passport-shell-host-split-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep pushing the passport refactor toward the design goal, preserve layout, and continue with push-safe narrow slices
 - What changed:
-  - Added [PassportHeaderSection.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportHeaderSection.svelte#L1)
+  - Added [PassportHeaderSection.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportHeaderSection.svelte#L1)
     - moved the editable avatar/profile header, portfolio hero, and verified stamp into a dedicated host component
-  - Added [PassportNavChrome.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportNavChrome.svelte#L1)
+  - Added [PassportNavChrome.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportNavChrome.svelte#L1)
     - moved the tab bar, quick-action rail, and focus strip into a dedicated chrome boundary
-  - Added [passportTabShared.css](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/passportTabShared.css#L1)
+  - Added [passportTabShared.css](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/passportTabShared.css#L1)
     - defined the shared passport tab panel/detail styles outside the route shell
-  - Added [PassportProfileTab.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportProfileTab.svelte#L1), [PassportWalletTab.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportWalletTab.svelte#L1), [PassportPositionsTab.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportPositionsTab.svelte#L1), [PassportArenaTab.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportArenaTab.svelte#L1)
+  - Added [PassportProfileTab.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportProfileTab.svelte#L1), [PassportWalletTab.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportWalletTab.svelte#L1), [PassportPositionsTab.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportPositionsTab.svelte#L1), [PassportArenaTab.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportArenaTab.svelte#L1)
     - split the remaining tab bodies into dedicated hosts without changing the layout order or tab flow
     - localized the tab-specific markup and CSS so the route now acts as a shell/controller instead of a tab renderer
-  - Updated [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1)
+  - Updated [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1)
     - rewired the route to use the header/nav host components and all four tab hosts
     - removed route-local tab markup and tab-specific CSS
     - reduced the route shell from `2514` to `520` lines without changing tab content layout
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented the passport shell boundary and the new tab host canonical paths
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
@@ -1674,25 +1674,25 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 18:01:52 +0900] FINISH wallet-store-proof-removal-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep moving on the current Phase 2 path, remove more mixed authority from the wallet layer, and keep narrow pushable slices with canonical logs
 - What changed:
-  - Updated [walletStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/walletStore.ts#L1)
+  - Updated [walletStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/walletStore.ts#L1)
     - removed persisted `signature` from `WalletState`
     - deleted the store-level `signMessage(...)` helper
     - kept the store scoped to wallet connection transport only
-  - Updated [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1)
+  - Updated [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1)
     - stopped mirroring signed wallet proof into the general wallet store
     - kept wallet proof fully local to the modal/auth funnel
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
     - recorded that wallet proof is now transient UI state rather than wallet transport state
 - Validation:
   - `npm run docs:check`: PASS
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run build`: PASS
 - Residual risks:
-  - [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1) still owns most of the wallet auth state machine even though proof no longer leaks into `walletStore`
+  - [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1) still owns most of the wallet auth state machine even though proof no longer leaks into `walletStore`
   - unrelated arena/CLAUDE WIP remains outside this slice
 - Commit / Push:
   - `refactor: remove wallet proof from wallet store`
@@ -1700,22 +1700,22 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 17:55:57 +0900] FINISH auth-wallet-resolve-header-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the current refactor/design path, land the auth/header wallet-first slice correctly, keep pushing narrow slices, and keep canonical docs/logs aligned with the CLAUDE boundary rules
 - What changed:
-  - Added [auth/resolve/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/auth/resolve/+server.ts#L1) and updated [authRepository.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/server/authRepository.ts#L1), [auth.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/api/auth.ts#L1), and [auth.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/auth.ts#L1)
+  - Added [auth/resolve/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/auth/resolve/+server.ts#L1) and updated [authRepository.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/server/authRepository.ts#L1), [auth.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/api/auth.ts#L1), and [auth.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/auth.ts#L1)
     - landed the wallet-first auth resolve endpoint and browser contract so signed wallets now resolve to `logged_in` or `needs_signup` before signup UI
-  - Updated [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1), [walletModalStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/walletModalStore.ts#L1), [walletModalFlow.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalFlow.ts#L1), and [walletModalTransport.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalTransport.ts#L1)
+  - Updated [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1), [walletModalStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/walletModalStore.ts#L1), [walletModalFlow.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalFlow.ts#L1), and [walletModalTransport.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalTransport.ts#L1)
     - removed the dead login helper path
     - made `resolving` a transient in-modal step instead of an open-step destination
     - sent missing-proof and resolve-error fallbacks back to `sign-message` or `wallet-select` instead of dropping users into signup
     - cleared stale proof/error state on modal close so reopen state is deterministic
-  - Updated [Header.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte#L1)
+  - Updated [Header.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte#L1)
     - kept the connected profile dropdown flow
     - switched logout to the canonical wallet modal transport
     - auto-closes the dropdown on route changes and disconnect
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and regenerated [api-group-map.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/generated/api-group-map.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and regenerated [api-group-map.md](/Users/ej/Downloads/wtd-clones/frontend/docs/generated/api-group-map.md#L1)
     - Phase 2 now counts `17` in-scope handlers including `/api/auth/resolve`
     - the generated API inventory now reflects `Auth & Session = 8`
 - Validation:
@@ -1726,7 +1726,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run ctx:check -- --strict`: PASS
   - `npm run gate`: PASS
 - Residual risks:
-  - Vite still reports the expected dynamic-import note for [authApiNormalizer.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalTransport.ts#L1); runtime behavior is unchanged, but the transport/helper chunk split is still not ideal
+  - Vite still reports the expected dynamic-import note for [authApiNormalizer.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalTransport.ts#L1); runtime behavior is unchanged, but the transport/helper chunk split is still not ideal
   - unrelated dirty arena/CLAUDE WIP remains outside this auth slice and must stay out of the commit
 - Commit / Push:
   - `refactor: add wallet auth resolve flow`
@@ -1734,28 +1734,28 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 17:18:06 +0900] FINISH passport-summary-holdings-runtime-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the canonical passport refactor correctly after syncing the branch, keep layout/position unchanged, and keep canonical docs/logs updated
 - What changed:
   - Synced the local branch to origin with `git pull --ff-only` before continuing because remote already had two `passport` learning-panel commits on the same branch
-  - Added [passportSummaryViewModel.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/passport/passportSummaryViewModel.ts#L1)
+  - Added [passportSummaryViewModel.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/passport/passportSummaryViewModel.ts#L1)
     - moved passport header stat and focus-strip interpretation out of the route
     - centralized win-rate/risk/readiness judgment so `passport/+page.svelte` stops owning large `derived.by()` insight blocks
-  - Added [passportHoldingsRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/passport/passportHoldingsRuntime.ts#L1)
+  - Added [passportHoldingsRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/passport/passportHoldingsRuntime.ts#L1)
     - moved wallet-holdings hydrate/sync/disconnect fallback lifecycle out of the route
     - made route-owned holdings state a single runtime-backed object instead of multiple local atoms/effects
-  - Updated [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1)
+  - Updated [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1)
     - replaced inline focus/header derivation with summary view-model helpers
     - replaced direct holdings fetch/effect logic with the holdings runtime
     - kept existing tab order, layout, and visual positioning unchanged
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `passportSummaryViewModel.ts` and `passportHoldingsRuntime.ts` as canonical boundaries
 - Validation:
   - `npm run check`: PASS (`0 errors, 4 warnings`)
   - `npm run gate`: PASS
-  - warnings remain unrelated local WIP in [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L851)
-  - [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1): `2732` -> `2514` lines
+  - warnings remain unrelated local WIP in [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L851)
+  - [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1): `2732` -> `2514` lines
 - Residual risks:
   - `passport/+page.svelte` still owns large tab markup/CSS and should be split by tab host next
   - unrelated auth/chart wallet WIP remains dirty in the worktree and must stay out of the passport commit
@@ -1765,7 +1765,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 22:32:27 +0900] FINISH frontend-arena-view-props-dedupe-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Arena cleanup/removal work without changing layout/positioning, and reduce repeated route-template wiring
 - What changed:
@@ -1788,7 +1788,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 22:28:39 +0900] FINISH frontend-arena-feed-chart-cleanup-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep decomposing Arena while removing unnecessary route-local code without changing layout/positioning
 - What changed:
@@ -1819,7 +1819,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 21:44:39 +0900] FINISH frontend-arena-agent-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Arena decomposition without changing layout/positioning, and remove the remaining local agent-state/speech/chat runtime from `arena/+page.svelte`
 - What changed:
@@ -1846,7 +1846,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 21:41:18 +0900] FINISH frontend-arena-battle-controller-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Arena decomposition without changing layout/positioning, and move the remaining battle phase entry/resolver wiring out of `arena/+page.svelte`
 - What changed:
@@ -1881,7 +1881,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:52:35 +0900] FINISH frontend-arena-uiux-layout-design-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: improve and restate how the Arena UI/UX should be laid out after defining the optimized core loop
 - What changed:
@@ -1905,7 +1905,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:48:42 +0900] FINISH frontend-arena-core-loop-design-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: restate what Arena is fundamentally trying to do, then define the optimized loop before implementation
 - What changed:
@@ -1930,7 +1930,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:02:44 +0900] FINISH frontend-arena-batch4-design-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: design the next post-terminal refactor batch, centered on `arena/+page.svelte`
 - What changed:
@@ -1951,7 +1951,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:02:44 +0900] FINISH frontend-terminal-viewport-mobile-split-cleanup-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: finish another terminal cleanup slice without changing layout or positioning
 - What changed:
@@ -1988,7 +1988,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 12:19:41 +0900] FINISH frontend-chart-mount-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by extracting the remaining `ChartPanel.svelte` mount/bootstrap/runtime wiring without changing layout or positioning
 - What changed:
@@ -2020,7 +2020,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:54:39 +0900] FINISH frontend-chart-panel-shell-boundary-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by extracting the remaining top-level presentation shell from `ChartPanel.svelte` without changing layout or positioning
 - What changed:
@@ -2049,7 +2049,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:48:29 +0900] FINISH frontend-chart-agent-surface-boundary-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by extracting the chart-container surface from `ChartPanel.svelte` without changing layout or positioning
 - What changed:
@@ -2076,7 +2076,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:44:29 +0900] FINISH frontend-chart-drawing-canvas-boundary-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by extracting the remaining drawing canvas shell from `ChartPanel.svelte` without changing layout or positioning
 - What changed:
@@ -2101,7 +2101,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:42:32 +0900] FINISH frontend-chart-tradeplan-annotation-boundary-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by extracting the remaining trade-plan overlay and annotation surface from `ChartPanel.svelte` without changing layout or positioning
 - What changed:
@@ -2131,7 +2131,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:26:36 +0900] FINISH frontend-chart-agent-overlay-chrome-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by extracting the `.chart-container` agent overlay chrome without changing layout or positioning
 - What changed:
@@ -2160,7 +2160,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:06:10 +0900] FINISH frontend-chart-header-bar-boundary-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by extracting the top chart toolbar/meta shell while preserving layout and positioning
 - What changed:
@@ -2189,7 +2189,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 10:50:32 +0900] FINISH frontend-chart-indicator-strip-boundary-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by extracting the agent advanced-mode indicator strip from `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2214,7 +2214,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 10:46:17 +0900] FINISH frontend-chart-trading-pane-boundary-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by creating the first true child/lazy boundary for `src/components/arena/ChartPanel.svelte` trading mode
 - What changed:
@@ -2240,7 +2240,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 04:05:25 +0900] FINISH frontend-chart-runtime-bundle-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by reducing the `onMount` bootstrap/runtime wiring block inside `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2268,7 +2268,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 03:58:26 +0900] FINISH frontend-chart-price-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by removing the remaining price flush/throttle, 24h stats, fallback live price, and chart data transient cleanup from `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2294,7 +2294,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 03:55:29 +0900] FINISH frontend-chart-action-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by removing the remaining pair/timeframe switch, chart-origin scan/chat/community signal, and trade-drawing activation orchestration from `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2322,7 +2322,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 03:46:00 +0900] FINISH frontend-chart-viewport-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by removing the remaining indicator visibility, pane layout, zoom, Y-auto, and scale-reset viewport lifecycle from `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2348,7 +2348,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 03:42:56 +0900] FINISH frontend-chart-overlay-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by removing the remaining overlay canvas render/resize and agent overlay cleanup lifecycle from `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2374,7 +2374,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 03:36:54 +0900] FINISH frontend-chart-drawing-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by removing the remaining drawing mode, global mouseup, ghost-line RAF, and line-entry finalize lifecycle from `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2401,7 +2401,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 03:06:45 +0900] FINISH frontend-chart-position-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 by removing the remaining position-line and TP/SL/ENTRY drag lifecycle from `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2426,7 +2426,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 03:03:03 +0900] FINISH frontend-chart-trade-plan-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue Batch 3 after the pattern runtime split by removing the remaining trade-plan pointer lifecycle and confirm/cancel orchestration from `src/components/arena/ChartPanel.svelte`
 - What changed:
@@ -2451,7 +2451,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 02:47:55 +0900] FINISH frontend-chart-pattern-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: revisit the remaining refactor design, move on from terminal diminishing returns, and continue with the next `ChartPanel` extraction slice
 - What changed:
@@ -2480,7 +2480,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 02:38:22 +0900] FINISH frontend-terminal-engagement-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the terminal shell cleanup by removing density persistence and mobile engagement analytics from `src/routes/terminal/+page.svelte`
 - What changed:
@@ -2508,7 +2508,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 02:33:38 +0900] FINISH frontend-terminal-lazy-modal-boundary-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the terminal cleanup by reducing `/terminal` route weight with real lazy boundaries instead of another pure extraction
 - What changed:
@@ -2531,7 +2531,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 02:27:31 +0900] FINISH frontend-terminal-community-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the terminal cleanup by removing share-modal and community signal publish logic from `src/routes/terminal/+page.svelte`
 - What changed:
@@ -2559,7 +2559,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 02:23:32 +0900] FINISH frontend-terminal-layout-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the terminal extraction plan by removing desktop/tablet split drag and resize lifecycle from `src/routes/terminal/+page.svelte`
 - What changed:
@@ -2592,7 +2592,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 02:15:11 +0900] FINISH frontend-terminal-chat-shell-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the terminal extraction plan by removing the remaining chat transport and shell bootstrap logic from `src/routes/terminal/+page.svelte`
 - What changed:
@@ -2648,7 +2648,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 23:39:18 +0900] FINISH frontend-phase7-chartpanel-dead-fallback-removal-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue automatically after restoring the zero-warning baseline and trim the next low-risk residual path from `ChartPanel.svelte`
 - What changed:
@@ -2668,7 +2668,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 23:52:11 +0900] FINISH frontend-phase7-chart-tradingview-runtime-split-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue automatically after restoring the zero-warning baseline and keep reducing `ChartPanel.svelte` by extracting the remaining TradingView lifecycle orchestration
 - What changed:
@@ -2696,7 +2696,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:08:42 +0900] FINISH frontend-phase7-chart-bootstrap-split-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue automatically after the TradingView lifecycle split and reduce the next large `ChartPanel.svelte` mount block by extracting the lightweight-charts bootstrap path
 - What changed:
@@ -2726,7 +2726,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 23:29:54 +0900] FINISH frontend-phase7-warning-zero-baseline-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue automatically after the chart data runtime extraction, clear the remaining warning backlog, and lock the repo back to a zero-warning baseline
 - What changed:
@@ -2976,7 +2976,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `W-006`, `W-008`은 FE 컴포넌트 범위(`src/components/**`, `src/routes/**`)로 이번 수정(`src/lib/services/**`, `src/lib/stores/**`)과 충돌 없음
 
 ## [2026-03-06 21:09:59 +0900] FINISH frontend-phase2-copytrade-idempotency-terminal-shell-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Request: continue until the current refactor line is actually stable end-to-end
 - What changed:
   - Added durable copy-trade publish idempotency:
@@ -3456,8 +3456,8 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
     - `*.swp`, `*.swo`, `*~` 패턴 추가
   - tracked swap files 제거:
     - `.README.md.swp`
-    - `docs/.MAXIDOGE_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.md.swp`
-    - `docs/.MAXIDOGE_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.pdf.swp`
+    - `docs/.WTD_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.md.swp`
+    - `docs/.WTD_Final_UserFlow_UIUX_Backend_Architecture_2026-02-23.pdf.swp`
     - `docs/.p0-alignment-checklist-latest.md.swp`
     - `docs/.v3-direct-rewrite-status-2026-02-22.md.swp`
 - Diff vs plan:
@@ -3761,12 +3761,12 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Agent: Codex (GPT-5)
 - Branch: `codex/passport-uiux-v2`
 - Changes (actual):
-  - `/Users/ej/Downloads/maxidoge-clones/frontend-passport/AGENTS.md`
+  - `/Users/ej/Downloads/wtd-clones/frontend-passport/AGENTS.md`
     - 개발 로그는 로컬 기록, unified 로그는 main 머지 시점 통합 요약만 기록하도록 규칙 분리
     - 작업 ID 포맷을 `W-YYYYMMDD-HHMM-<repo>-<agent>`로 고정
-  - `/Users/ej/Downloads/maxidoge-clones/frontend-passport/docs/README.md`
+  - `/Users/ej/Downloads/wtd-clones/frontend-passport/docs/README.md`
     - 리다이렉트 안내에 로컬/통합 로그 역할 분리 반영
-  - `/Users/ej/Downloads/maxidoge-clones/frontend-passport/docs/AGENT_WATCH_LOG.md`
+  - `/Users/ej/Downloads/wtd-clones/frontend-passport/docs/AGENT_WATCH_LOG.md`
     - Entry Format에 고유 ID 규칙 + optional unified mirror ID 필드 추가
 - Diff vs plan:
   - 없음
@@ -3789,7 +3789,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `origin/main` 푸시 및 통합 로그 요약 반영
 - Overlap check (before work):
   - `## codex/passport-uiux-v2...origin/codex/passport-uiux-v2` (clean)
-  - single worktree(`/Users/ej/Downloads/maxidoge-clones/frontend-passport`) 확인
+  - single worktree(`/Users/ej/Downloads/wtd-clones/frontend-passport`) 확인
 - Status: IN_PROGRESS
 
 ### W-20260225-0045-passport-codex (finish addendum)
@@ -3826,7 +3826,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - 설계 문서를 repo docs에 추가
 - Overlap check (before work):
   - `## main...origin/main` (clean)
-  - single worktree(`/Users/ej/Downloads/maxidoge-clones/frontend-passport`) 확인
+  - single worktree(`/Users/ej/Downloads/wtd-clones/frontend-passport`) 확인
 - Status: IN_PROGRESS
 
 ### W-20260225-0055-passport-codex (finish addendum)
@@ -3837,10 +3837,10 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - source: `codex/passport-backend-architecture-v1` (`0167f4d`)
   - target: `main`
 - Changes (actual):
-  - `/Users/ej/Downloads/maxidoge-clones/frontend-passport/docs/references/active/PASSPORT_BACKEND_ARCHITECTURE_v1_2026-02-25.md` 신규 추가
+  - `/Users/ej/Downloads/wtd-clones/frontend-passport/docs/references/active/PASSPORT_BACKEND_ARCHITECTURE_v1_2026-02-25.md` 신규 추가
     - Terminal 이벤트 저장 -> Passport projection -> 분석 리포트 저장 -> ML 학습 샘플 확장 설계 정의
     - outbox/worker/API/스키마/단계별 rollout 기준 명시
-  - `/Users/ej/Downloads/maxidoge-clones/frontend-passport/docs/AGENT_WATCH_LOG.md`
+  - `/Users/ej/Downloads/wtd-clones/frontend-passport/docs/AGENT_WATCH_LOG.md`
     - 본 작업 start/finish 기록 추가
   - `main` 최신(`50d68c0`) 동기화 후 `--no-ff` 머지 수행
 - Diff vs plan:
@@ -3866,7 +3866,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - 트레이딩 성과 분석 글 생성 모델과 정책 모델의 이원화 아키텍처 확정
 - Overlap check (before work):
   - `## main...origin/main`에서 분기, 워킹트리 clean 확인
-  - single worktree(`/Users/ej/Downloads/maxidoge-clones/frontend-passport`) 확인
+  - single worktree(`/Users/ej/Downloads/wtd-clones/frontend-passport`) 확인
 - Status: IN_PROGRESS
 
 ### W-20260225-0113-passport-codex (finish addendum)
@@ -3877,13 +3877,13 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - source: `codex/passport-ml-orpo-design-v2` (`52badd5`)
   - target: `main`
 - Changes (actual):
-  - `/Users/ej/Downloads/maxidoge-clones/frontend-passport/docs/references/active/PASSPORT_ML_ORPO_LEARNING_ARCHITECTURE_v2_2026-02-25.md` 신규 추가
+  - `/Users/ej/Downloads/wtd-clones/frontend-passport/docs/references/active/PASSPORT_ML_ORPO_LEARNING_ARCHITECTURE_v2_2026-02-25.md` 신규 추가
     - Pretraining/Continual Pretraining/SFT/ORPO/Retraining 전주기 설계
     - Terminal 저장-조회 연계 lineage 키(`trace_id`, `inference_id`, `dataset_version_id`) 표준화
     - 모델 분리(PM/AM), 데이터셋 계층(L0~L4), 평가/배포 게이트 정의
-  - `/Users/ej/Downloads/maxidoge-clones/frontend-passport/docs/references/active/PASSPORT_BACKEND_ARCHITECTURE_v1_2026-02-25.md`
+  - `/Users/ej/Downloads/wtd-clones/frontend-passport/docs/references/active/PASSPORT_BACKEND_ARCHITECTURE_v1_2026-02-25.md`
     - v2 학습 아키텍처 문서 참조 링크 추가
-  - `/Users/ej/Downloads/maxidoge-clones/frontend-passport/docs/AGENT_WATCH_LOG.md`
+  - `/Users/ej/Downloads/wtd-clones/frontend-passport/docs/AGENT_WATCH_LOG.md`
     - 본 작업 start/finish 기록 추가
 - Diff vs plan:
   - 없음
@@ -3909,7 +3909,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - 추론 로그/trajectory/dataset/train-job/eval 조회/트리거 골격 연결
 - Overlap check (before work):
   - `## codex/passport-ml-pipeline-skeleton-v1` (clean)
-  - single worktree(`/Users/ej/Downloads/maxidoge-clones/frontend-passport`) 확인
+  - single worktree(`/Users/ej/Downloads/wtd-clones/frontend-passport`) 확인
   - 기존 IN_PROGRESS 항목은 과거 세션 기록이며 현재 브랜치 변경 파일과 직접 충돌 없음
 - Status: IN_PROGRESS
 
@@ -4103,17 +4103,17 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Agent: Codex (GPT-5)
 - Branch: `codex/terminal-be-gap-redesign-w121`
 - What changed:
-  - 프로젝트 브랜드명을 `Stockclaw`로 전환 (핵심 런타임/설정/마이그레이션 범위)
+  - 프로젝트 브랜드명을 `wtd`로 전환 (핵심 런타임/설정/마이그레이션 범위)
   - 주요 치환 대상:
-    - UI/문구: `MAXI⚡DOGE`, `MAXI DOGE`, `MAXI-DOGE`, `MAXIDOGE` -> `STOCKCLAW`
-    - 소문자 식별자: `maxidoge*`, `maxi-doge*` -> `stockclaw*`
+    - UI/문구: `MAXI⚡DOGE`, `MAXI DOGE`, `MAXI-DOGE`, `WTD` -> `WTD`
+    - 소문자 식별자: `wtd*`, `maxi-doge*` -> `wtd*`
   - 대표 변경 파일:
-    - `package.json`, `package-lock.json` (legacy Stockclaw package name)
-    - `src/lib/server/session.ts` (`stockclaw_session`)
-    - `src/lib/stores/storageKeys.ts` (`stockclaw_*` localStorage key)
-    - `src/lib/server/polymarketClob.ts` (`User-Agent: STOCKCLAW/1.0`)
+    - `package.json`, `package-lock.json` (`wtd-app`)
+    - `src/lib/server/session.ts` (`wtd_session`)
+    - `src/lib/stores/storageKeys.ts` (`wtd_*` localStorage key)
+    - `src/lib/server/polymarketClob.ts` (`User-Agent: WTD/1.0`)
     - `src/routes/+page.svelte`, `src/components/layout/Header.svelte`, `src/routes/terminal/+page.svelte` (브랜드 표시)
-    - `.env.example` (`RATE_LIMIT_REDIS_PREFIX=stockclaw:rl`)
+    - `.env.example` (`RATE_LIMIT_REDIS_PREFIX=wtd:rl`)
     - `db/supabase migrations` 주석 브랜드 문자열
 - Validation results:
   - `npm run check`: PASS
@@ -4129,8 +4129,8 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Agent: Codex (GPT-5)
 - Branch: `codex/terminal-be-gap-redesign-w121`
 - What changed:
-  - docs 전반의 `MAXI DOGE` 계열 문자열을 `Stockclaw`로 최종 정리
-  - 리네임: `docs/MAXIDOGE_*` 문서 7개(`.md` 6 + `.pdf` 1) -> `docs/STOCKCLAW_*`
+  - docs 전반의 `MAXI DOGE` 계열 문자열을 `wtd`로 최종 정리
+  - 리네임: `docs/WTD_*` 문서 7개(`.md` 6 + `.pdf` 1) -> `docs/WTD_*`
   - AGENTS/로그 파일은 경로/히스토리 무결성 유지 목적상 제외
 - Validation results:
   - `npm run check`: PASS
@@ -4146,7 +4146,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Agent: Codex (GPT-5)
 - Branch: `codex/terminal-be-gap-redesign-w121`
 - What changed:
-  - PR [#30](https://github.com/eunjuhyun88/Maxidoge/pull/30) 머지 시도
+  - PR [#30](https://github.com/eunjuhyun88/WTD/pull/30) 머지 시도
   - 머지 차단 원인 확인: `At least 1 approving review is required by reviewers with write access`
   - 확인 사항: CI check/build PASS, 충돌 없음(mergeable)
 - Validation results:
@@ -4163,7 +4163,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Agent: Codex (GPT-5)
 - Branch: `codex/intel-policy-v3-runtime-clean-20260225`
 - What changed:
-  - `src/routes/+page.svelte`: footer branding `STOCKCLAW` 통일 + 미사용 `.foot-bolt` CSS 제거
+  - `src/routes/+page.svelte`: footer branding `WTD` 통일 + 미사용 `.foot-bolt` CSS 제거
   - `src/lib/server/intelPolicyRuntime.ts`: Intel 카드 스코어 휴리스틱 정밀 튜닝
     - 신호강도/신선도/출처신뢰도 기반 confidence 재계산
     - 패널별(Headlines/Events/Flow/Trending/Picks) helpfulness 파라미터 재조정
@@ -4333,7 +4333,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Agent: Codex (GPT-5)
 - Branch: codex/intel-policy-v3-runtime-clean-20260225
 - What changed:
-  - Reviewed STOCKHOO v5 architecture doc and produced ORPO improvement strategy.
+  - Reviewed WTD v5 architecture doc and produced ORPO improvement strategy.
   - No source-code change in backend for this request (analysis/advisory only).
 - Validation results:
   - npm run check: PASS
@@ -4536,7 +4536,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-02-27 03:13:16 +0900] START wallet-only-main-merge-20260227 (frontend clone)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend-wallet-merge
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend-wallet-merge
 - Request: 지갑 관련 변경만 분리해서 main에 머지
 - Initial branch: codex/wallet-only-main-merge-20260227 (from origin/main)
 - Overlap check: source branch `codex/home-backend-live-20260226` has unrelated dirty home edits in `src/routes/+page.svelte`; keep untouched and extract wallet files only.
@@ -4565,7 +4565,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 - Start: 2026-02-28 04:32:00 +0900
 - Agent: Codex (GPT-5)
-- Repo path: /Users/ej/Downloads/maxidoge-clones/frontend
+- Repo path: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/home-backend-live-20260226
 - Base origin/main hash: 97ec968
 - Working tree status:
@@ -4581,7 +4581,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 - Start: 2026-02-28 10:35:15 +0900
 - Agent: Codex (GPT-5)
-- Repo path: /Users/ej/Downloads/maxidoge-clones/frontend
+- Repo path: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/arena-game-feel
 - Base origin/main hash: 97ec968
 - Working tree status:
@@ -4603,7 +4603,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 - Start: 2026-03-01 04:40:52 +0900
 - Agent: Codex (GPT-5)
-- Repo path: /Users/ej/Downloads/maxidoge-clones/frontend
+- Repo path: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/arena-game-feel
 - Base origin/main hash: e07b0935a67f017f2a0740e5d33cbe30418c31f9
 - Working tree status:
@@ -4617,7 +4617,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Task summary: AI agent tokens/pools are analyzed individually (not aggregated) to show per-token x per-protocol volume and fee-driven revenue flow for 30d/180d/365d.
 - Overlap/conflict check result: Existing local arena-related edits are unrelated to this on-chain analytics task; no file-edit overlap planned.
 - safe:status result: PASS (npm run safe:status completed; ctx:auto snapshot/compact completed).
-- Notes: SSOT path from AGENTS (`/Users/ej/Downloads/maxi-doge-unified/README.md`) was unavailable on this machine, so SSOT section was re-read from `/Users/ej/Downloads/maxidoge-clones/frontend/README.md`.
+- Notes: SSOT path from AGENTS (`/Users/ej/Downloads/maxi-doge-unified/README.md`) was unavailable on this machine, so SSOT section was re-read from `/Users/ej/Downloads/wtd-clones/frontend/README.md`.
 
 ### W-20260301-0440-frontend-codex (finish)
 
@@ -4651,7 +4651,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 - Start: 2026-03-01 07:10:03 +0900
 - Agent: Codex (GPT-5)
-- Repo path: /Users/ej/Downloads/maxidoge-clones/frontend
+- Repo path: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/arena-game-feel
 - Base origin/main hash: e07b0935a67f017f2a0740e5d33cbe30418c31f9
 - Working tree status:
@@ -4720,7 +4720,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 00:30:20 +0900] START quality-workflow-guard-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Request: CLAUDE.md 기준으로 가드/기록/컨텍스트 관리 포함해 정리
 - Initial branch: feat/onchain-alerts-dashboard
 - Overlap check:
@@ -4751,7 +4751,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 18:12:04 +0900] START frontend-refactor-execution-design-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Request: 구현 전에 전체 성능/구조/버그/보안/중복 기준을 포함한 리팩토링 설계를 먼저 고정
 - Initial branch: unknown (git metadata unavailable from repo root during analysis)
 - Overlap check:
@@ -4777,7 +4777,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 19:08:15 +0900] FINISH frontend-phase1-state-authority-quicktrade-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - What changed:
   - Removed `priceStore -> gameState.prices` live mirror and left `gameState.prices` as legacy boot fallback only.
   - Added shared pair-price selectors in `src/lib/utils/price.ts` and switched active consumers to `priceStore`:
@@ -4801,7 +4801,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 19:16:40 +0900] FINISH frontend-phase2-domain-integrity-plan-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Request: fix the next refactor plan specifically around profile/badge authority and trade-domain integrity before implementation
 - What changed:
   - Expanded Phase 2 in `docs/references/active/FRONTEND_REFACTOR_EXECUTION_DESIGN_2026-03-06.md`
@@ -4820,7 +4820,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 19:13:07 +0900] START frontend-phase1-state-authority-followup-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: 설계 이후 실제 Phase 1 구현 계속 진행
 - Scope for this pass:
@@ -4829,7 +4829,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - live price fallback을 `priceStore + bases` 기준으로 정리
 
 ## [2026-03-06 19:17:34 +0900] FINISH frontend-phase1-state-authority-followup-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - What changed:
   - Removed remaining active `gameState.prices` fallback usage from arena consumers and aligned BTC fallback to `priceStore + bases`.
   - Removed terminal-local `hydrateQuickTrades()` on-mount call so quick-trade hydration enters only through `hydrateDomainStores()` or explicit force refresh.
@@ -4844,7 +4844,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 19:52:08 +0900] FINISH frontend-phase2-domain-integrity-implementation-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Request: implement Phase 2 so profile/badge/tracked-signal authority is handled by the real SvelteKit backend rather than local cache logic
 - What changed:
   - Added shared profile authority helpers in `src/lib/profile/profileAuthority.ts` and server projection logic in `src/lib/server/profileProjection.ts`.
@@ -4879,7 +4879,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 20:19:11 +0900] START frontend-phase2-security-boundary-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: state authority 다음 단계로 profile / quick-trade / polymarket mutation 경계 강화
 - Scope for this pass:
@@ -4888,7 +4888,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - quick-trade / polymarket에 IP + distributed rate limit 패턴 적용
 
 ## [2026-03-06 20:19:11 +0900] FINISH frontend-phase2-security-boundary-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - What changed:
   - Added shared guarded JSON body reader:
     - `src/lib/server/requestGuards.ts`
@@ -4919,7 +4919,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 20:30:18 +0900] FINISH frontend-phase2-copytrade-canonical-publish-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Request: continue the next refactor step by making copy-trade publish server-canonical instead of dual optimistic fallback mutations
 - What changed:
   - Reworked `src/lib/stores/copyTradeStore.ts`:
@@ -4948,7 +4948,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 21:27:25 +0900] FINISH frontend-phase3-terminal-viewmodel-chart-csp-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue until the terminal/chart/security refactor is materially completed from the current design baseline
 - What changed:
@@ -4981,7 +4981,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 21:49:12 +0900] FINISH frontend-phase4-chart-planner-runes-stabilization-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue the next refactor phase by extracting more ChartPanel core logic and keep validation green until the batch is fully closed
 - What changed:
@@ -5013,7 +5013,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 22:06:54 +0900] FINISH frontend-phase5-chart-pattern-render-contract-stabilization-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue automatically until the current ChartPanel split batch is stabilized, validated, and documented
 - What changed:
@@ -5050,7 +5050,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 22:36:46 +0900] FINISH frontend-phase6-chart-overlay-session-extraction-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue automatically by extracting the next ChartPanel overlay boundary, keep validation green, and document the new canonical split
 - What changed:
@@ -5083,7 +5083,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 22:44:30 +0900] FINISH frontend-context-system-rollout-finalization-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Work ID: W-20260306-2209-frontend-codex
 - Request: finish the context-system rollout end-to-end, verify the current branch, and leave accurate resume artifacts for the next session
@@ -5122,7 +5122,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 22:42:53 +0900] FINISH frontend-phase6-chart-position-interaction-extraction-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: keep auto-refactoring RF-06 by extracting the next pure ChartPanel interaction boundary and preserve validation
 - What changed:
@@ -5146,7 +5146,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 22:46:52 +0900] FINISH frontend-phase6-chart-runtime-binding-extraction-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: keep auto-refactoring RF-06 by extracting the next ChartPanel lifecycle/runtime boundary and preserve validation
 - What changed:
@@ -5174,7 +5174,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 23:03:35 +0900] FINISH frontend-phase7-chart-data-runtime-design-lock-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: design the next cleanup sequence before implementation and lock the order so the remaining ChartPanel work is done one step at a time
 - What changed:
@@ -5197,7 +5197,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 23:13:53 +0900] FINISH frontend-phase7-chart-data-runtime-extraction-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: implement the next locked ChartPanel cleanup slice by extracting the remaining data runtime path before touching warning cleanup
 - What changed:
@@ -5228,7 +5228,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 22:57:07 +0900] FINISH frontend-phase3-arena-war-pixi-runtime-split-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-refine
 - Request: continue automatically with the next performance pass, remove dead duplication, and verify the bundle impact
 - What changed:
@@ -5253,7 +5253,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 23:22:06 +0900] START frontend-clone-consolidation-audit-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: determine whether `frontend/` and `backend/` are truly separate surfaces or duplicated full-stack clones, then classify what must be migrated versus discarded
 - Planned work:
@@ -5263,7 +5263,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-06 23:22:06 +0900] FINISH frontend-clone-consolidation-audit-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: determine whether `frontend/` and `backend/` are truly separate surfaces or duplicated full-stack clones, then classify what must be migrated versus discarded
 - What changed:
@@ -5293,7 +5293,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 23:30:09 +0900] START frontend-runtime-boundary-map-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: classify which files inside the canonical full-stack app are frontend, backend, or boundary-crossing candidates
 - Planned work:
@@ -5303,7 +5303,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-06 23:30:09 +0900] FINISH frontend-runtime-boundary-map-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: classify which files inside the canonical full-stack app are frontend, backend, or boundary-crossing candidates
 - What changed:
@@ -5331,7 +5331,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-06 23:30:09 +0900] START frontend-canonical-folder-refactor-plan-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: build the actual refactor plan for the canonical `frontend/` folder now that clone drift and runtime boundaries have been identified
 - Planned work:
@@ -5341,7 +5341,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-06 23:30:09 +0900] FINISH frontend-canonical-folder-refactor-plan-20260306 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: build the actual refactor plan for the canonical `frontend/` folder now that clone drift and runtime boundaries have been identified
 - What changed:
@@ -5370,7 +5370,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START frontend-remaining-structure-batch-design-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: design the remaining 5-7 batches needed to finish the canonical frontend refactor, including ChartPanel, arena page, passport page, server authority closure, and legacy/security cleanup
 - Planned work:
@@ -5380,7 +5380,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH frontend-remaining-structure-batch-design-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: design the remaining 5-7 batches needed to finish the canonical frontend refactor, including ChartPanel, arena page, passport page, server authority closure, and legacy/security cleanup
 - What changed:
@@ -5409,7 +5409,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START frontend-claude-boundary-rules-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: encode canonical frontend/backend separation rules into CLAUDE guides and clarify whether to create new folders before the split
 - Planned work:
@@ -5419,16 +5419,16 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH frontend-claude-boundary-rules-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: encode canonical frontend/backend separation rules into CLAUDE guides and clarify whether to create new folders before the split
 - What changed:
-  - Updated `/Users/ej/Downloads/maxidoge-clones/CLAUDE.md`
+  - Updated `/Users/ej/Downloads/wtd-clones/CLAUDE.md`
     - clarified that `frontend/` is the canonical full-stack app
     - reclassified `backend/` as a reference-only legacy clone
     - added monorepo-level frontend/backend separation policy and staged extraction target
     - added mandatory work classification (`frontend-only`, `backend-only`, `cross-boundary`) before implementation
-  - Updated `/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md`
+  - Updated `/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md`
     - removed the self-contradictory deprecated header from the canonical workspace guide
     - added mandatory frontend/backend boundary rules for the SvelteKit full-stack app
     - added the staged extraction policy: no new top-level app split yet, but allow extraction-ready folders inside `frontend/`
@@ -5439,7 +5439,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START frontend-internal-extraction-folder-map-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: define the concrete folder structure to create inside the canonical frontend workspace instead of cloning it again
 - Planned work:
@@ -5449,18 +5449,18 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH frontend-internal-extraction-folder-map-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: define the concrete folder structure to create inside the canonical frontend workspace instead of cloning it again
 - What changed:
-  - Added `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/internal-extraction-folder-map-2026-03-07.md`
+  - Added `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/internal-extraction-folder-map-2026-03-07.md`
     - defined the internal extraction strategy inside `frontend/`
     - specified which new `src/lib/*` folders should be created now
     - mapped major existing files to their target folders
     - documented which folders must not be created yet (`apps/web`, `apps/api`, new sibling clones)
   - Registered the new design doc in:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/index.md`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/PLANS.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/index.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/PLANS.md`
 - Validation:
   - doc-only change; no runtime files modified
 - Residual risks:
@@ -5469,7 +5469,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START terminal-lib-boundary-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the canonical split by extracting terminal runtime TypeScript modules out of `components/terminal` and into `src/lib/terminal`
 - Planned work:
@@ -5479,7 +5479,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH terminal-lib-boundary-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the canonical split by extracting terminal runtime TypeScript modules out of `components/terminal` and into `src/lib/terminal`
 - What changed:
@@ -5501,7 +5501,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START intel-panel-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the concrete split by extracting IntelPanel runtime responsibilities into reusable `src/lib/terminal/intel` modules
 - Planned work:
@@ -5511,7 +5511,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH intel-panel-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the concrete split by extracting IntelPanel runtime responsibilities into reusable `src/lib/terminal/intel` modules
 - What changed:
@@ -5537,7 +5537,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START intel-panel-transport-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by moving IntelPanel transport and payload normalization out of the component
 - Planned work:
@@ -5547,7 +5547,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH intel-panel-transport-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by moving IntelPanel transport and payload normalization out of the component
 - What changed:
@@ -5579,7 +5579,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START warroom-scan-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by moving WarRoom scan state, persistence, and server-signal mapping out of the component
 - Planned work:
@@ -5589,7 +5589,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH warroom-scan-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by moving WarRoom scan state, persistence, and server-signal mapping out of the component
 - What changed:
@@ -5621,7 +5621,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START warroom-derivatives-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by moving WarRoom derivatives polling/cache/visibility lifecycle out of the component
 - Planned work:
@@ -5631,7 +5631,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH warroom-derivatives-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by moving WarRoom derivatives polling/cache/visibility lifecycle out of the component
 - What changed:
@@ -5654,7 +5654,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START terminal-shared-types-and-event-mappers-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by removing the `lib -> routes` type dependency and extracting terminal scan/community message composition out of the route
 - Planned work:
@@ -5664,7 +5664,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH terminal-shared-types-and-event-mappers-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by removing the `lib -> routes` type dependency and extracting terminal scan/community message composition out of the route
 - What changed:
@@ -5695,7 +5695,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 00:00:00 +0900] START terminal-action-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by extracting terminal action orchestration out of `terminal/+page.svelte`
 - Planned work:
@@ -5705,7 +5705,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 00:00:00 +0900] FINISH terminal-action-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the split by extracting terminal action orchestration out of `terminal/+page.svelte`
 - What changed:
@@ -5729,7 +5729,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 04:00:20 +0900] START terminal-check-unblock-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by clearing the current `npm run check` blocker before moving on to more refactors
 - Planned work:
@@ -5739,7 +5739,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 04:00:20 +0900] FINISH terminal-check-unblock-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by clearing the current `npm run check` blocker before moving on to more refactors
 - What changed:
@@ -5760,7 +5760,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 04:00:20 +0900] START terminal-price-contract-alignment-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by removing the temporary chart price compatibility layer and aligning remaining live-price contracts across terminal share and chat flows
 - Planned work:
@@ -5770,7 +5770,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 04:00:20 +0900] FINISH terminal-price-contract-alignment-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by removing the temporary chart price compatibility layer and aligning remaining live-price contracts across terminal share and chat flows
 - What changed:
@@ -5794,7 +5794,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:02:14 +0900] START terminal-modal-host-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by reducing `terminal/+page.svelte` shell ownership around lazy modal host rendering
 - Planned work:
@@ -5804,7 +5804,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 11:02:14 +0900] FINISH terminal-modal-host-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by reducing `terminal/+page.svelte` shell ownership around lazy modal host rendering
 - What changed:
@@ -5830,7 +5830,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:02:14 +0900] START terminal-shell-lifecycle-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving terminal shell mount/bootstrap orchestration behind the canonical shell runtime boundary
 - Planned work:
@@ -5840,7 +5840,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 11:02:14 +0900] FINISH terminal-shell-lifecycle-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving terminal shell mount/bootstrap orchestration behind the canonical shell runtime boundary
 - What changed:
@@ -5865,7 +5865,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:25:17 +0900] START terminal-scan-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving scan event state transitions out of `terminal/+page.svelte`
 - Planned work:
@@ -5875,7 +5875,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 11:25:17 +0900] FINISH terminal-scan-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving scan event state transitions out of `terminal/+page.svelte`
 - What changed:
@@ -5900,7 +5900,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:44:14 +0900] START terminal-panel-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by removing panel-ref orchestration from `terminal/+page.svelte`
 - Planned work:
@@ -5910,7 +5910,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 11:44:14 +0900] FINISH terminal-panel-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by removing panel-ref orchestration from `terminal/+page.svelte`
 - What changed:
@@ -5934,7 +5934,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 12:18:42 +0900] START terminal-shell-community-state-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving shell/community modal state out of `terminal/+page.svelte`
 - Planned work:
@@ -5944,7 +5944,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 12:18:42 +0900] FINISH terminal-shell-community-state-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving shell/community modal state out of `terminal/+page.svelte`
 - What changed:
@@ -5970,7 +5970,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 12:31:54 +0900] START terminal-layout-state-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving panel width/collapse/drag state out of `terminal/+page.svelte`
 - Planned work:
@@ -5980,7 +5980,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 12:31:54 +0900] FINISH terminal-layout-state-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving panel width/collapse/drag state out of `terminal/+page.svelte`
 - What changed:
@@ -6004,7 +6004,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:07:18 +0900] START terminal-engagement-state-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving mobile tab and density state out of `terminal/+page.svelte`
 - Planned work:
@@ -6014,7 +6014,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 13:07:18 +0900] FINISH terminal-engagement-state-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving mobile tab and density state out of `terminal/+page.svelte`
 - What changed:
@@ -6038,7 +6038,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:26:41 +0900] START terminal-session-message-state-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving session/message state out of `terminal/+page.svelte`
 - Planned work:
@@ -6048,7 +6048,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 13:26:41 +0900] FINISH terminal-session-message-state-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by moving session/message state out of `terminal/+page.svelte`
 - What changed:
@@ -6074,7 +6074,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:46:42 +0900] START terminal-message-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by removing chat buffer helper ownership from `terminal/+page.svelte`
 - Planned work:
@@ -6084,7 +6084,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 11:46:42 +0900] FINISH terminal-message-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by removing chat buffer helper ownership from `terminal/+page.svelte`
 - What changed:
@@ -6110,7 +6110,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:52:39 +0900] START terminal-session-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by removing repeated session-state accessors from `terminal/+page.svelte`
 - Planned work:
@@ -6120,7 +6120,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 11:52:39 +0900] FINISH terminal-session-runtime-extraction-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by removing repeated session-state accessors from `terminal/+page.svelte`
 - What changed:
@@ -6142,7 +6142,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 11:57:23 +0900] START extracted-module-tracking-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by making the current extracted import graph trackable on remote
 - Planned work:
@@ -6152,7 +6152,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 11:57:23 +0900] FINISH extracted-module-tracking-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue by making the current extracted import graph trackable on remote
 - What changed:
@@ -6168,7 +6168,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:07:54 +0900] START arena-foundation-and-chart-bridge-slices-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue with the correctly designed Arena refactor using the core-loop and boundary plans
 - Planned work:
@@ -6178,7 +6178,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 13:07:54 +0900] FINISH arena-foundation-and-chart-bridge-slices-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue with the correctly designed Arena refactor using the core-loop and boundary plans
 - What changed:
@@ -6206,7 +6206,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:24:21 +0900] START arena-replay-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going by moving replay orchestration out of `src/routes/arena/+page.svelte`
 - Planned work:
@@ -6216,7 +6216,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 13:24:21 +0900] FINISH arena-replay-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going by moving replay orchestration out of `src/routes/arena/+page.svelte`
 - What changed:
@@ -6240,7 +6240,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 13:46:18 +0900] START arena-feed-and-reward-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going by moving live-event/feed cadence and reward calculation out of `src/routes/arena/+page.svelte`
 - Planned work:
@@ -6250,7 +6250,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 13:46:18 +0900] FINISH arena-feed-and-reward-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going by moving live-event/feed cadence and reward calculation out of `src/routes/arena/+page.svelte`
 - What changed:
@@ -6275,7 +6275,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 14:02:11 +0900] START arena-compare-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going by moving compare overlay calculation out of `src/routes/arena/+page.svelte`
 - Planned work:
@@ -6285,7 +6285,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 14:02:11 +0900] FINISH arena-compare-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going by moving compare overlay calculation out of `src/routes/arena/+page.svelte`
 - What changed:
@@ -6310,7 +6310,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 18:41:56 +0900] START chartpanel-controller-contract-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the ChartPanel cleanup by extracting a canonical controller/contracts layer before touching shell/view-model work
 - Planned work:
@@ -6320,7 +6320,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 18:41:56 +0900] FINISH chartpanel-controller-contract-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the ChartPanel cleanup by extracting a canonical controller/contracts layer before touching shell/view-model work
 - What changed:
@@ -6350,7 +6350,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 19:43:01 +0900] START chartpanel-shell-viewmodel-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the ChartPanel cleanup by extracting the shell-facing display-state contract/view-model and stop hand-assembling the full prop list inline
 - Planned work:
@@ -6360,7 +6360,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 19:43:01 +0900] FINISH chartpanel-shell-viewmodel-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the ChartPanel cleanup by extracting the shell-facing display-state contract/view-model and stop hand-assembling the full prop list inline
 - What changed:
@@ -6388,7 +6388,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 21:18:44 +0900] START arena-battle-runtime-slices-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep refactoring arena by extracting the remaining battle presentation and resolver reaction logic without changing layout or element positioning
 - Planned work:
@@ -6398,7 +6398,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 21:18:44 +0900] FINISH arena-battle-runtime-slices-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep refactoring arena by extracting the remaining battle presentation and resolver reaction logic without changing layout or element positioning
 - What changed:
@@ -6425,7 +6425,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 22:07:12 +0900] START arena-result-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor by extracting result scoring, progression persistence, and resolve-sync payload assembly from `arena/+page.svelte`
 - Planned work:
@@ -6435,7 +6435,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 22:07:12 +0900] FINISH arena-result-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor by extracting result scoring, progression persistence, and resolve-sync payload assembly from `arena/+page.svelte`
 - What changed:
@@ -6458,7 +6458,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 22:44:08 +0900] START arena-shell-controller-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor by extracting shell-level lobby/reset/keyboard/tournament control from `arena/+page.svelte` without changing layout
 - Planned work:
@@ -6468,7 +6468,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 22:44:08 +0900] FINISH arena-shell-controller-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor by extracting shell-level lobby/reset/keyboard/tournament control from `arena/+page.svelte` without changing layout
 - What changed:
@@ -6491,7 +6491,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 20:53:47 +0900] FINISH frontend-chart-support-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the ChartPanel refactor by collapsing inline support runtime assembly without changing layout or interaction contracts
 - What changed:
@@ -6522,7 +6522,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 21:00:25 +0900] FINISH frontend-chart-client-lazy-runtime-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the ChartPanel refactor by turning controller/support runtime assembly into a real client-only lazy boundary
 - What changed:
@@ -6549,7 +6549,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 21:07:23 +0900] FINISH arena-phase-controller-hypothesis-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor by extracting the `ANALYSIS`/`HYPOTHESIS`/`PREVIEW` phase-entry controller without changing layout
 - What changed:
@@ -6577,7 +6577,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 21:13:37 +0900] FINISH arena-legacy-overlay-retirement-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the arena refactor by removing unreachable `compare` / `verdict` overlay paths from the current 5-phase loop
 - What changed:
@@ -6606,7 +6606,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 21:18:41 +0900] FINISH arena-match-controller-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the arena refactor by extracting squad deploy server-sync responsibilities out of the route shell
 - What changed:
@@ -6634,7 +6634,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 23:06:21 +0900] START arena-phase-dispatch-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor by moving draft-phase entry and phase dispatch deeper into the existing phase controller without changing layout
 - Planned work:
@@ -6644,7 +6644,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-07 23:06:21 +0900] FINISH arena-phase-dispatch-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor by moving draft-phase entry and phase dispatch deeper into the existing phase controller without changing layout
 - What changed:
@@ -6669,7 +6669,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 21:30:18 +0900] FINISH arena-result-controller-replay-retirement-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor by extracting result-phase orchestration and removing unreachable replay route integration
 - What changed:
@@ -6709,7 +6709,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 23:29:22 +0900] FINISH arena-dead-battle-shell-state-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going by deleting and cleaning dead arena battle shell state after the controller split
 - What changed:
@@ -6738,7 +6738,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 23:29:07 +0900] FINISH arena-shell-preview-toggle-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor without changing layout, remove inline shell state mutations, and keep trimming dead route state
 - What changed:
@@ -6774,7 +6774,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-07 23:32:12 +0900] FINISH arena-shell-view-reward-cleanup-slice-20260307 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep cleaning the arena route without changing layout, remove more inline store mutations, and delete obvious dead code
 - What changed:
@@ -6805,7 +6805,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 00:12:22 +0900] FINISH arena-selector-sync-hud-cleanup-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue removing dead arena route code and move repeated battle/sidebar display formatting into canonical selectors without changing layout
 - What changed:
@@ -6837,7 +6837,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 00:26:10 +0900] FINISH arena-feed-phase-timer-runtime-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep cleaning the arena route, remove more route-local shell helpers, and lock the new canonical boundaries in the docs
 - What changed:
@@ -6874,7 +6874,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 03:28:56 +0900] FINISH arena-topbar-boundary-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep tightening the arena shell by moving another presentation-only block out of the route while preserving layout and validation baselines
 - What changed:
@@ -6909,7 +6909,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 11:50:45 +0900] FINISH arena-optional-panel-lazy-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena refactor with a performance bias, but avoid another failed lazy boundary on the always-on chart surface
 - What changed:
@@ -6947,7 +6947,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 03:15:50 +0900] FINISH arena-battle-layout-derivatives-cleanup-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: organize the remaining arena WIP, resolve route/layout conflicts, and make the slice commit-ready
 - What changed:
@@ -6980,7 +6980,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 03:28:12 +0900] FINISH chart-support-lazy-split-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep cleaning the arena chart stack, reduce `ChartPanel` support-runtime SSR pressure, and keep the slice commit-ready without touching unrelated arena WIP files
 - What changed:
@@ -7011,7 +7011,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 03:33:29 +0900] FINISH chart-panel-shell-lazy-split-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep reducing arena chart SSR weight after the support-runtime split, with another narrow slice that stays compatible with the current arena WIP
 - What changed:
@@ -7038,7 +7038,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 03:36:16 +0900] FINISH chart-panel-shell-child-lazy-split-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep cutting arena chart SSR weight by splitting the remaining static shell chain under `ChartPanelShell`
 - What changed:
@@ -7066,7 +7066,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 03:46:55 +0900] FINISH arena-battle-host-child-split-cleanup-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep cleaning arena, resolve layout/CSS conflicts, and continue deleting dead presentation code without moving layout positions
 - What changed:
@@ -7102,7 +7102,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 04:18:42 +0900] FINISH arena-battle-child-boundary-normalization-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep cleaning arena, resolve presentation conflicts, and continue deleting/reorganizing dead layout-preserving code until the battle host is normalized
 - What changed:
@@ -7151,7 +7151,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 04:31:27 +0900] FINISH arena-battle-layout-prop-bundle-normalization-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue cleaning arena without moving layout positions and reduce route-level battle host wiring
 - What changed:
@@ -7179,7 +7179,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 11:45:29 +0900] FINISH full-system-redesign-blueprint-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: stop working piecemeal and consolidate the entire frontend/backend redesign into one top-level blueprint
 - What changed:
@@ -7202,7 +7202,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 12:07:54 +0900] FINISH arena-scene-shell-extraction-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep cleaning arena without changing layout positions and move the remaining scene shell markup out of the route
 - What changed:
@@ -7230,7 +7230,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 12:19:31 +0900] FINISH arena-scene-lazy-owner-normalization-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep designing while saving progress and move remaining scene-shell lazy ownership out of the route
 - What changed:
@@ -7252,7 +7252,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 12:16:13 +0900] FINISH phase-0-boundary-freeze-checklist-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep pushing the redesign forward by turning the top-level blueprint into an execution checklist with an actual current-state baseline
 - What changed:
@@ -7277,7 +7277,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 12:21:47 +0900] FINISH chart-drawing-lazy-hydration-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep the drawing stack, but stop waking `drawingManager` on initial chart entry and clean up the code path
 - What changed:
@@ -7310,7 +7310,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 15:03:49 +0900] FINISH arena-scene-lazy-ownership-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep cleaning arena by moving optional scene lazy-loading out of the route and into the scene shell boundary
 - What changed:
@@ -7337,7 +7337,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 15:19:16 +0900] FINISH arena-battle-sidebar-lazy-chunk-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep pushing arena performance cleanup, but only keep slices that materially reduce the SSR route weight
 - What changed:
@@ -7361,7 +7361,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 12:35:41 +0900] FINISH phase-2-identity-settings-bootstrap-cutover-design-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep the redesign moving, but stay in design mode and turn the abstract Phase 2 line into an actual cutover design
 - What changed:
@@ -7391,27 +7391,27 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 15:12:07 +0900] FINISH phase-2-notifications-activity-boundary-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the Phase 2 redesign by actually landing the notifications/activity contract seam and splitting the mixed notification store
 - What changed:
-  - Added [notifications.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/notifications.ts#L1)
+  - Added [notifications.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/notifications.ts#L1)
     - fixed the canonical transport contract for notification records, list queries, create payloads, and mark-read/delete responses
-  - Added [activity.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/activity.ts#L1)
+  - Added [activity.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/activity.ts#L1)
     - fixed the canonical transport contract for activity feed queries, activity records, and reaction writes
-  - Added [activityApi.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/api/activityApi.ts#L1)
+  - Added [activityApi.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/api/activityApi.ts#L1)
     - created the missing browser wrapper seam for durable activity feed reads and reaction writes
-  - Updated [notificationsApi.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/api/notificationsApi.ts#L1)
+  - Updated [notificationsApi.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/api/notificationsApi.ts#L1)
     - stopped owning notification DTOs locally and moved to contract-backed notification transport shapes
     - normalized list/create/mark-read/delete operations around the shared contracts
-  - Added [notificationsStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/notificationsStore.ts#L1), [toastStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/toastStore.ts#L1), [p0OverrideStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/p0OverrideStore.ts#L1), and [notificationEvents.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/notificationEvents.ts#L1)
+  - Added [notificationsStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/notificationsStore.ts#L1), [toastStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/toastStore.ts#L1), [p0OverrideStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/p0OverrideStore.ts#L1), and [notificationEvents.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/notificationEvents.ts#L1)
     - split durable notifications, ephemeral toasts, P0 override state, and event helper functions into distinct boundaries
-  - Replaced [notificationStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/notificationStore.ts#L1)
+  - Replaced [notificationStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/notificationStore.ts#L1)
     - converted the old mixed implementation file into a compatibility barrel
   - Updated key consumers
-    - [NotificationTray.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/NotificationTray.svelte#L1) now hydrates durable notifications without seeding demo notifications by default
-    - [ToastStack.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/ToastStack.svelte#L1), [P0Banner.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/P0Banner.svelte#L1), [HypothesisPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/HypothesisPanel.svelte#L1), [alertEngine.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/services/alertEngine.ts#L1), [copyTradeStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/copyTradeStore.ts#L1), [hydration.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/hydration.ts#L1), [WarRoom.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/terminal/WarRoom.svelte#L1), [CopyTradeModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/CopyTradeModal.svelte#L1), [signals/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/signals/+page.svelte#L1), and [terminalCommunityRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/terminal/terminalCommunityRuntime.ts#L1) now point at the split boundaries directly
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
+    - [NotificationTray.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/NotificationTray.svelte#L1) now hydrates durable notifications without seeding demo notifications by default
+    - [ToastStack.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/ToastStack.svelte#L1), [P0Banner.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/P0Banner.svelte#L1), [HypothesisPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/HypothesisPanel.svelte#L1), [alertEngine.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/services/alertEngine.ts#L1), [copyTradeStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/copyTradeStore.ts#L1), [hydration.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/hydration.ts#L1), [WarRoom.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/terminal/WarRoom.svelte#L1), [CopyTradeModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/CopyTradeModal.svelte#L1), [signals/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/signals/+page.svelte#L1), and [terminalCommunityRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/terminal/terminalCommunityRuntime.ts#L1) now point at the split boundaries directly
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
     - recorded the landed status snapshot and narrowed the remaining blockers to `walletStore`, `userProfileStore`, and route-thinning work
 - Validation:
   - `rg -n "notificationStore|seedNotifications" src --glob '!src/routes/api/**'`: only the compatibility barrel and manual seed helper remain
@@ -7425,21 +7425,21 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 15:31:42 +0900] FINISH phase-2-notifications-activity-route-thinning-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going after the browser boundary split and thin the notifications/activity routes so the Phase 2 backend edge is less route-local
 - What changed:
-  - Updated [notifications.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/notifications.ts#L1)
+  - Updated [notifications.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/notifications.ts#L1)
     - added `NOTIFICATION_TYPES` so route validation and transport contracts share the same allowed type set
-  - Updated [activity.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/activity.ts#L1)
+  - Updated [activity.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/activity.ts#L1)
     - added `ACTIVITY_SOURCE_PAGES` so the reaction route no longer owns its own source-page enum copy
-  - Added [notificationRecord.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/server/notificationRecord.ts#L1)
+  - Added [notificationRecord.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/server/notificationRecord.ts#L1)
     - extracted notification row-to-contract mapping out of `api/notifications/+server.ts`
-  - Added [activityRecord.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/server/activityRecord.ts#L1)
+  - Added [activityRecord.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/server/activityRecord.ts#L1)
     - extracted activity row-to-contract mapping out of `api/activity/+server.ts` and `api/activity/reaction/+server.ts`
-  - Updated [notifications/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/notifications/+server.ts#L1)
+  - Updated [notifications/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/notifications/+server.ts#L1)
     - now reuses contract-owned notification type validation and shared row mapping
-  - Updated [activity/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/activity/+server.ts#L1) and [activity/reaction/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/activity/reaction/+server.ts#L1)
+  - Updated [activity/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/activity/+server.ts#L1) and [activity/reaction/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/activity/reaction/+server.ts#L1)
     - now reuse contract-owned source-page validation and shared row mapping
 - Validation:
   - `npm run docs:check`: PASS
@@ -7451,26 +7451,26 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 15:58:24 +0900] FINISH phase-2-auth-profile-store-split-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going after notifications/activity and split the next real Phase 2 hotspots: auth session vs wallet shell, and profile projection vs client-derived metrics
 - What changed:
-  - Added [authSessionStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/authSessionStore.ts#L1)
+  - Added [authSessionStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/authSessionStore.ts#L1)
     - moved cookie-backed session hydration and authenticated user ownership out of `walletStore.ts`
-  - Updated [walletStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/walletStore.ts#L1)
+  - Updated [walletStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/walletStore.ts#L1)
     - `walletStore` now consumes `authSessionStore` and acts as wallet/modal shell state with compatibility mirroring
     - local persistence no longer treats `email`, `nickname`, and `tier` as authoritative persisted fields
-  - Updated [Header.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte#L1) and [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1)
+  - Updated [Header.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte#L1) and [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1)
     - moved auth-session function imports to the dedicated auth-session store
-  - Added [userProfileProjectionStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/userProfileProjectionStore.ts#L1)
+  - Added [userProfileProjectionStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/userProfileProjectionStore.ts#L1)
     - moved cached server projection and optimistic profile edits into a dedicated projection store
-  - Added [userProfileDerivedStatsStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/userProfileDerivedStatsStore.ts#L1)
+  - Added [userProfileDerivedStatsStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/userProfileDerivedStatsStore.ts#L1)
     - moved client-derived metrics from match history into a dedicated derived store
-  - Replaced [userProfileStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/userProfileStore.ts#L1)
+  - Replaced [userProfileStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/userProfileStore.ts#L1)
     - converted it into a compatibility aggregate that merges projection and derived stats for existing consumers
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
     - recorded the landed auth/profile store split and narrowed the remaining blockers
-  - Updated [refresh-generated-context.mjs](/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/refresh-generated-context.mjs#L1)
+  - Updated [refresh-generated-context.mjs](/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/refresh-generated-context.mjs#L1)
     - added metadata for `authSessionStore`, `userProfileProjectionStore`, and `userProfileDerivedStatsStore`
 - Validation:
   - `npm run docs:check`: PASS
@@ -7482,28 +7482,28 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 18:22:18 +0900] FINISH arena-scene-contract-typing-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the arena refactor, close the uncommitted scene-shell contract slice, and make the new boundary explicit before pushing
 - What changed:
-  - Added [ArenaAltViewHost.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaAltViewHost.svelte#L1)
+  - Added [ArenaAltViewHost.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaAltViewHost.svelte#L1)
     - extracted the optional alt-view lazy imports and alt-view-only result overlay out of `ArenaMatchScene.svelte`
     - kept `ArenaMatchScene.svelte` focused on scene-shell ownership while the host owns `chart/mission/card` swapping and result overlay loading
-  - Added [arenaMatchSceneTypes.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/arenaMatchSceneTypes.ts#L1)
+  - Added [arenaMatchSceneTypes.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/arenaMatchSceneTypes.ts#L1)
     - fixed the canonical typed contract for `ArenaMatchScene` alt-view props, result-panel props, and battle-layout bundle props
     - replaced the old loose `Record<string, unknown>` contract with explicit `ArenaAltViewProps`, `ArenaResultPanelProps`, and `ArenaBattleLayoutSceneProps`
-  - Added [arenaSceneProps.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/selectors/arenaSceneProps.ts#L1)
+  - Added [arenaSceneProps.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/selectors/arenaSceneProps.ts#L1)
     - created the route-side typed wrapper seam for scene, result, chart, and battle-layout prop bundles
     - locked the route-to-scene bundle handoff under a single canonical helper path instead of ad-hoc object literals
-  - Updated [ArenaMatchScene.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaMatchScene.svelte#L1)
+  - Updated [ArenaMatchScene.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaMatchScene.svelte#L1)
     - switched the component to the shared `ArenaMatchSceneProps` contract
     - replaced ambiguous empty-object defaults with shape-safe defaults for alt-view and result-panel props
     - removed the now-unused local prop-interface type imports after the shared contract cutover
     - handed alt-view/result overlay loading off to `ArenaAltViewHost.svelte` so the scene shell stays thinner
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - routed scene/result/chart/layout bundle creation through the typed `arenaSceneProps.ts` helpers
     - kept the route focused on controller/state ownership while the scene shell remains in `ArenaMatchScene.svelte`
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `ArenaAltViewHost.svelte`, `arenaMatchSceneTypes.ts`, and `arenaSceneProps.ts` as the canonical scene-shell/contract path so future refactors do not regress to route-local lazy state or untyped bundle props
 - Validation:
   - `npm run check`: PASS
@@ -7518,23 +7518,23 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 18:39:12 +0900] FINISH phase-2-profile-consumer-narrowing-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going after the auth/profile store split and trim direct compatibility-store consumers before the next backend cutover slice
 - What changed:
-  - Updated [userProfileProjectionStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/userProfileProjectionStore.ts#L1)
+  - Updated [userProfileProjectionStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/userProfileProjectionStore.ts#L1)
     - added direct projection-level exports for `profileTier`, `earnedBadges`, and `lockedBadges`
-  - Updated [userProfileStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/userProfileStore.ts#L1)
+  - Updated [userProfileStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/userProfileStore.ts#L1)
     - re-exported the projection-owned badge/tier selectors while keeping merged `profileStats` on the compatibility aggregate
-  - Updated [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1)
+  - Updated [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1)
     - switched the home hero badge from full `userProfileStore` to narrow `profileTier`
-  - Updated [ContextBanner.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/ContextBanner.svelte#L1)
+  - Updated [ContextBanner.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/ContextBanner.svelte#L1)
     - removed unused profile hydration and compatibility-store dependency entirely
-  - Updated [LivePanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/live/LivePanel.svelte#L1)
+  - Updated [LivePanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/live/LivePanel.svelte#L1)
     - removed an unused `userProfileStore` subscription
-  - Updated [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1)
+  - Updated [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1)
     - now reads badge/tier mutation helpers from `userProfileProjectionStore` and leaves only merged profile/stat reads on `userProfileStore`
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
     - recorded the narrower projection-consumer seam and reduced the remaining compatibility hotspot list
 - Validation:
   - `npm run check`: PASS
@@ -7545,17 +7545,17 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 19:02:54 +0900] FINISH phase-2-wallet-auth-identity-cut-slice-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on Phase 2 and remove the remaining auth identity duplication from `walletStore`
 - What changed:
-  - Updated [authSessionStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/authSessionStore.ts#L1)
+  - Updated [authSessionStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/authSessionStore.ts#L1)
     - added `authSessionIdentity` so wallet consumers can read email, nickname, tier, and phase directly from session authority
-  - Updated [walletStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/walletStore.ts#L1)
+  - Updated [walletStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/walletStore.ts#L1)
     - removed duplicated `email`, `nickname`, and `tier` from wallet state
     - removed the unused `registerUser` / `userTier` compatibility surface
     - switched modal step routing to consult `authSessionStore` instead of local mirrored identity
-  - Updated [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1)
+  - Updated [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1)
     - switched account/profile rendering and signed-session checks from `walletState.*` identity fields to `authSessionIdentity`
     - kept wallet transport state (`address`, `provider`, `chain`, `balance`, `signature`) on `walletStore`
   - Result:
@@ -7570,30 +7570,30 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 18:36:16 +0900] FINISH arena-stage-surface-host-split-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep refactoring the arena scene without changing layout, keep deleting repetitive structure, and stabilize the remaining battle/scene presentation hotspots
 - What changed:
-  - Added [ArenaAltViewHost.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaAltViewHost.svelte#L1)
+  - Added [ArenaAltViewHost.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaAltViewHost.svelte#L1)
     - moved `chart/mission/card` lazy loading and alt-view-only `ResultPanel` overlay ownership out of `ArenaMatchScene.svelte`
     - kept the scene shell focused on topbar, phase guide, match-history host, view switch, and battle/alt-view switching
-  - Added [arenaBattleStageTypes.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/arenaBattleStageTypes.ts#L1)
+  - Added [arenaBattleStageTypes.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/arenaBattleStageTypes.ts#L1)
     - introduced the canonical prop contract for the battle stage surface host
-  - Added [ArenaBattleParticleField.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaBattleParticleField.svelte#L1)
+  - Added [ArenaBattleParticleField.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaBattleParticleField.svelte#L1)
     - extracted grid, particle, and connector rendering from the battle stage surface
-  - Added [ArenaBattleCenterNode.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaBattleCenterNode.svelte#L1)
+  - Added [ArenaBattleCenterNode.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaBattleCenterNode.svelte#L1)
     - extracted the center price node without changing placement or styling
-  - Added [ArenaBattleAgentSprite.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaBattleAgentSprite.svelte#L1)
+  - Added [ArenaBattleAgentSprite.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaBattleAgentSprite.svelte#L1)
     - extracted agent sprite presentation, hit popup, HP/energy bars, vote badge, and sprite animation CSS into a dedicated child boundary
-  - Added [ArenaBattleStageFx.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaBattleStageFx.svelte#L1)
+  - Added [ArenaBattleStageFx.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaBattleStageFx.svelte#L1)
     - extracted VS splash, critical popup, and combo overlay FX from the host surface
-  - Updated [ArenaBattleStageSurface.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaBattleStageSurface.svelte#L1)
+  - Updated [ArenaBattleStageSurface.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaBattleStageSurface.svelte#L1)
     - converted it into a thin stage host that only coordinates particle field, center node, agent sprites, and FX overlays
-  - Updated [ArenaMatchScene.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaMatchScene.svelte#L1)
+  - Updated [ArenaMatchScene.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaMatchScene.svelte#L1)
     - removed inline alt-view/result lazy-loader state and handed that responsibility to `ArenaAltViewHost.svelte`
-  - Updated [arenaBattleLayoutTypes.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/arenaBattleLayoutTypes.ts#L1)
+  - Updated [arenaBattleLayoutTypes.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/arenaBattleLayoutTypes.ts#L1)
     - aligned sidebar prop contracts with shared `ArenaParticle` and `ArenaFloatingWord` types instead of inline object shapes
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented the new `ArenaAltViewHost` and battle-stage child boundaries as canonical ownership paths
 - Validation:
   - `npm run check`: PASS
@@ -7609,20 +7609,20 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 18:36:16 +0900] FINISH arena-agent-bridge-cutover-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the arena route cleanup, remove more inline glue without changing layout, and close noisy helper/cast paths inside `arena/+page.svelte`
 - What changed:
-  - Added [arenaAgentBridge.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaAgentBridge.ts#L1)
+  - Added [arenaAgentBridge.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaAgentBridge.ts#L1)
     - centralized arena route agent speech/state/energy/chat glue above `arenaAgentRuntime`
     - normalized the `SYSTEM` chat author path so route/controller code no longer needs `as any` casts
     - added an explicit presentation-sync binding seam for `battlePresentationRuntime.syncAgentState` / `syncAgentEnergy`
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - removed the local `setSpeech()`, `setAgentState()`, `setAgentEnergy()`, and `addChatMsg()` helpers
     - switched `battlePresentationRuntime`, `arenaShellController`, `arenaResultController`, `arenaBattleController`, `arenaPhaseController`, and `arenaAnalysisPresentationRuntime` to the shared `arenaAgentBridge`
     - removed inline `SYSTEM` chat casts in hypothesis/result paths
     - reduced route size from `1015` to `1002` lines
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `arenaAgentBridge.ts` as the canonical agent bridge path for future arena refactors
 - Validation:
   - `npm run check`: PASS
@@ -7634,20 +7634,20 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 23:28:08 +0900] FINISH arena-state-bridge-bundle-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep refactoring the arena route without changing layout, keep deleting repeated controller glue, and keep the CLAUDE/watch-log trail current before the next push
 - What changed:
-  - Added [arenaBattleStateBridge.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaBattleStateBridge.ts#L1)
+  - Added [arenaBattleStateBridge.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaBattleStateBridge.ts#L1)
     - centralized battle presentation/result/battle-controller access to route-level battle HUD and turn state
     - removed repeated setter lambdas for `charSprites`, `battleTurns`, `battleNarration`, `battlePhaseLabel`, `vsMeter`, `enemyHP`, and combo/critical/VS flags from the runtime wiring surface
-  - Added [arenaPageStateBridge.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaPageStateBridge.ts#L1)
+  - Added [arenaPageStateBridge.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaPageStateBridge.ts#L1)
     - centralized route-local page state ownership for server sync, chart bridge, hypothesis timer, overlay visibility, match-history/open-exit state, and float direction
     - gave `arenaMatchController`, `arenaShellController`, `arenaPhaseController`, `arenaResultController`, and `arenaChartController` a shared state bridge instead of repeating ad-hoc getter/setter closures
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - switched battle presentation, battle controller, result controller, phase controller, shell controller, match controller, and chart controller to the shared battle/page state bridges
     - collapsed boilerplate assignment closures after the bridge cutover so the route dropped from `1002` to `975` lines
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `arenaBattleStateBridge.ts` and `arenaPageStateBridge.ts` as canonical arena bridge ownership paths
 - Validation:
   - `npm run check`: PASS
@@ -7663,28 +7663,28 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 23:32:16 +0900] FINISH chart-market-pulse-lazy-badge-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the ongoing chart/arena refactor, close the current `marketPulse` WIP as a self-contained slice, and keep pushing clean commits without dragging unrelated dirty files into the batch
 - What changed:
-  - Added [marketPulseModel.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/market/marketPulseModel.ts#L1)
+  - Added [marketPulseModel.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/market/marketPulseModel.ts#L1)
     - made pair normalization and raw transport -> computed UI model projection canonical in one place
     - normalized compact pair inputs such as `BTCUSDT` into `BTC/USDT` so chart-side pair surfaces and server endpoints stop drifting
-  - Added [MarketPulseBadge.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/MarketPulseBadge.svelte#L1)
+  - Added [MarketPulseBadge.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/MarketPulseBadge.svelte#L1)
     - isolated Heat Score / Macro Regime badge UI, pair-scoped refresh, compact/expanded detail rendering, and toggle state into an optional chart child
     - uses request token guards so late responses do not overwrite the latest pair selection
-  - Updated [marketPulse.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/api/marketPulse.ts#L1)
+  - Updated [marketPulse.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/api/marketPulse.ts#L1)
     - added browser-side TTL cache and inflight dedupe so expanded indicator strips do not stampede `/api/market/pulse`
     - switched client projection to the shared `marketPulseModel` path instead of recomputing in the badge
-  - Updated [ChartIndicatorStrip.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartIndicatorStrip.svelte#L1)
+  - Updated [ChartIndicatorStrip.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartIndicatorStrip.svelte#L1)
     - kept the strip canonical but lazy-loads `MarketPulseBadge.svelte` only when the advanced indicator strip is actually expanded
     - reintroduced `pair` as an explicit strip contract because the badge is pair-sensitive
-  - Updated [ChartPanelShell.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartPanelShell.svelte#L1)
+  - Updated [ChartPanelShell.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartPanelShell.svelte#L1)
     - passes `pair` through to the lazy indicator strip without re-owning any pulse logic
-  - Added [market/pulse API](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/market/pulse/+server.ts#L1) to the active route surface and refreshed [api-group-map.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/generated/api-group-map.md#L1)
+  - Added [market/pulse API](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/market/pulse/+server.ts#L1) to the active route surface and refreshed [api-group-map.md](/Users/ej/Downloads/wtd-clones/frontend/docs/generated/api-group-map.md#L1)
     - server cache is now keyed by normalized pair instead of a single `any` cache blob
     - route returns raw market inputs only; UI model calculation stays on the shared client/server model path
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `MarketPulseBadge.svelte`, `marketPulseModel.ts`, and `marketPulse.ts` as canonical chart boundaries so the indicator strip does not regress into direct fetch/compute code
 - Validation:
   - `npm run check`: PASS (`0 errors / 0 warnings`)
@@ -7699,27 +7699,27 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 23:32:10 +0900] FINISH phase-2-wallet-lifecycle-store-split-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the internal web/server split, continue pushing slices, and keep `CLAUDE.md` plus push/merge records aligned while removing mixed authority from `walletStore`
 - What changed:
-  - Added [userLifecycleStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/userLifecycleStore.ts#L1)
+  - Added [userLifecycleStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/userLifecycleStore.ts#L1)
     - extracted local lifecycle/progression ownership for `phase`, `hasSeenDemo`, `hasCompletedOnboarding`, `matchesPlayed`, and `totalLP`
     - migrates legacy progression fields from the mixed `wallet` localStorage payload on first load
-    - keeps lifecycle phase normalization pinned to [progressionRules.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/progressionRules.ts#L1)
-  - Updated [walletStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/walletStore.ts#L1)
+    - keeps lifecycle phase normalization pinned to [progressionRules.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/progressionRules.ts#L1)
+  - Updated [walletStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/walletStore.ts#L1)
     - reduced the store to wallet connection transport and wallet modal shell state
     - removed lifecycle fields from `WalletState`
     - kept compatibility re-exports for `recordMatch`, `completeDemoView`, `skipWalletConnection`, and `userPhase` so existing callers do not need a broad route sweep yet
-  - Updated [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1)
+  - Updated [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1)
     - now reads lifecycle phase from `userLifecycleStore`
     - explicitly marks wallet-signature completion on the lifecycle store after successful verification
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
     - recorded that auth identity and lifecycle are both split out of `walletStore`
     - narrowed the next remaining hotspot to wallet modal step orchestration rather than mixed identity/progression ownership
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - refreshed the home/passport route ownership notes and the selected store authority table to reflect `authSessionStore` and `userLifecycleStore`
-  - Updated [refresh-generated-context.mjs](/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/refresh-generated-context.mjs#L1)
+  - Updated [refresh-generated-context.mjs](/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/refresh-generated-context.mjs#L1)
     - route/store generated maps now treat `walletStore` as wallet-modal shell only and add `userLifecycleStore` as the local progression shell
 - Validation:
   - `npm run check`: PASS
@@ -7733,26 +7733,26 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 00:03:00 +0900] FINISH phase-2-wallet-modal-store-split-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the internal split and remove the remaining wallet modal state ownership from `walletStore`
 - What changed:
-  - Added [walletModalStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/walletModalStore.ts#L1)
+  - Added [walletModalStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/walletModalStore.ts#L1)
     - moved wallet modal visibility and `walletModalStep` flow into a dedicated route/session store
     - keeps `openWalletModal()`, `closeWalletModal()`, and `setWalletModalStep()` separate from wallet connection transport
-  - Updated [walletStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/walletStore.ts#L1)
+  - Updated [walletStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/walletStore.ts#L1)
     - removed `showWalletModal` and `walletModalStep` from `WalletState`
     - reduced the store to wallet connection transport plus signed-wallet shell data
     - stopped wallet connect/sign actions from mutating modal step state directly
-  - Updated [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1)
+  - Updated [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1)
     - switched modal visibility and step reads to `walletModalStore`
     - keeps wallet connect/sign actions explicit by setting modal step in the component after transport mutations
-  - Updated [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1), [Header.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte#L1), and [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1)
+  - Updated [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1), [Header.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte#L1), and [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1)
     - moved `openWalletModal` imports to `walletModalStore`
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
     - recorded that modal visibility/step flow is now split away from `walletStore`
     - narrowed the remaining hotspot to `WalletModal.svelte` funnel logic instead of store authority mixing
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1) and [refresh-generated-context.mjs](/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/refresh-generated-context.mjs#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1) and [refresh-generated-context.mjs](/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/refresh-generated-context.mjs#L1)
     - documented `walletModalStore` as the canonical modal flow owner
 - Validation:
   - `npm run check`: PASS
@@ -7766,18 +7766,18 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 01:18:00 +0900] FINISH arena-game-state-bridge-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the arena split, keep layout/position unchanged, and keep pushing with CLAUDE-aligned records
 - What changed:
-  - Added [arenaGameStateBridge.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaGameStateBridge.ts#L1)
+  - Added [arenaGameStateBridge.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaGameStateBridge.ts#L1)
     - centralized arena route `gameState` mutations for squad config, lobby entry, arena view, result progression, battle bootstrap/tick/result, analysis projection, and hypothesis submission/timeout
     - keeps hypothesis and `pos` synchronized so chart-dragged TP/SL/ENTRY changes no longer leave stale battle position state behind
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - removed all remaining inline `gameState.update(...)` closures from controller wiring
     - rewired match/shell/result/battle/chart/phase controllers to consume the canonical game-state bridge
     - reduced route-local mutation glue so the page remains a phase/runtime coordinator rather than a direct store mutator
-- Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+- Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `arenaGameStateBridge` as the canonical owner for arena route `gameState` mutations
 - Validation:
   - `npm run check`: PASS
@@ -7789,27 +7789,27 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 23:49:43 +0900] FINISH phase-2-auth-route-helper-extraction-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the internal web/server split, continue pushing slices, and keep `CLAUDE.md` plus push records aligned while thinning auth routes
 - What changed:
-  - Added [authService.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/server/authService.ts#L1)
+  - Added [authService.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/server/authService.ts#L1)
     - centralizes auth request body parsing for identity and wallet proof fields
     - centralizes reusable email/nickname validation messages
     - centralizes EVM wallet proof verification and nonce consumption
     - centralizes session creation plus cookie issuance for auth routes
-  - Updated [login/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/auth/login/+server.ts#L1)
+  - Updated [login/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/auth/login/+server.ts#L1)
     - removed duplicated wallet proof validation and session-cookie creation
     - narrowed the route to abuse guard, login lookup, and response shaping
     - added an explicit post-verification null guard for wallet address to preserve repository type safety
-  - Updated [register/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/auth/register/+server.ts#L1)
+  - Updated [register/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/auth/register/+server.ts#L1)
     - removed duplicated identity validation, optional wallet proof validation, and session issuance
     - narrowed the route to abuse guard, uniqueness checks, user creation, and response shaping
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - restored explicit setter parameter types for the current bridge wiring so `svelte-check` stays green while this auth slice lands
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
     - recorded `authService.ts` as the canonical shared auth-route helper boundary
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented that login/register must use `authService.ts` for wallet proof and session issuance
 - Validation:
   - `npm run check`: PASS
@@ -7824,26 +7824,26 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-08 23:56:42 +0900] FINISH phase-2-wallet-modal-flow-helper-extraction-20260308 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the internal split after auth-route thinning, keep pushing narrow slices, and continue aligning `CLAUDE.md` plus push records
 - What changed:
-  - Added [walletModalFlow.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalFlow.ts#L1)
+  - Added [walletModalFlow.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalFlow.ts#L1)
     - extracted browser-side auth form parsing for signup/login
     - extracted wallet-auth start-step resolution from modal-local branching
     - extracted funnel error-reason normalization for GTM payloads
-  - Updated [contracts/auth.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/auth.ts#L1)
+  - Updated [contracts/auth.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/auth.ts#L1)
     - moved email/nickname validation rules and wallet-signature shape check into a shared contract-safe module
     - browser and server now share the same validation messages
-  - Updated [authService.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/server/authService.ts#L1)
+  - Updated [authService.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/server/authService.ts#L1)
     - now reuses shared auth validation rules and shared signature regex instead of defining local duplicates
-  - Updated [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1)
+  - Updated [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1)
     - removed duplicated email/nickname parsing rules
     - removed duplicated start-step branching logic for wallet-connected vs signed states
     - switched funnel error tracking to the extracted helper
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - replaced deprecated `<svelte:component>` usage with direct dynamic component syntax so warning budget stays at zero
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - recorded `walletModalFlow.ts` and shared auth validation as canonical boundaries
 - Validation:
   - `npm run check`: PASS
@@ -7858,20 +7858,20 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 00:06:46 +0900] FINISH phase-2-wallet-modal-transport-extraction-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the internal split, continue pushing slices, and move the remaining async wallet auth transport out of `WalletModal.svelte`
 - What changed:
-  - Added [walletModalTransport.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalTransport.ts#L1)
+  - Added [walletModalTransport.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalTransport.ts#L1)
     - extracted provider-specific wallet connect transport
     - extracted nonce/signature verification transport
     - extracted signup/login transport wrappers
     - extracted logout API cleanup into a dedicated helper
-  - Updated [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1)
+  - Updated [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1)
     - removed inline provider request branches and auth transport calls
     - kept only modal-local UI state, store mutation, GTM tracking, and step transitions
     - kept `walletConnectReady` as a UI-only readiness flag for button state
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - recorded `walletModalTransport.ts` as the canonical async transport boundary
 - Validation:
   - `npm run check`: PASS
@@ -7886,11 +7886,11 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 00:24:00 +0900] FINISH arena-game-state-bridge-tracking-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep pushing self-contained refactor slices while preserving the arena performance path and avoid mixing unrelated WIP
 - What changed:
-  - Added [arenaGameStateBridge.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaGameStateBridge.ts#L1)
+  - Added [arenaGameStateBridge.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaGameStateBridge.ts#L1)
     - centralizes repeated `gameState.update(...)` patches used by arena shell, phase, battle, result, and match wiring
     - owns shared `squadConfig`, `arenaView`, analysis projection, hypothesis/position sync, battle bootstrap/tick/result, and resolved progression writes
     - makes the current arena route self-contained again by tracking the bridge file that the controller wiring already expects
@@ -7904,15 +7904,15 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 00:39:00 +0900] FINISH arena-scene-host-lazy-entry-cut-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep pushing self-contained performance refactor slices without mixing the unrelated wallet/auth WIP
 - What changed:
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
-    - removed the eager route-level import of [ArenaMatchScene.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ArenaMatchScene.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
+    - removed the eager route-level import of [ArenaMatchScene.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ArenaMatchScene.svelte#L1)
     - now lazily loads the scene shell only after the app leaves the guaranteed `lobby/draft` bootstrap state
     - keeps lobby and squad-config phases on the cheap initial route path while preserving the existing scene contract once the match actually starts
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented the route-level lazy policy for `ArenaMatchScene.svelte` and the bootstrap assumption it depends on
 - Validation:
   - `npm run check`: PASS
@@ -7927,17 +7927,17 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 01:42:00 +0900] FINISH arena-ui-state-bridge-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep shrinking arena route assembly after the game-state bridge while preserving layout and push each safe slice
 - What changed:
-  - Added [arenaUiStateBridge.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaUiStateBridge.ts#L1)
+  - Added [arenaUiStateBridge.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaUiStateBridge.ts#L1)
     - centralized route-local UI shell state for `rewardState`, `resultData`, `floatingWords`, `arenaParticles`, and `showMarkers`
     - gives visual-effects runtime, result controller, and chart controller a shared mutation surface instead of repeated local setter lambdas
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - moved visual-effects wiring, reward reset, result-state wiring, and marker visibility wiring onto the canonical UI-state bridge
     - kept scene/layout markup untouched while reducing route-local state mutation glue further
-- Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+- Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `arenaUiStateBridge` as the canonical owner for arena route local UI shell state
 - Validation:
   - `npm run check`: PASS
@@ -7949,17 +7949,17 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 01:56:00 +0900] FINISH arena-phase-effects-runtime-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep reducing arena route controller assembly without changing layout/position and continue pushing safe slices
 - What changed:
-  - Added [arenaPhaseEffectsRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaPhaseEffectsRuntime.ts#L1)
+  - Added [arenaPhaseEffectsRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaPhaseEffectsRuntime.ts#L1)
     - moved `draft/analysis/hypothesis/preview/battle` entry choreography into a dedicated runtime
     - owns live-event start, deploy/review/battle speech loops, draft reset effects, preview confirm feed, and related audio/juice hooks
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - rewired `arenaPhaseController` and `arenaBattleController` to consume the canonical phase-effects runtime instead of route-local lambdas
     - removed repeated phase-entry `safeTimeout()` choreography from the route while keeping scene/layout markup unchanged
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `arenaPhaseEffectsRuntime` as the canonical owner for arena phase entry effects
 - Validation:
   - `npm run check`: pending
@@ -7971,19 +7971,19 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: IN PROGRESS
 
 ## [2026-03-09 02:34:00 +0900] FINISH arena-phase-runtime-bundle-land-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep pushing self-contained arena refactor slices, resolve the remaining runtime-bundle type drift, and avoid mixing the unrelated position-sizer WIP
 - What changed:
-  - Added [arenaPhaseRuntimeBundle.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaPhaseRuntimeBundle.ts#L1)
+  - Added [arenaPhaseRuntimeBundle.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaPhaseRuntimeBundle.ts#L1)
     - canonicalized the assembly of `battlePresentationRuntime`, `analysisPresentationRuntime`, `phaseEffectsRuntime`, `phaseController`, and `battleController`
     - owns `clearBattleSession()` and `destroy()` boundaries for the bundled arena phase stack
-  - Added [arenaPhaseEffectsRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaPhaseEffectsRuntime.ts#L1)
+  - Added [arenaPhaseEffectsRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaPhaseEffectsRuntime.ts#L1)
     - owns `DRAFT/ANALYSIS/HYPOTHESIS/PREVIEW/BATTLE` entry choreography, feed/audio hooks, and preview-confirm/battle-enter effects
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - removed route-local phase/battle runtime construction and rewired the page through the canonical phase runtime bundle
     - switched shell cleanup to `arenaPhaseRuntimeBundle.clearBattleSession()` and `arenaPhaseRuntimeBundle.destroy()`
-  - Updated [arenaBattleFeedRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/feed/arenaBattleFeedRuntime.ts#L1), [arenaAnalysisPresentationRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaAnalysisPresentationRuntime.ts#L1), and [arenaGameStateBridge.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaGameStateBridge.ts#L1)
+  - Updated [arenaBattleFeedRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/feed/arenaBattleFeedRuntime.ts#L1), [arenaAnalysisPresentationRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaAnalysisPresentationRuntime.ts#L1), and [arenaGameStateBridge.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaGameStateBridge.ts#L1)
     - widened feed-direction input at the runtime edge but normalized back to canonical `Direction` before store writes
     - exported the arena game-state bridge contract so `applyAnalysisProjection` no longer degrades to `unknown` across the runtime bundle boundary
 - Validation:
@@ -7996,17 +7996,17 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 03:02:00 +0900] FINISH phase-2-profile-projection-direct-imports-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep reducing compatibility-layer usage for the internal web/server split and keep pushing narrow slices
 - What changed:
-  - Updated [signals/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/signals/+page.svelte#L1), [WarRoom.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/terminal/WarRoom.svelte#L1), and [terminalCommunityRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/terminal/terminalCommunityRuntime.ts#L1)
-    - moved `incrementTrackedSignals()` imports off the wide compatibility aggregate and onto [userProfileProjectionStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/userProfileProjectionStore.ts#L1)
-  - Updated [hydration.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/hydration.ts#L1) and [copyTradeStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/copyTradeStore.ts#L1)
+  - Updated [signals/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/signals/+page.svelte#L1), [WarRoom.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/terminal/WarRoom.svelte#L1), and [terminalCommunityRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/terminal/terminalCommunityRuntime.ts#L1)
+    - moved `incrementTrackedSignals()` imports off the wide compatibility aggregate and onto [userProfileProjectionStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/userProfileProjectionStore.ts#L1)
+  - Updated [hydration.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/hydration.ts#L1) and [copyTradeStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/copyTradeStore.ts#L1)
     - moved `hydrateUserProfile()` imports onto the projection authority store directly
-  - Updated [userProfileStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/userProfileStore.ts#L1)
+  - Updated [userProfileStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/userProfileStore.ts#L1)
     - removed projection re-exports so the file is once again just the compatibility aggregate plus `profileStats`
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - recorded that projection mutations and hydration must come from `userProfileProjectionStore.ts`, not the aggregate barrel
 - Validation:
   - `npm run check`: PASS
@@ -8014,26 +8014,26 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run docs:check`: PASS
   - `npm run gate`: PASS
 - Residual risks:
-  - [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1) still uses the aggregate because it needs combined projection + derived stats
+  - [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1) still uses the aggregate because it needs combined projection + derived stats
   - unrelated untracked `PositionSizerPanel.svelte` and `positionSizer.ts` WIP remain outside this slice
 - Status: DONE
 
 ## [2026-03-09 02:18:00 +0900] FINISH phase-2-auth-api-normalizer-extraction-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the internal split, continue pushing narrow slices, and make the browser auth wrapper thinner after wallet-modal transport extraction
 - What changed:
-  - Added [authApiNormalizer.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1)
+  - Added [authApiNormalizer.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1)
     - extracted legacy auth envelope parsing and timestamp coercion
     - extracted fallback auth-user shaping for register/login responses
     - extracted nonce, wallet-verify, session, and logout response normalization into one canonical browser-side boundary
-  - Updated [auth.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/api/auth.ts#L1)
+  - Updated [auth.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/api/auth.ts#L1)
     - removed inline auth-user/session/nonce/verify parsing helpers
     - reduced the wrapper to fetch transport plus calls into the shared normalizer
-  - Updated [authSessionStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/authSessionStore.ts#L1)
+  - Updated [authSessionStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/authSessionStore.ts#L1)
     - stopped depending on API-local auth type aliases
-    - now reads `AuthUser` directly from [contracts/auth.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/auth.ts#L1)
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+    - now reads `AuthUser` directly from [contracts/auth.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/auth.ts#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1) and [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - recorded `authApiNormalizer.ts` as the canonical browser auth normalization boundary
 - Validation:
   - `npm run check`: PASS
@@ -8048,37 +8048,37 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 16:58:00 +0900] FINISH arena-route-lifecycle-extraction-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: wrap arena toward a finishable state without changing layout/position and keep narrowing route responsibilities
 - What changed:
-  - Added [arenaRouteLifecycle.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/arena/controllers/arenaRouteLifecycle.ts#L1)
+  - Added [arenaRouteLifecycle.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/arena/controllers/arenaRouteLifecycle.ts#L1)
     - extracted scene lazy import warmup, `setPhaseInitCallback()` mount, and `keydown` listener mount/destroy into one canonical route lifecycle runtime
-  - Updated [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1)
+  - Updated [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1)
     - removed route-local `ensureArenaMatchSceneComponent()` and direct phase-init/key listener lifecycle wiring
     - kept the arena page as a state/props coordinator while preserving layout and scene lazy policy
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `arenaRouteLifecycle.ts` as the canonical owner for arena route lazy/lifecycle wiring
 - Validation:
-  - `npm run check`: 0 errors, 5 warnings from unrelated local WIP in [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1) and [CommentSection.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/community/CommentSection.svelte#L1)
+  - `npm run check`: 0 errors, 5 warnings from unrelated local WIP in [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1) and [CommentSection.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/community/CommentSection.svelte#L1)
   - `npm run build`: PASS (same unrelated local warnings surfaced by Vite)
 - Residual risks:
-  - [arena/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena/+page.svelte#L1) still owns large state declaration blocks and controller construction, even though route lifecycle is now externalized
+  - [arena/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena/+page.svelte#L1) still owns large state declaration blocks and controller construction, even though route lifecycle is now externalized
   - unrelated dirty wallet/community WIP remains outside this slice and blocks a clean global warning budget locally
 - Status: DONE
 
 ## [2026-03-09 17:01:42 +0900] FINISH signals-community-detail-routes-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep going on the current refactor/design path, finish the active slice correctly, keep pushing narrow slices, and update canonical docs / CLAUDE boundaries
 - What changed:
-  - Added [signals/[postId]/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/signals/[postId]/+page.svelte#L1), [creator/[userId]/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/creator/[userId]/+page.svelte#L1), [CommentSection.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/community/CommentSection.svelte#L1), [creatorApi.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/api/creatorApi.ts#L1), [comment.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/comment.ts#L1), [creator.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/contracts/creator.ts#L1), and [0009_community_comments.sql](/Users/ej/Downloads/maxidoge-clones/frontend/db/migrations/0009_community_comments.sql#L1)
+  - Added [signals/[postId]/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/signals/[postId]/+page.svelte#L1), [creator/[userId]/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/creator/[userId]/+page.svelte#L1), [CommentSection.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/community/CommentSection.svelte#L1), [creatorApi.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/api/creatorApi.ts#L1), [comment.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/comment.ts#L1), [creator.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/contracts/creator.ts#L1), and [0009_community_comments.sql](/Users/ej/Downloads/wtd-clones/frontend/db/migrations/0009_community_comments.sql#L1)
     - landed the server-backed signal detail, comments, and creator drilldown routes
-  - Updated [SignalPostCard.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/community/SignalPostCard.svelte#L1), [signals/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/signals/+page.svelte#L1), [communityApi.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/api/communityApi.ts#L1), [communityStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/communityStore.ts#L1), [communityMapping.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/server/communityMapping.ts#L1), [community/posts/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/community/posts/+server.ts#L1), [community/posts/[id]/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/community/posts/[id]/+server.ts#L1), [community/posts/[id]/comments/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/community/posts/[id]/comments/+server.ts#L1), [community/posts/[id]/comments/[commentId]/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/community/posts/[id]/comments/[commentId]/+server.ts#L1), and [creator/[userId]/+server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/api/creator/[userId]/+server.ts#L1)
+  - Updated [SignalPostCard.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/community/SignalPostCard.svelte#L1), [signals/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/signals/+page.svelte#L1), [communityApi.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/api/communityApi.ts#L1), [communityStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/communityStore.ts#L1), [communityMapping.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/server/communityMapping.ts#L1), [community/posts/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/community/posts/+server.ts#L1), [community/posts/[id]/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/community/posts/[id]/+server.ts#L1), [community/posts/[id]/comments/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/community/posts/[id]/comments/+server.ts#L1), [community/posts/[id]/comments/[commentId]/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/community/posts/[id]/comments/[commentId]/+server.ts#L1), and [creator/[userId]/+server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/api/creator/[userId]/+server.ts#L1)
     - centralized post/comment row mapping and exposed canonical detail/comment/creator APIs
-  - Updated [ChartVerdictOverlay.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/terminal/ChartVerdictOverlay.svelte#L1), [TerminalChartViewport.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/terminal/TerminalChartViewport.svelte#L1), [TerminalMobileLayout.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/terminal/TerminalMobileLayout.svelte#L1), [TerminalTabletLayout.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/terminal/TerminalTabletLayout.svelte#L1), [TerminalDesktopLayout.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/terminal/TerminalDesktopLayout.svelte#L1), [terminal/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/terminal/+page.svelte#L1), [terminalSessionRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/terminal/terminalSessionRuntime.ts#L1), [terminalViewModel.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/terminal/terminalViewModel.ts#L1), and [copyTradeStore.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/stores/copyTradeStore.ts#L1)
+  - Updated [ChartVerdictOverlay.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/terminal/ChartVerdictOverlay.svelte#L1), [TerminalChartViewport.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/terminal/TerminalChartViewport.svelte#L1), [TerminalMobileLayout.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/terminal/TerminalMobileLayout.svelte#L1), [TerminalTabletLayout.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/terminal/TerminalTabletLayout.svelte#L1), [TerminalDesktopLayout.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/terminal/TerminalDesktopLayout.svelte#L1), [terminal/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/terminal/+page.svelte#L1), [terminalSessionRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/terminal/terminalSessionRuntime.ts#L1), [terminalViewModel.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/terminal/terminalViewModel.ts#L1), and [copyTradeStore.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/stores/copyTradeStore.ts#L1)
     - added stale-scan UX and a canonical scan-to-copy-trade prefill path from the chart verdict overlay
-  - Updated [docs/page-specs/signals-page.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/page-specs/signals-page.md#L1), [docs/page-specs/signals-detail-page.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/page-specs/signals-detail-page.md#L1), [docs/page-specs/creator-page.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/page-specs/creator-page.md#L1), [docs/product-specs/signals.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/product-specs/signals.md#L1), [docs/README.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/README.md#L1), [ARCHITECTURE.md](/Users/ej/Downloads/maxidoge-clones/frontend/ARCHITECTURE.md#L1), [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1), [check-docs-context.sh](/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/check-docs-context.sh#L1), and [refresh-generated-context.mjs](/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/refresh-generated-context.mjs#L1)
+  - Updated [docs/page-specs/signals-page.md](/Users/ej/Downloads/wtd-clones/frontend/docs/page-specs/signals-page.md#L1), [docs/page-specs/signals-detail-page.md](/Users/ej/Downloads/wtd-clones/frontend/docs/page-specs/signals-detail-page.md#L1), [docs/page-specs/creator-page.md](/Users/ej/Downloads/wtd-clones/frontend/docs/page-specs/creator-page.md#L1), [docs/product-specs/signals.md](/Users/ej/Downloads/wtd-clones/frontend/docs/product-specs/signals.md#L1), [docs/README.md](/Users/ej/Downloads/wtd-clones/frontend/docs/README.md#L1), [ARCHITECTURE.md](/Users/ej/Downloads/wtd-clones/frontend/ARCHITECTURE.md#L1), [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1), [check-docs-context.sh](/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/check-docs-context.sh#L1), and [refresh-generated-context.mjs](/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/refresh-generated-context.mjs#L1)
     - promoted the new routes into canonical docs, route metadata, and API grouping
 - Validation:
   - `npm run docs:refresh`: PASS
@@ -8090,18 +8090,18 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 02:18:00 +0900] FINISH passport-learning-panel-controller-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/passport-learning-panel
 - Request: keep pushing safe refactor slices while the main worktree has unrelated staged wallet/auth WIP
 - What changed:
-  - Added [passportLearningPanelController.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/passport/passportLearningPanelController.ts#L1)
+  - Added [passportLearningPanelController.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/passport/passportLearningPanelController.ts#L1)
     - centralizes passport learning-panel hydration, worker execution, retrain queue, and report generation side effects
     - owns shared loading/action/error message choreography so the route stops repeating the same async flow four times
     - provides a canonical `createPassportLearningPanelState()` initializer for the route-owned panel state object
-  - Updated [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1)
+  - Updated [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1)
     - collapsed multiple learning panel state atoms into one panel state object with derived aliases
     - moved learning action handlers to the new controller while keeping the existing template and styling intact
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `passportLearningPanelController.ts` as the canonical passport learning side-effect boundary
 - Validation:
   - `npm run check`: PASS
@@ -8113,22 +8113,22 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 11:05:00 +0900] FINISH passport-learning-panel-view-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/passport-learning-panel
 - Request: continue the isolated passport refactor by removing learning-panel markup and display glue from the route shell
 - What changed:
-  - Added [PassportLearningPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportLearningPanel.svelte#L1)
+  - Added [PassportLearningPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportLearningPanel.svelte#L1)
     - moved the entire `AI LEARNING PIPELINE` section into a dedicated presentational boundary
     - keeps button wiring, report/dataset/job/eval rendering, and responsive layout local to the component instead of the route shell
-  - Added [passportLearningPanelViewModel.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/passport/passportLearningPanelViewModel.ts#L1)
+  - Added [passportLearningPanelViewModel.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/passport/passportLearningPanelViewModel.ts#L1)
     - centralizes pure pipeline display calculations (`pipeline state`, `status line`, `ops connected`)
     - gives the component a canonical pure helper instead of rebuilding those strings in the route
-  - Updated [passportLearningPanelController.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/passport/passportLearningPanelController.ts#L1)
+  - Updated [passportLearningPanelController.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/passport/passportLearningPanelController.ts#L1)
     - exported a controller interface so the route/component contract is typed and reusable
-  - Updated [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1)
+  - Updated [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1)
     - removed learning-panel markup, detail lists, and learning-only derived aliases from the route
     - kept only panel state ownership, controller construction, and mount hydration in the page shell
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented the new passport learning panel view/model boundary as canonical
 - Validation:
   - `npm run check`: PASS
@@ -8140,17 +8140,17 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-09 21:34:47 +0900] FINISH wallet-modal-runtime-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep pushing narrow slices toward the web/server split, close the active wallet modal slice correctly, and keep the canonical redesign record up to date
 - What changed:
-  - Added [walletModalRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalRuntime.ts#L1)
+  - Added [walletModalRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalRuntime.ts#L1)
     - moved wallet modal async handlers for connect, sign, resolve, signup, and disconnect into a dedicated browser runtime boundary
     - centralized GTM wallet funnel tracking, header-title lookup, progress-step derivation, and legacy-step redirects so the component no longer owns those rules inline
-  - Updated [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1)
+  - Updated [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1)
     - reduced the component to modal-local input state, runtime wiring, and presentational markup
     - removed inline auth funnel handlers and delegated step-state calculations to the runtime helpers
-  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
+  - Updated [phase-2-identity-settings-bootstrap-cutover-2026-03-08.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/phase-2-identity-settings-bootstrap-cutover-2026-03-08.md#L1)
     - marked the wallet modal runtime boundary as landed in Phase 2
     - narrowed the remaining blocker from “wallet auth UI state machine” to “profile-step rendering and modal-local input atoms”
 - Validation:
@@ -8160,57 +8160,57 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run ctx:check -- --strict`: PASS
   - `npm run gate`: PASS
 - Residual risks:
-  - [WalletModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/modals/WalletModal.svelte#L1) still owns the profile-step markup and modal-local input atoms, so the wallet auth browser seam is cleaner but not fully presentational yet
+  - [WalletModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/modals/WalletModal.svelte#L1) still owns the profile-step markup and modal-local input atoms, so the wallet auth browser seam is cleaner but not fully presentational yet
   - unrelated local `CLAUDE.md`, arena chart, passport, and arena-v2 WIP was stashed out of this slice to keep the push clean
 - Status: DONE
 
 ## [2026-03-09 21:39:25 +0900] FINISH passport-header-nav-chrome-20260309 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep closing narrow refactor slices while preserving the larger web/server redesign direction and record the canonical boundary changes
 - What changed:
-  - Added [PassportHeaderSection.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportHeaderSection.svelte#L1)
+  - Added [PassportHeaderSection.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportHeaderSection.svelte#L1)
     - moved passport profile header, avatar picker, portfolio hero, and verified-stamp markup/CSS out of the route shell
-  - Added [PassportNavChrome.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/passport/PassportNavChrome.svelte#L1)
+  - Added [PassportNavChrome.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/passport/PassportNavChrome.svelte#L1)
     - moved passport tab bar, quick-action rail, and focus-strip markup/CSS out of the route shell
-  - Updated [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1)
+  - Updated [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1)
     - reduced the route shell from `2514 -> 1694` lines by delegating header/nav chrome to dedicated components
     - kept tab state, holdings runtime, learning controller, and tab-body authority in the route
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - promoted `PassportHeaderSection.svelte` and `PassportNavChrome.svelte` to canonical passport chrome boundaries
     - refreshed the `/passport` route size and structure notes to match the current split
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run build`: PASS
 - Residual risks:
-  - [passport/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/passport/+page.svelte#L1) still owns holdings orchestration, tab state, and the remaining tab-body content blocks
+  - [passport/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/passport/+page.svelte#L1) still owns holdings orchestration, tab state, and the remaining tab-body content blocks
   - unrelated arena chart and arena-v2 WIP remains outside this slice and should stay out of the commit
 - Status: DONE
 
 ## [2026-03-10 00:32:00 +0900] FINISH usability-foundation-sprint-0-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue from the usability redesign spec and implementation plan by landing Sprint 0 as an additive shared foundation slice without touching unrelated arena/passport WIP
 - What changed:
-  - Added [usability-foundation-sprint-0-2026-03-10.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/usability-foundation-sprint-0-2026-03-10.md#L1)
-    - fixed Sprint 0 as the implementation authority that bridges [usability-redesign-spec-2026-03-09.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md#L1) to actual shared component files
+  - Added [usability-foundation-sprint-0-2026-03-10.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/usability-foundation-sprint-0-2026-03-10.md#L1)
+    - fixed Sprint 0 as the implementation authority that bridges [usability-redesign-spec-2026-03-09.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md#L1) to actual shared component files
     - constrained the slice to additive shared primitives only so existing arena chart and passport WIP stayed out of scope
-  - Added [freshness.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/freshness.ts#L1)
+  - Added [freshness.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/freshness.ts#L1)
     - introduced the canonical freshness contract (`fresh / aging / stale / unknown`)
     - centralized timestamp normalization and age labeling so route shells do not have to rebuild data-age heuristics inline
-  - Added shared usability primitives under [src/components/shared](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared#L1)
-    - [SkeletonLoader.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/SkeletonLoader.svelte#L1)
-    - [FreshnessIndicator.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/FreshnessIndicator.svelte#L1)
-    - [InlineBanner.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/InlineBanner.svelte#L1)
-    - [CriticalModal.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/CriticalModal.svelte#L1)
-    - [OnboardingHint.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/OnboardingHint.svelte#L1)
-    - [ZeroState.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/ZeroState.svelte#L1)
-    - [PositionRiskBar.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/shared/PositionRiskBar.svelte#L1)
+  - Added shared usability primitives under [src/components/shared](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared#L1)
+    - [SkeletonLoader.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/SkeletonLoader.svelte#L1)
+    - [FreshnessIndicator.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/FreshnessIndicator.svelte#L1)
+    - [InlineBanner.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/InlineBanner.svelte#L1)
+    - [CriticalModal.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/CriticalModal.svelte#L1)
+    - [OnboardingHint.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/OnboardingHint.svelte#L1)
+    - [ZeroState.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/ZeroState.svelte#L1)
+    - [PositionRiskBar.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/shared/PositionRiskBar.svelte#L1)
     - established reusable presentation-first boundaries for loading, freshness, important banners, destructive confirmation, progressive hints, page zero states, and position risk display
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - recorded the new Sprint 0 shared usability foundation as canonical
     - updated the shared component inventory and freshness utility guidance
-  - Updated [docs/exec-plans/active/README.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/README.md#L1) and [docs/exec-plans/index.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/index.md#L1)
+  - Updated [docs/exec-plans/active/README.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/README.md#L1) and [docs/exec-plans/index.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/index.md#L1)
     - registered the new active Sprint 0 plan so later usability sprints can link to it instead of re-describing the same foundation layer
 - Validation:
   - `npm run check`: PASS
@@ -8224,28 +8224,28 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Status: DONE
 
 ## [2026-03-10 03:28:00 +0900] FINISH usability-navigation-sprint-1-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: continue the usability redesign by landing the Sprint 1 navigation slice, keep the commit narrow, and preserve unrelated arena/terminal WIP outside the staged scope
 - What changed:
-  - Added [usability-navigation-sprint-1-2026-03-10.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/usability-navigation-sprint-1-2026-03-10.md#L1)
+  - Added [usability-navigation-sprint-1-2026-03-10.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/usability-navigation-sprint-1-2026-03-10.md#L1)
     - fixed Sprint 1 as the navigation authority between the usability redesign spec and actual layout/header code
     - defined the new responsibility split: desktop/tablet header chrome vs mobile bottom navigation
-  - Added [deepLinks.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/deepLinks.ts#L1)
+  - Added [deepLinks.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/deepLinks.ts#L1)
     - introduced canonical builders for terminal, signals, passport, and arena links
     - established a shared copy-trade terminal handoff URL builder so later route slices do not rebuild querystrings ad hoc
-  - Added [MobileBottomNav.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1)
+  - Added [MobileBottomNav.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1)
     - moved mobile primary navigation into a fixed 4-tab bottom bar (`Terminal | Arena | Signals | Passport`)
     - mapped badge counts to tracked signals and open positions without reusing the old status-bar layout
-  - Updated [Header.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte#L1)
+  - Updated [Header.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte#L1)
     - reduced the primary nav set to `Terminal | Arena | Signals | Passport`, with home kept at the logo
     - removed the old mobile tab strip and collapsed the header back to compact top chrome on phones
     - mapped secondary route highlighting so `/arena-war` and `/arena-v2` resolve to `Arena`, and `/settings` / `/agents` resolve to `Passport`
-  - Updated [routes/+layout.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+layout.svelte#L1)
-    - mounted [MobileBottomNav.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1) for `<768px`
-    - kept [BottomBar.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/BottomBar.svelte#L1) as the non-mobile status bar
+  - Updated [routes/+layout.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+layout.svelte#L1)
+    - mounted [MobileBottomNav.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte#L1) for `<768px`
+    - kept [BottomBar.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/BottomBar.svelte#L1) as the non-mobile status bar
     - corrected mobile app shell padding so the removed header tab strip no longer reserves dead top space and the new bottom nav gets dedicated bottom space
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1), [docs/exec-plans/active/README.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/README.md#L1), and [docs/exec-plans/index.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/index.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1), [docs/exec-plans/active/README.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/README.md#L1), and [docs/exec-plans/index.md](/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/index.md#L1)
     - registered the new navigation sprint authority
     - recorded `deepLinks.ts` and `MobileBottomNav.svelte` as canonical boundaries
 - Validation:
@@ -8255,23 +8255,23 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run ctx:check -- --strict`: PASS
   - `npm run gate`: PASS
 - Residual risks:
-  - signals/detail/creator pages still build copy-trade handoff URLs inline and should migrate to [deepLinks.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/deepLinks.ts#L1) in a follow-up slice
+  - signals/detail/creator pages still build copy-trade handoff URLs inline and should migrate to [deepLinks.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/deepLinks.ts#L1) in a follow-up slice
   - unrelated local terminal and arena chart WIP remains outside this sprint and should stay out of the commit
 - Status: DONE
 
 ## [2026-03-10 01:47:00 +0900] FINISH chart-position-sizer-contract-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep closing the active chart WIP in narrow slices, preserve the existing market-pulse/header work, and lock the position sizer to a clean engine/panel boundary
 - What changed:
-  - Updated [positionSizer.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/engine/positionSizer.ts#L1)
+  - Updated [positionSizer.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/engine/positionSizer.ts#L1)
     - added `takeProfit` input so risk-reward is computed in the engine instead of mutating results in the panel
     - replaced free-form warning strings with structured warning codes plus a single formatter path
     - normalized final position/risk outputs after caps so the engine owns the complete sizing result
-  - Updated [PositionSizerPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/PositionSizerPanel.svelte#L1)
+  - Updated [PositionSizerPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/PositionSizerPanel.svelte#L1)
     - removed the inline `res.rr` mutation and delegated all sizing math to the engine
     - kept the panel focused on input controls, quantity handoff, and warning display only
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `positionSizer.ts` as the canonical sizing math/RR/warning-code boundary
     - documented `PositionSizerPanel.svelte` as the canonical presentation boundary for the chart size panel
 - Validation:
@@ -8279,381 +8279,381 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run check:budget`: PASS
   - `node node_modules/.bin/vite build`: PASS
 - Residual risks:
-  - unrelated dirty chart WIP in [ChartHeaderBar.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartHeaderBar.svelte#L1), [ChartIndicatorStrip.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartIndicatorStrip.svelte#L1), [MarketPulseBadge.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/MarketPulseBadge.svelte#L1), and [chartActionRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartActionRuntime.ts#L1) remains intentionally outside this slice
-  - unrelated untracked WIP in [docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md](/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains outside this slice
+  - unrelated dirty chart WIP in [ChartHeaderBar.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartHeaderBar.svelte#L1), [ChartIndicatorStrip.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartIndicatorStrip.svelte#L1), [MarketPulseBadge.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/MarketPulseBadge.svelte#L1), and [chartActionRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartActionRuntime.ts#L1) remains intentionally outside this slice
+  - unrelated untracked WIP in [docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md](/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/usability-redesign-spec-2026-03-09.md#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains outside this slice
 - Status: DONE
 
 ## [2026-03-10 19:32:38 +0900] FINISH chart-agent-overlay-chrome-split-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep narrowing the live chart hotspot, preserve runtime behavior, and split `ChartAgentOverlayChrome.svelte` into smaller presentational boundaries without touching unrelated route WIP
 - What changed:
-  - Added [chartAgentOverlayChromeContracts.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartAgentOverlayChromeContracts.ts#L1)
+  - Added [chartAgentOverlayChromeContracts.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartAgentOverlayChromeContracts.ts#L1)
     - fixed the shared prop surface for the overlay parent and its new meta/action child boundaries
     - removed repeated local overlay prop declarations so future chrome slices cannot drift independently
-  - Added [ChartAgentMetaOverlay.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentMetaOverlay.svelte#L1)
+  - Added [ChartAgentMetaOverlay.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentMetaOverlay.svelte#L1)
     - moved scale tools, indicator legend, loading overlay, and error badge into a dedicated meta HUD boundary
     - normalized the legend rendering into a single derived entry list instead of repeating eight inline `#if` blocks
-  - Added [ChartAgentActionOverlay.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentActionOverlay.svelte#L1)
+  - Added [ChartAgentActionOverlay.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentActionOverlay.svelte#L1)
     - moved first-scan CTA, trade CTA bar, drawing notice, chart notice, position sizer dock, position badge, and drag indicator into a dedicated action HUD boundary
     - localized position label/risk-reward derivation so nullability does not leak into markup
-  - Updated [ChartAgentOverlayChrome.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentOverlayChrome.svelte#L1)
+  - Updated [ChartAgentOverlayChrome.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentOverlayChrome.svelte#L1)
     - reduced the component from `592` lines to `90` lines by leaving only composition and callback wiring
     - preserved the existing overlay stacking order by delegating to the new meta/action children in the same render order
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented the new overlay contract, meta HUD boundary, and action HUD boundary as canonical chart paths
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run gate`: PASS
   - build snapshot:
-    - [ChartPanel.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `49.16 kB`
-    - [ChartAgentSurface.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `47.99 kB`
-    - [terminal/_page.svelte.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/entries/pages/terminal/_page.svelte.js) `185.21 kB`
+    - [ChartPanel.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `49.16 kB`
+    - [ChartAgentSurface.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `47.99 kB`
+    - [terminal/_page.svelte.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/entries/pages/terminal/_page.svelte.js) `185.21 kB`
 - Residual risks:
-  - [ChartAgentActionOverlay.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentActionOverlay.svelte#L1) is now the larger presentational hotspot inside the chart overlay stack
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - [ChartAgentActionOverlay.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentActionOverlay.svelte#L1) is now the larger presentational hotspot inside the chart overlay stack
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 20:12:59 +0900] FINISH chart-agent-action-overlay-split-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep narrowing the chart overlay hotspot, preserve the current render order, and split `ChartAgentActionOverlay.svelte` into smaller presentational surfaces without touching unrelated route WIP
 - What changed:
-  - Updated [chartAgentOverlayChromeContracts.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartAgentOverlayChromeContracts.ts#L1)
+  - Updated [chartAgentOverlayChromeContracts.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartAgentOverlayChromeContracts.ts#L1)
     - extended the shared overlay contract with dedicated trade-HUD and status-HUD prop surfaces
     - kept the overlay child prop boundaries centralized instead of letting each new HUD define its own local contract
-  - Added [ChartAgentTradeHud.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentTradeHud.svelte#L1)
+  - Added [ChartAgentTradeHud.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentTradeHud.svelte#L1)
     - moved the overlay close button, first-scan CTA, and active trade CTA bar into a dedicated trade-action HUD boundary
     - preserved existing CTA positioning and mobile hiding behavior
-  - Added [ChartAgentStatusHud.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentStatusHud.svelte#L1)
+  - Added [ChartAgentStatusHud.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentStatusHud.svelte#L1)
     - moved the drawing notice, chart notice, position sizer dock, position badge, and drag indicator into a dedicated status HUD boundary
     - kept the local position labels and risk-reward derivation next to the markup that consumes them
-  - Updated [ChartAgentActionOverlay.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentActionOverlay.svelte#L1)
+  - Updated [ChartAgentActionOverlay.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentActionOverlay.svelte#L1)
     - reduced the component from `368` lines to `49` lines by leaving only composition and callback wiring
     - preserved the existing action stack order by rendering trade HUD first and status HUD second
-  - Updated [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
+  - Updated [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
     - restored the local module type aliases for chart controller/support-runtime dynamic imports so `gate` keeps the `ChartPanel` config surface contextually typed
     - prevented the missing-module-type regression from cascading into dozens of implicit-`any` errors during the gate path
-  - Included [chartClientRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartClientRuntime.ts#L1)
+  - Included [chartClientRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartClientRuntime.ts#L1)
     - staged the already-referenced client runtime assembly helper into git so clean checkouts match the existing `ChartPanel` import graph and documented canonical path
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `ChartAgentActionOverlay.svelte` as an action-stack composition boundary
     - documented the new trade/status HUD components as canonical chart overlay paths
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run gate`: PASS
 - Residual risks:
-  - [ChartAgentStatusHud.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentStatusHud.svelte#L1) now holds most of the remaining action-stack presentation weight
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - [ChartAgentStatusHud.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentStatusHud.svelte#L1) now holds most of the remaining action-stack presentation weight
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 21:05:00 +0900] FINISH chart-panel-state-context-split-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep reducing ChartPanel wiring drift, preserve layout/interaction, and extract the repeated series-context payloads without touching unrelated route WIP
 - What changed:
-  - Added [chartPanelStateContext.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartPanelStateContext.ts#L1)
+  - Added [chartPanelStateContext.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartPanelStateContext.ts#L1)
     - centralized indicator series-ref projection used by the support runtime viewport path
     - centralized pane-index projection so derivatives pane refs and chart-local pane refs share one contract
     - centralized data-runtime series context shaping and indicator accumulator snapshot read
-  - Updated [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
+  - Updated [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
     - replaced inline `getSeriesRefs()` and `getPaneIndexes()` object assembly with `chartPanelStateContext` helpers
     - replaced inline `data.getSeriesContext()` payload shaping with the canonical helper
     - replaced the local indicator accumulator snapshot object with `readChartIndicatorState()`
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `chartPanelStateContext.ts` as the canonical ChartPanel series/pane/state projection boundary
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run build`: PASS
   - `npm run gate`: PASS
   - build snapshot:
-    - [ChartPanel.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `55.05 kB`
-    - [arena/_page.svelte.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/entries/pages/arena/_page.svelte.js) `141.96 kB`
-    - [terminal/_page.svelte.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/entries/pages/terminal/_page.svelte.js) `185.21 kB`
+    - [ChartPanel.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `55.05 kB`
+    - [arena/_page.svelte.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/entries/pages/arena/_page.svelte.js) `141.96 kB`
+    - [terminal/_page.svelte.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/entries/pages/terminal/_page.svelte.js) `185.21 kB`
 - Residual risks:
-  - [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1) still owns a wide runtime-bundle option assembly and controller wiring path
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1) still owns a wide runtime-bundle option assembly and controller wiring path
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 22:45:00 +0900] FINISH chart-panel-runtime-options-split-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep reducing ChartPanel runtime wiring drift, preserve layout/interaction, and move the remaining runtime-bundle option assembly out of the panel
 - What changed:
-  - Added [chartPanelRuntimeOptions.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartPanelRuntimeOptions.ts#L1)
+  - Added [chartPanelRuntimeOptions.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartPanelRuntimeOptions.ts#L1)
     - centralized `position`, `tradingView`, `data`, and `bindings` runtime-bundle option shaping
     - centralized TradingView state-patch apply semantics and drag target mapping so `ChartPanel.svelte` no longer repeats those branchy object shapes inline
-  - Updated [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
+  - Updated [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1)
     - replaced the inline runtime option assembly with helper builders
     - kept the runtime ownership in the panel while shrinking direct option-shape duplication
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `chartPanelRuntimeOptions.ts` as the canonical ChartPanel runtime option boundary
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run build`: PASS
   - build snapshot:
-    - [ChartPanel.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `63.76 kB`
-    - [arena/_page.svelte.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/entries/pages/arena/_page.svelte.js) `141.96 kB`
+    - [ChartPanel.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `63.76 kB`
+    - [arena/_page.svelte.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/entries/pages/arena/_page.svelte.js) `141.96 kB`
 - Residual risks:
-  - [ChartPanel.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/ChartPanel.svelte#L1) still owns controller assembly and client-runtime bootstrap wiring
+  - [ChartPanel.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/ChartPanel.svelte#L1) still owns controller assembly and client-runtime bootstrap wiring
   - this slice improved ownership but increased `ChartPanel.js` from `55.05 kB` to `58.29 kB`, so the next slice should bias toward real lazy boundaries or moving orchestration out of the panel rather than adding more helper modules
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 23:20:00 +0900] FINISH chart-agent-status-hud-split-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep narrowing the chart overlay hotspot, preserve overlay order, and split `ChartAgentStatusHud.svelte` into smaller presentational HUD boundaries without touching unrelated route WIP
 - What changed:
-  - Added [ChartAgentDrawingStatusHud.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentDrawingStatusHud.svelte#L1)
+  - Added [ChartAgentDrawingStatusHud.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentDrawingStatusHud.svelte#L1)
     - moved the drawing notice, chart notice, and drag indicator into a dedicated drawing-status HUD boundary
     - kept the local derived drawing message next to the markup that consumes it
-  - Added [ChartAgentPositionHud.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentPositionHud.svelte#L1)
+  - Added [ChartAgentPositionHud.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentPositionHud.svelte#L1)
     - moved the position sizer dock, position badge, and risk-reward label surface into a dedicated position HUD boundary
     - kept the position-label formatting and `PositionSizerPanel` docking in one child surface
-  - Updated [ChartAgentStatusHud.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentStatusHud.svelte#L1)
+  - Updated [ChartAgentStatusHud.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentStatusHud.svelte#L1)
     - reduced the component to a composition boundary that renders drawing HUD first and position HUD second
     - removed the inline draw/position absolute-position markup so the status HUD only owns child order and shared prop handoff
-  - Updated [chartAgentOverlayChromeContracts.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartAgentOverlayChromeContracts.ts#L1)
+  - Updated [chartAgentOverlayChromeContracts.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartAgentOverlayChromeContracts.ts#L1)
     - extended the shared overlay contract with dedicated drawing-status and position-HUD prop surfaces
     - kept the overlay child prop boundary centralized instead of letting each new HUD define its own local contract
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `ChartAgentStatusHud.svelte` as a composition boundary
     - documented `ChartAgentDrawingStatusHud.svelte` and `ChartAgentPositionHud.svelte` as canonical overlay HUD paths
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run gate`: PASS
 - Residual risks:
-  - [ChartAgentSurface.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1) still owns the larger chart-surface presentation shell
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - [ChartAgentSurface.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1) still owns the larger chart-surface presentation shell
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 23:55:00 +0900] FINISH chart-toolbar-split-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep narrowing the chart presentation hotspot, preserve toolbar behavior, and split `ChartToolbar.svelte` into smaller presentational boundaries without touching unrelated route WIP
 - What changed:
-  - Added [chartToolbarCatalog.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartToolbarCatalog.ts#L1)
+  - Added [chartToolbarCatalog.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartToolbarCatalog.ts#L1)
     - centralized drawing tool categories, labels, and icon mappings
     - removed repeated category metadata from the toolbar render path
-  - Added [ChartToolbarIcon.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartToolbarIcon.svelte#L1)
+  - Added [ChartToolbarIcon.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartToolbarIcon.svelte#L1)
     - centralized the shared SVG icon switch used by the toolbar rail and category popover
     - removed duplicated icon markup between the main toolbar button surface and the popover list surface
-  - Added [ChartToolbarPopover.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartToolbarPopover.svelte#L1)
+  - Added [ChartToolbarPopover.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartToolbarPopover.svelte#L1)
     - moved category popover markup, styles, and selection affordance into a dedicated child boundary
     - kept the toolbar component focused on state ownership and button composition
-  - Updated [ChartToolbar.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartToolbar.svelte#L1)
+  - Updated [ChartToolbar.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartToolbar.svelte#L1)
     - reduced the component from `513` lines to `280` lines by delegating icon rendering and popover markup
     - kept `openCategory` and `activeModes` in the toolbar so behavior and last-selected tool memory stay unchanged
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `ChartToolbar.svelte`, `ChartToolbarPopover.svelte`, `ChartToolbarIcon.svelte`, and `chartToolbarCatalog.ts` as canonical chart toolbar paths
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run gate`: PASS
   - build snapshot:
-    - [ChartAgentSurface.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `46.28 kB`
-    - [arena/_page.svelte.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/entries/pages/arena/_page.svelte.js) `141.96 kB`
-    - [terminal/_page.svelte.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/entries/pages/terminal/_page.svelte.js) `185.21 kB`
+    - [ChartAgentSurface.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `46.28 kB`
+    - [arena/_page.svelte.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/entries/pages/arena/_page.svelte.js) `141.96 kB`
+    - [terminal/_page.svelte.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/entries/pages/terminal/_page.svelte.js) `185.21 kB`
 - Residual risks:
-  - [ChartHeaderBar.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartHeaderBar.svelte#L1) is now the larger remaining chart presentation hotspot
-  - [ChartAgentSurface.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1) still owns the chart-container shell and overlay child ordering
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - [ChartHeaderBar.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartHeaderBar.svelte#L1) is now the larger remaining chart presentation hotspot
+  - [ChartAgentSurface.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1) still owns the chart-container shell and overlay child ordering
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-11 00:15:00 +0900] FINISH chart-header-bar-split-20260311 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep narrowing the chart presentation hotspot, preserve header behavior, and split `ChartHeaderBar.svelte` into smaller presentational boundaries without touching unrelated route WIP
 - What changed:
-  - Added [chartHeaderBarContracts.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartHeaderBarContracts.ts#L1)
+  - Added [chartHeaderBarContracts.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartHeaderBarContracts.ts#L1)
     - centralized the summary/controls/meta child prop surfaces
     - removed repeated header prop typing from each new child boundary
-  - Added [ChartHeaderSummary.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartHeaderSummary.svelte#L1)
+  - Added [ChartHeaderSummary.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartHeaderSummary.svelte#L1)
     - moved the pair summary, 24h stats tooltip, token switch, and timeframe controls into a dedicated summary boundary
     - kept the price/timeframe formatting helpers close to the markup that consumes them
-  - Added [ChartHeaderControls.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartHeaderControls.svelte#L1)
+  - Added [ChartHeaderControls.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartHeaderControls.svelte#L1)
     - moved mode toggle, scan/chat/pattern CTA, publish actions, and indicator-strip restore into a dedicated controls boundary
     - kept the responsive action hide/show rules with the control markup
-  - Added [ChartHeaderMetaStrip.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartHeaderMetaStrip.svelte#L1)
+  - Added [ChartHeaderMetaStrip.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartHeaderMetaStrip.svelte#L1)
     - moved the collapsed MA/RSI/VOL strip into a dedicated meta child boundary
-  - Updated [ChartHeaderBar.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartHeaderBar.svelte#L1)
+  - Updated [ChartHeaderBar.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartHeaderBar.svelte#L1)
     - reduced the component from `681` lines to `182` lines by leaving only bar-level composition and shell layout
     - preserved the external prop/callback contract used by `ChartPanelShell.svelte`
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `ChartHeaderBar.svelte` as a composition boundary
     - documented the new summary/controls/meta/contracts files as canonical header paths
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run gate`: PASS
   - build snapshot:
-    - [ChartHeaderBar.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartHeaderBar.js) `10.94 kB`
-    - [ChartAgentSurface.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `46.28 kB`
-    - [arena/_page.svelte.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/entries/pages/arena/_page.svelte.js) `141.96 kB`
+    - [ChartHeaderBar.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartHeaderBar.js) `10.94 kB`
+    - [ChartAgentSurface.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `46.28 kB`
+    - [arena/_page.svelte.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/entries/pages/arena/_page.svelte.js) `141.96 kB`
 - Residual risks:
   - this slice improved ownership but increased `ChartHeaderBar.js` from roughly `9.29 kB` to `10.94 kB`, so the next slice should bias toward real lazy boundaries or `ChartAgentSurface` shell reduction rather than more helper-only splits
-  - [ChartAgentSurface.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1) remains the larger chart presentation shell
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - [ChartAgentSurface.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1) remains the larger chart presentation shell
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 23:47:04 +0900] FINISH chart-agent-surface-optional-overlay-lazy-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep narrowing the chart presentation hotspot, prefer real lazy boundaries over helper-only splits, and reduce `ChartAgentSurface` server weight without touching unrelated route WIP
 - What changed:
-  - Updated [ChartAgentSurface.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1)
+  - Updated [ChartAgentSurface.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/ChartAgentSurface.svelte#L1)
     - removed the static imports for `ChartTradePlanOverlay.svelte` and `ChartDrawingContextMenu.svelte`
     - added local lazy module state and `\$effect` loaders so the trade-plan overlay only loads when `pendingTradePlan` exists
     - moved the drawing context menu behind a first-open lazy boundary so the menu module is loaded only when agent mode opens the context menu
     - kept the chart container DOM, overlay ordering, and parent callback contract unchanged
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `ChartAgentSurface.svelte` as the canonical owner of the optional trade-plan/context-menu lazy boundary
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run gate`: PASS
   - build snapshot:
-    - [ChartAgentSurface.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `39.72 kB`
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `67.93 kB`
+    - [ChartAgentSurface.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `39.72 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `67.93 kB`
 - Residual risks:
   - this slice reduced the `ChartAgentSurface` server chunk, but `chartPanelSupportRuntime.js` grew, so the next chart slice should watch runtime assembly weight instead of adding more presentational helper layers
-  - Vite still reports the expected dynamic-import note for [chartTradePlanner.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/chartTradePlanner.ts#L1) because it is dynamically imported by [chartActionRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartActionRuntime.ts#L1) and also statically imported by other chart runtimes
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - Vite still reports the expected dynamic-import note for [chartTradePlanner.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/chartTradePlanner.ts#L1) because it is dynamically imported by [chartActionRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartActionRuntime.ts#L1) and also statically imported by other chart runtimes
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 23:56:00 +0900] FINISH chart-signal-draft-lazy-split-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep reducing chart runtime weight, preserve behavior, and turn the chart-origin community signal draft path into a real lazy boundary without touching unrelated route WIP
 - What changed:
-  - Added [chartTradePlannerMath.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/chartTradePlannerMath.ts#L1)
+  - Added [chartTradePlannerMath.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/chartTradePlannerMath.ts#L1)
     - extracted shared reward-ratio and risk-percent math out of the larger planner file
     - kept the math layer pure so static trade-plan code and lazy signal-draft code can share it without re-coupling the bigger planner module
-  - Added [chartCommunitySignalDraft.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/chartCommunitySignalDraft.ts#L1)
+  - Added [chartCommunitySignalDraft.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/chartCommunitySignalDraft.ts#L1)
     - moved `buildCommunitySignalDraft(...)` into a dedicated chart-origin signal payload module
     - kept the draft assembly behind the publish action path instead of the base support runtime import chain
-  - Updated [chartTradePlanner.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/chartTradePlanner.ts#L1)
+  - Updated [chartTradePlanner.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/chartTradePlanner.ts#L1)
     - removed the community signal draft export
     - narrowed the file to line-entry/trade-plan math and planned-order assembly only
-  - Updated [chartActionRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartActionRuntime.ts#L1)
+  - Updated [chartActionRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartActionRuntime.ts#L1)
     - rewired the lazy publish path to import `chartCommunitySignalDraft.ts` instead of the larger `chartTradePlanner.ts`
     - preserved the existing evidence assembly and community signal emit contract
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented the new trade-planner math boundary and the chart signal-draft lazy path as canonical chart rules
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `node node_modules/.bin/vite build`: PASS
   - build snapshot:
-    - [chartCommunitySignalDraft.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartCommunitySignalDraft.js) `1.94 kB`
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `65.95 kB`
-    - [ChartAgentSurface.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `39.72 kB`
+    - [chartCommunitySignalDraft.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartCommunitySignalDraft.js) `1.94 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `65.95 kB`
+    - [ChartAgentSurface.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartAgentSurface.js) `39.72 kB`
 - Residual risks:
-  - the chart-side dynamic import note for [chartTradePlanner.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/chartTradePlanner.ts#L1) is gone, but auth-side reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
+  - the chart-side dynamic import note for [chartTradePlanner.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/chartTradePlanner.ts#L1) is gone, but auth-side reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
   - `chartPanelSupportRuntime.js` is lighter, but it is still the larger remaining chart runtime hotspot
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-10 23:58:00 +0900] FINISH chart-interactive-action-lazy-runtime-20260310 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep shaving chart runtime weight, preserve behavior, and move optional interactive chart actions off the base support-runtime path without touching unrelated route WIP
 - What changed:
-  - Added [chartInteractiveActionRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartInteractiveActionRuntime.ts#L1)
+  - Added [chartInteractiveActionRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartInteractiveActionRuntime.ts#L1)
     - extracted `publishCommunitySignal`, `requestChatAssist`, and `activateTradeDrawing` into a dedicated interactive runtime
     - kept signal draft/evidence assembly and draw-mode notice logic behind the first chart action that actually needs it
-  - Updated [chartActionRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartActionRuntime.ts#L1)
+  - Updated [chartActionRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartActionRuntime.ts#L1)
     - narrowed the static path to pair/timeframe changes and scan requests
     - added a lazy runtime loader so interactive actions instantiate on first use instead of during support-runtime construction
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `chartInteractiveActionRuntime.ts` as the canonical interactive action lazy boundary
     - clarified that `chartActionRuntime.ts` now owns only immediate chart actions plus the lazy handoff
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `node node_modules/.bin/vite build`: PASS
   - build snapshot:
-    - [chartInteractiveActionRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartInteractiveActionRuntime.js) `3.92 kB`
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `64.05 kB`
-    - [ChartPanel.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
+    - [chartInteractiveActionRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartInteractiveActionRuntime.js) `3.92 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `64.05 kB`
+    - [ChartPanel.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
 - Residual risks:
   - this slice reduced the base support-runtime weight, but drawing persistence/runtime remains the larger chart hotspot
-  - auth-side dynamic-import reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - auth-side dynamic-import reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-11 00:45:00 +0900] FINISH chart-drawing-persistence-runtime-split-20260311 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep planning the next chart hotspot, preserve drawing behavior, and narrow `chartDrawingRuntime.ts` by extracting persistence/bootstrap ownership without touching unrelated route WIP
 - What changed:
-  - Added [chartDrawingPersistenceRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingPersistenceRuntime.ts#L1)
+  - Added [chartDrawingPersistenceRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingPersistenceRuntime.ts#L1)
     - moved primitive drawing manager lazy module loading, debounced autosave wiring, and pair/timeframe persistence sync into a dedicated helper runtime
     - kept `drawingManager` and `drawingPersistence` behind the existing chart drawing lazy boundary instead of lifting them into support-runtime imports
-  - Updated [chartDrawingRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1)
+  - Updated [chartDrawingRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1)
     - narrowed the file to drawing-mode transitions, mouse lifecycle, trade-preview finalize side effects, and wrapper commands
     - removed inline manager module promise state, autosave timer ownership, and pair/timeframe sync bookkeeping
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `chartDrawingPersistenceRuntime.ts` as the canonical drawing persistence/bootstrap boundary
     - clarified that the drawing-stack lazy boundary now flows through `chartDrawingRuntime.ts` into `chartDrawingPersistenceRuntime.ts`
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `npm run gate`: PASS
   - build snapshot:
-    - [ChartPanel.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `65.25 kB`
-    - [chartDrawingRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1) `585` lines
-    - [chartDrawingPersistenceRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingPersistenceRuntime.ts#L1) `153` lines
+    - [ChartPanel.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `65.25 kB`
+    - [chartDrawingRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1) `585` lines
+    - [chartDrawingPersistenceRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingPersistenceRuntime.ts#L1) `153` lines
 - Residual risks:
   - this slice materially improved ownership, but it did not reduce the support-runtime server chunk; `chartPanelSupportRuntime.js` rose from the previous `64.05 kB` to `65.25 kB`
-  - the remaining chart hotspot is still the drawing stack itself, especially [drawingManager.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/chart/primitives/drawingManager.ts#L1), so the next slice should target real lazy/runtime narrowing instead of more helper-only extraction
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - the remaining chart hotspot is still the drawing stack itself, especially [drawingManager.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/chart/primitives/drawingManager.ts#L1), so the next slice should target real lazy/runtime narrowing instead of more helper-only extraction
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-11 00:54:00 +0900] FINISH chart-trade-preview-finalize-lazy-path-20260311 (frontend)
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: codex/terminal-uiux-gtm-wip
 - Request: keep narrowing the chart drawing hotspot, prefer real lazy boundaries over helper-only splits, and move trade-preview finalize weight off the base support-runtime path without touching unrelated route WIP
 - What changed:
-  - Added [chartTradePreviewFinalizeRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartTradePreviewFinalizeRuntime.ts#L1)
+  - Added [chartTradePreviewFinalizeRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartTradePreviewFinalizeRuntime.ts#L1)
     - extracted preview resolve, tradebox drawing creation, pending-plan finalize, quick-trade open, and notice/GTM side effects into a dedicated lazy runtime
     - kept this runtime loaded only from the trade-preview mouse-up path instead of the base drawing runtime import chain
-  - Updated [chartDrawingRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1)
+  - Updated [chartDrawingRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1)
     - removed the static finalize imports for `chartDrawingEngine`, `chartOverlayRenderer`, `chartDrawingSession`, `chartIndicators`, and `chartCoordinates`
     - kept immediate draft start/update logic inline and added a module promise so trade-preview finalize code loads only when the user actually completes a line-entry drag
     - preloads the finalize runtime when trade mode is selected so the first drag path stays responsive
-  - Updated [CLAUDE.md](/Users/ej/Downloads/maxidoge-clones/frontend/CLAUDE.md#L1)
+  - Updated [CLAUDE.md](/Users/ej/Downloads/wtd-clones/frontend/CLAUDE.md#L1)
     - documented `chartTradePreviewFinalizeRuntime.ts` as the canonical trade-preview finalize lazy path
 - Validation:
   - `npm run check`: PASS (`0 errors, 0 warnings`)
   - `node node_modules/.bin/vite build`: PASS
   - build snapshot:
-    - [chartTradePreviewFinalizeRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartTradePreviewFinalizeRuntime.js) `3.06 kB`
-    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `64.00 kB`
-    - [ChartPanel.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
-    - [chartDrawingRuntime.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1) `582` lines
+    - [chartTradePreviewFinalizeRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartTradePreviewFinalizeRuntime.js) `3.06 kB`
+    - [chartPanelSupportRuntime.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/chartPanelSupportRuntime.js) `64.00 kB`
+    - [ChartPanel.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/ChartPanel.js) `58.29 kB`
+    - [chartDrawingRuntime.ts](/Users/ej/Downloads/wtd-clones/frontend/src/components/arena/chart/chartDrawingRuntime.ts#L1) `582` lines
 - Residual risks:
-  - this slice restored support-runtime weight after the previous persistence split, but the large remaining chart chunk is still [drawingManager.js](/Users/ej/Downloads/maxidoge-clones/frontend/.svelte-kit/output/server/chunks/drawingManager.js) at `100.39 kB`
-  - auth-side dynamic-import reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
-  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
+  - this slice restored support-runtime weight after the previous persistence split, but the large remaining chart chunk is still [drawingManager.js](/Users/ej/Downloads/wtd-clones/frontend/.svelte-kit/output/server/chunks/drawingManager.js) at `100.39 kB`
+  - auth-side dynamic-import reporter notes for [authApiNormalizer.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/authApiNormalizer.ts#L1) and [walletModalTransport.ts](/Users/ej/Downloads/wtd-clones/frontend/src/lib/auth/walletModalTransport.ts#L1) remain unrelated and expected
+  - unrelated local WIP in [routes/+page.svelte](/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte#L1) and [arena-v2/+page.server.ts](/Users/ej/Downloads/wtd-clones/frontend/src/routes/arena-v2/+page.server.ts#L1) remains intentionally outside this slice
 - Status: DONE
 
 ## [2026-03-17 02:14:11 +0900] START unified-cogochi-flow-ia-20260317 (frontend)
 - Work ID: `W-20260317-0214-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Base `origin/main`: `96a32de`
 - Working tree status: dirty existing WIP present across arena/passport/home plus new asset folders; this task will avoid those files and add a new docs artifact only
-- Request: combine Cogochi, Stockclaw, UI mockups, journey docs, PRD/GDD/FSD inputs into one correct product flow, user journey, and page IA
+- Request: combine Cogochi, wtd, UI mockups, journey docs, PRD/GDD/FSD inputs into one correct product flow, user journey, and page IA
 - Owned files / overlap check:
-  - new doc only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md`
-  - log append only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+  - new doc only: `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md`
+  - log append only: `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 - `npm run safe:status`: completed before edit; repo confirmed on `codex/terminal-uiux-gtm-wip` with unrelated local WIP already present
 
 ## [2026-03-17 02:21:40 +0900] FINISH unified-cogochi-flow-ia-20260317 (frontend)
 - Work ID: `W-20260317-0214-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
-- Request: combine Cogochi, Stockclaw, UI mockups, journey docs, PRD/GDD/FSD inputs into one correct product flow, user journey, and page IA
+- Request: combine Cogochi, wtd, UI mockups, journey docs, PRD/GDD/FSD inputs into one correct product flow, user journey, and page IA
 - What changed:
-  - added `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md`
+  - added `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md`
   - unified the product into one master loop: `Analyze -> Encode -> Train -> Validate -> Publish -> Execute -> Record -> Improve`
   - defined the target top-level IA as `Home / Terminal / Arena / Lab / Market / Passport / Settings`
   - resolved route conflicts:
@@ -8674,27 +8674,27 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Final working tree status:
   - still dirty because of pre-existing local WIP in arena/passport/home and asset folders
   - this task added only:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md`
-    - appended log entries in `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_UNIFIED_FLOW_AND_IA_2026-03-17.md`
+    - appended log entries in `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 02:23:00 +0900] START unified-cogochi-menu-ia-storyboard-20260317 (frontend)
 - Work ID: `W-20260317-0223-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Base `origin/main`: `96a32de`
 - Working tree status: dirty existing WIP present; this task will add one new docs artifact and append the watch log only
 - Request: design detailed menu structure, features inside each menu, IA, storyboard, and page components for the unified product
 - Owned files / overlap check:
-  - new doc only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md`
-  - log append only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+  - new doc only: `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md`
+  - log append only: `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 02:29:30 +0900] FINISH unified-cogochi-menu-ia-storyboard-20260317 (frontend)
 - Work ID: `W-20260317-0223-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Request: design detailed menu structure, features inside each menu, IA, storyboard, and page components for the unified product
 - What changed:
-  - added `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md`
+  - added `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md`
   - defined:
     - desktop/mobile menu model
     - top-level IA and detail IA tree
@@ -8713,27 +8713,27 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Final working tree status:
   - repo still contains unrelated local WIP
   - this task added only:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md`
-    - appended log entries in `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_MENU_IA_STORYBOARD_SPEC_2026-03-17.md`
+    - appended log entries in `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 02:32:00 +0900] START unified-cogochi-page-wireframes-20260317 (frontend)
 - Work ID: `W-20260317-0232-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Base `origin/main`: `96a32de`
 - Working tree status: dirty existing WIP present; this task will add one new docs artifact and append the watch log only
 - Request: continue from the menu/IA/storyboard spec and define page-by-page desktop/mobile wireframes and section-level layout rules
 - Owned files / overlap check:
-  - new doc only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md`
-  - log append only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+  - new doc only: `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md`
+  - log append only: `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 02:36:40 +0900] FINISH unified-cogochi-page-wireframes-20260317 (frontend)
 - Work ID: `W-20260317-0232-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Request: continue from the menu/IA/storyboard spec and define page-by-page desktop/mobile wireframes and section-level layout rules
 - What changed:
-  - added `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md`
+  - added `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md`
   - defined desktop/mobile wireframes for:
     - Home
     - Terminal
@@ -8759,27 +8759,27 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Final working tree status:
   - repo still contains unrelated local WIP
   - this task added only:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md`
-    - appended log entries in `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/COGOCHI_PAGE_WIREFRAME_SPEC_2026-03-17.md`
+    - appended log entries in `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 02:39:10 +0900] START home-entry-uiux-refactor-spec-20260317 (frontend)
 - Work ID: `W-20260317-0239-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Base `origin/main`: `96a32de`
 - Working tree status: dirty existing WIP present; this task will add one new docs artifact and append the watch log only
 - Request: design a refactor-first main hero and immediate-use UIUX structure so the product is impressive, understandable instantly, and optimized for first action
 - Owned files / overlap check:
-  - new doc only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/HOME_ENTRY_UIUX_REFACTOR_SPEC_2026-03-17.md`
-  - log append only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+  - new doc only: `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/HOME_ENTRY_UIUX_REFACTOR_SPEC_2026-03-17.md`
+  - log append only: `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 02:43:20 +0900] FINISH home-entry-uiux-refactor-spec-20260317 (frontend)
 - Work ID: `W-20260317-0239-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Request: design a refactor-first main hero and immediate-use UIUX structure so the product is impressive, understandable instantly, and optimized for first action
 - What changed:
-  - added `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/HOME_ENTRY_UIUX_REFACTOR_SPEC_2026-03-17.md`
+  - added `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/HOME_ENTRY_UIUX_REFACTOR_SPEC_2026-03-17.md`
   - defined:
     - first-15-seconds home-entry goal
     - apple-like clarity / hierarchy / progressive-disclosure principles
@@ -8798,33 +8798,33 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Final working tree status:
   - repo still contains unrelated local WIP
   - this task added only:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/HOME_ENTRY_UIUX_REFACTOR_SPEC_2026-03-17.md`
-    - appended log entries in `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/archive/historical/root-cleanup-2026-03-17/HOME_ENTRY_UIUX_REFACTOR_SPEC_2026-03-17.md`
+    - appended log entries in `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
-## [2026-03-17 02:48:10 +0900] START cogochi-stockclaw-page-merge-refactor-20260317 (frontend)
+## [2026-03-17 02:48:10 +0900] START cogochi-wtd-page-merge-refactor-20260317 (frontend)
 - Work ID: `W-20260317-0248-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Base `origin/main`: `96a32de`
 - Working tree status: dirty existing WIP present; this task will add one new docs artifact and append the watch log only
-- Request: define how to merge Stockclaw current implementation with the external Cogochi repo and references, and refactor the whole product page-by-page so character, chart, and battle become one readable system
+- Request: define how to merge wtd current implementation with the external Cogochi repo and references, and refactor the whole product page-by-page so character, chart, and battle become one readable system
 - External references reviewed:
   - GitHub repo: `https://github.com/eunjuhyun88/Cogochi`
   - canonical remote docs: `docs/MASTER_GAME_SPEC.md`, `docs/BATTLEFIELD_DESIGN.md`, `docs/VISUAL_WORLD_DESIGN.md`
   - PDF reference: `/Users/ej/Desktop/스크린샷 2026-03-16 오후 11.31.07.pdf`
 - Owned files / overlap check:
-  - new doc only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/cogochi-stockclaw-page-merge-refactor-2026-03-17.md`
-  - log append only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+  - new doc only: `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/cogochi-wtd-page-merge-refactor-2026-03-17.md`
+  - log append only: `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
-## [2026-03-17 03:00:45 +0900] FINISH cogochi-stockclaw-page-merge-refactor-20260317 (frontend)
+## [2026-03-17 03:00:45 +0900] FINISH cogochi-wtd-page-merge-refactor-20260317 (frontend)
 - Work ID: `W-20260317-0248-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
-- Request: define how to merge Stockclaw current implementation with the external Cogochi repo and references, and refactor the whole product page-by-page so character, chart, and battle become one readable system
+- Request: define how to merge wtd current implementation with the external Cogochi repo and references, and refactor the whole product page-by-page so character, chart, and battle become one readable system
 - What changed:
-  - added `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/cogochi-stockclaw-page-merge-refactor-2026-03-17.md`
+  - added `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/cogochi-wtd-page-merge-refactor-2026-03-17.md`
   - defined:
-    - Stockclaw backbone vs Cogochi conceptual layer merge rules
+    - wtd backbone vs Cogochi conceptual layer merge rules
     - the canonical merge sentence: `Terminal creates judgment, Character gives judgment a body, Arena tests it, Passport remembers it`
     - character integration model across `Terminal`, `Arena`, `Lab`, and shared `/agent/[id]`
     - final page architecture: `Home / Terminal / Arena / Lab / Market / Passport / Settings / Agent Detail / Creator Detail`
@@ -8844,44 +8844,44 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Final working tree status:
   - repo still contains unrelated local WIP
   - this task added only:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/cogochi-stockclaw-page-merge-refactor-2026-03-17.md`
-    - appended log entries in `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/cogochi-wtd-page-merge-refactor-2026-03-17.md`
+    - appended log entries in `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 03:32:20 +0900] START home-nav-surface-registry-refactor-20260317 (frontend)
 - Work ID: `W-20260317-0332-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Base `origin/main`: `96a32de`
 - Working tree status: dirty existing WIP present; this task will add a shared IA registry, one new refactor handoff doc, and update the home/navigation slice without touching Terminal or Arena internals
 - Request: keep the original visual language, structure the merged product around the new IA, improve first-use UX, and begin a code/performance-friendly refactor instead of one-off page rewrites
 - Owned files / overlap check:
-  - new doc: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/cogochi-stockclaw-multi-agent-refactor-spec-2026-03-17.md`
-  - new shared code: `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/navigation/appSurfaces.ts`
+  - new doc: `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/cogochi-wtd-multi-agent-refactor-spec-2026-03-17.md`
+  - new shared code: `/Users/ej/Downloads/wtd-clones/frontend/src/lib/navigation/appSurfaces.ts`
   - refactor targets:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/BottomBar.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/deepLinks.ts`
-  - log append only: `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/BottomBar.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/deepLinks.ts`
+  - log append only: `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 03:44:10 +0900] FINISH home-nav-surface-registry-refactor-20260317 (frontend)
 - Work ID: `W-20260317-0332-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Request: keep the original visual language, structure the merged product around the new IA, improve first-use UX, and begin a code/performance-friendly refactor instead of one-off page rewrites
 - What changed:
-  - added `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/cogochi-stockclaw-multi-agent-refactor-spec-2026-03-17.md`
-  - added `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/navigation/appSurfaces.ts`
-  - refactored `/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte`
+  - added `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/cogochi-wtd-multi-agent-refactor-spec-2026-03-17.md`
+  - added `/Users/ej/Downloads/wtd-clones/frontend/src/lib/navigation/appSurfaces.ts`
+  - refactored `/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte`
     - preserved the original centered home shell and visual tone
     - rewired hero copy and CTA hierarchy around `Terminal -> Arena -> Market -> Passport`
     - added compact quick-start pills driven by the shared surface registry
   - refactored navigation consumers:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/BottomBar.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/deepLinks.ts`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/BottomBar.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/deepLinks.ts`
   - centralized:
     - route labels
     - hrefs
@@ -8897,18 +8897,18 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 - Final working tree status:
   - repo still contains unrelated local WIP
   - this task added or changed only:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/cogochi-stockclaw-multi-agent-refactor-spec-2026-03-17.md`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/navigation/appSurfaces.ts`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/BottomBar.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/utils/deepLinks.ts`
-    - appended log entries in `/Users/ej/Downloads/maxidoge-clones/frontend/docs/AGENT_WATCH_LOG.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/cogochi-wtd-multi-agent-refactor-spec-2026-03-17.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/lib/navigation/appSurfaces.ts`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/BottomBar.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/lib/utils/deepLinks.ts`
+    - appended log entries in `/Users/ej/Downloads/wtd-clones/frontend/docs/AGENT_WATCH_LOG.md`
 
 ## [2026-03-17 13:39:47 +0900] START loox-tone-memento-bridge-20260317 (frontend)
 - Work ID: `W-20260317-1321-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Base `origin/main`: `c11977d`
 - Working tree status:
@@ -8919,22 +8919,22 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - keep the message obvious, readable, and focused on first-action understanding
   - operationalize shared memory/context flow using the shared `memento` layer
 - Owned files / overlap check:
-  - claim: `/Users/ej/Downloads/maxidoge-clones/frontend/.agent-context/coordination/claims/w-20260317-1321-frontend-codex.json`
-  - checkpoint: `/Users/ej/Downloads/maxidoge-clones/frontend/.agent-context/checkpoints/w-20260317-1321-frontend-codex.md`
+  - claim: `/Users/ej/Downloads/wtd-clones/frontend/.agent-context/coordination/claims/w-20260317-1321-frontend-codex.json`
+  - checkpoint: `/Users/ej/Downloads/wtd-clones/frontend/.agent-context/checkpoints/w-20260317-1321-frontend-codex.md`
   - planned files:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/loox-tone-memento-bridge-2026-03-17.md`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/styles/tokens.css`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/app.css`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/home/HomeBackground.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/BottomBar.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/navigation/appSurfaces.ts`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/memento-resume.mjs`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/memento-relay.mjs`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/package.json`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/MULTI_AGENT_MEMORY.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/loox-tone-memento-bridge-2026-03-17.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/lib/styles/tokens.css`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/app.css`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/home/HomeBackground.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/BottomBar.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/lib/navigation/appSurfaces.ts`
+    - `/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/memento-resume.mjs`
+    - `/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/memento-relay.mjs`
+    - `/Users/ej/Downloads/wtd-clones/frontend/package.json`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/MULTI_AGENT_MEMORY.md`
   - overlap result:
     - no active conflicting path claim detected
 - Validation preflight:
@@ -8943,7 +8943,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-17 14:55:51 +0900] FINISH loox-tone-memento-bridge-20260317 (frontend)
 - Work ID: `W-20260317-1321-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend
 - Branch: `codex/terminal-uiux-gtm-wip`
 - Request:
   - apply `Loox / Lost in Space` mood with Apple-grade clarity
@@ -8951,21 +8951,21 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - bridge branch-local context flow into shared `.memento` memory
 - What changed:
   - refined shared UI tone and message hierarchy in:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/styles/tokens.css`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/app.css`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/routes/+page.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/home/HomeBackground.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/Header.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/BottomBar.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/components/layout/MobileBottomNav.svelte`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/src/lib/navigation/appSurfaces.ts`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/lib/styles/tokens.css`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/app.css`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/routes/+page.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/home/HomeBackground.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/Header.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/BottomBar.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/components/layout/MobileBottomNav.svelte`
+    - `/Users/ej/Downloads/wtd-clones/frontend/src/lib/navigation/appSurfaces.ts`
   - added shared-memory bridge commands and docs in:
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/memento-resume.mjs`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/memento-relay.mjs`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/package.json`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/README.md`
-    - `/Users/ej/Downloads/maxidoge-clones/frontend/docs/MULTI_AGENT_MEMORY.md`
-  - fixed root-cause `ctx:compact` failure in `/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/context-compact.sh`
+    - `/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/memento-resume.mjs`
+    - `/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/memento-relay.mjs`
+    - `/Users/ej/Downloads/wtd-clones/frontend/package.json`
+    - `/Users/ej/Downloads/wtd-clones/frontend/README.md`
+    - `/Users/ej/Downloads/wtd-clones/frontend/docs/MULTI_AGENT_MEMORY.md`
+  - fixed root-cause `ctx:compact` failure in `/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/context-compact.sh`
     - removed SIGPIPE-sensitive pipeline usage under `set -euo pipefail`
     - verified work brief/handoff generation for `W-20260317-1321-frontend-codex`
   - refreshed checkpoint/brief/handoff and relayed latest bundle into shared `.memento` runtime inbox
@@ -8979,10 +8979,10 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run memento:resume -- --work-id W-20260317-1321-frontend-codex --agent implementer-ui`: PASS
   - `npm run memento:relay -- --work-id W-20260317-1321-frontend-codex --agent implementer-ui --summary "loox tone plus memento bridge slice with fixed ctx compact pipeline"`: PASS
 - Context artifacts:
-  - brief: `/Users/ej/Downloads/maxidoge-clones/frontend/.agent-context/briefs/codex-terminal-uiux-gtm-wip-latest.md`
-  - handoff: `/Users/ej/Downloads/maxidoge-clones/frontend/.agent-context/handoffs/codex-terminal-uiux-gtm-wip-latest.md`
-  - compatibility: `/Users/ej/Downloads/maxidoge-clones/frontend/.agent-context/compact/codex-terminal-uiux-gtm-wip-latest.md`
-  - latest relay: `/Users/ej/Downloads/maxidoge-clones/.memento/runtime/stockclaw/handoff-inbox/2026-03-17T05-54-57-851Z-codex-terminal-uiux-gtm-wip-implementer-ui.md`
+  - brief: `/Users/ej/Downloads/wtd-clones/frontend/.agent-context/briefs/codex-terminal-uiux-gtm-wip-latest.md`
+  - handoff: `/Users/ej/Downloads/wtd-clones/frontend/.agent-context/handoffs/codex-terminal-uiux-gtm-wip-latest.md`
+  - compatibility: `/Users/ej/Downloads/wtd-clones/frontend/.agent-context/compact/codex-terminal-uiux-gtm-wip-latest.md`
+  - latest relay: `/Users/ej/Downloads/wtd-clones/.memento/runtime/wtd/handoff-inbox/2026-03-17T05-54-57-851Z-codex-terminal-uiux-gtm-wip-implementer-ui.md`
 - Commit / push:
   - commit: not created
   - push: not requested
@@ -8993,14 +8993,14 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ## [2026-03-17 15:01:11 +0900] FOLLOW-UP loox-tone-memento-bridge-docs-gate-restore (frontend)
 - Work ID: `W-20260317-1321-frontend-codex`
 - What changed:
-  - added `/Users/ej/Downloads/maxidoge-clones/frontend/docs/page-specs/lab-page.md`
-  - added `/lab` route metadata and `remoteSessionGuard` store metadata in `/Users/ej/Downloads/maxidoge-clones/frontend/scripts/dev/refresh-generated-context.mjs`
-  - updated `/Users/ej/Downloads/maxidoge-clones/frontend/docs/page-specs/index.md`
-  - updated `/Users/ej/Downloads/maxidoge-clones/frontend/docs/product-specs/agents.md`
-  - updated `/Users/ej/Downloads/maxidoge-clones/frontend/docs/README.md`
-  - marked `/Users/ej/Downloads/maxidoge-clones/frontend/docs/task-contracts/active/codex-terminal-uiux-gtm-wip.md` as `ready_for_push` with all finish items checked
-  - marked `/Users/ej/Downloads/maxidoge-clones/frontend/docs/exec-plans/active/loox-tone-memento-bridge-2026-03-17.md` as `ready_for_push`
-  - refreshed generated docs under `/Users/ej/Downloads/maxidoge-clones/frontend/docs/generated/`
+  - added `/Users/ej/Downloads/wtd-clones/frontend/docs/page-specs/lab-page.md`
+  - added `/lab` route metadata and `remoteSessionGuard` store metadata in `/Users/ej/Downloads/wtd-clones/frontend/scripts/dev/refresh-generated-context.mjs`
+  - updated `/Users/ej/Downloads/wtd-clones/frontend/docs/page-specs/index.md`
+  - updated `/Users/ej/Downloads/wtd-clones/frontend/docs/product-specs/agents.md`
+  - updated `/Users/ej/Downloads/wtd-clones/frontend/docs/README.md`
+  - marked `/Users/ej/Downloads/wtd-clones/frontend/docs/task-contracts/active/codex-terminal-uiux-gtm-wip.md` as `ready_for_push` with all finish items checked
+  - marked `/Users/ej/Downloads/wtd-clones/frontend/docs/exec-plans/active/loox-tone-memento-bridge-2026-03-17.md` as `ready_for_push`
+  - refreshed generated docs under `/Users/ej/Downloads/wtd-clones/frontend/docs/generated/`
 - Validation:
   - `npm run docs:refresh`: PASS
   - `npm run docs:check`: PASS
@@ -9011,9 +9011,9 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `npm run ctx:compact -- --work-id W-20260317-1321-frontend-codex --docs-check pass --check pass --build pass --gate pass`: PASS
   - `npm run memento:relay -- --work-id W-20260317-1321-frontend-codex --agent implementer-ui --summary "loox tone plus memento bridge slice with docs metadata coverage restored"`: PASS
 - Context artifacts:
-  - brief: `/Users/ej/Downloads/maxidoge-clones/frontend/.agent-context/briefs/codex-terminal-uiux-gtm-wip-latest.md`
-  - handoff: `/Users/ej/Downloads/maxidoge-clones/frontend/.agent-context/handoffs/codex-terminal-uiux-gtm-wip-latest.md`
-  - latest relay: `/Users/ej/Downloads/maxidoge-clones/.memento/runtime/stockclaw/handoff-inbox/2026-03-17T06-00-44-086Z-codex-terminal-uiux-gtm-wip-implementer-ui.md`
+  - brief: `/Users/ej/Downloads/wtd-clones/frontend/.agent-context/briefs/codex-terminal-uiux-gtm-wip-latest.md`
+  - handoff: `/Users/ej/Downloads/wtd-clones/frontend/.agent-context/handoffs/codex-terminal-uiux-gtm-wip-latest.md`
+  - latest relay: `/Users/ej/Downloads/wtd-clones/.memento/runtime/wtd/handoff-inbox/2026-03-17T06-00-44-086Z-codex-terminal-uiux-gtm-wip-implementer-ui.md`
 
 ### W-20260317-1735-frontend-codex
 
@@ -9107,7 +9107,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-20 04:32:35 +0900] START workspace-intent-recovery-20260320 (frontend)
 - Work ID: `W-20260320-0431-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend-worktrees-clean-20260320/pre-uiux-baseline-20260317-clean
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend-worktrees-clean-20260320/pre-uiux-baseline-20260317-clean
 - Branch: `codex/pre-uiux-baseline-20260317-clean`
 - Base `origin/main`: `fd1efe0a41cc7dab18847d8a9b318a05074150fe`
 - Working tree status:
@@ -9124,7 +9124,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 17:27:00 +0900] START W-20260412-1727-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -9167,7 +9167,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-20 11:19:18 +0900] START dev-server-run-20260320 (frontend)
 - Work ID: `W-20260320-1119-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend-worktrees-clean-20260320/pre-uiux-baseline-20260317-clean
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend-worktrees-clean-20260320/pre-uiux-baseline-20260317-clean
 - Branch: `codex/pre-uiux-baseline-20260317-clean`
 - Base `origin/main`: `fd1efe0a41cc7dab18847d8a9b318a05074150fe`
 - Working tree status:
@@ -9185,7 +9185,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-20 11:24:50 +0900] START chatbattle-fresh-repo-export-20260320 (frontend)
 - Work ID: `W-20260320-1124-frontend-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/frontend-worktrees-clean-20260320/pre-uiux-baseline-20260317-clean
+- Workspace: /Users/ej/Downloads/wtd-clones/frontend-worktrees-clean-20260320/pre-uiux-baseline-20260317-clean
 - Branch: `codex/pre-uiux-baseline-20260317-clean`
 - Base `origin/main`: `fd1efe0a41cc7dab18847d8a9b318a05074150fe`
 - Working tree status:
@@ -9202,7 +9202,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-20 11:33:10 +0900] START dev-server-run-20260320 (chatbattle)
 - Work ID: `W-20260320-1132-chatbattle-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
 - Working tree status:
@@ -9219,7 +9219,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-20 11:39:06 +0900] START chatbattle-foundation-refactor-design-20260320 (chatbattle)
 - Work ID: `W-20260320-1139-chatbattle-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
 - Working tree status:
@@ -9252,7 +9252,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-20 12:58:00 +0900] START chatbattle-terminal-layout-controller-slice-20260320 (chatbattle)
 - Work ID: `W-20260320-1257-chatbattle-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
 - Working tree status:
@@ -9310,7 +9310,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-24 01:22:00 +0900] START chart-learning-winrate-research-20260324 (chatbattle)
 - Work ID: `W-20260324-0122-chatbattle-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
 - Working tree status:
@@ -9328,7 +9328,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-24 01:24:40 +0900] START memento-kit-usage-audit-20260324 (chatbattle)
 - Work ID: `W-20260324-0124-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
 - Working tree status:
@@ -9347,7 +9347,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-09 15:07:28 +0900] START terminal-canonicalize-3panel-20260409 (chatbattle)
 - Work ID: `W-20260409-1506-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/check-last-record`
 - Base `origin/main`: `ad33a6aaa437`
 - Working tree status:
@@ -9450,7 +9450,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-24 18:40:45 +0900] START chart-learning-winrate-research-20260324-b (chatbattle)
 - Work ID: `W-20260324-1840-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
 - Working tree status:
@@ -9487,7 +9487,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-24 19:10:27 +0900] START chart-learning-winrate-research-20260324-c (chatbattle)
 - Work ID: `W-20260324-1909-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `b80f339bc1f09ad84099e4a9561ad265da53a316`
 - Working tree status:
@@ -9527,7 +9527,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-25 19:24:00 +0900] START design-doc-review-20260325-a (chatbattle)
 - Work ID: `W-20260325-1924-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
 - Working tree status:
@@ -9566,7 +9566,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-25 19:24:00 +0900] START official-design-doc-alignment-20260325-b (chatbattle)
 - Work ID: `W-20260325-1924-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
 - Working tree status:
@@ -9604,7 +9604,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-25 20:01:00 +0900] START ui-vs-canonical-audit-20260325-c (chatbattle)
 - Work ID: `W-20260325-2001-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
 - Working tree status:
@@ -9641,7 +9641,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-26 22:17:11 +0900] START memento-kit-operability-review-20260326 (chatbattle)
 - Work ID: `W-20260326-2216-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
 - Working tree status:
@@ -9683,7 +9683,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-26 23:12:38 +0900] START claude-compat-fix-20260326 (chatbattle)
 - Work ID: `W-20260326-2312-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
 - Working tree status:
@@ -9711,7 +9711,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - `node scripts/dev/context-autopilot.mjs post-edit`: PASS, created claim `W-20260326-2312-CHATBATTLE-codex`
   - `npm run coord:list`: PASS, active claim present
   - `npm run coord:check`: PASS
-  - `node scripts/dev/context-autopilot.mjs stop`: PASS, wrote new relay files under shared `.memento/runtime/stockclaw/{handoff-inbox,relay}`
+  - `node scripts/dev/context-autopilot.mjs stop`: PASS, wrote new relay files under shared `.memento/runtime/wtd/{handoff-inbox,relay}`
   - `npm run memento:resume -- --agent implementer-ui --json`: PASS, now resolves branch-specific latest relay
 - Commit hash:
   - not created; user did not request commit/push
@@ -9723,7 +9723,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-27 18:08:00 +0900] START terminal-structure-trace-20260327 (chatbattle)
 - Work ID: `W-20260327-1808-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
 - Working tree status:
@@ -9740,7 +9740,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-31 23:46:05 +0900] START claude-memento-recheck-20260331 (chatbattle)
 - Work ID: `W-20260331-2345-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
 - Working tree status:
@@ -9781,7 +9781,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-03-31 23:53:42 +0900] START branch-sync-and-memento-rollout-20260331 (chatbattle)
 - Work ID: `W-20260331-2354-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/dev-server-run-20260320-chatbattle`
 - Base `origin/main`: `d22dd7ef4b80f9b86c42a63ed044c620ddff783e`
 - Working tree status:
@@ -9829,7 +9829,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-09 14:48:06 +0900] START check-last-record-20260409 (chatbattle)
 - Work ID: `W-20260409-1447-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/check-last-record`
 - Base `origin/main`: `ad33a6aaa437`
 - Working tree status:
@@ -9858,7 +9858,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-09 15:16:00 +0900] START alpha-terminal-html-mapping-20260409 (chatbattle)
 - Work ID: `W-20260409-1516-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/check-last-record`
 - Base `origin/main`: `ad33a6aaa437`
 - Working tree status:
@@ -9889,7 +9889,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-09 16:13:00 +0900] START alpha-terminal-llm-methodology-report-20260409 (chatbattle)
 - Work ID: `W-20260409-1613-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/check-last-record`
 - Base `origin/main`: `ad33a6aaa437`
 - Working tree status:
@@ -9940,7 +9940,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-09 15:22:56 +0900] START terminal-sprint1-implementation-20260409 (chatbattle)
 - Work ID: `W-20260409-1523-CHATBATTLE-codex`
-- Workspace: /Users/ej/Downloads/maxidoge-clones/CHATBATTLE
+- Workspace: /Users/ej/Downloads/wtd-clones/CHATBATTLE
 - Branch: `codex/check-last-record`
 - Base `origin/main`: `ad33a6aaa437`
 - Working tree status:
@@ -9997,7 +9997,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-09 17:16:33 +0900] START alpha-terminal-precision-engine-spec-20260409 (chatbattle)
 - Work ID: `W-20260409-1716-CHATBATTLE-codex`
-- Workspace: `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+- Workspace: `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch: `codex/check-last-record`
 - Base `origin/main`: `ad33a6aaa437f759a0c983cabc2b2787abb4b6af`
 - Working tree status:
@@ -10045,7 +10045,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ## [2026-04-10 17:06:00 +0900] START sprint1-ui-visual-check (chatbattle)
 - Work ID: `W-20260410-1705-CHATBATTLE-codex`
 - Repo path:
-  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/check-last-record`
 - Base `origin/main` hash:
@@ -10068,7 +10068,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ## [2026-04-10 18:33:02 +0900] START terminal-sprint3-ui-density-pass (chatbattle)
 - Work ID: `W-20260410-1833-CHATBATTLE-codex`
 - Repo path:
-  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/check-last-record`
 - Base `origin/main` hash:
@@ -10101,7 +10101,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ## [2026-04-10 19:32:00 +0900] START run-dev-server (chatbattle)
 - Work ID: `W-20260410-1932-CHATBATTLE-codex`
 - Repo path:
-  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/check-last-record`
 - Base `origin/main` hash:
@@ -10141,7 +10141,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ## [2026-04-10 19:39:08 +0900] START branch-and-push-current-wip (chatbattle)
 - Work ID: `W-20260410-1939-CHATBATTLE-codex`
 - Repo path:
-  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-wip-sync-20260410`
 - Base `origin/main` hash:
@@ -10165,7 +10165,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ## [2026-04-10 22:28:05 +0900] START merge-home-into-terminal-wip (chatbattle)
 - Work ID: `W-20260410-2228-CHATBATTLE-codex`
 - Repo path:
-  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-wip-sync-20260410`
 - Base `origin/main` hash:
@@ -10193,7 +10193,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ## [2026-04-11 05:33:00 +0900] START repo-wide-refactor-design-20260411 (chatbattle)
 - Work ID: `W-20260411-0533-CHATBATTLE-codex`
 - Repo path:
-  - `/Users/ej/Downloads/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Downloads/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-wip-sync-20260410`
 - Base `origin/main` hash:
@@ -10241,7 +10241,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 17:53:46 +0900] START run-server-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/run-server`
 - Base `origin/main` hash:
@@ -10281,7 +10281,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 14:00:00 +0900] START W-20260411-1400-chatbattle-impl (chatbattle)
 
-- Repo path: `/Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/jovial-newton`
+- Repo path: `/Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/jovial-newton`
 - Branch: `claude/jovial-newton`
 - Base `origin/main` hash: not fetched (worktree-local session)
 - Working tree status at start: clean (HEAD at `5697dfe`)
@@ -10317,7 +10317,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:02:05 +0900] START mono-home-refactor-design-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10338,7 +10338,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:05:33 +0900] START mono-home-refactor-impl-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10379,7 +10379,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:12:57 +0900] START market-pulse-refine-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10399,7 +10399,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:44:33 +0900] START W-20260411-1844-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10460,7 +10460,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:15:58 +0900] START market-pulse-reposition-home-black-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10499,7 +10499,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:18:20 +0900] START uiux-audit-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10519,7 +10519,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:29:20 +0900] START uiux-audit-continue-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10561,7 +10561,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:41:55 +0900] START home-canonical-align-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10602,7 +10602,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:51:00 +0900] START home-webgl-smoothing-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10643,7 +10643,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:56:00 +0900] START terminal-rich-chart-audit-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10683,7 +10683,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:00:00 +0900] START terminal-chart-block-design-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10723,7 +10723,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 18:56:00 +0900] START home-webgl-reactivity-retune-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10763,7 +10763,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:00:00 +0900] START home-pointer-sensitivity-retune-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10804,7 +10804,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:02:00 +0900] START home-webgl-color-visibility-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10824,7 +10824,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:04:00 +0900] START home-webgl-brightness-boost-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10883,7 +10883,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:20:00 +0900] START home-logo-dominance-balance-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10923,7 +10923,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:28:00 +0900] START home-full-reframe-20260411 (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -10966,7 +10966,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:20:04 +0900] START W-20260411-1919-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -11008,7 +11008,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:31:14 +0900] START W-20260411-1931-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -11077,7 +11077,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:33:31 +0900] START W-20260411-1933-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/mono-home-refactor`
 - Base `origin/main` hash:
@@ -11114,7 +11114,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 19:52:14 +0900] START W-20260411-1951-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11133,7 +11133,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 20:44:15 +0900] START W-20260411-2044-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11173,7 +11173,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 23:09:00 +0900] START W-20260411-2309-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11213,7 +11213,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 23:33:00 +0900] START W-20260411-2333-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11232,7 +11232,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 23:39:00 +0900] START W-20260411-2339-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11274,7 +11274,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 23:41:00 +0900] START W-20260411-2341-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11315,7 +11315,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-11 23:45:05 +0900] START W-20260411-2354-CHATBATTLE-codex (chatbattle)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11357,7 +11357,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 09:10:00 +0900] START W-20260412-0910-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11396,7 +11396,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 09:18:00 +0900] START W-20260412-0918-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11434,7 +11434,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 09:28:00 +0900] START W-20260412-0928-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11474,7 +11474,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 09:47:00 +0900] START W-20260412-0947-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11513,7 +11513,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 10:10:21 +0900] START W-20260412-1009-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11554,7 +11554,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 10:11:00 +0900] START W-20260412-1011-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11574,7 +11574,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 11:32:01 +0900] START W-20260412-1132-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11614,7 +11614,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 11:41:27 +0900] START W-20260412-1141-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11653,7 +11653,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 11:58:12 +0900] START W-20260412-1158-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11691,7 +11691,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 13:02:00 +0900] START W-20260412-1302-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11728,7 +11728,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 13:05:00 +0900] START W-20260412-1305-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11765,7 +11765,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 13:10:00 +0900] START W-20260412-1310-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11807,7 +11807,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
   - no uncommitted changes after merge/log close
 ## [2026-04-12 13:26:00 +0900] START W-20260412-1326-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11825,7 +11825,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 13:34:00 +0900] START W-20260412-1334-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11843,7 +11843,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 13:41:00 +0900] START W-20260412-1341-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11880,7 +11880,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 13:16:00 +0900] START W-20260412-1316-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11897,7 +11897,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 13:23:00 +0900] START W-20260412-1323-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11915,7 +11915,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 15:06:00 +0900] START W-20260412-1506-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11958,7 +11958,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 16:01:00 +0900] START W-20260412-1601-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -11976,7 +11976,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 17:38:00 +0900] START W-20260412-1738-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -12016,7 +12016,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 18:12:00 +0900] START W-20260412-1812-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -12035,7 +12035,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 17:41:36 +0900] START W-20260412-1741-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -12107,7 +12107,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 18:30:00 +0900] START W-20260412-1830-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/home-visualization-analysis`
 - Base `origin/main` hash:
@@ -12232,7 +12232,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 18:50:00 +0900] START W-20260412-1844-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 - Branch:
   - `codex/load-security-architecture`
 - Base `origin/main` hash:
@@ -12282,7 +12282,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 19:21:00 +0900] START W-20260412-1921-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 - Branch:
   - `codex/load-security-architecture`
 - Base `origin/main` hash:
@@ -12327,7 +12327,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 20:15:00 +0900] START W-20260412-2015-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 - Branch:
   - `codex/load-security-architecture`
 - Base `origin/main` hash:
@@ -12376,7 +12376,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:10:49 +0900] START W-20260412-2110-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 - Branch:
   - `codex/load-security-architecture`
 - Base `origin/main` hash:
@@ -12421,7 +12421,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:28:39 +0900] START W-20260412-2128-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 - Branch:
   - `codex/load-security-architecture`
 - Base `origin/main` hash:
@@ -12465,7 +12465,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:41:27 +0900] START W-20260412-2141-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 - Branch:
   - `codex/load-security-architecture`
 - Base `origin/main` hash:
@@ -12508,7 +12508,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:44:43 +0900] START W-20260412-2144-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 - Branch:
   - `codex/load-security-architecture`
 - Base `origin/main` hash:
@@ -12551,7 +12551,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 22:49:10 +0900] START W-20260412-2249-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-load-security-architecture`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-load-security-architecture`
 - Branch:
   - `codex/load-security-architecture`
 - Base `origin/main` hash:
@@ -12572,7 +12572,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 ||||||| Stash base
 ## [2026-04-12 20:43:00 +0900] START W-20260412-2043-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-shell-redesign`
 - Base `origin/main` hash:
@@ -12618,7 +12618,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:00:00 +0900] START W-20260412-2100-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-shell-redesign`
 - Base `origin/main` hash:
@@ -12667,7 +12667,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 20:54:14 +0900] START W-20260412-2053-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-shell-redesign`
 - Base `origin/main` hash:
@@ -12716,7 +12716,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:29:02 +0900] START W-20260412-2129-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-shell-redesign`
 - Base `origin/main` hash:
@@ -12767,7 +12767,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:38:29 +0900] START W-20260412-2138-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-shell-redesign`
 - Base `origin/main` hash:
@@ -12816,7 +12816,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:53:51 +0900] START W-20260412-2153-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-shell-redesign`
 - Base `origin/main` hash:
@@ -12865,7 +12865,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 21:16:00 +0900] START W-20260412-2113-CHATBATTLE-codex (CHATBATTLE)
 - Repo path:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE-ui-home-pattern-unify`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE-ui-home-pattern-unify`
 - Branch:
   - `codex/ui-home-pattern-unify`
 - Base `origin/main` hash:
@@ -12919,7 +12919,7 @@ Purpose: 작업 중복을 막고, 작업 전/후 실제 변경 이력을 시간 
 
 ## [2026-04-12 23:23:51 +0900] START W-20260412-2323-CHATBATTLE-codex (CHATBATTLE)
 - Repo:
-  - `/Users/ej/Projects/maxidoge-clones/CHATBATTLE`
+  - `/Users/ej/Projects/wtd-clones/CHATBATTLE`
 - Branch:
   - `codex/terminal-shell-redesign`
 - Base:

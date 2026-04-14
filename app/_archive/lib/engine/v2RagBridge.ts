@@ -1,5 +1,5 @@
 // =================================================================
-// STOCKCLAW — Arena v2 ↔ RAG Bridge
+// WTD — Arena v2 ↔ RAG Bridge
 // =================================================================
 // Converts Arena v2 game data to/from RAG format.
 // Reuses computeTerminalScanEmbedding() for 256d vector compatibility.

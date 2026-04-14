@@ -8,13 +8,13 @@ Status:
 
 ## Context
 
-The project is merging an existing Stockclaw-style frontend with the external `Cogochi` repo and a separate local `Cogochi_UI_20260317.html` prototype.
+The project is merging an existing wtd-style frontend with the external `Cogochi` repo and a separate local `Cogochi_UI_20260317.html` prototype.
 
 Without an explicit decision, agents can easily create three kinds of drift:
 
 - porting remote Cogochi route code directly into this repo
 - treating the HTML prototype as final IA
-- leaving current Stockclaw routes in place without a clean surface map
+- leaving current wtd routes in place without a clean surface map
 
 ## Decision
 

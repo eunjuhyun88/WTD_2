@@ -1,5 +1,5 @@
 // =================================================================
-// STOCKCLAW Arena v2 — Battle Engine
+// WTD Arena v2 — Battle Engine
 // =================================================================
 // The BRAIN of the battle system. Transforms raw BTC price ticks
 // into a living, stat-driven combat experience.

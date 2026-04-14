@@ -1,4 +1,4 @@
-# STOCKCLAW Unified
+# WTD Unified
 
 > Single source of truth: this `README.md` is the canonical collaboration and project guide for all humans and agents.
 > Mandatory gate: every task must log start/end in `docs/AGENT_WATCH_LOG.md` and pass `npm run check` + `npm run build` before push/merge.

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Chart Overlay Renderer (Canvas Orchestration)
+// Chart Overlay Renderer (Canvas Orchestration)
 // ═══════════════════════════════════════════════════════════════
 // This layer decides what the overlay canvas should render, while
 // delegating primitive drawing to chartDrawingEngine.ts.

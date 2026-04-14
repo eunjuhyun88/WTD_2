@@ -1,4 +1,4 @@
-// Stockclaw — Arena War Room API
+// Arena War Room API
 // POST /api/arena/match/[id]/warroom — Generate one round of War Room debate
 //
 // Body: { round: 1|2|3, previousRounds: WarRoomRoundResult[], userInteractions: WarRoomUserInteraction[] }

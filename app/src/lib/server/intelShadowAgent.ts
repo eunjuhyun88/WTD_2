@@ -147,7 +147,7 @@ async function askLLM(policy: IntelPolicyOutput): Promise<{ proposal: ShadowAgen
   const summary = summarizePolicy(policy);
 
   const system = [
-    'You are STOCKCLAW Shadow Risk Agent.',
+    'You are WTD Shadow Risk Agent.',
     'Task: Produce a single SHORT-TERM proposal for next 30-120m from supplied policy data.',
     'Never assume execution. This is SHADOW mode only.',
     'Respond with JSON only. No markdown.',

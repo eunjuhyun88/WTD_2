@@ -1,4 +1,4 @@
-# STOCKCLAW Agent Forge — 전체 시스템 아키텍처
+# WTD Agent Forge — 전체 시스템 아키텍처
 
 ## 1. 제품 정의
 

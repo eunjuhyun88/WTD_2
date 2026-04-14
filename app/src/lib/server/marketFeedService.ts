@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Market Feed Service (server)
+// Market Feed Service (server)
 // ═══════════════════════════════════════════════════════════════
 
 import { PAIR_RE } from '$lib/server/apiValidation';

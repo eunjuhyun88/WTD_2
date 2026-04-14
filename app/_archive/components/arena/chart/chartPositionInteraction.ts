@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Chart Position Interaction Helpers (Pure State)
+// Chart Position Interaction Helpers (Pure State)
 // ═══════════════════════════════════════════════════════════════
 // These helpers centralize TP/SL/ENTRY hover, drag-target, and wheel-step
 // calculations so ChartPanel.svelte can stay focused on DOM wiring.

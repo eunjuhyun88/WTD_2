@@ -1,5 +1,5 @@
 // =================================================================
-// STOCKCLAW Arena v2 — Team Synergy System
+// WTD Arena v2 — Team Synergy System
 // =================================================================
 // 5 defined synergies out of 56 possible 3-agent teams.
 // Synergies provide concrete battle bonuses when specific

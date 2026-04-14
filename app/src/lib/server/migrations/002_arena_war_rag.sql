@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- STOCKCLAW — Unified RAG Memory Table
+-- WTD — Unified RAG Memory Table
 -- ═══════════════════════════════════════════════════════════════
 --
 -- Arena War 게임 + Terminal 스캔 등 모든 활동의 RAG 메모리.

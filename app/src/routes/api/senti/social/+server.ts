@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Social Sentiment Proxy (Santiment → LunarCrush fallback)
+// Social Sentiment Proxy (Santiment → LunarCrush fallback)
 // ═══════════════════════════════════════════════════════════════
 
 import { json } from '@sveltejs/kit';

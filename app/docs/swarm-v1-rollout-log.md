@@ -349,20 +349,20 @@ Help text updated to document `--worktree` and `--keep-worktree`.
 **Smoke A — provisioning at main repo location** (initially failed, then fixed):
 - First run: worktree landed at `<focused-pike>/.claude/worktrees/Z3-cost-ceiling-guard` (bug: `REPO_ROOT` via `git rev-parse --show-toplevel` returns current worktree, not main)
 - Fix: added `mainRepoRoot()` helper using `--git-common-dir`
-- Second run: worktree lands at `/Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard` ✓
+- Second run: worktree lands at `/Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard` ✓
 - `git worktree list` confirmed
 
 **Smoke B — default kill tears down**:
 ```
 [slice] kill Z3-cost-ceiling-guard (Z2 smoke B: default kill should tear down worktree)
-  worktree removed: /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard
+  worktree removed: /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard
 ```
 `git worktree list | grep Z3` → removed. Filesystem → removed.
 
 **Smoke C — `--keep-worktree` preserves**:
 ```
 [slice] kill Z3-cost-ceiling-guard (smoke C: keep-worktree test)
-  worktree kept: /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard (use this for post-mortem)
+  worktree kept: /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard (use this for post-mortem)
 ```
 Worktree still registered, still on disk. Manual cleanup verified.
 
@@ -370,7 +370,7 @@ Worktree still registered, still on disk. Manual cleanup verified.
 ```
 [slice] approve Z3-cost-ceiling-guard
 [slice] merge Z3-cost-ceiling-guard (wip 1)
-  worktree removed: /Users/ej/Projects/maxidoge-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard
+  worktree removed: /Users/ej/Projects/wtd-clones/CHATBATTLE/.claude/worktrees/Z3-cost-ceiling-guard
 ```
 
 **Smoke cleanup**: all 10 synthetic Z3 events (4 smokes) removed from `slices.jsonl` via `grep -v`. Z3 status back to UNKNOWN. WIP back to `product=1` (Z2 itself, this slice).

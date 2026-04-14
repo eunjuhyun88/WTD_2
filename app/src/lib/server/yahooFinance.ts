@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// Stockclaw — Yahoo Finance server client
+// Yahoo Finance server client
 // ═══════════════════════════════════════════════════════════════
 
 import { getCached, setCache } from './providers/cache';
