@@ -129,6 +129,18 @@ app
 - choose first protected runtime path (recommended: terminal tool execution)
 - define canonical policy config source (`app/config/guardrailPolicy.json` + runtime override)
 
+## Implementation Status
+
+- Phase 1 scaffold landed:
+  - `guardrails/core/policy.ts` (deny > ask > allow merge kernel)
+  - `guardrails/transport/requestGuardChain.ts` (composable request guard chain)
+- Runtime governance checkpoint landed:
+  - `guardrails/runtime/channelPolicy.ts`
+  - `guardrails/runtime/executionGate.ts`
+  - `server/douni/toolExecutor.ts` now evaluates channel + tool gate before execution
+  - `/api/terminal/intel-agent-shadow/execute` now applies runtime channel gate before trade open flow
+- Policy source now includes `douni.channelPolicy` in `app/config/guardrailPolicy.json`
+
 ## Exit Criteria
 
 - `wtd-v2` has one internal guardrail module with transport/runtime/decision layers

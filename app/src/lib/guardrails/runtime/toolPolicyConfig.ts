@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { GuardrailEnforcementMode } from '$lib/guardrails/core/types';
 import type { ToolPolicyInput } from '$lib/guardrails/runtime/toolPolicy';
+import type { ChannelPolicyInput } from '$lib/guardrails/runtime/channelPolicy';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,12 +18,19 @@ const DEFAULT_ALLOWLIST = [
 ];
 
 const DEFAULT_REQUIRES_APPROVAL = ['save_pattern', 'submit_feedback'];
+const DEFAULT_CHANNEL_ALLOWLIST = ['terminal.douni.tools', 'terminal.intel-shadow.execute'];
+const DEFAULT_CHANNEL_REQUIRES_APPROVAL: string[] = [];
 
 interface GuardrailPolicyFile {
   version?: number;
   douni?: {
     toolPolicy?: {
       mode?: string;
+      allowlist?: string[];
+      denylist?: string[];
+      requiresApproval?: string[];
+    };
+    channelPolicy?: {
       allowlist?: string[];
       denylist?: string[];
       requiresApproval?: string[];
@@ -70,5 +78,18 @@ export function getDefaultToolPolicyInput(toolName: string): ToolPolicyInput {
     requiresApproval: Array.isArray(configured?.requiresApproval)
       ? configured.requiresApproval
       : DEFAULT_REQUIRES_APPROVAL,
+  };
+}
+
+export function getDefaultChannelPolicyInput(channelName: string): ChannelPolicyInput {
+  const policy = readPolicyFile();
+  const configured = policy?.douni?.channelPolicy;
+  return {
+    channelName,
+    allowlist: Array.isArray(configured?.allowlist) ? configured.allowlist : DEFAULT_CHANNEL_ALLOWLIST,
+    denylist: Array.isArray(configured?.denylist) ? configured.denylist : [],
+    requiresApproval: Array.isArray(configured?.requiresApproval)
+      ? configured.requiresApproval
+      : DEFAULT_CHANNEL_REQUIRES_APPROVAL,
   };
 }

@@ -7,6 +7,8 @@ import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import type { ShadowAgentDecision } from '$lib/server/intelShadowAgent';
 import type { IntelPolicyOutput } from '$lib/server/intelPolicyRuntime';
 import { evaluateShadowExecutionGovernance } from '$lib/guardrails/decision/shadowExecutionGate';
+import { evaluateRuntimeExecutionGate } from '$lib/guardrails/runtime/executionGate';
+import { getDefaultChannelPolicyInput } from '$lib/guardrails/runtime/toolPolicyConfig';
 import { recordGuardrailAudit } from '$lib/guardrails/core/audit';
 
 type ShadowPayload = {
@@ -49,6 +51,28 @@ export const POST: RequestHandler = async ({ cookies, request, fetch }) => {
         },
         { status: 403 },
       );
+    }
+
+    const runtimeChannelGate = evaluateRuntimeExecutionGate({
+      mode: 'enforce',
+      toolPolicy: {
+        toolName: 'intel_shadow_execute',
+      },
+      channelPolicy: getDefaultChannelPolicyInput('terminal.intel-shadow.execute'),
+    });
+    recordGuardrailAudit({
+      area: 'runtime',
+      action: 'intel_shadow_execute:channel_gate',
+      mode: 'enforce',
+      result: runtimeChannelGate.result,
+      metadata: {
+        channel: 'terminal.intel-shadow.execute',
+        effectiveDecision: runtimeChannelGate.effectiveDecision,
+      },
+      createdAt: Date.now(),
+    });
+    if (runtimeChannelGate.blocked) {
+      return json({ ok: false, error: 'Runtime channel policy blocked execution' }, { status: 403 });
     }
 
     let body: any = {};
