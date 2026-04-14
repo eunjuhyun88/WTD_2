@@ -23,6 +23,11 @@ import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+try:
+    import env_bootstrap  # noqa: F401
+except ModuleNotFoundError:
+    from engine import env_bootstrap  # type: ignore  # noqa: F401
+
 import pandas as pd
 
 _UA = "cogochi-autoresearch/data_cache"

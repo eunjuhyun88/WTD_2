@@ -23,6 +23,11 @@ import os
 import time
 from typing import Any
 
+try:
+    import env_bootstrap  # noqa: F401
+except ModuleNotFoundError:
+    from engine import env_bootstrap  # type: ignore  # noqa: F401
+
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
