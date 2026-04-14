@@ -1,6 +1,6 @@
 {
   "framework": "sveltekit",
-  "installCommand": "cd app && npm ci",
-  "buildCommand": "cd app && npm run build"
+  "installCommand": "npm --prefix app ci",
+  "buildCommand": "npm --prefix app run build && mkdir -p .vercel && rm -rf .vercel/output && mv app/.vercel/output .vercel/output && mkdir -p .vercel/output/static",
+  "outputDirectory": ".vercel/output/static"
 }
-
