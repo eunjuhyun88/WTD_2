@@ -11,7 +11,6 @@
   import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
-  import AppSurfaceHeader from '$lib/components/surfaces/AppSurfaceHeader.svelte';
 
   // ── Types ──────────────────────────────────────────────────────────────────
   interface PhaseState {
@@ -176,7 +175,6 @@
 </svelte:head>
 
 <div class="surface-page chrome-layout patterns-page">
-  <AppSurfaceHeader active="patterns" />
   <header class="surface-hero surface-fixed-hero">
     <div class="surface-copy patterns-copy">
       <div>

@@ -20,7 +20,7 @@
     { id: 'summary', label: 'Summary' },
     { id: 'entry', label: 'Entry' },
     { id: 'risk', label: 'Risk' },
-    { id: 'catalysts', label: 'News' },
+    { id: 'catalysts', label: 'Catalysts' },
     { id: 'metrics', label: 'Metrics' },
   ];
 
@@ -178,9 +178,73 @@
   const structureMetrics = $derived(
     evidence.filter(e => !fundingMetrics.includes(e) && !oiMetrics.includes(e))
   );
+
+  function formatPanelPrice(value: number | null | undefined): string {
+    if (value == null || !Number.isFinite(value)) return '—';
+    return value >= 1000
+      ? value.toLocaleString('en-US', { maximumFractionDigits: 2 })
+      : value.toFixed(4);
+  }
+
+  function formatPanelChange(value: number | null | undefined): string {
+    if (value == null || !Number.isFinite(value)) return '—';
+    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+  }
+
+  const panelSymbol = $derived(
+    String(analysisData?.symbol ?? analysisData?.snapshot?.symbol ?? 'BTCUSDT').replace('USDT', '')
+  );
+  const panelPrice = $derived(
+    analysisData?.price ?? analysisData?.snapshot?.last_close ?? null
+  );
+  const panelChange = $derived(
+    analysisData?.change24h
+      ?? analysisData?.snapshot?.change24h
+      ?? analysisData?.snapshot?.price_change_pct_24h
+      ?? null
+  );
+  const panelBiasLabel = $derived(
+    verdict?.direction === 'bullish'
+      ? 'LONG BIAS'
+      : verdict?.direction === 'bearish'
+        ? 'SHORT BIAS'
+        : 'NEUTRAL'
+  );
+  const panelSourceCount = $derived(SOURCES.length + evidence.reduce((sum, item) => sum + item.sourceCount, 0));
+
+  const panelConclusion = $derived(
+    verdict
+      ? {
+          bias: verdict.direction ? verdict.direction.toUpperCase() : '—',
+          action: verdict.action || '—',
+          invalidation: verdict.invalidation || '—',
+        }
+      : { bias: '—', action: '—', invalidation: '—' }
+  );
 </script>
 
 <aside class="context-panel">
+  <div class="panel-header">
+    <div class="panel-symbol-line">
+      <span class="panel-symbol">{panelSymbol}/USDT</span>
+      <span class="panel-context">Terminal Analysis</span>
+      <span class="panel-bias" data-bias={verdict?.direction ?? 'neutral'}>{panelBiasLabel}</span>
+    </div>
+    <div class="panel-price-line">
+      <strong>{formatPanelPrice(panelPrice)}</strong>
+      <span class="panel-change" data-tone={panelChange == null ? 'neutral' : panelChange >= 0 ? 'bull' : 'bear'}>
+        {formatPanelChange(panelChange)}
+      </span>
+      <small>Sources {panelSourceCount}</small>
+    </div>
+    <div class="panel-actions">
+      <button type="button" onclick={() => onTabChange?.('summary')}>Pin</button>
+      <button type="button" onclick={() => onTabChange?.('summary')}>Compare</button>
+      <button type="button" onclick={() => onTabChange?.('metrics')}>Chart</button>
+      <button type="button" onclick={() => onTabChange?.('risk')}>Alert+</button>
+    </div>
+  </div>
+
   <div class="panel-tabs">
     {#each TABS as t}
       <button class="tab-btn" class:active={activeTab === t.id} onclick={() => onTabChange?.(t.id)}>
@@ -334,6 +398,21 @@
       {/if}
     {/if}
   </div>
+
+  <div class="panel-conclusion">
+    <div class="conclusion-row">
+      <span class="conclusion-label">Bias</span>
+      <span class="conclusion-value">{panelConclusion.bias}</span>
+    </div>
+    <div class="conclusion-row">
+      <span class="conclusion-label">Action</span>
+      <span class="conclusion-value">{panelConclusion.action}</span>
+    </div>
+    <div class="conclusion-row">
+      <span class="conclusion-label">Invalidation</span>
+      <span class="conclusion-value">{panelConclusion.invalidation}</span>
+    </div>
+  </div>
 </aside>
 
 <style>
@@ -343,82 +422,226 @@
     display: flex; flex-direction: column;
     overflow: hidden;
   }
+  .panel-header {
+    flex-shrink: 0;
+    display: grid;
+    gap: 3px;
+    padding: 4px 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background:
+      linear-gradient(180deg, rgba(77,143,245,0.045), rgba(255,255,255,0.005)),
+      rgba(10,13,18,0.98);
+  }
+  .panel-symbol-line,
+  .panel-price-line,
+  .panel-actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+  .panel-symbol-line {
+    gap: 4px;
+  }
+  .panel-symbol {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: rgba(247,242,234,0.92);
+    white-space: nowrap;
+  }
+  .panel-context {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(247,242,234,0.34);
+  }
+  .panel-bias {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(247,242,234,0.52);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 2px;
+    padding: 1px 4px;
+    background: rgba(255,255,255,0.035);
+  }
+  .panel-bias[data-bias='bullish'] {
+    color: #8fdd9d;
+    border-color: rgba(143,221,157,0.22);
+    background: rgba(143,221,157,0.07);
+  }
+  .panel-bias[data-bias='bearish'] {
+    color: #f19999;
+    border-color: rgba(241,153,153,0.22);
+    background: rgba(241,153,153,0.07);
+  }
+  .panel-price-line {
+    gap: 5px;
+    align-items: baseline;
+  }
+  .panel-price-line strong {
+    font-family: var(--sc-font-mono);
+    font-size: 13px;
+    line-height: 1;
+    color: rgba(247,242,234,0.9);
+  }
+  .panel-change {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(247,242,234,0.45);
+  }
+  .panel-change[data-tone='bull'] { color: #8fdd9d; }
+  .panel-change[data-tone='bear'] { color: #f19999; }
+  .panel-price-line small {
+    margin-left: auto;
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(247,242,234,0.28);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .panel-actions {
+    gap: 2px;
+  }
+  .panel-actions button {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(247,242,234,0.48);
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.075);
+    border-radius: 2px;
+    padding: 2px 5px;
+    cursor: pointer;
+  }
+  .panel-actions button:hover {
+    color: rgba(247,242,234,0.85);
+    border-color: rgba(131,188,255,0.22);
+    background: rgba(77,143,245,0.07);
+  }
   .panel-tabs {
     display: flex; border-bottom: 1px solid rgba(255,255,255,0.08);
     overflow-x: auto; flex-shrink: 0;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+      rgba(255,255,255,0.01);
   }
   .tab-btn {
-    font-family: var(--sc-font-mono); font-size: 11px; font-weight: 600;
+    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600;
     color: var(--sc-text-2); background: none; border: none;
-    padding: 10px 14px; cursor: pointer; white-space: nowrap;
+    padding: 5px 6px 4px; cursor: pointer; white-space: nowrap;
     border-bottom: 2px solid transparent;
     transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
   .tab-btn:hover { color: var(--sc-text-1); }
   .tab-btn.active { color: var(--sc-text-0); border-bottom-color: rgba(255,255,255,0.5); }
 
   .panel-body {
-    flex: 1; overflow-y: auto; padding: 14px;
-    display: flex; flex-direction: column; gap: 12px;
+    flex: 1; overflow-y: auto; padding: 5px;
+    display: flex; flex-direction: column; gap: 5px;
   }
   .divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); }
-  .empty-panel { display: flex; align-items: center; justify-content: center; height: 120px; }
-  .empty-panel p { font-size: 12px; color: var(--sc-text-2); text-align: center; }
+  .empty-panel { display: flex; align-items: center; justify-content: center; height: 80px; }
+  .empty-panel p { font-size: 10px; color: var(--sc-text-2); text-align: center; }
 
-  .entry-section, .risk-section, .metrics-detail { display: flex; flex-direction: column; gap: 8px; }
-  .metrics-group { display: flex; flex-direction: column; gap: 6px; }
-  .section-label { font-family: var(--sc-font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sc-text-2); margin: 0; }
-  .mono-val { font-family: var(--sc-font-mono); font-size: 12px; color: var(--sc-text-0); margin: 0; }
-  .text-val { font-size: 12px; color: var(--sc-text-1); margin: 0; }
+  .entry-section, .risk-section, .metrics-detail { display: flex; flex-direction: column; gap: 5px; }
+  .metrics-group { display: flex; flex-direction: column; gap: 4px; }
+  .section-label { font-family: var(--sc-font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sc-text-2); margin: 0; }
+  .mono-val { font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-0); margin: 0; }
+  .text-val { font-size: 10px; color: var(--sc-text-1); margin: 0; }
 
-  .risk-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
-  .risk-item { font-size: 11px; color: #fbbf24; padding: 4px 8px; background: rgba(251,191,36,0.06); border-radius: 3px; }
+  .risk-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+  .risk-item { font-size: 9px; color: #fbbf24; padding: 3px 5px; background: rgba(251,191,36,0.06); border-radius: 2px; }
   .risk-item.danger { color: #f87171; background: rgba(248,113,113,0.06); }
 
   /* ML Score */
-  .ml-score-row { display: flex; align-items: baseline; gap: 8px; }
-  .ml-label { font-family: var(--sc-font-mono); font-size: 10px; color: rgba(247,242,234,0.5); }
-  .ml-value { font-family: var(--sc-font-mono); font-size: 20px; font-weight: 700; line-height: 1; }
+  .ml-score-row { display: flex; align-items: baseline; gap: 5px; }
+  .ml-label { font-family: var(--sc-font-mono); font-size: 8px; color: rgba(247,242,234,0.5); }
+  .ml-value { font-family: var(--sc-font-mono); font-size: 16px; font-weight: 700; line-height: 1; }
   .ml-ensemble-badge {
-    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 800;
+    font-family: var(--sc-font-mono); font-size: 8px; font-weight: 800;
     letter-spacing: 0.12em; text-transform: uppercase;
     color: var(--sc-good, #adca7c);
-    padding: 2px 7px; border-radius: 999px;
+    padding: 1px 5px; border-radius: 2px;
     background: rgba(173,202,124,0.12); border: 1px solid rgba(173,202,124,0.28);
     animation: ensemblePulse 2s ease-in-out infinite;
   }
-  .ml-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ml-chips { display: flex; flex-wrap: wrap; gap: 2px; }
   .ml-chip {
-    font-family: var(--sc-font-mono); font-size: 9px;
-    padding: 2px 7px; border-radius: 999px;
+    font-family: var(--sc-font-mono); font-size: 8px;
+    padding: 1px 5px; border-radius: 2px;
     background: rgba(173,202,124,0.10); color: rgba(173,202,124,0.88);
     border: 1px solid rgba(173,202,124,0.18);
   }
   @keyframes ensemblePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
 
   .deep-verdict-badge {
-    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 800;
+    font-family: var(--sc-font-mono); font-size: 8px; font-weight: 800;
     letter-spacing: 0.10em; text-transform: uppercase;
     color: rgba(247,242,234,0.7);
-    padding: 2px 7px; border-radius: 999px;
+    padding: 1px 5px; border-radius: 2px;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
   }
   .deep-verdict-badge.bull { color: var(--sc-good, #adca7c); background: rgba(173,202,124,0.10); border-color: rgba(173,202,124,0.28); }
   .deep-verdict-badge.bear { color: var(--sc-bad, #cf7f8f); background: rgba(207,127,143,0.10); border-color: rgba(207,127,143,0.28); }
   .ml-score-row.secondary { margin-top: -6px; }
-  .ml-value-sm { font-family: var(--sc-font-mono); font-size: 14px; font-weight: 600; line-height: 1; }
+  .ml-value-sm { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 600; line-height: 1; }
 
   .stop { color: var(--sc-bad, #cf7f8f) !important; }
   .tp   { color: var(--sc-good, #adca7c) !important; }
   .tier-badge {
-    font-family: var(--sc-font-mono); font-size: 9px;
-    padding: 1px 5px; border-radius: 3px;
+    font-family: var(--sc-font-mono); font-size: 8px;
+    padding: 1px 4px; border-radius: 2px;
     background: rgba(255,255,255,0.06); color: var(--sc-text-2);
   }
 
-  .news-list { display: flex; flex-direction: column; gap: 8px; }
-  .news-item { display: flex; flex-direction: column; gap: 3px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .news-time { font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2); }
-  .news-title { font-size: 12px; color: var(--sc-text-1); margin: 0; line-height: 1.4; }
+  .news-list { display: flex; flex-direction: column; gap: 4px; }
+  .news-item { display: flex; flex-direction: column; gap: 2px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .news-time { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); }
+  .news-title { font-size: 10px; color: var(--sc-text-1); margin: 0; line-height: 1.25; }
+
+  .panel-conclusion {
+    flex-shrink: 0;
+    display: grid;
+    gap: 1px;
+    padding: 6px 7px 7px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.02)),
+      rgba(5, 7, 10, 0.96);
+  }
+
+  .conclusion-row {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 5px;
+    align-items: start;
+  }
+
+  .conclusion-label {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(247,242,234,0.42);
+  }
+
+  .conclusion-value {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    line-height: 1.25;
+    color: rgba(247,242,234,0.82);
+  }
 
 </style>

@@ -5,7 +5,6 @@
   import type { StrategyEntry } from '$lib/stores/strategyStore';
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
-  import AppSurfaceHeader from '$lib/components/surfaces/AppSurfaceHeader.svelte';
 
   const WATCHING_QUERIES = [
     {
@@ -93,26 +92,28 @@
 </svelte:head>
 
 <div class="surface-page chrome-layout dash">
-  <AppSurfaceHeader active="dashboard" />
-  <header class="surface-hero surface-fixed-hero">
-    <div class="surface-copy">
+  <header class="surface-hero surface-fixed-hero dashboard-workbar">
+    <div class="surface-copy dashboard-workbar-copy">
       <span class="surface-kicker">Dashboard</span>
-      <h1 class="surface-title">My Workspace</h1>
+      <div class="dashboard-title-stack">
+        <h1 class="surface-title">My Workspace</h1>
+        <span class="dashboard-workbar-note">Inbox for saved challenges, live watches, and next actions</span>
+      </div>
     </div>
-    <div class="surface-stats">
-      <article class="surface-stat">
+    <div class="surface-stats dashboard-workbar-stats">
+      <article class="surface-stat dashboard-stat">
         <span class="surface-meta">BTC</span>
         <strong>{fmtPrice(btcPrice)}</strong>
       </article>
-      <article class="surface-stat">
+      <article class="surface-stat dashboard-stat">
         <span class="surface-meta">Challenges</span>
         <strong>{strategies.length}</strong>
       </article>
-      <article class="surface-stat">
+      <article class="surface-stat dashboard-stat">
         <span class="surface-meta">Tested</span>
         <strong>{testedChallengeCount}</strong>
       </article>
-      <article class="surface-stat">
+      <article class="surface-stat dashboard-stat">
         <span class="surface-meta">Activity</span>
         <strong>{latestActivityText}</strong>
       </article>
@@ -250,6 +251,53 @@
 </div>
 
 <style>
+  .dashboard-workbar {
+    padding: 12px 16px;
+    gap: 12px;
+    border-radius: 8px;
+    align-items: center;
+  }
+
+  .dashboard-workbar-copy {
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .dashboard-title-stack {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .dashboard-workbar-note {
+    font-family: var(--sc-font-mono);
+    font-size: 0.68rem;
+    color: rgba(250, 247, 235, 0.36);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dashboard-workbar-stats {
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .dashboard-stat {
+    min-width: 108px;
+    padding: 8px 10px;
+    border-radius: 6px;
+  }
+
+  .dashboard-stat strong {
+    font-size: 0.92rem;
+    line-height: 1;
+  }
+
   .topbar-actions {
     display: flex;
     gap: 8px;
@@ -379,6 +427,14 @@
   }
 
   @media (max-width: 640px) {
+    .dashboard-title-stack {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .dashboard-workbar-note {
+      white-space: normal;
+    }
     .challenge-grid {
       grid-template-columns: 1fr;
     }

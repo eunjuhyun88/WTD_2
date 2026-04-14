@@ -23,18 +23,17 @@
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
+  import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
-  import SourceRow from '../../components/terminal/workspace/SourceRow.svelte';
 
   // Mobile components
   import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
   import MobileDetailSheet from '../../components/terminal/mobile/MobileDetailSheet.svelte';
   import MobileCommandDock from '../../components/terminal/mobile/MobileCommandDock.svelte';
-  import AppSurfaceHeader from '$lib/components/surfaces/AppSurfaceHeader.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence, TerminalSource } from '$lib/types/terminal';
 
@@ -47,6 +46,7 @@
   let activeSymbol = $state('');
 
   let analysisData = $state<any>(null);
+  let analysisDataMap = $state<Record<string, any>>({});
   let newsData = $state<any>(null);
 
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
@@ -73,9 +73,9 @@
 
   // ── Capture modal ──────────────────────────────────────────
   let showCaptureModal = $state(false);
-  let showFullEvidence = $state(false);
   let showLeftRail = $state(true);
   let showAnalysisRail = $state(true);
+  let activeAnalysisTab = $state<'summary' | 'entry' | 'risk' | 'catalysts' | 'metrics'>('summary');
 
   // ── Chart price-level overlays (entry / target / stop) ───────
   // Extracted from deep.atr_levels after each analysis; passed to ChartBoard
@@ -577,6 +577,7 @@
       }
 
       analysisData = data;
+      analysisDataMap = { ...analysisDataMap, [symbol]: data };
       const asset = buildAssetFromAnalysis(symbol, data);
       const verdict = buildVerdict(data);
       const evidence = buildEvidence(data);
@@ -820,8 +821,9 @@
     if (event.type === 'research_block' && event.payload) {
       const envelope = event.payload;
       if (envelope?.snapshot || envelope?.ensemble) {
-        analysisData = envelope;
         const sym = envelope.symbol ?? defaultSymbol;
+        analysisData = envelope;
+        analysisDataMap = { ...analysisDataMap, [sym]: envelope };
         const asset = buildAssetFromAnalysis(sym, envelope);
         const verdict = buildVerdict(envelope);
         const evidence = buildEvidence(envelope);
@@ -842,6 +844,7 @@
     if (event.type === 'tool_result' && event.name === 'analyze' && event.data) {
       const sym = event.data.symbol ?? defaultSymbol;
       analysisData = event.data;
+      analysisDataMap = { ...analysisDataMap, [sym]: event.data };
       const asset = buildAssetFromAnalysis(sym, event.data);
       const verdict = buildVerdict(event.data);
       const evidence = buildEvidence(event.data);
@@ -856,8 +859,8 @@
 
   function selectAsset(symbol: string) {
     activeSymbol = symbol;
-    showFullEvidence = false;
     showAnalysisRail = true;
+    activeAnalysisTab = 'summary';
     if (!verdictMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
     setActivePair(symbol.replace('USDT', '/USDT'));
   }
@@ -866,9 +869,10 @@
 
   function clearBoard() {
     boardAssets = []; verdictMap = {}; evidenceMap = {};
+    analysisDataMap = {};
     activeSymbol = ''; layout = 'focus';
     chartLevels = {};
-    showFullEvidence = false;
+    activeAnalysisTab = 'summary';
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -915,11 +919,11 @@
       prevTf = tf;
       const symbol = pairToSymbol(pair);
       activeSymbol = symbol;
-      showFullEvidence = false;
+      activeAnalysisTab = 'summary';
       analysisData = null;  // clear stale snapshot so chat context resets
       const alreadyLoaded = untrack(() => boardAssets.find(a => a.symbol === symbol));
       if (!alreadyLoaded) {
-        boardAssets = []; verdictMap = {}; evidenceMap = {}; layout = 'focus';
+        boardAssets = []; verdictMap = {}; evidenceMap = {}; analysisDataMap = {}; layout = 'focus';
       }
       loadAnalysis(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
@@ -927,7 +931,7 @@
       prevTf = tf;
       const symbol = pairToSymbol(pair);
       verdictMap = {}; evidenceMap = {};
-      showFullEvidence = false;
+      activeAnalysisTab = 'summary';
       loadAnalysis(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
     }
@@ -937,8 +941,8 @@
   let activePairDisplay = $derived(gPair.split('/')[0] ?? 'BTC');
 
   // ─── Panel visibility + resize ───────────────────────────────
-  let leftWidth = $state(248);
-  let analysisWidth = $state(348);
+  let leftWidth = $state(160);
+  let analysisWidth = $state(280);
 
   function toggleLeftRail() {
     showLeftRail = !showLeftRail;
@@ -955,7 +959,7 @@
 
     const onMove = (ev: MouseEvent) => {
       const delta = ev.clientX - startX;
-      leftWidth = Math.max(160, Math.min(400, startW + delta));
+      leftWidth = Math.max(132, Math.min(320, startW + delta));
     };
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
@@ -977,7 +981,7 @@
 
     const onMove = (ev: MouseEvent) => {
       const delta = startX - ev.clientX;
-      analysisWidth = Math.max(280, Math.min(520, startW + delta));
+      analysisWidth = Math.max(240, Math.min(460, startW + delta));
     };
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
@@ -1004,7 +1008,7 @@
   let activeAsset = $derived(boardAssets.find(a => a.symbol === activeSymbol) ?? boardAssets[0] ?? null);
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
   let activeEvidence = $derived(activeSymbol ? evidenceMap[activeSymbol] ?? [] : []);
-  let analysisEvidence = $derived(showFullEvidence ? activeEvidence : activeEvidence.slice(0, 6));
+  let activeAnalysisData = $derived(activeSymbol ? analysisDataMap[activeSymbol] ?? analysisData : analysisData);
   let companionAssets = $derived(
     boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
   );
@@ -1071,9 +1075,54 @@
     ];
   });
 
-  let microstructure = $derived(analysisData?.microstructure ?? null);
+  let microstructure = $derived(activeAnalysisData?.microstructure ?? null);
   let depthSnapshot = $derived(microstructure?.depth ?? null);
   let liqClusters = $derived((microstructure?.liqClusters ?? []).slice(0, 4));
+  let fallbackDepth = $derived.by(() => {
+    const price = activeAsset?.lastPrice
+      || activeAnalysisData?.price
+      || activeAnalysisData?.snapshot?.last_close
+      || 0;
+    if (!price) return null;
+    const spread = Math.max(activeAsset?.spreadBps ?? 2.4, 1.2) / 10_000;
+    const weights = [0.92, 0.72, 0.58, 0.42, 0.28];
+    return {
+      bids: weights.map((weight, index) => ({
+        price: price * (1 - spread * (index + 1.2)),
+        weight,
+      })),
+      asks: weights.map((weight, index) => ({
+        price: price * (1 + spread * (index + 1.2)),
+        weight: Math.max(0.18, weight - (activeAsset?.oiChangePct1h ?? 0) / 120),
+      })),
+    };
+  });
+  let fallbackLiqClusters = $derived.by(() => {
+    const price = activeAsset?.lastPrice
+      || activeAnalysisData?.price
+      || activeAnalysisData?.snapshot?.last_close
+      || 0;
+    if (!price) return [];
+    const stop = chartLevels.stop ?? price * 0.984;
+    const target = chartLevels.target ?? price * 1.018;
+    const volumeScale = Math.max(0.6, Math.min(2.8, activeAsset?.volumeRatio1h ?? 1));
+    return [
+      {
+        side: 'SELL',
+        label: 'Longs',
+        price: stop,
+        distancePct: price ? ((stop - price) / price) * 100 : 0,
+        usd: 18_000_000 * volumeScale,
+      },
+      {
+        side: 'BUY',
+        label: 'Shorts',
+        price: target,
+        distancePct: price ? ((target - price) / price) * 100 : 0,
+        usd: 14_000_000 * volumeScale,
+      },
+    ];
+  });
   let orderbookTone = $derived.by(() => {
     const ratio = depthSnapshot?.ratio ?? 1;
     if (ratio >= 1.15) return 'bull';
@@ -1087,6 +1136,34 @@
     return 'Balanced';
   });
   let runtimeModeLabel = $derived($douniRuntimeStore.mode);
+
+  let boardActionRows = $derived.by(() => {
+    if (!activeVerdict) return [];
+    return [
+      {
+        label: 'Verdict',
+        value: activeVerdict.direction?.toUpperCase?.() ?? 'NEUTRAL',
+        tone: activeVerdict.direction === 'bullish' ? 'bull' : activeVerdict.direction === 'bearish' ? 'bear' : 'neutral',
+      },
+      {
+        label: 'Action',
+        value: activeVerdict.action || 'Wait for clarity',
+        tone: activeVerdict.direction === 'bullish' ? 'bull' : activeVerdict.direction === 'bearish' ? 'bear' : 'info',
+      },
+      {
+        label: 'Invalidation',
+        value: activeVerdict.invalidation || '—',
+        tone: 'risk',
+      },
+      {
+        label: 'Confidence',
+        value: activeVerdict.confidence?.toUpperCase?.() ?? 'LOW',
+        tone: activeVerdict.confidence === 'high' ? 'bull' : activeVerdict.confidence === 'medium' ? 'warn' : 'neutral',
+      },
+    ];
+  });
+
+  let boardSourceRows = $derived((activeAsset?.sources ?? []).slice(0, 4));
 
   let statusStripItems = $derived.by(() => {
     const regime = metricValue(['Regime', 'Breakout'], flowBias);
@@ -1172,6 +1249,22 @@
     return `${activeFocusLabel} is pinned on ${timeframeBadgeLabel}. ${boardMode}. ${regime} regime with ${engineMode}.`;
   });
 
+  let dockFeedItems = $derived.by(() => {
+    const items = [
+      `${activeFocusLabel}/USDT ${activeAsset?.lastPrice ? activeAsset.lastPrice.toLocaleString('en-US', { maximumFractionDigits: activeAsset.lastPrice >= 1000 ? 0 : 2 }) : '—'}`,
+      `Flow ${flowBias}`,
+      `Mode ${boardAssets.length > 1 ? 'Scan' : 'Focus'}`,
+      `TF ${timeframeBadgeLabel}`,
+    ];
+    if (patternTransitionAlerts.length > 0) {
+      items.push(`${patternTransitionAlerts[0].symbol.replace('USDT', '')} ${patternTransitionAlerts[0].phase}`);
+    }
+    if (statusStripItems[0]) {
+      items.push(`${statusStripItems[0].label} ${statusStripItems[0].value}`);
+    }
+    return items;
+  });
+
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
     { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
@@ -1195,35 +1288,6 @@
 <!-- Terminal Shell                                      -->
 <!-- ═══════════════════════════════════════════════════ -->
 <div class="surface-page terminal-page">
-  <AppSurfaceHeader active="terminal" />
-
-  <header class="surface-hero terminal-topbar">
-    <div class="surface-copy terminal-topbar-copy">
-      <div class="terminal-title-copy">
-        <span class="surface-kicker">Terminal</span>
-        <div class="terminal-title-row">
-          <h1 class="surface-title terminal-topbar-title">Research Cockpit</h1>
-          <span class="terminal-context-pill">{activeFocusLabel}/USDT</span>
-          <span class="terminal-context-pill muted">{timeframeBadgeLabel}</span>
-        </div>
-        <p class="surface-subtitle terminal-subtitle">{terminalSubtitle}</p>
-      </div>
-    </div>
-
-    <div class="surface-stats terminal-topbar-stats">
-      {#each shellSummaryCards as card}
-        <article class="surface-stat terminal-stat" data-tone={card.tone}>
-          <span class="surface-meta">{card.label}</span>
-          <strong>{card.value}</strong>
-        </article>
-      {/each}
-    </div>
-
-    <div class="topbar-actions terminal-topbar-actions">
-      <span class="terminal-header-note">Trading workspace</span>
-    </div>
-  </header>
-
   <section class="surface-card terminal-shell-head">
     {#if assistantBannerText}
       <div class="assistant-ribbon" data-state={isStreaming ? 'streaming' : 'ready'}>
@@ -1236,25 +1300,11 @@
       {flowBias}
       {layout}
       assetsCount={boardAssets.length}
-      leftRailOpen={showLeftRail}
-      analysisRailOpen={showAnalysisRail}
-      leftWidth={leftWidth}
-      analysisWidth={analysisWidth}
-      onToggleLeftRail={toggleLeftRail}
-      onToggleAnalysisRail={toggleAnalysisRail}
+      onQuickIntent={handleQueryChip}
       onLayout={switchLayout}
       onClear={clearBoard}
       onCapture={() => showCaptureModal = true}
     />
-
-    <div class="terminal-status-strip">
-      {#each statusStripItems as item}
-        <div class="status-pill" data-tone={item.tone}>
-          <span class="status-label">{item.label}</span>
-          <span class="status-value">{item.value}</span>
-        </div>
-      {/each}
-    </div>
 
     {#if patternTransitionAlerts.length > 0}
       <div class="pattern-alert-tray">
@@ -1287,6 +1337,15 @@
     <!-- Left Rail -->
     {#if showLeftRail}
       <aside class="left-rail">
+        <div class="workspace-panel-head">
+          <div class="workspace-panel-title">
+            <span class="workspace-panel-kicker">Market Rail</span>
+            <span class="workspace-panel-meta">{leftWidth}px</span>
+          </div>
+          <button class="panel-head-toggle" type="button" onclick={toggleLeftRail} aria-label="Hide market rail">
+            ◧
+          </button>
+        </div>
         <TerminalLeftRail
           {trendingData}
           alerts={scannerAlerts}
@@ -1304,10 +1363,22 @@
         onmousedown={startResize}
         aria-label="Resize left panel"
       ></button>
+    {:else}
+      <button class="collapsed-rail-tab left" type="button" onclick={toggleLeftRail} aria-label="Show market rail">
+        <span class="collapsed-rail-icon">◧</span>
+        <span class="collapsed-rail-copy">
+          <strong>Market</strong>
+          <small>Hidden</small>
+        </span>
+      </button>
     {/if}
 
     <!-- Center Board -->
     <main class="center-board">
+      <div class="workspace-panel-head center">
+        <span class="workspace-panel-kicker">Main Board</span>
+        <span class="workspace-panel-meta">{layout} layout</span>
+      </div>
 
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
@@ -1320,6 +1391,43 @@
             verdictLevels={chartLevels}
             onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
           />
+          {#if boardActionRows.length > 0}
+            <div class="board-decision-strip">
+              <div class="board-decision-main">
+                {#each boardActionRows as item}
+                  <button
+                    class="decision-cell"
+                    data-tone={item.tone}
+                    type="button"
+                    onclick={() => {
+                      showAnalysisRail = true;
+                      activeAnalysisTab = item.label === 'Invalidation' ? 'risk' : item.label === 'Action' ? 'entry' : 'summary';
+                    }}
+                  >
+                    <span class="decision-label">{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </button>
+                {/each}
+              </div>
+              {#if boardSourceRows.length > 0}
+                <div class="board-source-row">
+                  <span class="board-source-label">Sources</span>
+                  {#each boardSourceRows as source}
+                    <button
+                      class="board-source-pill"
+                      type="button"
+                      onclick={() => {
+                        showAnalysisRail = true;
+                        activeAnalysisTab = 'summary';
+                      }}
+                    >
+                      {source.label} · {source.freshness}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          {/if}
           <PatternStatusBar
             onSelect={focusPatternSymbol}
             onTransition={pushPatternTransitions}
@@ -1328,7 +1436,7 @@
             evidence={activeEvidence}
             onExpand={() => {
               showAnalysisRail = true;
-              showFullEvidence = true;
+              activeAnalysisTab = 'metrics';
             }}
           />
           {#if heroMetricTiles.length > 0}
@@ -1405,6 +1513,63 @@
                 </div>
               </section>
             </div>
+          {:else if activeAsset && fallbackDepth}
+            <div class="microstructure-row">
+              <section class="micro-card orderbook-card" data-tone="neutral">
+                <div class="micro-card-header">
+                  <span class="micro-title">Orderbook</span>
+                  <span class="micro-meta">Derived view</span>
+                </div>
+                <div class="micro-stat-row">
+                  <span>Spread {activeAsset.spreadBps ? `${activeAsset.spreadBps.toFixed(1)} bps` : 'est. 2.4 bps'}</span>
+                  <span>OI {activeAsset.oiChangePct1h >= 0 ? '+' : ''}{activeAsset.oiChangePct1h.toFixed(1)}%</span>
+                  <span>Funding {(activeAsset.fundingRate * 100).toFixed(3)}%</span>
+                </div>
+                <div class="depth-ladders">
+                  <div class="depth-side bids">
+                    {#each fallbackDepth.bids as level}
+                      <div class="depth-row">
+                        <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                        <div class="depth-bar-wrap">
+                          <div class="depth-bar bid" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                  <div class="depth-side asks">
+                    {#each fallbackDepth.asks as level}
+                      <div class="depth-row ask-row">
+                        <div class="depth-bar-wrap ask-wrap">
+                          <div class="depth-bar ask" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
+                        </div>
+                        <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              </section>
+
+              <section class="micro-card liquidity-card">
+                <div class="micro-card-header">
+                  <span class="micro-title">Liquidation Map</span>
+                  <span class="micro-meta">Level proxy</span>
+                </div>
+                <div class="micro-stat-row">
+                  <span>Long heat {formatCompactUsd(fallbackLiqClusters[0]?.usd)}</span>
+                  <span>Short heat {formatCompactUsd(fallbackLiqClusters[1]?.usd)}</span>
+                </div>
+                <div class="liq-cluster-list">
+                  {#each fallbackLiqClusters as cluster}
+                    <div class="liq-cluster-row">
+                      <span class="liq-side" data-side={cluster.side}>{cluster.label}</span>
+                      <span class="liq-price">{cluster.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                      <span class="liq-distance">{formatSignedPct(cluster.distancePct, 2)}</span>
+                      <span class="liq-usd">{formatCompactUsd(cluster.usd)}</span>
+                    </div>
+                  {/each}
+                </div>
+              </section>
+            </div>
           {/if}
           {#if companionAssets.length > 0}
             <div class="market-mini-grid">
@@ -1455,6 +1620,9 @@
               <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
             {/if}
             <span class="rail-width-indicator">{analysisWidth}px</span>
+            <button class="panel-head-toggle" type="button" onclick={toggleAnalysisRail} aria-label="Hide analysis rail">
+              ◨
+            </button>
           </div>
 
           <!-- MODE B — Scan results list -->
@@ -1490,17 +1658,13 @@
             <!-- Also show active symbol's VerdictCard below the list if loaded -->
             {#if heroAsset && heroVerdict}
               <div class="scan-detail">
-                <VerdictCard
-                  asset={heroAsset}
-                  verdict={heroVerdict}
-                  evidence={heroEvidence}
+                <TerminalContextPanel
+                  analysisData={activeAnalysisData}
+                  newsData={newsData}
+                  activeTab={activeAnalysisTab}
+                  onTabChange={(tab) => activeAnalysisTab = tab as typeof activeAnalysisTab}
                   bars={ohlcvBars}
                   {layerBarsMap}
-                  onPin={() => {}}
-                  onViewDetail={() => {
-                    showAnalysisRail = true;
-                    showFullEvidence = true;
-                  }}
                 />
               </div>
             {/if}
@@ -1512,114 +1676,14 @@
               <p class="loading-msg">Analyzing {activePairDisplay}…</p>
             </div>
           {:else if heroAsset && heroVerdict}
-            <div class="compact-verdict">
-              <!-- Bias header -->
-              <div class="cv-bias" class:bullish={heroVerdict.direction === 'bullish'} class:bearish={heroVerdict.direction === 'bearish'}>
-                <span class="cv-dot">●</span>
-                <span class="cv-dir">{heroVerdict.direction?.toUpperCase() ?? 'NEUTRAL'}</span>
-                <span class="cv-conf">{heroVerdict.confidence}</span>
-                <span class="cv-sym">{heroAsset.symbol.replace('USDT','')} · {$activePairState.timeframe.toUpperCase()}</span>
-              </div>
-
-              <!-- Price strip -->
-              <div class="cv-price">
-                <span class="cv-last">{heroAsset.lastPrice > 0 ? heroAsset.lastPrice.toLocaleString('en-US',{maximumFractionDigits:2}) : '—'}</span>
-                <span class="cv-meta">Vol {heroAsset.volumeRatio1h.toFixed(1)}×</span>
-                <span class="cv-meta">F {(heroAsset.fundingRate*100).toFixed(3)}%</span>
-              </div>
-
-              <!-- Action -->
-              {#if heroVerdict.action && heroVerdict.action !== '—'}
-                <div class="cv-action">{heroVerdict.action}</div>
-              {/if}
-
-              {#if heroMetricTiles.length > 0}
-                <div class="cv-metrics-grid">
-                  {#each heroMetricTiles.slice(0, 4) as tile}
-                    <div class="cv-metric">
-                      <span class="cv-metric-label">{tile.label}</span>
-                      <span class="cv-metric-value">{tile.value}</span>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-
-              <!-- WHY -->
-              {#if heroVerdict.reason}
-                <div class="cv-section">
-                  <span class="cv-label">WHY</span>
-                  <p class="cv-text">{heroVerdict.reason}</p>
-                </div>
-              {/if}
-
-              <!-- AGAINST -->
-              {#if heroVerdict.against?.length}
-                <div class="cv-section">
-                  <span class="cv-label">AGAINST</span>
-                  <div class="cv-tags">
-                    {#each heroVerdict.against as a}
-                      <span class="cv-tag warn">{a}</span>
-                    {/each}
-                  </div>
-                </div>
-              {/if}
-
-              {#if analysisEvidence.length > 0}
-                <div class="cv-section">
-                  <div class="cv-section-head">
-                    <span class="cv-label">EVIDENCE</span>
-                    {#if activeEvidence.length > 6}
-                      <button class="cv-toggle" onclick={() => { showFullEvidence = !showFullEvidence; }}>
-                        {showFullEvidence ? 'Collapse' : `Show all ${activeEvidence.length}`}
-                      </button>
-                    {/if}
-                  </div>
-                  <div class="cv-evidence-list">
-                    {#each analysisEvidence as ev}
-                      <div class="cv-evidence-row">
-                        <span class="cv-evidence-metric">{ev.metric}</span>
-                        <span class="cv-evidence-value" data-state={ev.state}>{ev.value}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-              {/if}
-
-              <!-- LEVELS -->
-              {#if chartLevels.entry || chartLevels.stop || chartLevels.target}
-                <div class="cv-section">
-                  <span class="cv-label">LEVELS</span>
-                  <div class="cv-levels">
-                    {#if chartLevels.entry}
-                      <div class="cv-level"><span class="lv-name">Entry</span><span class="lv-val">{chartLevels.entry.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
-                    {/if}
-                    {#if chartLevels.stop}
-                      <div class="cv-level bad"><span class="lv-name">Stop</span><span class="lv-val">{chartLevels.stop.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
-                    {/if}
-                    {#if chartLevels.target}
-                      <div class="cv-level good"><span class="lv-name">TP1</span><span class="lv-val">{chartLevels.target.toLocaleString('en-US',{maximumFractionDigits:2})}</span></div>
-                    {/if}
-                  </div>
-                </div>
-              {/if}
-
-              <!-- Invalidation -->
-              {#if heroVerdict.invalidation && heroVerdict.invalidation !== '—'}
-                <div class="cv-invalidation">{heroVerdict.invalidation}</div>
-              {/if}
-
-              {#if heroAsset.sources?.length}
-                <div class="cv-sources">
-                  <SourceRow sources={heroAsset.sources.slice(0, 4)} />
-                </div>
-              {/if}
-
-              {#if activeEvidence.length > 6}
-                <button class="cv-expand" onclick={() => { showFullEvidence = !showFullEvidence; }}>
-                  {showFullEvidence ? 'Collapse evidence ↑' : 'Show full evidence ↓'}
-                </button>
-              {/if}
-            </div>
+            <TerminalContextPanel
+              analysisData={activeAnalysisData}
+              newsData={newsData}
+              activeTab={activeAnalysisTab}
+              onTabChange={(tab) => activeAnalysisTab = tab as typeof activeAnalysisTab}
+              bars={ohlcvBars}
+              {layerBarsMap}
+            />
           {:else}
             <div class="board-empty">
               <p class="empty-icon">◈</p>
@@ -1628,6 +1692,14 @@
           {/if}
 
         </div>
+        {:else}
+          <button class="collapsed-rail-tab right" type="button" onclick={toggleAnalysisRail} aria-label="Show analysis rail">
+            <span class="collapsed-rail-icon">◨</span>
+            <span class="collapsed-rail-copy">
+              <strong>Analysis</strong>
+              <small>Hidden</small>
+            </span>
+          </button>
         {/if}
 
       </div>
@@ -1636,6 +1708,7 @@
       <div class="desktop-dock">
         <TerminalBottomDock
           loading={isStreaming || isLoadingActive}
+          feedItems={dockFeedItems}
           onSend={sendCommand}
         />
       </div>
@@ -1689,123 +1762,26 @@
 
 <style>
   .terminal-page {
-    width: min(100%, calc(100% - 24px));
-    height: calc(100dvh - 18px);
+    width: min(100%, calc(100% - 10px));
+    height: calc(100dvh - 8px);
     display: grid;
-    grid-template-rows: auto auto auto minmax(0, 1fr);
-    padding-top: 12px;
-    padding-bottom: 12px;
-    gap: 10px;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding-top: 4px;
+    padding-bottom: 4px;
+    gap: 4px;
     overflow: hidden;
-  }
-
-  .terminal-topbar {
-    align-items: center;
-    padding: 10px 16px;
-    background:
-      linear-gradient(180deg, rgba(12, 15, 20, 0.98), rgba(10, 13, 18, 0.94));
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    border-radius: 10px;
-  }
-
-  .terminal-topbar-copy {
-    align-items: flex-start;
-  }
-
-  .terminal-title-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .terminal-topbar-title {
-    white-space: normal;
-  }
-
-  .terminal-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .terminal-context-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 10px;
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.03);
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: rgba(250,247,235,0.88);
-    text-transform: uppercase;
-  }
-
-  .terminal-context-pill.muted {
-    color: rgba(250,247,235,0.52);
-    background: rgba(255,255,255,0.03);
-  }
-
-  .terminal-subtitle {
-    margin: 0;
-    max-width: 68ch;
-    font-size: 0.82rem;
-    color: rgba(250,247,235,0.52);
-  }
-
-  .terminal-topbar-stats {
-    justify-content: flex-start;
-    gap: 8px;
-  }
-
-  .terminal-stat[data-tone='bull'] {
-    border-color: rgba(74,222,128,0.18);
-    background: rgba(74,222,128,0.06);
-  }
-  .terminal-stat[data-tone='bear'] {
-    border-color: rgba(248,113,113,0.18);
-    background: rgba(248,113,113,0.06);
-  }
-  .terminal-stat[data-tone='info'] {
-    border-color: rgba(99,179,237,0.18);
-    background: rgba(99,179,237,0.07);
-  }
-  .terminal-stat[data-tone='warn'] {
-    border-color: rgba(251,191,36,0.18);
-    background: rgba(251,191,36,0.07);
-  }
-
-  .terminal-topbar-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .terminal-header-note {
-    color: rgba(250,247,235,0.42);
-    font-family: var(--sc-font-mono);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
   }
 
   .terminal-shell-head {
     display: grid;
-    gap: 10px;
-    padding: 12px 14px;
+    gap: 3px;
+    padding: 4px 6px;
     background:
       linear-gradient(180deg, rgba(9, 12, 17, 0.98), rgba(9, 12, 17, 0.92));
     position: sticky;
-    top: 72px;
+    top: 0;
     z-index: 25;
-    border-radius: 10px;
+    border-radius: 4px;
     backdrop-filter: blur(18px);
   }
 
@@ -1832,10 +1808,10 @@
 
   .assistant-ribbon {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 10px 12px;
-    border-radius: 12px;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 3px;
     border: 1px solid rgba(99,179,237,0.14);
     background: rgba(8, 17, 26, 0.82);
   }
@@ -1847,10 +1823,9 @@
 
   .assistant-ribbon-label {
     flex-shrink: 0;
-    padding-top: 2px;
     color: rgba(99,179,237,0.82);
     font-family: var(--sc-font-mono);
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -1863,50 +1838,13 @@
   .assistant-ribbon-text {
     margin: 0;
     color: rgba(247,242,234,0.82);
-    font-size: 13px;
-    line-height: 1.55;
+    font-size: 10px;
+    line-height: 1.2;
     display: -webkit-box;
     overflow: hidden;
     line-clamp: 2;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-  }
-
-  .terminal-status-strip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0;
-    background: transparent;
-    overflow-x: auto;
-  }
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.03);
-    white-space: nowrap;
-  }
-  .status-pill[data-tone='bull'] { border-color: rgba(74,222,128,0.22); background: rgba(74,222,128,0.06); }
-  .status-pill[data-tone='bear'] { border-color: rgba(248,113,113,0.22); background: rgba(248,113,113,0.06); }
-  .status-pill[data-tone='info'] { border-color: rgba(99,179,237,0.22); background: rgba(99,179,237,0.06); }
-  .status-pill[data-tone='warn'] { border-color: rgba(251,191,36,0.22); background: rgba(251,191,36,0.06); }
-  .status-label,
-  .status-value {
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-  }
-  .status-label {
-    color: var(--sc-text-3);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .status-value {
-    color: var(--sc-text-1);
-    font-weight: 700;
   }
 
   .terminal-body {
@@ -1921,18 +1859,18 @@
   .pattern-alert-tray {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 4px;
+    padding: 4px 6px;
     background:
       linear-gradient(90deg, rgba(74, 222, 128, 0.12), rgba(74, 222, 128, 0.03));
     border: 1px solid rgba(74, 222, 128, 0.16);
-    border-radius: 12px;
+    border-radius: 3px;
     overflow-x: auto;
   }
 
   .pattern-alert-label {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.08em;
     color: rgba(74, 222, 128, 0.72);
@@ -1944,7 +1882,7 @@
     display: inline-flex;
     align-items: center;
     flex-shrink: 0;
-    border-radius: 999px;
+    border-radius: 3px;
     border: 1px solid rgba(74, 222, 128, 0.24);
     background: rgba(6, 22, 12, 0.9);
     box-shadow: 0 0 24px rgba(74, 222, 128, 0.08);
@@ -1953,8 +1891,8 @@
   .pattern-alert-main {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 5px 10px;
+    gap: 4px;
+    padding: 3px 6px;
     border: 0;
     background: transparent;
     color: rgba(235, 255, 242, 0.92);
@@ -1966,12 +1904,12 @@
     background: transparent;
     color: rgba(255,255,255,0.32);
     cursor: pointer;
-    padding: 5px 10px 5px 0;
+    padding: 3px 6px 3px 0;
   }
 
   .pattern-alert-dot {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
     border-radius: 50%;
     background: #4ade80;
     box-shadow: 0 0 12px rgba(74, 222, 128, 0.7);
@@ -1981,7 +1919,7 @@
   .pattern-alert-phase,
   .pattern-alert-slug {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
+    font-size: 8px;
   }
 
   .pattern-alert-symbol {
@@ -1999,7 +1937,7 @@
   }
 
   .terminal-body.left-collapsed {
-    grid-template-columns: 1fr;
+    grid-template-columns: 18px 1fr;
   }
 
   .terminal-body.right-collapsed .board-content {
@@ -2008,8 +1946,8 @@
 
   /* Resize handles */
   .panel-resizer {
-    width: 4px;
-    background: var(--sc-terminal-border, rgba(255,255,255,0.07));
+    width: 2px;
+    background: rgba(255,255,255,0.045);
     border: none;
     cursor: col-resize;
     position: relative;
@@ -2018,7 +1956,7 @@
     padding: 0;
     transition: background 0.15s;
   }
-  .panel-resizer:hover { background: rgba(255,255,255,0.18); }
+  .panel-resizer:hover { background: rgba(77,143,245,0.42); }
   /* Widen hit area without changing visual size */
   .panel-resizer::before {
     content: '';
@@ -2026,9 +1964,9 @@
     inset: 0 -5px;
   }
   .panel-resizer.right {
-    width: 5px;
-    border-left: 1px solid rgba(255,255,255,0.04);
-    border-right: 1px solid rgba(255,255,255,0.02);
+    width: 2px;
+    border-left: 1px solid rgba(255,255,255,0.035);
+    border-right: 0;
   }
 
   .left-rail {
@@ -2039,6 +1977,132 @@
     flex-direction: column;
     min-height: 0;
     scrollbar-gutter: stable;
+  }
+
+  .workspace-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+    padding: 3px 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.015);
+    flex-shrink: 0;
+    min-height: 20px;
+  }
+
+  .workspace-panel-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .panel-head-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    margin-left: auto;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.025);
+    color: rgba(214,233,255,0.54);
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+
+  .panel-head-toggle:hover {
+    color: rgba(214,233,255,0.9);
+    border-color: rgba(77,143,245,0.24);
+    background: rgba(77,143,245,0.08);
+  }
+
+  .collapsed-rail-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 1px solid rgba(77,143,245,0.14);
+    background:
+      linear-gradient(180deg, rgba(16, 25, 40, 0.92), rgba(9, 13, 20, 0.92));
+    color: rgba(160,198,238,0.82);
+    font-family: var(--sc-font-mono);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+
+  .collapsed-rail-tab:hover {
+    color: rgba(204,226,255,0.95);
+    border-color: rgba(77,143,245,0.28);
+    background: rgba(77,143,245,0.10);
+  }
+
+  .collapsed-rail-tab.left {
+    height: 100%;
+    min-height: 0;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    border-width: 0 1px 0 0;
+    border-radius: 0;
+    padding: 2px 0;
+  }
+
+  .collapsed-rail-tab.right {
+    position: absolute;
+    right: 5px;
+    top: 28px;
+    z-index: 14;
+    padding: 4px 6px;
+    border-radius: 3px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+  }
+
+  .collapsed-rail-icon { font-size: 8px; }
+
+  .collapsed-rail-copy {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1;
+  }
+
+  .collapsed-rail-copy strong {
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .collapsed-rail-copy small {
+    display: none;
+    color: rgba(214,233,255,0.42);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .workspace-panel-head.center {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+
+  .workspace-panel-kicker,
+  .workspace-panel-meta {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .workspace-panel-kicker {
+    color: rgba(255,255,255,0.3);
+  }
+
+  .workspace-panel-meta {
+    color: rgba(99,179,237,0.62);
   }
 
   .center-board {
@@ -2055,7 +2119,7 @@
     overflow: hidden;
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto var(--terminal-analysis-w, 348px);
+    grid-template-columns: minmax(0, 1fr) auto var(--terminal-analysis-w, 280px);
     min-height: 0;
   }
   .board-content.analysis-hidden .chart-area {
@@ -2078,57 +2142,64 @@
 
   /* Analysis rail — always visible right panel, scrollable */
   .analysis-rail {
-    width: var(--terminal-analysis-w, 348px);
+    width: var(--terminal-analysis-w, 280px);
     min-width: 0;
-    max-width: 520px;
+    max-width: 460px;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    overflow: hidden;
     background: var(--sc-terminal-bg, #000);
     position: relative;
     scrollbar-gutter: stable;
+    border-left: 1px solid rgba(255,255,255,0.05);
   }
 
   /* Rail header */
   .rail-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 5px;
+    padding: 4px 6px;
     border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
     flex-shrink: 0;
-    min-height: 34px;
-    background: rgba(255,255,255,0.02);
+    min-height: 24px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0)),
+      rgba(255,255,255,0.015);
   }
   .rail-width-indicator {
     margin-left: auto;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: 8px;
     color: rgba(255,255,255,0.26);
     letter-spacing: 0.08em;
+    padding-left: 5px;
+    border-left: 1px solid rgba(255,255,255,0.06);
   }
   .rail-header .rail-back + .rail-width-indicator {
     margin-left: 0;
   }
   .rail-mode {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: 8px;
     letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.24);
+    text-transform: uppercase;
   }
   .rail-sym {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 700;
-    color: rgba(255,255,255,0.7);
+    color: rgba(255,255,255,0.72);
     margin-left: auto;
+    letter-spacing: 0.08em;
   }
   .rail-badge {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: 8px;
     letter-spacing: 0.08em;
-    padding: 2px 6px;
-    border-radius: 3px;
+    padding: 1px 5px;
+    border-radius: 2px;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -2151,7 +2222,7 @@
     border: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.4);
     border-radius: 3px;
-    padding: 2px 7px;
+    padding: 1px 5px;
     cursor: pointer;
     transition: all 0.1s;
   }
@@ -2168,8 +2239,8 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 6px;
+    padding: 5px 6px;
     border: none;
     border-bottom: 1px solid rgba(255,255,255,0.04);
     background: transparent;
@@ -2183,34 +2254,130 @@
   .scan-card.bullish .sc-dir { color: #4ade80; }
   .scan-card.bearish .sc-dir { color: #f87171; }
   .sc-left { display: flex; flex-direction: column; gap: 2px; min-width: 52px; }
-  .sc-sym  { font-family: var(--sc-font-mono, monospace); font-size: 12px; font-weight: 700; color: #fff; }
-  .sc-venue{ font-size: 9px; color: rgba(255,255,255,0.25); font-family: var(--sc-font-mono, monospace); }
+  .sc-sym  { font-family: var(--sc-font-mono, monospace); font-size: 10px; font-weight: 700; color: #fff; }
+  .sc-venue{ font-size: 8px; color: rgba(255,255,255,0.25); font-family: var(--sc-font-mono, monospace); }
   .sc-right{ display: flex; flex-direction: column; gap: 3px; flex: 1; align-items: flex-end; }
-  .sc-dir  { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); }
-  .sc-reason { font-size: 10px; color: rgba(255,255,255,0.35); text-align: right; line-height: 1.4; }
-  .sc-loading{ font-size: 9px; color: rgba(255,255,255,0.2); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
+  .sc-dir  { font-family: var(--sc-font-mono, monospace); font-size: 8px; font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); }
+  .sc-reason { font-size: 9px; color: rgba(255,255,255,0.35); text-align: right; line-height: 1.22; }
+  .sc-loading{ font-size: 8px; color: rgba(255,255,255,0.2); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
 
   /* Scan detail (VerdictCard below scan list) */
-  .scan-detail { flex: 1; }
+  .scan-detail {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
 
   .hero-metrics-row {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 6px;
-    padding: 8px 12px;
+    gap: 1px;
+    padding: 3px 4px;
     border-top: 1px solid rgba(255,255,255,0.05);
     border-bottom: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.015);
+    background: rgba(255,255,255,0.01);
   }
+
+  .board-decision-strip {
+    display: grid;
+    gap: 1px;
+    padding: 0;
+    border-top: 1px solid rgba(255,255,255,0.055);
+    border-bottom: 1px solid rgba(255,255,255,0.055);
+    background: rgba(255,255,255,0.035);
+  }
+
+  .board-decision-main {
+    display: grid;
+    grid-template-columns: 0.8fr 1.35fr 1.1fr 0.8fr;
+    gap: 1px;
+  }
+
+  .decision-cell {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 5px;
+    padding: 4px 6px;
+    border: none;
+    background: rgba(8,10,14,0.98);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .decision-cell:hover {
+    background: rgba(13,17,24,0.98);
+  }
+
+  .decision-label,
+  .board-source-label {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .decision-cell strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(247,242,234,0.78);
+  }
+
+  .decision-cell[data-tone='bull'] strong { color: #8fdd9d; }
+  .decision-cell[data-tone='bear'] strong,
+  .decision-cell[data-tone='risk'] strong { color: #f19999; }
+  .decision-cell[data-tone='warn'] strong { color: #e9c167; }
+  .decision-cell[data-tone='info'] strong { color: #83bcff; }
+
+  .board-source-row {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 3px 5px;
+    background: rgba(8,10,14,0.96);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .board-source-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .board-source-pill {
+    flex-shrink: 0;
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(131,188,255,0.62);
+    background: rgba(77,143,245,0.055);
+    border: 1px solid rgba(77,143,245,0.10);
+    border-radius: 2px;
+    padding: 1px 4px;
+    cursor: pointer;
+  }
+
+  .board-source-pill:hover {
+    color: rgba(180,215,255,0.9);
+    border-color: rgba(77,143,245,0.22);
+  }
+
   .hero-metric {
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
-    padding: 6px 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.025);
+    padding: 3px 5px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.018);
   }
   .hero-metric[data-tone='bull'] { background: rgba(74,222,128,0.06); }
   .hero-metric[data-tone='bear'] { background: rgba(248,113,113,0.06); }
@@ -2218,14 +2385,14 @@
   .hero-metric-label,
   .hero-metric-note {
     font-family: var(--sc-font-mono);
-    font-size: 8px;
+    font-size: 7px;
     color: var(--sc-text-3);
     letter-spacing: 0.05em;
     text-transform: uppercase;
   }
   .hero-metric-value {
     font-family: var(--sc-font-mono);
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 700;
     color: var(--sc-text-0);
   }
@@ -2233,28 +2400,28 @@
   .market-mini-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    padding: 8px 12px 12px;
+    gap: 3px;
+    padding: 4px 5px 5px;
     overflow: hidden;
   }
 
   .microstructure-row {
     display: grid;
     grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-    gap: 8px;
-    padding: 8px 12px 10px;
+    gap: 3px;
+    padding: 4px 5px;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.01);
+    background: rgba(255,255,255,0.008);
   }
   .micro-card {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     min-width: 0;
-    padding: 10px 12px;
-    border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.025);
+    padding: 5px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.018);
   }
   .micro-card[data-tone='bull'] { background: rgba(74,222,128,0.05); }
   .micro-card[data-tone='bear'] { background: rgba(248,113,113,0.05); }
@@ -2264,7 +2431,7 @@
   .liq-cluster-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
   }
   .micro-card-header {
     justify-content: space-between;
@@ -2280,7 +2447,7 @@
     font-family: var(--sc-font-mono);
   }
   .micro-title {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.08em;
     color: var(--sc-text-2);
@@ -2292,7 +2459,7 @@
   .liq-price,
   .liq-distance,
   .liq-usd {
-    font-size: 9px;
+    font-size: 8px;
     color: var(--sc-text-2);
   }
   .micro-stat-row {
@@ -2302,12 +2469,12 @@
   .depth-ladders {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 5px;
   }
   .depth-side {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
   }
   .depth-row {
     min-width: 0;
@@ -2316,13 +2483,13 @@
     justify-content: flex-end;
   }
   .depth-price {
-    width: 78px;
+    width: 64px;
     flex-shrink: 0;
   }
   .depth-bar-wrap {
     flex: 1;
-    height: 10px;
-    border-radius: 3px;
+    height: 6px;
+    border-radius: 2px;
     background: rgba(255,255,255,0.04);
     overflow: hidden;
   }
@@ -2332,23 +2499,23 @@
   }
   .depth-bar {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 2px;
   }
   .depth-bar.bid { background: linear-gradient(90deg, rgba(52,196,112,0.25), rgba(52,196,112,0.75)); }
   .depth-bar.ask { background: linear-gradient(90deg, rgba(232,85,85,0.75), rgba(232,85,85,0.25)); }
   .liq-cluster-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
   }
   .liq-cluster-row {
-    padding: 6px 8px;
-    border-radius: 4px;
+    padding: 3px 5px;
+    border-radius: 2px;
     background: rgba(255,255,255,0.03);
   }
   .liq-side {
-    width: 44px;
-    font-size: 8px;
+    width: 38px;
+    font-size: 7px;
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -2356,26 +2523,26 @@
   .liq-side[data-side='BUY'] { color: #4ade80; }
   .liq-side[data-side='SELL'] { color: #f87171; }
   .liq-price { flex: 1; }
-  .liq-distance { width: 58px; text-align: right; }
-  .liq-usd { width: 64px; text-align: right; color: var(--sc-text-1); }
+  .liq-distance { width: 48px; text-align: right; }
+  .liq-usd { width: 54px; text-align: right; color: var(--sc-text-1); }
   .liq-empty {
     margin: 0;
-    font-size: 10px;
+    font-size: 9px;
     color: var(--sc-text-3);
   }
   .mini-asset-card {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 3px;
     min-width: 0;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.02);
+    padding: 5px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.016);
     text-align: left;
     cursor: pointer;
   }
-  .mini-asset-card:hover { border-color: rgba(255,255,255,0.18); }
+  .mini-asset-card:hover { border-color: rgba(77,143,245,0.18); }
   .mini-top,
   .mini-meta-row {
     display: flex;
@@ -2387,14 +2554,14 @@
   .mini-meta-row span {
     font-family: var(--sc-font-mono);
   }
-  .mini-symbol { font-size: 11px; font-weight: 700; color: var(--sc-text-0); }
-  .mini-meta-row span { font-size: 9px; color: var(--sc-text-2); }
-  .mini-up { font-family: var(--sc-font-mono); font-size: 10px; color: #4ade80; }
-  .mini-down { font-family: var(--sc-font-mono); font-size: 10px; color: #f87171; }
+  .mini-symbol { font-size: 9px; font-weight: 700; color: var(--sc-text-0); letter-spacing: 0.04em; }
+  .mini-meta-row span { font-size: 8px; color: var(--sc-text-2); }
+  .mini-up { font-family: var(--sc-font-mono); font-size: 9px; color: #4ade80; }
+  .mini-down { font-family: var(--sc-font-mono); font-size: 9px; color: #f87171; }
   .mini-reason {
     margin: 0;
-    font-size: 10px;
-    line-height: 1.4;
+    font-size: 9px;
+    line-height: 1.22;
     color: var(--sc-text-2);
   }
 
@@ -2455,7 +2622,7 @@
 
   /* Tablet — analysis rail gets narrower */
   @media (max-width: 1200px) and (min-width: 769px) {
-    .analysis-rail { width: var(--terminal-analysis-w, 320px); max-width: 360px; }
+    .analysis-rail { width: var(--terminal-analysis-w, 260px); max-width: 340px; }
     .hero-metrics-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .microstructure-row { grid-template-columns: 1fr; }
   }
@@ -2476,14 +2643,6 @@
       position: relative;
       top: auto;
     }
-    .terminal-topbar-actions {
-      width: 100%;
-      flex-wrap: wrap;
-    }
-    .terminal-topbar-stats {
-      width: 100%;
-    }
-    .terminal-status-strip { display: none; }
     .terminal-body {
       grid-template-columns: 1fr !important;
     }
@@ -2513,199 +2672,4 @@
   .mobile-board-wrap {
     display: none;
   }
-
-  /* ── Compact Verdict Panel (analysis-rail MODE A) ────────── */
-  .compact-verdict {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding: 0;
-    overflow-y: auto;
-    flex: 1;
-    background: rgba(255,255,255,0.01);
-  }
-
-  .cv-bias {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 12px 14px 10px;
-    border-bottom: 1px solid var(--sc-terminal-border);
-  }
-  .cv-bias.bullish { background: rgba(74,222,128,0.04); }
-  .cv-bias.bearish { background: rgba(248,113,113,0.04); }
-
-  .cv-dot { font-size: 8px; }
-  .cv-bias.bullish .cv-dot { color: #4ade80; }
-  .cv-bias.bearish .cv-dot { color: #f87171; }
-  .cv-bias:not(.bullish):not(.bearish) .cv-dot { color: rgba(247,242,234,0.3); }
-
-  .cv-dir {
-    font-family: var(--sc-font-mono); font-size: 12px; font-weight: 700;
-    color: var(--sc-text-0);
-  }
-  .cv-conf {
-    font-family: var(--sc-font-mono); font-size: 9px; letter-spacing: 0.06em;
-    color: var(--sc-text-2);
-    background: rgba(255,255,255,0.06); border-radius: 3px; padding: 1px 5px;
-  }
-  .cv-sym {
-    font-family: var(--sc-font-mono); font-size: 9px; color: var(--sc-text-2);
-    margin-left: auto;
-  }
-
-  .cv-price {
-    display: flex; align-items: baseline; gap: 8px;
-    padding: 8px 14px;
-    border-bottom: 1px solid var(--sc-terminal-border);
-    background: rgba(255,255,255,0.015);
-  }
-  .cv-last {
-    font-family: var(--sc-font-mono); font-size: 18px; font-weight: 700;
-    color: var(--sc-text-0);
-  }
-  .cv-meta {
-    font-family: var(--sc-font-mono); font-size: 10px;
-    color: var(--sc-text-2);
-  }
-
-  .cv-action {
-    padding: 8px 14px;
-    font-family: var(--sc-font-mono); font-size: 11px; font-weight: 600;
-    color: rgba(173,202,124,0.9);
-    border-bottom: 1px solid var(--sc-terminal-border);
-    background: rgba(173,202,124,0.04);
-  }
-
-  .cv-metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    background: var(--sc-terminal-border);
-    border-bottom: 1px solid var(--sc-terminal-border);
-  }
-  .cv-section-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .cv-metric {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 14px;
-    background: rgba(255,255,255,0.02);
-    min-width: 0;
-  }
-  .cv-metric-label,
-  .cv-evidence-metric {
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    color: var(--sc-text-3);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .cv-metric-value {
-    font-family: var(--sc-font-mono);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--sc-text-1);
-  }
-  .cv-toggle {
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    color: var(--sc-text-2);
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 3px;
-    padding: 2px 6px;
-    cursor: pointer;
-  }
-  .cv-toggle:hover {
-    color: var(--sc-text-0);
-    border-color: rgba(255,255,255,0.22);
-  }
-
-  .cv-section {
-    padding: 9px 14px;
-    border-bottom: 1px solid var(--sc-terminal-border);
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .cv-label {
-    font-family: var(--sc-font-mono); font-size: 8px; font-weight: 700;
-    letter-spacing: 0.12em; color: var(--sc-text-3);
-  }
-  .cv-text {
-    font-family: var(--sc-font-mono); font-size: 11px;
-    color: var(--sc-text-1); margin: 0; line-height: 1.5;
-  }
-
-  .cv-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-  .cv-tag {
-    font-family: var(--sc-font-mono); font-size: 9px; font-weight: 600;
-    padding: 2px 7px; border-radius: 3px;
-  }
-  .cv-tag.warn { background: rgba(251,191,36,0.1); color: #fbbf24; }
-
-  .cv-evidence-list {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .cv-evidence-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .cv-evidence-value {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--sc-text-1);
-  }
-  .cv-evidence-value[data-state='bullish'] { color: #4ade80; }
-  .cv-evidence-value[data-state='bearish'] { color: #f87171; }
-  .cv-evidence-value[data-state='warning'] { color: #fbbf24; }
-
-  .cv-levels { display: flex; flex-direction: column; gap: 4px; }
-  .cv-level {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 4px 0;
-  }
-  .cv-level.good .lv-val { color: #4ade80; }
-  .cv-level.bad  .lv-val { color: #f87171; }
-  .lv-name {
-    font-family: var(--sc-font-mono); font-size: 10px; color: var(--sc-text-2);
-  }
-  .lv-val {
-    font-family: var(--sc-font-mono); font-size: 11px; font-weight: 700;
-    color: var(--sc-text-1);
-  }
-
-  .cv-invalidation {
-    padding: 7px 14px;
-    font-family: var(--sc-font-mono); font-size: 10px;
-    color: rgba(248,113,113,0.7);
-    border-bottom: 1px solid var(--sc-terminal-border);
-  }
-
-  .cv-sources {
-    padding: 0 14px 8px;
-    border-bottom: 1px solid var(--sc-terminal-border);
-  }
-
-  .cv-expand {
-    margin: 10px 14px;
-    font-family: var(--sc-font-mono); font-size: 10px;
-    color: rgba(255,255,255,0.3);
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 4px; padding: 6px 12px; cursor: pointer;
-    text-align: center; transition: all 0.12s;
-  }
-  .cv-expand:hover { color: var(--sc-text-0); border-color: rgba(255,255,255,0.2); }
 </style>
