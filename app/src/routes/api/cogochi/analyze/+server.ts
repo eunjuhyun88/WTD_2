@@ -484,18 +484,7 @@ async function _buildAnalyzePayload({
 
 async function _fallbackAnalyzePayload(symbol: string, tf: string): Promise<Record<string, unknown>> {
 	try {
-		const { readRaw: _readRaw, klinesRawIdForTimeframe: _klinesRaw } = await import(
-			'$lib/server/providers/rawSources'
-		);
-		const { KnownRawId: _Id } = await import('$lib/contracts/ids');
-
-		const [klines, ticker, funding, oiPoint, lsTop] = await Promise.all([
-			_readRaw(_klinesRaw(tf), { symbol, limit: 200 }).catch(() => []),
-			_readRaw(_Id.TICKER_24HR, { symbol }).catch(() => null),
-			_readRaw(_Id.FUNDING_RATE, { symbol }).catch(() => null),
-			_readRaw(_Id.OPEN_INTEREST_POINT, { symbol }).catch(() => null),
-			_readRaw(_Id.LONG_SHORT_TOP_1H, { symbol }).catch(() => null),
-		]);
+		const { klines, ticker, fundingRate, oiPoint, lsTop } = await collectAnalyzeInputs(symbol, tf);
 
 		const currentPrice = klines.length > 0 ? klines[klines.length - 1].close : null;
 
@@ -514,7 +503,7 @@ async function _fallbackAnalyzePayload(symbol: string, tf: string): Promise<Reco
 			})),
 			price: currentPrice,
 			change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
-			derivatives: { funding, oi: oiPoint, lsRatio: lsTop },
+			derivatives: { funding: fundingRate, oi: oiPoint, lsRatio: lsTop },
 			microstructure: null,
 			annotations: [],
 			indicators: { bbUpper: [], bbMiddle: [], bbLower: [], ema20: [] },

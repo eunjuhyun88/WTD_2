@@ -4,11 +4,11 @@ import { runIpRateLimitGuard } from '$lib/server/authSecurity';
 import { terminalReadLimiter } from '$lib/server/rateLimit';
 import {
   deriveTerminalPresets,
-  fetchInternalJson,
-  type TerminalAlertPreview,
-  type TerminalOpportunityPayload,
-  type TerminalPatternCandidatesPayload,
+  getCachedTerminalParitySnapshot,
 } from '$lib/server/terminalParity';
+import { getHotCached } from '$lib/server/hotCache';
+
+const TERMINAL_PRESETS_TTL_MS = 15_000;
 
 export const GET: RequestHandler = async ({ fetch, getClientAddress, request }) => {
   const guard = await runIpRateLimitGuard({
@@ -21,16 +21,19 @@ export const GET: RequestHandler = async ({ fetch, getClientAddress, request }) 
   });
   if (!guard.ok) return guard.response;
 
-  const [alertsPayload, patternCandidates, opportunityPayload] = await Promise.all([
-    fetchInternalJson<{ alerts?: TerminalAlertPreview[] }>(fetch, '/api/cogochi/alerts?limit=48'),
-    fetchInternalJson<TerminalPatternCandidatesPayload>(fetch, '/api/engine/patterns/candidates'),
-    fetchInternalJson<TerminalOpportunityPayload>(fetch, '/api/terminal/opportunity-scan?limit=15'),
-  ]);
+  const presets = await getHotCached('terminal:query-presets', TERMINAL_PRESETS_TTL_MS, async () => {
+    const snapshot = await getCachedTerminalParitySnapshot({
+      fetcher: fetch,
+      alertsLimit: 48,
+      opportunityLimit: 15,
+      ttlMs: TERMINAL_PRESETS_TTL_MS,
+    });
 
-  const presets = deriveTerminalPresets({
-    alerts: alertsPayload?.alerts ?? [],
-    opportunityAlerts: opportunityPayload?.data?.alerts ?? [],
-    patternCandidates: patternCandidates?.entry_candidates ?? {},
+    return deriveTerminalPresets({
+      alerts: snapshot.alerts,
+      opportunityAlerts: snapshot.opportunityAlerts,
+      patternCandidates: snapshot.patternCandidates,
+    });
   });
 
   return json(
