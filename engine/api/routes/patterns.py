@@ -6,10 +6,12 @@ Endpoints:
   GET  /patterns/candidates           — entry candidates across all patterns
   GET  /patterns/{slug}/candidates    — entry candidates for one pattern
   GET  /patterns/{slug}/stats         — ledger stats for one pattern
+  GET  /patterns/{slug}/model-registry — current registry snapshot for one pattern
   GET  /patterns/{slug}/library       — return pattern definition
   POST /patterns/scan                 — trigger a scan cycle
   POST /patterns/{slug}/verdict       — user verdict on outcome
   POST /patterns/{slug}/evaluate      — v2: auto-evaluate pending outcomes
+  POST /patterns/{slug}/promote-model — promote a candidate model to active
   POST /patterns/register             — v2: register user-defined pattern
   GET  /patterns/data-quality         — v2: perp coverage and scan health
 """
@@ -25,6 +27,7 @@ from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.model_key import make_pattern_model_key
+from patterns.model_registry import MODEL_REGISTRY_STORE
 from patterns.scanner import (
     _get_machine,
     get_entry_candidates_all,
@@ -61,7 +64,14 @@ class _PatternTrainBody(BaseModel):
     target_name: str = "breakout"
     feature_schema_version: int = 1
     label_policy_version: int = 1
+    threshold_policy_version: int = 1
     min_records: int | None = None
+
+
+class _PromotePatternModelBody(BaseModel):
+    model_key: str
+    model_version: str
+    threshold_policy_version: int = 1
 
 
 def _pattern_training_matrix(records: list[dict]) -> tuple[np.ndarray, np.ndarray]:
@@ -177,6 +187,9 @@ async def get_stats(slug: str) -> dict:
     stats = _ledger.compute_stats(slug)
     outcomes = _ledger.list_all(slug)
     record_family = LEDGER_RECORD_STORE.compute_family_stats(slug)
+    registry_entries = MODEL_REGISTRY_STORE.list(slug)
+    active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug)
+    preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
     latest_training_run_record = next(
         iter(LEDGER_RECORD_STORE.list(slug, record_type="training_run", limit=1)),
         None,
@@ -213,6 +226,11 @@ async def get_stats(slug: str) -> dict:
             "model_count": record_family.model_count,
             "capture_to_entry_rate": round(record_family.capture_to_entry_rate, 3) if record_family.capture_to_entry_rate is not None else None,
             "verdict_to_entry_rate": round(record_family.verdict_to_entry_rate, 3) if record_family.verdict_to_entry_rate is not None else None,
+        },
+        "model_registry": {
+            "entry_count": len(registry_entries),
+            "active_model": active_registry_entry.to_dict() if active_registry_entry else None,
+            "preferred_scoring_model": preferred_registry_entry.to_dict() if preferred_registry_entry else None,
         },
         "latest_training_run": latest_training_run_record.to_dict() if latest_training_run_record else None,
         "latest_model": latest_model_record.to_dict() if latest_model_record else None,
@@ -255,6 +273,25 @@ async def get_training_records(slug: str, limit: int = Query(default=25, ge=1, l
         "ready_to_train": summary.ready_to_train,
         "readiness_reason": summary.readiness_reason,
         "records": records[:limit],
+    }
+
+
+@router.get("/{slug}/model-registry")
+async def get_model_registry(slug: str) -> dict:
+    """Return the current registry snapshot for a pattern."""
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+
+    entries = MODEL_REGISTRY_STORE.list(slug)
+    active_entry = MODEL_REGISTRY_STORE.get_active(slug)
+    preferred_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
+    return {
+        "pattern_slug": slug,
+        "entries": [entry.to_dict() for entry in entries],
+        "active_model": active_entry.to_dict() if active_entry else None,
+        "preferred_scoring_model": preferred_entry.to_dict() if preferred_entry else None,
     }
 
 
@@ -394,6 +431,7 @@ async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
         "target_name": body.target_name,
         "feature_schema_version": body.feature_schema_version,
         "label_policy_version": body.label_policy_version,
+        "threshold_policy_version": body.threshold_policy_version,
         "requested_by_user_id": body.user_id,
         "n_records": len(records),
         "n_wins": int((y == 1).sum()),
@@ -410,11 +448,25 @@ async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
         payload=payload,
     )
     if result["replaced"]:
+        registry_entry = MODEL_REGISTRY_STORE.upsert_candidate(
+            pattern_slug=slug,
+            model_key=model_key,
+            model_version=model_version,
+            timeframe=pattern.timeframe,
+            target_name=body.target_name,
+            feature_schema_version=body.feature_schema_version,
+            label_policy_version=body.label_policy_version,
+            threshold_policy_version=body.threshold_policy_version,
+            requested_by_user_id=body.user_id,
+        )
         LEDGER_RECORD_STORE.append_model_record(
             pattern_slug=slug,
             model_version=model_version,
             user_id=body.user_id,
-            payload=payload,
+            payload={
+                **payload,
+                "rollout_state": registry_entry.rollout_state,
+            },
         )
 
     return {
@@ -430,6 +482,46 @@ async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
         "n_records": len(records),
         "n_wins": payload["n_wins"],
         "n_losses": payload["n_losses"],
+    }
+
+
+@router.post("/{slug}/promote-model")
+async def promote_pattern_model(slug: str, body: _PromotePatternModelBody) -> dict:
+    """Promote a candidate model to active rollout state."""
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+
+    try:
+        active_entry = MODEL_REGISTRY_STORE.promote(
+            pattern_slug=slug,
+            model_key=body.model_key,
+            model_version=body.model_version,
+            threshold_policy_version=body.threshold_policy_version,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    LEDGER_RECORD_STORE.append_model_record(
+        pattern_slug=slug,
+        model_version=active_entry.model_version,
+        payload={
+            "model_key": active_entry.model_key,
+            "timeframe": active_entry.timeframe,
+            "target_name": active_entry.target_name,
+            "feature_schema_version": active_entry.feature_schema_version,
+            "label_policy_version": active_entry.label_policy_version,
+            "threshold_policy_version": active_entry.threshold_policy_version,
+            "rollout_state": active_entry.rollout_state,
+            "promotion_event": "promote_to_active",
+        },
+    )
+
+    return {
+        "ok": True,
+        "pattern_slug": slug,
+        "active_model": active_entry.to_dict(),
     }
 
 

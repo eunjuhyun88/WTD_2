@@ -86,7 +86,9 @@ class LedgerStore:
         d.setdefault("entry_block_coverage", None)
         d.setdefault("entry_p_win", None)
         d.setdefault("entry_ml_state", None)
+        d.setdefault("entry_model_key", None)
         d.setdefault("entry_model_version", None)
+        d.setdefault("entry_rollout_state", None)
         d.setdefault("entry_threshold", None)
         d.setdefault("entry_threshold_passed", None)
         d.setdefault("entry_ml_error", None)
@@ -464,7 +466,9 @@ class LedgerRecordStore:
                 payload={
                     "entry_p_win": outcome.entry_p_win,
                     "entry_ml_state": outcome.entry_ml_state,
+                    "entry_model_key": outcome.entry_model_key,
                     "entry_model_version": outcome.entry_model_version,
+                    "entry_rollout_state": outcome.entry_rollout_state,
                     "entry_threshold": outcome.entry_threshold,
                     "entry_threshold_passed": outcome.entry_threshold_passed,
                     "entry_ml_error": outcome.entry_ml_error,
