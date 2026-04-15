@@ -24,6 +24,7 @@
   import { get } from 'svelte/store';
   import { douniRuntimeStore } from '$lib/stores/douniRuntime';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
+  import { buildTerminalHeaderModel } from '$lib/terminal/terminalHeaderModel';
   import { createSymbolSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
   import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
@@ -102,6 +103,8 @@
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
+  import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
+  import TerminalHeaderMeta from '../../components/terminal/workspace/TerminalHeaderMeta.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
@@ -1334,189 +1337,33 @@
     readPathDepth,
     readPathLiq,
   }));
-  // ─── Mobile ModeRouter data ──────────────────────────────────
-
-  /**
-   * mobileMarketRows — top 30 items for ScanMode.
-   * Source priority: persistedWatchlist first (has live preview prices),
-   * then trendingData.trending to pad up to 30.
-   * Deduplication by symbol (watchlist wins).
-   */
-  const mobileMarketRows = $derived.by(() => {
-    type MobileMarketRow = {
-      symbol: string;
-      base: string;
-      price: number;
-      changePct: number;
-      volume24h?: number;
-      bias?: 'bullish' | 'bearish' | 'neutral';
-    };
-    const rows: MobileMarketRow[] = [];
-    const seen = new Set<string>();
-
-    // Watchlist items first — they carry persisted preview prices
-    for (const item of (persistedWatchlist ?? [])) {
-      if (seen.has(item.symbol)) continue;
-      seen.add(item.symbol);
-      rows.push({
-        symbol: item.symbol,
-        base: item.symbol.replace(/USDT$/, ''),
-        price: item.preview?.price ?? 0,
-        changePct: item.preview?.change24h ?? 0,
-        bias: item.preview?.bias,
-      });
-    }
-
-    // Pad with trending coins (trendingData.trending, then .gainers, then .losers)
-    const trendingSources: any[] = [
-      ...(trendingData?.trending ?? []),
-      ...(trendingData?.gainers ?? []),
-      ...(trendingData?.losers ?? []),
-    ];
-    for (const coin of trendingSources) {
-      const sym: string = coin?.symbol ?? '';
-      if (!sym || seen.has(sym)) continue;
-      seen.add(sym);
-      rows.push({
-        symbol: sym,
-        base: sym.replace(/USDT$/, ''),
-        price: coin?.price ?? 0,
-        changePct: coin?.change24h ?? coin?.percentChange24h ?? 0,
-        volume24h: coin?.volume24h ?? undefined,
-        // TODO: bias not available from trending feed — derive from changePct sign as approximation
-        bias: (coin?.change24h ?? coin?.percentChange24h ?? 0) >= 0 ? 'bullish' : 'bearish',
-      });
-    }
-
-    return rows.slice(0, 30);
-  });
-
-  /**
-   * mobileAlerts — scannerAlerts mapped to ModeRouter Alert shape for JudgeMode.
-   * scanner alerts do not carry a user judgment state, so status is always 'pending'.
-   */
-  const mobileAlerts = $derived.by(() => {
-    type MobileAlert = {
-      id: string;
-      symbol: string;
-      tf: string;
-      direction: 'bullish' | 'bearish' | 'neutral';
-      summary: string;
-      timestamp: number;
-      status: 'pending' | 'agreed' | 'disagreed';
-      reason?: 'valid' | 'late' | 'noisy' | 'invalid' | 'almost';
-    };
-    return (scannerAlerts ?? []).map((alert: any): MobileAlert => {
-      // TODO: direction is not a first-class field on engine_alerts rows;
-      // derive from blocks_triggered heuristic: if any block name contains 'bull'
-      // or 'long' treat as bullish; 'bear'/'short' as bearish; else neutral.
-      const blocks: string[] = alert?.blocks_triggered ?? [];
-      const blockStr = blocks.join(' ').toLowerCase();
-      let direction: 'bullish' | 'bearish' | 'neutral' = 'neutral';
-      if (blockStr.includes('bull') || blockStr.includes('long') || blockStr.includes('reclaim')) {
-        direction = 'bullish';
-      } else if (blockStr.includes('bear') || blockStr.includes('short') || blockStr.includes('dump')) {
-        direction = 'bearish';
-      }
-
-      const summary =
-        blocks.length > 0
-          ? blocks.map((b: string) => b.replace(/_/g, ' ')).join(' · ')
-          : 'Signal alert';
-
-      return {
-        id: alert?.id ?? '',
-        symbol: alert?.symbol ?? '',
-        tf: alert?.timeframe ?? '1H',
-        direction,
-        summary,
-        timestamp: alert?.created_at ? new Date(alert.created_at).getTime() : Date.now(),
-        status: 'pending',
-      };
-    });
-  });
-
-  /**
-   * onAlertFeedback — optimistic state update only; no alert-feedback API exists yet.
-   * TODO: POST to /api/cogochi/alert-feedback once the endpoint is built.
-   */
-  function handleMobileAlertFeedback(id: string, agree: boolean, reason?: string) {
-    console.log('[mobile-judge] alert feedback', { id, agree, reason });
-    // Optimistic: move the alert out of the scannerAlerts list so JudgeMode
-    // shows it as resolved on next mobileAlerts derivation.
-    // Since scannerAlerts are any[], we mark it via a local agreed-ids set.
-    agreedAlertIds = new Set([...agreedAlertIds, id]);
-  }
-
-  /**
-   * Track IDs the user has already judged so mobileAlerts can reflect resolved status.
-   * Persisted only for the lifetime of this page session.
-   */
-  let agreedAlertIds = $state(new Set<string>());
-
-  /**
-   * mobileAlertsWithStatus — overlays local agree/disagree state onto mobileAlerts
-   * so JudgeMode rows switch from 'pending' to resolved without a round-trip.
-   */
-  const mobileAlertsWithStatus = $derived.by(() =>
-    mobileAlerts.map(alert =>
-      agreedAlertIds.has(alert.id) ? { ...alert, status: 'agreed' as const } : alert
-    )
-  );
-
-  /**
-   * refreshWatchlistForMobile — called by ScanMode pull-to-refresh.
-   * Reloads both the persisted watchlist (for preview prices) and the trending feed.
-   */
-  async function refreshWatchlistForMobile() {
-    await Promise.all([loadTerminalPersistenceState(), loadTrending()]);
-  }
-
-  // ── PEEK drawer derived + handlers ────────────────────────
-  const peekAnalyzeCount = $derived((analysisData as any)?.verdict ? 1 : 0);
-  const peekScanCount = $derived(scannerAlerts.length);
-  const peekJudgeCount = $derived(peekCaptures.filter((c: any) => {
-    const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
-    return !hasOutcome;
-  }).length);
-
-  const peekVerdict = $derived((analysisData as any)?.verdict ?? null);
-  const peekEntry = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
-  const peekStop = $derived((analysisData as any)?.verdict?.stop ?? (analysisData as any)?.deep?.stop ?? null);
-  const peekTarget = $derived((analysisData as any)?.verdict?.target ?? (analysisData as any)?.deep?.target ?? null);
-  const peekPWin = $derived((analysisData as any)?.p_win ?? null);
-  const peekLast = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
-
-  async function handlePeekSaveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
-    const symbol = activeSymbol || pairToSymbol(gPair);
-    const timeframe = symbolToTF(gTf);
-    if (!symbol) return;
-    const data = analysisData;
-    await createPatternCapture({
-      symbol,
-      timeframe,
-      contextKind: 'symbol',
-      triggerOrigin: 'manual',
-      note: input.note || undefined,
-      snapshot: { freshness: 'live' },
-      decision: {
-        verdict: input.verdict,
-        confidence: (data as any)?.p_win ?? undefined,
-      },
-      sourceFreshness: { manual: new Date().toISOString() },
-    });
-    await loadPeekCaptures();
-  }
-
-  async function handlePeekRejudge(input: { captureId: string; outcome: 'correct' | 'wrong' | 'partial' | 'timeout'; note: string }) {
-    console.log('[peek] rejudge (UI stub)', input);
-    // TODO: PATCH /api/terminal/pattern-captures/[id] when backend route exists.
-    await loadPeekCaptures();
-  }
-
-  function handlePeekOpenCapture(record: any) {
-    setActivePair(record.symbol.replace(/USDT$/, '') + '/USDT');
-  }
+  let statusStripItems = $derived(surfaceSummary.statusStripItems);
+  let headerModel = $derived.by(() => buildTerminalHeaderModel({
+    selection: selectionState,
+    activeAsset,
+    activeVerdict,
+    regime: surfaceSummary.regime,
+    flowBias,
+  }));
+  let dockFeedItems = $derived.by(() => buildDockFeedItems({
+    activeFocusLabel,
+    activeAsset,
+    flowBias,
+    boardAssetsCount: boardAssets.length,
+    timeframeBadgeLabel,
+    runtimeModeLabel,
+    patternTransitionAlerts,
+    statusStripItems,
+    marketEvents,
+  }));
+  // Quick chips for mobile dock
+  const MOBILE_CHIPS = $derived([
+    { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
+    { id: 'alts',      label: 'Hot Alts',        action: 'Show hot altcoins with breakout signals' },
+    { id: 'long-bias', label: 'LONG setups',     action: 'Show best long setups with high confluence' },
+    { id: 'risk',      label: 'Risk check',      action: `What are the main risks for ${gPair.split('/')[0]}?` },
+    { id: 'compare',   label: 'BTC vs ETH',      action: 'Compare BTC and ETH side by side' },
+  ]);
 </script>
 
 <svelte:head>
@@ -1588,6 +1435,11 @@
         <span class="workspace-panel-kicker">Main Board</span>
         <span class="workspace-panel-meta">{layout} layout</span>
       </div>
+      <TerminalHeaderMeta
+        subjectLabel={headerModel.subjectLabel}
+        sourceLabel={headerModel.sourceLabel}
+        badges={headerModel.badges}
+      />
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 

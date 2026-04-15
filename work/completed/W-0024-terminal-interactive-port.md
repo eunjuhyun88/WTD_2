@@ -67,6 +67,7 @@ app
 - Terminal density should be progressive: compact by default, expandable on demand. Small badges, strips, and cells should reveal larger contextual blocks only when clicked or expanded.
 - `docs/product/terminal-attention-workspace.md` is the canonical design reference for final left/center/right responsibilities, attention allocation, and progressive disclosure rules.
 - Phase 1 scaffolding starts with normalized selection state from the left rail so later attention weighting and summary chrome can consume one consistent selection contract.
+- Phase 1 also introduces a compact header meta strip above the center board; context should be visible there without displacing the chart from the primary visual role.
 - The large terminal summary slab is removed; the surviving board meta now lives as compact status pills inside the right-rail `TerminalContextPanel` header so the center board stays chart-first.
 - Svelte 5 compatibility cleanup uses render snippets in `TerminalRightRail` instead of deprecated `<slot>`.
 - Stale page-local analysis rail CSS should stay deleted because the active right rail owns those selectors inside `TerminalRightRail.svelte`.
