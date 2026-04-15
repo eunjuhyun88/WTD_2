@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 import pandas as pd
+import pytest
 
 import scanner.scheduler as scheduler
 
@@ -170,3 +171,19 @@ def test_pattern_scan_job_dedupes_repeated_entry_candidate_summaries(monkeypatch
 
     assert len(summaries) == 1
     assert summaries[0]["entry_candidates"] == {"tradoor-oi-reversal-v1": ["BTCUSDT"]}
+
+
+def test_validate_scheduler_secrets_rejects_missing_service_role(monkeypatch) -> None:
+    monkeypatch.setattr(scheduler, "SUPABASE_URL", "https://project.supabase.co")
+    monkeypatch.setattr(scheduler, "SUPABASE_ROLE_KEY", "")
+
+    with pytest.raises(RuntimeError, match="SUPABASE_SERVICE_ROLE_KEY is required"):
+        scheduler.validate_scheduler_secrets()
+
+
+def test_validate_scheduler_secrets_rejects_placeholder_values(monkeypatch) -> None:
+    monkeypatch.setattr(scheduler, "SUPABASE_URL", "https://your-project.supabase.co")
+    monkeypatch.setattr(scheduler, "SUPABASE_ROLE_KEY", "your_service_role_key")
+
+    with pytest.raises(RuntimeError, match="placeholder"):
+        scheduler.validate_scheduler_secrets()

@@ -33,6 +33,11 @@
     metricValueFromEvidence,
   } from '$lib/terminal/terminalDerived';
   import {
+    fetchTerminalAnomalies,
+    fetchTerminalQueryPresets,
+    fetchTerminalStatusData,
+    fetchDepthLadderData,
+    fetchLiquidationClustersData,
     fetchNewsData,
     fetchPatternPhasesData,
     fetchScannerAlerts,
@@ -46,14 +51,20 @@
     snapshotFingerprint,
     streamTerminalMessage,
   } from '$lib/terminal/terminalActions';
-  import { fetchFlowBias, fetchMarketEvents } from '$lib/api/terminalBackend';
+  import { fetchFlowBias, fetchMarketEvents, fetchMemoryRerank, sendMemoryFeedback } from '$lib/api/terminalBackend';
+  import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import {
     buildTerminalDecisionBundle,
+    rerankEvidenceWithMemory,
     type TerminalDecisionBundle,
   } from '$lib/terminal/panelAdapter';
   import type {
     AnalyzeEnvelope,
+    DepthLadderEnvelope,
     EventsEnvelope,
+    LiquidationClustersEnvelope,
+    TerminalAnomaly,
+    TerminalPreset,
   } from '$lib/contracts/terminalBackend';
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
@@ -76,9 +87,11 @@
   // ─── State ──────────────────────────────────────────────────
 
   let layout = $state<'hero3' | 'compare2x2' | 'focus'>('focus');
-  let boardAssets = $state<TerminalAsset[]>([]);
-  let verdictMap = $state<Record<string, TerminalVerdict>>({});
-  let evidenceMap = $state<Record<string, TerminalEvidence[]>>({});
+  let boardSymbols = $state<string[]>([]);
+  let stubAssetMap = $state<Record<string, TerminalAsset>>({});
+  let decisionMap = $state<Record<string, TerminalDecisionBundle>>({});
+  let memoryQueryIdMap = $state<Record<string, string>>({});
+  let memoryTopEvidenceMap = $state<Record<string, string[]>>({});
   let activeSymbol = $state('');
 
   type TerminalSnapshot = NonNullable<AnalyzeEnvelope['snapshot']> & {
@@ -90,14 +103,30 @@
   let analysisData = $state<TerminalAnalyzeData | null>(null);
   let analysisDataMap = $state<Record<string, TerminalAnalyzeData>>({});
   let analysisFingerprintMap = $state<Record<string, string>>({});
+  const analysisInFlight = new Map<string, Promise<void>>();
+  const memoryRerankInFlight = new Set<string>();
+  let activeReadPathKey = $state('');
+  let perfStats = $state({
+    analysisApplied: 0,
+    analysisSkipped: 0,
+    decisionApplied: 0,
+    decisionSkipped: 0,
+  });
   let newsData = $state<any>(null);
 
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
   let trendingData = $state<any>(null);
   let scannerAlerts = $state<any[]>([]);
   let marketEvents = $state<NonNullable<EventsEnvelope['data']>['records'] extends Array<infer T> ? T[] : Array<{ tag?: string; level?: string; text?: string }>>([]);
+  let terminalQueryPresets = $state<TerminalPreset[]>([]);
+  let terminalAnomalies = $state<TerminalAnomaly[]>([]);
+  let terminalStatus = $state<{ scannedAt: number; alertCount: number; anomalyCount: number } | null>(null);
+  let readPathDepth = $state<DepthLadderEnvelope['data'] | null>(null);
+  let readPathLiq = $state<LiquidationClustersEnvelope['data'] | null>(null);
   let ohlcvBars = $state<any[]>([]);
   let layerBarsMap = $state<Record<string, any[]>>({});
+  let chartPayloadMap = $state<Record<string, ChartSeriesPayload>>({});
+  let activeChartPayload = $state<ChartSeriesPayload | null>(null);
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -259,8 +288,12 @@
       if (symbol === activeSymbol || !analysisData) {
         analysisData = data;
       }
+      perfStats = { ...perfStats, analysisApplied: perfStats.analysisApplied + 1 };
     } else if (!analysisData && symbol === activeSymbol) {
       analysisData = data;
+      perfStats = { ...perfStats, analysisApplied: perfStats.analysisApplied + 1 };
+    } else {
+      perfStats = { ...perfStats, analysisSkipped: perfStats.analysisSkipped + 1 };
     }
     return changed;
   }
@@ -313,57 +346,154 @@
   }
 
   function applyDecisionState(symbol: string, decision: TerminalDecisionBundle, allowInsert = true) {
-    const currentAsset = boardAssets.find((a) => a.symbol === symbol) ?? null;
-    const currentVerdict = verdictMap[symbol] ?? null;
-    const currentEvidence = evidenceMap[symbol] ?? [];
+    const hasSymbol = boardSymbols.includes(symbol);
+    const currentDecision = decisionMap[symbol] ?? null;
+    const currentAsset = currentDecision?.asset ?? stubAssetMap[symbol] ?? null;
+    const currentVerdict = currentDecision?.verdict ?? null;
+    const currentEvidence = currentDecision?.evidence ?? [];
     const assetChanged = !sameAsset(currentAsset, decision.asset);
     const verdictChanged = !sameVerdict(currentVerdict, decision.verdict);
     const evidenceChanged = !sameEvidence(currentEvidence, decision.evidence);
 
-    if (assetChanged) {
-      if (currentAsset) {
-        boardAssets = boardAssets.map((a) => (a.symbol === symbol ? decision.asset : a));
-      } else if (allowInsert) {
-        boardAssets = [decision.asset, ...boardAssets].slice(0, 4);
-      }
-    } else if (!currentAsset && allowInsert) {
-      boardAssets = [decision.asset, ...boardAssets].slice(0, 4);
+    if (!hasSymbol && allowInsert) {
+      boardSymbols = [symbol, ...boardSymbols].slice(0, 4);
+    } else if (!currentAsset && allowInsert && !hasSymbol) {
+      boardSymbols = [symbol, ...boardSymbols].slice(0, 4);
     }
-    if (verdictChanged) verdictMap = { ...verdictMap, [symbol]: decision.verdict };
-    if (evidenceChanged) evidenceMap = { ...evidenceMap, [symbol]: decision.evidence };
+    const decisionChanged = assetChanged || verdictChanged || evidenceChanged || !currentDecision;
+    if (decisionChanged) {
+      decisionMap = { ...decisionMap, [symbol]: decision };
+      perfStats = { ...perfStats, decisionApplied: perfStats.decisionApplied + 1 };
+    } else {
+      perfStats = { ...perfStats, decisionSkipped: perfStats.decisionSkipped + 1 };
+    }
+    if (import.meta.env.DEV) {
+      const total = perfStats.analysisApplied + perfStats.analysisSkipped + perfStats.decisionApplied + perfStats.decisionSkipped;
+      if (total > 0 && total % 500 === 0) {
+        console.debug('[terminal-perf]', perfStats);
+      }
+    }
     return { assetChanged, verdictChanged, evidenceChanged };
   }
 
   // ─── Data Fetching ───────────────────────────────────────────
 
   async function loadAnalysis(symbol: string, tf: string) {
-    loadingSymbols = new Set([...loadingSymbols, symbol]);
-
-    if (!boardAssets.find(a => a.symbol === symbol)) {
-      boardAssets = [buildStubAsset(symbol), ...boardAssets].slice(0, 4);
+    const loadKey = `${symbol}:${tf}`;
+    const existing = analysisInFlight.get(loadKey);
+    if (existing) {
+      await existing;
+      return;
     }
-    if (!activeSymbol) activeSymbol = symbol;
 
-    try {
-      const bundle = await fetchTerminalAnalysisBundle({ symbol, tf });
-      const data = bundle.analysisData;
-      ohlcvBars = bundle.ohlcvBars;
-      layerBarsMap = bundle.layerBarsMap;
+    const run = (async () => {
+      loadingSymbols = new Set([...loadingSymbols, symbol]);
 
-      applyAnalysisState(symbol, data);
-      const decision = applyTerminalDecision(symbol, data);
-
-      applyDecisionState(symbol, decision, true);
-
-      // Extract price levels → chart overlay (entry / target / stop)
-      if (symbol === activeSymbol || boardAssets.length === 1) {
-        chartLevels = extractLevels(data);
+      if (!boardSymbols.includes(symbol)) {
+        boardSymbols = [symbol, ...boardSymbols].slice(0, 4);
+        stubAssetMap = { ...stubAssetMap, [symbol]: buildStubAsset(symbol) };
       }
-    } catch (e) {
-      console.error('loadAnalysis error:', e);
-    } finally {
-      loadingSymbols = new Set([...loadingSymbols].filter(s => s !== symbol));
-    }
+      if (!activeSymbol) activeSymbol = symbol;
+
+      try {
+        const bundle = await fetchTerminalAnalysisBundle({ symbol, tf });
+        const data = bundle.analysisData;
+        const isCurrentActive = symbol === activeSymbol;
+        if (bundle.chartPayload) {
+          chartPayloadMap = { ...chartPayloadMap, [symbol]: bundle.chartPayload };
+        }
+        if (isCurrentActive) {
+          ohlcvBars = bundle.ohlcvBars;
+          layerBarsMap = bundle.layerBarsMap;
+          activeChartPayload = bundle.chartPayload ?? chartPayloadMap[symbol] ?? null;
+        }
+
+        applyAnalysisState(symbol, data);
+        const decision = applyTerminalDecision(symbol, data);
+        applyDecisionState(symbol, decision, true);
+
+        // Memory rerank is expensive. Run it once per active symbol+tf+tab tuple.
+        if (isCurrentActive && decision.evidence.length > 0) {
+          const rerankKey = `${symbol}:${tf}:${activeAnalysisTab}`;
+          if (!memoryRerankInFlight.has(rerankKey)) {
+            memoryRerankInFlight.add(rerankKey);
+            void (async () => {
+              try {
+                const rerankResult = await fetchMemoryRerank({
+                  query: `${symbol} ${tf} evidence`,
+                  symbol,
+                  timeframe: tf,
+                  intent: activeAnalysisTab,
+                  mode: 'terminal',
+                  candidates: decision.evidence.map((item, index) => ({
+                    id: item.metric,
+                    text: `${item.metric} ${item.value} ${item.interpretation}`,
+                    baseScore: Math.max(0.1, decision.evidence.length - index),
+                    confidence: item.state === 'warning' ? 'observed' : 'verified',
+                    tags: [symbol.toLowerCase(), tf.toLowerCase(), activeAnalysisTab, 'terminal'],
+                  })),
+                });
+                if (rerankResult.records.length === 0) return;
+                const reranked = rerankEvidenceWithMemory(decision.evidence, rerankResult.records);
+                applyDecisionState(symbol, { ...decision, evidence: reranked }, false);
+                memoryQueryIdMap = {
+                  ...memoryQueryIdMap,
+                  [symbol]: rerankResult.queryId,
+                };
+                memoryTopEvidenceMap = {
+                  ...memoryTopEvidenceMap,
+                  [symbol]: rerankResult.records.map((item) => item.id).slice(0, 5),
+                };
+                for (const item of rerankResult.records.slice(0, 2)) {
+                  void sendMemoryFeedback({
+                    queryId: rerankResult.queryId,
+                    memoryId: item.id,
+                    event: 'retrieved',
+                    symbol,
+                    timeframe: tf,
+                    intent: activeAnalysisTab,
+                    mode: 'terminal',
+                  });
+                }
+              } catch (memoryError) {
+                console.warn('memory rerank skipped:', memoryError);
+              } finally {
+                memoryRerankInFlight.delete(rerankKey);
+              }
+            })();
+          }
+        }
+
+        // Extract price levels → chart overlay (entry / target / stop)
+        if (isCurrentActive || boardSymbols.length === 1) {
+          chartLevels = extractLevels(data);
+        }
+      } catch (e) {
+        console.error('loadAnalysis error:', e);
+      } finally {
+        loadingSymbols = new Set([...loadingSymbols].filter(s => s !== symbol));
+        analysisInFlight.delete(loadKey);
+      }
+    })();
+
+    analysisInFlight.set(loadKey, run);
+    await run;
+  }
+
+  async function loadActiveReadPath(symbol: string, tf: string) {
+    const pair = symbol.replace('USDT', '/USDT');
+    const nextKey = `${symbol}:${tf}`;
+    if (nextKey === activeReadPathKey && readPathDepth && readPathLiq) return;
+    try {
+      const [depth, liq] = await Promise.all([
+        fetchDepthLadderData(pair, tf),
+        fetchLiquidationClustersData(pair, tf),
+      ]);
+      if (activeSymbol !== symbol) return;
+      readPathDepth = depth;
+      readPathLiq = liq;
+      activeReadPathKey = nextKey;
+    } catch {}
   }
 
   async function loadFlow(pair: string, tf: string) {
@@ -375,6 +505,25 @@
   async function loadTrending() {
     try {
       trendingData = await fetchTrendingData();
+    } catch {}
+  }
+
+  async function loadTerminalReadPath() {
+    try {
+      const [status, presets, anomalies] = await Promise.all([
+        fetchTerminalStatusData(),
+        fetchTerminalQueryPresets(),
+        fetchTerminalAnomalies(12),
+      ]);
+      terminalStatus = status
+        ? {
+            scannedAt: status.scannedAt,
+            alertCount: status.alertCount,
+            anomalyCount: status.anomalyCount,
+          }
+        : null;
+      terminalQueryPresets = presets;
+      terminalAnomalies = anomalies;
     } catch {}
   }
 
@@ -545,9 +694,9 @@
         const sym = envelope.symbol ?? defaultSymbol;
         applyAnalysisState(sym, envelope);
         const decision = applyTerminalDecision(sym, envelope);
-        const hadAsset = boardAssets.some((a) => a.symbol === sym);
+        const hadAsset = boardSymbols.includes(sym);
         applyDecisionState(sym, decision, true);
-        if (!hadAsset && boardAssets.length > 1) layout = 'hero3';
+        if (!hadAsset && boardSymbols.length > 1) layout = 'hero3';
         if (!activeSymbol) activeSymbol = sym;
         // Update chart levels for active symbol
         if (sym === activeSymbol || !activeSymbol) chartLevels = extractLevels(envelope);
@@ -568,28 +717,91 @@
     activeSymbol = symbol;
     showAnalysisRail = true;
     activeAnalysisTab = 'summary';
-    if (!verdictMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
+    activeChartPayload = chartPayloadMap[symbol] ?? null;
+    if (!decisionMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
+    void loadActiveReadPath(symbol, symbolToTF(gTf));
     setActivePair(symbol.replace('USDT', '/USDT'));
   }
 
   function switchLayout(newLayout: 'hero3' | 'compare2x2' | 'focus') { layout = newLayout; }
 
   function clearBoard() {
-    boardAssets = []; verdictMap = {}; evidenceMap = {};
+    boardSymbols = [];
+    stubAssetMap = {};
+    decisionMap = {};
+    memoryQueryIdMap = {};
+    memoryTopEvidenceMap = {};
     analysisDataMap = {};
     analysisFingerprintMap = {};
+    chartPayloadMap = {};
     activeSymbol = ''; layout = 'focus';
+    activeChartPayload = null;
     chartLevels = {};
     activeAnalysisTab = 'summary';
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
-  function switchToCompare() { if (boardAssets.length >= 2) layout = 'compare2x2'; }
+  function switchToCompare() { if (boardSymbols.length >= 2) layout = 'compare2x2'; }
+
+  function trackMemoryFeedbackForSymbol(symbol: string, event: 'used' | 'confirmed', intent = activeAnalysisTab) {
+    const queryId = memoryQueryIdMap[symbol];
+    const topEvidenceIds = memoryTopEvidenceMap[symbol] ?? [];
+    if (!queryId || topEvidenceIds.length === 0) return;
+    const tf = symbolToTF(gTf);
+    for (const memoryId of topEvidenceIds.slice(0, 2)) {
+      void sendMemoryFeedback({
+        queryId,
+        memoryId,
+        event,
+        symbol,
+        timeframe: tf,
+        intent,
+        mode: 'terminal',
+      });
+    }
+  }
+
+  let analysisTabFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
+  function handleAnalysisTabChange(tab: string) {
+    const nextTab = tab as typeof activeAnalysisTab;
+    activeAnalysisTab = nextTab;
+    if (analysisTabFeedbackTimer) clearTimeout(analysisTabFeedbackTimer);
+    if (!activeSymbol) return;
+    analysisTabFeedbackTimer = setTimeout(() => {
+      trackMemoryFeedbackForSymbol(activeSymbol, 'used', nextTab);
+      analysisTabFeedbackTimer = null;
+    }, 180);
+  }
+
+  function handleCaptureSaved() {
+    showCaptureModal = false;
+    if (activeSymbol) {
+      trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
+    }
+  }
 
   // ─── Lifecycle ───────────────────────────────────────────────
 
   let flowInterval: ReturnType<typeof setInterval>;
   let trendingInterval: ReturnType<typeof setInterval>;
+  let readPathInterval: ReturnType<typeof setInterval>;
+  let alertsInterval: ReturnType<typeof setInterval>;
+  let eventsInterval: ReturnType<typeof setInterval>;
+  let patternInterval: ReturnType<typeof setInterval>;
+  let bootstrapTimers: Array<ReturnType<typeof setTimeout>> = [];
+
+  function runIfVisible(task: () => void) {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    task();
+  }
+
+  function scheduleBootstrapTask(task: () => void, delayMs: number) {
+    const timer = setTimeout(() => {
+      bootstrapTimers = bootstrapTimers.filter((item) => item !== timer);
+      runIfVisible(task);
+    }, delayMs);
+    bootstrapTimers = [...bootstrapTimers, timer];
+  }
 
   onMount(() => {
     // ── URL param: ?symbol=BTCUSDT jumps straight to that asset ──────────────
@@ -601,21 +813,45 @@
     }
 
     // $effect handles initial loadAnalysis + loadFlow — only set up intervals and one-shot fetches here
-    loadTrending();
-    loadNews();
-    loadAlerts();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      runIfVisible(() => {
+        loadFlow(gPair, symbolToTF(gTf));
+        loadEvents();
+        loadTerminalReadPath();
+      });
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    loadTerminalReadPath();
     loadEvents();
-    loadPatternPhases();
-    flowInterval = setInterval(() => loadFlow(gPair, symbolToTF(gTf)), 15_000);
-    trendingInterval = setInterval(loadTrending, 60_000);
-    setInterval(loadAlerts, 5 * 60_000);
-    setInterval(loadEvents, 60_000);
-    setInterval(loadPatternPhases, 60_000);  // refresh pattern states every 1 min
+    scheduleBootstrapTask(loadTrending, 120);
+    scheduleBootstrapTask(loadNews, 220);
+    scheduleBootstrapTask(loadAlerts, 320);
+    scheduleBootstrapTask(loadPatternPhases, 420);
+    flowInterval = setInterval(() => runIfVisible(() => loadFlow(gPair, symbolToTF(gTf))), 15_000);
+    trendingInterval = setInterval(() => runIfVisible(loadTrending), 60_000);
+    readPathInterval = setInterval(() => runIfVisible(loadTerminalReadPath), 60_000);
+    alertsInterval = setInterval(() => runIfVisible(loadAlerts), 5 * 60_000);
+    eventsInterval = setInterval(() => runIfVisible(loadEvents), 60_000);
+    patternInterval = setInterval(() => runIfVisible(loadPatternPhases), 60_000);  // refresh pattern states every 1 min
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   });
 
   onDestroy(() => {
     clearInterval(flowInterval);
     clearInterval(trendingInterval);
+    clearInterval(readPathInterval);
+    clearInterval(alertsInterval);
+    clearInterval(eventsInterval);
+    clearInterval(patternInterval);
+    if (analysisTabFeedbackTimer) clearTimeout(analysisTabFeedbackTimer);
+    bootstrapTimers.forEach((timer) => clearTimeout(timer));
+    bootstrapTimers = [];
   });
 
   let prevPair = '';
@@ -631,19 +867,33 @@
       activeSymbol = symbol;
       activeAnalysisTab = 'summary';
       analysisData = null;  // clear stale snapshot so chat context resets
-      const alreadyLoaded = untrack(() => boardAssets.find(a => a.symbol === symbol));
+      activeReadPathKey = '';
+      const alreadyLoaded = untrack(() => boardSymbols.includes(symbol));
       if (!alreadyLoaded) {
-        boardAssets = []; verdictMap = {}; evidenceMap = {}; analysisDataMap = {}; analysisFingerprintMap = {}; layout = 'focus';
+        boardSymbols = [];
+        stubAssetMap = {};
+        decisionMap = {};
+        memoryQueryIdMap = {};
+        memoryTopEvidenceMap = {};
+        analysisDataMap = {};
+        analysisFingerprintMap = {};
+        chartPayloadMap = {};
+        activeChartPayload = null;
+        layout = 'focus';
       }
       loadAnalysis(symbol, symbolToTF(tf));
+      loadActiveReadPath(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
       loadEvents();
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
-      verdictMap = {}; evidenceMap = {};
+      activeReadPathKey = '';
+      memoryQueryIdMap = {};
+      memoryTopEvidenceMap = {};
       activeAnalysisTab = 'summary';
       loadAnalysis(symbol, symbolToTF(tf));
+      loadActiveReadPath(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
       loadEvents();
     }
@@ -710,6 +960,26 @@
 
   // ─── Mobile ─────────────────────────────────────────────────
   let showDetailSheet = $state(false);
+  let boardAssets = $derived.by(() =>
+    boardSymbols
+      .map((symbol) => decisionMap[symbol]?.asset ?? stubAssetMap[symbol])
+      .filter((asset): asset is TerminalAsset => Boolean(asset))
+      .slice(0, 4)
+  );
+  let verdictMap = $derived.by(() => {
+    const result: Record<string, TerminalVerdict> = {};
+    for (const [symbol, decision] of Object.entries(decisionMap)) {
+      result[symbol] = decision.verdict;
+    }
+    return result;
+  });
+  let evidenceMap = $derived.by(() => {
+    const result: Record<string, TerminalEvidence[]> = {};
+    for (const [symbol, decision] of Object.entries(decisionMap)) {
+      result[symbol] = decision.evidence;
+    }
+    return result;
+  });
 
   // Computed hero asset — computed HERE in parent scope so boardAssets
   // reactivity is tracked directly (bypasses WorkspaceGrid prop chain issue)
@@ -734,8 +1004,19 @@
   });
 
   let microstructure = $derived(activeAnalysisData?.microstructure ?? null);
-  let depthSnapshot = $derived(microstructure?.depth ?? null);
-  let liqClusters = $derived((microstructure?.liqClusters ?? []).slice(0, 4));
+  let depthSnapshot = $derived(readPathDepth ? {
+    ratio: readPathDepth.imbalanceRatio,
+    bids: readPathDepth.bids,
+    asks: readPathDepth.asks,
+  } : (microstructure?.depth ?? null));
+  let liqClusters = $derived(readPathLiq?.clusters?.length
+    ? readPathLiq.clusters.slice(0, 4).map((cluster) => ({
+        side: cluster.liquidatedSide === 'long' ? 'SELL' : 'BUY',
+        price: cluster.price,
+        usd: cluster.usd,
+        distancePct: cluster.distancePct,
+      }))
+    : (microstructure?.liqClusters ?? []).slice(0, 4));
   let fallbackDepth = $derived.by(() => buildFallbackDepth({ activeAsset, activeAnalysisData }));
   let fallbackLiqClusters = $derived.by(() => buildFallbackLiqClusters({ activeAsset, activeAnalysisData, chartLevels }));
   let orderbookTone = $derived.by(() => {
@@ -804,6 +1085,63 @@
     statusStripItems,
     marketEvents,
   }));
+  let overviewFacts = $derived.by(() => {
+    if (!activeAsset) return [] as Array<{ label: string; value: string; tone: 'bull' | 'bear' | 'neutral' | 'info' | 'warn' }>;
+    const lastPrice = activeAsset.lastPrice
+      ? activeAsset.lastPrice.toLocaleString('en-US', { maximumFractionDigits: activeAsset.lastPrice >= 1000 ? 2 : 4 })
+      : '—';
+    const change4h = formatSignedPct(activeAsset.changePct4h, 2);
+    return [
+      { label: 'SYM', value: activeAsset.symbol.replace('USDT', ''), tone: 'info' as const },
+      { label: 'LAST', value: lastPrice, tone: 'neutral' as const },
+      { label: '4H', value: change4h, tone: activeAsset.changePct4h >= 0 ? 'bull' as const : 'bear' as const },
+      {
+        label: 'BIAS',
+        value: activeVerdict?.direction?.toUpperCase?.() ?? 'NEUTRAL',
+        tone: activeVerdict?.direction === 'bullish' ? 'bull' as const : activeVerdict?.direction === 'bearish' ? 'bear' as const : 'neutral' as const,
+      },
+      { label: 'OI 1H', value: `${activeAsset.oiChangePct1h >= 0 ? '+' : ''}${activeAsset.oiChangePct1h.toFixed(1)}%`, tone: activeAsset.oiChangePct1h >= 0 ? 'bull' as const : 'bear' as const },
+      { label: 'FUND', value: `${(activeAsset.fundingRate * 100).toFixed(3)}%`, tone: Math.abs(activeAsset.fundingRate) > 0.01 ? 'warn' as const : 'neutral' as const },
+    ];
+  });
+  let boardDensityGroups = $derived.by(() => {
+    if (!activeAsset) return [] as Array<{ title: string; rows: Array<{ label: string; value: string; tone: 'bull' | 'bear' | 'neutral' | 'info' | 'warn' }> }>;
+    const regime = metricValueFromEvidence(activeEvidence, ['Regime', 'Breakout'], '—');
+    const flow = metricValueFromEvidence(activeEvidence, ['CVD', 'FR / Flow'], flowBias);
+    const toneFlow =
+      flow.includes('+') || flow.toLowerCase().includes('buy')
+        ? 'bull'
+        : flow.toLowerCase().includes('sell')
+          ? 'bear'
+          : 'neutral';
+    return [
+      {
+        title: 'Market',
+        rows: [
+          { label: 'PX', value: activeAsset.lastPrice ? activeAsset.lastPrice.toLocaleString('en-US', { maximumFractionDigits: activeAsset.lastPrice >= 1000 ? 2 : 4 }) : '—', tone: 'neutral' as const },
+          { label: '4H', value: formatSignedPct(activeAsset.changePct4h, 2), tone: activeAsset.changePct4h >= 0 ? 'bull' as const : 'bear' as const },
+          { label: 'VOL', value: `${activeAsset.volumeRatio1h.toFixed(1)}x`, tone: activeAsset.volumeRatio1h > 1.4 ? 'bull' as const : 'neutral' as const },
+        ],
+      },
+      {
+        title: 'Positioning',
+        rows: [
+          { label: 'OI', value: `${activeAsset.oiChangePct1h >= 0 ? '+' : ''}${activeAsset.oiChangePct1h.toFixed(1)}%`, tone: activeAsset.oiChangePct1h >= 0 ? 'bull' as const : 'bear' as const },
+          { label: 'FUND', value: `${(activeAsset.fundingRate * 100).toFixed(3)}%`, tone: Math.abs(activeAsset.fundingRate) > 0.01 ? 'warn' as const : 'neutral' as const },
+          { label: 'FLOW', value: flow, tone: toneFlow as 'bull' | 'bear' | 'neutral' },
+        ],
+      },
+      {
+        title: 'Signal',
+        rows: [
+          { label: 'BIAS', value: activeVerdict?.direction?.toUpperCase?.() ?? 'NEUTRAL', tone: activeVerdict?.direction === 'bullish' ? 'bull' as const : activeVerdict?.direction === 'bearish' ? 'bear' as const : 'neutral' as const },
+          { label: 'CONF', value: activeVerdict?.confidence?.toUpperCase?.() ?? 'LOW', tone: activeVerdict?.confidence === 'high' ? 'bull' as const : activeVerdict?.confidence === 'medium' ? 'warn' as const : 'neutral' as const },
+          { label: 'REG', value: regime, tone: 'info' as const },
+        ],
+      },
+    ];
+  });
+  let railDensityItems = $derived(statusStripItems.slice(0, 6));
 
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
@@ -880,10 +1218,10 @@
         <div class="workspace-panel-head">
           <div class="workspace-panel-title">
             <span class="workspace-panel-kicker">Market Rail</span>
-            <span class="workspace-panel-meta">{leftWidth}px</span>
+            <span class="workspace-panel-meta">{leftWidth}px · {terminalStatus?.anomalyCount ?? terminalAnomalies.length} anomalies</span>
           </div>
           <button class="panel-head-toggle" type="button" onclick={toggleLeftRail} aria-label="Hide market rail">
-            ◧
+            <span class="panel-head-toggle-glyph">◧</span>
           </button>
         </div>
         <TerminalLeftRail
@@ -893,6 +1231,8 @@
           {activeSymbol}
           newsItems={newsData?.records ?? []}
           {marketEvents}
+          queryPresets={terminalQueryPresets}
+          anomalies={terminalAnomalies}
           onQuery={handleQueryChip}
         />
       </aside>
@@ -920,6 +1260,31 @@
         <span class="workspace-panel-kicker">Main Board</span>
         <span class="workspace-panel-meta">{layout} layout</span>
       </div>
+      {#if overviewFacts.length > 0}
+        <div class="terminal-overview-bar">
+          {#each overviewFacts as item}
+            <div class="overview-cell" data-tone={item.tone}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if false && boardDensityGroups.length > 0}
+        <div class="board-density-grid">
+          {#each boardDensityGroups as group}
+            <section class="density-group">
+              <header>{group.title}</header>
+              {#each group.rows as row}
+                <div class="density-row" data-tone={row.tone}>
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                </div>
+              {/each}
+            </section>
+          {/each}
+        </div>
+      {/if}
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
@@ -929,6 +1294,9 @@
             symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
             tf={symbolToTF(gTf)}
             verdictLevels={chartLevels}
+            initialData={activeChartPayload}
+            depthSnapshot={readPathDepth}
+            liqSnapshot={readPathLiq}
             onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
           />
           {#if boardActionRows.length > 0}
@@ -979,7 +1347,7 @@
               activeAnalysisTab = 'metrics';
             }}
           />
-          {#if heroMetricTiles.length > 0}
+          {#if false && heroMetricTiles.length > 0}
             <div class="hero-metrics-row">
               {#each heroMetricTiles as tile}
                 <div class="hero-metric" data-tone={tile.tone}>
@@ -990,7 +1358,7 @@
               {/each}
             </div>
           {/if}
-          {#if microstructure}
+          {#if microstructure || readPathDepth || readPathLiq}
             <div class="microstructure-row">
               <section class="micro-card orderbook-card" data-tone={orderbookTone}>
                 <div class="micro-card-header">
@@ -998,9 +1366,9 @@
                   <span class="micro-meta">{orderbookBiasLabel}</span>
                 </div>
                 <div class="micro-stat-row">
-                  <span>Spread {microstructure.spreadBps != null ? `${microstructure.spreadBps.toFixed(1)} bps` : '—'}</span>
-                  <span>Imbalance {formatSignedPct(microstructure.imbalancePct)}</span>
-                  <span>Taker {microstructure.takerRatio != null ? microstructure.takerRatio.toFixed(2) : '—'}</span>
+                  <span>Spread {readPathDepth?.spreadBps != null ? `${readPathDepth.spreadBps.toFixed(1)} bps` : microstructure?.spreadBps != null ? `${microstructure.spreadBps.toFixed(1)} bps` : '—'}</span>
+                  <span>Imbalance {readPathDepth?.imbalanceRatio != null ? `${readPathDepth.imbalanceRatio.toFixed(2)}x` : formatSignedPct(microstructure?.imbalancePct)}</span>
+                  <span>Taker {microstructure?.takerRatio != null ? microstructure.takerRatio.toFixed(2) : '—'}</span>
                 </div>
                 {#if depthSnapshot}
                   <div class="depth-ladders">
@@ -1034,8 +1402,8 @@
                   <span class="micro-meta">Recent force orders</span>
                 </div>
                 <div class="micro-stat-row">
-                  <span>Short Liq {formatCompactUsd(microstructure.liqTotals?.shortUsd)}</span>
-                  <span>Long Liq {formatCompactUsd(microstructure.liqTotals?.longUsd)}</span>
+                  <span>Short Liq {formatCompactUsd(readPathLiq?.nearestShort?.usd ?? microstructure?.liqTotals?.shortUsd)}</span>
+                  <span>Long Liq {formatCompactUsd(readPathLiq?.nearestLong?.usd ?? microstructure?.liqTotals?.longUsd)}</span>
                 </div>
                 <div class="liq-cluster-list">
                   {#if liqClusters.length > 0}
@@ -1161,11 +1529,22 @@
             {/if}
             <span class="rail-width-indicator">{analysisWidth}px</span>
             <button class="panel-head-toggle" type="button" onclick={toggleAnalysisRail} aria-label="Hide analysis rail">
-              ◨
+              <span class="panel-head-toggle-glyph">◨</span>
             </button>
           </div>
 
+          {#if false}
           <div class="rail-snapshot-stack">
+            {#if false && railDensityItems.length > 0}
+              <div class="rail-density-table">
+                {#each railDensityItems as item}
+                  <div class="rail-density-row" data-tone={item.tone}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                {/each}
+              </div>
+            {/if}
             {#if shellSummaryCards.length > 0}
               <div class="shell-summary-grid rail">
                 {#each shellSummaryCards as card}
@@ -1190,6 +1569,7 @@
               </div>
             </div>
           </div>
+          {/if}
 
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
@@ -1228,7 +1608,7 @@
                   analysisData={activeAnalysisData}
                   newsData={newsData}
                   activeTab={activeAnalysisTab}
-                  onTabChange={(tab) => activeAnalysisTab = tab as typeof activeAnalysisTab}
+                    onTabChange={handleAnalysisTabChange}
                   onAction={sendCommand}
                   onCapture={() => showCaptureModal = true}
                   bars={ohlcvBars}
@@ -1248,7 +1628,7 @@
               analysisData={activeAnalysisData}
               newsData={newsData}
               activeTab={activeAnalysisTab}
-              onTabChange={(tab) => activeAnalysisTab = tab as typeof activeAnalysisTab}
+              onTabChange={handleAnalysisTabChange}
               onAction={sendCommand}
               onCapture={() => showCaptureModal = true}
               bars={ohlcvBars}
@@ -1315,7 +1695,7 @@
   timestamp={Math.floor(Date.now() / 1000)}
   tf={symbolToTF(gTf)}
   onClose={() => showCaptureModal = false}
-  onSaved={() => showCaptureModal = false}
+  onSaved={handleCaptureSaved}
 />
 
 <!-- Mobile detail sheet (portal-style, outside grid) -->
@@ -1503,6 +1883,28 @@
     border-bottom: 1px solid rgba(255,255,255,0.06);
     background: rgba(255,255,255,0.012);
   }
+  .rail-density-table {
+    display: grid;
+    gap: 3px;
+  }
+  .rail-density-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 3px 5px;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2px;
+    background: rgba(8,10,14,0.92);
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    color: rgba(255,255,255,0.34);
+  }
+  .rail-density-row > strong { font-size: 9px; color: rgba(247,242,234,0.88); }
+  .rail-density-row[data-tone='bull'] > strong { color: #8fdd9d; }
+  .rail-density-row[data-tone='bear'] > strong { color: #f19999; }
+  .rail-density-row[data-tone='warn'] > strong { color: #e9c167; }
+  .rail-density-row[data-tone='info'] > strong { color: #83bcff; }
 
   .shell-summary-grid.rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1723,31 +2125,38 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 15px;
-    height: 15px;
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
     margin-left: auto;
-    border-radius: 3px;
-    border: 1px solid rgba(255,255,255,0.07);
-    background: rgba(255,255,255,0.025);
-    color: rgba(214,233,255,0.54);
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    color: rgba(214,233,255,0.78);
     font-family: var(--sc-font-mono);
-    font-size: 7px;
+    font-size: 11px;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.12s ease;
   }
 
+  .panel-head-toggle-glyph {
+    font-size: 12px;
+    line-height: 1;
+  }
+
   .panel-head-toggle:hover {
     color: rgba(214,233,255,0.9);
-    border-color: rgba(77,143,245,0.24);
-    background: rgba(77,143,245,0.08);
+    border-color: rgba(77,143,245,0.28);
+    background: rgba(77,143,245,0.12);
   }
 
   .collapsed-rail-tab {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 8px;
     border: 1px solid rgba(77,143,245,0.14);
     background:
       linear-gradient(180deg, rgba(16, 25, 40, 0.92), rgba(9, 13, 20, 0.92));
@@ -1764,49 +2173,58 @@
   }
 
   .collapsed-rail-tab.left {
-    height: 100%;
-    min-height: 0;
+    align-self: center;
+    width: 30px;
+    min-height: 120px;
     writing-mode: vertical-rl;
     text-orientation: mixed;
-    border-width: 0 1px 0 0;
-    border-radius: 0;
-    padding: 2px 0;
+    border-radius: 0 10px 10px 0;
+    border-width: 1px 1px 1px 0;
+    padding: 10px 0;
   }
 
   .collapsed-rail-tab.right {
     position: absolute;
-    right: 5px;
-    top: 28px;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 14;
-    padding: 4px 6px;
-    border-radius: 3px;
+    min-height: 120px;
+    width: 30px;
+    padding: 10px 0;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    border-radius: 10px 0 0 10px;
+    border-width: 1px 0 1px 1px;
     box-shadow: 0 10px 24px rgba(0,0,0,0.28);
   }
 
-  .collapsed-rail-icon { font-size: 8px; }
+  .collapsed-rail-icon { font-size: 12px; }
 
   .collapsed-rail-copy {
     display: inline-flex;
     flex-direction: column;
-    gap: 1px;
+    align-items: center;
+    gap: 4px;
     line-height: 1;
   }
 
   .collapsed-rail-copy strong {
-    font-size: 7px;
+    font-size: 8px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
 
   .collapsed-rail-copy small {
-    display: none;
+    display: inline;
     color: rgba(214,233,255,0.42);
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    font-size: 7px;
   }
 
   .workspace-panel-head.center {
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
     background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   }
 
@@ -1816,6 +2234,7 @@
     font-size: 7px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    line-height: 1;
   }
 
   .workspace-panel-kicker {
@@ -1834,6 +2253,95 @@
     min-height: 0;
     position: relative;
   }
+  .terminal-overview-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 2px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: linear-gradient(180deg, rgba(255,255,255,0.016), rgba(255,255,255,0.006));
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .terminal-overview-bar::-webkit-scrollbar { display: none; }
+  .overview-cell {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 3px 10px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    font-family: var(--sc-font-mono);
+    white-space: nowrap;
+  }
+  .overview-cell:first-child { padding-left: 2px; }
+  .overview-cell:last-child { border-right: none; padding-right: 2px; }
+  .overview-cell > span {
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.32);
+  }
+  .overview-cell > strong {
+    font-size: 10px;
+    color: rgba(247,242,234,0.9);
+  }
+  .overview-cell[data-tone='bull'] > strong { color: #8fdd9d; }
+  .overview-cell[data-tone='bear'] > strong { color: #f19999; }
+  .overview-cell[data-tone='warn'] > strong { color: #e9c167; }
+  .overview-cell[data-tone='info'] > strong { color: #83bcff; }
+  .board-density-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px 6px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.012);
+  }
+  .density-group {
+    min-width: 0;
+    padding: 3px 5px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(8,10,14,0.92);
+    display: grid;
+    gap: 2px;
+  }
+  .density-group > header {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(131,188,255,0.62);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .density-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .density-row > span {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(255,255,255,0.34);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .density-row > strong {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    line-height: 1.1;
+    color: rgba(247,242,234,0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .density-row[data-tone='bull'] > strong { color: #8fdd9d; }
+  .density-row[data-tone='bear'] > strong { color: #f19999; }
+  .density-row[data-tone='warn'] > strong { color: #e9c167; }
+  .density-row[data-tone='info'] > strong { color: #83bcff; }
 
   .board-content {
     flex: 1;
@@ -2353,6 +2861,7 @@
     .workspace-panel-head {
       padding-inline: 4px;
     }
+    .board-density-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 
   /* Tablet — analysis rail gets narrower */
@@ -2365,6 +2874,8 @@
       --terminal-left-w: 144px;
       --terminal-analysis-w: 232px;
     }
+    .terminal-overview-bar { padding-inline: 6px; }
+    .board-density-grid { grid-template-columns: 1fr; }
   }
 
   /* Mobile */

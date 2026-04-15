@@ -1,5 +1,6 @@
 import type { TerminalAsset, TerminalEvidence, TerminalSource, TerminalVerdict } from '$lib/types/terminal';
 import type { AnalyzeEnvelope, DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
+import type { MemoryRerankRecord } from '$lib/api/terminalBackend';
 
 /**
  * Terminal panel adapter.
@@ -431,4 +432,18 @@ export function buildTerminalDecisionBundle(symbol: string, analysisData?: Panel
     evidence,
     sources: asset.sources,
   };
+}
+
+export function rerankEvidenceWithMemory(
+  evidence: TerminalEvidence[],
+  rankedRecords: MemoryRerankRecord[],
+): TerminalEvidence[] {
+  if (evidence.length <= 1 || rankedRecords.length === 0) return evidence;
+  const scoreMap = new Map(rankedRecords.map((item) => [item.id.toLowerCase(), item.score]));
+  return [...evidence].sort((a, b) => {
+    const scoreA = scoreMap.get(a.metric.toLowerCase()) ?? Number.NEGATIVE_INFINITY;
+    const scoreB = scoreMap.get(b.metric.toLowerCase()) ?? Number.NEGATIVE_INFINITY;
+    if (scoreA === scoreB) return 0;
+    return scoreB - scoreA;
+  });
 }
