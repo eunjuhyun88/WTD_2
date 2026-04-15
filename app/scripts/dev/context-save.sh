@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: bash scripts/dev/context-save.sh [--title <text>] [--work-id <id>] [--agent <name>] [--notes <text>]"
+	echo "Usage: bash scripts/dev/context-save.sh [--title <text>] [--work-id <id>] [--agent <name>] [--notes <text>] [--full]"
 	echo ""
 	echo "Example:"
 	echo "  npm run ctx:save -- --title 'intel policy handoff' --work-id 'W-20260226-2151-backend-codex' --agent 'codex'"
@@ -16,6 +16,36 @@ TITLE="manual"
 WORK_ID=""
 AGENT_ID="${USER:-agent}"
 NOTES=""
+COMPACT=1
+MAX_LINES=20
+MAX_CHARS=240
+
+truncate_text() {
+	local value="$1"
+	if [ "${#value}" -le "$MAX_CHARS" ]; then
+		printf '%s' "$value"
+	else
+		printf '%s...' "${value:0:$((MAX_CHARS - 3))}"
+	fi
+}
+
+print_compact_list() {
+	local content="$1"
+	local count=0
+	if [ -z "$content" ] || [ "$content" = "none" ] || [ "$content" = "clean" ]; then
+		echo "- $content"
+		return
+	fi
+	while IFS= read -r line; do
+		[ -n "$line" ] || continue
+		echo "- $(truncate_text "$line")"
+		count=$((count + 1))
+		if [ "$COMPACT" -eq 1 ] && [ "$count" -ge "$MAX_LINES" ]; then
+			echo "- ... truncated ..."
+			break
+		fi
+	done <<< "$content"
+}
 
 while [ "$#" -gt 0 ]; do
 	case "$1" in
@@ -34,6 +64,10 @@ while [ "$#" -gt 0 ]; do
 		--notes)
 			NOTES="${2:-}"
 			shift 2
+			;;
+		--full)
+			COMPACT=0
+			shift
 			;;
 		-h|--help)
 			usage
@@ -121,31 +155,13 @@ fi
 	echo "- ahead_behind: $AHEAD_BEHIND"
 	echo ""
 	echo "## Uncommitted Files"
-	if [ "$UNCOMMITTED" = "clean" ]; then
-		echo "- clean"
-	else
-		while IFS= read -r line; do
-			[ -n "$line" ] && echo "- $line"
-		done <<< "$UNCOMMITTED"
-	fi
+	print_compact_list "$UNCOMMITTED"
 	echo ""
 	echo "## Changed Files vs origin/main"
-	if [ "$CHANGED_MAIN" = "none" ]; then
-		echo "- none"
-	else
-		while IFS= read -r line; do
-			[ -n "$line" ] && echo "- $line"
-		done <<< "$CHANGED_MAIN"
-	fi
+	print_compact_list "$CHANGED_MAIN"
 	echo ""
 	echo "## Recent Commits"
-	if [ "$RECENT_COMMITS" = "none" ]; then
-		echo "- none"
-	else
-		while IFS= read -r line; do
-			[ -n "$line" ] && echo "- $line"
-		done <<< "$RECENT_COMMITS"
-	fi
+	print_compact_list "$RECENT_COMMITS"
 	echo ""
 	echo "## Runtime Context Flags"
 	echo "- watch_log_present: $WATCH_LOG_PRESENT"
@@ -155,7 +171,7 @@ fi
 	echo ""
 	echo "## Notes"
 	if [ -n "$NOTES" ]; then
-		echo "$NOTES"
+		truncate_text "$NOTES"
 	else
 		echo "- none"
 	fi
