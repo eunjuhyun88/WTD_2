@@ -504,6 +504,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/captures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Captures */
+        get: operations["list_captures_captures_get"];
+        put?: never;
+        /**
+         * Create Capture
+         * @description Create a canonical capture record from Save Setup.
+         */
+        post: operations["create_capture_captures_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Capture */
+        get: operations["get_capture_captures__capture_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/memory/query": {
         parameters: {
             query?: never;
@@ -724,6 +762,53 @@ export interface components {
             entries?: string[];
             /** Disqualifiers */
             disqualifiers?: string[];
+        };
+        /** CaptureCreateBody */
+        CaptureCreateBody: {
+            /**
+             * Capture Kind
+             * @default pattern_candidate
+             * @enum {string}
+             */
+            capture_kind: "pattern_candidate" | "manual_hypothesis" | "chart_bookmark" | "post_trade_review";
+            /** User Id */
+            user_id?: string | null;
+            /** Symbol */
+            symbol: string;
+            /** Pattern Slug */
+            pattern_slug: string;
+            /**
+             * Pattern Version
+             * @default 1
+             */
+            pattern_version: number;
+            /** Phase */
+            phase: string;
+            /**
+             * Timeframe
+             * @default 1h
+             */
+            timeframe: string;
+            /** Candidate Transition Id */
+            candidate_transition_id?: string | null;
+            /** Candidate Id */
+            candidate_id?: string | null;
+            /** Scan Id */
+            scan_id?: string | null;
+            /** User Note */
+            user_note?: string | null;
+            /** Chart Context */
+            chart_context?: {
+                [key: string]: unknown;
+            };
+            /** Feature Snapshot */
+            feature_snapshot?: {
+                [key: string]: unknown;
+            } | null;
+            /** Block Scores */
+            block_scores?: {
+                [key: string]: unknown;
+            };
         };
         /** ChallengeCreateRequest */
         ChallengeCreateRequest: {
@@ -2161,6 +2246,110 @@ export interface operations {
                 "application/json": components["schemas"]["_RegisterPatternBody"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_captures_captures_get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+                pattern_slug?: string | null;
+                symbol?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_capture_captures_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureCreateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_capture_captures__capture_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
