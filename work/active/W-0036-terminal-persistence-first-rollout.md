@@ -2,7 +2,7 @@
 
 ## Goal
 
-Land the remaining `/terminal` page-integration slice on top of `origin/main` so terminal persistence is reviewable as a clean app-surface merge unit.
+Land the remaining `/terminal` page-integration slice on top of latest `origin/main` so terminal persistence is reviewable as a clean app-surface merge unit.
 
 ## Owner
 
@@ -12,7 +12,7 @@ app
 
 - Reconstruct the app-side `/terminal` persistence wiring on an `origin/main`-based branch.
 - Keep this slice limited to page composition plus the minimal workspace components it directly feeds.
-- Reuse already separated merge units for analyze contract (`W-0041`) and engine memory durability (`W-0043`).
+- Preserve already-merged analyze contract (`#52`), Save Setup capture-link (`#53`), app-domain persistence (`#50`), and engine memory durability (`#51`) work.
 
 ## Non-Goals
 
@@ -31,15 +31,15 @@ app
 
 ## Facts
 
-- `origin/main` already contains the app-domain persistence routes and engine memory durability; the remaining W-0036 delta is an app-surface integration problem.
+- `origin/main` already contains the app-domain persistence routes, engine memory durability, explicit analyze contract consumption, and the Save Setup capture-link slice; the remaining W-0036 delta is an app-surface integration problem.
 - The old `task/w-0024-terminal-attention-implementation` branch diverges from `origin/main` at `c68b21e`, so its `/terminal/+page.svelte` cannot be copied wholesale.
-- The clean branch `codex/w-0044-terminal-page-integration-clean` now limits its diff to four files: `TerminalLeftRail.svelte`, `TerminalContextPanel.svelte`, `TerminalBottomDock.svelte`, and `/terminal/+page.svelte`.
+- The current clean branch `codex/w-0036-terminal-page-mainline` limits its diff to four files: `TerminalLeftRail.svelte`, `TerminalContextPanel.svelte`, `TerminalBottomDock.svelte`, and `/terminal/+page.svelte`.
 - This clean branch wires persisted watchlist/pins/alerts/macro data into `/terminal`, routes Pin/Alert/Compare/Export through app-domain endpoints, and records durable memory debug events only from explicit actions.
-- `npm run check -- --fail-on-warnings` and targeted persistence contract/route tests pass on `codex/w-0044-terminal-page-integration-clean`.
+- `npm run check -- --fail-on-warnings` and targeted persistence contract/route tests pass on `codex/w-0036-terminal-page-mainline`.
 
 ## Assumptions
 
-- `W-0041` analyze contract consumption remains a separate review slice and may land alongside this page-integration branch.
+- The merged analyze contract slice remains the baseline truth for `TerminalContextPanel` and `panelAdapter`.
 - Postgres migration/application smoke testing can happen after branch review, not inside this reconstruction step.
 
 ## Open Questions
@@ -48,13 +48,13 @@ app
 
 ## Decisions
 
-- `W-0036` remains the umbrella rollout, but the remaining implementation branch is `codex/w-0044-terminal-page-integration-clean`.
+- `W-0036` remains the umbrella rollout, but the remaining implementation branch is `codex/w-0036-terminal-page-mainline`.
 - Keep the page-integration slice limited to the four touched app files; do not pull in pattern-library or broader terminal surface changes from the older branch.
-- Reuse `codex/w-0041-terminal-analyze-contract-surface-clean` for explicit analyze-field consumption instead of re-mixing those changes here.
+- Preserve `origin/main` behavior from `#52` and `#53` while replaying only the page wiring from the older clean integration commit.
 
 ## Next Steps
 
-1. Pair this branch with `codex/w-0041-terminal-analyze-contract-surface-clean` for review/merge ordering.
+1. Review this branch as the remaining page-integration slice on top of current `origin/main`.
 2. Apply the terminal persistence SQL migration in the target Postgres environment.
 3. Run an authenticated browser smoke test on `/terminal`.
 
@@ -66,6 +66,6 @@ app
 
 ## Handoff Checklist
 
-- Active branch: `codex/w-0044-terminal-page-integration-clean`
+- Active branch: `codex/w-0036-terminal-page-mainline`
 - Verification status: `npm run check -- --fail-on-warnings` passed; targeted persistence tests passed
 - Remaining blockers: migration apply and authenticated browser smoke test
