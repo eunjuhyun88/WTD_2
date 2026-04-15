@@ -1,5 +1,6 @@
 <script lang="ts">
   import { setActivePair } from '$lib/stores/activePairStore';
+  import type { TerminalAnomaly, TerminalPreset } from '$lib/contracts/terminalBackend';
 
   interface AlertRow {
     id: string;
@@ -29,11 +30,23 @@
     activeSymbol?: string;
     newsItems?: Array<{ title?: string; source?: string; created_at?: string; published_at?: string }>;
     marketEvents?: Array<{ tag?: string; level?: string; text?: string }>;
+    queryPresets?: TerminalPreset[];
+    anomalies?: TerminalAnomaly[];
     onQuery?: (q: string) => void;
   }
-  let { trendingData, alerts = [], patternPhases = [], activeSymbol = '', newsItems = [], marketEvents = [], onQuery }: Props = $props();
+  let {
+    trendingData,
+    alerts = [],
+    patternPhases = [],
+    activeSymbol = '',
+    newsItems = [],
+    marketEvents = [],
+    queryPresets = [],
+    anomalies = [],
+    onQuery,
+  }: Props = $props();
 
-  const QUICK_QUERIES = [
+  const QUICK_QUERIES: Array<{ id: string; label: string; action: string; tone: 'info' | 'risk' | 'warn' | 'neutral' }> = [
     { id: 'buy',      label: 'Buy Candidates', action: 'Show me the best buy candidates right now', tone: 'info' },
     { id: 'wrong',    label: "What's Wrong",   action: 'What assets have warning signals right now?', tone: 'risk' },
     { id: 'oi',       label: 'High OI',        action: 'Show assets with the highest open interest expansion', tone: 'warn' },
@@ -87,7 +100,7 @@
       })
       .slice(0, 6);
   });
-  let anomalyItems = $derived.by(() => {
+  let derivedAnomalyItems = $derived.by(() => {
     const items: Array<{ tone: 'warn' | 'bear' | 'info'; label: string; value: string }> = [];
     for (const event of marketEvents.slice(0, 2)) {
       items.push({
@@ -112,8 +125,29 @@
     }
     return items.slice(0, 5);
   });
+  let anomalyItems = $derived.by(() => {
+    if (anomalies.length > 0) {
+      return anomalies.slice(0, 5).map((item) => ({
+        tone: item.severity === 'critical' ? 'bear' : item.severity === 'warning' ? 'warn' : 'info',
+        label: item.summary,
+        value: item.symbol.replace('USDT', ''),
+      }));
+    }
+    return derivedAnomalyItems;
+  });
   let macroItems = $derived(newsItems.slice(0, 2));
   function queryCount(id: string): number {
+    if (queryPresets.length > 0) {
+      const presetMap: Record<string, string> = {
+        buy: 'Buy Candidates',
+        wrong: "What's Wrong",
+        oi: 'High OI',
+        breakout: 'Breakout',
+        squeeze: 'Liquidation',
+      };
+      const found = queryPresets.find((preset) => preset.label === presetMap[id]);
+      if (found) return found.count;
+    }
     if (id === 'buy') return watchlist.filter((coin) => (coin.change24h ?? coin.percentChange24h ?? 0) > 0).length;
     if (id === 'wrong') return anomalyItems.filter((item) => item.tone === 'bear').length + recentAlerts.filter((alert) => (alert.p_win ?? 0) < 0.5).length;
     if (id === 'oi') return recentAlerts.length;
@@ -167,6 +201,12 @@
           <span class="query-left">
             <span class="query-dot"></span>
             <span>{q.label}</span>
+            {#if queryPresets.length > 0}
+              {@const sample = queryPresets.find((preset) => preset.label === q.label)?.sampleSymbols ?? []}
+              {#if sample.length > 0}
+                <small class="query-sample">{sample.join(' · ')}</small>
+              {/if}
+            {/if}
           </span>
           <span class="query-count">{queryCount(q.id)}</span>
         </button>
@@ -349,6 +389,14 @@
     align-items: center;
     gap: 4px;
     min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .query-sample {
+    font-family: var(--sc-font-mono);
+    font-size: 7px;
+    color: rgba(255,255,255,0.26);
+    letter-spacing: 0.04em;
   }
 
   .query-dot {

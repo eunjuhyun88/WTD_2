@@ -18,10 +18,18 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from api.routes import backtest, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns
+from api.routes import backtest, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns, memory
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
+from security_runtime import (
+    assert_public_runtime_security,
+    build_allowed_hosts,
+    build_allowed_origins,
+    build_docs_urls,
+    get_public_runtime_security_warnings,
+)
 from universe.config import DEFAULT_SCAN_UNIVERSE
 from observability.health import health_payload, readiness_payload
 from observability.metrics import increment, observe_ms, snapshot as metrics_snapshot
@@ -31,6 +39,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
 )
 log = logging.getLogger("engine")
+for runtime_warning in get_public_runtime_security_warnings():
+    log.warning("[runtime-security] %s", runtime_warning)
 
 
 def scheduler_enabled() -> bool:
@@ -40,7 +50,6 @@ def scheduler_enabled() -> bool:
         "no",
         "off",
     }
-
 
 # ---------------------------------------------------------------------------
 # Lifespan — start/stop background scanner
@@ -70,6 +79,9 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 # App
 # ---------------------------------------------------------------------------
 
+assert_public_runtime_security()
+docs_url, openapi_url = build_docs_urls()
+
 app = FastAPI(
     title="Cogochi Engine",
     version="0.2.0",
@@ -77,24 +89,20 @@ app = FastAPI(
         "Python intelligence layer: feature calculation, LightGBM scoring, "
         "historical pattern matching, backtest, and learning loop."
     ),
-    docs_url="/docs",
+    docs_url=docs_url,
     redoc_url=None,
+    openapi_url=openapi_url,
     lifespan=lifespan,
 )
 
-# Allow SvelteKit dev server and production domain.
-_origins = [
-    "http://localhost:5173",   # SvelteKit dev
-    "http://localhost:4173",   # SvelteKit preview
-    os.getenv("APP_ORIGIN", "https://cogochi.com"),
-]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=build_allowed_hosts())
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins,
+    allow_origins=build_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["authorization", "content-type", "x-request-id"],
 )
 
 
@@ -126,6 +134,7 @@ app.include_router(train.router, prefix="/train", tags=["training"])
 app.include_router(verdict.router, prefix="/verdict", tags=["verdict"])
 app.include_router(scanner.router, prefix="/scanner", tags=["scanner"])
 app.include_router(patterns.router, prefix="/patterns", tags=["patterns"])
+app.include_router(memory.router, prefix="/memory", tags=["memory"])
 
 
 @app.get("/healthz", tags=["meta"])
