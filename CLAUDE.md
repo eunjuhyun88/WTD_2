@@ -43,6 +43,20 @@ Do not read these unless explicitly required:
 - Prefer domain docs and contracts over long legacy PRDs.
 - Keep `app/` free of duplicated engine business logic.
 
+## Design-First Loop
+
+- Before acting on a non-trivial task, define the intended change in the active work item.
+- Refresh `Goal`, `Scope`, `Non-Goals`, and `Exit Criteria` before implementation.
+- Prefer contract/design clarification before runtime edits when boundaries may shift.
+- Split mixed work into smaller change types instead of planning in chat and coding ad hoc.
+
+## Context Discipline
+
+- Re-anchor after switching folders, worktrees, or branches: re-read `AGENTS.md`, the active work item, and the relevant domain doc.
+- Keep context intentionally small; load only the files required to act safely.
+- Move durable findings, assumptions, and rejected hypotheses into `work/active/*.md`.
+- Preserve source attribution for key decisions so another agent can continue without chat replay.
+
 ## Branch and Worktree Operating Rules
 
 - Do all non-trivial work on a task branch in a dedicated worktree, not on `main`.
