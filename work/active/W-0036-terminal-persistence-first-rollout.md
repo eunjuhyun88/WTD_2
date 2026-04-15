@@ -94,6 +94,36 @@ app
   - export job completion rate
   - memory debug-session volume per durable action, to detect overlogging or missed instrumentation
 
+## PR Notes
+
+### W-0044 Reviewer Framing
+
+- Product value:
+  - `/terminal` now restores user context instead of forcing prompt-only recreation
+  - Pin, Alert, Compare, and Export actions become durable app-domain actions rather than UI theater
+- Technical scope:
+  - no new engine routes
+  - no new persistence schema design in this PR
+  - app-surface consumption only, built on top of already-merged app-domain routes
+- Main files to review:
+  - `app/src/routes/terminal/+page.svelte`
+  - `app/src/components/terminal/workspace/TerminalLeftRail.svelte`
+  - `app/src/components/terminal/workspace/TerminalContextPanel.svelte`
+  - `app/src/components/terminal/workspace/TerminalBottomDock.svelte`
+
+### W-0044 PR Body Draft
+
+- Summary:
+  - wire `/terminal` to persisted watchlist, pins, alerts, macro calendar, and export jobs
+  - route Pin/Alert/Compare/Export interactions through app-domain endpoints
+  - record memory debug sessions only from explicit durable actions
+- Why now:
+  - app-domain persistence routes already exist on `main`, but `/terminal` still behaves like a mostly ephemeral surface
+  - this closes the user-facing gap without reopening the old mixed branch
+- Verification:
+  - `npm run check -- --fail-on-warnings`
+  - `npm test -- --run src/lib/contracts/terminalPersistence.test.ts src/routes/api/terminal/watchlist/watchlist.test.ts src/routes/api/terminal/alerts/alerts.test.ts src/routes/api/terminal/exports/exports.test.ts`
+
 ## Handoff Checklist
 
 - Active branch: `codex/w-0044-terminal-page-integration-clean`
