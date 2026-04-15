@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { TerminalEvidence } from '$lib/types/terminal';
   import type { DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
+  import type { StatusStripItem } from '$lib/terminal/terminalDerived';
   import VerdictHeader from './VerdictHeader.svelte';
   import ActionStrip from './ActionStrip.svelte';
   import EvidenceGrid from './EvidenceGrid.svelte';
@@ -22,6 +23,7 @@
     onAction?: (text: string) => void;
     onCapture?: () => void;
     bars?: any[];
+    statusItems?: StatusStripItem[];
     layerBarsMap?: Record<string, any[]>;
   }
   let {
@@ -32,6 +34,7 @@
     onAction,
     onCapture,
     bars = [],
+    statusItems = [],
     layerBarsMap = {},
   }: Props = $props();
   let pinned = $state(false);
@@ -210,6 +213,7 @@
       panelTimeframe,
     })
   );
+  const compactStatusItems = $derived(statusItems.filter((item) => item.label !== 'Board').slice(0, 5));
 </script>
 
 <aside class="context-panel">
@@ -226,13 +230,23 @@
       </span>
       <small>Sources {panelModel.header.sourceCount}</small>
     </div>
-    <div class="panel-actions">
-      <button type="button" class:active={pinned} onclick={() => pinned = !pinned}>{pinned ? 'Pinned' : 'Pin'}</button>
-      <button type="button" onclick={() => requestBackendAction('compare')}>Compare</button>
-      <button type="button" onclick={openChartView}>Chart</button>
-      <button type="button" onclick={() => requestBackendAction('alert')}>Alert+</button>
-    </div>
+  <div class="panel-actions">
+    <button type="button" class:active={pinned} onclick={() => pinned = !pinned}>{pinned ? 'Pinned' : 'Pin'}</button>
+    <button type="button" onclick={() => requestBackendAction('compare')}>Compare</button>
+    <button type="button" onclick={openChartView}>Chart</button>
+    <button type="button" onclick={() => requestBackendAction('alert')}>Alert+</button>
   </div>
+  {#if compactStatusItems.length > 0}
+    <div class="panel-status-strip">
+      {#each compactStatusItems as item}
+        <span class="panel-status-pill" data-tone={item.tone}>
+          <em>{item.label}</em>
+          <strong>{item.value}</strong>
+        </span>
+      {/each}
+    </div>
+  {/if}
+</div>
 
   <div class="panel-tabs">
     {#each TABS as t}
@@ -599,6 +613,46 @@
     border-color: rgba(131,188,255,0.22);
     background: rgba(77,143,245,0.07);
   }
+  .panel-status-strip {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-top: 1px;
+  }
+  .panel-status-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .panel-status-pill {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 5px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+  }
+  .panel-status-pill em,
+  .panel-status-pill strong {
+    font-family: var(--sc-font-mono);
+    font-style: normal;
+  }
+  .panel-status-pill em {
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(247,242,234,0.38);
+  }
+  .panel-status-pill strong {
+    font-size: 8px;
+    color: rgba(247,242,234,0.82);
+  }
+  .panel-status-pill[data-tone='bull'] strong { color: #8fdd9d; }
+  .panel-status-pill[data-tone='bear'] strong { color: #f19999; }
+  .panel-status-pill[data-tone='warn'] strong { color: #e9c167; }
+  .panel-status-pill[data-tone='info'] strong { color: #83bcff; }
   .panel-tabs {
     display: flex; border-bottom: 1px solid rgba(255,255,255,0.08);
     overflow-x: auto; flex-shrink: 0;
