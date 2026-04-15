@@ -1,7 +1,22 @@
 <script lang="ts">
   import type { BoardActionRow, HeroMetricTile } from '$lib/terminal/terminalDerived';
-  import type { BoardHeaderModel, BoardSummaryFact } from '$lib/terminal/terminalBoardModel';
   import type { TerminalAsset } from '$lib/types/terminal';
+
+  interface BoardHeaderModel {
+    focusLabel: string;
+    biasTone: 'bull' | 'bear' | 'neutral';
+    biasLabel: string;
+    timeframeLabel: string;
+    regimeLabel: string;
+    flowLabel: string;
+  }
+
+  interface BoardSummaryFact {
+    label: string;
+    value: string;
+    tone?: string;
+    emphasis?: 'primary' | 'secondary';
+  }
 
   interface Props {
     header?: BoardHeaderModel | null;

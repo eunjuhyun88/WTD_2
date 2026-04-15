@@ -15,6 +15,7 @@ app
 - Keep the global product header intact and avoid adding a second in-page global header.
 - Keep home route untouched.
 - Design the missing backend/app-domain contracts required so every prototype interaction has a real server-side owner.
+- Phase 1 integration scope: add a single terminal selection state and left-rail selection events without replacing the header, chart, or right rail.
 
 ## Non-Goals
 
@@ -33,6 +34,20 @@ app
 - `docs/domains/terminal-html-backend-parity.md`
 - `/Users/ej/Downloads/cogochi_terminal_interactive.html`
 
+## Facts
+
+- Phase 1 runs on `task/w-0024-terminal-selection-phase1` from current `origin/main`.
+- The large center summary board is already removed on `main`; this phase must not reintroduce it.
+- `npm run check` and `npm run build` pass from `app/` after the Phase 1 selection-state patch.
+
+## Assumptions
+
+- Left-rail selection should preserve the current pair-store-driven analysis loading path until later phases define richer chart-marker behavior.
+
+## Open Questions
+
+- Which later phase should make anomaly rows directly selectable with chart event markers?
+
 ## Decisions
 
 - Context panel actions use backend terminal prompts via `sendCommand`.
@@ -49,6 +64,7 @@ app
 - Terminal density should be progressive: compact by default, expandable on demand. Small badges, strips, and cells should reveal larger contextual blocks only when clicked or expanded.
 - `docs/product/terminal-attention-workspace.md` is the canonical design reference for final left/center/right responsibilities, attention allocation, and progressive disclosure rules.
 - The large terminal summary slab is removed; the surviving board meta now lives as compact status pills inside the right-rail `TerminalContextPanel` header so the center board stays chart-first.
+- Phase 1 must be selection-model only: no `TerminalHeaderMeta`, no `TerminalRightRail`, no attention model, and no removal of existing scan/single-asset right rail paths.
 
 ## Next Steps
 
@@ -72,6 +88,7 @@ app
 18. Keep the chart header area visually quiet; do not reintroduce a large board-summary slab there when the same context can live in rail/context surfaces.
 19. Favor progressive disclosure over permanent density: rail summaries stay compact until expanded, and central board context should open drills/panels rather than occupy persistent vertical space.
 20. Align implementation with the attention-workspace design: left rail selects, center board observes, right rail concludes; AI changes emphasis, not the overall layout skeleton.
+21. Implement Phase 1 on a fresh main-based branch and keep it limited to `TerminalSelectionState`, left-rail selection emission, and `/terminal` state synchronization.
 
 ## Exit Criteria
 
@@ -80,3 +97,10 @@ app
 - `/terminal` visibly contains the interactive prototype's right-rail decision structure.
 - The backend parity plan in `docs/domains/terminal-html-backend-parity.md` is the contract reference for remaining prototype actions.
 - `npm --prefix app run check` passes.
+- Phase 1 passes with the existing right rail and chart still rendering from the current analysis flow.
+
+## Handoff Checklist
+
+- Active branch: `task/w-0024-terminal-selection-phase1`.
+- Verification: `npm run check` and `npm run build` pass in `app/`.
+- Remaining blocker: none for Phase 1; later phases should add marker-aware alert/anomaly rendering without replacing the existing right rail.

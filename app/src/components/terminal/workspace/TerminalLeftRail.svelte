@@ -1,6 +1,7 @@
 <script lang="ts">
   import { setActivePair } from '$lib/stores/activePairStore';
   import type { TerminalAnomaly, TerminalPreset } from '$lib/contracts/terminalBackend';
+  import type { TerminalSelectionPayload } from '$lib/terminal/terminalSelectionState';
 
   interface AlertRow {
     id: string;
@@ -33,6 +34,7 @@
     queryPresets?: TerminalPreset[];
     anomalies?: TerminalAnomaly[];
     onQuery?: (q: string) => void;
+    onSelection?: (payload: TerminalSelectionPayload) => void;
   }
   let {
     trendingData,
@@ -44,6 +46,7 @@
     queryPresets = [],
     anomalies = [],
     onQuery,
+    onSelection,
   }: Props = $props();
 
   const QUICK_QUERIES: Array<{ id: string; label: string; action: string; tone: 'info' | 'risk' | 'warn' | 'neutral' }> = [
@@ -80,6 +83,30 @@
     if (change <= -2) return '▼';
     if (Math.abs(change) >= 0.8) return '!';
     return '·';
+  }
+  function normalizeSymbol(symbol: string): string {
+    const normalized = symbol.trim().toUpperCase().replace('/', '');
+    return normalized.endsWith('USDT') ? normalized : `${normalized}USDT`;
+  }
+  function selectSymbol(symbol: string, source: string, reason: string) {
+    const normalized = normalizeSymbol(symbol);
+    onSelection?.({ kind: 'symbol', symbol: normalized, source, reason });
+    setActivePair(normalized.replace('USDT', '/USDT'));
+  }
+  function selectAlert(alert: AlertRow) {
+    const reason = alert.blocks_triggered.slice(0, 2).join(', ');
+    onSelection?.({
+      kind: 'alert',
+      symbol: normalizeSymbol(alert.symbol),
+      source: 'scanner-alert',
+      reason,
+    });
+    setActivePair(alert.symbol.replace('USDT','') + '/USDT');
+    onQuery?.(`Analyze ${alert.symbol} — triggered: ${reason}`);
+  }
+  function selectPreset(q: { id: string; action: string }) {
+    onSelection?.({ kind: 'preset', source: 'quick-query', reason: q.id });
+    onQuery?.(q.action);
   }
 
   let movers = $derived(trendingData?.trending?.slice(0, 6) ?? []);
@@ -178,7 +205,10 @@
             <button
               class="sym-chip"
               class:active={activeSymbol === sym + 'USDT' || activeSymbol === sym}
-              onclick={() => onQuery?.(`Analyze ${sym}USDT`)}
+              onclick={() => {
+                selectSymbol(sym, 'pattern-engine', row.slug);
+                onQuery?.(`Analyze ${sym}USDT`);
+              }}
             >
               {sym}
             </button>
@@ -197,7 +227,7 @@
     <h3 class="section-title">Quick Queries</h3>
     <div class="query-list">
       {#each QUICK_QUERIES as q}
-        <button class="query-row" data-tone={q.tone} onclick={() => onQuery?.(q.action)}>
+        <button class="query-row" data-tone={q.tone} onclick={() => selectPreset(q)}>
           <span class="query-left">
             <span class="query-dot"></span>
             <span>{q.label}</span>
@@ -234,7 +264,7 @@
         <button
           class="watch-item"
           class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT'}
-          onclick={() => setActivePair(coin.symbol + '/USDT')}
+          onclick={() => selectSymbol(coin.symbol, 'watchlist', 'watchlist-row')}
         >
           <span class="watch-sym">{coin.symbol}</span>
           <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
@@ -276,10 +306,7 @@
     </h3>
     <div class="alert-list">
       {#each recentAlerts as alert}
-        <button class="alert-item" onclick={() => {
-          setActivePair(alert.symbol.replace('USDT','') + '/USDT');
-          onQuery?.(`Analyze ${alert.symbol} — triggered: ${alert.blocks_triggered.slice(0,2).join(', ')}`);
-        }}>
+        <button class="alert-item" onclick={() => selectAlert(alert)}>
           <div class="alert-top">
             <span class="alert-sym">{alert.symbol.replace('USDT','')}</span>
             <span class="alert-tf">{alert.timeframe}</span>
@@ -319,7 +346,7 @@
     <section class="rail-section">
       <h3 class="section-title">Momentum</h3>
       {#each movers.slice(0, 4) as coin}
-        <button class="mover-item" onclick={() => setActivePair(coin.symbol + '/USDT')}>
+        <button class="mover-item" onclick={() => selectSymbol(coin.symbol, 'momentum', 'mover-row')}>
           <span class="mover-sym">{coin.symbol}</span>
           <div class="mover-right">
             <span class="mover-price">{formatPrice(coin.price ?? 0)}</span>
