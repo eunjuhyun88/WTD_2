@@ -38,8 +38,48 @@ Do not read these unless explicitly required:
 Every non-trivial task must have one active work item:
 
 - Path: `work/active/W-xxxx-<slug>.md`
-- Required sections: Goal, Scope, Non-Goals, Canonical Files, Decisions, Next Steps, Exit Criteria
+- Required sections: Goal, Scope, Non-Goals, Canonical Files, Facts, Assumptions, Open Questions, Decisions, Next Steps, Exit Criteria, Handoff Checklist
 - Keep one owner per work item: `engine`, `app`, `contract`, or `research`
+
+## Agent Operating Loop
+
+1. Reconstruct context from canonical files before acting.
+2. State the intended design or implementation approach before non-trivial edits.
+3. Separate facts, assumptions, decisions, and open questions.
+4. Prefer small reversible changes over broad rewrites.
+5. Update the active work item with decisions and next steps when context changes.
+6. Do not rely on chat history as the source of truth.
+
+## Design Before Action
+
+- For any non-trivial task, define the target change in the active work item before editing code.
+- Write or refresh `Goal`, `Scope`, `Non-Goals`, and `Exit Criteria` before implementation starts.
+- Prefer contract and design changes before runtime changes when ownership boundaries may move.
+- If the task touches multiple layers, split work by primary change type instead of improvising a mixed patch.
+- Do not treat chat as plan storage; durable intent belongs in `work/active/*.md`.
+
+## Context Management
+
+- Start from the canonical read order and stop reading once the task can be executed safely.
+- Re-anchor context after switching folders, worktrees, or branches by re-reading `AGENTS.md`, the active work item, and the relevant domain doc.
+- Keep working context small: prefer one work item, one domain doc, and the minimum code needed.
+- Record durable findings, assumptions, and scope changes in the work item instead of leaving them in chat only.
+- Distinguish `verified` facts from `assumptions` and `open questions` when decisions are still in motion.
+- Preserve source attribution for decisions by naming the canonical files or external references that justified them.
+
+## Context Budget
+
+- Keep work items compressed enough that another agent can scan them quickly.
+- `Facts`, `Assumptions`, `Open Questions`, and `Next Steps` should contain only the current minimum needed to act.
+- Prefer replacing stale entries over appending timeline-style notes.
+- If a section grows noisy, compact it immediately instead of carrying forward historical residue.
+
+## Action Gating
+
+- Before acting, confirm the owner, primary change type, canonical files, and verification target.
+- For debugging or investigation, write down the current hypothesis and update the result after the check so future agents do not repeat failed paths.
+- Prefer dry-run, shadow mode, or read-only inspection before irreversible or high-risk actions.
+- If new information changes scope or invalidates the current plan, update the work item first and then continue.
 
 ## Multi-Agent Collaboration Guardrails
 
@@ -49,6 +89,33 @@ Every non-trivial task must have one active work item:
 - Merge via PR only after user approval; no direct push-to-main flow.
 - Before merge, pass the minimum gate: clean `git status`, scoped tests/checks, and conflict review.
 - If unexpected file changes appear, stop and confirm scope before committing.
+
+## Handoff Memory
+
+- A task must be restartable from files, not from one agent's private reasoning.
+- Update `Decisions` and `Next Steps` whenever the plan, blocker, or boundary changes materially.
+- Record rejected approaches or failed hypotheses when they affect future execution choices.
+- Leave the next agent enough context to continue without reconstructing hidden assumptions from chat.
+- Any future `file-back` automation must default to compacting current state, not appending history.
+
+## Handoff Checklist
+
+- Confirm the active work item reflects the latest scope, decisions, and next steps.
+- Mark which facts are verified, which assumptions remain open, and which questions still block progress.
+- Record the exact files, checks, or commands the next agent should continue from.
+- Note any rejected paths, failed hypotheses, or deferred risks that should not be rediscovered.
+- Do not hand off work that depends on unstated chat context.
+
+## Context Health
+
+- Prefer small, current, canonical docs over large historical narratives.
+- Archive or de-emphasize stale guidance instead of letting multiple truths compete.
+- If a root rule is important enough to govern work across folders, mirror it in the top-level entry docs.
+- Treat missing work-item updates as context debt that must be repaid before handoff or merge.
+- Delete or replace outdated work-item bullets once they no longer affect the next action.
+- Keep only the latest valid state; do not preserve obsolete intermediate notes just because they were once true.
+- If recent work supersedes previous notes, update the section in place rather than stacking new bullets underneath.
+- Historical detail belongs in commits, ADRs, or archive docs, not in the active work item.
 
 ## Change Type Tags
 
