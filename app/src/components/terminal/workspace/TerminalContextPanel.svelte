@@ -27,6 +27,7 @@
     onAlertToggle?: () => void;
     bars?: any[];
     statusItems?: StatusStripItem[];
+    tabOrder?: string[];
     layerBarsMap?: Record<string, any[]>;
     isPinned?: boolean;
     hasSavedAlert?: boolean;
@@ -43,6 +44,7 @@
     onAlertToggle,
     bars = [],
     statusItems = [],
+    tabOrder = [],
     layerBarsMap = {},
     isPinned = false,
     hasSavedAlert = false,
@@ -182,6 +184,11 @@
     })
   );
   const compactStatusItems = $derived(statusItems.filter((item) => item.label !== 'Board').slice(0, 5));
+  const rankedTabs = $derived.by(() => {
+    if (!tabOrder.length) return TABS;
+    const priority = new Map(tabOrder.map((id, index) => [id, index]));
+    return [...TABS].sort((a, b) => (priority.get(a.id) ?? 99) - (priority.get(b.id) ?? 99));
+  });
 </script>
 
 <aside class="context-panel">
@@ -231,7 +238,7 @@
 </div>
 
   <div class="panel-tabs">
-    {#each TABS as t}
+    {#each rankedTabs as t}
       <button class="tab-btn" class:active={activeTab === t.id} onclick={() => onTabChange?.(t.id)}>
         {t.label}
       </button>
