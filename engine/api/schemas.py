@@ -8,6 +8,22 @@ from api.schemas_challenge import (
     StrategyResult,
 )
 from api.schemas_score import EnsembleSignal, ScoreRequest, ScoreResponse
+from api.schemas_memory import (
+    DebugHypothesis,
+    MemoryDebugSessionRequest,
+    MemoryDebugSessionResponse,
+    MemoryCandidate,
+    MemoryContext,
+    MemoryFeedbackRequest,
+    MemoryFeedbackResponse,
+    MemoryRejectedLookupRequest,
+    MemoryRejectedLookupResponse,
+    MemoryRejectedRecord,
+    MemoryQueryDebug,
+    MemoryQueryRequest,
+    MemoryQueryResponse,
+    MemoryRankedRecord,
+)
 from api.schemas_shared import BacktestConfig, BlockSet, KlineBar, PerpSnapshot, SnapInput, TradeRecord
 from api.schemas_train_deep_universe import (
     DeepPerpData,
@@ -35,6 +51,20 @@ __all__ = [
     "EnsembleSignal",
     "KlineBar",
     "LayerOut",
+    "DebugHypothesis",
+    "MemoryCandidate",
+    "MemoryContext",
+    "MemoryDebugSessionRequest",
+    "MemoryDebugSessionResponse",
+    "MemoryFeedbackRequest",
+    "MemoryFeedbackResponse",
+    "MemoryRejectedLookupRequest",
+    "MemoryRejectedLookupResponse",
+    "MemoryRejectedRecord",
+    "MemoryQueryDebug",
+    "MemoryQueryRequest",
+    "MemoryQueryResponse",
+    "MemoryRankedRecord",
     "PerpSnapshot",
     "ScanMatch",
     "ScoreRequest",

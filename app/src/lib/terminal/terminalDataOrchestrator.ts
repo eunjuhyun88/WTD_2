@@ -1,6 +1,17 @@
 import { enrichAnalyzePayload } from '$lib/terminal/backendBridge';
-import { fetchTerminalBundle } from '$lib/api/terminalBackend';
-import type { AnalyzeEnvelope, DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
+import { fetchTerminalBundle, type ChartSeriesPayload } from '$lib/api/terminalBackend';
+import type {
+  AnalyzeEnvelope,
+  DerivativesEnvelope,
+  SnapshotEnvelope,
+  TerminalAnomaliesEnvelope,
+  TerminalAnomaly,
+  DepthLadderEnvelope,
+  LiquidationClustersEnvelope,
+  TerminalPreset,
+  TerminalQueryPresetsEnvelope,
+  TerminalStatusEnvelope,
+} from '$lib/contracts/terminalBackend';
 
 export interface MarketSeriesBar {
   t: number;
@@ -80,13 +91,6 @@ function buildMarketOnlyEnvelope(
   };
 }
 
-function barsIntervalFromTf(tf: string): string {
-  if (tf === '1d') return '4h';
-  if (tf === '4h') return '1h';
-  if (tf === '1h') return '15m';
-  return '5m';
-}
-
 export async function fetchTerminalAnalysisBundle(input: {
   symbol: string;
   tf: string;
@@ -94,15 +98,37 @@ export async function fetchTerminalAnalysisBundle(input: {
   analysisData: TerminalAnalyzeData;
   ohlcvBars: MarketSeriesBar[];
   layerBarsMap: Record<string, MarketSeriesBar[]>;
+  chartPayload: ChartSeriesPayload | null;
 }> {
   const { symbol, tf } = input;
-  const interval = barsIntervalFromTf(tf);
-  const oiPeriod = barsIntervalFromTf(tf);
-  const bundle = await fetchTerminalBundle({ symbol, tf, interval, oiPeriod });
+  const bundle = await fetchTerminalBundle({ symbol, tf });
 
-  const marketBars = bundle.ohlcvBars.length > 0 ? bundle.ohlcvBars : [];
-  const oiBars = bundle.oiBars.length > 0 ? bundle.oiBars : [];
-  const fundingBars = bundle.fundingBars.length > 0 ? bundle.fundingBars : [];
+  const marketBars = (bundle.chartPayload?.klines ?? []).map((bar) => ({
+    t: bar.time,
+    c: bar.close,
+    v: bar.volume,
+    delta: (bar.close >= bar.open ? 1 : -1) * bar.volume,
+    cvd: 0,
+  }));
+  let runningCvd = 0;
+  for (const bar of marketBars) {
+    runningCvd += bar.delta;
+    bar.cvd = runningCvd;
+  }
+  const oiBars = (bundle.chartPayload?.oiBars ?? []).map((bar) => ({
+    t: bar.time,
+    c: bar.value,
+    v: Math.abs(bar.value),
+    delta: bar.value,
+    cvd: 0,
+  }));
+  const fundingBars = (bundle.chartPayload?.fundingBars ?? []).map((bar) => ({
+    t: bar.time,
+    c: bar.value,
+    v: Math.abs(bar.value),
+    delta: bar.value,
+    cvd: 0,
+  }));
 
   const layerBarsMap: Record<string, MarketSeriesBar[]> = {};
   if (oiBars.length) layerBarsMap.oi = oiBars;
@@ -125,6 +151,7 @@ export async function fetchTerminalAnalysisBundle(input: {
     analysisData,
     ohlcvBars: marketBars,
     layerBarsMap,
+    chartPayload: bundle.chartPayload,
   };
 }
 
@@ -160,4 +187,39 @@ export async function fetchPatternPhasesData(): Promise<Array<{ slug: string; ph
     }
   }
   return Object.entries(bySlug).map(([slug, v]) => ({ slug, ...v }));
+}
+
+export async function fetchTerminalStatusData(): Promise<TerminalStatusEnvelope['data'] | null> {
+  const res = await fetch('/api/terminal/status');
+  if (!res.ok) return null;
+  const data = (await res.json()) as TerminalStatusEnvelope;
+  return data.data ?? null;
+}
+
+export async function fetchTerminalQueryPresets(): Promise<TerminalPreset[]> {
+  const res = await fetch('/api/terminal/query-presets');
+  if (!res.ok) return [];
+  const data = (await res.json()) as TerminalQueryPresetsEnvelope;
+  return data.presets ?? [];
+}
+
+export async function fetchTerminalAnomalies(limit = 12): Promise<TerminalAnomaly[]> {
+  const res = await fetch(`/api/terminal/anomalies?limit=${limit}`);
+  if (!res.ok) return [];
+  const data = (await res.json()) as TerminalAnomaliesEnvelope;
+  return data.anomalies ?? [];
+}
+
+export async function fetchDepthLadderData(pair: string, timeframe: string): Promise<DepthLadderEnvelope['data'] | null> {
+  const res = await fetch(`/api/market/depth-ladder?pair=${encodeURIComponent(pair)}&timeframe=${timeframe}`);
+  if (!res.ok) return null;
+  const data = (await res.json()) as DepthLadderEnvelope;
+  return data.data ?? null;
+}
+
+export async function fetchLiquidationClustersData(pair: string, timeframe: string): Promise<LiquidationClustersEnvelope['data'] | null> {
+  const res = await fetch(`/api/market/liquidation-clusters?pair=${encodeURIComponent(pair)}&timeframe=${timeframe}`);
+  if (!res.ok) return null;
+  const data = (await res.json()) as LiquidationClustersEnvelope;
+  return data.data ?? null;
 }

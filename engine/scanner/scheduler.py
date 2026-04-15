@@ -64,6 +64,26 @@ SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().low
 SUPABASE_URL      = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
+_PLACEHOLDER_HINTS = ("your_", "your-", "placeholder", "changeme", "example", "dummy", "<")
+
+
+def _looks_like_placeholder(value: str) -> bool:
+    normalized = value.strip().lower()
+    if not normalized:
+        return False
+    return any(hint in normalized for hint in _PLACEHOLDER_HINTS)
+
+
+def validate_scheduler_secrets() -> None:
+    if not SUPABASE_URL.strip():
+        raise RuntimeError("SUPABASE_URL is required when ENGINE_ENABLE_SCHEDULER=true")
+    if not SUPABASE_ROLE_KEY.strip():
+        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY is required when ENGINE_ENABLE_SCHEDULER=true")
+    if _looks_like_placeholder(SUPABASE_URL):
+        raise RuntimeError("SUPABASE_URL still looks like a placeholder value")
+    if _looks_like_placeholder(SUPABASE_ROLE_KEY):
+        raise RuntimeError("SUPABASE_SERVICE_ROLE_KEY still looks like a placeholder value")
+
 
 async def _push_alert(payload: dict[str, Any]) -> None:
     await push_alert(payload, SUPABASE_URL, SUPABASE_ROLE_KEY)
@@ -118,6 +138,7 @@ def start_scheduler() -> None:
     if _scheduler is not None:
         log.debug("Scheduler already running")
         return
+    validate_scheduler_secrets()
 
     _scheduler = AsyncIOScheduler(timezone="UTC")
 
