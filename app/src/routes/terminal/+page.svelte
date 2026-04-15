@@ -105,6 +105,7 @@
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import TerminalHeaderMeta from '../../components/terminal/workspace/TerminalHeaderMeta.svelte';
+  import TerminalRightRail from '../../components/terminal/workspace/TerminalRightRail.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
@@ -1559,25 +1560,18 @@
           onmousedown={startAnalysisResize}
           aria-label="Resize analysis panel"
         ></button>
-        <div class="analysis-rail">
-          <div class="rail-header">
-            {#if isStreaming}
-              <span class="rail-badge streaming">
-                <span class="stream-dot pulsing">●</span>
-                Analyzing…
-              </span>
-            {:else if isScanMode}
-              <span class="rail-badge scan">{boardAssets.length} RESULTS</span>
-              <button class="rail-back" onclick={clearBoard}>← Back</button>
-            {:else}
-              <span class="rail-mode">ANALYSIS</span>
-              <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
-            {/if}
-            <span class="rail-width-indicator">{analysisWidth}px</span>
-            <button class="panel-head-toggle" type="button" onclick={toggleAnalysisRail} aria-label="Hide analysis rail">
-              <span class="panel-head-toggle-glyph">◨</span>
-            </button>
-          </div>
+        <TerminalRightRail
+          {isStreaming}
+          {isScanMode}
+          resultCount={boardAssets.length}
+          activeLabel={activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay}
+          width={analysisWidth}
+          summaryCards={surfaceSummary.shellSummaryCards}
+          subtitle={surfaceSummary.terminalSubtitle}
+          statusItems={statusStripItems.slice(0, 6)}
+          onBack={clearBoard}
+          onToggle={toggleAnalysisRail}
+        >
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
             <div class="scan-list">
@@ -1649,7 +1643,7 @@
               <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
             </div>
           {/if}
-        </div>
+        </TerminalRightRail>
         {:else}
           <button class="collapsed-rail-tab right" type="button" onclick={toggleAnalysisRail} aria-label="Show analysis rail">
             <span class="collapsed-rail-icon">◨</span>
