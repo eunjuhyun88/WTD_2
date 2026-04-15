@@ -63,10 +63,8 @@
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
-  import TerminalContextPanelSummary from '../../components/terminal/workspace/TerminalContextPanelSummary.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
-  import BoardSummary from '../../components/terminal/workspace/BoardSummary.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
@@ -999,13 +997,7 @@
   }));
   let boardModel = $derived.by(() => buildTerminalBoardModel({
     activeAsset,
-    heroAsset,
-    activeVerdict,
-    activeEvidence,
     activeAnalysisData,
-    flowBias,
-    activeFocusLabel,
-    timeframeBadgeLabel,
     chartLevels,
     readPathDepth,
     readPathLiq,
@@ -1022,8 +1014,6 @@
     statusStripItems,
     marketEvents,
   }));
-  let shellSummaryCards = $derived(surfaceSummary.shellSummaryCards);
-  let terminalSubtitle = $derived(surfaceSummary.terminalSubtitle);
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
     { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
@@ -1141,17 +1131,6 @@
         <span class="workspace-panel-kicker">Main Board</span>
         <span class="workspace-panel-meta">{layout} layout</span>
       </div>
-      <BoardSummary
-        header={boardModel.header}
-        facts={boardModel.summaryFacts}
-        metrics={boardModel.metricTiles}
-        actions={boardModel.actionRows}
-        sources={boardModel.sourceRows}
-        onActionFocus={(label) => {
-          showAnalysisRail = true;
-          activeAnalysisTab = label === 'Invalidation' ? 'risk' : label === 'Action' ? 'entry' : label === 'Sources' ? 'summary' : 'summary';
-        }}
-      />
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
@@ -1292,12 +1271,6 @@
               <span class="panel-head-toggle-glyph">◨</span>
             </button>
           </div>
-          <TerminalContextPanelSummary
-            cards={shellSummaryCards}
-            subtitle={terminalSubtitle}
-            statusItems={statusStripItems.slice(0, 6)}
-          />
-
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
             <div class="scan-list">
@@ -1336,12 +1309,13 @@
                   newsData={newsData}
                   activeTab={activeAnalysisTab}
                     onTabChange={handleAnalysisTabChange}
-                  onAction={sendCommand}
-                  onCapture={() => showCaptureModal = true}
-                  bars={ohlcvBars}
-                  {layerBarsMap}
-                />
-              </div>
+                onAction={sendCommand}
+                onCapture={() => showCaptureModal = true}
+                bars={ohlcvBars}
+                statusItems={statusStripItems.slice(0, 6)}
+                {layerBarsMap}
+              />
+            </div>
             {/if}
 
           <!-- MODE A — Single asset compact verdict -->
@@ -1359,6 +1333,7 @@
               onAction={sendCommand}
               onCapture={() => showCaptureModal = true}
               bars={ohlcvBars}
+              statusItems={statusStripItems.slice(0, 6)}
               {layerBarsMap}
             />
           {:else}
@@ -1523,35 +1498,6 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
-
-  .status-pill {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 5px;
-    border-radius: 2px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.03);
-  }
-
-  .status-pill em {
-    font-style: normal;
-    font-size: 7px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(247,242,234,0.4);
-  }
-
-  .status-pill strong {
-    font-size: 8px;
-    color: rgba(247,242,234,0.82);
-  }
-
-  .status-pill[data-tone='bull'] strong { color: #8fdd9d; }
-  .status-pill[data-tone='bear'] strong { color: #f19999; }
-  .status-pill[data-tone='warn'] strong { color: #e9c167; }
-  .status-pill[data-tone='info'] strong { color: #83bcff; }
 
   .terminal-body {
     flex: 1;
@@ -1836,43 +1782,6 @@
     min-height: 0;
     position: relative;
   }
-  .terminal-overview-bar {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 2px 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    background: linear-gradient(180deg, rgba(255,255,255,0.016), rgba(255,255,255,0.006));
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .terminal-overview-bar::-webkit-scrollbar { display: none; }
-  .overview-cell {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    padding: 3px 10px;
-    border-right: 1px solid rgba(255,255,255,0.08);
-    font-family: var(--sc-font-mono);
-    white-space: nowrap;
-  }
-  .overview-cell:first-child { padding-left: 2px; }
-  .overview-cell:last-child { border-right: none; padding-right: 2px; }
-  .overview-cell > span {
-    font-size: 8px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.32);
-  }
-  .overview-cell > strong {
-    font-size: 10px;
-    color: rgba(247,242,234,0.9);
-  }
-  .overview-cell[data-tone='bull'] > strong { color: #8fdd9d; }
-  .overview-cell[data-tone='bear'] > strong { color: #f19999; }
-  .overview-cell[data-tone='warn'] > strong { color: #e9c167; }
-  .overview-cell[data-tone='info'] > strong { color: #83bcff; }
   .board-content {
     flex: 1;
     overflow: hidden;
@@ -2270,7 +2179,6 @@
       --terminal-left-w: 144px;
       --terminal-analysis-w: 232px;
     }
-    .terminal-overview-bar { padding-inline: 6px; }
   }
 
   /* Mobile */
