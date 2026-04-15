@@ -26,3 +26,4 @@ dist/
 .claire/
 app/memory/memory/
 engine/data_cache/cache/
+.vercel

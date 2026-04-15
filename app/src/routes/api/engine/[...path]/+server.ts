@@ -20,13 +20,26 @@ import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
 const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
-const TIMEOUT_MS = 30_000; // backtest can be slow
+
+function timeoutFor(path: string, method: string): number {
+  if (method === 'GET') {
+    if (path === 'healthz') return 2_000;
+    if (path.startsWith('memory/')) return 5_000;
+    return 10_000;
+  }
+  if (path.startsWith('backtest') || path.includes('challenge') || path.startsWith('lab/')) {
+    return 60_000;
+  }
+  if (path.startsWith('memory/feedback')) return 5_000;
+  return 30_000;
+}
 
 async function proxy(request: Request, path: string): Promise<Response> {
   const query = new URL(request.url).search;
   const url = `${ENGINE_URL}/${path}${query}`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timeoutMs = timeoutFor(path, request.method);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const headers = new Headers();
@@ -53,7 +66,7 @@ async function proxy(request: Request, path: string): Promise<Response> {
     });
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
-      throw error(504, `Engine timed out (path: ${path})`);
+      throw error(504, `Engine timed out after ${timeoutMs}ms (path: ${path})`);
     }
     throw error(502, `Engine unreachable: ${(err as Error).message}`);
   } finally {
