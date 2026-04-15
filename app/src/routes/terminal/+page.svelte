@@ -22,6 +22,11 @@
   import {
     buildDockFeedItems,
   } from '$lib/terminal/terminalDerived';
+  import {
+    applySelectionPayload,
+    createTerminalSelectionState,
+    type TerminalSelectionPayload,
+  } from '$lib/terminal/terminalSelectionState';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
   import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
@@ -183,6 +188,7 @@
   // Narrow deriveds: only pair+tf — price changes must NOT re-trigger $effect
   const gPair = $derived($activePairState.pair);
   const gTf   = $derived($activePairState.timeframe);
+  let terminalSelection = $state(createTerminalSelectionState('4h', 'BTCUSDT'));
 
   // ─── Helpers ────────────────────────────────────────────────
 
@@ -195,6 +201,17 @@
     const norm = tf.toLowerCase();
     const valid = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
     return valid.includes(norm) ? norm : '4h';
+  }
+
+  function updateTerminalSelection(payload: TerminalSelectionPayload) {
+    terminalSelection = applySelectionPayload(terminalSelection, {
+      ...payload,
+      timeframe: payload.timeframe ?? symbolToTF(gTf),
+    });
+  }
+
+  function handleLeftSelection(payload: TerminalSelectionPayload) {
+    updateTerminalSelection(payload);
   }
 
   function buildStubAsset(symbol: string): TerminalAsset {
@@ -553,6 +570,12 @@
   }
 
   function focusPatternSymbol(item: { symbol: string }) {
+    updateTerminalSelection({
+      kind: 'symbol',
+      symbol: item.symbol,
+      source: 'pattern-alert',
+      reason: 'live-pattern-alert',
+    });
     const pair = item.symbol.replace('USDT', '/USDT');
     setActivePair(pair);
   }
@@ -687,6 +710,12 @@
   function handleQueryChip(query: string) { sendCommand(query); }
 
   function selectAsset(symbol: string) {
+    updateTerminalSelection({
+      kind: 'symbol',
+      symbol,
+      source: 'board',
+      reason: 'select-asset',
+    });
     activeSymbol = symbol;
     showAnalysisRail = true;
     activeAnalysisTab = 'summary';
@@ -837,6 +866,13 @@
       prevPair = pair;
       prevTf = tf;
       const symbol = pairToSymbol(pair);
+      updateTerminalSelection({
+        kind: 'symbol',
+        symbol,
+        source: 'pair-store',
+        reason: 'pair-change',
+        timeframe: symbolToTF(tf),
+      });
       activeSymbol = symbol;
       activeAnalysisTab = 'summary';
       analysisData = null;  // clear stale snapshot so chat context resets
@@ -861,6 +897,14 @@
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
+      updateTerminalSelection({
+        kind: terminalSelection.activeSubject.kind,
+        symbol: terminalSelection.activeSubject.symbol ?? symbol,
+        symbols: terminalSelection.activeSubject.symbols,
+        source: terminalSelection.activeSubject.source ?? 'pair-store',
+        reason: 'timeframe-change',
+        timeframe: symbolToTF(tf),
+      });
       activeReadPathKey = '';
       memoryQueryIdMap = {};
       memoryTopEvidenceMap = {};
@@ -1105,6 +1149,7 @@
           queryPresets={terminalQueryPresets}
           anomalies={terminalAnomalies}
           onQuery={handleQueryChip}
+          onSelection={handleLeftSelection}
         />
       </aside>
 
