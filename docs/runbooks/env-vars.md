@@ -21,6 +21,7 @@ Canonical env contract for local/prod runtime.
 | `SHARED_CACHE_REDIS_REST_URL` | empty | `app-web` | Shared cache backend |
 | `SHARED_CACHE_REDIS_REST_TOKEN` | empty | `app-web` | Shared cache auth |
 | `TURNSTILE_SECRET_KEY` | empty | `app-web` | Bot/abuse protection |
+| `PERFORMANCE_AUDIT_SUMMARIES` | empty | `app-web` tooling | Comma-separated k6 summary export paths for perf audit |
 | `SECURITY_ALLOWED_HOSTS` | empty | `app-web` | Required in production: Host allowlist (`host[:port]`, comma-separated) |
 | `ENGINE_ALLOWED_HOSTS` | empty | `engine-api` | Required in production: Host allowlist (`host[:port]`, comma-separated) |
 | `ENGINE_ALLOWED_ORIGINS` | empty | `engine-api` | Extra CORS allowlist origins |
@@ -48,6 +49,7 @@ Notes:
 - Leave `ENGINE_EXPOSE_DOCS=false` on public deployments unless the engine is behind auth or a private network boundary.
 - `SECURITY_TRUST_PROXY_HEADERS` should stay false unless the app is behind a trusted reverse proxy that rewrites forwarded headers.
 - Use `npm run security:db:audit -- --strict` plus `docs/runbooks/db-security-hardening.md` before production DB cutovers.
+- For 500-user readiness, use `npm run performance:audit -- --strict` plus `docs/runbooks/performance-hardening.md`; the audit expects Redis-backed shared rate limiting/cache and scheduler isolation on public runtimes.
 
 ## Data Providers
 
