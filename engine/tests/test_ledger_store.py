@@ -331,6 +331,8 @@ class TestLedgerRecordStore:
             )
         store.append(PatternLedgerRecord(record_type="score", pattern_slug=SLUG, symbol="SYM0"))
         store.append(PatternLedgerRecord(record_type="verdict", pattern_slug=SLUG, symbol="SYM0"))
+        store.append(PatternLedgerRecord(record_type="training_run", pattern_slug=SLUG))
+        store.append(PatternLedgerRecord(record_type="model", pattern_slug=SLUG))
 
         stats = store.compute_family_stats(SLUG)
 
@@ -338,4 +340,6 @@ class TestLedgerRecordStore:
         assert stats.capture_count == 2
         assert stats.score_count == 1
         assert stats.verdict_count == 1
+        assert stats.training_run_count == 1
+        assert stats.model_count == 1
         assert stats.capture_to_entry_rate == pytest.approx(0.5)

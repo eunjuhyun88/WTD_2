@@ -13,7 +13,7 @@ from typing import Literal
 import uuid
 
 Outcome = Literal["success", "failure", "timeout", "pending"]
-LedgerRecordType = Literal["entry", "capture", "score", "outcome", "verdict", "model"]
+LedgerRecordType = Literal["entry", "capture", "score", "outcome", "verdict", "training_run", "model"]
 
 @dataclass
 class PatternOutcome:
@@ -134,6 +134,7 @@ class PatternLedgerFamilyStats:
     score_count: int
     outcome_count: int
     verdict_count: int
+    training_run_count: int
     model_count: int
     capture_to_entry_rate: float | None
     verdict_to_entry_rate: float | None
