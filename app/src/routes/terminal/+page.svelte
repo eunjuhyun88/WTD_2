@@ -1827,94 +1827,6 @@
     scrollbar-gutter: stable;
   }
 
-  /* Analysis rail — always visible right panel, scrollable */
-  .analysis-rail {
-    width: var(--terminal-analysis-w, 280px);
-    min-width: 0;
-    max-width: 460px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--sc-terminal-bg, #000);
-    position: relative;
-    scrollbar-gutter: stable;
-    border-left: 1px solid rgba(255,255,255,0.05);
-  }
-
-  /* Rail header */
-  .rail-header {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 6px;
-    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
-    flex-shrink: 0;
-    min-height: 24px;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0)),
-      rgba(255,255,255,0.015);
-  }
-  .rail-width-indicator {
-    margin-left: auto;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    color: rgba(255,255,255,0.26);
-    letter-spacing: 0.08em;
-    padding-left: 5px;
-    border-left: 1px solid rgba(255,255,255,0.06);
-  }
-  .rail-header .rail-back + .rail-width-indicator {
-    margin-left: 0;
-  }
-  .rail-mode {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.24);
-    text-transform: uppercase;
-  }
-  .rail-sym {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.72);
-    margin-left: auto;
-    letter-spacing: 0.08em;
-  }
-  .rail-badge {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    letter-spacing: 0.08em;
-    padding: 1px 5px;
-    border-radius: 2px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .rail-badge.streaming {
-    background: rgba(74,222,128,0.08);
-    color: #4ade80;
-    border: 1px solid rgba(74,222,128,0.2);
-  }
-  .rail-badge.scan {
-    background: rgba(99,179,237,0.08);
-    color: #63b3ed;
-    border: 1px solid rgba(99,179,237,0.2);
-  }
-  .rail-back {
-    margin-left: auto;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.4);
-    border-radius: 3px;
-    padding: 1px 5px;
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-  .rail-back:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
-
   /* Scan list (Mode B) */
   .scan-list {
     display: flex;
@@ -2190,9 +2102,8 @@
     }
   }
 
-  /* Tablet — analysis rail gets narrower */
+  /* Tablet */
   @media (max-width: 1200px) and (min-width: 769px) {
-    .analysis-rail { width: var(--terminal-analysis-w, 260px); max-width: 340px; }
     .microstructure-row { grid-template-columns: 1fr; }
     .terminal-body {
       --terminal-left-w: 144px;
@@ -2224,7 +2135,6 @@
     }
     .left-rail     { display: none; }
     .panel-resizer { display: none; }
-    .analysis-rail { display: none; }   /* mobile uses MobileActiveBoard instead */
     .center-board  { height: 100%; }
     .desktop-board { display: none; }
     .desktop-dock  { display: none; }
