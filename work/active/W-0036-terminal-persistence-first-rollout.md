@@ -2,7 +2,7 @@
 
 ## Goal
 
-Turn the mixed local terminal persistence work into reviewable merge units with one owner, one primary change type, and one verification gate each.
+Land the remaining `/terminal` page-integration slice on top of `origin/main` so terminal persistence is reviewable as a clean app-surface merge unit.
 
 ## Owner
 
@@ -10,67 +10,62 @@ app
 
 ## Scope
 
-- Define the rollout split for terminal persistence and related app/engine contract work.
-- Keep the split restartable from files, not chat residue.
-- Prevent terminal persistence, engine memory, and Save Setup capture link work from shipping as one mixed PR.
+- Reconstruct the app-side `/terminal` persistence wiring on an `origin/main`-based branch.
+- Keep this slice limited to page composition plus the minimal workspace components it directly feeds.
+- Reuse already separated merge units for analyze contract (`W-0041`) and engine memory durability (`W-0043`).
 
 ## Non-Goals
 
-- No implementation in this planning work item.
-- No direct merge of the current mixed local diff.
-- No closure of historical terminal PRs without explicit triage.
+- No standalone memory retrieval work.
+- No reintroduction of the older `task/w-0024-terminal-attention-implementation` branch as a merge unit.
+- No pattern-library or analysis-rail redesign work in this slice.
 
 ## Canonical Files
 
 - `work/active/W-0036-terminal-persistence-first-rollout.md`
-- `work/active/W-0038-agent-integration-board.md`
-- `work/active/W-0039-terminal-save-setup-capture-link.md`
-- `work/active/W-0041-terminal-analyze-contract-surface.md`
-- `work/active/W-0042-terminal-app-domain-persistence.md`
-- `work/active/W-0043-engine-memory-state-persistence.md`
+- `docs/domains/terminal-html-backend-parity.md`
+- `app/src/routes/terminal/+page.svelte`
+- `app/src/components/terminal/workspace/TerminalLeftRail.svelte`
+- `app/src/components/terminal/workspace/TerminalContextPanel.svelte`
+- `app/src/components/terminal/workspace/TerminalBottomDock.svelte`
 
 ## Facts
 
-- The current local `task/w-0024-terminal-attention-implementation` diff mixes app surface changes, app-domain persistence routes, and engine memory persistence.
-- `W-0035` and `W-0037/W-0040` are already merged, so Save Setup capture linkage can build on stable engine transition/capture APIs.
-- The current mixed diff does not yet include the app-domain route files in tracked form on `main`; they remain local-only.
-- Open terminal PRs `#38`-`#41` and `#44` represent a separate terminal surface lane and must be triaged independently.
+- `origin/main` already contains the app-domain persistence routes and engine memory durability; the remaining W-0036 delta is an app-surface integration problem.
+- The old `task/w-0024-terminal-attention-implementation` branch diverges from `origin/main` at `c68b21e`, so its `/terminal/+page.svelte` cannot be copied wholesale.
+- The clean branch `codex/w-0044-terminal-page-integration-clean` now limits its diff to four files: `TerminalLeftRail.svelte`, `TerminalContextPanel.svelte`, `TerminalBottomDock.svelte`, and `/terminal/+page.svelte`.
+- This clean branch wires persisted watchlist/pins/alerts/macro data into `/terminal`, routes Pin/Alert/Compare/Export through app-domain endpoints, and records durable memory debug events only from explicit actions.
+- `npm run check -- --fail-on-warnings` and targeted persistence contract/route tests pass on `codex/w-0044-terminal-page-integration-clean`.
 
 ## Assumptions
 
-- The cleanest path is to rebuild merge units from `main`, not to salvage the mixed local branch directly.
-- Each split can be validated independently with targeted app or engine checks.
+- `W-0041` analyze contract consumption remains a separate review slice and may land alongside this page-integration branch.
+- Postgres migration/application smoke testing can happen after branch review, not inside this reconstruction step.
 
 ## Open Questions
 
-- Whether parts of the local terminal UI diff duplicate functionality already present in PR stack `#38`-`#41` and `#44`.
+- none
 
 ## Decisions
 
-- `W-0036` remains the umbrella rollout, not a direct implementation PR.
-- The rollout is split into:
-  - `W-0041` analyze contract plus terminal surface consumption
-  - `W-0042` app-domain persistence routes and client
-  - `W-0043` engine memory state persistence
-  - `W-0039` terminal Save Setup capture link
-- Any code recovery from the mixed local branch must be restaged into clean branches for each split.
+- `W-0036` remains the umbrella rollout, but the remaining implementation branch is `codex/w-0044-terminal-page-integration-clean`.
+- Keep the page-integration slice limited to the four touched app files; do not pull in pattern-library or broader terminal surface changes from the older branch.
+- Reuse `codex/w-0041-terminal-analyze-contract-surface-clean` for explicit analyze-field consumption instead of re-mixing those changes here.
 
 ## Next Steps
 
-1. Triage terminal PR stack `#38`-`#41` and `#44` against the current local diff.
-2. Recover and restage `W-0042` app-domain persistence on a clean branch.
-3. Recover and restage `W-0041` analyze contract/surface work after terminal stack overlap is understood.
-4. Recover and restage `W-0043` engine memory state persistence independently from app work.
-5. Finish `W-0039` only after `W-0041` and `W-0042` provide stable app-side candidate context.
+1. Pair this branch with `codex/w-0041-terminal-analyze-contract-surface-clean` for review/merge ordering.
+2. Apply the terminal persistence SQL migration in the target Postgres environment.
+3. Run an authenticated browser smoke test on `/terminal`.
 
 ## Exit Criteria
 
-- Every remaining terminal persistence change belongs to exactly one named work item.
-- No mixed local branch is treated as a merge unit.
-- The next implementation branch can be chosen without rereading chat.
+- The `/terminal` page can hydrate watchlist/pins/alerts/macro state from real app-domain routes.
+- Pin/Alert/Compare/Export actions use dedicated app endpoints instead of prompt-only behavior.
+- The app-surface delta remains isolated to the four intended files and passes app verification.
 
 ## Handoff Checklist
 
-- Active role: CTO/app coordination.
-- Verification status: planning only.
-- Remaining blockers: terminal PR stack overlap and local diff triage.
+- Active branch: `codex/w-0044-terminal-page-integration-clean`
+- Verification status: `npm run check -- --fail-on-warnings` passed; targeted persistence tests passed
+- Remaining blockers: migration apply and authenticated browser smoke test
