@@ -9,6 +9,40 @@ from api.routes import patterns as pattern_routes
 from ledger.types import PatternLedgerRecord, PatternOutcome, PatternStats
 
 
+class _RegistryEntry:
+    def __init__(self, *, pattern_slug: str, model_key: str, model_version: str, rollout_state: str) -> None:
+        self.pattern_slug = pattern_slug
+        self.model_key = model_key
+        self.model_version = model_version
+        self.timeframe = "1h"
+        self.target_name = "breakout_24h"
+        self.feature_schema_version = 1
+        self.label_policy_version = 1
+        self.threshold_policy_version = 1
+        self.rollout_state = rollout_state
+        self.requested_by_user_id = None
+        self.trained_at = datetime(2026, 4, 16, 12, 0, tzinfo=timezone.utc)
+        self.promoted_at = None
+        self.updated_at = self.trained_at
+
+    def to_dict(self) -> dict:
+        return {
+            "pattern_slug": self.pattern_slug,
+            "model_key": self.model_key,
+            "model_version": self.model_version,
+            "timeframe": self.timeframe,
+            "target_name": self.target_name,
+            "feature_schema_version": self.feature_schema_version,
+            "label_policy_version": self.label_policy_version,
+            "threshold_policy_version": self.threshold_policy_version,
+            "rollout_state": self.rollout_state,
+            "requested_by_user_id": self.requested_by_user_id,
+            "trained_at": self.trained_at.isoformat(),
+            "promoted_at": self.promoted_at.isoformat() if self.promoted_at else None,
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
 def test_all_candidates_exposes_legacy_and_rich_records(monkeypatch) -> None:
     monkeypatch.setattr(
         pattern_routes,
@@ -50,6 +84,12 @@ def test_all_candidates_exposes_legacy_and_rich_records(monkeypatch) -> None:
 
 
 def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
+    active_entry = _RegistryEntry(
+        pattern_slug="tradoor-oi-reversal-v1",
+        model_key="tradoor-oi-reversal-v1:1h:breakout:fs1:lp1",
+        model_version="20260416_120000",
+        rollout_state="active",
+    )
     monkeypatch.setattr(
         pattern_routes,
         "_ledger",
@@ -76,6 +116,19 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
                     decay_direction="stable",
                 ),
                 "list_all": lambda self, slug: [],
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        pattern_routes,
+        "MODEL_REGISTRY_STORE",
+        type(
+            "FakeRegistryStore",
+            (),
+            {
+                "list": lambda self, slug: [active_entry],
+                "get_active": lambda self, slug: active_entry,
+                "get_preferred_scoring_model": lambda self, slug: active_entry,
             },
         )(),
     )
@@ -162,6 +215,8 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     assert payload["record_family"]["capture_count"] == 4
     assert payload["record_family"]["training_run_count"] == 2
     assert payload["record_family"]["capture_to_entry_rate"] == 0.4
+    assert payload["model_registry"]["entry_count"] == 1
+    assert payload["model_registry"]["active_model"]["rollout_state"] == "active"
     assert payload["latest_training_run"]["record_type"] == "training_run"
     assert payload["latest_model"]["record_type"] == "model"
 
@@ -225,6 +280,7 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
     ]
     training_runs = []
     model_records = []
+    registry_candidates = []
 
     class FakeLedger:
         def list_all(self, slug):
@@ -253,6 +309,16 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
             )
             return None
 
+    class FakeRegistryStore:
+        def upsert_candidate(self, **kwargs):
+            registry_candidates.append(kwargs)
+            return _RegistryEntry(
+                pattern_slug=kwargs["pattern_slug"],
+                model_key=kwargs["model_key"],
+                model_version=kwargs["model_version"],
+                rollout_state="candidate",
+            )
+
     class FakeEngine:
         def train(self, X, y):
             assert len(X) == 24
@@ -267,6 +333,7 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
 
     monkeypatch.setattr(pattern_routes, "_ledger", FakeLedger())
     monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
+    monkeypatch.setattr(pattern_routes, "MODEL_REGISTRY_STORE", FakeRegistryStore())
     monkeypatch.setattr(pattern_routes, "get_engine", lambda model_key: FakeEngine())
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
@@ -290,6 +357,8 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
     assert payload["model_version"] == "20260416_120000"
     assert payload["replaced"] is True
     assert len(training_runs) == 1
+    assert len(registry_candidates) == 1
+    assert registry_candidates[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert training_runs[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert training_runs[0]["model_key"] == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
     assert training_runs[0]["payload"]["n_records"] == 24
@@ -321,6 +390,7 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
     ]
     training_runs = []
     model_records = []
+    registry_candidates = []
 
     class FakeLedger:
         def list_all(self, slug):
@@ -337,6 +407,16 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
                 }
             )
             return None
+
+    class FakeRegistryStore:
+        def upsert_candidate(self, **kwargs):
+            registry_candidates.append(kwargs)
+            return _RegistryEntry(
+                pattern_slug=kwargs["pattern_slug"],
+                model_key=kwargs["model_key"],
+                model_version=kwargs["model_version"],
+                rollout_state="candidate",
+            )
 
         def append_model_record(self, *, pattern_slug, model_version, user_id=None, payload=None):
             model_records.append(
@@ -363,6 +443,7 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
 
     monkeypatch.setattr(pattern_routes, "_ledger", FakeLedger())
     monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
+    monkeypatch.setattr(pattern_routes, "MODEL_REGISTRY_STORE", FakeRegistryStore())
     monkeypatch.setattr(pattern_routes, "get_engine", lambda model_key: FakeEngine())
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
@@ -385,4 +466,77 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
     assert payload["replaced"] is False
     assert len(training_runs) == 1
     assert training_runs[0]["payload"]["rollout_state"] == "shadow"
+    assert len(registry_candidates) == 0
     assert len(model_records) == 0
+
+
+def test_get_model_registry_and_promote_model(monkeypatch) -> None:
+    candidate_entry = _RegistryEntry(
+        pattern_slug="tradoor-oi-reversal-v1",
+        model_key="tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
+        model_version="20260416_120000",
+        rollout_state="candidate",
+    )
+    active_entry = _RegistryEntry(
+        pattern_slug="tradoor-oi-reversal-v1",
+        model_key="tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
+        model_version="20260416_120000",
+        rollout_state="active",
+    )
+    model_records = []
+
+    class FakeRegistryStore:
+        def list(self, slug):
+            return [candidate_entry]
+
+        def get_active(self, slug):
+            return None
+
+        def get_preferred_scoring_model(self, slug):
+            return candidate_entry
+
+        def promote(self, *, pattern_slug, model_key, model_version, threshold_policy_version=None):
+            assert pattern_slug == "tradoor-oi-reversal-v1"
+            assert model_key == candidate_entry.model_key
+            assert model_version == candidate_entry.model_version
+            assert threshold_policy_version == 3
+            active_entry.threshold_policy_version = threshold_policy_version or 1
+            return active_entry
+
+    class FakeRecordStore:
+        def append_model_record(self, *, pattern_slug, model_version, user_id=None, payload=None):
+            model_records.append(
+                {
+                    "pattern_slug": pattern_slug,
+                    "model_version": model_version,
+                    "payload": payload or {},
+                }
+            )
+            return None
+
+    monkeypatch.setattr(pattern_routes, "MODEL_REGISTRY_STORE", FakeRegistryStore())
+    monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    registry_response = client.get("/patterns/tradoor-oi-reversal-v1/model-registry")
+    assert registry_response.status_code == 200
+    registry_payload = registry_response.json()
+    assert registry_payload["entries"][0]["rollout_state"] == "candidate"
+    assert registry_payload["preferred_scoring_model"]["rollout_state"] == "candidate"
+
+    promote_response = client.post(
+        "/patterns/tradoor-oi-reversal-v1/promote-model",
+        json={
+            "model_key": candidate_entry.model_key,
+            "model_version": candidate_entry.model_version,
+            "threshold_policy_version": 3,
+        },
+    )
+    assert promote_response.status_code == 200
+    promote_payload = promote_response.json()
+    assert promote_payload["active_model"]["rollout_state"] == "active"
+    assert promote_payload["active_model"]["threshold_policy_version"] == 3
+    assert len(model_records) == 1
+    assert model_records[0]["payload"]["promotion_event"] == "promote_to_active"

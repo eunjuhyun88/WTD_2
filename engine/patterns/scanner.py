@@ -107,7 +107,10 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
     """
     entry_price = _get_entry_price(transition.symbol)
     btc_trend = _detect_btc_trend()
-    entry_score = score_entry_feature_snapshot(transition.feature_snapshot)
+    entry_score = score_entry_feature_snapshot(
+        transition.feature_snapshot,
+        pattern_slug=transition.pattern_slug,
+    )
 
     log.info(
         "ENTRY SIGNAL: %s → %s [%s] price=%.4f btc=%s ml=%s p_win=%s pass=%s",
@@ -133,7 +136,9 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
         entry_block_coverage=transition.confidence,
         entry_p_win=entry_score.p_win,
         entry_ml_state=entry_score.state,
+        entry_model_key=entry_score.model_key,
         entry_model_version=entry_score.model_version,
+        entry_rollout_state=entry_score.rollout_state,
         entry_threshold=entry_score.threshold,
         entry_threshold_passed=entry_score.threshold_passed,
         entry_ml_error=entry_score.error,

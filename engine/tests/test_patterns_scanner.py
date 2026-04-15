@@ -34,10 +34,12 @@ def test_on_entry_signal_persists_shadow_ml_metadata(monkeypatch) -> None:
     monkeypatch.setattr(
         pattern_scanner,
         "score_entry_feature_snapshot",
-        lambda snapshot: PatternEntryScore(
+        lambda snapshot, pattern_slug=None: PatternEntryScore(
             state="scored",
             p_win=0.73,
+            model_key="tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
             model_version="20260414_010203",
+            rollout_state="candidate",
             threshold=0.55,
             threshold_passed=True,
             error=None,
@@ -65,7 +67,9 @@ def test_on_entry_signal_persists_shadow_ml_metadata(monkeypatch) -> None:
     assert outcome.entry_transition_id == transition.transition_id
     assert outcome.entry_p_win == 0.73
     assert outcome.entry_ml_state == "scored"
+    assert outcome.entry_model_key == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
     assert outcome.entry_model_version == "20260414_010203"
+    assert outcome.entry_rollout_state == "candidate"
     assert outcome.entry_threshold == 0.55
     assert outcome.entry_threshold_passed is True
     assert outcome.feature_snapshot == {"ema20_slope": 0.1, "oi_change_1h": 0.2}

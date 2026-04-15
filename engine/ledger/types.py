@@ -59,7 +59,9 @@ class PatternOutcome:
     entry_block_coverage: float | None = None
     entry_p_win: float | None = None
     entry_ml_state: Literal["scored", "untrained", "missing_snapshot", "error"] | None = None
+    entry_model_key: str | None = None
     entry_model_version: str | None = None
+    entry_rollout_state: Literal["candidate", "active"] | None = None
     entry_threshold: float | None = None
     entry_threshold_passed: bool | None = None
     entry_ml_error: str | None = None
