@@ -1,11 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-
-  interface PatternSignalItem {
-    symbol: string;
-    slug: string;
-    phase: string;
-  }
+  import {
+    patternCaptureContextStore,
+    type PatternCaptureContext as PatternSignalItem,
+  } from '$lib/stores/patternCaptureContext';
 
   interface Props {
     pollMs?: number;
@@ -23,7 +21,35 @@
   let hydrated = false;
 
   function itemKey(item: PatternSignalItem): string {
-    return `${item.slug}:${item.symbol}:${item.phase}`;
+    return `${item.slug}:${item.symbol}:${item.phase}:${item.candidateTransitionId ?? item.transitionId ?? ''}`;
+  }
+
+  function normalizeCandidateRecord(record: Record<string, unknown>): PatternSignalItem | null {
+    const symbol = typeof record.symbol === 'string' ? record.symbol : '';
+    const slug = typeof record.slug === 'string'
+      ? record.slug
+      : typeof record.pattern_slug === 'string'
+        ? record.pattern_slug
+        : '';
+    if (!symbol || !slug) return null;
+    return {
+      symbol,
+      slug,
+      phase: typeof record.phase === 'string' ? record.phase : 'ACCUMULATION',
+      phaseLabel: typeof record.phase_label === 'string' ? record.phase_label : undefined,
+      patternSlug: typeof record.pattern_slug === 'string' ? record.pattern_slug : slug,
+      patternVersion: typeof record.pattern_version === 'number' ? record.pattern_version : undefined,
+      timeframe: typeof record.timeframe === 'string' ? record.timeframe : undefined,
+      transitionId: typeof record.transition_id === 'string' ? record.transition_id : null,
+      candidateTransitionId: typeof record.candidate_transition_id === 'string' ? record.candidate_transition_id : null,
+      scanId: typeof record.scan_id === 'string' ? record.scan_id : null,
+      blockScores: typeof record.block_scores === 'object' && record.block_scores !== null
+        ? record.block_scores as Record<string, unknown>
+        : undefined,
+      featureSnapshot: typeof record.feature_snapshot === 'object' && record.feature_snapshot !== null
+        ? record.feature_snapshot as Record<string, unknown>
+        : null,
+    };
   }
 
   function markFresh(items: PatternSignalItem[]) {
@@ -44,8 +70,16 @@
       if (!res.ok) return;
       const data = await res.json();
       const flat: PatternSignalItem[] = [];
+
+      const richRecords = Array.isArray(data.candidate_records) ? data.candidate_records : [];
+      for (const record of richRecords) {
+        const item = normalizeCandidateRecord(record as Record<string, unknown>);
+        if (item) flat.push(item);
+      }
+      patternCaptureContextStore.setRecords(flat);
+
       const candidates = data.entry_candidates ?? {};
-      if (Object.keys(candidates).length > 0) {
+      if (flat.length === 0 && Object.keys(candidates).length > 0) {
         for (const [slug, symbols] of Object.entries(candidates)) {
           for (const sym of (symbols as string[])) {
             flat.push({ symbol: sym, slug, phase: 'ACCUMULATION' });
@@ -88,10 +122,20 @@
 <div class="pattern-bar">
   <span class="bar-label">ENTRY SIGNALS</span>
   {#each entrySymbols as item}
-    <button class="signal-pill" class:fresh={freshKeys.has(itemKey(item))} onclick={() => onSelect?.(item)}>
+    <button
+      class="signal-pill"
+      class:fresh={freshKeys.has(itemKey(item))}
+      onclick={() => {
+        patternCaptureContextStore.select(item);
+        onSelect?.(item);
+      }}
+    >
       <span class="sig-dot"></span>
       <span class="sig-sym">{item.symbol.replace('USDT', '')}</span>
       <span class="sig-phase">{item.phase}</span>
+      {#if item.candidateTransitionId}
+        <span class="sig-link">CAP</span>
+      {/if}
       {#if freshKeys.has(itemKey(item))}
         <span class="sig-new">NEW</span>
       {/if}
@@ -181,5 +225,16 @@
     border-radius: 999px;
     padding: 1px 5px;
     letter-spacing: 0.08em;
+  }
+
+  .sig-link {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(74, 222, 128, 0.8);
+    border: 1px solid rgba(74, 222, 128, 0.22);
+    border-radius: 999px;
+    padding: 1px 5px;
+    letter-spacing: 0.06em;
   }
 </style>
