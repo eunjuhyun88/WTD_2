@@ -1,6 +1,11 @@
 <script lang="ts">
   import { setActivePair } from '$lib/stores/activePairStore';
   import type { TerminalAnomaly, TerminalPreset } from '$lib/contracts/terminalBackend';
+  import type {
+    MacroCalendarItem,
+    TerminalAlertRule,
+    TerminalWatchlistItem,
+  } from '$lib/contracts/terminalPersistence';
 
   interface AlertRow {
     id: string;
@@ -25,25 +30,31 @@
       gainers?: any[];
       losers?: any[];
     } | null;
+    watchlistRows?: TerminalWatchlistItem[];
     alerts?: AlertRow[];
+    savedAlerts?: TerminalAlertRule[];
     patternPhases?: PatternPhaseRow[];
     activeSymbol?: string;
-    newsItems?: Array<{ title?: string; source?: string; created_at?: string; published_at?: string }>;
+    macroItems?: MacroCalendarItem[];
     marketEvents?: Array<{ tag?: string; level?: string; text?: string }>;
     queryPresets?: TerminalPreset[];
     anomalies?: TerminalAnomaly[];
     onQuery?: (q: string) => void;
+    onDeleteSavedAlert?: (id: string) => void;
   }
   let {
     trendingData,
+    watchlistRows = [],
     alerts = [],
+    savedAlerts = [],
     patternPhases = [],
     activeSymbol = '',
-    newsItems = [],
+    macroItems = [],
     marketEvents = [],
     queryPresets = [],
     anomalies = [],
     onQuery,
+    onDeleteSavedAlert,
   }: Props = $props();
 
   const QUICK_QUERIES: Array<{ id: string; label: string; action: string; tone: 'info' | 'risk' | 'warn' | 'neutral' }> = [
@@ -81,10 +92,15 @@
     if (Math.abs(change) >= 0.8) return '!';
     return '·';
   }
+  function formatCountdown(seconds: number): string {
+    if (seconds <= 0) return 'now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    return `${Math.floor(seconds / 3600)}h`;
+  }
 
   let movers = $derived(trendingData?.trending?.slice(0, 6) ?? []);
   let recentAlerts = $derived(alerts.slice(0, 8));
-  let watchlist = $derived.by(() => {
+  let fallbackWatchlist = $derived.by(() => {
     const ordered = [
       ...(trendingData?.trending ?? []),
       ...(trendingData?.gainers ?? []),
@@ -99,6 +115,21 @@
         return true;
       })
       .slice(0, 6);
+  });
+  let watchlist = $derived.by(() => {
+    if (watchlistRows.length > 0) return watchlistRows;
+    return fallbackWatchlist.map((coin, index) => ({
+      symbol: coin.symbol ?? '',
+      timeframe: '4h',
+      sortOrder: index,
+      active: activeSymbol === coin.symbol || activeSymbol === `${coin.symbol}USDT`,
+      preview: {
+        price: coin.price ?? null,
+        change24h: coin.change24h ?? coin.percentChange24h ?? 0,
+        bias: (coin.change24h ?? coin.percentChange24h ?? 0) >= 0 ? 'bullish' : 'bearish',
+        confidence: 'medium',
+      },
+    }));
   });
   let derivedAnomalyItems = $derived.by(() => {
     const items: Array<{ tone: 'warn' | 'bear' | 'info'; label: string; value: string }> = [];
@@ -135,7 +166,6 @@
     }
     return derivedAnomalyItems;
   });
-  let macroItems = $derived(newsItems.slice(0, 2));
   function queryCount(id: string): number {
     if (queryPresets.length > 0) {
       const presetMap: Record<string, string> = {
@@ -148,7 +178,7 @@
       const found = queryPresets.find((preset) => preset.label === presetMap[id]);
       if (found) return found.count;
     }
-    if (id === 'buy') return watchlist.filter((coin) => (coin.change24h ?? coin.percentChange24h ?? 0) > 0).length;
+    if (id === 'buy') return watchlist.filter((coin) => (coin.preview?.change24h ?? 0) > 0).length;
     if (id === 'wrong') return anomalyItems.filter((item) => item.tone === 'bear').length + recentAlerts.filter((alert) => (alert.p_win ?? 0) < 0.5).length;
     if (id === 'oi') return recentAlerts.length;
     if (id === 'breakout') return patternPhases.reduce((sum, row) => sum + row.symbols.length, 0);
@@ -230,14 +260,14 @@
         </div>
       {/if}
       {#each watchlist as coin}
-        {@const chg = coin.change24h ?? coin.percentChange24h ?? 0}
+        {@const chg = coin.preview?.change24h ?? 0}
         <button
           class="watch-item"
-          class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT'}
-          onclick={() => setActivePair(coin.symbol + '/USDT')}
+          class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT' || coin.active}
+          onclick={() => setActivePair(coin.symbol.replace(/USDT$/,'') + '/USDT')}
         >
           <span class="watch-sym">{coin.symbol}</span>
-          <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
+          <span class="watch-price">{formatPrice(coin.preview?.price ?? 0)}</span>
           <span class="watch-chg" style="color:{pctColor(chg)}">
             {formatPct(chg)}
           </span>
@@ -275,6 +305,24 @@
       {/if}
     </h3>
     <div class="alert-list">
+      {#if savedAlerts.length > 0}
+        {#each savedAlerts.slice(0, 4) as alert}
+          <div class="saved-alert-item">
+            <button class="alert-item saved" onclick={() => {
+              setActivePair(alert.symbol.replace('USDT','') + '/USDT');
+              onQuery?.(`Analyze ${alert.symbol} with saved ${alert.kind} rule on ${alert.timeframe}.`);
+            }}>
+              <div class="alert-top">
+                <span class="alert-sym">{alert.symbol.replace('USDT','')}</span>
+                <span class="alert-tf">{alert.timeframe}</span>
+                <span class="alert-time">saved</span>
+              </div>
+              <p class="alert-blocks">{alert.kind.replace(/_/g, ' ')} · {String(alert.sourceContext.origin ?? 'terminal')}</p>
+            </button>
+            <button class="saved-alert-delete" type="button" onclick={() => onDeleteSavedAlert?.(alert.id)}>×</button>
+          </div>
+        {/each}
+      {/if}
       {#each recentAlerts as alert}
         <button class="alert-item" onclick={() => {
           setActivePair(alert.symbol.replace('USDT','') + '/USDT');
@@ -302,12 +350,13 @@
   <!-- Macro / News -->
   {#if macroItems.length > 0}
     <section class="rail-section">
-      <h3 class="section-title">Macro / News</h3>
+      <h3 class="section-title">Macro Calendar</h3>
       <div class="macro-list">
         {#each macroItems as item}
           <div class="macro-item">
-            <span class="macro-title">{item.title ?? 'Headline'}</span>
-            <span class="macro-meta">{item.source ?? 'News'} · {relativeTime(item.created_at ?? item.published_at ?? new Date().toISOString())}</span>
+            <span class="macro-title">{item.title}</span>
+            <span class="macro-meta">{item.impact.toUpperCase()} · {formatCountdown(item.countdownSeconds)} · {item.affectedAssets.join(' · ')}</span>
+            <small class="macro-summary">{item.summary}</small>
           </div>
         {/each}
       </div>
@@ -475,6 +524,7 @@
   }
   .macro-title { font-size: 8px; color: var(--sc-text-1); line-height: 1.22; }
   .macro-meta { font-family: var(--sc-font-mono); font-size: 7px; color: var(--sc-text-3); }
+  .macro-summary { font-size: 8px; color: rgba(255,255,255,0.56); line-height: 1.22; }
 
   .mover-item {
     display: flex; align-items: center; justify-content: space-between;
@@ -497,15 +547,35 @@
     color: #fbbf24; border-radius: 2px; padding: 1px 4px; margin-left: 4px;
   }
   .alert-list { display: flex; flex-direction: column; gap: 1px; }
+  .saved-alert-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px;
+    align-items: stretch;
+  }
   .alert-item {
     display: flex; flex-direction: column; gap: 2px;
     background: rgba(255,255,255,0.015); border: 1px solid transparent; cursor: pointer;
     padding: 3px 4px; border-radius: 2px; text-align: left;
     transition: background 0.12s, border-color 0.12s;
   }
+  .alert-item.saved {
+    background: rgba(77,143,245,0.05);
+    border-color: rgba(77,143,245,0.08);
+  }
   .alert-item:hover {
     background: rgba(251,191,36,0.06);
     border-color: rgba(251,191,36,0.12);
+  }
+  .saved-alert-delete {
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.5);
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    min-width: 20px;
   }
   .alert-top { display: flex; align-items: center; gap: 4px; }
   .alert-sym { font-family: var(--sc-font-mono); font-size: 10px; font-weight: 600; color: var(--sc-text-0); }

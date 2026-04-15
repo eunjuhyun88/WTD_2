@@ -22,6 +22,22 @@ export interface BoardLiquidityCluster {
   usd: number;
 }
 
+export interface BoardHeaderModel {
+  focusLabel: string;
+  biasLabel: string;
+  biasTone: 'bull' | 'bear' | 'neutral';
+  timeframeLabel: string;
+  regimeLabel: string;
+  flowLabel: string;
+}
+
+export interface BoardSummaryFact {
+  label: string;
+  value: string;
+  tone: 'bull' | 'bear' | 'neutral' | 'warn' | 'info';
+  emphasis?: 'primary' | 'secondary';
+}
+
 export interface TerminalBoardModel {
   orderbookTone: ShellChromeTone;
   orderbookBiasLabel: string;
@@ -39,6 +55,18 @@ export interface TerminalBoardModel {
     longLiqUsd: number | null;
   };
   liquidityClusters: BoardLiquidityCluster[];
+  quantRegime: {
+    bucket: 'risk_on_leverage' | 'short_squeeze' | 'deleveraging' | 'neutral';
+    label: string;
+    tone: 'bull' | 'bear' | 'neutral' | 'warn';
+    oiDeltaPct: number | null;
+    fundingPct: number | null;
+  };
+  cvdDivergence: {
+    state: 'bullish_divergence' | 'bearish_divergence' | 'aligned' | 'unknown';
+    score: number;
+    label: string;
+  };
 }
 
 interface BuildTerminalBoardModelInput {
@@ -100,6 +128,44 @@ export function buildTerminalBoardModel(
       });
   const fallbackDepth = buildFallbackDepth({ activeAsset, activeAnalysisData });
   const normalizedDepth = orderbookDepth ?? fallbackDepth;
+  const oiDeltaPct = activeAnalysisData?.snapshot?.oi_change_1h != null
+    ? activeAnalysisData.snapshot.oi_change_1h * 100
+    : activeAsset?.oiChangePct1h ?? null;
+  const fundingPct = activeAnalysisData?.snapshot?.funding_rate != null
+    ? activeAnalysisData.snapshot.funding_rate * 100
+    : activeAsset?.fundingRate != null
+      ? activeAsset.fundingRate * 100
+      : null;
+  const quantBucket = oiDeltaPct != null && fundingPct != null
+    ? (oiDeltaPct > 2 && fundingPct > 0.01
+      ? 'risk_on_leverage'
+      : oiDeltaPct > 2 && fundingPct < 0
+        ? 'short_squeeze'
+        : oiDeltaPct < 0 && fundingPct > 0
+          ? 'deleveraging'
+          : 'neutral')
+    : 'neutral';
+  const quantLabelMap = {
+    risk_on_leverage: 'Risk-on Leverage',
+    short_squeeze: 'Short Squeeze Setup',
+    deleveraging: 'Deleveraging',
+    neutral: 'Balanced',
+  } as const;
+  const quantToneMap = {
+    risk_on_leverage: 'warn',
+    short_squeeze: 'bull',
+    deleveraging: 'bear',
+    neutral: 'neutral',
+  } as const;
+  const cvdState = activeAnalysisData?.snapshot?.cvd_state ?? 'unknown';
+  const cvdDivergenceState =
+    cvdState === 'buying' && (activeAnalysisData?.change24h ?? 0) < 0
+      ? 'bullish_divergence'
+      : cvdState === 'selling' && (activeAnalysisData?.change24h ?? 0) > 0
+        ? 'bearish_divergence'
+        : cvdState === 'buying' || cvdState === 'selling'
+          ? 'aligned'
+          : 'unknown';
 
   return {
     orderbookTone: getOrderbookTone(imbalanceRatio),
@@ -118,5 +184,24 @@ export function buildTerminalBoardModel(
       longLiqUsd: readPathLiq?.nearestLong?.usd ?? microstructure?.liqTotals?.longUsd ?? liquidityClusters[0]?.usd ?? null,
     },
     liquidityClusters,
+    quantRegime: {
+      bucket: quantBucket,
+      label: quantLabelMap[quantBucket],
+      tone: quantToneMap[quantBucket],
+      oiDeltaPct,
+      fundingPct,
+    },
+    cvdDivergence: {
+      state: cvdDivergenceState,
+      score: cvdDivergenceState === 'aligned' ? 0.55 : cvdDivergenceState === 'unknown' ? 0.35 : 0.82,
+      label:
+        cvdDivergenceState === 'bullish_divergence'
+          ? 'Price down while CVD buying'
+          : cvdDivergenceState === 'bearish_divergence'
+            ? 'Price up while CVD selling'
+            : cvdDivergenceState === 'aligned'
+              ? 'Price and CVD aligned'
+              : 'No clear divergence',
+    },
   };
 }

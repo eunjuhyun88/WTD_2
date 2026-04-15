@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { TerminalEvidence } from '$lib/types/terminal';
   import type { DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
-  import type { StatusStripItem } from '$lib/terminal/terminalDerived';
+  import { toneFromRecallScore, type StatusStripItem } from '$lib/terminal/terminalDerived';
   import VerdictHeader from './VerdictHeader.svelte';
   import ActionStrip from './ActionStrip.svelte';
   import EvidenceGrid from './EvidenceGrid.svelte';
@@ -12,6 +12,7 @@
     buildPanelModel,
     buildSourcesFromAnalysis,
     buildVerdictFromAnalysis,
+    type PatternRecallMatch,
     type PanelAnalyzeData,
   } from '$lib/terminal/panelAdapter';
 
@@ -22,9 +23,15 @@
     onTabChange?: (t: string) => void;
     onAction?: (text: string) => void;
     onCapture?: () => void;
+    onPinToggle?: () => void;
+    onCompare?: () => void;
+    onAlertToggle?: () => void;
     bars?: any[];
     statusItems?: StatusStripItem[];
     layerBarsMap?: Record<string, any[]>;
+    isPinned?: boolean;
+    hasSavedAlert?: boolean;
+    patternRecallMatches?: PatternRecallMatch[];
   }
   let {
     analysisData,
@@ -33,11 +40,16 @@
     onTabChange,
     onAction,
     onCapture,
+    onPinToggle,
+    onCompare,
+    onAlertToggle,
     bars = [],
     statusItems = [],
     layerBarsMap = {},
+    isPinned = false,
+    hasSavedAlert = false,
+    patternRecallMatches = [],
   }: Props = $props();
-  let pinned = $state(false);
 
   const TABS = [
     { id: 'summary', label: 'Summary' },
@@ -129,48 +141,6 @@
       };
     });
   });
-  const entryPlan = $derived.by(() => {
-    const price = Number(panelPrice ?? 0);
-    const entry = Number(atrLevels.entry_long ?? atrLevels.entry ?? (price ? price * 0.994 : 0));
-    const stop = Number(atrLevels.stop_long ?? atrLevels.stop ?? (price ? price * 0.988 : 0));
-    const tp1 = Number(atrLevels.tp1_long ?? atrLevels.target ?? (price ? price * 1.008 : 0));
-    const tp2 = Number(atrLevels.tp2_long ?? (price ? price * 1.016 : 0));
-    const risk = entry && stop ? Math.abs(entry - stop) : 0;
-    const reward = entry && tp2 ? Math.abs(tp2 - entry) : 0;
-    const rr = risk > 0 ? Math.max(0.1, reward / risk) : 0;
-    const confidencePct = pWin != null
-      ? pWin * 100
-      : verdict?.confidence === 'high'
-        ? 72
-        : verdict?.confidence === 'medium'
-          ? 58
-          : 44;
-    return { price, entry, stop, tp1, tp2, rr, confidencePct };
-  });
-  const entryLevels = $derived.by(() => [
-    { label: 'TP2', value: entryPlan.tp2, tone: 'good', distance: entryPlan.price ? ((entryPlan.tp2 - entryPlan.price) / entryPlan.price) * 100 : 0 },
-    { label: 'TP1', value: entryPlan.tp1, tone: 'good', distance: entryPlan.price ? ((entryPlan.tp1 - entryPlan.price) / entryPlan.price) * 100 : 0 },
-    { label: 'NOW', value: entryPlan.price, tone: 'info', distance: 0 },
-    { label: 'ENTRY', value: entryPlan.entry, tone: 'good', distance: entryPlan.price ? ((entryPlan.entry - entryPlan.price) / entryPlan.price) * 100 : 0 },
-    { label: 'STOP', value: entryPlan.stop, tone: 'bad', distance: entryPlan.price ? ((entryPlan.stop - entryPlan.price) / entryPlan.price) * 100 : 0 },
-  ]);
-  const riskRows = $derived.by(() => [
-    { label: 'Bias', value: verdict?.direction ? `${verdict.direction} continuation` : 'Neutral', tone: verdict?.direction === 'bearish' ? 'bad' : verdict?.direction === 'bullish' ? 'good' : 'neutral' },
-    { label: 'Action', value: verdict?.action || 'Wait for confirmation', tone: 'good' },
-    { label: 'Avoid', value: verdict?.against?.[0] || 'Chasing extension', tone: 'warn' },
-    { label: 'Risk Trigger', value: fundingMetrics[0]?.value ? `Funding ${fundingMetrics[0].value}` : 'Funding / CVD flip', tone: 'warn' },
-    { label: 'Invalidation', value: verdict?.invalidation || (entryPlan.stop ? `$${formatPanelPrice(entryPlan.stop)}` : 'Structure break'), tone: 'bad' },
-    { label: 'Valid Until', value: 'Next candle close', tone: 'neutral' },
-  ]);
-  const flowRows = $derived.by(() => {
-    const rows = [
-      evidence.find((item) => item.metric.includes('CVD')),
-      evidence.find((item) => item.metric.includes('OI')),
-      evidence.find((item) => item.metric.includes('Funding') || item.metric.includes('FR')),
-      evidence.find((item) => item.metric.includes('Volume') || item.metric.includes('Vol')),
-    ].filter(Boolean) as TerminalEvidence[];
-    return rows.length > 0 ? rows : evidence.slice(0, 4);
-  });
   function formatDistance(value: number): string {
     if (!Number.isFinite(value)) return '—';
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
@@ -231,10 +201,10 @@
       <small>Sources {panelModel.header.sourceCount}</small>
     </div>
   <div class="panel-actions">
-    <button type="button" class:active={pinned} onclick={() => pinned = !pinned}>{pinned ? 'Pinned' : 'Pin'}</button>
-    <button type="button" onclick={() => requestBackendAction('compare')}>Compare</button>
+    <button type="button" class:active={isPinned} onclick={() => onPinToggle?.()}>{isPinned ? 'Pinned' : 'Pin'}</button>
+    <button type="button" onclick={() => onCompare?.()}>Compare</button>
     <button type="button" onclick={openChartView}>Chart</button>
-    <button type="button" onclick={() => requestBackendAction('alert')}>Alert+</button>
+    <button type="button" class:active={hasSavedAlert} onclick={() => onAlertToggle?.()}>{hasSavedAlert ? 'Alert Saved' : 'Alert+'}</button>
   </div>
   {#if compactStatusItems.length > 0}
     <div class="panel-status-strip">
@@ -310,6 +280,19 @@
         <EvidenceGrid {evidence} cols={2} {bars} {layerBarsMap} />
         <div class="divider"></div>
         <WhyPanel why={verdict.reason} against={verdict.against} />
+        {#if patternRecallMatches.length > 0}
+          <div class="divider"></div>
+          <p class="section-label">Pattern Recall</p>
+          <div class="recall-list">
+            {#each patternRecallMatches.slice(0, 3) as recall}
+              <div class="recall-row" data-tone={toneFromRecallScore(recall.score)}>
+                <span>{recall.symbol.replace('USDT','')} {recall.timeframe.toUpperCase()}</span>
+                <strong>{Math.round(recall.score * 100)}%</strong>
+                <small>{recall.triggerOrigin}</small>
+              </div>
+            {/each}
+          </div>
+        {/if}
         <div class="divider"></div>
         <p class="section-label">Multi-timeframe alignment</p>
         <div class="mtf-row">
@@ -903,6 +886,34 @@
   .flow-row[data-state='bullish'] strong { color: #8fdd9d; }
   .flow-row[data-state='bearish'] strong { color: #f19999; }
   .flow-row[data-state='warning'] strong { color: #e9c167; }
+
+  .recall-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .recall-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px 72px;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2px;
+    background: rgba(255,255,255,0.02);
+    padding: 4px 5px;
+  }
+  .recall-row span,
+  .recall-row strong,
+  .recall-row small {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+  }
+  .recall-row span { color: rgba(247,242,234,0.72); }
+  .recall-row strong { text-align: right; color: rgba(247,242,234,0.82); }
+  .recall-row small { text-align: right; color: rgba(247,242,234,0.4); text-transform: uppercase; }
+  .recall-row[data-tone='bull'] strong { color: #8fdd9d; }
+  .recall-row[data-tone='info'] strong { color: #83bcff; }
+  .recall-row[data-tone='warn'] strong { color: #e9c167; }
 
   .risk-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .risk-item { font-size: 9px; color: #fbbf24; padding: 3px 5px; background: rgba(251,191,36,0.06); border-radius: 2px; }

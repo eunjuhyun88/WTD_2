@@ -68,6 +68,21 @@ describe('mapAnalyzeResponse', () => {
 			degraded: false,
 			engine_mode: 'full',
 		});
+		expect(payload.entryPlan).toMatchObject({
+			entry: expect.any(Number),
+			stop: expect.any(Number),
+			targets: [
+				{ label: 'TP1', price: expect.any(Number) },
+				{ label: 'TP2', price: expect.any(Number) },
+			],
+			riskReward: expect.any(Number),
+			confidencePct: 61,
+		});
+		expect(payload.riskPlan?.bias).toBe('bullish continuation');
+		expect(payload.flowSummary?.funding).toBe('1.000%');
+		expect(payload.sources?.map((source) => source.id)).toEqual(
+			expect.arrayContaining(['binance', 'market-derivatives', 'deep-engine', 'score-engine']),
+		);
 	});
 
 	it('marks deep-only responses as degraded with missing score metadata', () => {

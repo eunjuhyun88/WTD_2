@@ -3,10 +3,11 @@
 
   interface Props {
     onSend?: (text: string, files?: File[]) => void;
+    onDockAction?: (label: string, prompt: string) => void;
     loading?: boolean;
     feedItems?: Array<string | { symbol: string; message: string; time?: string; tone?: 'bull' | 'bear' | 'warn' | 'info' | 'neutral' }>;
   }
-  let { onSend, loading = false, feedItems = [] }: Props = $props();
+  let { onSend, onDockAction, loading = false, feedItems = [] }: Props = $props();
 
   let inputText = $state('');
   let files = $state<File[]>([]);
@@ -33,6 +34,18 @@
       label: 'Export',
       prompt: () => `Prepare an export-ready backend summary for ${$activePair || 'BTC/USDT'} on ${($activeTimeframe || '4h').toUpperCase()} with verdict, entry plan, risk plan, and evidence sources as compact JSON.`,
     },
+    {
+      label: 'Save P',
+      prompt: () => `Save current pattern context for ${$activePair || 'BTC/USDT'} ${($activeTimeframe || '4h').toUpperCase()} with verdict, evidence hash, and source freshness.`,
+    },
+    {
+      label: 'Recall',
+      prompt: () => `Find similar saved patterns for ${$activePair || 'BTC/USDT'} ${($activeTimeframe || '4h').toUpperCase()} and rank top matches with confidence.`,
+    },
+    {
+      label: 'Fails',
+      prompt: () => `Show failed pattern recalls from last 7 days for ${$activePair || 'BTC/USDT'} and explain why they invalidated.`,
+    },
   ];
 
   function handleSend() {
@@ -42,8 +55,13 @@
     files = [];
   }
 
-  function runDockAction(prompt: string) {
+  function runDockAction(action: { label: string; prompt: () => string }) {
     if (loading) return;
+    const prompt = action.prompt();
+    if (onDockAction) {
+      onDockAction(action.label, prompt);
+      return;
+    }
     onSend?.(prompt);
   }
 
@@ -87,7 +105,7 @@
           type="button"
           class="dock-action-btn"
           disabled={loading}
-          onclick={() => runDockAction(action.prompt())}
+          onclick={() => runDockAction(action)}
         >
           {action.label}
         </button>
@@ -107,7 +125,7 @@
     <!-- Textarea -->
     <textarea
       class="cmd-input"
-      placeholder="Ask…"
+      placeholder="Ask or type: save current pattern / find similar patterns / failed recalls..."
       bind:value={inputText}
       onkeydown={handleKeydown}
       rows="1"

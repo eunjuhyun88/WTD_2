@@ -5,6 +5,7 @@
     resolvePatternCaptureContext,
     type PatternCaptureContextState,
   } from '$lib/stores/patternCaptureContext';
+  import { createPatternCapture as createPatternCaptureRecord } from '$lib/api/terminalPersistence';
 
   /**
    * SaveSetupModal — appears when user clicks "+ Save" on a candle.
@@ -76,6 +77,27 @@
     const shouldCreatePatternCapture = canSavePatternCapture && label !== 'GENERAL';
 
     try {
+      const captureRecord = await createPatternCaptureRecord({
+        symbol,
+        timeframe: captureContext?.timeframe ?? tf,
+        contextKind: 'symbol',
+        triggerOrigin: shouldCreatePatternCapture ? 'pattern_transition' : 'manual',
+        patternSlug: captureContext?.patternSlug ?? captureContext?.slug ?? undefined,
+        reason: label,
+        note,
+        snapshot: {
+          price: typeof captureContext?.featureSnapshot?.last_close === 'number' ? captureContext.featureSnapshot.last_close : null,
+          change24h: null,
+          funding: null,
+          oiDelta: null,
+          freshness: 'recent',
+        },
+        decision: {},
+        evidenceHash: candidateTransitionId ?? undefined,
+        sourceFreshness: { source: 'terminal_save_setup' },
+      });
+      if (!captureRecord) throw new Error('pattern_capture_create_failed');
+
       const res = shouldCreatePatternCapture
         ? await fetch('/api/engine/captures', {
             method: 'POST',
@@ -94,6 +116,7 @@
                 timestamp: isoTime,
                 selected_phase: label,
                 source: 'terminal_save_setup',
+                pattern_capture_id: captureRecord.id,
               },
               feature_snapshot: captureContext?.featureSnapshot ?? undefined,
               block_scores: captureContext?.blockScores ?? {},
@@ -105,6 +128,7 @@
             body:    JSON.stringify({
               snaps: [{ symbol, timestamp: isoTime, label }],
               note,
+              pattern_capture_id: captureRecord.id,
             }),
           });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -112,7 +136,7 @@
       if (shouldCreatePatternCapture) {
         patternCaptureContextStore.clearSelection();
       }
-      onSaved(data.capture?.capture_id ?? data.slug ?? '');
+      onSaved(captureRecord.id ?? data.capture?.capture_id ?? data.slug ?? '');
     } catch (e) {
       saveError = String(e);
     } finally {

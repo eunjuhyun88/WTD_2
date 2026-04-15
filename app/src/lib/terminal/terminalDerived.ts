@@ -221,6 +221,13 @@ export function buildBoardActionRows(activeVerdict: TerminalVerdict | null): Boa
   ];
 }
 
+export function toneFromRecallScore(score: number): ShellChromeTone {
+  if (score >= 0.8) return 'bull';
+  if (score >= 0.6) return 'info';
+  if (score >= 0.4) return 'neutral';
+  return 'warn';
+}
+
 export function buildStatusStripItems(input: {
   flowBias: 'LONG' | 'SHORT' | 'NEUTRAL';
   isScanMode: boolean;

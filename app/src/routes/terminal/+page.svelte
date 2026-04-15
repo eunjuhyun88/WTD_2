@@ -43,9 +43,30 @@
     snapshotFingerprint,
     streamTerminalMessage,
   } from '$lib/terminal/terminalActions';
-  import { fetchFlowBias, fetchMarketEvents, fetchMemoryRerank, sendMemoryFeedback } from '$lib/api/terminalBackend';
+  import {
+    fetchFlowBias,
+    fetchMarketEvents,
+    fetchMemoryRerank,
+    sendMemoryDebugSession,
+    sendMemoryFeedback,
+  } from '$lib/api/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import {
+    createPatternCapture,
+    createTerminalAlert,
+    createTerminalExport,
+    deleteTerminalAlert as deleteSavedTerminalAlert,
+    fetchPatternCaptures,
+    fetchMacroCalendar,
+    fetchTerminalAlerts as fetchSavedTerminalAlerts,
+    fetchTerminalExport,
+    fetchTerminalPins,
+    fetchTerminalWatchlist,
+    saveTerminalPins,
+    saveTerminalWatchlist,
+  } from '$lib/api/terminalPersistence';
+  import {
+    buildPatternRecallMatches,
     buildTerminalDecisionBundle,
     rerankEvidenceWithMemory,
     type TerminalDecisionBundle,
@@ -58,6 +79,13 @@
     TerminalAnomaly,
     TerminalPreset,
   } from '$lib/contracts/terminalBackend';
+  import type {
+    MacroCalendarItem,
+    TerminalAlertRule,
+    TerminalExportJob,
+    TerminalPin,
+    TerminalWatchlistItem,
+  } from '$lib/contracts/terminalPersistence';
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
@@ -66,6 +94,7 @@
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
+  import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
 
@@ -103,6 +132,11 @@
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
   let trendingData = $state<any>(null);
   let scannerAlerts = $state<any[]>([]);
+  let savedAlertRules = $state<TerminalAlertRule[]>([]);
+  let persistedWatchlist = $state<TerminalWatchlistItem[]>([]);
+  let persistedPins = $state<TerminalPin[]>([]);
+  let macroCalendarItems = $state<MacroCalendarItem[]>([]);
+  let latestExportJob = $state<TerminalExportJob | null>(null);
   let marketEvents = $state<NonNullable<EventsEnvelope['data']>['records'] extends Array<infer T> ? T[] : Array<{ tag?: string; level?: string; text?: string }>>([]);
   let terminalQueryPresets = $state<TerminalPreset[]>([]);
   let terminalAnomalies = $state<TerminalAnomaly[]>([]);
@@ -129,6 +163,10 @@
     createdAt: number;
   }
   let patternTransitionAlerts = $state<PatternTransitionAlert[]>([]);
+  let showPatternLibrary = $state(false);
+  let patternCaptureRecords = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
+  let patternCaptureLoading = $state(false);
+  let exportPollTimer: ReturnType<typeof setInterval> | null = null;
 
   // ── Capture modal ──────────────────────────────────────────
   let showCaptureModal = $state(false);
@@ -230,6 +268,348 @@
 
   function formatAgentFailure(detail?: string): string {
     return formatAgentFailureMessage(detail, localizeTerminalText('AI 응답 실패', 'AI response failed'));
+  }
+
+  function makeWatchlistItem(symbol: string, timeframe: string, sortOrder: number, active: boolean): TerminalWatchlistItem {
+    const existing = persistedWatchlist.find((item) => item.symbol === symbol);
+    return {
+      symbol,
+      timeframe,
+      sortOrder,
+      active,
+      preview: existing?.preview,
+    };
+  }
+
+  function mergeWatchlistSymbol(symbol: string, timeframe: string, activate: boolean): TerminalWatchlistItem[] {
+    const base = persistedWatchlist.filter((item) => item.symbol !== symbol);
+    const next = [makeWatchlistItem(symbol, timeframe, 0, activate), ...base]
+      .slice(0, 6)
+      .map((item, index) => ({
+        ...item,
+        sortOrder: index,
+        active: activate ? item.symbol === symbol : item.active,
+      }));
+    if (activate && next.every((item) => !item.active) && next[0]) {
+      next[0].active = true;
+    }
+    return next;
+  }
+
+  async function persistWatchlist(nextItems: TerminalWatchlistItem[], nextActiveSymbol = activeSymbol): Promise<void> {
+    persistedWatchlist = nextItems;
+    const saved = await saveTerminalWatchlist({ items: nextItems, activeSymbol: nextActiveSymbol });
+    if (saved) {
+      persistedWatchlist = saved.items;
+    }
+  }
+
+  async function touchWatchlistSymbol(symbol: string, timeframe: string, activate = true): Promise<void> {
+    const nextItems = mergeWatchlistSymbol(symbol, timeframe, activate);
+    const same =
+      nextItems.length === persistedWatchlist.length &&
+      nextItems.every((item, index) => {
+        const current = persistedWatchlist[index];
+        return current
+          && current.symbol === item.symbol
+          && current.timeframe === item.timeframe
+          && current.active === item.active;
+      });
+    if (same) return;
+    await persistWatchlist(nextItems, activate ? symbol : activeSymbol);
+  }
+
+  async function persistPins(nextPins: TerminalPin[]): Promise<void> {
+    persistedPins = nextPins;
+    const saved = await saveTerminalPins(nextPins);
+    if (saved) persistedPins = saved;
+  }
+
+  function buildPin(id: string, pinType: TerminalPin['pinType'], timeframe: string, payload: Record<string, unknown>, symbol?: string, label?: string): TerminalPin {
+    const existing = persistedPins.find((pin) => pin.id === id);
+    const now = new Date().toISOString();
+    return {
+      id,
+      pinType,
+      symbol,
+      timeframe,
+      label,
+      payload,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+  }
+
+  function activeAlertRuleFor(symbol: string, timeframe: string): TerminalAlertRule | undefined {
+    return savedAlertRules.find((rule) => rule.symbol === symbol && rule.timeframe === timeframe);
+  }
+
+  function buildActivePersistencePayload(symbol: string, timeframe: string): Record<string, unknown> {
+    const decision = decisionMap[symbol];
+    const data = analysisDataMap[symbol] ?? analysisData;
+    return {
+      symbol,
+      timeframe,
+      price: data?.price ?? data?.snapshot?.last_close ?? null,
+      change24h: data?.change24h ?? data?.snapshot?.change24h ?? null,
+      verdict: decision?.verdict ?? null,
+      evidence: decision?.evidence?.slice(0, 8) ?? [],
+      entryPlan: data?.entryPlan ?? null,
+      riskPlan: data?.riskPlan ?? null,
+      flowSummary: data?.flowSummary ?? null,
+      sources: data?.sources ?? [],
+      savedAt: new Date().toISOString(),
+    };
+  }
+
+  async function recordDurableTerminalAction(args: {
+    action: string;
+    symbol: string;
+    timeframe: string;
+    evidence?: string[];
+  }): Promise<void> {
+    try {
+      await sendMemoryDebugSession({
+        sessionId: `terminal:${args.action}:${args.symbol}:${Date.now()}`,
+        symbol: args.symbol,
+        timeframe: args.timeframe,
+        intent: args.action,
+        hypotheses: [
+          {
+            id: `${args.action}:${args.symbol}`,
+            text: `${args.action} committed from terminal persistent action`,
+            status: 'confirmed',
+            evidence: args.evidence ?? [],
+          },
+        ],
+      });
+    } catch {
+      // Best-effort telemetry. Persistence action itself is already complete.
+    }
+  }
+
+  async function handlePinToggle(): Promise<void> {
+    const symbol = activeSymbol || pairToSymbol(gPair);
+    if (!symbol) return;
+    const timeframe = symbolToTF(gTf);
+    const id = `analysis:${symbol}:${timeframe}`;
+    const existing = persistedPins.find((pin) => pin.id === id);
+
+    if (existing) {
+      await persistPins(persistedPins.filter((pin) => pin.id !== id));
+      pushAssistantMessage(localizeTerminalText('핀을 해제했습니다.', 'Analysis pin removed.'), true);
+      return;
+    }
+
+    const payload = buildActivePersistencePayload(symbol, timeframe);
+    const pin = buildPin(
+      id,
+      'analysis',
+      timeframe,
+      payload,
+      symbol,
+      `${symbol.replace('USDT', '')} ${timeframe.toUpperCase()} analysis`,
+    );
+    await persistPins([pin, ...persistedPins.filter((item) => item.id !== id)].slice(0, 50));
+    await touchWatchlistSymbol(symbol, timeframe, true);
+    await recordDurableTerminalAction({
+      action: 'pin',
+      symbol,
+      timeframe,
+      evidence: (payload.evidence as Array<{ metric?: string }>).map((item) => item.metric ?? 'evidence').slice(0, 3),
+    });
+    pushAssistantMessage(localizeTerminalText('분석을 핀에 저장했습니다.', 'Analysis pinned to your terminal.'), true);
+  }
+
+  async function handleAlertToggle(): Promise<void> {
+    const symbol = activeSymbol || pairToSymbol(gPair);
+    if (!symbol) return;
+    const timeframe = symbolToTF(gTf);
+    const existing = activeAlertRuleFor(symbol, timeframe);
+    if (existing) {
+      const deleted = await deleteSavedTerminalAlert(existing.id);
+      if (deleted) {
+        savedAlertRules = savedAlertRules.filter((rule) => rule.id !== existing.id);
+        pushAssistantMessage(localizeTerminalText('저장된 알림을 삭제했습니다.', 'Saved alert removed.'), true);
+      }
+      return;
+    }
+
+    const payload = buildActivePersistencePayload(symbol, timeframe);
+    const alert = await createTerminalAlert({
+      symbol,
+      timeframe,
+      kind: 'risk_guard',
+      params: {
+        bias: (payload.riskPlan as { bias?: string } | null)?.bias ?? (payload.verdict as { direction?: string } | null)?.direction ?? 'neutral',
+        invalidation: (payload.riskPlan as { invalidation?: string } | null)?.invalidation
+          ?? (payload.verdict as { invalidation?: string } | null)?.invalidation
+          ?? '',
+        action: (payload.verdict as { action?: string } | null)?.action ?? '',
+      },
+      enabled: true,
+      sourceContext: {
+        origin: 'terminal',
+        symbol,
+        timeframe,
+        pinnedAnalysisId: `analysis:${symbol}:${timeframe}`,
+      },
+    });
+    if (!alert) {
+      pushAssistantMessage(localizeTerminalText('알림 저장에 실패했습니다.', 'Alert save failed.'), true);
+      return;
+    }
+    savedAlertRules = [alert, ...savedAlertRules.filter((rule) => rule.id !== alert.id)];
+    await recordDurableTerminalAction({ action: 'alert', symbol, timeframe });
+    pushAssistantMessage(localizeTerminalText('리스크 알림을 저장했습니다.', 'Risk alert saved.'), true);
+  }
+
+  async function handleDeleteSavedAlert(id: string): Promise<void> {
+    const deleted = await deleteSavedTerminalAlert(id);
+    if (deleted) {
+      savedAlertRules = savedAlertRules.filter((rule) => rule.id !== id);
+    }
+  }
+
+  async function handleCompareAction(): Promise<void> {
+    const timeframe = symbolToTF(gTf);
+    const seed = activeSymbol || pairToSymbol(gPair) || 'BTCUSDT';
+    const symbols = [...new Set([seed, ...boardSymbols, 'ETHUSDT'].filter(Boolean))].slice(0, 4);
+    if (symbols.length < 2) return;
+
+    boardSymbols = symbols;
+    layout = 'compare2x2';
+    showAnalysisRail = true;
+    for (const symbol of symbols) {
+      void loadAnalysis(symbol, timeframe);
+    }
+
+    const pairs = symbols.map((symbol) => symbol.replace('USDT', '/USDT'));
+    let compareResult: unknown = null;
+    try {
+      const res = await fetch('/api/terminal/compare', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pairs, timeframe }),
+      });
+      compareResult = res.ok ? await res.json() : null;
+    } catch {
+      compareResult = null;
+    }
+
+    const id = `compare:${symbols.join('-')}:${timeframe}`;
+    const pin = buildPin(
+      id,
+      'compare',
+      timeframe,
+      { symbols, pairs, compareResult, savedAt: new Date().toISOString() },
+      undefined,
+      `${symbols.map((symbol) => symbol.replace('USDT', '')).join(' vs ')} ${timeframe.toUpperCase()}`,
+    );
+    await persistPins([pin, ...persistedPins.filter((item) => item.id !== id)].slice(0, 50));
+    pushAssistantMessage(localizeTerminalText('비교 보드를 저장했습니다.', 'Compare board saved.'), true);
+  }
+
+  async function handleCreateExport(): Promise<void> {
+    const symbol = activeSymbol || pairToSymbol(gPair);
+    if (!symbol) return;
+    const timeframe = symbolToTF(gTf);
+    const job = await createTerminalExport({
+      exportType: 'terminal_report',
+      symbol,
+      timeframe,
+      title: `${symbol.replace('USDT', '')} ${timeframe.toUpperCase()} terminal report`,
+      payload: buildActivePersistencePayload(symbol, timeframe),
+    });
+    if (!job) {
+      pushAssistantMessage(localizeTerminalText('리포트 export 생성에 실패했습니다.', 'Export job creation failed.'), true);
+      return;
+    }
+    latestExportJob = job;
+    await recordDurableTerminalAction({ action: 'export', symbol, timeframe });
+    await pollExportJob(job.id);
+    pushAssistantMessage(localizeTerminalText('터미널 리포트 export를 시작했습니다.', 'Terminal report export queued.'), true);
+  }
+
+  async function handleDockAction(label: string, prompt: string): Promise<void> {
+    if (label === 'Export') {
+      await handleCreateExport();
+      return;
+    }
+    if (label === 'Alerts') {
+      await Promise.all([loadAlerts(), loadTerminalPersistenceState()]);
+      pushAssistantMessage(localizeTerminalText('알림 레일을 최신 상태로 갱신했습니다.', 'Alerts refreshed from backend routes.'), true);
+      return;
+    }
+    if (label === 'Board') {
+      const symbol = activeSymbol || pairToSymbol(gPair);
+      await Promise.all([
+        loadAnalysis(symbol, symbolToTF(gTf)),
+        loadActiveReadPath(symbol, symbolToTF(gTf)),
+        loadTerminalPersistenceState(),
+      ]);
+      pushAssistantMessage(localizeTerminalText('보드를 최신 백엔드 상태로 갱신했습니다.', 'Board refreshed from backend routes.'), true);
+      return;
+    }
+    if (label === 'Risk') {
+      activeAnalysisTab = 'risk';
+      showAnalysisRail = true;
+      const symbol = activeSymbol || pairToSymbol(gPair);
+      await loadAnalysis(symbol, symbolToTF(gTf));
+      return;
+    }
+    if (label === 'Scan') {
+      await Promise.all([loadTerminalReadPath(), loadAlerts()]);
+      pushAssistantMessage(localizeTerminalText('스캔 상태를 최신 상태로 갱신했습니다.', 'Scan state refreshed from backend routes.'), true);
+      return;
+    }
+    if (label === 'Save P') {
+      showCaptureModal = true;
+      pushAssistantMessage(localizeTerminalText('현재 패턴 저장 모달을 열었습니다.', 'Opened save pattern modal.'), true);
+      return;
+    }
+    if (label === 'Recall') {
+      await loadPatternCaptures();
+      showPatternLibrary = true;
+      pushAssistantMessage(localizeTerminalText('저장 패턴 검색 패널을 열었습니다.', 'Opened pattern recall panel.'), true);
+      return;
+    }
+    if (label === 'Fails') {
+      await loadPatternCaptures();
+      const failed = patternCaptureRecords
+        .filter((record) => record.decision.verdict === 'bearish' || (record.reason ?? '').toLowerCase().includes('fail'))
+        .slice(0, 5)
+        .map((record) => `${record.symbol.replace('USDT', '')} ${record.timeframe.toUpperCase()} · ${record.reason ?? 'no reason'}`);
+      pushAssistantMessage(
+        failed.length > 0
+          ? `${localizeTerminalText('최근 실패 리콜', 'Recent failed recalls')}: ${failed.join(' | ')}`
+          : localizeTerminalText('최근 실패 리콜이 없습니다.', 'No failed recalls in recent saved patterns.'),
+        true
+      );
+      return;
+    }
+    await sendCommand(prompt);
+  }
+
+  async function pollExportJob(id: string): Promise<void> {
+    if (exportPollTimer) clearInterval(exportPollTimer);
+    exportPollTimer = setInterval(() => {
+      void (async () => {
+        const job = await fetchTerminalExport(id);
+        if (!job) return;
+        latestExportJob = job;
+        if (job.status === 'succeeded' || job.status === 'failed') {
+          if (exportPollTimer) clearInterval(exportPollTimer);
+          exportPollTimer = null;
+          pushAssistantMessage(
+            job.status === 'succeeded'
+              ? localizeTerminalText('터미널 리포트 export 완료', 'Terminal report export completed')
+              : localizeTerminalText('터미널 리포트 export 실패', 'Terminal report export failed'),
+            true,
+          );
+        }
+      })();
+    }, 1200);
   }
 
   function _deepBias(verdict: string): 'bullish' | 'bearish' | 'neutral' {
@@ -384,6 +764,9 @@
         applyAnalysisState(symbol, data);
         const decision = applyTerminalDecision(symbol, data);
         applyDecisionState(symbol, decision, true);
+        if (isCurrentActive || !persistedWatchlist.some((item) => item.symbol === symbol)) {
+          void touchWatchlistSymbol(symbol, tf, isCurrentActive);
+        }
 
         // Memory rerank is expensive. Run it once per active symbol+tf+tab tuple.
         if (isCurrentActive && decision.evidence.length > 0) {
@@ -500,6 +883,49 @@
     } catch {}
   }
 
+  async function loadTerminalPersistenceState() {
+    try {
+      const [watchlistPayload, pins, alerts, macroItems] = await Promise.all([
+        fetchTerminalWatchlist(),
+        fetchTerminalPins(),
+        fetchSavedTerminalAlerts(),
+        fetchMacroCalendar(),
+      ]);
+      persistedWatchlist = watchlistPayload.items;
+      persistedPins = pins;
+      savedAlertRules = alerts;
+      macroCalendarItems = macroItems;
+
+      const latestComparePin = pins.find((pin) => pin.pinType === 'compare');
+      const compareSymbols = Array.isArray(latestComparePin?.payload?.symbols)
+        ? latestComparePin?.payload?.symbols.filter((value): value is string => typeof value === 'string')
+        : [];
+      if (compareSymbols.length >= 2) {
+        boardSymbols = compareSymbols.slice(0, 4);
+        stubAssetMap = Object.fromEntries(compareSymbols.slice(0, 4).map((symbol) => [symbol, buildStubAsset(symbol)]));
+        layout = 'compare2x2';
+        activeSymbol = compareSymbols[0] ?? activeSymbol;
+        if (latestComparePin?.timeframe) {
+          setActiveTimeframe(normalizeTimeframe(latestComparePin.timeframe));
+        }
+        if (activeSymbol) {
+          setActivePair(activeSymbol.replace('USDT', '/USDT'));
+        }
+        for (const symbol of compareSymbols.slice(0, 4)) {
+          void loadAnalysis(symbol, symbolToTF(latestComparePin?.timeframe ?? gTf));
+        }
+      } else if (watchlistPayload.activeSymbol) {
+        setActivePair(watchlistPayload.activeSymbol.replace('USDT', '/USDT'));
+      } else {
+        const latestAnalysisPin = pins.find((pin) => pin.pinType === 'analysis' && pin.symbol);
+        if (latestAnalysisPin?.symbol) {
+          setActivePair(latestAnalysisPin.symbol.replace('USDT', '/USDT'));
+          setActiveTimeframe(normalizeTimeframe(latestAnalysisPin.timeframe));
+        }
+      }
+    } catch {}
+  }
+
   async function loadNews() {
     try {
       newsData = await fetchNewsData();
@@ -526,6 +952,17 @@
     } catch {}
   }
 
+  async function loadPatternCaptures() {
+    patternCaptureLoading = true;
+    try {
+      patternCaptureRecords = await fetchPatternCaptures({ limit: 120 });
+    } catch {
+      patternCaptureRecords = [];
+    } finally {
+      patternCaptureLoading = false;
+    }
+  }
+
   function pushPatternTransitions(items: Array<{ symbol: string; slug: string; phase: string }>) {
     if (items.length === 0) return;
 
@@ -546,6 +983,22 @@
     patternTransitionAlerts = [...fresh, ...patternTransitionAlerts]
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 6);
+
+    for (const item of fresh) {
+      void createPatternCapture({
+        symbol: item.symbol,
+        timeframe: symbolToTF(gTf),
+        contextKind: 'symbol',
+        triggerOrigin: 'pattern_transition',
+        patternSlug: item.slug,
+        reason: item.phase,
+        note: 'Auto capture from live pattern transition',
+        snapshot: { freshness: 'live' },
+        decision: {},
+        evidenceHash: item.id,
+        sourceFreshness: { pattern: 'live' },
+      });
+    }
 
     setTimeout(() => {
       patternTransitionAlerts = patternTransitionAlerts.filter((item) => now - item.createdAt < 90_000);
@@ -693,6 +1146,7 @@
     activeChartPayload = chartPayloadMap[symbol] ?? null;
     if (!decisionMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
     void loadActiveReadPath(symbol, symbolToTF(gTf));
+    void touchWatchlistSymbol(symbol, symbolToTF(gTf), true);
     setActivePair(symbol.replace('USDT', '/USDT'));
   }
 
@@ -734,23 +1188,36 @@
     }
   }
 
-  let analysisTabFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
   function handleAnalysisTabChange(tab: string) {
-    const nextTab = tab as typeof activeAnalysisTab;
-    activeAnalysisTab = nextTab;
-    if (analysisTabFeedbackTimer) clearTimeout(analysisTabFeedbackTimer);
-    if (!activeSymbol) return;
-    analysisTabFeedbackTimer = setTimeout(() => {
-      trackMemoryFeedbackForSymbol(activeSymbol, 'used', nextTab);
-      analysisTabFeedbackTimer = null;
-    }, 180);
+    activeAnalysisTab = tab as typeof activeAnalysisTab;
   }
 
   function handleCaptureSaved() {
     showCaptureModal = false;
+    void loadPatternCaptures();
     if (activeSymbol) {
       trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
+      void sendMemoryDebugSession({
+        sessionId: `capture:${activeSymbol}:${Date.now()}`,
+        symbol: activeSymbol,
+        timeframe: symbolToTF(gTf),
+        intent: 'save_setup',
+        hypotheses: [
+          {
+            id: `capture-${activeSymbol}`,
+            text: activeVerdict?.reason || activeAsset?.action || `${activeSymbol} saved setup`,
+            status: 'confirmed',
+            evidence: activeEvidence.slice(0, 2).map((item) => `${item.metric} ${item.value}`),
+          },
+        ],
+      });
     }
+  }
+
+  function handlePatternLibrarySelect(record: { symbol: string; timeframe: string }) {
+    showPatternLibrary = false;
+    setActiveTimeframe(normalizeTimeframe(record.timeframe));
+    selectAsset(record.symbol);
   }
 
   // ─── Lifecycle ───────────────────────────────────────────────
@@ -798,11 +1265,13 @@
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     loadTerminalReadPath();
+    loadTerminalPersistenceState();
     loadEvents();
     scheduleBootstrapTask(loadTrending, 120);
     scheduleBootstrapTask(loadNews, 220);
     scheduleBootstrapTask(loadAlerts, 320);
     scheduleBootstrapTask(loadPatternPhases, 420);
+    scheduleBootstrapTask(loadPatternCaptures, 520);
     flowInterval = setInterval(() => runIfVisible(() => loadFlow(gPair, symbolToTF(gTf))), 15_000);
     trendingInterval = setInterval(() => runIfVisible(loadTrending), 60_000);
     readPathInterval = setInterval(() => runIfVisible(loadTerminalReadPath), 60_000);
@@ -822,7 +1291,7 @@
     clearInterval(alertsInterval);
     clearInterval(eventsInterval);
     clearInterval(patternInterval);
-    if (analysisTabFeedbackTimer) clearTimeout(analysisTabFeedbackTimer);
+    if (exportPollTimer) clearInterval(exportPollTimer);
     bootstrapTimers.forEach((timer) => clearTimeout(timer));
     bootstrapTimers = [];
   });
@@ -963,6 +1432,20 @@
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
   let activeEvidence = $derived(activeSymbol ? evidenceMap[activeSymbol] ?? [] : []);
   let activeAnalysisData = $derived(activeSymbol ? analysisDataMap[activeSymbol] ?? analysisData : analysisData);
+  let patternRecallMatches = $derived.by(() =>
+    buildPatternRecallMatches(activeSymbol, symbolToTF(gTf), activeVerdict, patternCaptureRecords)
+  );
+  let isActivePinned = $derived.by(() => {
+    if (!activeSymbol) return false;
+    const timeframe = symbolToTF(gTf);
+    return persistedPins.some((pin) =>
+      pin.timeframe === timeframe && pin.symbol === activeSymbol && (pin.pinType === 'symbol' || pin.pinType === 'analysis')
+    );
+  });
+  let hasActiveSavedAlert = $derived.by(() => {
+    if (!activeSymbol) return false;
+    return Boolean(activeAlertRuleFor(activeSymbol, symbolToTF(gTf)));
+  });
   let companionAssets = $derived(
     boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
   );
@@ -1091,20 +1574,26 @@
             <span class="workspace-panel-kicker">Market Rail</span>
             <span class="workspace-panel-meta">{leftWidth}px · {terminalStatus?.anomalyCount ?? terminalAnomalies.length} anomalies</span>
           </div>
+          <button class="panel-head-toggle" type="button" onclick={() => showPatternLibrary = true} aria-label="Open pattern library">
+            <span class="panel-head-toggle-glyph">☰</span>
+          </button>
           <button class="panel-head-toggle" type="button" onclick={toggleLeftRail} aria-label="Hide market rail">
             <span class="panel-head-toggle-glyph">◧</span>
           </button>
         </div>
         <TerminalLeftRail
           {trendingData}
+          watchlistRows={persistedWatchlist}
           alerts={scannerAlerts}
+          savedAlerts={savedAlertRules}
           {patternPhases}
           {activeSymbol}
-          newsItems={newsData?.records ?? []}
+          macroItems={macroCalendarItems}
           {marketEvents}
           queryPresets={terminalQueryPresets}
           anomalies={terminalAnomalies}
           onQuery={handleQueryChip}
+          onDeleteSavedAlert={handleDeleteSavedAlert}
         />
       </aside>
 
@@ -1143,6 +1632,8 @@
             initialData={activeChartPayload}
             depthSnapshot={readPathDepth}
             liqSnapshot={readPathLiq}
+            quantRegime={boardModel.quantRegime}
+            cvdDivergence={boardModel.cvdDivergence}
             onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
           />
           <PatternStatusBar
@@ -1308,13 +1799,19 @@
                   analysisData={activeAnalysisData}
                   newsData={newsData}
                   activeTab={activeAnalysisTab}
-                    onTabChange={handleAnalysisTabChange}
-                onAction={sendCommand}
-                onCapture={() => showCaptureModal = true}
-                bars={ohlcvBars}
-                statusItems={statusStripItems.slice(0, 6)}
-                {layerBarsMap}
-              />
+                  onTabChange={handleAnalysisTabChange}
+                  onAction={sendCommand}
+                  onCapture={() => showCaptureModal = true}
+                  onPinToggle={handlePinToggle}
+                  onCompare={handleCompareAction}
+                  onAlertToggle={handleAlertToggle}
+                  isPinned={isActivePinned}
+                  hasSavedAlert={hasActiveSavedAlert}
+                  bars={ohlcvBars}
+                  statusItems={statusStripItems.slice(0, 6)}
+                  {layerBarsMap}
+                  {patternRecallMatches}
+                />
             </div>
             {/if}
 
@@ -1332,9 +1829,15 @@
               onTabChange={handleAnalysisTabChange}
               onAction={sendCommand}
               onCapture={() => showCaptureModal = true}
+              onPinToggle={handlePinToggle}
+              onCompare={handleCompareAction}
+              onAlertToggle={handleAlertToggle}
+              isPinned={isActivePinned}
+              hasSavedAlert={hasActiveSavedAlert}
               bars={ohlcvBars}
               statusItems={statusStripItems.slice(0, 6)}
               {layerBarsMap}
+              {patternRecallMatches}
             />
           {:else}
             <div class="board-empty">
@@ -1362,6 +1865,7 @@
           loading={isStreaming || isLoadingActive}
           feedItems={dockFeedItems}
           onSend={sendCommand}
+          onDockAction={handleDockAction}
         />
       </div>
 
@@ -1410,6 +1914,14 @@
   {layerBarsMap}
   newsItems={newsData?.records ?? []}
   onClose={() => showDetailSheet = false}
+/>
+
+<PatternLibraryPanel
+  open={showPatternLibrary}
+  records={patternCaptureRecords}
+  loading={patternCaptureLoading}
+  onClose={() => showPatternLibrary = false}
+  onSelect={handlePatternLibrarySelect}
 />
 
 <style>

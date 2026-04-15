@@ -1,0 +1,174 @@
+"""Durable memory feedback/debug state store."""
+from __future__ import annotations
+
+import json
+import sqlite3
+from pathlib import Path
+
+from api.schemas_memory import (
+    MemoryDebugSessionRequest,
+    MemoryFeedbackRequest,
+    MemoryRejectedLookupRequest,
+    MemoryRejectedRecord,
+)
+
+STATE_DIR = Path(__file__).resolve().parent / "state"
+DEFAULT_DB_PATH = STATE_DIR / "memory_runtime.sqlite"
+
+
+def _json_dumps(value: object) -> str:
+    return json.dumps(value if value is not None else [], sort_keys=True, separators=(",", ":"))
+
+
+def _json_loads(value: str | None) -> list[str]:
+    if not value:
+        return []
+    try:
+        data = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    return data if isinstance(data, list) else []
+
+
+class MemoryStateStore:
+    """SQLite WAL-backed store for feedback counters and debug hypotheses."""
+
+    def __init__(self, db_path: Path | str = DEFAULT_DB_PATH):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        return conn
+
+    def _init_db(self) -> None:
+        with self._connect() as conn:
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS memory_feedback_counts (
+                  memory_id TEXT PRIMARY KEY,
+                  access_count INTEGER NOT NULL DEFAULT 0,
+                  updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS memory_debug_hypotheses (
+                  session_id TEXT NOT NULL,
+                  hypothesis_id TEXT NOT NULL,
+                  text TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  rejection_reason TEXT,
+                  symbol TEXT,
+                  timeframe TEXT,
+                  intent TEXT,
+                  evidence_json TEXT NOT NULL DEFAULT '[]',
+                  started_at TEXT NOT NULL,
+                  ended_at TEXT,
+                  updated_at TEXT NOT NULL,
+                  PRIMARY KEY (session_id, hypothesis_id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_memory_debug_lookup
+                  ON memory_debug_hypotheses(status, symbol, intent, updated_at DESC);
+                """
+            )
+
+    def apply_feedback(self, payload: MemoryFeedbackRequest, updated_at: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT access_count FROM memory_feedback_counts WHERE memory_id = ?",
+                (payload.memory_id,),
+            ).fetchone()
+            current = int(row["access_count"]) if row else 0
+            if payload.event in {"retrieved", "used", "confirmed"}:
+                current += 1
+            conn.execute(
+                """
+                INSERT INTO memory_feedback_counts (memory_id, access_count, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(memory_id) DO UPDATE SET
+                  access_count = excluded.access_count,
+                  updated_at = excluded.updated_at
+                """,
+                (payload.memory_id, current, updated_at),
+            )
+        return current
+
+    def record_debug_session(self, payload: MemoryDebugSessionRequest, updated_at: str) -> int:
+        rejected_indexed = 0
+        with self._connect() as conn:
+            for hypothesis in payload.hypotheses:
+                conn.execute(
+                    """
+                    INSERT INTO memory_debug_hypotheses (
+                      session_id, hypothesis_id, text, status, rejection_reason,
+                      symbol, timeframe, intent, evidence_json, started_at, ended_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(session_id, hypothesis_id) DO UPDATE SET
+                      text = excluded.text,
+                      status = excluded.status,
+                      rejection_reason = excluded.rejection_reason,
+                      symbol = excluded.symbol,
+                      timeframe = excluded.timeframe,
+                      intent = excluded.intent,
+                      evidence_json = excluded.evidence_json,
+                      started_at = excluded.started_at,
+                      ended_at = excluded.ended_at,
+                      updated_at = excluded.updated_at
+                    """,
+                    (
+                        payload.session_id,
+                        hypothesis.id,
+                        hypothesis.text,
+                        hypothesis.status,
+                        hypothesis.rejection_reason,
+                        payload.context.symbol,
+                        payload.context.timeframe,
+                        payload.context.intent,
+                        _json_dumps(hypothesis.evidence),
+                        payload.started_at,
+                        payload.ended_at,
+                        updated_at,
+                    ),
+                )
+                if hypothesis.status == "rejected":
+                    rejected_indexed += 1
+        return rejected_indexed
+
+    def search_rejected(self, payload: MemoryRejectedLookupRequest) -> list[MemoryRejectedRecord]:
+        query = [
+            "SELECT session_id, hypothesis_id, text, rejection_reason, symbol, intent, updated_at",
+            "FROM memory_debug_hypotheses",
+            "WHERE status = 'rejected'",
+        ]
+        params: list[object] = []
+        if payload.symbol:
+            query.append("AND lower(symbol) = ?")
+            params.append(payload.symbol.lower())
+        if payload.intent:
+            query.append("AND lower(intent) = ?")
+            params.append(payload.intent.lower())
+        if payload.query:
+            query.append("AND lower(text || ' ' || coalesce(rejection_reason, '')) LIKE ?")
+            params.append(f"%{payload.query.lower()}%")
+        query.append("ORDER BY updated_at DESC")
+        query.append("LIMIT ?")
+        params.append(payload.limit)
+
+        with self._connect() as conn:
+            rows = conn.execute(" ".join(query), tuple(params)).fetchall()
+        return [
+            MemoryRejectedRecord(
+                id=row["hypothesis_id"],
+                session_id=row["session_id"],
+                text=row["text"],
+                rejection_reason=row["rejection_reason"],
+                symbol=row["symbol"],
+                intent=row["intent"],
+                updated_at=row["updated_at"],
+            )
+            for row in rows
+        ]
