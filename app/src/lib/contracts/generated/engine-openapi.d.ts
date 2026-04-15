@@ -504,6 +504,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/memory/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Memory Query */
+        post: operations["memory_query_memory_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/memory/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Memory Feedback */
+        post: operations["memory_feedback_memory_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/memory/feedback/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Memory Feedback Batch */
+        post: operations["memory_feedback_batch_memory_feedback_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/memory/debug-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Memory Debug Session */
+        post: operations["memory_debug_session_memory_debug_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/memory/rejected/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Memory Rejected Search */
+        post: operations["memory_rejected_search_memory_rejected_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -670,6 +755,22 @@ export interface components {
             /** Matches */
             matches: components["schemas"]["ScanMatch"][];
         };
+        /** DebugHypothesis */
+        DebugHypothesis: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "confirmed" | "rejected";
+            /** Evidence */
+            evidence?: string[];
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+        };
         /** DeepPerpData */
         DeepPerpData: {
             /** Fr */
@@ -793,6 +894,274 @@ export interface components {
             meta: {
                 [key: string]: unknown;
             };
+        };
+        /** MemoryCandidate */
+        MemoryCandidate: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "identity" | "belief" | "experience" | "preference" | "fact" | "procedure" | "debug_hypothesis" | "debug_rejected";
+            /** Text */
+            text: string;
+            /**
+             * Base Score
+             * @default 0
+             */
+            base_score: number;
+            /**
+             * Confidence
+             * @default observed
+             * @enum {string}
+             */
+            confidence: "verified" | "observed" | "hypothesis";
+            /**
+             * Access Count
+             * @default 0
+             */
+            access_count: number;
+            /** Tags */
+            tags?: string[];
+            /** Conditions */
+            conditions?: {
+                [key: string]: unknown;
+            };
+        };
+        /** MemoryContext */
+        MemoryContext: {
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Mode */
+            mode?: string | null;
+            /** Intent */
+            intent?: string | null;
+            /** Challenge Slug */
+            challenge_slug?: string | null;
+            /** Challenge Instance */
+            challenge_instance?: string | null;
+            /** As Of */
+            as_of?: string | null;
+        };
+        /** MemoryDebugSessionRequest */
+        MemoryDebugSessionRequest: {
+            /** Session Id */
+            session_id: string;
+            context?: components["schemas"]["MemoryContext"];
+            /** Hypotheses */
+            hypotheses: components["schemas"]["DebugHypothesis"][];
+            /** Started At */
+            started_at: string;
+            /** Ended At */
+            ended_at?: string | null;
+        };
+        /** MemoryDebugSessionResponse */
+        MemoryDebugSessionResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Session Id */
+            session_id: string;
+            /** Rejected Indexed */
+            rejected_indexed: number;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** MemoryFeedbackBatchItem */
+        MemoryFeedbackBatchItem: {
+            /** Memory Id */
+            memory_id: string;
+            /**
+             * Access Count
+             * @default 0
+             */
+            access_count: number;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** MemoryFeedbackBatchRequest */
+        MemoryFeedbackBatchRequest: {
+            /** Items */
+            items: components["schemas"]["MemoryFeedbackRequest"][];
+        };
+        /** MemoryFeedbackBatchResponse */
+        MemoryFeedbackBatchResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Processed */
+            processed: number;
+            /** Items */
+            items: components["schemas"]["MemoryFeedbackBatchItem"][];
+        };
+        /** MemoryFeedbackRequest */
+        MemoryFeedbackRequest: {
+            /** Query Id */
+            query_id: string;
+            /** Memory Id */
+            memory_id: string;
+            /**
+             * Event
+             * @enum {string}
+             */
+            event: "retrieved" | "used" | "dismissed" | "contradicted" | "confirmed";
+            context?: components["schemas"]["MemoryContext"];
+            /** Occurred At */
+            occurred_at?: string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** MemoryFeedbackResponse */
+        MemoryFeedbackResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Memory Id */
+            memory_id: string;
+            /**
+             * Access Count
+             * @default 0
+             */
+            access_count: number;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** MemoryQueryDebug */
+        MemoryQueryDebug: {
+            /** Rerank Applied */
+            rerank_applied: boolean;
+            /** Base Result Count */
+            base_result_count: number;
+            /** Elapsed Ms */
+            elapsed_ms: number;
+        };
+        /** MemoryQueryRequest */
+        MemoryQueryRequest: {
+            /** Query */
+            query: string;
+            context?: components["schemas"]["MemoryContext"];
+            /** Candidates */
+            candidates?: components["schemas"]["MemoryCandidate"][];
+            /**
+             * Top K
+             * @default 8
+             */
+            top_k: number;
+        };
+        /** MemoryQueryResponse */
+        MemoryQueryResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Query Id */
+            query_id: string;
+            /** Records */
+            records: components["schemas"]["MemoryRankedRecord"][];
+            debug: components["schemas"]["MemoryQueryDebug"];
+        };
+        /** MemoryRankedRecord */
+        MemoryRankedRecord: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "identity" | "belief" | "experience" | "preference" | "fact" | "procedure" | "debug_hypothesis" | "debug_rejected";
+            /** Text */
+            text: string;
+            /** Score */
+            score: number;
+            /** Base Score */
+            base_score: number;
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "verified" | "observed" | "hypothesis";
+            /** Access Count */
+            access_count: number;
+            /** Tags */
+            tags: string[];
+            /** Reasons */
+            reasons?: string[];
+        };
+        /** MemoryRejectedLookupRequest */
+        MemoryRejectedLookupRequest: {
+            /** Symbol */
+            symbol?: string | null;
+            /** Intent */
+            intent?: string | null;
+            /** Query */
+            query?: string | null;
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+        };
+        /** MemoryRejectedLookupResponse */
+        MemoryRejectedLookupResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Records */
+            records: components["schemas"]["MemoryRejectedRecord"][];
+        };
+        /** MemoryRejectedRecord */
+        MemoryRejectedRecord: {
+            /** Id */
+            id: string;
+            /** Session Id */
+            session_id: string;
+            /** Text */
+            text: string;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /** Symbol */
+            symbol?: string | null;
+            /** Intent */
+            intent?: string | null;
+            /** Updated At */
+            updated_at: string;
         };
         /**
          * PerpSnapshot
@@ -1802,6 +2171,171 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    memory_query_memory_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryQueryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    memory_feedback_memory_feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryFeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryFeedbackResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    memory_feedback_batch_memory_feedback_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryFeedbackBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryFeedbackBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    memory_debug_session_memory_debug_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryDebugSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryDebugSessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    memory_rejected_search_memory_rejected_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryRejectedLookupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryRejectedLookupResponse"];
                 };
             };
             /** @description Validation Error */

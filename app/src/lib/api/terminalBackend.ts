@@ -42,6 +42,10 @@ export interface ChartSeriesPayload {
     value: number;
     color: string;
   }>;
+  cvdBars?: Array<{
+    time: number;
+    value: number;
+  }>;
   indicators: Record<string, unknown>;
 }
 
