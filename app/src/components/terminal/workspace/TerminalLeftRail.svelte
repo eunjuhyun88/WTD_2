@@ -1,6 +1,7 @@
 <script lang="ts">
   import { setActivePair } from '$lib/stores/activePairStore';
   import type { TerminalAnomaly, TerminalPreset } from '$lib/contracts/terminalBackend';
+  import { createSymbolSelection, createTerminalSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
 
   interface AlertRow {
     id: string;
@@ -33,6 +34,7 @@
     queryPresets?: TerminalPreset[];
     anomalies?: TerminalAnomaly[];
     onQuery?: (q: string) => void;
+    onSelect?: (selection: TerminalSelectionState) => void;
   }
   let {
     trendingData,
@@ -44,6 +46,7 @@
     queryPresets = [],
     anomalies = [],
     onQuery,
+    onSelect,
   }: Props = $props();
 
   const QUICK_QUERIES: Array<{ id: string; label: string; action: string; tone: 'info' | 'risk' | 'warn' | 'neutral' }> = [
@@ -178,7 +181,10 @@
             <button
               class="sym-chip"
               class:active={activeSymbol === sym + 'USDT' || activeSymbol === sym}
-              onclick={() => onQuery?.(`Analyze ${sym}USDT`)}
+              onclick={() => {
+                onSelect?.(createSymbolSelection(`${sym}USDT`, '4h', 'pattern_engine', row.slug));
+                onQuery?.(`Analyze ${sym}USDT`);
+              }}
             >
               {sym}
             </button>
@@ -197,7 +203,16 @@
     <h3 class="section-title">Quick Queries</h3>
     <div class="query-list">
       {#each QUICK_QUERIES as q}
-        <button class="query-row" data-tone={q.tone} onclick={() => onQuery?.(q.action)}>
+        <button class="query-row" data-tone={q.tone} onclick={() => {
+          onSelect?.(createTerminalSelection({
+            kind: 'preset',
+            timeframe: '4h',
+            origin: 'left_presets',
+            source: q.label,
+            reason: q.action,
+          }));
+          onQuery?.(q.action);
+        }}>
           <span class="query-left">
             <span class="query-dot"></span>
             <span>{q.label}</span>
@@ -234,7 +249,10 @@
         <button
           class="watch-item"
           class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT'}
-          onclick={() => setActivePair(coin.symbol + '/USDT')}
+          onclick={() => {
+            onSelect?.(createSymbolSelection(`${coin.symbol}USDT`, '4h', 'left_watchlist'));
+            setActivePair(coin.symbol + '/USDT');
+          }}
         >
           <span class="watch-sym">{coin.symbol}</span>
           <span class="watch-price">{formatPrice(coin.price ?? 0)}</span>
@@ -255,10 +273,21 @@
     <h3 class="section-title">Anomalies</h3>
     <div class="anomaly-list">
       {#each anomalyItems as item}
-        <div class="anomaly-item {item.tone}">
+        <button
+          class="anomaly-item {item.tone}"
+          type="button"
+          onclick={() => onSelect?.(createTerminalSelection({
+            kind: 'anomaly',
+            symbol: item.value ? `${item.value}USDT` : undefined,
+            timeframe: '4h',
+            origin: 'left_anomalies',
+            source: item.label,
+            reason: item.value,
+          }))}
+        >
           <span class="anomaly-label">{item.label}</span>
           <span class="anomaly-value">{item.value}</span>
-        </div>
+        </button>
       {/each}
       {#if anomalyItems.length === 0}
         <p class="empty-text">No unusual flows detected</p>
@@ -277,6 +306,14 @@
     <div class="alert-list">
       {#each recentAlerts as alert}
         <button class="alert-item" onclick={() => {
+          onSelect?.(createTerminalSelection({
+            kind: 'alert',
+            symbol: alert.symbol,
+            timeframe: alert.timeframe,
+            origin: 'left_alerts',
+            source: 'scanner alert',
+            reason: alert.blocks_triggered.slice(0, 2).join(', '),
+          }));
           setActivePair(alert.symbol.replace('USDT','') + '/USDT');
           onQuery?.(`Analyze ${alert.symbol} — triggered: ${alert.blocks_triggered.slice(0,2).join(', ')}`);
         }}>
@@ -319,7 +356,10 @@
     <section class="rail-section">
       <h3 class="section-title">Momentum</h3>
       {#each movers.slice(0, 4) as coin}
-        <button class="mover-item" onclick={() => setActivePair(coin.symbol + '/USDT')}>
+        <button class="mover-item" onclick={() => {
+          onSelect?.(createSymbolSelection(`${coin.symbol}USDT`, '4h', 'left_watchlist'));
+          setActivePair(coin.symbol + '/USDT');
+        }}>
           <span class="mover-sym">{coin.symbol}</span>
           <div class="mover-right">
             <span class="mover-price">{formatPrice(coin.price ?? 0)}</span>
@@ -458,9 +498,12 @@
   }
 
   .anomaly-item {
+    width: 100%;
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 3px 4px; border-radius: 2px; background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.04);
+    text-align: left;
+    cursor: pointer;
   }
   .anomaly-item.warn { background: rgba(251,191,36,0.08); }
   .anomaly-item.bear { background: rgba(248,113,113,0.08); }
