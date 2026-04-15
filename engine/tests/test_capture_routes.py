@@ -14,13 +14,22 @@ from patterns.types import PhaseTransition
 def _client(tmp_path, monkeypatch) -> TestClient:
     capture_store = CaptureStore(tmp_path / "capture.sqlite")
     state_store = PatternStateStore(tmp_path / "runtime.sqlite")
+    appended = []
+
+    class FakeRecordStore:
+        def append_capture_record(self, record):
+            appended.append(record)
+            return None
+
     monkeypatch.setattr(captures, "_capture_store", capture_store)
     monkeypatch.setattr(captures, "_state_store", state_store)
+    monkeypatch.setattr(captures, "LEDGER_RECORD_STORE", FakeRecordStore())
     app = FastAPI()
     app.include_router(captures.router, prefix="/captures")
     client = TestClient(app)
     client.capture_store = capture_store  # type: ignore[attr-defined]
     client.state_store = state_store  # type: ignore[attr-defined]
+    client.appended_records = appended  # type: ignore[attr-defined]
     return client
 
 
@@ -90,6 +99,8 @@ def test_create_pattern_candidate_capture_with_transition(tmp_path, monkeypatch)
     assert capture["feature_snapshot"] == {"oi_change_1h": 0.18}
     assert capture["block_scores"]["funding_flip"]["passed"] is True
     assert capture["status"] == "pending_outcome"
+    assert len(client.appended_records) == 1  # type: ignore[attr-defined]
+    assert client.appended_records[0].capture_id == capture["capture_id"]  # type: ignore[attr-defined]
 
     get_response = client.get(f"/captures/{capture['capture_id']}")
     assert get_response.status_code == 200

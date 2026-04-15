@@ -19,7 +19,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
-from ledger.store import LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.scanner import (
@@ -156,6 +156,7 @@ async def get_stats(slug: str) -> dict:
 
     stats = _ledger.compute_stats(slug)
     outcomes = _ledger.list_all(slug)
+    record_family = LEDGER_RECORD_STORE.compute_family_stats(slug)
     ml_shadow = summarize_pattern_dataset(outcomes)
     return {
         "pattern_slug": stats.pattern_slug,
@@ -177,6 +178,16 @@ async def get_stats(slug: str) -> dict:
             "sideways": round(stats.btc_sideways_rate, 3) if stats.btc_sideways_rate is not None else None,
         },
         "decay_direction": stats.decay_direction,
+        "record_family": {
+            "entry_count": record_family.entry_count,
+            "capture_count": record_family.capture_count,
+            "score_count": record_family.score_count,
+            "outcome_count": record_family.outcome_count,
+            "verdict_count": record_family.verdict_count,
+            "model_count": record_family.model_count,
+            "capture_to_entry_rate": round(record_family.capture_to_entry_rate, 3) if record_family.capture_to_entry_rate is not None else None,
+            "verdict_to_entry_rate": round(record_family.verdict_to_entry_rate, 3) if record_family.verdict_to_entry_rate is not None else None,
+        },
         "ml_shadow": {
             "total_entries": ml_shadow.total_entries,
             "decided_entries": ml_shadow.decided_entries,
@@ -278,11 +289,13 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
             user_verdict=body.verdict,  # type: ignore[arg-type]
         )
         _ledger.save(new_outcome)
+        LEDGER_RECORD_STORE.append_verdict_record(new_outcome)
         return {"ok": True, "created": True, "outcome_id": new_outcome.id}
 
     outcome = matching[0]
     outcome.user_verdict = body.verdict  # type: ignore[assignment]
     _ledger.save(outcome)
+    LEDGER_RECORD_STORE.append_verdict_record(outcome)
     return {"ok": True, "outcome_id": outcome.id}
 
 
