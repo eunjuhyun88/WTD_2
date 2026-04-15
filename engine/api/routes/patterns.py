@@ -177,6 +177,10 @@ async def get_stats(slug: str) -> dict:
     stats = _ledger.compute_stats(slug)
     outcomes = _ledger.list_all(slug)
     record_family = LEDGER_RECORD_STORE.compute_family_stats(slug)
+    latest_training_run_record = next(
+        iter(LEDGER_RECORD_STORE.list(slug, record_type="training_run", limit=1)),
+        None,
+    )
     latest_model_record = next(iter(LEDGER_RECORD_STORE.list(slug, record_type="model", limit=1)), None)
     ml_shadow = summarize_pattern_dataset(outcomes)
     return {
@@ -205,10 +209,12 @@ async def get_stats(slug: str) -> dict:
             "score_count": record_family.score_count,
             "outcome_count": record_family.outcome_count,
             "verdict_count": record_family.verdict_count,
+            "training_run_count": record_family.training_run_count,
             "model_count": record_family.model_count,
             "capture_to_entry_rate": round(record_family.capture_to_entry_rate, 3) if record_family.capture_to_entry_rate is not None else None,
             "verdict_to_entry_rate": round(record_family.verdict_to_entry_rate, 3) if record_family.verdict_to_entry_rate is not None else None,
         },
+        "latest_training_run": latest_training_run_record.to_dict() if latest_training_run_record else None,
         "latest_model": latest_model_record.to_dict() if latest_model_record else None,
         "ml_shadow": {
             "total_entries": ml_shadow.total_entries,
@@ -397,12 +403,19 @@ async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
         "rollout_state": "candidate" if result["replaced"] else "shadow",
         "fold_aucs": result["fold_aucs"],
     }
-    LEDGER_RECORD_STORE.append_model_record(
+    LEDGER_RECORD_STORE.append_training_run_record(
         pattern_slug=slug,
-        model_version=model_version,
+        model_key=model_key,
         user_id=body.user_id,
         payload=payload,
     )
+    if result["replaced"]:
+        LEDGER_RECORD_STORE.append_model_record(
+            pattern_slug=slug,
+            model_version=model_version,
+            user_id=body.user_id,
+            payload=payload,
+        )
 
     return {
         "ok": True,
@@ -411,6 +424,8 @@ async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
         "model_version": model_version,
         "rollout_state": payload["rollout_state"],
         "replaced": result["replaced"],
+        "training_run_recorded": True,
+        "model_recorded": bool(result["replaced"]),
         "auc": result["auc"],
         "n_records": len(records),
         "n_wins": payload["n_wins"],

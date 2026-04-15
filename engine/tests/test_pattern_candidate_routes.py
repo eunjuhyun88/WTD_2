@@ -95,18 +95,31 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
                         "score_count": 10,
                         "outcome_count": 6,
                         "verdict_count": 3,
+                        "training_run_count": 2,
                         "model_count": 0,
                         "capture_to_entry_rate": 0.4,
                         "verdict_to_entry_rate": 0.3,
                     },
                 )(),
-                "list": lambda self, slug, record_type=None, limit=None: [
-                    PatternLedgerRecord(
-                        record_type="model",
-                        pattern_slug=slug,
-                        payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
-                    )
-                ] if record_type == "model" else [],
+                "list": lambda self, slug, record_type=None, limit=None: (
+                    [
+                        PatternLedgerRecord(
+                            record_type="training_run",
+                            pattern_slug=slug,
+                            payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
+                        )
+                    ]
+                    if record_type == "training_run"
+                    else [
+                        PatternLedgerRecord(
+                            record_type="model",
+                            pattern_slug=slug,
+                            payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
+                        )
+                    ]
+                    if record_type == "model"
+                    else []
+                ),
             },
         )(),
     )
@@ -147,7 +160,9 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     payload = response.json()
     assert payload["record_family"]["entry_count"] == 10
     assert payload["record_family"]["capture_count"] == 4
+    assert payload["record_family"]["training_run_count"] == 2
     assert payload["record_family"]["capture_to_entry_rate"] == 0.4
+    assert payload["latest_training_run"]["record_type"] == "training_run"
     assert payload["latest_model"]["record_type"] == "model"
 
 
@@ -208,15 +223,27 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
         )
         for idx in range(1, 25)
     ]
-    appended = []
+    training_runs = []
+    model_records = []
 
     class FakeLedger:
         def list_all(self, slug):
             return outcomes
 
     class FakeRecordStore:
+        def append_training_run_record(self, *, pattern_slug, model_key, user_id=None, payload=None):
+            training_runs.append(
+                {
+                    "pattern_slug": pattern_slug,
+                    "model_key": model_key,
+                    "user_id": user_id,
+                    "payload": payload or {},
+                }
+            )
+            return None
+
         def append_model_record(self, *, pattern_slug, model_version, user_id=None, payload=None):
-            appended.append(
+            model_records.append(
                 {
                     "pattern_slug": pattern_slug,
                     "model_version": model_version,
@@ -258,9 +285,104 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
     payload = response.json()
     assert payload["ok"] is True
     assert payload["model_key"] == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
+    assert payload["training_run_recorded"] is True
+    assert payload["model_recorded"] is True
     assert payload["model_version"] == "20260416_120000"
     assert payload["replaced"] is True
-    assert len(appended) == 1
-    assert appended[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
-    assert appended[0]["payload"]["n_records"] == 24
-    assert appended[0]["payload"]["rollout_state"] == "candidate"
+    assert len(training_runs) == 1
+    assert training_runs[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert training_runs[0]["model_key"] == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
+    assert training_runs[0]["payload"]["n_records"] == 24
+    assert training_runs[0]["payload"]["rollout_state"] == "candidate"
+    assert len(model_records) == 1
+    assert model_records[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert model_records[0]["payload"]["n_records"] == 24
+    assert model_records[0]["payload"]["rollout_state"] == "candidate"
+
+
+def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -> None:
+    outcomes = [
+        PatternOutcome(
+            pattern_slug="tradoor-oi-reversal-v1",
+            symbol=f"SYM{idx}USDT",
+            accumulation_at=datetime(2026, 4, 14, idx % 24, 0, tzinfo=timezone.utc),
+            entry_price=100.0 + idx,
+            outcome="success" if idx % 2 == 0 else "failure",  # type: ignore[arg-type]
+            feature_snapshot={
+                "ema_alignment": "bullish" if idx % 2 == 0 else "bearish",
+                "htf_structure": "uptrend" if idx % 2 == 0 else "downtrend",
+                "cvd_state": "buying" if idx % 2 == 0 else "selling",
+                "regime": "risk_on" if idx % 2 == 0 else "risk_off",
+                "ema20_slope": 0.1 * idx,
+                "price": 100.0 + idx,
+            },
+        )
+        for idx in range(1, 25)
+    ]
+    training_runs = []
+    model_records = []
+
+    class FakeLedger:
+        def list_all(self, slug):
+            return outcomes
+
+    class FakeRecordStore:
+        def append_training_run_record(self, *, pattern_slug, model_key, user_id=None, payload=None):
+            training_runs.append(
+                {
+                    "pattern_slug": pattern_slug,
+                    "model_key": model_key,
+                    "user_id": user_id,
+                    "payload": payload or {},
+                }
+            )
+            return None
+
+        def append_model_record(self, *, pattern_slug, model_version, user_id=None, payload=None):
+            model_records.append(
+                {
+                    "pattern_slug": pattern_slug,
+                    "model_version": model_version,
+                    "user_id": user_id,
+                    "payload": payload or {},
+                }
+            )
+            return None
+
+    class FakeEngine:
+        def train(self, X, y):
+            assert len(X) == 24
+            assert len(y) == 24
+            return {
+                "auc": 0.61,
+                "fold_aucs": [0.59, 0.63],
+                "n_samples": 24,
+                "replaced": False,
+                "model_version": None,
+            }
+
+    monkeypatch.setattr(pattern_routes, "_ledger", FakeLedger())
+    monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
+    monkeypatch.setattr(pattern_routes, "get_engine", lambda model_key: FakeEngine())
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.post(
+        "/patterns/tradoor-oi-reversal-v1/train-model",
+        json={
+            "target_name": "breakout_24h",
+            "feature_schema_version": 1,
+            "label_policy_version": 1,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["training_run_recorded"] is True
+    assert payload["model_recorded"] is False
+    assert payload["model_version"] == "not_replaced"
+    assert payload["replaced"] is False
+    assert len(training_runs) == 1
+    assert training_runs[0]["payload"]["rollout_state"] == "shadow"
+    assert len(model_records) == 0

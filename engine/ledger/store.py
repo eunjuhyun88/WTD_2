@@ -415,6 +415,7 @@ class LedgerRecordStore:
         score_count = _count("score")
         outcome_count = _count("outcome")
         verdict_count = _count("verdict")
+        training_run_count = _count("training_run")
         model_count = _count("model")
         capture_rate = capture_count / entry_count if entry_count > 0 else None
         verdict_rate = verdict_count / entry_count if entry_count > 0 else None
@@ -425,6 +426,7 @@ class LedgerRecordStore:
             score_count=score_count,
             outcome_count=outcome_count,
             verdict_count=verdict_count,
+            training_run_count=training_run_count,
             model_count=model_count,
             capture_to_entry_rate=capture_rate,
             verdict_to_entry_rate=verdict_rate,
@@ -549,6 +551,26 @@ class LedgerRecordStore:
                 user_id=user_id,
                 payload={
                     "model_version": model_version,
+                    **(payload or {}),
+                },
+            )
+        )
+
+    def append_training_run_record(
+        self,
+        *,
+        pattern_slug: str,
+        model_key: str,
+        user_id: str | None = None,
+        payload: dict | None = None,
+    ) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="training_run",
+                pattern_slug=pattern_slug,
+                user_id=user_id,
+                payload={
+                    "model_key": model_key,
                     **(payload or {}),
                 },
             )
