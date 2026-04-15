@@ -139,6 +139,12 @@ export const authVerifyLimiter = createRateLimiter({ windowMs: 60_000, max: 10 }
 /** Market snapshot (heavy fan-out): 20 per minute per IP */
 export const marketSnapshotLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
+/** Terminal read-path parity routes: 20 per minute per IP */
+export const terminalReadLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
+
+/** Market microstructure routes: 20 per minute per IP */
+export const marketMicroLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
+
 /** Analyze route (engine + fan-out): 18 per minute per IP */
 export const analyzeLimiter = createRateLimiter({ windowMs: 60_000, max: 18 });
 

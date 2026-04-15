@@ -246,3 +246,54 @@ export type {
 	MemoryCard,
 	Finding
 } from './signals';
+
+// Terminal memory contracts — Phase 0 MemKraft-aligned interfaces
+export {
+	TerminalMemorySchemaVersion,
+	MemoryConfidenceSchema,
+	MemoryKindSchema,
+	MemoryContextSchema,
+	MemoryQueryRequestSchema,
+	MemoryRecordSchema,
+	MemoryQueryResponseSchema,
+	MemoryFeedbackEventSchema,
+	MemoryFeedbackRequestSchema,
+	MemoryFeedbackResponseSchema,
+	DebugHypothesisStatusSchema,
+	DebugHypothesisSchema,
+	MemoryDebugSessionRequestSchema,
+	MemoryDebugSessionResponseSchema,
+	MemorySnapshotSchema,
+	MemorySnapshotCreateRequestSchema,
+	MemorySnapshotDiffRequestSchema,
+	MemorySnapshotDiffResponseSchema,
+	parseMemoryQueryRequest,
+	parseMemoryQueryResponse,
+	parseMemoryFeedbackRequest,
+	parseMemoryDebugSessionRequest,
+	parseMemorySnapshotDiffRequest,
+	safeParseMemoryQueryRequest,
+	safeParseMemoryQueryResponse,
+	safeParseMemoryFeedbackRequest,
+	safeParseMemoryDebugSessionRequest,
+	safeParseMemorySnapshotDiffRequest
+} from './terminalMemory';
+export type {
+	MemoryConfidence,
+	MemoryKind as TerminalMemoryKind,
+	MemoryContext,
+	MemoryQueryRequest,
+	MemoryRecord,
+	MemoryQueryResponse,
+	MemoryFeedbackEvent,
+	MemoryFeedbackRequest,
+	MemoryFeedbackResponse,
+	DebugHypothesisStatus,
+	DebugHypothesis,
+	MemoryDebugSessionRequest,
+	MemoryDebugSessionResponse,
+	MemorySnapshot,
+	MemorySnapshotCreateRequest,
+	MemorySnapshotDiffRequest,
+	MemorySnapshotDiffResponse
+} from './terminalMemory';
