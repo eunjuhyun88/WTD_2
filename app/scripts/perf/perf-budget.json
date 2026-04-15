@@ -1,0 +1,48 @@
+{
+  "profiles": {
+    "auth-snapshot-500": {
+      "description": "Wallet auth nonce + market snapshot profile for a 500-user interactive target.",
+      "requireSummary": true,
+      "targetVus": 500,
+      "metrics": {
+        "http_req_failed.rate": { "severity": "critical", "max": 0.03 },
+        "http_req_duration.p(95)": { "severity": "high", "max": 800 },
+        "http_req_duration.p(99)": { "severity": "high", "max": 1500 }
+      }
+    },
+    "analyze-500": {
+      "description": "Public analyze route profile for a 500-user steady-state target.",
+      "requireSummary": true,
+      "targetVus": 500,
+      "metrics": {
+        "http_req_failed.rate": { "severity": "critical", "max": 0.05 },
+        "http_req_duration.p(95)": { "severity": "high", "max": 3000 },
+        "http_req_duration.p(99)": { "severity": "high", "max": 4500 }
+      }
+    }
+  },
+  "runtime": {
+    "production": {
+      "findings": [
+        {
+          "code": "perf.distributed_rate_limit_missing",
+          "severity": "high",
+          "envAny": ["RATE_LIMIT_REDIS_REST_URL", "KV_REST_API_URL"],
+          "message": "Distributed rate limiting is not configured for a multi-instance public runtime."
+        },
+        {
+          "code": "perf.shared_cache_missing",
+          "severity": "high",
+          "envAny": ["SHARED_CACHE_REDIS_REST_URL", "KV_REST_API_URL"],
+          "message": "Shared cache backing is missing; 500-user safety should not rely on per-instance cache only."
+        },
+        {
+          "code": "perf.public_scheduler_enabled",
+          "severity": "high",
+          "envEquals": { "ENGINE_ENABLE_SCHEDULER": "true" },
+          "message": "ENGINE_ENABLE_SCHEDULER=true couples background work to the public request runtime."
+        }
+      ]
+    }
+  }
+}

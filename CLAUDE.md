@@ -64,3 +64,11 @@ Do not read these unless explicitly required:
 - Do not push or merge without explicit user approval.
 - Prefer PR-based integration to keep review boundaries clear.
 - If unrelated or unexpected diffs appear, pause and confirm before continuing.
+
+## Branch-Thread Rules
+
+- One thread maps to one active work item and one active execution branch.
+- Do not create a new branch just because a new chat message arrived.
+- Split commits first; split branches only for a new merge unit.
+- If the branch changes but the work item does not, continue on the same thread after explicit confirmation.
+- If the work item changes, start a new thread or explicitly rebind the thread to the new branch.
