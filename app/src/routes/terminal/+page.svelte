@@ -20,13 +20,9 @@
   import { get } from 'svelte/store';
   import { douniRuntimeStore } from '$lib/stores/douniRuntime';
   import {
-    buildBoardActionRows,
     buildDockFeedItems,
-    buildFallbackDepth,
-    buildFallbackLiqClusters,
-    getOrderbookBiasLabel,
-    getOrderbookTone,
   } from '$lib/terminal/terminalDerived';
+  import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
   import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
     fetchTerminalAnomalies,
@@ -67,10 +63,8 @@
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
-  import TerminalContextPanelSummary from '../../components/terminal/workspace/TerminalContextPanelSummary.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
-  import ChartMetricStrip from '../../components/terminal/workspace/ChartMetricStrip.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
@@ -973,33 +967,7 @@
     boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
   );
 
-  let microstructure = $derived(activeAnalysisData?.microstructure ?? null);
-  let depthSnapshot = $derived(readPathDepth ? {
-    ratio: readPathDepth.imbalanceRatio,
-    bids: readPathDepth.bids,
-    asks: readPathDepth.asks,
-  } : (microstructure?.depth ?? null));
-  let liqClusters = $derived(readPathLiq?.clusters?.length
-    ? readPathLiq.clusters.slice(0, 4).map((cluster) => ({
-        side: cluster.liquidatedSide === 'long' ? 'SELL' : 'BUY',
-        price: cluster.price,
-        usd: cluster.usd,
-        distancePct: cluster.distancePct,
-      }))
-    : (microstructure?.liqClusters ?? []).slice(0, 4));
-  let fallbackDepth = $derived.by(() => buildFallbackDepth({ activeAsset, activeAnalysisData }));
-  let fallbackLiqClusters = $derived.by(() => buildFallbackLiqClusters({ activeAsset, activeAnalysisData, chartLevels }));
-  let orderbookTone = $derived.by(() => {
-    return getOrderbookTone(depthSnapshot?.ratio);
-  });
-  let orderbookBiasLabel = $derived.by(() => {
-    return getOrderbookBiasLabel(depthSnapshot?.ratio);
-  });
   let runtimeModeLabel = $derived($douniRuntimeStore.mode);
-
-  let boardActionRows = $derived.by(() => buildBoardActionRows(activeVerdict));
-
-  let boardSourceRows = $derived((activeAsset?.sources ?? []).slice(0, 4));
 
   // ── Analysis rail mode ────────────────────────────────────────
   // SINGLE: ≤1 asset or active symbol has a verdict → show full VerdictCard
@@ -1016,7 +984,6 @@
   let assistantBannerText = $derived(streamText.trim());
   let surfaceSummary = $derived.by(() => buildTerminalSurfaceSummary({
     activeAsset,
-    heroAsset,
     activeVerdict,
     activeEvidence,
     flowBias,
@@ -1027,6 +994,13 @@
     activeFocusLabel,
     timeframeBadgeLabel,
     boardAssetsCount: boardAssets.length,
+  }));
+  let boardModel = $derived.by(() => buildTerminalBoardModel({
+    activeAsset,
+    activeAnalysisData,
+    chartLevels,
+    readPathDepth,
+    readPathLiq,
   }));
   let statusStripItems = $derived(surfaceSummary.statusStripItems);
   let dockFeedItems = $derived.by(() => buildDockFeedItems({
@@ -1040,10 +1014,6 @@
     statusStripItems,
     marketEvents,
   }));
-  let overviewFacts = $derived(surfaceSummary.overviewFacts);
-  let heroMetricTiles = $derived(surfaceSummary.heroMetricTiles);
-  let shellSummaryCards = $derived(surfaceSummary.shellSummaryCards);
-  let terminalSubtitle = $derived(surfaceSummary.terminalSubtitle);
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
     { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
@@ -1161,17 +1131,6 @@
         <span class="workspace-panel-kicker">Main Board</span>
         <span class="workspace-panel-meta">{layout} layout</span>
       </div>
-      {#if overviewFacts.length > 0}
-        <div class="terminal-overview-bar">
-          {#each overviewFacts as item}
-            <div class="overview-cell" data-tone={item.tone}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      <ChartMetricStrip items={heroMetricTiles} />
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
@@ -1186,43 +1145,6 @@
             liqSnapshot={readPathLiq}
             onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
           />
-          {#if boardActionRows.length > 0}
-            <div class="board-decision-strip">
-              <div class="board-decision-main">
-                {#each boardActionRows as item}
-                  <button
-                    class="decision-cell"
-                    data-tone={item.tone}
-                    type="button"
-                    onclick={() => {
-                      showAnalysisRail = true;
-                      activeAnalysisTab = item.label === 'Invalidation' ? 'risk' : item.label === 'Action' ? 'entry' : 'summary';
-                    }}
-                  >
-                    <span class="decision-label">{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </button>
-                {/each}
-              </div>
-              {#if boardSourceRows.length > 0}
-                <div class="board-source-row">
-                  <span class="board-source-label">Sources</span>
-                  {#each boardSourceRows as source}
-                    <button
-                      class="board-source-pill"
-                      type="button"
-                      onclick={() => {
-                        showAnalysisRail = true;
-                        activeAnalysisTab = 'summary';
-                      }}
-                    >
-                      {source.label} · {source.freshness}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          {/if}
           <PatternStatusBar
             onSelect={focusPatternSymbol}
             onTransition={pushPatternTransitions}
@@ -1234,84 +1156,21 @@
               activeAnalysisTab = 'metrics';
             }}
           />
-          {#if microstructure || readPathDepth || readPathLiq}
+          {#if boardModel.orderbookDepth}
             <div class="microstructure-row">
-              <section class="micro-card orderbook-card" data-tone={orderbookTone}>
+              <section class="micro-card orderbook-card" data-tone={boardModel.orderbookTone}>
                 <div class="micro-card-header">
                   <span class="micro-title">Orderbook</span>
-                  <span class="micro-meta">{orderbookBiasLabel}</span>
+                  <span class="micro-meta">{boardModel.orderbookBiasLabel} · {boardModel.orderbookMeta.sourceLabel}</span>
                 </div>
                 <div class="micro-stat-row">
-                  <span>Spread {readPathDepth?.spreadBps != null ? `${readPathDepth.spreadBps.toFixed(1)} bps` : microstructure?.spreadBps != null ? `${microstructure.spreadBps.toFixed(1)} bps` : '—'}</span>
-                  <span>Imbalance {readPathDepth?.imbalanceRatio != null ? `${readPathDepth.imbalanceRatio.toFixed(2)}x` : formatSignedPct(microstructure?.imbalancePct)}</span>
-                  <span>Taker {microstructure?.takerRatio != null ? microstructure.takerRatio.toFixed(2) : '—'}</span>
-                </div>
-                {#if depthSnapshot}
-                  <div class="depth-ladders">
-                    <div class="depth-side bids">
-                      {#each depthSnapshot.bids.slice(0, 5) as level}
-                        <div class="depth-row">
-                          <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                          <div class="depth-bar-wrap">
-                            <div class="depth-bar bid" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
-                          </div>
-                        </div>
-                      {/each}
-                    </div>
-                    <div class="depth-side asks">
-                      {#each depthSnapshot.asks.slice(0, 5) as level}
-                        <div class="depth-row ask-row">
-                          <div class="depth-bar-wrap ask-wrap">
-                            <div class="depth-bar ask" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
-                          </div>
-                          <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                        </div>
-                      {/each}
-                    </div>
-                  </div>
-                {/if}
-              </section>
-
-              <section class="micro-card liquidity-card">
-                <div class="micro-card-header">
-                  <span class="micro-title">Liquidity</span>
-                  <span class="micro-meta">Recent force orders</span>
-                </div>
-                <div class="micro-stat-row">
-                  <span>Short Liq {formatCompactUsd(readPathLiq?.nearestShort?.usd ?? microstructure?.liqTotals?.shortUsd)}</span>
-                  <span>Long Liq {formatCompactUsd(readPathLiq?.nearestLong?.usd ?? microstructure?.liqTotals?.longUsd)}</span>
-                </div>
-                <div class="liq-cluster-list">
-                  {#if liqClusters.length > 0}
-                    {#each liqClusters as cluster}
-                      <div class="liq-cluster-row">
-                        <span class="liq-side" data-side={cluster.side}>{cluster.side === 'BUY' ? 'Shorts' : 'Longs'}</span>
-                        <span class="liq-price">{cluster.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                        <span class="liq-distance">{formatSignedPct(cluster.distancePct, 2)}</span>
-                        <span class="liq-usd">{formatCompactUsd(cluster.usd)}</span>
-                      </div>
-                    {/each}
-                  {:else}
-                    <p class="liq-empty">No forced liquidation spikes in the recent window.</p>
-                  {/if}
-                </div>
-              </section>
-            </div>
-          {:else if activeAsset && fallbackDepth}
-            <div class="microstructure-row">
-              <section class="micro-card orderbook-card" data-tone="neutral">
-                <div class="micro-card-header">
-                  <span class="micro-title">Orderbook</span>
-                  <span class="micro-meta">Derived view</span>
-                </div>
-                <div class="micro-stat-row">
-                  <span>Spread {activeAsset.spreadBps ? `${activeAsset.spreadBps.toFixed(1)} bps` : 'est. 2.4 bps'}</span>
-                  <span>OI {activeAsset.oiChangePct1h >= 0 ? '+' : ''}{activeAsset.oiChangePct1h.toFixed(1)}%</span>
-                  <span>Funding {(activeAsset.fundingRate * 100).toFixed(3)}%</span>
+                  <span>Spread {boardModel.orderbookMeta.spreadLabel}</span>
+                  <span>Imbalance {boardModel.orderbookMeta.imbalanceLabel}</span>
+                  <span>Taker {boardModel.orderbookMeta.takerLabel}</span>
                 </div>
                 <div class="depth-ladders">
                   <div class="depth-side bids">
-                    {#each fallbackDepth.bids as level}
+                    {#each boardModel.orderbookDepth.bids.slice(0, 5) as level}
                       <div class="depth-row">
                         <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
                         <div class="depth-bar-wrap">
@@ -1321,7 +1180,7 @@
                     {/each}
                   </div>
                   <div class="depth-side asks">
-                    {#each fallbackDepth.asks as level}
+                    {#each boardModel.orderbookDepth.asks.slice(0, 5) as level}
                       <div class="depth-row ask-row">
                         <div class="depth-bar-wrap ask-wrap">
                           <div class="depth-bar ask" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
@@ -1335,22 +1194,26 @@
 
               <section class="micro-card liquidity-card">
                 <div class="micro-card-header">
-                  <span class="micro-title">Liquidation Map</span>
-                  <span class="micro-meta">Level proxy</span>
+                  <span class="micro-title">{boardModel.liquidityMeta.title}</span>
+                  <span class="micro-meta">{boardModel.liquidityMeta.metaLabel}</span>
                 </div>
                 <div class="micro-stat-row">
-                  <span>Long heat {formatCompactUsd(fallbackLiqClusters[0]?.usd)}</span>
-                  <span>Short heat {formatCompactUsd(fallbackLiqClusters[1]?.usd)}</span>
+                  <span>Short Liq {formatCompactUsd(boardModel.liquidityMeta.shortLiqUsd)}</span>
+                  <span>Long Liq {formatCompactUsd(boardModel.liquidityMeta.longLiqUsd)}</span>
                 </div>
                 <div class="liq-cluster-list">
-                  {#each fallbackLiqClusters as cluster}
-                    <div class="liq-cluster-row">
-                      <span class="liq-side" data-side={cluster.side}>{cluster.label}</span>
-                      <span class="liq-price">{cluster.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                      <span class="liq-distance">{formatSignedPct(cluster.distancePct, 2)}</span>
-                      <span class="liq-usd">{formatCompactUsd(cluster.usd)}</span>
-                    </div>
-                  {/each}
+                  {#if boardModel.liquidityClusters.length > 0}
+                    {#each boardModel.liquidityClusters as cluster}
+                      <div class="liq-cluster-row">
+                        <span class="liq-side" data-side={cluster.side}>{cluster.side === 'BUY' ? 'Shorts' : 'Longs'}</span>
+                        <span class="liq-price">{cluster.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                        <span class="liq-distance">{formatSignedPct(cluster.distancePct, 2)}</span>
+                        <span class="liq-usd">{formatCompactUsd(cluster.usd)}</span>
+                      </div>
+                    {/each}
+                  {:else}
+                    <p class="liq-empty">No forced liquidation spikes in the recent window.</p>
+                  {/if}
                 </div>
               </section>
             </div>
@@ -1408,12 +1271,6 @@
               <span class="panel-head-toggle-glyph">◨</span>
             </button>
           </div>
-          <TerminalContextPanelSummary
-            cards={shellSummaryCards}
-            subtitle={terminalSubtitle}
-            statusItems={statusStripItems.slice(0, 6)}
-          />
-
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
             <div class="scan-list">
@@ -1452,12 +1309,13 @@
                   newsData={newsData}
                   activeTab={activeAnalysisTab}
                     onTabChange={handleAnalysisTabChange}
-                  onAction={sendCommand}
-                  onCapture={() => showCaptureModal = true}
-                  bars={ohlcvBars}
-                  {layerBarsMap}
-                />
-              </div>
+                onAction={sendCommand}
+                onCapture={() => showCaptureModal = true}
+                bars={ohlcvBars}
+                statusItems={statusStripItems.slice(0, 6)}
+                {layerBarsMap}
+              />
+            </div>
             {/if}
 
           <!-- MODE A — Single asset compact verdict -->
@@ -1475,6 +1333,7 @@
               onAction={sendCommand}
               onCapture={() => showCaptureModal = true}
               bars={ohlcvBars}
+              statusItems={statusStripItems.slice(0, 6)}
               {layerBarsMap}
             />
           {:else}
@@ -1639,35 +1498,6 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
-
-  .status-pill {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 5px;
-    border-radius: 2px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.03);
-  }
-
-  .status-pill em {
-    font-style: normal;
-    font-size: 7px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(247,242,234,0.4);
-  }
-
-  .status-pill strong {
-    font-size: 8px;
-    color: rgba(247,242,234,0.82);
-  }
-
-  .status-pill[data-tone='bull'] strong { color: #8fdd9d; }
-  .status-pill[data-tone='bear'] strong { color: #f19999; }
-  .status-pill[data-tone='warn'] strong { color: #e9c167; }
-  .status-pill[data-tone='info'] strong { color: #83bcff; }
 
   .terminal-body {
     flex: 1;
@@ -1952,43 +1782,6 @@
     min-height: 0;
     position: relative;
   }
-  .terminal-overview-bar {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 2px 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    background: linear-gradient(180deg, rgba(255,255,255,0.016), rgba(255,255,255,0.006));
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .terminal-overview-bar::-webkit-scrollbar { display: none; }
-  .overview-cell {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    padding: 3px 10px;
-    border-right: 1px solid rgba(255,255,255,0.08);
-    font-family: var(--sc-font-mono);
-    white-space: nowrap;
-  }
-  .overview-cell:first-child { padding-left: 2px; }
-  .overview-cell:last-child { border-right: none; padding-right: 2px; }
-  .overview-cell > span {
-    font-size: 8px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.32);
-  }
-  .overview-cell > strong {
-    font-size: 10px;
-    color: rgba(247,242,234,0.9);
-  }
-  .overview-cell[data-tone='bull'] > strong { color: #8fdd9d; }
-  .overview-cell[data-tone='bear'] > strong { color: #f19999; }
-  .overview-cell[data-tone='warn'] > strong { color: #e9c167; }
-  .overview-cell[data-tone='info'] > strong { color: #83bcff; }
   .board-content {
     flex: 1;
     overflow: hidden;
@@ -2141,97 +1934,6 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
-  }
-
-  .board-decision-strip {
-    display: grid;
-    gap: 1px;
-    padding: 0;
-    border-top: 1px solid rgba(255,255,255,0.055);
-    border-bottom: 1px solid rgba(255,255,255,0.055);
-    background: rgba(255,255,255,0.035);
-  }
-
-  .board-decision-main {
-    display: grid;
-    grid-template-columns: 0.8fr 1.35fr 1.1fr 0.8fr;
-    gap: 1px;
-  }
-
-  .decision-cell {
-    min-width: 0;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 5px;
-    padding: 4px 6px;
-    border: none;
-    background: rgba(8,10,14,0.98);
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .decision-cell:hover {
-    background: rgba(13,17,24,0.98);
-  }
-
-  .decision-label,
-  .board-source-label {
-    font-family: var(--sc-font-mono);
-    font-size: 7px;
-    color: rgba(255,255,255,0.25);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .decision-cell strong {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    font-weight: 700;
-    color: rgba(247,242,234,0.78);
-  }
-
-  .decision-cell[data-tone='bull'] strong { color: #8fdd9d; }
-  .decision-cell[data-tone='bear'] strong,
-  .decision-cell[data-tone='risk'] strong { color: #f19999; }
-  .decision-cell[data-tone='warn'] strong { color: #e9c167; }
-  .decision-cell[data-tone='info'] strong { color: #83bcff; }
-
-  .board-source-row {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    min-width: 0;
-    padding: 3px 5px;
-    background: rgba(8,10,14,0.96);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .board-source-row::-webkit-scrollbar {
-    display: none;
-  }
-
-  .board-source-pill {
-    flex-shrink: 0;
-    font-family: var(--sc-font-mono);
-    font-size: 7px;
-    color: rgba(131,188,255,0.62);
-    background: rgba(77,143,245,0.055);
-    border: 1px solid rgba(77,143,245,0.10);
-    border-radius: 2px;
-    padding: 1px 4px;
-    cursor: pointer;
-  }
-
-  .board-source-pill:hover {
-    color: rgba(180,215,255,0.9);
-    border-color: rgba(77,143,245,0.22);
   }
 
 
@@ -2477,7 +2179,6 @@
       --terminal-left-w: 144px;
       --terminal-analysis-w: 232px;
     }
-    .terminal-overview-bar { padding-inline: 6px; }
   }
 
   /* Mobile */
