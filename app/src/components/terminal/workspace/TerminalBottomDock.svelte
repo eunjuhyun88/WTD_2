@@ -34,6 +34,10 @@
       label: 'Export',
       prompt: () => `Prepare an export-ready backend summary for ${$activePair || 'BTC/USDT'} on ${($activeTimeframe || '4h').toUpperCase()} with verdict, entry plan, risk plan, and evidence sources as compact JSON.`,
     },
+    {
+      label: 'Scout',
+      prompt: () => `Open the pattern seed scout for ${$activePair || 'BTC/USDT'} on ${($activeTimeframe || '4h').toUpperCase()} and rank similar setups from the current board context.`,
+    },
   ];
 
   function handleSend() {

@@ -96,6 +96,7 @@
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
+  import PatternSeedScoutPanel from '../../components/terminal/workspace/PatternSeedScoutPanel.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
 
@@ -166,6 +167,7 @@
   }
   let patternTransitionAlerts = $state<PatternTransitionAlert[]>([]);
   let exportPollTimer: ReturnType<typeof setInterval> | null = null;
+  let showPatternSeedScout = $state(false);
 
   // ── Capture modal ──────────────────────────────────────────
   let showCaptureModal = $state(false);
@@ -537,6 +539,14 @@
   }
 
   async function handleDockAction(label: string, prompt: string): Promise<void> {
+    if (label === 'Scout') {
+      showPatternSeedScout = true;
+      pushAssistantMessage(
+        localizeTerminalText('패턴 시드 스카우트를 열었습니다.', 'Opened pattern seed scout.'),
+        true,
+      );
+      return;
+    }
     if (label === 'Export') {
       await handleCreateExport();
       return;
@@ -1872,6 +1882,15 @@
   tf={symbolToTF(gTf)}
   onClose={() => showCaptureModal = false}
   onSaved={handleCaptureSaved}
+/>
+
+<PatternSeedScoutPanel
+  open={showPatternSeedScout}
+  assets={boardAssets}
+  activeSymbol={activeSymbol || pairToSymbol(gPair)}
+  timeframe={symbolToTF(gTf)}
+  onClose={() => showPatternSeedScout = false}
+  onPickSymbol={selectAsset}
 />
 
 <!-- Mobile detail sheet (portal-style, outside grid) -->
