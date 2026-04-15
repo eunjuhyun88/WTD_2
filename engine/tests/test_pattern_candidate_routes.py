@@ -43,11 +43,24 @@ class _RegistryEntry:
         }
 
 
+class _Policy:
+    def __init__(self, mode: str) -> None:
+        self.mode = mode
+
+    def to_dict(self) -> dict:
+        return {"pattern_slug": "tradoor-oi-reversal-v1", "mode": self.mode, "updated_at": datetime(2026, 4, 16, 12, 0, tzinfo=timezone.utc).isoformat()}
+
+
 def test_all_candidates_exposes_legacy_and_rich_records(monkeypatch) -> None:
     monkeypatch.setattr(
         pattern_routes,
         "get_entry_candidates_all",
         lambda: {"tradoor-oi-reversal-v1": ["PTBUSDT"]},
+    )
+    monkeypatch.setattr(
+        pattern_routes,
+        "get_raw_entry_candidates_all",
+        lambda: {"tradoor-oi-reversal-v1": ["PTBUSDT", "ETHUSDT"]},
     )
     monkeypatch.setattr(
         pattern_routes,
@@ -60,6 +73,7 @@ def test_all_candidates_exposes_legacy_and_rich_records(monkeypatch) -> None:
                     "phase": "ACCUMULATION",
                     "transition_id": "transition-1",
                     "candidate_transition_id": "transition-1",
+                    "alert_visible": True,
                 }
             ]
         },
@@ -73,6 +87,7 @@ def test_all_candidates_exposes_legacy_and_rich_records(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["entry_candidates"] == {"tradoor-oi-reversal-v1": ["PTBUSDT"]}
+    assert payload["raw_entry_candidates"] == {"tradoor-oi-reversal-v1": ["PTBUSDT", "ETHUSDT"]}
     assert payload["total_count"] == 1
     assert payload["candidate_records"][0]["transition_id"] == "transition-1"
     assert (
@@ -129,6 +144,17 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
                 "list": lambda self, slug: [active_entry],
                 "get_active": lambda self, slug: active_entry,
                 "get_preferred_scoring_model": lambda self, slug: active_entry,
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        pattern_routes,
+        "ALERT_POLICY_STORE",
+        type(
+            "FakePolicyStore",
+            (),
+            {
+                "load": lambda self, slug: _Policy("gated"),
             },
         )(),
     )
@@ -217,6 +243,7 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     assert payload["record_family"]["capture_to_entry_rate"] == 0.4
     assert payload["model_registry"]["entry_count"] == 1
     assert payload["model_registry"]["active_model"]["rollout_state"] == "active"
+    assert payload["alert_policy"]["mode"] == "gated"
     assert payload["latest_training_run"]["record_type"] == "training_run"
     assert payload["latest_model"]["record_type"] == "model"
 
@@ -540,3 +567,33 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     assert promote_payload["active_model"]["threshold_policy_version"] == 3
     assert len(model_records) == 1
     assert model_records[0]["payload"]["promotion_event"] == "promote_to_active"
+
+
+def test_get_and_set_alert_policy(monkeypatch) -> None:
+    saved = []
+
+    class FakePolicyStore:
+        def load(self, slug):
+            return _Policy("visible")
+
+        def save(self, policy):
+            saved.append(policy)
+            return None
+
+    monkeypatch.setattr(pattern_routes, "ALERT_POLICY_STORE", FakePolicyStore())
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    get_response = client.get("/patterns/tradoor-oi-reversal-v1/alert-policy")
+    assert get_response.status_code == 200
+    assert get_response.json()["policy"]["mode"] == "visible"
+
+    put_response = client.put(
+        "/patterns/tradoor-oi-reversal-v1/alert-policy",
+        json={"mode": "gated"},
+    )
+    assert put_response.status_code == 200
+    assert put_response.json()["policy"]["mode"] == "gated"
+    assert len(saved) == 1
+    assert saved[0].mode == "gated"

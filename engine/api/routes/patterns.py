@@ -6,12 +6,14 @@ Endpoints:
   GET  /patterns/candidates           — entry candidates across all patterns
   GET  /patterns/{slug}/candidates    — entry candidates for one pattern
   GET  /patterns/{slug}/stats         — ledger stats for one pattern
+  GET  /patterns/{slug}/alert-policy  — current alert policy for one pattern
   GET  /patterns/{slug}/model-registry — current registry snapshot for one pattern
   GET  /patterns/{slug}/library       — return pattern definition
   POST /patterns/scan                 — trigger a scan cycle
   POST /patterns/{slug}/verdict       — user verdict on outcome
   POST /patterns/{slug}/evaluate      — v2: auto-evaluate pending outcomes
   POST /patterns/{slug}/promote-model — promote a candidate model to active
+  PUT  /patterns/{slug}/alert-policy  — update alert visibility policy
   POST /patterns/register             — v2: register user-defined pattern
   GET  /patterns/data-quality         — v2: perp coverage and scan health
 """
@@ -25,6 +27,7 @@ from pydantic import BaseModel
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
+from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE
@@ -32,6 +35,7 @@ from patterns.scanner import (
     _get_machine,
     get_entry_candidates_all,
     get_entry_candidate_records,
+    get_raw_entry_candidates_all,
     get_pattern_states,
     run_pattern_scan,
 )
@@ -72,6 +76,10 @@ class _PromotePatternModelBody(BaseModel):
     model_key: str
     model_version: str
     threshold_policy_version: int = 1
+
+
+class _PatternAlertPolicyBody(BaseModel):
+    mode: str
 
 
 def _pattern_training_matrix(records: list[dict]) -> tuple[np.ndarray, np.ndarray]:
@@ -126,6 +134,7 @@ async def get_all_states() -> dict:
 async def get_all_candidates() -> dict:
     """Entry candidates across all patterns."""
     candidates = get_entry_candidates_all()
+    raw_candidates = get_raw_entry_candidates_all()
     records_by_pattern = get_entry_candidate_records()
     records = [
         record
@@ -135,6 +144,7 @@ async def get_all_candidates() -> dict:
     total = sum(len(v) for v in candidates.values())
     return {
         "entry_candidates": candidates,
+        "raw_entry_candidates": raw_candidates,
         "candidate_records": records,
         "candidate_records_by_pattern": records_by_pattern,
         "total_count": total,
@@ -167,12 +177,14 @@ async def get_candidates(slug: str) -> dict:
         if phase == pattern.entry_phase
     ]
     records = get_entry_candidate_records(slug).get(slug, [])
+    visible_candidates = [record["symbol"] for record in records if record.get("alert_visible")]
     return {
         "slug": slug,
         "entry_phase": pattern.entry_phase,
-        "candidates": candidates,
+        "candidates": visible_candidates,
+        "raw_candidates": candidates,
         "candidate_records": records,
-        "count": len(candidates),
+        "count": len(visible_candidates),
     }
 
 
@@ -196,6 +208,7 @@ async def get_stats(slug: str) -> dict:
     )
     latest_model_record = next(iter(LEDGER_RECORD_STORE.list(slug, record_type="model", limit=1)), None)
     ml_shadow = summarize_pattern_dataset(outcomes)
+    alert_policy = ALERT_POLICY_STORE.load(slug)
     return {
         "pattern_slug": stats.pattern_slug,
         "total": stats.total_instances,
@@ -232,6 +245,7 @@ async def get_stats(slug: str) -> dict:
             "active_model": active_registry_entry.to_dict() if active_registry_entry else None,
             "preferred_scoring_model": preferred_registry_entry.to_dict() if preferred_registry_entry else None,
         },
+        "alert_policy": alert_policy.to_dict(),
         "latest_training_run": latest_training_run_record.to_dict() if latest_training_run_record else None,
         "latest_model": latest_model_record.to_dict() if latest_model_record else None,
         "ml_shadow": {
@@ -273,6 +287,39 @@ async def get_training_records(slug: str, limit: int = Query(default=25, ge=1, l
         "ready_to_train": summary.ready_to_train,
         "readiness_reason": summary.readiness_reason,
         "records": records[:limit],
+    }
+
+
+@router.get("/{slug}/alert-policy")
+async def get_alert_policy(slug: str) -> dict:
+    """Return current alert policy for a pattern."""
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+
+    policy = ALERT_POLICY_STORE.load(slug)
+    return {
+        "pattern_slug": slug,
+        "policy": policy.to_dict(),
+    }
+
+
+@router.put("/{slug}/alert-policy")
+async def set_alert_policy(slug: str, body: _PatternAlertPolicyBody) -> dict:
+    """Update current alert policy for a pattern."""
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+    if body.mode not in {"shadow", "visible", "gated"}:
+        raise HTTPException(status_code=400, detail="mode must be one of shadow|visible|gated")
+    policy = PatternAlertPolicy(pattern_slug=slug, mode=body.mode)  # type: ignore[arg-type]
+    ALERT_POLICY_STORE.save(policy)
+    return {
+        "ok": True,
+        "pattern_slug": slug,
+        "policy": policy.to_dict(),
     }
 
 
