@@ -23,6 +23,8 @@
     buildDockFeedItems,
   } from '$lib/terminal/terminalDerived';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
+  import { buildTerminalHeaderModel } from '$lib/terminal/terminalHeaderModel';
+  import { createSymbolSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
   import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
     fetchTerminalAnomalies,
@@ -62,6 +64,8 @@
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
+  import TerminalHeaderMeta from '../../components/terminal/workspace/TerminalHeaderMeta.svelte';
+  import TerminalRightRail from '../../components/terminal/workspace/TerminalRightRail.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
@@ -113,6 +117,7 @@
   let layerBarsMap = $state<Record<string, any[]>>({});
   let chartPayloadMap = $state<Record<string, ChartSeriesPayload>>({});
   let activeChartPayload = $state<ChartSeriesPayload | null>(null);
+  let selectionState = $state<TerminalSelectionState>(createSymbolSelection('BTCUSDT', '4h', 'system_default'));
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -554,6 +559,7 @@
 
   function focusPatternSymbol(item: { symbol: string }) {
     const pair = item.symbol.replace('USDT', '/USDT');
+    selectionState = createSymbolSelection(item.symbol, symbolToTF(gTf), 'pattern_engine', item.symbol);
     setActivePair(pair);
   }
 
@@ -686,7 +692,12 @@
 
   function handleQueryChip(query: string) { sendCommand(query); }
 
+  function handleLeftRailSelection(next: TerminalSelectionState) {
+    selectionState = next;
+  }
+
   function selectAsset(symbol: string) {
+    selectionState = createSymbolSelection(symbol, symbolToTF(gTf), 'left_watchlist');
     activeSymbol = symbol;
     showAnalysisRail = true;
     activeAnalysisTab = 'summary';
@@ -711,6 +722,7 @@
     activeChartPayload = null;
     chartLevels = {};
     activeAnalysisTab = 'summary';
+    selectionState = createSymbolSelection(pairToSymbol(gPair), symbolToTF(gTf), 'system_default');
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -837,6 +849,8 @@
       prevPair = pair;
       prevTf = tf;
       const symbol = pairToSymbol(pair);
+      const selectionOrigin = untrack(() => selectionState.origin);
+      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeSymbol = symbol;
       activeAnalysisTab = 'summary';
       analysisData = null;  // clear stale snapshot so chat context resets
@@ -861,6 +875,8 @@
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
+      const selectionOrigin = untrack(() => selectionState.origin);
+      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeReadPathKey = '';
       memoryQueryIdMap = {};
       memoryTopEvidenceMap = {};
@@ -1003,6 +1019,13 @@
     readPathLiq,
   }));
   let statusStripItems = $derived(surfaceSummary.statusStripItems);
+  let headerModel = $derived.by(() => buildTerminalHeaderModel({
+    selection: selectionState,
+    activeAsset,
+    activeVerdict,
+    regime: surfaceSummary.regime,
+    flowBias,
+  }));
   let dockFeedItems = $derived.by(() => buildDockFeedItems({
     activeFocusLabel,
     activeAsset,
@@ -1105,6 +1128,7 @@
           queryPresets={terminalQueryPresets}
           anomalies={terminalAnomalies}
           onQuery={handleQueryChip}
+          onSelect={handleLeftRailSelection}
         />
       </aside>
 
@@ -1131,6 +1155,11 @@
         <span class="workspace-panel-kicker">Main Board</span>
         <span class="workspace-panel-meta">{layout} layout</span>
       </div>
+      <TerminalHeaderMeta
+        subjectLabel={headerModel.subjectLabel}
+        sourceLabel={headerModel.sourceLabel}
+        badges={headerModel.badges}
+      />
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
@@ -1250,27 +1279,18 @@
           onmousedown={startAnalysisResize}
           aria-label="Resize analysis panel"
         ></button>
-        <div class="analysis-rail">
-
-          <!-- Rail header: mode indicator + streaming badge -->
-          <div class="rail-header">
-            {#if isStreaming}
-              <span class="rail-badge streaming">
-                <span class="stream-dot pulsing">●</span>
-                Analyzing…
-              </span>
-            {:else if isScanMode}
-              <span class="rail-badge scan">{boardAssets.length} RESULTS</span>
-              <button class="rail-back" onclick={clearBoard}>← Back</button>
-            {:else}
-              <span class="rail-mode">ANALYSIS</span>
-              <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
-            {/if}
-            <span class="rail-width-indicator">{analysisWidth}px</span>
-            <button class="panel-head-toggle" type="button" onclick={toggleAnalysisRail} aria-label="Hide analysis rail">
-              <span class="panel-head-toggle-glyph">◨</span>
-            </button>
-          </div>
+        <TerminalRightRail
+          {isStreaming}
+          {isScanMode}
+          resultCount={boardAssets.length}
+          activeLabel={activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay}
+          width={analysisWidth}
+          summaryCards={surfaceSummary.shellSummaryCards}
+          subtitle={surfaceSummary.terminalSubtitle}
+          statusItems={statusStripItems.slice(0, 6)}
+          onBack={clearBoard}
+          onToggle={toggleAnalysisRail}
+        >
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
             <div class="scan-list">
@@ -1342,8 +1362,7 @@
               <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
             </div>
           {/if}
-
-        </div>
+        </TerminalRightRail>
         {:else}
           <button class="collapsed-rail-tab right" type="button" onclick={toggleAnalysisRail} aria-label="Show analysis rail">
             <span class="collapsed-rail-icon">◨</span>
