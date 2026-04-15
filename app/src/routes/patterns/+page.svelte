@@ -26,8 +26,7 @@
     pattern_id: string;
     phase:      number;
     phase_name: string;
-    since:      string;
-    features:   Record<string, number>;
+    since:      string | null;
   }
   interface PatternStats {
     pattern_slug:    string;
@@ -94,19 +93,45 @@
 
       if (candRes.status === 'fulfilled' && candRes.value.ok) {
         const d = await candRes.value.json();
-        candidates = d.candidates ?? [];
-        lastScan   = d.last_scan ?? null;
+        const rawCandidates: Record<string, string[]> = d.entry_candidates ?? {};
+        candidates = Object.entries(rawCandidates).flatMap(([slug, symbols]) =>
+          (symbols as string[]).map((symbol) => ({
+            symbol,
+            pattern_id: slug,
+            phase: 3,
+            phase_name: 'ACCUMULATION',
+            since: null,
+          }))
+        );
+        lastScan = null;
       }
       if (stateRes.status === 'fulfilled' && stateRes.value.ok) {
         const d = await stateRes.value.json();
-        // states is { symbol: { pattern_id: { ... } } }
         const flat: PhaseState[] = [];
-        for (const [sym, patterns] of Object.entries(d.states ?? {})) {
-          for (const [pid, st] of Object.entries(patterns as Record<string, any>)) {
-            if (st.current_phase >= 0) flat.push({ symbol: sym, pattern_id: pid, ...st });
+        for (const [pid, symbolMap] of Object.entries(d.patterns ?? {})) {
+          for (const [sym, st] of Object.entries(symbolMap as Record<string, any>)) {
+            if ((st.phase_idx ?? -1) >= 0) {
+              flat.push({
+                symbol: sym,
+                pattern_id: pid,
+                current_phase: st.phase_idx ?? 0,
+                phase_name: st.phase_id ?? 'UNKNOWN',
+                entered_at: st.entered_at ?? '',
+                candles_in_phase: st.bars_in_phase ?? 0,
+              });
+            }
           }
         }
         states = flat.sort((a, b) => b.current_phase - a.current_phase);
+        const entrySince = new Map(
+          flat
+            .filter((row) => row.phase_name === 'ACCUMULATION' && row.entered_at)
+            .map((row) => [`${row.pattern_id}:${row.symbol}`, row.entered_at] as const)
+        );
+        candidates = candidates.map((candidate) => ({
+          ...candidate,
+          since: entrySince.get(`${candidate.pattern_id}:${candidate.symbol}`) ?? null,
+        }));
       }
       if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
         const d = await statsRes.value.json();
@@ -154,7 +179,7 @@
     return `${(value * 100).toFixed(digits)}%`;
   }
 
-  const accumulationCount = $derived(candidates.filter((c) => c.phase === 3).length);
+  const accumulationCount = $derived(candidates.filter((c) => c.phase_name === 'ACCUMULATION').length);
   const breakoutCount = $derived(states.filter((s) => s.current_phase === 4).length);
 
   let refreshInterval: ReturnType<typeof setInterval>;
@@ -241,7 +266,7 @@
           </div>
         {:else}
           <div class="candidate-grid">
-            {#each candidates.filter((c) => c.phase === 3) as cand}
+            {#each candidates.filter((c) => c.phase_name === 'ACCUMULATION') as cand}
               <div class="surface-card candidate-card">
                 <div class="cand-top">
                   <span class="cand-sym">{cand.symbol.replace('USDT','')}</span>
@@ -249,21 +274,8 @@
                 </div>
                 <div class="cand-meta">
                   <span>{cand.pattern_id.replace(/_/g,' ')}</span>
-                  <span>{sinceHours(cand.since)}</span>
+                  <span>{cand.since ? sinceHours(cand.since) : '진입 시간 미상'}</span>
                 </div>
-                {#if cand.features}
-                  <div class="cand-features">
-                    {#if cand.features.oi_change_1h != null}
-                      <span class="feat">OI {cand.features.oi_change_1h > 0 ? '+' : ''}{(cand.features.oi_change_1h * 100).toFixed(1)}%</span>
-                    {/if}
-                    {#if cand.features.funding_rate != null}
-                      <span class="feat">FR {cand.features.funding_rate > 0 ? '+' : ''}{(cand.features.funding_rate * 100).toFixed(4)}%</span>
-                    {/if}
-                    {#if cand.features.volume_ratio_1h != null}
-                      <span class="feat">Vol {cand.features.volume_ratio_1h.toFixed(1)}x</span>
-                    {/if}
-                  </div>
-                {/if}
                 <div class="cand-actions">
                   <a class="surface-button-ghost compact-action" href="/terminal?symbol={cand.symbol}">Open Chart</a>
                   <button class="surface-button-secondary compact-action valid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'valid')}>Valid</button>
@@ -422,8 +434,6 @@
   .cand-sym { font-family: var(--sc-font-mono, monospace); font-size: 16px; font-weight: 700; color: #fff; }
   .accum-chip { color: #26a69a; border-color: rgba(38,166,154,0.28); background: rgba(38,166,154,0.08); }
   .cand-meta { display: flex; justify-content: space-between; font-size: 10px; color: rgba(255,255,255,0.3); font-family: var(--sc-font-mono, monospace); }
-  .cand-features { display: flex; gap: 6px; flex-wrap: wrap; }
-  .feat { font-family: var(--sc-font-mono, monospace); font-size: 10px; background: rgba(255,255,255,0.06); border-radius: 3px; padding: 2px 6px; color: rgba(255,255,255,0.6); }
   .cand-actions { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
   .compact-action { min-height: 34px; padding: 0 12px; font-size: 0.8rem; }
   .compact-action.valid { color: #26a69a; border-color: rgba(38,166,154,0.28); }
