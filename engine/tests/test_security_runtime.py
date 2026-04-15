@@ -46,19 +46,29 @@ def test_build_allowed_hosts_includes_app_origin_and_env(monkeypatch) -> None:
 def test_production_requires_https_app_origin(monkeypatch) -> None:
     monkeypatch.setenv("K_SERVICE", "engine-api")
     monkeypatch.setenv("APP_ORIGIN", "http://app.cogotchi.dev")
+    monkeypatch.setenv("ENGINE_ALLOWED_HOSTS", "engine-api-xxxx-uc.a.run.app")
 
     assert get_public_runtime_security_errors() == [
         "APP_ORIGIN must be a valid https origin in production.",
     ]
 
 
-def test_production_warns_on_missing_host_allowlist_and_docs(monkeypatch) -> None:
+def test_production_requires_host_allowlist(monkeypatch) -> None:
     monkeypatch.setenv("K_SERVICE", "engine-api")
     monkeypatch.setenv("APP_ORIGIN", "https://app.cogotchi.dev")
-    monkeypatch.setenv("ENGINE_EXPOSE_DOCS", "true")
     monkeypatch.delenv("ENGINE_ALLOWED_HOSTS", raising=False)
 
+    assert get_public_runtime_security_errors() == [
+        "ENGINE_ALLOWED_HOSTS is required in production.",
+    ]
+
+
+def test_production_warns_when_docs_are_exposed(monkeypatch) -> None:
+    monkeypatch.setenv("K_SERVICE", "engine-api")
+    monkeypatch.setenv("APP_ORIGIN", "https://app.cogotchi.dev")
+    monkeypatch.setenv("ENGINE_ALLOWED_HOSTS", "engine-api-xxxx-uc.a.run.app")
+    monkeypatch.setenv("ENGINE_EXPOSE_DOCS", "true")
+
     assert get_public_runtime_security_warnings() == [
-        "ENGINE_ALLOWED_HOSTS is not configured. Add an explicit host allowlist in production.",
         "ENGINE_EXPOSE_DOCS=true exposes FastAPI docs on the public engine runtime.",
     ]

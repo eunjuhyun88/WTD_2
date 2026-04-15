@@ -82,6 +82,9 @@ def get_public_runtime_security_errors() -> list[str]:
     if parsed is None or parsed.scheme != "https" or not parsed.netloc:
         errors.append("APP_ORIGIN must be a valid https origin in production.")
 
+    if not os.getenv("ENGINE_ALLOWED_HOSTS", "").strip():
+        errors.append("ENGINE_ALLOWED_HOSTS is required in production.")
+
     return errors
 
 
@@ -90,8 +93,6 @@ def get_public_runtime_security_warnings() -> list[str]:
         return []
 
     warnings: list[str] = []
-    if not os.getenv("ENGINE_ALLOWED_HOSTS", "").strip():
-        warnings.append("ENGINE_ALLOWED_HOSTS is not configured. Add an explicit host allowlist in production.")
     if env_flag("ENGINE_EXPOSE_DOCS", False):
         warnings.append("ENGINE_EXPOSE_DOCS=true exposes FastAPI docs on the public engine runtime.")
     return warnings

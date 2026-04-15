@@ -16,6 +16,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "security:db:audit": "node scripts/security/db-security-audit.mjs",
     "research:e1-namespace-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e1-namespace-smoke.ts",
     "research:e2-verdict-builder-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e2-verdict-builder-smoke.ts",
     "research:e3a-l2-flow-events-smoke": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/research/e3a-l2-flow-events-smoke.ts",

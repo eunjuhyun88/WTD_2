@@ -8,6 +8,7 @@ Canonical env contract for local/prod runtime.
 |---|---|---|---|
 | `ENGINE_URL` | `http://localhost:8000` | `app-web` | App -> engine API base URL |
 | `DATABASE_URL` | none | `app-web` | Postgres connection |
+| `DB_SECURITY_RLS_EXEMPT_TABLES` | empty | `app-web` tooling | Comma-separated RLS audit exemptions |
 | `ENGINE_PORT` | `8000` | `engine-api` | Engine HTTP port |
 | `APP_ORIGIN` | `http://localhost:3000` | `engine-api` | CORS allow-origin |
 
@@ -20,10 +21,11 @@ Canonical env contract for local/prod runtime.
 | `SHARED_CACHE_REDIS_REST_URL` | empty | `app-web` | Shared cache backend |
 | `SHARED_CACHE_REDIS_REST_TOKEN` | empty | `app-web` | Shared cache auth |
 | `TURNSTILE_SECRET_KEY` | empty | `app-web` | Bot/abuse protection |
-| `SECURITY_ALLOWED_HOSTS` | empty | `app-web` | Optional Host allowlist (`host[:port]`, comma-separated) |
-| `ENGINE_ALLOWED_HOSTS` | empty | `engine-api` | Optional Host allowlist (`host[:port]`, comma-separated) |
+| `SECURITY_ALLOWED_HOSTS` | empty | `app-web` | Required in production: Host allowlist (`host[:port]`, comma-separated) |
+| `ENGINE_ALLOWED_HOSTS` | empty | `engine-api` | Required in production: Host allowlist (`host[:port]`, comma-separated) |
 | `ENGINE_ALLOWED_ORIGINS` | empty | `engine-api` | Extra CORS allowlist origins |
 | `ENGINE_EXPOSE_DOCS` | `false` | `engine-api` | Enable FastAPI `/docs` and `/openapi.json` |
+| `SECURITY_TRUST_PROXY_HEADERS` | empty | `app-web` | Trust `x-forwarded-*` headers only behind a known proxy |
 
 ## Auth/Secrets
 
@@ -41,8 +43,10 @@ Notes:
 - `SUPABASE_SERVICE_ROLE_KEY` must never be present in `app-web`; the app runtime now fails fast if it is set.
 - `SUPABASE_SERVICE_ROLE_KEY` belongs to `worker-control` background jobs only because it bypasses RLS.
 - `DATABASE_URL` should use a least-privilege app role; avoid shipping a `postgres*` superuser DSN to production app-web.
-- Set `SECURITY_ALLOWED_HOSTS` and `ENGINE_ALLOWED_HOSTS` in production to reject unexpected `Host` headers at the app and engine boundaries.
+- Set `SECURITY_ALLOWED_HOSTS` and `ENGINE_ALLOWED_HOSTS` in production; the runtimes now fail fast when they are missing.
 - Leave `ENGINE_EXPOSE_DOCS=false` on public deployments unless the engine is behind auth or a private network boundary.
+- `SECURITY_TRUST_PROXY_HEADERS` should stay false unless the app is behind a trusted reverse proxy that rewrites forwarded headers.
+- Use `npm run security:db:audit -- --strict` plus `docs/runbooks/db-security-hardening.md` before production DB cutovers.
 
 ## Data Providers
 

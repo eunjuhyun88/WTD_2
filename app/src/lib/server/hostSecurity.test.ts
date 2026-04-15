@@ -24,7 +24,18 @@ describe('hostSecurity', () => {
     expect(isHostAllowed('evil.example', envLike)).toBe(false);
   });
 
-  it('prefers forwarded host when present', () => {
+  it('uses host header by default even when forwarded host is present', () => {
+    const request = new Request('https://app.cogotchi.dev/api/profile', {
+      headers: {
+        host: 'app.cogotchi.dev',
+        'x-forwarded-host': 'app.cogotchi.dev',
+      },
+    });
+
+    expect(readRequestHost(request)).toBe('app.cogotchi.dev');
+  });
+
+  it('uses forwarded host only when proxy headers are explicitly trusted', () => {
     const request = new Request('https://app.cogotchi.dev/api/profile', {
       headers: {
         host: 'internal-proxy',
@@ -32,6 +43,7 @@ describe('hostSecurity', () => {
       },
     });
 
-    expect(readRequestHost(request)).toBe('app.cogotchi.dev');
+    expect(readRequestHost(request, { SECURITY_TRUST_PROXY_HEADERS: 'true' })).toBe('app.cogotchi.dev');
+    expect(readRequestHost(request, { SECURITY_TRUST_PROXY_HEADERS: 'false' })).toBe('internal-proxy');
   });
 });

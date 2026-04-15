@@ -46,6 +46,7 @@ function usesHttps(url: string): boolean {
 
 export function getRuntimeSecurityErrors(envLike: EnvLike): string[] {
   const errors: string[] = [];
+  const production = isProductionRuntime(envLike);
 
   const serviceRoleKey = envLike.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
   if (serviceRoleKey) {
@@ -54,7 +55,21 @@ export function getRuntimeSecurityErrors(envLike: EnvLike): string[] {
     );
   }
 
-  if (!isProductionRuntime(envLike)) return errors;
+  const databaseUrl = envLike.DATABASE_URL?.trim() || '';
+  if (databaseUrl && isPlaceholderSecret(databaseUrl)) {
+    errors.push('DATABASE_URL still looks like a placeholder value.');
+  }
+
+  if (databaseUrl && !isPlaceholderSecret(databaseUrl) && production) {
+    const username = detectDatabaseUser(databaseUrl)?.toLowerCase() || '';
+    if (username && PRIVILEGED_DB_USERS.some((candidate) => username === candidate || username.startsWith(`${candidate}.`))) {
+      errors.push(
+        `DATABASE_URL uses privileged database role "${username}". Production app-web must use a least-privilege role.`,
+      );
+    }
+  }
+
+  if (!production) return errors;
 
   if (isTruthy(envLike.TURNSTILE_ALLOW_BYPASS)) {
     errors.push('TURNSTILE_ALLOW_BYPASS must be false in production.');
@@ -71,9 +86,8 @@ export function getRuntimeSecurityErrors(envLike: EnvLike): string[] {
     errors.push('ENGINE_URL must use https in production unless it targets localhost.');
   }
 
-  const databaseUrl = envLike.DATABASE_URL?.trim() || '';
-  if (databaseUrl && isPlaceholderSecret(databaseUrl)) {
-    errors.push('DATABASE_URL still looks like a placeholder value.');
+  if (!(envLike.SECURITY_ALLOWED_HOSTS?.trim() || '')) {
+    errors.push('SECURITY_ALLOWED_HOSTS is required in production.');
   }
 
   return errors;
@@ -89,7 +103,7 @@ export function getRuntimeSecurityWarnings(envLike: EnvLike): string[] {
   const warnings: string[] = [];
   const production = isProductionRuntime(envLike);
   const databaseUrl = envLike.DATABASE_URL?.trim() || '';
-  if (databaseUrl && !isPlaceholderSecret(databaseUrl)) {
+  if (databaseUrl && !isPlaceholderSecret(databaseUrl) && !production) {
     const username = detectDatabaseUser(databaseUrl)?.toLowerCase() || '';
     if (username && PRIVILEGED_DB_USERS.some((candidate) => username === candidate || username.startsWith(`${candidate}.`))) {
       warnings.push(
@@ -99,9 +113,6 @@ export function getRuntimeSecurityWarnings(envLike: EnvLike): string[] {
   }
 
   if (production) {
-    if (!(envLike.SECURITY_ALLOWED_HOSTS?.trim() || '')) {
-      warnings.push('SECURITY_ALLOWED_HOSTS is not configured. Add an explicit host allowlist in production.');
-    }
     if (!(envLike.TURNSTILE_SECRET_KEY?.trim() || '')) {
       warnings.push('TURNSTILE_SECRET_KEY is not configured. Public auth routes rely on bot protection bypass policy.');
     }
