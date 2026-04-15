@@ -25,6 +25,7 @@ from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.scanner import (
     _get_machine,
     get_entry_candidates_all,
+    get_entry_candidate_records,
     get_pattern_states,
     run_pattern_scan,
 )
@@ -95,8 +96,19 @@ async def get_all_states() -> dict:
 async def get_all_candidates() -> dict:
     """Entry candidates across all patterns."""
     candidates = get_entry_candidates_all()
+    records_by_pattern = get_entry_candidate_records()
+    records = [
+        record
+        for pattern_records in records_by_pattern.values()
+        for record in pattern_records
+    ]
     total = sum(len(v) for v in candidates.values())
-    return {"entry_candidates": candidates, "total_count": total}
+    return {
+        "entry_candidates": candidates,
+        "candidate_records": records,
+        "candidate_records_by_pattern": records_by_pattern,
+        "total_count": total,
+    }
 
 
 # ── Scan ─────────────────────────────────────────────────────────────────────
@@ -124,10 +136,12 @@ async def get_candidates(slug: str) -> dict:
         sym for sym, phase in pattern_states.items()
         if phase == pattern.entry_phase
     ]
+    records = get_entry_candidate_records(slug).get(slug, [])
     return {
         "slug": slug,
         "entry_phase": pattern.entry_phase,
         "candidates": candidates,
+        "candidate_records": records,
         "count": len(candidates),
     }
 
