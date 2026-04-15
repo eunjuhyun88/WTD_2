@@ -23,6 +23,7 @@
     buildDockFeedItems,
   } from '$lib/terminal/terminalDerived';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
+  import { createSymbolSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
   import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
     fetchTerminalAnomalies,
@@ -113,6 +114,7 @@
   let layerBarsMap = $state<Record<string, any[]>>({});
   let chartPayloadMap = $state<Record<string, ChartSeriesPayload>>({});
   let activeChartPayload = $state<ChartSeriesPayload | null>(null);
+  let selectionState = $state<TerminalSelectionState>(createSymbolSelection('BTCUSDT', '4h', 'system_default'));
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -554,6 +556,7 @@
 
   function focusPatternSymbol(item: { symbol: string }) {
     const pair = item.symbol.replace('USDT', '/USDT');
+    selectionState = createSymbolSelection(item.symbol, symbolToTF(gTf), 'pattern_engine', item.symbol);
     setActivePair(pair);
   }
 
@@ -686,7 +689,12 @@
 
   function handleQueryChip(query: string) { sendCommand(query); }
 
+  function handleLeftRailSelection(next: TerminalSelectionState) {
+    selectionState = next;
+  }
+
   function selectAsset(symbol: string) {
+    selectionState = createSymbolSelection(symbol, symbolToTF(gTf), 'left_watchlist');
     activeSymbol = symbol;
     showAnalysisRail = true;
     activeAnalysisTab = 'summary';
@@ -711,6 +719,7 @@
     activeChartPayload = null;
     chartLevels = {};
     activeAnalysisTab = 'summary';
+    selectionState = createSymbolSelection(pairToSymbol(gPair), symbolToTF(gTf), 'system_default');
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -837,6 +846,8 @@
       prevPair = pair;
       prevTf = tf;
       const symbol = pairToSymbol(pair);
+      const selectionOrigin = untrack(() => selectionState.origin);
+      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeSymbol = symbol;
       activeAnalysisTab = 'summary';
       analysisData = null;  // clear stale snapshot so chat context resets
@@ -861,6 +872,8 @@
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
+      const selectionOrigin = untrack(() => selectionState.origin);
+      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeReadPathKey = '';
       memoryQueryIdMap = {};
       memoryTopEvidenceMap = {};
@@ -1105,6 +1118,7 @@
           queryPresets={terminalQueryPresets}
           anomalies={terminalAnomalies}
           onQuery={handleQueryChip}
+          onSelect={handleLeftRailSelection}
         />
       </aside>
 
@@ -1251,8 +1265,6 @@
           aria-label="Resize analysis panel"
         ></button>
         <div class="analysis-rail">
-
-          <!-- Rail header: mode indicator + streaming badge -->
           <div class="rail-header">
             {#if isStreaming}
               <span class="rail-badge streaming">
@@ -1342,7 +1354,6 @@
               <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
             </div>
           {/if}
-
         </div>
         {:else}
           <button class="collapsed-rail-tab right" type="button" onclick={toggleAnalysisRail} aria-label="Show analysis rail">
