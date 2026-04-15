@@ -29,6 +29,7 @@ app
 - `app/src/routes/terminal/+page.svelte`
 - `app/src/components/terminal/workspace/TerminalContextPanel.svelte`
 - `app/src/components/terminal/workspace/TerminalBottomDock.svelte`
+- `docs/product/terminal-attention-workspace.md`
 - `docs/domains/terminal-html-backend-parity.md`
 - `/Users/ej/Downloads/cogochi_terminal_interactive.html`
 
@@ -42,10 +43,12 @@ app
 - Prototype parity is measured by backend ownership, not by preserving the prototype's local modal implementations.
 - Chart rendering should reuse already-loaded terminal market context where possible; UI toggles must not trigger duplicate network fetches.
 - Restore only high-value terminal density UI as isolated presentational components; keep engine-backed routes, caches, and analysis orchestration unchanged.
-- Reintroduced summary chrome should mount as `TerminalContextPanelSummary` and `ChartMetricStrip`, not as large page-local `if (false)` blocks inside `/terminal/+page.svelte`.
-- `/terminal/+page.svelte` should assemble from view-model adapters rather than owning dense summary derivation logic inline; summary chrome belongs in a dedicated surface-model layer.
+- `/terminal/+page.svelte` should assemble from view-model adapters rather than owning dense summary derivation logic inline; compact rail metadata belongs in a dedicated surface-model layer.
 - Quant-facing board structure should separate `rail summary UI` from `board data normalization`; chart summary, orderbook, and liquidation cards belong to a board-model adapter distinct from rail chrome.
-- Board header layout should follow trader priority: focus/bias/regime first, then actionable levels, then supporting sources; those placement rules belong in the board-summary model/component pair, not scattered through page markup.
+- Board-level models should normalize market structure data, not force a large top-of-board header; dense trading context should be redistributed into rail/context surfaces instead of occupying the chart header area.
+- Terminal density should be progressive: compact by default, expandable on demand. Small badges, strips, and cells should reveal larger contextual blocks only when clicked or expanded.
+- `docs/product/terminal-attention-workspace.md` is the canonical design reference for final left/center/right responsibilities, attention allocation, and progressive disclosure rules.
+- The large terminal summary slab is removed; the surviving board meta now lives as compact status pills inside the right-rail `TerminalContextPanel` header so the center board stays chart-first.
 
 ## Next Steps
 
@@ -63,10 +66,12 @@ app
 12. Memory feedback is telemetry-grade, not critical-path UX; batch and flush it asynchronously so high-frequency terminal interactions do not create write amplification.
 13. Analyze raw-input collection should be shared and short-lived cached, and engine proxy timeouts should be path-aware instead of one global ceiling for every request shape.
 14. Remove dead terminal-derived state and disabled UI branches once they stop serving the active surface; idle reactivity and dead CSS still cost maintenance and can hide real hot paths.
-15. Re-add only the summary UI with component boundaries so future density experiments do not reintroduce page-local dead code.
+15. Keep summary metadata in compact right-rail surfaces instead of restoring a large board-summary slab.
 16. Move summary UI derivation into a dedicated terminal surface-model adapter so the page remains a composition layer, not the owner of summary formatting rules.
-17. Merge duplicate board summary layers into one `BoardSummary` component and move board read-path/fallback shaping into a dedicated `terminalBoardModel` adapter.
-18. Promote board actions and cited sources into the board-summary layer so the top-of-board header reads like a trading cockpit instead of separate disconnected strips.
+17. Merge duplicate board summary layers into one compact right-rail summary model and move board read-path/fallback shaping into a dedicated `terminalBoardModel` adapter.
+18. Keep the chart header area visually quiet; do not reintroduce a large board-summary slab there when the same context can live in rail/context surfaces.
+19. Favor progressive disclosure over permanent density: rail summaries stay compact until expanded, and central board context should open drills/panels rather than occupy persistent vertical space.
+20. Align implementation with the attention-workspace design: left rail selects, center board observes, right rail concludes; AI changes emphasis, not the overall layout skeleton.
 
 ## Exit Criteria
 
