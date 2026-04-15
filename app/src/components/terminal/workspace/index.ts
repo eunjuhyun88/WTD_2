@@ -12,6 +12,8 @@ export { default as TerminalCommandBar } from './TerminalCommandBar.svelte';
 export { default as TerminalLeftRail } from './TerminalLeftRail.svelte';
 export { default as TerminalContextPanel } from './TerminalContextPanel.svelte';
 export { default as TerminalBottomDock } from './TerminalBottomDock.svelte';
+export { default as TerminalHeaderMeta } from './TerminalHeaderMeta.svelte';
+export { default as TerminalRightRail } from './TerminalRightRail.svelte';
 export { default as WorkspaceGrid } from './WorkspaceGrid.svelte';
 export { default as ChartBoard } from './ChartBoard.svelte';
 export { default as BoardToolbar } from './BoardToolbar.svelte';

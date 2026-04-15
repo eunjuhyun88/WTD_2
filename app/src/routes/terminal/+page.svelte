@@ -23,6 +23,7 @@
     buildDockFeedItems,
   } from '$lib/terminal/terminalDerived';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
+  import { buildTerminalHeaderModel } from '$lib/terminal/terminalHeaderModel';
   import { createSymbolSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
   import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
@@ -63,6 +64,7 @@
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
+  import TerminalHeaderMeta from '../../components/terminal/workspace/TerminalHeaderMeta.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
@@ -1016,6 +1018,13 @@
     readPathLiq,
   }));
   let statusStripItems = $derived(surfaceSummary.statusStripItems);
+  let headerModel = $derived.by(() => buildTerminalHeaderModel({
+    selection: selectionState,
+    activeAsset,
+    activeVerdict,
+    regime: surfaceSummary.regime,
+    flowBias,
+  }));
   let dockFeedItems = $derived.by(() => buildDockFeedItems({
     activeFocusLabel,
     activeAsset,
@@ -1145,6 +1154,11 @@
         <span class="workspace-panel-kicker">Main Board</span>
         <span class="workspace-panel-meta">{layout} layout</span>
       </div>
+      <TerminalHeaderMeta
+        subjectLabel={headerModel.subjectLabel}
+        sourceLabel={headerModel.sourceLabel}
+        badges={headerModel.badges}
+      />
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
