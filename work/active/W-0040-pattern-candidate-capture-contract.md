@@ -70,5 +70,5 @@ contract
 ## Handoff Checklist
 
 - Active branch: `codex/w-0037-pattern-capture-record-clean`
-- Verification status: pending in this cleaned branch.
+- Verification status: `uv run pytest tests/test_capture_store.py tests/test_capture_routes.py tests/test_pattern_candidate_routes.py tests/test_patterns_scanner.py tests/test_pattern_state_store.py tests/test_patterns_state_machine_durable.py` passes from `engine/`.
 - Remaining blockers: app Save Setup still needs a later app slice.
