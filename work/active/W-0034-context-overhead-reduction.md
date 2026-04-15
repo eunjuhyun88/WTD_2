@@ -37,6 +37,8 @@ contract
 - Hermes reduces overhead in three steps: narrow default loading, compact preview/on-demand lookup, and schema compaction
 - this repo already has read-order, context-budget, and file-back rules but does not yet define explicit context packs
 - context-save and checkpoint artifacts currently accept verbose free-form text unless manually kept short
+- the first pass of Hermes-style policy translation is merged
+- `AGENTS.md` still needed compression after the first pass because policy detail was starting to outrun repo complexity
 
 ## Assumptions
 
@@ -54,18 +56,19 @@ contract
 - WTD should support many possible docs/tools/packs but load only a narrow default set per execution unit.
 - Preview-first and late-bound expansion are safer than broad default injection.
 - Context-save and checkpoint outputs should compact by default, with explicit opt-out for full verbosity.
+- `AGENTS.md` should stay a routing-and-enforcement core, not a full operating manual.
 
 ## Next Steps
 
-- encode default context pack and late-bound pack rules in `AGENTS.md`
-- add explicit max-bullet guidance to the work-item template
-- make context-save and context-checkpoint compact by default
+- keep Hermes-style pack rules aligned with actual repo complexity instead of adding more governance layers by default
+- only expand the policy again when a real routing or overhead problem appears
 
 ## Exit Criteria
 
 - root operating rules define narrow default packs and expand-on-demand behavior
 - active work items stay brief even when multiple packs exist in the repo
 - saved context artifacts default to compact resumable output instead of verbose logs
+- root rules remain short enough to scan quickly
 
 ## Handoff Checklist
 
