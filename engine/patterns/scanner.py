@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -31,6 +32,7 @@ from ledger.types import PatternOutcome
 from patterns.entry_scorer import score_entry_feature_snapshot
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.state_machine import PatternStateMachine
+from patterns.state_store import PatternStateStore
 from patterns.types import PhaseTransition
 from scanner.feature_calc import compute_features_table, compute_snapshot
 from scoring.block_evaluator import evaluate_blocks
@@ -40,6 +42,7 @@ from universe.config import DEFAULT_SCAN_UNIVERSE
 log = logging.getLogger("engine.patterns.scanner")
 
 LEDGER_STORE = LedgerStore()
+STATE_STORE = PatternStateStore()
 
 # ── Singleton state machines — one per pattern in library ──────────────────
 _MACHINES: dict[str, PatternStateMachine] = {}
@@ -48,15 +51,22 @@ _MACHINES: dict[str, PatternStateMachine] = {}
 def _get_machine(pattern_slug: str) -> PatternStateMachine:
     if pattern_slug not in _MACHINES:
         pattern = get_pattern(pattern_slug)
-        _MACHINES[pattern_slug] = PatternStateMachine(
+        machine = PatternStateMachine(
             pattern=pattern,
+            on_transition=_on_transition,
             on_entry_signal=_on_entry_signal,
             on_success=_on_success,
         )
+        machine.hydrate_states(STATE_STORE.hydrate_states(pattern))
+        _MACHINES[pattern_slug] = machine
     return _MACHINES[pattern_slug]
 
 
 # ── Callbacks ────────────────────────────────────────────────────────────────
+
+def _on_transition(transition: PhaseTransition) -> None:
+    """Persist every phase transition before entry/success callbacks run."""
+    STATE_STORE.append_transition(transition)
 
 def _detect_btc_trend() -> str:
     """Detect BTC trend from cached klines. Returns 'bullish'|'bearish'|'sideways'."""
@@ -116,6 +126,9 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
         entry_price=entry_price,
         btc_trend_at_entry=btc_trend,
         feature_snapshot=transition.feature_snapshot,
+        entry_transition_id=transition.transition_id,
+        entry_scan_id=transition.scan_id,
+        entry_block_scores=transition.block_scores,
         entry_block_coverage=transition.confidence,
         entry_p_win=entry_score.p_win,
         entry_ml_state=entry_score.state,
@@ -179,6 +192,7 @@ def _build_perp_dict(perp_df) -> dict | None:
 def evaluate_symbol_for_patterns(
     symbol: str,
     timestamp: datetime | None = None,
+    scan_id: str | None = None,
 ) -> dict[str, str]:
     """Evaluate one symbol against all registered patterns.
 
@@ -246,6 +260,9 @@ def evaluate_symbol_for_patterns(
         machine.evaluate(
             symbol, triggered_blocks, timestamp,
             feature_snapshot=feature_snapshot,
+            scan_id=scan_id,
+            trigger_bar_ts=timestamp,
+            data_quality={"has_perp": has_perp},
         )
         results[slug] = machine.get_current_phase(symbol)
 
@@ -325,6 +342,7 @@ async def run_pattern_scan(
         prewarm_stats = prewarm_perp_cache(symbols)
 
     timestamp = datetime.now(timezone.utc)
+    scan_id = str(uuid.uuid4())
     results: dict[str, dict[str, str]] = {}
     errors: list[str] = []
     perp_coverage = {"with_perp": 0, "without_perp": 0}
@@ -335,7 +353,7 @@ async def run_pattern_scan(
             perp = load_perp(symbol, offline=True)
             has_perp = perp is not None and not perp.empty
 
-            phases = evaluate_symbol_for_patterns(symbol, timestamp)
+            phases = evaluate_symbol_for_patterns(symbol, timestamp, scan_id=scan_id)
             return (symbol, phases if phases else None, None)
         except Exception as exc:
             return (symbol, None, f"{symbol}: {exc}")
@@ -370,6 +388,7 @@ async def run_pattern_scan(
     elapsed_ms = int((time.monotonic() - t0) * 1000)
 
     return {
+        "scan_id": scan_id,
         "scanned_at": timestamp.isoformat(),
         "n_symbols": len(symbols),
         "n_evaluated": len(results),

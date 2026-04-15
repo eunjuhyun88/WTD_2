@@ -26,4 +26,5 @@ dist/
 .claire/
 app/memory/memory/
 engine/data_cache/cache/
+engine/state/*.sqlite*
 .vercel

@@ -50,6 +50,9 @@ class PatternOutcome:
 
     # v2: Feature snapshot for reproducibility
     feature_snapshot: dict | None = None     # 92-dim features at entry
+    entry_transition_id: str | None = None   # durable phase_transitions.transition_id
+    entry_scan_id: str | None = None
+    entry_block_scores: dict | None = None
 
     # v3: Entry-scoring shadow metadata
     entry_block_coverage: float | None = None
