@@ -31,15 +31,15 @@ contract
 
 ## Facts
 
-- `main` is at `572a53b` after PR `#43`.
+- `main` is at `f168df0` after PR `#46`.
 - PR `#43` (`codex/w-0035-pattern-transition-persistence`) is merged.
-- `codex/w-0036-terminal-persistence-rollout` and `codex/w-0037-pattern-capture-record` were created before PR `#43` merged and need realignment onto current `main`.
+- PR `#46` (`codex/w-0037-pattern-capture-record-clean`) is merged and includes W-0037 capture records plus W-0040 candidate metadata.
+- `W-0036` terminal persistence rollout remains local/mixed and must be split before any app PR.
 - Terminal PRs `#38`-`#41` are a stacked app-surface lane and should not be mixed with the engine persistence lane.
 - Local stashes contain terminal/right-rail leftovers and quarantined WIP; they are not merge units until selectively recovered.
 
 ## Assumptions
 
-- `W-0037` capture linkage should build on merged `W-0035` transition persistence.
 - `W-0036` terminal persistence rollout should be split into app-domain routes, analyze contract, and engine-memory slices before merge.
 - Draft PRs remain draft until their exact verification gate is recorded.
 
@@ -54,13 +54,13 @@ contract
 - Treat each PR as one primary change type; do not use W-0036 as a mixed all-in-one merge unit.
 - Preserve stashes until their contents are inspected against a named work item.
 - Use compact checkpoints after each completed merge unit.
-- After PR `#43`, the next active engine merge unit is W-0037 capture records.
+- After PR `#46`, the next active merge unit should be selected from W-0036 only after stash/dirty diff triage.
 
 ## Next Steps
 
-1. Rebase or recreate `W-0037` from updated `main` and implement capture records.
-2. Split `W-0036` into smaller app/contract/engine-memory slices before implementation PRs.
-3. Audit terminal PR stack and stashes before selecting the next app merge unit.
+1. Split `W-0036` into app-domain routes, analyze contract, and engine-memory persistence slices.
+2. Audit terminal PR stack `#38`-`#41` against current `main`.
+3. Inspect terminal stashes and keep only recoverable work tied to a named work item.
 
 ## Exit Criteria
 
@@ -71,5 +71,5 @@ contract
 ## Handoff Checklist
 
 - Active integration owner: CTO/contract.
-- Verification status: queue created; PR `#43` merged.
-- Remaining blockers: W-0037 branch realignment and terminal stack triage.
+- Verification status: PR `#43` and PR `#46` merged; W-0038 queue updated.
+- Remaining blockers: W-0036 split plan, terminal stack triage, stash inspection.
