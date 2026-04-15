@@ -49,6 +49,7 @@ contract
 - Treat terminal page and surface edits here as contract-consumer changes, not persistence work.
 - Exclude page-level persistence controls, memory adapter wiring, and left-rail watchlist changes from this slice.
 - Prefer adapter and panel-level consumption changes over route-level orchestration when explicit analyze fields can flow without new page state.
+- This slice should merge before `W-0044`, because persistence should store and replay explicit decision fields rather than fallback-derived UI semantics.
 
 ## Next Steps
 
@@ -61,6 +62,34 @@ contract
 - Terminal surfaces prefer explicit analyze fields.
 - Contract and mapper tests pass.
 - The PR contains no persistence-route or engine-memory changes.
+
+## Reviewer Notes
+
+- Product value:
+  - removes hidden UI inference for entry, risk, flow, and sources
+  - makes `/terminal` render deterministic decision semantics from the canonical analyze envelope
+- Why this should go first:
+  - later persistence and recall features should store explicit decision fields, not UI-derived approximations
+  - this reduces semantic drift between analyze payload, panel rendering, and restored terminal state
+- Main files to review:
+  - `app/src/lib/contracts/terminalBackend.ts`
+  - `app/src/lib/server/analyze/responseMapper.ts`
+  - `app/src/lib/server/analyze/responseMapper.test.ts`
+  - `app/src/lib/terminal/panelAdapter.ts`
+  - `app/src/components/terminal/workspace/TerminalContextPanel.svelte`
+
+## PR Body Draft
+
+- Summary:
+  - add explicit `entryPlan`, `riskPlan`, `flowSummary`, and `sources` support to the analyze contract
+  - map these fields through the response mapper and terminal adapters
+  - update terminal panel rendering to consume explicit fields before fallback derivation
+- Why now:
+  - `/terminal` still infers too much product meaning from raw market fields
+  - downstream persistence and recall work should depend on explicit decision semantics
+- Verification:
+  - `npm run check -- --fail-on-warnings`
+  - `npm test -- --run src/lib/server/analyze/responseMapper.test.ts`
 
 ## Handoff Checklist
 
