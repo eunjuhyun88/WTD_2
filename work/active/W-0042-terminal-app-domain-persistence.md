@@ -36,9 +36,10 @@ app
 
 ## Facts
 
-- The local mixed diff already includes route files, persistence contracts, and a migration.
-- These routes are app-owned and should not depend on engine-memory persistence or capture-link code.
-- This slice needs app route tests and likely a migration/application note, but not terminal surface parity cleanup.
+- This slice has been reconstructed on clean branch `codex/w-0042-terminal-app-domain-persistence-v2` from current `origin/main`.
+- The route files, persistence contracts, and migration are app-owned and do not depend on engine-memory persistence or capture-link code.
+- Targeted route/contract tests pass.
+- `npm run check -- --fail-on-warnings` passes with the watchlist preview helper lowered to avoid depending on `W-0041` analyze contract fields.
 
 ## Assumptions
 
@@ -55,9 +56,9 @@ app
 
 ## Next Steps
 
-1. Recover the route, client, and migration files from the mixed local branch into a clean branch.
-2. Run targeted route tests and `app` check.
-3. Document migration application requirements in the PR body.
+1. Commit and open the clean `W-0042` PR.
+2. Document migration application requirements in the PR body.
+3. Leave terminal surface hydration and analyze-field consumption to later slices.
 
 ## Exit Criteria
 
@@ -67,5 +68,5 @@ app
 
 ## Handoff Checklist
 
-- Verification status: not yet restaged on a clean branch.
-- Remaining blockers: route test rerun on clean branch.
+- Verification status: `npm test -- --run src/lib/contracts/terminalPersistence.test.ts src/routes/api/terminal/watchlist/watchlist.test.ts src/routes/api/terminal/alerts/alerts.test.ts src/routes/api/terminal/exports/exports.test.ts` and `npm run check -- --fail-on-warnings` passed.
+- Remaining blockers: migration still needs application in the target Postgres environment.
