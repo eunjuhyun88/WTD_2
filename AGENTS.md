@@ -84,11 +84,74 @@ Every non-trivial task must have one active work item:
 ## Multi-Agent Collaboration Guardrails
 
 - Never commit directly on `main`; use task branches only.
-- Start each task in a dedicated git worktree bound to one branch.
-- Keep one branch per agent/task (`agent/<name>/<task>` or `task/<id>-<slug>`).
+- Quick rule:
+  - one thread
+  - one active work item
+  - one active execution branch
+- New chat messages do not justify new branches.
+- Prefer commit splitting before branch splitting.
+- Default operating unit is:
+  - one active work item
+  - one execution branch
+  - one checked-out worktree
+- Branch creation is the exception, not the default:
+  - create a new branch when starting a new work item
+  - create a new branch when the user explicitly asks for isolated PR scope
+  - create a new branch when unrelated in-flight changes make one clean PR impossible
+  - do not create a new branch merely to split commits, answer a review comment, or continue the same work item
+- Start each active execution branch in a dedicated git worktree bound to that branch.
+- Keep one execution branch per agent/task (`task/<id>-<slug>` preferred).
+- Do not create extra branch pointers without explicit reason recorded in the active work item.
 - Merge via PR only after user approval; no direct push-to-main flow.
 - Before merge, pass the minimum gate: clean `git status`, scoped tests/checks, and conflict review.
 - If unexpected file changes appear, stop and confirm scope before committing.
+
+## Branch Lifecycle Policy
+
+- Use the current task branch until one of these is true:
+  - the active work item changes
+  - the intended PR scope changes materially
+  - the user asks for a separate branch
+- Commit splitting and branch splitting are different operations:
+  - prefer multiple commits on one branch for multiple functional slices inside one work item
+  - use a separate branch only for a separate merge unit
+- If the worktree is dirty with unrelated changes, first try:
+  - narrower staging
+  - smaller commits
+  - a documented defer/ignore decision
+  before creating another branch
+- Before creating a new branch, record in the active work item:
+  - why the current branch is no longer the right merge unit
+  - which work item owns the new branch
+  - what commit range or scope belongs to each branch
+- Branch names should be stable and task-oriented, not conversational.
+
+## Agent Roles
+
+- `Orchestrator`
+  - chooses work-item order, merge order, and integration timing
+  - does not mix unrelated implementation slices into one PR
+- `Implementer`
+  - owns one active work item and one execution branch at a time
+  - keeps changes inside the declared scope
+- `Reviewer`
+  - validates correctness, regression risk, boundary discipline, and merge readiness
+  - treats missing work-item updates as a finding
+- `Integrator`
+  - merges only after approval and gate pass
+  - is responsible for branch cleanup and baseline sync
+
+## Agent Operating Rules
+
+- An implementer should not hold more than one active execution branch at once unless the user explicitly approves parallel ownership.
+- If a task needs multiple agents, split by work item or merge unit, not by arbitrary file subsets.
+- Every agent handoff must name:
+  - active work item
+  - active branch
+  - verification status
+  - remaining blockers
+- Do not switch branches or create new ones mid-task without updating the work item first.
+- If a branch exists only to preserve a commit range, label that intent explicitly in the work item so it is not mistaken for the active execution branch.
 
 ## Handoff Memory
 
