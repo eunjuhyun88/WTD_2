@@ -83,7 +83,7 @@ describe('runtimeSecurity', () => {
         NODE_ENV: 'production',
         SECURITY_ALLOWED_HOSTS: 'app.cogotchi.dev',
       }),
-      ).toEqual([
+    ).toEqual([
       'TURNSTILE_SECRET_KEY is not configured. Public auth routes rely on bot protection bypass policy.',
     ]);
   });

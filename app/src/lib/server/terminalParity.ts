@@ -1,4 +1,5 @@
 import type { OpportunityAlert } from '$lib/engine/opportunityScanner';
+import { getHotCached } from '$lib/server/hotCache';
 
 type AppFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -62,6 +63,16 @@ export interface TerminalAnomalyItem {
   supportingMetrics: Record<string, number | string | null | undefined>;
   source: 'scanner_alert' | 'opportunity_scan';
   timestamp: number;
+}
+
+export interface TerminalParitySnapshot {
+  scannerStatus: TerminalScannerStatusPayload | null;
+  alerts: TerminalAlertPreview[];
+  patternCandidates: Record<string, string[]>;
+  opportunityAlerts: OpportunityAlert[];
+  macroBackdrop: NonNullable<TerminalOpportunityPayload['data']>['macroBackdrop'] | null;
+  scannedAt: number;
+  btcDominance: number | null;
 }
 
 async function readJsonSafe<T>(response: Response): Promise<T | null> {
@@ -233,4 +244,49 @@ export function deriveTerminalAnomalies(args: {
   return [...fromDb, ...fromOpportunity]
     .sort((a, b) => severityRank[a.severity] - severityRank[b.severity] || b.timestamp - a.timestamp)
     .slice(0, 24);
+}
+
+export async function fetchTerminalParitySnapshot(args: {
+  fetcher: AppFetch;
+  fetchBtcDominance?: () => Promise<number | null>;
+  alertsLimit?: number;
+  opportunityLimit?: number;
+}): Promise<TerminalParitySnapshot> {
+  const { fetcher, fetchBtcDominance, alertsLimit = 48, opportunityLimit = 15 } = args;
+  const [scannerStatus, alertsPayload, patternCandidates, opportunityPayload, btcDominance] = await Promise.all([
+    fetchInternalJson<TerminalScannerStatusPayload>(fetcher, '/api/engine/scanner/status'),
+    fetchInternalJson<{ alerts?: TerminalAlertPreview[] }>(fetcher, `/api/cogochi/alerts?limit=${alertsLimit}`),
+    fetchInternalJson<TerminalPatternCandidatesPayload>(fetcher, '/api/engine/patterns/candidates'),
+    fetchInternalJson<TerminalOpportunityPayload>(fetcher, `/api/terminal/opportunity-scan?limit=${opportunityLimit}`),
+    fetchBtcDominance ? fetchBtcDominance() : Promise.resolve(null),
+  ]);
+
+  return {
+    scannerStatus,
+    alerts: alertsPayload?.alerts ?? [],
+    patternCandidates: patternCandidates?.entry_candidates ?? {},
+    opportunityAlerts: opportunityPayload?.data?.alerts ?? [],
+    macroBackdrop: opportunityPayload?.data?.macroBackdrop ?? null,
+    scannedAt: opportunityPayload?.data?.scannedAt ?? Date.now(),
+    btcDominance,
+  };
+}
+
+export async function getCachedTerminalParitySnapshot(args: {
+  fetcher: AppFetch;
+  fetchBtcDominance?: () => Promise<number | null>;
+  alertsLimit?: number;
+  opportunityLimit?: number;
+  ttlMs?: number;
+}): Promise<TerminalParitySnapshot> {
+  const { fetcher, fetchBtcDominance, alertsLimit = 48, opportunityLimit = 15, ttlMs = 15_000 } = args;
+  const key = `terminal-parity:${alertsLimit}:${opportunityLimit}:${fetchBtcDominance ? 'btc' : 'nobtc'}`;
+  return getHotCached(key, ttlMs, () =>
+    fetchTerminalParitySnapshot({
+      fetcher,
+      fetchBtcDominance,
+      alertsLimit,
+      opportunityLimit,
+    }),
+  );
 }

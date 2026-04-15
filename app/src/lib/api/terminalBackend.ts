@@ -112,6 +112,70 @@ export interface MemoryRerankResult {
   records: MemoryRerankRecord[];
 }
 
+type MemoryFeedbackArgs = {
+  queryId: string;
+  memoryId: string;
+  event: 'retrieved' | 'used' | 'dismissed' | 'contradicted' | 'confirmed';
+  symbol: string;
+  timeframe: string;
+  intent: string;
+  mode?: string;
+};
+
+const MEMORY_FEEDBACK_BATCH_MAX = 20;
+const MEMORY_FEEDBACK_FLUSH_MS = 350;
+let pendingMemoryFeedback: MemoryFeedbackArgs[] = [];
+let memoryFeedbackFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function flushMemoryFeedbackQueue(): Promise<void> {
+  if (pendingMemoryFeedback.length === 0) return;
+  const batch = pendingMemoryFeedback.splice(0, MEMORY_FEEDBACK_BATCH_MAX);
+  if (memoryFeedbackFlushTimer) {
+    clearTimeout(memoryFeedbackFlushTimer);
+    memoryFeedbackFlushTimer = null;
+  }
+  try {
+    await fetch('/api/engine/memory/feedback/batch', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        items: batch.map((args) => ({
+          query_id: args.queryId,
+          memory_id: args.memoryId,
+          event: args.event,
+          context: {
+            symbol: args.symbol,
+            timeframe: args.timeframe,
+            intent: args.intent,
+            mode: args.mode ?? 'terminal',
+          },
+          occurred_at: new Date().toISOString(),
+        })),
+      }),
+    });
+  } catch {
+    // Best-effort telemetry; dropping a batch is acceptable.
+  } finally {
+    if (pendingMemoryFeedback.length > 0) {
+      memoryFeedbackFlushTimer = setTimeout(() => {
+        void flushMemoryFeedbackQueue();
+      }, MEMORY_FEEDBACK_FLUSH_MS);
+    }
+  }
+}
+
+function scheduleMemoryFeedbackFlush() {
+  if (pendingMemoryFeedback.length >= MEMORY_FEEDBACK_BATCH_MAX) {
+    void flushMemoryFeedbackQueue();
+    return;
+  }
+  if (memoryFeedbackFlushTimer) return;
+  memoryFeedbackFlushTimer = setTimeout(() => {
+    void flushMemoryFeedbackQueue();
+  }, MEMORY_FEEDBACK_FLUSH_MS);
+}
+
 export async function fetchMemoryRerank(args: {
   query: string;
   symbol: string;
@@ -168,32 +232,10 @@ export async function fetchMemoryRerank(args: {
   };
 }
 
-export async function sendMemoryFeedback(args: {
-  queryId: string;
-  memoryId: string;
-  event: 'retrieved' | 'used' | 'dismissed' | 'contradicted' | 'confirmed';
-  symbol: string;
-  timeframe: string;
-  intent: string;
-  mode?: string;
-}): Promise<void> {
+export async function sendMemoryFeedback(args: MemoryFeedbackArgs): Promise<void> {
   if (!args.queryId || !args.memoryId) return;
-  await fetch('/api/engine/memory/feedback', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      query_id: args.queryId,
-      memory_id: args.memoryId,
-      event: args.event,
-      context: {
-        symbol: args.symbol,
-        timeframe: args.timeframe,
-        intent: args.intent,
-        mode: args.mode ?? 'terminal',
-      },
-      occurred_at: new Date().toISOString(),
-    }),
-  });
+  pendingMemoryFeedback.push(args);
+  scheduleMemoryFeedbackFlush();
 }
 
 export async function sendMemoryDebugSession(args: {
