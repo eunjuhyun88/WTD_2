@@ -1,7 +1,15 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+  import {
+    patternCaptureContextStore,
+    resolvePatternCaptureContext,
+    type PatternCaptureContextState,
+  } from '$lib/stores/patternCaptureContext';
+
   /**
    * SaveSetupModal — appears when user clicks "+ Save" on a candle.
-   * Collects phase label + notes, then POSTs to engine /challenge/create.
+   * Pattern candidate saves go to engine /captures. Manual saves keep the
+   * legacy /challenge/create fallback.
    */
 
   interface Props {
@@ -29,6 +37,19 @@
   let note          = $state('');
   let saving        = $state(false);
   let saveError     = $state<string | null>(null);
+  let captureState = $state<PatternCaptureContextState>({ records: [], selectedKey: null });
+  const unsubscribe = patternCaptureContextStore.subscribe((value) => {
+    captureState = value;
+  });
+  onDestroy(unsubscribe);
+
+  let captureContext = $derived(resolvePatternCaptureContext(captureState, symbol, tf));
+  const candidateTransitionId = $derived(captureContext?.candidateTransitionId ?? captureContext?.transitionId ?? null);
+  const canSavePatternCapture = $derived(Boolean(
+    candidateTransitionId
+    && captureContext?.symbol === symbol
+    && (captureContext?.patternSlug ?? captureContext?.slug)
+  ));
 
   // Format timestamp for display
   const displayTime = $derived(
@@ -40,26 +61,58 @@
   );
   const isoTime = $derived(new Date(timestamp * 1000).toISOString());
 
+  $effect(() => {
+    if (open && captureContext?.phase) {
+      selectedPhase = captureContext.phase;
+    }
+  });
+
   async function handleSave() {
     if (saving) return;
     saving    = true;
     saveError = null;
 
     const label = PHASE_LABELS.find(p => p.id === selectedPhase)?.id ?? 'GENERAL';
-    const body  = {
-      snaps: [{ symbol, timestamp: isoTime, label }],
-      note,
-    };
+    const shouldCreatePatternCapture = canSavePatternCapture && label !== 'GENERAL';
 
     try {
-      const res = await fetch('/api/engine/challenge/create', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(body),
-      });
+      const res = shouldCreatePatternCapture
+        ? await fetch('/api/engine/captures', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              capture_kind: 'pattern_candidate',
+              symbol,
+              pattern_slug: captureContext?.patternSlug ?? captureContext?.slug ?? '',
+              pattern_version: captureContext?.patternVersion ?? 1,
+              phase: captureContext?.phase ?? label,
+              timeframe: captureContext?.timeframe ?? tf,
+              candidate_transition_id: candidateTransitionId,
+              scan_id: captureContext?.scanId,
+              user_note: note,
+              chart_context: {
+                timestamp: isoTime,
+                selected_phase: label,
+                source: 'terminal_save_setup',
+              },
+              feature_snapshot: captureContext?.featureSnapshot ?? undefined,
+              block_scores: captureContext?.blockScores ?? {},
+            }),
+          })
+        : await fetch('/api/engine/challenge/create', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              snaps: [{ symbol, timestamp: isoTime, label }],
+              note,
+            }),
+          });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      onSaved(data.slug ?? '');
+      if (shouldCreatePatternCapture) {
+        patternCaptureContextStore.clearSelection();
+      }
+      onSaved(data.capture?.capture_id ?? data.slug ?? '');
     } catch (e) {
       saveError = String(e);
     } finally {
@@ -90,6 +143,13 @@
     <!-- Phase selector -->
     <div class="section">
       <p class="section-label">캔들 페이즈 선택</p>
+      {#if canSavePatternCapture}
+        <div class="capture-context">
+          <span>ENGINE CAPTURE</span>
+          <strong>{captureContext?.slug}</strong>
+          <small>{candidateTransitionId}</small>
+        </div>
+      {/if}
       <div class="phase-list">
         {#each PHASE_LABELS as phase}
           <button
@@ -123,7 +183,7 @@
     <div class="modal-actions">
       <button class="cancel-btn" onclick={onClose}>취소</button>
       <button class="save-btn" onclick={handleSave} disabled={saving}>
-        {saving ? '저장 중…' : '셋업 저장 →'}
+        {saving ? '저장 중…' : canSavePatternCapture && selectedPhase !== 'GENERAL' ? '캡처 저장 →' : '셋업 저장 →'}
       </button>
     </div>
 
@@ -202,6 +262,35 @@
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.25);
     margin: 0;
+  }
+
+  .capture-context {
+    display: grid;
+    gap: 2px;
+    padding: 8px 10px;
+    background: rgba(74, 222, 128, 0.06);
+    border: 1px solid rgba(74, 222, 128, 0.18);
+    border-radius: 4px;
+  }
+  .capture-context span {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(74, 222, 128, 0.7);
+    letter-spacing: 0.1em;
+  }
+  .capture-context strong {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    color: #4ade80;
+  }
+  .capture-context small {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    color: rgba(255,255,255,0.35);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* Phase buttons */
