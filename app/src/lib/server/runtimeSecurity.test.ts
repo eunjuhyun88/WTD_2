@@ -40,6 +40,14 @@ describe('runtimeSecurity', () => {
     ).toThrow(/must not be present in app-web runtime/i);
   });
 
+  it('rejects supabase secret key in app runtime', () => {
+    expect(() =>
+      validateAppServerSecretBoundaries({
+        SUPABASE_SECRET_KEY: 'sb_secret_real_value',
+      }),
+    ).toThrow(/SUPABASE_SECRET_KEY must not be present/i);
+  });
+
   it('rejects insecure production env toggles', () => {
     expect(
       getRuntimeSecurityErrors({
@@ -69,27 +77,25 @@ describe('runtimeSecurity', () => {
     ]);
   });
 
-  it('fails when privileged database role is used in production', () => {
-    expect(
-      getRuntimeSecurityErrors({
-        NODE_ENV: 'production',
-        DATABASE_URL: 'postgresql://postgres.abcd:secret@db.internal:5432/postgres',
-        SECURITY_ALLOWED_HOSTS: 'app.cogotchi.dev',
-      }),
-    ).toEqual([
-      'DATABASE_URL uses privileged database role "postgres.abcd". Production app-web must use a least-privilege role.',
-    ]);
-  });
-
   it('warns when turnstile secret is missing in production', () => {
     expect(
       getRuntimeSecurityWarnings({
         NODE_ENV: 'production',
         SECURITY_ALLOWED_HOSTS: 'app.cogotchi.dev',
       }),
-    ).toEqual([
+      ).toEqual([
       'TURNSTILE_SECRET_KEY is not configured. Public auth routes rely on bot protection bypass policy.',
     ]);
+  });
+
+  it('warns when privileged database role is used in production', () => {
+    expect(
+      getRuntimeSecurityWarnings({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://postgres.abcd:secret@db.internal:5432/postgres',
+        SECURITY_ALLOWED_HOSTS: 'app.cogotchi.dev',
+      }),
+    ).toContain('DATABASE_URL uses privileged database role "postgres.abcd". Create a least-privilege app role before production hardening completes.');
   });
 
   it('logs warnings once runtime boundaries pass', () => {

@@ -54,19 +54,16 @@ export function getRuntimeSecurityErrors(envLike: EnvLike): string[] {
       'SUPABASE_SERVICE_ROLE_KEY must not be present in app-web runtime. Move privileged Supabase access to worker-control only.',
     );
   }
+  const secretKey = envLike.SUPABASE_SECRET_KEY?.trim() || '';
+  if (secretKey) {
+    errors.push(
+      'SUPABASE_SECRET_KEY must not be present in app-web runtime. Move privileged Supabase access to worker-control only.',
+    );
+  }
 
   const databaseUrl = envLike.DATABASE_URL?.trim() || '';
   if (databaseUrl && isPlaceholderSecret(databaseUrl)) {
     errors.push('DATABASE_URL still looks like a placeholder value.');
-  }
-
-  if (databaseUrl && !isPlaceholderSecret(databaseUrl) && production) {
-    const username = detectDatabaseUser(databaseUrl)?.toLowerCase() || '';
-    if (username && PRIVILEGED_DB_USERS.some((candidate) => username === candidate || username.startsWith(`${candidate}.`))) {
-      errors.push(
-        `DATABASE_URL uses privileged database role "${username}". Production app-web must use a least-privilege role.`,
-      );
-    }
   }
 
   if (!production) return errors;
@@ -103,7 +100,7 @@ export function getRuntimeSecurityWarnings(envLike: EnvLike): string[] {
   const warnings: string[] = [];
   const production = isProductionRuntime(envLike);
   const databaseUrl = envLike.DATABASE_URL?.trim() || '';
-  if (databaseUrl && !isPlaceholderSecret(databaseUrl) && !production) {
+  if (databaseUrl && !isPlaceholderSecret(databaseUrl)) {
     const username = detectDatabaseUser(databaseUrl)?.toLowerCase() || '';
     if (username && PRIVILEGED_DB_USERS.some((candidate) => username === candidate || username.startsWith(`${candidate}.`))) {
       warnings.push(
