@@ -14,6 +14,7 @@ contract
 - translate MemKraft-style patterns into repository operating policy for multi-agent collaboration
 - sync top-level entry docs so the same rules are visible from session start
 - enforce the operating loop in the work item template so future tasks inherit it by default
+- redesign branch/worktree policy so commit splitting does not accidentally become branch sprawl
 
 ## Non-Goals
 
@@ -36,11 +37,16 @@ contract
 - Design-first behavior should be explicit in operating rules, not left as an implied habit.
 - Template enforcement is higher leverage than policy text alone, so the work item template must require facts, assumptions, open questions, and handoff state.
 - Context discipline also requires deletion rules: active work items should keep only the latest actionable state, not a running history.
+- The default execution unit is one active work item on one execution branch in one worktree.
+- The branch-thread rule must be visible in prompt-entry files, not only in deeper runbooks, so agents see it before acting.
+- Commit splitting and branch splitting are separate decisions; branch creation should require a new merge unit, not ordinary progress on the same task.
+- Branch pointers created only for archival or commit-range preservation should not be treated as active execution branches.
 
 ## Next Steps
 
 - keep future multi-agent guardrail work aligned with the stronger operating loop
 - consider mirroring the enforced template structure into any agent-side generators or scaffolding scripts
+- reflect the same branch lifecycle rules in any future orchestration helpers or scaffolding tools
 
 ## Exit Criteria
 
@@ -48,3 +54,4 @@ contract
 - multi-agent handoff expectations are written as repository policy rather than inferred from chat
 - MemKraft-derived operating patterns are translated into repository-native rules with no boundary drift
 - new work items inherit explicit fact/assumption/question/handoff fields by default
+- branch creation conditions are explicit enough that agents do not create extra branches by default
