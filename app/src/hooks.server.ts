@@ -7,13 +7,23 @@
 
 import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
+import { readRequestHost, isHostAllowed } from '$lib/server/hostSecurity';
 import { runMutatingApiOriginGuard } from '$lib/server/originGuard';
+import { assertAppServerRuntimeSecurity } from '$lib/server/runtimeSecurity';
 import { shouldApplyNoIndexHeader } from '$lib/seo/policy';
 
 // Immutable asset path pattern (Vite hashed filenames)
 const IMMUTABLE_ASSET = /\/_app\/immutable\//;
 
+assertAppServerRuntimeSecurity(env);
+
 export const handle: Handle = async ({ event, resolve }) => {
+  const requestHost = readRequestHost(event.request);
+  if (!isHostAllowed(requestHost)) {
+    return new Response('Unrecognized host', { status: 421 });
+  }
+
   const blocked = runMutatingApiOriginGuard(event);
   const response = blocked ?? await resolve(event);
 
