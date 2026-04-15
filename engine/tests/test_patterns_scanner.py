@@ -49,6 +49,7 @@ def test_on_entry_signal_persists_shadow_ml_metadata(monkeypatch) -> None:
     assert outcome.entry_price == 123.45
     assert outcome.btc_trend_at_entry == "bullish"
     assert outcome.entry_block_coverage == 0.75
+    assert outcome.entry_transition_id == transition.transition_id
     assert outcome.entry_p_win == 0.73
     assert outcome.entry_ml_state == "scored"
     assert outcome.entry_model_version == "20260414_010203"

@@ -22,7 +22,7 @@ from datetime import datetime
 from typing import Callable
 
 from patterns.types import (
-    PatternObject, PhaseCondition, SymbolPhaseState, PhaseTransition
+    PatternObject, PatternStateRecord, PhaseCondition, SymbolPhaseState, PhaseTransition
 )
 
 log = logging.getLogger("engine.patterns.state_machine")
@@ -32,11 +32,13 @@ class PatternStateMachine:
     def __init__(
         self,
         pattern: PatternObject,
+        on_transition: Callable[[PhaseTransition], None] | None = None,
         on_entry_signal: Callable[[PhaseTransition], None] | None = None,
         on_success: Callable[[PhaseTransition], None] | None = None,
         on_invalidated: Callable[[str, str], None] | None = None,
     ):
         self.pattern = pattern
+        self.on_transition = on_transition
         self.on_entry_signal = on_entry_signal
         self.on_success = on_success
         self.on_invalidated = on_invalidated
@@ -48,6 +50,9 @@ class PatternStateMachine:
         blocks_triggered: list[str],
         timestamp: datetime,
         feature_snapshot: dict | None = None,
+        scan_id: str | None = None,
+        trigger_bar_ts: datetime | None = None,
+        data_quality: dict | None = None,
     ) -> PhaseTransition | None:
         """Evaluate one bar for a symbol.
 
@@ -88,8 +93,19 @@ class PatternStateMachine:
                     to_phase=self.pattern.phases[0].phase_id,
                     timestamp=timestamp,
                     reason="timeout",
+                    transition_kind="timeout_reset",
                     feature_snapshot=feature_snapshot,
+                    pattern_version=self.pattern.version,
+                    timeframe=self.pattern.timeframe,
+                    from_phase_idx=self._phase_idx(old_phase_id),
+                    to_phase_idx=0,
+                    trigger_bar_ts=trigger_bar_ts or timestamp,
+                    scan_id=scan_id,
+                    blocks_triggered=list(blocks_triggered),
+                    block_scores=self._build_block_scores(blocks_triggered),
+                    data_quality=data_quality,
                 )
+                self._emit_transition(t)
                 if self.on_invalidated:
                     self.on_invalidated(symbol, old_phase_id)
                 return t
@@ -126,6 +142,15 @@ class PatternStateMachine:
                     is_success=is_success,
                     confidence=confidence,
                     feature_snapshot=feature_snapshot,
+                    pattern_version=self.pattern.version,
+                    timeframe=self.pattern.timeframe,
+                    from_phase_idx=next_phase_idx - 1,
+                    to_phase_idx=next_phase_idx,
+                    trigger_bar_ts=trigger_bar_ts or timestamp,
+                    scan_id=scan_id,
+                    blocks_triggered=list(blocks_triggered),
+                    block_scores=self._build_block_scores(blocks_triggered),
+                    data_quality=data_quality,
                 )
 
                 log.info(
@@ -134,10 +159,7 @@ class PatternStateMachine:
                     confidence * 100, self.pattern.slug,
                 )
 
-                if is_entry and self.on_entry_signal:
-                    self.on_entry_signal(t)
-                if is_success and self.on_success:
-                    self.on_success(t)
+                self._emit_transition(t)
 
                 return t
         else:
@@ -154,8 +176,66 @@ class PatternStateMachine:
                 state.phase_entered_at = timestamp
                 state.bars_in_phase = 1
                 state.phase_history.append((phase0.phase_id, timestamp))
+                t = PhaseTransition(
+                    symbol=symbol,
+                    pattern_slug=self.pattern.slug,
+                    from_phase="NONE",
+                    to_phase=phase0.phase_id,
+                    timestamp=timestamp,
+                    reason="condition_met",
+                    transition_kind="phase_entered",
+                    confidence=1.0,
+                    feature_snapshot=feature_snapshot,
+                    pattern_version=self.pattern.version,
+                    timeframe=self.pattern.timeframe,
+                    from_phase_idx=None,
+                    to_phase_idx=0,
+                    trigger_bar_ts=trigger_bar_ts or timestamp,
+                    scan_id=scan_id,
+                    blocks_triggered=list(blocks_triggered),
+                    block_scores=self._build_block_scores(blocks_triggered),
+                    data_quality=data_quality,
+                )
+                self._emit_transition(t)
+                return t
 
         return None
+
+    def _emit_transition(self, transition: PhaseTransition) -> None:
+        if self.on_transition:
+            self.on_transition(transition)
+        if transition.is_entry_signal and self.on_entry_signal:
+            self.on_entry_signal(transition)
+        if transition.is_success and self.on_success:
+            self.on_success(transition)
+
+    @staticmethod
+    def _build_block_scores(blocks: list[str]) -> dict:
+        return {block: {"passed": True, "score": 1.0} for block in blocks}
+
+    def _phase_idx(self, phase_id: str) -> int | None:
+        for idx, phase in enumerate(self.pattern.phases):
+            if phase.phase_id == phase_id:
+                return idx
+        return None
+
+    def hydrate_states(self, records: dict[str, PatternStateRecord] | list[PatternStateRecord]) -> None:
+        """Restore current states from durable PatternStateRecord rows."""
+        iterable = records.values() if isinstance(records, dict) else records
+        for record in iterable:
+            if record.pattern_slug != self.pattern.slug or record.invalidated or not record.active:
+                continue
+            if not (0 <= record.current_phase_idx < len(self.pattern.phases)):
+                continue
+            self._states[record.symbol] = SymbolPhaseState(
+                symbol=record.symbol,
+                pattern_slug=record.pattern_slug,
+                current_phase_idx=record.current_phase_idx,
+                phase_entered_at=record.entered_at,
+                bars_in_phase=record.bars_in_phase,
+                phase_history=[(record.current_phase, record.entered_at)] if record.entered_at else [],
+                invalidated=record.invalidated,
+            )
 
     def _phase_satisfied(
         self, phase: PhaseCondition, blocks: list[str]

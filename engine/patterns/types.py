@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
+import uuid
 
 @dataclass
 class PhaseCondition:
@@ -63,8 +64,63 @@ class PhaseTransition:
     to_phase: str
     timestamp: datetime
     reason: str = "condition_met"        # "condition_met" | "timeout"
+    transition_kind: str = "advanced"    # "phase_entered" | "advanced" | "timeout_reset"
     is_entry_signal: bool = False        # True when entering entry_phase
     is_success: bool = False             # True when reaching target_phase
     # v2 additions
     confidence: float = 1.0              # 0-1, includes optional block bonus
     feature_snapshot: dict | None = None # 92-dim features at transition moment
+    # v3: durable transition evidence
+    transition_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    pattern_version: int = 1
+    timeframe: str = "1h"
+    from_phase_idx: int | None = None
+    to_phase_idx: int | None = None
+    trigger_bar_ts: datetime | None = None
+    scan_id: str | None = None
+    blocks_triggered: list[str] = field(default_factory=list)
+    block_scores: dict | None = None
+    data_quality: dict | None = None
+
+
+@dataclass
+class PatternStateRecord:
+    """Durable current-state snapshot for one pattern/symbol/timeframe."""
+    symbol: str
+    pattern_slug: str
+    pattern_version: int
+    timeframe: str
+    current_phase: str
+    current_phase_idx: int
+    entered_at: datetime | None = None
+    bars_in_phase: int = 0
+    last_eval_at: datetime | None = None
+    last_transition_id: str | None = None
+    active: bool = True
+    invalidated: bool = False
+    updated_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class PhaseTransitionRecord:
+    """Append-only durable transition event."""
+    transition_id: str
+    symbol: str
+    pattern_slug: str
+    pattern_version: int
+    timeframe: str
+    from_phase: str | None
+    to_phase: str
+    from_phase_idx: int | None
+    to_phase_idx: int
+    transition_kind: str
+    reason: str
+    transitioned_at: datetime
+    trigger_bar_ts: datetime | None
+    scan_id: str | None
+    confidence: float
+    block_scores: dict
+    blocks_triggered: list[str]
+    feature_snapshot: dict | None = None
+    data_quality: dict | None = None
+    created_at: datetime = field(default_factory=datetime.now)

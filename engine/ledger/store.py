@@ -71,6 +71,9 @@ class LedgerStore:
                     d[k] = None
         # Handle fields that may not exist in older records
         d.setdefault("feature_snapshot", None)
+        d.setdefault("entry_transition_id", None)
+        d.setdefault("entry_scan_id", None)
+        d.setdefault("entry_block_scores", None)
         d.setdefault("entry_block_coverage", None)
         d.setdefault("entry_p_win", None)
         d.setdefault("entry_ml_state", None)
