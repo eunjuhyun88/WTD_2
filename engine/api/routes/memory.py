@@ -23,22 +23,32 @@ from api.schemas_memory import (
     MemoryQueryResponse,
     MemoryRankedRecord,
 )
+from memory.state_store import MemoryStateStore
 from memory.rerank import rerank_candidates
 
 router = APIRouter()
-_feedback_access_counts: dict[str, int] = {}
-_rejected_index: dict[str, MemoryRejectedRecord] = {}
+_memory_state_store: MemoryStateStore | None = None
+
+
+def get_memory_state_store() -> MemoryStateStore:
+    global _memory_state_store
+    if _memory_state_store is None:
+        _memory_state_store = MemoryStateStore()
+    return _memory_state_store
+
+
+def _set_memory_state_store_for_tests(store: MemoryStateStore) -> None:
+    global _memory_state_store
+    _memory_state_store = store
 
 
 def _apply_feedback(payload: MemoryFeedbackRequest) -> MemoryFeedbackResponse:
-    current = _feedback_access_counts.get(payload.memory_id, 0)
-    if payload.event in {"retrieved", "used", "confirmed"}:
-        current += 1
-    _feedback_access_counts[payload.memory_id] = current
+    updated_at = datetime.now(timezone.utc).isoformat()
+    current = get_memory_state_store().apply_feedback(payload, updated_at)
     return MemoryFeedbackResponse(
         memory_id=payload.memory_id,
         access_count=current,
-        updated_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=updated_at,
     )
 
 
@@ -97,21 +107,7 @@ def memory_feedback_batch(payload: MemoryFeedbackBatchRequest) -> MemoryFeedback
 @router.post("/debug-session", response_model=MemoryDebugSessionResponse)
 def memory_debug_session(payload: MemoryDebugSessionRequest) -> MemoryDebugSessionResponse:
     now = datetime.now(timezone.utc).isoformat()
-    rejected_indexed = 0
-    for hypothesis in payload.hypotheses:
-        if hypothesis.status != "rejected":
-            continue
-        key = f"{payload.session_id}:{hypothesis.id}"
-        _rejected_index[key] = MemoryRejectedRecord(
-            id=hypothesis.id,
-            session_id=payload.session_id,
-            text=hypothesis.text,
-            rejection_reason=hypothesis.rejection_reason,
-            symbol=payload.context.symbol,
-            intent=payload.context.intent,
-            updated_at=now,
-        )
-        rejected_indexed += 1
+    rejected_indexed = get_memory_state_store().record_debug_session(payload, now)
     return MemoryDebugSessionResponse(
         session_id=payload.session_id,
         rejected_indexed=rejected_indexed,
@@ -121,20 +117,4 @@ def memory_debug_session(payload: MemoryDebugSessionRequest) -> MemoryDebugSessi
 
 @router.post("/rejected/search", response_model=MemoryRejectedLookupResponse)
 def memory_rejected_search(payload: MemoryRejectedLookupRequest) -> MemoryRejectedLookupResponse:
-    symbol = payload.symbol.lower() if payload.symbol else None
-    intent = payload.intent.lower() if payload.intent else None
-    query = payload.query.lower() if payload.query else None
-
-    records = list(_rejected_index.values())
-    filtered: list[MemoryRejectedRecord] = []
-    for record in records:
-        if symbol and (record.symbol or "").lower() != symbol:
-            continue
-        if intent and (record.intent or "").lower() != intent:
-            continue
-        if query:
-            text_blob = f"{record.text} {record.rejection_reason or ''}".lower()
-            if query not in text_blob:
-                continue
-        filtered.append(record)
-    return MemoryRejectedLookupResponse(records=filtered[: payload.limit])
+    return MemoryRejectedLookupResponse(records=get_memory_state_store().search_rejected(payload))

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from api.schemas import (
     MemoryDebugSessionRequest,
     MemoryFeedbackRequest,
@@ -7,7 +9,19 @@ from api.schemas import (
     MemoryQueryResponse,
     MemoryRejectedLookupRequest,
 )
-from api.routes.memory import memory_debug_session, memory_feedback, memory_query, memory_rejected_search
+from api.routes.memory import (
+    _set_memory_state_store_for_tests,
+    memory_debug_session,
+    memory_feedback,
+    memory_query,
+    memory_rejected_search,
+)
+from memory.state_store import MemoryStateStore
+
+
+@pytest.fixture(autouse=True)
+def isolated_memory_state_store(tmp_path) -> None:
+    _set_memory_state_store_for_tests(MemoryStateStore(tmp_path / "memory_runtime.sqlite"))
 
 
 def test_memory_query_request_accepts_contract_payload() -> None:
