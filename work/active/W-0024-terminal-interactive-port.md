@@ -44,6 +44,7 @@ app
 ## Assumptions
 
 - Current main's dedicated `TerminalRightRail` shell is the active direction; this cleanup should not revert it.
+- Phase 3 can start as an app-only view-model layer; no engine or contract changes are needed for first attention weighting.
 
 ## Open Questions
 
@@ -70,6 +71,8 @@ app
 - The large terminal summary slab is removed; the surviving board meta now lives as compact status pills inside the right-rail `TerminalContextPanel` header so the center board stays chart-first.
 - Svelte 5 compatibility cleanup uses render snippets in `TerminalRightRail` instead of deprecated `<slot>`.
 - Stale page-local analysis rail CSS should stay deleted because the active right rail owns those selectors inside `TerminalRightRail.svelte`.
+- Phase 3 introduces an attention model as a ranking/emphasis adapter, not a new UI mode router; the left/center/right layout skeleton must remain stable.
+- The first attention slice should affect right-rail block ordering and labels only, leaving chart panes and engine data contracts unchanged.
 
 ## Next Steps
 
@@ -94,6 +97,7 @@ app
 19. Favor progressive disclosure over permanent density: rail summaries stay compact until expanded, and central board context should open drills/panels rather than occupy persistent vertical space.
 20. Align implementation with the attention-workspace design: left rail selects, center board observes, right rail concludes; AI changes emphasis, not the overall layout skeleton.
 21. Implement selection payload emission from the left rail before attempting deeper attention-based ranking, so future AI weighting works on normalized user intent.
+22. Add a small terminal attention model that converts selection/result state into right-rail block weights without changing chart layout.
 
 ## Exit Criteria
 
@@ -105,6 +109,6 @@ app
 
 ## Handoff Checklist
 
-- Active branch: `task/w-0024-terminal-main-cleanup`.
-- Verification: `npm run check` and `npm run build` pass in `app/`.
-- PR #44 is closed as obsolete; use the cleanup branch from latest main for the mergeable warning-free patch.
+- Active branch: `codex/w-0024-terminal-attention-phase3`.
+- Verification target: app typecheck/check after wiring the attention model.
+- PR #44 is closed as obsolete; latest main already contains the selection/header/right-rail shell baseline.
