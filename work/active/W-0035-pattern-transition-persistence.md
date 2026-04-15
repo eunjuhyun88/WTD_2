@@ -36,10 +36,10 @@ engine
 
 ## Facts
 
-- The current worktree contains uncommitted engine changes in `engine/patterns/*` and `engine/ledger/*`, not app changes.
-- `engine/patterns/scanner.py` already expects a `PatternStateStore` and extended `PhaseTransition` metadata.
-- `engine/tests/test_pattern_state_store.py` and `engine/tests/test_patterns_state_machine_durable.py` already define the intended durable behavior.
-- `docs/product/core-loop-system-spec.md` states that current pattern state must be durable and transition events must be append-only.
+- The durable pattern transition implementation is committed on `codex/w-0035-pattern-transition-persistence`.
+- `PatternStateStore` persists append-only transitions and upserted current pattern state in SQLite.
+- Scanner and ledger records now carry transition metadata for entry linkage.
+- Targeted pattern runtime and ledger compatibility tests pass.
 
 ## Assumptions
 
@@ -58,7 +58,7 @@ engine
 
 ## Next Steps
 
-1. Review and commit the durable transition/state implementation.
+1. Open PR for durable transition persistence.
 2. Continue with CaptureRecord linkage in the next slice.
 3. Keep generated `engine/state/*.sqlite*` files out of version control.
 
@@ -72,5 +72,5 @@ engine
 ## Handoff Checklist
 
 - Active branch: `codex/w-0035-pattern-transition-persistence`
-- Verification status: passed targeted pattern runtime and ledger compatibility tests.
+- Verification status: `uv run pytest tests/test_pattern_state_store.py tests/test_patterns_state_machine_durable.py tests/test_patterns_scanner.py tests/test_ledger_store.py tests/test_ledger_dataset.py` passed.
 - Remaining blockers: none for durable transition persistence; next blocker is CaptureRecord linkage.
