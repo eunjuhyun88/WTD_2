@@ -43,19 +43,13 @@
       const res = await fetch('/api/patterns');
       if (!res.ok) return;
       const data = await res.json();
-      // Flatten entry_candidates into symbol list
       const flat: PatternSignalItem[] = [];
-      // Support both response shapes: engine direct (entry_candidates) and proxy (candidates)
       const candidates = data.entry_candidates ?? {};
       if (Object.keys(candidates).length > 0) {
         for (const [slug, symbols] of Object.entries(candidates)) {
           for (const sym of (symbols as string[])) {
             flat.push({ symbol: sym, slug, phase: 'ACCUMULATION' });
           }
-        }
-      } else if (Array.isArray(data.candidates)) {
-        for (const c of data.candidates) {
-          flat.push({ symbol: c.symbol, slug: c.pattern_id, phase: c.phase_name ?? 'ACCUMULATION' });
         }
       }
 
