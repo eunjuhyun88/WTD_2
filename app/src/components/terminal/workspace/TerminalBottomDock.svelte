@@ -3,10 +3,11 @@
 
   interface Props {
     onSend?: (text: string, files?: File[]) => void;
+    onDockAction?: (label: string, prompt: string) => void;
     loading?: boolean;
     feedItems?: Array<string | { symbol: string; message: string; time?: string; tone?: 'bull' | 'bear' | 'warn' | 'info' | 'neutral' }>;
   }
-  let { onSend, loading = false, feedItems = [] }: Props = $props();
+  let { onSend, onDockAction, loading = false, feedItems = [] }: Props = $props();
 
   let inputText = $state('');
   let files = $state<File[]>([]);
@@ -42,8 +43,13 @@
     files = [];
   }
 
-  function runDockAction(prompt: string) {
+  function runDockAction(action: { label: string; prompt: () => string }) {
     if (loading) return;
+    const prompt = action.prompt();
+    if (onDockAction) {
+      onDockAction(action.label, prompt);
+      return;
+    }
     onSend?.(prompt);
   }
 
@@ -87,7 +93,7 @@
           type="button"
           class="dock-action-btn"
           disabled={loading}
-          onclick={() => runDockAction(action.prompt())}
+          onclick={() => runDockAction(action)}
         >
           {action.label}
         </button>
