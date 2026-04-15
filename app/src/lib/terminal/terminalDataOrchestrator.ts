@@ -178,15 +178,22 @@ export async function fetchPatternPhasesData(): Promise<Array<{ slug: string; ph
   const res = await fetch('/api/patterns/states');
   if (!res.ok) return [];
   const data = await res.json();
-  const states: Record<string, Record<string, any>> = data.states ?? {};
-  const bySlug: Record<string, { phaseName: string; symbols: string[] }> = {};
-  for (const [sym, slugMap] of Object.entries(states)) {
-    for (const [slug, info] of Object.entries(slugMap as Record<string, any>)) {
-      if (!bySlug[slug]) bySlug[slug] = { phaseName: info.phase_name ?? info.current_phase ?? '', symbols: [] };
-      bySlug[slug].symbols.push(sym.replace('USDT', ''));
+  const patterns: Record<string, Record<string, any>> = data.patterns ?? {};
+  const rows: Array<{ slug: string; phaseName: string; symbols: string[] }> = [];
+
+  for (const [slug, symbolMap] of Object.entries(patterns)) {
+    const byPhase: Record<string, string[]> = {};
+    for (const [sym, info] of Object.entries(symbolMap as Record<string, any>)) {
+      const phaseName = info.phase_label ?? info.phase_id ?? 'UNKNOWN';
+      if (!byPhase[phaseName]) byPhase[phaseName] = [];
+      byPhase[phaseName].push(sym.replace('USDT', ''));
+    }
+    for (const [phaseName, symbols] of Object.entries(byPhase)) {
+      rows.push({ slug, phaseName, symbols });
     }
   }
-  return Object.entries(bySlug).map(([slug, v]) => ({ slug, ...v }));
+
+  return rows;
 }
 
 export async function fetchTerminalStatusData(): Promise<TerminalStatusEnvelope['data'] | null> {

@@ -45,6 +45,7 @@ interface ChartPayload {
 
 const CHART_CACHE_TTL_MS = 15_000;
 const chartCache = new Map<string, { expiresAt: number; payload: ChartPayload }>();
+const chartInFlight = new Map<string, Promise<ChartPayload>>();
 
 function rollingMeanSeries(values: number[], times: number[], period: number): Array<{ time: number; value: number }> {
   const out: Array<{ time: number; value: number }> = [];
@@ -147,16 +148,27 @@ export const GET: RequestHandler = async ({ url }) => {
       },
     });
   }
+  const inflight = chartInFlight.get(cacheKey);
+  if (inflight) {
+    const payload = await inflight;
+    return json(payload, {
+      headers: {
+        'cache-control': 'private, max-age=15',
+        'x-terminal-cache': 'coalesced',
+      },
+    });
+  }
 
   try {
-    // Futures chart is the terminal truth; keep chart + OI + funding on the same venue.
-    const [klinesResp, fundingResp] = await Promise.all([
-      fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`),
-      fetch(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${symbol}&limit=${Math.min(limit, 500)}`),
-    ]);
+    const producer = (async () => {
+      // Futures chart is the terminal truth; keep chart + OI + funding on the same venue.
+      const [klinesResp, fundingResp] = await Promise.all([
+        fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`),
+        fetch(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${symbol}&limit=${Math.min(limit, 500)}`),
+      ]);
 
-    if (!klinesResp.ok) throw new Error(`Binance futures klines ${klinesResp.status}`);
-    const rawKlines = await klinesResp.json() as number[][];
+      if (!klinesResp.ok) throw new Error(`Binance futures klines ${klinesResp.status}`);
+      const rawKlines = await klinesResp.json() as number[][];
 
     const klines: KlineBar[] = rawKlines.map(k => ({
       time:   Math.floor(k[0] / 1000),
@@ -303,14 +315,18 @@ export const GET: RequestHandler = async ({ url }) => {
       sigIdx++;
     }
 
-    const payload: ChartPayload = {
-      symbol,
-      tf,
-      klines,
-      oiBars,
-      fundingBars,
-      indicators: { sma5, sma20, sma60, ema21, ema55, atr14, vwap, bbUpper, bbLower, rsi14, macd },
-    };
+      const payload: ChartPayload = {
+        symbol,
+        tf,
+        klines,
+        oiBars,
+        fundingBars,
+        indicators: { sma5, sma20, sma60, ema21, ema55, atr14, vwap, bbUpper, bbLower, rsi14, macd },
+      };
+      return payload;
+    })();
+    chartInFlight.set(cacheKey, producer);
+    const payload = await producer;
     chartCache.set(cacheKey, {
       expiresAt: now + CHART_CACHE_TTL_MS,
       payload,
@@ -323,5 +339,7 @@ export const GET: RequestHandler = async ({ url }) => {
     });
   } catch (err) {
     return json({ error: String(err) }, { status: 500 });
+  } finally {
+    chartInFlight.delete(cacheKey);
   }
 };
