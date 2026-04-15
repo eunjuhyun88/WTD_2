@@ -24,6 +24,12 @@ Then set:
 DATABASE_URL=postgresql://app_runtime:...@HOST:5432/postgres
 ```
 
+Important:
+
+- the template no longer grants schema-wide table writes by default
+- after creating the role, add explicit table/sequence/function grants only for the app routes you actually run
+- do not add blanket future default grants unless the schema is split by sensitivity
+
 ## 2. Audit RLS and Runtime Privileges
 
 From the `app/` workspace:
