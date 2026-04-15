@@ -30,23 +30,29 @@ $$;
 
 grant usage on schema public to app_runtime;
 
--- Existing objects
-grant select, insert, update, delete on all tables in schema public to app_runtime;
-grant usage, select on all sequences in schema public to app_runtime;
-grant execute on all functions in schema public to app_runtime;
-
--- Future objects
-alter default privileges in schema public
-  grant select, insert, update, delete on tables to app_runtime;
-alter default privileges in schema public
-  grant usage, select on sequences to app_runtime;
-alter default privileges in schema public
-  grant execute on functions to app_runtime;
-
 -- Tighten PUBLIC baseline where possible.
 revoke create on schema public from public;
 revoke all on all tables in schema public from public;
 revoke all on all sequences in schema public from public;
 revoke all on all functions in schema public from public;
+
+-- Default state: no blanket object grants.
+-- Add only the exact tables/functions the app runtime needs.
+--
+-- Example read-only grants:
+-- grant select on table public.app_users to app_runtime;
+-- grant select on table public.user_preferences to app_runtime;
+--
+-- Example read-write grants for authenticated app flows:
+-- grant select, insert, update on table public.user_preferences to app_runtime;
+-- grant select, insert, update, delete on table public.sessions to app_runtime;
+-- grant select, insert on table public.auth_nonces to app_runtime;
+--
+-- Example sequence/function grants when required:
+-- grant usage, select on sequence public.some_table_id_seq to app_runtime;
+-- grant execute on function public.set_updated_at() to app_runtime;
+--
+-- Avoid schema-wide future default grants unless the schema is already split
+-- into tables with the same sensitivity profile.
 
 commit;

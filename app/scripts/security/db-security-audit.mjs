@@ -79,11 +79,11 @@ async function run() {
       select
         table_schema as schema_name,
         table_name,
+        grantee,
         privilege_type
-      from information_schema.role_table_grants
+      from information_schema.table_privileges
       where table_schema = 'public'
-        and grantee = current_user
-      order by table_name, privilege_type
+      order by table_name, grantee, privilege_type
     `);
 
     const runtimeRole = runtimeRoleResult.rows[0] ?? null;
@@ -110,7 +110,10 @@ async function run() {
     for (const row of grantsResult.rows) {
       const key = `${row.schema_name}.${row.table_name}`;
       const list = grantsByTable.get(key) ?? [];
-      list.push(row.privilege_type);
+      list.push({
+        grantee: row.grantee,
+        privilege: row.privilege_type,
+      });
       grantsByTable.set(key, list);
     }
 
@@ -134,6 +137,10 @@ async function run() {
       const key = `${table.schema}.${table.table}`;
       const policies = policiesByTable.get(key) ?? [];
       const grants = grantsByTable.get(key) ?? [];
+      const runtimeRoleGrants = grants
+        .filter((grant) => grant.grantee === runtimeRole?.current_user)
+        .map((grant) => grant.privilege);
+      const publicOrPeerGrants = grants.filter((grant) => grant.grantee !== runtimeRole?.current_user);
 
       if (!table.rlsEnabled && !table.exempt) {
         findings.push({
@@ -153,12 +160,30 @@ async function run() {
         });
       }
 
-      if (grants.length > 0) {
+      if (runtimeRoleGrants.length > 0) {
         findings.push({
           severity: 'info',
           code: 'db.table_grants',
           table: key,
-          message: `${key} grants for current role: ${grants.join(', ')}`,
+          message: `${key} grants for current role: ${runtimeRoleGrants.join(', ')}`,
+        });
+      }
+
+      if (publicOrPeerGrants.length > 0) {
+        const grouped = new Map();
+        for (const grant of publicOrPeerGrants) {
+          const privileges = grouped.get(grant.grantee) ?? [];
+          privileges.push(grant.privilege);
+          grouped.set(grant.grantee, privileges);
+        }
+        const details = Array.from(grouped.entries())
+          .map(([grantee, privileges]) => `${grantee}: ${Array.from(new Set(privileges)).join(', ')}`)
+          .join('; ');
+        findings.push({
+          severity: 'high',
+          code: 'db.shared_table_grants',
+          table: key,
+          message: `${key} has grants beyond the runtime role (${details}).`,
         });
       }
     }
