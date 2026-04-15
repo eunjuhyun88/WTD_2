@@ -2,6 +2,13 @@ import { env } from '$env/dynamic/private';
 
 type EnvLike = Record<string, string | undefined>;
 
+function envBool(value: string | undefined, fallback: boolean): boolean {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return fallback;
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
 function normalizeHost(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const first = raw.split(',')[0]?.trim().toLowerCase();
@@ -36,6 +43,11 @@ export function isHostAllowed(requestHost: string | null, envLike: EnvLike = env
   return allowedHosts.has(normalizedHost);
 }
 
-export function readRequestHost(request: Request): string | null {
-  return normalizeHost(request.headers.get('x-forwarded-host') ?? request.headers.get('host'));
+export function readRequestHost(request: Request, envLike: EnvLike = env): string | null {
+  const trustProxyHeaders = envBool(envLike.SECURITY_TRUST_PROXY_HEADERS, false);
+  if (trustProxyHeaders) {
+    const forwardedHost = normalizeHost(request.headers.get('x-forwarded-host'));
+    if (forwardedHost) return forwardedHost;
+  }
+  return normalizeHost(request.headers.get('host'));
 }

@@ -48,16 +48,18 @@ describe('runtimeSecurity', () => {
         TURNSTILE_FAIL_OPEN: 'true',
         PGSSL_INSECURE_SKIP_VERIFY: 'true',
         ENGINE_URL: 'http://engine-api.internal',
+        SECURITY_ALLOWED_HOSTS: '',
       }),
     ).toEqual([
       'TURNSTILE_ALLOW_BYPASS must be false in production.',
       'TURNSTILE_FAIL_OPEN must be false in production.',
       'PGSSL_INSECURE_SKIP_VERIFY must be false in production.',
       'ENGINE_URL must use https in production unless it targets localhost.',
+      'SECURITY_ALLOWED_HOSTS is required in production.',
     ]);
   });
 
-  it('warns when DATABASE_URL uses a privileged role', () => {
+  it('warns when DATABASE_URL uses a privileged role outside production', () => {
     expect(
       getRuntimeSecurityWarnings({
         DATABASE_URL: 'postgresql://postgres.abcd:secret@db.internal:5432/postgres',
@@ -67,13 +69,25 @@ describe('runtimeSecurity', () => {
     ]);
   });
 
-  it('warns when host allowlist and turnstile secret are missing in production', () => {
+  it('fails when privileged database role is used in production', () => {
+    expect(
+      getRuntimeSecurityErrors({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://postgres.abcd:secret@db.internal:5432/postgres',
+        SECURITY_ALLOWED_HOSTS: 'app.cogotchi.dev',
+      }),
+    ).toEqual([
+      'DATABASE_URL uses privileged database role "postgres.abcd". Production app-web must use a least-privilege role.',
+    ]);
+  });
+
+  it('warns when turnstile secret is missing in production', () => {
     expect(
       getRuntimeSecurityWarnings({
         NODE_ENV: 'production',
+        SECURITY_ALLOWED_HOSTS: 'app.cogotchi.dev',
       }),
     ).toEqual([
-      'SECURITY_ALLOWED_HOSTS is not configured. Add an explicit host allowlist in production.',
       'TURNSTILE_SECRET_KEY is not configured. Public auth routes rely on bot protection bypass policy.',
     ]);
   });
