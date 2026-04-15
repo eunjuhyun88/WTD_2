@@ -30,9 +30,10 @@ engine
 
 ## Facts
 
-- The current mixed local diff already changes `engine/api/routes/memory.py` and adds `engine/memory/state_store.py` plus a targeted test.
-- This slice is engine-only and should be mergeable without app persistence or terminal surface files.
-- `W-0035` and `W-0037` already established the local durable-store pattern for engine runtime data.
+- This slice has been reconstructed on clean branch `codex/w-0043-engine-memory-state-persistence-clean`.
+- `engine/api/routes/memory.py` now persists feedback/debug state through `engine/memory/state_store.py`.
+- This slice is engine-only and does not include app persistence or terminal surface files.
+- Targeted engine memory tests pass.
 
 ## Assumptions
 
@@ -49,9 +50,9 @@ engine
 
 ## Next Steps
 
-1. Recover the engine memory store diff into a clean branch.
-2. Run targeted memory tests.
-3. Keep app-side memory adapters out unless required to unblock CI.
+1. Commit and open the clean `W-0043` PR.
+2. Keep app-side memory adapters out of this engine slice.
+3. Apply any CI-only fixes without expanding into app-domain work.
 
 ## Exit Criteria
 
@@ -61,5 +62,5 @@ engine
 
 ## Handoff Checklist
 
-- Verification status: not yet restaged on a clean branch.
-- Remaining blockers: extract the engine-only diff from the mixed local branch.
+- Verification status: `uv run pytest tests/test_contract_memory_roundtrip.py tests/test_memory_state_store.py` passed from `engine/`.
+- Remaining blockers: none before PR; CI still needs to confirm.
