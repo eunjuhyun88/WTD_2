@@ -24,14 +24,10 @@
     buildDockFeedItems,
     buildFallbackDepth,
     buildFallbackLiqClusters,
-    buildHeroMetricTiles,
-    buildShellSummaryCards,
-    buildStatusStripItems,
-    buildTerminalSubtitle,
     getOrderbookBiasLabel,
     getOrderbookTone,
-    metricValueFromEvidence,
   } from '$lib/terminal/terminalDerived';
+  import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
     fetchTerminalAnomalies,
     fetchTerminalQueryPresets,
@@ -71,8 +67,10 @@
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
+  import TerminalContextPanelSummary from '../../components/terminal/workspace/TerminalContextPanelSummary.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
+  import ChartMetricStrip from '../../components/terminal/workspace/ChartMetricStrip.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
@@ -106,12 +104,6 @@
   const analysisInFlight = new Map<string, Promise<void>>();
   const memoryRerankInFlight = new Set<string>();
   let activeReadPathKey = $state('');
-  let perfStats = $state({
-    analysisApplied: 0,
-    analysisSkipped: 0,
-    decisionApplied: 0,
-    decisionSkipped: 0,
-  });
   let newsData = $state<any>(null);
 
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
@@ -288,12 +280,8 @@
       if (symbol === activeSymbol || !analysisData) {
         analysisData = data;
       }
-      perfStats = { ...perfStats, analysisApplied: perfStats.analysisApplied + 1 };
     } else if (!analysisData && symbol === activeSymbol) {
       analysisData = data;
-      perfStats = { ...perfStats, analysisApplied: perfStats.analysisApplied + 1 };
-    } else {
-      perfStats = { ...perfStats, analysisSkipped: perfStats.analysisSkipped + 1 };
     }
     return changed;
   }
@@ -363,15 +351,6 @@
     const decisionChanged = assetChanged || verdictChanged || evidenceChanged || !currentDecision;
     if (decisionChanged) {
       decisionMap = { ...decisionMap, [symbol]: decision };
-      perfStats = { ...perfStats, decisionApplied: perfStats.decisionApplied + 1 };
-    } else {
-      perfStats = { ...perfStats, decisionSkipped: perfStats.decisionSkipped + 1 };
-    }
-    if (import.meta.env.DEV) {
-      const total = perfStats.analysisApplied + perfStats.analysisSkipped + perfStats.decisionApplied + perfStats.decisionSkipped;
-      if (total > 0 && total % 500 === 0) {
-        console.debug('[terminal-perf]', perfStats);
-      }
     }
     return { assetChanged, verdictChanged, evidenceChanged };
   }
@@ -985,7 +964,6 @@
   // reactivity is tracked directly (bypasses WorkspaceGrid prop chain issue)
   let heroAsset = $derived(boardAssets.find(a => a.symbol === activeSymbol) ?? boardAssets[0] ?? null);
   let heroVerdict = $derived(heroAsset ? verdictMap[heroAsset.symbol] ?? null : null);
-  let heroEvidence = $derived(heroAsset ? evidenceMap[heroAsset.symbol] ?? [] : []);
 
   let activeAsset = $derived(boardAssets.find(a => a.symbol === activeSymbol) ?? boardAssets[0] ?? null);
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
@@ -994,14 +972,6 @@
   let companionAssets = $derived(
     boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
   );
-
-  let heroMetricTiles = $derived.by(() => {
-    return buildHeroMetricTiles({
-      heroAsset,
-      activeEvidence,
-      flowBias,
-    });
-  });
 
   let microstructure = $derived(activeAnalysisData?.microstructure ?? null);
   let depthSnapshot = $derived(readPathDepth ? {
@@ -1031,17 +1001,6 @@
 
   let boardSourceRows = $derived((activeAsset?.sources ?? []).slice(0, 4));
 
-  let statusStripItems = $derived.by(() => buildStatusStripItems({
-    flowBias,
-    isScanMode,
-    runtimeModeLabel,
-    activeAsset,
-    boardAssetsCount: boardAssets.length,
-    activeSymbol,
-    activePairDisplay,
-    regime: metricValueFromEvidence(activeEvidence, ['Regime', 'Breakout'], flowBias),
-  }));
-
   // ── Analysis rail mode ────────────────────────────────────────
   // SINGLE: ≤1 asset or active symbol has a verdict → show full VerdictCard
   // SCAN:   >1 assets returned (multi-asset prompt) → show compact scan list
@@ -1055,25 +1014,21 @@
   let activeFocusLabel = $derived(activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay);
   let timeframeBadgeLabel = $derived(symbolToTF(gTf).toUpperCase());
   let assistantBannerText = $derived(streamText.trim());
-  let shellSummaryCards = $derived.by(() => buildShellSummaryCards({
+  let surfaceSummary = $derived.by(() => buildTerminalSurfaceSummary({
     activeAsset,
+    heroAsset,
     activeVerdict,
-    activeFocusLabel,
-    timeframeBadgeLabel,
+    activeEvidence,
+    flowBias,
     isScanMode,
-    boardAssetsCount: boardAssets.length,
     runtimeModeLabel,
-    regime: metricValueFromEvidence(activeEvidence, ['Regime', 'Breakout'], flowBias),
-  }));
-  let terminalSubtitle = $derived.by(() => buildTerminalSubtitle({
+    activeSymbol,
+    activePairDisplay,
     activeFocusLabel,
     timeframeBadgeLabel,
-    isScanMode,
     boardAssetsCount: boardAssets.length,
-    regime: metricValueFromEvidence(activeEvidence, ['Regime', 'Breakout'], flowBias),
-    activeAsset,
   }));
-
+  let statusStripItems = $derived(surfaceSummary.statusStripItems);
   let dockFeedItems = $derived.by(() => buildDockFeedItems({
     activeFocusLabel,
     activeAsset,
@@ -1085,64 +1040,10 @@
     statusStripItems,
     marketEvents,
   }));
-  let overviewFacts = $derived.by(() => {
-    if (!activeAsset) return [] as Array<{ label: string; value: string; tone: 'bull' | 'bear' | 'neutral' | 'info' | 'warn' }>;
-    const lastPrice = activeAsset.lastPrice
-      ? activeAsset.lastPrice.toLocaleString('en-US', { maximumFractionDigits: activeAsset.lastPrice >= 1000 ? 2 : 4 })
-      : '—';
-    const change4h = formatSignedPct(activeAsset.changePct4h, 2);
-    return [
-      { label: 'SYM', value: activeAsset.symbol.replace('USDT', ''), tone: 'info' as const },
-      { label: 'LAST', value: lastPrice, tone: 'neutral' as const },
-      { label: '4H', value: change4h, tone: activeAsset.changePct4h >= 0 ? 'bull' as const : 'bear' as const },
-      {
-        label: 'BIAS',
-        value: activeVerdict?.direction?.toUpperCase?.() ?? 'NEUTRAL',
-        tone: activeVerdict?.direction === 'bullish' ? 'bull' as const : activeVerdict?.direction === 'bearish' ? 'bear' as const : 'neutral' as const,
-      },
-      { label: 'OI 1H', value: `${activeAsset.oiChangePct1h >= 0 ? '+' : ''}${activeAsset.oiChangePct1h.toFixed(1)}%`, tone: activeAsset.oiChangePct1h >= 0 ? 'bull' as const : 'bear' as const },
-      { label: 'FUND', value: `${(activeAsset.fundingRate * 100).toFixed(3)}%`, tone: Math.abs(activeAsset.fundingRate) > 0.01 ? 'warn' as const : 'neutral' as const },
-    ];
-  });
-  let boardDensityGroups = $derived.by(() => {
-    if (!activeAsset) return [] as Array<{ title: string; rows: Array<{ label: string; value: string; tone: 'bull' | 'bear' | 'neutral' | 'info' | 'warn' }> }>;
-    const regime = metricValueFromEvidence(activeEvidence, ['Regime', 'Breakout'], '—');
-    const flow = metricValueFromEvidence(activeEvidence, ['CVD', 'FR / Flow'], flowBias);
-    const toneFlow =
-      flow.includes('+') || flow.toLowerCase().includes('buy')
-        ? 'bull'
-        : flow.toLowerCase().includes('sell')
-          ? 'bear'
-          : 'neutral';
-    return [
-      {
-        title: 'Market',
-        rows: [
-          { label: 'PX', value: activeAsset.lastPrice ? activeAsset.lastPrice.toLocaleString('en-US', { maximumFractionDigits: activeAsset.lastPrice >= 1000 ? 2 : 4 }) : '—', tone: 'neutral' as const },
-          { label: '4H', value: formatSignedPct(activeAsset.changePct4h, 2), tone: activeAsset.changePct4h >= 0 ? 'bull' as const : 'bear' as const },
-          { label: 'VOL', value: `${activeAsset.volumeRatio1h.toFixed(1)}x`, tone: activeAsset.volumeRatio1h > 1.4 ? 'bull' as const : 'neutral' as const },
-        ],
-      },
-      {
-        title: 'Positioning',
-        rows: [
-          { label: 'OI', value: `${activeAsset.oiChangePct1h >= 0 ? '+' : ''}${activeAsset.oiChangePct1h.toFixed(1)}%`, tone: activeAsset.oiChangePct1h >= 0 ? 'bull' as const : 'bear' as const },
-          { label: 'FUND', value: `${(activeAsset.fundingRate * 100).toFixed(3)}%`, tone: Math.abs(activeAsset.fundingRate) > 0.01 ? 'warn' as const : 'neutral' as const },
-          { label: 'FLOW', value: flow, tone: toneFlow as 'bull' | 'bear' | 'neutral' },
-        ],
-      },
-      {
-        title: 'Signal',
-        rows: [
-          { label: 'BIAS', value: activeVerdict?.direction?.toUpperCase?.() ?? 'NEUTRAL', tone: activeVerdict?.direction === 'bullish' ? 'bull' as const : activeVerdict?.direction === 'bearish' ? 'bear' as const : 'neutral' as const },
-          { label: 'CONF', value: activeVerdict?.confidence?.toUpperCase?.() ?? 'LOW', tone: activeVerdict?.confidence === 'high' ? 'bull' as const : activeVerdict?.confidence === 'medium' ? 'warn' as const : 'neutral' as const },
-          { label: 'REG', value: regime, tone: 'info' as const },
-        ],
-      },
-    ];
-  });
-  let railDensityItems = $derived(statusStripItems.slice(0, 6));
-
+  let overviewFacts = $derived(surfaceSummary.overviewFacts);
+  let heroMetricTiles = $derived(surfaceSummary.heroMetricTiles);
+  let shellSummaryCards = $derived(surfaceSummary.shellSummaryCards);
+  let terminalSubtitle = $derived(surfaceSummary.terminalSubtitle);
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
     { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
@@ -1270,21 +1171,7 @@
           {/each}
         </div>
       {/if}
-      {#if false && boardDensityGroups.length > 0}
-        <div class="board-density-grid">
-          {#each boardDensityGroups as group}
-            <section class="density-group">
-              <header>{group.title}</header>
-              {#each group.rows as row}
-                <div class="density-row" data-tone={row.tone}>
-                  <span>{row.label}</span>
-                  <strong>{row.value}</strong>
-                </div>
-              {/each}
-            </section>
-          {/each}
-        </div>
-      {/if}
+      <ChartMetricStrip items={heroMetricTiles} />
       <!-- Desktop board (hidden on mobile via CSS) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
@@ -1347,17 +1234,6 @@
               activeAnalysisTab = 'metrics';
             }}
           />
-          {#if false && heroMetricTiles.length > 0}
-            <div class="hero-metrics-row">
-              {#each heroMetricTiles as tile}
-                <div class="hero-metric" data-tone={tile.tone}>
-                  <span class="hero-metric-label">{tile.label}</span>
-                  <span class="hero-metric-value">{tile.value}</span>
-                  <span class="hero-metric-note">{tile.note}</span>
-                </div>
-              {/each}
-            </div>
-          {/if}
           {#if microstructure || readPathDepth || readPathLiq}
             <div class="microstructure-row">
               <section class="micro-card orderbook-card" data-tone={orderbookTone}>
@@ -1532,44 +1408,11 @@
               <span class="panel-head-toggle-glyph">◨</span>
             </button>
           </div>
-
-          {#if false}
-          <div class="rail-snapshot-stack">
-            {#if false && railDensityItems.length > 0}
-              <div class="rail-density-table">
-                {#each railDensityItems as item}
-                  <div class="rail-density-row" data-tone={item.tone}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </div>
-                {/each}
-              </div>
-            {/if}
-            {#if shellSummaryCards.length > 0}
-              <div class="shell-summary-grid rail">
-                {#each shellSummaryCards as card}
-                  <div class="shell-summary-card" data-tone={card.tone}>
-                    <span class="shell-summary-label">{card.label}</span>
-                    <strong class="shell-summary-value">{card.value}</strong>
-                    <small class="shell-summary-meta">{card.meta}</small>
-                  </div>
-                {/each}
-              </div>
-            {/if}
-
-            <div class="terminal-statusline rail">
-              <span class="terminal-statusline-copy">{terminalSubtitle}</span>
-              <div class="terminal-statusline-pills">
-                {#each statusStripItems.slice(0, 6) as item}
-                  <span class="status-pill" data-tone={item.tone}>
-                    <em>{item.label}</em>
-                    <strong>{item.value}</strong>
-                  </span>
-                {/each}
-              </div>
-            </div>
-          </div>
-          {/if}
+          <TerminalContextPanelSummary
+            cards={shellSummaryCards}
+            subtitle={terminalSubtitle}
+            statusItems={statusStripItems.slice(0, 6)}
+          />
 
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
@@ -1795,150 +1638,6 @@
     line-clamp: 2;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-  }
-
-  .shell-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 3px;
-  }
-
-  .shell-summary-card {
-    min-width: 0;
-    display: grid;
-    gap: 1px;
-    padding: 4px 6px;
-    border-radius: 3px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.022);
-  }
-
-  .shell-summary-card[data-tone='bull'] {
-    background: rgba(74,222,128,0.08);
-    border-color: rgba(74,222,128,0.2);
-  }
-
-  .shell-summary-card[data-tone='bear'] {
-    background: rgba(248,113,113,0.08);
-    border-color: rgba(248,113,113,0.2);
-  }
-
-  .shell-summary-card[data-tone='warn'] {
-    background: rgba(251,191,36,0.08);
-    border-color: rgba(251,191,36,0.2);
-  }
-
-  .shell-summary-card[data-tone='info'] {
-    background: rgba(99,179,237,0.09);
-    border-color: rgba(99,179,237,0.18);
-  }
-
-  .shell-summary-label,
-  .shell-summary-meta,
-  .status-pill em,
-  .status-pill strong {
-    font-family: var(--sc-font-mono);
-  }
-
-  .shell-summary-label {
-    font-size: 7px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(247,242,234,0.42);
-  }
-
-  .shell-summary-value {
-    font-size: 10px;
-    color: rgba(247,242,234,0.9);
-    line-height: 1.1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .shell-summary-meta {
-    font-size: 7px;
-    color: rgba(247,242,234,0.36);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .terminal-statusline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    padding: 3px 6px;
-    border-radius: 3px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(6,10,16,0.82);
-    margin: 3px 4px 4px;
-  }
-
-  .rail-snapshot-stack {
-    display: grid;
-    gap: 3px;
-    padding: 4px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.012);
-  }
-  .rail-density-table {
-    display: grid;
-    gap: 3px;
-  }
-  .rail-density-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 3px 5px;
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 2px;
-    background: rgba(8,10,14,0.92);
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    color: rgba(255,255,255,0.34);
-  }
-  .rail-density-row > strong { font-size: 9px; color: rgba(247,242,234,0.88); }
-  .rail-density-row[data-tone='bull'] > strong { color: #8fdd9d; }
-  .rail-density-row[data-tone='bear'] > strong { color: #f19999; }
-  .rail-density-row[data-tone='warn'] > strong { color: #e9c167; }
-  .rail-density-row[data-tone='info'] > strong { color: #83bcff; }
-
-  .shell-summary-grid.rail {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2px;
-  }
-
-  .terminal-statusline.rail {
-    margin: 0;
-    padding: 4px;
-    gap: 5px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .terminal-statusline-copy {
-    min-width: 0;
-    flex: 1;
-    font-size: 10px;
-    color: rgba(247,242,234,0.62);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .terminal-statusline-pills {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .terminal-statusline-pills::-webkit-scrollbar {
-    display: none;
   }
 
   .status-pill {
@@ -2290,59 +1989,6 @@
   .overview-cell[data-tone='bear'] > strong { color: #f19999; }
   .overview-cell[data-tone='warn'] > strong { color: #e9c167; }
   .overview-cell[data-tone='info'] > strong { color: #83bcff; }
-  .board-density-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
-    padding: 4px 6px 6px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.012);
-  }
-  .density-group {
-    min-width: 0;
-    padding: 3px 5px;
-    border-radius: 2px;
-    border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(8,10,14,0.92);
-    display: grid;
-    gap: 2px;
-  }
-  .density-group > header {
-    font-family: var(--sc-font-mono);
-    font-size: 7px;
-    color: rgba(131,188,255,0.62);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding-bottom: 2px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
-  .density-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 8px;
-  }
-  .density-row > span {
-    font-family: var(--sc-font-mono);
-    font-size: 7px;
-    color: rgba(255,255,255,0.34);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-  .density-row > strong {
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    line-height: 1.1;
-    color: rgba(247,242,234,0.9);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .density-row[data-tone='bull'] > strong { color: #8fdd9d; }
-  .density-row[data-tone='bear'] > strong { color: #f19999; }
-  .density-row[data-tone='warn'] > strong { color: #e9c167; }
-  .density-row[data-tone='info'] > strong { color: #83bcff; }
-
   .board-content {
     flex: 1;
     overflow: hidden;
@@ -2497,16 +2143,6 @@
     overflow: hidden;
   }
 
-  .hero-metrics-row {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 1px;
-    padding: 3px 4px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.01);
-  }
-
   .board-decision-strip {
     display: grid;
     gap: 1px;
@@ -2598,33 +2234,6 @@
     border-color: rgba(77,143,245,0.22);
   }
 
-  .hero-metric {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    padding: 3px 5px;
-    border-radius: 2px;
-    border: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.018);
-  }
-  .hero-metric[data-tone='bull'] { background: rgba(74,222,128,0.06); }
-  .hero-metric[data-tone='bear'] { background: rgba(248,113,113,0.06); }
-  .hero-metric[data-tone='warn'] { background: rgba(251,191,36,0.06); }
-  .hero-metric-label,
-  .hero-metric-note {
-    font-family: var(--sc-font-mono);
-    font-size: 7px;
-    color: var(--sc-text-3);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-  .hero-metric-value {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--sc-text-0);
-  }
 
   .market-mini-grid {
     display: grid;
@@ -2855,27 +2464,20 @@
       --terminal-left-w: 156px;
       --terminal-analysis-w: 248px;
     }
-    .rail-snapshot-stack {
-      display: none;
-    }
     .workspace-panel-head {
       padding-inline: 4px;
     }
-    .board-density-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 
   /* Tablet — analysis rail gets narrower */
   @media (max-width: 1200px) and (min-width: 769px) {
     .analysis-rail { width: var(--terminal-analysis-w, 260px); max-width: 340px; }
-    .hero-metrics-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .microstructure-row { grid-template-columns: 1fr; }
-    .shell-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .terminal-body {
       --terminal-left-w: 144px;
       --terminal-analysis-w: 232px;
     }
     .terminal-overview-bar { padding-inline: 6px; }
-    .board-density-grid { grid-template-columns: 1fr; }
   }
 
   /* Mobile */
@@ -2888,17 +2490,6 @@
     }
     .assistant-ribbon {
       padding: 10px;
-    }
-    .shell-summary-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-    .terminal-statusline {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 6px;
-    }
-    .terminal-statusline-copy {
-      white-space: normal;
     }
     .terminal-shell-head {
       padding: 14px;
