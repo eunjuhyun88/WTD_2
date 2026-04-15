@@ -28,7 +28,7 @@ from typing import Any
 
 from data_cache.loader import load_klines, load_perp
 from exceptions import CacheMiss
-from ledger.store import LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
 from patterns.entry_scorer import score_entry_feature_snapshot
 from patterns.library import PATTERN_LIBRARY, get_pattern
@@ -139,6 +139,8 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
         entry_ml_error=entry_score.error,
     )
     LEDGER_STORE.save(outcome)
+    LEDGER_RECORD_STORE.append_entry_record(outcome)
+    LEDGER_RECORD_STORE.append_score_record(outcome)
 
 
 def _on_success(transition: PhaseTransition) -> None:

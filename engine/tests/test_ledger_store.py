@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from ledger.store import LedgerStore
-from ledger.types import PatternOutcome, PatternStats
+from ledger.store import LedgerRecordStore, LedgerStore
+from ledger.types import PatternLedgerRecord, PatternOutcome, PatternStats
 
 
 SLUG = "tradoor-oi-reversal-v1"
@@ -289,3 +289,53 @@ class TestComputeStats:
         stats = store.compute_stats(SLUG)
         assert stats.failure_count == 1
         assert stats.success_count == 0
+
+
+class TestLedgerRecordStore:
+    def test_append_and_load_roundtrip(self, tmp_path: Path) -> None:
+        store = LedgerRecordStore(base_dir=tmp_path / "ledger-records")
+        record = PatternLedgerRecord(
+            record_type="entry",
+            pattern_slug=SLUG,
+            symbol="PTBUSDT",
+            outcome_id="outcome-1",
+            transition_id="transition-1",
+            payload={"entry_price": 1.23},
+        )
+
+        store.append(record)
+        loaded = store.load(SLUG, record.id)
+
+        assert loaded is not None
+        assert loaded.id == record.id
+        assert loaded.record_type == "entry"
+        assert loaded.payload["entry_price"] == 1.23
+
+    def test_compute_family_stats_uses_entry_capture_ratio(self, tmp_path: Path) -> None:
+        store = LedgerRecordStore(base_dir=tmp_path / "ledger-records")
+        for idx in range(4):
+            store.append(
+                PatternLedgerRecord(
+                    record_type="entry",
+                    pattern_slug=SLUG,
+                    symbol=f"SYM{idx}",
+                )
+            )
+        for idx in range(2):
+            store.append(
+                PatternLedgerRecord(
+                    record_type="capture",
+                    pattern_slug=SLUG,
+                    symbol=f"SYM{idx}",
+                )
+            )
+        store.append(PatternLedgerRecord(record_type="score", pattern_slug=SLUG, symbol="SYM0"))
+        store.append(PatternLedgerRecord(record_type="verdict", pattern_slug=SLUG, symbol="SYM0"))
+
+        stats = store.compute_family_stats(SLUG)
+
+        assert stats.entry_count == 4
+        assert stats.capture_count == 2
+        assert stats.score_count == 1
+        assert stats.verdict_count == 1
+        assert stats.capture_to_entry_rate == pytest.approx(0.5)

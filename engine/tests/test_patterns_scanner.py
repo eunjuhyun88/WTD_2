@@ -10,13 +10,25 @@ import patterns.scanner as pattern_scanner
 
 def test_on_entry_signal_persists_shadow_ml_metadata(monkeypatch) -> None:
     saved = []
+    entry_records = []
+    score_records = []
 
     class FakeStore:
         def save(self, outcome):
             saved.append(outcome)
             return None
 
+    class FakeRecordStore:
+        def append_entry_record(self, outcome):
+            entry_records.append(outcome)
+            return None
+
+        def append_score_record(self, outcome):
+            score_records.append(outcome)
+            return None
+
     monkeypatch.setattr(pattern_scanner, "LEDGER_STORE", FakeStore())
+    monkeypatch.setattr(pattern_scanner, "LEDGER_RECORD_STORE", FakeRecordStore())
     monkeypatch.setattr(pattern_scanner, "_get_entry_price", lambda symbol: 123.45)
     monkeypatch.setattr(pattern_scanner, "_detect_btc_trend", lambda: "bullish")
     monkeypatch.setattr(
@@ -57,6 +69,8 @@ def test_on_entry_signal_persists_shadow_ml_metadata(monkeypatch) -> None:
     assert outcome.entry_threshold == 0.55
     assert outcome.entry_threshold_passed is True
     assert outcome.feature_snapshot == {"ema20_slope": 0.1, "oi_change_1h": 0.2}
+    assert len(entry_records) == 1
+    assert len(score_records) == 1
 
 
 def test_entry_candidate_records_include_transition_evidence(tmp_path, monkeypatch) -> None:
