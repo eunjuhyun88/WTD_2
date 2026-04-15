@@ -22,6 +22,7 @@ Allowed values: `app`, `engine`, `contract`, `research`
 ## Canonical Files
 
 - list the 3-7 files or docs that define this work
+- default to the narrowest pack that can support the next action
 
 ## Facts
 
@@ -29,18 +30,21 @@ Allowed values: `app`, `engine`, `contract`, `research`
 - include source file or system where each fact was confirmed when useful
 - keep only current facts that change execution now
 - delete facts that are obsolete, duplicated, or already folded into decisions
+- target 3-5 bullets
 
 ## Assumptions
 
 - list assumptions currently being made
 - replace or remove assumptions as facts are verified
 - keep this short; delete assumptions that are no longer active
+- target 0-3 bullets
 
 ## Open Questions
 
 - list unresolved questions blocking confident execution
 - remove or convert them once answered
 - do not keep answered or non-blocking questions here
+- target 0-3 bullets
 
 ## Decisions
 
@@ -64,3 +68,4 @@ Allowed values: `app`, `engine`, `contract`, `research`
 - rejected paths or failed hypotheses recorded if relevant
 - pending checks, risks, or blockers stated explicitly
 - stale bullets removed; only current state remains
+- default pack for the next agent is obvious from this file
