@@ -51,18 +51,48 @@ app
 - `W-0036` remains the umbrella rollout, but the remaining implementation branch is `codex/w-0044-terminal-page-integration-clean`.
 - Keep the page-integration slice limited to the four touched app files; do not pull in pattern-library or broader terminal surface changes from the older branch.
 - Reuse `codex/w-0041-terminal-analyze-contract-surface-clean` for explicit analyze-field consumption instead of re-mixing those changes here.
+- Preferred merge order is `W-0041` first, then `W-0044`; however, temporary integration validation showed the two slices compose cleanly as a stack on top of `origin/main`.
+- Review framing:
+  - `W-0041` PR title: `Consume explicit terminal analyze contract`
+  - `W-0044` PR title: `Wire terminal persistence into workspace surface`
+- Internal rollout should stay gated behind migration apply plus an authenticated browser smoke test; do not infer rollout readiness from unit tests alone.
 
 ## Next Steps
 
 1. Pair this branch with `codex/w-0041-terminal-analyze-contract-surface-clean` for review/merge ordering.
 2. Apply the terminal persistence SQL migration in the target Postgres environment.
 3. Run an authenticated browser smoke test on `/terminal`.
+4. If smoke test passes, open stacked or sequential PRs with `W-0041` as the contract base and `W-0044` as the app-surface consumer.
 
 ## Exit Criteria
 
 - The `/terminal` page can hydrate watchlist/pins/alerts/macro state from real app-domain routes.
 - Pin/Alert/Compare/Export actions use dedicated app endpoints instead of prompt-only behavior.
 - The app-surface delta remains isolated to the four intended files and passes app verification.
+- Reviewers can evaluate `W-0044` without rereading the old mixed branch or engine-memory implementation history.
+
+## Rollout Gates
+
+- Required before merge:
+  - `W-0041` and `W-0044` app checks green
+  - targeted mapper/persistence tests green
+- Required before internal rollout:
+  - terminal persistence SQL migration applied
+  - authenticated `/terminal` smoke test passed
+  - compare/pin/alert/export actions observed against real app-domain routes
+
+## AI Evaluation
+
+- Research objective: reduce UI semantic inference and increase replayable decision state.
+- Success signals:
+  - `entryPlan`, `riskPlan`, `flowSummary`, and `sources` render directly without fallback-heavy panel logic
+  - re-entering `/terminal` restores enough state that the same decision context can be inspected without re-running ad hoc prompt flows
+  - durable actions emit memory debug sessions only for explicit user commits, keeping memory feedback cleaner than passive-view instrumentation
+- Metrics to watch after rollout:
+  - share of panel renders using explicit analyze fields vs fallback derivation
+  - watchlist/pin/alert restore success rate on terminal re-entry
+  - export job completion rate
+  - memory debug-session volume per durable action, to detect overlogging or missed instrumentation
 
 ## Handoff Checklist
 
