@@ -1,4 +1,4 @@
-# W-0038 Pattern Candidate Capture Contract
+# W-0040 Pattern Candidate Capture Contract
 
 ## Goal
 
@@ -25,7 +25,7 @@ contract
 ## Canonical Files
 
 - `AGENTS.md`
-- `work/active/W-0038-pattern-candidate-capture-contract.md`
+- `work/active/W-0040-pattern-candidate-capture-contract.md`
 - `engine/patterns/scanner.py`
 - `engine/patterns/state_store.py`
 - `engine/api/routes/patterns.py`
@@ -52,10 +52,11 @@ contract
 - Add `candidate_records` alongside `entry_candidates`, not instead of it.
 - Treat engine response field names as snake_case.
 - Use `transition_id` as the canonical Save Setup linkage key.
+- Use `W-0040` for this follow-up contract work because `W-0038` is reserved for the CTO integration board.
 
 ## Next Steps
 
-1. Commit the candidate metadata contract.
+1. Land the candidate metadata contract with the capture-record engine slice.
 2. Start the app slice that maps `candidate_records` into PatternStatusBar and ChartBoard Save Setup context.
 3. Keep `/api/engine/captures` as the only canonical pattern candidate Save Setup target.
 
@@ -68,6 +69,6 @@ contract
 
 ## Handoff Checklist
 
-- Active branch: `task/w-0024-terminal-attention-implementation`
-- Verification status: `engine/.venv/bin/python -m pytest engine/tests/test_pattern_candidate_routes.py engine/tests/test_patterns_scanner.py engine/tests/test_capture_routes.py engine/tests/test_pattern_state_store.py` passes.
+- Active branch: `codex/w-0037-pattern-capture-record-clean`
+- Verification status: pending in this cleaned branch.
 - Remaining blockers: app Save Setup still needs a later app slice.
