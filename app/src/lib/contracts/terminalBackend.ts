@@ -4,6 +4,34 @@ export interface AnalyzeEnvelope {
   mode?: string;
   price?: number;
   change24h?: number;
+  entryPlan?: {
+    entry?: number;
+    stop?: number;
+    targets?: Array<{ label: string; price: number }>;
+    riskReward?: number;
+    validUntil?: string | null;
+    confidencePct?: number | null;
+  };
+  riskPlan?: {
+    bias?: string;
+    avoid?: string;
+    riskTrigger?: string;
+    invalidation?: string;
+    crowding?: string;
+  };
+  flowSummary?: {
+    cvd?: string;
+    oi?: string;
+    funding?: string;
+    takerBuyRatio?: number | null;
+  };
+  sources?: Array<{
+    id: string;
+    name: string;
+    kind: 'market' | 'derived' | 'model' | 'news';
+    timestamp: string;
+    detail?: string;
+  }>;
   snapshot?: {
     symbol?: string;
     timeframe?: string;

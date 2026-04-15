@@ -27,9 +27,7 @@ contract
 - `app/src/lib/server/analyze/responseMapper.ts`
 - `app/src/lib/server/analyze/responseMapper.test.ts`
 - `app/src/lib/terminal/panelAdapter.ts`
-- `app/src/lib/terminal/terminalBoardModel.ts`
-- `app/src/lib/api/terminalBackend.ts`
-- `app/src/routes/terminal/+page.svelte`
+- `app/src/components/terminal/workspace/TerminalContextPanel.svelte`
 
 ## Facts
 
@@ -49,12 +47,14 @@ contract
 
 - Keep this slice limited to analyze contract and terminal rendering consumption.
 - Treat terminal page and surface edits here as contract-consumer changes, not persistence work.
+- Exclude page-level persistence controls, memory adapter wiring, and left-rail watchlist changes from this slice.
+- Prefer adapter and panel-level consumption changes over route-level orchestration when explicit analyze fields can flow without new page state.
 
 ## Next Steps
 
-1. Diff the local surface changes against PR stack `#38`-`#41` and `#44`.
-2. Reconstruct the minimal contract-consumer branch from `main`.
-3. Run `npm run check -- --fail-on-warnings` plus targeted response-mapper/contract tests.
+1. Commit the narrowed contract-consumer diff.
+2. Open the clean PR for review against `main`.
+3. Follow up separately on `W-0039` Save Setup capture link.
 
 ## Exit Criteria
 
@@ -64,5 +64,5 @@ contract
 
 ## Handoff Checklist
 
-- Verification status: not yet restaged on a clean branch.
-- Remaining blockers: overlap with open terminal surface PRs.
+- Verification status: `npm run check -- --fail-on-warnings` passed; `npm test -- --run src/lib/server/analyze/responseMapper.test.ts` passed.
+- Remaining blockers: none inside `W-0041`; persistence and Save Setup actions remain intentionally out of scope.

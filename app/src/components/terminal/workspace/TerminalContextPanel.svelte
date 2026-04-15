@@ -22,9 +22,14 @@
     onTabChange?: (t: string) => void;
     onAction?: (text: string) => void;
     onCapture?: () => void;
+    onPinToggle?: () => void;
+    onCompare?: () => void;
+    onAlertToggle?: () => void;
     bars?: any[];
     statusItems?: StatusStripItem[];
     layerBarsMap?: Record<string, any[]>;
+    isPinned?: boolean;
+    hasSavedAlert?: boolean;
   }
   let {
     analysisData,
@@ -33,9 +38,14 @@
     onTabChange,
     onAction,
     onCapture,
+    onPinToggle,
+    onCompare,
+    onAlertToggle,
     bars = [],
     statusItems = [],
     layerBarsMap = {},
+    isPinned = false,
+    hasSavedAlert = false,
   }: Props = $props();
   let pinned = $state(false);
 
@@ -129,48 +139,6 @@
       };
     });
   });
-  const entryPlan = $derived.by(() => {
-    const price = Number(panelPrice ?? 0);
-    const entry = Number(atrLevels.entry_long ?? atrLevels.entry ?? (price ? price * 0.994 : 0));
-    const stop = Number(atrLevels.stop_long ?? atrLevels.stop ?? (price ? price * 0.988 : 0));
-    const tp1 = Number(atrLevels.tp1_long ?? atrLevels.target ?? (price ? price * 1.008 : 0));
-    const tp2 = Number(atrLevels.tp2_long ?? (price ? price * 1.016 : 0));
-    const risk = entry && stop ? Math.abs(entry - stop) : 0;
-    const reward = entry && tp2 ? Math.abs(tp2 - entry) : 0;
-    const rr = risk > 0 ? Math.max(0.1, reward / risk) : 0;
-    const confidencePct = pWin != null
-      ? pWin * 100
-      : verdict?.confidence === 'high'
-        ? 72
-        : verdict?.confidence === 'medium'
-          ? 58
-          : 44;
-    return { price, entry, stop, tp1, tp2, rr, confidencePct };
-  });
-  const entryLevels = $derived.by(() => [
-    { label: 'TP2', value: entryPlan.tp2, tone: 'good', distance: entryPlan.price ? ((entryPlan.tp2 - entryPlan.price) / entryPlan.price) * 100 : 0 },
-    { label: 'TP1', value: entryPlan.tp1, tone: 'good', distance: entryPlan.price ? ((entryPlan.tp1 - entryPlan.price) / entryPlan.price) * 100 : 0 },
-    { label: 'NOW', value: entryPlan.price, tone: 'info', distance: 0 },
-    { label: 'ENTRY', value: entryPlan.entry, tone: 'good', distance: entryPlan.price ? ((entryPlan.entry - entryPlan.price) / entryPlan.price) * 100 : 0 },
-    { label: 'STOP', value: entryPlan.stop, tone: 'bad', distance: entryPlan.price ? ((entryPlan.stop - entryPlan.price) / entryPlan.price) * 100 : 0 },
-  ]);
-  const riskRows = $derived.by(() => [
-    { label: 'Bias', value: verdict?.direction ? `${verdict.direction} continuation` : 'Neutral', tone: verdict?.direction === 'bearish' ? 'bad' : verdict?.direction === 'bullish' ? 'good' : 'neutral' },
-    { label: 'Action', value: verdict?.action || 'Wait for confirmation', tone: 'good' },
-    { label: 'Avoid', value: verdict?.against?.[0] || 'Chasing extension', tone: 'warn' },
-    { label: 'Risk Trigger', value: fundingMetrics[0]?.value ? `Funding ${fundingMetrics[0].value}` : 'Funding / CVD flip', tone: 'warn' },
-    { label: 'Invalidation', value: verdict?.invalidation || (entryPlan.stop ? `$${formatPanelPrice(entryPlan.stop)}` : 'Structure break'), tone: 'bad' },
-    { label: 'Valid Until', value: 'Next candle close', tone: 'neutral' },
-  ]);
-  const flowRows = $derived.by(() => {
-    const rows = [
-      evidence.find((item) => item.metric.includes('CVD')),
-      evidence.find((item) => item.metric.includes('OI')),
-      evidence.find((item) => item.metric.includes('Funding') || item.metric.includes('FR')),
-      evidence.find((item) => item.metric.includes('Volume') || item.metric.includes('Vol')),
-    ].filter(Boolean) as TerminalEvidence[];
-    return rows.length > 0 ? rows : evidence.slice(0, 4);
-  });
   function formatDistance(value: number): string {
     if (!Number.isFinite(value)) return '—';
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
@@ -231,10 +199,24 @@
       <small>Sources {panelModel.header.sourceCount}</small>
     </div>
   <div class="panel-actions">
-    <button type="button" class:active={pinned} onclick={() => pinned = !pinned}>{pinned ? 'Pinned' : 'Pin'}</button>
-    <button type="button" onclick={() => requestBackendAction('compare')}>Compare</button>
+    <button
+      type="button"
+      class:active={isPinned || pinned}
+      onclick={() => {
+        if (onPinToggle) {
+          onPinToggle();
+          return;
+        }
+        pinned = !pinned;
+      }}
+    >{isPinned || pinned ? 'Pinned' : 'Pin'}</button>
+    <button type="button" onclick={() => (onCompare ? onCompare() : requestBackendAction('compare'))}>Compare</button>
     <button type="button" onclick={openChartView}>Chart</button>
-    <button type="button" onclick={() => requestBackendAction('alert')}>Alert+</button>
+    <button
+      type="button"
+      class:active={hasSavedAlert}
+      onclick={() => (onAlertToggle ? onAlertToggle() : requestBackendAction('alert'))}
+    >{hasSavedAlert ? 'Alert Saved' : 'Alert+'}</button>
   </div>
   {#if compactStatusItems.length > 0}
     <div class="panel-status-strip">
