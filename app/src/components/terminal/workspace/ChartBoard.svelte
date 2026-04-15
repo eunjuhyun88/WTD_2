@@ -20,6 +20,18 @@
     initialData?: ChartSeriesPayload | null;
     depthSnapshot?: DepthLadderEnvelope['data'] | null;
     liqSnapshot?: LiquidationClustersEnvelope['data'] | null;
+    quantRegime?: {
+      bucket: 'risk_on_leverage' | 'short_squeeze' | 'deleveraging' | 'neutral';
+      label: string;
+      tone: 'bull' | 'bear' | 'neutral' | 'warn';
+      oiDeltaPct: number | null;
+      fundingPct: number | null;
+    };
+    cvdDivergence?: {
+      state: 'bullish_divergence' | 'bearish_divergence' | 'aligned' | 'unknown';
+      score: number;
+      label: string;
+    };
     onSaveSetup?:   (snap: { symbol: string; timestamp: number; tf: string }) => void;
     onTfChange?:    (tf: string) => void;
   }
@@ -31,6 +43,8 @@
     initialData = null,
     depthSnapshot = null,
     liqSnapshot = null,
+    quantRegime = undefined,
+    cvdDivergence = undefined,
     onSaveSetup,
     onTfChange,
   }: Props = $props();
@@ -619,6 +633,28 @@
     </div>
   </div>
 
+  {#if quantRegime || cvdDivergence}
+    <div class="quant-strip">
+      {#if quantRegime}
+        <div class="quant-cell" data-tone={quantRegime.tone}>
+          <span>OI x Funding</span>
+          <strong>{quantRegime.label}</strong>
+          <small>
+            OI {quantRegime.oiDeltaPct != null ? `${quantRegime.oiDeltaPct >= 0 ? '+' : ''}${quantRegime.oiDeltaPct.toFixed(2)}%` : '—'}
+            · Funding {quantRegime.fundingPct != null ? `${quantRegime.fundingPct >= 0 ? '+' : ''}${quantRegime.fundingPct.toFixed(3)}%` : '—'}
+          </small>
+        </div>
+      {/if}
+      {#if cvdDivergence}
+        <div class="quant-cell">
+          <span>Price vs CVD</span>
+          <strong>{cvdDivergence.label}</strong>
+          <small>Score {Math.round(cvdDivergence.score * 100)}%</small>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   <!-- ── Chart area ────────────────────────────────────────────────────────── -->
   {#if loading}
     <div class="chart-state">
@@ -785,6 +821,35 @@
     flex-wrap: wrap;
     justify-content: flex-end;
   }
+
+  .quant-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.01);
+  }
+
+  .quant-cell {
+    display: grid;
+    gap: 2px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
+    background: rgba(255,255,255,0.015);
+    padding: 5px 6px;
+  }
+  .quant-cell span,
+  .quant-cell strong,
+  .quant-cell small {
+    font-family: var(--sc-font-mono, monospace);
+  }
+  .quant-cell span { font-size: 7px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(247,242,234,0.35); }
+  .quant-cell strong { font-size: 10px; color: rgba(247,242,234,0.82); }
+  .quant-cell small { font-size: 8px; color: rgba(247,242,234,0.46); }
+  .quant-cell[data-tone='bull'] strong { color: #8fdd9d; }
+  .quant-cell[data-tone='bear'] strong { color: #f19999; }
+  .quant-cell[data-tone='warn'] strong { color: #e9c167; }
 
   .mode-switch {
     display: flex;

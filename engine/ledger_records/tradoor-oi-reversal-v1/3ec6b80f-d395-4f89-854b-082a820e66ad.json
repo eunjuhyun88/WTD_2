@@ -1,0 +1,23 @@
+{
+  "id": "3ec6b80f-d395-4f89-854b-082a820e66ad",
+  "record_type": "outcome",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "symbol": "PTBUSDT",
+  "user_id": null,
+  "outcome_id": "dd364170",
+  "capture_id": null,
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-16T00:25:06.404379",
+  "payload": {
+    "previous_outcome": "pending",
+    "outcome": "failure",
+    "breakout_at": null,
+    "invalidated_at": null,
+    "peak_price": null,
+    "exit_price": null,
+    "max_gain_pct": null,
+    "exit_return_pct": null,
+    "duration_hours": null
+  }
+}

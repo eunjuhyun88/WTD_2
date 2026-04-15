@@ -1,0 +1,23 @@
+{
+  "id": "490473b6-bf32-4016-a378-67e6ed9e6934",
+  "record_type": "outcome",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "symbol": "TIMEOUT_SYM",
+  "user_id": null,
+  "outcome_id": "a05e9c61",
+  "capture_id": null,
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-16T00:25:06.440127",
+  "payload": {
+    "previous_outcome": "pending",
+    "outcome": "timeout",
+    "breakout_at": null,
+    "invalidated_at": null,
+    "peak_price": null,
+    "exit_price": null,
+    "max_gain_pct": null,
+    "exit_return_pct": null,
+    "duration_hours": null
+  }
+}

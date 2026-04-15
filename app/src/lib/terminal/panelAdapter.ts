@@ -1,6 +1,7 @@
 import type { TerminalAsset, TerminalEvidence, TerminalSource, TerminalVerdict } from '$lib/types/terminal';
 import type { AnalyzeEnvelope, DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
 import type { MemoryRerankRecord } from '$lib/api/terminalBackend';
+import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
 
 /**
  * Terminal panel adapter.
@@ -90,6 +91,16 @@ export interface TerminalDecisionBundle {
   sources: TerminalSource[];
 }
 
+export interface PatternRecallMatch {
+  id: string;
+  symbol: string;
+  timeframe: string;
+  verdict: 'bullish' | 'bearish' | 'neutral' | 'unknown';
+  triggerOrigin: string;
+  score: number;
+  updatedAt: string;
+}
+
 function asToneFromState(state: TerminalEvidence['state']): Tone {
   if (state === 'bullish') return 'bull';
   if (state === 'bearish') return 'bear';
@@ -112,6 +123,13 @@ function changeLabel(value: number | null | undefined): string {
 function pctDistance(base: number, target: number): number {
   if (!base || !Number.isFinite(base) || !Number.isFinite(target)) return 0;
   return ((target - base) / base) * 100;
+}
+
+function sourceKindToCategory(kind: 'market' | 'derived' | 'model' | 'news'): TerminalSource['category'] {
+  if (kind === 'market') return 'Market';
+  if (kind === 'news') return 'News';
+  if (kind === 'model') return 'Model';
+  return 'Derived';
 }
 
 const LAYER_LABELS: Record<string, string> = {
@@ -272,6 +290,16 @@ export function buildEvidenceFromAnalysis(analysisData?: PanelAnalyzeData | null
 }
 
 export function buildSourcesFromAnalysis(analysisData?: PanelAnalyzeData | null): TerminalSource[] {
+  if (analysisData?.sources?.length) {
+    return analysisData.sources.map((source) => ({
+      label: source.name,
+      category: sourceKindToCategory(source.kind),
+      freshness: 'recent',
+      updatedAt: Date.parse(source.timestamp) || Date.now(),
+      method: source.detail,
+    }));
+  }
+
   const now = Date.now();
   const sourceMap = analysisData?.backendSnapshot?.sources as Record<string, boolean> | undefined;
   const mapped: TerminalSource[] = [];
@@ -339,15 +367,19 @@ export function buildPanelModel(input: {
     ?? analysisData?.derivatives?.funding_rate
     ?? mergedDerivatives?.funding
     ?? 0;
-  const entry = Number(atrLevels.entry_long ?? atrLevels.entry ?? (price ? price * 0.994 : 0));
-  const stop = Number(atrLevels.stop_long ?? atrLevels.stop ?? (price ? price * 0.988 : 0));
-  const tp1 = Number(atrLevels.tp1_long ?? atrLevels.target ?? (price ? price * 1.008 : 0));
-  const tp2 = Number(atrLevels.tp2_long ?? (price ? price * 1.016 : 0));
+  const entry = Number(analysisData?.entryPlan?.entry ?? atrLevels.entry_long ?? atrLevels.entry ?? (price ? price * 0.994 : 0));
+  const stop = Number(analysisData?.entryPlan?.stop ?? atrLevels.stop_long ?? atrLevels.stop ?? (price ? price * 0.988 : 0));
+  const targets = analysisData?.entryPlan?.targets ?? [];
+  const tp1 = Number(targets.find((target) => target.label === 'TP1')?.price ?? atrLevels.tp1_long ?? atrLevels.target ?? (price ? price * 1.008 : 0));
+  const tp2 = Number(targets.find((target) => target.label === 'TP2')?.price ?? atrLevels.tp2_long ?? (price ? price * 1.016 : 0));
   const risk = Math.abs(entry - stop);
   const reward = Math.abs(tp2 - entry);
-  const rr = risk > 0 ? Math.max(0.1, reward / risk) : 0;
+  const rr = Number(analysisData?.entryPlan?.riskReward ?? (risk > 0 ? Math.max(0.1, reward / risk) : 0));
   const confidencePct =
-    pWin != null ? pWin * 100 : verdict?.confidence === 'high' ? 72 : verdict?.confidence === 'medium' ? 58 : 44;
+    analysisData?.entryPlan?.confidencePct
+    ?? (pWin != null ? pWin * 100 : verdict?.confidence === 'high' ? 72 : verdict?.confidence === 'medium' ? 58 : 44);
+  const explicitRisk = analysisData?.riskPlan;
+  const explicitFlow = analysisData?.flowSummary;
 
   const topEvidence = evidence.slice(0, 4);
   const summaryBullets = topEvidence.map((item) => `${item.metric}: ${item.value} - ${item.interpretation || 'context'}`);
@@ -356,6 +388,9 @@ export function buildPanelModel(input: {
   }
   if (Number.isFinite(fundingRate)) {
     summaryBullets.push(`Funding: ${(fundingRate * 100).toFixed(3)}%`);
+  }
+  if (analysisData?.sources?.length) {
+    summaryBullets.push(`Sources: ${analysisData.sources.map((source) => source.name).join(', ')}`);
   }
 
   return {
@@ -393,22 +428,35 @@ export function buildPanelModel(input: {
         { label: 'STOP', value: stop, distancePct: pctDistance(price, stop), tone: 'bear' },
       ],
     },
-    flowRows: topEvidence.map((item) => ({
-      metric: item.metric,
-      value: item.value,
-      interpretation: item.interpretation || 'signal context',
-      tone: asToneFromState(item.state),
-    })),
+    flowRows: explicitFlow
+      ? [
+          { metric: 'CVD', value: explicitFlow.cvd ?? 'n/a', interpretation: 'aggressive flow state', tone: 'info' as Tone },
+          { metric: 'OI', value: explicitFlow.oi ?? 'n/a', interpretation: 'open interest context', tone: 'info' as Tone },
+          { metric: 'Funding', value: explicitFlow.funding ?? 'n/a', interpretation: 'crowding / carry', tone: 'warn' as Tone },
+          {
+            metric: 'Taker',
+            value: explicitFlow.takerBuyRatio != null ? explicitFlow.takerBuyRatio.toFixed(2) : 'n/a',
+            interpretation: 'taker buy / sell ratio',
+            tone: explicitFlow.takerBuyRatio != null && explicitFlow.takerBuyRatio >= 1 ? 'bull' : 'bear',
+          },
+        ]
+      : topEvidence.map((item) => ({
+          metric: item.metric,
+          value: item.value,
+          interpretation: item.interpretation || 'signal context',
+          tone: asToneFromState(item.state),
+        })),
     riskRows: [
       {
         label: 'Bias',
-        value: verdict?.direction ? `${verdict.direction} continuation` : 'Neutral',
-        tone: verdict?.direction === 'bullish' ? 'bull' : verdict?.direction === 'bearish' ? 'bear' : 'neutral',
+        value: explicitRisk?.bias ?? (verdict?.direction ? `${verdict.direction} continuation` : 'Neutral'),
+        tone: explicitRisk?.bias?.includes('bull') ? 'bull' : explicitRisk?.bias?.includes('bear') ? 'bear' : verdict?.direction === 'bullish' ? 'bull' : verdict?.direction === 'bearish' ? 'bear' : 'neutral',
       },
       { label: 'Action', value: verdict?.action || 'Wait for confirmation', tone: 'info' },
-      { label: 'Avoid', value: verdict?.against?.[0] || 'Chasing extension', tone: 'warn' },
-      { label: 'Invalidation', value: verdict?.invalidation || '-', tone: 'bear' },
-      { label: 'Window', value: `Active ${panelTimeframe}`, tone: 'neutral' },
+      { label: 'Avoid', value: explicitRisk?.avoid ?? (verdict?.against?.[0] || 'Chasing extension'), tone: 'warn' },
+      { label: 'Risk Trigger', value: explicitRisk?.riskTrigger ?? `Funding ${(fundingRate * 100).toFixed(3)}%`, tone: 'warn' },
+      { label: 'Invalidation', value: explicitRisk?.invalidation ?? (verdict?.invalidation || '-'), tone: 'bear' },
+      { label: 'Crowding', value: explicitRisk?.crowding ?? `Active ${panelTimeframe}`, tone: 'neutral' },
     ],
     summaryBullets,
   };
@@ -446,4 +494,38 @@ export function rerankEvidenceWithMemory(
     if (scoreA === scoreB) return 0;
     return scoreB - scoreA;
   });
+}
+
+export function buildPatternRecallMatches(
+  activeSymbol: string | null | undefined,
+  activeTimeframe: string,
+  activeVerdict: TerminalVerdict | null | undefined,
+  records: PatternCaptureRecord[]
+): PatternRecallMatch[] {
+  const now = Date.now();
+  const normalizedTf = activeTimeframe.toLowerCase();
+  const normalizedSymbol = (activeSymbol ?? '').toUpperCase();
+  const verdict = activeVerdict?.direction ?? 'neutral';
+
+  const scored = records.map((record) => {
+    let score = 0.1;
+    if (record.symbol.toUpperCase() === normalizedSymbol) score += 0.45;
+    if (record.timeframe.toLowerCase() === normalizedTf) score += 0.2;
+    if ((record.decision.verdict ?? 'neutral') === verdict) score += 0.2;
+    if (record.triggerOrigin === 'pattern_transition') score += 0.08;
+    if (record.triggerOrigin === 'manual') score += 0.03;
+    const ageHours = Math.max(0, (now - Date.parse(record.updatedAt)) / 3_600_000);
+    score += Math.max(0, 0.15 - ageHours * 0.01);
+    return {
+      id: record.id,
+      symbol: record.symbol,
+      timeframe: record.timeframe,
+      verdict: record.decision.verdict ?? 'unknown',
+      triggerOrigin: record.triggerOrigin,
+      score: Math.min(1, Math.max(0, Number(score.toFixed(3)))),
+      updatedAt: record.updatedAt,
+    } satisfies PatternRecallMatch;
+  });
+
+  return scored.sort((a, b) => b.score - a.score).slice(0, 5);
 }
