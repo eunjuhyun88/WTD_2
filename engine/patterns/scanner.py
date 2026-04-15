@@ -24,6 +24,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from typing import Any
 
 from data_cache.loader import load_klines, load_perp
 from exceptions import CacheMiss
@@ -418,3 +419,74 @@ def get_entry_candidates_all() -> dict[str, list[str]]:
         slug: _get_machine(slug).get_entry_candidates()
         for slug in PATTERN_LIBRARY
     }
+
+
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _phase_label(pattern_slug: str, phase_id: str) -> str:
+    pattern = get_pattern(pattern_slug)
+    for phase in pattern.phases:
+        if phase.phase_id == phase_id:
+            return phase.label
+    return phase_id
+
+
+def get_entry_candidate_records(pattern_slug: str | None = None) -> dict[str, list[dict[str, Any]]]:
+    """Return rich entry candidates with durable transition linkage.
+
+    This is the contract bridge for app Save Setup: legacy candidates answer
+    "which symbols are entries"; candidate records answer "which transition
+    should a CaptureRecord reference?"
+    """
+    slugs = [pattern_slug] if pattern_slug else list(PATTERN_LIBRARY.keys())
+    records_by_pattern: dict[str, list[dict[str, Any]]] = {}
+
+    for slug in slugs:
+        pattern = get_pattern(slug)
+        machine = _get_machine(slug)
+        candidate_symbols = set(machine.get_entry_candidates())
+        states = STATE_STORE.list_states(slug)
+        records: list[dict[str, Any]] = []
+
+        for state in states:
+            if state.timeframe != pattern.timeframe:
+                continue
+            if state.symbol not in candidate_symbols:
+                continue
+            if state.current_phase != pattern.entry_phase:
+                continue
+
+            transition = (
+                STATE_STORE.get_transition(state.last_transition_id)
+                if state.last_transition_id
+                else None
+            )
+            transition_id = transition.transition_id if transition else state.last_transition_id
+            records.append(
+                {
+                    "symbol": state.symbol,
+                    "slug": slug,
+                    "pattern_slug": slug,
+                    "pattern_version": state.pattern_version,
+                    "phase": state.current_phase,
+                    "phase_label": _phase_label(slug, state.current_phase),
+                    "timeframe": state.timeframe,
+                    "transition_id": transition_id,
+                    "candidate_transition_id": transition_id,
+                    "scan_id": transition.scan_id if transition else None,
+                    "entered_at": _iso(state.entered_at),
+                    "last_eval_at": _iso(state.last_eval_at),
+                    "bars_in_phase": state.bars_in_phase,
+                    "confidence": transition.confidence if transition else None,
+                    "block_scores": transition.block_scores if transition else {},
+                    "blocks_triggered": transition.blocks_triggered if transition else [],
+                    "feature_snapshot": transition.feature_snapshot if transition else None,
+                    "data_quality": transition.data_quality if transition else None,
+                }
+            )
+
+        records_by_pattern[slug] = records
+
+    return records_by_pattern
