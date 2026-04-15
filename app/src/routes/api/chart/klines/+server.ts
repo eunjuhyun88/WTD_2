@@ -16,6 +16,107 @@ interface OIBar {
   color: string;
 }
 
+interface FundingBar {
+  time: number;
+  value: number;
+  color: string;
+}
+
+interface ChartPayload {
+  symbol: string;
+  tf: string;
+  klines: KlineBar[];
+  oiBars: OIBar[];
+  fundingBars: FundingBar[];
+  indicators: {
+    sma5: Array<{ time: number; value: number }>;
+    sma20: Array<{ time: number; value: number }>;
+    sma60: Array<{ time: number; value: number }>;
+    ema21: Array<{ time: number; value: number }>;
+    ema55: Array<{ time: number; value: number }>;
+    atr14: Array<{ time: number; value: number }>;
+    vwap: Array<{ time: number; value: number }>;
+    bbUpper: Array<{ time: number; value: number }>;
+    bbLower: Array<{ time: number; value: number }>;
+    rsi14: Array<{ time: number; value: number }>;
+    macd: Array<{ time: number; macd: number; signal: number; hist: number }>;
+  };
+}
+
+const CHART_CACHE_TTL_MS = 15_000;
+const chartCache = new Map<string, { expiresAt: number; payload: ChartPayload }>();
+
+function rollingMeanSeries(values: number[], times: number[], period: number): Array<{ time: number; value: number }> {
+  const out: Array<{ time: number; value: number }> = [];
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    if (i >= period - 1) out.push({ time: times[i], value: sum / period });
+  }
+  return out;
+}
+
+function rollingBands(
+  values: number[],
+  times: number[],
+  period: number,
+  stdevMultiplier: number,
+): { upper: Array<{ time: number; value: number }>; lower: Array<{ time: number; value: number }> } {
+  const upper: Array<{ time: number; value: number }> = [];
+  const lower: Array<{ time: number; value: number }> = [];
+  let sum = 0;
+  let sumSquares = 0;
+  for (let i = 0; i < values.length; i++) {
+    const value = values[i];
+    sum += value;
+    sumSquares += value * value;
+    if (i >= period) {
+      const removed = values[i - period];
+      sum -= removed;
+      sumSquares -= removed * removed;
+    }
+    if (i >= period - 1) {
+      const mean = sum / period;
+      const variance = Math.max(0, sumSquares / period - mean * mean);
+      const std = Math.sqrt(variance);
+      upper.push({ time: times[i], value: mean + std * stdevMultiplier });
+      lower.push({ time: times[i], value: mean - std * stdevMultiplier });
+    }
+  }
+  return { upper, lower };
+}
+
+function rollingAverageSeries(values: number[], times: number[], period: number, startIndex: number): Array<{ time: number; value: number }> {
+  const out: Array<{ time: number; value: number }> = [];
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    if (i >= startIndex) out.push({ time: times[i], value: sum / period });
+  }
+  return out;
+}
+
+function ema(values: number[], period: number): number[] {
+  const k = 2 / (period + 1);
+  const out: number[] = [];
+  let prev = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = 0; i < values.length; i++) {
+    if (i < period - 1) {
+      out.push(Number.NaN);
+      continue;
+    }
+    if (i === period - 1) {
+      out.push(prev);
+      continue;
+    }
+    prev = values[i] * k + prev * (1 - k);
+    out.push(prev);
+  }
+  return out;
+}
+
 // Binance kline intervals — spot API supports all; futures OI only supports listed below
 const INTERVAL_MAP: Record<string, string> = {
   '1m': '1m', '3m': '3m', '5m': '5m', '15m': '15m', '30m': '30m',
@@ -35,12 +136,26 @@ export const GET: RequestHandler = async ({ url }) => {
   const limit   = Math.min(parseInt(url.searchParams.get('limit') ?? '500'), 1000);
 
   const interval = INTERVAL_MAP[tf] ?? '1h';
+  const cacheKey = `${symbol}:${tf}:${limit}`;
+  const now = Date.now();
+  const cached = chartCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return json(cached.payload, {
+      headers: {
+        'cache-control': 'private, max-age=15',
+        'x-terminal-cache': 'hit',
+      },
+    });
+  }
 
   try {
-    // ── Klines ───────────────────────────────────────────────────────────────
-    const klinesUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-    const klinesResp = await fetch(klinesUrl);
-    if (!klinesResp.ok) throw new Error(`Binance klines ${klinesResp.status}`);
+    // Futures chart is the terminal truth; keep chart + OI + funding on the same venue.
+    const [klinesResp, fundingResp] = await Promise.all([
+      fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`),
+      fetch(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${symbol}&limit=${Math.min(limit, 500)}`),
+    ]);
+
+    if (!klinesResp.ok) throw new Error(`Binance futures klines ${klinesResp.status}`);
     const rawKlines = await klinesResp.json() as number[][];
 
     const klines: KlineBar[] = rawKlines.map(k => ({
@@ -77,28 +192,50 @@ export const GET: RequestHandler = async ({ url }) => {
       }
     }
 
+    let fundingBars: FundingBar[] = [];
+    if (fundingResp.ok) {
+      const rawFunding = await fundingResp.json() as Array<{ fundingTime: number; fundingRate: string }>;
+      fundingBars = rawFunding.map((item) => {
+        const rate = parseFloat(item.fundingRate);
+        return {
+          time: Math.floor(item.fundingTime / 1000),
+          value: rate * 100,
+          color: rate >= 0 ? 'rgba(38,166,154,0.65)' : 'rgba(239,83,80,0.65)',
+        };
+      });
+    }
+
     // ── Indicators ───────────────────────────────────────────────────────────
     const closes = klines.map(k => k.close);
     const highs  = klines.map(k => k.high);
     const lows   = klines.map(k => k.low);
     const vols   = klines.map(k => k.volume);
 
-    function sma(arr: number[], period: number, offset = 0): Array<{ time: number; value: number }> {
-      return klines
-        .slice(offset)
-        .map((k, i) => {
-          const absIdx = i + offset;
-          if (absIdx < period - 1) return null;
-          const sum = arr.slice(absIdx - period + 1, absIdx + 1).reduce((a, b) => a + b, 0);
-          return { time: k.time, value: sum / period };
-        })
-        .filter((x): x is { time: number; value: number } => x !== null);
+    // SMA 5/20/60
+    const times = klines.map(k => k.time);
+    const sma5 = rollingMeanSeries(closes, times, 5);
+    const sma20 = rollingMeanSeries(closes, times, 20);
+    const sma60 = rollingMeanSeries(closes, times, 60);
+
+    function emaPoints(arr: number[], period: number): Array<{ time: number; value: number }> {
+      const k = 2 / (period + 1);
+      const out: Array<{ time: number; value: number }> = [];
+      let prev: number | null = null;
+      for (let i = 0; i < arr.length; i++) {
+        const price = arr[i];
+        if (!Number.isFinite(price)) continue;
+        if (prev == null) {
+          prev = price;
+        } else {
+          prev = price * k + prev * (1 - k);
+        }
+        out.push({ time: klines[i].time, value: prev });
+      }
+      return out;
     }
 
-    // SMA 5/20/60
-    const sma5  = sma(closes, 5);
-    const sma20 = sma(closes, 20);
-    const sma60 = sma(closes, 60);
+    const ema21 = emaPoints(closes, 21);
+    const ema55 = emaPoints(closes, 55);
 
     // VWAP (rolling daily reset based on session; approximated here as cumulative VWAP from bar 0)
     const vwap: Array<{ time: number; value: number }> = [];
@@ -111,42 +248,39 @@ export const GET: RequestHandler = async ({ url }) => {
     }
 
     // Bollinger Bands (20, 2)
-    const bbUpper: Array<{ time: number; value: number }> = [];
-    const bbLower: Array<{ time: number; value: number }> = [];
-    for (let i = 19; i < closes.length; i++) {
-      const slice = closes.slice(i - 19, i + 1);
-      const mean = slice.reduce((a, b) => a + b, 0) / 20;
-      const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / 20;
-      const std = Math.sqrt(variance);
-      bbUpper.push({ time: klines[i].time, value: mean + 2 * std });
-      bbLower.push({ time: klines[i].time, value: mean - 2 * std });
-    }
+    const { upper: bbUpper, lower: bbLower } = rollingBands(closes, times, 20, 2);
+
+    // ATR-14
+    const trueRanges = klines.map((_, i) => {
+      const prevClose = i > 0 ? closes[i - 1] : closes[i];
+      return Math.max(
+        highs[i] - lows[i],
+        Math.abs(highs[i] - prevClose),
+        Math.abs(lows[i] - prevClose),
+      );
+    });
+    const atr14 = rollingAverageSeries(trueRanges, times, 14, 14);
 
     // RSI-14
-    const rsi14: Array<{ time: number; value: number }> = [];
-    for (let i = 14; i < closes.length; i++) {
-      let gains = 0, losses = 0;
-      for (let j = i - 13; j <= i; j++) {
-        const diff = closes[j] - closes[j - 1];
-        if (diff > 0) gains += diff; else losses -= diff;
-      }
-      const rs = losses === 0 ? 100 : gains / losses;
-      rsi14.push({ time: klines[i].time, value: 100 - 100 / (1 + rs) });
+    const gains: number[] = [];
+    const losses: number[] = [];
+    for (let i = 0; i < closes.length; i++) {
+      const diff = i === 0 ? 0 : closes[i] - closes[i - 1];
+      gains.push(diff > 0 ? diff : 0);
+      losses.push(diff < 0 ? -diff : 0);
     }
+    const avgGains = rollingAverageSeries(gains, times, 14, 14);
+    const avgLosses = rollingAverageSeries(losses, times, 14, 14);
+    const rsi14 = avgGains.map((gainPoint, index) => {
+      const loss = avgLosses[index]?.value ?? 0;
+      const rs = loss === 0 ? 100 : gainPoint.value / loss;
+      return {
+        time: gainPoint.time,
+        value: 100 - 100 / (1 + rs),
+      };
+    });
 
     // MACD (12, 26, 9)
-    function ema(arr: number[], period: number): number[] {
-      const k = 2 / (period + 1);
-      const out: number[] = [];
-      let prev = arr.slice(0, period).reduce((a, b) => a + b, 0) / period;
-      for (let i = 0; i < arr.length; i++) {
-        if (i < period - 1) { out.push(NaN); continue; }
-        if (i === period - 1) { out.push(prev); continue; }
-        prev = arr[i] * k + prev * (1 - k);
-        out.push(prev);
-      }
-      return out;
-    }
     const ema12 = ema(closes, 12);
     const ema26 = ema(closes, 26);
     const macdLine: number[] = ema12.map((v, i) => isNaN(v) || isNaN(ema26[i]) ? NaN : v - ema26[i]);
@@ -169,12 +303,23 @@ export const GET: RequestHandler = async ({ url }) => {
       sigIdx++;
     }
 
-    return json({
+    const payload: ChartPayload = {
       symbol,
       tf,
       klines,
       oiBars,
-      indicators: { sma5, sma20, sma60, vwap, bbUpper, bbLower, rsi14, macd },
+      fundingBars,
+      indicators: { sma5, sma20, sma60, ema21, ema55, atr14, vwap, bbUpper, bbLower, rsi14, macd },
+    };
+    chartCache.set(cacheKey, {
+      expiresAt: now + CHART_CACHE_TTL_MS,
+      payload,
+    });
+    return json(payload, {
+      headers: {
+        'cache-control': 'private, max-age=15',
+        'x-terminal-cache': 'miss',
+      },
     });
   } catch (err) {
     return json({ error: String(err) }, { status: 500 });

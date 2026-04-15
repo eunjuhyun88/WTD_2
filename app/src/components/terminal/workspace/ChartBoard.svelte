@@ -2,6 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
+  import type { DepthLadderEnvelope, LiquidationClustersEnvelope } from '$lib/contracts/terminalBackend';
   import SaveSetupModal from './SaveSetupModal.svelte';
 
   // ── Props ──────────────────────────────────────────────────────────────────
@@ -15,11 +16,23 @@
     symbol:         string;
     tf?:            string;       // controlled externally (gTf); falls back to internal state
     verdictLevels?: VerdictLevels;
+    initialData?: Record<string, unknown> | null;
+    depthSnapshot?: DepthLadderEnvelope['data'] | null;
+    liqSnapshot?: LiquidationClustersEnvelope['data'] | null;
     onSaveSetup?:   (snap: { symbol: string; timestamp: number; tf: string }) => void;
     onTfChange?:    (tf: string) => void;
   }
 
-  let { symbol, tf: externalTf, verdictLevels, onSaveSetup, onTfChange }: Props = $props();
+  let {
+    symbol,
+    tf: externalTf,
+    verdictLevels,
+    initialData = null,
+    depthSnapshot = null,
+    liqSnapshot = null,
+    onSaveSetup,
+    onTfChange,
+  }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
   // Start with '1h'; externalTf takes precedence via $derived when set by parent
@@ -33,6 +46,7 @@
   let rsiEl        = $state<HTMLDivElement | undefined>(undefined);
   let macdEl       = $state<HTMLDivElement | undefined>(undefined);
   let oiEl         = $state<HTMLDivElement | undefined>(undefined);
+  let cvdEl        = $state<HTMLDivElement | undefined>(undefined);
 
   // ── UI state ───────────────────────────────────────────────────────────────
   let loading  = $state(true);
@@ -42,16 +56,22 @@
   let currentChangePct = $state<number | null>(null);
   let currentRsi = $state<number | null>(null);
   let currentOiDelta = $state<number | null>(null);
+  let currentFundingRate = $state<number | null>(null);
+  let depthData = $state<DepthLadderEnvelope['data'] | null>(null);
+  let liqData = $state<LiquidationClustersEnvelope['data'] | null>(null);
   let depthRatio = $derived.by(() => {
+    if (depthData?.imbalanceRatio != null && Number.isFinite(depthData.imbalanceRatio)) {
+      return Math.max(0.65, Math.min(1.35, depthData.imbalanceRatio));
+    }
     const oi = currentOiDelta ?? 0;
     const ratio = 1 + oi / 40;
     return Math.max(0.65, Math.min(1.35, ratio));
   });
   let bidPct = $derived(Math.round((depthRatio / (1 + depthRatio)) * 100));
   let askPct = $derived(100 - bidPct);
-  let liqAnchor = $derived(currentPrice ?? verdictLevels?.entry ?? 0);
-  let liqLong = $derived(liqAnchor ? liqAnchor * 0.985 : 0);
-  let liqShort = $derived(liqAnchor ? liqAnchor * 1.012 : 0);
+  let liqAnchor = $derived(liqData?.currentPrice ?? currentPrice ?? verdictLevels?.entry ?? 0);
+  let liqLong = $derived(liqData?.nearestLong?.price ?? (liqAnchor ? liqAnchor * 0.985 : 0));
+  let liqShort = $derived(liqData?.nearestShort?.price ?? (liqAnchor ? liqAnchor * 1.012 : 0));
 
   // Save Setup modal
   let showSaveModal = $state(false);
@@ -60,6 +80,9 @@
   // Indicator toggles
   let showVWAP = $state(true);
   let showBB   = $state(false);
+  let showEMA  = $state(true);
+  let showATRBands = $state(false);
+  let showCVD = $state(true);
   let showMACD = $state(false);   // replaces RSI pane when active
   let chartMode = $state<'candle' | 'line'>('candle');
 
@@ -69,6 +92,7 @@
   let rsiChart:  IChartApi | null = null;
   let macdChart: IChartApi | null = null;
   let oiChart:   IChartApi | null = null;
+  let cvdChart:  IChartApi | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
 
@@ -98,23 +122,54 @@
   };
 
   // ── Data load ─────────────────────────────────────────────────────────────
-  let pendingData: Record<string, unknown> | null = null;
+  let chartData = $state<Record<string, unknown> | null>(null);
+  const chartDataCache = new Map<string, Record<string, unknown>>();
+  let loadToken = 0;
+  let lastDataKey = '';
 
   async function loadData() {
     if (!symbol) return;
+    const dataKey = `${symbol}:${tf}`;
+    if (dataKey === lastDataKey && chartData) return;
+
+    if (initialData) {
+      chartDataCache.set(dataKey, initialData);
+      chartData = initialData;
+      depthData = depthSnapshot;
+      liqData = liqSnapshot;
+      error = null;
+      loading = false;
+      lastDataKey = dataKey;
+      return;
+    }
+
+    if (chartDataCache.has(dataKey)) {
+      chartData = chartDataCache.get(dataKey) ?? null;
+      depthData = depthSnapshot;
+      liqData = liqSnapshot;
+      error = null;
+      loading = false;
+      lastDataKey = dataKey;
+      return;
+    }
+
+    const token = ++loadToken;
     loading = true;
     error = null;
-    pendingData = null;
     try {
-      const res = await fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const chartRes = await fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500`);
+      if (!chartRes.ok) throw new Error(`HTTP ${chartRes.status}`);
+      const data = await chartRes.json() as Record<string, unknown>;
       if (data.error) throw new Error(data.error);
-      pendingData = data;
+      if (token !== loadToken) return;
+      chartDataCache.set(dataKey, data);
+      chartData = data;
+      depthData = depthSnapshot;
+      liqData = liqSnapshot;
       loading = false;
-      await tick();
-      renderCharts(data);
+      lastDataKey = dataKey;
     } catch (e) {
+      if (token !== loadToken) return;
       error = String(e);
       loading = false;
     }
@@ -132,8 +187,14 @@
   }
 
   function renderCharts(data: Record<string, unknown>) {
-    if (!mainEl || !volEl || !rsiEl || !oiEl) return;
+    if (!mainEl || !volEl || !oiEl) return;
+    if (showMACD && !macdEl) return;
+    if (!showMACD && !rsiEl) return;
+    if (showCVD && !cvdEl) return;
     destroyCharts();
+
+    const rsiContainer = rsiEl;
+    const macdContainer = macdEl;
 
     const w = containerEl?.offsetWidth ?? 900;
 
@@ -147,6 +208,8 @@
     const ind = data.indicators as Record<string, Array<{ time: number; value: number }>>;
     const klines = data.klines as Array<{ time: number; open: number; close: number; high: number; low: number; volume: number }>;
     const oiBars = data.oiBars as Array<{ time: number; value: number; color: string }>;
+    const fundingBars = data.fundingBars as Array<{ time: number; value: number; color: string }> | undefined;
+    const cvdRaw = data.cvdBars as Array<{ time: number; value: number }> | undefined;
 
     const lastBar = klines[klines.length - 1];
     const prevBar = klines[klines.length - 2];
@@ -155,6 +218,7 @@
     currentChangePct = lastBar && prevBar && prevBar.close > 0 ? ((lastBar.close - prevBar.close) / prevBar.close) * 100 : null;
     currentRsi = ind.rsi14?.length ? ind.rsi14[ind.rsi14.length - 1]?.value ?? null : null;
     currentOiDelta = oiBars?.length ? oiBars[oiBars.length - 1]?.value ?? null : null;
+    currentFundingRate = fundingBars?.length ? fundingBars[fundingBars.length - 1]?.value ?? null : null;
 
     if (chartMode === 'line') {
       const lineSeries = mainChart.addSeries(LineSeries, {
@@ -199,6 +263,31 @@
       s.setData(toLine(ind.vwap));
     }
 
+    // EMA engine overlays
+    if (showEMA) {
+      const emaFast = ind.ema21 ?? ind.ema20;
+      const emaSlow = ind.ema55 ?? ind.ema60;
+      if (emaFast?.length) {
+        const s = mainChart.addSeries(LineSeries, { color: 'rgba(64,196,255,0.9)', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+        s.setData(toLine(emaFast));
+      }
+      if (emaSlow?.length) {
+        const s = mainChart.addSeries(LineSeries, { color: 'rgba(255,152,0,0.9)', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+        s.setData(toLine(emaSlow));
+      }
+    }
+
+    // ATR channel proxy: SMA20 +/- ATR14
+    if (showATRBands && ind.sma20?.length && ind.atr14?.length) {
+      const atrMap = new Map(ind.atr14.map((p) => [p.time, p.value]));
+      const upper = ind.sma20.map((p) => ({ time: p.time, value: p.value + (atrMap.get(p.time) ?? 0) }));
+      const lower = ind.sma20.map((p) => ({ time: p.time, value: p.value - (atrMap.get(p.time) ?? 0) }));
+      const up = mainChart.addSeries(LineSeries, { color: 'rgba(255,255,255,0.28)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false });
+      const lo = mainChart.addSeries(LineSeries, { color: 'rgba(255,255,255,0.28)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: false, priceLineVisible: false });
+      up.setData(toLine(upper));
+      lo.setData(toLine(lower));
+    }
+
     // Bollinger Bands toggle
     if (showBB) {
       const bbU = ind.bbUpper as Array<{ time: number; value: number }>;
@@ -238,12 +327,12 @@
     }))));
 
     // ── RSI or MACD ───────────────────────────────────────────────────────────
-    if (showMACD && macdEl) {
-      macdChart = createChart(macdEl, {
+    if (showMACD && macdContainer) {
+      macdChart = createChart(macdContainer, {
         ...baseTheme, width: w, height: 80,
         timeScale: { ...baseTheme.timeScale, visible: false },
       });
-      const macdData = data.macd as Array<{ time: number; macd: number; signal: number; hist: number }>;
+      const macdData = (data.indicators as Record<string, unknown>).macd as Array<{ time: number; macd: number; signal: number; hist: number }> | undefined;
       if (macdData?.length) {
         const histSeries = macdChart.addSeries(HistogramSeries, { color: 'rgba(99,179,237,0.5)', priceFormat: { type: 'price' as const, precision: 6, minMove: 0.000001 } });
         histSeries.setData(macdData.map(d => ({
@@ -257,7 +346,7 @@
         sigLine.setData(macdData.map(d => ({ time: d.time as UTCTimestamp, value: d.signal })));
       }
     } else {
-      rsiChart = createChart(rsiEl, {
+      rsiChart = createChart(rsiContainer as HTMLDivElement, {
         ...baseTheme, width: w, height: 80,
         timeScale: { ...baseTheme.timeScale, visible: false },
         rightPriceScale: { ...baseTheme.rightPriceScale, scaleMargins: { top: 0.1, bottom: 0.1 } },
@@ -280,7 +369,38 @@
       }
     }
 
+    // ── CVD ─────────────────────────────────────────────────────────────────
+    if (cvdEl && showCVD) {
+      cvdChart = createChart(cvdEl, {
+        ...baseTheme, width: w, height: 70,
+        timeScale: { ...baseTheme.timeScale, visible: true },
+      });
+      const cvdSeries = cvdChart.addSeries(LineSeries, {
+        color: '#34c470',
+        lineWidth: 1,
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+      const cvdBars: Array<{ time: number; value: number }> = cvdRaw?.length
+        ? cvdRaw
+        : (() => {
+            let acc = 0;
+            return klines.map((k) => {
+              const signedVol = (k.close >= k.open ? 1 : -1) * k.volume;
+              acc += signedVol;
+              return { time: k.time, value: acc };
+            });
+          })();
+      cvdSeries.setData(toLine(cvdBars));
+    }
+
     syncTimeScales();
+    mainChart.subscribeClick((param) => {
+      if (param.time) {
+        currentTime = param.time as number;
+        showSaveModal = true;
+      }
+    });
   }
 
   // ── Verdict level lines ───────────────────────────────────────────────────
@@ -327,22 +447,25 @@
     const subs = [volChart, rsiChart, macdChart, oiChart].filter(
       (c): c is IChartApi => c !== null
     );
+    const subsWithCvd = [...subs, cvdChart].filter(
+      (c): c is IChartApi => c !== null
+    );
     mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       if (!range) return;
-      subs.forEach(c => c.timeScale().setVisibleLogicalRange(range));
+      subsWithCvd.forEach(c => c.timeScale().setVisibleLogicalRange(range));
     });
-    subs.forEach(c => {
+    subsWithCvd.forEach(c => {
       c.timeScale().subscribeVisibleLogicalRangeChange((range) => {
         if (!range) return;
         mainChart!.timeScale().setVisibleLogicalRange(range);
-        subs.filter(o => o !== c).forEach(o => o.timeScale().setVisibleLogicalRange(range));
+        subsWithCvd.filter(o => o !== c).forEach(o => o.timeScale().setVisibleLogicalRange(range));
       });
     });
   }
 
   function destroyCharts() {
-    [mainChart, volChart, rsiChart, macdChart, oiChart].forEach(c => c?.remove());
-    mainChart = volChart = rsiChart = macdChart = oiChart = null;
+    [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart].forEach(c => c?.remove());
+    mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = null;
     priceSeries = null;
     entryLine = targetLine = stopLine = null;
   }
@@ -355,6 +478,7 @@
     rsiChart?.resize(w, 80);
     macdChart?.resize(w, 80);
     oiChart?.resize(w, 60);
+    cvdChart?.resize(w, 70);
   }
 
   function handleSaveSetup() {
@@ -382,10 +506,34 @@
   });
   onDestroy(() => { destroyCharts(); resizeObserver?.disconnect(); });
 
-  // Reload on symbol/tf/toggles change
+  // Remote data should only reload when the market context changes.
   $effect(() => {
-    void symbol; void tf; void showVWAP; void showBB; void showMACD; void chartMode;
-    loadData();
+    void symbol;
+    void tf;
+    void initialData;
+    void loadData();
+  });
+
+  // Depth/liquidation data comes from the parent terminal page to avoid duplicate requests.
+  $effect(() => {
+    depthData = depthSnapshot;
+    liqData = liqSnapshot;
+  });
+
+  // Indicator toggles should only re-render from cached data, not refetch it.
+  $effect(() => {
+    void showVWAP;
+    void showBB;
+    void showEMA;
+    void showATRBands;
+    void showCVD;
+    void showMACD;
+    void chartMode;
+    const data = chartData;
+    if (!data || loading) return;
+    void tick().then(() => {
+      renderCharts(data);
+    });
   });
 
   // Update price lines when verdict changes (no reload)
@@ -415,6 +563,9 @@
       {#if currentOiDelta !== null}
         <span class="sym-chip">OI Δ {currentOiDelta >= 0 ? '+' : ''}{currentOiDelta.toFixed(1)}%</span>
       {/if}
+      {#if currentFundingRate !== null}
+        <span class="sym-chip">Funding {currentFundingRate >= 0 ? '+' : ''}{currentFundingRate.toFixed(4)}%</span>
+      {/if}
     </div>
 
     <div class="chart-controls">
@@ -438,6 +589,9 @@
       <div class="ind-toggles">
         <button class="ind-btn" class:on={showVWAP} onclick={() => { showVWAP = !showVWAP; }}>VWAP</button>
         <button class="ind-btn" class:on={showBB}   onclick={() => { showBB = !showBB; }}>BB</button>
+        <button class="ind-btn" class:on={showEMA}  onclick={() => { showEMA = !showEMA; }}>EMA</button>
+        <button class="ind-btn" class:on={showATRBands}  onclick={() => { showATRBands = !showATRBands; }}>ATR CH</button>
+        <button class="ind-btn" class:on={showCVD}  onclick={() => { showCVD = !showCVD; }}>CVD</button>
         <button class="ind-btn" class:on={showMACD}  onclick={() => { showMACD = !showMACD; }}>MACD</button>
       </div>
 
@@ -470,7 +624,11 @@
       <div class="depth-strip">
         <div class="strip-head">
           <span>Order Book Depth</span>
-          <small>Spread 0.01% · Mid {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+          <small>
+            Spread {depthData?.spreadBps != null ? `${depthData.spreadBps.toFixed(1)} bps` : 'est.'}
+            {' · '}
+            Mid {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}
+          </small>
         </div>
         <div class="depth-bar">
           <div class="depth-bid" style={`width:${bidPct}%`}>
@@ -487,15 +645,24 @@
           <small>{liqLong ? liqLong.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'} — {liqShort ? liqShort.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
         </div>
         <div class="liq-track">
-          <span class="liq-zone long" style="left:12%;width:14%"></span>
-          <span class="liq-zone warn" style="left:37%;width:18%"></span>
-          <span class="liq-zone short" style="left:68%;width:16%"></span>
+          {#if liqData?.clusters?.length}
+            {#each liqData.clusters.slice(0, 3) as cluster, index}
+              <span
+                class={`liq-zone ${cluster.liquidatedSide === 'long' ? 'long' : 'short'} ${index === 1 ? 'warn' : ''}`}
+                style={`left:${12 + index * 24}%;width:${Math.max(12, Math.min(22, cluster.usd / 25000))}%`}
+              ></span>
+            {/each}
+          {:else}
+            <span class="liq-zone long" style="left:12%;width:14%"></span>
+            <span class="liq-zone warn" style="left:37%;width:18%"></span>
+            <span class="liq-zone short" style="left:68%;width:16%"></span>
+          {/if}
           <span class="liq-now" style="left:52%"></span>
         </div>
         <div class="liq-labels">
-          <small class="liq-l">Long liq {liqLong ? liqLong.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+          <small class="liq-l">Long liq {liqData?.nearestLong?.usd != null ? `${(liqData.nearestLong.usd / 1000).toFixed(1)}k @ ` : ''}{liqLong ? liqLong.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
           <small class="liq-c">Now {currentPrice ? currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
-          <small class="liq-s">Short liq {liqShort ? liqShort.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
+          <small class="liq-s">Short liq {liqData?.nearestShort?.usd != null ? `${(liqData.nearestShort.usd / 1000).toFixed(1)}k @ ` : ''}{liqShort ? liqShort.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
         </div>
       </div>
     </div>
@@ -511,6 +678,10 @@
     {/if}
     <div class="pane-label">OI Δ%</div>
     <div class="pane-oi"    bind:this={oiEl}></div>
+      {#if showCVD}
+        <div class="pane-label">CVD</div>
+        <div class="pane-cvd" bind:this={cvdEl}></div>
+      {/if}
   {/if}
 
 </div>
@@ -734,6 +905,7 @@
   .pane-vol  { flex-shrink: 0; height: 54px; }
   .pane-sub  { flex-shrink: 0; height: 72px; }
   .pane-oi   { flex-shrink: 0; height: 54px; }
+  .pane-cvd  { flex-shrink: 0; height: 70px; }
   .save-toast {
     position: fixed;
     bottom: 80px;

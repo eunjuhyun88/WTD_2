@@ -12,10 +12,20 @@ WTD v2 provides an AI-assisted crypto research and execution workflow where user
 
 ## Core Product Loop
 
-1. User requests analysis from `app` surface.
-2. `app` orchestrates request to `engine`.
-3. `engine` returns structured analysis/evaluation artifacts.
-4. `app` renders outputs, captures feedback, and stores session artifacts.
+The product has two loops that must not be confused:
+
+1. Surface orchestration loop
+   - user requests analysis from `app`
+   - `app` orchestrates request to `engine`
+   - `engine` returns structured analysis or evaluation artifacts
+   - `app` renders outputs and captures interaction
+2. Product learning loop
+   - real trade review becomes pattern definition
+   - engine scans the market and tracks pattern phase
+   - action-zone candidates are surfaced for review and `Save Setup`
+   - outcomes are recorded and user judgment refines future detection
+
+The canonical definition of the product learning loop lives in [`docs/product/core-loop.md`](/Users/ej/Projects/wtd-v2/docs/product/core-loop.md).
 
 ## Out of Scope Here
 
