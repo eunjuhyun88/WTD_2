@@ -108,6 +108,14 @@ Default read order:
 4. required code files only
 5. minimal test-failure excerpts
 
+Operating discipline on top of the read order:
+
+- plan in the work item before implementing non-trivial changes
+- re-anchor context after folder/worktree/branch changes
+- keep verified facts, assumptions, and open questions explicit
+- treat rejected hypotheses as durable debugging memory when they matter to future work
+- preserve source attribution for architectural or policy decisions
+
 ## Research Operations Separation
 
 `research/` is independent from product docs:
@@ -169,6 +177,13 @@ Good session shape:
 - 1 domain doc
 - 3-5 code files
 - partial logs only
+
+Required behavior before action:
+
+1. define the intended outcome and non-goals in the work item
+2. identify owner, primary change type, and verification target
+3. prefer design/contract clarification before cross-boundary implementation
+4. update the work item when scope or hypotheses change materially
 
 ## Ordered Rollout Plan
 
