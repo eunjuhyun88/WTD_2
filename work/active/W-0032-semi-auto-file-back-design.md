@@ -116,7 +116,7 @@ contract
 
 ## Handoff Checklist
 
-- latest policy reflects current compressed-state rules
-- next agent can explain what may auto-write and what must stay suggest-only
+- policy is documented and merged; implementation is intentionally deferred
+- next agent should start from the `safe-replace` vs `suggest-only` boundary
 - unresolved implementation boundary questions remain in `Open Questions`
 - no hidden dependency on chat context
