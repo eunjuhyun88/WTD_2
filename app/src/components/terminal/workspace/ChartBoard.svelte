@@ -3,6 +3,7 @@
   import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
   import type { DepthLadderEnvelope, LiquidationClustersEnvelope } from '$lib/contracts/terminalBackend';
+  import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import SaveSetupModal from './SaveSetupModal.svelte';
 
   // ── Props ──────────────────────────────────────────────────────────────────
@@ -16,7 +17,7 @@
     symbol:         string;
     tf?:            string;       // controlled externally (gTf); falls back to internal state
     verdictLevels?: VerdictLevels;
-    initialData?: Record<string, unknown> | null;
+    initialData?: ChartSeriesPayload | null;
     depthSnapshot?: DepthLadderEnvelope['data'] | null;
     liqSnapshot?: LiquidationClustersEnvelope['data'] | null;
     onSaveSetup?:   (snap: { symbol: string; timestamp: number; tf: string }) => void;
@@ -122,8 +123,8 @@
   };
 
   // ── Data load ─────────────────────────────────────────────────────────────
-  let chartData = $state<Record<string, unknown> | null>(null);
-  const chartDataCache = new Map<string, Record<string, unknown>>();
+  let chartData = $state<ChartSeriesPayload | null>(null);
+  const chartDataCache = new Map<string, ChartSeriesPayload>();
   let loadToken = 0;
   let lastDataKey = '';
 
@@ -159,8 +160,10 @@
     try {
       const chartRes = await fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500`);
       if (!chartRes.ok) throw new Error(`HTTP ${chartRes.status}`);
-      const data = await chartRes.json() as Record<string, unknown>;
-      if (data.error) throw new Error(data.error);
+      const data = await chartRes.json() as ChartSeriesPayload & { error?: unknown };
+      if (data.error) {
+        throw new Error(typeof data.error === 'string' ? data.error : 'Chart payload error');
+      }
       if (token !== loadToken) return;
       chartDataCache.set(dataKey, data);
       chartData = data;
@@ -186,7 +189,7 @@
     return arr.map(p => ({ time: p.time as UTCTimestamp, value: p.value, color: p.color }));
   }
 
-  function renderCharts(data: Record<string, unknown>) {
+  function renderCharts(data: ChartSeriesPayload) {
     if (!mainEl || !volEl || !oiEl) return;
     if (showMACD && !macdEl) return;
     if (!showMACD && !rsiEl) return;
@@ -238,7 +241,15 @@
         wickUpColor:    'rgba(38,166,154,0.7)',
         wickDownColor:  'rgba(239,83,80,0.7)',
       });
-      candleSeries.setData(data.klines as Parameters<typeof candleSeries.setData>[0]);
+      candleSeries.setData(
+        klines.map((bar) => ({
+          time: bar.time as UTCTimestamp,
+          open: bar.open,
+          high: bar.high,
+          low: bar.low,
+          close: bar.close,
+        }))
+      );
       priceSeries = candleSeries;
     }
 
