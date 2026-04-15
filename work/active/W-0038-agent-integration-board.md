@@ -28,14 +28,19 @@ contract
 - `work/active/W-0035-pattern-transition-persistence.md`
 - `work/active/W-0036-terminal-persistence-first-rollout.md`
 - `work/active/W-0037-pattern-capture-record.md`
+- `work/active/W-0041-terminal-analyze-contract-surface.md`
+- `work/active/W-0042-terminal-app-domain-persistence.md`
+- `work/active/W-0043-engine-memory-state-persistence.md`
 
 ## Facts
 
 - `main` is at `f168df0` after PR `#46`.
 - PR `#43` (`codex/w-0035-pattern-transition-persistence`) is merged.
 - PR `#46` (`codex/w-0037-pattern-capture-record-clean`) is merged and includes W-0037 capture records plus W-0040 candidate metadata.
-- `W-0036` terminal persistence rollout remains local/mixed and must be split before any app PR.
+- `W-0036` terminal persistence rollout is now explicitly split into `W-0041`, `W-0042`, `W-0043`, and `W-0039`.
 - Terminal PRs `#38`-`#41` are a stacked app-surface lane and should not be mixed with the engine persistence lane.
+- PR `#40` is stale and overbroad: it mixes already-merged governance/memory/security work with old terminal surface changes.
+- PR `#44` is the main-based selection-state candidate and is a better comparison target than the older stacked `#38`.
 - Local stashes contain terminal/right-rail leftovers and quarantined WIP; they are not merge units until selectively recovered.
 
 ## Assumptions
@@ -45,7 +50,7 @@ contract
 
 ## Open Questions
 
-- Whether terminal stack `#38`-`#41` should be rebased onto current `main` or closed in favor of a fresh consolidated app branch.
+- Whether `#41` and `#39` should be rebuilt on top of `#44` or replaced by a fresh `W-0041` surface branch.
 - Which stashes contain recoverable terminal right-rail work versus broken exploratory output.
 
 ## Decisions
@@ -55,12 +60,15 @@ contract
 - Preserve stashes until their contents are inspected against a named work item.
 - Use compact checkpoints after each completed merge unit.
 - After PR `#46`, the next active merge unit should be selected from W-0036 only after stash/dirty diff triage.
+- Treat PR `#40` as obsolete unless a file-by-file salvage case is explicitly proven.
 
 ## Next Steps
 
-1. Split `W-0036` into app-domain routes, analyze contract, and engine-memory persistence slices.
-2. Audit terminal PR stack `#38`-`#41` against current `main`.
-3. Inspect terminal stashes and keep only recoverable work tied to a named work item.
+1. Decide whether `#44` becomes the surviving selection-state base and retire `#38`.
+2. Rebuild or retire `#41` and `#39` after comparing them with current `W-0041` needs.
+3. Recover `W-0042` app-domain persistence into a clean branch.
+4. Recover `W-0043` engine memory persistence into a clean branch.
+5. Inspect terminal stashes and keep only recoverable work tied to `W-0039` or `W-0041`.
 
 ## Exit Criteria
 
@@ -72,4 +80,4 @@ contract
 
 - Active integration owner: CTO/contract.
 - Verification status: PR `#43` and PR `#46` merged; W-0038 queue updated.
-- Remaining blockers: W-0036 split plan, terminal stack triage, stash inspection.
+- Remaining blockers: terminal stack triage, `W-0042`/`W-0043` clean-branch recovery, stash inspection.
