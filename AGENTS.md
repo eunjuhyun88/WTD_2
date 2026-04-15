@@ -19,6 +19,23 @@ Read in this order:
 4. Relevant `docs/product/*.md`
 5. Minimal required code files
 
+## Default Context Pack
+
+- Load only the minimum pack required for the active work item.
+- Default pack = `AGENTS.md` + one active work item + one relevant domain doc + minimum code files.
+- Use owner and primary change type to keep the default pack narrow.
+- Many docs, tools, and memory lanes may exist, but they must not be loaded by default.
+
+## Late-Bound Packs
+
+- Expand context only when the default pack cannot support the next action safely.
+- Prefer pack expansion by need:
+  - `app` pack: active work item + relevant product/domain docs + touched app files
+  - `engine` pack: active work item + relevant domain docs + touched engine files/tests
+  - `contract` pack: active work item + contract/domain docs + route/type boundaries
+  - `research` pack: active work item + product/domain docs + experiment/eval references
+- Heavy lanes such as memory tooling, broad runbooks, or unrelated domains should stay late-bound.
+
 ## Default Exclude Scope
 
 Do not read these unless explicitly required:
@@ -67,12 +84,24 @@ Every non-trivial task must have one active work item:
 - Distinguish `verified` facts from `assumptions` and `open questions` when decisions are still in motion.
 - Preserve source attribution for decisions by naming the canonical files or external references that justified them.
 
+## Preview-First Loading
+
+- Prefer brief or preview views before full documents, catalogs, or memory outputs.
+- Load summaries, indexes, or narrow excerpts first; open the full file only if the preview is insufficient.
+- Do not inject full tool catalogs, runbook sets, or memory outputs into ordinary turns.
+- Expand from preview to full detail only for the current execution need.
+
 ## Context Budget
 
 - Keep work items compressed enough that another agent can scan them quickly.
 - `Facts`, `Assumptions`, `Open Questions`, and `Next Steps` should contain only the current minimum needed to act.
 - Prefer replacing stale entries over appending timeline-style notes.
 - If a section grows noisy, compact it immediately instead of carrying forward historical residue.
+- Facts target: `3-5`
+- Assumptions target: `0-3`
+- Open Questions target: `0-3`
+- Next Steps target: `1-3`
+- Saved context artifacts should default to compact output unless full verbosity is explicitly requested.
 
 ## Action Gating
 

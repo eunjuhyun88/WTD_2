@@ -30,6 +30,20 @@ contract
 - `work/active/W-0031-agent-context-and-design-governance.md`
 - external reference: `https://github.com/seojoonkim/memkraft`
 
+## Facts
+
+- root governance rules were merged via PR `#31`
+- the active work item template now enforces facts, assumptions, open questions, and handoff fields
+- branch/worktree execution rules are now visible from root entry docs
+
+## Assumptions
+
+- future agents will follow the stricter template instead of relying on chat-only planning
+
+## Open Questions
+
+- whether future scaffolding helpers should auto-create the stricter work-item sections
+
 ## Decisions
 
 - MemKraft is used here as an operating-pattern reference, not as a direct implementation dependency.
@@ -45,8 +59,13 @@ contract
 ## Next Steps
 
 - keep future multi-agent guardrail work aligned with the stronger operating loop
-- consider mirroring the enforced template structure into any agent-side generators or scaffolding scripts
 - reflect the same branch lifecycle rules in any future orchestration helpers or scaffolding tools
+
+## Handoff Checklist
+
+- root governance policy is merged and resumable from `AGENTS.md` plus this work item
+- only helper-script follow-up remains open
+- no hidden dependency on chat context
 
 ## Exit Criteria
 

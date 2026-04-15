@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-	echo "Usage: bash scripts/dev/context-checkpoint.sh --work-id <id> --surface <surface> --objective <text> [options]"
+	echo "Usage: bash scripts/dev/context-checkpoint.sh --work-id <id> --surface <surface> --objective <text> [options] [--full]"
 	echo ""
 	echo "Required:"
 	echo "  --work-id <id>"
@@ -29,10 +29,20 @@ sanitize() {
 print_list() {
 	local item=""
 	local wrote=0
+	local count=0
 	for item in "$@"; do
 		if [ -n "$item" ]; then
-			echo "- $item"
+			if [ "${#item}" -gt "$MAX_ITEM_CHARS" ]; then
+				echo "- ${item:0:$((MAX_ITEM_CHARS - 3))}..."
+			else
+				echo "- $item"
+			fi
 			wrote=1
+			count=$((count + 1))
+			if [ "$COMPACT" -eq 1 ] && [ "$count" -ge "$MAX_ITEMS" ]; then
+				echo "- ... truncated ..."
+				break
+			fi
 		fi
 	done
 	if [ "$wrote" -eq 0 ]; then
@@ -46,6 +56,18 @@ STATUS="in_progress"
 OBJECTIVE=""
 WHY_NOW=""
 SCOPE=""
+COMPACT=1
+MAX_ITEMS=5
+MAX_ITEM_CHARS=220
+
+truncate_field() {
+	local value="$1"
+	if [ "${#value}" -le "$MAX_ITEM_CHARS" ]; then
+		printf '%s' "$value"
+	else
+		printf '%s...' "${value:0:$((MAX_ITEM_CHARS - 3))}"
+	fi
+}
 
 declare -a DOCS=()
 declare -a FILES=()
@@ -109,6 +131,10 @@ while [ "$#" -gt 0 ]; do
 			EXIT_CRITERIA+=("${2:-}")
 			shift 2
 			;;
+		--full)
+			COMPACT=0
+			shift
+			;;
 		-h|--help)
 			usage
 			exit 0
@@ -158,18 +184,18 @@ mkdir -p "$CHECKPOINT_DIR" "$RUNTIME_DIR"
 	echo "- Updated At: $TS_HUMAN"
 	echo ""
 	echo "## Objective"
-	echo "$OBJECTIVE"
+	truncate_field "$OBJECTIVE"
 	echo ""
 	echo "## Why Now"
 	if [ -n "$WHY_NOW" ]; then
-		echo "$WHY_NOW"
+		truncate_field "$WHY_NOW"
 	else
 		echo "- none"
 	fi
 	echo ""
 	echo "## Scope"
 	if [ -n "$SCOPE" ]; then
-		echo "$SCOPE"
+		truncate_field "$SCOPE"
 	else
 		echo "- none"
 	fi
