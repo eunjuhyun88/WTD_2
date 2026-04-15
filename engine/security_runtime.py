@@ -43,6 +43,9 @@ def build_allowed_hosts() -> list[str]:
         "127.0.0.1",
         "localhost:8000",
         "127.0.0.1:8000",
+        # FastAPI TestClient uses "testserver" as the default Host header.
+        "testserver",
+        "testserver:80",
     ]
     app_origin = os.getenv("APP_ORIGIN", "").strip()
     if app_origin:

@@ -38,6 +38,8 @@ def test_build_allowed_hosts_includes_app_origin_and_env(monkeypatch) -> None:
         "127.0.0.1",
         "localhost:8000",
         "127.0.0.1:8000",
+        "testserver",
+        "testserver:80",
         "app.cogotchi.dev",
         "engine.internal:8000",
     ]

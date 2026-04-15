@@ -241,7 +241,15 @@
         wickUpColor:    'rgba(38,166,154,0.7)',
         wickDownColor:  'rgba(239,83,80,0.7)',
       });
-      candleSeries.setData(data.klines as Parameters<typeof candleSeries.setData>[0]);
+      candleSeries.setData(
+        klines.map((bar) => ({
+          time: bar.time as UTCTimestamp,
+          open: bar.open,
+          high: bar.high,
+          low: bar.low,
+          close: bar.close,
+        }))
+      );
       priceSeries = candleSeries;
     }
 
