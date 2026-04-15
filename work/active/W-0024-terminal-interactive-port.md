@@ -33,6 +33,22 @@ app
 - `docs/domains/terminal-html-backend-parity.md`
 - `/Users/ej/Downloads/cogochi_terminal_interactive.html`
 
+## Facts
+
+- Latest `origin/main` already contains terminal selection state and the dedicated right-rail shell.
+- PR #44 was closed because it was based on an older main and conflicted with newer terminal integration work.
+- `task/w-0024-terminal-main-cleanup` removes current Svelte warnings without changing the terminal interaction model.
+- `npm run check` passes with 0 errors and 0 warnings from `app/`.
+- `npm run build` passes from `app/`; remaining output is existing optional dependency/chunk-size warnings.
+
+## Assumptions
+
+- Current main's dedicated `TerminalRightRail` shell is the active direction; this cleanup should not revert it.
+
+## Open Questions
+
+- Later work can decide whether to replace the right-rail shell with a different visual structure, but that is outside this cleanup.
+
 ## Decisions
 
 - Context panel actions use backend terminal prompts via `sendCommand`.
@@ -52,6 +68,8 @@ app
 - Phase 1 scaffolding should start with normalized selection state plus a compact header meta strip; keep chart-first center behavior intact while introducing the new layout contract.
 - Phase 2 scaffolding should wrap the existing analysis rail in a dedicated shell component before reworking internal result blocks.
 - The large terminal summary slab is removed; the surviving board meta now lives as compact status pills inside the right-rail `TerminalContextPanel` header so the center board stays chart-first.
+- Svelte 5 compatibility cleanup uses render snippets in `TerminalRightRail` instead of deprecated `<slot>`.
+- Stale page-local analysis rail CSS should stay deleted because the active right rail owns those selectors inside `TerminalRightRail.svelte`.
 
 ## Next Steps
 
@@ -84,3 +102,9 @@ app
 - `/terminal` visibly contains the interactive prototype's right-rail decision structure.
 - The backend parity plan in `docs/domains/terminal-html-backend-parity.md` is the contract reference for remaining prototype actions.
 - `npm --prefix app run check` passes.
+
+## Handoff Checklist
+
+- Active branch: `task/w-0024-terminal-main-cleanup`.
+- Verification: `npm run check` and `npm run build` pass in `app/`.
+- PR #44 is closed as obsolete; use the cleanup branch from latest main for the mergeable warning-free patch.
