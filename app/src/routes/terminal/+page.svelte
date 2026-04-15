@@ -22,6 +22,7 @@
   import {
     buildDockFeedItems,
   } from '$lib/terminal/terminalDerived';
+  import { buildTerminalAttentionModel } from '$lib/terminal/terminalAttentionModel';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
   import { buildTerminalHeaderModel } from '$lib/terminal/terminalHeaderModel';
   import { createSymbolSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
@@ -1026,6 +1027,15 @@
     regime: surfaceSummary.regime,
     flowBias,
   }));
+  let attentionModel = $derived.by(() => buildTerminalAttentionModel({
+    selection: selectionState,
+    activeAsset,
+    activeVerdict,
+    flowBias,
+    isScanMode,
+    summaryCards: surfaceSummary.shellSummaryCards,
+    statusItems: surfaceSummary.statusStripItems,
+  }));
   let dockFeedItems = $derived.by(() => buildDockFeedItems({
     activeFocusLabel,
     activeAsset,
@@ -1285,9 +1295,10 @@
           resultCount={boardAssets.length}
           activeLabel={activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay}
           width={analysisWidth}
-          summaryCards={surfaceSummary.shellSummaryCards}
+          summaryCards={attentionModel.orderedSummaryCards}
           subtitle={surfaceSummary.terminalSubtitle}
-          statusItems={statusStripItems.slice(0, 6)}
+          statusItems={attentionModel.orderedStatusItems.slice(0, 6)}
+          focusItems={attentionModel.rightFocusItems}
           onBack={clearBoard}
           onToggle={toggleAnalysisRail}
         >
@@ -1328,14 +1339,15 @@
                   analysisData={activeAnalysisData}
                   newsData={newsData}
                   activeTab={activeAnalysisTab}
-                    onTabChange={handleAnalysisTabChange}
-                onAction={sendCommand}
-                onCapture={() => showCaptureModal = true}
-                bars={ohlcvBars}
-                statusItems={statusStripItems.slice(0, 6)}
-                {layerBarsMap}
-              />
-            </div>
+                  onTabChange={handleAnalysisTabChange}
+                  onAction={sendCommand}
+                  onCapture={() => showCaptureModal = true}
+                  bars={ohlcvBars}
+                  statusItems={attentionModel.orderedStatusItems.slice(0, 6)}
+                  tabOrder={attentionModel.panelTabOrder}
+                  {layerBarsMap}
+                />
+              </div>
             {/if}
 
           <!-- MODE A — Single asset compact verdict -->
@@ -1353,7 +1365,8 @@
               onAction={sendCommand}
               onCapture={() => showCaptureModal = true}
               bars={ohlcvBars}
-              statusItems={statusStripItems.slice(0, 6)}
+              statusItems={attentionModel.orderedStatusItems.slice(0, 6)}
+              tabOrder={attentionModel.panelTabOrder}
               {layerBarsMap}
             />
           {:else}
