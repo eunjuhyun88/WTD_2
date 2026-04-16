@@ -36,6 +36,7 @@ from scanner.alerts import (
     send_scan_summary,
 )
 from scanner.jobs.auto_evaluate import auto_evaluate_job
+from scanner.jobs.pattern_refinement import pattern_refinement_job
 from scanner.jobs.pattern_scan import pattern_scan_job
 from scanner.jobs.universe_scan import (
     push_alert,
@@ -57,6 +58,13 @@ _last_pattern_entry_keys: set[str] = set()
 SCAN_INTERVAL = int(os.environ.get("SCAN_INTERVAL_SECONDS", "900"))
 MIN_BLOCKS     = int(os.environ.get("SCAN_MIN_BLOCKS", "1"))
 UNIVERSE_NAME  = DEFAULT_SCAN_UNIVERSE
+PATTERN_REFINEMENT_ENABLED = os.environ.get("ENABLE_PATTERN_REFINEMENT_JOB", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
+PATTERN_REFINEMENT_INTERVAL = int(os.environ.get("PATTERN_REFINEMENT_INTERVAL_SECONDS", "21600"))
+PATTERN_REFINEMENT_AUTO_TRAIN = os.environ.get("PATTERN_REFINEMENT_AUTO_TRAIN", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
 SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().lower() not in {
     "0", "false", "no", "off",
 }
@@ -132,6 +140,10 @@ async def _auto_evaluate_job() -> None:
     await auto_evaluate_job()
 
 
+async def _pattern_refinement_job() -> None:
+    await pattern_refinement_job(auto_train_candidate=PATTERN_REFINEMENT_AUTO_TRAIN)
+
+
 def start_scheduler() -> None:
     """Start the APScheduler background scan loop."""
     global _scheduler
@@ -178,10 +190,25 @@ def start_scheduler() -> None:
         misfire_grace_time=300,
     )
 
+    if PATTERN_REFINEMENT_ENABLED:
+        _scheduler.add_job(
+            _pattern_refinement_job,
+            trigger="interval",
+            seconds=PATTERN_REFINEMENT_INTERVAL,
+            id="pattern_refinement",
+            name="Pattern refinement methodology cycle",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
+
     _scheduler.start()
     log.info(
-        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s universe=%s",
-        SCAN_INTERVAL, SCAN_INTERVAL, UNIVERSE_NAME,
+        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s refinement=%s universe=%s",
+        SCAN_INTERVAL,
+        SCAN_INTERVAL,
+        f"{PATTERN_REFINEMENT_INTERVAL}s" if PATTERN_REFINEMENT_ENABLED else "off",
+        UNIVERSE_NAME,
     )
 
 

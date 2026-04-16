@@ -54,6 +54,19 @@ Typical optional provider keys:
 - `CRYPTOQUANT_API_KEY`
 - `ETHERSCAN_API_KEY`
 
+## Worker-Control Research
+
+| Variable | Default | Used by | Purpose |
+|---|---|---|---|
+| `ENABLE_PATTERN_REFINEMENT_JOB` | `false` | `worker-control` | Enable scheduled bounded refinement cycles |
+| `PATTERN_REFINEMENT_INTERVAL_SECONDS` | `21600` | `worker-control` | Interval for refinement job scheduling |
+| `PATTERN_REFINEMENT_AUTO_TRAIN` | `false` | `worker-control` | Automatically execute `train_candidate` handoff after a successful bounded refinement cycle |
+
+Notes:
+
+- keep `ENABLE_PATTERN_REFINEMENT_JOB=false` until operator review is complete
+- keep `PATTERN_REFINEMENT_AUTO_TRAIN=false` unless you explicitly want worker-control to train immediately after a successful refinement run
+
 ## Health Endpoints
 
 - App health: `GET /healthz`

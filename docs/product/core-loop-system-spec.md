@@ -84,18 +84,32 @@ Source:
 - recovered trade
 - good trade
 - failed trade
+- live chart segment currently under inspection
 
 User artifact:
 
 - narrative review
 - screenshot or chart memory
 - specific observations about OI, funding, volume, structure, and timing
+- selected chart range that says "this is the exact segment I mean"
 
 Canonical output:
 
 - `Pattern Hypothesis`
+- `Chart Range Selection`
 
 This is the point where raw trader intuition enters the system.
+
+`Chart Range Selection` is the minimum durable Day-1 input artifact.
+
+It must identify:
+
+- `symbol`
+- `timeframe`
+- `range_start`
+- `range_end`
+- `selection_origin`: `visible_range` | `drag_brush` | `replay_range`
+- `captured_at`
 
 ### Stage 1. Pattern Definition
 
@@ -291,6 +305,7 @@ Required UI components:
 - chart board
 - pattern status or entry signal strip
 - explanatory AI block or context panel
+- explicit chart-range selection affordance
 - save action
 
 Canonical output:
@@ -302,6 +317,7 @@ Important rule:
 
 - inspection happens in chart context
 - if the chart cannot render, the core loop is broken
+- if the user cannot mark the exact segment to save, the core loop is incomplete
 
 ### Stage 7. Capture
 
@@ -324,7 +340,13 @@ Fields:
 - `candidate_id`
 - `transition_id`
 - `captured_at`
+- `range_start`
+- `range_end`
+- `selection_origin`
 - `chart_context_ref`
+- `ohlcv_slice_ref`
+- `indicator_slice_ref`
+- `pattern_context_ref`
 - `user_note`
 - `source_surface`
 - `capture_mode`: `pattern_candidate` | `manual_pattern_seed` | `challenge_seed`
@@ -333,6 +355,25 @@ Design rule:
 
 - capture is the bridge from human judgment to modelable data
 - capture is not just a UI bookmark
+- capture must preserve the selected chart segment, not only the latest symbol state
+
+Minimum selected-range evidence:
+
+- OHLCV bars for the selected range
+- rendered indicator slices for the selected range
+- active symbol and timeframe
+- visible pattern/runtime context when available
+- current feature snapshot and block scores when the save originated from a candidate
+
+Two save paths share the same substrate:
+
+1. `manual_pattern_seed`
+   - user marks a chart segment first
+   - system saves selected-range evidence even without candidate linkage
+
+2. `pattern_candidate`
+   - user inspects a surfaced candidate
+   - system still saves selected-range evidence, plus `candidate_id` and `transition_id`
 
 ### Stage 8. Outcome Evaluation
 
@@ -430,6 +471,15 @@ What can be refined:
 Design rule:
 
 - refinement should begin with rule and threshold changes before expensive model rollout
+- refinement is governed by the `Methodology Plane` defined in [`docs/domains/refinement-methodology.md`](/Users/ej/Projects/wtd-v2/docs/domains/refinement-methodology.md)
+- agent swarms, parameter sweeps, and reset-search runs are execution backends for refinement, not the refinement architecture itself
+
+Methodology outputs required before train/deploy:
+
+- `Research Objective`
+- `Hypothesis Batch`
+- `Evaluation Protocol`
+- `Selection Decision`
 
 ### Stage 11. Train / Deploy
 
@@ -455,6 +505,7 @@ Design rule:
 
 - `Train` and `Deploy` are downstream of judged evidence
 - they are not part of the raw signal runtime
+- `Train` and `Deploy` are also downstream of the methodology plane; no candidate should skip objective framing, robust evaluation, and explicit selection
 
 ## Surface Responsibilities
 
@@ -472,6 +523,7 @@ Must own:
 
 - current symbol and timeframe context
 - chart rendering
+- selected chart-range capture
 - quick capture flow
 - inline AI interpretation
 

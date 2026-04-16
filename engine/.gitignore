@@ -2,3 +2,6 @@
 .pytest_cache/
 __pycache__/
 *.pyc
+memory/state/*.sqlite
+research/state/*.sqlite
+research/state/reports/*.md

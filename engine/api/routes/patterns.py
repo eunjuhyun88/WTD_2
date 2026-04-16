@@ -19,8 +19,6 @@ Endpoints:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
@@ -29,8 +27,8 @@ from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.library import PATTERN_LIBRARY, get_pattern
-from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE
+from patterns.training_service import train_pattern_model_from_ledger
 from patterns.scanner import (
     _get_machine,
     get_entry_candidates_all,
@@ -39,8 +37,7 @@ from patterns.scanner import (
     get_pattern_states,
     run_pattern_scan,
 )
-from scoring.feature_matrix import encode_features_df
-from scoring.lightgbm_engine import MIN_TRAIN_RECORDS, get_engine
+from scoring.lightgbm_engine import get_engine
 
 router = APIRouter()
 _ledger = LedgerStore()
@@ -80,13 +77,6 @@ class _PromotePatternModelBody(BaseModel):
 
 class _PatternAlertPolicyBody(BaseModel):
     mode: str
-
-
-def _pattern_training_matrix(records: list[dict]) -> tuple[np.ndarray, np.ndarray]:
-    snapshots = [record["snapshot"] for record in records]
-    labels = np.array([int(record["outcome"]) for record in records], dtype=int)
-    X = encode_features_df(pd.DataFrame(snapshots))
-    return X, labels
 
 
 # ── Library & States ─────────────────────────────────────────────────────────
@@ -437,99 +427,26 @@ async def auto_evaluate(slug: str) -> dict:
 async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
     """Train a pattern-scoped model from durable ledger outcomes."""
     try:
-        pattern = get_pattern(slug)
+        get_pattern(slug)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
 
-    outcomes = _ledger.list_all(slug)
-    records = build_pattern_training_records(outcomes)
-    required_records = max(MIN_TRAIN_RECORDS, body.min_records or MIN_TRAIN_RECORDS)
-    if len(records) < required_records:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Need ≥{required_records} training records (got {len(records)})",
-        )
-
-    X, y = _pattern_training_matrix(records)
-    if len(set(y.tolist())) < 2:
-        raise HTTPException(
-            status_code=400,
-            detail="Need at least one success and one failure outcome",
-        )
-
-    model_key = make_pattern_model_key(
-        slug,
-        pattern.timeframe,
-        body.target_name,
-        body.feature_schema_version,
-        body.label_policy_version,
-    )
-    engine = get_engine(model_key)
-    result = engine.train(X, y)
-
-    model_version = (
-        result["model_version"]
-        if result["replaced"] and result["model_version"]
-        else ("not_replaced" if not result["replaced"] else "untrained")
-    )
-    payload = {
-        "model_key": model_key,
-        "timeframe": pattern.timeframe,
-        "target_name": body.target_name,
-        "feature_schema_version": body.feature_schema_version,
-        "label_policy_version": body.label_policy_version,
-        "threshold_policy_version": body.threshold_policy_version,
-        "requested_by_user_id": body.user_id,
-        "n_records": len(records),
-        "n_wins": int((y == 1).sum()),
-        "n_losses": int((y == 0).sum()),
-        "auc": result["auc"],
-        "replaced": result["replaced"],
-        "rollout_state": "candidate" if result["replaced"] else "shadow",
-        "fold_aucs": result["fold_aucs"],
-    }
-    LEDGER_RECORD_STORE.append_training_run_record(
-        pattern_slug=slug,
-        model_key=model_key,
-        user_id=body.user_id,
-        payload=payload,
-    )
-    if result["replaced"]:
-        registry_entry = MODEL_REGISTRY_STORE.upsert_candidate(
-            pattern_slug=slug,
-            model_key=model_key,
-            model_version=model_version,
-            timeframe=pattern.timeframe,
+    try:
+        return train_pattern_model_from_ledger(
+            slug,
+            user_id=body.user_id,
             target_name=body.target_name,
             feature_schema_version=body.feature_schema_version,
             label_policy_version=body.label_policy_version,
             threshold_policy_version=body.threshold_policy_version,
-            requested_by_user_id=body.user_id,
+            min_records=body.min_records,
+            ledger=_ledger,
+            record_store=LEDGER_RECORD_STORE,
+            registry_store=MODEL_REGISTRY_STORE,
+            get_engine_fn=get_engine,
         )
-        LEDGER_RECORD_STORE.append_model_record(
-            pattern_slug=slug,
-            model_version=model_version,
-            user_id=body.user_id,
-            payload={
-                **payload,
-                "rollout_state": registry_entry.rollout_state,
-            },
-        )
-
-    return {
-        "ok": True,
-        "pattern_slug": slug,
-        "model_key": model_key,
-        "model_version": model_version,
-        "rollout_state": payload["rollout_state"],
-        "replaced": result["replaced"],
-        "training_run_recorded": True,
-        "model_recorded": bool(result["replaced"]),
-        "auc": result["auc"],
-        "n_records": len(records),
-        "n_wins": payload["n_wins"],
-        "n_losses": payload["n_losses"],
-    }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/{slug}/promote-model")
