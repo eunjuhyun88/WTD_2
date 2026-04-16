@@ -30,13 +30,28 @@ def test_run_pattern_refinement_once_derives_objective_and_records_run(tmp_path,
 
     state_store = ResearchStateStore(tmp_path / "research_runtime.sqlite")
     monkeypatch.setattr("worker.research_jobs.ResearchStateStore", lambda: state_store)
-    monkeypatch.setattr(
-        "worker.research_jobs.derive_pattern_research_objective",
-        lambda slug, **kwargs: __import__("research.objectives", fromlist=["derive_pattern_research_objective"]).derive_pattern_research_objective(slug, ledger_store=ledger, **kwargs),
-    )
+    def _derive(slug, state_store=None):
+        return __import__(
+            "research.objectives", fromlist=["derive_pattern_research_objective"]
+        ).derive_pattern_research_objective(
+            slug,
+            ledger_store=ledger,
+            state_store=state_store or __import__("research.state_store", fromlist=["ResearchStateStore"]).ResearchStateStore(tmp_path / "research_runtime.sqlite"),
+        )
+
+    monkeypatch.setattr("worker.research_jobs.derive_pattern_research_objective", _derive)
     monkeypatch.setattr("research.pattern_refinement.LedgerStore", lambda: ledger)
+    monkeypatch.setattr(
+        "worker.research_jobs.write_refinement_report",
+        lambda run, objective, store: tmp_path / f"{run.research_run_id}.md",
+    )
 
     payload = run_pattern_refinement_once("tradoor-oi-reversal-v1")
 
     assert payload["objective"]["objective_kind"] == "dataset_readiness"
+    assert payload["objective"]["recommended_search_policy"]["policy"] == "readiness_accumulation"
     assert payload["research_run"]["completion_disposition"] == "no_op"
+    assert payload["research_run"]["search_policy"]["policy"] == "readiness_accumulation"
+    assert payload["research_run"]["search_policy"]["mode"] == "readiness-check"
+    assert payload["report_path"].endswith(".md")
+    assert payload["research_run"]["handoff_payload"]["report_path"].endswith(".md")
