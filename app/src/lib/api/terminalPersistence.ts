@@ -1,10 +1,14 @@
 import {
   parseMacroCalendarResponse,
+  parsePatternCaptureResponse,
   parseTerminalAlertsResponse,
   parseTerminalExportJobResponse,
   parseTerminalPinsResponse,
   parseTerminalWatchlistResponse,
   type MacroCalendarItem,
+  type PatternCaptureCreateRequest,
+  type PatternCaptureQuery,
+  type PatternCaptureRecord,
   type TerminalAlertCreateRequest,
   type TerminalAlertRule,
   type TerminalExportJob,
@@ -110,4 +114,29 @@ export async function fetchMacroCalendar(): Promise<MacroCalendarItem[]> {
   if (!res.ok) return [];
   const payload = parseMacroCalendarResponse(await readJson(res));
   return payload.items;
+}
+
+export async function fetchPatternCaptures(query: Partial<PatternCaptureQuery> = {}): Promise<PatternCaptureRecord[]> {
+  const params = new URLSearchParams();
+  if (query.symbol) params.set('symbol', query.symbol);
+  if (query.timeframe) params.set('timeframe', query.timeframe);
+  if (query.verdict) params.set('verdict', query.verdict);
+  if (query.triggerOrigin) params.set('triggerOrigin', query.triggerOrigin);
+  if (query.limit) params.set('limit', String(query.limit));
+  const suffix = params.size > 0 ? `?${params.toString()}` : '';
+  const res = await fetch(`/api/terminal/pattern-captures${suffix}`);
+  if (!res.ok) return [];
+  const payload = parsePatternCaptureResponse(await readJson(res));
+  return payload.records;
+}
+
+export async function createPatternCapture(input: PatternCaptureCreateRequest): Promise<PatternCaptureRecord | null> {
+  const res = await fetch('/api/terminal/pattern-captures', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) return null;
+  const payload = parsePatternCaptureResponse(await readJson(res));
+  return payload.records[0] ?? null;
 }

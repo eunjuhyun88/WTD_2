@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MacroCalendarResponseSchema,
+  PatternCaptureResponseSchema,
   TerminalAlertCreateRequestSchema,
   TerminalExportJobResponseSchema,
   TerminalPinsResponseSchema,
@@ -106,5 +107,30 @@ describe('terminalPersistence contract', () => {
     });
 
     expect(parsed.items[0]?.affectedAssets).toContain('BTC');
+  });
+
+  it('parses pattern capture response', () => {
+    const parsed = PatternCaptureResponseSchema.parse({
+      ok: true,
+      schemaVersion: 1,
+      records: [
+        {
+          id: 'cap-1',
+          symbol: 'BTCUSDT',
+          timeframe: '4h',
+          contextKind: 'symbol',
+          triggerOrigin: 'manual',
+          patternSlug: 'tradoor-v1',
+          snapshot: { price: 102100.4, change24h: 1.2, funding: 0.01, oiDelta: 4.2 },
+          decision: { verdict: 'bullish', action: 'wait pullback', confidence: 0.67 },
+          sourceFreshness: { market: 'recent' },
+          createdAt: '2026-04-15T10:00:00+00:00',
+          updatedAt: '2026-04-15T10:00:00+00:00',
+        },
+      ],
+      updatedAt: '2026-04-15T10:00:00+00:00',
+    });
+
+    expect(parsed.records[0]?.triggerOrigin).toBe('manual');
   });
 });
