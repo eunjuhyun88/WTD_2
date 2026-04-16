@@ -30,13 +30,6 @@ def execute_train_candidate_handoff(
         )
     if run.handoff_payload.get("training_result") is not None:
         raise ValueError(f"Training handoff already executed: {research_run_id}")
-    control_state = store.get_pattern_control_state(run.pattern_slug)
-    operator_decision = store.get_operator_decision(research_run_id)
-    if operator_decision is not None and operator_decision.decision == "reject":
-        raise ValueError(f"Research run was rejected by operator: {research_run_id}")
-    if control_state.approval_required:
-        if operator_decision is None or operator_decision.decision != "approve":
-            raise ValueError(f"Operator approval required before train handoff: {research_run_id}")
 
     payload = run.handoff_payload
     result = train_pattern_model_from_ledger(

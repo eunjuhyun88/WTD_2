@@ -15,32 +15,15 @@ import numpy as np
 
 from .eval_protocol import walk_forward_eval
 from .experiment import Experiment
-from .inspection import (
-    get_pattern_summary_view,
-    get_run_detail_view,
-    list_recent_runs_view,
-)
 from .pattern_refinement import (
     PatternBoundedEvalConfig,
     pattern_bounded_eval_payload,
     run_pattern_bounded_eval,
 )
 from .objectives import derive_pattern_research_objective
-from .state_store import ResearchStateStore
 from .train_handoff import execute_train_candidate_handoff
 from .tracker import ExperimentTracker
 from worker.research_jobs import run_pattern_refinement_once
-
-
-def _parse_optional_bool(value: str | None) -> bool | None:
-    if value is None:
-        return None
-    normalized = value.strip().lower()
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-    raise ValueError(f"invalid boolean value: {value}")
 
 
 def _run_eval_latest(args: argparse.Namespace) -> int:
@@ -139,54 +122,6 @@ def _run_pattern_refinement_once(args: argparse.Namespace) -> int:
     return 0
 
 
-def _run_refinement_runs(args: argparse.Namespace) -> int:
-    rows = list_recent_runs_view(pattern_slug=args.slug, limit=args.limit)
-    print(json.dumps(rows, indent=2, default=str))
-    return 0
-
-
-def _run_refinement_run_detail(args: argparse.Namespace) -> int:
-    detail = get_run_detail_view(args.research_run_id)
-    print(json.dumps(detail, indent=2, default=str))
-    return 0
-
-
-def _run_refinement_pattern_summary(args: argparse.Namespace) -> int:
-    summary = get_pattern_summary_view(args.slug)
-    print(json.dumps(summary, indent=2, default=str))
-    return 0
-
-
-def _run_operator_decision(args: argparse.Namespace) -> int:
-    store = ResearchStateStore()
-    decision = store.record_operator_decision(
-        research_run_id=args.research_run_id,
-        decision=args.decision,
-        decided_by=args.decided_by,
-        rationale=args.rationale,
-        decided_at=args.decided_at,
-    )
-    print(json.dumps(decision.__dict__, indent=2, default=str))
-    return 0
-
-
-def _run_pattern_control_set(args: argparse.Namespace) -> int:
-    store = ResearchStateStore()
-    state = store.upsert_pattern_control_state(
-        args.slug,
-        updated_at=args.updated_at,
-        enabled=_parse_optional_bool(args.enabled),
-        paused_by_policy=_parse_optional_bool(args.paused_by_policy),
-        paused_by_operator=_parse_optional_bool(args.paused_by_operator),
-        approval_required=_parse_optional_bool(args.approval_required),
-        auto_train_allowed=_parse_optional_bool(args.auto_train_allowed),
-        cooldown_until=args.cooldown_until,
-        pause_reason=args.pause_reason,
-    )
-    print(json.dumps(state.__dict__, indent=2, default=str))
-    return 0
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="WTD v2 research CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -231,39 +166,6 @@ def build_parser() -> argparse.ArgumentParser:
     once_p = sub.add_parser("pattern-refinement-once", help="Derive objective, run one refinement cycle, and write a report")
     once_p.add_argument("--slug", required=True, help="Pattern slug")
     once_p.set_defaults(func=_run_pattern_refinement_once)
-
-    runs_p = sub.add_parser("refinement-runs", help="List recent refinement runs")
-    runs_p.add_argument("--slug")
-    runs_p.add_argument("--limit", type=int, default=20)
-    runs_p.set_defaults(func=_run_refinement_runs)
-
-    detail_p = sub.add_parser("refinement-run-detail", help="Show one refinement run detail")
-    detail_p.add_argument("--research-run-id", required=True)
-    detail_p.set_defaults(func=_run_refinement_run_detail)
-
-    summary_p = sub.add_parser("refinement-pattern-summary", help="Show a pattern refinement summary")
-    summary_p.add_argument("--slug", required=True)
-    summary_p.set_defaults(func=_run_refinement_pattern_summary)
-
-    op_p = sub.add_parser("operator-decision", help="Record operator approve/defer/reject for a research run")
-    op_p.add_argument("--research-run-id", required=True)
-    op_p.add_argument("--decision", required=True, choices=["approve", "defer", "reject"])
-    op_p.add_argument("--decided-by", required=True)
-    op_p.add_argument("--rationale", required=True)
-    op_p.add_argument("--decided-at", required=True)
-    op_p.set_defaults(func=_run_operator_decision)
-
-    control_p = sub.add_parser("pattern-control-set", help="Update pattern-local refinement control state")
-    control_p.add_argument("--slug", required=True)
-    control_p.add_argument("--updated-at", required=True)
-    control_p.add_argument("--enabled")
-    control_p.add_argument("--paused-by-policy")
-    control_p.add_argument("--paused-by-operator")
-    control_p.add_argument("--approval-required")
-    control_p.add_argument("--auto-train-allowed")
-    control_p.add_argument("--cooldown-until")
-    control_p.add_argument("--pause-reason")
-    control_p.set_defaults(func=_run_pattern_control_set)
 
     return parser
 
