@@ -1,3 +1,4 @@
+import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
 import type { TerminalAsset, TerminalEvidence, TerminalSource, TerminalVerdict } from '$lib/types/terminal';
 import type { AnalyzeEnvelope, DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
 import type { MemoryRerankRecord } from '$lib/api/terminalBackend';
@@ -88,6 +89,16 @@ export interface TerminalDecisionBundle {
   verdict: TerminalVerdict;
   evidence: TerminalEvidence[];
   sources: TerminalSource[];
+}
+
+export interface PatternRecallMatch {
+  id: string;
+  symbol: string;
+  timeframe: string;
+  verdict: string;
+  triggerOrigin: string;
+  score: number;
+  updatedAt: string;
 }
 
 function asToneFromState(state: TerminalEvidence['state']): Tone {
@@ -483,4 +494,38 @@ export function rerankEvidenceWithMemory(
     if (scoreA === scoreB) return 0;
     return scoreB - scoreA;
   });
+}
+
+export function buildPatternRecallMatches(
+  activeSymbol: string | null | undefined,
+  activeTimeframe: string,
+  activeVerdict: TerminalVerdict | null | undefined,
+  records: PatternCaptureRecord[]
+): PatternRecallMatch[] {
+  const now = Date.now();
+  const normalizedTf = activeTimeframe.toLowerCase();
+  const normalizedSymbol = (activeSymbol ?? '').toUpperCase();
+  const verdict = activeVerdict?.direction ?? 'neutral';
+
+  const scored = records.map((record) => {
+    let score = 0.1;
+    if (record.symbol.toUpperCase() === normalizedSymbol) score += 0.45;
+    if (record.timeframe.toLowerCase() === normalizedTf) score += 0.2;
+    if ((record.decision.verdict ?? 'neutral') === verdict) score += 0.2;
+    if (record.triggerOrigin === 'pattern_transition') score += 0.08;
+    if (record.triggerOrigin === 'manual') score += 0.03;
+    const ageHours = Math.max(0, (now - Date.parse(record.updatedAt)) / 3_600_000);
+    score += Math.max(0, 0.15 - ageHours * 0.01);
+    return {
+      id: record.id,
+      symbol: record.symbol,
+      timeframe: record.timeframe,
+      verdict: record.decision.verdict ?? 'unknown',
+      triggerOrigin: record.triggerOrigin,
+      score: Math.min(1, Math.max(0, Number(score.toFixed(3)))),
+      updatedAt: record.updatedAt,
+    } satisfies PatternRecallMatch;
+  });
+
+  return scored.sort((a, b) => b.score - a.score).slice(0, 5);
 }

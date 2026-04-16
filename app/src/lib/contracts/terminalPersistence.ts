@@ -156,6 +156,19 @@ export const MacroCalendarResponseSchema = z.object({
 });
 export type MacroCalendarResponse = z.infer<typeof MacroCalendarResponseSchema>;
 
+export const TerminalSessionResponseSchema = z.object({
+  ok: z.boolean(),
+  schemaVersion: z.literal(TerminalPersistenceSchemaVersion),
+  watchlist: z.array(TerminalWatchlistItemSchema),
+  activeSymbol: z.string().min(1).optional(),
+  pins: z.array(TerminalPinSchema),
+  alerts: z.array(TerminalAlertRuleSchema),
+  macro: z.array(MacroCalendarItemSchema),
+  latestExportJob: TerminalExportJobSchema.nullish(),
+  updatedAt: z.string().datetime({ offset: true }),
+});
+export type TerminalSessionResponse = z.infer<typeof TerminalSessionResponseSchema>;
+
 export const PatternCaptureOriginSchema = z.enum(['manual', 'alert', 'anomaly', 'pattern_transition']);
 export type PatternCaptureOrigin = z.infer<typeof PatternCaptureOriginSchema>;
 
@@ -269,6 +282,10 @@ export function parseTerminalExportJobResponse(input: unknown): TerminalExportJo
 
 export function parseMacroCalendarResponse(input: unknown): MacroCalendarResponse {
   return MacroCalendarResponseSchema.parse(input);
+}
+
+export function parseTerminalSessionResponse(input: unknown): TerminalSessionResponse {
+  return TerminalSessionResponseSchema.parse(input);
 }
 
 export function parsePatternCaptureResponse(input: unknown): PatternCaptureResponse {

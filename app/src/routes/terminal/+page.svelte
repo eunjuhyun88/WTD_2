@@ -22,10 +22,7 @@
   import {
     buildDockFeedItems,
   } from '$lib/terminal/terminalDerived';
-  import { buildTerminalAttentionModel } from '$lib/terminal/terminalAttentionModel';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
-  import { buildTerminalHeaderModel } from '$lib/terminal/terminalHeaderModel';
-  import { createSymbolSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
   import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
     fetchTerminalAnomalies,
@@ -49,28 +46,39 @@
   import {
     fetchFlowBias,
     fetchMarketEvents,
-    fetchMemoryRerank,
     sendMemoryDebugSession,
-    sendMemoryFeedback,
   } from '$lib/api/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import {
-    createTerminalAlert,
-    createTerminalExport,
-    deleteTerminalAlert as deleteSavedTerminalAlert,
-    fetchMacroCalendar,
-    fetchTerminalAlerts as fetchSavedTerminalAlerts,
-    fetchTerminalExport,
-    fetchTerminalPins,
-    fetchTerminalWatchlist,
-    saveTerminalPins,
-    saveTerminalWatchlist,
+    fetchPatternCaptures,
   } from '$lib/api/terminalPersistence';
+  import { fetchTerminalSession } from '$lib/api/terminalSession';
   import {
     buildTerminalDecisionBundle,
-    rerankEvidenceWithMemory,
     type TerminalDecisionBundle,
   } from '$lib/terminal/panelAdapter';
+  import {
+    applyPatternTransitionBatch,
+    buildTerminalBootstrapTasks,
+    buildTerminalRefreshIntervals,
+    prunePatternTransitionAlerts,
+    runTerminalMemoryRerank,
+    executeTerminalDockAction,
+    emitTerminalMemoryFeedback,
+    runTerminalCompareAction,
+    runTerminalVisibilityRefresh,
+    createTerminalReportExport,
+    buildTerminalPersistencePayload,
+    buildTerminalRestorePlan,
+    findTerminalAlertRule,
+    getTerminalExportCompletionMessage,
+    pollTerminalExportJobOnce,
+    type PatternTransitionAlert,
+    removeSavedTerminalAlert,
+    toggleAnalysisPin,
+    toggleRiskAlert,
+    touchTerminalWatchlistSymbol,
+  } from '$lib/terminal/terminalController';
   import type {
     AnalyzeEnvelope,
     DepthLadderEnvelope,
@@ -90,13 +98,10 @@
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
-  import TerminalHeaderMeta from '../../components/terminal/workspace/TerminalHeaderMeta.svelte';
-  import TerminalRightRail from '../../components/terminal/workspace/TerminalRightRail.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
   import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
   import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
-  import PatternSeedScoutPanel from '../../components/terminal/workspace/PatternSeedScoutPanel.svelte';
   import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
   import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
 
@@ -149,7 +154,6 @@
   let layerBarsMap = $state<Record<string, any[]>>({});
   let chartPayloadMap = $state<Record<string, ChartSeriesPayload>>({});
   let activeChartPayload = $state<ChartSeriesPayload | null>(null);
-  let selectionState = $state<TerminalSelectionState>(createSymbolSelection('BTCUSDT', '4h', 'system_default'));
 
   let isStreaming = $state(false);
   let streamText = $state('');
@@ -158,16 +162,10 @@
   // ── Pattern Engine state ───────────────────────────────────
   interface PatternPhaseRow { slug: string; phaseName: string; symbols: string[]; }
   let patternPhases = $state<PatternPhaseRow[]>([]);
-  interface PatternTransitionAlert {
-    id: string;
-    symbol: string;
-    slug: string;
-    phase: string;
-    createdAt: number;
-  }
   let patternTransitionAlerts = $state<PatternTransitionAlert[]>([]);
+  let patternCaptureRecords = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
+  let patternCaptureLoading = $state(false);
   let exportPollTimer: ReturnType<typeof setInterval> | null = null;
-  let showPatternSeedScout = $state(false);
 
   // ── Capture modal ──────────────────────────────────────────
   let showCaptureModal = $state(false);
@@ -271,217 +269,72 @@
     return formatAgentFailureMessage(detail, localizeTerminalText('AI 응답 실패', 'AI response failed'));
   }
 
-  function makeWatchlistItem(symbol: string, timeframe: string, sortOrder: number, active: boolean): TerminalWatchlistItem {
-    const existing = persistedWatchlist.find((item) => item.symbol === symbol);
-    return {
-      symbol,
-      timeframe,
-      sortOrder,
-      active,
-      preview: existing?.preview,
-    };
-  }
-
-  function mergeWatchlistSymbol(symbol: string, timeframe: string, activate: boolean): TerminalWatchlistItem[] {
-    const base = persistedWatchlist.filter((item) => item.symbol !== symbol);
-    const next = [makeWatchlistItem(symbol, timeframe, 0, activate), ...base]
-      .slice(0, 6)
-      .map((item, index) => ({
-        ...item,
-        sortOrder: index,
-        active: activate ? item.symbol === symbol : item.active,
-      }));
-    if (activate && next.every((item) => !item.active) && next[0]) {
-      next[0].active = true;
-    }
-    return next;
-  }
-
-  async function persistWatchlist(nextItems: TerminalWatchlistItem[], nextActiveSymbol = activeSymbol): Promise<void> {
-    persistedWatchlist = nextItems;
-    const saved = await saveTerminalWatchlist({ items: nextItems, activeSymbol: nextActiveSymbol });
-    if (saved) persistedWatchlist = saved.items;
-  }
-
-  async function touchWatchlistSymbol(symbol: string, timeframe: string, activate = true): Promise<void> {
-    const nextItems = mergeWatchlistSymbol(symbol, timeframe, activate);
-    const same =
-      nextItems.length === persistedWatchlist.length &&
-      nextItems.every((item, index) => {
-        const current = persistedWatchlist[index];
-        return current
-          && current.symbol === item.symbol
-          && current.timeframe === item.timeframe
-          && current.active === item.active;
-      });
-    if (same) return;
-    await persistWatchlist(nextItems, activate ? symbol : activeSymbol);
-  }
-
-  async function persistPins(nextPins: TerminalPin[]): Promise<void> {
-    persistedPins = nextPins;
-    const saved = await saveTerminalPins(nextPins);
-    if (saved) persistedPins = saved;
-  }
-
-  function buildPin(
-    id: string,
-    pinType: TerminalPin['pinType'],
-    timeframe: string,
-    payload: Record<string, unknown>,
-    symbol?: string,
-    label?: string,
-  ): TerminalPin {
-    const existing = persistedPins.find((pin) => pin.id === id);
-    const now = new Date().toISOString();
-    return {
-      id,
-      pinType,
-      symbol,
-      timeframe,
-      label,
-      payload,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    };
-  }
-
-  function activeAlertRuleFor(symbol: string, timeframe: string): TerminalAlertRule | undefined {
-    return savedAlertRules.find((rule) => rule.symbol === symbol && rule.timeframe === timeframe);
-  }
-
-  function buildActivePersistencePayload(symbol: string, timeframe: string): Record<string, unknown> {
-    const decision = decisionMap[symbol];
-    const data = analysisDataMap[symbol] ?? analysisData;
-    const analyzeExtras = (data ?? null) as Record<string, unknown> | null;
-    return {
-      symbol,
-      timeframe,
-      price: data?.price ?? data?.snapshot?.last_close ?? null,
-      change24h: data?.change24h ?? data?.snapshot?.change24h ?? null,
-      verdict: decision?.verdict ?? null,
-      evidence: decision?.evidence?.slice(0, 8) ?? [],
-      entryPlan: analyzeExtras?.entryPlan ?? null,
-      riskPlan: analyzeExtras?.riskPlan ?? null,
-      flowSummary: analyzeExtras?.flowSummary ?? null,
-      sources: Array.isArray(analyzeExtras?.sources) ? analyzeExtras.sources : [],
-      savedAt: new Date().toISOString(),
-    };
-  }
-
-  async function recordDurableTerminalAction(args: {
-    action: string;
-    symbol: string;
-    timeframe: string;
-    evidence?: string[];
-  }): Promise<void> {
-    try {
-      await sendMemoryDebugSession({
-        sessionId: `terminal:${args.action}:${args.symbol}:${Date.now()}`,
-        symbol: args.symbol,
-        timeframe: args.timeframe,
-        intent: args.action,
-        hypotheses: [
-          {
-            id: `${args.action}:${args.symbol}`,
-            text: `${args.action} committed from terminal persistent action`,
-            status: 'confirmed',
-            evidence: args.evidence ?? [],
-          },
-        ],
-      });
-    } catch {
-      // Best-effort telemetry only.
-    }
-  }
-
   async function handlePinToggle(): Promise<void> {
     const symbol = activeSymbol || pairToSymbol(gPair);
     if (!symbol) return;
     const timeframe = symbolToTF(gTf);
-    const id = `analysis:${symbol}:${timeframe}`;
-    const existing = persistedPins.find((pin) => pin.id === id);
-
-    if (existing) {
-      await persistPins(persistedPins.filter((pin) => pin.id !== id));
-      pushAssistantMessage(localizeTerminalText('핀을 해제했습니다.', 'Analysis pin removed.'), true);
-      return;
-    }
-
-    const payload = buildActivePersistencePayload(symbol, timeframe);
-    const pin = buildPin(
-      id,
-      'analysis',
-      timeframe,
-      payload,
-      symbol,
-      `${symbol.replace('USDT', '')} ${timeframe.toUpperCase()} analysis`,
-    );
-    await persistPins([pin, ...persistedPins.filter((item) => item.id !== id)].slice(0, 50));
-    await touchWatchlistSymbol(symbol, timeframe, true);
-    await recordDurableTerminalAction({
-      action: 'pin',
+    const payload = buildTerminalPersistencePayload({
       symbol,
       timeframe,
-      evidence: (payload.evidence as Array<{ metric?: string }>).map((item) => item.metric ?? 'evidence').slice(0, 3),
+      analysisData: analysisDataMap[symbol] ?? analysisData,
+      decision: decisionMap[symbol],
     });
-    pushAssistantMessage(localizeTerminalText('분석을 핀에 저장했습니다.', 'Analysis pinned to your terminal.'), true);
+    const { pins, watchlist, result } = await toggleAnalysisPin({
+      symbol,
+      timeframe,
+      pins: persistedPins,
+      watchlist: persistedWatchlist,
+      activeSymbol,
+      payload,
+    });
+    persistedPins = pins;
+    persistedWatchlist = watchlist;
+    pushAssistantMessage(
+      result.message.includes('removed')
+        ? localizeTerminalText('핀을 해제했습니다.', result.message)
+        : localizeTerminalText('분석을 핀에 저장했습니다.', result.message),
+      result.transient ?? true,
+    );
   }
 
   async function handleAlertToggle(): Promise<void> {
     const symbol = activeSymbol || pairToSymbol(gPair);
     if (!symbol) return;
     const timeframe = symbolToTF(gTf);
-    const existing = activeAlertRuleFor(symbol, timeframe);
-    if (existing) {
-      const deleted = await deleteSavedTerminalAlert(existing.id);
-      if (deleted) {
-        savedAlertRules = savedAlertRules.filter((rule) => rule.id !== existing.id);
-        pushAssistantMessage(localizeTerminalText('저장된 알림을 삭제했습니다.', 'Saved alert removed.'), true);
-      }
-      return;
-    }
-
-    const payload = buildActivePersistencePayload(symbol, timeframe);
-    const alert = await createTerminalAlert({
+    const payload = buildTerminalPersistencePayload({
       symbol,
       timeframe,
-      kind: 'risk_guard',
-      params: {
-        bias: (payload.riskPlan as { bias?: string } | null)?.bias ?? (payload.verdict as { direction?: string } | null)?.direction ?? 'neutral',
-        invalidation: (payload.riskPlan as { invalidation?: string } | null)?.invalidation
-          ?? (payload.verdict as { invalidation?: string } | null)?.invalidation
-          ?? '',
-        action: (payload.verdict as { action?: string } | null)?.action ?? '',
-      },
-      enabled: true,
-      sourceContext: {
-        origin: 'terminal',
-        symbol,
-        timeframe,
-        pinnedAnalysisId: `analysis:${symbol}:${timeframe}`,
-      },
+      analysisData: analysisDataMap[symbol] ?? analysisData,
+      decision: decisionMap[symbol],
     });
-    if (!alert) {
-      pushAssistantMessage(localizeTerminalText('알림 저장에 실패했습니다.', 'Alert save failed.'), true);
-      return;
-    }
-    savedAlertRules = [alert, ...savedAlertRules.filter((rule) => rule.id !== alert.id)];
-    await recordDurableTerminalAction({ action: 'alert', symbol, timeframe });
-    pushAssistantMessage(localizeTerminalText('리스크 알림을 저장했습니다.', 'Risk alert saved.'), true);
+    const { alerts, result } = await toggleRiskAlert({
+      symbol,
+      timeframe,
+      alerts: savedAlertRules,
+      payload,
+    });
+    savedAlertRules = alerts;
+    pushAssistantMessage(
+      result.message.includes('removed')
+        ? localizeTerminalText('저장된 알림을 삭제했습니다.', result.message)
+        : localizeTerminalText('리스크 알림을 저장했습니다.', result.message),
+      result.transient ?? true,
+    );
   }
 
   async function handleDeleteSavedAlert(id: string): Promise<void> {
-    const deleted = await deleteSavedTerminalAlert(id);
-    if (deleted) {
-      savedAlertRules = savedAlertRules.filter((rule) => rule.id !== id);
-    }
+    savedAlertRules = await removeSavedTerminalAlert({ alerts: savedAlertRules, id });
   }
 
   async function handleCompareAction(): Promise<void> {
     const timeframe = symbolToTF(gTf);
     const seed = activeSymbol || pairToSymbol(gPair) || 'BTCUSDT';
-    const symbols = [...new Set([seed, ...boardSymbols, 'ETHUSDT'].filter(Boolean))].slice(0, 4);
+    const { symbols, pins } = await runTerminalCompareAction({
+      seedSymbol: seed,
+      boardSymbols,
+      timeframe,
+      pins: persistedPins,
+    });
     if (symbols.length < 2) return;
 
     boardSymbols = symbols;
@@ -490,30 +343,7 @@
     for (const symbol of symbols) {
       void loadAnalysis(symbol, timeframe);
     }
-
-    let compareResult: unknown = null;
-    try {
-      const pairs = symbols.map((symbol) => symbol.replace('USDT', '/USDT'));
-      const res = await fetch('/api/terminal/compare', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ pairs, timeframe }),
-      });
-      compareResult = res.ok ? await res.json() : null;
-    } catch {
-      compareResult = null;
-    }
-
-    const id = `compare:${symbols.join('-')}:${timeframe}`;
-    const pin = buildPin(
-      id,
-      'compare',
-      timeframe,
-      { symbols, compareResult, savedAt: new Date().toISOString() },
-      undefined,
-      `${symbols.map((symbol) => symbol.replace('USDT', '')).join(' vs ')} ${timeframe.toUpperCase()}`,
-    );
-    await persistPins([pin, ...persistedPins.filter((item) => item.id !== id)].slice(0, 50));
+    persistedPins = pins;
     pushAssistantMessage(localizeTerminalText('비교 보드를 저장했습니다.', 'Compare board saved.'), true);
   }
 
@@ -521,61 +351,72 @@
     const symbol = activeSymbol || pairToSymbol(gPair);
     if (!symbol) return;
     const timeframe = symbolToTF(gTf);
-    const job = await createTerminalExport({
-      exportType: 'terminal_report',
+    const payload = buildTerminalPersistencePayload({
       symbol,
       timeframe,
-      title: `${symbol.replace('USDT', '')} ${timeframe.toUpperCase()} terminal report`,
-      payload: buildActivePersistencePayload(symbol, timeframe),
+      analysisData: analysisDataMap[symbol] ?? analysisData,
+      decision: decisionMap[symbol],
+    });
+    const { job, result } = await createTerminalReportExport({
+      symbol,
+      timeframe,
+      payload,
     });
     if (!job) {
-      pushAssistantMessage(localizeTerminalText('리포트 export 생성에 실패했습니다.', 'Export job creation failed.'), true);
+      pushAssistantMessage(localizeTerminalText('리포트 export 생성에 실패했습니다.', result.message), result.transient ?? true);
       return;
     }
     latestExportJob = job;
-    await recordDurableTerminalAction({ action: 'export', symbol, timeframe });
     await pollExportJob(job.id);
-    pushAssistantMessage(localizeTerminalText('터미널 리포트 export를 시작했습니다.', 'Terminal report export queued.'), true);
+    pushAssistantMessage(localizeTerminalText('터미널 리포트 export를 시작했습니다.', result.message), result.transient ?? true);
   }
 
   async function handleDockAction(label: string, prompt: string): Promise<void> {
-    if (label === 'Scout') {
-      showPatternSeedScout = true;
-      pushAssistantMessage(
-        localizeTerminalText('패턴 시드 스카우트를 열었습니다.', 'Opened pattern seed scout.'),
-        true,
-      );
-      return;
-    }
     if (label === 'Export') {
       await handleCreateExport();
       return;
     }
-    if (label === 'Alerts') {
-      await Promise.all([loadAlerts(), loadTerminalPersistenceState()]);
-      pushAssistantMessage(localizeTerminalText('알림 레일을 최신 상태로 갱신했습니다.', 'Alerts refreshed from backend routes.'), true);
+    const symbol = activeSymbol || pairToSymbol(gPair);
+    const timeframe = symbolToTF(gTf);
+    const dockResult = await executeTerminalDockAction({
+      label,
+      prompt,
+      symbol,
+      timeframe,
+      loadAlerts,
+      loadTerminalPersistenceState,
+      loadAnalysis,
+      loadActiveReadPath,
+      loadTerminalReadPath,
+      loadPatternCaptures,
+    });
+    if (dockResult.handled) {
+      if (dockResult.activeAnalysisTab) activeAnalysisTab = dockResult.activeAnalysisTab;
+      if (dockResult.showAnalysisRail != null) showAnalysisRail = dockResult.showAnalysisRail;
+      if (dockResult.showCaptureModal) showCaptureModal = true;
+      if (dockResult.messageKey === 'alerts_refreshed') {
+        pushAssistantMessage(localizeTerminalText('알림 레일을 최신 상태로 갱신했습니다.', 'Alerts refreshed from backend routes.'), dockResult.transient ?? true);
+      } else if (dockResult.messageKey === 'board_refreshed') {
+        pushAssistantMessage(localizeTerminalText('보드를 최신 백엔드 상태로 갱신했습니다.', 'Board refreshed from backend routes.'), dockResult.transient ?? true);
+      } else if (dockResult.messageKey === 'scan_refreshed') {
+        pushAssistantMessage(localizeTerminalText('스캔 상태를 최신 상태로 갱신했습니다.', 'Scan state refreshed from backend routes.'), dockResult.transient ?? true);
+      } else if (dockResult.messageKey === 'pattern_modal_opened') {
+        pushAssistantMessage(localizeTerminalText('현재 패턴 저장 모달을 열었습니다.', 'Opened save pattern modal.'), dockResult.transient ?? true);
+      }
       return;
     }
-    if (label === 'Board') {
-      const symbol = activeSymbol || pairToSymbol(gPair);
-      await Promise.all([
-        loadAnalysis(symbol, symbolToTF(gTf)),
-        loadActiveReadPath(symbol, symbolToTF(gTf)),
-        loadTerminalPersistenceState(),
-      ]);
-      pushAssistantMessage(localizeTerminalText('보드를 최신 백엔드 상태로 갱신했습니다.', 'Board refreshed from backend routes.'), true);
-      return;
-    }
-    if (label === 'Risk') {
-      activeAnalysisTab = 'risk';
-      showAnalysisRail = true;
-      const symbol = activeSymbol || pairToSymbol(gPair);
-      await loadAnalysis(symbol, symbolToTF(gTf));
-      return;
-    }
-    if (label === 'Scan') {
-      await Promise.all([loadTerminalReadPath(), loadAlerts()]);
-      pushAssistantMessage(localizeTerminalText('스캔 상태를 최신 상태로 갱신했습니다.', 'Scan state refreshed from backend routes.'), true);
+    if (label === 'Fails') {
+      await loadPatternCaptures();
+      const failed = patternCaptureRecords
+        .filter((record) => record.decision.verdict === 'bearish' || (record.reason ?? '').toLowerCase().includes('fail'))
+        .slice(0, 5)
+        .map((record) => `${record.symbol.replace('USDT', '')} ${record.timeframe.toUpperCase()} · ${record.reason ?? 'no reason'}`);
+      pushAssistantMessage(
+        failed.length > 0
+          ? `${localizeTerminalText('최근 실패 리콜', 'Recent failed recalls')}: ${failed.join(' | ')}`
+          : localizeTerminalText('최근 실패 리콜이 없습니다.', 'No failed recalls in recent saved patterns.'),
+        true
+      );
       return;
     }
     await sendCommand(prompt);
@@ -585,16 +426,18 @@
     if (exportPollTimer) clearInterval(exportPollTimer);
     exportPollTimer = setInterval(() => {
       void (async () => {
-        const job = await fetchTerminalExport(id);
+        const { job, completed } = await pollTerminalExportJobOnce(id);
         if (!job) return;
         latestExportJob = job;
-        if (job.status === 'succeeded' || job.status === 'failed') {
+        if (completed) {
           if (exportPollTimer) clearInterval(exportPollTimer);
           exportPollTimer = null;
+          const message = getTerminalExportCompletionMessage(job.status);
+          if (!message) return;
           pushAssistantMessage(
             job.status === 'succeeded'
-              ? localizeTerminalText('터미널 리포트 export 완료', 'Terminal report export completed')
-              : localizeTerminalText('터미널 리포트 export 실패', 'Terminal report export failed'),
+              ? localizeTerminalText('터미널 리포트 export 완료', message)
+              : localizeTerminalText('터미널 리포트 export 실패', message),
             true,
           );
         }
@@ -689,6 +532,7 @@
       if (
         x.metric !== y.metric ||
         x.value !== y.value ||
+        x.delta !== y.delta ||
         x.interpretation !== y.interpretation ||
         x.state !== y.state ||
         x.sourceCount !== y.sourceCount
@@ -755,7 +599,15 @@
         const decision = applyTerminalDecision(symbol, data);
         applyDecisionState(symbol, decision, true);
         if (isCurrentActive || !persistedWatchlist.some((item) => item.symbol === symbol)) {
-          void touchWatchlistSymbol(symbol, tf, isCurrentActive);
+          void (async () => {
+            persistedWatchlist = await touchTerminalWatchlistSymbol({
+              watchlist: persistedWatchlist,
+              symbol,
+              timeframe: tf,
+              activeSymbol,
+              activate: isCurrentActive,
+            });
+          })();
         }
 
         // Memory rerank is expensive. Run it once per active symbol+tf+tab tuple.
@@ -765,42 +617,22 @@
             memoryRerankInFlight.add(rerankKey);
             void (async () => {
               try {
-                const rerankResult = await fetchMemoryRerank({
-                  query: `${symbol} ${tf} evidence`,
+                const rerank = await runTerminalMemoryRerank({
                   symbol,
                   timeframe: tf,
                   intent: activeAnalysisTab,
-                  mode: 'terminal',
-                  candidates: decision.evidence.map((item, index) => ({
-                    id: item.metric,
-                    text: `${item.metric} ${item.value} ${item.interpretation}`,
-                    baseScore: Math.max(0.1, decision.evidence.length - index),
-                    confidence: item.state === 'warning' ? 'observed' : 'verified',
-                    tags: [symbol.toLowerCase(), tf.toLowerCase(), activeAnalysisTab, 'terminal'],
-                  })),
+                  evidence: decision.evidence,
                 });
-                if (rerankResult.records.length === 0) return;
-                const reranked = rerankEvidenceWithMemory(decision.evidence, rerankResult.records);
-                applyDecisionState(symbol, { ...decision, evidence: reranked }, false);
+                if (!rerank) return;
+                applyDecisionState(symbol, { ...decision, evidence: rerank.evidence }, false);
                 memoryQueryIdMap = {
                   ...memoryQueryIdMap,
-                  [symbol]: rerankResult.queryId,
+                  [symbol]: rerank.queryId,
                 };
                 memoryTopEvidenceMap = {
                   ...memoryTopEvidenceMap,
-                  [symbol]: rerankResult.records.map((item) => item.id).slice(0, 5),
+                  [symbol]: rerank.topEvidenceIds,
                 };
-                for (const item of rerankResult.records.slice(0, 2)) {
-                  void sendMemoryFeedback({
-                    queryId: rerankResult.queryId,
-                    memoryId: item.id,
-                    event: 'retrieved',
-                    symbol,
-                    timeframe: tf,
-                    intent: activeAnalysisTab,
-                    mode: 'terminal',
-                  });
-                }
               } catch (memoryError) {
                 console.warn('memory rerank skipped:', memoryError);
               } finally {
@@ -875,43 +707,36 @@
 
   async function loadTerminalPersistenceState() {
     try {
-      const [watchlistPayload, pins, alerts, macroItems] = await Promise.all([
-        fetchTerminalWatchlist(),
-        fetchTerminalPins(),
-        fetchSavedTerminalAlerts(),
-        fetchMacroCalendar(),
-      ]);
-      persistedWatchlist = watchlistPayload.items;
-      persistedPins = pins;
-      savedAlertRules = alerts;
-      macroCalendarItems = macroItems;
+      const session = await fetchTerminalSession();
+      const restore = buildTerminalRestorePlan(session);
 
-      const latestComparePin = pins.find((pin) => pin.pinType === 'compare');
-      const compareSymbols = Array.isArray(latestComparePin?.payload?.symbols)
-        ? latestComparePin.payload.symbols.filter((value): value is string => typeof value === 'string')
-        : [];
-      if (compareSymbols.length >= 2) {
-        boardSymbols = compareSymbols.slice(0, 4);
-        stubAssetMap = Object.fromEntries(compareSymbols.slice(0, 4).map((symbol) => [symbol, buildStubAsset(symbol)]));
+      persistedWatchlist = restore.watchlist;
+      persistedPins = restore.pins;
+      savedAlertRules = restore.alerts;
+      macroCalendarItems = restore.macro;
+      latestExportJob = restore.latestExportJob;
+
+      if (restore.compareSymbols.length >= 2) {
+        boardSymbols = restore.compareSymbols;
+        stubAssetMap = Object.fromEntries(restore.compareSymbols.map((symbol) => [symbol, buildStubAsset(symbol)]));
         layout = 'compare2x2';
-        activeSymbol = compareSymbols[0] ?? activeSymbol;
-        if (latestComparePin?.timeframe) {
-          setActiveTimeframe(normalizeTimeframe(latestComparePin.timeframe));
+        activeSymbol = restore.activeSymbol ?? activeSymbol;
+        if (restore.compareTimeframe) {
+          setActiveTimeframe(normalizeTimeframe(restore.compareTimeframe));
         }
         if (activeSymbol) {
           setActivePair(activeSymbol.replace('USDT', '/USDT'));
         }
-        for (const symbol of compareSymbols.slice(0, 4)) {
-          void loadAnalysis(symbol, symbolToTF(latestComparePin?.timeframe ?? gTf));
+        for (const symbol of restore.compareSymbols) {
+          void loadAnalysis(symbol, symbolToTF(restore.compareTimeframe ?? gTf));
         }
-      } else if (watchlistPayload.activeSymbol) {
-        setActivePair(watchlistPayload.activeSymbol.replace('USDT', '/USDT'));
+      } else if (restore.activeSymbol) {
+        setActivePair(restore.activeSymbol.replace('USDT', '/USDT'));
+        if (restore.activeTimeframe) {
+          setActiveTimeframe(normalizeTimeframe(restore.activeTimeframe));
+        }
       } else {
-        const latestAnalysisPin = pins.find((pin) => pin.pinType === 'analysis' && pin.symbol);
-        if (latestAnalysisPin?.symbol) {
-          setActivePair(latestAnalysisPin.symbol.replace('USDT', '/USDT'));
-          setActiveTimeframe(normalizeTimeframe(latestAnalysisPin.timeframe));
-        }
+        latestExportJob = restore.latestExportJob;
       }
     } catch {}
   }
@@ -942,35 +767,33 @@
     } catch {}
   }
 
+  async function loadPatternCaptures() {
+    patternCaptureLoading = true;
+    try {
+      patternCaptureRecords = await fetchPatternCaptures({ limit: 120 });
+    } catch {
+      patternCaptureRecords = [];
+    } finally {
+      patternCaptureLoading = false;
+    }
+  }
+
   function pushPatternTransitions(items: Array<{ symbol: string; slug: string; phase: string }>) {
-    if (items.length === 0) return;
-
-    const now = Date.now();
-    const existing = new Set(patternTransitionAlerts.map((item) => item.id));
-    const fresh = items
-      .map((item) => ({
-        id: `${item.slug}:${item.symbol}:${item.phase}`,
-        symbol: item.symbol,
-        slug: item.slug,
-        phase: item.phase,
-        createdAt: now,
-      }))
-      .filter((item) => !existing.has(item.id));
-
-    if (fresh.length === 0) return;
-
-    patternTransitionAlerts = [...fresh, ...patternTransitionAlerts]
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, 6);
-
-    setTimeout(() => {
-      patternTransitionAlerts = patternTransitionAlerts.filter((item) => now - item.createdAt < 90_000);
-    }, 95_000);
+    void (async () => {
+      const result = await applyPatternTransitionBatch({
+        existingAlerts: patternTransitionAlerts,
+        items,
+        timeframe: symbolToTF(gTf),
+      });
+      patternTransitionAlerts = result.alerts;
+      setTimeout(() => {
+        patternTransitionAlerts = prunePatternTransitionAlerts(patternTransitionAlerts, result.prunableBefore);
+      }, 95_000);
+    })();
   }
 
   function focusPatternSymbol(item: { symbol: string }) {
     const pair = item.symbol.replace('USDT', '/USDT');
-    selectionState = createSymbolSelection(item.symbol, symbolToTF(gTf), 'pattern_engine', item.symbol);
     setActivePair(pair);
   }
 
@@ -1103,19 +926,22 @@
 
   function handleQueryChip(query: string) { sendCommand(query); }
 
-  function handleLeftRailSelection(next: TerminalSelectionState) {
-    selectionState = next;
-  }
-
   function selectAsset(symbol: string) {
-    selectionState = createSymbolSelection(symbol, symbolToTF(gTf), 'left_watchlist');
     activeSymbol = symbol;
     showAnalysisRail = true;
     activeAnalysisTab = 'summary';
     activeChartPayload = chartPayloadMap[symbol] ?? null;
     if (!decisionMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
     void loadActiveReadPath(symbol, symbolToTF(gTf));
-    void touchWatchlistSymbol(symbol, symbolToTF(gTf), true);
+    void (async () => {
+      persistedWatchlist = await touchTerminalWatchlistSymbol({
+        watchlist: persistedWatchlist,
+        symbol,
+        timeframe: symbolToTF(gTf),
+        activeSymbol,
+        activate: true,
+      });
+    })();
     setActivePair(symbol.replace('USDT', '/USDT'));
   }
 
@@ -1134,7 +960,6 @@
     activeChartPayload = null;
     chartLevels = {};
     activeAnalysisTab = 'summary';
-    selectionState = createSymbolSelection(pairToSymbol(gPair), symbolToTF(gTf), 'system_default');
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
 
@@ -1143,35 +968,24 @@
   function trackMemoryFeedbackForSymbol(symbol: string, event: 'used' | 'confirmed', intent = activeAnalysisTab) {
     const queryId = memoryQueryIdMap[symbol];
     const topEvidenceIds = memoryTopEvidenceMap[symbol] ?? [];
-    if (!queryId || topEvidenceIds.length === 0) return;
     const tf = symbolToTF(gTf);
-    for (const memoryId of topEvidenceIds.slice(0, 2)) {
-      void sendMemoryFeedback({
-        queryId,
-        memoryId,
-        event,
-        symbol,
-        timeframe: tf,
-        intent,
-        mode: 'terminal',
-      });
-    }
+    void emitTerminalMemoryFeedback({
+      queryId,
+      evidenceIds: topEvidenceIds,
+      event,
+      symbol,
+      timeframe: tf,
+      intent,
+    });
   }
 
-  let analysisTabFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
   function handleAnalysisTabChange(tab: string) {
-    const nextTab = tab as typeof activeAnalysisTab;
-    activeAnalysisTab = nextTab;
-    if (analysisTabFeedbackTimer) clearTimeout(analysisTabFeedbackTimer);
-    if (!activeSymbol) return;
-    analysisTabFeedbackTimer = setTimeout(() => {
-      trackMemoryFeedbackForSymbol(activeSymbol, 'used', nextTab);
-      analysisTabFeedbackTimer = null;
-    }, 180);
+    activeAnalysisTab = tab as typeof activeAnalysisTab;
   }
 
   function handleCaptureSaved() {
     showCaptureModal = false;
+    void loadPatternCaptures();
     if (activeSymbol) {
       trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
       void sendMemoryDebugSession({
@@ -1226,11 +1040,13 @@
     // $effect handles initial loadAnalysis + loadFlow — only set up intervals and one-shot fetches here
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible') return;
-      runIfVisible(() => {
-        loadFlow(gPair, symbolToTF(gTf));
-        loadEvents();
-        loadTerminalReadPath();
-      });
+      runIfVisible(() =>
+        runTerminalVisibilityRefresh({
+          loadFlow: () => { void loadFlow(gPair, symbolToTF(gTf)); },
+          loadEvents: () => { void loadEvents(); },
+          loadTerminalReadPath: () => { void loadTerminalReadPath(); },
+        })
+      );
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -1238,16 +1054,34 @@
     loadTerminalReadPath();
     loadTerminalPersistenceState();
     loadEvents();
-    scheduleBootstrapTask(loadTrending, 120);
-    scheduleBootstrapTask(loadNews, 220);
-    scheduleBootstrapTask(loadAlerts, 320);
-    scheduleBootstrapTask(loadPatternPhases, 420);
-    flowInterval = setInterval(() => runIfVisible(() => loadFlow(gPair, symbolToTF(gTf))), 15_000);
-    trendingInterval = setInterval(() => runIfVisible(loadTrending), 60_000);
-    readPathInterval = setInterval(() => runIfVisible(loadTerminalReadPath), 60_000);
-    alertsInterval = setInterval(() => runIfVisible(loadAlerts), 5 * 60_000);
-    eventsInterval = setInterval(() => runIfVisible(loadEvents), 60_000);
-    patternInterval = setInterval(() => runIfVisible(loadPatternPhases), 60_000);  // refresh pattern states every 1 min
+    for (const item of buildTerminalBootstrapTasks({
+      loadTrending,
+      loadNews,
+      loadAlerts,
+      loadPatternPhases,
+      loadPatternCaptures,
+    })) {
+      scheduleBootstrapTask(item.task, item.delayMs);
+    }
+    const refreshIntervals = buildTerminalRefreshIntervals({
+      loadFlow: () => { void loadFlow(gPair, symbolToTF(gTf)); },
+      loadTrending,
+      loadTerminalReadPath,
+      loadAlerts,
+      loadEvents,
+      loadPatternPhases,
+    });
+    const scheduledIntervals = refreshIntervals.map((item) =>
+      setInterval(() => runIfVisible(item.task), item.everyMs)
+    ) as Array<ReturnType<typeof setInterval>>;
+    [flowInterval, trendingInterval, readPathInterval, alertsInterval, eventsInterval, patternInterval] = scheduledIntervals as [
+      ReturnType<typeof setInterval>,
+      ReturnType<typeof setInterval>,
+      ReturnType<typeof setInterval>,
+      ReturnType<typeof setInterval>,
+      ReturnType<typeof setInterval>,
+      ReturnType<typeof setInterval>,
+    ];
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -1262,7 +1096,6 @@
     clearInterval(eventsInterval);
     clearInterval(patternInterval);
     if (exportPollTimer) clearInterval(exportPollTimer);
-    if (analysisTabFeedbackTimer) clearTimeout(analysisTabFeedbackTimer);
     bootstrapTimers.forEach((timer) => clearTimeout(timer));
     bootstrapTimers = [];
   });
@@ -1277,8 +1110,6 @@
       prevPair = pair;
       prevTf = tf;
       const symbol = pairToSymbol(pair);
-      const selectionOrigin = untrack(() => selectionState.origin);
-      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeSymbol = symbol;
       activeAnalysisTab = 'summary';
       analysisData = null;  // clear stale snapshot so chat context resets
@@ -1303,8 +1134,6 @@
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
-      const selectionOrigin = untrack(() => selectionState.origin);
-      selectionState = createSymbolSelection(symbol, symbolToTF(tf), selectionOrigin);
       activeReadPathKey = '';
       memoryQueryIdMap = {};
       memoryTopEvidenceMap = {};
@@ -1405,18 +1234,19 @@
 
   let activeAsset = $derived(boardAssets.find(a => a.symbol === activeSymbol) ?? boardAssets[0] ?? null);
   let activeVerdict = $derived(activeSymbol ? verdictMap[activeSymbol] ?? null : null);
-  let isActivePinned = $derived.by(() => {
-    const symbol = activeSymbol || pairToSymbol(gPair);
-    const timeframe = symbolToTF(gTf);
-    return persistedPins.some((pin) => pin.pinType === 'analysis' && pin.symbol === symbol && pin.timeframe === timeframe);
-  });
-  let hasActiveSavedAlert = $derived.by(() => {
-    const symbol = activeSymbol || pairToSymbol(gPair);
-    const timeframe = symbolToTF(gTf);
-    return savedAlertRules.some((rule) => rule.symbol === symbol && rule.timeframe === timeframe);
-  });
   let activeEvidence = $derived(activeSymbol ? evidenceMap[activeSymbol] ?? [] : []);
   let activeAnalysisData = $derived(activeSymbol ? analysisDataMap[activeSymbol] ?? analysisData : analysisData);
+  let isActivePinned = $derived.by(() => {
+    if (!activeSymbol) return false;
+    const timeframe = symbolToTF(gTf);
+    return persistedPins.some((pin) =>
+      pin.timeframe === timeframe && pin.symbol === activeSymbol && (pin.pinType === 'symbol' || pin.pinType === 'analysis')
+    );
+  });
+  let hasActiveSavedAlert = $derived.by(() => {
+    if (!activeSymbol) return false;
+    return Boolean(findTerminalAlertRule(savedAlertRules, activeSymbol, symbolToTF(gTf)));
+  });
   let companionAssets = $derived(
     boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
   );
@@ -1457,22 +1287,6 @@
     readPathLiq,
   }));
   let statusStripItems = $derived(surfaceSummary.statusStripItems);
-  let headerModel = $derived.by(() => buildTerminalHeaderModel({
-    selection: selectionState,
-    activeAsset,
-    activeVerdict,
-    regime: surfaceSummary.regime,
-    flowBias,
-  }));
-  let attentionModel = $derived.by(() => buildTerminalAttentionModel({
-    selection: selectionState,
-    activeAsset,
-    activeVerdict,
-    flowBias,
-    isScanMode,
-    summaryCards: surfaceSummary.shellSummaryCards,
-    statusItems: surfaceSummary.statusStripItems,
-  }));
   let dockFeedItems = $derived.by(() => buildDockFeedItems({
     activeFocusLabel,
     activeAsset,
@@ -1573,12 +1387,10 @@
           {patternPhases}
           {activeSymbol}
           macroItems={macroCalendarItems}
-          newsItems={newsData?.records ?? []}
           {marketEvents}
           queryPresets={terminalQueryPresets}
           anomalies={terminalAnomalies}
           onQuery={handleQueryChip}
-          onSelect={handleLeftRailSelection}
           onDeleteSavedAlert={handleDeleteSavedAlert}
         />
       </aside>
@@ -1605,13 +1417,13 @@
       <div class="workspace-panel-head center">
         <span class="workspace-panel-kicker">Main Board</span>
         <span class="workspace-panel-meta">{layout} layout</span>
+        <div class="center-head-actions">
+          <button class="panel-head-toggle" type="button" onclick={toggleAnalysisRail} aria-label="Toggle analysis rail">
+            <span class="panel-head-toggle-glyph">{showAnalysisRail ? '◨' : '◧'}</span>
+          </button>
+        </div>
       </div>
-      <TerminalHeaderMeta
-        subjectLabel={headerModel.subjectLabel}
-        sourceLabel={headerModel.sourceLabel}
-        badges={headerModel.badges}
-      />
-      <!-- Desktop board (hidden on mobile via CSS) -->
+      <!-- Main board: ChartBoard + Zone B/C; on narrow viewports see mobile CSS (ChartBoard stays visible) -->
       <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
 
         <!-- ── Chart area — hero, full height ── -->
@@ -1730,19 +1542,27 @@
           onmousedown={startAnalysisResize}
           aria-label="Resize analysis panel"
         ></button>
-        <TerminalRightRail
-          {isStreaming}
-          {isScanMode}
-          resultCount={boardAssets.length}
-          activeLabel={activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay}
-          width={analysisWidth}
-          summaryCards={attentionModel.orderedSummaryCards}
-          subtitle={surfaceSummary.terminalSubtitle}
-          statusItems={attentionModel.orderedStatusItems.slice(0, 6)}
-          focusItems={attentionModel.rightFocusItems}
-          onBack={clearBoard}
-          onToggle={toggleAnalysisRail}
-        >
+        <div class="analysis-rail">
+
+          <!-- Rail header: mode indicator + streaming badge -->
+          <div class="rail-header">
+            {#if isStreaming}
+              <span class="rail-badge streaming">
+                <span class="stream-dot pulsing">●</span>
+                Analyzing…
+              </span>
+            {:else if isScanMode}
+              <span class="rail-badge scan">{boardAssets.length} RESULTS</span>
+              <button class="rail-back" onclick={clearBoard}>← Back</button>
+            {:else}
+              <span class="rail-mode">ANALYSIS</span>
+              <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
+            {/if}
+            <span class="rail-width-indicator">{analysisWidth}px</span>
+            <button class="panel-head-toggle" type="button" onclick={toggleAnalysisRail} aria-label="Hide analysis rail">
+              <span class="panel-head-toggle-glyph">◨</span>
+            </button>
+          </div>
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
             <div class="scan-list">
@@ -1789,11 +1609,10 @@
                   isPinned={isActivePinned}
                   hasSavedAlert={hasActiveSavedAlert}
                   bars={ohlcvBars}
-                  statusItems={attentionModel.orderedStatusItems.slice(0, 6)}
-                  tabOrder={attentionModel.panelTabOrder}
+                  statusItems={statusStripItems.slice(0, 6)}
                   {layerBarsMap}
                 />
-              </div>
+            </div>
             {/if}
 
           <!-- MODE A — Single asset compact verdict -->
@@ -1816,8 +1635,7 @@
               isPinned={isActivePinned}
               hasSavedAlert={hasActiveSavedAlert}
               bars={ohlcvBars}
-              statusItems={attentionModel.orderedStatusItems.slice(0, 6)}
-              tabOrder={attentionModel.panelTabOrder}
+              statusItems={statusStripItems.slice(0, 6)}
               {layerBarsMap}
             />
           {:else}
@@ -1826,7 +1644,8 @@
               <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
             </div>
           {/if}
-        </TerminalRightRail>
+
+        </div>
         {:else}
           <button class="collapsed-rail-tab right" type="button" onclick={toggleAnalysisRail} aria-label="Show analysis rail">
             <span class="collapsed-rail-icon">◨</span>
@@ -1882,15 +1701,6 @@
   tf={symbolToTF(gTf)}
   onClose={() => showCaptureModal = false}
   onSaved={handleCaptureSaved}
-/>
-
-<PatternSeedScoutPanel
-  open={showPatternSeedScout}
-  assets={boardAssets}
-  activeSymbol={activeSymbol || pairToSymbol(gPair)}
-  timeframe={symbolToTF(gTf)}
-  onClose={() => showPatternSeedScout = false}
-  onPickSymbol={selectAsset}
 />
 
 <!-- Mobile detail sheet (portal-style, outside grid) -->
@@ -2250,6 +2060,13 @@
     background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   }
 
+  .center-head-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+
   .workspace-panel-kicker,
   .workspace-panel-meta {
     font-family: var(--sc-font-mono);
@@ -2271,7 +2088,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-width: 0;
+    min-width: 640px;
     min-height: 0;
     position: relative;
   }
@@ -2295,11 +2112,106 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    overflow: auto;
+    overflow: hidden auto;
     border-right: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
     min-height: 0;
     scrollbar-gutter: stable;
   }
+  .chart-area :global(.chart-board) {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .chart-area :global(.metrics-dock) {
+    flex-shrink: 0;
+  }
+
+  /* Analysis rail — always visible right panel, scrollable */
+  .analysis-rail {
+    width: var(--terminal-analysis-w, 280px);
+    min-width: 0;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--sc-terminal-bg, #000);
+    position: relative;
+    scrollbar-gutter: stable;
+    border-left: 1px solid rgba(255,255,255,0.05);
+  }
+
+  /* Rail header */
+  .rail-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
+    flex-shrink: 0;
+    min-height: 24px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0)),
+      rgba(255,255,255,0.015);
+  }
+  .rail-width-indicator {
+    margin-left: auto;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    color: rgba(255,255,255,0.26);
+    letter-spacing: 0.08em;
+    padding-left: 5px;
+    border-left: 1px solid rgba(255,255,255,0.06);
+  }
+  .rail-header .rail-back + .rail-width-indicator {
+    margin-left: 0;
+  }
+  .rail-mode {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.24);
+    text-transform: uppercase;
+  }
+  .rail-sym {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.72);
+    margin-left: auto;
+    letter-spacing: 0.08em;
+  }
+  .rail-badge {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    padding: 1px 5px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .rail-badge.streaming {
+    background: rgba(74,222,128,0.08);
+    color: #4ade80;
+    border: 1px solid rgba(74,222,128,0.2);
+  }
+  .rail-badge.scan {
+    background: rgba(99,179,237,0.08);
+    color: #63b3ed;
+    border: 1px solid rgba(99,179,237,0.2);
+  }
+  .rail-back {
+    margin-left: auto;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.4);
+    border-radius: 3px;
+    padding: 1px 5px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .rail-back:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
 
   /* Scan list (Mode B) */
   .scan-list {
@@ -2576,12 +2488,16 @@
     }
   }
 
-  /* Tablet */
+  /* Tablet — analysis rail gets narrower */
   @media (max-width: 1200px) and (min-width: 769px) {
+    .analysis-rail { width: var(--terminal-analysis-w, 260px); max-width: 340px; }
     .microstructure-row { grid-template-columns: 1fr; }
     .terminal-body {
       --terminal-left-w: 144px;
       --terminal-analysis-w: 232px;
+    }
+    .center-board {
+      min-width: 0;
     }
   }
 
@@ -2609,8 +2525,21 @@
     }
     .left-rail     { display: none; }
     .panel-resizer { display: none; }
-    .center-board  { height: 100%; }
-    .desktop-board { display: none; }
+    .analysis-rail { display: none; }   /* verdict rail — use MobileActiveBoard summary below chart */
+    .center-board  {
+      height: 100%;
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    /* Main ChartBoard lives in .desktop-board — must stay visible on narrow viewports for L1 chart + save capture */
+    .board-content {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .chart-area {
+      border-right: none;
+    }
     .desktop-dock  { display: none; }
     .mobile-board-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
   }
