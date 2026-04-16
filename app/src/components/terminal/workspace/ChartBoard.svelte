@@ -4,6 +4,8 @@
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
   import type { DepthLadderEnvelope, LiquidationClustersEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
+  import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
+  import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
 
   // ── Props ──────────────────────────────────────────────────────────────────
@@ -492,6 +494,30 @@
     cvdChart?.resize(w, 70);
   }
 
+  function getViewportForSave(): ChartViewportSnapshot | null {
+    const data = chartData;
+    if (!data?.klines?.length || !mainChart) return null;
+    const vr = mainChart.timeScale().getVisibleRange();
+    let from: number;
+    let to: number;
+    if (vr) {
+      from = chartTimeToUnixSeconds(vr.from);
+      to = chartTimeToUnixSeconds(vr.to);
+      if (!Number.isFinite(from) || !Number.isFinite(to)) {
+        from = data.klines[0].time;
+        to = data.klines[data.klines.length - 1].time;
+      } else if (from > to) {
+        const swap = from;
+        from = to;
+        to = swap;
+      }
+    } else {
+      from = data.klines[0].time;
+      to = data.klines[data.klines.length - 1].time;
+    }
+    return slicePayloadToViewport(data, from, to, currentTime ?? undefined);
+  }
+
   function handleSaveSetup() {
     // Open modal instead of direct POST — user selects phase label + note
     showSaveModal = true;
@@ -703,6 +729,7 @@
   timestamp={currentTime ?? Math.floor(Date.now() / 1000)}
   tf={tf}
   open={showSaveModal}
+  getViewportCapture={getViewportForSave}
   onClose={() => { showSaveModal = false; }}
   onSaved={handleModalSaved}
 />

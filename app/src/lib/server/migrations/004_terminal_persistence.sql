@@ -66,3 +66,27 @@ CREATE TABLE IF NOT EXISTS terminal_export_jobs (
 
 CREATE INDEX IF NOT EXISTS idx_terminal_export_jobs_user_status
   ON terminal_export_jobs(user_id, status, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS terminal_pattern_captures (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL,
+  symbol TEXT NOT NULL,
+  timeframe TEXT NOT NULL,
+  context_kind TEXT NOT NULL,
+  trigger_origin TEXT NOT NULL,
+  pattern_slug TEXT,
+  reason TEXT,
+  note TEXT,
+  snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  decision JSONB NOT NULL DEFAULT '{}'::jsonb,
+  evidence_hash TEXT,
+  source_freshness JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_terminal_pattern_captures_user_recent
+  ON terminal_pattern_captures(user_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_terminal_pattern_captures_query
+  ON terminal_pattern_captures(user_id, symbol, timeframe, trigger_origin, updated_at DESC);
