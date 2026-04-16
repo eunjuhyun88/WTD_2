@@ -82,6 +82,8 @@ app
 - branch-split rationale and implementation boundaries are recorded here
 - next agent can reconstruct the slice from the canonical route/object docs without chat context
 - verification target is limited to the terminal capture route and related contract/UI path
+- active branch: `task/w-0064-save-setup-capture-route-stabilization`
+- draft PR: `#74`
 - verification completed:
   - `npm run check -- --fail-on-warnings`
   - `npm test -- --run src/lib/contracts/terminalPersistence.test.ts src/routes/api/terminal/pattern-captures/pattern-captures.test.ts src/lib/terminal/terminalController.test.ts`
