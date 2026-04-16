@@ -4,6 +4,10 @@
 
 Turn pattern-entry ML from shadow-only instrumentation into a production-safe scoring system without breaking the rule-first pattern engine or the app-engine boundary.
 
+Pattern ML is not the full refinement methodology.
+
+It is one downstream execution and deployment lane governed by [`docs/domains/refinement-methodology.md`](/Users/ej/Projects/wtd-v2/docs/domains/refinement-methodology.md).
+
 ## Current Baseline
 
 The current engine already has the correct first slice in place:
@@ -23,6 +27,7 @@ Current architectural gaps:
 - the ledger is still a JSON append store, which is acceptable for development but not for sustained multi-user operations
 - `confidence` in the pattern state machine still means block coverage, while other scoring layers use the same word differently
 - alert gating is not yet governed by an explicit rollout or promotion policy
+- methodology-owned `research_run` state does not yet exist as a separate upstream plane, so exploratory search and training intent are still too tightly coupled conceptually
 
 ## Target Architecture
 
@@ -53,6 +58,12 @@ Current architectural gaps:
    - consumes rule-based entry events plus model scores
    - decides whether alerts are shadow-only, visible-but-ungated, or actively gated
    - is policy-driven and versioned independently from the model artifact
+
+6. Refinement Methodology Plane
+   - sits upstream of pattern training and promotion
+   - defines research objectives, search policy, evaluation protocol, and candidate selection rules
+   - may use sweeps, agent swarms, or other backends, but those backends must not redefine promotion policy
+   - should keep exploratory `research_run` state outside the pattern evidence ledger in Phase A
 
 ### Model Ownership
 
@@ -166,6 +177,12 @@ Production persistence should model five logical record families.
 
 These may map to separate tables or a smaller normalized schema, but these logical records must exist.
 
+These records are not the same as methodology exploration records.
+
+`training_run` means a candidate reached the training lane.
+
+It does not represent every exploratory sweep, rejected hypothesis, or reset-search attempt upstream.
+
 ## Route Ownership and Runtime Placement
 
 Pattern ML follows the runtime split from [ADR-004](/Users/ej/Projects/wtd-v2/docs/decisions/ADR-004-runtime-split-and-state-plane.md).
@@ -216,6 +233,11 @@ Rollout state belongs to the model registry, not to the UI alone.
 ## Training and Promotion Policy
 
 Training eligibility and production promotion are different gates.
+
+Upstream requirement:
+
+- no training or promotion policy should assume that "latest candidate" equals "best candidate"
+- candidate creation should follow an explicit objective, evaluation protocol, and selection decision
 
 ### Minimum Training Eligibility
 

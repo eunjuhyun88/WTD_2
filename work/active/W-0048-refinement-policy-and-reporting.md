@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement the next refinement-methodology upgrade so objective derivation and train-readiness reporting become explicit control-plane behavior instead of a shallow no-op rationale.
+Implement the next refinement-methodology upgrade so objective derivation, search-policy branching, and operator-readable reporting become explicit control-plane behavior instead of ad-hoc defaults.
 
 ## Owner
 
@@ -10,12 +10,10 @@ research
 
 ## Scope
 
-- enrich objective derivation with a structured readiness plan, recommended search policy, evaluation protocol, and supporting signals
-- make `dataset_readiness` no-op runs record actionable next data requirements in `selection_decision` and `research_memory`
-- include recent research-run history as an optional policy input for reset-search branching
-- keep bounded eval and train handoff behavior unchanged only when the derived policy allows the current bounded-eval executor
-- separate trainability deficits from quality warnings so score-coverage warnings do not change train-ready state
-- emit one compact operator-readable report artifact per completed bounded refinement run
+- define the policy inputs used to derive refinement objectives from current pattern evidence and recent research history
+- define the first non-trivial search-policy branching rules beyond simple readiness gating
+- define the durable report artifact path and shape for completed research runs
+- define the operator and scheduler rollout policy for bounded refinement and optional train handoff
 
 ## Non-Goals
 
@@ -32,23 +30,21 @@ research
 - `docs/domains/pattern-ml.md`
 - `engine/research/objectives.py`
 - `engine/research/pattern_refinement.py`
-- `engine/research/reporting.py`
 - `engine/research/state_store.py`
-- `engine/research/train_handoff.py`
-- `engine/tests/test_research_objectives.py`
-- `engine/tests/test_pattern_refinement.py`
-- `engine/tests/test_train_handoff.py`
 - `engine/worker/research_jobs.py`
 - `engine/scanner/jobs/pattern_refinement.py`
 
 ## Facts
 
-- the current core loop executes `ledger -> objective -> policy gate -> bounded eval -> research_run -> optional train_candidate handoff`
-- objective derivation now returns structured readiness, search policy, evaluation protocol, and recent-run supporting signals
-- readiness plans separate trainability deficits from quality warnings such as low score coverage
-- bounded eval can only create a train candidate for policies that explicitly allow the bounded-eval executor
-- real-environment bounded refinement can return `no_op` when data is insufficient and `dead_end` when policy requires a different executor
-- completed bounded refinement runs now need a durable report artifact for scheduler/operator review
+- the current core loop executes `ledger -> objective -> bounded eval -> research_run -> optional train_candidate handoff`
+- objective derivation now emits canonical policy fields: `baseline_ref_hint`, `recommended_search_policy`, `recommended_evaluation_protocol`, and `supporting_signals`
+- search-policy branching now covers `dataset_readiness`, `scoring_drift_review`, `first_train_candidate`, `refresh_train_candidate`, and `reset_search`
+- `scoring_drift_review` now splits into structural drift (`dead_end_confirmation`) and incremental drift (`local_refresh_sweep`)
+- `reset_search` no longer depends on dead-end count alone; recent high-variance runs and flat local-eval plateaus also trigger escalation
+- completed refinement runs now emit markdown reports under `engine/research/state/reports/`, and the report path is written back into `research_run.handoff_payload`
+- runtime one-shot execution now keeps `research_run.search_policy` aligned with the derived objective instead of falling back to a local default
+- reports now expose baseline reference plus gate-relative and recent-best-relative evaluation deltas
+- reports now surface scoring-drift mode and give different operator guidance for structural vs incremental drift
 
 ## Assumptions
 
@@ -57,8 +53,7 @@ research
 
 ## Open Questions
 
-- whether reset-search should later include broader plateau/variance policy beyond recent dead-end count
-- whether train handoff should remain operator-triggered by default even after scheduled refinement is enabled
+- whether baseline comparison should stay "recent best eval" in Phase A or move to a model-registry-backed incumbent metric once that exists
 
 ## Decisions
 
@@ -66,31 +61,29 @@ research
 - objective derivation must consider recent research history, not only current ledger readiness
 - search-policy branching should be explicit and finite rather than implicit in code paths
 - report artifacts should be durable, compact, and operator-readable; they are part of the control plane, not a chat byproduct
+- Phase A report artifacts live under `engine/research/state/reports/`, not under `docs/generated/`
 - rollout of scheduled refinement and auto-train must remain separately configurable
-- a `no_op` from insufficient ledger evidence is a valid completed research result, but it must include structured deficits and next data actions
-- the first readiness engine can be deterministic and small: it should improve operator clarity before adding new search backends
-- policy must control execution: reset-search and drift-review policies must not accidentally produce a train-candidate through the bounded-eval executor
-- this slice is stacked on the W-0047 research-run foundation branch so the PR diff stays limited to policy gating and report artifacts
-- report artifacts belong under engine research runtime and should summarize DB state rather than duplicate business logic
+- bounded refinement jobs must persist the same policy that objective derivation recommended; `objective_id` alone is not sufficient context
 
 ## Next Steps
 
-1. Add compact report writer and emit reports after completed bounded refinement runs.
-2. Split the stacked W-0047 foundation from this W-0048 readiness-policy slice before PR.
-3. Consider splitting `objectives.py` into readiness, policy, and objective modules once the next policy branch is added.
+1. Tighten report content further with curated baseline/incumbent comparison once registry-side performance snapshots exist.
+2. Keep operator approval/read-surface/scheduler-guardrail work in `work/active/W-0049-refinement-operator-control-plane.md`.
 
 ## Exit Criteria
 
-- objective derivation returns structured readiness, search-policy, evaluation-policy, and supporting-signal fields
-- no-op bounded eval runs record actionable readiness deficits instead of only a plain text reason
-- reset-search or drift-review policies cannot produce `train_candidate` until a matching executor exists
-- score-coverage gaps appear as warnings, not trainability deficits
-- completed bounded refinement runs write a compact JSON report with run metadata, policy, decision, memory excerpts, and operator recommendation
-- targeted engine tests pass for objective derivation and bounded no-op recording
+- refinement objective derivation uses canonical policy fields from the domain design
+- completed research runs persist a durable report artifact reference
+- future implementation can resume from files without relying on chat context
 
 ## Handoff Checklist
 
-- active branch: `codex/w-0048-refinement-policy-reporting-clean`
-- PR base branch: `codex/w-0047-research-run-state-plane-clean`
-- verification passed: `uv run pytest tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_train_handoff.py tests/test_pattern_refinement.py tests/test_pattern_refinement_job.py tests/test_research_objectives.py tests/test_worker_research_jobs.py`
-- this slice preserves train-candidate handoff only for bounded policies that explicitly allow it
+- design is now reflected in `docs/domains/refinement-policy-and-reporting.md`
+- implementation landed in `engine/research/objectives.py`, `engine/research/reporting.py`, and `engine/worker/research_jobs.py`
+- runtime alignment fix landed in `engine/research/pattern_refinement.py` so derived policy survives one-shot execution
+- plateau/variance-aware reset escalation is now covered by `engine/tests/test_research_objectives.py`
+- report delta rendering is now covered by `engine/tests/test_refinement_reporting.py`
+- scoring-drift split between structural and incremental paths is now covered by `engine/tests/test_research_objectives.py` and `engine/tests/test_refinement_reporting.py`
+- verify with `uv run python -m research.cli pattern-refinement-once --slug tradoor-oi-reversal-v1`
+- future implementation should treat this work item as the primary source for deeper policy branching behavior
+- W-0049 separately owns operator control, inspection, and scheduler guardrails

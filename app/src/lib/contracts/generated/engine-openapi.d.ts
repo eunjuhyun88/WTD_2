@@ -420,6 +420,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/{slug}/alert-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alert Policy
+         * @description Return current alert policy for a pattern.
+         */
+        get: operations["get_alert_policy_patterns__slug__alert_policy_get"];
+        /**
+         * Set Alert Policy
+         * @description Update current alert policy for a pattern.
+         */
+        put: operations["set_alert_policy_patterns__slug__alert_policy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/model-registry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Model Registry
+         * @description Return the current registry snapshot for a pattern.
+         */
+        get: operations["get_model_registry_patterns__slug__model_registry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/library": {
         parameters: {
             query?: never;
@@ -476,6 +520,46 @@ export interface paths {
          *     Checks Binance prices and applies HIT/MISS/EXPIRED verdicts.
          */
         post: operations["auto_evaluate_patterns__slug__evaluate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/train-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Train Pattern Model
+         * @description Train a pattern-scoped model from durable ledger outcomes.
+         */
+        post: operations["train_pattern_model_patterns__slug__train_model_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/promote-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote Pattern Model
+         * @description Promote a candidate model to active rollout state.
+         */
+        post: operations["promote_pattern_model_patterns__slug__promote_model_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1500,6 +1584,50 @@ export interface components {
             /** Direction */
             direction: string;
         };
+        /** _PatternAlertPolicyBody */
+        _PatternAlertPolicyBody: {
+            /** Mode */
+            mode: string;
+        };
+        /** _PatternTrainBody */
+        _PatternTrainBody: {
+            /** User Id */
+            user_id?: string | null;
+            /**
+             * Target Name
+             * @default breakout
+             */
+            target_name: string;
+            /**
+             * Feature Schema Version
+             * @default 1
+             */
+            feature_schema_version: number;
+            /**
+             * Label Policy Version
+             * @default 1
+             */
+            label_policy_version: number;
+            /**
+             * Threshold Policy Version
+             * @default 1
+             */
+            threshold_policy_version: number;
+            /** Min Records */
+            min_records?: number | null;
+        };
+        /** _PromotePatternModelBody */
+        _PromotePatternModelBody: {
+            /** Model Key */
+            model_key: string;
+            /** Model Version */
+            model_version: string;
+            /**
+             * Threshold Policy Version
+             * @default 1
+             */
+            threshold_policy_version: number;
+        };
         /** _RegisterPatternBody */
         _RegisterPatternBody: {
             /** Slug */
@@ -2131,6 +2259,109 @@ export interface operations {
             };
         };
     };
+    get_alert_policy_patterns__slug__alert_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_alert_policy_patterns__slug__alert_policy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PatternAlertPolicyBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_registry_patterns__slug__model_registry_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_pattern_def_patterns__slug__library_get: {
         parameters: {
             query?: never;
@@ -2211,6 +2442,80 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    train_pattern_model_patterns__slug__train_model_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PatternTrainBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_pattern_model_patterns__slug__promote_model_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_PromotePatternModelBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
