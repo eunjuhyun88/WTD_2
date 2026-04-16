@@ -1,6 +1,7 @@
 import {
   parseMacroCalendarResponse,
   parsePatternCaptureResponse,
+  parsePatternCaptureSimilarResponse,
   parseTerminalAlertsResponse,
   parseTerminalExportJobResponse,
   parseTerminalPinsResponse,
@@ -9,6 +10,8 @@ import {
   type PatternCaptureCreateRequest,
   type PatternCaptureQuery,
   type PatternCaptureRecord,
+  type PatternCaptureSimilarityDraft,
+  type PatternCaptureSimilarityMatch,
   type TerminalAlertCreateRequest,
   type TerminalAlertRule,
   type TerminalExportJob,
@@ -139,4 +142,17 @@ export async function createPatternCapture(input: PatternCaptureCreateRequest): 
   if (!res.ok) return null;
   const payload = parsePatternCaptureResponse(await readJson(res));
   return payload.records[0] ?? null;
+}
+
+export async function fetchSimilarPatternCaptures(
+  input: PatternCaptureSimilarityDraft,
+): Promise<PatternCaptureSimilarityMatch[]> {
+  const res = await fetch('/api/terminal/pattern-captures/similar', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) return [];
+  const payload = parsePatternCaptureSimilarResponse(await readJson(res));
+  return payload.matches;
 }
