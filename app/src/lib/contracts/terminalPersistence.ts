@@ -156,6 +156,101 @@ export const MacroCalendarResponseSchema = z.object({
 });
 export type MacroCalendarResponse = z.infer<typeof MacroCalendarResponseSchema>;
 
+export const PatternCaptureOriginSchema = z.enum(['manual', 'alert', 'anomaly', 'pattern_transition']);
+export type PatternCaptureOrigin = z.infer<typeof PatternCaptureOriginSchema>;
+
+export const PatternCaptureContextKindSchema = z.enum(['symbol', 'alert', 'anomaly', 'preset', 'compare']);
+export type PatternCaptureContextKind = z.infer<typeof PatternCaptureContextKindSchema>;
+
+export const PatternCaptureDecisionSchema = z.object({
+  verdict: z.enum(['bullish', 'bearish', 'neutral']).optional(),
+  action: z.string().optional(),
+  risk: z.string().optional(),
+  invalidation: z.string().optional(),
+  confidence: z.number().min(0).max(1).optional(),
+});
+export type PatternCaptureDecision = z.infer<typeof PatternCaptureDecisionSchema>;
+
+export const ChartViewportSnapshotSchema = z.object({
+  timeFrom: z.number(),
+  timeTo: z.number(),
+  tf: z.string(),
+  barCount: z.number(),
+  anchorTime: z.number().optional(),
+  klines: z.array(
+    z.object({
+      time: z.number(),
+      open: z.number(),
+      high: z.number(),
+      low: z.number(),
+      close: z.number(),
+      volume: z.number(),
+    }),
+  ),
+  indicators: z.record(z.unknown()),
+});
+export type ChartViewportSnapshot = z.infer<typeof ChartViewportSnapshotSchema>;
+
+export const PatternCaptureSnapshotSchema = z.object({
+  price: z.number().nullable().optional(),
+  change24h: z.number().nullable().optional(),
+  funding: z.number().nullable().optional(),
+  oiDelta: z.number().nullable().optional(),
+  freshness: z.string().optional(),
+  viewport: ChartViewportSnapshotSchema.optional(),
+});
+export type PatternCaptureSnapshot = z.infer<typeof PatternCaptureSnapshotSchema>;
+
+export const PatternCaptureRecordSchema = z.object({
+  id: z.string().min(1),
+  symbol: z.string().min(1),
+  timeframe: z.string().min(1),
+  contextKind: PatternCaptureContextKindSchema,
+  triggerOrigin: PatternCaptureOriginSchema,
+  patternSlug: z.string().optional(),
+  reason: z.string().optional(),
+  note: z.string().optional(),
+  snapshot: PatternCaptureSnapshotSchema,
+  decision: PatternCaptureDecisionSchema,
+  evidenceHash: z.string().optional(),
+  sourceFreshness: z.record(z.string(), z.string()).default({}),
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true }),
+});
+export type PatternCaptureRecord = z.infer<typeof PatternCaptureRecordSchema>;
+
+export const PatternCaptureCreateRequestSchema = z.object({
+  symbol: z.string().min(1),
+  timeframe: z.string().min(1),
+  contextKind: PatternCaptureContextKindSchema.default('symbol'),
+  triggerOrigin: PatternCaptureOriginSchema,
+  patternSlug: z.string().optional(),
+  reason: z.string().optional(),
+  note: z.string().optional(),
+  snapshot: PatternCaptureSnapshotSchema.default({}),
+  decision: PatternCaptureDecisionSchema.default({}),
+  evidenceHash: z.string().optional(),
+  sourceFreshness: z.record(z.string(), z.string()).default({}),
+});
+export type PatternCaptureCreateRequest = z.infer<typeof PatternCaptureCreateRequestSchema>;
+
+export const PatternCaptureQuerySchema = z.object({
+  symbol: z.string().optional(),
+  timeframe: z.string().optional(),
+  verdict: z.enum(['bullish', 'bearish', 'neutral']).optional(),
+  triggerOrigin: PatternCaptureOriginSchema.optional(),
+  limit: z.number().int().min(1).max(200).default(50),
+});
+export type PatternCaptureQuery = z.infer<typeof PatternCaptureQuerySchema>;
+
+export const PatternCaptureResponseSchema = z.object({
+  ok: z.boolean(),
+  schemaVersion: z.literal(TerminalPersistenceSchemaVersion),
+  records: z.array(PatternCaptureRecordSchema),
+  updatedAt: z.string().datetime({ offset: true }),
+});
+export type PatternCaptureResponse = z.infer<typeof PatternCaptureResponseSchema>;
+
 export function parseTerminalWatchlistResponse(input: unknown): TerminalWatchlistResponse {
   return TerminalWatchlistResponseSchema.parse(input);
 }
@@ -174,4 +269,8 @@ export function parseTerminalExportJobResponse(input: unknown): TerminalExportJo
 
 export function parseMacroCalendarResponse(input: unknown): MacroCalendarResponse {
   return MacroCalendarResponseSchema.parse(input);
+}
+
+export function parsePatternCaptureResponse(input: unknown): PatternCaptureResponse {
+  return PatternCaptureResponseSchema.parse(input);
 }
