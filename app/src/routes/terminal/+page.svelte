@@ -89,6 +89,7 @@
     TerminalPreset,
   } from '$lib/contracts/terminalBackend';
   import type {
+    ChartViewportSnapshot,
     MacroCalendarItem,
     TerminalAlertRule,
     TerminalExportJob,
@@ -183,6 +184,7 @@
   // Extracted from deep.atr_levels after each analysis; passed to ChartBoard
   interface VerdictLevels { entry?: number; target?: number; stop?: number; }
   let chartLevels = $state<VerdictLevels>({});
+  let chartBoardRef = $state<{ getViewportCapture?: () => ChartViewportSnapshot | null } | null>(null);
 
   function formatCompactUsd(value: number | null | undefined): string {
     if (value == null || !Number.isFinite(value)) return '—';
@@ -992,7 +994,7 @@
     activeAnalysisTab = tab as typeof activeAnalysisTab;
   }
 
-  function handleCaptureSaved() {
+  function handleCaptureSaved(_captureId: string) {
     showCaptureModal = false;
     void loadPatternCaptures();
     if (activeSymbol) {
@@ -1474,6 +1476,7 @@
         <!-- ── Chart area — hero, full height ── -->
         <div class="chart-area">
           <ChartBoard
+            bind:this={chartBoardRef}
             symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
             tf={symbolToTF(gTf)}
             verdictLevels={chartLevels}
@@ -1753,6 +1756,7 @@
   symbol={activeSymbol || pairToSymbol(gPair)}
   timestamp={Math.floor(Date.now() / 1000)}
   tf={symbolToTF(gTf)}
+  getViewportCapture={() => chartBoardRef?.getViewportCapture?.() ?? null}
   onClose={() => showCaptureModal = false}
   onSaved={handleCaptureSaved}
 />

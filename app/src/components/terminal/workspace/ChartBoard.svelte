@@ -824,6 +824,10 @@
     return slicePayloadToViewport(data, from, to, currentTime ?? undefined);
   }
 
+  export function getViewportCapture(): ChartViewportSnapshot | null {
+    return getViewportForSave();
+  }
+
   function handleSaveSetup() {
     showSaveModal = true;
   }

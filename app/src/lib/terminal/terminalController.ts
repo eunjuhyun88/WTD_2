@@ -8,7 +8,6 @@ import type {
   TerminalWatchlistItem,
 } from '$lib/contracts/terminalPersistence';
 import {
-  createPatternCapture,
   createTerminalAlert,
   createTerminalExport,
   fetchTerminalExport,
@@ -714,22 +713,6 @@ export async function applyPatternTransitionBatch(args: {
       alerts: args.existingAlerts,
       prunableBefore: now - 90_000,
     };
-  }
-
-  for (const item of fresh) {
-    void createPatternCapture({
-      symbol: item.symbol,
-      timeframe: args.timeframe,
-      contextKind: 'symbol',
-      triggerOrigin: 'pattern_transition',
-      patternSlug: item.slug,
-      reason: item.phase,
-      note: 'Auto capture from live pattern transition',
-      snapshot: { freshness: 'live' },
-      decision: {},
-      evidenceHash: item.id,
-      sourceFreshness: { pattern: 'live' },
-    });
   }
 
   return {

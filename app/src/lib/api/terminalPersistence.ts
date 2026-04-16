@@ -24,6 +24,18 @@ async function readJson(res: Response): Promise<unknown> {
   return res.json();
 }
 
+async function readErrorMessage(res: Response): Promise<string> {
+  try {
+    const payload = await res.json();
+    if (payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string') {
+      return payload.error;
+    }
+  } catch {
+    // Ignore JSON parse failures and use the HTTP status fallback below.
+  }
+  return `Request failed (${res.status})`;
+}
+
 export async function fetchTerminalWatchlist(): Promise<{
   items: TerminalWatchlistItem[];
   activeSymbol?: string;
@@ -139,7 +151,9 @@ export async function createPatternCapture(input: PatternCaptureCreateRequest): 
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
   const payload = parsePatternCaptureResponse(await readJson(res));
   return payload.records[0] ?? null;
 }

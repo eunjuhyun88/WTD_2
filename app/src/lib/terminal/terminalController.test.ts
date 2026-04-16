@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('$lib/api/terminalPersistence', () => ({
-  createPatternCapture: vi.fn(async () => null),
   createTerminalAlert: vi.fn(async () => null),
   createTerminalExport: vi.fn(async () => null),
   fetchTerminalExport: vi.fn(async () => null),
@@ -29,7 +28,7 @@ import {
   toggleAnalysisPin,
   toggleRiskAlert,
 } from './terminalController';
-import { createPatternCapture, createTerminalAlert, fetchTerminalExport } from '$lib/api/terminalPersistence';
+import { createTerminalAlert, fetchTerminalExport } from '$lib/api/terminalPersistence';
 import { fetchMemoryRerank, sendMemoryFeedback } from '$lib/api/terminalBackend';
 
 describe('buildTerminalRestorePlan', () => {
@@ -179,7 +178,6 @@ describe('buildTerminalRestorePlan', () => {
     });
 
     expect(result.alerts).toHaveLength(1);
-    expect(createPatternCapture).toHaveBeenCalledTimes(1);
     expect(prunePatternTransitionAlerts(result.alerts, Date.now() + 1_000)).toEqual([]);
   });
 

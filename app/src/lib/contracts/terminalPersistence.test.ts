@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MacroCalendarResponseSchema,
+  PatternCaptureCreateRequestSchema,
   PatternCaptureResponseSchema,
   TerminalAlertCreateRequestSchema,
   TerminalExportJobResponseSchema,
@@ -132,5 +133,16 @@ describe('terminalPersistence contract', () => {
     });
 
     expect(parsed.records[0]?.triggerOrigin).toBe('manual');
+  });
+
+  it('requires reviewed-range viewport when creating a pattern capture', () => {
+    const parsed = PatternCaptureCreateRequestSchema.safeParse({
+      symbol: 'BTCUSDT',
+      timeframe: '4h',
+      triggerOrigin: 'manual',
+      snapshot: {},
+    });
+
+    expect(parsed.success).toBe(false);
   });
 });
