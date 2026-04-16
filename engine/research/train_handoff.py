@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from patterns.training_service import train_pattern_model_from_ledger
 
+from .reporting import write_research_run_report
 from .state_store import ResearchRun, ResearchStateStore
 
 
@@ -53,4 +54,5 @@ def execute_train_candidate_handoff(
         },
         updated_at=_utcnow_iso(),
     )
+    write_research_run_report(updated, store=store)
     return updated, result
