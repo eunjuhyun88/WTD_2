@@ -2,7 +2,7 @@
 
 ## Goal
 
-Reintroduce pattern-seed matching as an optional research surface without breaking the chart-first `/terminal` attention model.
+Reintroduce pattern-seed matching as an optional research surface inside `/terminal` without breaking the chart-first attention model.
 
 ## Owner
 
@@ -10,60 +10,63 @@ research
 
 ## Scope
 
-- Preserve the pattern-seed idea as a research lane, not always-on terminal chrome.
-- Reuse the existing seed-matching route and scoring logic where it still fits.
-- Redesign the surface so thesis-driven exploration opens on demand from `/terminal` instead of occupying permanent top-of-page space.
+- Add an on-demand research entry from the terminal bottom dock.
+- Reuse a dedicated seed-match route to rank board and scan symbols from a free-form thesis.
+- Open the scout as a temporary drawer/panel, not permanent terminal chrome.
 
 ## Non-Goals
 
-- No permanent full-width scout panel in the default terminal layout.
-- No rewrite of the terminal attention model.
-- No coupling to terminal persistence rollout or pattern capture write paths.
+- No always-on top-of-page research slab.
+- No terminal persistence changes.
+- No pattern capture write-path changes.
 
 ## Canonical Files
 
 - `work/active/W-0046-pattern-seed-scout-research-lane.md`
-- `work/active/W-0024-terminal-interactive-port.md`
-- `docs/product/terminal-attention-workspace.md`
+- `app/src/components/terminal/workspace/TerminalBottomDock.svelte`
+- `app/src/components/terminal/workspace/PatternSeedScoutPanel.svelte`
+- `app/src/routes/api/terminal/pattern-seed/match/+server.ts`
+- `app/src/routes/api/terminal/pattern-seed/match/match.test.ts`
 - `app/src/routes/terminal/+page.svelte`
-- `app/src/routes/api/terminal/opportunity-scan/+server.ts`
-- `app/src/lib/engine/opportunityScanner.ts`
 
 ## Facts
 
-- Closed PR `#24` implemented a thesis-driven pattern-seed scout with one API route, one component, one test, and a small `/terminal` integration.
-- The idea is research-useful because it converts natural-language theses into ranked symbol candidates using existing board and scan signals.
-- The closed implementation mounted the scout as a permanent full-width panel near the top of `/terminal`.
-- Current terminal direction is chart-first with compact progressive disclosure, not large always-on research slabs.
+- Closed PR `#24` proved the thesis-to-candidate matching idea but mounted it as permanent terminal surface.
+- Current terminal direction is chart-first and relies on progressive disclosure rather than persistent research chrome.
+- The bottom dock already owns quick actions and is the smallest optional entry point available on current `main`.
+- The matching route can reuse `runOpportunityScan` plus current board asset snapshots without touching engine contracts.
+- `npm run check -- --fail-on-warnings` passes on the clean scout branch.
+- `npm test -- --run src/routes/api/terminal/pattern-seed/match/match.test.ts` passes on the clean scout branch.
 
 ## Assumptions
 
-- The seed-matching route logic can be reused with limited changes if the UI entry point changes.
-- An optional panel, drawer, or modal would preserve the research value without diluting core terminal attention.
+- Users will accept a drawer-style research lane if it opens only on demand.
+- A filename-only snapshot hint is sufficient for v1; image-aware matching can wait.
 
 ## Open Questions
 
-- Should the scout live behind a bottom-dock action, a pattern-library side panel, or a separate research route?
-- Should snapshot uploads remain filename-only hints or become actual image-assisted matching later?
+- Whether the scout should later move behind a dedicated research route once usage is proven.
 
 ## Decisions
 
-- Do not merge the original `#24` implementation as-is.
-- Treat pattern-seed matching as a research lane, not default terminal chrome.
-- Preserve the idea for a later clean slice rather than discarding it.
+- Keep the scout optional and dock-triggered.
+- Prefer a right-side drawer/panel over injecting a permanent body section into `/terminal`.
+- Treat this as research tooling, not core terminal chrome.
 
 ## Next Steps
 
-- Design the smallest optional entry point for pattern-seed research from `/terminal`.
-- Re-slice the `#24` code into a clean branch once the surface location is chosen.
-- Keep the route and ranking logic independent from terminal persistence and rail chrome changes.
+- Implement the dock-triggered scout drawer and seed-match route.
+- Verify app check plus targeted route tests.
+- Land this as a separate research slice from terminal persistence and capture work.
 
 ## Exit Criteria
 
-- A clean work item and PR exist for an optional pattern-seed research surface that fits the chart-first terminal model.
+- `/terminal` can open and close the scout on demand from the dock.
+- The scout returns ranked candidates and can pivot terminal focus to a chosen symbol.
+- No permanent research slab is added to the default terminal layout.
 
 ## Handoff Checklist
 
-- Original implementation was intentionally closed as PR `#24` for re-slicing, not rejected on technical quality.
-- The next agent should start from the old `task/W-0025-terminal-pattern-seed-flow` branch or commit `566c361` if code reuse is needed.
-- The key design constraint is optionality: the scout must not become permanent terminal header/body chrome.
+- The original `#24` idea was closed for surface mismatch, not technical failure.
+- The next agent should keep the scout optional even if the ranking logic expands later.
+- Verification status: app check and targeted route test passed on this branch.
