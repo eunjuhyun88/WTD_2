@@ -185,23 +185,38 @@ export const PatternCaptureDecisionSchema = z.object({
 export type PatternCaptureDecision = z.infer<typeof PatternCaptureDecisionSchema>;
 
 /** Chart window + OHLCV + indicator series (same contract as klines API indicators). */
+const ChartViewportCandleSchema = z.object({
+  time: z.number(),
+  open: z.number(),
+  high: z.number(),
+  low: z.number(),
+  close: z.number(),
+  volume: z.number(),
+});
+
 export const ChartViewportSnapshotSchema = z.object({
-  timeFrom: z.number(),
-  timeTo: z.number(),
+  timeFrom: z.number().finite(),
+  timeTo: z.number().finite(),
   tf: z.string(),
-  barCount: z.number(),
-  anchorTime: z.number().optional(),
-  klines: z.array(
-    z.object({
-      time: z.number(),
-      open: z.number(),
-      high: z.number(),
-      low: z.number(),
-      close: z.number(),
-      volume: z.number(),
-    }),
-  ),
+  barCount: z.number().int().positive(),
+  anchorTime: z.number().finite().optional(),
+  klines: z.array(ChartViewportCandleSchema).min(1),
   indicators: z.record(z.unknown()),
+}).superRefine((value, ctx) => {
+  if (value.timeFrom > value.timeTo) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'viewport.timeFrom must be <= viewport.timeTo',
+      path: ['timeFrom'],
+    });
+  }
+  if (value.barCount !== value.klines.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'viewport.barCount must match viewport.klines length',
+      path: ['barCount'],
+    });
+  }
 });
 export type ChartViewportSnapshot = z.infer<typeof ChartViewportSnapshotSchema>;
 
@@ -215,6 +230,16 @@ export const PatternCaptureSnapshotSchema = z.object({
   viewport: ChartViewportSnapshotSchema.optional(),
 });
 export type PatternCaptureSnapshot = z.infer<typeof PatternCaptureSnapshotSchema>;
+
+const PatternCaptureCreateSnapshotSchema = PatternCaptureSnapshotSchema.superRefine((value, ctx) => {
+  if (!value.viewport) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'snapshot.viewport is required for reviewed-range capture',
+      path: ['viewport'],
+    });
+  }
+});
 
 export const PatternCaptureRecordSchema = z.object({
   id: z.string().min(1),
@@ -242,7 +267,7 @@ export const PatternCaptureCreateRequestSchema = z.object({
   patternSlug: z.string().optional(),
   reason: z.string().optional(),
   note: z.string().optional(),
-  snapshot: PatternCaptureSnapshotSchema.default({}),
+  snapshot: PatternCaptureCreateSnapshotSchema,
   decision: PatternCaptureDecisionSchema.default({}),
   evidenceHash: z.string().optional(),
   sourceFreshness: z.record(z.string(), z.string()).default({}),

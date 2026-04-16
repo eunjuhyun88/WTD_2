@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { ZodError } from 'zod';
 import type { RequestHandler } from './$types';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { errorContains } from '$lib/utils/errorUtils';
@@ -49,7 +50,10 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
     });
   } catch (error: unknown) {
     if (error instanceof SyntaxError) return json({ error: 'Invalid request body' }, { status: 400 });
-    if (error instanceof Error && error.name === 'ZodError') return json({ error: 'Invalid capture payload' }, { status: 400 });
+    if (error instanceof ZodError) {
+      const missingViewport = error.issues.some((issue) => issue.path.join('.') === 'snapshot.viewport');
+      return json({ error: missingViewport ? 'Reviewed chart range is required' : 'Invalid capture payload' }, { status: 400 });
+    }
     if (errorContains(error, 'DATABASE_URL is not set')) return json({ error: 'Server database is not configured' }, { status: 500 });
     console.error('[terminal/pattern-captures/post] unexpected error:', error);
     return json({ error: 'Failed to create pattern capture' }, { status: 500 });
