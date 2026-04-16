@@ -5,59 +5,16 @@ import { errorContains } from '$lib/utils/errorUtils';
 import {
   TerminalPersistenceSchemaVersion,
   TerminalWatchlistRequestSchema,
-  type TerminalWatchlistItem,
 } from '$lib/contracts/terminalPersistence';
 import { listTerminalWatchlist, replaceTerminalWatchlist } from '$lib/server/terminalPersistence';
-import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
+import { enrichTerminalWatchlist } from '$lib/server/terminal/analysisAdapter';
 
-function derivePreview(payload: AnalyzeEnvelope | null) {
-  if (!payload) return undefined;
-  const extra = payload as Record<string, unknown>;
-  const riskPlan = (extra.riskPlan as { bias?: string; invalidation?: string } | undefined) ?? undefined;
-  const entryPlan = (extra.entryPlan as { confidencePct?: number } | undefined) ?? undefined;
-  const verdict = String(payload.deep?.verdict ?? '').toUpperCase();
-  const bias =
-    riskPlan?.bias?.includes('bear') || verdict.includes('BEAR')
-      ? 'bearish'
-      : riskPlan?.bias?.includes('bull') || verdict.includes('BULL')
-        ? 'bullish'
-        : 'neutral';
-  return {
-    price: payload.price ?? null,
-    change24h: payload.change24h ?? null,
-    bias,
-    confidence:
-      entryPlan?.confidencePct != null && entryPlan.confidencePct >= 68
-        ? 'high'
-        : entryPlan?.confidencePct != null && entryPlan.confidencePct >= 54
-          ? 'medium'
-          : 'low',
-    action: payload.ensemble?.reason ?? riskPlan?.bias ?? undefined,
-    invalidation: riskPlan?.invalidation ?? undefined,
-  } as const;
-}
-
-async function enrichWatchlist(fetcher: typeof fetch, items: TerminalWatchlistItem[]): Promise<TerminalWatchlistItem[]> {
-  return Promise.all(
-    items.map(async (item) => {
-      try {
-        const response = await fetcher(`/api/cogochi/analyze?symbol=${item.symbol}&tf=${item.timeframe}`);
-        if (!response.ok) return item;
-        const payload = (await response.json()) as AnalyzeEnvelope;
-        return { ...item, preview: derivePreview(payload) };
-      } catch {
-        return item;
-      }
-    }),
-  );
-}
-
-export const GET: RequestHandler = async ({ cookies, fetch }) => {
+export const GET: RequestHandler = async ({ cookies }) => {
   try {
     const user = await getAuthUserFromCookies(cookies);
     if (!user) return json({ error: 'Authentication required' }, { status: 401 });
 
-    const items = await enrichWatchlist(fetch, await listTerminalWatchlist(user.id));
+    const items = await enrichTerminalWatchlist(await listTerminalWatchlist(user.id));
     return json({
       ok: true,
       schemaVersion: TerminalPersistenceSchemaVersion,
@@ -74,14 +31,14 @@ export const GET: RequestHandler = async ({ cookies, fetch }) => {
   }
 };
 
-export const PUT: RequestHandler = async ({ cookies, request, fetch }) => {
+export const PUT: RequestHandler = async ({ cookies, request }) => {
   try {
     const user = await getAuthUserFromCookies(cookies);
     if (!user) return json({ error: 'Authentication required' }, { status: 401 });
 
     const body = TerminalWatchlistRequestSchema.parse(await request.json());
     const deduped = body.items.filter((item, index, arr) => arr.findIndex((candidate) => candidate.symbol === item.symbol) === index);
-    const items = await enrichWatchlist(fetch, await replaceTerminalWatchlist(user.id, deduped, body.activeSymbol));
+    const items = await enrichTerminalWatchlist(await replaceTerminalWatchlist(user.id, deduped, body.activeSymbol));
     return json({
       ok: true,
       schemaVersion: TerminalPersistenceSchemaVersion,

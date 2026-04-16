@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type {
-  PatternCaptureCreateRequest,
-  PatternCaptureQuery,
-  PatternCaptureRecord,
   TerminalAlertCreateRequest,
   TerminalAlertRule,
   TerminalExportJob,
   TerminalExportRequest,
+  PatternCaptureCreateRequest,
+  PatternCaptureQuery,
+  PatternCaptureRecord,
   TerminalPin,
   TerminalWatchlistItem,
 } from '$lib/contracts/terminalPersistence';
@@ -238,6 +238,22 @@ export async function getTerminalExportJobForUser(userId: string, id: string): P
       LIMIT 1
     `,
     [userId, id],
+  );
+  const row = result.rows[0];
+  return row ? mapExportJobRow(row) : null;
+}
+
+export async function getLatestTerminalExportJobForUser(userId: string): Promise<TerminalExportJob | null> {
+  const result = await query(
+    `
+      SELECT id, export_type, status, symbol, timeframe, title, request_payload, result_payload,
+             error_message, created_at, updated_at, completed_at
+      FROM terminal_export_jobs
+      WHERE user_id = $1
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `,
+    [userId],
   );
   const row = result.rows[0];
   return row ? mapExportJobRow(row) : null;

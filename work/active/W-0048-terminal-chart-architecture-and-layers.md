@@ -225,6 +225,13 @@ flowchart LR
 10. **L4 분석**은 `GET /api/cogochi/analyze`가 엔진 `deep`/`score`와 연결되며, **L1 차트 지표**는 동일 요청 축이 아닌 **`/api/chart/klines`** 에서 별도 제공된다 — 두 경로를 문서·계약에서 혼동하지 말 것.
 11. 현재 `/terminal` app 영역에는 route-to-route coupling이 남아 있다. 예를 들어 watchlist preview enrich는 app route 안에서 `/api/cogochi/analyze`를 다시 fetch하는 패턴을 사용한다.
 12. `panelAdapter.ts`는 이미 `terminal-backend-mapping.md`를 authority로 선언하고 있으므로, chart/deep/board metric namespace도 같은 문서 계열에서 고정하는 편이 자연스럽다.
+13. chart kernel extraction 1차는 이미 시작됐다: `chartSeriesService.ts`가 `klines` route 계산을 흡수했고, `analyze/service.ts`가 analyze payload 조립을 route 밖으로 이동했다.
+14. terminal aggregate extraction 1차도 시작됐다: `analysisAdapter.ts`가 watchlist preview enrich를 app route 내부 fetch 대신 shared server service로 바꿨고, `sessionService.ts` + `/api/terminal/session`이 persistence hydrate를 묶기 시작했다.
+15. `/terminal/+page.svelte` 의 durable action도 일부 추출됐다: pin / alert / compare-save / export-create / watchlist touch는 `terminalController.ts` helper를 통해 route fan-out을 page 밖으로 이동하는 중이다.
+16. dock refresh branching도 일부 추출됐다: `Alerts` / `Board` / `Risk` / `Scan` / `Recall` / `Save P` 라우팅은 `terminalController.ts`가 담당하고, page는 결과 state 적용과 메시지 표시 위주로 남는다.
+17. bootstrap/refresh 정의도 일부 추출됐다: 초기 bootstrap task 순서와 interval cadence, visibility refresh 묶음은 `terminalController.ts` helper가 정의하고 page는 timer wiring만 담당한다.
+18. `loadAnalysis()` 내부 side effect도 일부 추출됐다: memory rerank query/feedback fan-out과 pattern transition auto-capture batch는 `terminalController.ts` helper를 통해 page 밖으로 이동하는 중이다.
+19. export polling completion rule과 used/confirmed memory feedback emission도 `terminalController.ts` helper로 이동해, `/terminal/+page.svelte` 는 interval/timer wiring과 UI state 적용 위주로 더 얇아졌다.
 
 ## Assumptions
 
@@ -251,15 +258,13 @@ flowchart LR
 - **D8:** refinement control-plane, replication harness, ledger record, security runtime 파일은 모두 out-of-scope다.
 - **D9:** chart metrics는 당장은 `app`의 chart kernel로 유지하되, 이름과 범위를 `chart.*` namespace로 고정해 engine decision metrics와 혼동하지 않는다.
 - **D10:** `/terminal` page는 최종적으로 terminal aggregate + controller만 호출하는 방향으로 수렴한다; app route 내부 route fetch는 과도기 패턴으로 본다.
+- **D11:** 현재 작업 브랜치 `task/w-0024-terminal-attention-implementation` 에는 `W-0048` 외 capture/security/ledger 변경이 섞여 있으므로, merge는 이 브랜치에서 하지 않고 `origin/main` 기준 clean branch에서 `W-0048` 파일군만 재구성한다.
 
 ## Next Steps
 
-1. clean branch `codex/w-0048-terminal-chart-architecture-design`를 `origin/main`에서 분기한다.
-2. 첫 merge unit은 `ChartBoard.svelte` + `CollectedMetricsDock.svelte` + `collectedMetrics.ts` + `klines/+server.ts` + `mtfAlign.ts` + `/terminal/+page.svelte` chart-area 배치만으로 제한한다.
-3. `TerminalContextPanel.svelte` + `StructureExplainViz.svelte`는 두 번째 merge unit로 분리할지, 첫 unit에 넣어도 되는지 diff 폭을 보고 판단한다.
-4. `SaveSetupModal.svelte`, `terminalPersistence.ts`, `chartViewportCapture.ts`는 branch에서 제외하고 W-0051 branch로 넘긴다.
-5. chart 관련 PR마다 **이 파일의 Layers 또는 IA 표를 한 줄 갱신**한다.
-6. 다음 설계 PR에서 `chartSeriesService.ts` / `analysisAdapter.ts` / `terminalController.ts` 추출 여부를 먼저 판단하고, route-to-route coupling 제거를 chart lane 후속 과제로 등록한다.
+1. `/terminal/+page.svelte` 에 남아 있는 마지막 page-local shell만 점검한다: board-level derived state reset, selection shell, timer ownership. `Save Setup` capture는 계속 W-0051로 둔다.
+2. `W-0048` diff만 clean branch로 재구성한다. `SaveSetupModal.svelte`, `terminalPersistence.ts`, `chartViewportCapture.ts`와 같은 capture lane 파일은 포함하지 않는다.
+3. chart/deep/board metric namespace와 route-to-route 금지 규칙을 reviewer-facing PR 설명에 명시한다.
 
 ## Phased delivery (권장 순서)
 
