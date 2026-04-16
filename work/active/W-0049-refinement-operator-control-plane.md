@@ -10,17 +10,17 @@ contract
 
 ## Scope
 
-- implement the operator decision surface for `train_candidate` outcomes
-- implement the first read-only inspection surface for `research_run`, `selection_decision`, `research_memory`, and training handoff state
-- implement scheduler guardrails that gate scheduled refinement and optional auto-train behavior
-- keep the control-plane implementation separate from the research-policy design in W-0048
+- define the operator decision surface for `train_candidate` outcomes
+- define the first read-only inspection surface for `research_run`, `selection_decision`, `research_memory`, and training handoff state
+- define scheduler guardrails that gate scheduled refinement and optional auto-train behavior
+- keep the control-plane design separate from the research-policy design in W-0048
 
 ## Non-Goals
 
+- implementing the control plane in this slice
 - changing evidence-ledger or pattern-runtime semantics
 - designing the research objective/search-policy logic itself
 - adding public app-web product UX
-- building a full promotion UI or non-CLI operator console
 
 ## Canonical Files
 
@@ -29,6 +29,7 @@ contract
 - `docs/domains/refinement-methodology.md`
 - `docs/domains/refinement-policy-and-reporting.md`
 - `docs/domains/refinement-operator-control-plane.md`
+- `engine/research/cli.py`
 - `engine/research/state_store.py`
 - `engine/research/train_handoff.py`
 - `engine/worker/research_jobs.py`
@@ -39,11 +40,8 @@ contract
 
 - the system now produces durable `research_run`, `selection_decision`, `research_memory`, and optional training handoff results
 - scheduled refinement and optional auto-train already exist as internal worker-control capabilities
-- operator approval state now exists in the same SQLite control-plane store as `research_run`
-- read-only inspection now exists as store-backed helper views and CLI commands for recent runs, run detail, and pattern summary
-- the implementation should fail closed: no pattern should auto-train without explicit control-plane allowance
-- scheduler job now respects pattern-local pause, allowlist, approval-required, and cooldown semantics
-- merge prep now runs on top of current `origin/main`; the validated refinement file set is being rebuilt there instead of rebasing the stale PR branch history directly
+- there is not yet an explicit operator approval state between `train_candidate` and actual handoff execution
+- the current repo now carries CLI/state hooks for inspection, but the operator surface and approval semantics are still not cleanly separated as one merge unit
 
 ## Assumptions
 
@@ -52,8 +50,9 @@ contract
 
 ## Open Questions
 
-- whether read-only inspection should remain CLI-first or also grow an engine route in the next slice
-- whether scheduler pause rules should remain pattern-local only or also add a global kill switch
+- whether approval state should live in the same SQLite store as `research_run` or in a separate control-plane table
+- whether read-only inspection should begin as CLI-only, engine route(s), or both
+- whether scheduler pause rules should be pattern-local only or also global
 
 ## Decisions
 
@@ -63,28 +62,22 @@ contract
 - scheduler guardrails should be explicit policy, not scattered environment checks
 - this slice should merge with the refinement-methodology engine/control-plane work, not with terminal UI or strategy-replication artifacts
 - branch split reason: commit `7b845a7` mixed refinement/control-plane work with strategy-replication and chart-range spec work, so this slice needs its own execution branch and PR boundary
-- operator approval state and pattern scheduler control state should live in the same SQLite control-plane store as `research_run`
-- inspection should begin as CLI and store-backed helper functions, not new app routes
-- scheduler should fail closed for auto-train: `approval_required=true`, `auto_train_allowed=false` by default
-- train handoff should enforce operator approval whenever `approval_required=true`
-- scheduler should auto-pause on repeated dead ends and should not auto-train during cooldown
+- current root worktree also contains separate security/performance hardening files, so W-0049 must exclude those and keep only refinement operator/control-plane engine changes
 
 ## Next Steps
 
-1. Revalidate the rebuilt `origin/main`-based refinement branch and replace the stale PR branch history with the clean merge unit.
-2. Decide whether to expose read-only inspection through engine routes in addition to CLI.
-3. Add a global scheduler kill switch if pattern-local guardrails are not sufficient operationally.
+1. Finalize the control-plane design in `docs/domains/refinement-operator-control-plane.md`.
+2. Define approval-state schema and read-only inspection contracts.
+3. Define scheduler pause and escalation guardrails before enabling wider automation.
 
 ## Exit Criteria
 
-- operator approval state is durable and queryable
-- read-only inspection exists without opening raw SQLite rows
-- scheduler guardrails fail closed for auto-train
-- W-0048 and W-0049 keep clean, non-overlapping responsibilities
+- a canonical design exists for the operator control plane
+- future implementation can proceed without re-deriving approval/read/guardrail behavior from chat
+- W-0048 and W-0049 have clean, non-overlapping responsibilities
 
 ## Handoff Checklist
 
+- this slice is design-only
 - W-0048 owns policy and reporting; W-0049 owns operator control and guardrails
 - future implementation should preserve that split
-- implementation landed in `engine/research/state_store.py`, `engine/research/inspection.py`, `engine/research/cli.py`, `engine/research/train_handoff.py`, and `engine/scanner/jobs/pattern_refinement.py`
-- verify with `uv run pytest tests/test_research_state_store.py tests/test_train_handoff.py tests/test_pattern_refinement_job.py tests/test_research_inspection.py`
