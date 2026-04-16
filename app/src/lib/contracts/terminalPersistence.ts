@@ -156,6 +156,19 @@ export const MacroCalendarResponseSchema = z.object({
 });
 export type MacroCalendarResponse = z.infer<typeof MacroCalendarResponseSchema>;
 
+export const TerminalSessionResponseSchema = z.object({
+  ok: z.boolean(),
+  schemaVersion: z.literal(TerminalPersistenceSchemaVersion),
+  watchlist: z.array(TerminalWatchlistItemSchema),
+  activeSymbol: z.string().min(1).optional(),
+  pins: z.array(TerminalPinSchema),
+  alerts: z.array(TerminalAlertRuleSchema),
+  macro: z.array(MacroCalendarItemSchema),
+  latestExportJob: TerminalExportJobSchema.nullish(),
+  updatedAt: z.string().datetime({ offset: true }),
+});
+export type TerminalSessionResponse = z.infer<typeof TerminalSessionResponseSchema>;
+
 export const PatternCaptureOriginSchema = z.enum(['manual', 'alert', 'anomaly', 'pattern_transition']);
 export type PatternCaptureOrigin = z.infer<typeof PatternCaptureOriginSchema>;
 
@@ -171,6 +184,7 @@ export const PatternCaptureDecisionSchema = z.object({
 });
 export type PatternCaptureDecision = z.infer<typeof PatternCaptureDecisionSchema>;
 
+/** Chart window + OHLCV + indicator series (same contract as klines API indicators). */
 export const ChartViewportSnapshotSchema = z.object({
   timeFrom: z.number(),
   timeTo: z.number(),
@@ -197,6 +211,7 @@ export const PatternCaptureSnapshotSchema = z.object({
   funding: z.number().nullable().optional(),
   oiDelta: z.number().nullable().optional(),
   freshness: z.string().optional(),
+  /** Visible chart range at save time — candles + sliced indicator series */
   viewport: ChartViewportSnapshotSchema.optional(),
 });
 export type PatternCaptureSnapshot = z.infer<typeof PatternCaptureSnapshotSchema>;
@@ -243,6 +258,44 @@ export const PatternCaptureQuerySchema = z.object({
 });
 export type PatternCaptureQuery = z.infer<typeof PatternCaptureQuerySchema>;
 
+export const PatternCaptureSimilarityDraftSchema = z.object({
+  symbol: z.string().min(1),
+  timeframe: z.string().min(1),
+  triggerOrigin: PatternCaptureOriginSchema.optional(),
+  patternSlug: z.string().optional(),
+  reason: z.string().optional(),
+  note: z.string().optional(),
+  snapshot: PatternCaptureSnapshotSchema.default({}),
+  excludeId: z.string().optional(),
+  limit: z.number().int().min(1).max(20).default(5),
+});
+export type PatternCaptureSimilarityDraft = z.infer<typeof PatternCaptureSimilarityDraftSchema>;
+
+export const PatternCaptureSimilarityBreakdownSchema = z.object({
+  chart: z.number().min(0).max(1),
+  text: z.number().min(0).max(1),
+  phase: z.number().min(0).max(1),
+  timeframe: z.number().min(0).max(1),
+  pattern: z.number().min(0).max(1),
+  trigger: z.number().min(0).max(1),
+});
+export type PatternCaptureSimilarityBreakdown = z.infer<typeof PatternCaptureSimilarityBreakdownSchema>;
+
+export const PatternCaptureSimilarityMatchSchema = z.object({
+  record: PatternCaptureRecordSchema,
+  score: z.number().min(0).max(1),
+  breakdown: PatternCaptureSimilarityBreakdownSchema,
+});
+export type PatternCaptureSimilarityMatch = z.infer<typeof PatternCaptureSimilarityMatchSchema>;
+
+export const PatternCaptureSimilarResponseSchema = z.object({
+  ok: z.boolean(),
+  schemaVersion: z.literal(TerminalPersistenceSchemaVersion),
+  matches: z.array(PatternCaptureSimilarityMatchSchema),
+  updatedAt: z.string().datetime({ offset: true }),
+});
+export type PatternCaptureSimilarResponse = z.infer<typeof PatternCaptureSimilarResponseSchema>;
+
 export const PatternCaptureResponseSchema = z.object({
   ok: z.boolean(),
   schemaVersion: z.literal(TerminalPersistenceSchemaVersion),
@@ -271,6 +324,14 @@ export function parseMacroCalendarResponse(input: unknown): MacroCalendarRespons
   return MacroCalendarResponseSchema.parse(input);
 }
 
+export function parseTerminalSessionResponse(input: unknown): TerminalSessionResponse {
+  return TerminalSessionResponseSchema.parse(input);
+}
+
 export function parsePatternCaptureResponse(input: unknown): PatternCaptureResponse {
   return PatternCaptureResponseSchema.parse(input);
+}
+
+export function parsePatternCaptureSimilarResponse(input: unknown): PatternCaptureSimilarResponse {
+  return PatternCaptureSimilarResponseSchema.parse(input);
 }

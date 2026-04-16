@@ -1,19 +1,22 @@
 <script lang="ts">
   import type { TerminalEvidence } from '$lib/types/terminal';
   import type { DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
-  import type { StatusStripItem } from '$lib/terminal/terminalDerived';
+  import { toneFromRecallScore, type StatusStripItem } from '$lib/terminal/terminalDerived';
   import VerdictHeader from './VerdictHeader.svelte';
   import ActionStrip from './ActionStrip.svelte';
   import EvidenceGrid from './EvidenceGrid.svelte';
   import WhyPanel from './WhyPanel.svelte';
+  import StructureExplainViz from './StructureExplainViz.svelte';
   import SourceRow from './SourceRow.svelte';
   import {
     buildEvidenceFromAnalysis,
     buildPanelModel,
     buildSourcesFromAnalysis,
     buildVerdictFromAnalysis,
+    type PatternRecallMatch,
     type PanelAnalyzeData,
   } from '$lib/terminal/panelAdapter';
+  import { buildStructureExplain } from '$lib/terminal/structureExplain';
 
   interface Props {
     analysisData?: PanelAnalyzeData | null;
@@ -27,10 +30,10 @@
     onAlertToggle?: () => void;
     bars?: any[];
     statusItems?: StatusStripItem[];
-    tabOrder?: string[];
     layerBarsMap?: Record<string, any[]>;
     isPinned?: boolean;
     hasSavedAlert?: boolean;
+    patternRecallMatches?: PatternRecallMatch[];
   }
   let {
     analysisData,
@@ -44,12 +47,11 @@
     onAlertToggle,
     bars = [],
     statusItems = [],
-    tabOrder = [],
     layerBarsMap = {},
     isPinned = false,
     hasSavedAlert = false,
+    patternRecallMatches = [],
   }: Props = $props();
-  let pinned = $state(false);
 
   const TABS = [
     { id: 'summary', label: 'Summary' },
@@ -89,6 +91,7 @@
   }
 
   const verdict = $derived(buildVerdictFromAnalysis(analysisData));
+  const structureExplainModel = $derived(buildStructureExplain(deep as Record<string, unknown> | null | undefined));
   const evidence = $derived(buildEvidenceFromAnalysis(analysisData));
   const SOURCES = $derived(buildSourcesFromAnalysis(analysisData));
 
@@ -184,11 +187,6 @@
     })
   );
   const compactStatusItems = $derived(statusItems.filter((item) => item.label !== 'Board').slice(0, 5));
-  const rankedTabs = $derived.by(() => {
-    if (!tabOrder.length) return TABS;
-    const priority = new Map(tabOrder.map((id, index) => [id, index]));
-    return [...TABS].sort((a, b) => (priority.get(a.id) ?? 99) - (priority.get(b.id) ?? 99));
-  });
 </script>
 
 <aside class="context-panel">
@@ -206,24 +204,10 @@
       <small>Sources {panelModel.header.sourceCount}</small>
     </div>
   <div class="panel-actions">
-    <button
-      type="button"
-      class:active={isPinned || pinned}
-      onclick={() => {
-        if (onPinToggle) {
-          onPinToggle();
-          return;
-        }
-        pinned = !pinned;
-      }}
-    >{isPinned || pinned ? 'Pinned' : 'Pin'}</button>
-    <button type="button" onclick={() => (onCompare ? onCompare() : requestBackendAction('compare'))}>Compare</button>
+    <button type="button" class:active={isPinned} onclick={() => onPinToggle?.()}>{isPinned ? 'Pinned' : 'Pin'}</button>
+    <button type="button" onclick={() => onCompare?.()}>Compare</button>
     <button type="button" onclick={openChartView}>Chart</button>
-    <button
-      type="button"
-      class:active={hasSavedAlert}
-      onclick={() => (onAlertToggle ? onAlertToggle() : requestBackendAction('alert'))}
-    >{hasSavedAlert ? 'Alert Saved' : 'Alert+'}</button>
+    <button type="button" class:active={hasSavedAlert} onclick={() => onAlertToggle?.()}>{hasSavedAlert ? 'Alert Saved' : 'Alert+'}</button>
   </div>
   {#if compactStatusItems.length > 0}
     <div class="panel-status-strip">
@@ -238,7 +222,7 @@
 </div>
 
   <div class="panel-tabs">
-    {#each rankedTabs as t}
+    {#each TABS as t}
       <button class="tab-btn" class:active={activeTab === t.id} onclick={() => onTabChange?.(t.id)}>
         {t.label}
       </button>
@@ -280,6 +264,10 @@
       {/if}
       {#if verdict}
         <VerdictHeader {verdict} />
+        {#if structureExplainModel}
+          <div class="divider"></div>
+          <StructureExplainViz model={structureExplainModel} />
+        {/if}
         <div class="divider"></div>
         <ActionStrip action={verdict.action} avoid={verdict.against[0]} />
         {#if panelModel.summaryBullets.length > 0}
@@ -299,6 +287,19 @@
         <EvidenceGrid {evidence} cols={2} {bars} {layerBarsMap} />
         <div class="divider"></div>
         <WhyPanel why={verdict.reason} against={verdict.against} />
+        {#if patternRecallMatches.length > 0}
+          <div class="divider"></div>
+          <p class="section-label">Pattern Recall</p>
+          <div class="recall-list">
+            {#each patternRecallMatches.slice(0, 3) as recall}
+              <div class="recall-row" data-tone={toneFromRecallScore(recall.score)}>
+                <span>{recall.symbol.replace('USDT','')} {recall.timeframe.toUpperCase()}</span>
+                <strong>{Math.round(recall.score * 100)}%</strong>
+                <small>{recall.triggerOrigin}</small>
+              </div>
+            {/each}
+          </div>
+        {/if}
         <div class="divider"></div>
         <p class="section-label">Multi-timeframe alignment</p>
         <div class="mtf-row">
@@ -892,6 +893,34 @@
   .flow-row[data-state='bullish'] strong { color: #8fdd9d; }
   .flow-row[data-state='bearish'] strong { color: #f19999; }
   .flow-row[data-state='warning'] strong { color: #e9c167; }
+
+  .recall-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .recall-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px 72px;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2px;
+    background: rgba(255,255,255,0.02);
+    padding: 4px 5px;
+  }
+  .recall-row span,
+  .recall-row strong,
+  .recall-row small {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+  }
+  .recall-row span { color: rgba(247,242,234,0.72); }
+  .recall-row strong { text-align: right; color: rgba(247,242,234,0.82); }
+  .recall-row small { text-align: right; color: rgba(247,242,234,0.4); text-transform: uppercase; }
+  .recall-row[data-tone='bull'] strong { color: #8fdd9d; }
+  .recall-row[data-tone='info'] strong { color: #83bcff; }
+  .recall-row[data-tone='warn'] strong { color: #e9c167; }
 
   .risk-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
   .risk-item { font-size: 9px; color: #fbbf24; padding: 3px 5px; background: rgba(251,191,36,0.06); border-radius: 2px; }

@@ -7,6 +7,9 @@ vi.mock('$lib/server/terminalPersistence', () => ({
   listTerminalWatchlist: vi.fn(async () => []),
   replaceTerminalWatchlist: vi.fn(async () => []),
 }));
+vi.mock('$lib/server/terminal/analysisAdapter', () => ({
+  enrichTerminalWatchlist: vi.fn(async (items: unknown[]) => items),
+}));
 
 import { GET, PUT } from './+server';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
@@ -18,7 +21,7 @@ describe('/api/terminal/watchlist', () => {
 
   it('requires authentication for GET', async () => {
     (getAuthUserFromCookies as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    const res = await GET({ cookies: {}, fetch: globalThis.fetch } as any);
+    const res = await GET({ cookies: {} } as any);
     expect(res.status).toBe(401);
   });
 
@@ -29,7 +32,7 @@ describe('/api/terminal/watchlist', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ items: [{ symbol: '', timeframe: '4h', sortOrder: -1 }] }),
     });
-    const res = await PUT({ cookies: {}, request: req, fetch: globalThis.fetch } as any);
+    const res = await PUT({ cookies: {}, request: req } as any);
     expect(res.status).toBe(400);
   });
 });
