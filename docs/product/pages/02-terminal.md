@@ -85,8 +85,10 @@ Minimum contract:
 1. User inspects the active chart in `/terminal`
 2. User marks the exact chart segment they mean
 3. Terminal captures the selected range plus visible chart context
-4. Terminal saves a canonical capture record
-5. Success state exposes the saved capture or the downstream lab/deep-link
+4. Terminal may attach a free-form research note describing the thesis for that exact range
+5. Terminal may preview similar saved captures using both chart-shape evidence and note overlap
+6. Terminal saves a canonical capture record
+7. Success state exposes the saved capture or the downstream lab/deep-link
 
 Selected-range payload must include:
 
@@ -97,6 +99,7 @@ Selected-range payload must include:
 - rendered indicator slices for the selected range
 - visible pattern context when available
 - candidate/transition linkage when the save came from a surfaced pattern candidate
+- optional free-form research note authored against that exact chart segment
 
 ## Data Dependencies
 
@@ -225,6 +228,7 @@ Implemented now:
 - pattern transition/status widgets
 - save setup modal mounted in terminal
 - `ChartBoard` already exposes a visible-range snapshot helper for save payload generation
+- `Save Setup` can reuse saved chart-range evidence plus note text to preview similar captures before save
 
 Partially implemented:
 
