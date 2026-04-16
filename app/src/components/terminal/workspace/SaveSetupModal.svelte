@@ -5,8 +5,14 @@
     resolvePatternCaptureContext,
     type PatternCaptureContextState,
   } from '$lib/stores/patternCaptureContext';
-  import { createPatternCapture as createPatternCaptureRecord } from '$lib/api/terminalPersistence';
-  import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
+  import {
+    createPatternCapture as createPatternCaptureRecord,
+    fetchSimilarPatternCaptures,
+  } from '$lib/api/terminalPersistence';
+  import type {
+    ChartViewportSnapshot,
+    PatternCaptureSimilarityMatch,
+  } from '$lib/contracts/terminalPersistence';
 
   /**
    * SaveSetupModal — appears when user clicks "+ Save" on a candle.
@@ -19,6 +25,7 @@
     timestamp: number;   // unix seconds
     tf:        string;
     open:      boolean;
+    /** Fresh slice of visible chart + indicators at open / save time (from ChartBoard) */
     getViewportCapture?: () => ChartViewportSnapshot | null;
     onClose:   () => void;
     onSaved:   (slug: string) => void;
@@ -63,8 +70,10 @@
     })
   );
   const isoTime = $derived(new Date(timestamp * 1000).toISOString());
-  let viewportPreview = $state<ChartViewportSnapshot | null>(null);
 
+  let viewportPreview = $state<ChartViewportSnapshot | null>(null);
+  let similarMatches = $state<PatternCaptureSimilarityMatch[]>([]);
+  let similarLoading = $state(false);
   $effect(() => {
     if (open && captureContext?.phase) {
       selectedPhase = captureContext.phase;
@@ -74,6 +83,31 @@
     if (open) {
       viewportPreview = getViewportCapture?.() ?? null;
     }
+  });
+  $effect(() => {
+    if (!open) {
+      similarMatches = [];
+      similarLoading = false;
+      return;
+    }
+    const timer = setTimeout(async () => {
+      similarLoading = true;
+      try {
+        similarMatches = await fetchSimilarPatternCaptures({
+          symbol,
+          timeframe: captureContext?.timeframe ?? tf,
+          triggerOrigin: canSavePatternCapture ? 'pattern_transition' : 'manual',
+          patternSlug: captureContext?.patternSlug ?? captureContext?.slug ?? undefined,
+          reason: selectedPhase,
+          note,
+          snapshot: viewportPreview ? { viewport: viewportPreview } : {},
+          limit: 4,
+        });
+      } finally {
+        similarLoading = false;
+      }
+    }, 180);
+    return () => clearTimeout(timer);
   });
 
   async function handleSave() {
@@ -88,6 +122,7 @@
     const engineCaptureTimeframe = captureContext?.timeframe ?? tf;
     const engineCaptureSlug = captureContext?.patternSlug ?? captureContext?.slug ?? '';
     const engineCapturePhase = captureContext?.phase ?? label;
+
     const viewportAtSave = getViewportCapture?.() ?? null;
 
     try {
@@ -112,6 +147,7 @@
         sourceFreshness: { source: 'terminal_save_setup' },
       });
       if (!captureRecord) {
+        // Pattern persistence should not block the core engine save flow.
         console.warn('[save-setup] pattern capture create failed; continuing without pattern_capture_id');
       } else {
         captureRecordId = captureRecord.id;
@@ -151,6 +187,8 @@
             }),
           });
 
+        // If strict pattern candidate validation fails, gracefully fallback
+        // to the legacy challenge save so user intent still persists.
         if (!res.ok && res.status === 400) {
           console.warn('[save-setup] /api/engine/captures returned 400; falling back to challenge/create');
           res = await fetch('/api/engine/challenge/create', {
@@ -246,10 +284,46 @@
       <p class="section-label">메모 (선택)</p>
       <textarea
         class="note-input"
-        placeholder="ex: OI +22%, 거래량 4.3x, 진입은 Phase 3 Higher lows 후..."
+        placeholder="긴 기준문도 그대로 넣어도 됨. 예: 저점 MC 100M 이하, 고점 대비 -90% 이내, SNS 활동 유지, 최근 락업/소각 이벤트..."
         bind:value={note}
-        rows={3}
+        rows={6}
       ></textarea>
+    </div>
+
+    <div class="section">
+      <div class="section-heading">
+        <p class="section-label">비슷한 저장 캡처</p>
+        <span class="section-meta">{similarLoading ? '탐색 중…' : `${similarMatches.length}건`}</span>
+      </div>
+      {#if similarMatches.length === 0}
+        <div class="similar-empty">메모와 현재 차트 구간을 같이 써서 저장된 캡처 중 비슷한 구조를 미리 보여줍니다.</div>
+      {:else}
+        <div class="similar-list">
+          {#each similarMatches as match}
+            <div class="similar-card">
+              <div class="similar-top">
+                <strong>{match.record.symbol}</strong>
+                <span>{Math.round(match.score * 100)}%</span>
+              </div>
+              <div class="similar-meta">
+                <span>{match.record.timeframe}</span>
+                {#if match.record.reason}
+                  <span>{match.record.reason}</span>
+                {/if}
+                <span>{new Date(match.record.createdAt).toLocaleDateString('ko-KR')}</span>
+              </div>
+              <div class="similar-breakdown">
+                <span>차트 {Math.round(match.breakdown.chart * 100)}</span>
+                <span>텍스트 {Math.round(match.breakdown.text * 100)}</span>
+                <span>페이즈 {Math.round(match.breakdown.phase * 100)}</span>
+              </div>
+              {#if match.record.note}
+                <p class="similar-note">{match.record.note}</p>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
 
     {#if saveError}
@@ -272,12 +346,12 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.72);
+    background: linear-gradient(90deg, rgba(3, 6, 10, 0.14), rgba(3, 6, 10, 0.5));
     z-index: 1000;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
+    align-items: stretch;
+    justify-content: flex-end;
+    padding: 10px;
   }
 
   .modal {
@@ -285,11 +359,13 @@
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 8px;
     width: 100%;
-    max-width: 480px;
+    max-width: 420px;
+    height: calc(100dvh - 20px);
     display: flex;
     flex-direction: column;
     gap: 0;
     box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+    overflow: auto;
   }
 
   /* Header */
@@ -312,6 +388,12 @@
     font-family: var(--sc-font-mono, monospace);
     font-size: 10px;
     color: rgba(255,255,255,0.35);
+  }
+  .viewport-hint {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    color: rgba(94, 234, 212, 0.75);
+    margin-top: 2px;
   }
   .close-btn {
     background: none;
@@ -339,6 +421,17 @@
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.25);
     margin: 0;
+  }
+  .section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .section-meta {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    color: rgba(255,255,255,0.38);
   }
 
   .capture-context {
@@ -418,6 +511,58 @@
   }
   .note-input:focus { outline: none; border-color: rgba(38,166,154,0.4); }
   .note-input::placeholder { color: rgba(255,255,255,0.2); }
+  .similar-empty {
+    padding: 12px 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .similar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .similar-card {
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .similar-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: #fff;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 12px;
+  }
+  .similar-meta,
+  .similar-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    font-family: var(--sc-font-mono, monospace);
+  }
+  .similar-note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: rgba(255,255,255,0.72);
+    display: -webkit-box;
+    line-clamp: 3;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 
   /* Error */
   .save-error {
