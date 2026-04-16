@@ -1,0 +1,6 @@
+// Pending source capture for `rsi-overbought-long-btc-4h`.
+// Expected external label:
+// `RSI > 70 Buy / Exit on Cross Below 70`
+//
+// Do not treat this file as executable strategy logic yet.
+// Replace this placeholder only after the original source has been captured.

@@ -7,6 +7,8 @@ Research artifacts are separate from product docs and task work items.
 - thesis: `research/thesis/current-thesis.md`
 - fixed protocol: `research/evals/rq-b-baseline-protocol.md`
 - active experiment family: `research/experiments/rq-b-ladder-2026-04-11.md`
+- replication protocol: `research/evals/strategy-replication-protocol-v0.md`
+- replication experiment family: `research/experiments/strategy-replication-pilot-2026-04-16.md`
 
 ## Structure
 
