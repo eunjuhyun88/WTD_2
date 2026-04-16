@@ -13,6 +13,7 @@ from typing import Literal
 import uuid
 
 Outcome = Literal["success", "failure", "timeout", "pending"]
+LedgerRecordType = Literal["entry", "capture", "score", "outcome", "verdict", "training_run", "model"]
 
 @dataclass
 class PatternOutcome:
@@ -58,7 +59,9 @@ class PatternOutcome:
     entry_block_coverage: float | None = None
     entry_p_win: float | None = None
     entry_ml_state: Literal["scored", "untrained", "missing_snapshot", "error"] | None = None
+    entry_model_key: str | None = None
     entry_model_version: str | None = None
+    entry_rollout_state: Literal["candidate", "active"] | None = None
     entry_threshold: float | None = None
     entry_threshold_passed: bool | None = None
     entry_ml_error: str | None = None
@@ -101,3 +104,39 @@ class PatternStats:
     btc_sideways_rate: float | None
     # v2: Edge decay — is the pattern losing effectiveness?
     decay_direction: str | None     # "improving" | "stable" | "decaying" | None
+
+
+@dataclass
+class PatternLedgerRecord:
+    """Append-only record family for the pattern core loop."""
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    record_type: LedgerRecordType = "entry"
+    pattern_slug: str = ""
+    symbol: str | None = None
+    user_id: str | None = None
+    outcome_id: str | None = None
+    capture_id: str | None = None
+    transition_id: str | None = None
+    scan_id: str | None = None
+    created_at: datetime = field(default_factory=lambda: datetime.now())
+    payload: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        if isinstance(d["created_at"], datetime):
+            d["created_at"] = d["created_at"].isoformat()
+        return d
+
+
+@dataclass
+class PatternLedgerFamilyStats:
+    pattern_slug: str
+    entry_count: int
+    capture_count: int
+    score_count: int
+    outcome_count: int
+    verdict_count: int
+    training_run_count: int
+    model_count: int
+    capture_to_entry_rate: float | None
+    verdict_to_entry_rate: float | None
