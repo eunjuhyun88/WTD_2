@@ -97,3 +97,27 @@ def test_load_universe_binance_all_dispatches(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(dynamic, "load_dynamic_universe", fake_load_dynamic_universe)
 
     assert load_universe("binance_all") == ["BTCUSDT", "ETHUSDT"]
+
+
+def test_load_universe_screened_ab_dispatches(monkeypatch: pytest.MonkeyPatch):
+    from universe import screened
+
+    def fake_load_screened_universe(*, min_structural_grade: str = "B", max_symbols: int = 300, fallback: bool = True):
+        assert min_structural_grade == "B"
+        assert max_symbols == 300
+        assert fallback is True
+        return ["BTCUSDT", "ETHUSDT"]
+
+    monkeypatch.setattr(screened, "load_screened_universe", fake_load_screened_universe)
+
+    assert load_universe("screened_ab") == ["BTCUSDT", "ETHUSDT"]
+
+
+def test_load_universe_async_screened_a_dispatches(monkeypatch: pytest.MonkeyPatch):
+    async def fake_loader(**kwargs):
+        assert kwargs == {"min_structural_grade": "A"}
+        return ["BTCUSDT"]
+
+    monkeypatch.setattr("universe.screened.load_screened_universe_async", fake_loader)
+    syms = asyncio.run(load_universe_async("screened_a"))
+    assert syms == ["BTCUSDT"]
