@@ -12,7 +12,7 @@ MANDATORY reading rule:
 ## Day-1 Canonical Boundary
 
 - Active pages: `/`, `/terminal`, `/lab`, `/dashboard`
-- Deferred pages: `/create`, `/agent/[id]`, `/scanner` cockpit, character layer
+- Deferred pages: `/create`, `/agent/[id]`, `/scanner` cockpit, `/screener`, character layer
 - Engine authority: scoring/evaluation logic stays in engine-facing contracts
 - App authority: orchestration, rendering, interaction, and persistence UX
 
@@ -25,18 +25,37 @@ MANDATORY reading rule:
 
 Day-1 loop is fixed:
 
-1. Compose in `/terminal`
-2. Evaluate in `/lab`
-3. Return/manage in `/dashboard`
+1. Review and capture in `/terminal`
+2. Evaluate and activate in `/lab`
+3. Monitor, judge, and manage in `/dashboard`
 4. Enter loop from `/` (home)
 
 No page should duplicate another page's primary job.
+
+Query/compose inside `/terminal` may still create a `challenge`, but it is a helper path.
+It must not displace the canonical `inspect -> select range -> Save Setup` entry path.
+
+Terminal registration may start from:
+
+1. reviewed range only
+2. reviewed range + short hint
+3. explicit query/condition input
+
+The first two are primary Day-1 modes.
+
+AutoResearch is the cross-surface engine that sits between capture and feedback:
+
+- it turns saved capture/challenge intent into market-wide monitoring
+- it surfaces live candidates and alerts back into terminal/dashboard contexts
+- it feeds judged outcomes into refinement without becoming a separate Day-1 page
 
 ## Shared Vocabulary (Required)
 
 Use only these terms for Day-1 user-facing and developer-facing docs:
 
-- `challenge`: saved executable setup artifact
+- `capture`: durable selected-range evidence saved from terminal trade review
+- `challenge`: saved executable setup artifact for lab evaluation, replay, or structured compare
+- `AutoResearch`: market-wide search and monitoring engine driven by saved captures/challenges
 - `instance`: evaluated row/outcome for one matched case
 - `evaluate`: deterministic challenge run (`prepare.py evaluate`)
 - `watching`: saved live search context from terminal
@@ -128,9 +147,10 @@ Do not leave button semantics implicit.
 
 ## Global Acceptance Checklist
 
-- [ ] Day-1 vocabulary is consistent (`challenge`, `instance`, `evaluate`, `watching`)
+- [ ] Day-1 vocabulary is consistent (`capture`, `challenge`, `AutoResearch`, `instance`, `evaluate`, `watching`)
 - [ ] Deferred features are not presented as active
 - [ ] `/terminal`, `/lab`, `/dashboard` deep links work both directions
+- [ ] AutoResearch-driven watch/alert feedback flow is visible across lab/dashboard contracts
 - [ ] Loading/empty/error states are explicit and readable
 - [ ] No engine decision logic duplicated in app surface code
 - [ ] Evidence ordering is visible where recommendations are shown
