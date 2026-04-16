@@ -15,7 +15,15 @@ import numpy as np
 
 from .eval_protocol import walk_forward_eval
 from .experiment import Experiment
+from .pattern_refinement import (
+    PatternBoundedEvalConfig,
+    pattern_bounded_eval_payload,
+    run_pattern_bounded_eval,
+)
+from .objectives import derive_pattern_research_objective
+from .train_handoff import execute_train_candidate_handoff
 from .tracker import ExperimentTracker
+from worker.research_jobs import run_pattern_refinement_once
 
 
 def _run_eval_latest(args: argparse.Namespace) -> int:
@@ -65,6 +73,55 @@ def _run_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_pattern_bounded_eval(args: argparse.Namespace) -> int:
+    config = PatternBoundedEvalConfig(
+        pattern_slug=args.slug,
+        objective_id=args.objective_id,
+        target_name=args.target_name,
+        feature_schema_version=args.feature_schema_version,
+        label_policy_version=args.label_policy_version,
+        threshold_policy_version=args.threshold_policy_version,
+        n_splits=args.splits,
+        min_mean_auc=args.min_mean_auc,
+        max_std_auc=args.max_std_auc,
+        baseline_ref=args.baseline_ref,
+    )
+    run = run_pattern_bounded_eval(config)
+    print(json.dumps(pattern_bounded_eval_payload(run), indent=2, default=str))
+    return 0
+
+
+def _run_pattern_objective(args: argparse.Namespace) -> int:
+    objective = derive_pattern_research_objective(args.slug)
+    print(json.dumps(objective.to_dict(), indent=2, default=str))
+    return 0
+
+
+def _run_train_candidate_handoff(args: argparse.Namespace) -> int:
+    run, result = execute_train_candidate_handoff(args.research_run_id)
+    print(
+        json.dumps(
+            {
+                "research_run": {
+                    "research_run_id": run.research_run_id,
+                    "completion_disposition": run.completion_disposition,
+                    "handoff_payload": run.handoff_payload,
+                },
+                "training_result": result,
+            },
+            indent=2,
+            default=str,
+        )
+    )
+    return 0
+
+
+def _run_pattern_refinement_once(args: argparse.Namespace) -> int:
+    payload = run_pattern_refinement_once(args.slug)
+    print(json.dumps(payload, indent=2, default=str))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="WTD v2 research CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -85,6 +142,31 @@ def build_parser() -> argparse.ArgumentParser:
     report_p.add_argument("--dir", required=True, help="Experiment directory name")
     report_p.set_defaults(func=_run_report)
 
+    bounded_p = sub.add_parser("pattern-bounded-eval", help="Run one bounded pattern refinement job")
+    bounded_p.add_argument("--slug", required=True, help="Pattern slug")
+    bounded_p.add_argument("--objective-id")
+    bounded_p.add_argument("--target-name", default="breakout")
+    bounded_p.add_argument("--feature-schema-version", type=int, default=1)
+    bounded_p.add_argument("--label-policy-version", type=int, default=1)
+    bounded_p.add_argument("--threshold-policy-version", type=int, default=1)
+    bounded_p.add_argument("--splits", type=int, default=5)
+    bounded_p.add_argument("--min-mean-auc", type=float, default=0.55)
+    bounded_p.add_argument("--max-std-auc", type=float, default=0.12)
+    bounded_p.add_argument("--baseline-ref")
+    bounded_p.set_defaults(func=_run_pattern_bounded_eval)
+
+    objective_p = sub.add_parser("pattern-objective", help="Derive the current bounded refinement objective for a pattern")
+    objective_p.add_argument("--slug", required=True, help="Pattern slug")
+    objective_p.set_defaults(func=_run_pattern_objective)
+
+    handoff_p = sub.add_parser("train-candidate-handoff", help="Execute training for one completed train-candidate run")
+    handoff_p.add_argument("--research-run-id", required=True)
+    handoff_p.set_defaults(func=_run_train_candidate_handoff)
+
+    once_p = sub.add_parser("pattern-refinement-once", help="Derive objective, run one refinement cycle, and write a report")
+    once_p.add_argument("--slug", required=True, help="Pattern slug")
+    once_p.set_defaults(func=_run_pattern_refinement_once)
+
     return parser
 
 
@@ -96,4 +178,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
