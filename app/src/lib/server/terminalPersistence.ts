@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  PatternCaptureCreateRequest,
+  PatternCaptureQuery,
+  PatternCaptureRecord,
   TerminalAlertCreateRequest,
   TerminalAlertRule,
   TerminalExportJob,
@@ -69,6 +72,25 @@ function mapExportJobRow(row: Record<string, unknown>): TerminalExportJob {
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
     completedAt: row.completed_at ? toIso(row.completed_at) : undefined,
+  };
+}
+
+function mapPatternCaptureRow(row: Record<string, unknown>): PatternCaptureRecord {
+  return {
+    id: String(row.id ?? ''),
+    symbol: String(row.symbol ?? ''),
+    timeframe: String(row.timeframe ?? '4h'),
+    contextKind: String(row.context_kind ?? 'symbol') as PatternCaptureRecord['contextKind'],
+    triggerOrigin: String(row.trigger_origin ?? 'manual') as PatternCaptureRecord['triggerOrigin'],
+    patternSlug: row.pattern_slug ? String(row.pattern_slug) : undefined,
+    reason: row.reason ? String(row.reason) : undefined,
+    note: row.note ? String(row.note) : undefined,
+    snapshot: (row.snapshot as PatternCaptureRecord['snapshot']) ?? {},
+    decision: (row.decision as PatternCaptureRecord['decision']) ?? {},
+    evidenceHash: row.evidence_hash ? String(row.evidence_hash) : undefined,
+    sourceFreshness: (row.source_freshness as Record<string, string>) ?? {},
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
   };
 }
 
@@ -304,4 +326,77 @@ export function scheduleTerminalExportJob(id: string): void {
   if (typeof timer === 'object' && 'unref' in timer) {
     (timer as NodeJS.Timeout).unref();
   }
+}
+
+export async function createPatternCapture(
+  userId: string,
+  input: PatternCaptureCreateRequest
+): Promise<PatternCaptureRecord> {
+  const id = `pcap-${randomUUID()}`;
+  const result = await query(
+    `
+      INSERT INTO terminal_pattern_captures (
+        id, user_id, symbol, timeframe, context_kind, trigger_origin, pattern_slug, reason, note,
+        snapshot, decision, evidence_hash, source_freshness
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13::jsonb)
+      RETURNING id, symbol, timeframe, context_kind, trigger_origin, pattern_slug, reason, note,
+                snapshot, decision, evidence_hash, source_freshness, created_at, updated_at
+    `,
+    [
+      id,
+      userId,
+      input.symbol,
+      input.timeframe,
+      input.contextKind,
+      input.triggerOrigin,
+      input.patternSlug ?? null,
+      input.reason ?? null,
+      input.note ?? null,
+      JSON.stringify(input.snapshot ?? {}),
+      JSON.stringify(input.decision ?? {}),
+      input.evidenceHash ?? null,
+      JSON.stringify(input.sourceFreshness ?? {}),
+    ],
+  );
+  return mapPatternCaptureRow(result.rows[0] ?? {});
+}
+
+export async function listPatternCaptures(
+  userId: string,
+  queryInput: PatternCaptureQuery
+): Promise<PatternCaptureRecord[]> {
+  const where: string[] = ['user_id = $1'];
+  const params: unknown[] = [userId];
+  let idx = 2;
+
+  if (queryInput.symbol) {
+    where.push(`symbol = $${idx++}`);
+    params.push(queryInput.symbol);
+  }
+  if (queryInput.timeframe) {
+    where.push(`timeframe = $${idx++}`);
+    params.push(queryInput.timeframe);
+  }
+  if (queryInput.triggerOrigin) {
+    where.push(`trigger_origin = $${idx++}`);
+    params.push(queryInput.triggerOrigin);
+  }
+  if (queryInput.verdict) {
+    where.push(`decision ->> 'verdict' = $${idx++}`);
+    params.push(queryInput.verdict);
+  }
+  params.push(queryInput.limit);
+
+  const result = await query(
+    `
+      SELECT id, symbol, timeframe, context_kind, trigger_origin, pattern_slug, reason, note,
+             snapshot, decision, evidence_hash, source_freshness, created_at, updated_at
+      FROM terminal_pattern_captures
+      WHERE ${where.join(' AND ')}
+      ORDER BY updated_at DESC
+      LIMIT $${idx}
+    `,
+    params,
+  );
+  return result.rows.map(mapPatternCaptureRow);
 }
