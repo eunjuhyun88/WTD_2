@@ -27,4 +27,6 @@ dist/
 app/memory/memory/
 engine/data_cache/cache/
 engine/state/*.sqlite*
+engine/ops/state/*.sqlite*
+engine/ops/state/*.json
 .vercel
