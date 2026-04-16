@@ -3,29 +3,41 @@
 ## Role
 
 Day-1 return inbox for user workflow continuity.
-Dashboard summarizes state; it does not replace terminal or lab.
+Dashboard summarizes state and owns the feedback queue that closes the AutoResearch loop; it does not replace terminal or lab.
+
+Implementation detail for inbox priority, user-facing labels, and agent execution split lives in `docs/product/core-loop-agent-execution-blueprint.md`.
+Surface layout and CTA hierarchy detail lives in `docs/product/core-loop-surface-wireframes.md`.
 
 ## Core Contract
 
-Exactly three sections:
+Exactly four sections:
 
-1. My Challenges
+1. Signal Alerts
 2. Watching
-3. My Adapters (placeholder)
+3. Saved Setups
+4. My Adapters (placeholder)
 
-## Section 1: My Challenges
+## Section 1: Signal Alerts
 
-Purpose: lightweight summary of lab-owned challenge state.
+Purpose: surface AutoResearch-generated live alerts and collect the fastest manual judgment signal.
 
 Row requirements:
 
-- challenge slug/name
-- score/last run summary
-- status text (recent/never-run)
+- alert identity and linked challenge/pattern context
+- symbol/timeframe/detected direction or phase summary
+- pending/manual/auto judgment state
+- open-terminal drilldown action
 
 Row action:
 
-- open selected challenge in lab: `/lab?slug=<challenge>`
+- open the alert in terminal chart context
+- record manual feedback (`agree` / `disagree` or equivalent)
+
+Design rules:
+
+- feedback-pending alerts must sort above already judged alerts
+- manual feedback and auto outcome must stay distinguishable
+- alert review is a core dashboard job, not an optional extension
 
 ## Section 2: Watching
 
@@ -41,7 +53,21 @@ Row action:
 
 - open terminal with query/replay context
 
-## Section 3: My Adapters (Placeholder)
+## Section 3: Saved Setups
+
+Purpose: lightweight summary of lab-owned evaluated setup state.
+
+Row requirements:
+
+- setup label or challenge slug/name
+- score/last run summary
+- status text (recent/never-run)
+
+Row actions:
+
+- open selected setup in lab: `/lab?slug=<challenge>`
+
+## Section 4: My Adapters (Placeholder)
 
 Purpose: reserve Phase-2+ training surface visibility without fake functionality.
 
@@ -52,8 +78,9 @@ Requirements:
 
 ## Data Contracts (Day-1)
 
-- Challenges: sourced from same challenge summary domain as lab
+- Signal Alerts: scanner/alerts contract with explicit manual vs auto feedback fields
 - Watching: client/app storage contract
+- Saved Setups: sourced from same challenge summary domain as lab
 - Adapters: empty payload + placeholder copy
 
 ## Required States
@@ -72,9 +99,10 @@ Dashboard should remain usable even if one section fails.
 
 ## Acceptance Checks
 
-- [ ] All three sections render with stable labels and expected order
-- [ ] Challenge rows route to `/lab?slug=<...>`
+- [ ] All four sections render with stable labels and expected order
+- [ ] Signal Alerts support feedback-pending prioritization and terminal drilldown
 - [ ] Watching rows return to terminal context
+- [ ] Saved setup rows route to `/lab?slug=<...>`
 - [ ] Adapters section is explicit placeholder, not pseudo-feature
 - [ ] Dashboard acts as inbox and preserves return flow actions
 
@@ -95,30 +123,15 @@ Migration target (Day-2+): promote to shared filesystem/app persistence.
 
 ## Empty State Copy Rules
 
-- My Challenges empty: route users to terminal compose flow.
+- Signal Alerts empty: explain that alerts appear after lab activation / live monitoring.
 - Watching empty: explain how to save from terminal.
+- Saved Setups empty: route users to terminal review/capture flow.
 - My Adapters empty: explicitly mark Phase-2+ scope.
 
 ## Non-Functional Expectations
 
 - Dashboard loads even when one section source fails.
 - Section-level fallback UI is preferable to full-page hard failure.
-
-## Optional Section Extension: Signal Alerts
-
-Day-1 baseline remains three sections.
-If alert backend and feedback workflow are available, a fourth section may be enabled:
-
-4. Signal Alerts
-
-Signal Alerts section contract (optional):
-
-- prioritize feedback-pending alerts
-- provide explicit manual feedback actions (`agree`/`disagree` or equivalent)
-- support chart/open-terminal drilldown
-- distinguish manual vs auto-judged outcomes
-
-If not enabled, dashboard must not imply missing alert functionality.
 
 ## Settings and Notification Entry (Optional)
 
@@ -143,11 +156,12 @@ Partially implemented:
 
 - watching section currently uses hardcoded/static list, not canonical persisted watch contract
 - challenge summary behavior is real but sourced from strategy store, not canonical challenge summary API
+- signal alert feedback flow exists conceptually in docs/download designs, but is not mounted here as the canonical dashboard queue
 
 Not yet aligned with page contract:
 
-- strict Day-1 three-section contract is visually close, but data ownership does not fully match lab challenge contracts
-- optional Signal Alerts section is not mounted as canonical section in this page
+- strict Day-1 four-section contract is not yet met
+- data ownership does not fully match lab challenge contracts or scanner alert contracts
 
 ## Button Action -> Outcome Contract
 
@@ -163,17 +177,22 @@ Not yet aligned with page contract:
    - expected result: lab opens immediately
    - failure result: navigation failure notice
 
-### My Challenges Actions
+### Signal Alerts Actions
 
-1. `Challenge card/row click`
-   - action: navigate to lab with selected context (`/lab?slug=<challenge>` target contract)
-   - expected result: selected challenge opens in lab detail
-   - failure result: route failure notice and dashboard state remains intact
+1. `Alert row / Open chart`
+   - action: navigate to terminal replay/live chart context for the selected alert
+   - expected result: user lands in terminal with enough context to inspect the alert
+   - failure result: route error notice and dashboard state remains intact
 
-2. `New Challenge`
-   - action: navigate to `/terminal`
-   - expected result: compose flow starts in terminal
-   - failure result: navigation error notice
+2. `Agree / Disagree`
+   - action: persist manual alert feedback
+   - expected result: alert state updates from pending to judged without ambiguity
+   - failure result: action rolls back with explicit feedback-save error
+
+3. `Filter tab` (if enabled)
+   - action: switch between feedback-pending and judged histories
+   - expected result: alert list reorders deterministically by selected state
+   - failure result: filter resets to last valid state
 
 ### Watching Actions
 
@@ -191,6 +210,18 @@ Not yet aligned with page contract:
    - action: remove watch item from persistence
    - expected result: row disappears and empty state appears if none remain
    - failure result: deletion error with row restored
+
+### Saved Setups Actions
+
+1. `Setup card/row click`
+   - action: navigate to lab with selected context (`/lab?slug=<challenge>` target contract)
+   - expected result: selected setup opens in lab detail
+   - failure result: route failure notice and dashboard state remains intact
+
+2. `New Setup`
+   - action: navigate to `/terminal`
+   - expected result: review/capture flow starts in terminal
+   - failure result: navigation error notice
 
 ### My Adapters Actions
 

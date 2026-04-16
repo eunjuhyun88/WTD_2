@@ -2,17 +2,69 @@
 
 ## Role
 
-Primary Day-1 decision cockpit for observe + compose.
-Terminal is the starting point of the product loop.
+Primary Day-1 trade-review and capture cockpit.
+Terminal is the starting point of the product loop because the trader inspects the real chart here, marks the exact segment they mean, and turns that review into durable saved evidence.
+
+Implementation detail for component priority, action-state contracts, and multi-agent work split lives in `docs/product/core-loop-agent-execution-blueprint.md`.
+Surface layout and CTA hierarchy detail lives in `docs/product/core-loop-surface-wireframes.md`.
 
 ## Core Contract
 
-Search/query intent must become a saved `challenge` with minimal friction.
-Terminal should support:
+Terminal owns the first human action in the loop:
 
-`find -> validate -> act -> save`
+`review -> inspect -> select range -> Save Setup`
 
-without requiring route changes.
+This is the canonical path that turns trader judgment into reusable product data.
+
+Terminal may also support a secondary query/composer path:
+
+`find -> validate -> act -> save challenge`
+
+The query/challenge path must not redefine the primary job of the page.
+
+## Trade Review Contract
+
+The canonical Terminal use case starts from a real trade review or a live chart segment under inspection.
+
+Minimum user-visible flow:
+
+1. User opens the symbol and timeframe they are reviewing
+2. User inspects chart structure together with OI, funding, volume, and other context
+3. User marks the exact chart segment that expresses the setup thesis
+4. User optionally writes a short note describing why that range matters
+5. User presses `Save Setup`
+6. Terminal persists a canonical capture record that can later drive pattern definition, similar-capture recall, and labeling
+
+Design rule:
+
+- the saved artifact is the reviewed chart segment, not a generic symbol bookmark
+- `Save Setup` is the core-loop entry event, not a secondary convenience action
+- if the user cannot identify and save the exact range they mean, the product has not captured the review correctly
+
+## Pattern Registration Modes
+
+Day-1 Terminal must support three ways to start the loop:
+
+1. `Replay capture`
+   - user opens a symbol/timeframe and reviews a known historical or live segment
+   - user selects the exact range and saves it as a capture
+   - this is the primary Day-1 path
+
+2. `Replay + hint`
+   - user starts from a reviewed range plus a short thesis note
+   - example: "OI spike + funding flip + higher lows"
+   - terminal stores the range and the hint together so later retrieval/refinement has both structure and narrative
+
+3. `Explicit condition/query`
+   - user types a query/chip sequence that can be parsed into challenge conditions
+   - example: `btc 4h recent_rally + bollinger_expansion`
+   - this remains supported, but it is secondary to reviewed-range capture
+
+Design rule:
+
+- the first two modes begin from trader memory and chart evidence
+- the third mode begins from structured intent
+- all three may converge on the same downstream challenge/pattern artifact, but only the capture-first modes are canonical loop entry
 
 ## Layout Contract (Desktop)
 
@@ -54,7 +106,7 @@ Each tab should end with a visible conclusion strip:
 
 Do not introduce undocumented click behavior drift.
 
-## Query/Compose Contract
+## Secondary Query/Compose Contract
 
 Terminal query is the Day-1 composer surface:
 
@@ -64,7 +116,28 @@ Terminal query is the Day-1 composer surface:
 
 No hidden local-only pseudo-pattern objects.
 
-## Save Challenge Flow
+## LLM and Decision Boundary
+
+Terminal may use AI to help the user understand and structure what they are seeing, but it must not pretend the AI is the final trading judge.
+
+Allowed LLM roles:
+
+- parse natural language into structured challenge intent
+- summarize why a reviewed chart range may matter
+- explain engine/ML output in trader language
+
+Disallowed LLM roles:
+
+- final entry/exit scoring authority
+- non-deterministic replacement for engine pattern matching
+- hidden client-side rule generation that bypasses canonical contracts
+
+Day-1 rule:
+
+- deterministic scoring, pattern matching, and evaluation authority stay in engine/ML contracts
+- terminal is the place where those results are inspected, challenged, and captured
+
+## Secondary Save Challenge Flow
 
 1. User enters query or uses chips/actions
 2. UI resolves symbol/timeframe/context
@@ -75,6 +148,7 @@ No hidden local-only pseudo-pattern objects.
 ## Save Setup Flow
 
 `Save Setup` is the chart-range capture path.
+It is the primary Day-1 entry path of the core loop.
 
 It should support:
 
@@ -82,11 +156,20 @@ It should support:
 
 Minimum contract:
 
-1. User inspects the active chart in `/terminal`
+1. User inspects the active chart in `/terminal` from a real trade review, replay, or live surfaced candidate
 2. User marks the exact chart segment they mean
 3. Terminal captures the selected range plus visible chart context
-4. Terminal saves a canonical capture record
-5. Success state exposes the saved capture or the downstream lab/deep-link
+4. Terminal may attach a free-form research note describing the thesis for that exact range
+5. Terminal may preview similar saved captures using both chart-shape evidence and note overlap
+6. Terminal saves a canonical capture record that becomes durable ground truth for future retrieval, judgment, and refinement
+7. Success state exposes the saved capture or the downstream lab/deep-link
+
+Terminal should also make the downstream use of the capture legible:
+
+- what reviewed range was saved
+- what note/thesis was attached
+- whether similar captures already exist
+- whether the save can be projected into a challenge for lab evaluation
 
 Selected-range payload must include:
 
@@ -97,17 +180,39 @@ Selected-range payload must include:
 - rendered indicator slices for the selected range
 - visible pattern context when available
 - candidate/transition linkage when the save came from a surfaced pattern candidate
+- optional free-form research note authored against that exact chart segment
+
+## AutoResearch Preview Contract
+
+Terminal is not the primary place for full evaluation or long-running monitoring setup, but it should preview what AutoResearch can do with a saved setup.
+
+Expected preview behaviors:
+
+- show similar saved captures for the current reviewed range
+- show whether the reviewed setup maps to known pattern/runtime context
+- show lightweight "next step" hints such as:
+  - `open in lab for evaluation`
+  - `already active in watching`
+  - `candidate-linked capture`
+
+Non-goals for the preview:
+
+- no fake backtest metrics rendered without lab evaluation
+- no hidden auto-activation of live monitoring
+- no local-only similarity logic that diverges from the canonical capture substrate
 
 ## Data Dependencies
 
 - Analysis/market orchestration endpoints for board + panel data
+- Capture creation route for canonical selected-range saves
 - Challenge creation route (`wizard`/challenge contract)
+- Similar-capture lookup for preview and recall
 - Watching persistence for dashboard handoff
 
 ## Required States
 
 - Loading: explicit panel/card placeholders
-- Empty: actionable prompts ("start with symbol/query")
+- Empty: actionable prompts ("start with symbol/query or replay a reviewed setup")
 - Error/degraded: clear, non-silent fallback
 - Stale: freshness indicator when applicable
 
@@ -115,6 +220,7 @@ Selected-range payload must include:
 
 - Query seed: `/terminal?symbol=<symbol>&tf=<tf>&q=<query>`
 - Replay context: `/terminal?slug=<challenge>&instance=<timestamp>`
+- Reviewed-range replay may later add explicit range query params, but the canonical Day-1 replay contract remains challenge + instance based
 
 ## Non-Goals (Day-1)
 
@@ -124,6 +230,8 @@ Selected-range payload must include:
 
 ## Acceptance Checks
 
+- [ ] Review -> inspect -> select range -> Save Setup works end-to-end
+- [ ] Replay capture, replay + hint, and explicit query modes are all understandable without redefining the primary job of the page
 - [ ] Query -> parse -> save challenge works end-to-end
 - [ ] All major card/tag/chart interactions update right panel deterministically
 - [ ] Right panel tabs render contract-backed data (not placeholder-only)
@@ -158,6 +266,14 @@ Both must return a unified output shape:
 - Why
 - Action
 - Risk
+
+Search may also start from historical example intent:
+
+- symbol + reviewed date/time
+- symbol + reviewed date/time + hint
+- saved challenge replay
+
+The UI should treat these as valid seeds, not only free-form keyword queries.
 
 ## Timeframe Alignment Requirements
 
@@ -225,6 +341,7 @@ Implemented now:
 - pattern transition/status widgets
 - save setup modal mounted in terminal
 - `ChartBoard` already exposes a visible-range snapshot helper for save payload generation
+- `Save Setup` can reuse saved chart-range evidence plus note text to preview similar captures before save
 
 Partially implemented:
 
@@ -262,7 +379,7 @@ Mode expectations:
 
 - Starting a new query during active stream should cancel prior stream cleanly.
 - On market websocket degradation, UI should show delayed-data status and fallback behavior.
-- Save action must prevent invalid parse state and duplicate slug collisions with actionable guidance.
+- Save action must prevent missing range selection, invalid parse state, and duplicate slug collisions with actionable guidance.
 
 ## Keyboard and Power-User Expectations
 
@@ -270,7 +387,7 @@ Recommended baseline shortcuts:
 
 - focus query input
 - execute query
-- save challenge
+- save setup / save challenge depending on current mode
 - close autocomplete/modal
 
 ## Button Action -> Outcome Contract
@@ -301,7 +418,7 @@ Define each primary button as:
 
 4. `Capture / Save setup` entry
    - action: open save modal seeded with current symbol/timeframe/context
-   - expected result: user can confirm metadata and save challenge
+   - expected result: user can confirm selected range and context, then save a canonical capture
    - failure result: modal error message with actionable fix
 
 ### Left Rail Buttons

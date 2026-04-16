@@ -6,13 +6,16 @@ Apply one consistent product system to all Day-1 pages so implementation, copy, 
 
 MANDATORY reading rule:
 
-- Engineers and agents must read `docs/domains/contracts.md` first (Surface-Contract Index), then this file, then the target page spec before touching code.
+- Engineers and agents must read `docs/domains/contracts.md` first (Surface-Contract Index), then this file, then `docs/product/core-loop-agent-execution-blueprint.md`.
+- When object semantics or lifecycle behavior is in scope, they must also read `docs/domains/core-loop-object-contracts.md` and `docs/product/core-loop-state-matrix.md` before touching code.
+- When route shape, ownership, or migration behavior is in scope, they must also read `docs/domains/core-loop-route-contracts.md` and `docs/runbooks/core-loop-migration-plan.md`.
+- Surface implementation work should then read the target page spec and `docs/product/core-loop-surface-wireframes.md`.
 - Starting from implementation files without this read sequence is out-of-process.
 
 ## Day-1 Canonical Boundary
 
 - Active pages: `/`, `/terminal`, `/lab`, `/dashboard`
-- Deferred pages: `/create`, `/agent/[id]`, `/scanner` cockpit, character layer
+- Deferred pages: `/create`, `/agent/[id]`, `/scanner` cockpit, `/screener`, character layer
 - Engine authority: scoring/evaluation logic stays in engine-facing contracts
 - App authority: orchestration, rendering, interaction, and persistence UX
 
@@ -25,18 +28,37 @@ MANDATORY reading rule:
 
 Day-1 loop is fixed:
 
-1. Compose in `/terminal`
-2. Evaluate in `/lab`
-3. Return/manage in `/dashboard`
+1. Review and capture in `/terminal`
+2. Evaluate and activate in `/lab`
+3. Monitor, judge, and manage in `/dashboard`
 4. Enter loop from `/` (home)
 
 No page should duplicate another page's primary job.
+
+Query/compose inside `/terminal` may still create a `challenge`, but it is a helper path.
+It must not displace the canonical `inspect -> select range -> Save Setup` entry path.
+
+Terminal registration may start from:
+
+1. reviewed range only
+2. reviewed range + short hint
+3. explicit query/condition input
+
+The first two are primary Day-1 modes.
+
+AutoResearch is the cross-surface engine that sits between capture and feedback:
+
+- it turns saved capture/challenge intent into market-wide monitoring
+- it surfaces live candidates and alerts back into terminal/dashboard contexts
+- it feeds judged outcomes into refinement without becoming a separate Day-1 page
 
 ## Shared Vocabulary (Required)
 
 Use only these terms for Day-1 user-facing and developer-facing docs:
 
-- `challenge`: saved executable setup artifact
+- `capture`: durable selected-range evidence saved from terminal trade review
+- `challenge`: saved executable setup artifact for lab evaluation, replay, or structured compare
+- `AutoResearch`: market-wide search and monitoring engine driven by saved captures/challenges
 - `instance`: evaluated row/outcome for one matched case
 - `evaluate`: deterministic challenge run (`prepare.py evaluate`)
 - `watching`: saved live search context from terminal
@@ -110,8 +132,9 @@ Typical gated actions:
 Every surface-affecting change should include:
 
 1. page spec update in `docs/product/pages/*` when behavior changes
-2. contract check against `docs/domains/contracts.md`
-3. acceptance checklist evidence in the related work item
+2. blueprint check against `docs/product/core-loop-agent-execution-blueprint.md` when object semantics, handoffs, or ownership changes
+3. contract check against `docs/domains/contracts.md`
+4. acceptance checklist evidence in the related work item
 
 ## Interaction Documentation Requirement
 
@@ -128,9 +151,10 @@ Do not leave button semantics implicit.
 
 ## Global Acceptance Checklist
 
-- [ ] Day-1 vocabulary is consistent (`challenge`, `instance`, `evaluate`, `watching`)
+- [ ] Day-1 vocabulary is consistent (`capture`, `challenge`, `AutoResearch`, `instance`, `evaluate`, `watching`)
 - [ ] Deferred features are not presented as active
 - [ ] `/terminal`, `/lab`, `/dashboard` deep links work both directions
+- [ ] AutoResearch-driven watch/alert feedback flow is visible across lab/dashboard contracts
 - [ ] Loading/empty/error states are explicit and readable
 - [ ] No engine decision logic duplicated in app surface code
 - [ ] Evidence ordering is visible where recommendations are shown

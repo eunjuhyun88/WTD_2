@@ -13,9 +13,9 @@ Do not begin from route/component files first.
 ## Day-1 Active Surfaces
 
 - `app/src/routes/+page.svelte` (`/`): thesis + first action entry
-- `app/src/routes/terminal/+page.svelte` (`/terminal`): observe + compose
-- `app/src/routes/lab/+page.svelte` (`/lab`): evaluate + inspect + iterate
-- `app/src/routes/dashboard/+page.svelte` (`/dashboard`): my-stuff inbox
+- `app/src/routes/terminal/+page.svelte` (`/terminal`): review + capture + registration
+- `app/src/routes/lab/+page.svelte` (`/lab`): evaluate + refine + activate
+- `app/src/routes/dashboard/+page.svelte` (`/dashboard`): inbox + alerts + feedback
 
 ## Canonical Page Specs
 
@@ -44,4 +44,4 @@ Do not begin from route/component files first.
 - Surfaces must consume engine artifacts through defined contracts.
 - Surface code must not duplicate engine feature/block logic.
 - UI-specific state lives in `app`; domain logic remains in `engine`.
-- Use Day-1 vocabulary consistently: `challenge`, `instance`, `evaluate`, `watching`.
+- Use Day-1 vocabulary consistently: `capture`, `challenge`, `AutoResearch`, `instance`, `evaluate`, `watching`.
