@@ -4,6 +4,17 @@
 
 Define and stabilize app-engine interfaces to reduce cross-layer reads and breakage.
 
+For Day-1 core-loop work, this file is the index, not the whole contract pack.
+The core-loop extension documents are:
+
+- `docs/product/core-loop-agent-execution-blueprint.md`
+- `docs/domains/core-loop-object-contracts.md`
+- `docs/domains/core-loop-route-contracts.md`
+- `docs/product/core-loop-state-matrix.md`
+- `docs/product/core-loop-surface-wireframes.md`
+- `docs/runbooks/core-loop-verification.md`
+- `docs/runbooks/core-loop-migration-plan.md`
+
 ## Canonical Type Homes
 
 - App shared schemas: `app/src/lib/contracts/index.ts`
@@ -37,13 +48,19 @@ MANDATORY rule:
 | Home (`/`) | `docs/product/pages/01-home.md` | n/a (frozen maintenance surface) | start-bar route handoff contract |
 | Terminal (`/terminal`) | `docs/product/pages/02-terminal.md` | `docs/domains/terminal.md` | query/deep-link, evidence/source ordering, tab/result payloads |
 | Lab (`/lab`) | `docs/product/pages/03-lab.md` | `docs/domains/lab.md` | challenge artifacts, evaluate stream summary, instances rows |
-| Dashboard (`/dashboard`) | `docs/product/pages/04-dashboard.md` | `docs/domains/dashboard.md` | challenge summary list, watching state shape, placeholder adapter section |
+| Dashboard (`/dashboard`) | `docs/product/pages/04-dashboard.md` | `docs/domains/dashboard.md` | alert inbox rows, watching state shape, saved setup summary rows |
 
 Read order for implementation or QA:
 
-1. surface product spec (`docs/product/pages/*`)
-2. matching domain spec (`docs/domains/*.md`)
-3. this contracts doc for payload and envelope details
+1. this contracts doc as the index
+2. `docs/product/pages/00-system-application.md`
+3. `docs/product/core-loop-agent-execution-blueprint.md` for Day-1 core-loop work
+4. `docs/domains/core-loop-object-contracts.md` when payload or object semantics change
+5. `docs/domains/core-loop-route-contracts.md` when route ownership or API shape changes
+6. `docs/product/core-loop-state-matrix.md` when lifecycle or activation behavior changes
+7. target surface product spec (`docs/product/pages/*`)
+8. matching domain spec (`docs/domains/*.md`)
+9. this contracts doc again for payload and envelope details
 
 Conflict resolution rule:
 

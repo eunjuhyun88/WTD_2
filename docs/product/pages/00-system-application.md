@@ -6,7 +6,10 @@ Apply one consistent product system to all Day-1 pages so implementation, copy, 
 
 MANDATORY reading rule:
 
-- Engineers and agents must read `docs/domains/contracts.md` first (Surface-Contract Index), then this file, then the target page spec before touching code.
+- Engineers and agents must read `docs/domains/contracts.md` first (Surface-Contract Index), then this file, then `docs/product/core-loop-agent-execution-blueprint.md`.
+- When object semantics or lifecycle behavior is in scope, they must also read `docs/domains/core-loop-object-contracts.md` and `docs/product/core-loop-state-matrix.md` before touching code.
+- When route shape, ownership, or migration behavior is in scope, they must also read `docs/domains/core-loop-route-contracts.md` and `docs/runbooks/core-loop-migration-plan.md`.
+- Surface implementation work should then read the target page spec and `docs/product/core-loop-surface-wireframes.md`.
 - Starting from implementation files without this read sequence is out-of-process.
 
 ## Day-1 Canonical Boundary
@@ -129,8 +132,9 @@ Typical gated actions:
 Every surface-affecting change should include:
 
 1. page spec update in `docs/product/pages/*` when behavior changes
-2. contract check against `docs/domains/contracts.md`
-3. acceptance checklist evidence in the related work item
+2. blueprint check against `docs/product/core-loop-agent-execution-blueprint.md` when object semantics, handoffs, or ownership changes
+3. contract check against `docs/domains/contracts.md`
+4. acceptance checklist evidence in the related work item
 
 ## Interaction Documentation Requirement
 

@@ -80,6 +80,7 @@
 ```
 
 The concrete operating spec for one full cycle lives in [`docs/product/core-loop-system-spec.md`](/Users/ej/Projects/wtd-v2/docs/product/core-loop-system-spec.md).
+Day-1 route ownership is explicit: the review and `Save Setup` moment lives in `/terminal`, not in `/lab` or `/dashboard`.
 
 ## Loop Stages
 
@@ -156,6 +157,9 @@ The concrete operating spec for one full cycle lives in [`docs/product/core-loop
 ### 6. 차트 검토와 Save Setup
 
 유저는 올라온 후보를 실제로 보고 저장하거나 버린다.
+
+이 단계의 surface owner는 `/terminal` 이다.
+즉, 제품은 터미널에서 매매복기를 확인하고, 정확한 차트 구간을 지정하고, `Save Setup` 으로 저장할 수 있어야 한다.
 
 `Save Setup`이 중요한 이유는 세 가지다.
 

@@ -36,7 +36,7 @@ Home should do only four things:
 
 - Eyebrow: `COGOCHI`
 - H1: single strongest thesis line
-- Sub-copy: compact mechanism (`capture -> scan -> judge -> deploy`)
+- Sub-copy: compact mechanism (`capture -> AutoResearch scan -> judge -> deploy`)
 - Start bar input:
   - empty submit -> `/terminal`
   - filled submit -> `/terminal` with query seed
@@ -53,14 +53,16 @@ Home should do only four things:
   - `03 Judge`
   - `04 Deploy`
 - Explain mechanism, not implementation internals.
+- The `Scan` stage must explicitly read as AutoResearch expanding one saved review into market-wide monitoring.
+- The loop should make clear that `Save Setup` is the capture moment and judged outcomes are the improvement fuel.
 
 ## Surface Map Requirements
 
 Show only Day-1 active surfaces:
 
-- Terminal: compose + observe
-- Lab: evaluate + inspect + iterate
-- Dashboard: my-stuff inbox
+- Terminal: review + capture
+- Lab: evaluate + activate + inspect
+- Dashboard: alerts + watching + return inbox
 
 ## Visual System Constraints
 
@@ -114,7 +116,7 @@ Do not run visual/layout redesign work on home without explicit product approval
 
 1. `Open Terminal`
    - action: navigate to `/terminal`
-   - expected result: user lands in terminal ready-to-compose state
+   - expected result: user lands in terminal ready to review, inspect, and save a setup
    - failure result: keep user on home and show route failure notice
 
 2. `See How Lab Scores It`

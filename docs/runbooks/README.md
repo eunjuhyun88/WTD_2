@@ -10,3 +10,5 @@ Current key runbooks:
 - `release-checklist.md`
 - `launch-readiness.md`
 - `multi-agent-collaboration.md`
+- `core-loop-verification.md`
+- `core-loop-migration-plan.md`
