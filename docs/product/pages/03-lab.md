@@ -2,22 +2,38 @@
 
 ## Role
 
-Canonical Day-1 challenge workbench for evaluation and iteration.
+Canonical Day-1 workbench where saved captures become evaluable challenges/patterns, are tested against history, and are prepared for live AutoResearch monitoring.
+
+Implementation detail for evaluation-stage UX priority, activation gates, and agent execution split lives in `docs/product/core-loop-agent-execution-blueprint.md`.
+Surface layout and CTA hierarchy detail lives in `docs/product/core-loop-surface-wireframes.md`.
 
 ## Core Contract
 
-Everything after challenge creation happens in lab:
+Everything after `Save Setup` but before feedback returns to the dashboard is organized in lab:
 
-`list -> inspect -> evaluate -> review instances -> iterate`
+`open saved challenge -> inspect definition -> evaluate -> review instances -> activate monitoring -> iterate`
 
 Lab is the only active Day-1 surface that owns challenge run state.
+Lab is also the surface that converts one saved review into a reusable monitored hypothesis.
+
+## Capture-to-Lab Contract
+
+Lab does not replace `Save Setup`.
+Its job begins after terminal has already created durable capture evidence.
+
+Day-1 baseline:
+
+1. terminal capture is projected or linked into a `challenge`
+2. lab shows the resulting challenge definition and evaluation state
+3. lab lets the user decide whether the setup generalizes enough to monitor live
+4. live monitoring status then returns through dashboard alerts/watching
 
 ## Layout Contract
 
 - Left pane: My Challenges list
 - Right pane: Selected challenge detail
 - Run area: evaluate trigger + streamed output
-- Result area: score summary + instances table
+- Result area: score summary + instances table + monitoring handoff
 
 ## Challenge List Requirements
 
@@ -34,6 +50,7 @@ Selecting a row must load the matching right-pane detail.
 
 - identity summary (slug, direction, universe, timeframe)
 - one-line description from challenge metadata
+- upstream capture context or source-review hint when available
 - block breakdown (trigger/confirmations/entry/disqualifiers)
 - read-only match script view or safe open path
 
@@ -45,6 +62,45 @@ Selecting a row must load the matching right-pane detail.
 2. stream stdout/stderr progress via SSE
 3. parse terminal summary block (`SCORE`, `N_INSTANCES`, etc.)
 4. refresh instance rows after completion
+
+Evaluation answers the question:
+
+- did this saved setup generalize beyond one reviewed chart segment?
+
+## Pattern Refinement Contract
+
+Lab should not only say "pass/fail."
+It should help the user understand how one reviewed setup might generalize into a reusable monitored pattern.
+
+Day-1 refinement questions:
+
+1. which historical cases look structurally similar?
+2. what did the evaluated challenge actually capture well?
+3. is the setup good enough to monitor live?
+
+Useful Day-1 outputs when available:
+
+- similar-case counts and baseline hit/miss split
+- top contributing factors or block groups
+- failure mode summary (`too broad`, `too sparse`, `late`, `noisy`)
+
+Design rule:
+
+- refinement explains or narrows the hypothesis
+- it does not secretly rewrite the canonical challenge without user-visible intent
+
+## Monitoring Activation Contract
+
+After a successful or intentionally accepted evaluation, lab may activate live monitoring:
+
+1. create or update `watching` / pattern-monitoring context
+2. hand off the live feedback loop to scanner/alerts
+3. return active alerts and watch state through dashboard
+
+Day-1 rule:
+
+- activation is allowed only from lab-owned evaluated context, not from arbitrary dashboard controls
+- activation should expose enough context for the user to know what exactly is being monitored after the handoff
 
 ## Instances Contract
 
@@ -84,7 +140,9 @@ Row click deep-link:
 - [ ] Challenge list and selected detail remain slug-consistent
 - [ ] Evaluate run streams progress and emits final summary parse
 - [ ] Instances refresh after run and deep-link back to terminal
-- [ ] Lab remains canonical "challenge lives here" page for Day-1
+- [ ] Refinement outputs help the user understand whether the saved setup generalized or failed
+- [ ] Monitoring activation handoff is explicit in the evaluated challenge flow
+- [ ] Lab remains the canonical evaluation-and-activation page for Day-1
 
 ## Evaluate Summary Contract Fields
 
@@ -110,9 +168,10 @@ Lab should treat challenge directory artifacts as canonical:
 
 ## UX Rules
 
-1. User creates in terminal, not lab.
-2. User evaluates and inspects in lab, not terminal.
-3. All instance replay paths should resolve back to terminal context.
+1. User creates and captures in terminal, not lab.
+2. User evaluates, decides generalization, and activates monitoring in lab.
+3. User reviews alert feedback and continuity state in dashboard.
+4. All instance replay paths should resolve back to terminal context.
 
 ## Error and Degradation Rules
 
@@ -178,12 +237,14 @@ Partially implemented:
 
 - challenge-like workflow language appears in UI, but data model is strategy/backtest-centered
 - result and trade visualization are present, but not mapped to canonical `answers.yaml` and `instances.jsonl` artifacts
+- monitoring activation and AutoResearch handoff are not yet the primary user story in this page
 
 Not yet aligned with page contract:
 
 - canonical challenge filesystem bridge (`challengesApi`) is not the active primary flow
 - evaluate via `prepare.py evaluate` SSE stream parser contract is not the active run path
 - `/lab?slug=<slug>` and `/terminal?slug=<slug>&instance=<ts>` challenge-instance deep-link contract is not primary
+- saved capture -> evaluated challenge -> monitoring activation flow is not yet expressed as one coherent path
 
 ## Button Action -> Outcome Contract
 
@@ -201,7 +262,7 @@ Not yet aligned with page contract:
 
 3. `New from Terminal`
    - action: navigate to `/terminal`
-   - expected result: user can compose and save new challenge
+   - expected result: user can review/capture a setup and project it into a new challenge
    - failure result: visible navigation failure notice
 
 ### Detail / Evaluate Actions
@@ -220,6 +281,11 @@ Not yet aligned with page contract:
    - action: open read view or copy content
    - expected result: user can inspect/copy without mutating canonical artifacts
    - failure result: inline action error without breaking detail panel
+
+4. `Activate Monitoring` (when exposed)
+   - action: create or update live monitoring/watch context for the selected evaluated challenge
+   - expected result: dashboard/alerts begin tracking the setup as active monitoring work
+   - failure result: inline activation error without losing evaluation state
 
 ### Instance Table Actions
 
