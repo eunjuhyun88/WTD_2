@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+
+from research.reporting import research_run_report_path
 from research.state_store import ResearchStateStore
 from research.train_handoff import execute_train_candidate_handoff
 
@@ -51,6 +54,9 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
     assert result["model_version"] == "20260416_140500"
     assert updated_run.handoff_payload["training_result"]["auc"] == 0.67
     assert updated_run.handoff_payload["training_result"]["rollout_state"] == "candidate"
+    report = json.loads(research_run_report_path(store, completed.research_run_id).read_text())
+    assert report["operator_recommendation"]["action"] == "review_training_result"
+    assert report["training_handoff"]["training_result"]["model_version"] == "20260416_140500"
 
 
 def test_execute_train_candidate_handoff_rejects_non_candidate_runs(tmp_path) -> None:

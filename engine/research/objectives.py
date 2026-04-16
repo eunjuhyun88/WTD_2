@@ -20,11 +20,20 @@ class PatternReadinessDeficit:
 
 
 @dataclass(frozen=True)
+class PatternReadinessWarning:
+    kind: str
+    current: int | float | None
+    target: int | float | None
+    action: str
+
+
+@dataclass(frozen=True)
 class PatternReadinessPlan:
     train_ready: bool
     state: str
     reason: str
     deficits: list[PatternReadinessDeficit]
+    warnings: list[PatternReadinessWarning]
     next_actions: list[str]
 
     def to_dict(self) -> dict[str, Any]:
@@ -148,6 +157,7 @@ def derive_pattern_research_objective(
 
 def build_pattern_readiness_plan(pattern_slug: str, summary: PatternDatasetSummary) -> PatternReadinessPlan:
     deficits: list[PatternReadinessDeficit] = []
+    warnings: list[PatternReadinessWarning] = []
     next_actions: list[str] = []
 
     if summary.training_usable_count < MIN_TRAIN_RECORDS:
@@ -188,16 +198,14 @@ def build_pattern_readiness_plan(pattern_slug: str, summary: PatternDatasetSumma
         next_actions.append("capture_failure_class")
 
     if summary.score_coverage is not None and summary.score_coverage < 0.7:
-        deficits.append(
-            PatternReadinessDeficit(
+        warnings.append(
+            PatternReadinessWarning(
                 kind="score_coverage",
                 current=round(summary.score_coverage, 4),
-                required=0.7,
-                missing=round(0.7 - summary.score_coverage, 4),
+                target=0.7,
                 action="Increase entry scoring coverage so future readiness decisions can compare threshold behavior.",
             )
         )
-        next_actions.append("increase_entry_score_coverage")
 
     if not deficits:
         state = "train_ready"
@@ -212,6 +220,7 @@ def build_pattern_readiness_plan(pattern_slug: str, summary: PatternDatasetSumma
         state=state,
         reason=summary.readiness_reason,
         deficits=deficits,
+        warnings=warnings,
         next_actions=next_actions,
     )
 
@@ -239,6 +248,7 @@ def _objective(
             **supporting_signals,
             "readiness_state": readiness_plan.state,
             "readiness_deficit_kinds": [deficit.kind for deficit in readiness_plan.deficits],
+            "readiness_warning_kinds": [warning.kind for warning in readiness_plan.warnings],
         },
     )
 
@@ -295,6 +305,10 @@ def _recent_research_signals(pattern_slug: str, state_store: object | None, *, l
 
 def _looks_like_scoring_drift(summary: PatternDatasetSummary) -> bool:
     if not summary.ready_to_train:
+        return False
+    if summary.scored_decided_entries < 12:
+        return False
+    if summary.score_coverage is not None and summary.score_coverage < 0.7:
         return False
     if summary.above_threshold_success_rate is None or summary.below_threshold_success_rate is None:
         return False
