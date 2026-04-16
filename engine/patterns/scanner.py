@@ -28,8 +28,9 @@ from typing import Any
 
 from data_cache.loader import load_klines, load_perp
 from exceptions import CacheMiss
-from ledger.store import LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
+from patterns.alert_policy import ALERT_POLICY_STORE, evaluate_alert_policy
 from patterns.entry_scorer import score_entry_feature_snapshot
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.state_machine import PatternStateMachine
@@ -107,7 +108,14 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
     """
     entry_price = _get_entry_price(transition.symbol)
     btc_trend = _detect_btc_trend()
-    entry_score = score_entry_feature_snapshot(transition.feature_snapshot)
+    try:
+        entry_score = score_entry_feature_snapshot(
+            transition.feature_snapshot,
+            pattern_slug=transition.pattern_slug,
+        )
+    except TypeError:
+        # Keep scanner compatible with older single-argument test doubles.
+        entry_score = score_entry_feature_snapshot(transition.feature_snapshot)
 
     log.info(
         "ENTRY SIGNAL: %s → %s [%s] price=%.4f btc=%s ml=%s p_win=%s pass=%s",
@@ -133,12 +141,16 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
         entry_block_coverage=transition.confidence,
         entry_p_win=entry_score.p_win,
         entry_ml_state=entry_score.state,
+        entry_model_key=entry_score.model_key,
         entry_model_version=entry_score.model_version,
+        entry_rollout_state=entry_score.rollout_state,
         entry_threshold=entry_score.threshold,
         entry_threshold_passed=entry_score.threshold_passed,
         entry_ml_error=entry_score.error,
     )
     LEDGER_STORE.save(outcome)
+    LEDGER_RECORD_STORE.append_entry_record(outcome)
+    LEDGER_RECORD_STORE.append_score_record(outcome)
 
 
 def _on_success(transition: PhaseTransition) -> None:
@@ -379,12 +391,13 @@ async def run_pattern_scan(
             perp_coverage["without_perp"] += 1
 
     # Collect entry candidates across all patterns
+    raw_entry_candidates = get_raw_entry_candidates_all()
+    entry_candidate_records = get_entry_candidate_records()
     entry_candidates: dict[str, list[str]] = {}
-    for slug in PATTERN_LIBRARY:
-        machine = _get_machine(slug)
-        candidates = machine.get_entry_candidates()
-        if candidates:
-            entry_candidates[slug] = candidates
+    for slug, records in entry_candidate_records.items():
+        visible_symbols = [record["symbol"] for record in records if record.get("alert_visible")]
+        if visible_symbols:
+            entry_candidates[slug] = visible_symbols
 
     elapsed_ms = int((time.monotonic() - t0) * 1000)
 
@@ -396,6 +409,8 @@ async def run_pattern_scan(
         "n_errors": len(errors),
         "elapsed_ms": elapsed_ms,
         "entry_candidates": entry_candidates,
+        "raw_entry_candidates": raw_entry_candidates,
+        "candidate_records_by_pattern": entry_candidate_records,
         "all_states": {
             slug: _get_machine(slug).get_all_states()
             for slug in PATTERN_LIBRARY
@@ -414,7 +429,16 @@ def get_pattern_states() -> dict[str, dict[str, str]]:
 
 
 def get_entry_candidates_all() -> dict[str, list[str]]:
-    """Return current entry candidates for all patterns."""
+    """Return current visible entry candidates for all patterns."""
+    records_by_pattern = get_entry_candidate_records()
+    return {
+        slug: [record["symbol"] for record in records if record.get("alert_visible")]
+        for slug, records in records_by_pattern.items()
+    }
+
+
+def get_raw_entry_candidates_all() -> dict[str, list[str]]:
+    """Return raw state-machine entry candidates before alert policy filtering."""
     return {
         slug: _get_machine(slug).get_entry_candidates()
         for slug in PATTERN_LIBRARY
@@ -447,7 +471,13 @@ def get_entry_candidate_records(pattern_slug: str | None = None) -> dict[str, li
         pattern = get_pattern(slug)
         machine = _get_machine(slug)
         candidate_symbols = set(machine.get_entry_candidates())
+        policy = ALERT_POLICY_STORE.load(slug)
         states = STATE_STORE.list_states(slug)
+        outcomes_by_transition = {
+            outcome.entry_transition_id: outcome
+            for outcome in LEDGER_STORE.list_all(slug)
+            if outcome.entry_transition_id
+        }
         records: list[dict[str, Any]] = []
 
         for state in states:
@@ -464,6 +494,8 @@ def get_entry_candidate_records(pattern_slug: str | None = None) -> dict[str, li
                 else None
             )
             transition_id = transition.transition_id if transition else state.last_transition_id
+            matched_outcome = outcomes_by_transition.get(transition_id)
+            alert_decision = evaluate_alert_policy(slug, matched_outcome)
             records.append(
                 {
                     "symbol": state.symbol,
@@ -484,6 +516,14 @@ def get_entry_candidate_records(pattern_slug: str | None = None) -> dict[str, li
                     "blocks_triggered": transition.blocks_triggered if transition else [],
                     "feature_snapshot": transition.feature_snapshot if transition else None,
                     "data_quality": transition.data_quality if transition else None,
+                    "alert_mode": policy.mode,
+                    "alert_visible": alert_decision.visible,
+                    "alert_reason": alert_decision.reason,
+                    "entry_ml_state": matched_outcome.entry_ml_state if matched_outcome else None,
+                    "entry_p_win": matched_outcome.entry_p_win if matched_outcome else None,
+                    "entry_threshold_passed": matched_outcome.entry_threshold_passed if matched_outcome else None,
+                    "entry_rollout_state": matched_outcome.entry_rollout_state if matched_outcome else None,
+                    "entry_model_version": matched_outcome.entry_model_version if matched_outcome else None,
                 }
             )
 

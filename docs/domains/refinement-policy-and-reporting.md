@@ -150,7 +150,8 @@ Start with these rules:
    - trigger when repeated dead ends or plateau indicators suggest local improvements are exhausted
 
 5. `scoring_drift_review`
-   - choose `dead_end_confirmation` or `local_refresh_sweep` depending on whether drift looks structural or incremental
+   - choose `dead_end_confirmation` when score coverage degradation looks structural
+   - choose `local_refresh_sweep` when coverage is intact but threshold separation is weakening incrementally
 
 Design rule:
 

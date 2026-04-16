@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-
-from research.reporting import research_run_report_path
 from research.state_store import ResearchStateStore
 from research.train_handoff import execute_train_candidate_handoff
 
@@ -30,6 +27,13 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
             "threshold_policy_version": 1,
         },
     )
+    store.record_operator_decision(
+        research_run_id=completed.research_run_id,
+        decision="approve",
+        decided_by="cto",
+        rationale="Clear for train handoff.",
+        decided_at="2026-04-16T14:05:30+00:00",
+    )
 
     monkeypatch.setattr(
         "research.train_handoff.train_pattern_model_from_ledger",
@@ -54,9 +58,6 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
     assert result["model_version"] == "20260416_140500"
     assert updated_run.handoff_payload["training_result"]["auc"] == 0.67
     assert updated_run.handoff_payload["training_result"]["rollout_state"] == "candidate"
-    report = json.loads(research_run_report_path(store, completed.research_run_id).read_text())
-    assert report["operator_recommendation"]["action"] == "review_training_result"
-    assert report["training_handoff"]["training_result"]["model_version"] == "20260416_140500"
 
 
 def test_execute_train_candidate_handoff_rejects_non_candidate_runs(tmp_path) -> None:
@@ -79,5 +80,30 @@ def test_execute_train_candidate_handoff_rejects_non_candidate_runs(tmp_path) ->
         execute_train_candidate_handoff(run.research_run_id, store=store)
     except ValueError as exc:
         assert "not eligible" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_execute_train_candidate_handoff_requires_operator_approval_by_default(tmp_path) -> None:
+    store = ResearchStateStore(tmp_path / "research_runtime.sqlite")
+    run = store.create_run(
+        pattern_slug="tradoor-oi-reversal-v1",
+        objective_id="obj-train-candidate",
+        baseline_ref="pattern-shadow:rule-first",
+        search_policy={"mode": "bounded-walk-forward-eval"},
+        evaluation_protocol={"kind": "walk-forward"},
+        created_at="2026-04-16T16:00:00+00:00",
+    )
+    store.complete_run(
+        run.research_run_id,
+        completed_at="2026-04-16T16:05:00+00:00",
+        disposition="train_candidate",
+        handoff_payload={"target_name": "breakout"},
+    )
+
+    try:
+        execute_train_candidate_handoff(run.research_run_id, store=store)
+    except ValueError as exc:
+        assert "approval required" in str(exc).lower()
     else:
         raise AssertionError("expected ValueError")

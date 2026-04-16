@@ -13,8 +13,7 @@ from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE
 
 from .eval_protocol import walk_forward_eval
-from .objectives import derive_pattern_research_objective
-from .reporting import research_run_report_path, write_research_run_report
+from .objectives import PatternResearchObjective, derive_pattern_research_objective
 from .state_store import ResearchRun
 from .worker_control import (
     ResearchJobResult,
@@ -24,13 +23,12 @@ from .worker_control import (
     SelectionDecisionInput,
 )
 
-_BOUNDED_EVAL_TRAIN_MODES = frozenset({"bounded_walk_forward", "local_refresh_sweep"})
-
 
 @dataclass(frozen=True)
 class PatternBoundedEvalConfig:
     pattern_slug: str
     objective_id: str | None = None
+    search_mode: str = "bounded-walk-forward-eval"
     target_name: str = "breakout"
     feature_schema_version: int = 1
     label_policy_version: int = 1
@@ -46,49 +44,45 @@ def run_pattern_bounded_eval(
     *,
     controller: ResearchWorkerController | None = None,
     ledger_store: LedgerStore | None = None,
+    objective: PatternResearchObjective | None = None,
 ) -> ResearchRun:
     """Run one bounded Phase A refinement job for a pattern."""
     pattern = get_pattern(config.pattern_slug)
     ledger_store = ledger_store or LedgerStore()
-    controller = controller or ResearchWorkerController()
-    objective = (
-        derive_pattern_research_objective(
-            config.pattern_slug,
-            ledger_store=ledger_store,
-            state_store=controller.store,
-        )
+    objective = objective or (
+        derive_pattern_research_objective(config.pattern_slug, ledger_store=ledger_store)
         if config.objective_id is None
         else None
     )
     baseline_ref = config.baseline_ref or _derive_baseline_ref(config.pattern_slug)
-    policy_objective = objective or derive_pattern_research_objective(
-        config.pattern_slug,
-        ledger_store=ledger_store,
-        state_store=controller.store,
+    controller = controller or ResearchWorkerController()
+    search_policy = (
+        objective.recommended_search_policy
+        if objective is not None
+        else {
+            "policy": "bounded_walk_forward",
+            "mode": config.search_mode,
+        }
     )
-    search_policy = {
-        **policy_objective.recommended_search_policy,
-        "execution_backend": "pattern_bounded_eval",
-        "n_splits": config.n_splits,
-        "target_name": config.target_name,
-    }
-    can_run_bounded_eval = _policy_allows_bounded_eval(policy_objective.recommended_search_policy)
-    evaluation_protocol = {**policy_objective.recommended_evaluation_protocol}
-    if can_run_bounded_eval:
-        evaluation_protocol.update(
-            {
-                "kind": "walk-forward",
-                "n_splits": config.n_splits,
-                "min_mean_auc": config.min_mean_auc,
-                "max_std_auc": config.max_std_auc,
-            }
-        )
+    evaluation_protocol = (
+        objective.recommended_evaluation_protocol
+        if objective is not None
+        else {
+            "kind": "walk-forward",
+            "n_splits": config.n_splits,
+            "min_mean_auc": config.min_mean_auc,
+            "max_std_auc": config.max_std_auc,
+        }
+    )
+    n_splits = int(evaluation_protocol.get("n_splits", config.n_splits))
+    min_mean_auc = float(evaluation_protocol.get("min_mean_auc", config.min_mean_auc))
+    max_std_auc = float(evaluation_protocol.get("max_std_auc", config.max_std_auc))
 
     spec = ResearchJobSpec(
         pattern_slug=config.pattern_slug,
-        objective_id=config.objective_id or policy_objective.objective_id,
+        objective_id=config.objective_id or objective.objective_id,
         baseline_ref=baseline_ref,
-        search_policy=search_policy,
+        search_policy={**search_policy, "target_name": config.target_name},
         evaluation_protocol=evaluation_protocol,
     )
 
@@ -97,54 +91,31 @@ def run_pattern_bounded_eval(
         summary = summarize_pattern_dataset(outcomes)
 
         if not summary.ready_to_train:
-            readiness_metrics = _objective_metrics(summary, policy_objective)
-            next_actions = policy_objective.readiness_plan.get("next_actions", [])
             return ResearchJobResult(
                 disposition="no_op",
                 selection_decision=SelectionDecisionInput(
                     decision_kind="reject",
                     rationale=summary.readiness_reason,
                     baseline_ref=run.baseline_ref,
-                    metrics=readiness_metrics,
+                    metrics={"dataset_summary": summary.to_dict()},
                 ),
                 memory_notes=[
                     ResearchMemoryInput(
                         note_kind="assumption_update",
                         summary="Pattern dataset is not ready for bounded train-candidate evaluation.",
-                        detail=f"{summary.readiness_reason}; next_actions={next_actions}",
+                        detail=summary.readiness_reason,
                         tags=["dataset", "readiness", config.pattern_slug],
-                    )
-                ],
-            )
-
-        if not can_run_bounded_eval:
-            mode = policy_objective.recommended_search_policy.get("mode", "unknown")
-            rationale = (
-                f"Objective policy '{mode}' is not executable by pattern_bounded_eval for train-candidate "
-                "handoff. Route to the matching research executor before training."
-            )
-            return ResearchJobResult(
-                disposition="dead_end",
-                selection_decision=SelectionDecisionInput(
-                    decision_kind="dead_end",
-                    rationale=rationale,
-                    baseline_ref=run.baseline_ref,
-                    metrics=_objective_metrics(summary, policy_objective),
-                ),
-                memory_notes=[
-                    ResearchMemoryInput(
-                        note_kind="dead_end",
-                        summary="Bounded eval executor blocked by objective search policy.",
-                        detail=rationale,
-                        tags=["policy", "executor", config.pattern_slug],
                     )
                 ],
             )
 
         records = build_pattern_training_records(outcomes)
         X, y = _pattern_training_matrix(records)
-        metrics = walk_forward_eval(X, y, n_splits=config.n_splits)
-        aggregate_metrics = {**_objective_metrics(summary, policy_objective), "eval": metrics}
+        metrics = walk_forward_eval(X, y, n_splits=n_splits)
+        aggregate_metrics = {
+            "dataset_summary": summary.to_dict(),
+            "eval": metrics,
+        }
 
         if "error" in metrics:
             return ResearchJobResult(
@@ -176,10 +147,10 @@ def run_pattern_bounded_eval(
         )
         variant_ref = f"pattern-model:{model_key}"
 
-        if mean_auc < config.min_mean_auc or std_auc > config.max_std_auc:
+        if mean_auc < min_mean_auc or std_auc > max_std_auc:
             rationale = (
                 f"Candidate rejected: mean_auc={mean_auc:.4f}, std_auc={std_auc:.4f}, "
-                f"gate=({config.min_mean_auc:.2f}, {config.max_std_auc:.2f})."
+                f"gate=({min_mean_auc:.2f}, {max_std_auc:.2f})."
             )
             return ResearchJobResult(
                 disposition="dead_end",
@@ -239,9 +210,7 @@ def run_pattern_bounded_eval(
             ],
         )
 
-    completed = controller.run_bounded_job(spec, execute=_execute)
-    write_research_run_report(completed, store=controller.store)
-    return completed
+    return controller.run_bounded_job(spec, execute=_execute)
 
 
 def _pattern_training_matrix(records: list[dict]) -> tuple[np.ndarray, np.ndarray]:
@@ -264,35 +233,13 @@ def _derive_baseline_ref(pattern_slug: str) -> str:
     return f"model:{preferred.model_key}:{preferred.model_version}:{preferred.rollout_state}"
 
 
-def _policy_allows_bounded_eval(search_policy: dict) -> bool:
-    return (
-        search_policy.get("mode") in _BOUNDED_EVAL_TRAIN_MODES
-        and search_policy.get("allowed_train_handoff") is True
-    )
-
-
-def _objective_metrics(summary, policy_objective) -> dict:
-    return {
-        "dataset_summary": summary.to_dict(),
-        "readiness_plan": policy_objective.readiness_plan,
-        "recommended_search_policy": policy_objective.recommended_search_policy,
-        "recommended_evaluation_protocol": policy_objective.recommended_evaluation_protocol,
-        "supporting_signals": policy_objective.supporting_signals,
-    }
-
-
 def pattern_bounded_eval_payload(run: ResearchRun, controller: ResearchWorkerController | None = None) -> dict:
     """Return a compact payload for CLI or worker logs."""
     store = (controller.store if controller is not None else ResearchWorkerController().store)
     decision = store.get_selection_decision(run.research_run_id)
     notes = [asdict(note) for note in store.list_memory_notes(research_run_id=run.research_run_id)]
-    report_path = research_run_report_path(store, run.research_run_id)
     return {
         "research_run": asdict(run),
         "selection_decision": asdict(decision) if decision is not None else None,
         "memory_notes": notes,
-        "report_artifact": {
-            "path": str(report_path),
-            "exists": report_path.exists(),
-        },
     }

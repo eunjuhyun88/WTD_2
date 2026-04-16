@@ -82,12 +82,11 @@ engine
 - the first concrete Phase A job is a bounded walk-forward evaluation over ledger-derived pattern training records
 - successful `train_candidate` runs hand off through an internal service, not by reimplementing route logic inside worker-control
 - bounded refinement no longer requires a manually supplied objective id; worker-control can derive one from ledger readiness and prior model state
-- PR split is intentional: W-0047 carries the durable research-run foundation and bounded refinement loop; W-0048 carries policy gating and operator report artifacts
 
 ## Next Steps
 
-1. Open this foundation branch as the base for the W-0048 policy/reporting branch.
-2. Keep policy gating and report artifacts out of this PR.
+1. Continue policy and reporting design in `work/active/W-0048-refinement-policy-and-reporting.md`.
+2. Implement the W-0048 policy upgrade before broadening automation rollout.
 
 ## Exit Criteria
 
@@ -110,4 +109,3 @@ engine
 - scheduled refinement job landed in `engine/scanner/jobs/pattern_refinement.py` with tests in `engine/tests/test_pattern_refinement_job.py`
 - follow-on policy/reporting design moved to `work/active/W-0048-refinement-policy-and-reporting.md`
 - no public routes were added in this slice
-- PR branch: `codex/w-0047-research-run-state-plane-clean`
