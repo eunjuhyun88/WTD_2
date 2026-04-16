@@ -2,8 +2,8 @@
 
 ## Goal
 
-Operate as the Day-1 decision cockpit for Observe + Compose:
-find setups quickly, validate with evidence, and trigger next actions without leaving `/terminal`.
+Operate as the Day-1 trade-review and capture cockpit:
+inspect setups in chart context, save the exact reviewed range, and trigger next actions without leaving `/terminal`.
 
 ## Canonical Areas
 
@@ -18,7 +18,8 @@ find setups quickly, validate with evidence, and trigger next actions without le
 ## Boundary
 
 - Owns terminal presentation shell, interaction mapping, and streaming UX.
-- Owns query-to-compose behavior and challenge-save initiation path.
+- Owns chart inspection, selected-range save initiation, and the secondary query-to-compose behavior.
+- Owns the capture-first registration experience for reviewed examples and replayed instances.
 - Owns evidence rendering order and source visibility rules.
 - Does not own indicator math, scoring math, or block execution logic.
 - Does not replace `/lab` challenge evaluation ownership.
@@ -26,6 +27,7 @@ find setups quickly, validate with evidence, and trigger next actions without le
 ## Inputs
 
 - user query/command text
+- reviewed symbol/timeframe/range context
 - route/query params (`q`, `slug`, `instance`, symbol, timeframe)
 - contract-safe app API payloads for market/evidence/detail tabs
 - saved watches/local state needed for return and continuity UX
@@ -35,19 +37,39 @@ find setups quickly, validate with evidence, and trigger next actions without le
 - rendered board context (left rail, main board, right panel, bottom dock)
 - deterministic right-panel tab updates from clicks/actions
 - streamed explanation/analysis output
-- challenge-create handoff requests and watch-save intents
+- capture-create handoff requests, secondary challenge-create requests, and watch-save intents
+- preview signals about similar captures and downstream evaluation handoff
 - deep-link transitions to `/lab` and back-context handling
 
 ## Interaction Contract
 
 Core flow is fixed:
 
-1. Find (main board / quick scan)
-2. Validate (right detail panel)
-3. Act (bottom dock / save / open next surface)
+1. Review (main board / replay / surfaced candidate)
+2. Validate (chart + right detail panel)
+3. Save or hand off (`Save Setup`, watch, or open next surface)
+
+Secondary query/compose behavior may still create a `challenge`, but it must not replace the primary review/capture path.
+
+Terminal must accept three registration modalities:
+
+1. reviewed range only
+2. reviewed range + hint/note
+3. explicit query/condition input
+
+The first two are primary. The third is helper-oriented.
 
 Right panel must never be empty.
 If no asset is selected, render market summary fallback.
+
+## Authority Contract
+
+Terminal may host AI assistance, but authority is split:
+
+- LLM/UI layer: parse and explain
+- engine/ML layer: score, match, evaluate, and judge
+
+Terminal must not blur those two roles in copy or contract behavior.
 
 ## Layout Contract (Desktop)
 
@@ -96,6 +118,12 @@ Two-tier search must be supported:
 
 1. Quick keyword presets
 2. Metric/indicator search
+
+Search seeds may come from:
+
+- free-form query
+- reviewed timestamp/range replay
+- saved challenge replay
 
 Unified response shape:
 
@@ -155,6 +183,8 @@ Mobile terminal is mode-based, not desktop-column compression:
 ## Acceptance Checks
 
 - query submit and deep-link hydration are deterministic
+- reviewed chart ranges can be captured through the primary save path
+- capture-first registration modes are explicit and do not depend on hidden query state
 - card/button click-to-tab mapping is deterministic
 - right panel never renders blank state
 - conclusion strip remains visible across all tabs
