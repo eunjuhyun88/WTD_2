@@ -33,19 +33,17 @@ contract
 - `work/active/W-0039-terminal-save-setup-capture-link.md`
 - `app/src/components/terminal/workspace/ChartBoard.svelte`
 - `app/src/components/terminal/workspace/SaveSetupModal.svelte`
-- `app/src/lib/terminal/chartViewportCapture.ts`
-- `app/src/lib/contracts/terminalPersistence.ts`
-- `app/src/routes/terminal/+page.svelte`
 - `engine/capture/types.py`
 - `engine/api/routes/captures.py`
 
 ## Facts
 
-- `W-0036` persistence rollout is already merged on `main`, so selected-range capture now lands as a separate contract slice instead of reopening the persistence umbrella
-- this lane now has the first implementation substrate on a clean branch: `terminalPersistence` pattern-capture contract, app API helpers, server persistence helpers, `chartViewportCapture.ts`, and `/api/terminal/pattern-captures`
-- `SaveSetupModal.svelte` now creates a terminal pattern-capture record before engine save and forwards viewport metadata plus optional `pattern_capture_id`
-- `ChartBoard.svelte` now provides visible-range viewport snapshots through `getViewportForSave()` without bringing in `W-0048` chart-surface changes
-- targeted verification passed in the clean lane: `npm run check -- --fail-on-warnings` and vitest for contract plus `/api/terminal/pattern-captures`
+- the current core-loop spec treats capture as chart-context aware, but it does not yet define selected-range capture as the canonical Day-1 input artifact
+- `ChartBoard.svelte` already has `getViewportForSave()` that slices the visible chart range into a save payload candidate
+- existing candidate capture flow already persists chart context, feature snapshots, block scores, and transition linkage
+- current `Save Setup` behavior is partly challenge-like and partly pattern-capture-like, which leaves the true loop input underspecified
+- the user-facing product intent is to save exactly the chart segment being inspected, not an abstract symbol bookmark detached from visible evidence
+- the old `task/w-0051-chart-range-core-loop` branch diverges too far from `main`; this slice is being rebuilt as a docs-only merge unit on top of current `origin/main`
 
 ## Assumptions
 
@@ -68,15 +66,12 @@ contract
 - the core loop starts from durable selected-range evidence, because that is the artifact future evaluation, labeling, and refinement can actually reuse
 - this slice should merge as a product/contract unit separate from refinement methodology and separate from strategy-replication research artifacts
 - branch split reason: commit `7b845a7` mixed chart-range core-loop spec changes with refinement/control-plane and replication-harness work, so this slice needs a separate product/contract PR
-- viewport snapshot serialization belongs to the capture substrate even if the first data source is `ChartBoard.getViewportForSave()`
-- chart metrics dock, MTF overlays, chart-focus mode, and structure-explain visuals are explicitly out of scope for this lane and stay in **W-0048**
-- the first shipping slice uses visible-range capture only; brush or drag-range selection remains a later enhancement
 
 ## Next Steps
 
-1. stage and commit the clean `W-0051` slice from `/tmp/wtd-v2-w0051-capture-design`
-2. open a narrow PR for the selected-range capture substrate only
-3. leave brush-selection UX and chart-surface elaboration for follow-up work after this contract lane lands
+1. Publish this docs-only merge unit from the rebuilt main-based branch.
+2. Define the concrete capture payload shape for selected-range evidence and candidate linkage.
+3. Implement the first `/terminal` slice using visible-range capture, then add richer brush selection after the contract is stable.
 
 ## Exit Criteria
 
@@ -87,19 +82,10 @@ contract
 
 ## Handoff Checklist
 
-- first implementation slice now exists in the clean lane; do not re-open the dirty salvage branch for this work
-- `ChartBoard.getViewportForSave()` is the only viewport source in scope for this PR
-- `CollectedMetricsDock.svelte`, `mtfAlign.ts`, `StructureExplainViz.svelte`, chart-focus toggles, and other `W-0048` files stay out of this branch
-- clean design lane created:
+- this slice is design/contract work, not the UI implementation itself
+- existing capture and candidate linkage work remains valid, but now sits under a stricter selected-range contract
+- next implementation should start from `ChartBoard.getViewportForSave()` rather than inventing a parallel save primitive
+- rebuilt merge unit:
   - branch: `codex/w-0051-chart-range-capture-design`
-  - worktree: `/tmp/wtd-v2-w0051-capture-design`
-  - doc-only seed commit: `ae0a5db`
-- current verification status:
-  - `cd app && npm run check -- --fail-on-warnings`
-  - `cd app && npm test -- --run src/lib/contracts/terminalPersistence.test.ts src/routes/api/terminal/pattern-captures/pattern-captures.test.ts`
-- merged baseline already on `main` before this lane starts:
-  - `#52` analyze contract consumer merged
-  - `#53` save-setup capture link merged
-  - `#55` terminal page integration merged
-  - `#56` optional pattern seed scout lane merged
-- do not duplicate `#52`; it is already merged and should be treated as baseline, not active work
+  - worktree: `/private/tmp/wtd-w0051-clean`
+  - verification: docs-only scope; no runtime test required
