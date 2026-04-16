@@ -73,6 +73,7 @@ contract
 - make dashboard an alert-first inbox in the canonical docs, while allowing internal `challenge` artifacts to remain behind user-facing `Saved Setups` language
 - add four supporting documents for field-level contracts, state rules, wireframes, and verification so execution agents can start from files alone
 - add one route contract doc and one migration plan doc so agents can implement toward a stable target without guessing how legacy routes should evolve
+- split branch delivery for this work item because the current execution branch contains older pattern-engine commits unrelated to the standalone core-loop documentation pack
 
 ## Next Steps
 
