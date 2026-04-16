@@ -72,6 +72,32 @@ No hidden local-only pseudo-pattern objects.
 4. Save action writes challenge artifact through contract route
 5. Success state exposes deep link to `/lab?slug=<challenge>`
 
+## Save Setup Flow
+
+`Save Setup` is the chart-range capture path.
+
+It should support:
+
+`inspect -> select range -> auto-capture context -> save`
+
+Minimum contract:
+
+1. User inspects the active chart in `/terminal`
+2. User marks the exact chart segment they mean
+3. Terminal captures the selected range plus visible chart context
+4. Terminal saves a canonical capture record
+5. Success state exposes the saved capture or the downstream lab/deep-link
+
+Selected-range payload must include:
+
+- symbol
+- timeframe
+- selected range start/end
+- OHLCV slice for the selected range
+- rendered indicator slices for the selected range
+- visible pattern context when available
+- candidate/transition linkage when the save came from a surfaced pattern candidate
+
 ## Data Dependencies
 
 - Analysis/market orchestration endpoints for board + panel data
@@ -163,6 +189,11 @@ Source categories should remain fixed:
 - News
 - AI Inference
 
+Selected-range evidence belongs under the same source-native rule:
+
+- save what the user actually inspected on the chart
+- do not reduce capture to symbol-only state
+
 ## Mobile Requirements
 
 - Terminal mobile uses mode switching, not desktop column compression.
@@ -193,6 +224,7 @@ Implemented now:
 - analysis/evidence rendering and source pills
 - pattern transition/status widgets
 - save setup modal mounted in terminal
+- `ChartBoard` already exposes a visible-range snapshot helper for save payload generation
 
 Partially implemented:
 
@@ -205,6 +237,7 @@ Not yet aligned with page contract:
 - full query composer semantics (`q` seed + parser-hint + save flow parity) are not end-to-end canonical
 - wallet intel mode is not yet a complete contract-grade flow in this page
 - some right-panel tab data remains mixed between deep data and fallback/derived placeholders
+- Save Setup is not yet fully enforced as selected-range capture with auto-collected OHLCV/indicator evidence
 
 ## Prompt-Triggered GUI Contract
 
@@ -336,8 +369,8 @@ Define each primary button as:
 ### Modal Buttons (Save Setup Modal)
 
 1. `Save`
-   - action: POST challenge create payload through app contract route
-   - expected result: success confirmation + close modal + expose/open lab deep link
+   - action: persist selected-range capture; attach candidate linkage when present and challenge/create fallback only when canonical capture is unavailable
+   - expected result: success confirmation + close modal + expose saved capture or downstream lab deep link
    - failure result: field-level or global modal error with retry
 
 2. `Cancel / Close`
