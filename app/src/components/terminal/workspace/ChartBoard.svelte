@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
   import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
-  import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
+  import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType, SeriesMarker } from 'lightweight-charts';
   import type { DepthLadderEnvelope, LiquidationClustersEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
+  import { tfMinutes } from '$lib/chart/mtfAlign';
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
 
@@ -22,8 +23,26 @@
     initialData?: ChartSeriesPayload | null;
     depthSnapshot?: DepthLadderEnvelope['data'] | null;
     liqSnapshot?: LiquidationClustersEnvelope['data'] | null;
+    quantRegime?: {
+      bucket: 'risk_on_leverage' | 'short_squeeze' | 'deleveraging' | 'neutral';
+      label: string;
+      hint?: string;
+      tone: 'bull' | 'bear' | 'neutral' | 'warn';
+      oiDeltaPct: number | null;
+      fundingPct: number | null;
+    };
+    cvdDivergence?: {
+      state: 'bullish_divergence' | 'bearish_divergence' | 'aligned' | 'unknown';
+      score: number;
+      label: string;
+      hint?: string;
+    };
+    /** Rolling 24h change from analysis snapshot (exchange-style); distinct from 1-bar change from candles */
+    change24hPct?: number | null;
     onSaveSetup?:   (snap: { symbol: string; timestamp: number; tf: string }) => void;
     onTfChange?:    (tf: string) => void;
+    /** full = slim book/liq/quant rails; chart = candle + indicator panes only (context in right rail / Flow tab). */
+    contextMode?: 'full' | 'chart';
   }
 
   let {
@@ -33,8 +52,12 @@
     initialData = null,
     depthSnapshot = null,
     liqSnapshot = null,
+    quantRegime = undefined,
+    cvdDivergence = undefined,
+    change24hPct = null,
     onSaveSetup,
     onTfChange,
+    contextMode = 'full',
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -44,6 +67,8 @@
 
   // ── DOM refs ───────────────────────────────────────────────────────────────
   let containerEl  = $state<HTMLDivElement | undefined>(undefined);
+  /** Wraps candle + sub-panes; drives flex height for TradingView-style fill. */
+  let chartStackEl = $state<HTMLDivElement | undefined>(undefined);
   let mainEl       = $state<HTMLDivElement | undefined>(undefined);
   let volEl        = $state<HTMLDivElement | undefined>(undefined);
   let rsiEl        = $state<HTMLDivElement | undefined>(undefined);
@@ -57,9 +82,7 @@
   let currentPrice = $state<number | null>(null);
   let currentTime  = $state<number | null>(null);
   let currentChangePct = $state<number | null>(null);
-  let currentRsi = $state<number | null>(null);
   let currentOiDelta = $state<number | null>(null);
-  let currentFundingRate = $state<number | null>(null);
   let depthData = $state<DepthLadderEnvelope['data'] | null>(null);
   let liqData = $state<LiquidationClustersEnvelope['data'] | null>(null);
   let depthRatio = $derived.by(() => {
@@ -81,13 +104,46 @@
   let savedSlug     = $state<string | null>(null);   // shown as toast after save
 
   // Indicator toggles
-  let showVWAP = $state(true);
+  let showVWAP = $state(false);
   let showBB   = $state(false);
   let showEMA  = $state(true);
   let showATRBands = $state(false);
   let showCVD = $state(true);
   let showMACD = $state(false);   // replaces RSI pane when active
   let chartMode = $state<'candle' | 'line'>('candle');
+  /** Fund % + CVD cum on main chart (CQ-style); OI Δ stays in sub-pane (different unit). */
+  let derivativesOnMain = $state(true);
+  /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
+  let contextStripOpen = $state(false);
+
+  /** TradingView-style “Indicators” popover (add studies to chart). */
+  let studiesPanelOpen = $state(false);
+  let studiesWrapEl = $state<HTMLDivElement | undefined>(undefined);
+
+  let activeIndicatorCount = $derived.by(() => {
+    let n = 0;
+    if (showVWAP) n++;
+    if (showBB) n++;
+    if (showEMA) n++;
+    if (showATRBands) n++;
+    if (showMACD) n++;
+    if (showCVD) n++;
+    if (derivativesOnMain) n++;
+    return n;
+  });
+
+  /** Compact labels for the active-study chip strip. */
+  let studyChipList = $derived.by(() => {
+    const list: string[] = [];
+    if (showEMA) list.push(emaTf ? `EMA ${emaTf}` : 'EMA');
+    if (showVWAP) list.push('VWAP');
+    if (showBB) list.push('BB');
+    if (showATRBands) list.push('ATR');
+    list.push(showMACD ? 'MACD' : 'RSI');
+    if (showCVD) list.push('CVD');
+    if (derivativesOnMain) list.push('Overlay');
+    return list;
+  });
 
   // ── Chart instances ────────────────────────────────────────────────────────
   let mainChart: IChartApi | null = null;
@@ -96,22 +152,34 @@
   let macdChart: IChartApi | null = null;
   let oiChart:   IChartApi | null = null;
   let cvdChart:  IChartApi | null = null;
-  let resizeObserver: ResizeObserver | null = null;
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
 
   // Level price lines
   let entryLine:  ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
   let targetLine: ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
   let stopLine:   ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
+  /** Liquidation / cluster levels on main chart (CryptoQuant-style price rails). */
+  let liqPriceLines: Array<ReturnType<ISeriesApi<SeriesType>['createPriceLine']>> = [];
 
   // ── Timeframes ────────────────────────────────────────────────────────────
   const TIMEFRAMES = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w'];
 
-  // ── Theme ─────────────────────────────────────────────────────────────────
-  const BG    = '#0a0a0a';
-  const GRID  = 'rgba(255,255,255,0.04)';
-  const TEXT  = 'rgba(255,255,255,0.45)';
-  const BORDER = 'rgba(255,255,255,0.07)';
+  /** EMA computed on this TF then aligned to chart bars; '' = same as chart (no MTF request). */
+  let emaTf = $state('');
+  let emaTfOptions = $derived(TIMEFRAMES.filter((t) => tfMinutes(t) > tfMinutes(tf)));
+
+  $effect(() => {
+    void tf;
+    if (emaTf && !emaTfOptions.includes(emaTf)) {
+      emaTf = '';
+    }
+  });
+
+  // ── Theme (TradingView-inspired dark) ─────────────────────────────────────
+  const BG    = '#131722';
+  const GRID  = 'rgba(42,46,57,0.9)';
+  const TEXT  = 'rgba(177,181,189,0.85)';
+  const BORDER = 'rgba(42,46,57,1)';
 
   const baseTheme = {
     layout: { background: { color: BG }, textColor: TEXT, fontSize: 10, fontFamily: 'var(--sc-font-mono, monospace)' },
@@ -124,6 +192,18 @@
     rightPriceScale: { borderColor: BORDER },
   };
 
+  /** Sub-pane pixel heights — must match CSS and `createChart` initial sizes. */
+  const PANE_VOL_H = 60;
+  const PANE_SUB_H = 80;
+  const PANE_OI_H = 72;
+  const PANE_CVD_H = 84;
+
+  function measureMainChartHeight(overlayOnMain: boolean): number {
+    const h = mainEl?.clientHeight ?? 0;
+    if (h > 48) return h;
+    return overlayOnMain ? 400 : 340;
+  }
+
   // ── Data load ─────────────────────────────────────────────────────────────
   let chartData = $state<ChartSeriesPayload | null>(null);
   const chartDataCache = new Map<string, ChartSeriesPayload>();
@@ -132,12 +212,11 @@
 
   async function loadData() {
     if (!symbol) return;
-    const dataKey = `${symbol}:${tf}`;
+    const dataKey = `${symbol}:${tf}:${emaTf || 'chart'}`;
     if (dataKey === lastDataKey && chartData) return;
 
-    if (initialData) {
-      chartDataCache.set(dataKey, initialData);
-      chartData = initialData;
+    if (chartDataCache.has(dataKey)) {
+      chartData = chartDataCache.get(dataKey) ?? null;
       depthData = depthSnapshot;
       liqData = liqSnapshot;
       error = null;
@@ -146,8 +225,9 @@
       return;
     }
 
-    if (chartDataCache.has(dataKey)) {
-      chartData = chartDataCache.get(dataKey) ?? null;
+    if (initialData && !emaTf) {
+      chartDataCache.set(dataKey, initialData);
+      chartData = initialData;
       depthData = depthSnapshot;
       liqData = liqSnapshot;
       error = null;
@@ -160,7 +240,8 @@
     loading = true;
     error = null;
     try {
-      const chartRes = await fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500`);
+      const emaQ = emaTf ? `&emaTf=${encodeURIComponent(emaTf)}` : '';
+      const chartRes = await fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500${emaQ}`);
       if (!chartRes.ok) throw new Error(`HTTP ${chartRes.status}`);
       const data = await chartRes.json() as ChartSeriesPayload & { error?: unknown };
       if (data.error) {
@@ -185,7 +266,9 @@
   type HistoPoint = { time: UTCTimestamp; value: number; color?: string };
 
   function toLine(arr: Array<{ time: number; value: number }>): LinePoint[] {
-    return arr.map(p => ({ time: p.time as UTCTimestamp, value: p.value }));
+    return arr
+      .filter((p) => Number.isFinite(p.value))
+      .map((p) => ({ time: p.time as UTCTimestamp, value: p.value }));
   }
   function toHisto(arr: Array<{ time: number; value: number; color?: string }>): HistoPoint[] {
     return arr.map(p => ({ time: p.time as UTCTimestamp, value: p.value, color: p.color }));
@@ -198,17 +281,12 @@
     if (showCVD && !cvdEl) return;
     destroyCharts();
 
+    let candleSeriesRef: ISeriesApi<'Candlestick'> | null = null;
+
     const rsiContainer = rsiEl;
     const macdContainer = macdEl;
 
     const w = containerEl?.offsetWidth ?? 900;
-
-    // ── Main (candles + overlays) ────────────────────────────────────────────
-    mainChart = createChart(mainEl, {
-      ...baseTheme,
-      width: w, height: 340,
-      rightPriceScale: { ...baseTheme.rightPriceScale, scaleMargins: { top: 0.08, bottom: 0.08 } },
-    });
 
     const ind = data.indicators as Record<string, Array<{ time: number; value: number }>>;
     const klines = data.klines as Array<{ time: number; open: number; close: number; high: number; low: number; volume: number }>;
@@ -216,14 +294,44 @@
     const fundingBars = data.fundingBars as Array<{ time: number; value: number; color: string }> | undefined;
     const cvdRaw = data.cvdBars as Array<{ time: number; value: number }> | undefined;
 
+    const cvdCumBars: Array<{ time: number; value: number }> = cvdRaw?.length
+      ? cvdRaw
+      : (() => {
+          let acc = 0;
+          return klines.map((k) => {
+            const signedVol = (k.close >= k.open ? 1 : -1) * k.volume;
+            acc += signedVol;
+            return { time: k.time, value: acc };
+          });
+        })();
+
+    const overlayOnMain =
+      derivativesOnMain && chartMode === 'candle' && (Boolean(fundingBars?.length) || (showCVD && cvdCumBars.length > 0));
+    const mainChartHeight = measureMainChartHeight(overlayOnMain);
+
+    // ── Main (candles + overlays) ────────────────────────────────────────────
+    mainChart = createChart(mainEl, {
+      ...baseTheme,
+      width: w,
+      height: mainChartHeight,
+      rightPriceScale: {
+        ...baseTheme.rightPriceScale,
+        scaleMargins: overlayOnMain
+          ? { top: 0.06, bottom: showCVD ? 0.36 : 0.1 }
+          : { top: 0.08, bottom: 0.08 },
+      },
+      leftPriceScale:
+        overlayOnMain && fundingBars != null && fundingBars.length > 0
+          ? { visible: true, borderColor: BORDER, scaleMargins: { top: 0.06, bottom: 0.06 } }
+          : { visible: false },
+    });
+
     const lastBar = klines[klines.length - 1];
     const prevBar = klines[klines.length - 2];
     currentPrice = lastBar?.close ?? null;
     currentTime = lastBar?.time ?? null;
     currentChangePct = lastBar && prevBar && prevBar.close > 0 ? ((lastBar.close - prevBar.close) / prevBar.close) * 100 : null;
-    currentRsi = ind.rsi14?.length ? ind.rsi14[ind.rsi14.length - 1]?.value ?? null : null;
     currentOiDelta = oiBars?.length ? oiBars[oiBars.length - 1]?.value ?? null : null;
-    currentFundingRate = fundingBars?.length ? fundingBars[fundingBars.length - 1]?.value ?? null : null;
 
     if (chartMode === 'line') {
       const lineSeries = mainChart.addSeries(LineSeries, {
@@ -252,6 +360,7 @@
           close: bar.close,
         }))
       );
+      candleSeriesRef = candleSeries;
       priceSeries = candleSeries;
     }
 
@@ -276,17 +385,44 @@
       s.setData(toLine(ind.vwap));
     }
 
-    // EMA engine overlays
+    // EMA engine overlays (chart TF solid; optional HTF EMA aligned to bar times — dashed, TV-style)
     if (showEMA) {
       const emaFast = ind.ema21 ?? ind.ema20;
       const emaSlow = ind.ema55 ?? ind.ema60;
-      if (emaFast?.length) {
-        const s = mainChart.addSeries(LineSeries, { color: 'rgba(64,196,255,0.9)', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
-        s.setData(toLine(emaFast));
-      }
-      if (emaSlow?.length) {
-        const s = mainChart.addSeries(LineSeries, { color: 'rgba(255,152,0,0.9)', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
-        s.setData(toLine(emaSlow));
+      const emaFastMtf = ind.ema21_mtf as Array<{ time: number; value: number }> | undefined;
+      const emaSlowMtf = ind.ema55_mtf as Array<{ time: number; value: number }> | undefined;
+      const hasMtf =
+        Array.isArray(emaFastMtf) &&
+        emaFastMtf.length > 0 &&
+        Array.isArray(emaSlowMtf) &&
+        emaSlowMtf.length > 0;
+
+      if (hasMtf) {
+        if (emaFast?.length) {
+          const s = mainChart.addSeries(LineSeries, { color: 'rgba(64,196,255,0.38)', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+          s.setData(toLine(emaFast));
+        }
+        if (emaSlow?.length) {
+          const s = mainChart.addSeries(LineSeries, { color: 'rgba(255,152,0,0.38)', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+          s.setData(toLine(emaSlow));
+        }
+        if (emaFastMtf?.length) {
+          const s = mainChart.addSeries(LineSeries, { color: 'rgba(64,196,255,0.95)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: true, priceLineVisible: false });
+          s.setData(toLine(emaFastMtf));
+        }
+        if (emaSlowMtf?.length) {
+          const s = mainChart.addSeries(LineSeries, { color: 'rgba(255,152,0,0.95)', lineWidth: 1, lineStyle: 2 as const, lastValueVisible: true, priceLineVisible: false });
+          s.setData(toLine(emaSlowMtf));
+        }
+      } else {
+        if (emaFast?.length) {
+          const s = mainChart.addSeries(LineSeries, { color: 'rgba(64,196,255,0.9)', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+          s.setData(toLine(emaFast));
+        }
+        if (emaSlow?.length) {
+          const s = mainChart.addSeries(LineSeries, { color: 'rgba(255,152,0,0.9)', lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+          s.setData(toLine(emaSlow));
+        }
       }
     }
 
@@ -313,8 +449,61 @@
       }
     }
 
-    // Verdict price levels
+    // Fund % + CVD cumulative on main pane (shared time axis — CryptoQuant-style overlay on price)
+    if (overlayOnMain && fundingBars != null && fundingBars.length > 0) {
+      const fMain = mainChart.addSeries(LineSeries, {
+        priceScaleId: 'left',
+        color: 'rgba(251,191,36,0.92)',
+        lineWidth: 1,
+        priceFormat: { type: 'price', precision: 4, minMove: 0.0001 },
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+      fMain.setData(toLine(fundingBars.map((f) => ({ time: f.time, value: f.value }))));
+    }
+    if (overlayOnMain && showCVD && cvdCumBars.length > 0) {
+      const cMain = mainChart.addSeries(LineSeries, {
+        priceScaleId: 'cvd',
+        color: 'rgba(94,234,212,0.95)',
+        lineWidth: 1,
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+      cMain.setData(toLine(cvdCumBars));
+      mainChart.priceScale('cvd').applyOptions({
+        scaleMargins: { top: 0.64, bottom: 0.02 },
+        borderVisible: true,
+        entireTextOnly: true,
+      });
+    }
+
+    // Verdict price levels + liquidation rails (price-scale aligned)
     updateLevels();
+    applyLiqPriceLines();
+
+    if (candleSeriesRef && klines.length) {
+      const markers: SeriesMarker<UTCTimestamp>[] = [];
+      const t = klines[klines.length - 1].time as UTCTimestamp;
+      if (cvdDivergence?.state === 'bullish_divergence') {
+        markers.push({
+          time: t,
+          position: 'belowBar',
+          color: '#4ade80',
+          shape: 'arrowUp',
+          text: 'CVD',
+        });
+      } else if (cvdDivergence?.state === 'bearish_divergence') {
+        markers.push({
+          time: t,
+          position: 'aboveBar',
+          color: '#f87171',
+          shape: 'arrowDown',
+          text: 'CVD',
+        });
+      }
+      // Runtime API (v5 typings omit setMarkers on some ISeriesApi variants).
+      (candleSeriesRef as ISeriesApi<'Candlestick'> & { setMarkers: (m: SeriesMarker<UTCTimestamp>[]) => void }).setMarkers(markers);
+    }
 
     mainChart.subscribeCrosshairMove((param) => {
       if (param.time) {
@@ -330,7 +519,7 @@
 
     // ── Volume ───────────────────────────────────────────────────────────────
     volChart = createChart(volEl, {
-      ...baseTheme, width: w, height: 60,
+      ...baseTheme, width: w, height: PANE_VOL_H,
       timeScale: { ...baseTheme.timeScale, visible: false },
     });
     const volSeries = volChart.addSeries(HistogramSeries, { color: 'rgba(99,179,237,0.35)', priceFormat: { type: 'volume' as const } });
@@ -342,7 +531,7 @@
     // ── RSI or MACD ───────────────────────────────────────────────────────────
     if (showMACD && macdContainer) {
       macdChart = createChart(macdContainer, {
-        ...baseTheme, width: w, height: 80,
+        ...baseTheme, width: w, height: PANE_SUB_H,
         timeScale: { ...baseTheme.timeScale, visible: false },
       });
       const macdData = (data.indicators as Record<string, unknown>).macd as Array<{ time: number; macd: number; signal: number; hist: number }> | undefined;
@@ -360,7 +549,7 @@
       }
     } else {
       rsiChart = createChart(rsiContainer as HTMLDivElement, {
-        ...baseTheme, width: w, height: 80,
+        ...baseTheme, width: w, height: PANE_SUB_H,
         timeScale: { ...baseTheme.timeScale, visible: false },
         rightPriceScale: { ...baseTheme.rightPriceScale, scaleMargins: { top: 0.1, bottom: 0.1 } },
       });
@@ -370,41 +559,89 @@
       rsiS.createPriceLine({ price: 30, color: 'rgba(38,166,154,0.45)', lineWidth: 1, lineStyle: 2, title: '' });
     }
 
-    // ── OI Δ% ────────────────────────────────────────────────────────────────
+    // ── OI Δ% pane (funding on main when overlay — here OI hist only) ───────
     if (oiEl) {
+      const fundInOiPane =
+        !overlayOnMain && fundingBars != null && fundingBars.length > 0;
       oiChart = createChart(oiEl, {
-        ...baseTheme, width: w, height: 60,
+        ...baseTheme,
+        width: w,
+        height: PANE_OI_H,
+        leftPriceScale: {
+          visible: fundInOiPane,
+          borderColor: BORDER,
+          scaleMargins: { top: 0.12, bottom: 0.12 },
+        },
+        rightPriceScale: {
+          borderColor: BORDER,
+          scaleMargins: { top: 0.12, bottom: 0.18 },
+        },
         timeScale: { ...baseTheme.timeScale, visible: true },
       });
       if (oiBars?.length) {
-        const oiS = oiChart.addSeries(HistogramSeries, { color: 'rgba(99,179,237,0.5)' });
+        const oiS = oiChart.addSeries(HistogramSeries, {
+          priceScaleId: 'right',
+          color: 'rgba(99,179,237,0.55)',
+          priceFormat: { type: 'price', precision: 3, minMove: 0.001 },
+        });
         oiS.setData(toHisto(oiBars));
+      }
+      if (fundInOiPane) {
+        const fS = oiChart.addSeries(LineSeries, {
+          priceScaleId: 'left',
+          color: 'rgba(251,191,36,0.95)',
+          lineWidth: 1,
+          priceFormat: { type: 'price', precision: 4, minMove: 0.0001 },
+          lastValueVisible: true,
+          priceLineVisible: false,
+        });
+        fS.setData(toLine(fundingBars!.map((f) => ({ time: f.time, value: f.value }))));
       }
     }
 
-    // ── CVD ─────────────────────────────────────────────────────────────────
+    // ── CVD: Δ vol histogram; cumulative on main when overlay ───────────────
     if (cvdEl && showCVD) {
+      const cumInCvdPane = !overlayOnMain;
       cvdChart = createChart(cvdEl, {
-        ...baseTheme, width: w, height: 70,
+        ...baseTheme,
+        width: w,
+        height: cumInCvdPane ? PANE_CVD_H : PANE_OI_H,
+        leftPriceScale: {
+          visible: true,
+          borderColor: BORDER,
+          scaleMargins: { top: 0.1, bottom: 0.1 },
+        },
+        rightPriceScale: {
+          visible: cumInCvdPane,
+          borderColor: BORDER,
+          scaleMargins: { top: 0.1, bottom: 0.2 },
+        },
         timeScale: { ...baseTheme.timeScale, visible: true },
       });
-      const cvdSeries = cvdChart.addSeries(LineSeries, {
-        color: '#34c470',
-        lineWidth: 1,
-        lastValueVisible: true,
-        priceLineVisible: false,
+      const deltaSeries = cvdChart.addSeries(HistogramSeries, {
+        priceScaleId: 'left',
+        priceFormat: { type: 'volume' },
       });
-      const cvdBars: Array<{ time: number; value: number }> = cvdRaw?.length
-        ? cvdRaw
-        : (() => {
-            let acc = 0;
-            return klines.map((k) => {
-              const signedVol = (k.close >= k.open ? 1 : -1) * k.volume;
-              acc += signedVol;
-              return { time: k.time, value: acc };
-            });
-          })();
-      cvdSeries.setData(toLine(cvdBars));
+      deltaSeries.setData(
+        toHisto(
+          klines.map((k) => ({
+            time: k.time,
+            value: (k.close >= k.open ? 1 : -1) * k.volume,
+            color: k.close >= k.open ? 'rgba(52,211,153,0.38)' : 'rgba(248,113,113,0.38)',
+          })),
+        ),
+      );
+
+      if (cumInCvdPane && cvdCumBars.length > 0) {
+        const cumSeries = cvdChart.addSeries(LineSeries, {
+          priceScaleId: 'right',
+          color: '#5eead4',
+          lineWidth: 1,
+          lastValueVisible: true,
+          priceLineVisible: false,
+        });
+        cumSeries.setData(toLine(cvdCumBars));
+      }
     }
 
     syncTimeScales();
@@ -413,6 +650,10 @@
         currentTime = param.time as number;
         showSaveModal = true;
       }
+    });
+
+    void tick().then(() => {
+      handleResize();
     });
   }
 
@@ -454,6 +695,57 @@
     }
   }
 
+  function clearLiqPriceLines() {
+    if (!priceSeries) return;
+    for (const pl of liqPriceLines) {
+      try {
+        priceSeries.removePriceLine(pl);
+      } catch {
+        /* removed with chart */
+      }
+    }
+    liqPriceLines = [];
+  }
+
+  /** Nearest long/short liq + strongest cluster prices — same time axis as candles. */
+  function applyLiqPriceLines() {
+    clearLiqPriceLines();
+    if (!priceSeries || !liqData) return;
+
+    const addLine = (price: number, color: string, title: string, lw: 1 | 2) => {
+      const pl = priceSeries!.createPriceLine({
+        price,
+        color,
+        lineWidth: lw,
+        lineStyle: 2,
+        axisLabelVisible: title.length > 0,
+        title,
+      });
+      liqPriceLines.push(pl);
+    };
+
+    if (liqData.nearestLong?.price != null && Number.isFinite(liqData.nearestLong.price)) {
+      addLine(liqData.nearestLong.price, 'rgba(248,113,113,0.92)', 'L-LIQ', 2);
+    }
+    if (liqData.nearestShort?.price != null && Number.isFinite(liqData.nearestShort.price)) {
+      addLine(liqData.nearestShort.price, 'rgba(52,211,153,0.92)', 'S-LIQ', 2);
+    }
+
+    const clusters = [...(liqData.clusters ?? [])].sort((a, b) => b.usd - a.usd).slice(0, 3);
+    const used = new Set<number>();
+    for (const nl of [liqData.nearestLong, liqData.nearestShort]) {
+      if (nl?.price != null) used.add(Math.round(nl.price * 100));
+    }
+    for (const c of clusters) {
+      const key = Math.round(c.price * 100);
+      if (used.has(key)) continue;
+      used.add(key);
+      const a = 0.35 + Math.min(0.45, (c.usd / 500000) * 0.45);
+      const col = c.liquidatedSide === 'long' ? `rgba(248,113,113,${a})` : `rgba(52,211,153,${a})`;
+      addLine(c.price, col, '', 1);
+    }
+  }
+
   // ── Time scale sync ────────────────────────────────────────────────────────
   function syncTimeScales() {
     if (!mainChart) return;
@@ -477,6 +769,7 @@
   }
 
   function destroyCharts() {
+    clearLiqPriceLines();
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = null;
     priceSeries = null;
@@ -485,15 +778,28 @@
 
   function handleResize() {
     if (!containerEl) return;
-    const w = containerEl.offsetWidth;
-    mainChart?.resize(w, 340);
-    volChart?.resize(w, 60);
-    rsiChart?.resize(w, 80);
-    macdChart?.resize(w, 80);
-    oiChart?.resize(w, 60);
-    cvdChart?.resize(w, 70);
+    const w = Math.max(120, mainEl?.offsetWidth ?? containerEl.offsetWidth);
+    const fundStyleOverlay = derivativesOnMain && chartMode === 'candle';
+    let mainH =
+      mainEl && mainEl.clientHeight > 48
+        ? mainEl.clientHeight
+        : fundStyleOverlay
+          ? 400
+          : 340;
+    mainChart?.resize(w, mainH);
+    const vh = volEl && volEl.clientHeight > 24 ? volEl.clientHeight : PANE_VOL_H;
+    const subPane = showMACD ? macdEl : rsiEl;
+    const sh = subPane && subPane.clientHeight > 24 ? subPane.clientHeight : PANE_SUB_H;
+    volChart?.resize(w, vh);
+    rsiChart?.resize(w, sh);
+    macdChart?.resize(w, sh);
+    const oih = oiEl && oiEl.clientHeight > 24 ? oiEl.clientHeight : PANE_OI_H;
+    oiChart?.resize(w, oih);
+    const cvdh = cvdEl && cvdEl.clientHeight > 24 ? cvdEl.clientHeight : PANE_CVD_H;
+    cvdChart?.resize(w, cvdh);
   }
 
+  /** Current visible range on main chart → OHLCV + indicators slice for pattern persistence */
   function getViewportForSave(): ChartViewportSnapshot | null {
     const data = chartData;
     if (!data?.klines?.length || !mainChart) return null;
@@ -507,9 +813,9 @@
         from = data.klines[0].time;
         to = data.klines[data.klines.length - 1].time;
       } else if (from > to) {
-        const swap = from;
+        const s = from;
         from = to;
-        to = swap;
+        to = s;
       }
     } else {
       from = data.klines[0].time;
@@ -519,7 +825,6 @@
   }
 
   function handleSaveSetup() {
-    // Open modal instead of direct POST — user selects phase label + note
     showSaveModal = true;
   }
 
@@ -538,15 +843,30 @@
   }
 
   onMount(() => {
-    resizeObserver = new ResizeObserver(handleResize);
-    if (containerEl) resizeObserver.observe(containerEl);
+    const onWin = () => handleResize();
+    window.addEventListener('resize', onWin);
+    return () => window.removeEventListener('resize', onWin);
   });
-  onDestroy(() => { destroyCharts(); resizeObserver?.disconnect(); });
+  onDestroy(() => {
+    destroyCharts();
+  });
+
+  /** Main + sub-panes fill `chart-stack`; keep canvas size in sync when flex height changes. */
+  $effect(() => {
+    const el = chartStackEl;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      handleResize();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
 
   // Remote data should only reload when the market context changes.
   $effect(() => {
     void symbol;
     void tf;
+    void emaTf;
     void initialData;
     void loadData();
   });
@@ -555,6 +875,15 @@
   $effect(() => {
     depthData = depthSnapshot;
     liqData = liqSnapshot;
+  });
+
+  /** Re-stamp liq rails when snapshot arrives after candles render. */
+  $effect(() => {
+    void liqData;
+    if (!priceSeries || loading || !chartData) return;
+    void tick().then(() => {
+      applyLiqPriceLines();
+    });
   });
 
   // Indicator toggles should only re-render from cached data, not refetch it.
@@ -566,6 +895,8 @@
     void showCVD;
     void showMACD;
     void chartMode;
+    void cvdDivergence;
+    void derivativesOnMain;
     const data = chartData;
     if (!data || loading) return;
     void tick().then(() => {
@@ -578,70 +909,183 @@
     void verdictLevels;
     updateLevels();
   });
+
+  // Close indicators panel on outside click (deferred so the opening click does not close it).
+  $effect(() => {
+    if (!studiesPanelOpen || typeof document === 'undefined') return;
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target;
+      if (!(t instanceof Node) || !studiesWrapEl?.contains(t)) {
+        studiesPanelOpen = false;
+      }
+    };
+    const id = window.setTimeout(() => {
+      document.addEventListener('click', onDocClick, true);
+    }, 0);
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener('click', onDocClick, true);
+    };
+  });
 </script>
 
-<div class="chart-board" bind:this={containerEl}>
+<div
+  class="chart-board"
+  bind:this={containerEl}
+  data-context={contextMode}
+  data-deriv-overlay={derivativesOnMain ? '1' : '0'}
+>
 
-  <!-- ── Header ────────────────────────────────────────────────────────────── -->
-  <div class="chart-header">
-    <div class="chart-symbol">
-      <span class="sym-name">{symbol.replace('USDT','')}<span class="sym-quote">/USDT·PERP</span></span>
-      {#if currentPrice !== null}
-        <span class="sym-price">{currentPrice.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
-      {/if}
-      {#if currentChangePct !== null}
-        <span class:price-up={currentChangePct >= 0} class:price-down={currentChangePct < 0} class="sym-change">
-          {currentChangePct >= 0 ? '+' : ''}{currentChangePct.toFixed(2)}%
-        </span>
-      {/if}
-      {#if currentRsi !== null}
-        <span class="sym-chip">RSI {currentRsi.toFixed(1)}</span>
-      {/if}
-      {#if currentOiDelta !== null}
-        <span class="sym-chip">OI Δ {currentOiDelta >= 0 ? '+' : ''}{currentOiDelta.toFixed(1)}%</span>
-      {/if}
-      {#if currentFundingRate !== null}
-        <span class="sym-chip">Funding {currentFundingRate >= 0 ? '+' : ''}{currentFundingRate.toFixed(4)}%</span>
-      {/if}
-    </div>
-
-    <div class="chart-controls">
-      <div class="mode-switch">
-        <button class="mode-btn" class:active={chartMode === 'candle'} onclick={() => { chartMode = 'candle'; }}>Candle</button>
-        <button class="mode-btn" class:active={chartMode === 'line'} onclick={() => { chartMode = 'line'; }}>Line</button>
+  <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
+  <div class="chart-header chart-header--tv">
+    <div class="tv-row tv-row--top">
+      <div class="chart-symbol tv-symbol-cluster">
+        <div class="sym-block">
+          <span class="sym-name">{symbol.replace('USDT','')}<span class="sym-quote">/USDT·PERP</span></span>
+          {#if currentPrice !== null}
+            <div class="price-row">
+              <span class="sym-kicker">Last</span>
+              <span class="sym-price">{currentPrice.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
+            </div>
+          {/if}
+        </div>
+        <div class="sym-metrics">
+          {#if change24hPct != null && Number.isFinite(change24hPct)}
+            <span
+              class="sym-change"
+              class:price-up={change24hPct >= 0}
+              class:price-down={change24hPct < 0}
+              aria-label="24h change"
+            >
+              <span class="metric-label">24h</span>
+              {change24hPct >= 0 ? '+' : ''}{change24hPct.toFixed(2)}%
+            </span>
+          {/if}
+          {#if currentChangePct !== null}
+            <span
+              class="sym-change sym-change-muted"
+              class:price-up={currentChangePct >= 0}
+              class:price-down={currentChangePct < 0}
+              aria-label="1 bar change"
+            >
+              <span class="metric-label">1 bar</span>
+              {currentChangePct >= 0 ? '+' : ''}{currentChangePct.toFixed(2)}%
+            </span>
+          {/if}
+        </div>
       </div>
 
-      <!-- TF row -->
-      <div class="tf-group">
+      <div class="tv-actions">
+        <div class="mode-switch">
+          <button class="mode-btn" class:active={chartMode === 'candle'} onclick={() => { chartMode = 'candle'; }}>Candles</button>
+          <button class="mode-btn" class:active={chartMode === 'line'} onclick={() => { chartMode = 'line'; }}>Line</button>
+        </div>
+        <button class="save-btn" onclick={handleSaveSetup} aria-label="Save setup">Save</button>
+      </div>
+    </div>
+
+    <div class="tv-row tv-row--interval">
+      <div class="tf-scroll" role="tablist" aria-label="Chart interval">
         {#each TIMEFRAMES as t}
           <button
+            type="button"
             class="tf-btn"
             class:active={tf === t}
             onclick={() => selectTf(t)}
           >{t}</button>
         {/each}
       </div>
+    </div>
 
-      <!-- Indicator toggles -->
-      <div class="ind-toggles">
-        <button class="ind-btn" class:on={showVWAP} onclick={() => { showVWAP = !showVWAP; }}>VWAP</button>
-        <button class="ind-btn" class:on={showBB}   onclick={() => { showBB = !showBB; }}>BB</button>
-        <button class="ind-btn" class:on={showEMA}  onclick={() => { showEMA = !showEMA; }}>EMA</button>
-        <button class="ind-btn" class:on={showATRBands}  onclick={() => { showATRBands = !showATRBands; }}>ATR CH</button>
-        <button class="ind-btn" class:on={showCVD}  onclick={() => { showCVD = !showCVD; }}>CVD</button>
-        <button class="ind-btn" class:on={showMACD}  onclick={() => { showMACD = !showMACD; }}>MACD</button>
+    <div class="tv-row tv-row--indicators">
+      <div class="tv-studies-wrap" bind:this={studiesWrapEl}>
+        <button
+          type="button"
+          class="tv-indicators-trigger"
+          class:is-open={studiesPanelOpen}
+          onclick={(e) => {
+            e.stopPropagation();
+            studiesPanelOpen = !studiesPanelOpen;
+          }}
+          aria-expanded={studiesPanelOpen}
+          aria-controls="tv-indicators-panel"
+          id="tv-indicators-trigger"
+        >
+          <span class="tv-indicators-glyph" aria-hidden="true">fx</span>
+          Indicators
+          {#if activeIndicatorCount > 0}
+            <span class="tv-ind-count">{activeIndicatorCount}</span>
+          {/if}
+        </button>
+        {#if studiesPanelOpen}
+          <div
+            class="tv-studies-panel"
+            id="tv-indicators-panel"
+            role="dialog"
+            aria-labelledby="tv-indicators-trigger"
+          >
+            <p class="tv-panel-baseline">Moving averages <strong>5 / 20 / 60</strong> are always drawn.</p>
+
+            <section class="tv-panel-section" aria-label="Overlays">
+              <h3 class="tv-panel-section-title">Overlays</h3>
+              <label class="tv-study-row">
+                <input type="checkbox" bind:checked={showEMA} />
+                <span>EMA 21 / 55</span>
+              </label>
+              {#if showEMA && emaTfOptions.length > 0}
+                <div class="tv-study-nested">
+                  <label class="tv-study-sublabel" for="tv-ema-tf">EMA resolution</label>
+                  <select id="tv-ema-tf" class="tv-panel-select" bind:value={emaTf}>
+                    <option value="">Same as chart</option>
+                    {#each emaTfOptions as et (et)}
+                      <option value={et}>{et}</option>
+                    {/each}
+                  </select>
+                  <p class="tv-study-help">Higher TF EMA is stepped onto chart bars (MTF).</p>
+                </div>
+              {/if}
+              <label class="tv-study-row">
+                <input type="checkbox" bind:checked={showVWAP} />
+                <span>VWAP</span>
+              </label>
+              <label class="tv-study-row">
+                <input type="checkbox" bind:checked={showBB} />
+                <span>Bollinger 20, 2</span>
+              </label>
+              <label class="tv-study-row">
+                <input type="checkbox" bind:checked={showATRBands} />
+                <span>ATR 14 bands (on MA20)</span>
+              </label>
+            </section>
+
+            <section class="tv-panel-section" aria-label="Oscillators">
+              <h3 class="tv-panel-section-title">Pane</h3>
+              <label class="tv-study-row">
+                <input type="checkbox" bind:checked={showMACD} />
+                <span>MACD — replaces RSI in lower pane</span>
+              </label>
+            </section>
+
+            <section class="tv-panel-section" aria-label="Volume and flow">
+              <h3 class="tv-panel-section-title">Volume &amp; flow</h3>
+              <label class="tv-study-row">
+                <input type="checkbox" bind:checked={showCVD} />
+                <span>CVD pane</span>
+              </label>
+              <label class="tv-study-row">
+                <input type="checkbox" bind:checked={derivativesOnMain} />
+                <span>Funding % &amp; cumulative CVD on price chart</span>
+              </label>
+            </section>
+          </div>
+        {/if}
       </div>
 
-      <!-- Legend -->
-      <div class="legend">
-        <span class="ld" style="--c:#63b3ed">MA5</span>
-        <span class="ld" style="--c:#fbbf24">MA20</span>
-        <span class="ld" style="--c:#a78bfa">MA60</span>
-        {#if showVWAP}<span class="ld" style="--c:rgba(255,200,60,0.9)">VWAP</span>{/if}
-        {#if showBB}<span class="ld" style="--c:rgba(139,92,246,0.65)">BB</span>{/if}
+      <div class="tv-active-chips" aria-label="Active indicators">
+        {#each studyChipList as chip (chip)}
+          <span class="tv-chip">{chip}</span>
+        {/each}
       </div>
-
-      <button class="save-btn" onclick={handleSaveSetup}>+ Save</button>
     </div>
   </div>
 
@@ -657,10 +1101,40 @@
       <button onclick={loadData}>Retry</button>
     </div>
   {:else}
-    <div class="micro-bars">
+    <div class="chart-stack" bind:this={chartStackEl}>
+    <div class="pane-main"  bind:this={mainEl}></div>
+    <div class="pane-label">VOL</div>
+    <div class="pane-vol"   bind:this={volEl}></div>
+    {#if showMACD}
+      <div class="pane-label">MACD</div>
+      <div class="pane-sub"  bind:this={macdEl}></div>
+    {:else}
+      <div class="pane-label">RSI 14</div>
+      <div class="pane-sub"  bind:this={rsiEl}></div>
+    {/if}
+    <div class="pane-label pane-label-split">
+      <span>OI Δ%</span>
+      <span class="pane-hint">hist</span>
+      <span class="pane-hint pane-hint-gold">Fund %</span>
+    </div>
+    <div class="pane-oi"    bind:this={oiEl}></div>
+      {#if showCVD}
+        <div class="pane-label pane-label-split">
+          <span>CVD</span>
+          <span class="pane-hint">Δ vol</span>
+          <span class="pane-hint pane-hint-mint">cum</span>
+        </div>
+        <div class="pane-cvd" bind:this={cvdEl}></div>
+      {/if}
+    </div>
+    {#if contextMode === 'full'}
+    <details class="tv-context-strip" bind:open={contextStripOpen}>
+      <summary class="tv-context-summary">Book · liq snapshot</summary>
+      <div class="tv-context-body">
+    <div class="micro-bars" aria-label="Order book and liquidation snapshot">
       <div class="depth-strip">
         <div class="strip-head">
-          <span>Order Book Depth</span>
+          <span>Book imbalance</span>
           <small>
             Spread {depthData?.spreadBps != null ? `${depthData.spreadBps.toFixed(1)} bps` : 'est.'}
             {' · '}
@@ -678,7 +1152,7 @@
       </div>
       <div class="liq-strip">
         <div class="strip-head">
-          <span>Liquidation Clusters</span>
+          <span>Liq clusters</span>
           <small>{liqLong ? liqLong.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'} — {liqShort ? liqShort.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</small>
         </div>
         <div class="liq-track">
@@ -703,22 +1177,9 @@
         </div>
       </div>
     </div>
-    <div class="pane-main"  bind:this={mainEl}></div>
-    <div class="pane-label">VOL</div>
-    <div class="pane-vol"   bind:this={volEl}></div>
-    {#if showMACD}
-      <div class="pane-label">MACD</div>
-      <div class="pane-sub"  bind:this={macdEl}></div>
-    {:else}
-      <div class="pane-label">RSI 14</div>
-      <div class="pane-sub"  bind:this={rsiEl}></div>
+      </div>
+    </details>
     {/if}
-    <div class="pane-label">OI Δ%</div>
-    <div class="pane-oi"    bind:this={oiEl}></div>
-      {#if showCVD}
-        <div class="pane-label">CVD</div>
-        <div class="pane-cvd" bind:this={cvdEl}></div>
-      {/if}
   {/if}
 
 </div>
@@ -730,7 +1191,9 @@
   tf={tf}
   open={showSaveModal}
   getViewportCapture={getViewportForSave}
-  onClose={() => { showSaveModal = false; }}
+  onClose={() => {
+    showSaveModal = false;
+  }}
   onSaved={handleModalSaved}
 />
 
@@ -745,32 +1208,333 @@
   .chart-board {
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, #0b0d12, #080a0d);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 4px;
-    overflow: hidden;
-    min-height: 540px;
+    background: #131722;
+    border: 1px solid rgba(19, 23, 34, 0.98);
+    border-radius: 2px;
+    overflow: visible;
+    min-height: 420px;
     height: 100%;
+    position: relative;
+    z-index: 1;
   }
 
-  /* ── Header ── */
+  /* ── Toolbar (TV-style tiers) ── */
   .chart-header {
+    flex-shrink: 0;
+  }
+  .chart-header--tv {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 6px 10px 8px;
+    border-bottom: 1px solid rgba(42, 46, 57, 0.95);
+    background: #131722;
+    position: relative;
+    z-index: 20;
+  }
+  .tv-row {
     display: flex;
     align-items: center;
+    min-width: 0;
+  }
+  .tv-row--top {
     justify-content: space-between;
-    padding: 5px 9px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    gap: 12px;
-    flex-shrink: 0;
+    gap: 10px;
+  }
+  .tv-symbol-cluster {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .tv-actions {
+    display: flex;
     flex-wrap: wrap;
-    row-gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .tv-row--interval {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(42, 46, 57, 0.85);
+  }
+  .tf-scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  }
+  .tf-scroll::-webkit-scrollbar {
+    height: 4px;
+  }
+  .tf-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+  }
+  .tf-scroll .tf-btn {
+    flex-shrink: 0;
+  }
+  .tv-row--indicators {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(42, 46, 57, 0.85);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 12px;
+    min-width: 0;
+  }
+  .tv-studies-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .tv-indicators-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    font-weight: 600;
+    color: #d1d4dc;
+    background: #1e222d;
+    border: 1px solid #363a45;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .tv-indicators-trigger:hover {
+    background: #2a2e39;
+    border-color: #434651;
+  }
+  .tv-indicators-trigger.is-open {
+    background: #2962ff;
+    border-color: #2962ff;
+    color: #fff;
+  }
+  .tv-indicators-glyph {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    opacity: 0.9;
+  }
+  .tv-ind-count {
+    min-width: 18px;
+    padding: 0 5px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    color: inherit;
+  }
+  .tv-indicators-trigger.is-open .tv-ind-count {
+    background: rgba(255, 255, 255, 0.22);
+  }
+  .tv-studies-panel {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    z-index: 50;
+    width: min(340px, calc(100vw - 32px));
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+    padding: 10px 12px 12px;
+    background: #1e222d;
+    border: 1px solid #363a45;
+    border-radius: 4px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  }
+  .tv-panel-baseline {
+    margin: 0 0 10px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    line-height: 1.35;
+    color: rgba(177, 181, 189, 0.72);
+  }
+  .tv-panel-baseline strong {
+    color: #b2b5be;
+    font-weight: 600;
+  }
+  .tv-panel-section {
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid rgba(54, 58, 69, 0.95);
+  }
+  .tv-panel-section:first-of-type {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+  }
+  .tv-panel-section-title {
+    margin: 0 0 8px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(177, 181, 189, 0.55);
+  }
+  .tv-study-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    color: #d1d4dc;
+    cursor: pointer;
+    user-select: none;
+  }
+  .tv-study-row input {
+    width: 14px;
+    height: 14px;
+    accent-color: #2962ff;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .tv-study-nested {
+    margin: -4px 0 10px 24px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(54, 58, 69, 0.9);
+    border-radius: 3px;
+  }
+  .tv-study-sublabel {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(177, 181, 189, 0.5);
+  }
+  .tv-panel-select {
+    width: 100%;
+    padding: 5px 8px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    color: #d1d4dc;
+    background: #131722;
+    border: 1px solid #363a45;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .tv-panel-select:focus {
+    outline: none;
+    border-color: #2962ff;
+  }
+  .tv-study-help {
+    margin: 6px 0 0;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    line-height: 1.35;
+    color: rgba(177, 181, 189, 0.45);
+  }
+  .tv-active-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .tv-chip {
+    padding: 2px 7px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    color: rgba(177, 181, 189, 0.75);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(54, 58, 69, 0.85);
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .tv-context-strip {
+    border-top: 1px solid rgba(42, 46, 57, 0.85);
+    background: rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+  }
+  .tv-context-summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 5px 10px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: rgba(177, 181, 189, 0.55);
+    user-select: none;
+  }
+  .tv-context-summary::-webkit-details-marker {
+    display: none;
+  }
+  .tv-context-summary::before {
+    content: '▸ ';
+    display: inline-block;
+    transition: transform 0.12s ease;
+    opacity: 0.65;
+  }
+  .tv-context-strip[open] > .tv-context-summary::before {
+    transform: rotate(90deg);
+  }
+  .tv-context-body {
+    padding: 0 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .chart-symbol {
     display: flex;
-    align-items: baseline;
-    gap: 8px;
     flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 14px;
+    min-width: 0;
+  }
+  .sym-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .sym-kicker {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.32);
+  }
+  .sym-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 8px;
+    min-width: 0;
+  }
+  .metric-label {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    margin-right: 3px;
+  }
+  .sym-change-muted {
+    opacity: 0.88;
   }
   .sym-name {
     font-family: var(--sc-font-mono, monospace);
@@ -858,41 +1622,6 @@
   .tf-btn:hover  { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.15); }
   .tf-btn.active { background: rgba(255,255,255,0.09); color: #fff; border-color: rgba(255,255,255,0.22); }
 
-  /* Indicator toggles */
-  .ind-toggles { display: flex; gap: 2px; }
-  .ind-btn {
-    padding: 2px 6px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.06);
-    color: rgba(255,255,255,0.3);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-  .ind-btn:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.55); }
-  .ind-btn.on    { background: rgba(99,179,237,0.12); color: #63b3ed; border-color: rgba(99,179,237,0.35); }
-
-  /* Legend */
-  .legend { display: flex; gap: 8px; align-items: center; }
-  .ld {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    color: rgba(255,255,255,0.25);
-    padding-left: 10px;
-    position: relative;
-  }
-  .ld::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 50%;
-    transform: translateY(-50%);
-    width: 7px; height: 2px;
-    background: var(--c);
-    border-radius: 1px;
-  }
-
   .save-btn {
     padding: 2px 8px;
     font-family: var(--sc-font-mono, monospace);
@@ -938,12 +1667,29 @@
   @keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:1} }
   .state-text { font-size: 10px; }
 
-  /* ── Panes ── */
-  .pane-main { flex-shrink: 0; height: 320px; }
-  .pane-vol  { flex-shrink: 0; height: 54px; }
-  .pane-sub  { flex-shrink: 0; height: 72px; }
-  .pane-oi   { flex-shrink: 0; height: 54px; }
-  .pane-cvd  { flex-shrink: 0; height: 70px; }
+  /* ── Panes (main chart flexes; sub-panes fixed — matches lightweight-charts) ── */
+  .chart-stack {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .pane-main {
+    flex: 1 1 58%;
+    min-height: 260px;
+    height: auto;
+  }
+  .chart-board[data-deriv-overlay='1'] .pane-main {
+    min-height: 300px;
+  }
+  .chart-board[data-context='chart'] .pane-main {
+    min-height: min(48vh, 560px);
+  }
+  .pane-vol  { flex-shrink: 0; height: 60px; min-height: 60px; }
+  .pane-sub  { flex-shrink: 0; height: 80px; min-height: 80px; }
+  .pane-oi   { flex-shrink: 0; height: 72px; min-height: 72px; }
+  .pane-cvd  { flex-shrink: 0; height: 84px; min-height: 84px; }
   .save-toast {
     position: fixed;
     bottom: 80px;
@@ -962,21 +1708,41 @@
     animation: toast-in 0.2s ease;
   }
 
-  @media (max-width: 1100px) {
-    .legend { display: none; }
-  }
   .toast-link { color: #63b3ed; text-decoration: underline; }
   @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
   .pane-label {
     flex-shrink: 0;
-    padding: 1px 7px;
+    padding: 2px 8px;
     font-family: var(--sc-font-mono, monospace);
     font-size: 8px;
-    color: rgba(255,255,255,0.18);
-    background: #0a0a0a;
-    border-top: 1px solid rgba(255,255,255,0.04);
+    color: rgba(177, 181, 189, 0.38);
+    background: #131722;
+    border-top: 1px solid rgba(42, 46, 57, 0.75);
     letter-spacing: 0.06em;
+  }
+  .pane-label-split {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .pane-label-split > span:first-child {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .pane-hint {
+    font-size: 7px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.28);
+  }
+  .pane-hint-gold {
+    color: rgba(251, 191, 36, 0.72);
+  }
+  .pane-hint-mint {
+    color: rgba(94, 234, 212, 0.72);
   }
 
   .micro-bars {
