@@ -2,8 +2,8 @@
 
 ## Goal
 
-Act as the Day-1 "My Stuff Inbox":
-quick return surface for saved work, watches, and adapter placeholder status.
+Act as the Day-1 monitoring and judgment inbox:
+clear pending live alerts first, preserve watch continuity, and provide lightweight return paths to saved setups.
 
 ## Canonical Areas
 
@@ -18,35 +18,44 @@ quick return surface for saved work, watches, and adapter placeholder status.
 - Owns section composition, ordering, and deep-link actions.
 - Owns lightweight aggregation and rendering only.
 - Must consume contract-safe summaries or local Day-1 watch state.
+- Owns fast manual judgment UX for pending alerts.
 - Does not own scanner execution, challenge evaluation, or training pipelines.
 
 ## Inputs
 
-- challenge summaries (same canonical source as lab list)
+- signal alerts with manual and automatic feedback fields
 - watch state (Day-1 local storage, shape-compatible for later persistence)
+- saved setup summaries (same canonical source as lab list)
 - adapter status placeholder inputs (empty/phase-gated)
 
 ## Outputs
 
-- three stacked sections in fixed order:
-  - My Challenges
+- four stacked sections in fixed order:
+  - Signal Alerts
   - Watching
+  - Saved Setups
   - My Adapters
 - deep links into `/lab` and `/terminal`
 - stable empty states with Day-1 scope messaging
 
 ## Section Contract
 
-My Challenges:
+Signal Alerts:
 
-- top recent items
-- each row links to `/lab?slug=<slug>`
-- create-new action routes to `/terminal`
+- pending alerts sorted above judged alerts
+- each row links to terminal alert drilldown context
+- manual feedback actions remain directly accessible
 
 Watching:
 
 - saved terminal queries with status (`live`/`paused`)
-- add action routes to terminal compose flow
+- open action routes to terminal inspect context
+
+Saved Setups:
+
+- top recent evaluated setup summaries
+- each row links to `/lab?slug=<slug>`
+- create-new action routes to terminal review/capture flow
 
 My Adapters:
 
@@ -83,6 +92,7 @@ Day-2+ may migrate this state to shared persistence; dashboard UI contract shoul
 ## Acceptance Checks
 
 - section order stays fixed and labels are stable
-- challenge rows route to lab with slug context
+- signal alerts prioritize feedback-pending state and route to terminal drilldown
 - watching rows/actions route to terminal context
+- saved setup rows route to lab with slug context
 - adapters section remains explicit placeholder for Day-1

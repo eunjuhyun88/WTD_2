@@ -50,7 +50,7 @@ This is why the product’s five verbs matter:
 
 The three Day-1 active surfaces split those verbs across one operating loop:
 
-- `/terminal`: observe, inspect, compose, save
+- `/terminal`: review real trades, inspect chart evidence, select range, save capture
 - `/lab`: evaluate, compare, inspect, run
 - `/dashboard`: monitor inbox, active watches, alerts, adapters
 
@@ -98,6 +98,10 @@ Canonical output:
 - `Pattern Hypothesis`
 - `Chart Range Selection`
 
+Day-1 surface owner:
+
+- `/terminal`
+
 This is the point where raw trader intuition enters the system.
 
 `Chart Range Selection` is the minimum durable Day-1 input artifact.
@@ -111,6 +115,16 @@ It must identify:
 - `selection_origin`: `visible_range` | `drag_brush` | `replay_range`
 - `captured_at`
 
+Required user actions in Day-1:
+
+1. open the reviewed chart context in `/terminal`
+2. inspect the exact range that expresses the setup thesis
+3. attach narrative reasoning when helpful
+4. use `Save Setup` to persist the reviewed segment as durable evidence
+
+Important rule:
+
+- this review/capture step belongs to `/terminal`; it is not primarily a later `/lab` annotation task
 ### Stage 1. Pattern Definition
 
 Goal:
@@ -308,6 +322,13 @@ Required UI components:
 - explicit chart-range selection affordance
 - save action
 
+Required user actions:
+
+1. verify that the surfaced symbol still matches the trader's structural thesis
+2. mark the exact chart range that justifies the save
+3. optionally record a short narrative note about the setup
+4. save the setup or explicitly ignore it
+
 Canonical output:
 
 - none yet if ignored
@@ -318,6 +339,7 @@ Important rule:
 - inspection happens in chart context
 - if the chart cannot render, the core loop is broken
 - if the user cannot mark the exact segment to save, the core loop is incomplete
+- `Save Setup` is the moment a review becomes durable product data, not an auxiliary UI action
 
 ### Stage 7. Capture
 
@@ -326,6 +348,7 @@ Goal:
 - convert one inspected candidate into durable ground truth material
 
 This is the canonical meaning of `Save Setup`.
+Terminal owns this action even when the inspected setup originated from an engine candidate.
 
 Canonical output:
 
