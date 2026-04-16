@@ -17,11 +17,20 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
-from ledger.types import PatternOutcome, PatternStats, Outcome
+from capture.types import CaptureRecord
+from ledger.types import (
+    LedgerRecordType,
+    Outcome,
+    PatternLedgerFamilyStats,
+    PatternLedgerRecord,
+    PatternOutcome,
+    PatternStats,
+)
 
 log = logging.getLogger("engine.ledger")
 
 LEDGER_DIR = Path(__file__).parent.parent / "ledger_data"
+LEDGER_RECORDS_DIR = Path(__file__).parent.parent / "ledger_records"
 
 # Verdict thresholds (from design doc §6.2)
 HIT_THRESHOLD_PCT = 0.15   # peak_return >= +15% = HIT
@@ -77,7 +86,9 @@ class LedgerStore:
         d.setdefault("entry_block_coverage", None)
         d.setdefault("entry_p_win", None)
         d.setdefault("entry_ml_state", None)
+        d.setdefault("entry_model_key", None)
         d.setdefault("entry_model_version", None)
+        d.setdefault("entry_rollout_state", None)
         d.setdefault("entry_threshold", None)
         d.setdefault("entry_threshold_passed", None)
         d.setdefault("entry_ml_error", None)
@@ -130,6 +141,7 @@ class LedgerStore:
         if not outcome:
             log.warning(f"Outcome {outcome_id} not found")
             return None
+        previous_outcome = outcome.outcome
         outcome.outcome = result
 
         if peak_price is not None:
@@ -152,6 +164,7 @@ class LedgerStore:
             outcome.invalidated_at = invalidated_at
 
         self.save(outcome)
+        LEDGER_RECORD_STORE.append_outcome_record(outcome, previous_outcome=previous_outcome)
         return outcome
 
     # ── v2: Auto-evaluation ──────────────────────────────────────────────────
@@ -330,3 +343,242 @@ class LedgerStore:
             btc_sideways_rate=btc_side,
             decay_direction=decay,
         )
+
+
+class LedgerRecordStore:
+    """Append-only JSON record family for the pattern engine core loop."""
+
+    def __init__(self, base_dir: Path = LEDGER_RECORDS_DIR):
+        self.base_dir = base_dir
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+
+    def _dir(self, pattern_slug: str) -> Path:
+        d = self.base_dir / pattern_slug
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def _path(self, pattern_slug: str, record_id: str) -> Path:
+        return self._dir(pattern_slug) / f"{record_id}.json"
+
+    def append(self, record: PatternLedgerRecord) -> Path:
+        path = self._path(record.pattern_slug, record.id)
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False) as f:
+            json.dump(record.to_dict(), f, indent=2)
+            temp_path = Path(f.name)
+        temp_path.replace(path)
+        return path
+
+    def load(self, pattern_slug: str, record_id: str) -> PatternLedgerRecord | None:
+        path = self._path(pattern_slug, record_id)
+        if not path.exists():
+            return None
+        with open(path) as f:
+            d = json.load(f)
+        created_at = d.get("created_at")
+        if created_at:
+            try:
+                d["created_at"] = datetime.fromisoformat(created_at)
+            except ValueError:
+                d["created_at"] = datetime.now()
+        return PatternLedgerRecord(**d)
+
+    def list(
+        self,
+        pattern_slug: str,
+        *,
+        record_type: LedgerRecordType | None = None,
+        symbol: str | None = None,
+        outcome_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[PatternLedgerRecord]:
+        records: list[PatternLedgerRecord] = []
+        for path in self._dir(pattern_slug).glob("*.json"):
+            record = self.load(pattern_slug, path.stem)
+            if record is None:
+                continue
+            if record_type and record.record_type != record_type:
+                continue
+            if symbol and record.symbol != symbol:
+                continue
+            if outcome_id and record.outcome_id != outcome_id:
+                continue
+            records.append(record)
+        records.sort(key=lambda record: record.created_at, reverse=True)
+        return records[:limit] if limit is not None else records
+
+    def compute_family_stats(self, pattern_slug: str) -> PatternLedgerFamilyStats:
+        records = self.list(pattern_slug)
+
+        def _count(kind: LedgerRecordType) -> int:
+            return sum(1 for record in records if record.record_type == kind)
+
+        entry_count = _count("entry")
+        capture_count = _count("capture")
+        score_count = _count("score")
+        outcome_count = _count("outcome")
+        verdict_count = _count("verdict")
+        training_run_count = _count("training_run")
+        model_count = _count("model")
+        capture_rate = capture_count / entry_count if entry_count > 0 else None
+        verdict_rate = verdict_count / entry_count if entry_count > 0 else None
+        return PatternLedgerFamilyStats(
+            pattern_slug=pattern_slug,
+            entry_count=entry_count,
+            capture_count=capture_count,
+            score_count=score_count,
+            outcome_count=outcome_count,
+            verdict_count=verdict_count,
+            training_run_count=training_run_count,
+            model_count=model_count,
+            capture_to_entry_rate=capture_rate,
+            verdict_to_entry_rate=verdict_rate,
+        )
+
+    def append_entry_record(self, outcome: PatternOutcome) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="entry",
+                pattern_slug=outcome.pattern_slug,
+                symbol=outcome.symbol,
+                user_id=outcome.user_id,
+                outcome_id=outcome.id,
+                transition_id=outcome.entry_transition_id,
+                scan_id=outcome.entry_scan_id,
+                payload={
+                    "accumulation_at": outcome.accumulation_at.isoformat() if outcome.accumulation_at else None,
+                    "entry_price": outcome.entry_price,
+                    "btc_trend_at_entry": outcome.btc_trend_at_entry,
+                    "entry_block_coverage": outcome.entry_block_coverage,
+                },
+            )
+        )
+
+    def append_score_record(self, outcome: PatternOutcome) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="score",
+                pattern_slug=outcome.pattern_slug,
+                symbol=outcome.symbol,
+                user_id=outcome.user_id,
+                outcome_id=outcome.id,
+                transition_id=outcome.entry_transition_id,
+                scan_id=outcome.entry_scan_id,
+                payload={
+                    "entry_p_win": outcome.entry_p_win,
+                    "entry_ml_state": outcome.entry_ml_state,
+                    "entry_model_key": outcome.entry_model_key,
+                    "entry_model_version": outcome.entry_model_version,
+                    "entry_rollout_state": outcome.entry_rollout_state,
+                    "entry_threshold": outcome.entry_threshold,
+                    "entry_threshold_passed": outcome.entry_threshold_passed,
+                    "entry_ml_error": outcome.entry_ml_error,
+                },
+            )
+        )
+
+    def append_capture_record(self, capture: CaptureRecord) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="capture",
+                pattern_slug=capture.pattern_slug,
+                symbol=capture.symbol,
+                user_id=capture.user_id,
+                capture_id=capture.capture_id,
+                transition_id=capture.candidate_transition_id,
+                scan_id=capture.scan_id,
+                payload={
+                    "capture_kind": capture.capture_kind,
+                    "pattern_version": capture.pattern_version,
+                    "phase": capture.phase,
+                    "timeframe": capture.timeframe,
+                    "status": capture.status,
+                    "user_note": capture.user_note,
+                    "outcome_id": capture.outcome_id,
+                    "verdict_id": capture.verdict_id,
+                },
+            )
+        )
+
+    def append_outcome_record(self, outcome: PatternOutcome, previous_outcome: Outcome | None = None) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="outcome",
+                pattern_slug=outcome.pattern_slug,
+                symbol=outcome.symbol,
+                user_id=outcome.user_id,
+                outcome_id=outcome.id,
+                transition_id=outcome.entry_transition_id,
+                scan_id=outcome.entry_scan_id,
+                payload={
+                    "previous_outcome": previous_outcome,
+                    "outcome": outcome.outcome,
+                    "breakout_at": outcome.breakout_at.isoformat() if outcome.breakout_at else None,
+                    "invalidated_at": outcome.invalidated_at.isoformat() if outcome.invalidated_at else None,
+                    "peak_price": outcome.peak_price,
+                    "exit_price": outcome.exit_price,
+                    "max_gain_pct": outcome.max_gain_pct,
+                    "exit_return_pct": outcome.exit_return_pct,
+                    "duration_hours": outcome.duration_hours,
+                },
+            )
+        )
+
+    def append_verdict_record(self, outcome: PatternOutcome) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="verdict",
+                pattern_slug=outcome.pattern_slug,
+                symbol=outcome.symbol,
+                user_id=outcome.user_id,
+                outcome_id=outcome.id,
+                transition_id=outcome.entry_transition_id,
+                scan_id=outcome.entry_scan_id,
+                payload={
+                    "user_verdict": outcome.user_verdict,
+                    "user_note": outcome.user_note,
+                },
+            )
+        )
+
+    def append_model_record(
+        self,
+        *,
+        pattern_slug: str,
+        model_version: str,
+        user_id: str | None = None,
+        payload: dict | None = None,
+    ) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="model",
+                pattern_slug=pattern_slug,
+                user_id=user_id,
+                payload={
+                    "model_version": model_version,
+                    **(payload or {}),
+                },
+            )
+        )
+
+    def append_training_run_record(
+        self,
+        *,
+        pattern_slug: str,
+        model_key: str,
+        user_id: str | None = None,
+        payload: dict | None = None,
+    ) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="training_run",
+                pattern_slug=pattern_slug,
+                user_id=user_id,
+                payload={
+                    "model_key": model_key,
+                    **(payload or {}),
+                },
+            )
+        )
+
+
+LEDGER_RECORD_STORE = LedgerRecordStore()
