@@ -35,10 +35,15 @@ npm --prefix app run research:rq-b-core
 - synthetic ladder: `npm --prefix app run research:rq-b-sample-size`
 - DB-backed ladder: `DATABASE_URL=... npm --prefix app run research:rq-b-real-data`
 
+### 3. Replication pilot preflight
+
+- source-pack readiness: `npm --prefix app run research:replication-pilot:preflight`
+
 ## Interpretation
 
 - run `research:smoke-core` after changing `app/src/lib/research/*` or the research-facing contracts
 - run `research:rq-b-core` when changing the current RQ-B baseline stack or its protocol-facing behavior
+- run `research:replication-pilot:preflight` when changing replication source packs or the source-capture gate
 - treat generated reports under `docs/generated/research/` as outputs, not the source of protocol truth
 
 ## Latest local run status
@@ -52,3 +57,5 @@ npm --prefix app run research:rq-b-core
 - thesis: `research/thesis/current-thesis.md`
 - protocol: `research/evals/rq-b-baseline-protocol.md`
 - experiment family: `research/experiments/rq-b-ladder-2026-04-11.md`
+- replication protocol: `research/evals/strategy-replication-protocol-v0.md`
+- replication experiment family: `research/experiments/strategy-replication-pilot-2026-04-16.md`
