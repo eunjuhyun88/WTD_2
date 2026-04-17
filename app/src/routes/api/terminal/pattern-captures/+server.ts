@@ -14,6 +14,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
     const user = await getAuthUserFromCookies(cookies);
     if (!user) return json({ error: 'Authentication required' }, { status: 401 });
     const parsed = PatternCaptureQuerySchema.parse({
+      id: url.searchParams.get('id') ?? undefined,
       symbol: url.searchParams.get('symbol') ?? undefined,
       timeframe: url.searchParams.get('timeframe') ?? undefined,
       verdict: url.searchParams.get('verdict') ?? undefined,
@@ -40,6 +41,9 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
     const user = await getAuthUserFromCookies(cookies);
     if (!user) return json({ error: 'Authentication required' }, { status: 401 });
     const body = PatternCaptureCreateRequestSchema.parse(await request.json());
+    if (body.sourceFreshness.source === 'terminal_save_setup' && !body.snapshot.viewport) {
+      return json({ error: 'exact_chart_range_required' }, { status: 400 });
+    }
     const record = await createPatternCapture(user.id, body);
     return json({
       ok: true,

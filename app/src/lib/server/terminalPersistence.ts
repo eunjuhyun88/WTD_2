@@ -385,6 +385,10 @@ export async function listPatternCaptures(
   const params: unknown[] = [userId];
   let idx = 2;
 
+  if (queryInput.id) {
+    where.push(`id = $${idx++}`);
+    params.push(queryInput.id);
+  }
   if (queryInput.symbol) {
     where.push(`symbol = $${idx++}`);
     params.push(queryInput.symbol);

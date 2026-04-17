@@ -1,6 +1,11 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { get } from 'svelte/store';
+  import { onMount } from 'svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
   import { MARKET_CYCLES } from '$lib/data/cycles';
+  import { fetchPatternCaptureById } from '$lib/api/terminalPersistence';
+  import { buildLabDraftFromCapture } from '$lib/lab/captureDraft';
   import {
     strategyStore,
     activeStrategy,
@@ -28,6 +33,7 @@
   } from '$lib/engine/backtestEngine';
   import { runMultiCycleBacktest } from '$lib/engine/backtestEngine';
   import type { BinanceKline } from '$lib/engine/types';
+  import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
   import LabChart from '../../components/lab/LabChart.svelte';
   import type { ChartMarker, PriceLine } from '../../components/lab/LabChart.svelte';
   import LabToolbar from '../../components/lab/LabToolbar.svelte';
@@ -35,11 +41,17 @@
   import StrategyBuilder from '../../components/lab/StrategyBuilder.svelte';
   import ResultPanel from '../../components/lab/ResultPanel.svelte';
 
+  const LAB_CAPTURE_SESSION_KEY = 'lab:intake:lastCaptureId';
+  const requestedCaptureId = browser ? new URL(window.location.href).searchParams.get('captureId') : null;
+
   let mode = $state<'auto' | 'manual'>('auto');
   let activeTab = $state<'strategy' | 'result' | 'order' | 'trades'>('strategy');
   let interval = $state('4h');
   let isRunning = $state(false);
   let error = $state<string | null>(null);
+  let intakeLoading = $state(Boolean(requestedCaptureId));
+  let intakeError = $state<string | null>(null);
+  let intakeCapture = $state<PatternCaptureRecord | null>(null);
 
   let klines = $state<BinanceKline[]>([]);
   let chartMarkers = $state<ChartMarker[]>([]);
@@ -70,8 +82,14 @@
 
   $effect(() => {
     const store = $strategyStore;
-    if (Object.keys(store.entries).length === 0) {
+    if (Object.keys(store.entries).length === 0 && !requestedCaptureId) {
       createFromPreset(PRESET_STRATEGIES[0]);
+    }
+  });
+
+  onMount(() => {
+    if (requestedCaptureId) {
+      void hydrateFromCapture(requestedCaptureId);
     }
   });
 
@@ -211,6 +229,45 @@
   function handleNewStrategy() { createStrategy('New Strategy'); }
   function handleImport() {}
   function handleClosePosition() { manualPosition = null; chartPriceLines = []; }
+
+  async function hydrateFromCapture(captureId: string) {
+    intakeLoading = true;
+    intakeError = null;
+
+    try {
+      const capture = await fetchPatternCaptureById(captureId);
+      if (!capture) {
+        throw new Error('capture_not_found');
+      }
+
+      intakeCapture = capture;
+      const draft = buildLabDraftFromCapture(capture);
+      const state = get(strategyStore);
+      const alreadyHydrated = browser
+        && sessionStorage.getItem(LAB_CAPTURE_SESSION_KEY) === captureId
+        && Object.keys(state.entries).length > 0;
+      if (alreadyHydrated) {
+        return;
+      }
+
+      const strategyId = createStrategy(draft.name, draft.direction);
+      for (const condition of draft.conditions) {
+        addCondition(strategyId, condition);
+      }
+      setActiveStrategy(strategyId);
+      interval = draft.interval;
+      mode = 'auto';
+      activeTab = 'strategy';
+
+      if (browser) {
+        sessionStorage.setItem(LAB_CAPTURE_SESSION_KEY, captureId);
+      }
+    } catch (e) {
+      intakeError = e instanceof Error ? e.message : 'Failed to hydrate capture draft';
+    } finally {
+      intakeLoading = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -274,6 +331,51 @@
         />
       </div>
     </section>
+
+    {#if intakeLoading || intakeCapture || intakeError}
+      <section class="surface-card soft intake-card">
+        <div class="surface-section-head">
+          <div>
+            <span class="surface-kicker">Source Capture</span>
+            <h2>터미널에서 저장한 캡처로 Lab 초안을 시작</h2>
+          </div>
+          {#if intakeCapture}
+            <span class="surface-chip">{intakeCapture.symbol} · {intakeCapture.timeframe}</span>
+          {/if}
+        </div>
+        {#if intakeLoading}
+          <p class="intake-copy">저장한 차트 캡처를 불러와 드래프트 전략으로 변환하는 중입니다.</p>
+        {:else if intakeError}
+          <p class="intake-copy intake-copy--error">캡처 초안 생성 실패: {intakeError}</p>
+        {:else if intakeCapture}
+          <div class="intake-grid">
+            <div class="intake-meta">
+              <span class="surface-meta">Origin</span>
+              <strong>{intakeCapture.triggerOrigin}</strong>
+            </div>
+            <div class="intake-meta">
+              <span class="surface-meta">Reason</span>
+              <strong>{intakeCapture.reason ?? 'GENERAL'}</strong>
+            </div>
+            <div class="intake-meta">
+              <span class="surface-meta">Decision</span>
+              <strong>{intakeCapture.decision.verdict ?? 'neutral'}</strong>
+            </div>
+          </div>
+          <p class="intake-copy">
+            {intakeCapture.note?.trim() || '이 캡처를 기준으로 드래프트 전략을 생성했고, 바로 조건 편집과 백테스트로 이어집니다.'}
+          </p>
+          <div class="intake-links">
+            <a
+              class="intake-link"
+              href={`/terminal?symbol=${encodeURIComponent(intakeCapture.symbol)}&tf=${encodeURIComponent(intakeCapture.timeframe)}`}
+            >
+              원본 터미널로 돌아가기
+            </a>
+          </div>
+        {/if}
+      </section>
+    {/if}
 
     <!-- Workspace -->
     <section class="lab-workspace">
@@ -430,6 +532,56 @@
     overflow: auto;
   }
 
+  .intake-card {
+    display: grid;
+    gap: 14px;
+  }
+
+  .intake-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .intake-meta {
+    display: grid;
+    gap: 4px;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .intake-meta strong {
+    color: var(--sc-text-0);
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .intake-copy {
+    margin: 0;
+    color: var(--sc-text-1);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .intake-copy--error {
+    color: #ffb8bc;
+  }
+
+  .intake-links {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .intake-link {
+    color: rgba(194, 232, 255, 0.9);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
   .lab-workspace {
     display: grid;
     grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.82fr);
@@ -574,6 +726,9 @@
   }
 
   @media (max-width: 640px) {
+    .intake-grid {
+      grid-template-columns: 1fr;
+    }
     .chart-area {
       min-height: 280px;
     }
