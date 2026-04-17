@@ -24,7 +24,7 @@ def _bars(n: int = 520) -> list[dict]:
 
 
 def test_score_roundtrip_contract() -> None:
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://localhost")
     payload = {
         "symbol": "BTCUSDT",
         "klines": _bars(),
