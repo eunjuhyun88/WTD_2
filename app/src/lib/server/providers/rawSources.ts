@@ -73,8 +73,9 @@ import {
 } from '$lib/server/marketDataService';
 import { fetchFearGreed } from '$lib/server/feargreed';
 import { fetchKlinesServer, fetch24hrServer } from './binance';
-import type { BinanceKline, Binance24hr } from '$lib/engine/types';
+import type { BinanceKline, Binance24hr } from '$lib/contracts/marketContext';
 import { binanceQuota } from './binanceQuota';
+import { buildRawReadMicroCacheKey, getRawReadMicroCache, skipRawReadMicroCache } from './rawReadMicroCache';
 import {
 	fetchOIHistoryServer,
 	fetchFundingHistoryServer,
@@ -1099,8 +1100,18 @@ export async function readRaw<ID extends SupportedRawId>(
 	id: ID,
 	input: RawSourceInputs[ID]
 ): Promise<RawSourceOutputs[ID]> {
-	const fetcher = rawSources[id] as RawSourceFetch<ID>;
-	return fetcher(input);
+	const idStr = id as string;
+	const micro = getRawReadMicroCache();
+	if (!micro || skipRawReadMicroCache(idStr)) {
+		const fetcher = rawSources[id] as RawSourceFetch<ID>;
+		return fetcher(input);
+	}
+	const key = buildRawReadMicroCacheKey(idStr, input);
+	const { payload } = await micro.run(key, async () => {
+		const fetcher = rawSources[id] as RawSourceFetch<ID>;
+		return fetcher(input);
+	});
+	return payload as RawSourceOutputs[ID];
 }
 
 /** Returns true if `id` is implemented by the adapter map. */

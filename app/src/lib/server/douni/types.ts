@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import type { LLMProvider } from '../llmConfig';
-import type { SignalSnapshot } from '$lib/engine/cogochi/types';
+import type { ServerSignalSnapshot as SignalSnapshot } from '$lib/server/cogochi/signalSnapshot';
 import type { SignalSnapshotRaw } from '$lib/server/engineClient';
 import type { ResearchBlockEnvelope } from '$lib/contracts';
 

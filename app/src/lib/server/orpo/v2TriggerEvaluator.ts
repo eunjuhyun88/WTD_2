@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { query } from '$lib/server/db.js';
-import { V4_CONFIG } from '$lib/engine/v4/types.js';
+import { V4_CONFIG } from '$lib/contracts/researchV4';
 
 export interface TriggerResult {
   shouldTrain: boolean;

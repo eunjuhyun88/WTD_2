@@ -99,6 +99,68 @@ export interface UniverseResult {
 }
 
 // ---------------------------------------------------------------------------
+// /opportunity
+// ---------------------------------------------------------------------------
+
+export interface OpportunityScoreResult {
+  symbol: string;
+  name: string;
+  slug: string;
+  price: number;
+  change1h: number;
+  change24h: number;
+  change7d: number;
+  volume24h: number;
+  marketCap: number;
+  momentumScore: number;
+  volumeScore: number;
+  socialScore: number;
+  macroScore: number;
+  onchainScore: number;
+  totalScore: number;
+  direction: 'long' | 'short' | 'neutral';
+  confidence: number;
+  reasons: string[];
+  sentiment?: number | null;
+  socialVolume?: number | null;
+  galaxyScore?: number | null;
+  alerts: string[];
+}
+
+export interface OpportunityMacroBackdrop {
+  fedFundsRate: number | null;
+  yieldCurveSpread: number | null;
+  m2ChangePct: number | null;
+  overallMacroScore: number;
+  regime: 'risk-on' | 'risk-off' | 'neutral';
+}
+
+export interface OpportunityScanEngineResult {
+  coins: OpportunityScoreResult[];
+  macroBackdrop: OpportunityMacroBackdrop;
+  scannedAt: number;
+  scanDurationMs: number;
+}
+
+// ---------------------------------------------------------------------------
+// /rag
+// ---------------------------------------------------------------------------
+
+export interface RagScanSignal {
+  agentId: string;
+  vote: string;
+  confidence: number;
+}
+
+export interface RagVectorResult {
+  embedding: number[];
+}
+
+export interface RagDedupeHashResult {
+  dedupeHash: string;
+}
+
+// ---------------------------------------------------------------------------
 // /score
 // ---------------------------------------------------------------------------
 
@@ -327,6 +389,55 @@ export const engine = {
     if (opts.sort)   params.set('sort',   opts.sort);
     const qs = params.size ? `?${params}` : '';
     return call<UniverseResult>('GET', `/universe${qs}`);
+  },
+
+  /** Remote opportunity scan over the engine token-universe cache. */
+  async opportunityScan(limit = 15): Promise<OpportunityScanEngineResult> {
+    return call<OpportunityScanEngineResult>('POST', '/opportunity/run', { limit });
+  },
+
+  async ragTerminalScanEmbedding(
+    signals: RagScanSignal[],
+    timeframe: string,
+    dataCompleteness = 0.7,
+  ): Promise<RagVectorResult> {
+    return call<RagVectorResult>('POST', '/rag/terminal-scan', { signals, timeframe, dataCompleteness });
+  },
+
+  async ragQuickTradeEmbedding(params: {
+    pair: string;
+    direction: string;
+    entryPrice: number;
+    currentPrice: number;
+    tp: number | null;
+    sl: number | null;
+    source: string;
+    confidence?: number;
+    timeframe?: string;
+  }): Promise<RagVectorResult> {
+    return call<RagVectorResult>('POST', '/rag/quick-trade', params);
+  },
+
+  async ragSignalActionEmbedding(params: {
+    pair: string;
+    direction: string;
+    actionType: string;
+    confidence: number | null;
+    source: string;
+    timeframe?: string;
+  }): Promise<RagVectorResult> {
+    return call<RagVectorResult>('POST', '/rag/signal-action', params);
+  },
+
+  async ragDedupeHash(params: {
+    pair: string;
+    timeframe: string;
+    direction: string;
+    regime: string;
+    source: string;
+    windowMinutes?: number;
+  }): Promise<RagDedupeHashResult> {
+    return call<RagDedupeHashResult>('POST', '/rag/dedupe-hash', params);
   },
 
   /** Run a portfolio backtest for a block set over the cached universe. */

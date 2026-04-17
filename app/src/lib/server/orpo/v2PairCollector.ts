@@ -10,7 +10,7 @@ import type {
   OrpoV2Pair,
   AgentDecisionTrace,
   BattleAction,
-} from '$lib/engine/v4/types.js';
+} from '$lib/contracts/researchV4';
 
 // ─── Collect ORPO pair from a battle tick ──────────────────────
 

@@ -33,13 +33,13 @@ import type {
   ChainMatureResult,
   QuickTradeRAGInput,
   SignalActionRAGInput,
-} from '$lib/engine/arenaWarTypes';
-import type { Direction } from '$lib/engine/types';
+} from '$lib/contracts/rag';
+import type { Direction } from '$lib/contracts/game';
 import {
   computeQuickTradeEmbedding,
   computeSignalActionEmbedding,
   computeDedupeHash,
-} from '$lib/engine/ragEmbedding';
+} from '$lib/server/rag/embedding';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -254,7 +254,7 @@ export async function saveTerminalScanRAG(
     const chainId = `scan-${input.scanId}`;
 
     // Paper 1: Semantic dedup 해시
-    const dedupeHash = computeDedupeHash({
+    const dedupeHash = await computeDedupeHash({
       pair: input.pair,
       timeframe: input.timeframe,
       direction: input.consensus.toUpperCase(),
@@ -683,7 +683,7 @@ export async function saveQuickTradeOpenRAG(
   chainId: string
 ): Promise<RAGSaveResult> {
   try {
-    const embedding = computeQuickTradeEmbedding({
+    const embedding = await computeQuickTradeEmbedding({
       pair: input.pair,
       direction: input.dir,
       entryPrice: input.entry,
@@ -694,7 +694,7 @@ export async function saveQuickTradeOpenRAG(
     });
     const embeddingStr = `[${embedding.join(',')}]`;
 
-    const dedupeHash = computeDedupeHash({
+    const dedupeHash = await computeDedupeHash({
       pair: input.pair,
       timeframe: '1h', // trade는 기본 1h window
       direction: input.dir,
@@ -769,7 +769,7 @@ export async function saveQuickTradeCloseRAG(
   chainId: string
 ): Promise<RAGSaveResult> {
   try {
-    const embedding = computeQuickTradeEmbedding({
+    const embedding = await computeQuickTradeEmbedding({
       pair: input.pair,
       direction: input.dir,
       entryPrice: input.entry,
@@ -857,7 +857,7 @@ export async function saveSignalActionRAG(
   input: SignalActionRAGInput
 ): Promise<RAGSaveResult> {
   try {
-    const embedding = computeSignalActionEmbedding({
+    const embedding = await computeSignalActionEmbedding({
       pair: input.pair,
       direction: input.dir,
       actionType: input.actionType,
@@ -866,7 +866,7 @@ export async function saveSignalActionRAG(
     });
     const embeddingStr = `[${embedding.join(',')}]`;
 
-    const dedupeHash = computeDedupeHash({
+    const dedupeHash = await computeDedupeHash({
       pair: input.pair,
       timeframe: '1h',
       direction: input.dir,

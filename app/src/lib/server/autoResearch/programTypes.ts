@@ -9,7 +9,7 @@
 //   User: Terminal > Train > Auto-Optimize (UI generates program)
 // ═══════════════════════════════════════════════════════════════
 
-import type { ArchetypeId, MarketState, SetupType } from '$lib/engine/v4/types.js';
+import type { ArchetypeId, MarketState, SetupType } from '$lib/contracts/researchV4';
 
 // ─── Research Program ──────────────────────────────────────────
 

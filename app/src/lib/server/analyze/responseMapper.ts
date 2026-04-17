@@ -1,5 +1,4 @@
-import { computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
-import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
+import { computeIndicatorSeries, detectSupportResistance } from '$lib/chart/analysisPrimitives';
 import { createAnalyzePayloadMeta, type AnalyzeEngineMode } from './responseEnvelope';
 import type { AnalyzeDerived, AnalyzeRawBundle, EngineSettled } from './types';
 

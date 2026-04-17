@@ -7,7 +7,7 @@
 
 import type { BinanceKline } from '$lib/server/providers/binance';
 import type { AgentSignal } from '$lib/data/warroom';
-import { AGENT_POOL } from '$lib/engine/agents';
+import { SCAN_AGENT_META } from '$lib/contracts/agents';
 
 // ── Server-side data fetchers ──
 import { pairToSymbol } from '$lib/server/providers/binance';
@@ -43,6 +43,7 @@ import {
   minerFlowToScore,
 } from '$lib/server/cryptoquant';
 import { getCached, setCache } from './providers/cache';
+import { createSharedPublicRouteCache } from '$lib/server/publicRouteCache';
 
 // ── Performance: 개별 API 타임아웃 + 소스별 캐시 ──────────
 const API_TIMEOUT_MS = 5_000;
@@ -327,16 +328,7 @@ function buildTradePlan(entry: number, vote: Vote, score: number, atrPct: number
 // Agent Metadata
 // ═══════════════════════════════════════════════════════════════
 
-const AGENT_META = {
-  structure: { icon: 'STR', name: AGENT_POOL.STRUCTURE.name, color: AGENT_POOL.STRUCTURE.color },
-  flow: { icon: 'FLOW', name: AGENT_POOL.FLOW.name, color: AGENT_POOL.FLOW.color },
-  deriv: { icon: 'DER', name: AGENT_POOL.DERIV.name, color: AGENT_POOL.DERIV.color },
-  senti: { icon: 'SENT', name: AGENT_POOL.SENTI.name, color: AGENT_POOL.SENTI.color },
-  macro: { icon: 'MACRO', name: AGENT_POOL.MACRO.name, color: AGENT_POOL.MACRO.color },
-  vpa: { icon: 'VPA', name: AGENT_POOL.VPA.name, color: AGENT_POOL.VPA.color },
-  ict: { icon: 'ICT', name: AGENT_POOL.ICT.name, color: AGENT_POOL.ICT.color },
-  valuation: { icon: 'VAL', name: AGENT_POOL.VALUATION.name, color: AGENT_POOL.VALUATION.color }
-} as const;
+const AGENT_META = SCAN_AGENT_META;
 
 // ═══════════════════════════════════════════════════════════════
 // Server-side Composite Data Helpers
@@ -428,38 +420,105 @@ async function fetchMacroIndicatorsServer(): Promise<MacroIndicatorsLike | null>
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Concurrency Control
+// Scan cache + global concurrency (multi-instance safe when Redis set)
 // ═══════════════════════════════════════════════════════════════
+//
+// - Full scan results: `createSharedPublicRouteCache` (local + optional Redis),
+//   same pattern as `/api/cogochi/analyze`.
+// - `SCAN_ENGINE_MAX_CONCURRENT` caps how many `_runServerScanInternal` jobs
+//   run at once across *different* (pair,tf) keys — avoids stampedes when
+//   Redis is cold. Default raised from 8 → 24; tune per host.
+//
+// Env:
+//   SCAN_ENGINE_CACHE_TTL_MS — default 30_000 (5_000–120_000 clamp)
+//   SCAN_ENGINE_MAX_CONCURRENT — default 24 (1–128 clamp)
+//   SCAN_ENGINE_MAX_WAITERS — max queued acquires when slots full (default 256)
 
-const MAX_CONCURRENT_SCANS = 8;
-const SCAN_CACHE_TTL_MS = 30_000;
-
-let _activeScanCount = 0;
-const _inflightScans = new Map<string, Promise<WarRoomScanResult>>();
-
-interface CachedScanResult {
-  result: WarRoomScanResult;
-  expiresAt: number;
+export function getScanEngineCacheTtlMs(): number {
+  const raw = process.env.SCAN_ENGINE_CACHE_TTL_MS?.trim() ?? '';
+  const n = raw === '' ? 30_000 : Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return 30_000;
+  return Math.max(5_000, Math.min(120_000, n));
 }
-const _scanCache = new Map<string, CachedScanResult>();
 
-let _scanCacheCleanupTimer: ReturnType<typeof setInterval> | null = null;
-function ensureScanCacheCleanup() {
-  if (_scanCacheCleanupTimer) return;
-  _scanCacheCleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of _scanCache.entries()) {
-      if (now > v.expiresAt) _scanCache.delete(k);
+export function getScanEngineMaxConcurrent(): number {
+  const raw = process.env.SCAN_ENGINE_MAX_CONCURRENT?.trim() ?? '';
+  const n = raw === '' ? 24 : Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(128, n);
+}
+
+export function getScanEngineMaxWaiters(): number {
+  const raw = process.env.SCAN_ENGINE_MAX_WAITERS?.trim() ?? '';
+  const n = raw === '' ? 256 : Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 8) return 8;
+  return Math.min(10_000, n);
+}
+
+/** Normalized cache key: `PAIR:tf` (scope `scan-engine` is separate). */
+export function buildScanEngineCacheKey(pair: string, timeframe: string): string {
+  const marketPair = (pair || 'BTC/USDT').toUpperCase();
+  const tf = String(timeframe || '4h').toLowerCase();
+  return `${marketPair}:${tf}`;
+}
+
+class ScanConcurrencyGate {
+  private active = 0;
+  private readonly waiters: Array<() => void> = [];
+
+  constructor(
+    private readonly max: number,
+    private readonly maxWaiters: number,
+  ) {}
+
+  async enter(): Promise<void> {
+    const cap = Math.max(1, Math.min(128, this.max));
+    if (this.active < cap) {
+      this.active++;
+      return;
     }
-    if (_scanCache.size > 100) {
-      const entries = [..._scanCache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
-      const toRemove = _scanCache.size - 80;
-      for (let i = 0; i < toRemove; i++) _scanCache.delete(entries[i][0]);
+    if (this.waiters.length >= this.maxWaiters) {
+      throw new Error('Server scan capacity reached. Please try again shortly.');
     }
-  }, 60_000);
-  if (_scanCacheCleanupTimer && typeof _scanCacheCleanupTimer === 'object' && 'unref' in _scanCacheCleanupTimer) {
-    (_scanCacheCleanupTimer as NodeJS.Timeout).unref();
+    await new Promise<void>((resolve) => {
+      this.waiters.push(resolve);
+    });
+    this.active++;
   }
+
+  leave(): void {
+    this.active--;
+    const next = this.waiters.shift();
+    if (next) next();
+  }
+}
+
+let _scanSharedCache: ReturnType<typeof createSharedPublicRouteCache<WarRoomScanResult>> | null = null;
+let _scanSharedCacheTtlBound: number | null = null;
+let _scanGate: ScanConcurrencyGate | null = null;
+let _scanGateConfigKey = '';
+
+function getScanSharedCache(): ReturnType<typeof createSharedPublicRouteCache<WarRoomScanResult>> {
+  const ttl = getScanEngineCacheTtlMs();
+  if (!_scanSharedCache || _scanSharedCacheTtlBound !== ttl) {
+    _scanSharedCache = createSharedPublicRouteCache<WarRoomScanResult>({
+      scope: 'scan-engine',
+      ttlMs: ttl,
+    });
+    _scanSharedCacheTtlBound = ttl;
+  }
+  return _scanSharedCache;
+}
+
+function getScanGate(): ScanConcurrencyGate {
+  const max = getScanEngineMaxConcurrent();
+  const waiters = getScanEngineMaxWaiters();
+  const key = `${max}:${waiters}`;
+  if (!_scanGate || _scanGateConfigKey !== key) {
+    _scanGate = new ScanConcurrencyGate(max, waiters);
+    _scanGateConfigKey = key;
+  }
+  return _scanGate;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -471,43 +530,23 @@ function ensureScanCacheCleanup() {
  * but fetches all data using server modules (with caching).
  */
 export async function runServerScan(pair: string, timeframe: string): Promise<WarRoomScanResult> {
-  ensureScanCacheCleanup();
-
   const marketPair = (pair || 'BTC/USDT').toUpperCase();
-  const tf = String(timeframe || '4h');
-  const cacheKey = `scanEngine:${marketPair}:${tf}`;
+  const tf = String(timeframe || '4h').toLowerCase();
+  const cacheKey = buildScanEngineCacheKey(marketPair, tf);
 
-  // 1. Cache hit
-  const cached = _scanCache.get(cacheKey);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.result;
-  }
+  const shared = getScanSharedCache();
+  const gate = getScanGate();
 
-  // 2. Coalesce duplicate requests
-  const inflight = _inflightScans.get(cacheKey);
-  if (inflight) return inflight;
-
-  // 3. Concurrency gate
-  if (_activeScanCount >= MAX_CONCURRENT_SCANS) {
-    if (cached) return cached.result;
-    throw new Error('Server scan capacity reached. Please try again shortly.');
-  }
-
-  // 4. Run scan
-  const scanPromise = (async () => {
-    _activeScanCount++;
+  const { payload } = await shared.run(cacheKey, async () => {
+    await gate.enter();
     try {
-      const result = await _runServerScanInternal(marketPair, tf);
-      _scanCache.set(cacheKey, { result, expiresAt: Date.now() + SCAN_CACHE_TTL_MS });
-      return result;
+      return await _runServerScanInternal(marketPair, tf);
     } finally {
-      _activeScanCount--;
-      _inflightScans.delete(cacheKey);
+      gate.leave();
     }
-  })();
+  });
 
-  _inflightScans.set(cacheKey, scanPromise);
-  return scanPromise;
+  return payload;
 }
 
 // ═══════════════════════════════════════════════════════════════
