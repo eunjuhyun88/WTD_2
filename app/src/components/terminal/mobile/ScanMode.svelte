@@ -6,6 +6,7 @@
 
   import { mobileMode } from '$lib/stores/mobileMode';
   import { setActivePair } from '$lib/stores/activePairStore';
+  import MobileEmptyState from './MobileEmptyState.svelte';
 
   interface MarketRow {
     symbol: string;
@@ -88,15 +89,29 @@
   <!-- Market list -->
   <div class="market-list" role="list">
     {#if loading && filteredRows.length === 0}
-      <div class="list-loading">
-        <span class="loading-ring"></span>
-        <span class="loading-label">마켓 데이터 로딩중…</span>
-      </div>
+      <MobileEmptyState
+        icon="refresh"
+        headline="시장 데이터 로딩 중"
+        subline="잠시만 기다려 주세요."
+        primaryCta={{
+          label: '새로고침',
+          onClick: () => onRefresh?.(),
+        }}
+      />
     {:else if filteredRows.length === 0}
-      <div class="list-empty">
-        <p>심볼 없음</p>
-        <p class="empty-hint">필터를 변경하거나 새로고침 하세요</p>
-      </div>
+      <MobileEmptyState
+        icon="search"
+        headline="조건에 맞는 심볼 없음"
+        subline="필터를 바꾸거나 전체 목록을 다시 불러오세요."
+        primaryCta={{
+          label: '필터 초기화',
+          onClick: () => { activeFilter = 'all'; },
+        }}
+        secondaryCta={{
+          label: '새로고침',
+          onClick: () => onRefresh?.(),
+        }}
+      />
     {:else}
       {#each filteredRows as row (row.symbol)}
         <button
@@ -195,41 +210,6 @@
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-  }
-
-  .list-loading,
-  .list-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 200px;
-    gap: 10px;
-  }
-
-  .loading-ring {
-    display: block;
-    width: 28px;
-    height: 28px;
-    border: 2px solid rgba(255, 255, 255, 0.08);
-    border-top-color: rgba(255, 255, 255, 0.4);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .loading-label,
-  .list-empty p {
-    font-family: var(--sc-font-mono);
-    font-size: 11px;
-    color: var(--sc-text-2, rgba(255,255,255,0.5));
-    margin: 0;
-  }
-
-  .empty-hint {
-    font-size: 10px !important;
-    color: var(--sc-text-3, rgba(255,255,255,0.3)) !important;
   }
 
   .market-row {
