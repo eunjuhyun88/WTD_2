@@ -3,7 +3,7 @@
    * RangeModeToast.svelte — Layer 2 hint toast
    *
    * Appears top-right when range-mode is active.
-   * Shows "2점 선택 · ESC 취소" hint.
+   * Korean-first copy per W-0086 UX spec.
    * Container must have pointer-events: none; this toast has pointer-events: none too.
    */
   interface Props {
@@ -19,11 +19,12 @@
     <span class="toast-icon">⊡</span>
     <span class="toast-text">
       {#if !anchorASet}
-        첫 번째 점 클릭
+        구간 시작점을 선택하세요
       {:else}
-        두 번째 점 클릭 · <kbd>ESC</kbd> 취소
+        구간 끝점을 선택하세요
       {/if}
     </span>
+    <span class="toast-esc"><kbd>ESC</kbd> 키로 취소</span>
   </div>
 {/if}
 
@@ -50,6 +51,13 @@
     font-family: var(--sc-font-mono, monospace);
     font-size: 9px;
     color: rgba(247, 242, 234, 0.75);
+    white-space: nowrap;
+  }
+
+  .toast-esc {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    color: rgba(247, 242, 234, 0.38);
     white-space: nowrap;
   }
 
