@@ -1,15 +1,38 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/environment';
 
   const STORAGE_KEY = 'cogotchi-cookie-consent';
 
   let visible = $state(false);
 
+  function syncLayoutVars() {
+    if (!browser) return;
+    const root = document.documentElement;
+    const isMobile = window.innerWidth <= 768;
+    root.style.setProperty('--sc-consent-reserved-h', visible ? (isMobile ? '132px' : '96px') : '0px');
+    root.style.setProperty('--sc-consent-bottom', visible ? '12px' : '16px');
+  }
+
   onMount(() => {
     if (browser && !localStorage.getItem(STORAGE_KEY)) {
       visible = true;
     }
+    syncLayoutVars();
+    const handleResize = () => syncLayoutVars();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  });
+
+  onDestroy(() => {
+    if (!browser) return;
+    const root = document.documentElement;
+    root.style.setProperty('--sc-consent-reserved-h', '0px');
+    root.style.setProperty('--sc-consent-bottom', '16px');
+  });
+
+  $effect(() => {
+    syncLayoutVars();
   });
 
   function accept() {
@@ -44,7 +67,7 @@
 <style>
   .cookie-banner {
     position: fixed;
-    bottom: 16px;
+    bottom: var(--sc-consent-bottom, 16px);
     left: 50%;
     transform: translateX(-50%);
     z-index: 9999;
@@ -121,7 +144,7 @@
     .cookie-banner {
       flex-direction: column;
       text-align: center;
-      bottom: 72px; /* above mobile nav */
+      bottom: var(--sc-consent-bottom, 12px);
     }
   }
 </style>

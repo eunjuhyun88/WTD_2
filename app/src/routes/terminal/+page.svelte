@@ -1,17 +1,17 @@
 <script lang="ts">
   /**
-   * Terminal — Bloomberg-style 3-column decision cockpit.
+   * Terminal shell
    *
-   * Desktop layout:
-   *   [TerminalCommandBar — symbol, TF, shell toggles, layout]
-   *   [TerminalLeftRail][ChartZone + AnalysisRail]
-   *   [TerminalBottomDock — multimodal input]
-   *
-   * Mobile layout:
+   * Desktop:
    *   [TerminalCommandBar]
-   *   [MobileActiveBoard — single full asset view]
-   *   [MobileCommandDock — fixed bottom input + quick chips]
-   *   [MobileDetailSheet — bottom sheet for 5-tab detail]
+   *   [MarketDrawer?][ChartBoard][AnalysisRail]
+   *   [TerminalBottomDock]
+   *
+   * Mobile:
+   *   [TerminalCommandBar]
+   *   [ChartBoard]
+   *   [MobileCommandDock]
+   *   [MobileDetailSheet]
    */
   import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
@@ -19,11 +19,7 @@
   import { buildCanonicalHref } from '$lib/seo/site';
   import { get } from 'svelte/store';
   import { douniRuntimeStore } from '$lib/stores/douniRuntime';
-  import {
-    buildDockFeedItems,
-  } from '$lib/terminal/terminalDerived';
   import { buildTerminalBoardModel } from '$lib/terminal/terminalBoardModel';
-  import { buildTerminalSurfaceSummary } from '$lib/terminal/terminalSurfaceModel';
   import {
     fetchTerminalAnomalies,
     fetchTerminalQueryPresets,
@@ -58,15 +54,13 @@
     buildTerminalDecisionBundle,
     type TerminalDecisionBundle,
   } from '$lib/terminal/panelAdapter';
+  import { deriveWatchlistPreview } from '$lib/terminal/watchlistPreview';
   import {
-    applyPatternTransitionBatch,
     buildTerminalBootstrapTasks,
     buildTerminalRefreshIntervals,
-    prunePatternTransitionAlerts,
     runTerminalMemoryRerank,
     executeTerminalDockAction,
     emitTerminalMemoryFeedback,
-    runTerminalCompareAction,
     runTerminalVisibilityRefresh,
     createTerminalReportExport,
     buildTerminalPersistencePayload,
@@ -100,16 +94,10 @@
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
   import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
-  import VerdictCard from '../../components/terminal/workspace/VerdictCard.svelte';
   import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
-  import CollectedMetricsDock from '../../components/terminal/workspace/CollectedMetricsDock.svelte';
-  import PatternStatusBar from '../../components/terminal/workspace/PatternStatusBar.svelte';
   import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
-  import EvidenceStrip from '../../components/terminal/workspace/EvidenceStrip.svelte';
-  import SaveSetupModal from '../../components/terminal/workspace/SaveSetupModal.svelte';
 
   // Mobile components
-  import MobileActiveBoard from '../../components/terminal/mobile/MobileActiveBoard.svelte';
   import MobileDetailSheet from '../../components/terminal/mobile/MobileDetailSheet.svelte';
   import MobileCommandDock from '../../components/terminal/mobile/MobileCommandDock.svelte';
 
@@ -168,35 +156,19 @@
   let patternTransitionAlerts = $state<PatternTransitionAlert[]>([]);
   let showPatternLibrary = $state(false);
   let patternCaptureRecords = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
+  let lastSavedCaptureId = $state<string | null>(null);
   let patternCaptureLoading = $state(false);
   let exportPollTimer: ReturnType<typeof setInterval> | null = null;
 
   // ── Capture modal ──────────────────────────────────────────
-  let showCaptureModal = $state(false);
-  let showLeftRail = $state(true);
-  let showAnalysisRail = $state(true);
-  let chartFocusMode = $state(true);
-  let showBoardDetails = $state(false);
+  let showLeftRail = $state(false);
   let activeAnalysisTab = $state<'summary' | 'entry' | 'risk' | 'catalysts' | 'metrics'>('summary');
+  let chartWorkspaceEl = $state<HTMLElement | undefined>(undefined);
 
   // ── Chart price-level overlays (entry / target / stop) ───────
   // Extracted from deep.atr_levels after each analysis; passed to ChartBoard
   interface VerdictLevels { entry?: number; target?: number; stop?: number; }
   let chartLevels = $state<VerdictLevels>({});
-
-  function formatCompactUsd(value: number | null | undefined): string {
-    if (value == null || !Number.isFinite(value)) return '—';
-    const abs = Math.abs(value);
-    if (abs >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
-    if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-    if (abs >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
-    return `$${value.toFixed(0)}`;
-  }
-
-  function formatSignedPct(value: number | null | undefined, digits = 1): string {
-    if (value == null || !Number.isFinite(value)) return '—';
-    return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}%`;
-  }
 
   function extractLevels(data: TerminalAnalyzeData | null | undefined): VerdictLevels {
     const deep = data?.deep;
@@ -332,27 +304,6 @@
     savedAlertRules = await removeSavedTerminalAlert({ alerts: savedAlertRules, id });
   }
 
-  async function handleCompareAction(): Promise<void> {
-    const timeframe = symbolToTF(gTf);
-    const seed = activeSymbol || pairToSymbol(gPair) || 'BTCUSDT';
-    const { symbols, pins } = await runTerminalCompareAction({
-      seedSymbol: seed,
-      boardSymbols,
-      timeframe,
-      pins: persistedPins,
-    });
-    if (symbols.length < 2) return;
-
-    boardSymbols = symbols;
-    layout = 'compare2x2';
-    showAnalysisRail = true;
-    for (const symbol of symbols) {
-      void loadAnalysis(symbol, timeframe);
-    }
-    persistedPins = pins;
-    pushAssistantMessage(localizeTerminalText('비교 보드를 저장했습니다.', 'Compare board saved.'), true);
-  }
-
   async function handleCreateExport(): Promise<void> {
     const symbol = activeSymbol || pairToSymbol(gPair);
     if (!symbol) return;
@@ -398,8 +349,6 @@
     });
     if (dockResult.handled) {
       if (dockResult.activeAnalysisTab) activeAnalysisTab = dockResult.activeAnalysisTab;
-      if (dockResult.showAnalysisRail != null) showAnalysisRail = dockResult.showAnalysisRail;
-      if (dockResult.showCaptureModal) showCaptureModal = true;
       if (dockResult.showPatternLibrary) showPatternLibrary = true;
       if (dockResult.messageKey === 'alerts_refreshed') {
         pushAssistantMessage(localizeTerminalText('알림 레일을 최신 상태로 갱신했습니다.', 'Alerts refreshed from backend routes.'), dockResult.transient ?? true);
@@ -408,7 +357,7 @@
       } else if (dockResult.messageKey === 'scan_refreshed') {
         pushAssistantMessage(localizeTerminalText('스캔 상태를 최신 상태로 갱신했습니다.', 'Scan state refreshed from backend routes.'), dockResult.transient ?? true);
       } else if (dockResult.messageKey === 'pattern_modal_opened') {
-        pushAssistantMessage(localizeTerminalText('현재 패턴 저장 모달을 열었습니다.', 'Opened save pattern modal.'), dockResult.transient ?? true);
+        pushAssistantMessage(localizeTerminalText('현재 보이는 차트 범위는 차트 안의 Save Setup으로 저장하세요.', 'Use Save Setup inside the chart to save the current visible range.'), dockResult.transient ?? true);
       } else if (dockResult.messageKey === 'pattern_recall_opened') {
         pushAssistantMessage(localizeTerminalText('저장 패턴 검색 패널을 열었습니다.', 'Opened pattern recall panel.'), dockResult.transient ?? true);
       }
@@ -500,6 +449,15 @@
       analysisData = data;
     }
     return changed;
+  }
+
+  function applyWatchlistPreviewState(symbol: string, preview: TerminalWatchlistItem['preview']) {
+    if (!preview || !persistedWatchlist.some((item) => item.symbol === symbol)) return;
+    persistedWatchlist = persistedWatchlist.map((item) =>
+      item.symbol === symbol
+        ? { ...item, preview }
+        : item,
+    );
   }
 
   function sameAsset(a?: TerminalAsset | null, b?: TerminalAsset | null): boolean {
@@ -605,6 +563,7 @@
         }
 
         applyAnalysisState(symbol, data);
+        applyWatchlistPreviewState(symbol, deriveWatchlistPreview(data));
         const decision = applyTerminalDecision(symbol, data);
         applyDecisionState(symbol, decision, true);
         if (isCurrentActive || !persistedWatchlist.some((item) => item.symbol === symbol)) {
@@ -787,25 +746,6 @@
     }
   }
 
-  function pushPatternTransitions(items: Array<{ symbol: string; slug: string; phase: string }>) {
-    void (async () => {
-      const result = await applyPatternTransitionBatch({
-        existingAlerts: patternTransitionAlerts,
-        items,
-        timeframe: symbolToTF(gTf),
-      });
-      patternTransitionAlerts = result.alerts;
-      setTimeout(() => {
-        patternTransitionAlerts = prunePatternTransitionAlerts(patternTransitionAlerts, result.prunableBefore);
-      }, 95_000);
-    })();
-  }
-
-  function focusPatternSymbol(item: { symbol: string }) {
-    const pair = item.symbol.replace('USDT', '/USDT');
-    setActivePair(pair);
-  }
-
   function dismissPatternAlert(id: string) {
     patternTransitionAlerts = patternTransitionAlerts.filter((item) => item.id !== id);
   }
@@ -848,8 +788,6 @@
 
     isStreaming = true;
     streamText = '';
-    showAnalysisRail = true;
-
     const symbol = pairToSymbol(gPair);
     const tf = symbolToTF(gTf);
     chatHistory = ([...chatHistory, { role: 'user' as const, content: text }] as HistoryEntry[]).slice(-10);
@@ -937,7 +875,6 @@
 
   function selectAsset(symbol: string) {
     activeSymbol = symbol;
-    showAnalysisRail = true;
     activeAnalysisTab = 'summary';
     activeChartPayload = chartPayloadMap[symbol] ?? null;
     if (!decisionMap[symbol]) loadAnalysis(symbol, symbolToTF(gTf));
@@ -954,8 +891,6 @@
     setActivePair(symbol.replace('USDT', '/USDT'));
   }
 
-  function switchLayout(newLayout: 'hero3' | 'compare2x2' | 'focus') { layout = newLayout; }
-
   function clearBoard() {
     boardSymbols = [];
     stubAssetMap = {};
@@ -971,8 +906,6 @@
     activeAnalysisTab = 'summary';
     loadAnalysis(pairToSymbol(gPair), symbolToTF(gTf));
   }
-
-  function switchToCompare() { if (boardSymbols.length >= 2) layout = 'compare2x2'; }
 
   function trackMemoryFeedbackForSymbol(symbol: string, event: 'used' | 'confirmed', intent = activeAnalysisTab) {
     const queryId = memoryQueryIdMap[symbol];
@@ -992,8 +925,11 @@
     activeAnalysisTab = tab as typeof activeAnalysisTab;
   }
 
-  function handleCaptureSaved() {
-    showCaptureModal = false;
+  function handleCaptureSaved(captureId: string) {
+    lastSavedCaptureId = captureId;
+    setTimeout(() => {
+      if (lastSavedCaptureId === captureId) lastSavedCaptureId = null;
+    }, 5000);
     void loadPatternCaptures();
     if (activeSymbol) {
       trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
@@ -1164,26 +1100,10 @@
   let activePairDisplay = $derived(gPair.split('/')[0] ?? 'BTC');
 
   // ─── Panel visibility + resize ───────────────────────────────
-  let leftWidth = $state(160);
-  let analysisWidth = $state(280);
+  let leftWidth = $state(232);
 
   function toggleLeftRail() {
     showLeftRail = !showLeftRail;
-  }
-
-  function toggleAnalysisRail() {
-    showAnalysisRail = !showAnalysisRail;
-  }
-
-  function toggleChartFocusMode() {
-    chartFocusMode = !chartFocusMode;
-    if (chartFocusMode) {
-      showBoardDetails = false;
-      showLeftRail = false;
-      showAnalysisRail = true;
-    } else {
-      showLeftRail = true;
-    }
   }
 
   function startResize(e: MouseEvent) {
@@ -1208,30 +1128,13 @@
     window.addEventListener('mouseup', onUp);
   }
 
-  function startAnalysisResize(e: MouseEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = analysisWidth;
-
-    const onMove = (ev: MouseEvent) => {
-      const delta = startX - ev.clientX;
-      analysisWidth = Math.max(240, Math.min(460, startW + delta));
-    };
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }
-
   // ─── Mobile ─────────────────────────────────────────────────
   let showDetailSheet = $state(false);
+
+  function openMobileDetail(tab: typeof activeAnalysisTab = 'summary') {
+    activeAnalysisTab = tab;
+    showDetailSheet = true;
+  }
   let boardAssets = $derived.by(() =>
     boardSymbols
       .map((symbol) => decisionMap[symbol]?.asset ?? stubAssetMap[symbol])
@@ -1276,14 +1179,9 @@
     if (!activeSymbol) return false;
     return Boolean(findTerminalAlertRule(savedAlertRules, activeSymbol, symbolToTF(gTf)));
   });
-  let companionAssets = $derived(
-    boardAssets.filter((asset) => asset.symbol !== (heroAsset?.symbol ?? '')).slice(0, 3)
-  );
-
-  let runtimeModeLabel = $derived($douniRuntimeStore.mode);
 
   // ── Analysis rail mode ────────────────────────────────────────
-  // SINGLE: ≤1 asset or active symbol has a verdict → show full VerdictCard
+  // SINGLE: ≤1 asset or active symbol has a verdict → show full detail rail
   // SCAN:   >1 assets returned (multi-asset prompt) → show compact scan list
   let isScanMode = $derived(boardAssets.length > 1);
   let scanAssets = $derived(
@@ -1292,40 +1190,14 @@
       verdict: verdictMap[a.symbol] ?? null,
     }))
   );
-  let activeFocusLabel = $derived(activeSymbol ? activeSymbol.replace('USDT', '') : activePairDisplay);
-  let timeframeBadgeLabel = $derived(symbolToTF(gTf).toUpperCase());
   let assistantBannerText = $derived(streamText.trim());
-  let surfaceSummary = $derived.by(() => buildTerminalSurfaceSummary({
-    activeAsset,
-    activeVerdict,
-    activeEvidence,
-    flowBias,
-    isScanMode,
-    runtimeModeLabel,
-    activeSymbol,
-    activePairDisplay,
-    activeFocusLabel,
-    timeframeBadgeLabel,
-    boardAssetsCount: boardAssets.length,
-  }));
+  let recentDockHistory = $derived(chatHistory.slice(-4));
   let boardModel = $derived.by(() => buildTerminalBoardModel({
     activeAsset,
     activeAnalysisData,
     chartLevels,
     readPathDepth,
     readPathLiq,
-  }));
-  let statusStripItems = $derived(surfaceSummary.statusStripItems);
-  let dockFeedItems = $derived.by(() => buildDockFeedItems({
-    activeFocusLabel,
-    activeAsset,
-    flowBias,
-    boardAssetsCount: boardAssets.length,
-    timeframeBadgeLabel,
-    runtimeModeLabel,
-    patternTransitionAlerts,
-    statusStripItems,
-    marketEvents,
   }));
   // Quick chips for mobile dock
   const MOBILE_CHIPS = $derived([
@@ -1350,51 +1222,27 @@
 <!-- Terminal Shell                                      -->
 <!-- ═══════════════════════════════════════════════════ -->
 <div class="surface-page terminal-page">
-  <section class="surface-card terminal-shell-head">
-    {#if assistantBannerText}
-      <div class="assistant-ribbon" data-state={isStreaming ? 'streaming' : 'ready'}>
-        <span class="assistant-ribbon-label">{isStreaming ? 'AI Stream' : 'Assistant'}</span>
-        <p class="assistant-ribbon-text">{assistantBannerText}</p>
-      </div>
-    {/if}
-
+  <section class="terminal-shell-head">
     <TerminalCommandBar
-      {flowBias}
-      {layout}
       assetsCount={boardAssets.length}
-      onQuickIntent={handleQueryChip}
-      onLayout={switchLayout}
-      onClear={clearBoard}
-      onCapture={() => showCaptureModal = true}
+      marketRailOpen={showLeftRail}
+      onToggleMarketRail={toggleLeftRail}
     />
-
-    {#if patternTransitionAlerts.length > 0}
-      <div class="pattern-alert-tray">
-        <span class="pattern-alert-label">Live Pattern Alert</span>
-        {#each patternTransitionAlerts as item}
-          <div class="pattern-alert-pill">
-            <button class="pattern-alert-main" onclick={() => focusPatternSymbol(item)}>
-              <span class="pattern-alert-dot"></span>
-              <span class="pattern-alert-symbol">{item.symbol.replace('USDT', '')}</span>
-              <span class="pattern-alert-phase">{item.phase}</span>
-              <span class="pattern-alert-slug">{item.slug.replace(/^tradoor-/, '').replace(/-v\d+$/, '')}</span>
-            </button>
-            <button class="pattern-alert-dismiss" onclick={() => dismissPatternAlert(item.id)} aria-label="Dismiss pattern alert">
-              ×
-            </button>
-          </div>
-        {/each}
-      </div>
-    {/if}
   </section>
 
-  <section class="surface-panel terminal-workspace">
+  <section class="terminal-workspace">
     <div class="terminal-shell">
       <div class="terminal-body"
-        class:left-collapsed={!showLeftRail}
-        class:right-collapsed={!showAnalysisRail}
-        style="--terminal-left-w: {leftWidth}px; --terminal-analysis-w: {analysisWidth}px"
+        style="--terminal-left-w: {leftWidth}px"
       >
+    {#if showLeftRail}
+      <button
+        class="market-drawer-scrim"
+        type="button"
+        aria-label="Close market drawer"
+        onclick={toggleLeftRail}
+      ></button>
+    {/if}
 
     <!-- Left Rail -->
     {#if showLeftRail}
@@ -1425,54 +1273,22 @@
           onQuery={handleQueryChip}
           onDeleteSavedAlert={handleDeleteSavedAlert}
         />
+        <button
+          class="left-rail-resizer"
+          type="button"
+          onmousedown={startResize}
+          aria-label="Resize market drawer"
+        ></button>
       </aside>
-
-      <!-- Left resize handle -->
-      <button
-        class="panel-resizer"
-        type="button"
-        onmousedown={startResize}
-        aria-label="Resize left panel"
-      ></button>
-    {:else}
-      <button class="collapsed-rail-tab left" type="button" onclick={toggleLeftRail} aria-label="Show market rail">
-        <span class="collapsed-rail-icon">◧</span>
-        <span class="collapsed-rail-copy">
-          <strong>Market</strong>
-          <small>Hidden</small>
-        </span>
-      </button>
     {/if}
 
     <!-- Center Board -->
     <main class="center-board">
-      <div class="workspace-panel-head center">
-        <span class="workspace-panel-kicker">Main Board</span>
-        <span class="workspace-panel-meta">{layout} layout</span>
-        <div class="center-head-actions">
-          <button
-            class="panel-head-toggle"
-            type="button"
-            onclick={() => (showBoardDetails = !showBoardDetails)}
-            aria-label="Toggle board detail blocks"
-          >
-            <span class="panel-head-toggle-glyph">{showBoardDetails ? '−' : '+'}</span>
-          </button>
-          <button
-            class="panel-head-toggle"
-            type="button"
-            onclick={toggleChartFocusMode}
-            aria-label="Toggle chart focus mode"
-          >
-            <span class="panel-head-toggle-glyph">{chartFocusMode ? 'Chart' : 'Full'}</span>
-          </button>
-        </div>
-      </div>
       <!-- Main board: ChartBoard + Zone B/C; on narrow viewports see mobile CSS (ChartBoard stays visible) -->
-      <div class="board-content desktop-board" class:analysis-hidden={!showAnalysisRail}>
+      <div class="board-content desktop-board">
 
         <!-- ── Chart area — hero, full height ── -->
-        <div class="chart-area">
+        <div class="chart-area" bind:this={chartWorkspaceEl}>
           <ChartBoard
             symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
             tf={symbolToTF(gTf)}
@@ -1483,117 +1299,13 @@
             quantRegime={boardModel.quantRegime}
             cvdDivergence={boardModel.cvdDivergence}
             change24hPct={activeAnalysisData?.change24h ?? activeAnalysisData?.snapshot?.change24h ?? null}
-            contextMode={chartFocusMode ? 'chart' : 'full'}
+            contextMode="chart"
+            onCaptureSaved={handleCaptureSaved}
             onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
           />
-          <CollectedMetricsDock chartPayload={activeChartPayload} boardModel={boardModel} />
-          {#if !chartFocusMode}
-            <PatternStatusBar
-              onSelect={focusPatternSymbol}
-              onTransition={pushPatternTransitions}
-            />
-            <EvidenceStrip
-              evidence={activeEvidence}
-              onExpand={() => {
-                showAnalysisRail = true;
-                activeAnalysisTab = 'metrics';
-              }}
-            />
-          {/if}
-          {#if boardModel.orderbookDepth && (!chartFocusMode || showBoardDetails)}
-            <div class="microstructure-row">
-              <section class="micro-card orderbook-card" data-tone={boardModel.orderbookTone}>
-                <div class="micro-card-header">
-                  <span class="micro-title">Orderbook</span>
-                  <span class="micro-meta">{boardModel.orderbookBiasLabel} · {boardModel.orderbookMeta.sourceLabel}</span>
-                </div>
-                <div class="micro-stat-row">
-                  <span>Spread {boardModel.orderbookMeta.spreadLabel}</span>
-                  <span>Imbalance {boardModel.orderbookMeta.imbalanceLabel}</span>
-                  <span>Taker {boardModel.orderbookMeta.takerLabel}</span>
-                </div>
-                <div class="depth-ladders">
-                  <div class="depth-side bids">
-                    {#each boardModel.orderbookDepth.bids.slice(0, 5) as level}
-                      <div class="depth-row">
-                        <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                        <div class="depth-bar-wrap">
-                          <div class="depth-bar bid" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
-                  <div class="depth-side asks">
-                    {#each boardModel.orderbookDepth.asks.slice(0, 5) as level}
-                      <div class="depth-row ask-row">
-                        <div class="depth-bar-wrap ask-wrap">
-                          <div class="depth-bar ask" style={`width:${Math.max(10, level.weight * 100)}%`}></div>
-                        </div>
-                        <span class="depth-price">{level.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-              </section>
-
-              <section class="micro-card liquidity-card">
-                <div class="micro-card-header">
-                  <span class="micro-title">{boardModel.liquidityMeta.title}</span>
-                  <span class="micro-meta">{boardModel.liquidityMeta.metaLabel}</span>
-                </div>
-                <div class="micro-stat-row">
-                  <span>Short Liq {formatCompactUsd(boardModel.liquidityMeta.shortLiqUsd)}</span>
-                  <span>Long Liq {formatCompactUsd(boardModel.liquidityMeta.longLiqUsd)}</span>
-                </div>
-                <div class="liq-cluster-list">
-                  {#if boardModel.liquidityClusters.length > 0}
-                    {#each boardModel.liquidityClusters as cluster}
-                      <div class="liq-cluster-row">
-                        <span class="liq-side" data-side={cluster.side}>{cluster.side === 'BUY' ? 'Shorts' : 'Longs'}</span>
-                        <span class="liq-price">{cluster.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                        <span class="liq-distance">{formatSignedPct(cluster.distancePct, 2)}</span>
-                        <span class="liq-usd">{formatCompactUsd(cluster.usd)}</span>
-                      </div>
-                    {/each}
-                  {:else}
-                    <p class="liq-empty">No forced liquidation spikes in the recent window.</p>
-                  {/if}
-                </div>
-              </section>
-            </div>
-          {/if}
-          {#if companionAssets.length > 0 && (!chartFocusMode || showBoardDetails)}
-            <div class="market-mini-grid">
-              {#each companionAssets as asset}
-                {@const verdict = verdictMap[asset.symbol]}
-                <button class="mini-asset-card" onclick={() => selectAsset(asset.symbol)}>
-                  <div class="mini-top">
-                    <span class="mini-symbol">{asset.symbol.replace('USDT','')}</span>
-                    <span class:mini-up={asset.changePct1h >= 0} class:mini-down={asset.changePct1h < 0}>
-                      {asset.changePct1h >= 0 ? '+' : ''}{asset.changePct1h.toFixed(2)}%
-                    </span>
-                  </div>
-                  <div class="mini-meta-row">
-                    <span>{asset.volumeRatio1h.toFixed(1)}x vol</span>
-                    <span>OI {asset.oiChangePct1h >= 0 ? '+' : ''}{asset.oiChangePct1h.toFixed(1)}%</span>
-                  </div>
-                  {#if verdict}
-                    <p class="mini-reason">{verdict.reason.slice(0, 72)}{verdict.reason.length > 72 ? '…' : ''}</p>
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          {/if}
         </div>
 
         <!-- ── Analysis rail — single verdict or scan list ── -->
-        {#if showAnalysisRail}
-        <button
-          class="panel-resizer right"
-          type="button"
-          onmousedown={startAnalysisResize}
-          aria-label="Resize analysis panel"
-        ></button>
         <div class="analysis-rail">
 
           <!-- Rail header: mode indicator + streaming badge -->
@@ -1607,13 +1319,9 @@
               <span class="rail-badge scan">{boardAssets.length} RESULTS</span>
               <button class="rail-back" onclick={clearBoard}>← Back</button>
             {:else}
-              <span class="rail-mode">ANALYSIS</span>
+              <span class="rail-mode">Analysis</span>
               <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
             {/if}
-            <span class="rail-width-indicator">{analysisWidth}px</span>
-            <button class="panel-head-toggle" type="button" onclick={toggleAnalysisRail} aria-label="Hide analysis rail">
-              <span class="panel-head-toggle-glyph">◨</span>
-            </button>
           </div>
           <!-- MODE B — Scan results list -->
           {#if isScanMode}
@@ -1645,7 +1353,7 @@
               {/each}
             </div>
 
-            <!-- Also show active symbol's VerdictCard below the list if loaded -->
+            <!-- Also show active symbol's detail rail below the scan list if loaded -->
             {#if heroAsset && heroVerdict}
               <div class="scan-detail">
                 <TerminalContextPanel
@@ -1654,14 +1362,11 @@
                   activeTab={activeAnalysisTab}
                   onTabChange={handleAnalysisTabChange}
                   onAction={sendCommand}
-                  onCapture={() => showCaptureModal = true}
                   onPinToggle={handlePinToggle}
-                  onCompare={handleCompareAction}
                   onAlertToggle={handleAlertToggle}
                   isPinned={isActivePinned}
                   hasSavedAlert={hasActiveSavedAlert}
                   bars={ohlcvBars}
-                  statusItems={statusStripItems.slice(0, 6)}
                   {layerBarsMap}
                   {patternRecallMatches}
                 />
@@ -1681,14 +1386,11 @@
               activeTab={activeAnalysisTab}
               onTabChange={handleAnalysisTabChange}
               onAction={sendCommand}
-              onCapture={() => showCaptureModal = true}
               onPinToggle={handlePinToggle}
-              onCompare={handleCompareAction}
               onAlertToggle={handleAlertToggle}
               isPinned={isActivePinned}
               hasSavedAlert={hasActiveSavedAlert}
               bars={ohlcvBars}
-              statusItems={statusStripItems.slice(0, 6)}
               {layerBarsMap}
               {patternRecallMatches}
             />
@@ -1700,15 +1402,6 @@
           {/if}
 
         </div>
-        {:else}
-          <button class="collapsed-rail-tab right" type="button" onclick={toggleAnalysisRail} aria-label="Show analysis rail">
-            <span class="collapsed-rail-icon">◨</span>
-            <span class="collapsed-rail-copy">
-              <strong>Analysis</strong>
-              <small>Hidden</small>
-            </span>
-          </button>
-        {/if}
 
       </div>
 
@@ -1716,7 +1409,8 @@
       <div class="desktop-dock">
         <TerminalBottomDock
           loading={isStreaming || isLoadingActive}
-          feedItems={dockFeedItems}
+          assistantText={assistantBannerText}
+          history={recentDockHistory}
           onSend={sendCommand}
           onDockAction={handleDockAction}
         />
@@ -1724,18 +1418,11 @@
 
       <!-- Mobile board + dock -->
       <div class="mobile-board-wrap">
-        <MobileActiveBoard
-          asset={activeAsset}
-          verdict={activeVerdict}
-          evidence={activeEvidence}
-          bars={ohlcvBars}
-          {layerBarsMap}
-          loading={isLoadingActive}
-          onViewDetail={() => showDetailSheet = true}
-        />
         <MobileCommandDock
           loading={isStreaming}
           queryChips={MOBILE_CHIPS}
+          assistantText={assistantBannerText}
+          onOpenDetail={() => openMobileDetail('summary')}
           onSend={sendCommand}
           onChip={(action) => sendCommand(action)}
         />
@@ -1747,16 +1434,6 @@
   </section>
 </div>
 
-<!-- Capture modal — uses SaveSetupModal which handles its own POST -->
-<SaveSetupModal
-  open={showCaptureModal}
-  symbol={activeSymbol || pairToSymbol(gPair)}
-  timestamp={Math.floor(Date.now() / 1000)}
-  tf={symbolToTF(gTf)}
-  onClose={() => showCaptureModal = false}
-  onSaved={handleCaptureSaved}
-/>
-
 <!-- Mobile detail sheet (portal-style, outside grid) -->
 <MobileDetailSheet
   open={showDetailSheet}
@@ -1766,6 +1443,7 @@
   bars={ohlcvBars}
   {layerBarsMap}
   newsItems={newsData?.records ?? []}
+  captureId={lastSavedCaptureId}
   onClose={() => showDetailSheet = false}
 />
 
@@ -1779,27 +1457,30 @@
 
 <style>
   .terminal-page {
-    width: min(100%, calc(100% - 10px));
+    width: min(100%, calc(100% - 8px));
     height: calc(100dvh - 8px);
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
-    padding-top: 4px;
-    padding-bottom: 4px;
-    gap: 4px;
+    padding-top: 2px;
+    padding-bottom: max(4px, var(--sc-consent-reserved-h, 0px));
+    gap: 6px;
     overflow: hidden;
   }
 
   .terminal-shell-head {
-    display: grid;
-    gap: 3px;
-    padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 8px 10px 6px;
     background:
-      linear-gradient(180deg, rgba(9, 12, 17, 0.98), rgba(9, 12, 17, 0.92));
+      linear-gradient(180deg, rgba(9, 12, 17, 0.96), rgba(9, 12, 17, 0.88));
     position: sticky;
     top: 0;
     z-index: 25;
-    border-radius: 4px;
+    border-radius: 8px 8px 0 0;
     backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-bottom-color: rgba(255,255,255,0.02);
   }
 
   .terminal-workspace {
@@ -1807,6 +1488,10 @@
     overflow: hidden;
     min-height: 0;
     flex: 1;
+    border-radius: 0 0 8px 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-top: none;
+    background: rgba(5, 7, 10, 0.94);
   }
 
   .terminal-shell {
@@ -1823,177 +1508,39 @@
     font-family: var(--sc-font-body);
   }
 
-  .assistant-ribbon {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 6px;
-    border-radius: 3px;
-    border: 1px solid rgba(99,179,237,0.14);
-    background: rgba(8, 17, 26, 0.82);
-  }
-
-  .assistant-ribbon[data-state='streaming'] {
-    border-color: rgba(74,222,128,0.2);
-    background: rgba(8, 22, 15, 0.84);
-  }
-
-  .assistant-ribbon-label {
-    flex-shrink: 0;
-    color: rgba(99,179,237,0.82);
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .assistant-ribbon[data-state='streaming'] .assistant-ribbon-label {
-    color: rgba(74,222,128,0.88);
-  }
-
-  .assistant-ribbon-text {
-    margin: 0;
-    color: rgba(247,242,234,0.82);
-    font-size: 10px;
-    line-height: 1.2;
-    display: -webkit-box;
-    overflow: hidden;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
   .terminal-body {
+    position: relative;
     flex: 1;
-    display: grid;
-    /* left | handle | center */
-    grid-template-columns: var(--terminal-left-w, 240px) 4px 1fr;
+    display: block;
     overflow: hidden;
     min-height: 0;
   }
 
-  .pattern-alert-tray {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 6px;
-    background:
-      linear-gradient(90deg, rgba(74, 222, 128, 0.12), rgba(74, 222, 128, 0.03));
-    border: 1px solid rgba(74, 222, 128, 0.16);
-    border-radius: 3px;
-    overflow-x: auto;
-  }
-
-  .pattern-alert-label {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgba(74, 222, 128, 0.72);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .pattern-alert-pill {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    border-radius: 3px;
-    border: 1px solid rgba(74, 222, 128, 0.24);
-    background: rgba(6, 22, 12, 0.9);
-    box-shadow: 0 0 24px rgba(74, 222, 128, 0.08);
-  }
-
-  .pattern-alert-main {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 6px;
-    border: 0;
-    background: transparent;
-    color: rgba(235, 255, 242, 0.92);
-    cursor: pointer;
-  }
-
-  .pattern-alert-dismiss {
-    border: 0;
-    background: transparent;
-    color: rgba(255,255,255,0.32);
-    cursor: pointer;
-    padding: 3px 6px 3px 0;
-  }
-
-  .pattern-alert-dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: #4ade80;
-    box-shadow: 0 0 12px rgba(74, 222, 128, 0.7);
-  }
-
-  .pattern-alert-symbol,
-  .pattern-alert-phase,
-  .pattern-alert-slug {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-  }
-
-  .pattern-alert-symbol {
-    font-weight: 700;
-    color: #4ade80;
-  }
-
-  .pattern-alert-phase {
-    color: rgba(255,255,255,0.82);
-  }
-
-  .pattern-alert-slug {
-    color: rgba(255,255,255,0.42);
-    text-transform: uppercase;
-  }
-
-  .terminal-body.left-collapsed {
-    grid-template-columns: 18px 1fr;
-  }
-
-  .terminal-body.right-collapsed .board-content {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* Resize handles */
-  .panel-resizer {
-    width: 2px;
-    background: rgba(255,255,255,0.045);
-    border: none;
-    cursor: col-resize;
-    position: relative;
-    z-index: 20;
-    flex-shrink: 0;
-    padding: 0;
-    transition: background 0.15s;
-  }
-  .panel-resizer:hover { background: rgba(77,143,245,0.42); }
-  /* Widen hit area without changing visual size */
-  .panel-resizer::before {
-    content: '';
+  .market-drawer-scrim {
     position: absolute;
-    inset: 0 -5px;
-  }
-  .panel-resizer.right {
-    width: 2px;
-    border-left: 1px solid rgba(255,255,255,0.035);
-    border-right: 0;
+    inset: 0;
+    z-index: 14;
+    border: none;
+    padding: 0;
+    background: rgba(3, 5, 8, 0.42);
+    cursor: pointer;
   }
 
   .left-rail {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--terminal-left-w, 232px);
+    z-index: 16;
     background: var(--sc-terminal-bg, #000);
-    border-right: 1px solid rgba(255,255,255,0.05);
+    border-right: 1px solid rgba(255,255,255,0.06);
     overflow: auto;
     display: flex;
     flex-direction: column;
     min-height: 0;
     scrollbar-gutter: stable;
+    box-shadow: 18px 0 40px rgba(0, 0, 0, 0.34);
   }
 
   .workspace-panel-head {
@@ -2006,6 +1553,22 @@
     background: rgba(255,255,255,0.015);
     flex-shrink: 0;
     min-height: 20px;
+  }
+
+  .left-rail-resizer {
+    position: absolute;
+    top: 0;
+    right: -2px;
+    bottom: 0;
+    width: 4px;
+    border: none;
+    padding: 0;
+    background: rgba(255,255,255,0.04);
+    cursor: col-resize;
+  }
+
+  .left-rail-resizer:hover {
+    background: rgba(77,143,245,0.4);
   }
 
   .workspace-panel-title {
@@ -2046,89 +1609,6 @@
     background: rgba(77,143,245,0.12);
   }
 
-  .collapsed-rail-tab {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: 1px solid rgba(77,143,245,0.14);
-    background:
-      linear-gradient(180deg, rgba(16, 25, 40, 0.92), rgba(9, 13, 20, 0.92));
-    color: rgba(160,198,238,0.82);
-    font-family: var(--sc-font-mono);
-    cursor: pointer;
-    transition: all 0.12s ease;
-  }
-
-  .collapsed-rail-tab:hover {
-    color: rgba(204,226,255,0.95);
-    border-color: rgba(77,143,245,0.28);
-    background: rgba(77,143,245,0.10);
-  }
-
-  .collapsed-rail-tab.left {
-    align-self: center;
-    width: 30px;
-    min-height: 120px;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    border-radius: 0 10px 10px 0;
-    border-width: 1px 1px 1px 0;
-    padding: 10px 0;
-  }
-
-  .collapsed-rail-tab.right {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 14;
-    min-height: 120px;
-    width: 30px;
-    padding: 10px 0;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    border-radius: 10px 0 0 10px;
-    border-width: 1px 0 1px 1px;
-    box-shadow: 0 10px 24px rgba(0,0,0,0.28);
-  }
-
-  .collapsed-rail-icon { font-size: 12px; }
-
-  .collapsed-rail-copy {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    line-height: 1;
-  }
-
-  .collapsed-rail-copy strong {
-    font-size: 8px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .collapsed-rail-copy small {
-    display: inline;
-    color: rgba(214,233,255,0.42);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 7px;
-  }
-
-  .workspace-panel-head.center {
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  }
-
-  .center-head-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-  }
-
   .workspace-panel-kicker,
   .workspace-panel-meta {
     font-family: var(--sc-font-mono);
@@ -2150,7 +1630,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-width: 640px;
+    min-width: 0;
     min-height: 0;
     position: relative;
   }
@@ -2159,25 +1639,17 @@
     overflow: hidden;
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto var(--terminal-analysis-w, 280px);
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 23vw, 336px);
     min-height: 0;
   }
-  .board-content.analysis-hidden .chart-area {
-    border-right: none;
-  }
-  .board-content.analysis-hidden {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   /* Chart area — center, takes all available width */
   .chart-area {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden auto;
+    overflow: hidden;
     border-right: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
     min-height: 0;
-    scrollbar-gutter: stable;
   }
   .chart-area :global(.chart-board) {
     flex: 1 1 auto;
@@ -2189,9 +1661,8 @@
 
   /* Analysis rail — always visible right panel, scrollable */
   .analysis-rail {
-    width: var(--terminal-analysis-w, 280px);
+    width: auto;
     min-width: 0;
-    max-width: 460px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -2205,39 +1676,28 @@
   .rail-header {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 4px 6px;
+    gap: 8px;
+    padding: 8px 10px;
     border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
     flex-shrink: 0;
-    min-height: 24px;
+    min-height: 40px;
     background:
       linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0)),
       rgba(255,255,255,0.015);
   }
-  .rail-width-indicator {
-    margin-left: auto;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    color: rgba(255,255,255,0.26);
-    letter-spacing: 0.08em;
-    padding-left: 5px;
-    border-left: 1px solid rgba(255,255,255,0.06);
-  }
-  .rail-header .rail-back + .rail-width-indicator {
-    margin-left: 0;
-  }
   .rail-mode {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: 9px;
+    font-weight: 700;
     letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.24);
+    color: rgba(255,255,255,0.34);
     text-transform: uppercase;
   }
   .rail-sym {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
-    color: rgba(255,255,255,0.72);
+    color: rgba(255,255,255,0.82);
     margin-left: auto;
     letter-spacing: 0.08em;
   }
@@ -2308,180 +1768,11 @@
   .sc-reason { font-size: 9px; color: rgba(255,255,255,0.35); text-align: right; line-height: 1.22; }
   .sc-loading{ font-size: 8px; color: rgba(255,255,255,0.2); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
 
-  /* Scan detail (VerdictCard below scan list) */
+  /* Scan detail */
   .scan-detail {
     flex: 1;
     min-height: 0;
     overflow: hidden;
-  }
-
-
-  .market-mini-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 3px;
-    padding: 4px 5px 5px;
-    overflow: hidden;
-  }
-
-  .microstructure-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-    gap: 3px;
-    padding: 4px 5px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.008);
-  }
-  .micro-card {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-    padding: 5px 6px;
-    border-radius: 3px;
-    border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.018);
-  }
-  .micro-card[data-tone='bull'] { background: rgba(74,222,128,0.05); }
-  .micro-card[data-tone='bear'] { background: rgba(248,113,113,0.05); }
-  .micro-card-header,
-  .micro-stat-row,
-  .depth-row,
-  .liq-cluster-row {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .micro-card-header {
-    justify-content: space-between;
-  }
-  .micro-title,
-  .micro-meta,
-  .micro-stat-row span,
-  .depth-price,
-  .liq-side,
-  .liq-price,
-  .liq-distance,
-  .liq-usd {
-    font-family: var(--sc-font-mono);
-  }
-  .micro-title {
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--sc-text-2);
-    text-transform: uppercase;
-  }
-  .micro-meta,
-  .micro-stat-row span,
-  .depth-price,
-  .liq-price,
-  .liq-distance,
-  .liq-usd {
-    font-size: 8px;
-    color: var(--sc-text-2);
-  }
-  .micro-stat-row {
-    flex-wrap: wrap;
-    justify-content: space-between;
-  }
-  .depth-ladders {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5px;
-  }
-  .depth-side {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .depth-row {
-    min-width: 0;
-  }
-  .ask-row {
-    justify-content: flex-end;
-  }
-  .depth-price {
-    width: 64px;
-    flex-shrink: 0;
-  }
-  .depth-bar-wrap {
-    flex: 1;
-    height: 6px;
-    border-radius: 2px;
-    background: rgba(255,255,255,0.04);
-    overflow: hidden;
-  }
-  .ask-wrap {
-    display: flex;
-    justify-content: flex-end;
-  }
-  .depth-bar {
-    height: 100%;
-    border-radius: 2px;
-  }
-  .depth-bar.bid { background: linear-gradient(90deg, rgba(52,196,112,0.25), rgba(52,196,112,0.75)); }
-  .depth-bar.ask { background: linear-gradient(90deg, rgba(232,85,85,0.75), rgba(232,85,85,0.25)); }
-  .liq-cluster-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .liq-cluster-row {
-    padding: 3px 5px;
-    border-radius: 2px;
-    background: rgba(255,255,255,0.03);
-  }
-  .liq-side {
-    width: 38px;
-    font-size: 7px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-  .liq-side[data-side='BUY'] { color: #4ade80; }
-  .liq-side[data-side='SELL'] { color: #f87171; }
-  .liq-price { flex: 1; }
-  .liq-distance { width: 48px; text-align: right; }
-  .liq-usd { width: 54px; text-align: right; color: var(--sc-text-1); }
-  .liq-empty {
-    margin: 0;
-    font-size: 9px;
-    color: var(--sc-text-3);
-  }
-  .mini-asset-card {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-    padding: 5px;
-    border-radius: 3px;
-    border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.016);
-    text-align: left;
-    cursor: pointer;
-  }
-  .mini-asset-card:hover { border-color: rgba(77,143,245,0.18); }
-  .mini-top,
-  .mini-meta-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-  }
-  .mini-symbol,
-  .mini-meta-row span {
-    font-family: var(--sc-font-mono);
-  }
-  .mini-symbol { font-size: 9px; font-weight: 700; color: var(--sc-text-0); letter-spacing: 0.04em; }
-  .mini-meta-row span { font-size: 8px; color: var(--sc-text-2); }
-  .mini-up { font-family: var(--sc-font-mono); font-size: 9px; color: #4ade80; }
-  .mini-down { font-family: var(--sc-font-mono); font-size: 9px; color: #f87171; }
-  .mini-reason {
-    margin: 0;
-    font-size: 9px;
-    line-height: 1.22;
-    color: var(--sc-text-2);
   }
 
   /* Empty state */
@@ -2534,32 +1825,26 @@
 
   /* Tablet */
   @media (max-width: 1024px) and (min-width: 769px) {
-    .terminal-body {
-      --terminal-left-w: 200px;
-    }
+    .left-rail { width: min(var(--terminal-left-w, 232px), 208px); }
   }
 
   /* Narrow desktop / tablet landscape */
   @media (max-width: 1360px) and (min-width: 769px) {
-    .terminal-body {
-      --terminal-left-w: 156px;
-      --terminal-analysis-w: 248px;
-    }
     .workspace-panel-head {
       padding-inline: 4px;
+    }
+    .board-content {
+      grid-template-columns: minmax(0, 1fr) 320px;
     }
   }
 
   /* Tablet — analysis rail gets narrower */
   @media (max-width: 1200px) and (min-width: 769px) {
-    .analysis-rail { width: var(--terminal-analysis-w, 260px); max-width: 340px; }
-    .microstructure-row { grid-template-columns: 1fr; }
-    .terminal-body {
-      --terminal-left-w: 144px;
-      --terminal-analysis-w: 232px;
-    }
     .center-board {
       min-width: 0;
+    }
+    .board-content {
+      grid-template-columns: minmax(0, 1fr) 320px;
     }
   }
 
@@ -2569,41 +1854,67 @@
       width: min(100%, calc(100% - 16px));
       height: auto;
       min-height: calc(100dvh - 12px);
+      padding-bottom: max(10px, var(--sc-consent-reserved-h, 0px));
       overflow: visible;
     }
-    .assistant-ribbon {
-      padding: 10px;
-    }
     .terminal-shell-head {
-      padding: 14px;
-      position: relative;
-      top: auto;
+      padding: 8px 10px 6px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .terminal-workspace,
+    .terminal-shell {
+      overflow: visible;
     }
     .terminal-body {
-      grid-template-columns: 1fr !important;
+      display: block;
     }
-    .pattern-alert-tray {
-      padding: 8px 10px;
+    .market-drawer-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(2, 4, 8, 0.62);
     }
-    .left-rail     { display: none; }
-    .panel-resizer { display: none; }
-    .analysis-rail { display: none; }   /* verdict rail — use MobileActiveBoard summary below chart */
+    .left-rail {
+      position: fixed;
+      inset: calc(var(--sc-header-h-mobile, 52px) + 62px) 10px calc(var(--sc-consent-reserved-h, 0px) + 12px) 10px;
+      width: auto;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      z-index: 61;
+      box-shadow: 0 22px 44px rgba(0, 0, 0, 0.42);
+    }
+    .left-rail-resizer { display: none; }
+    .analysis-rail { display: none; }
     .center-board  {
-      height: 100%;
+      height: auto;
       min-width: 0;
       max-width: 100%;
       overflow-x: hidden;
-      overflow-y: auto;
+      overflow-y: visible;
+      display: flex;
+      flex-direction: column;
     }
     /* Main ChartBoard lives in .desktop-board — must stay visible on narrow viewports for L1 chart + save capture */
     .board-content {
       grid-template-columns: minmax(0, 1fr);
+      display: block;
     }
     .chart-area {
       border-right: none;
+      overflow: visible;
     }
     .desktop-dock  { display: none; }
-    .mobile-board-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+    .mobile-board-wrap {
+      display: block;
+      position: sticky;
+      bottom: var(--sc-consent-reserved-h, 0px);
+      z-index: 30;
+      margin-top: auto;
+      padding-top: 8px;
+      background: linear-gradient(180deg, rgba(6,8,13,0), rgba(6,8,13,0.92) 24%, rgba(6,8,13,0.98));
+    }
   }
 
   /* Hide mobile wrap on desktop */
@@ -2615,9 +1926,5 @@
     .terminal-page {
       width: min(100%, calc(100% - 12px));
     }
-  }
-
-  .mobile-board-wrap {
-    display: none;
   }
 </style>
