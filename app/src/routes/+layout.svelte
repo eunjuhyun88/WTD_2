@@ -130,6 +130,10 @@
   #app.cogochi-mode {
     padding-top: 0;
   }
+  #app.terminal-mode {
+    --sc-consent-reserved-h: 0px;
+    --sc-consent-bottom: 16px;
+  }
   #app.home-mode {
     height: auto;
     min-height: 100dvh;
@@ -176,8 +180,9 @@
       overscroll-behavior-y: contain;
     }
     #main-content.terminal-route {
-      overflow: hidden;
-      overscroll-behavior: none;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
     }
     #main-content.home-route {
       overflow: visible;
