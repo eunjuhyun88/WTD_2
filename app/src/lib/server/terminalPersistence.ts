@@ -243,6 +243,22 @@ export async function getTerminalExportJobForUser(userId: string, id: string): P
   return row ? mapExportJobRow(row) : null;
 }
 
+export async function getLatestTerminalExportJobForUser(userId: string): Promise<TerminalExportJob | null> {
+  const result = await query(
+    `
+      SELECT id, export_type, status, symbol, timeframe, title, request_payload, result_payload,
+             error_message, created_at, updated_at, completed_at
+      FROM terminal_export_jobs
+      WHERE user_id = $1
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `,
+    [userId],
+  );
+  const row = result.rows[0];
+  return row ? mapExportJobRow(row) : null;
+}
+
 async function getTerminalExportJobById(id: string): Promise<TerminalExportJob | null> {
   const result = await query(
     `
@@ -369,6 +385,10 @@ export async function listPatternCaptures(
   const params: unknown[] = [userId];
   let idx = 2;
 
+  if (queryInput.id) {
+    where.push(`id = $${idx++}`);
+    params.push(queryInput.id);
+  }
   if (queryInput.symbol) {
     where.push(`symbol = $${idx++}`);
     params.push(queryInput.symbol);

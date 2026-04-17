@@ -17,7 +17,7 @@
     formatFunding
   } from '$lib/api/coinalyze';
   import { runTerminalScan, getScanHistory, getScanDetail } from '$lib/api/terminalApi';
-  import { AGENT_POOL } from '$lib/engine/agents';
+  import { AGENT_POOL } from '$lib/agents/definitions';
   import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
   import WarRoomHeaderSection from './warroom/WarRoomHeaderSection.svelte';
@@ -461,7 +461,9 @@
       }
 
       // ── 서버 API 1회 호출로 스캔 + DB 저장 동시 처리 ──
-      const res = await runTerminalScan(pair, timeframe);
+      const res = await runTerminalScan(pair, timeframe, {
+        preferAsync: import.meta.env.PUBLIC_TERMINAL_SCAN_ASYNC === '1',
+      });
       const detail = res.data;
 
       // ── 서버 응답 → AgentSignal 변환 ──

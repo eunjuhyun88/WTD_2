@@ -43,7 +43,8 @@ app
 - `/lab` is still strategy/backtest-centered and does not yet expose a canonical challenge intake path for saved captures.
 - the current docs require lab to begin after terminal has already created durable capture evidence.
 - the repository worktree is dirty, so this slice should stay narrow and app-only.
-- terminal capture success now exposes `Open in Lab` using `captureId`, and `/lab` can hydrate that capture into a source-visible draft strategy context.
+- the clean `origin/main` baseline still allowed legacy engine fallback inside `SaveSetupModal`, so this slice must explicitly keep terminal save capture-only.
+- `/lab` can now hydrate a saved `captureId` into a draft strategy context using a lightweight adapter without introducing hidden challenge persistence.
 
 ## Assumptions
 
@@ -60,12 +61,18 @@ app
 - keep `Save Setup` itself capture-only and make lab intake an explicit next action
 - use `captureId` query hydration into `/lab` rather than hidden save-time challenge creation
 - derive a lightweight draft evaluation context from the saved capture while keeping the source capture visible
+- branch split reason: prepare this slice from a clean latest-`origin/main` baseline so the handoff PR stays independent from unrelated terminal, engine, or research changes
+- prefer the smallest viable merge unit:
+  `capture-only save contract + capture lookup + lab intake adapter`
+  while excluding optional similarity/recommendation surfaces unless they are required for the save or intake path to work
+- enforce `snapshot.viewport` at the terminal capture route whenever `sourceFreshness.source === terminal_save_setup` so terminal saves always carry an exact chart range
+- verify this unit with targeted app tests plus `npm run check` from the clean worktree before staging or PR creation
 
 ## Next Steps
 
-1. replace the draft strategy adapter with canonical persisted challenge projection when the lab challenge bridge lands
-2. align terminal success copy and CTA hierarchy around `capture -> open in lab -> evaluate`
-3. verify the end-to-end browser flow visually after the next UI pass on terminal/lab
+1. run a browser pass for `Save Setup -> Open in Lab` on the clean worktree and confirm the capture summary appears in lab without duplicate strategy injection
+2. stage only the clean handoff files in `/tmp/wtd-v2-w0077-handoff` and keep unrelated local branch changes out of the PR
+3. open the isolated W-0077 PR once the browser flow is confirmed
 
 ## Exit Criteria
 
@@ -78,3 +85,6 @@ app
 - this slice is app-only
 - preserve `capture-first` semantics; do not auto-create hidden challenge artifacts in terminal save
 - treat the lab draft as an adapter over current strategy flow, not as canonical challenge completion
+- verification on the clean worktree currently passes with:
+  `npm test -- src/routes/api/terminal/pattern-captures/pattern-captures.test.ts src/lib/lab/captureDraft.test.ts`
+  and `npm run check`

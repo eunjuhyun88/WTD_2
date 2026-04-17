@@ -15,6 +15,7 @@
     bars?: any[];
     layerBarsMap?: Record<string, any[]>;
     newsItems?: Array<{ title: string; source: string; time: string; url?: string }>;
+    captureId?: string | null;
     onClose?: () => void;
   }
 
@@ -26,6 +27,7 @@
     bars = [],
     layerBarsMap = {},
     newsItems = [],
+    captureId = null,
     onClose,
   }: Props = $props();
 
@@ -60,6 +62,7 @@
   let structureMetrics = $derived(
     evidence.filter(e => !fundingMetrics.includes(e) && !oiMetrics.includes(e))
   );
+  let summaryEvidence = $derived(evidence.slice(0, 4));
 </script>
 
 <!-- Backdrop + Sheet -->
@@ -125,14 +128,28 @@
             <div class="section-gap">
               <WhyPanel why={verdict.reason} against={verdict.against} />
             </div>
-            {#if evidence.length > 0}
+            {#if summaryEvidence.length > 0}
               <div class="section-gap">
-                <p class="section-label">EVIDENCE</p>
-                <EvidenceGrid {evidence} cols={2} {bars} {layerBarsMap} />
+                <p class="section-label">KEY EVIDENCE</p>
+                <EvidenceGrid evidence={summaryEvidence} cols={2} {bars} {layerBarsMap} />
               </div>
             {/if}
             <div class="section-gap">
               <SourceRow sources={asset.sources} />
+            </div>
+            <div class="section-gap loop-next-card">
+              <p class="section-label">NEXT STEP</p>
+              <div class="loop-next-grid">
+                <div class="loop-next-copy">
+                  <strong>Chart review stays primary.</strong>
+                  <p>Use the chart to capture the visible range, then move the saved setup into Lab for evaluation.</p>
+                </div>
+                {#if captureId}
+                  <a class="loop-next-btn" href={`/lab?captureId=${encodeURIComponent(captureId)}`}>Open Saved Capture in Lab</a>
+                {:else}
+                  <span class="loop-next-hint">Save Setup on the chart to unlock Lab handoff.</span>
+                {/if}
+              </div>
             </div>
           {:else}
             <div class="tab-empty">No verdict available</div>
@@ -306,6 +323,10 @@
     justify-content: space-between;
     padding: 0 16px 12px;
     flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--sc-bg-1);
   }
 
   .header-left {
@@ -352,6 +373,10 @@
     flex-shrink: 0;
     overflow-x: auto;
     gap: 0;
+    position: sticky;
+    top: 45px;
+    z-index: 2;
+    background: var(--sc-bg-1);
   }
 
   .tab-btn {
@@ -383,6 +408,62 @@
 
   .section-gap {
     margin-top: 14px;
+  }
+
+  .loop-next-card {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 179, 237, 0.16);
+    background: rgba(99, 179, 237, 0.05);
+  }
+
+  .loop-next-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .loop-next-copy {
+    display: grid;
+    gap: 4px;
+  }
+
+  .loop-next-copy strong,
+  .loop-next-copy p,
+  .loop-next-btn,
+  .loop-next-hint {
+    font-family: var(--sc-font-mono);
+  }
+
+  .loop-next-copy strong {
+    font-size: 11px;
+    color: var(--sc-text-0);
+  }
+
+  .loop-next-copy p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.45;
+    color: var(--sc-text-2);
+  }
+
+  .loop-next-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 700;
+    color: #d7e8ff;
+    background: rgba(99, 179, 237, 0.16);
+    border: 1px solid rgba(99, 179, 237, 0.3);
+  }
+
+  .loop-next-hint {
+    font-size: 10px;
+    color: var(--sc-text-3);
   }
 
   .section-label {

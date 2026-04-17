@@ -112,6 +112,57 @@ function pickWarning(payload: JsonRecord, data: JsonRecord | null): string | und
   return undefined;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export type RunTerminalScanOptions = {
+  /** When true, POST uses async job (202) and polls until completed. */
+  preferAsync?: boolean;
+  signal?: AbortSignal;
+  poll?: { intervalMs?: number; maxMs?: number };
+};
+
+async function pollScanJob(
+  jobId: string,
+  signal: AbortSignal,
+  poll?: RunTerminalScanOptions['poll'],
+): Promise<RunScanResponse> {
+  const intervalMs = poll?.intervalMs ?? 1500;
+  const maxMs = poll?.maxMs ?? 120_000;
+  const deadline = Date.now() + maxMs;
+
+  while (Date.now() < deadline) {
+    if (signal.aborted) throw new Error('Aborted');
+    const res = await fetch(`/api/terminal/scan/jobs/${jobId}`, { signal });
+    const payload: unknown = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(parseErrorMessage(payload, res.status));
+    }
+    if (!isRecord(payload)) throw new Error('Invalid job poll response');
+
+    if (payload.success === false || payload.state === 'failed') {
+      throw new Error(parseErrorMessage(payload, res.status));
+    }
+
+    if (payload.state === 'completed' || (payload.success === true && payload.scanId && payload.data)) {
+      const data = extractDataRecord(payload);
+      if (!data) throw new Error('Malformed scan payload');
+      return {
+        success: true,
+        scanId: pickString(payload.scanId, pickString(data.scanId, '')),
+        persisted: payload.persisted === true,
+        warning: pickWarning(payload, data),
+        data: data as unknown as TerminalScanDetail,
+      };
+    }
+
+    await sleep(intervalMs);
+  }
+
+  throw new Error('Terminal scan job timed out');
+}
+
 async function apiCall<T extends JsonRecord>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
@@ -130,15 +181,42 @@ async function apiCall<T extends JsonRecord>(url: string, options?: RequestInit)
 
 // ─── Terminal Scan API ──────────────────────────────────────
 
-/** Run a new terminal scan */
+/** Run a new terminal scan (sync 200, or async 202 + poll when `preferAsync`). */
 export async function runTerminalScan(
   pair = 'BTC/USDT',
   timeframe = '4h',
+  options?: RunTerminalScanOptions,
 ): Promise<RunScanResponse> {
-  const payload = await apiCall<JsonRecord>('/api/terminal/scan', {
-    method: 'POST',
-    body: JSON.stringify({ pair, timeframe }),
+  const body = JSON.stringify({
+    pair,
+    timeframe,
+    ...(options?.preferAsync ? { async: true } : {}),
   });
+
+  const postSignal = options?.signal ?? AbortSignal.timeout(options?.preferAsync ? 30_000 : 10_000);
+  const res = await fetch('/api/terminal/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    signal: postSignal,
+  });
+
+  if (res.status === 202) {
+    const accept: unknown = await res.json().catch(() => null);
+    if (!isRecord(accept) || typeof accept.jobId !== 'string') {
+      throw new Error('Invalid async scan handshake');
+    }
+    const pollSignal = options?.signal ?? AbortSignal.timeout(130_000);
+    return pollScanJob(accept.jobId, pollSignal, options?.poll);
+  }
+
+  const payload: unknown = await res.json().catch(() => null);
+  if (!res.ok || !isSuccessEnvelope(payload)) {
+    throw new Error(parseErrorMessage(payload, res.status));
+  }
+  if (!isRecord(payload)) {
+    throw new Error(`Invalid API response (${res.status})`);
+  }
 
   const data = extractDataRecord(payload);
   if (!data) throw new Error('Malformed scan payload');

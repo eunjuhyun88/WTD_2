@@ -58,6 +58,8 @@ export interface TerminalBoardModel {
   quantRegime: {
     bucket: 'risk_on_leverage' | 'short_squeeze' | 'deleveraging' | 'neutral';
     label: string;
+    /** One-line trader-facing “why this box exists” */
+    hint: string;
     tone: 'bull' | 'bear' | 'neutral' | 'warn';
     oiDeltaPct: number | null;
     fundingPct: number | null;
@@ -66,6 +68,7 @@ export interface TerminalBoardModel {
     state: 'bullish_divergence' | 'bearish_divergence' | 'aligned' | 'unknown';
     score: number;
     label: string;
+    hint: string;
   };
 }
 
@@ -151,6 +154,16 @@ export function buildTerminalBoardModel(
     deleveraging: 'Deleveraging',
     neutral: 'Balanced',
   } as const;
+  const quantHintMap = {
+    risk_on_leverage:
+      'OI rising while longs pay funding — crowded leverage; sharp moves either way.',
+    short_squeeze:
+      'OI building with negative funding — shorts may be forced to cover into strength.',
+    deleveraging:
+      'OI falling while funding favors longs — leverage is unwinding; trend may be fragile.',
+    neutral:
+      'No extreme OI–funding conflict on this snapshot — regime is not the main story.',
+  } as const;
   const quantToneMap = {
     risk_on_leverage: 'warn',
     short_squeeze: 'bull',
@@ -166,6 +179,17 @@ export function buildTerminalBoardModel(
         : cvdState === 'buying' || cvdState === 'selling'
           ? 'aligned'
           : 'unknown';
+
+  const cvdHintMap = {
+    bullish_divergence:
+      'Aggressive buying while price is weak — possible absorption / reversal.',
+    bearish_divergence:
+      'Selling into strength — distribution; watch for pullback.',
+    aligned:
+      'Flow and price agree — trend moves are more “trustworthy” than on divergence.',
+    unknown:
+      'CVD state unclear vs 24h price — treat flow as secondary until it conflicts.',
+  } as const;
 
   return {
     orderbookTone: getOrderbookTone(imbalanceRatio),
@@ -187,6 +211,7 @@ export function buildTerminalBoardModel(
     quantRegime: {
       bucket: quantBucket,
       label: quantLabelMap[quantBucket],
+      hint: quantHintMap[quantBucket],
       tone: quantToneMap[quantBucket],
       oiDeltaPct,
       fundingPct,
@@ -202,6 +227,7 @@ export function buildTerminalBoardModel(
             : cvdDivergenceState === 'aligned'
               ? 'Price and CVD aligned'
               : 'No clear divergence',
+      hint: cvdHintMap[cvdDivergenceState],
     },
   };
 }

@@ -11,7 +11,12 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { runOpportunityScan, extractAlerts, type OpportunityScanResult, type OpportunityAlert } from '$lib/engine/opportunityScanner';
+import {
+  runOpportunityScan,
+  extractAlerts,
+  type OpportunityScanResult,
+  type OpportunityAlert
+} from '$lib/server/opportunity/scanner';
 import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
 import { createSharedPublicRouteCache, type PublicRouteCacheStatus } from '$lib/server/publicRouteCache';
 import { query } from '$lib/server/db';
