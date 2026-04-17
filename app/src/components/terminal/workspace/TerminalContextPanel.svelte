@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { TerminalEvidence } from '$lib/types/terminal';
   import type { DerivativesEnvelope, SnapshotEnvelope } from '$lib/contracts/terminalBackend';
-  import { toneFromRecallScore, type StatusStripItem } from '$lib/terminal/terminalDerived';
+  import { toneFromRecallScore } from '$lib/terminal/terminalDerived';
   import VerdictHeader from './VerdictHeader.svelte';
   import ActionStrip from './ActionStrip.svelte';
   import EvidenceGrid from './EvidenceGrid.svelte';
@@ -24,12 +24,9 @@
     activeTab?: string;
     onTabChange?: (t: string) => void;
     onAction?: (text: string) => void;
-    onCapture?: () => void;
     onPinToggle?: () => void;
-    onCompare?: () => void;
     onAlertToggle?: () => void;
     bars?: any[];
-    statusItems?: StatusStripItem[];
     layerBarsMap?: Record<string, any[]>;
     isPinned?: boolean;
     hasSavedAlert?: boolean;
@@ -41,12 +38,9 @@
     activeTab = 'summary',
     onTabChange,
     onAction,
-    onCapture,
     onPinToggle,
-    onCompare,
     onAlertToggle,
     bars = [],
-    statusItems = [],
     layerBarsMap = {},
     isPinned = false,
     hasSavedAlert = false,
@@ -112,56 +106,23 @@
       : value.toFixed(4);
   }
 
-  function formatPanelChange(value: number | null | undefined): string {
-    if (value == null || !Number.isFinite(value)) return '—';
-    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-  }
-
   const panelSymbol = $derived(
     String(analysisData?.symbol ?? analysisData?.snapshot?.symbol ?? 'BTCUSDT').replace('USDT', '')
   );
-  const panelPrice = $derived(
-    analysisData?.price ?? analysisData?.snapshot?.last_close ?? null
-  );
-  const panelChange = $derived(
-    analysisData?.change24h
-      ?? analysisData?.snapshot?.change24h
-      ?? analysisData?.snapshot?.price_change_pct_24h
-      ?? null
-  );
   const panelTimeframe = $derived(String(analysisData?.snapshot?.timeframe ?? analysisData?.timeframe ?? '4h').toUpperCase());
-  const mtfCells = $derived.by(() => {
-    const direction = verdict?.direction ?? 'neutral';
-    const labels = ['5m', '15m', '1H', '4H'];
-    return labels.map((label, index) => {
-      let tone: 'bullish' | 'bearish' | 'neutral' = 'neutral';
-      if (direction === 'bullish' && index < 3) tone = 'bullish';
-      if (direction === 'bearish' && index < 3) tone = 'bearish';
-      return {
-        label,
-        tone,
-        value: tone === 'bullish' ? '↑ Bull' : tone === 'bearish' ? '↓ Bear' : '→ Flat',
-      };
-    });
-  });
   function formatDistance(value: number): string {
     if (!Number.isFinite(value)) return '—';
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   }
 
-  function requestBackendAction(kind: 'compare' | 'alert' | 'entry' | 'risk') {
+  function requestBackendAction(kind: 'alert' | 'entry' | 'risk') {
     const symbol = `${panelSymbol}USDT`;
     const prompts = {
-      compare: `Compare ${symbol} against ETHUSDT and SOLUSDT using backend terminal evidence. Return verdict, action, evidence, and sources.`,
       alert: `Draft backend scanner alert conditions for ${symbol} on ${panelTimeframe}. Include trigger, confirmation, disqualifiers, and invalidation.`,
       entry: `Review the entry plan for ${symbol} on ${panelTimeframe} using current backend analysis. Do not execute trades; return entry, stop, targets, risk, and evidence.`,
       risk: `Run a risk check for ${symbol} on ${panelTimeframe}. Return crowding, liquidity, invalidation, avoid actions, and sources.`,
     } satisfies Record<typeof kind, string>;
     onAction?.(prompts[kind]);
-  }
-
-  function openChartView() {
-    onAction?.(`Open chart-focused view for ${panelSymbol}USDT on ${panelTimeframe} and summarize key levels.`);
   }
 
   const panelConclusion = $derived(
@@ -186,40 +147,20 @@
       panelTimeframe,
     })
   );
-  const compactStatusItems = $derived(statusItems.filter((item) => item.label !== 'Board').slice(0, 5));
+  const summaryEvidence = $derived(evidence.slice(0, 4));
 </script>
 
 <aside class="context-panel">
   <div class="panel-header">
     <div class="panel-symbol-line">
+      <span class="panel-context">Analysis</span>
       <span class="panel-symbol">{panelSymbol}/USDT</span>
-      <span class="panel-context">Terminal Analysis</span>
-      <span class="panel-bias" data-bias={verdict?.direction ?? 'neutral'}>{panelModel.header.biasLabel}</span>
     </div>
-    <div class="panel-price-line">
-      <strong>{panelModel.header.priceLabel}</strong>
-      <span class="panel-change" data-tone={panelModel.header.changeTone}>
-        {panelModel.header.changeLabel}
-      </span>
-      <small>Sources {panelModel.header.sourceCount}</small>
+    <div class="panel-actions">
+      <button type="button" class:active={isPinned} onclick={() => onPinToggle?.()}>{isPinned ? 'Pinned' : 'Pin'}</button>
+      <button type="button" class:active={hasSavedAlert} onclick={() => onAlertToggle?.()}>{hasSavedAlert ? 'Alert Saved' : 'Alert+'}</button>
     </div>
-  <div class="panel-actions">
-    <button type="button" class:active={isPinned} onclick={() => onPinToggle?.()}>{isPinned ? 'Pinned' : 'Pin'}</button>
-    <button type="button" onclick={() => onCompare?.()}>Compare</button>
-    <button type="button" onclick={openChartView}>Chart</button>
-    <button type="button" class:active={hasSavedAlert} onclick={() => onAlertToggle?.()}>{hasSavedAlert ? 'Alert Saved' : 'Alert+'}</button>
   </div>
-  {#if compactStatusItems.length > 0}
-    <div class="panel-status-strip">
-      {#each compactStatusItems as item}
-        <span class="panel-status-pill" data-tone={item.tone}>
-          <em>{item.label}</em>
-          <strong>{item.value}</strong>
-        </span>
-      {/each}
-    </div>
-  {/if}
-</div>
 
   <div class="panel-tabs">
     {#each TABS as t}
@@ -283,8 +224,19 @@
             {/each}
           </div>
         {/if}
-        <div class="divider"></div>
-        <EvidenceGrid {evidence} cols={2} {bars} {layerBarsMap} />
+        {#if summaryEvidence.length > 0}
+          <div class="divider"></div>
+          <p class="section-label">Key evidence</p>
+          <div class="flow-list">
+            {#each summaryEvidence as item}
+              <div class="flow-row" data-state={item.state === 'bullish' ? 'bullish' : item.state === 'bearish' ? 'bearish' : item.state === 'warning' ? 'warning' : 'neutral'}>
+                <span>{item.metric}</span>
+                <strong>{item.value}</strong>
+                <small>{item.interpretation}</small>
+              </div>
+            {/each}
+          </div>
+        {/if}
         <div class="divider"></div>
         <WhyPanel why={verdict.reason} against={verdict.against} />
         {#if patternRecallMatches.length > 0}
@@ -301,25 +253,7 @@
           </div>
         {/if}
         <div class="divider"></div>
-        <p class="section-label">Multi-timeframe alignment</p>
-        <div class="mtf-row">
-          {#each mtfCells as cell}
-            <button type="button" class="mtf-cell" data-tone={cell.tone}>
-              <span>{cell.label}</span>
-              <strong>{cell.value}</strong>
-            </button>
-          {/each}
-        </div>
-        <div class="divider"></div>
         <p class="section-label">Evidence sources · {SOURCES.length} cited</p>
-        <div class="source-grid">
-          {#each SOURCES as source}
-            <button type="button" class="source-grid-item" data-category={source.category}>
-              <span>{source.label}</span>
-              <small>{source.freshness}</small>
-            </button>
-          {/each}
-        </div>
         <SourceRow sources={SOURCES} />
       {:else}
         <div class="empty-panel">
@@ -364,7 +298,6 @@
           </div>
           <div class="panel-action-row">
             <button type="button" class="panel-primary" onclick={() => requestBackendAction('entry')}>Review Entry</button>
-            <button type="button" onclick={() => onCapture?.()}>Save Challenge</button>
           </div>
           <p class="section-label">Venue</p>
           <p class="text-val">Binance Perp · Spot · Market engine recent</p>
@@ -499,103 +432,52 @@
   }
   .panel-header {
     flex-shrink: 0;
-    display: grid;
-    gap: 3px;
-    padding: 4px 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 8px;
     border-bottom: 1px solid rgba(255,255,255,0.08);
     background:
       linear-gradient(180deg, rgba(77,143,245,0.045), rgba(255,255,255,0.005)),
       rgba(10,13,18,0.98);
   }
-  .panel-symbol-line,
-  .panel-price-line,
-  .panel-actions {
+  .panel-symbol-line {
     display: flex;
     align-items: center;
+    gap: 6px;
     min-width: 0;
-  }
-  .panel-symbol-line {
-    gap: 4px;
   }
   .panel-symbol {
     font-family: var(--sc-font-mono);
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.03em;
     color: rgba(247,242,234,0.92);
     white-space: nowrap;
   }
   .panel-context {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     font-family: var(--sc-font-mono);
-    font-size: 7px;
+    font-size: 8px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: rgba(247,242,234,0.34);
   }
-  .panel-bias {
-    margin-left: auto;
-    flex-shrink: 0;
-    font-family: var(--sc-font-mono);
-    font-size: 7px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(247,242,234,0.52);
-    border: 1px solid rgba(255,255,255,0.09);
-    border-radius: 2px;
-    padding: 1px 4px;
-    background: rgba(255,255,255,0.035);
-  }
-  .panel-bias[data-bias='bullish'] {
-    color: #8fdd9d;
-    border-color: rgba(143,221,157,0.22);
-    background: rgba(143,221,157,0.07);
-  }
-  .panel-bias[data-bias='bearish'] {
-    color: #f19999;
-    border-color: rgba(241,153,153,0.22);
-    background: rgba(241,153,153,0.07);
-  }
-  .panel-price-line {
-    gap: 5px;
-    align-items: baseline;
-  }
-  .panel-price-line strong {
-    font-family: var(--sc-font-mono);
-    font-size: 13px;
-    line-height: 1;
-    color: rgba(247,242,234,0.9);
-  }
-  .panel-change {
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    color: rgba(247,242,234,0.45);
-  }
-  .panel-change[data-tone='bull'] { color: #8fdd9d; }
-  .panel-change[data-tone='bear'] { color: #f19999; }
-  .panel-price-line small {
-    margin-left: auto;
-    font-family: var(--sc-font-mono);
-    font-size: 7px;
-    color: rgba(247,242,234,0.28);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
   .panel-actions {
-    gap: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
   }
   .panel-actions button {
     font-family: var(--sc-font-mono);
-    font-size: 7px;
+    font-size: 8px;
     color: rgba(247,242,234,0.48);
     background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.075);
-    border-radius: 2px;
-    padding: 2px 5px;
+    border-radius: 3px;
+    padding: 3px 6px;
     cursor: pointer;
   }
   .panel-actions button:hover {
@@ -603,46 +485,6 @@
     border-color: rgba(131,188,255,0.22);
     background: rgba(77,143,245,0.07);
   }
-  .panel-status-strip {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-top: 1px;
-  }
-  .panel-status-strip::-webkit-scrollbar {
-    display: none;
-  }
-  .panel-status-pill {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 5px;
-    border-radius: 2px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.03);
-  }
-  .panel-status-pill em,
-  .panel-status-pill strong {
-    font-family: var(--sc-font-mono);
-    font-style: normal;
-  }
-  .panel-status-pill em {
-    font-size: 7px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(247,242,234,0.38);
-  }
-  .panel-status-pill strong {
-    font-size: 8px;
-    color: rgba(247,242,234,0.82);
-  }
-  .panel-status-pill[data-tone='bull'] strong { color: #8fdd9d; }
-  .panel-status-pill[data-tone='bear'] strong { color: #f19999; }
-  .panel-status-pill[data-tone='warn'] strong { color: #e9c167; }
-  .panel-status-pill[data-tone='info'] strong { color: #83bcff; }
   .panel-tabs {
     display: flex; border-bottom: 1px solid rgba(255,255,255,0.08);
     overflow-x: auto; flex-shrink: 0;
@@ -675,18 +517,12 @@
   .section-label { font-family: var(--sc-font-mono); font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sc-text-2); margin: 0; }
   .text-val { font-size: 10px; color: var(--sc-text-1); margin: 0; }
 
-  .mtf-row,
-  .entry-grid,
-  .source-grid {
+  .entry-grid {
     display: grid;
     gap: 3px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .mtf-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .entry-grid,
-  .source-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mtf-cell,
   .entry-cell,
-  .source-grid-item,
   .level-row,
   .prob-row,
   .action-line,
@@ -695,18 +531,7 @@
     background: rgba(255,255,255,0.018);
     border-radius: 2px;
   }
-  .mtf-cell,
-  .source-grid-item {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    padding: 4px 5px;
-    text-align: left;
-    cursor: pointer;
-  }
-  .mtf-cell span,
   .entry-cell span,
-  .source-grid-item small,
   .level-label,
   .prob-row span,
   .action-line span,
@@ -717,19 +542,6 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
-  .mtf-cell strong,
-  .source-grid-item span {
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    color: rgba(247,242,234,0.74);
-  }
-  .mtf-cell[data-tone='bullish'] strong { color: #8fdd9d; }
-  .mtf-cell[data-tone='bearish'] strong { color: #f19999; }
-  .mtf-cell[data-tone='neutral'] strong { color: rgba(247,242,234,0.55); }
-  .source-grid-item[data-category='Market'] span { color: #83bcff; }
-  .source-grid-item[data-category='Model'] span { color: #c4a4ff; }
-  .source-grid-item[data-category='News'] span { color: rgba(247,242,234,0.74); }
-
   .entry-cell {
     display: flex;
     flex-direction: column;
