@@ -7,6 +7,7 @@
    */
 
   import { mobileMode } from '$lib/stores/mobileMode';
+  import MobileEmptyState from './MobileEmptyState.svelte';
 
   type AlertStatus = 'pending' | 'agreed' | 'disagreed';
   type AlertReason = 'valid' | 'late' | 'noisy' | 'invalid' | 'almost';
@@ -103,10 +104,19 @@
 
   <div class="alerts-list">
     {#if sortedAlerts.length === 0 && !loading}
-      <div class="alerts-empty">
-        <p class="empty-text">대기중인 신호 없음</p>
-        <p class="empty-hint">새 신호가 감지되면 여기에 표시됩니다</p>
-      </div>
+      <MobileEmptyState
+        icon="bell"
+        headline="아직 알림 없음"
+        subline="스캐너가 15분마다 패턴을 찾아 여기로 올려요."
+        primaryCta={{
+          label: '패턴 검토하러 가기',
+          onClick: () => mobileMode.setActive('chart'),
+        }}
+        secondaryCta={{
+          label: '워치리스트 보기',
+          onClick: () => mobileMode.setActive('scan'),
+        }}
+      />
     {:else}
       {#each sortedAlerts as alert (alert.id)}
         <div class="alert-card" class:pending={alert.status === 'pending'}>
@@ -220,30 +230,6 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-  }
-
-  .alerts-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 160px;
-    gap: 6px;
-  }
-
-  .empty-text {
-    font-family: var(--sc-font-mono);
-    font-size: 12px;
-    color: var(--sc-text-2, rgba(255,255,255,0.5));
-    margin: 0;
-  }
-
-  .empty-hint {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    color: var(--sc-text-3, rgba(255,255,255,0.3));
-    margin: 0;
-    text-align: center;
   }
 
   .alert-card {

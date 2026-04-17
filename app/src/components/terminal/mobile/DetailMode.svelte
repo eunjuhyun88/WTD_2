@@ -12,6 +12,7 @@
   import { mobileMode } from '$lib/stores/mobileMode';
   import { activePair } from '$lib/stores/activePairStore';
   import type { TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
+  import MobileEmptyState from './MobileEmptyState.svelte';
 
   interface Props {
     verdict?: TerminalVerdict | null;
@@ -82,7 +83,18 @@
 
   <!-- Scrollable body -->
   <div class="tab-body">
-    {#if activeTab === 'verdict'}
+    {#if !verdict && activeTab === 'verdict'}
+      <!-- No analysis yet — guide user to the chart -->
+      <MobileEmptyState
+        icon="chart"
+        headline="차트에서 시작하세요"
+        subline="구간을 선택하면 여기에 분석이 표시됩니다."
+        primaryCta={{
+          label: '차트로 이동',
+          onClick: () => mobileMode.setActive('chart'),
+        }}
+      />
+    {:else if activeTab === 'verdict'}
       {#if verdict}
         <div class="verdict-card">
           <div class="verdict-direction">

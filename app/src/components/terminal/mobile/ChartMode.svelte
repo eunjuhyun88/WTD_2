@@ -12,19 +12,60 @@
    *     required for pan. Pinch zoom always passes through.
    *   - Outside range-mode, native LWC interactions are unmodified.
    *
+   * First-use onboarding:
+   *   - MobileOnboardingOverlay is mounted on top; one-shot via localStorage.
+   *   - A 3-second fade hint "드래그해서 구간을 지정하세요" shows when chart
+   *     has data and save mode is not yet active.
+   *
    * TODO: wire chartSaveMode gesture intercept layer when Save Setup is
    * exposed in the mobile Chart header row.
    */
 
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import CanvasHost from '../chart/CanvasHost.svelte';
   import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
   import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
+  import MobileOnboardingOverlay from './MobileOnboardingOverlay.svelte';
   import { activePairState } from '$lib/stores/activePairStore';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
   // Derive symbol (e.g. 'BTC/USDT' → 'BTCUSDT') and tf from live store
   const symbol = $derived($activePairState.pair.replace('/', ''));
   const tf = $derived($activePairState.timeframe);
+
+  /**
+   * First-use drag hint — visible for 3 seconds then fades.
+   * Only shown when chart data is present and save mode not active.
+   * Gated by the same localStorage key as the onboarding overlay; once
+   * the overlay has been dismissed (key set), the hint has served its
+   * purpose and we suppress it.
+   */
+  const STORAGE_KEY = 'cogochi.mobileOnboarded';
+  const STORAGE_VERSION = 'v1';
+
+  let showHint = $state(false);
+
+  onMount(() => {
+    if (!browser) return;
+    const seen = localStorage.getItem(STORAGE_KEY);
+    if (seen !== STORAGE_VERSION) {
+      // Delay slightly so overlay shows first; hint fades in behind it
+      // but becomes visible only after overlay is dismissed.
+      const showTimer = setTimeout(() => {
+        if (!$chartSaveMode.active) {
+          showHint = true;
+        }
+      }, 600);
+      const hideTimer = setTimeout(() => {
+        showHint = false;
+      }, 3600); // 600ms delay + 3000ms visible
+      return () => {
+        clearTimeout(showTimer);
+        clearTimeout(hideTimer);
+      };
+    }
+  });
 </script>
 
 <div class="chart-mode">
@@ -38,7 +79,15 @@
         {/if}
         <PhaseBadge phase={null} />
       </div>
+
+      <!-- First-use drag hint: visible for 3s then fades; never shown during range-mode -->
+      {#if showHint && !$chartSaveMode.active}
+        <div class="drag-hint" aria-hidden="true">드래그해서 구간을 지정하세요</div>
+      {/if}
     </div>
+
+    <!-- First-visit onboarding overlay — mounts above everything in the canvas area -->
+    <MobileOnboardingOverlay />
   </div>
 
   <div class="indicator-area">
@@ -109,5 +158,29 @@
     letter-spacing: 0.1em;
     color: var(--sc-text-3, rgba(255,255,255,0.2));
     text-transform: uppercase;
+  }
+
+  /* First-use hint: bottom-center, semi-transparent, fades after mount via animation */
+  .drag-hint {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--sc-font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(247, 242, 234, 0.52);
+    white-space: nowrap;
+    pointer-events: none;
+    /* 3-second fade: appear briefly then dissolve */
+    animation: hint-fade 3s cubic-bezier(0.4, 0, 1, 1) forwards;
+  }
+
+  @keyframes hint-fade {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    70%  { opacity: 1; }
+    100% { opacity: 0; }
   }
 </style>
