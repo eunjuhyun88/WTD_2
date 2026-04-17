@@ -121,6 +121,7 @@ export async function fetchMacroCalendar(): Promise<MacroCalendarItem[]> {
 
 export async function fetchPatternCaptures(query: Partial<PatternCaptureQuery> = {}): Promise<PatternCaptureRecord[]> {
   const params = new URLSearchParams();
+  if (query.id) params.set('id', query.id);
   if (query.symbol) params.set('symbol', query.symbol);
   if (query.timeframe) params.set('timeframe', query.timeframe);
   if (query.verdict) params.set('verdict', query.verdict);
@@ -131,6 +132,11 @@ export async function fetchPatternCaptures(query: Partial<PatternCaptureQuery> =
   if (!res.ok) return [];
   const payload = parsePatternCaptureResponse(await readJson(res));
   return payload.records;
+}
+
+export async function fetchPatternCaptureById(id: string): Promise<PatternCaptureRecord | null> {
+  const records = await fetchPatternCaptures({ id, limit: 1 });
+  return records[0] ?? null;
 }
 
 export async function createPatternCapture(input: PatternCaptureCreateRequest): Promise<PatternCaptureRecord | null> {

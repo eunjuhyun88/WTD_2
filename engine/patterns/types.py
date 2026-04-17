@@ -1,4 +1,4 @@
-"""Pattern Engine types — PhaseCondition, PatternObject, SymbolPhaseState.
+"""Pattern Engine types — contracts, runtime state, and replay evidence.
 
 This is a HIGHER LEVEL abstraction than engine/challenge/ (feature vector matching).
 PatternObject defines a pattern as an ordered sequence of Phase conditions,
@@ -14,7 +14,7 @@ v2: Added feature_snapshot and confidence to PhaseTransition for reproducibility
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 import uuid
 
 @dataclass
@@ -24,7 +24,14 @@ class PhaseCondition:
     label: str                           # human-readable
     required_blocks: list[str]           # ALL must fire
     optional_blocks: list[str] = field(default_factory=list)   # bonus confidence
+    required_any_groups: list[list[str]] = field(default_factory=list)  # one block per group
+    soft_blocks: list[str] = field(default_factory=list)       # score bonus but non-gating
     disqualifier_blocks: list[str] = field(default_factory=list)  # ANY disqualifies
+    score_weights: dict[str, float] = field(default_factory=dict)
+    phase_score_threshold: float | None = None
+    transition_window_bars: int | None = None
+    anchor_from_previous_phase: bool = False
+    anchor_phase_id: str | None = None
     min_bars: int = 1                    # must persist this many bars before advancing
     max_bars: int = 48                   # timeout bars
     timeframe: str = "1h"
@@ -53,6 +60,9 @@ class SymbolPhaseState:
     phase_entered_at: datetime | None = None
     bars_in_phase: int = 0
     phase_history: list[tuple[str, datetime]] = field(default_factory=list)
+    phase_transition_ids: dict[str, str] = field(default_factory=dict)
+    last_transition_id: str | None = None
+    last_phase_scores: dict[str, float] = field(default_factory=dict)
     invalidated: bool = False
 
 @dataclass
@@ -124,3 +134,35 @@ class PhaseTransitionRecord:
     feature_snapshot: dict | None = None
     data_quality: dict | None = None
     created_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class PhaseAttemptRecord:
+    """Durable evidence for why a phase did not advance."""
+    attempt_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    symbol: str = ""
+    pattern_slug: str = ""
+    timeframe: str = "1h"
+    from_phase: str = ""
+    attempted_phase: str = ""
+    attempted_at: datetime = field(default_factory=datetime.now)
+    phase_score: float = 0.0
+    missing_blocks: list[str] = field(default_factory=list)
+    failed_reason: str = ""
+    anchor_transition_id: str | None = None
+    scan_id: str | None = None
+    blocks_triggered: list[str] = field(default_factory=list)
+    feature_snapshot: dict | None = None
+
+
+@dataclass
+class ReplayStateResult:
+    """Replay-first restoration summary for one symbol/pattern window."""
+    pattern_slug: str
+    symbol: str
+    timeframe: str
+    current_phase: str
+    phase_history: list[tuple[str, datetime]]
+    last_anchor_transition_id: str | None = None
+    candidate_status: str = "none"
+    phase_scores_by_bar: list[dict[str, Any]] = field(default_factory=list)

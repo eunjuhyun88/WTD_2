@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 
 from data_cache.fetch_binance import fetch_klines_max
-from data_cache.fetch_binance_perp import fetch_perp_max
+from data_cache.fetch_binance_perp import fetch_futures_klines_max, fetch_perp_max
 from data_cache.registry import MACRO_SOURCES, ONCHAIN_SOURCES
 from data_cache.resample import (  # noqa: F401  (re-exported)
     SUPPORTED_TF_STRINGS,
@@ -99,7 +99,13 @@ def load_klines(
                 f"{symbol}_1h not cached at {path} and offline=True"
             )
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        df = fetch_klines_max(symbol, "1h")
+        try:
+            df = fetch_klines_max(symbol, "1h")
+        except RuntimeError as exc:
+            spot_error = str(exc)
+            if "Invalid symbol" not in spot_error and "no klines returned" not in spot_error:
+                raise
+            df = fetch_futures_klines_max(symbol, "1h")
         df.to_csv(path)
         return df
 
@@ -121,7 +127,9 @@ def load_perp(
     """
     path = perp_cache_path(symbol)
     if path.exists():
-        return pd.read_csv(path, index_col=0, parse_dates=True)
+        df = pd.read_csv(path, index_col=0, parse_dates=[0])
+        df.index = pd.to_datetime(df.index, utc=True, format="mixed")
+        return df
     if offline:
         return None
     CACHE_DIR.mkdir(parents=True, exist_ok=True)

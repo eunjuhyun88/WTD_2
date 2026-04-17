@@ -1,0 +1,420 @@
+{
+  "research_run_id": "5d907210-0282-4f8a-a63d-434b37ab0192",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "benchmark_pack_id": "tradoor-oi-reversal-v1__ptb-tradoor-v1",
+  "winner_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+  "variant_results": [
+    {
+      "variant_id": "f1380b9d-71be-421e-8197-2cb5621a8dcc",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "0150175b-91b9-493e-94cf-4f2b2f618f4f",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "73beead8-f2cd-45d4-b141-c1cee44ba483",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "a1d0b68b-b61f-4607-8521-7edfa02b15a1",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "89ea50a0-546c-44e7-a57a-e9ba8746f5ab",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "0a9a658e-69b8-46f9-85f4-2464e4f10be4",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "8fadd510-82be-4cf9-a8a6-705d1a3b2518",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "68f34daf-763c-457e-b6df-3ee355707eeb",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-reclaim-early",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "35449ffe-6c54-476b-9531-636d68461188",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    }
+  ],
+  "created_at": "2026-04-16T18:40:08.266755+00:00"
+}

@@ -1,82 +1,85 @@
 import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
 import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
-
 export type { ChartViewportSnapshot };
 
-function inRange(time: number, from: number, to: number): boolean {
-  return time >= from && time <= to;
+function inRange(t: number, from: number, to: number): boolean {
+  return t >= from && t <= to;
 }
 
-export function chartTimeToUnixSeconds(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'object' && value !== null && 'year' in value && 'month' in value && 'day' in value) {
-    const businessDay = value as { year: number; month: number; day: number };
-    return Math.floor(Date.UTC(businessDay.year, businessDay.month - 1, businessDay.day) / 1000);
+/** Convert lightweight-charts `Time` to unix seconds (UTC). */
+export function chartTimeToUnixSeconds(t: unknown): number {
+  if (typeof t === 'number' && Number.isFinite(t)) return t;
+  if (typeof t === 'object' && t !== null && 'year' in t && 'month' in t && 'day' in t) {
+    const b = t as { year: number; month: number; day: number };
+    return Math.floor(Date.UTC(b.year, b.month - 1, b.day) / 1000);
   }
   return 0;
 }
 
+/**
+ * Slice chart payload to [timeFrom, timeTo] (inclusive, bar open times).
+ * Scalar indicator fields (e.g. emaSourceTf) are copied through.
+ */
 export function slicePayloadToViewport(
   payload: ChartSeriesPayload,
   timeFrom: number,
   timeTo: number,
   anchorTime?: number,
 ): ChartViewportSnapshot {
-  const klines = payload.klines.filter((bar) => inRange(bar.time, timeFrom, timeTo));
-  const rawIndicators = payload.indicators as Record<string, unknown>;
+  const klines = payload.klines.filter((k) => inRange(k.time, timeFrom, timeTo));
+  const raw = payload.indicators as Record<string, unknown>;
   const indicators: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(rawIndicators)) {
-    if (key === 'macd' && Array.isArray(value)) {
-      indicators[key] = (value as Array<{ time: number }>).filter((point) => inRange(point.time, timeFrom, timeTo));
+  for (const [key, val] of Object.entries(raw)) {
+    if (key === 'macd' && Array.isArray(val)) {
+      indicators[key] = (val as Array<{ time: number }>).filter((p) => inRange(p.time, timeFrom, timeTo));
       continue;
     }
-    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'time' in (value[0] as object)) {
-      indicators[key] = (value as Array<{ time: number }>).filter((point) => inRange(point.time, timeFrom, timeTo));
+    if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && val[0] !== null && 'time' in (val[0] as object)) {
+      indicators[key] = (val as Array<{ time: number }>).filter((p) => inRange(p.time, timeFrom, timeTo));
       continue;
     }
-    indicators[key] = value;
+    indicators[key] = val;
   }
 
-  const maxBars = 400;
-  let slicedKlines = klines;
-  let from = timeFrom;
-  let to = timeTo;
-
-  if (slicedKlines.length > maxBars) {
-    slicedKlines = slicedKlines.slice(-maxBars);
-    from = slicedKlines[0].time;
-    to = slicedKlines[slicedKlines.length - 1].time;
-    const truncatedIndicators: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(indicators)) {
-      if (key === 'macd' && Array.isArray(value)) {
-        truncatedIndicators[key] = (value as Array<{ time: number }>).filter((point) => inRange(point.time, from, to));
+  const MAX_BARS = 400;
+  let outKlines = klines;
+  let t0 = timeFrom;
+  let t1 = timeTo;
+  if (outKlines.length > MAX_BARS) {
+    outKlines = outKlines.slice(-MAX_BARS);
+    t0 = outKlines[0].time;
+    t1 = outKlines[outKlines.length - 1].time;
+    const reInd: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(indicators)) {
+      if (key === 'macd' && Array.isArray(val)) {
+        reInd[key] = (val as Array<{ time: number }>).filter((p) => inRange(p.time, t0, t1));
         continue;
       }
-      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'time' in (value[0] as object)) {
-        truncatedIndicators[key] = (value as Array<{ time: number }>).filter((point) => inRange(point.time, from, to));
+      if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object' && val[0] !== null && 'time' in (val[0] as object)) {
+        reInd[key] = (val as Array<{ time: number }>).filter((p) => inRange(p.time, t0, t1));
         continue;
       }
-      truncatedIndicators[key] = value;
+      reInd[key] = val;
     }
     return {
-      timeFrom: from,
-      timeTo: to,
+      timeFrom: t0,
+      timeTo: t1,
       tf: payload.tf,
-      barCount: slicedKlines.length,
+      barCount: outKlines.length,
       anchorTime,
-      klines: slicedKlines,
-      indicators: truncatedIndicators,
+      klines: outKlines,
+      indicators: reInd,
     };
   }
 
   return {
-    timeFrom: from,
-    timeTo: to,
+    timeFrom: t0,
+    timeTo: t1,
     tf: payload.tf,
-    barCount: slicedKlines.length,
+    barCount: outKlines.length,
     anchorTime,
-    klines: slicedKlines,
+    klines: outKlines,
     indicators,
   };
 }

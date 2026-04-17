@@ -11,9 +11,9 @@ app
 ## Scope
 
 - Parse rich `candidate_records` from `/api/patterns` in `PatternStatusBar`.
+- Carry selected pattern candidate context into `ChartBoard`.
 - Let `SaveSetupModal` post to `/api/engine/captures` when a candidate transition id is available.
 - Preserve the existing `/api/engine/challenge/create` fallback for manual/general setup saves.
-- Keep the capture context in a shared store so terminal page orchestration stays out of scope.
 
 ## Non-Goals
 
@@ -27,16 +27,17 @@ app
 - `AGENTS.md`
 - `work/active/W-0039-terminal-save-setup-capture-link.md`
 - `app/src/components/terminal/workspace/PatternStatusBar.svelte`
+- `app/src/components/terminal/workspace/ChartBoard.svelte`
 - `app/src/components/terminal/workspace/SaveSetupModal.svelte`
-- `app/src/lib/stores/patternCaptureContext.ts`
+- `app/src/routes/terminal/+page.svelte`
 
 ## Facts
 
 - Engine `/patterns/candidates` now exposes `candidate_records` with `candidate_transition_id`.
 - Engine `/captures` accepts `pattern_candidate` records only when the transition context matches.
-- This slice can ship without touching `app/src/routes/terminal/+page.svelte` or `ChartBoard.svelte`.
+- Existing app worktree has unrelated terminal persistence changes; this slice should avoid `app/src/routes/terminal/+page.svelte` if possible.
 - `/api/engine/[...path]` proxies browser calls like `/api/engine/captures` to the engine.
-- `npm run check -- --fail-on-warnings` and targeted terminal persistence tests pass on the clean branch.
+- `npm --prefix app run check` is green after moving capture context out of `terminal/+page.svelte`.
 
 ## Assumptions
 
@@ -69,6 +70,6 @@ app
 
 ## Handoff Checklist
 
-- Active branch: `codex/w-0039-terminal-save-setup-capture-link-clean`
-- Verification status: `npm run check -- --fail-on-warnings` passes. `npm test -- --run src/lib/contracts/terminalPersistence.test.ts` passes.
-- Remaining blockers: none inside this slice.
+- Active branch: `task/w-0024-terminal-attention-implementation`
+- Verification status: `git diff --cached --check` passes. `npm --prefix app run check` passes.
+- Remaining blockers: `app/src/routes/terminal/+page.svelte` still has unrelated unstaged terminal persistence changes and must stay outside this commit.

@@ -26,6 +26,7 @@ from ledger.types import (
     PatternOutcome,
     PatternStats,
 )
+from patterns.types import PhaseAttemptRecord
 
 log = logging.getLogger("engine.ledger")
 
@@ -417,6 +418,7 @@ class LedgerRecordStore:
         score_count = _count("score")
         outcome_count = _count("outcome")
         verdict_count = _count("verdict")
+        phase_attempt_count = _count("phase_attempt")
         training_run_count = _count("training_run")
         model_count = _count("model")
         capture_rate = capture_count / entry_count if entry_count > 0 else None
@@ -428,6 +430,7 @@ class LedgerRecordStore:
             score_count=score_count,
             outcome_count=outcome_count,
             verdict_count=verdict_count,
+            phase_attempt_count=phase_attempt_count,
             training_run_count=training_run_count,
             model_count=model_count,
             capture_to_entry_rate=capture_rate,
@@ -536,6 +539,29 @@ class LedgerRecordStore:
                 payload={
                     "user_verdict": outcome.user_verdict,
                     "user_note": outcome.user_note,
+                },
+            )
+        )
+
+    def append_phase_attempt_record(self, attempt: PhaseAttemptRecord) -> Path:
+        return self.append(
+            PatternLedgerRecord(
+                record_type="phase_attempt",
+                pattern_slug=attempt.pattern_slug,
+                symbol=attempt.symbol,
+                transition_id=attempt.anchor_transition_id,
+                scan_id=attempt.scan_id,
+                payload={
+                    "timeframe": attempt.timeframe,
+                    "from_phase": attempt.from_phase,
+                    "attempted_phase": attempt.attempted_phase,
+                    "attempted_at": attempt.attempted_at.isoformat() if attempt.attempted_at else None,
+                    "phase_score": attempt.phase_score,
+                    "missing_blocks": attempt.missing_blocks,
+                    "failed_reason": attempt.failed_reason,
+                    "anchor_transition_id": attempt.anchor_transition_id,
+                    "blocks_triggered": attempt.blocks_triggered,
+                    "feature_snapshot": attempt.feature_snapshot,
                 },
             )
         )

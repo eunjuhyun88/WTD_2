@@ -1,15 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/engine/cogochi/layerEngine', () => ({
+vi.mock('$lib/chart/analysisPrimitives', () => ({
 	computeIndicatorSeries: () => ({
 		bbUpper: [110, 111],
 		bbMiddle: [100, 101],
 		bbLower: [90, 91],
 		ema20: [99, 100],
 	}),
-}));
-
-vi.mock('$lib/engine/cogochi/supportResistance', () => ({
 	detectSupportResistance: () => [],
 }));
 

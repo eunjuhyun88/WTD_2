@@ -6,7 +6,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { query } from '$lib/server/db.js';
-import type { MemoryRecord, RetrievalQuery } from '$lib/engine/v4/types.js';
+import type { MemoryRecord, RetrievalQuery } from '$lib/contracts/researchV4';
 
 // ─── Search interface (swappable to Qdrant later) ──────────────
 

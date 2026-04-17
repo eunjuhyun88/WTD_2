@@ -1,6 +1,6 @@
 <script lang="ts">
   import { FACTOR_BLOCKS, FACTOR_CATEGORIES } from '$lib/stores/strategyStore';
-  import type { Strategy, ConditionBlock, ExitConfig, RiskConfig } from '$lib/engine/backtestEngine';
+  import type { Strategy, ConditionBlock, ExitConfig, RiskConfig } from '$lib/lab/backtest';
 
   const { strategy, onAddCondition, onRemoveCondition, onToggleCondition, onUpdateCondition, onUpdateExit, onUpdateRisk, onUpdateDirection } = $props<{
     strategy: Strategy;

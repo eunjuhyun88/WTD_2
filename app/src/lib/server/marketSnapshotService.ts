@@ -2,10 +2,15 @@
 // Market Snapshot + Context Assembler (B-05)
 // ═══════════════════════════════════════════════════════════════
 
-import type { MarketContext } from '$lib/engine/factorEngine';
-import { analyzeTrend, detectDivergence } from '$lib/engine/trend';
-import type { DivergenceSignal, TrendAnalysis } from '$lib/engine/types';
-import { calcEMA, calcRSI } from '$lib/engine/indicators';
+import type { MarketContext } from '$lib/contracts/marketContext';
+import {
+  analyzeTrend,
+  calcEMA,
+  calcRSI,
+  detectDivergence,
+  type DivergenceSignal,
+  type TrendAnalysis,
+} from '$lib/market/technicalAnalysis';
 import { pairToSymbol, type Binance24hr, type BinanceKline } from '$lib/server/providers/binance';
 import { readRaw, klinesRawIdForTimeframe } from '$lib/server/providers/rawSources';
 import { KnownRawId } from '$lib/contracts/ids';

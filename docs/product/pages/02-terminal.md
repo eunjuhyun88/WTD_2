@@ -200,6 +200,7 @@ Non-goals for the preview:
 - no fake backtest metrics rendered without lab evaluation
 - no hidden auto-activation of live monitoring
 - no local-only similarity logic that diverges from the canonical capture substrate
+
 ## Data Dependencies
 
 - Analysis/market orchestration endpoints for board + panel data

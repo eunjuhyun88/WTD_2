@@ -42,14 +42,11 @@ contract
 
 ## Facts
 
-- the current core-loop spec treats capture as chart-context aware, but it does not yet define selected-range capture as the canonical Day-1 input artifact
-- `ChartBoard.svelte` already has `getViewportForSave()` that slices the visible chart range into a save payload candidate
-- existing candidate capture flow already persists chart context, feature snapshots, block scores, and transition linkage
-- current `Save Setup` behavior is partly challenge-like and partly pattern-capture-like, which leaves the true loop input underspecified
-- the user-facing product intent is to save exactly the chart segment being inspected, not an abstract symbol bookmark detached from visible evidence
-- traders also need to paste thesis-like narrative criteria into Save Setup and later retrieve prior captures that look structurally similar on-chart
-- the chart-range core-loop contract is already merged on `main` via `#66`; the remaining slice here is the recall/reuse behavior on top of that contract
-- the stale `codex/w-0051-chart-range-capture-clean` branch mixed similarity recall with unrelated deletions, so this slice is being rebuilt on top of current `origin/main`
+- `ChartBoard.svelte` now exposes `getViewportForSave()` and `chartViewportCapture.ts` slices the visible range into a durable `ChartViewportSnapshot` with OHLCV plus rendered indicator series.
+- `terminalPersistence.ts` now carries explicit viewport and similarity contracts, and `SaveSetupModal.svelte` writes viewport-backed pattern-capture records before forwarding `pattern_capture_id` into engine capture/challenge saves.
+- the first similar-capture recall path now exists as an app-owned heuristic (`patternCaptureSimilarity.ts` + `/api/terminal/pattern-captures/similar`) that scores both note text and selected-range chart shape.
+- product docs now frame `/terminal` as `trade review -> select range -> Save Setup`, but the current branch still mixes this lane with W-0048 chart UI and W-0054/W-0055 copy/doc work.
+- targeted app tests for capture similarity/controller/session routes and `npm run check -- --fail-on-warnings` pass on the current branch.
 
 ## Assumptions
 
@@ -66,38 +63,48 @@ contract
 ## Decisions
 
 - `Save Setup` is canonically a chart-range capture, not a generic save bookmark
+- `/terminal` must be documented first as the trade-review and selected-range capture surface; query/challenge composition is secondary and must not redefine the core-loop start
 - a capture must always carry a selected time range, even when the save originates from an engine candidate
 - manual pattern seeds and candidate-linked captures share one substrate: selected-range evidence plus optional candidate/transition linkage
 - the minimum saved evidence must include OHLCV range, rendered indicator slices, visible timeframe, symbol, and current pattern/runtime context when available
 - free-form research notes belong with the same selected-range capture so later recall can use both narrative criteria and chart-shape evidence
 - initial similar-capture recall may use app-owned heuristic matching over saved capture records before a dedicated engine retrieval plane exists
+- the first concrete implementation is visible-range capture; brush/drag selection is a later enhancement on top of the same substrate
 - the core loop starts from durable selected-range evidence, because that is the artifact future evaluation, labeling, and refinement can actually reuse
 - this slice should merge as a product/contract unit separate from refinement methodology and separate from strategy-replication research artifacts
 - branch split reason: commit `7b845a7` mixed chart-range core-loop spec changes with refinement/control-plane and replication-harness work, so this slice needs a separate product/contract PR
 - viewport snapshot serialization belongs to the capture substrate even if the first data source is `ChartBoard.getViewportForSave()`
 - chart metrics dock, MTF overlays, chart-focus mode, and structure-explain visuals are explicitly out of scope for this lane and stay in **W-0048**
-- this rebuild must carry only similarity-recall files plus the minimum terminal page/work-item updates required after `#66`
+- current root worktree contains large `ChartBoard.svelte` and `/terminal/+page.svelte` diffs from W-0048 plus copy/doc lanes, so W-0051 must reapply only the capture seam on top of `origin/main` instead of copying those files wholesale
 
 ## Next Steps
 
-1. publish the rebuilt similarity-recall merge unit on top of current `origin/main`
-2. keep this slice limited to `SaveSetupModal`, terminal persistence contract/api, similarity ranking logic, and the similar-captures route
-3. leave richer retrieval/backfill logic for follow-up work after this clean merge lands
+1. rebuild this lane on a clean `origin/main` branch using only `SaveSetupModal.svelte`, `chartViewportCapture.ts`, `terminalPersistence.ts`, the similar-capture route/helper, and the minimal `ChartBoard` / `+page.svelte` plumbing needed for viewport capture
+2. keep the selected-range payload explicit in the product docs and contract docs; do not let W-0048 chart UI or W-0054 copy edits redefine the merge unit
+3. decide whether the next implementation step is brush selection, richer indicator payloads, or capture-side annotation overlays
 
 ## Exit Criteria
 
 - canonical docs define selected-range capture as the Save Setup contract
 - the minimum capture payload is explicit enough for app and engine implementation
 - manual pattern seeding and candidate capture are described as one coherent core-loop path
-- future implementation can proceed without re-deriving the loop from chat
+- the first app implementation can create viewport-backed captures and preview similar saved captures without re-deriving the loop from chat
 
 ## Handoff Checklist
 
-- this slice is design/contract work, not the UI implementation itself
+- this slice is now product/contract plus the first app capture seam; it is not a full chart UI lane
 - existing capture and candidate linkage work remains valid, but now sits under a stricter selected-range contract
-- next implementation should start from `ChartBoard.getViewportForSave()` rather than inventing a parallel save primitive
-- rebuilt similarity lane:
-  - source branch: `codex/w-0051-chart-range-capture-clean`
-  - rebuild worktree: `/private/tmp/wtd-pr68-rebased`
-  - verification target: app check plus targeted similarity unit test
-- do not mix `engine/ops`, `W-0052`, or other unrelated deletions into this branch
+- `CollectedMetricsDock.svelte`, `mtfAlign.ts`, `StructureExplainViz.svelte`, chart-focus toggles, and unrelated copy-only files should not be included when this lane is reconstructed
+- clean design lane created:
+  - branch: `codex/w-0051-chart-range-capture-design`
+  - worktree: `/tmp/wtd-v2-w0051-capture-design`
+  - doc-only seed commit: `ae0a5db`
+- merged baseline already on `main` before this lane starts:
+  - `#52` analyze contract consumer merged
+  - `#53` save-setup capture link merged
+  - `#55` terminal page integration merged
+  - `#56` optional pattern seed scout lane merged
+- do not duplicate `#52`; it is already merged and should be treated as baseline, not active work
+- verification completed on the current mixed branch:
+  - `npm test -- --run src/lib/terminal/terminalController.test.ts src/routes/api/terminal/session/session.test.ts src/routes/api/terminal/watchlist/watchlist.test.ts src/lib/terminal/patternCaptureSimilarity.test.ts`
+  - `npm run check -- --fail-on-warnings`

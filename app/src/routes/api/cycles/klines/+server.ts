@@ -7,7 +7,7 @@
 // Server-side in-memory cache to avoid repeated fetches.
 
 import { json, error, type RequestHandler } from '@sveltejs/kit';
-import type { BinanceKline } from '$lib/engine/types';
+import type { BinanceKline } from '$lib/contracts/marketContext';
 import { getCycle, dateToMs, BACKTEST_INTERVALS } from '$lib/data/cycles';
 import type { BacktestInterval } from '$lib/data/cycles';
 

@@ -6,7 +6,6 @@
 
 import type { MarketContext } from '../factorEngine';
 import type { BinanceKline } from '../types';
-import { calcEMA, calcBollingerBands } from '../indicators';
 import type { MetricStore } from '../metrics/store';
 
 import type {
@@ -16,6 +15,7 @@ import type {
   L11Result, L12Result, L15Result,
   CvdState, MtfConfluence, Regime, VolatilityState,
 } from './types';
+import { computeIndicatorSeries as computeChartIndicatorSeries } from '$lib/chart/analysisPrimitives';
 
 import { computeL1Wyckoff } from './layers/l1Wyckoff';
 import { computeL3VSurge } from './layers/l3VSurge';
@@ -668,16 +668,5 @@ export function computeSignalSnapshot(
 // ─── Indicator Series ────────────────────────────────────────
 
 export function computeIndicatorSeries(klines: BinanceKline[]): IndicatorSeries {
-  if (klines.length < 20) return {};
-
-  const closes = klines.map(k => k.close);
-  const bb = calcBollingerBands(closes, 20, 2);
-  const ema20Raw = calcEMA(closes, 20);
-
-  return {
-    bbUpper: Array.from(bb.upper) as number[],
-    bbMiddle: Array.from(bb.middle) as number[],
-    bbLower: Array.from(bb.lower) as number[],
-    ema20: Array.from(ema20Raw) as number[],
-  };
+  return computeChartIndicatorSeries(klines);
 }

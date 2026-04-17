@@ -9,13 +9,14 @@ TRADOOR phase min_bars:
 """
 from __future__ import annotations
 
+import copy
 from datetime import datetime, timezone, timedelta
 
 import pytest
 
 from patterns.library import TRADOOR_OI_REVERSAL
 from patterns.state_machine import PatternStateMachine
-from patterns.types import PhaseTransition
+from patterns.types import PhaseAttemptRecord, PhaseTransition
 
 
 def ts(offset_hours: int = 0) -> datetime:
@@ -28,8 +29,11 @@ def ts(offset_hours: int = 0) -> datetime:
 FAKE_DUMP_BLOCKS = ["recent_decline", "funding_extreme"]
 ARCH_ZONE_BLOCKS = ["sideways_compression"]
 REAL_DUMP_BLOCKS = ["oi_spike_with_dump", "volume_spike"]
-ACCUMULATION_BLOCKS = ["higher_lows_sequence", "funding_flip", "oi_hold_after_spike"]
-BREAKOUT_BLOCKS = ["breakout_above_high", "oi_change", "volume_spike"]
+ACCUMULATION_BLOCKS = ["higher_lows_sequence", "positive_funding_bias", "oi_hold_after_spike"]
+BREAKOUT_BLOCKS = [
+    "breakout_from_pullback_range",
+    "oi_expansion_confirm",
+]
 
 QUIET_BLOCKS: list[str] = []
 
@@ -260,6 +264,78 @@ class TestDisqualifiers:
         assert sm.get_current_phase(sym) == "REAL_DUMP"
 
 
+class TestScoreBasedAccumulation:
+    def test_positive_funding_bias_satisfies_any_group(self) -> None:
+        sm = PatternStateMachine(TRADOOR_OI_REVERSAL)
+        sym = "ARBUSDT"
+
+        _walk_to_accumulation(sm, sym)
+
+        assert sm.get_current_phase(sym) == "ACCUMULATION"
+        state = sm.get_symbol_state(sym)
+        assert state is not None
+        assert state.last_phase_scores["ACCUMULATION"] >= 0.85
+
+    def test_missing_any_group_records_phase_attempt(self) -> None:
+        attempts: list[PhaseAttemptRecord] = []
+        sm = PatternStateMachine(TRADOOR_OI_REVERSAL, on_phase_attempt=attempts.append)
+        sym = "MKRUSDT"
+
+        h = _walk_to_real_dump(sm, sym)
+        sm.evaluate(sym, QUIET_BLOCKS, ts(h))
+        t = sm.evaluate(sym, ["higher_lows_sequence", "oi_hold_after_spike"], ts(h + 1))
+
+        assert t is None
+        assert sm.get_current_phase(sym) == "REAL_DUMP"
+        # ARCH_ZONE also uses required_any_groups now, so attempts from the
+        # earlier FAKE_DUMP→ARCH_ZONE path are also recorded. Filter down to
+        # the ACCUMULATION attempt which this test is actually asserting on.
+        accum_attempts = [
+            attempt
+            for attempt in attempts
+            if attempt.attempted_phase == "ACCUMULATION"
+        ]
+        assert len(accum_attempts) == 1
+        assert accum_attempts[0].failed_reason == "missing_any_group"
+        assert "positive_funding_bias" in accum_attempts[0].missing_blocks
+
+    def test_transition_window_blocks_late_accumulation(self) -> None:
+        pattern = copy.deepcopy(TRADOOR_OI_REVERSAL)
+        real_dump = next(phase for phase in pattern.phases if phase.phase_id == "REAL_DUMP")
+        real_dump.max_bars = 20
+
+        attempts: list[PhaseAttemptRecord] = []
+        sm = PatternStateMachine(pattern, on_phase_attempt=attempts.append)
+        sym = "LATEUSDT"
+
+        h = _walk_to_real_dump(sm, sym)
+        for offset in range(13):
+            sm.evaluate(sym, QUIET_BLOCKS, ts(h + offset))
+
+        t = sm.evaluate(sym, ACCUMULATION_BLOCKS, ts(h + 13))
+
+        assert t is None
+        assert sm.get_current_phase(sym) == "REAL_DUMP"
+        assert attempts[-1].failed_reason == "outside_transition_window"
+
+    def test_custom_threshold_can_block_low_score(self) -> None:
+        pattern = copy.deepcopy(TRADOOR_OI_REVERSAL)
+        accumulation = next(phase for phase in pattern.phases if phase.phase_id == "ACCUMULATION")
+        accumulation.phase_score_threshold = 0.95
+
+        attempts: list[PhaseAttemptRecord] = []
+        sm = PatternStateMachine(pattern, on_phase_attempt=attempts.append)
+        sym = "THRESHUSDT"
+
+        h = _walk_to_real_dump(sm, sym)
+        sm.evaluate(sym, QUIET_BLOCKS, ts(h))
+        t = sm.evaluate(sym, ACCUMULATION_BLOCKS, ts(h + 1))
+
+        assert t is None
+        assert sm.get_current_phase(sym) == "REAL_DUMP"
+        assert attempts[-1].failed_reason == "below_score_threshold"
+
+
 class TestMissingRequiredBlock:
     """Missing required block prevents transition."""
 
@@ -270,7 +346,10 @@ class TestMissingRequiredBlock:
         sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
 
         sm.evaluate(sym, QUIET_BLOCKS, ts(1))
-        t = sm.evaluate(sym, ["volume_dryup"], ts(2))
+        # ARCH_ZONE now accepts volume_dryup via required_any_groups, so use
+        # a block that is neither in required_any_groups nor a disqualifier
+        # to validate the "no advance without any qualifying block" path.
+        t = sm.evaluate(sym, ["oi_change"], ts(2))
         assert t is None
         assert sm.get_current_phase(sym) == "FAKE_DUMP"
 

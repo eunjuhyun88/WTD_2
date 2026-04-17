@@ -25,7 +25,7 @@ Public API:
     CacheMiss                                   # raised when offline=True
 """
 from data_cache.fetch_binance import fetch_klines_max
-from data_cache.fetch_binance_perp import fetch_perp_max
+from data_cache.fetch_binance_perp import fetch_futures_klines_max, fetch_perp_max
 from data_cache.loader import (
     CacheMiss,
     cache_path,
@@ -43,6 +43,7 @@ __all__ = [
     "CacheMiss",
     "SUPPORTED_TF_STRINGS",
     "cache_path",
+    "fetch_futures_klines_max",
     "fetch_klines_max",
     "fetch_perp_max",
     "load_klines",

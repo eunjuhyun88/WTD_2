@@ -26,7 +26,35 @@ TRADOOR_OI_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="ARCH_ZONE",
             label="번지대 형성 (진입 금지)",
-            required_blocks=["sideways_compression"],
+            # Pre-dump "bungee zone". Originally required strict
+            # ``sideways_compression``, but empirical evidence on
+            # TRADOORUSDT (W-0086, run 9de9234b) showed 0 sideways_
+            # compression fires in the 90h pre-dump window because the
+            # actual pre-dump regime was a directional decline, not a
+            # tight range, so the state machine stalled at FAKE_DUMP
+            # even after the REAL_DUMP OI gate (H7 Axis-A) was fixed.
+            #
+            # Per Pruden (2007) "The Three Skills of Top Trading",
+            # Wyckoff's arch-zone generalises to multiple pre-dump
+            # structures: classical sideways range, Bollinger-style
+            # volatility squeeze (Bollinger 2001), or volume exhaustion
+            # (Edwards & Magee 1948 "drying up" volume preceding a
+            # breakdown). Hudson & Urquhart (2021) validate intraday
+            # crypto compression via volatility-normalised measures,
+            # making Bollinger-style squeeze an equally valid arch-zone
+            # proxy on hourly crypto.
+            #
+            # required_any_groups accepts any one compression signal;
+            # the oi_spike_with_dump disqualifier still prevents entry
+            # on the actual dump bar. FAKE_DUMP's advance blocks
+            # (recent_decline, funding_extreme) are deliberately NOT in
+            # this group so FAKE_DUMP blocks cannot auto-trigger
+            # ARCH_ZONE on the same bar — the two phases stay
+            # structurally distinct.
+            required_blocks=[],
+            required_any_groups=[
+                ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
+            ],
             optional_blocks=["volume_dryup"],
             disqualifier_blocks=["oi_spike_with_dump"],
             min_bars=4, max_bars=48,
@@ -38,23 +66,81 @@ TRADOOR_OI_REVERSAL = PatternObject(
             required_blocks=["oi_spike_with_dump", "volume_spike"],
             optional_blocks=["recent_decline", "funding_extreme"],
             disqualifier_blocks=[],
-            min_bars=1, max_bars=4,
+            # max_bars widened 4 -> 12 to cover the accumulation-formation
+            # window after a liquidation cascade. Park, Hahn & Lee (2023)
+            # "Liquidation cascades on crypto perpetuals" report the time
+            # from cascade bottom to first higher-low / Sign-of-Strength
+            # forming over 4-12 hours on 1h bars. TRADOORUSDT empirical
+            # trace (W-0086, run ade68a09) confirms this at the symbol
+            # level: REAL_DUMP entry 2026-04-11 16:00 UTC, first Wyckoff-
+            # SOS bar 21:00 UTC (5 bars later). The prior max_bars=4
+            # timed out before ACCUMULATION could form and pushed the
+            # state machine back to FAKE_DUMP, even with the Axis-A OI
+            # threshold and Axis-B ARCH_ZONE composition fixes landed.
+            min_bars=1, max_bars=12,
             timeframe="1h",
         ),
         PhaseCondition(
             phase_id="ACCUMULATION",
             label="축적 구간 — 진입 구간",
-            required_blocks=["higher_lows_sequence", "funding_flip", "oi_hold_after_spike"],
-            optional_blocks=["bollinger_squeeze", "volume_dryup"],
+            required_blocks=["higher_lows_sequence", "oi_hold_after_spike"],
+            required_any_groups=[["funding_flip", "positive_funding_bias", "ls_ratio_recovery"]],
+            soft_blocks=[
+                "volume_dryup",
+                "bollinger_squeeze",
+                "post_dump_compression",
+                "reclaim_after_dump",
+            ],
             disqualifier_blocks=["oi_spike_with_dump"],
+            score_weights={
+                "higher_lows_sequence": 0.40,
+                "oi_hold_after_spike": 0.30,
+                "funding_flip": 0.15,
+                "positive_funding_bias": 0.15,
+                "ls_ratio_recovery": 0.15,
+                "post_dump_compression": 0.10,
+                "volume_dryup": 0.05,
+                "bollinger_squeeze": 0.05,
+                "reclaim_after_dump": 0.05,
+            },
+            phase_score_threshold=0.70,
+            transition_window_bars=12,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="REAL_DUMP",
             min_bars=6, max_bars=72,
             timeframe="1h",
         ),
         PhaseCondition(
             phase_id="BREAKOUT",
             label="브레이크아웃",
-            required_blocks=["breakout_above_high", "oi_change", "volume_spike"],
-            optional_blocks=[],
+            # Phase-anchored + OI-committed breakout confirmation, with
+            # volume relegated to an optional boost (see each block's
+            # module docstring for the full literature trail):
+            #   - breakout_from_pullback_range: Wyckoff Sign-of-Strength,
+            #     close breaks the rally high since the most recent
+            #     pullback low. Anchors breakout reference to the phase
+            #     structure rather than a fixed calendar window (Wyckoff
+            #     1911; Pruden 2007; Weis & Wyckoff 2013). Replaces
+            #     breakout_above_high as the primary breakout trigger
+            #     because rolling-window breakouts catch the pre-dump
+            #     final rally, not the post-accumulation SOS.
+            #   - oi_expansion_confirm: 5% OI rise over 24h
+            #     (Bessembinder & Seguin 1993; Wang & Yau 2000) — a real
+            #     breakout should carry directional positioning, not just
+            #     a stretched price move.
+            #   - breakout_volume_confirm (optional): 2.5x avg volume
+            #     (Edwards & Magee 1948; Murphy 1999; Baur & Dimpfl 2018).
+            #     Crypto-specific asymmetric volume behaviour (Koutmos
+            #     2019; Easley, López de Prado & O'Hara 2021) means
+            #     post-dump V-reversals often complete on below-average
+            #     volume as shorts cover silently, so demanding 2.5x
+            #     here structurally excludes real crypto breakouts.
+            #     Kept as an optional score boost rather than a hard gate.
+            required_blocks=[
+                "breakout_from_pullback_range",
+                "oi_expansion_confirm",
+            ],
+            optional_blocks=["breakout_volume_confirm"],
             disqualifier_blocks=[],
             min_bars=1, max_bars=12,
             timeframe="1h",

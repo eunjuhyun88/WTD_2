@@ -41,7 +41,7 @@ engine
 ## Facts
 
 - Durable phase transitions have stable `transition_id`, `scan_id`, `feature_snapshot`, and `block_scores`.
-- Active execution branch is the cleaned `codex/w-0037-pattern-capture-record-clean`; unrelated app persistence files remain outside this PR.
+- Active execution branch is `task/w-0024-terminal-attention-implementation`; unrelated app persistence files are dirty and must not be staged with this engine slice.
 - `CaptureRecord` must reference a durable transition for `pattern_candidate` captures.
 - Same transition may be captured by multiple users, so the relationship is many captures to one transition.
 - `engine/capture` persists capture records in SQLite and `/captures` exposes create/get/list routes.
@@ -59,16 +59,16 @@ engine
 
 ## Decisions
 
-- Use a clean branch reconstructed from `origin/main` plus the engine capture commits, because the original worktree mixed this slice with app persistence work.
+- Keep this as a narrowly staged engine commit on the current branch rather than switching branches mid-task, because unrelated app work is already present in the worktree.
 - Keep capture engine-owned; app only submits user action and renders returned record.
 - Fail closed for `pattern_candidate` captures without a valid transition id.
 - Use separate local DB files for runtime transitions and capture records in this slice.
 
 ## Next Steps
 
-1. Open PR for capture store/API plus candidate metadata.
-2. Wire app Save Setup to `/api/engine/captures` after this PR lands.
-3. Keep terminal persistence rollout split from this engine slice.
+1. Commit only the capture store/API implementation and this work item.
+2. Start the next contract slice: expose candidate transition metadata from `/patterns/candidates`.
+3. Wire app Save Setup to `/api/engine/captures` after candidate metadata exists.
 
 ## Exit Criteria
 
@@ -79,6 +79,6 @@ engine
 
 ## Handoff Checklist
 
-- Active branch: `codex/w-0037-pattern-capture-record-clean`
-- Verification status: `uv run pytest tests/test_capture_store.py tests/test_capture_routes.py tests/test_pattern_candidate_routes.py tests/test_patterns_scanner.py tests/test_pattern_state_store.py tests/test_patterns_state_machine_durable.py` passes from `engine/`.
+- Active branch: `task/w-0024-terminal-attention-implementation`
+- Verification status: `engine/.venv/bin/python -m pytest engine/tests/test_capture_store.py engine/tests/test_capture_routes.py engine/tests/test_pattern_state_store.py engine/tests/test_patterns_state_machine_durable.py engine/tests/test_patterns_scanner.py` passes.
 - Remaining blockers: app Save Setup is not yet rewired to the capture route.

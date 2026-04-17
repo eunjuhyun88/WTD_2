@@ -125,11 +125,12 @@ Required user actions in Day-1:
 Important rule:
 
 - this review/capture step belongs to `/terminal`; it is not primarily a later `/lab` annotation task
+
 ### Stage 1. Pattern Definition
 
 Goal:
 
-- turn a review into a machine-readable pattern contract
+- turn saved review evidence into a machine-readable pattern or evaluation contract
 
 Canonical output:
 
@@ -158,11 +159,15 @@ Reference implementation shape:
 - disqualifiers
 - min/max bars
 
+Day-1 rule:
+
+- pattern definition is downstream of `Save Setup`; it is not the primary first user action
+
 ### Stage 2. Watch Activation
 
 Goal:
 
-- move a pattern from passive definition to active market monitoring
+- move an evaluated setup or runtime pattern from passive definition to active market monitoring
 
 Canonical output:
 
@@ -179,8 +184,12 @@ Fields:
 
 Day-1 surface owner:
 
-- `/terminal` for creating from current context
+- `/lab` for creating or activating from evaluated context
 - `/dashboard` for pausing/resuming existing watches
+
+Important rule:
+
+- Day-1 `/terminal` may save captures and hand off to lab, but it does not create new watches directly
 
 ### Stage 3. Market Scan
 
@@ -494,6 +503,15 @@ What can be refined:
 Design rule:
 
 - refinement should begin with rule and threshold changes before expensive model rollout
+- refinement is governed by the `Methodology Plane` defined in [`docs/domains/refinement-methodology.md`](/Users/ej/Projects/wtd-v2/docs/domains/refinement-methodology.md)
+- agent swarms, parameter sweeps, and reset-search runs are execution backends for refinement, not the refinement architecture itself
+
+Methodology outputs required before train/deploy:
+
+- `Research Objective`
+- `Hypothesis Batch`
+- `Evaluation Protocol`
+- `Selection Decision`
 
 ### Stage 11. Train / Deploy
 
@@ -519,6 +537,7 @@ Design rule:
 
 - `Train` and `Deploy` are downstream of judged evidence
 - they are not part of the raw signal runtime
+- `Train` and `Deploy` are also downstream of the methodology plane; no candidate should skip objective framing, robust evaluation, and explicit selection
 
 ## Surface Responsibilities
 

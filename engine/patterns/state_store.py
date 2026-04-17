@@ -191,6 +191,41 @@ class PatternStateStore:
             )
         return record
 
+    def upsert_state(self, state: PatternStateRecord) -> PatternStateRecord:
+        """Persist the current runtime snapshot even when no transition occurred."""
+        now = datetime.now(timezone.utc)
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO pattern_states (
+                  symbol, pattern_slug, pattern_version, timeframe,
+                  current_phase, current_phase_idx, entered_at, bars_in_phase,
+                  last_eval_at, last_transition_id, active, invalidated, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(symbol, pattern_slug, timeframe) DO UPDATE SET
+                  pattern_version=excluded.pattern_version,
+                  current_phase=excluded.current_phase,
+                  current_phase_idx=excluded.current_phase_idx,
+                  entered_at=excluded.entered_at,
+                  bars_in_phase=excluded.bars_in_phase,
+                  last_eval_at=excluded.last_eval_at,
+                  last_transition_id=excluded.last_transition_id,
+                  active=excluded.active,
+                  invalidated=excluded.invalidated,
+                  updated_at=excluded.updated_at
+                """,
+                (
+                    state.symbol, state.pattern_slug, state.pattern_version,
+                    state.timeframe, state.current_phase, state.current_phase_idx,
+                    _dt_to_ms(state.entered_at), state.bars_in_phase,
+                    _dt_to_ms(state.last_eval_at), state.last_transition_id,
+                    1 if state.active else 0,
+                    1 if state.invalidated else 0,
+                    _dt_to_ms(now),
+                ),
+            )
+        return state
+
     def list_states(self, pattern_slug: str | None = None) -> list[PatternStateRecord]:
         sql = "SELECT * FROM pattern_states WHERE active = 1"
         params: tuple[Any, ...] = ()

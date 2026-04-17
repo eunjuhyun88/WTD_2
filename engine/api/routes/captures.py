@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
+from ledger.store import LEDGER_RECORD_STORE
 from patterns.state_store import PatternStateStore
 
 router = APIRouter()
@@ -101,6 +102,7 @@ async def create_capture(body: CaptureCreateBody) -> dict:
         status="pending_outcome" if body.capture_kind == "pattern_candidate" else "closed",
     )
     _capture_store.save(record)
+    LEDGER_RECORD_STORE.append_capture_record(record)
     return {"ok": True, "capture": record.to_dict()}
 
 

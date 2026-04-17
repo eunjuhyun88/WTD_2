@@ -233,6 +233,117 @@ export type {
 	RawProviderKeyOverride
 } from './registry';
 
+// Game/progression app contracts
+export { BATTLE_XP_REWARDS } from './agentBattle';
+export type { AgentBattleReport, V2BattleResult } from './agentBattle';
+export type {
+	AlphaLabel,
+	BuildDouniPromptOptions,
+	ChartAnnotation,
+	CvdState,
+	DouniArchetype,
+	DouniProfile,
+	DouniStage,
+	ExtendedMarketData as CogochiExtendedMarketData,
+	IndicatorSeries as CogochiIndicatorSeries,
+	Regime as CogochiRegime,
+	ServerMarketContext as CogochiServerMarketContext,
+	SignalSnapshot as CogochiSignalSnapshot,
+	TradePlan,
+	WyckoffPhase
+} from './cogochi';
+export type {
+	AgentVote,
+	BattlePriceTick,
+	BattleTickState as ArenaBattleTickState,
+	CtxAgentId,
+	CtxBelief,
+	CtxFlag,
+	CommanderVerdict,
+	FBScore,
+	GameDirection,
+	GuardianCheck,
+	GuardianViolation,
+	OrpoOutput,
+	UserInteractionType,
+	WarRoomConfidenceShift,
+	WarRoomDialogue,
+	WarRoomRound,
+	WarRoomRoundResult,
+	WarRoomUserInteraction
+} from './gameArena';
+export type {
+	BacktestOptions,
+	BacktestResult,
+	ConditionBlock,
+	CycleResult,
+	ExitConfig,
+	RiskConfig,
+	Strategy,
+	TradeRecord
+} from './backtest';
+export type {
+	ChartPatternDetection,
+	ChartPatternDirection,
+	ChartPatternKind,
+	ChartPatternLine,
+	ChartPatternOptions,
+	ChartPatternStatus
+} from './chartPatterns';
+export { SCAN_AGENT_META } from './agents';
+export type { ScanAgentKey, ScanAgentMetadata } from './agents';
+export {
+	SPEC_UNLOCK_A,
+	SPEC_UNLOCK_B,
+	SPEC_UNLOCK_C,
+	CLUTCH_FBS_THRESHOLD,
+	LP_REWARDS,
+	LOSS_STREAK_MERCY_THRESHOLD,
+	LOSS_STREAK_MERCY_LP,
+	TIER_TABLE,
+	getTierForLP
+} from './progression';
+export type { Tier, TierInfo, LPReason } from './progression';
+export type {
+	MarketRegime,
+	RAGEntry,
+	RAGRecall,
+	AgentSignal,
+	ChainMatureResult,
+	QuickTradeRAGInput,
+	SignalActionRAGInput
+} from './rag';
+export type { PairQuality as RAGPairQuality } from './rag';
+export { V4_CONFIG } from './researchV4';
+export type {
+	MarketState,
+	SetupType,
+	V4MarketRegime,
+	ArchetypeId,
+	SquadRole,
+	BattleAction,
+	BattleOutcome,
+	MatchResult,
+	TrainerLabel,
+	SignalWeights,
+	OwnedAgent,
+	OIRecord,
+	FundingRecord,
+	LSRecord,
+	BattleScenario,
+	SignalSnapshot as V4SignalSnapshot,
+	MarketFrame,
+	StageFrame,
+	L0Context,
+	MemoryKind as V4MemoryKind,
+	MemoryRecord as V4MemoryRecord,
+	RetrievalQuery,
+	AgentDecisionTrace,
+	OrpoPairSource,
+	OrpoV2Pair,
+	BattleTickState
+} from './researchV4';
+
 // Signal & skill types — extracted from engine/cogochiTypes.ts (Batch 2)
 export {
 	DEFAULT_SKILL_LOADOUT

@@ -391,8 +391,7 @@ export function getWinRate(stats: AgentStats): number {
 
 // ─── Battle XP Rewards (Arena War 개선) ──────────────────────
 
-import { BATTLE_XP_REWARDS, getTierForLevel } from '$lib/engine/agentCharacter';
-import type { V2BattleResult } from '$lib/engine/v2BattleTypes';
+import { BATTLE_XP_REWARDS, type V2BattleResult } from '$lib/contracts/agentBattle';
 
 /**
  * 배틀 결과에 따른 XP 보상 적용.

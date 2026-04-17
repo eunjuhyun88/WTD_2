@@ -21,6 +21,8 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
         disposition="train_candidate",
         winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:1h:breakout:fs1:lp1",
         handoff_payload={
+            "baseline_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
+            "baseline_family_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
             "target_name": "breakout",
             "feature_schema_version": 1,
             "label_policy_version": 1,
@@ -51,6 +53,8 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
     assert result["model_version"] == "20260416_140500"
     assert updated_run.handoff_payload["training_result"]["auc"] == 0.67
     assert updated_run.handoff_payload["training_result"]["rollout_state"] == "candidate"
+    assert updated_run.handoff_payload["training_result"]["baseline_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+    assert updated_run.handoff_payload["training_result"]["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
 
 
 def test_execute_train_candidate_handoff_rejects_non_candidate_runs(tmp_path) -> None:

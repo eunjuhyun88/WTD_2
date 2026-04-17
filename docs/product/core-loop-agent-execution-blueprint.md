@@ -179,7 +179,7 @@ Required UI regions:
 - context bar: symbol, timeframe, replay source, candidate or alert source, freshness
 - chart board: visible selected range and indicators
 - evidence rail: OI, funding, volume, structure, note
-- next-step cluster: `Save Setup`, `Open in Lab`, `Save Watch` only when contract-safe
+- next-step cluster: `Save Setup`, `Open in Lab`, and status-only watch continuity cues when already active
 
 Primary actions:
 1. select or adjust reviewed range
@@ -202,7 +202,7 @@ UI rules:
 Success state:
 - user sees exactly what was saved
 - user sees whether similar captures already exist
-- user sees the next valid action: `open in lab`, `already watched`, or `saved only`
+- user sees the next valid action: `open in lab`, `already watching`, or `saved only`
 
 Failure state:
 - save failure never discards the selected range or note

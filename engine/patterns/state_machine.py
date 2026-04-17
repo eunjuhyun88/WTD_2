@@ -17,15 +17,32 @@ v2 improvements (CTO review):
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 from datetime import datetime
 from typing import Callable
 
 from patterns.types import (
-    PatternObject, PatternStateRecord, PhaseCondition, SymbolPhaseState, PhaseTransition
+    PatternObject,
+    PatternStateRecord,
+    PhaseAttemptRecord,
+    PhaseCondition,
+    SymbolPhaseState,
+    PhaseTransition,
 )
 
 log = logging.getLogger("engine.patterns.state_machine")
+
+
+@dataclass
+class _PhaseEvaluation:
+    satisfied: bool
+    confidence: float
+    phase_score: float
+    missing_blocks: list[str]
+    failed_reason: str | None
+    anchor_transition_id: str | None = None
+    should_record_attempt: bool = False
 
 
 class PatternStateMachine:
@@ -36,12 +53,14 @@ class PatternStateMachine:
         on_entry_signal: Callable[[PhaseTransition], None] | None = None,
         on_success: Callable[[PhaseTransition], None] | None = None,
         on_invalidated: Callable[[str, str], None] | None = None,
+        on_phase_attempt: Callable[[PhaseAttemptRecord], None] | None = None,
     ):
         self.pattern = pattern
         self.on_transition = on_transition
         self.on_entry_signal = on_entry_signal
         self.on_success = on_success
         self.on_invalidated = on_invalidated
+        self.on_phase_attempt = on_phase_attempt
         self._states: dict[str, SymbolPhaseState] = {}
 
     def evaluate(
@@ -53,6 +72,7 @@ class PatternStateMachine:
         scan_id: str | None = None,
         trigger_bar_ts: datetime | None = None,
         data_quality: dict | None = None,
+        emit_callbacks: bool = True,
     ) -> PhaseTransition | None:
         """Evaluate one bar for a symbol.
 
@@ -105,8 +125,11 @@ class PatternStateMachine:
                     block_scores=self._build_block_scores(blocks_triggered),
                     data_quality=data_quality,
                 )
-                self._emit_transition(t)
-                if self.on_invalidated:
+                state.last_transition_id = t.transition_id
+                state.phase_transition_ids[self.pattern.phases[0].phase_id] = t.transition_id
+                if emit_callbacks:
+                    self._emit_transition(t)
+                if emit_callbacks and self.on_invalidated:
                     self.on_invalidated(symbol, old_phase_id)
                 return t
 
@@ -120,8 +143,14 @@ class PatternStateMachine:
                 # Not enough bars in current phase yet — don't advance
                 return None
 
-            satisfied, confidence = self._phase_satisfied(next_phase, blocks_triggered)
-            if satisfied:
+            evaluation = self._phase_satisfied(
+                state=state,
+                current_phase=current_phase,
+                next_phase=next_phase,
+                blocks=blocks_triggered,
+            )
+            state.last_phase_scores[next_phase.phase_id] = evaluation.phase_score
+            if evaluation.satisfied:
                 old_phase_id = current_phase.phase_id
                 state.current_phase_idx = next_phase_idx
                 state.phase_entered_at = timestamp
@@ -140,7 +169,7 @@ class PatternStateMachine:
                     reason="condition_met",
                     is_entry_signal=is_entry,
                     is_success=is_success,
-                    confidence=confidence,
+                    confidence=evaluation.confidence,
                     feature_snapshot=feature_snapshot,
                     pattern_version=self.pattern.version,
                     timeframe=self.pattern.timeframe,
@@ -152,16 +181,37 @@ class PatternStateMachine:
                     block_scores=self._build_block_scores(blocks_triggered),
                     data_quality=data_quality,
                 )
+                state.last_transition_id = t.transition_id
+                state.phase_transition_ids[next_phase.phase_id] = t.transition_id
 
                 log.info(
                     "TRANSITION: %s %s → %s (conf=%.0f%%) [%s]",
                     symbol, old_phase_id, next_phase.phase_id,
-                    confidence * 100, self.pattern.slug,
+                    evaluation.confidence * 100, self.pattern.slug,
                 )
 
-                self._emit_transition(t)
+                if emit_callbacks:
+                    self._emit_transition(t)
 
                 return t
+            if emit_callbacks and evaluation.should_record_attempt and self.on_phase_attempt:
+                self.on_phase_attempt(
+                    PhaseAttemptRecord(
+                        symbol=symbol,
+                        pattern_slug=self.pattern.slug,
+                        timeframe=self.pattern.timeframe,
+                        from_phase=current_phase.phase_id,
+                        attempted_phase=next_phase.phase_id,
+                        attempted_at=timestamp,
+                        phase_score=evaluation.phase_score,
+                        missing_blocks=evaluation.missing_blocks,
+                        failed_reason=evaluation.failed_reason or "unknown",
+                        anchor_transition_id=evaluation.anchor_transition_id,
+                        scan_id=scan_id,
+                        blocks_triggered=list(blocks_triggered),
+                        feature_snapshot=feature_snapshot,
+                    )
+                )
         else:
             # Already at last phase — success phase, reset after max_bars
             if state.bars_in_phase and state.bars_in_phase > current_phase.max_bars:
@@ -171,8 +221,9 @@ class PatternStateMachine:
         # check if phase 0 conditions are met to "start" tracking
         if state.current_phase_idx == 0 and state.phase_entered_at is None:
             phase0 = self.pattern.phases[0]
-            satisfied, _ = self._phase_satisfied(phase0, blocks_triggered)
-            if satisfied:
+            evaluation = self._phase0_satisfied(phase0, blocks_triggered)
+            state.last_phase_scores[phase0.phase_id] = evaluation.phase_score
+            if evaluation.satisfied:
                 state.phase_entered_at = timestamp
                 state.bars_in_phase = 1
                 state.phase_history.append((phase0.phase_id, timestamp))
@@ -196,7 +247,10 @@ class PatternStateMachine:
                     block_scores=self._build_block_scores(blocks_triggered),
                     data_quality=data_quality,
                 )
-                self._emit_transition(t)
+                state.last_transition_id = t.transition_id
+                state.phase_transition_ids[phase0.phase_id] = t.transition_id
+                if emit_callbacks:
+                    self._emit_transition(t)
                 return t
 
         return None
@@ -234,43 +288,207 @@ class PatternStateMachine:
                 phase_entered_at=record.entered_at,
                 bars_in_phase=record.bars_in_phase,
                 phase_history=[(record.current_phase, record.entered_at)] if record.entered_at else [],
+                phase_transition_ids={record.current_phase: record.last_transition_id} if record.last_transition_id else {},
+                last_transition_id=record.last_transition_id,
                 invalidated=record.invalidated,
             )
 
     def _phase_satisfied(
-        self, phase: PhaseCondition, blocks: list[str]
-    ) -> tuple[bool, float]:
-        """Check if all required blocks fired and no disqualifiers fired.
-
-        v2: returns (satisfied, confidence) where confidence includes optional blocks.
-        """
+        self,
+        *,
+        state: SymbolPhaseState,
+        current_phase: PhaseCondition,
+        next_phase: PhaseCondition,
+        blocks: list[str],
+    ) -> _PhaseEvaluation:
         blocks_set = set(blocks)
 
-        # All required must fire
-        if not all(b in blocks_set for b in phase.required_blocks):
-            return False, 0.0
+        missing_required = [block for block in next_phase.required_blocks if block not in blocks_set]
+        if missing_required:
+            return _PhaseEvaluation(
+                satisfied=False,
+                confidence=0.0,
+                phase_score=0.0,
+                missing_blocks=missing_required,
+                failed_reason="missing_required",
+            )
 
-        # No disqualifier may fire
-        if any(b in blocks_set for b in phase.disqualifier_blocks):
-            return False, 0.0
+        if any(block in blocks_set for block in next_phase.disqualifier_blocks):
+            return _PhaseEvaluation(
+                satisfied=False,
+                confidence=0.0,
+                phase_score=0.0,
+                missing_blocks=[],
+                failed_reason="disqualified",
+            )
 
-        # v2: Confidence = required (base) + optional (bonus)
+        missing_any_groups: list[str] = []
+        for group in next_phase.required_any_groups:
+            if not any(block in blocks_set for block in group):
+                missing_any_groups.extend(group)
+
+        anchor_transition_id = self._get_anchor_transition_id(state, current_phase, next_phase)
+        if next_phase.anchor_from_previous_phase and anchor_transition_id is None:
+            return _PhaseEvaluation(
+                satisfied=False,
+                confidence=0.0,
+                phase_score=0.0,
+                missing_blocks=missing_any_groups,
+                failed_reason="anchor_missing",
+                should_record_attempt=True,
+            )
+
+        if next_phase.anchor_from_previous_phase and not self._within_transition_window(state, next_phase):
+            return _PhaseEvaluation(
+                satisfied=False,
+                confidence=0.0,
+                phase_score=0.0,
+                missing_blocks=missing_any_groups,
+                failed_reason="outside_transition_window",
+                anchor_transition_id=anchor_transition_id,
+                should_record_attempt=True,
+            )
+
+        phase_score = self._compute_phase_score(next_phase, blocks_set)
+        confidence = self._compute_confidence(next_phase, blocks_set, phase_score)
+
+        if missing_any_groups:
+            return _PhaseEvaluation(
+                satisfied=False,
+                confidence=confidence,
+                phase_score=phase_score,
+                missing_blocks=missing_any_groups,
+                failed_reason="missing_any_group",
+                anchor_transition_id=anchor_transition_id,
+                should_record_attempt=True,
+            )
+
+        threshold = next_phase.phase_score_threshold
+        if threshold is not None and phase_score < threshold:
+            return _PhaseEvaluation(
+                satisfied=False,
+                confidence=confidence,
+                phase_score=phase_score,
+                missing_blocks=[],
+                failed_reason="below_score_threshold",
+                anchor_transition_id=anchor_transition_id,
+                should_record_attempt=True,
+            )
+
+        return _PhaseEvaluation(
+            satisfied=True,
+            confidence=confidence,
+            phase_score=phase_score,
+            missing_blocks=[],
+            failed_reason=None,
+            anchor_transition_id=anchor_transition_id,
+        )
+
+    def _phase0_satisfied(self, phase: PhaseCondition, blocks: list[str]) -> _PhaseEvaluation:
+        blocks_set = set(blocks)
+        missing_required = [block for block in phase.required_blocks if block not in blocks_set]
+        if missing_required:
+            return _PhaseEvaluation(
+                satisfied=False,
+                confidence=0.0,
+                phase_score=0.0,
+                missing_blocks=missing_required,
+                failed_reason="missing_required",
+            )
+        if any(block in blocks_set for block in phase.disqualifier_blocks):
+            return _PhaseEvaluation(
+                satisfied=False,
+                confidence=0.0,
+                phase_score=0.0,
+                missing_blocks=[],
+                failed_reason="disqualified",
+            )
+        phase_score = self._compute_phase_score(phase, blocks_set)
+        return _PhaseEvaluation(
+            satisfied=True,
+            confidence=self._compute_confidence(phase, blocks_set, phase_score),
+            phase_score=phase_score,
+            missing_blocks=[],
+            failed_reason=None,
+        )
+
+    @staticmethod
+    def _compute_phase_score(phase: PhaseCondition, blocks_set: set[str]) -> float:
+        if not phase.score_weights:
+            return 1.0
+
+        score = 0.0
+        counted: set[str] = set()
+
+        for block in phase.required_blocks:
+            if block in blocks_set:
+                score += phase.score_weights.get(block, 0.0)
+                counted.add(block)
+
+        for group in phase.required_any_groups:
+            fired = [block for block in group if block in blocks_set]
+            if fired:
+                best = max(fired, key=lambda block: phase.score_weights.get(block, 0.0))
+                score += phase.score_weights.get(best, 0.0)
+                counted.add(best)
+
+        for block in [*phase.optional_blocks, *phase.soft_blocks]:
+            if block in blocks_set and block not in counted:
+                score += phase.score_weights.get(block, 0.0)
+
+        return score
+
+    @staticmethod
+    def _compute_confidence(phase: PhaseCondition, blocks_set: set[str], phase_score: float) -> float:
+        if phase.phase_score_threshold is not None:
+            return phase_score
+
         n_required = len(phase.required_blocks)
         n_optional = len(phase.optional_blocks)
-        n_optional_hit = sum(1 for b in phase.optional_blocks if b in blocks_set)
+        n_optional_hit = sum(1 for block in phase.optional_blocks if block in blocks_set)
 
-        if n_optional > 0:
-            confidence = (n_required + n_optional_hit) / (n_required + n_optional)
-        else:
-            confidence = 1.0
+        # required_any_groups: count each satisfied group as one contribution
+        # so phases composed from OR-groups (no hard required_blocks) still
+        # produce meaningful confidence instead of 0.0.
+        n_any_groups = len(phase.required_any_groups)
+        n_any_hit = sum(
+            1
+            for group in phase.required_any_groups
+            if any(block in blocks_set for block in group)
+        )
 
-        return True, confidence
+        n_total = n_required + n_any_groups + n_optional
+        n_hit = n_required + n_any_hit + n_optional_hit
+        if n_total > 0:
+            return n_hit / n_total
+        return 1.0
+
+    def _get_anchor_transition_id(
+        self,
+        state: SymbolPhaseState,
+        current_phase: PhaseCondition,
+        next_phase: PhaseCondition,
+    ) -> str | None:
+        if not next_phase.anchor_from_previous_phase:
+            return None
+        anchor_phase_id = next_phase.anchor_phase_id or current_phase.phase_id
+        anchor_idx = self._phase_idx(anchor_phase_id)
+        if anchor_idx is None or state.current_phase_idx != anchor_idx:
+            return None
+        return state.phase_transition_ids.get(anchor_phase_id)
+
+    @staticmethod
+    def _within_transition_window(state: SymbolPhaseState, phase: PhaseCondition) -> bool:
+        if phase.transition_window_bars is None:
+            return True
+        return state.bars_in_phase <= phase.transition_window_bars
 
     def _reset(self, symbol: str, state: SymbolPhaseState) -> None:
         """Reset a symbol back to phase 0."""
         state.current_phase_idx = 0
         state.phase_entered_at = None
         state.bars_in_phase = 0
+        state.last_phase_scores = {}
         # Keep phase_history for debugging
 
     def get_current_phase(self, symbol: str) -> str:
@@ -320,8 +538,33 @@ class PatternStateMachine:
 
     def reset_symbol(self, symbol: str) -> None:
         """Force reset a specific symbol."""
-        if symbol in self._states:
-            self._reset(symbol, self._states[symbol])
+        self._states[symbol] = SymbolPhaseState(
+            symbol=symbol,
+            pattern_slug=self.pattern.slug,
+        )
+
+    def get_symbol_state(self, symbol: str) -> SymbolPhaseState | None:
+        return self._states.get(symbol)
+
+    def get_state_record(self, symbol: str, *, last_eval_at: datetime | None = None) -> PatternStateRecord | None:
+        state = self._states.get(symbol)
+        if state is None:
+            return None
+        phase = self.pattern.phases[state.current_phase_idx]
+        return PatternStateRecord(
+            symbol=symbol,
+            pattern_slug=self.pattern.slug,
+            pattern_version=self.pattern.version,
+            timeframe=self.pattern.timeframe,
+            current_phase=phase.phase_id,
+            current_phase_idx=state.current_phase_idx,
+            entered_at=state.phase_entered_at,
+            bars_in_phase=state.bars_in_phase,
+            last_eval_at=last_eval_at,
+            last_transition_id=state.last_transition_id,
+            active=not state.invalidated,
+            invalidated=state.invalidated,
+        )
 
     def __repr__(self) -> str:
         n = len(self._states)

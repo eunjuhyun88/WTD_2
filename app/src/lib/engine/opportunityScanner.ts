@@ -9,7 +9,6 @@
 
 import {
   fetchCMCTrending,
-  type CMCTrendingCoin,
 } from '$lib/server/coinmarketcap';
 import { fetchTopicSocial, hasLunarCrushKey } from '$lib/server/lunarcrush';
 import { fetchFredMacroData, hasFredKey } from '$lib/server/fred';
@@ -53,6 +52,18 @@ export interface OpportunityScanResult {
   scanDurationMs: number;
 }
 
+export interface OpportunitySeedCoin {
+  name: string;
+  symbol: string;
+  slug: string;
+  price: number;
+  change1h: number;
+  change24h: number;
+  change7d: number;
+  volume24h: number;
+  marketCap: number;
+}
+
 interface MacroBackdrop {
   fedFundsRate: number | null;
   yieldCurveSpread: number | null;
@@ -76,7 +87,7 @@ const SYMBOL_TO_TOPIC: Record<string, string> = {
 
 // ─── Scoring Functions ────────────────────────────────────────
 
-function scoreMomentum(coin: CMCTrendingCoin): { score: number; reasons: string[]; alerts: string[] } {
+function scoreMomentum(coin: OpportunitySeedCoin): { score: number; reasons: string[]; alerts: string[] } {
   let score = 0;
   const reasons: string[] = [];
   const alerts: string[] = [];
@@ -122,7 +133,7 @@ function scoreMomentum(coin: CMCTrendingCoin): { score: number; reasons: string[
   return { score: Math.min(25, score), reasons, alerts };
 }
 
-function scoreVolume(coin: CMCTrendingCoin): { score: number; reasons: string[]; alerts: string[] } {
+function scoreVolume(coin: OpportunitySeedCoin): { score: number; reasons: string[]; alerts: string[] } {
   let score = 0;
   const reasons: string[] = [];
   const alerts: string[] = [];
@@ -301,7 +312,7 @@ async function computeMacroBackdrop(): Promise<MacroBackdrop> {
 
 // ─── Direction & Confidence ───────────────────────────────────
 
-function computeDirection(score: number, coin: CMCTrendingCoin): { direction: OpportunityScore['direction']; confidence: number } {
+function computeDirection(score: number, coin: OpportunitySeedCoin): { direction: OpportunityScore['direction']; confidence: number } {
   // Combine score with price direction
   const priceDir = coin.change24h > 1 ? 1 : coin.change24h < -1 ? -1 : 0;
   const scoreDir = score > 55 ? 1 : score < 40 ? -1 : 0;
@@ -321,26 +332,27 @@ function computeDirection(score: number, coin: CMCTrendingCoin): { direction: Op
 
 // ─── Main Scanner ─────────────────────────────────────────────
 
-export async function runOpportunityScan(limit = 15): Promise<OpportunityScanResult> {
-  const startMs = Date.now();
+export async function scoreOpportunitySeedCoins(
+  seedCoins: OpportunitySeedCoin[],
+  options: { startedAtMs?: number } = {},
+): Promise<OpportunityScanResult> {
+  const startMs = options.startedAtMs ?? Date.now();
 
-  // Phase 1: Fetch trending coins + macro backdrop in parallel
-  const [trendingCoins, macroBackdrop, cqBtcData] = await Promise.all([
-    fetchCMCTrending(limit),
+  const [macroBackdrop, cqBtcData] = await Promise.all([
     computeMacroBackdrop(),
     hasCryptoQuantKey() ? fetchCryptoQuantData('btc') : Promise.resolve(null),
   ]);
 
-  if (trendingCoins.length === 0) {
+  if (seedCoins.length === 0) {
     return { coins: [], macroBackdrop, scannedAt: Date.now(), scanDurationMs: Date.now() - startMs };
   }
 
   // Phase 2: Enrich top coins with social data (limit to 10 for speed)
-  const socialLimit = Math.min(trendingCoins.length, 10);
+  const socialLimit = Math.min(seedCoins.length, 10);
   let socialMap = new Map<string, Awaited<ReturnType<typeof fetchTopicSocial>>>();
 
   if (hasLunarCrushKey()) {
-    const socialPromises = trendingCoins.slice(0, socialLimit).map(async (coin) => {
+    const socialPromises = seedCoins.slice(0, socialLimit).map(async (coin) => {
       const topic = SYMBOL_TO_TOPIC[coin.symbol] ?? coin.slug;
       try {
         const data = await fetchTopicSocial(topic);
@@ -359,7 +371,7 @@ export async function runOpportunityScan(limit = 15): Promise<OpportunityScanRes
   }
 
   // Phase 3: Score each coin
-  const scoredCoins: OpportunityScore[] = trendingCoins.map((coin) => {
+  const scoredCoins: OpportunityScore[] = seedCoins.map((coin) => {
     const social = socialMap.get(coin.symbol) ?? null;
     const cqData = (coin.symbol === 'BTC' || coin.symbol === 'ETH') ? cqBtcData : null;
 
@@ -415,6 +427,12 @@ export async function runOpportunityScan(limit = 15): Promise<OpportunityScanRes
     scannedAt: Date.now(),
     scanDurationMs: Date.now() - startMs,
   };
+}
+
+export async function runOpportunityScan(limit = 15): Promise<OpportunityScanResult> {
+  const startMs = Date.now();
+  const trendingCoins = await fetchCMCTrending(limit);
+  return scoreOpportunitySeedCoins(trendingCoins, { startedAtMs: startMs });
 }
 
 // ─── Alert Detection (for background monitoring) ──────────────

@@ -51,7 +51,7 @@ export const GET: RequestHandler = async ({ url }) => {
     }
     if (since) {
       params.push(since);
-      conditions.push(`created_at >= $${params.length}`);
+      conditions.push(`scanned_at >= $${params.length}`);
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -66,10 +66,10 @@ export const GET: RequestHandler = async ({ url }) => {
       created_at: string;
       snapshot: Record<string, unknown> | null;
     }>(
-      `SELECT id, symbol, timeframe, blocks_triggered, p_win, created_at, snapshot
+      `SELECT id, symbol, timeframe, blocks_triggered, p_win, scanned_at AS created_at, snapshot
        FROM engine_alerts
        ${where}
-       ORDER BY created_at DESC
+       ORDER BY scanned_at DESC
        LIMIT $${params.length}`,
       params,
     );

@@ -9,7 +9,7 @@
 import { writable, derived } from 'svelte/store';
 import { STORAGE_KEYS } from './storageKeys';
 import { loadFromStorage, autoSave } from '$lib/utils/storage';
-import type { Strategy, ConditionBlock, ExitConfig, RiskConfig, BacktestResult } from '$lib/engine/backtestEngine';
+import type { Strategy, ConditionBlock, ExitConfig, RiskConfig, BacktestResult } from '$lib/lab/backtest';
 
 // ─── Re-export engine types for convenience ─────────────────
 
