@@ -68,11 +68,12 @@
 
 ```text
 실전 매매 복기
-  -> 패턴 정의
+  -> 차트 검토와 Save Setup
+  -> 랩 평가 / 가설 정리
+  -> 워치 활성화
   -> 전 종목 스캔
   -> 페이즈 추적
   -> 액션 구간 알림
-  -> 차트 검토와 Save Setup
   -> 결과 기록
   -> 유저 판정
   -> 임계값 / 패턴 / 모델 보정
@@ -99,9 +100,33 @@ Day-1 route ownership is explicit: the review and `Save Setup` moment lives in `
 
 이 단계의 산출물은 예측값이 아니다. 패턴 가설이다.
 
-### 2. 패턴 정의
+### 2. 차트 검토와 Save Setup
 
-복기에서 나온 감각을 구조화된 패턴 계약으로 바꾼다.
+유저는 실전 복기에서 떠올린 구조를 실제 차트 구간으로 명시하고 저장한다.
+
+이 단계의 surface owner는 `/terminal` 이다.
+즉, 제품은 터미널에서 복기 맥락을 확인하고, 정확한 차트 구간을 지정하고, `Save Setup` 으로 저장할 수 있어야 한다.
+
+이 단계의 핵심은 규칙을 먼저 쓰는 게 아니다.
+먼저 "내가 말하는 정확한 구간"을 durable evidence로 남기는 것이다.
+
+`Save Setup`이 중요한 이유는 세 가지다.
+
+- 인간이 아직 더 잘 보는 뉘앙스가 있다
+- 그 시점의 시장 맥락을 그대로 박제할 수 있다
+- 이 저장물이 미래 학습 데이터가 된다
+
+핵심 철학:
+
+- 수동 레이블링이 AI 훈련 데이터가 된다
+
+그래서 `Save Setup`은 UI 편의 기능이 아니라 해자의 일부다.
+
+### 3. 랩 평가와 가설 정리
+
+저장된 setup은 `/lab` 에서 평가 가능한 가설이나 challenge로 정리된다.
+
+여기서 중요한 것은 사용자가 처음부터 규칙을 작성하는 게 아니라, 저장된 증거를 바탕으로 일반화 가능성을 검토하는 것이다.
 
 여기서 담아야 하는 것은:
 
@@ -116,8 +141,19 @@ Day-1 route ownership is explicit: the review and `Save Setup` moment lives in `
 
 - 패턴은 한 시점 스냅샷이 아니다
 - 패턴은 시간 순서가 있는 이벤트 시퀀스다
+- Day-1에서는 capture가 먼저고, pattern/watch는 그 다음 단계다
 
-### 3. 전 종목 스캔
+### 4. 워치 활성화
+
+가설이 충분히 일반화된다고 판단되면 `/lab` 에서 live monitoring 대상으로 올린다.
+
+Day-1 규칙은 명확하다.
+
+- `/terminal` 은 capture와 handoff를 담당한다
+- `/lab` 만 새 `watch` 를 활성화할 수 있다
+- `/dashboard` 는 기존 `watch` 의 상태를 관리한다
+
+### 5. 전 종목 스캔
 
 엔진은 활성 유니버스 전체를 스캔하면서 그 패턴에 필요한 증거를 계산한다.
 
@@ -125,7 +161,7 @@ Day-1 route ownership is explicit: the review and `Save Setup` moment lives in `
 
 그래서 이 단계는 작은 watchlist보다 넓은 유니버스에서 의미가 크다.
 
-### 4. 페이즈 추적
+### 6. 페이즈 추적
 
 스캔 결과는 상태를 가져야 한다.
 
@@ -139,7 +175,7 @@ Day-1 route ownership is explicit: the review and `Save Setup` moment lives in `
 
 이게 State Machine의 역할이다.
 
-### 5. 액션 구간 알림
+### 7. 액션 구간 알림
 
 시스템은 가장 중요한 phase에 들어온 종목만 올려야 한다.
 
@@ -154,26 +190,11 @@ Day-1 route ownership is explicit: the review and `Save Setup` moment lives in `
 
 알림의 목표는 "와, 이미 올랐다"가 아니라 "지금이면 아직 구조적으로 들어갈 수 있다"여야 한다.
 
-### 6. 차트 검토와 Save Setup
+알림으로 올라온 후보도 다시 `/terminal` 에서 검토되고 필요하면 추가 capture로 저장된다.
 
-유저는 올라온 후보를 실제로 보고 저장하거나 버린다.
+즉, capture는 루프의 시작점일 뿐 아니라, 라이브 후보를 다시 학습 데이터로 회수하는 반복 지점이기도 하다.
 
-이 단계의 surface owner는 `/terminal` 이다.
-즉, 제품은 터미널에서 매매복기를 확인하고, 정확한 차트 구간을 지정하고, `Save Setup` 으로 저장할 수 있어야 한다.
-
-`Save Setup`이 중요한 이유는 세 가지다.
-
-- 인간이 아직 더 잘 보는 뉘앙스가 있다
-- 그 시점의 시장 맥락을 그대로 박제할 수 있다
-- 이 저장물이 미래 학습 데이터가 된다
-
-핵심 철학:
-
-- 수동 레이블링이 AI 훈련 데이터가 된다
-
-그래서 `Save Setup`은 UI 편의 기능이 아니라 해자의 일부다.
-
-### 7. 결과 기록
+### 8. 결과 기록
 
 저장된 setup은 나중에 실제 결과로 닫혀야 한다.
 
@@ -187,7 +208,7 @@ Day-1 route ownership is explicit: the review and `Save Setup` moment lives in `
 
 이 단계가 있어야 복기가 감상이 아니라 데이터가 된다.
 
-### 8. 유저 판정
+### 9. 유저 판정
 
 결과를 본 뒤 유저는 다시 판정한다.
 
@@ -201,7 +222,7 @@ Day-1 route ownership is explicit: the review and `Save Setup` moment lives in `
 
 이 판정은 단순 라벨이 아니다. 유저가 어떤 setup을 좋은 setup으로 보는지 시스템에 알려주는 신호다.
 
-### 9. 보정과 재투입
+### 10. 보정과 재투입
 
 유저 판정과 결과 기록은 다시 시스템으로 들어가서 다음을 고친다.
 

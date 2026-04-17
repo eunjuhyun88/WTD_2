@@ -19,11 +19,13 @@ from research.pattern_search import (
     PatternVariantSpec,
     ReplayBenchmarkPack,
     SearchFamilyInsight,
+    TimeframeRecommendation,
     VariantCaseResult,
     VariantDeltaInsight,
     VariantSearchResult,
     build_search_family_insights,
     build_mutation_branch_insights,
+    build_timeframe_recommendations,
     build_variant_delta_insights,
     build_variant_pattern,
     evaluate_variant_against_pack,
@@ -2444,6 +2446,138 @@ def test_build_search_family_insights_groups_timeframe_clones_under_single_famil
     assert tf_family.representative_variant_slug == (
         "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h"
     )
+
+
+def _make_tf_family_insight(
+    base_slug: str,
+    clone_slug: str,
+    *,
+    best_overall_score: float,
+    best_reference_score: float = 0.0,
+    best_holdout_score: float | None = 0.0,
+) -> SearchFamilyInsight:
+    return SearchFamilyInsight(
+        family_key=f"{base_slug}__tf-family",
+        family_type="timeframe_family",
+        representative_variant_slug=clone_slug,
+        member_variant_slugs=[clone_slug],
+        best_reference_score=best_reference_score,
+        best_holdout_score=best_holdout_score,
+        best_overall_score=best_overall_score,
+        family_score=best_overall_score,
+        classification="viable",
+    )
+
+
+def _mk_result(slug: str, overall: float) -> VariantSearchResult:
+    return VariantSearchResult(
+        variant_id=slug,
+        variant_slug=slug,
+        reference_score=overall,
+        holdout_score=overall,
+        overall_score=overall,
+        case_results=[],
+    )
+
+
+def _mk_spec(slug: str, timeframe: str, origin: str) -> PatternVariantSpec:
+    return PatternVariantSpec(
+        pattern_slug="tradoor-oi-reversal-v1",
+        variant_slug=slug,
+        timeframe=timeframe,
+        search_origin=origin,
+    )
+
+
+def test_build_timeframe_recommendations_marks_upgrade_when_clone_beats_parent() -> None:
+    base = "tradoor-oi-reversal-v1__arch-soft-real-loose"
+    clone = f"{base}__tf-4h"
+    insights = [_make_tf_family_insight(base, clone, best_overall_score=0.55)]
+    variant_results = [
+        _mk_result(base, 0.42),
+        _mk_result(clone, 0.55),
+    ]
+    variant_specs = [
+        _mk_spec(base, "1h", "manual"),
+        _mk_spec(clone, "4h", "timeframe_family"),
+    ]
+
+    recommendations = build_timeframe_recommendations(insights, variant_results, variant_specs)
+
+    assert len(recommendations) == 1
+    rec = recommendations[0]
+    assert rec.classification == "upgrade"
+    assert rec.recommended_timeframe == "4h"
+    assert rec.parent_timeframe == "1h"
+    assert rec.score_delta > 0.1
+    assert rec.clone_variant_slug == clone
+
+
+def test_build_timeframe_recommendations_marks_avoid_when_clone_loses_to_parent() -> None:
+    base = "tradoor-oi-reversal-v1__arch-soft-real-loose"
+    clone = f"{base}__tf-4h"
+    insights = [_make_tf_family_insight(base, clone, best_overall_score=0.18)]
+    variant_results = [
+        _mk_result(base, 0.42),
+        _mk_result(clone, 0.18),
+    ]
+    variant_specs = [
+        _mk_spec(base, "1h", "manual"),
+        _mk_spec(clone, "4h", "timeframe_family"),
+    ]
+
+    recommendations = build_timeframe_recommendations(insights, variant_results, variant_specs)
+
+    assert len(recommendations) == 1
+    rec = recommendations[0]
+    assert rec.classification == "avoid"
+    assert rec.recommended_timeframe == "1h"
+    assert rec.score_delta < 0
+
+
+def test_build_timeframe_recommendations_marks_keep_inside_band() -> None:
+    base = "tradoor-oi-reversal-v1__arch-soft-real-loose"
+    clone = f"{base}__tf-4h"
+    insights = [_make_tf_family_insight(base, clone, best_overall_score=0.42)]
+    variant_results = [
+        _mk_result(base, 0.42),
+        _mk_result(clone, 0.43),
+    ]
+    variant_specs = [
+        _mk_spec(base, "1h", "manual"),
+        _mk_spec(clone, "4h", "timeframe_family"),
+    ]
+
+    recommendations = build_timeframe_recommendations(insights, variant_results, variant_specs)
+
+    assert len(recommendations) == 1
+    assert recommendations[0].classification == "keep"
+    assert recommendations[0].recommended_timeframe == "1h"
+
+
+def test_build_timeframe_recommendations_skips_non_timeframe_families() -> None:
+    variant_results = [_mk_result("foo", 0.1), _mk_result("foo__tf-4h", 0.3)]
+    variant_specs = [
+        _mk_spec("foo", "1h", "manual"),
+        _mk_spec("foo__tf-4h", "4h", "timeframe_family"),
+    ]
+    manual_insight = SearchFamilyInsight(
+        family_key="foo",
+        family_type="manual",
+        representative_variant_slug="foo",
+        member_variant_slugs=["foo"],
+        best_reference_score=0.1,
+        best_holdout_score=0.1,
+        best_overall_score=0.1,
+        family_score=0.1,
+        classification="viable",
+    )
+
+    recommendations = build_timeframe_recommendations(
+        [manual_insight], variant_results, variant_specs
+    )
+
+    assert recommendations == []
 
 
 def test_select_active_family_insight_ignores_timeframe_family() -> None:

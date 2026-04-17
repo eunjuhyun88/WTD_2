@@ -68,6 +68,8 @@ research
 - use a fixed replication protocol and a separate experiment-family note instead of burying the workflow only in the work item
 - recommend a simple long-only BTC strategy as the first pilot target so the first slice tests the harness, not PineScript edge cases
 - add a runnable source-pack preflight before local parity implementation so missing provenance and hidden assumptions are explicit
+- this slice should merge as a research/eval unit separate from refinement control-plane code and separate from terminal capture UX work
+- branch split reason: commit `7b845a7` mixed replication harness artifacts with refinement/control-plane and chart-range spec work, so this slice needs an isolated research/eval PR
 
 ## Next Steps
 
