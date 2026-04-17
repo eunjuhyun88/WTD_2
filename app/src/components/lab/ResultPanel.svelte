@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BacktestResult, CycleResult } from '$lib/engine/backtestEngine';
+  import type { BacktestResult, CycleResult } from '$lib/lab/backtest';
   import { getCycle } from '$lib/data/cycles';
 
   const { result, isRunning, onSave, onViewChart } = $props<{

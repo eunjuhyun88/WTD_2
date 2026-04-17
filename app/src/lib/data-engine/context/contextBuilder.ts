@@ -11,9 +11,9 @@
 //
 // server-only.
 
-import type { MarketContext } from '$lib/engine/factorEngine';
-import type { ExtendedMarketData } from '$lib/engine/cogochi/types';
-import type { BinanceKline } from '$lib/engine/types';
+import type { MarketContext } from '$lib/contracts/marketContext';
+import type { BinanceKline } from '$lib/contracts/marketContext';
+import type { ServerExtendedMarketData as ExtendedMarketData } from '$lib/server/cogochi/signalSnapshot';
 
 import { getOhlcv, setOhlcv } from '../cache/seriesCache';
 import { getSnapshot, setSnapshot } from '../cache/snapshotCache';

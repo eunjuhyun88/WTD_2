@@ -4,8 +4,15 @@
 
 import { writable, derived } from 'svelte/store';
 import type { CanonicalTimeframe } from '$lib/utils/timeframe';
-import type { OrpoOutput, CtxBelief, CommanderVerdict, GuardianCheck, FBScore } from '$lib/engine/types';
-import type { BattleTickState, BattlePriceTick } from '$lib/engine/battleResolver';
+import type {
+  OrpoOutput,
+  CtxBelief,
+  CommanderVerdict,
+  GuardianCheck,
+  FBScore,
+  BattleTickState,
+  BattlePriceTick,
+} from '$lib/contracts/gameArena';
 import { normalizeTimeframe } from '$lib/utils/timeframe';
 import { STORAGE_KEYS } from './storageKeys';
 import { btcPrice, ethPrice, solPrice } from './priceStore';

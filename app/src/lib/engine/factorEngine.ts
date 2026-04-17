@@ -11,70 +11,14 @@
 //
 // 데이터 없을 시 value: 0, detail: 'Data unavailable' 반환.
 
-import type { FactorResult, TrendAnalysis, DivergenceSignal, BinanceKline } from './types';
+import type { FactorResult, TrendAnalysis, DivergenceSignal } from './types';
 import { calcSMA, calcEMA, calcRSI, calcATR, calcOBV, calcMACD, calcCVD, calcBollingerBands } from './indicators';
 import { analyzeTrend, detectDivergence, analyzeMultiTF } from './trend';
 import type { MetricStore } from './metrics/store';
+import type { MarketContext } from '$lib/contracts/marketContext';
+export type { MarketContext } from '$lib/contracts/marketContext';
 
 // ─── Market Context (파이프라인 입력) ─────────────────────────
-
-export interface MarketContext {
-  pair: string;
-  timeframe: string;
-  klines: BinanceKline[];
-  klines1h?: BinanceKline[];       // MTF용
-  klines1d?: BinanceKline[];       // MTF용
-
-  ticker?: {
-    change24h: number;
-    volume24h: number;
-    high24h?: number;
-    low24h?: number;
-  };
-
-  derivatives?: {
-    oi?: number | null;
-    funding?: number | null;
-    predFunding?: number | null;
-    lsRatio?: number | null;
-    liqLong?: number;
-    liqShort?: number;
-  };
-
-  onchain?: {
-    mvrv?: number | null;
-    nupl?: number | null;
-    sopr?: number | null;
-    exchangeNetflow?: number | null;
-    whaleActivity?: number | null;
-    minerFlow?: number | null;
-    stablecoinFlow?: number | null;
-    activeAddresses?: number | null;
-    etfFlow?: number | null;
-    realizedCap?: number | null;
-    supplyInProfit?: number | null;
-  };
-
-  sentiment?: {
-    fearGreed?: number | null;
-    socialVolume?: number | null;
-    socialSentiment?: number | null;
-    newsImpact?: number | null;
-    searchTrend?: number | null;
-  };
-
-  macro?: {
-    dxy?: number | null;
-    dxyTrend?: TrendAnalysis | null;
-    equityTrend?: TrendAnalysis | null;
-    yieldTrend?: TrendAnalysis | null;
-    btcDominance?: number | null;
-    btcDomTrend?: TrendAnalysis | null;
-    stablecoinMcap?: number | null;
-    stableMcapTrend?: TrendAnalysis | null;
-    eventProximity?: number | null;  // 0-100 (100 = 이벤트 임박)
-  };
-}
 
 // ─── Helpers ──────────────────────────────────────────────────
 

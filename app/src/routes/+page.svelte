@@ -17,6 +17,8 @@
 
   let mounted = $state(false);
   let promptText = $state('');
+  let showAnimatedBackground = $state(false);
+  let backgroundQuality = $state<'full' | 'lite'>('full');
   let mouseX = $state(50);
   let mouseY = $state(50);
   let targetMouseX = 50;
@@ -31,6 +33,7 @@
 
   let lastInputTime = 0;
   let driftRaf = 0;
+  let driftLastFrame = 0;
   const IDLE_DRIFT_DELAY_MS = 1600;
   const IDLE_DRIFT_SPEED = 0.00028;
   const IDLE_DRIFT_X = 18;
@@ -41,6 +44,7 @@
   const POINTER_DEADZONE = 0.07;
   const POINTER_CURVE = 0.82;
   const POINTER_EDGE_GAIN = 1.06;
+  const FRAME_MS_60HZ = 1000 / 60;
 
   function shapePointerAxis(raw: number) {
     const sign = Math.sign(raw);
@@ -90,7 +94,24 @@
     });
   }
 
+  function resolveBackgroundQuality(): 'full' | 'lite' {
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    if (typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 8) return 'lite';
+    return 'full';
+  }
+
+  function syncAnimatedBackgroundPreference(query: MediaQueryList) {
+    showAnimatedBackground = !query.matches;
+    backgroundQuality = resolveBackgroundQuality();
+  }
+
   onMount(() => {
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleMotionChange = () => syncAnimatedBackgroundPreference(reducedMotionQuery);
+    syncAnimatedBackgroundPreference(reducedMotionQuery);
+    reducedMotionQuery.addEventListener('change', handleMotionChange);
+    lastInputTime = performance.now();
+
     requestAnimationFrame(() => {
       mounted = true;
       trackHomeFunnel('hero_view', 'view', { story: 'clean-hierarchy-immediate-start' });
@@ -105,27 +126,55 @@
       if (touch) setCursor(touch.clientX, touch.clientY);
     }
 
+    function startDriftLoop() {
+      if (driftRaf) return;
+      driftRaf = requestAnimationFrame(driftLoop);
+    }
+
+    function stopDriftLoop() {
+      if (driftRaf) cancelAnimationFrame(driftRaf);
+      driftRaf = 0;
+      driftLastFrame = 0;
+    }
+
     function driftLoop(time: number) {
+      driftRaf = 0;
+      const previousFrame = driftLastFrame || time;
+      const deltaFrames = Math.min(3, Math.max(0.5, (time - previousFrame) / FRAME_MS_60HZ));
+      driftLastFrame = time;
       if (time - lastInputTime > IDLE_DRIFT_DELAY_MS) {
         const t = time * IDLE_DRIFT_SPEED;
         targetMouseX = 50 + Math.sin(t) * IDLE_DRIFT_X + Math.sin(t * 1.9) * IDLE_DRIFT_X_DETAIL;
         targetMouseY = 50 + Math.cos(t * 0.78) * IDLE_DRIFT_Y + Math.cos(t * 1.35) * IDLE_DRIFT_Y_DETAIL;
       }
-      mouseX += (targetMouseX - mouseX) * POINTER_EASE;
-      mouseY += (targetMouseY - mouseY) * POINTER_EASE;
-      driftRaf = requestAnimationFrame(driftLoop);
+      const eased = 1 - Math.pow(1 - POINTER_EASE, deltaFrames);
+      mouseX += (targetMouseX - mouseX) * eased;
+      mouseY += (targetMouseY - mouseY) * eased;
+      startDriftLoop();
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        stopDriftLoop();
+        return;
+      }
+      lastInputTime = performance.now();
+      startDriftLoop();
     }
 
     window.addEventListener('pointermove', onPointer, { passive: true });
     window.addEventListener('touchmove', onTouch, { passive: true });
     window.addEventListener('touchstart', onTouch, { passive: true });
-    driftRaf = requestAnimationFrame(driftLoop);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    startDriftLoop();
 
     return () => {
+      reducedMotionQuery.removeEventListener('change', handleMotionChange);
       window.removeEventListener('pointermove', onPointer);
       window.removeEventListener('touchmove', onTouch);
       window.removeEventListener('touchstart', onTouch);
-      cancelAnimationFrame(driftRaf);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      stopDriftLoop();
     };
   });
 </script>
@@ -148,7 +197,9 @@
   <link rel="canonical" href={buildCanonicalHref('/')} />
 </svelte:head>
 
-<WebGLAsciiBackground {mouseX} {mouseY} />
+{#if showAnimatedBackground}
+  <WebGLAsciiBackground {mouseX} {mouseY} quality={backgroundQuality} />
+{/if}
 
 <div class="page">
   <HomeHero

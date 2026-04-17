@@ -4,10 +4,10 @@
 //
 // 단일 소스: LP 기반 Tier + Phase 통합.
 // walletStore, userProfileStore, agentData 모두 이 규칙만 참조.
-// constants.ts의 TIER_TABLE/getTierForLP와 완전 일치.
+// App progression contract is the single source for route/store LP rules.
 
-import type { Tier } from '$lib/engine/types';
-import { TIER_TABLE, SPEC_UNLOCK_A, SPEC_UNLOCK_B, SPEC_UNLOCK_C, getTierForLP } from '$lib/engine/constants';
+import type { Tier } from '$lib/contracts/progression';
+import { SPEC_UNLOCK_A, SPEC_UNLOCK_B, SPEC_UNLOCK_C, getTierForLP } from '$lib/contracts/progression';
 
 // ─── Progression State (계약 인터페이스) ─────────────────────
 export interface ProgressionState {

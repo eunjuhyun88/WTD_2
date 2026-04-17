@@ -16,19 +16,13 @@
   interface Props {
     mouseX?: number;
     mouseY?: number;
+    quality?: 'full' | 'lite';
   }
 
-  const { mouseX = 50, mouseY = 50 }: Props = $props();
+  const { mouseX = 50, mouseY = 50, quality = 'full' }: Props = $props();
 
   const MOBILE_BP = 768;
-  const TRAIL_SCALE_DESKTOP = 0.75;
-  const TRAIL_SCALE_MOBILE = 0.38;
-  const DPR_CAP_DESKTOP = 2;
-  const DPR_CAP_MOBILE = 1;
-  const TARGET_FPS_MOBILE = 30;
   const LOGO_PATH = '/cogochi/logo-filled.png';
-  const LOGO_COVER_DESKTOP = 0.92;
-  const LOGO_COVER_MOBILE = 0.5;
   const DRIFT_AMP_X = 20;
   const DRIFT_AMP_Y = 14;
 
@@ -38,11 +32,24 @@
   onMount(() => {
     if (!canvas) return;
     const targetCanvas = canvas;
+    const isLite = quality === 'lite';
+    const trailScaleDesktop = isLite ? 0.66 : 0.72;
+    const trailScaleMobile = isLite ? 0.34 : 0.36;
+    const minTrailScaleDesktop = Math.max(0.58, trailScaleDesktop - 0.1);
+    const minTrailScaleMobile = Math.max(0.3, trailScaleMobile - 0.06);
+    const dprCapDesktop = isLite ? 1.35 : 1.6;
+    const dprCapMobile = isLite ? 0.9 : 0.95;
+    const targetFpsMobile = 30;
+    const logoCoverDesktop = 0.92;
+    const logoCoverMobile = 0.5;
+    const logoMaxTexture = isLite ? 1440 : 1664;
 
     const maybeGl = targetCanvas.getContext('webgl2', {
       alpha: true,
       premultipliedAlpha: false,
       antialias: false,
+      depth: false,
+      stencil: false,
     });
     if (!maybeGl) return;
     const gl: WebGL2RenderingContext = maybeGl;
@@ -80,13 +87,14 @@
 
     let w = window.innerWidth;
     let h = window.innerHeight;
-    let scale = w < MOBILE_BP ? TRAIL_SCALE_MOBILE : TRAIL_SCALE_DESKTOP;
+    let scale = w < MOBILE_BP ? trailScaleMobile : trailScaleDesktop;
     let tw = Math.ceil(w * scale);
     let th = Math.ceil(h * scale);
     let trail = createPingPong(gl, tw, th, useFloat);
+    trail.clear();
 
     let logoTex: WebGLTexture | null = null;
-    loadTexture(gl, LOGO_PATH)
+    loadTexture(gl, LOGO_PATH, { maxSize: logoMaxTexture })
       .then((tex) => {
         if (!destroyed) logoTex = tex;
       })
@@ -110,22 +118,37 @@
     let prevMx = mouseX / 100;
     let prevMy = 1 - mouseY / 100;
     let smoothedSize = 0;
+    let isVisible = typeof document === 'undefined' ? true : !document.hidden;
+    let avgFrameMs = 1000 / 60;
+    let lastScaleAdjustAt = 0;
+
+    function getBaseTrailScale() {
+      return isMobile ? trailScaleMobile : trailScaleDesktop;
+    }
+
+    function getMinTrailScale() {
+      return isMobile ? minTrailScaleMobile : minTrailScaleDesktop;
+    }
+
+    function resizeTrailBuffers(nextScale: number) {
+      scale = Math.max(getMinTrailScale(), Math.min(nextScale, getBaseTrailScale()));
+      tw = Math.ceil(w * scale);
+      th = Math.ceil(h * scale);
+      trail.resize(tw, th);
+    }
 
     function resize() {
       if (destroyed) return;
       w = window.innerWidth;
       h = window.innerHeight;
       isMobile = w < MOBILE_BP;
-      scale = isMobile ? TRAIL_SCALE_MOBILE : TRAIL_SCALE_DESKTOP;
-      const dprCap = isMobile ? DPR_CAP_MOBILE : DPR_CAP_DESKTOP;
+      const dprCap = isMobile ? dprCapMobile : dprCapDesktop;
       const dpr = Math.min(window.devicePixelRatio, dprCap);
-      targetCanvas.width = w * dpr;
-      targetCanvas.height = h * dpr;
+      targetCanvas.width = Math.max(1, Math.round(w * dpr));
+      targetCanvas.height = Math.max(1, Math.round(h * dpr));
       targetCanvas.style.width = `${w}px`;
       targetCanvas.style.height = `${h}px`;
-      tw = Math.ceil(w * scale);
-      th = Math.ceil(h * scale);
-      trail.resize(tw, th);
+      resizeTrailBuffers(scale || getBaseTrailScale());
     }
 
     resize();
@@ -151,10 +174,28 @@
     window.addEventListener('resize', onResize, { passive: true });
     window.addEventListener('orientationchange', onResize, { passive: true });
 
+    function scheduleNextFrame() {
+      if (destroyed || !isVisible) return;
+      animId = requestAnimationFrame(render);
+    }
+
+    function onVisibilityChange() {
+      isVisible = !document.hidden;
+      if (!isVisible) {
+        cancelAnimationFrame(animId);
+        animId = 0;
+        return;
+      }
+      lastFrameTime = 0;
+      scheduleNextFrame();
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     function logoRect(t: number): [number, number, number, number] {
       const mobile = w < MOBILE_BP;
       const viewMin = Math.min(w, h);
-      const sz = viewMin * (mobile ? LOGO_COVER_MOBILE : LOGO_COVER_DESKTOP);
+      const sz = viewMin * (mobile ? logoCoverMobile : logoCoverDesktop);
       const driftX = Math.sin(t * 0.16) * DRIFT_AMP_X + Math.sin(t * 0.32) * 4.6;
       const driftY = Math.cos(t * 0.13) * DRIFT_AMP_Y + Math.cos(t * 0.27) * 3.2;
       const centerX = (mobile ? 0.82 : 0.76) * w + driftX;
@@ -166,16 +207,35 @@
       return [left, bottom, right, top];
     }
 
-    const MOBILE_FRAME_MS = 1000 / TARGET_FPS_MOBILE;
+    const MOBILE_FRAME_MS = 1000 / targetFpsMobile;
     let lastFrameTime = 0;
 
     function render(time: number) {
       if (destroyed) return;
-      if (isMobile && time - lastFrameTime < MOBILE_FRAME_MS) {
-        animId = requestAnimationFrame(render);
+      const frameBudget = isMobile ? MOBILE_FRAME_MS : 0;
+      const deltaMs = time - lastFrameTime;
+      if (frameBudget > 0 && deltaMs < frameBudget) {
+        scheduleNextFrame();
         return;
       }
+      if (lastFrameTime > 0) {
+        avgFrameMs = avgFrameMs * 0.92 + deltaMs * 0.08;
+      }
       lastFrameTime = time;
+
+      if (time - lastScaleAdjustAt > 1200) {
+        const baseScale = getBaseTrailScale();
+        const minScale = getMinTrailScale();
+        if (avgFrameMs > 21 && scale > minScale + 0.01) {
+          resizeTrailBuffers(scale - 0.03);
+          avgFrameMs = 1000 / 60;
+          lastScaleAdjustAt = time;
+        } else if (avgFrameMs < 16.9 && scale < baseScale - 0.01) {
+          resizeTrailBuffers(scale + 0.03);
+          avgFrameMs = 1000 / 60;
+          lastScaleAdjustAt = time;
+        }
+      }
 
       const t = time * 0.001;
       const mx = mouseX / 100;
@@ -236,10 +296,10 @@
 
       prevMx = mx;
       prevMy = my;
-      animId = requestAnimationFrame(render);
+      scheduleNextFrame();
     }
 
-    animId = requestAnimationFrame(render);
+    scheduleNextFrame();
 
     return () => {
       destroyed = true;
@@ -247,6 +307,7 @@
       if (resizeTimer) clearTimeout(resizeTimer);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('orientationchange', onResize);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       trail.destroy();
       gl.deleteTexture(blankTex);
       if (logoTex) gl.deleteTexture(logoTex);

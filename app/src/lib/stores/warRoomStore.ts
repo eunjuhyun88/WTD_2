@@ -9,12 +9,10 @@ import { writable, derived, get } from 'svelte/store';
 import type {
   WarRoomRound,
   WarRoomRoundResult,
-  WarRoomDialogue,
-  WarRoomConfidenceShift,
   WarRoomUserInteraction,
   UserInteractionType,
   AgentVote,
-} from '$lib/engine/types';
+} from '$lib/contracts/gameArena';
 
 // ─── State ──────────────────────────────────────────────────
 
