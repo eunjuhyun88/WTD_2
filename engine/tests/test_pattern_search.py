@@ -9,6 +9,7 @@ from research.pattern_search import (
     DEFAULT_FAMILY_SELECTION_POLICY,
     BenchmarkCase,
     BenchmarkPackStore,
+    DurationRecommendation,
     FamilySelectionPolicy,
     NegativeSearchMemoryEntry,
     NegativeSearchMemoryStore,
@@ -23,12 +24,14 @@ from research.pattern_search import (
     VariantCaseResult,
     VariantDeltaInsight,
     VariantSearchResult,
+    build_duration_recommendations,
     build_search_family_insights,
     build_mutation_branch_insights,
     build_timeframe_recommendations,
     build_variant_delta_insights,
     build_variant_pattern,
     evaluate_variant_against_pack,
+    expand_variants_across_durations,
     expand_variants_across_timeframes,
     build_search_variants,
     branch_is_unhealthy,
@@ -2368,6 +2371,239 @@ def test_dead_end_search_persists_negative_memory(tmp_path, monkeypatch) -> None
         "tradoor-oi-reversal-v1__dead-a",
         "tradoor-oi-reversal-v1__dead-b",
     }.issubset(family_keys)
+
+
+def test_expand_variants_across_durations_adds_short_and_long_clones() -> None:
+    base = PatternVariantSpec(
+        pattern_slug="tradoor-oi-reversal-v1",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        timeframe="1h",
+        search_origin="manual",
+    )
+    expanded = expand_variants_across_durations([base])
+    by_slug = {v.variant_slug: v for v in expanded}
+
+    assert "tradoor-oi-reversal-v1__canonical" in by_slug
+    short = by_slug["tradoor-oi-reversal-v1__canonical__dur-short"]
+    long_ = by_slug["tradoor-oi-reversal-v1__canonical__dur-long"]
+    assert short.search_origin == "duration_family"
+    assert long_.search_origin == "duration_family"
+    assert short.duration_scale == 0.5
+    assert long_.duration_scale == 2.0
+    assert short.timeframe == "1h"
+    assert long_.timeframe == "1h"
+
+
+def test_expand_variants_across_durations_skips_timeframe_family_variants() -> None:
+    base = PatternVariantSpec(
+        pattern_slug="tradoor-oi-reversal-v1",
+        variant_slug="tradoor-oi-reversal-v1__canonical__tf-4h",
+        timeframe="4h",
+        search_origin="timeframe_family",
+    )
+    expanded = expand_variants_across_durations([base])
+    slugs = {v.variant_slug for v in expanded}
+
+    assert slugs == {"tradoor-oi-reversal-v1__canonical__tf-4h"}
+
+
+def test_expand_variants_across_timeframes_skips_duration_family_variants() -> None:
+    base = PatternVariantSpec(
+        pattern_slug="tradoor-oi-reversal-v1",
+        variant_slug="tradoor-oi-reversal-v1__canonical__dur-short",
+        timeframe="1h",
+        search_origin="duration_family",
+        duration_scale=0.5,
+    )
+    expanded = expand_variants_across_timeframes([base], ["1h", "4h"])
+    slugs = {v.variant_slug for v in expanded}
+
+    # duration_family variants must not fan out into __tf-4h clones
+    assert slugs == {"tradoor-oi-reversal-v1__canonical__dur-short"}
+
+
+def test_build_variant_pattern_scales_phase_bar_windows_by_duration_scale() -> None:
+    base_spec = PatternVariantSpec(
+        pattern_slug="tradoor-oi-reversal-v1",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        timeframe="1h",
+    )
+    long_spec = PatternVariantSpec(
+        pattern_slug="tradoor-oi-reversal-v1",
+        variant_slug="tradoor-oi-reversal-v1__canonical__dur-long",
+        timeframe="1h",
+        search_origin="duration_family",
+        duration_scale=2.0,
+    )
+
+    base_pattern = build_variant_pattern("tradoor-oi-reversal-v1", base_spec)
+    long_pattern = build_variant_pattern("tradoor-oi-reversal-v1", long_spec)
+
+    base_by_phase = {phase.phase_id: phase for phase in base_pattern.phases}
+    long_by_phase = {phase.phase_id: phase for phase in long_pattern.phases}
+
+    # at least one phase should have a scaled max_bars to prove the scaling wired
+    scaled_any = False
+    for phase_id, base_phase in base_by_phase.items():
+        long_phase = long_by_phase[phase_id]
+        if base_phase.max_bars and base_phase.max_bars != long_phase.max_bars:
+            assert long_phase.max_bars >= base_phase.max_bars
+            scaled_any = True
+    assert scaled_any
+
+
+def test_build_search_family_insights_groups_duration_clones_under_single_family() -> None:
+    base = "tradoor-oi-reversal-v1__canonical"
+    short = f"{base}__dur-short"
+    long_ = f"{base}__dur-long"
+
+    variant_results = [
+        _mk_result(base, 0.42),
+        _mk_result(short, 0.35),
+        _mk_result(long_, 0.48),
+    ]
+    variant_specs = [
+        _mk_spec(base, "1h", "manual"),
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug=short,
+            timeframe="1h",
+            search_origin="duration_family",
+            duration_scale=0.5,
+        ),
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug=long_,
+            timeframe="1h",
+            search_origin="duration_family",
+            duration_scale=2.0,
+        ),
+    ]
+
+    insights = build_search_family_insights(variant_results, variant_specs, [])
+    by_type = {insight.family_type: insight for insight in insights}
+
+    assert "manual" in by_type
+    assert by_type["manual"].family_key == base
+
+    dur_family = by_type["duration_family"]
+    assert dur_family.family_key == f"{base}__dur-family"
+    assert set(dur_family.member_variant_slugs) == {short, long_}
+    # representative should be the best-scoring clone (long_ with 0.48)
+    assert dur_family.representative_variant_slug == long_
+
+
+def test_select_active_family_insight_ignores_duration_family() -> None:
+    family_insights = [
+        SearchFamilyInsight(
+            family_key="tradoor-oi-reversal-v1__canonical__dur-family",
+            family_type="duration_family",
+            representative_variant_slug="tradoor-oi-reversal-v1__canonical__dur-long",
+            member_variant_slugs=["tradoor-oi-reversal-v1__canonical__dur-long"],
+            best_reference_score=0.9,
+            best_holdout_score=0.9,
+            best_overall_score=0.9,
+            family_score=1.5,
+            classification="viable",
+        ),
+        SearchFamilyInsight(
+            family_key="tradoor-oi-reversal-v1__canonical",
+            family_type="manual",
+            representative_variant_slug="tradoor-oi-reversal-v1__canonical",
+            member_variant_slugs=["tradoor-oi-reversal-v1__canonical"],
+            best_reference_score=0.42,
+            best_holdout_score=0.14,
+            best_overall_score=0.42,
+            family_score=0.455,
+            classification="viable",
+        ),
+    ]
+
+    active = select_active_family_insight(family_insights)
+
+    assert active is not None
+    assert active.family_type == "manual"
+
+
+def test_build_duration_recommendations_marks_upgrade_when_clone_beats_parent() -> None:
+    base = "tradoor-oi-reversal-v1__canonical"
+    clone = f"{base}__dur-long"
+    insight = SearchFamilyInsight(
+        family_key=f"{base}__dur-family",
+        family_type="duration_family",
+        representative_variant_slug=clone,
+        member_variant_slugs=[clone],
+        best_reference_score=0.55,
+        best_holdout_score=0.55,
+        best_overall_score=0.55,
+        family_score=0.55,
+        classification="viable",
+    )
+    variant_results = [_mk_result(base, 0.42), _mk_result(clone, 0.55)]
+    variant_specs = [
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug=base,
+            timeframe="1h",
+            search_origin="manual",
+        ),
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug=clone,
+            timeframe="1h",
+            search_origin="duration_family",
+            duration_scale=2.0,
+        ),
+    ]
+
+    recommendations = build_duration_recommendations([insight], variant_results, variant_specs)
+
+    assert len(recommendations) == 1
+    rec = recommendations[0]
+    assert rec.classification == "upgrade"
+    assert rec.recommended_duration_scale == 2.0
+    assert rec.duration_label == "long"
+    assert rec.score_delta > 0.1
+
+
+def test_build_duration_recommendations_marks_avoid_when_clone_loses_to_parent() -> None:
+    base = "tradoor-oi-reversal-v1__canonical"
+    clone = f"{base}__dur-short"
+    insight = SearchFamilyInsight(
+        family_key=f"{base}__dur-family",
+        family_type="duration_family",
+        representative_variant_slug=clone,
+        member_variant_slugs=[clone],
+        best_reference_score=0.18,
+        best_holdout_score=0.18,
+        best_overall_score=0.18,
+        family_score=0.18,
+        classification="damaging",
+    )
+    variant_results = [_mk_result(base, 0.42), _mk_result(clone, 0.18)]
+    variant_specs = [
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug=base,
+            timeframe="1h",
+            search_origin="manual",
+        ),
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug=clone,
+            timeframe="1h",
+            search_origin="duration_family",
+            duration_scale=0.5,
+        ),
+    ]
+
+    recommendations = build_duration_recommendations([insight], variant_results, variant_specs)
+
+    assert len(recommendations) == 1
+    rec = recommendations[0]
+    assert rec.classification == "avoid"
+    assert rec.recommended_duration_scale == 1.0
+    assert rec.duration_label == "short"
 
 
 def test_depth_progress_distinguishes_deeper_holdout_paths() -> None:

@@ -188,6 +188,7 @@ class PatternVariantSpec:
     selection_bias: float = 0.0
     hypotheses: list[str] = field(default_factory=list)
     variant_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    duration_scale: float = 1.0
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -203,6 +204,7 @@ class PatternVariantSpec:
             selection_bias=float(payload.get("selection_bias", 0.0)),
             hypotheses=list(payload.get("hypotheses", [])),
             variant_id=payload.get("variant_id", str(uuid.uuid4())),
+            duration_scale=float(payload.get("duration_scale", 1.0)),
         )
 
 
@@ -298,10 +300,15 @@ FAMILY_TYPE_PRIORITY = {
     "auto_evidence": 2,
     "mutation_branch": 1,
     "timeframe_family": 0,
+    "duration_family": 0,
 }
 
 TIMEFRAME_UPGRADE_THRESHOLD = 0.05
 TIMEFRAME_AVOID_THRESHOLD = 0.05
+
+DURATION_UPGRADE_THRESHOLD = 0.05
+DURATION_AVOID_THRESHOLD = 0.05
+DURATION_FAMILY_SCALES: dict[str, float] = {"short": 0.5, "long": 2.0}
 
 
 @dataclass(frozen=True)
@@ -314,6 +321,24 @@ class TimeframeRecommendation:
     parent_overall_score: float
     clone_overall_score: float
     clone_variant_slug: str
+    score_delta: float
+    classification: str  # "upgrade" | "keep" | "avoid"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class DurationRecommendation:
+    """Per-variant duration-family recommendation emitted by one search run."""
+
+    base_variant_slug: str
+    parent_duration_scale: float
+    recommended_duration_scale: float
+    parent_overall_score: float
+    clone_overall_score: float
+    clone_variant_slug: str
+    duration_label: str  # "short" | "long"
     score_delta: float
     classification: str  # "upgrade" | "keep" | "avoid"
 
@@ -352,6 +377,7 @@ class PatternSearchRunArtifact:
     branch_insights: list[MutationBranchInsight] = field(default_factory=list)
     family_insights: list[SearchFamilyInsight] = field(default_factory=list)
     timeframe_recommendations: list[TimeframeRecommendation] = field(default_factory=list)
+    duration_recommendations: list[DurationRecommendation] = field(default_factory=list)
     family_policy: FamilySelectionPolicy | None = None
     active_family_key: str | None = None
     active_family_type: str | None = None
@@ -377,6 +403,9 @@ class PatternSearchRunArtifact:
             ],
             "timeframe_recommendations": [
                 recommendation.to_dict() for recommendation in self.timeframe_recommendations
+            ],
+            "duration_recommendations": [
+                recommendation.to_dict() for recommendation in self.duration_recommendations
             ],
             "family_policy": self.family_policy.to_dict() if self.family_policy is not None else None,
             "active_family_key": self.active_family_key,
@@ -578,6 +607,25 @@ def _scale_phase_bar_windows(phase, *, from_timeframe: str, to_timeframe: str) -
     )
 
 
+def _scale_phase_duration(phase, *, duration_scale: float) -> None:
+    """Scale per-phase min/max bar windows and transition window by duration_scale.
+
+    ``min_bars`` stays >= 1 to avoid zero-bar phases. ``None`` stays ``None``.
+    """
+    if duration_scale == 1.0:
+        return
+
+    def _scale(value: int | None, *, floor: int) -> int | None:
+        if value is None:
+            return value
+        scaled = int(round(value * duration_scale))
+        return max(floor, scaled)
+
+    phase.min_bars = _scale(phase.min_bars, floor=1)
+    phase.max_bars = _scale(phase.max_bars, floor=max(phase.min_bars or 1, 1))
+    phase.transition_window_bars = _scale(phase.transition_window_bars, floor=1)
+
+
 def _scale_warmup_bars(warmup_bars: int, *, from_timeframe: str, to_timeframe: str) -> int:
     scaled = _scale_bar_count(warmup_bars, from_timeframe=from_timeframe, to_timeframe=to_timeframe)
     return max(1, int(scaled or warmup_bars))
@@ -605,12 +653,11 @@ def build_variant_pattern(base_pattern_slug: str, spec: PatternVariantSpec) -> P
     for phase in base.phases:
         phase.timeframe = spec.timeframe
         overrides = spec.phase_overrides.get(phase.phase_id)
-        if not overrides:
-            _scale_phase_bar_windows(phase, from_timeframe=base_timeframe, to_timeframe=spec.timeframe)
-            continue
-        for key, value in overrides.items():
-            setattr(phase, key, copy.deepcopy(value))
+        if overrides:
+            for key, value in overrides.items():
+                setattr(phase, key, copy.deepcopy(value))
         _scale_phase_bar_windows(phase, from_timeframe=base_timeframe, to_timeframe=spec.timeframe)
+        _scale_phase_duration(phase, duration_scale=spec.duration_scale)
     return base
 
 
@@ -760,6 +807,57 @@ def _strip_timeframe_suffix(variant_slug: str) -> str:
     return variant_slug[:idx]
 
 
+def _variant_duration_slug(variant_slug: str, duration_label: str) -> str:
+    return f"{variant_slug}__dur-{duration_label}"
+
+
+def _strip_duration_suffix(variant_slug: str) -> str:
+    """Return the base slug of a duration-family clone (``foo__dur-short`` -> ``foo``)."""
+    marker = "__dur-"
+    idx = variant_slug.find(marker)
+    if idx == -1:
+        return variant_slug
+    return variant_slug[:idx]
+
+
+def expand_variants_across_durations(
+    variants: list[PatternVariantSpec],
+    duration_scales: dict[str, float] | None = None,
+) -> list[PatternVariantSpec]:
+    """For each base-duration (``duration_scale == 1.0``) variant, emit short/long clones.
+
+    Clones inherit timeframe, phase_overrides, and selection_bias, and are tagged with
+    ``search_origin="duration_family"`` so they participate in family insights as their
+    own axis rather than as mutation descendants.
+    """
+    if not variants:
+        return []
+    scales = duration_scales if duration_scales is not None else DURATION_FAMILY_SCALES
+    expanded: dict[str, PatternVariantSpec] = {v.variant_slug: v for v in variants}
+    for variant in variants:
+        if variant.duration_scale != 1.0:
+            continue
+        if variant.search_origin == "timeframe_family":
+            # avoid tf × duration cross-products for the first slice
+            continue
+        for label, scale in scales.items():
+            clone_slug = _variant_duration_slug(variant.variant_slug, label)
+            expanded[clone_slug] = PatternVariantSpec(
+                pattern_slug=variant.pattern_slug,
+                variant_slug=clone_slug,
+                timeframe=variant.timeframe,
+                phase_overrides=copy.deepcopy(variant.phase_overrides),
+                search_origin="duration_family",
+                selection_bias=variant.selection_bias,
+                hypotheses=[
+                    *variant.hypotheses,
+                    f"duration-family clone scale={scale:g} ({label})",
+                ],
+                duration_scale=scale,
+            )
+    return list(expanded.values())
+
+
 def expand_variants_across_timeframes(
     variants: list[PatternVariantSpec],
     candidate_timeframes: list[str] | None,
@@ -770,7 +868,13 @@ def expand_variants_across_timeframes(
     target_timeframes = _supported_candidate_timeframes(candidate_timeframes or [base_timeframe], base_timeframe=base_timeframe)
     expanded: dict[str, PatternVariantSpec] = {}
     for variant in variants:
-        for timeframe in target_timeframes:
+        # avoid tf × duration cross-products: keep duration_family variants at base tf only
+        allowed_timeframes = (
+            [variant.timeframe]
+            if variant.search_origin == "duration_family"
+            else target_timeframes
+        )
+        for timeframe in allowed_timeframes:
             is_base_tf = timeframe == variant.timeframe
             expanded_variant = PatternVariantSpec(
                 pattern_slug=variant.pattern_slug,
@@ -783,6 +887,7 @@ def expand_variants_across_timeframes(
                     *variant.hypotheses,
                     f"timeframe-family clone at {timeframe}",
                 ],
+                duration_scale=variant.duration_scale,
             )
             expanded[expanded_variant.variant_slug] = expanded_variant
     return list(expanded.values())
@@ -851,13 +956,14 @@ def _clone_variant_with_overrides(
 
 
 def _find_variant_ancestor_slug(variant_slug: str, known_variant_slugs: list[str]) -> str | None:
-    if "__tf-" in variant_slug:
+    if "__tf-" in variant_slug or "__dur-" in variant_slug:
         return None
     candidates = [
         candidate
         for candidate in known_variant_slugs
         if candidate != variant_slug
         and "__tf-" not in candidate
+        and "__dur-" not in candidate
         and variant_slug.startswith(f"{candidate}__")
     ]
     if not candidates:
@@ -1000,6 +1106,7 @@ def build_search_family_insights(
     winner_overall_score = winner.overall_score
 
     timeframe_family_members: dict[str, list[VariantSearchResult]] = {}
+    duration_family_members: dict[str, list[VariantSearchResult]] = {}
     for result in variant_results:
         spec = spec_lookup.get(result.variant_slug)
         if spec is None or spec.search_origin == "auto_mutation":
@@ -1007,6 +1114,10 @@ def build_search_family_insights(
         if spec.search_origin == "timeframe_family":
             base_slug = _strip_timeframe_suffix(result.variant_slug)
             timeframe_family_members.setdefault(base_slug, []).append(result)
+            continue
+        if spec.search_origin == "duration_family":
+            base_slug = _strip_duration_suffix(result.variant_slug)
+            duration_family_members.setdefault(base_slug, []).append(result)
             continue
         family_type = spec.search_origin
         family_score = round(
@@ -1046,6 +1157,33 @@ def build_search_family_insights(
             SearchFamilyInsight(
                 family_key=f"{base_slug}__tf-family",
                 family_type="timeframe_family",
+                representative_variant_slug=best_member.variant_slug,
+                member_variant_slugs=[result.variant_slug for result in members],
+                best_reference_score=best_member.reference_score,
+                best_holdout_score=best_member.holdout_score,
+                best_overall_score=best_member.overall_score,
+                family_score=family_score,
+                classification=_classify_family(
+                    best_reference_score=best_member.reference_score,
+                    best_holdout_score=best_member.holdout_score,
+                    best_overall_score=best_member.overall_score,
+                    winner_reference_score=winner_reference_score,
+                    winner_holdout_score=winner_holdout_score,
+                    winner_overall_score=winner_overall_score,
+                ),
+            )
+        )
+
+    for base_slug, members in duration_family_members.items():
+        best_member = max(members, key=lambda result: result.overall_score)
+        family_score = round(
+            best_member.overall_score + 0.25 * float(best_member.holdout_score or 0.0),
+            6,
+        )
+        insights.append(
+            SearchFamilyInsight(
+                family_key=f"{base_slug}__dur-family",
+                family_type="duration_family",
                 representative_variant_slug=best_member.variant_slug,
                 member_variant_slugs=[result.variant_slug for result in members],
                 best_reference_score=best_member.reference_score,
@@ -1176,6 +1314,64 @@ def build_timeframe_recommendations(
     return recommendations
 
 
+def build_duration_recommendations(
+    family_insights: list[SearchFamilyInsight],
+    variant_results: list[VariantSearchResult],
+    variant_specs: list[PatternVariantSpec],
+    *,
+    upgrade_threshold: float = DURATION_UPGRADE_THRESHOLD,
+    avoid_threshold: float = DURATION_AVOID_THRESHOLD,
+) -> list[DurationRecommendation]:
+    """Compare each duration_family best-clone against its baseline-duration parent."""
+    result_lookup = {result.variant_slug: result for result in variant_results}
+    spec_lookup = {spec.variant_slug: spec for spec in variant_specs}
+
+    recommendations: list[DurationRecommendation] = []
+    for insight in family_insights:
+        if insight.family_type != "duration_family":
+            continue
+        base_slug = _strip_duration_suffix(insight.family_key)
+        parent_result = result_lookup.get(base_slug)
+        parent_spec = spec_lookup.get(base_slug)
+        clone_slug = insight.representative_variant_slug
+        clone_result = result_lookup.get(clone_slug)
+        clone_spec = spec_lookup.get(clone_slug)
+        if (
+            parent_result is None
+            or parent_spec is None
+            or clone_result is None
+            or clone_spec is None
+        ):
+            continue
+        # derive label from slug suffix
+        suffix = clone_slug.split("__dur-", 1)[-1] if "__dur-" in clone_slug else "unknown"
+        delta = round(clone_result.overall_score - parent_result.overall_score, 6)
+        if delta >= upgrade_threshold:
+            classification = "upgrade"
+            recommended_scale = clone_spec.duration_scale
+        elif delta <= -avoid_threshold:
+            classification = "avoid"
+            recommended_scale = parent_spec.duration_scale
+        else:
+            classification = "keep"
+            recommended_scale = parent_spec.duration_scale
+        recommendations.append(
+            DurationRecommendation(
+                base_variant_slug=base_slug,
+                parent_duration_scale=parent_spec.duration_scale,
+                recommended_duration_scale=recommended_scale,
+                parent_overall_score=parent_result.overall_score,
+                clone_overall_score=clone_result.overall_score,
+                clone_variant_slug=clone_slug,
+                duration_label=suffix,
+                score_delta=delta,
+                classification=classification,
+            )
+        )
+    recommendations.sort(key=lambda r: (-r.score_delta, r.base_variant_slug))
+    return recommendations
+
+
 def _branch_insight_lookup(artifact: dict | None) -> dict[str, dict]:
     if artifact is None:
         return {}
@@ -1235,9 +1431,11 @@ def select_active_family_insight(
     recent_artifacts: list[dict] | None = None,
     policy: FamilySelectionPolicy = DEFAULT_FAMILY_SELECTION_POLICY,
 ) -> SearchFamilyInsight | None:
-    # timeframe_family is an informational axis, not a promotion lane.
+    # timeframe_family and duration_family are informational axes, not promotion lanes.
     family_insights = [
-        insight for insight in family_insights if insight.family_type != "timeframe_family"
+        insight
+        for insight in family_insights
+        if insight.family_type not in ("timeframe_family", "duration_family")
     ]
     if not family_insights:
         return None
@@ -2112,7 +2310,10 @@ def build_search_variants(
     deduped: dict[str, PatternVariantSpec] = {}
     for variant in [*manual_variants, *auto_variants, *reset_variants, *active_family_variants, *mutation_variants]:
         deduped[variant.variant_slug] = variant
-    return expand_variants_across_timeframes(list(deduped.values()), candidate_timeframes)
+    # duration axis expansion stays at base timeframe; timeframe axis leaves
+    # duration_family variants untouched. The two axes stay orthogonal.
+    with_duration = expand_variants_across_durations(list(deduped.values()))
+    return expand_variants_across_timeframes(with_duration, candidate_timeframes)
 
 
 def _slice_case_frames(case: BenchmarkCase, *, timeframe: str, warmup_bars: int) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -2316,6 +2517,9 @@ def run_pattern_benchmark_search(
         timeframe_recommendations = build_timeframe_recommendations(
             family_insights, variant_results, variants
         )
+        duration_recommendations = build_duration_recommendations(
+            family_insights, variant_results, variants
+        )
         active_family = select_active_family_insight(family_insights, recent_artifacts, family_policy)
         artifact = PatternSearchRunArtifact(
             research_run_id=run.research_run_id,
@@ -2328,6 +2532,7 @@ def run_pattern_benchmark_search(
             branch_insights=branch_insights,
             family_insights=family_insights,
             timeframe_recommendations=timeframe_recommendations,
+            duration_recommendations=duration_recommendations,
             family_policy=family_policy,
             active_family_key=active_family.family_key if active_family is not None else None,
             active_family_type=active_family.family_type if active_family is not None else None,
