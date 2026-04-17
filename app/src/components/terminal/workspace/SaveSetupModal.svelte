@@ -28,9 +28,14 @@
     getViewportCapture?: () => ChartViewportSnapshot | null;
     onClose:   () => void;
     onSaved:   (captureId: string) => void;
+    /**
+     * Desktop mode: desktop save flow routes through SaveStrip + chartSaveMode instead.
+     * When true this modal is a no-op (mobile-only path, per W-0086).
+     */
+    desktopMode?: boolean;
   }
 
-  let { symbol, timestamp, tf, open, getViewportCapture, onClose, onSaved }: Props = $props();
+  let { symbol, timestamp, tf, open, getViewportCapture, onClose, onSaved, desktopMode = false }: Props = $props();
 
   // Phase labels matching TRADOOR pattern phases
   const PHASE_LABELS = [
@@ -165,7 +170,7 @@
   }
 </script>
 
-{#if open}
+{#if open && !desktopMode}
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="modal-backdrop" onclick={onClose} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <!-- svelte-ignore a11y_no_static_element_interactions -->

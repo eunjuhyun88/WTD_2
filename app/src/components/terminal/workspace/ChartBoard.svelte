@@ -8,6 +8,13 @@
   import { tfMinutes } from '$lib/chart/mtfAlign';
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
+  // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import { RangePrimitive } from '../chart/primitives/RangePrimitive';
+  // ── Layer 2 overlay (W-0086) ────────────────────────────────────────────────
+  import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
+  import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
+  import type { Time } from 'lightweight-charts';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -272,6 +279,54 @@
   let cvdChart:  IChartApi | null = null;
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
 
+  // ── Layer 1: Range primitive (W-0086) ─────────────────────────────────────
+  let rangePrimitive: RangePrimitive | null = null;
+  let rangeClickUnsubscribe: (() => void) | null = null;
+  let saveModeUnsubscribe: (() => void) | null = null;
+
+  function attachRangePrimitive() {
+    if (!priceSeries || rangePrimitive) return;
+    rangePrimitive = new RangePrimitive();
+    (priceSeries as ISeriesApi<SeriesType>).attachPrimitive(rangePrimitive as unknown as Parameters<ISeriesApi<SeriesType>['attachPrimitive']>[0]);
+  }
+
+  function detachRangePrimitive() {
+    if (!priceSeries || !rangePrimitive) return;
+    try {
+      (priceSeries as ISeriesApi<SeriesType>).detachPrimitive(rangePrimitive as unknown as Parameters<ISeriesApi<SeriesType>['detachPrimitive']>[0]);
+    } catch { /* ignore */ }
+    rangePrimitive = null;
+  }
+
+  function handleSaveModeChange(state: { active: boolean; anchorA: number | null; anchorB: number | null }) {
+    if (!mainChart) return;
+
+    if (state.active) {
+      if (!rangeClickUnsubscribe) {
+        const handler = (param: { time?: Time }) => {
+          if (!param.time) return;
+          const t = typeof param.time === 'number'
+            ? param.time
+            : Math.floor(new Date(param.time as string).getTime() / 1000);
+          chartSaveMode.setAnchor(t);
+        };
+        mainChart.subscribeClick(handler);
+        rangeClickUnsubscribe = () => mainChart?.unsubscribeClick(handler);
+      }
+    } else {
+      rangeClickUnsubscribe?.();
+      rangeClickUnsubscribe = null;
+    }
+
+    rangePrimitive?.setRange(state.anchorA, state.anchorB);
+  }
+
+  function handleRangeModeKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && $chartSaveMode.active) {
+      chartSaveMode.exitRangeMode();
+    }
+  }
+
   // Level price lines
   let entryLine:  ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
   let targetLine: ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
@@ -503,6 +558,8 @@
       );
       candleSeriesRef = candleSeries;
       priceSeries = candleSeries;
+      // Attach range primitive to candlestick series (Layer 1, W-0086)
+      attachRangePrimitive();
     }
 
     // SMA 20 / 60 — always on
@@ -906,6 +963,10 @@
 
   function destroyCharts() {
     clearLiqPriceLines();
+    // Detach Layer 1 primitive before removing chart (W-0086)
+    rangeClickUnsubscribe?.();
+    rangeClickUnsubscribe = null;
+    detachRangePrimitive();
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = null;
     priceSeries = null;
@@ -993,9 +1054,17 @@
   onMount(() => {
     const onWin = () => handleResize();
     window.addEventListener('resize', onWin);
-    return () => window.removeEventListener('resize', onWin);
+    // Subscribe to save-mode store for range-mode click handling (W-0086)
+    saveModeUnsubscribe = chartSaveMode.subscribe(handleSaveModeChange);
+    // ESC exits range-mode without capturing pointer events
+    window.addEventListener('keydown', handleRangeModeKeydown);
+    return () => {
+      window.removeEventListener('resize', onWin);
+    };
   });
   onDestroy(() => {
+    saveModeUnsubscribe?.();
+    window.removeEventListener('keydown', handleRangeModeKeydown);
     destroyCharts();
   });
 
@@ -1267,6 +1336,13 @@
     </div>
   {:else}
     <div class="chart-stack" bind:this={chartStackEl}>
+    <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
+    <div class="chart-layer2-overlay">
+      <div class="layer2-topright">
+        <RangeModeToast active={$chartSaveMode.active} anchorASet={$chartSaveMode.anchorA !== null} />
+        <PhaseBadge phase={null} />
+      </div>
+    </div>
     <div class="pane-main"  bind:this={mainEl}></div>
     <div class="pane-label">VOL</div>
     <div class="pane-vol"   bind:this={volEl}></div>
@@ -1380,6 +1456,26 @@
 {/if}
 
 <style>
+  /* ── Layer 2 overlay (W-0086) ── */
+  .chart-layer2-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    /* Overlay sits above chart canvas but below header chrome */
+    z-index: 15;
+    pointer-events: none;
+  }
+  .layer2-topright {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+
   .chart-board {
     display: flex;
     flex-direction: column;
@@ -2055,6 +2151,8 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* Layer 2 overlay anchors to this container */
+    position: relative;
   }
   .pane-main {
     flex: 1 1 58%;
