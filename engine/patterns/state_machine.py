@@ -446,8 +446,21 @@ class PatternStateMachine:
         n_required = len(phase.required_blocks)
         n_optional = len(phase.optional_blocks)
         n_optional_hit = sum(1 for block in phase.optional_blocks if block in blocks_set)
-        if n_optional > 0:
-            return (n_required + n_optional_hit) / (n_required + n_optional)
+
+        # required_any_groups: count each satisfied group as one contribution
+        # so phases composed from OR-groups (no hard required_blocks) still
+        # produce meaningful confidence instead of 0.0.
+        n_any_groups = len(phase.required_any_groups)
+        n_any_hit = sum(
+            1
+            for group in phase.required_any_groups
+            if any(block in blocks_set for block in group)
+        )
+
+        n_total = n_required + n_any_groups + n_optional
+        n_hit = n_required + n_any_hit + n_optional_hit
+        if n_total > 0:
+            return n_hit / n_total
         return 1.0
 
     def _get_anchor_transition_id(

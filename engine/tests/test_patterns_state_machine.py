@@ -287,9 +287,17 @@ class TestScoreBasedAccumulation:
 
         assert t is None
         assert sm.get_current_phase(sym) == "REAL_DUMP"
-        assert len(attempts) == 1
-        assert attempts[0].failed_reason == "missing_any_group"
-        assert "positive_funding_bias" in attempts[0].missing_blocks
+        # ARCH_ZONE also uses required_any_groups now, so attempts from the
+        # earlier FAKE_DUMP→ARCH_ZONE path are also recorded. Filter down to
+        # the ACCUMULATION attempt which this test is actually asserting on.
+        accum_attempts = [
+            attempt
+            for attempt in attempts
+            if attempt.attempted_phase == "ACCUMULATION"
+        ]
+        assert len(accum_attempts) == 1
+        assert accum_attempts[0].failed_reason == "missing_any_group"
+        assert "positive_funding_bias" in accum_attempts[0].missing_blocks
 
     def test_transition_window_blocks_late_accumulation(self) -> None:
         pattern = copy.deepcopy(TRADOOR_OI_REVERSAL)
@@ -338,7 +346,10 @@ class TestMissingRequiredBlock:
         sm.evaluate(sym, FAKE_DUMP_BLOCKS, ts(0))
 
         sm.evaluate(sym, QUIET_BLOCKS, ts(1))
-        t = sm.evaluate(sym, ["volume_dryup"], ts(2))
+        # ARCH_ZONE now accepts volume_dryup via required_any_groups, so use
+        # a block that is neither in required_any_groups nor a disqualifier
+        # to validate the "no advance without any qualifying block" path.
+        t = sm.evaluate(sym, ["oi_change"], ts(2))
         assert t is None
         assert sm.get_current_phase(sym) == "FAKE_DUMP"
 

@@ -26,7 +26,35 @@ TRADOOR_OI_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="ARCH_ZONE",
             label="번지대 형성 (진입 금지)",
-            required_blocks=["sideways_compression"],
+            # Pre-dump "bungee zone". Originally required strict
+            # ``sideways_compression``, but empirical evidence on
+            # TRADOORUSDT (W-0086, run 9de9234b) showed 0 sideways_
+            # compression fires in the 90h pre-dump window because the
+            # actual pre-dump regime was a directional decline, not a
+            # tight range, so the state machine stalled at FAKE_DUMP
+            # even after the REAL_DUMP OI gate (H7 Axis-A) was fixed.
+            #
+            # Per Pruden (2007) "The Three Skills of Top Trading",
+            # Wyckoff's arch-zone generalises to multiple pre-dump
+            # structures: classical sideways range, Bollinger-style
+            # volatility squeeze (Bollinger 2001), or volume exhaustion
+            # (Edwards & Magee 1948 "drying up" volume preceding a
+            # breakdown). Hudson & Urquhart (2021) validate intraday
+            # crypto compression via volatility-normalised measures,
+            # making Bollinger-style squeeze an equally valid arch-zone
+            # proxy on hourly crypto.
+            #
+            # required_any_groups accepts any one compression signal;
+            # the oi_spike_with_dump disqualifier still prevents entry
+            # on the actual dump bar. FAKE_DUMP's advance blocks
+            # (recent_decline, funding_extreme) are deliberately NOT in
+            # this group so FAKE_DUMP blocks cannot auto-trigger
+            # ARCH_ZONE on the same bar — the two phases stay
+            # structurally distinct.
+            required_blocks=[],
+            required_any_groups=[
+                ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
+            ],
             optional_blocks=["volume_dryup"],
             disqualifier_blocks=["oi_spike_with_dump"],
             min_bars=4, max_bars=48,
