@@ -5,15 +5,15 @@
 // Base: https://api.binance.com or https://data-api.binance.vision
 
 import { toBinanceInterval } from '$lib/utils/timeframe';
-import type { BinanceKline, Binance24hr } from '$lib/engine/types';
+import type { BinanceKline, Binance24hr } from '$lib/contracts/marketContext';
 
 const BASE = 'https://api.binance.com';
 const DATA_BASE = 'https://data-api.binance.vision';
 const FETCH_TIMEOUT = 8000; // 8s timeout for all REST calls
 
 // ─── Types ───────────────────────────────────────────────────
-// Canonical types in engine/types.ts — re-export for convenience
-export type { BinanceKline, Binance24hr } from '$lib/engine/types';
+// Canonical market data contracts — re-export for convenience.
+export type { BinanceKline, Binance24hr } from '$lib/contracts/marketContext';
 
 export interface BinanceTicker {
   symbol: string;

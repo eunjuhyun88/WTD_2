@@ -3,7 +3,7 @@
 ## Goal
 
 Operate as the Day-1 trade-review and capture cockpit:
-inspect setups in chart context, save the exact reviewed range, and trigger next actions without leaving `/terminal`.
+inspect setups in chart context, save the exact reviewed range, and hand off cleanly into downstream evaluation without leaving `/terminal`.
 
 ## Canonical Areas
 
@@ -37,7 +37,7 @@ inspect setups in chart context, save the exact reviewed range, and trigger next
 - rendered board context (left rail, main board, right panel, bottom dock)
 - deterministic right-panel tab updates from clicks/actions
 - streamed explanation/analysis output
-- capture-create handoff requests, secondary challenge-create requests, and watch-save intents
+- capture-create handoff requests, secondary challenge-create requests, and lab handoff intents
 - preview signals about similar captures and downstream evaluation handoff
 - deep-link transitions to `/lab` and back-context handling
 
@@ -47,7 +47,7 @@ Core flow is fixed:
 
 1. Review (main board / replay / surfaced candidate)
 2. Validate (chart + right detail panel)
-3. Save or hand off (`Save Setup`, watch, or open next surface)
+3. Save or hand off (`Save Setup`, `Open in Lab`, or open next surface)
 
 Secondary query/compose behavior may still create a `challenge`, but it must not replace the primary review/capture path.
 
@@ -70,6 +70,7 @@ Terminal may host AI assistance, but authority is split:
 - engine/ML layer: score, match, evaluate, and judge
 
 Terminal must not blur those two roles in copy or contract behavior.
+Terminal also must not create a new Day-1 `watch` directly; that activation remains lab-owned.
 
 ## Layout Contract (Desktop)
 

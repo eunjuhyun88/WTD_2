@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { forkStrategy } from '$lib/stores/strategyStore';
-  import type { Strategy } from '$lib/engine/backtestEngine';
+  import type { Strategy } from '$lib/lab/backtest';
 
   const { post } = $props<{
     post: {

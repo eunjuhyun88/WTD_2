@@ -1,6 +1,7 @@
 import {
   parseMacroCalendarResponse,
   parsePatternCaptureResponse,
+  parsePatternCaptureSimilarResponse,
   parseTerminalAlertsResponse,
   parseTerminalExportJobResponse,
   parseTerminalPinsResponse,
@@ -9,6 +10,8 @@ import {
   type PatternCaptureCreateRequest,
   type PatternCaptureQuery,
   type PatternCaptureRecord,
+  type PatternCaptureSimilarityDraft,
+  type PatternCaptureSimilarityMatch,
   type TerminalAlertCreateRequest,
   type TerminalAlertRule,
   type TerminalExportJob,
@@ -118,6 +121,7 @@ export async function fetchMacroCalendar(): Promise<MacroCalendarItem[]> {
 
 export async function fetchPatternCaptures(query: Partial<PatternCaptureQuery> = {}): Promise<PatternCaptureRecord[]> {
   const params = new URLSearchParams();
+  if (query.id) params.set('id', query.id);
   if (query.symbol) params.set('symbol', query.symbol);
   if (query.timeframe) params.set('timeframe', query.timeframe);
   if (query.verdict) params.set('verdict', query.verdict);
@@ -130,6 +134,11 @@ export async function fetchPatternCaptures(query: Partial<PatternCaptureQuery> =
   return payload.records;
 }
 
+export async function fetchPatternCaptureById(id: string): Promise<PatternCaptureRecord | null> {
+  const records = await fetchPatternCaptures({ id, limit: 1 });
+  return records[0] ?? null;
+}
+
 export async function createPatternCapture(input: PatternCaptureCreateRequest): Promise<PatternCaptureRecord | null> {
   const res = await fetch('/api/terminal/pattern-captures', {
     method: 'POST',
@@ -139,4 +148,17 @@ export async function createPatternCapture(input: PatternCaptureCreateRequest): 
   if (!res.ok) return null;
   const payload = parsePatternCaptureResponse(await readJson(res));
   return payload.records[0] ?? null;
+}
+
+export async function fetchSimilarPatternCaptures(
+  input: PatternCaptureSimilarityDraft,
+): Promise<PatternCaptureSimilarityMatch[]> {
+  const res = await fetch('/api/terminal/pattern-captures/similar', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) return [];
+  const payload = parsePatternCaptureSimilarResponse(await readJson(res));
+  return payload.matches;
 }

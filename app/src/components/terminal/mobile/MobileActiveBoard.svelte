@@ -13,7 +13,9 @@
     bars?: any[];
     layerBarsMap?: Record<string, any[]>;
     loading?: boolean;
+    onReviewChart?: () => void;
     onViewDetail?: () => void;
+    onOpenMetrics?: () => void;
   }
 
   let {
@@ -23,7 +25,9 @@
     bars = [],
     layerBarsMap = {},
     loading = false,
+    onReviewChart,
     onViewDetail,
+    onOpenMetrics,
   }: Props = $props();
 
   const biasColor: Record<string, string> = {
@@ -50,12 +54,6 @@
   }
 
   const primaryEvidence = $derived(evidence.slice(0, 6));
-  const summaryMetrics = $derived(asset ? [
-    { label: 'VOL 1H', value: `${asset.volumeRatio1h.toFixed(1)}x`, tone: 'neutral' },
-    { label: 'OI 1H', value: fmtPct(asset.oiChangePct1h), tone: asset.oiChangePct1h >= 0 ? 'bull' : 'bear' },
-    { label: 'FUNDING', value: `${(asset.fundingRate * 100).toFixed(3)}%`, tone: Math.abs(asset.fundingRate) > 0.01 ? 'warn' : 'neutral' },
-    { label: 'SPREAD', value: `${asset.spreadBps.toFixed(1)} bps`, tone: asset.spreadBps > 5 ? 'warn' : 'neutral' },
-  ] : []);
 </script>
 
 <div class="mobile-board">
@@ -111,14 +109,20 @@
         <span class="tf-sep">·</span>
         <span class="vol-ratio">{asset.volumeRatio1h.toFixed(1)}x vol</span>
         <span class="tf-sep">·</span>
-        <span
-          class="oi-change"
-          class:positive={asset.oiChangePct1h >= 0}
-          class:negative={asset.oiChangePct1h < 0}
-        >
-          OI {fmtPct(asset.oiChangePct1h)}
-        </span>
+        <span class="spread-chip">Spread {asset.spreadBps.toFixed(1)}bps</span>
       </div>
+    </div>
+
+    <div class="mobile-loop-bar">
+      <button class="loop-btn primary" onclick={onReviewChart}>
+        Review On Chart
+      </button>
+      <button class="loop-btn" onclick={onViewDetail}>
+        Decision
+      </button>
+      <button class="loop-btn" onclick={onOpenMetrics}>
+        Metrics
+      </button>
     </div>
 
     {#if bars.length > 2}
@@ -154,22 +158,6 @@
           invalidation={verdict.invalidation}
         />
       </div>
-
-      {#if summaryMetrics.length > 0}
-        <div class="metrics-section">
-          <p class="section-label">CORE METRICS</p>
-          <div class="metrics-grid">
-            {#each summaryMetrics as metric}
-              <div class="metric-card">
-                <span class="metric-label">{metric.label}</span>
-                <span class="metric-value" class:bull={metric.tone === 'bull'} class:bear={metric.tone === 'bear'} class:warn={metric.tone === 'warn'}>
-                  {metric.value}
-                </span>
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
 
       <!-- ── Evidence ── -->
       {#if primaryEvidence.length > 0}
@@ -259,6 +247,32 @@
   /* ── Asset Header ── */
   .asset-header {
     padding: 16px 16px 12px;
+  }
+
+  .mobile-loop-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 16px 12px;
+  }
+
+  .loop-btn {
+    min-height: 40px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--sc-text-1);
+    font-family: var(--sc-font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+
+  .loop-btn.primary {
+    background: rgba(38, 166, 154, 0.18);
+    border-color: rgba(38, 166, 154, 0.34);
+    color: #a6efe0;
   }
 
   .asset-main {
@@ -351,13 +365,11 @@
     color: var(--sc-text-2);
   }
 
-  .oi-change {
+  .spread-chip {
     font-family: var(--sc-font-mono);
     font-size: 10px;
+    color: var(--sc-text-2);
   }
-
-  .oi-change.positive { color: var(--sc-bias-bull); }
-  .oi-change.negative { color: var(--sc-bias-bear); }
 
   /* ── Verdict ── */
   .verdict-block {
@@ -410,7 +422,6 @@
 
   /* ── Evidence ── */
   .price-chart-card,
-  .metrics-section,
   .evidence-section {
     margin: 0 16px 12px;
     padding: 12px;
@@ -455,40 +466,6 @@
     height: 84px;
   }
 
-  .metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .metric-card {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 8px 10px;
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.03);
-    min-width: 0;
-  }
-
-  .metric-label {
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    letter-spacing: 0.08em;
-    color: var(--sc-text-3);
-  }
-
-  .metric-value {
-    font-family: var(--sc-font-mono);
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--sc-text-1);
-  }
-
-  .metric-value.bull { color: var(--sc-bias-bull); }
-  .metric-value.bear { color: var(--sc-bias-bear); }
-  .metric-value.warn { color: #fbbf24; }
-
   /* ── Sources ── */
   .sources-section {
     margin: 0 16px 12px;
@@ -519,5 +496,11 @@
   .detail-cta:hover {
     background: rgba(255, 255, 255, 0.08);
     color: var(--sc-text-0);
+  }
+
+  @media (max-width: 420px) {
+    .mobile-loop-bar {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

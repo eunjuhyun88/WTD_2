@@ -2,17 +2,91 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { query } from '$lib/server/db';
-import { runTerminalScan } from '$lib/services/scanService';
+import { runTerminalScan, normalizeScanRequest, type RunTerminalScanResult } from '$lib/services/scanService';
 import { scanLimiter } from '$lib/server/rateLimit';
 import { runIpRateLimitGuard } from '$lib/server/authSecurity';
 import { isRequestBodyTooLargeError, readJsonBody } from '$lib/server/requestGuards';
-import { computeTerminalScanEmbedding } from '$lib/engine/ragEmbedding';
+import { computeTerminalScanEmbedding } from '$lib/server/rag/embedding';
 import { saveTerminalScanRAG } from '$lib/server/ragService';
+import {
+  completeTerminalScanJob,
+  createTerminalScanJob,
+  failTerminalScanJob,
+  markTerminalScanJobRunning,
+} from '$lib/server/terminalScanJobStore';
 
 function parseValidationMessage(message: string): string | null {
   if (message.startsWith('pair must be like')) return message;
   if (message.startsWith('timeframe must be one of')) return message;
   return null;
+}
+
+function wantsAsyncScan(body: Record<string, unknown> | null | undefined): boolean {
+  if (!body || typeof body !== 'object') return false;
+  const v = (body as { async?: unknown }).async;
+  if (v === true || v === 1) return true;
+  if (typeof v === 'string') return v.trim().toLowerCase() === 'true';
+  return false;
+}
+
+async function emitScanSideEffects(
+  userId: string,
+  result: RunTerminalScanResult,
+  source: string,
+): Promise<void> {
+  query(
+    `
+        INSERT INTO activity_events (user_id, event_type, source_page, source_id, severity, payload)
+        VALUES ($1, 'scan_run', 'terminal', $2, 'info', $3::jsonb)
+      `,
+    [
+      userId,
+      result.scanId,
+      JSON.stringify({
+        pair: result.data.pair,
+        timeframe: result.data.timeframe,
+        consensus: result.data.consensus,
+        avgConfidence: result.data.avgConfidence,
+        source,
+        persisted: result.persisted,
+      }),
+    ],
+  ).catch(() => undefined);
+
+  try {
+    const scanSignals = (result.data.highlights ?? []).map((h: { agent?: string; vote?: string; conf?: number }) => ({
+      agentId: h.agent ?? '',
+      vote: h.vote ?? 'neutral',
+      confidence: h.conf ?? 50,
+    }));
+
+    if (scanSignals.length > 0) {
+      const embedding = await computeTerminalScanEmbedding(scanSignals, result.data.timeframe ?? '4h');
+
+      const agentSignals: Record<string, { vote: string; confidence: number; note: string }> = {};
+      for (const h of result.data.highlights ?? []) {
+        const row = h as { agent?: string; vote?: string; conf?: number; note?: string };
+        agentSignals[(row.agent ?? '').toUpperCase()] = {
+          vote: row.vote ?? 'neutral',
+          confidence: row.conf ?? 50,
+          note: row.note ?? '',
+        };
+      }
+
+      saveTerminalScanRAG(userId, {
+        scanId: result.scanId,
+        pair: result.data.pair,
+        timeframe: result.data.timeframe,
+        consensus: result.data.consensus,
+        avgConfidence: result.data.avgConfidence,
+        highlights: result.data.highlights,
+        embedding,
+        agentSignals,
+      }).catch(() => undefined);
+    }
+  } catch {
+    // RAG 저장 실패는 스캔 결과에 영향 없음
+  }
 }
 
 export const POST: RequestHandler = async ({ cookies, request, getClientAddress }) => {
@@ -34,70 +108,45 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
     const body = await readJsonBody<Record<string, unknown>>(request, 16 * 1024);
     const source = typeof body?.source === 'string' ? body.source.trim() : 'terminal';
 
-    const result = await runTerminalScan(user.id, {
-      pair: body?.pair,
-      timeframe: body?.timeframe,
-    });
-
-    // Fire-and-forget: activity_events
-    query(
-      `
-        INSERT INTO activity_events (user_id, event_type, source_page, source_id, severity, payload)
-        VALUES ($1, 'scan_run', 'terminal', $2, 'info', $3::jsonb)
-      `,
-      [
-        user.id,
-        result.scanId,
-        JSON.stringify({
-          pair: result.data.pair,
-          timeframe: result.data.timeframe,
-          consensus: result.data.consensus,
-          avgConfidence: result.data.avgConfidence,
-          source,
-          persisted: result.persisted,
-        }),
-      ]
-    ).catch(() => undefined);
-
-    // Fire-and-forget: RAG entry 저장 (Terminal 스캔 → 256d 임베딩)
-    // Paper 2: 에이전트별 세분화 시그널 (agentSignals JSONB)
+    const scanInput = { pair: body?.pair, timeframe: body?.timeframe };
     try {
-      const scanSignals = (result.data.highlights ?? []).map((h: any) => ({
-        agentId: h.agent ?? '',
-        vote: h.vote ?? 'neutral',
-        confidence: h.conf ?? 50,
-      }));
-
-      if (scanSignals.length > 0) {
-        const embedding = computeTerminalScanEmbedding(
-          scanSignals,
-          result.data.timeframe ?? '4h'
-        );
-
-        // Paper 2: Fine-grained agent signals → JSONB
-        const agentSignals: Record<string, { vote: string; confidence: number; note: string }> = {};
-        for (const h of result.data.highlights ?? []) {
-          agentSignals[(h.agent ?? '').toUpperCase()] = {
-            vote: h.vote ?? 'neutral',
-            confidence: h.conf ?? 50,
-            note: h.note ?? '',
-          };
-        }
-
-        saveTerminalScanRAG(user.id, {
-          scanId: result.scanId,
-          pair: result.data.pair,
-          timeframe: result.data.timeframe,
-          consensus: result.data.consensus,
-          avgConfidence: result.data.avgConfidence,
-          highlights: result.data.highlights,
-          embedding,
-          agentSignals,
-        }).catch(() => undefined);
-      }
-    } catch {
-      // RAG 저장 실패는 스캔 결과에 영향 없음
+      normalizeScanRequest(scanInput);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Invalid scan request';
+      const validationMessage = parseValidationMessage(message);
+      if (validationMessage) return json({ error: validationMessage }, { status: 400 });
+      return json({ error: message }, { status: 400 });
     }
+
+    if (wantsAsyncScan(body)) {
+      const jobId = createTerminalScanJob(user.id);
+      markTerminalScanJobRunning(jobId);
+      void (async () => {
+        try {
+          const result = await runTerminalScan(user.id, scanInput);
+          completeTerminalScanJob(jobId, result);
+          await emitScanSideEffects(user.id, result, source);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : 'Failed to run terminal scan';
+          failTerminalScanJob(jobId, msg);
+        }
+      })();
+
+      return json(
+        {
+          success: true,
+          async: true,
+          jobId,
+          state: 'running',
+          pollUrl: `/api/terminal/scan/jobs/${jobId}`,
+        },
+        { status: 202 },
+      );
+    }
+
+    const result = await runTerminalScan(user.id, scanInput);
+
+    await emitScanSideEffects(user.id, result, source);
 
     return json({
       success: true,
@@ -107,13 +156,21 @@ export const POST: RequestHandler = async ({ cookies, request, getClientAddress 
       warning: result.warning,
       data: result.data,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (isRequestBodyTooLargeError(error)) {
       return json({ error: 'Request body too large' }, { status: 413 });
     }
-    const validationMessage = typeof error?.message === 'string' ? parseValidationMessage(error.message) : null;
+    const validationMessage =
+      typeof error === 'object' && error !== null && 'message' in error
+        ? parseValidationMessage(String((error as { message?: unknown }).message))
+        : null;
     if (validationMessage) return json({ error: validationMessage }, { status: 400 });
-    if (typeof error?.message === 'string' && error.message.includes('DATABASE_URL is not set')) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      String((error as { message?: unknown }).message).includes('DATABASE_URL is not set')
+    ) {
       return json({ error: 'Server database is not configured' }, { status: 500 });
     }
     if (error instanceof SyntaxError) return json({ error: 'Invalid request body' }, { status: 400 });

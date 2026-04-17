@@ -9,8 +9,8 @@
 
 import type { RequestHandler } from './$types';
 import { callLLMStreamWithTools, type LLMMessage } from '$lib/server/llmService';
-import type { DouniProfile } from '$lib/engine/cogochi/douni/douniPersonality';
-import type { SignalSnapshot } from '$lib/engine/cogochi/types';
+import type { DouniProfile } from '$lib/server/douni/personality';
+import type { ServerSignalSnapshot as SignalSnapshot } from '$lib/server/cogochi/signalSnapshot';
 import type { SignalSnapshotRaw } from '$lib/server/engineClient';
 import { type LLMProvider, getAvailableProvider } from '$lib/server/llmConfig';
 import type { DouniSSEEvent, LLMMessageWithTools } from '$lib/server/douni/types';

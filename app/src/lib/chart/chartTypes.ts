@@ -10,12 +10,12 @@ import type {
   IPriceLine,
   Time,
 } from 'lightweight-charts';
-import type { BinanceKline } from '$lib/engine/types';
+import type { BinanceKline } from '$lib/contracts/marketContext';
 import type {
   ChartPatternDirection,
   ChartPatternKind,
   ChartPatternStatus,
-} from '$lib/engine/patternDetector';
+} from '$lib/contracts/chartPatterns';
 
 // ── Chart Core Context ───────────────────────────────────────
 

@@ -31,17 +31,19 @@ app
 - `docs/product/terminal-attention-workspace.md`
 - `app/src/routes/terminal/+page.svelte`
 - `app/src/lib/contracts/terminalBackend.ts`
+- `app/src/lib/server/terminal/sessionService.ts`
+- `app/src/lib/server/terminal/analysisAdapter.ts`
 - `app/src/lib/server/analyze/responseMapper.ts`
 - `engine/api/routes/memory.py`
 
 ## Facts
 
-- `/terminal` parity docs already target dedicated routes for watchlist, pins, alerts, exports, and macro calendar (`docs/domains/terminal-html-backend-parity.md`).
-- analyze now emits explicit `entryPlan`, `riskPlan`, `flowSummary`, and `sources`, and the panel adapter prefers those fields before fallback derivation (`app/src/lib/server/analyze/responseMapper.ts`, `app/src/lib/terminal/panelAdapter.ts`).
-- app-domain persistence routes now exist for watchlist, pins, alerts, exports, and macro calendar, backed by a new Postgres migration plus authenticated route handlers (`app/src/lib/server/migrations/004_terminal_persistence.sql`, `app/src/routes/api/terminal/*`, `app/src/routes/api/market/macro-calendar/+server.ts`).
-- `/terminal/+page.svelte` now hydrates watchlist/pins/saved alerts/macro calendar, routes Pin/Alert/Export/Compare actions to dedicated endpoints, and feeds persisted state into the left rail and context panel.
-- engine memory feedback/debug state now persists through a WAL-backed SQLite store instead of process-local dicts (`engine/memory/state_store.py`, `engine/api/routes/memory.py`).
-- targeted app contracts/routes/tests, targeted engine tests, and `app` typecheck all pass for this slice.
+- `/terminal` parity docs already target dedicated routes for watchlist, pins, alerts, exports, macro calendar, and explicit analyze fields (`docs/domains/terminal-html-backend-parity.md`, `app/src/lib/server/analyze/responseMapper.ts`).
+- app-domain persistence routes now exist for watchlist, pins, alerts, exports, and macro calendar, backed by the Postgres migration and authenticated route handlers (`app/src/lib/server/migrations/004_terminal_persistence.sql`, `app/src/routes/api/terminal/*`, `app/src/routes/api/market/macro-calendar/+server.ts`).
+- `/api/terminal/session` + `sessionService.ts` are now the canonical restore entrypoint, and `analysisAdapter.ts` removes the old watchlist route-to-route analyze fetch.
+- `/terminal/+page.svelte` now hydrates persisted state, routes Pin/Alert/Export/Compare actions to dedicated endpoints, and engine memory feedback/debug state persists through SQLite WAL (`engine/memory/state_store.py`, `engine/api/routes/memory.py`).
+- active-symbol restore now skips watchlist preview enrich on the session route and lets client `loadAnalysis()` backfill the preview from the full analyze result, reducing one restore-time analyze hit for the common single-symbol path.
+- although targeted tests/checks pass, the branch still contains unrelated chart/capture/doc lanes and must not be merged as-is.
 
 ## Assumptions
 
@@ -50,7 +52,7 @@ app
 
 ## Open Questions
 
-- none; the current rollout scope is decision-complete from the approved plan
+- whether the remaining app-surface delta should be moved onto a fresh branch from `origin/main` before review, instead of merging from the older `task/w-0024-terminal-attention-implementation` line
 
 ## Integration Design
 
@@ -74,13 +76,18 @@ app
 - implement terminal persistence in `app/` routes backed by Postgres and keep engine memory durability separate in SQLite WAL
 - allow memory debug-session writes only from durable terminal actions such as save/pin/alert mutations, not passive viewing interactions
 - keep one implementation branch for the full rollout even though the final merge should be split into reviewable PR slices by change type
+- treat `/api/terminal/session` as the canonical restore surface and prefer shared server modules (`analysisAdapter.ts`, `sessionService.ts`) over app route-to-route fetches for internal orchestration
+- watchlist preview derivation should be shared between server and client so restore-time shortcuts do not create divergent preview semantics
 - wire `/terminal` to the app-domain persistence client from the page composition layer: hydrate watchlist/pins/alerts/macro calendar on mount, pass persisted state into rails, and route Pin/Alert/Export actions to dedicated app endpoints
+- branch split rationale: do not merge `task/w-0024-terminal-attention-implementation` directly because it diverges from `origin/main` at `c68b21e`; instead, reuse `codex/w-0041-terminal-analyze-contract-surface-clean` for the analyze contract slice and move the remaining terminal page integration delta onto a fresh `origin/main`-based branch
+- reconstruction rule: treat `origin/main` as the baseline truth and port only files that are necessary for the rollout exit criteria; omit pattern-training, ledger-record, and unrelated alert-policy changes even if they coexist on the older branch
+- reconstruction update: because `origin/main` already contains `W-0041` and `W-0039`, the clean branch should now replay only the page-integration commit against latest `origin/main` and preserve the newer Save Setup / pattern-capture behavior
 
 ## Next Steps
 
-1. apply the new terminal persistence SQL migration in the target Postgres environment before rollout
-2. split merge units into the planned review slices: `contract/analyze`, `app-domain persistence`, `engine memory durability`
-3. run an authenticated browser smoke test on `/terminal` once the migration is present
+1. create a dedicated latest-`origin/main` worktree branch for the remaining page-integration + session-aggregate slice and replay only the scoped workspace-surface files
+2. apply the new terminal persistence SQL migration in the target Postgres environment before rollout
+3. run an authenticated browser smoke test on `/terminal` and watch the initial restore/analyze traffic once the migration is present
 
 ## Exit Criteria
 
