@@ -78,6 +78,7 @@ engine
 - benchmark-pack search is still effectively `1h`-only even though the contract already carries `candidate_timeframes`, so the next core slice is to connect that field to actual variant generation and replay evaluation for higher timeframe families
 - benchmark search now expands real `1h/4h` variant families and evaluates them durably, but the first `4h` run underperformed sharply because cloned `1h` contracts kept `1h` bar windows, warmup depth, and lead-time scoring semantics instead of preserving wall-clock intent
 - after wall-clock normalization, `4h` family scores improved for the best coarse variant (`arch-soft-real-loose__tf-4h` moved into the `0.166667` band), but timeframe clones are still polluting mutation-branch insights because `__tf-*` variants are being treated as descendants instead of a separate family axis
+- `__tf-*` clones are now tagged with `search_origin="timeframe_family"` at expansion time, grouped under one `{base_slug}__tf-family` insight per root variant, and excluded from `select_active_family_insight`; the real run on `2026-04-18` (artifact `7e7aba5f-d3ce-4279-81d8-089eebb7ebf8`) shows `family_types = {auto_evidence, manual, mutation_branch, reset_lane, timeframe_family}`, no `__tf-*` entries in `variant_deltas`, and the mutation-branch axis stays anchored on real 1h lineage
 
 ## Assumptions
 
@@ -122,9 +123,9 @@ engine
 
 ## Next Steps
 
-1. Keep timeframe-family expansion out of mutation-branch deltas so `__tf-*` variants are ranked as timeframe families, not damaging descendants.
-2. Decide whether family-level promotion deserves first-class persistence in `research_state_store` instead of only run payloads.
-3. Keep sub-hour search blocked on finer raw cache support instead of piggybacking on 1h resampling.
+1. Decide whether family-level promotion deserves first-class persistence in `research_state_store` instead of only run payloads.
+2. Keep sub-hour search blocked on finer raw cache support instead of piggybacking on 1h resampling.
+3. Consider whether `timeframe_family` insights should feed a separate timeframe-recommendation lane (e.g. surface when a `4h` clone out-ranks its `1h` parent) rather than being purely informational.
 
 ## Exit Criteria
 

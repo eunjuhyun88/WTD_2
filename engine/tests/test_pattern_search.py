@@ -2377,3 +2377,107 @@ def test_depth_progress_distinguishes_deeper_holdout_paths() -> None:
     arch_progress = _phase_depth_progress(expected, ["ARCH_ZONE"], "ARCH_ZONE")
 
     assert arch_progress > fake_only
+
+
+def test_expand_variants_tags_non_base_timeframe_clones_as_timeframe_family() -> None:
+    base = PatternVariantSpec(
+        pattern_slug="tradoor-oi-reversal-v1",
+        variant_slug="tradoor-oi-reversal-v1__arch-soft-real-loose",
+        timeframe="1h",
+        search_origin="manual",
+    )
+    expanded = expand_variants_across_timeframes([base], ["1h", "4h"])
+    by_slug = {variant.variant_slug: variant for variant in expanded}
+
+    assert by_slug["tradoor-oi-reversal-v1__arch-soft-real-loose"].search_origin == "manual"
+    assert by_slug["tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h"].search_origin == "timeframe_family"
+
+
+def test_build_search_family_insights_groups_timeframe_clones_under_single_family() -> None:
+    variant_results = [
+        VariantSearchResult(
+            variant_id="base",
+            variant_slug="tradoor-oi-reversal-v1__arch-soft-real-loose",
+            reference_score=0.54,
+            holdout_score=0.14,
+            overall_score=0.42,
+            case_results=[],
+        ),
+        VariantSearchResult(
+            variant_id="tf-4h",
+            variant_slug="tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h",
+            reference_score=0.18,
+            holdout_score=0.18,
+            overall_score=0.18,
+            case_results=[],
+        ),
+    ]
+    variant_specs = [
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug="tradoor-oi-reversal-v1__arch-soft-real-loose",
+            timeframe="1h",
+            search_origin="manual",
+        ),
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug="tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h",
+            timeframe="4h",
+            search_origin="timeframe_family",
+        ),
+    ]
+
+    insights = build_search_family_insights(variant_results, variant_specs, [])
+    by_type = {insight.family_type: insight for insight in insights}
+
+    assert "manual" in by_type
+    assert by_type["manual"].family_key == "tradoor-oi-reversal-v1__arch-soft-real-loose"
+    assert by_type["manual"].member_variant_slugs == [
+        "tradoor-oi-reversal-v1__arch-soft-real-loose"
+    ]
+
+    tf_family = by_type["timeframe_family"]
+    assert tf_family.family_key == "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-family"
+    assert tf_family.member_variant_slugs == [
+        "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h"
+    ]
+    assert tf_family.representative_variant_slug == (
+        "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h"
+    )
+
+
+def test_select_active_family_insight_ignores_timeframe_family() -> None:
+    family_insights = [
+        SearchFamilyInsight(
+            family_key="tradoor-oi-reversal-v1__arch-soft-real-loose__tf-family",
+            family_type="timeframe_family",
+            representative_variant_slug=(
+                "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h"
+            ),
+            member_variant_slugs=[
+                "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h"
+            ],
+            best_reference_score=0.9,
+            best_holdout_score=0.9,
+            best_overall_score=0.9,
+            family_score=1.5,
+            classification="viable",
+        ),
+        SearchFamilyInsight(
+            family_key="tradoor-oi-reversal-v1__arch-soft-real-loose",
+            family_type="manual",
+            representative_variant_slug="tradoor-oi-reversal-v1__arch-soft-real-loose",
+            member_variant_slugs=["tradoor-oi-reversal-v1__arch-soft-real-loose"],
+            best_reference_score=0.54,
+            best_holdout_score=0.14,
+            best_overall_score=0.42,
+            family_score=0.455,
+            classification="viable",
+        ),
+    ]
+
+    active = select_active_family_insight(family_insights)
+
+    assert active is not None
+    assert active.family_type == "manual"
+    assert active.family_key == "tradoor-oi-reversal-v1__arch-soft-real-loose"
