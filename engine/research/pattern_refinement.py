@@ -14,7 +14,7 @@ from patterns.model_registry import MODEL_REGISTRY_STORE
 
 from .eval_protocol import walk_forward_eval
 from .objectives import PatternResearchObjective, derive_pattern_research_objective
-from .state_store import ResearchRun
+from .state_store import ResearchRun, ResearchStateStore
 from .worker_control import (
     ResearchJobResult,
     ResearchJobSpec,
@@ -48,14 +48,16 @@ def run_pattern_bounded_eval(
 ) -> ResearchRun:
     """Run one bounded Phase A refinement job for a pattern."""
     pattern = get_pattern(config.pattern_slug)
+    controller = controller or ResearchWorkerController()
+    state_store = controller.store
     ledger_store = ledger_store or LedgerStore()
     objective = objective or (
         derive_pattern_research_objective(config.pattern_slug, ledger_store=ledger_store)
         if config.objective_id is None
         else None
     )
-    baseline_ref = config.baseline_ref or _derive_baseline_ref(config.pattern_slug)
-    controller = controller or ResearchWorkerController()
+    baseline_ref = config.baseline_ref or _derive_baseline_ref(config.pattern_slug, state_store=state_store)
+    baseline_family_ref = _derive_baseline_family_ref(baseline_ref)
     search_policy = (
         objective.recommended_search_policy
         if objective is not None
@@ -180,6 +182,8 @@ def run_pattern_bounded_eval(
             disposition="train_candidate",
             winner_variant_ref=variant_ref,
             handoff_payload={
+                "baseline_ref": run.baseline_ref,
+                "baseline_family_ref": baseline_family_ref,
                 "pattern_slug": config.pattern_slug,
                 "model_key": model_key,
                 "timeframe": pattern.timeframe,
@@ -226,11 +230,20 @@ def _encode_snapshots(snapshots: list[dict]) -> np.ndarray:
     return encode_features_df(pd.DataFrame(snapshots))
 
 
-def _derive_baseline_ref(pattern_slug: str) -> str:
+def _derive_baseline_ref(pattern_slug: str, *, state_store: ResearchStateStore | None = None) -> str:
+    if state_store is not None:
+        for run in state_store.list_runs(pattern_slug=pattern_slug, status="completed"):
+            baseline_family_ref = run.handoff_payload.get("baseline_family_ref")
+            if baseline_family_ref:
+                return str(baseline_family_ref)
     preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
     if preferred is None:
         return "pattern-shadow:rule-first"
     return f"model:{preferred.model_key}:{preferred.model_version}:{preferred.rollout_state}"
+
+
+def _derive_baseline_family_ref(baseline_ref: str) -> str | None:
+    return baseline_ref if baseline_ref.startswith("family:") else None
 
 
 def pattern_bounded_eval_payload(run: ResearchRun, controller: ResearchWorkerController | None = None) -> dict:

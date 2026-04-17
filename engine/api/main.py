@@ -20,7 +20,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from api.routes import backtest, captures, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns, memory
+from api.routes import backtest, captures, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
 from security_runtime import (
@@ -128,6 +128,7 @@ app.include_router(score.router,    prefix="/score",    tags=["scoring"])
 app.include_router(deep.router,     prefix="/deep",     tags=["deep"])
 app.include_router(ctx.router,      prefix="/ctx",      tags=["context"])
 app.include_router(universe.router, prefix="/universe", tags=["universe"])
+app.include_router(opportunity.router, prefix="/opportunity", tags=["opportunity"])
 app.include_router(backtest.router, prefix="/backtest", tags=["backtest"])
 app.include_router(challenge.router, prefix="/challenge", tags=["challenge"])
 app.include_router(train.router, prefix="/train", tags=["training"])
@@ -136,6 +137,8 @@ app.include_router(scanner.router, prefix="/scanner", tags=["scanner"])
 app.include_router(patterns.router, prefix="/patterns", tags=["patterns"])
 app.include_router(captures.router, prefix="/captures", tags=["captures"])
 app.include_router(memory.router, prefix="/memory", tags=["memory"])
+app.include_router(screener.router, prefix="/screener", tags=["screener"])
+app.include_router(rag.router, prefix="/rag", tags=["rag"])
 
 
 @app.get("/healthz", tags=["meta"])

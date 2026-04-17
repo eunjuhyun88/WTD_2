@@ -58,6 +58,54 @@ def test_offline_reads_existing_cache(tmp_path, monkeypatch):
     assert out["taker_buy_base_volume"].iloc[0] == pytest.approx(50.0)
 
 
+def test_online_fetch_uses_spot_when_available(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df = _make_fake_klines(6)
+
+    calls: list[tuple[str, str]] = []
+
+    def fake_spot(symbol: str, timeframe: str):
+        calls.append(("spot", symbol))
+        return df
+
+    def fake_futures(symbol: str, timeframe: str):
+        calls.append(("futures", symbol))
+        raise AssertionError("futures fallback should not run when spot succeeds")
+
+    monkeypatch.setattr(loader_mod, "fetch_klines_max", fake_spot)
+    monkeypatch.setattr(loader_mod, "fetch_futures_klines_max", fake_futures)
+
+    out = load_klines("BTCUSDT", "1h", offline=False)
+
+    assert len(out) == 6
+    assert calls == [("spot", "BTCUSDT")]
+    assert (tmp_path / "BTCUSDT_1h.csv").exists()
+
+
+def test_online_fetch_falls_back_to_futures_for_invalid_spot_symbol(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df = _make_fake_klines(7)
+
+    calls: list[tuple[str, str]] = []
+
+    def fake_spot(symbol: str, timeframe: str):
+        calls.append(("spot", symbol))
+        raise RuntimeError('HTTP 400 for PTBUSDT: {"code":-1121,"msg":"Invalid symbol."}')
+
+    def fake_futures(symbol: str, timeframe: str):
+        calls.append(("futures", symbol))
+        return df
+
+    monkeypatch.setattr(loader_mod, "fetch_klines_max", fake_spot)
+    monkeypatch.setattr(loader_mod, "fetch_futures_klines_max", fake_futures)
+
+    out = load_klines("PTBUSDT", "1h", offline=False)
+
+    assert len(out) == 7
+    assert calls == [("spot", "PTBUSDT"), ("futures", "PTBUSDT")]
+    assert (tmp_path / "PTBUSDT_1h.csv").exists()
+
+
 def test_non_1h_timeframe_resamples_from_1h_base(tmp_path, monkeypatch):
     """4h / 1d etc. are now derived from 1h on the fly.
 
@@ -94,3 +142,23 @@ def test_offline_flag_is_keyword_only():
     # to be explicit about offline vs online mode.
     with pytest.raises(TypeError):
         load_klines("BTCUSDT", "1h", True)  # type: ignore[misc]
+
+
+def test_load_perp_parses_timestamp_index(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    perp = pd.DataFrame(
+        {
+            "funding_rate": [0.001, 0.002],
+            "oi_change_1h": [0.1, 0.2],
+            "oi_change_24h": [0.3, 0.4],
+            "long_short_ratio": [1.1, 1.2],
+        },
+        index=pd.date_range("2026-04-16T12:00:00Z", periods=2, freq="1h", tz="UTC"),
+    )
+    perp.to_csv(tmp_path / "PTBUSDT_perp.csv")
+
+    out = loader_mod.load_perp("PTBUSDT", offline=True)
+
+    assert out is not None
+    assert str(out.index.dtype).startswith("datetime64")
+    assert out.index.tz is not None

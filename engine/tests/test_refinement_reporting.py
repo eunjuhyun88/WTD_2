@@ -20,6 +20,9 @@ def test_write_refinement_report_includes_objective_and_selection(tmp_path) -> N
         completed_at="2026-04-16T16:05:00+00:00",
         disposition="dead_end",
         winner_variant_ref="variant-19",
+        handoff_payload={
+            "baseline_family_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
+        },
     )
     store.record_selection_decision(
         research_run_id=run.research_run_id,
@@ -74,6 +77,8 @@ def test_write_refinement_report_includes_objective_and_selection(tmp_path) -> N
     assert "Mean AUC vs Gate" in text
     assert "Std AUC vs Variance Ceiling" in text
     assert "Baseline Ref" in text
+    assert "Baseline Family Ref" in text
+    assert "family:tradoor-oi-reversal-v1__reset-reclaim-compression" in text
     assert "Operator Recommendation" in text
 
 

@@ -1,0 +1,72 @@
+{
+  "memory_id": "cef46e92-774d-4149-a376-8230b8736a2e",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "research_run_id": "5d907210-0282-4f8a-a63d-434b37ab0192",
+  "benchmark_pack_id": "tradoor-oi-reversal-v1__ptb-tradoor-v1",
+  "winner_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+  "summary": "Benchmark search dead end",
+  "detail": "Best variant tradoor-oi-reversal-v1__arch-soft-real-loose did not clear benchmark floors (reference=0.540, holdout=0.14).",
+  "tags": [
+    "benchmark-pack",
+    "dead-end",
+    "variant-miss",
+    "tradoor-oi-reversal-v1"
+  ],
+  "variant_scores": [
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__auto-reclaim-early",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    }
+  ],
+  "created_at": "2026-04-16T18:40:08.267972+00:00"
+}

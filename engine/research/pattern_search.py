@@ -8,7 +8,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from statistics import mean
+from statistics import mean, pstdev
 from typing import Literal
 
 import pandas as pd
@@ -366,6 +366,56 @@ DEFAULT_FAMILY_SELECTION_POLICY = FamilySelectionPolicy(
 
 
 @dataclass(frozen=True)
+class PromotionGatePolicy:
+    """Thresholds used by ``build_promotion_report`` to decide candidate fate."""
+
+    policy_id: str = "promotion-gate-v1"
+    min_reference_recall: float = 0.5
+    min_phase_fidelity: float = 0.5
+    min_lead_time_bars: float = 0.0
+    max_false_discovery_rate: float = 0.4
+    max_robustness_spread: float = 0.3
+    require_holdout_passed: bool = True
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+DEFAULT_PROMOTION_GATE_POLICY = PromotionGatePolicy()
+
+
+@dataclass(frozen=True)
+class PromotionReport:
+    """Per-run promotion-gate record for the search winner.
+
+    This is the explicit gate artifact the canonical loop needs between
+    Refinement and Managed Default / User Overlay; without it, family
+    promotion stays informational and nothing is ever "approved for active".
+    """
+
+    promotion_report_id: str
+    pattern_slug: str
+    variant_id: str
+    variant_slug: str
+    reference_recall: float
+    phase_fidelity: float
+    lead_time_bars: float
+    false_discovery_rate: float
+    robustness_spread: float
+    holdout_passed: bool
+    gate_policy: PromotionGatePolicy
+    gate_results: dict[str, bool]
+    decision: str  # "promote_candidate" | "reject"
+    rejection_reasons: list[str]
+    created_at: datetime = field(default_factory=_utcnow)
+
+    def to_dict(self) -> dict:
+        payload = asdict(self)
+        payload["created_at"] = self.created_at.isoformat()
+        return payload
+
+
+@dataclass(frozen=True)
 class PatternSearchRunArtifact:
     research_run_id: str
     pattern_slug: str
@@ -378,6 +428,7 @@ class PatternSearchRunArtifact:
     family_insights: list[SearchFamilyInsight] = field(default_factory=list)
     timeframe_recommendations: list[TimeframeRecommendation] = field(default_factory=list)
     duration_recommendations: list[DurationRecommendation] = field(default_factory=list)
+    promotion_report: PromotionReport | None = None
     family_policy: FamilySelectionPolicy | None = None
     active_family_key: str | None = None
     active_family_type: str | None = None
@@ -407,6 +458,7 @@ class PatternSearchRunArtifact:
             "duration_recommendations": [
                 recommendation.to_dict() for recommendation in self.duration_recommendations
             ],
+            "promotion_report": self.promotion_report.to_dict() if self.promotion_report is not None else None,
             "family_policy": self.family_policy.to_dict() if self.family_policy is not None else None,
             "active_family_key": self.active_family_key,
             "active_family_type": self.active_family_type,
@@ -1370,6 +1422,126 @@ def build_duration_recommendations(
         )
     recommendations.sort(key=lambda r: (-r.score_delta, r.base_variant_slug))
     return recommendations
+
+
+def _promotion_metrics_from_cases(
+    case_results: list[VariantCaseResult],
+) -> dict[str, float]:
+    """Compute promotion-gate metrics from per-case replay outcomes."""
+    reference_cases = [case for case in case_results if case.role == "reference"]
+    holdout_cases = [case for case in case_results if case.role == "holdout"]
+
+    # reference_recall: fraction of reference cases where entry was hit.
+    if reference_cases:
+        reference_recall = mean(
+            1.0 if case.entry_hit else 0.0 for case in reference_cases
+        )
+    else:
+        reference_recall = 0.0
+
+    # phase_fidelity: mean of per-case fidelity across all cases.
+    phase_fidelity = mean(case.phase_fidelity for case in case_results) if case_results else 0.0
+
+    # lead_time_bars: mean lead_bars across cases that actually entered.
+    entered_lead_bars = [
+        float(case.lead_bars) for case in case_results if case.entry_hit and case.lead_bars is not None
+    ]
+    lead_time_bars = mean(entered_lead_bars) if entered_lead_bars else 0.0
+
+    # false_discovery_rate: entries that never reached target, as fraction of entries.
+    entered_cases = [case for case in case_results if case.entry_hit]
+    if entered_cases:
+        false_discoveries = sum(1 for case in entered_cases if not case.target_hit)
+        false_discovery_rate = false_discoveries / len(entered_cases)
+    else:
+        false_discovery_rate = 0.0
+
+    # robustness_spread: population stdev of per-case score; 0 when < 2 cases.
+    if len(case_results) >= 2:
+        robustness_spread = float(pstdev(case.score for case in case_results))
+    else:
+        robustness_spread = 0.0
+
+    # holdout_passed: all holdout cases reached at least the entry phase.
+    # When no holdout cases exist the metric is vacuously True so the gate
+    # does not penalise packs without explicit holdouts.
+    if holdout_cases:
+        holdout_passed_value = 1.0 if all(case.entry_hit for case in holdout_cases) else 0.0
+    else:
+        holdout_passed_value = 1.0
+
+    return {
+        "reference_recall": round(float(reference_recall), 6),
+        "phase_fidelity": round(float(phase_fidelity), 6),
+        "lead_time_bars": round(float(lead_time_bars), 6),
+        "false_discovery_rate": round(float(false_discovery_rate), 6),
+        "robustness_spread": round(float(robustness_spread), 6),
+        "holdout_passed": holdout_passed_value,
+    }
+
+
+def build_promotion_report(
+    pattern_slug: str,
+    winner: VariantSearchResult,
+    *,
+    policy: PromotionGatePolicy = DEFAULT_PROMOTION_GATE_POLICY,
+    report_id: str | None = None,
+) -> PromotionReport:
+    """Build a PromotionReport for the search winner against the gate policy."""
+    metrics = _promotion_metrics_from_cases(winner.case_results)
+    holdout_passed_bool = bool(metrics["holdout_passed"] >= 1.0)
+
+    gate_results: dict[str, bool] = {
+        "reference_recall": metrics["reference_recall"] >= policy.min_reference_recall,
+        "phase_fidelity": metrics["phase_fidelity"] >= policy.min_phase_fidelity,
+        "lead_time_bars": metrics["lead_time_bars"] >= policy.min_lead_time_bars,
+        "false_discovery_rate": metrics["false_discovery_rate"] <= policy.max_false_discovery_rate,
+        "robustness_spread": metrics["robustness_spread"] <= policy.max_robustness_spread,
+        "holdout_passed": (not policy.require_holdout_passed) or holdout_passed_bool,
+    }
+
+    rejection_reasons: list[str] = []
+    if not gate_results["reference_recall"]:
+        rejection_reasons.append(
+            f"reference_recall {metrics['reference_recall']:.3f} < floor {policy.min_reference_recall:.3f}"
+        )
+    if not gate_results["phase_fidelity"]:
+        rejection_reasons.append(
+            f"phase_fidelity {metrics['phase_fidelity']:.3f} < floor {policy.min_phase_fidelity:.3f}"
+        )
+    if not gate_results["lead_time_bars"]:
+        rejection_reasons.append(
+            f"lead_time_bars {metrics['lead_time_bars']:.3f} < floor {policy.min_lead_time_bars:.3f}"
+        )
+    if not gate_results["false_discovery_rate"]:
+        rejection_reasons.append(
+            f"false_discovery_rate {metrics['false_discovery_rate']:.3f} > ceiling {policy.max_false_discovery_rate:.3f}"
+        )
+    if not gate_results["robustness_spread"]:
+        rejection_reasons.append(
+            f"robustness_spread {metrics['robustness_spread']:.3f} > bound {policy.max_robustness_spread:.3f}"
+        )
+    if not gate_results["holdout_passed"]:
+        rejection_reasons.append("holdout_passed=False")
+
+    decision = "promote_candidate" if all(gate_results.values()) else "reject"
+
+    return PromotionReport(
+        promotion_report_id=report_id or str(uuid.uuid4()),
+        pattern_slug=pattern_slug,
+        variant_id=winner.variant_id,
+        variant_slug=winner.variant_slug,
+        reference_recall=metrics["reference_recall"],
+        phase_fidelity=metrics["phase_fidelity"],
+        lead_time_bars=metrics["lead_time_bars"],
+        false_discovery_rate=metrics["false_discovery_rate"],
+        robustness_spread=metrics["robustness_spread"],
+        holdout_passed=holdout_passed_bool,
+        gate_policy=policy,
+        gate_results=gate_results,
+        decision=decision,
+        rejection_reasons=rejection_reasons,
+    )
 
 
 def _branch_insight_lookup(artifact: dict | None) -> dict[str, dict]:
@@ -2520,6 +2692,11 @@ def run_pattern_benchmark_search(
         duration_recommendations = build_duration_recommendations(
             family_insights, variant_results, variants
         )
+        promotion_report = (
+            build_promotion_report(config.pattern_slug, winner)
+            if winner is not None
+            else None
+        )
         active_family = select_active_family_insight(family_insights, recent_artifacts, family_policy)
         artifact = PatternSearchRunArtifact(
             research_run_id=run.research_run_id,
@@ -2533,6 +2710,7 @@ def run_pattern_benchmark_search(
             family_insights=family_insights,
             timeframe_recommendations=timeframe_recommendations,
             duration_recommendations=duration_recommendations,
+            promotion_report=promotion_report,
             family_policy=family_policy,
             active_family_key=active_family.family_key if active_family is not None else None,
             active_family_type=active_family.family_type if active_family is not None else None,
@@ -2571,6 +2749,15 @@ def run_pattern_benchmark_search(
             "active_family_variant_slug": active_family.representative_variant_slug if active_family is not None else None,
             "baseline_family_ref": _family_ref(active_family),
             "family_policy_id": family_policy.policy_id,
+            "promotion_decision": promotion_report.decision if promotion_report is not None else None,
+            "promotion_report_id": promotion_report.promotion_report_id if promotion_report is not None else None,
+            "promotion_gate_policy_id": promotion_report.gate_policy.policy_id if promotion_report is not None else None,
+            "reference_recall": promotion_report.reference_recall if promotion_report is not None else None,
+            "phase_fidelity": promotion_report.phase_fidelity if promotion_report is not None else None,
+            "lead_time_bars": promotion_report.lead_time_bars if promotion_report is not None else None,
+            "false_discovery_rate": promotion_report.false_discovery_rate if promotion_report is not None else None,
+            "robustness_spread": promotion_report.robustness_spread if promotion_report is not None else None,
+            "holdout_passed": promotion_report.holdout_passed if promotion_report is not None else None,
         }
         if passed_reference and passed_holdout:
             rationale = (
@@ -2587,6 +2774,9 @@ def run_pattern_benchmark_search(
                     "active_family_variant_slug": active_family.representative_variant_slug if active_family is not None else None,
                     "baseline_family_ref": _family_ref(active_family),
                     "family_policy_id": family_policy.policy_id,
+                    "promotion_decision": promotion_report.decision if promotion_report is not None else None,
+                    "promotion_report_id": promotion_report.promotion_report_id if promotion_report is not None else None,
+                    "promotion_rejection_reasons": list(promotion_report.rejection_reasons) if promotion_report is not None else [],
                 },
                 selection_decision=SelectionDecisionInput(
                     decision_kind="advance",
@@ -2665,6 +2855,9 @@ def run_pattern_benchmark_search(
                 "active_family_variant_slug": active_family.representative_variant_slug if active_family is not None else None,
                 "baseline_family_ref": _family_ref(active_family),
                 "family_policy_id": family_policy.policy_id,
+                "promotion_decision": promotion_report.decision if promotion_report is not None else None,
+                "promotion_report_id": promotion_report.promotion_report_id if promotion_report is not None else None,
+                "promotion_rejection_reasons": list(promotion_report.rejection_reasons) if promotion_report is not None else [],
             },
             selection_decision=SelectionDecisionInput(
                 decision_kind="dead_end",

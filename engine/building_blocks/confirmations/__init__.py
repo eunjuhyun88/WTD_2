@@ -14,10 +14,14 @@ from building_blocks.confirmations.funding_extreme import funding_extreme
 from building_blocks.confirmations.funding_flip import funding_flip
 from building_blocks.confirmations.golden_cross import golden_cross
 from building_blocks.confirmations.higher_lows_sequence import higher_lows_sequence
+from building_blocks.confirmations.ls_ratio_recovery import ls_ratio_recovery
 from building_blocks.confirmations.oi_change import oi_change
 from building_blocks.confirmations.oi_hold_after_spike import oi_hold_after_spike
 from building_blocks.confirmations.oi_spike_with_dump import oi_spike_with_dump
+from building_blocks.confirmations.positive_funding_bias import positive_funding_bias
+from building_blocks.confirmations.post_dump_compression import post_dump_compression
 from building_blocks.confirmations.range_break_retest import range_break_retest
+from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.volume_dryup import volume_dryup
 
@@ -32,10 +36,14 @@ __all__ = [
     "funding_flip",
     "golden_cross",
     "higher_lows_sequence",
+    "ls_ratio_recovery",
     "oi_change",
     "oi_hold_after_spike",
     "oi_spike_with_dump",
+    "positive_funding_bias",
+    "post_dump_compression",
     "range_break_retest",
+    "reclaim_after_dump",
     "sideways_compression",
     "volume_dryup",
 ]

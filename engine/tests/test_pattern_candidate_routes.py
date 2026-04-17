@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.routes import patterns as pattern_routes
+from api.routes import patterns_thread as ptr
 from ledger.types import PatternLedgerRecord, PatternOutcome, PatternStats
 
 
@@ -53,17 +54,17 @@ class _Policy:
 
 def test_all_candidates_exposes_legacy_and_rich_records(monkeypatch) -> None:
     monkeypatch.setattr(
-        pattern_routes,
+        ptr,
         "get_entry_candidates_all",
         lambda: {"tradoor-oi-reversal-v1": ["PTBUSDT"]},
     )
     monkeypatch.setattr(
-        pattern_routes,
+        ptr,
         "get_raw_entry_candidates_all",
         lambda: {"tradoor-oi-reversal-v1": ["PTBUSDT", "ETHUSDT"]},
     )
     monkeypatch.setattr(
-        pattern_routes,
+        ptr,
         "get_entry_candidate_records",
         lambda pattern_slug=None: {
             "tradoor-oi-reversal-v1": [
@@ -135,7 +136,7 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
         )(),
     )
     monkeypatch.setattr(
-        pattern_routes,
+        ptr,
         "MODEL_REGISTRY_STORE",
         type(
             "FakeRegistryStore",
@@ -148,7 +149,7 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
         )(),
     )
     monkeypatch.setattr(
-        pattern_routes,
+        ptr,
         "ALERT_POLICY_STORE",
         type(
             "FakePolicyStore",
@@ -159,7 +160,7 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
         )(),
     )
     monkeypatch.setattr(
-        pattern_routes,
+        ptr,
         "LEDGER_RECORD_STORE",
         type(
             "FakeRecordStore",
@@ -203,7 +204,7 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
         )(),
     )
     monkeypatch.setattr(
-        pattern_routes,
+        ptr,
         "summarize_pattern_dataset",
         lambda outcomes: type(
             "Summary",
@@ -359,9 +360,9 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
             }
 
     monkeypatch.setattr(pattern_routes, "_ledger", FakeLedger())
-    monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
-    monkeypatch.setattr(pattern_routes, "MODEL_REGISTRY_STORE", FakeRegistryStore())
-    monkeypatch.setattr(pattern_routes, "get_engine", lambda model_key: FakeEngine())
+    monkeypatch.setattr(ptr, "LEDGER_RECORD_STORE", FakeRecordStore())
+    monkeypatch.setattr(ptr, "MODEL_REGISTRY_STORE", FakeRegistryStore())
+    monkeypatch.setattr(ptr, "get_engine", lambda model_key: FakeEngine())
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
     client = TestClient(app)
@@ -469,9 +470,9 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
             }
 
     monkeypatch.setattr(pattern_routes, "_ledger", FakeLedger())
-    monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
-    monkeypatch.setattr(pattern_routes, "MODEL_REGISTRY_STORE", FakeRegistryStore())
-    monkeypatch.setattr(pattern_routes, "get_engine", lambda model_key: FakeEngine())
+    monkeypatch.setattr(ptr, "LEDGER_RECORD_STORE", FakeRecordStore())
+    monkeypatch.setattr(ptr, "MODEL_REGISTRY_STORE", FakeRegistryStore())
+    monkeypatch.setattr(ptr, "get_engine", lambda model_key: FakeEngine())
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
     client = TestClient(app)
@@ -541,8 +542,8 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
             )
             return None
 
-    monkeypatch.setattr(pattern_routes, "MODEL_REGISTRY_STORE", FakeRegistryStore())
-    monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
+    monkeypatch.setattr(ptr, "MODEL_REGISTRY_STORE", FakeRegistryStore())
+    monkeypatch.setattr(ptr, "LEDGER_RECORD_STORE", FakeRecordStore())
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
     client = TestClient(app)
@@ -580,7 +581,9 @@ def test_get_and_set_alert_policy(monkeypatch) -> None:
             saved.append(policy)
             return None
 
-    monkeypatch.setattr(pattern_routes, "ALERT_POLICY_STORE", FakePolicyStore())
+    fake_policy = FakePolicyStore()
+    monkeypatch.setattr(ptr, "ALERT_POLICY_STORE", fake_policy)
+    monkeypatch.setattr(pattern_routes, "ALERT_POLICY_STORE", fake_policy)
     app = FastAPI()
     app.include_router(pattern_routes.router, prefix="/patterns")
     client = TestClient(app)

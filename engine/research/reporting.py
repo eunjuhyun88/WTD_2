@@ -29,6 +29,7 @@ def write_refinement_report(
         f"- Status: `{run.status}`",
         f"- Disposition: `{run.completion_disposition}`",
         f"- Winner Variant: `{run.winner_variant_ref}`",
+        f"- Baseline Ref: `{run.baseline_ref}`",
         "",
         "## Objective",
         f"- Kind: `{objective.get('objective_kind')}`",
@@ -85,6 +86,9 @@ def write_refinement_report(
             lines.append(line)
 
     lines.extend(["", "## Handoff"])
+    baseline_family_ref = run.handoff_payload.get("baseline_family_ref")
+    if baseline_family_ref is not None:
+        lines.append(f"- Baseline Family Ref: `{baseline_family_ref}`")
     training_result = run.handoff_payload.get("training_result")
     if training_result is None:
         lines.append(f"- Payload: `{run.handoff_payload}`")

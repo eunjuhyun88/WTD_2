@@ -1,0 +1,23 @@
+{
+  "id": "280784e8-580b-4150-83ce-d9d420ccca29",
+  "record_type": "outcome",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "symbol": "WIN0",
+  "user_id": null,
+  "outcome_id": "00769a05",
+  "capture_id": null,
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-18T02:22:29.855364",
+  "payload": {
+    "previous_outcome": "pending",
+    "outcome": "success",
+    "breakout_at": null,
+    "invalidated_at": null,
+    "peak_price": 120.0,
+    "exit_price": null,
+    "max_gain_pct": 0.2,
+    "exit_return_pct": null,
+    "duration_hours": null
+  }
+}
