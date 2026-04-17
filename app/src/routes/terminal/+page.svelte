@@ -1210,6 +1210,144 @@
     { id: 'risk',      label: 'Risk check',      action: `What are the main risks for ${gPair.split('/')[0]}?` },
     { id: 'compare',   label: 'BTC vs ETH',      action: 'Compare BTC and ETH side by side' },
   ]);
+
+  // ─── Mobile ModeRouter data ──────────────────────────────────
+
+  /**
+   * mobileMarketRows — top 30 items for ScanMode.
+   * Source priority: persistedWatchlist first (has live preview prices),
+   * then trendingData.trending to pad up to 30.
+   * Deduplication by symbol (watchlist wins).
+   */
+  const mobileMarketRows = $derived.by(() => {
+    type MobileMarketRow = {
+      symbol: string;
+      base: string;
+      price: number;
+      changePct: number;
+      volume24h?: number;
+      bias?: 'bullish' | 'bearish' | 'neutral';
+    };
+    const rows: MobileMarketRow[] = [];
+    const seen = new Set<string>();
+
+    // Watchlist items first — they carry persisted preview prices
+    for (const item of (persistedWatchlist ?? [])) {
+      if (seen.has(item.symbol)) continue;
+      seen.add(item.symbol);
+      rows.push({
+        symbol: item.symbol,
+        base: item.symbol.replace(/USDT$/, ''),
+        price: item.preview?.price ?? 0,
+        changePct: item.preview?.change24h ?? 0,
+        bias: item.preview?.bias,
+      });
+    }
+
+    // Pad with trending coins (trendingData.trending, then .gainers, then .losers)
+    const trendingSources: any[] = [
+      ...(trendingData?.trending ?? []),
+      ...(trendingData?.gainers ?? []),
+      ...(trendingData?.losers ?? []),
+    ];
+    for (const coin of trendingSources) {
+      const sym: string = coin?.symbol ?? '';
+      if (!sym || seen.has(sym)) continue;
+      seen.add(sym);
+      rows.push({
+        symbol: sym,
+        base: sym.replace(/USDT$/, ''),
+        price: coin?.price ?? 0,
+        changePct: coin?.change24h ?? coin?.percentChange24h ?? 0,
+        volume24h: coin?.volume24h ?? undefined,
+        // TODO: bias not available from trending feed — derive from changePct sign as approximation
+        bias: (coin?.change24h ?? coin?.percentChange24h ?? 0) >= 0 ? 'bullish' : 'bearish',
+      });
+    }
+
+    return rows.slice(0, 30);
+  });
+
+  /**
+   * mobileAlerts — scannerAlerts mapped to ModeRouter Alert shape for JudgeMode.
+   * scanner alerts do not carry a user judgment state, so status is always 'pending'.
+   */
+  const mobileAlerts = $derived.by(() => {
+    type MobileAlert = {
+      id: string;
+      symbol: string;
+      tf: string;
+      direction: 'bullish' | 'bearish' | 'neutral';
+      summary: string;
+      timestamp: number;
+      status: 'pending' | 'agreed' | 'disagreed';
+      reason?: 'valid' | 'late' | 'noisy' | 'invalid' | 'almost';
+    };
+    return (scannerAlerts ?? []).map((alert: any): MobileAlert => {
+      // TODO: direction is not a first-class field on engine_alerts rows;
+      // derive from blocks_triggered heuristic: if any block name contains 'bull'
+      // or 'long' treat as bullish; 'bear'/'short' as bearish; else neutral.
+      const blocks: string[] = alert?.blocks_triggered ?? [];
+      const blockStr = blocks.join(' ').toLowerCase();
+      let direction: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+      if (blockStr.includes('bull') || blockStr.includes('long') || blockStr.includes('reclaim')) {
+        direction = 'bullish';
+      } else if (blockStr.includes('bear') || blockStr.includes('short') || blockStr.includes('dump')) {
+        direction = 'bearish';
+      }
+
+      const summary =
+        blocks.length > 0
+          ? blocks.map((b: string) => b.replace(/_/g, ' ')).join(' · ')
+          : 'Signal alert';
+
+      return {
+        id: alert?.id ?? '',
+        symbol: alert?.symbol ?? '',
+        tf: alert?.timeframe ?? '1H',
+        direction,
+        summary,
+        timestamp: alert?.created_at ? new Date(alert.created_at).getTime() : Date.now(),
+        status: 'pending',
+      };
+    });
+  });
+
+  /**
+   * onAlertFeedback — optimistic state update only; no alert-feedback API exists yet.
+   * TODO: POST to /api/cogochi/alert-feedback once the endpoint is built.
+   */
+  function handleMobileAlertFeedback(id: string, agree: boolean, reason?: string) {
+    console.log('[mobile-judge] alert feedback', { id, agree, reason });
+    // Optimistic: move the alert out of the scannerAlerts list so JudgeMode
+    // shows it as resolved on next mobileAlerts derivation.
+    // Since scannerAlerts are any[], we mark it via a local agreed-ids set.
+    agreedAlertIds = new Set([...agreedAlertIds, id]);
+  }
+
+  /**
+   * Track IDs the user has already judged so mobileAlerts can reflect resolved status.
+   * Persisted only for the lifetime of this page session.
+   */
+  let agreedAlertIds = $state(new Set<string>());
+
+  /**
+   * mobileAlertsWithStatus — overlays local agree/disagree state onto mobileAlerts
+   * so JudgeMode rows switch from 'pending' to resolved without a round-trip.
+   */
+  const mobileAlertsWithStatus = $derived.by(() =>
+    mobileAlerts.map(alert =>
+      agreedAlertIds.has(alert.id) ? { ...alert, status: 'agreed' as const } : alert
+    )
+  );
+
+  /**
+   * refreshWatchlistForMobile — called by ScanMode pull-to-refresh.
+   * Reloads both the persisted watchlist (for preview prices) and the trending feed.
+   */
+  async function refreshWatchlistForMobile() {
+    await Promise.all([loadTerminalPersistenceState(), loadTrending()]);
+  }
 </script>
 
 <svelte:head>
@@ -1250,10 +1388,12 @@
     verdict={activeVerdict ?? null}
     evidence={activeEvidence ?? []}
     captureId={lastSavedCaptureId ?? null}
-    marketRows={[]}
-    alerts={[]}
-    onAlertFeedback={() => {}}
-    onMarketRefresh={() => {}}
+    marketRows={mobileMarketRows}
+    alerts={mobileAlertsWithStatus}
+    marketLoading={loadingSymbols.size > 0}
+    alertsLoading={patternCaptureLoading}
+    onAlertFeedback={handleMobileAlertFeedback}
+    onMarketRefresh={refreshWatchlistForMobile}
   >
   {#snippet slotTopBar()}
     <section class="terminal-shell-head">
