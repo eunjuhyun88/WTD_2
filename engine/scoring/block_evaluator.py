@@ -32,6 +32,7 @@ from building_blocks.triggers.recent_decline import recent_decline
 from building_blocks.triggers.gap_up import gap_up
 from building_blocks.triggers.gap_down import gap_down
 from building_blocks.triggers.breakout_above_high import breakout_above_high
+from building_blocks.triggers.breakout_volume_confirm import breakout_volume_confirm
 from building_blocks.triggers.consolidation_then_breakout import consolidation_then_breakout
 from building_blocks.triggers.volume_spike import volume_spike
 
@@ -46,6 +47,7 @@ from building_blocks.confirmations.funding_flip import funding_flip
 from building_blocks.confirmations.higher_lows_sequence import higher_lows_sequence
 from building_blocks.confirmations.ls_ratio_recovery import ls_ratio_recovery
 from building_blocks.confirmations.oi_change import oi_change
+from building_blocks.confirmations.oi_expansion_confirm import oi_expansion_confirm
 from building_blocks.confirmations.oi_hold_after_spike import oi_hold_after_spike
 from building_blocks.confirmations.oi_spike_with_dump import oi_spike_with_dump
 from building_blocks.confirmations.positive_funding_bias import positive_funding_bias
@@ -79,6 +81,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("gap_up",                    gap_up),
     ("gap_down",                  gap_down),
     ("breakout_above_high",       breakout_above_high),
+    ("breakout_volume_confirm",   breakout_volume_confirm),
     ("consolidation_then_breakout", consolidation_then_breakout),
     ("volume_spike",              volume_spike),
     # confirmations
@@ -92,6 +95,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("higher_lows_sequence", higher_lows_sequence),
     ("ls_ratio_recovery",  ls_ratio_recovery),
     ("oi_change",          oi_change),
+    ("oi_expansion_confirm", oi_expansion_confirm),
     ("oi_hold_after_spike", oi_hold_after_spike),
     ("oi_spike_with_dump", oi_spike_with_dump),
     ("positive_funding_bias", positive_funding_bias),

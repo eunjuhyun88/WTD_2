@@ -30,7 +30,11 @@ FAKE_DUMP_BLOCKS = ["recent_decline", "funding_extreme"]
 ARCH_ZONE_BLOCKS = ["sideways_compression"]
 REAL_DUMP_BLOCKS = ["oi_spike_with_dump", "volume_spike"]
 ACCUMULATION_BLOCKS = ["higher_lows_sequence", "positive_funding_bias", "oi_hold_after_spike"]
-BREAKOUT_BLOCKS = ["breakout_above_high", "oi_change", "volume_spike"]
+BREAKOUT_BLOCKS = [
+    "breakout_above_high",
+    "oi_expansion_confirm",
+    "breakout_volume_confirm",
+]
 
 QUIET_BLOCKS: list[str] = []
 
