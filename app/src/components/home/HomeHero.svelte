@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ExamplePrompt, ProofRow } from '$lib/home/homeLanding';
+  import { viewportTier } from '$lib/stores/viewportTier';
 
   let {
     mounted = false,
@@ -33,6 +34,7 @@
   }
 </script>
 
+{#if $viewportTier.tier !== 'MOBILE'}
 <section class="hero">
   <div class="hero-shell">
     <div class="story-panel">
@@ -112,6 +114,7 @@
     </div>
   </div>
 </section>
+{/if}
 
 <style>
   .hero {
