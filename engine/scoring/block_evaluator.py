@@ -32,6 +32,7 @@ from building_blocks.triggers.recent_decline import recent_decline
 from building_blocks.triggers.gap_up import gap_up
 from building_blocks.triggers.gap_down import gap_down
 from building_blocks.triggers.breakout_above_high import breakout_above_high
+from building_blocks.triggers.breakout_from_pullback_range import breakout_from_pullback_range
 from building_blocks.triggers.breakout_volume_confirm import breakout_volume_confirm
 from building_blocks.triggers.consolidation_then_breakout import consolidation_then_breakout
 from building_blocks.triggers.volume_spike import volume_spike
@@ -81,6 +82,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("gap_up",                    gap_up),
     ("gap_down",                  gap_down),
     ("breakout_above_high",       breakout_above_high),
+    ("breakout_from_pullback_range", breakout_from_pullback_range),
     ("breakout_volume_confirm",   breakout_volume_confirm),
     ("consolidation_then_breakout", consolidation_then_breakout),
     ("volume_spike",              volume_spike),
