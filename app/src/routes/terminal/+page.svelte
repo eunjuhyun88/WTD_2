@@ -11,7 +11,7 @@
    *   [TerminalCommandBar]
    *   [ChartBoard]
    *   [MobileCommandDock]
-   *   [MobileDetailSheet]
+   *   [MobileShell via TerminalShell]
    */
   import { onMount, onDestroy, untrack } from 'svelte';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
@@ -102,7 +102,6 @@
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
 
   // Mobile components
-  import MobileDetailSheet from '../../components/terminal/mobile/MobileDetailSheet.svelte';
   import MobileCommandDock from '../../components/terminal/mobile/MobileCommandDock.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
@@ -1417,18 +1416,6 @@
   </TerminalShell>
 </div>
 
-<!-- Mobile detail sheet (portal-style, outside grid) -->
-<MobileDetailSheet
-  open={showDetailSheet}
-  asset={activeAsset}
-  verdict={activeVerdict}
-  evidence={activeEvidence}
-  bars={ohlcvBars}
-  {layerBarsMap}
-  newsItems={newsData?.records ?? []}
-  captureId={lastSavedCaptureId}
-  onClose={() => showDetailSheet = false}
-/>
 
 <PatternLibraryPanel
   open={showPatternLibrary}
