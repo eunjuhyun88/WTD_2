@@ -74,24 +74,34 @@ TRADOOR_OI_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="BREAKOUT",
             label="브레이크아웃",
-            # Quant-anchored breakout confirmation blocks (see each block's
-            # module docstring for the literature trail):
-            #   - breakout_above_high: 5d prior high (Park & Irwin 2007;
-            #     Hudson & Urquhart 2021)
-            #   - breakout_volume_confirm: 2.5x avg volume (Murphy 1999;
-            #     Baur & Dimpfl 2018) — replaces raw volume_spike(5x),
-            #     which is an extreme-event detector, not a confirmation.
+            # Phase-anchored + OI-committed breakout confirmation, with
+            # volume relegated to an optional boost (see each block's
+            # module docstring for the full literature trail):
+            #   - breakout_from_pullback_range: Wyckoff Sign-of-Strength,
+            #     close breaks the rally high since the most recent
+            #     pullback low. Anchors breakout reference to the phase
+            #     structure rather than a fixed calendar window (Wyckoff
+            #     1911; Pruden 2007; Weis & Wyckoff 2013). Replaces
+            #     breakout_above_high as the primary breakout trigger
+            #     because rolling-window breakouts catch the pre-dump
+            #     final rally, not the post-accumulation SOS.
             #   - oi_expansion_confirm: 5% OI rise over 24h
-            #     (Bessembinder & Seguin 1993; Wang & Yau 2000) — replaces
-            #     raw oi_change(10%/1h), which is calibrated for regime
-            #     shifts such as REAL_DUMP rather than post-accumulation
-            #     breakout confirmation.
+            #     (Bessembinder & Seguin 1993; Wang & Yau 2000) — a real
+            #     breakout should carry directional positioning, not just
+            #     a stretched price move.
+            #   - breakout_volume_confirm (optional): 2.5x avg volume
+            #     (Edwards & Magee 1948; Murphy 1999; Baur & Dimpfl 2018).
+            #     Crypto-specific asymmetric volume behaviour (Koutmos
+            #     2019; Easley, López de Prado & O'Hara 2021) means
+            #     post-dump V-reversals often complete on below-average
+            #     volume as shorts cover silently, so demanding 2.5x
+            #     here structurally excludes real crypto breakouts.
+            #     Kept as an optional score boost rather than a hard gate.
             required_blocks=[
-                "breakout_above_high",
+                "breakout_from_pullback_range",
                 "oi_expansion_confirm",
-                "breakout_volume_confirm",
             ],
-            optional_blocks=[],
+            optional_blocks=["breakout_volume_confirm"],
             disqualifier_blocks=[],
             min_bars=1, max_bars=12,
             timeframe="1h",
