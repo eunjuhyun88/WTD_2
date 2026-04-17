@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { viewportTier } from '$lib/stores/viewportTier';
   import {
     createFullscreenTriangle,
     createPingPong,
@@ -318,7 +319,9 @@
   });
 </script>
 
-<canvas bind:this={canvas} class="ascii-bg" aria-hidden="true"></canvas>
+{#if $viewportTier.tier !== 'MOBILE'}
+  <canvas bind:this={canvas} class="ascii-bg" aria-hidden="true"></canvas>
+{/if}
 
 <style>
   .ascii-bg {
