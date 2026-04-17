@@ -90,7 +90,7 @@ export interface MemoryCard {
 
 // --- Extracted from stores/arenaV2State.ts (Batch 4) ---
 
-import type { Direction } from '$lib/engine/types';
+import type { Direction } from './game';
 
 /** A single research finding from an arena-v2 RAG analysis session. */
 export interface Finding {
