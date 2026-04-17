@@ -15,4 +15,3 @@ export { default as TerminalBottomDock } from './TerminalBottomDock.svelte';
 export { default as WorkspaceGrid } from './WorkspaceGrid.svelte';
 export { default as ChartBoard } from './ChartBoard.svelte';
 export { default as BoardToolbar } from './BoardToolbar.svelte';
-export { default as PatternStatusBar } from './PatternStatusBar.svelte';
