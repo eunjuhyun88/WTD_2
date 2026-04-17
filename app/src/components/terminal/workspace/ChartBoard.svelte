@@ -40,6 +40,7 @@
     /** Rolling 24h change from analysis snapshot (exchange-style); distinct from 1-bar change from candles */
     change24hPct?: number | null;
     onSaveSetup?:   (snap: { symbol: string; timestamp: number; tf: string }) => void;
+    onCaptureSaved?: (captureId: string) => void;
     onTfChange?:    (tf: string) => void;
     /** full = slim book/liq/quant rails; chart = candle + indicator panes only (context in right rail / Flow tab). */
     contextMode?: 'full' | 'chart';
@@ -56,6 +57,7 @@
     cvdDivergence = undefined,
     change24hPct = null,
     onSaveSetup,
+    onCaptureSaved,
     onTfChange,
     contextMode = 'full',
   }: Props = $props();
@@ -83,6 +85,8 @@
   let currentTime  = $state<number | null>(null);
   let currentChangePct = $state<number | null>(null);
   let currentOiDelta = $state<number | null>(null);
+  let captureWindowLabel = $state('Visible range capture unavailable');
+  let captureBarCount = $state<number | null>(null);
   let depthData = $state<DepthLadderEnvelope['data'] | null>(null);
   let liqData = $state<LiquidationClustersEnvelope['data'] | null>(null);
   let depthRatio = $derived.by(() => {
@@ -98,10 +102,36 @@
   let liqAnchor = $derived(liqData?.currentPrice ?? currentPrice ?? verdictLevels?.entry ?? 0);
   let liqLong = $derived(liqData?.nearestLong?.price ?? (liqAnchor ? liqAnchor * 0.985 : 0));
   let liqShort = $derived(liqData?.nearestShort?.price ?? (liqAnchor ? liqAnchor * 1.012 : 0));
+  let contextSummaryItems = $derived.by(() => {
+    const items: Array<{ label: string; value: string; tone?: 'bull' | 'bear' | 'warn' | 'neutral' }> = [];
+    if (depthData?.spreadBps != null) {
+      items.push({ label: 'Spread', value: `${depthData.spreadBps.toFixed(1)} bps` });
+    }
+    items.push({
+      label: 'Book',
+      value: `${bidPct}/${askPct}`,
+      tone: bidPct >= askPct ? 'bull' : 'bear',
+    });
+    if (liqLong && liqShort) {
+      items.push({
+        label: 'Liq',
+        value: `${liqLong.toLocaleString(undefined, { maximumFractionDigits: 0 })} · ${liqShort.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        tone: 'warn',
+      });
+    }
+    if (quantRegime?.label) {
+      items.push({
+        label: 'Regime',
+        value: quantRegime.label,
+        tone: quantRegime.tone === 'bull' ? 'bull' : quantRegime.tone === 'bear' ? 'bear' : quantRegime.tone === 'warn' ? 'warn' : 'neutral',
+      });
+    }
+    return items;
+  });
 
   // Save Setup modal
   let showSaveModal = $state(false);
-  let savedSlug     = $state<string | null>(null);   // shown as toast after save
+  let savedCaptureId = $state<string | null>(null);   // shown as toast after save
 
   // Indicator toggles
   let showVWAP = $state(false);
@@ -119,6 +149,7 @@
   /** TradingView-style “Indicators” popover (add studies to chart). */
   let studiesPanelOpen = $state(false);
   let studiesWrapEl = $state<HTMLDivElement | undefined>(undefined);
+  let studyQuery = $state('');
 
   let activeIndicatorCount = $derived.by(() => {
     let n = 0;
@@ -132,17 +163,104 @@
     return n;
   });
 
-  /** Compact labels for the active-study chip strip. */
-  let studyChipList = $derived.by(() => {
-    const list: string[] = [];
-    if (showEMA) list.push(emaTf ? `EMA ${emaTf}` : 'EMA');
-    if (showVWAP) list.push('VWAP');
-    if (showBB) list.push('BB');
-    if (showATRBands) list.push('ATR');
-    list.push(showMACD ? 'MACD' : 'RSI');
-    if (showCVD) list.push('CVD');
-    if (derivativesOnMain) list.push('Overlay');
-    return list;
+  type StudyCategory = 'Favorites' | 'Overlays' | 'Pane' | 'Flow';
+  type StudyId = 'ema' | 'vwap' | 'bb' | 'atr' | 'macd' | 'cvd' | 'overlay';
+  type StudyDefinition = {
+    id: StudyId;
+    label: string;
+    short: string;
+    category: StudyCategory;
+    description: string;
+    active: boolean;
+    featured?: boolean;
+    meta?: string;
+  };
+
+  let studyCatalog = $derived.by<StudyDefinition[]>(() => [
+    {
+      id: 'ema',
+      label: 'EMA 21 / 55',
+      short: 'EMA',
+      category: 'Favorites',
+      description: 'Fast and slow trend pair with optional higher-timeframe stepping.',
+      active: showEMA,
+      featured: true,
+      meta: emaTf ? `HTF ${emaTf}` : 'Chart resolution',
+    },
+    {
+      id: 'vwap',
+      label: 'VWAP',
+      short: 'VWAP',
+      category: 'Overlays',
+      description: 'Session-weighted price anchor on the main chart.',
+      active: showVWAP,
+      featured: true,
+    },
+    {
+      id: 'bb',
+      label: 'Bollinger 20, 2',
+      short: 'BB',
+      category: 'Overlays',
+      description: 'Volatility envelopes around the 20-period basis.',
+      active: showBB,
+      featured: true,
+    },
+    {
+      id: 'atr',
+      label: 'ATR 14 bands',
+      short: 'ATR',
+      category: 'Overlays',
+      description: 'ATR channel projected around the MA20 trend basis.',
+      active: showATRBands,
+    },
+    {
+      id: 'macd',
+      label: showMACD ? 'MACD pane' : 'RSI 14 pane',
+      short: showMACD ? 'MACD' : 'RSI',
+      category: 'Pane',
+      description: 'Switch the lower oscillator pane between RSI and MACD.',
+      active: true,
+      featured: true,
+      meta: showMACD ? 'MACD active' : 'RSI active',
+    },
+    {
+      id: 'cvd',
+      label: 'CVD pane',
+      short: 'CVD',
+      category: 'Flow',
+      description: 'Delta volume histogram with cumulative CVD tracking.',
+      active: showCVD,
+      featured: true,
+    },
+    {
+      id: 'overlay',
+      label: 'Funding + cumulative CVD overlay',
+      short: 'Overlay',
+      category: 'Flow',
+      description: 'Draw funding and cumulative CVD directly on the price chart.',
+      active: derivativesOnMain,
+    },
+  ]);
+
+  let filteredStudyCatalog = $derived.by(() => {
+    const q = studyQuery.trim().toLowerCase();
+    if (!q) return studyCatalog;
+    return studyCatalog.filter((study) =>
+      study.label.toLowerCase().includes(q)
+      || study.short.toLowerCase().includes(q)
+      || study.category.toLowerCase().includes(q)
+      || study.description.toLowerCase().includes(q)
+    );
+  });
+
+  let studySections = $derived.by(() => {
+    const order: StudyCategory[] = ['Favorites', 'Overlays', 'Pane', 'Flow'];
+    return order
+      .map((category) => ({
+        category,
+        items: filteredStudyCatalog.filter((study) => study.category === category || (category === 'Favorites' && study.featured)),
+      }))
+      .filter((section) => section.items.length > 0);
   });
 
   // ── Chart instances ────────────────────────────────────────────────────────
@@ -197,6 +315,29 @@
   const PANE_SUB_H = 80;
   const PANE_OI_H = 72;
   const PANE_CVD_H = 84;
+
+  function formatCaptureTime(ts: number): string {
+    return new Date(ts * 1000).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  function refreshCaptureWindowSummary() {
+    const viewport = getViewportForSave();
+    if (!viewport || viewport.barCount <= 0 || viewport.klines.length === 0) {
+      captureWindowLabel = 'Visible range capture unavailable';
+      captureBarCount = null;
+      return;
+    }
+    const first = viewport.klines[0]?.time ?? viewport.timeFrom;
+    const last = viewport.klines[viewport.klines.length - 1]?.time ?? viewport.timeTo;
+    captureWindowLabel = `${formatCaptureTime(first)} -> ${formatCaptureTime(last)}`;
+    captureBarCount = viewport.barCount;
+  }
 
   function measureMainChartHeight(overlayOnMain: boolean): number {
     const h = mainEl?.clientHeight ?? 0;
@@ -645,13 +786,6 @@
     }
 
     syncTimeScales();
-    mainChart.subscribeClick((param) => {
-      if (param.time) {
-        currentTime = param.time as number;
-        showSaveModal = true;
-      }
-    });
-
     void tick().then(() => {
       handleResize();
     });
@@ -758,12 +892,14 @@
     mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       if (!range) return;
       subsWithCvd.forEach(c => c.timeScale().setVisibleLogicalRange(range));
+      refreshCaptureWindowSummary();
     });
     subsWithCvd.forEach(c => {
       c.timeScale().subscribeVisibleLogicalRangeChange((range) => {
         if (!range) return;
         mainChart!.timeScale().setVisibleLogicalRange(range);
         subsWithCvd.filter(o => o !== c).forEach(o => o.timeScale().setVisibleLogicalRange(range));
+        refreshCaptureWindowSummary();
       });
     });
   }
@@ -797,6 +933,7 @@
     oiChart?.resize(w, oih);
     const cvdh = cvdEl && cvdEl.clientHeight > 24 ? cvdEl.clientHeight : PANE_CVD_H;
     cvdChart?.resize(w, cvdh);
+    refreshCaptureWindowSummary();
   }
 
   /** Current visible range on main chart → OHLCV + indicators slice for pattern persistence */
@@ -828,18 +965,29 @@
     showSaveModal = true;
   }
 
-  function handleModalSaved(slug: string) {
+  function handleModalSaved(captureId: string) {
     showSaveModal = false;
-    savedSlug = slug;
+    savedCaptureId = captureId;
+    onCaptureSaved?.(captureId);
     // Also fire parent callback if provided
     onSaveSetup?.({ symbol, timestamp: currentTime ?? Math.floor(Date.now() / 1000), tf });
     // Clear toast after 4s
-    setTimeout(() => { savedSlug = null; }, 4000);
+    setTimeout(() => { savedCaptureId = null; }, 4000);
   }
 
   function selectTf(t: string) {
     internalTf = t;
     onTfChange?.(t);
+  }
+
+  function toggleStudy(id: StudyId) {
+    if (id === 'ema') showEMA = !showEMA;
+    if (id === 'vwap') showVWAP = !showVWAP;
+    if (id === 'bb') showBB = !showBB;
+    if (id === 'atr') showATRBands = !showATRBands;
+    if (id === 'macd') showMACD = !showMACD;
+    if (id === 'cvd') showCVD = !showCVD;
+    if (id === 'overlay') derivativesOnMain = !derivativesOnMain;
   }
 
   onMount(() => {
@@ -901,6 +1049,7 @@
     if (!data || loading) return;
     void tick().then(() => {
       renderCharts(data);
+      refreshCaptureWindowSummary();
     });
   });
 
@@ -960,8 +1109,7 @@
               <span class="metric-label">24h</span>
               {change24hPct >= 0 ? '+' : ''}{change24hPct.toFixed(2)}%
             </span>
-          {/if}
-          {#if currentChangePct !== null}
+          {:else if currentChangePct !== null}
             <span
               class="sym-change sym-change-muted"
               class:price-up={currentChangePct >= 0}
@@ -972,6 +1120,9 @@
               {currentChangePct >= 0 ? '+' : ''}{currentChangePct.toFixed(2)}%
             </span>
           {/if}
+          {#if quantRegime?.label}
+            <span class="sym-regime-pill" data-tone={quantRegime.tone}>{quantRegime.label}</span>
+          {/if}
         </div>
       </div>
 
@@ -980,7 +1131,6 @@
           <button class="mode-btn" class:active={chartMode === 'candle'} onclick={() => { chartMode = 'candle'; }}>Candles</button>
           <button class="mode-btn" class:active={chartMode === 'line'} onclick={() => { chartMode = 'line'; }}>Line</button>
         </div>
-        <button class="save-btn" onclick={handleSaveSetup} aria-label="Save setup">Save</button>
       </div>
     </div>
 
@@ -1026,65 +1176,80 @@
           >
             <p class="tv-panel-baseline">Moving averages <strong>5 / 20 / 60</strong> are always drawn.</p>
 
-            <section class="tv-panel-section" aria-label="Overlays">
-              <h3 class="tv-panel-section-title">Overlays</h3>
-              <label class="tv-study-row">
-                <input type="checkbox" bind:checked={showEMA} />
-                <span>EMA 21 / 55</span>
-              </label>
-              {#if showEMA && emaTfOptions.length > 0}
-                <div class="tv-study-nested">
-                  <label class="tv-study-sublabel" for="tv-ema-tf">EMA resolution</label>
-                  <select id="tv-ema-tf" class="tv-panel-select" bind:value={emaTf}>
-                    <option value="">Same as chart</option>
-                    {#each emaTfOptions as et (et)}
-                      <option value={et}>{et}</option>
-                    {/each}
-                  </select>
-                  <p class="tv-study-help">Higher TF EMA is stepped onto chart bars (MTF).</p>
-                </div>
-              {/if}
-              <label class="tv-study-row">
-                <input type="checkbox" bind:checked={showVWAP} />
-                <span>VWAP</span>
-              </label>
-              <label class="tv-study-row">
-                <input type="checkbox" bind:checked={showBB} />
-                <span>Bollinger 20, 2</span>
-              </label>
-              <label class="tv-study-row">
-                <input type="checkbox" bind:checked={showATRBands} />
-                <span>ATR 14 bands (on MA20)</span>
-              </label>
-            </section>
+            <label class="tv-search-wrap" for="tv-study-search">
+              <span class="tv-study-sublabel">Search studies</span>
+              <input
+                id="tv-study-search"
+                class="tv-study-search"
+                type="search"
+                bind:value={studyQuery}
+                placeholder="EMA, VWAP, CVD, MACD..."
+              />
+            </label>
 
-            <section class="tv-panel-section" aria-label="Oscillators">
-              <h3 class="tv-panel-section-title">Pane</h3>
-              <label class="tv-study-row">
-                <input type="checkbox" bind:checked={showMACD} />
-                <span>MACD — replaces RSI in lower pane</span>
-              </label>
-            </section>
-
-            <section class="tv-panel-section" aria-label="Volume and flow">
-              <h3 class="tv-panel-section-title">Volume &amp; flow</h3>
-              <label class="tv-study-row">
-                <input type="checkbox" bind:checked={showCVD} />
-                <span>CVD pane</span>
-              </label>
-              <label class="tv-study-row">
-                <input type="checkbox" bind:checked={derivativesOnMain} />
-                <span>Funding % &amp; cumulative CVD on price chart</span>
-              </label>
-            </section>
+            {#if studySections.length > 0}
+              {#each studySections as section (section.category)}
+                <section class="tv-panel-section" aria-label={section.category}>
+                  <h3 class="tv-panel-section-title">{section.category}</h3>
+                  {#each section.items as study (study.id)}
+                    <button
+                      type="button"
+                      class="tv-study-button"
+                      class:is-active={study.active}
+                      onclick={() => toggleStudy(study.id)}
+                    >
+                      <span class="tv-study-main">
+                        <strong>{study.label}</strong>
+                        <small>{study.description}</small>
+                      </span>
+                      <span class="tv-study-meta">
+                        {#if study.meta}
+                          <em>{study.meta}</em>
+                        {/if}
+                        <span class="tv-study-state">{study.active ? 'On' : 'Off'}</span>
+                      </span>
+                    </button>
+                    {#if study.id === 'ema' && showEMA && emaTfOptions.length > 0}
+                      <div class="tv-study-nested">
+                        <label class="tv-study-sublabel" for="tv-ema-tf">EMA resolution</label>
+                        <select id="tv-ema-tf" class="tv-panel-select" bind:value={emaTf}>
+                          <option value="">Same as chart</option>
+                          {#each emaTfOptions as et (et)}
+                            <option value={et}>{et}</option>
+                          {/each}
+                        </select>
+                        <p class="tv-study-help">Higher TF EMA is stepped onto chart bars to preserve the TradingView-style MTF read.</p>
+                      </div>
+                    {/if}
+                  {/each}
+                </section>
+              {/each}
+            {:else}
+              <div class="tv-study-empty">No matching studies. Try EMA, VWAP, RSI, MACD, CVD, or funding.</div>
+            {/if}
           </div>
         {/if}
       </div>
 
-      <div class="tv-active-chips" aria-label="Active indicators">
-        {#each studyChipList as chip (chip)}
-          <span class="tv-chip">{chip}</span>
-        {/each}
+    </div>
+
+    <div class="tv-row tv-row--capture" aria-label="Visible capture window">
+      <div class="capture-window">
+        <span class="capture-kicker">Capture Window</span>
+        <strong>{captureWindowLabel}</strong>
+        {#if captureBarCount !== null}
+          <span class="capture-meta">{captureBarCount} bars · visible range</span>
+        {/if}
+      </div>
+      <div class="capture-actions">
+        <button class="capture-save-btn" onclick={handleSaveSetup} aria-label="Save current visible range">
+          Save Setup
+        </button>
+        {#if savedCaptureId}
+          <a class="capture-open-btn" href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}`}>
+            Open in Lab
+          </a>
+        {/if}
       </div>
     </div>
   </div>
@@ -1129,7 +1294,17 @@
     </div>
     {#if contextMode === 'full'}
     <details class="tv-context-strip" bind:open={contextStripOpen}>
-      <summary class="tv-context-summary">Book · liq snapshot</summary>
+      <summary class="tv-context-summary">
+        <div class="tv-context-inline">
+          {#each contextSummaryItems as item}
+            <span class="tv-context-pill" data-tone={item.tone ?? 'neutral'}>
+              <em>{item.label}</em>
+              <strong>{item.value}</strong>
+            </span>
+          {/each}
+        </div>
+        <span class="tv-context-toggle">{contextStripOpen ? 'Hide depth' : 'Depth / liq'}</span>
+      </summary>
       <div class="tv-context-body">
     <div class="micro-bars" aria-label="Order book and liquidation snapshot">
       <div class="depth-strip">
@@ -1198,9 +1373,9 @@
 />
 
 <!-- Toast: saved confirmation -->
-{#if savedSlug}
+{#if savedCaptureId}
   <div class="save-toast">
-    ✓ 셋업 저장됨 — <a href="/patterns" class="toast-link">패턴 대시보드 →</a>
+    ✓ 캡처 저장됨 — <a href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}`} class="toast-link">랩에서 평가 시작 →</a>
   </div>
 {/if}
 
@@ -1291,6 +1466,82 @@
     gap: 8px 12px;
     min-width: 0;
   }
+  .tv-row--capture {
+    margin-top: 6px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(42, 46, 57, 0.85);
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .capture-window {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 320px;
+  }
+  .capture-kicker,
+  .capture-meta {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .capture-kicker {
+    color: rgba(177, 181, 189, 0.46);
+  }
+  .capture-window strong {
+    min-width: 0;
+    color: rgba(247, 242, 234, 0.9);
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .capture-meta {
+    color: rgba(99, 179, 237, 0.72);
+  }
+  .capture-save-btn {
+    padding: 6px 12px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(38, 166, 154, 0.16);
+    border: 1px solid rgba(38, 166, 154, 0.36);
+    color: #7ad5c2;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s ease;
+  }
+  .capture-save-btn:hover {
+    background: rgba(38, 166, 154, 0.24);
+    border-color: rgba(38, 166, 154, 0.52);
+    color: #a7efe0;
+  }
+  .capture-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .capture-open-btn {
+    padding: 6px 12px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ac3ff;
+    background: rgba(99, 179, 237, 0.12);
+    border: 1px solid rgba(99, 179, 237, 0.28);
+    border-radius: 4px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .capture-open-btn:hover {
+    background: rgba(99, 179, 237, 0.18);
+    border-color: rgba(99, 179, 237, 0.4);
+  }
   .tv-studies-wrap {
     position: relative;
     flex-shrink: 0;
@@ -1353,6 +1604,25 @@
     border-radius: 4px;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
   }
+  .tv-search-wrap {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .tv-study-search {
+    width: 100%;
+    padding: 7px 9px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    color: #d1d4dc;
+    background: #131722;
+    border: 1px solid #363a45;
+    border-radius: 3px;
+  }
+  .tv-study-search:focus {
+    outline: none;
+    border-color: #2962ff;
+  }
   .tv-panel-baseline {
     margin: 0 0 10px;
     font-family: var(--sc-font-mono, monospace);
@@ -1394,13 +1664,6 @@
     cursor: pointer;
     user-select: none;
   }
-  .tv-study-row input {
-    width: 14px;
-    height: 14px;
-    accent-color: #2962ff;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
   .tv-study-nested {
     margin: -4px 0 10px 24px;
     padding: 8px 10px;
@@ -1439,57 +1702,162 @@
     line-height: 1.35;
     color: rgba(177, 181, 189, 0.45);
   }
-  .tv-active-chips {
+  .tv-study-button {
+    width: 100%;
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-    flex: 1 1 auto;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 8px 9px;
+    text-align: left;
+    background: rgba(19, 23, 34, 0.75);
+    border: 1px solid rgba(54, 58, 69, 0.95);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .tv-study-button:hover {
+    background: rgba(30, 34, 45, 0.95);
+    border-color: rgba(99, 179, 237, 0.24);
+  }
+  .tv-study-button.is-active {
+    background: rgba(41, 98, 255, 0.12);
+    border-color: rgba(41, 98, 255, 0.45);
+  }
+  .tv-study-main {
+    display: grid;
+    gap: 3px;
     min-width: 0;
   }
-  .tv-chip {
-    padding: 2px 7px;
+  .tv-study-main strong,
+  .tv-study-main small,
+  .tv-study-meta em,
+  .tv-study-state,
+  .tv-study-empty {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    color: rgba(177, 181, 189, 0.75);
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(54, 58, 69, 0.85);
-    border-radius: 2px;
-    white-space: nowrap;
   }
-
+  .tv-study-main strong {
+    font-size: 11px;
+    color: #f1f3f6;
+    font-weight: 600;
+  }
+  .tv-study-main small {
+    font-size: 9px;
+    line-height: 1.35;
+    color: rgba(177, 181, 189, 0.58);
+  }
+  .tv-study-meta {
+    display: grid;
+    justify-items: end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .tv-study-meta em {
+    font-style: normal;
+    font-size: 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(177, 181, 189, 0.48);
+  }
+  .tv-study-state {
+    min-width: 30px;
+    padding: 2px 6px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(239, 242, 247, 0.78);
+    border: 1px solid rgba(54, 58, 69, 0.95);
+    border-radius: 999px;
+    text-align: center;
+  }
+  .tv-study-button.is-active .tv-study-state {
+    background: rgba(41, 98, 255, 0.2);
+    border-color: rgba(99, 179, 237, 0.35);
+    color: #dce8ff;
+  }
+  .tv-study-empty {
+    padding: 10px 0 2px;
+    font-size: 10px;
+    line-height: 1.4;
+    color: rgba(177, 181, 189, 0.56);
+  }
   .tv-context-strip {
     border-top: 1px solid rgba(42, 46, 57, 0.85);
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(7, 11, 18, 0.92);
     flex-shrink: 0;
   }
   .tv-context-summary {
     list-style: none;
     cursor: pointer;
-    padding: 5px 10px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 0.04em;
-    color: rgba(177, 181, 189, 0.55);
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     user-select: none;
   }
   .tv-context-summary::-webkit-details-marker {
     display: none;
   }
   .tv-context-summary::before {
-    content: '▸ ';
-    display: inline-block;
-    transition: transform 0.12s ease;
-    opacity: 0.65;
+    content: none;
   }
-  .tv-context-strip[open] > .tv-context-summary::before {
-    transform: rotate(90deg);
+  .tv-context-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tv-context-inline::-webkit-scrollbar {
+    display: none;
+  }
+  .tv-context-pill {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 0;
+    font-family: var(--sc-font-mono, monospace);
+    border-bottom: 1px solid transparent;
+  }
+  .tv-context-pill em {
+    font-style: normal;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(177, 181, 189, 0.46);
+  }
+  .tv-context-pill strong {
+    font-size: 9px;
+    font-weight: 600;
+    color: rgba(239, 242, 247, 0.88);
+  }
+  .tv-context-pill[data-tone='bull'] strong {
+    color: #8fdd9d;
+  }
+  .tv-context-pill[data-tone='bear'] strong {
+    color: #f19999;
+  }
+  .tv-context-pill[data-tone='warn'] strong {
+    color: #e9c167;
+  }
+  .tv-context-toggle {
+    flex-shrink: 0;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(177, 181, 189, 0.52);
   }
   .tv-context-body {
-    padding: 0 8px 8px;
+    padding: 0 8px 6px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
 
   .chart-symbol {
@@ -1561,6 +1929,34 @@
   .sym-change { font-weight: 700; }
   .price-up { color: #34c470; }
   .price-down { color: #e85555; }
+  .sym-regime-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: rgba(239, 242, 247, 0.78);
+  }
+  .sym-regime-pill[data-tone='bull'] {
+    color: #8fdd9d;
+    border-color: rgba(74, 222, 128, 0.18);
+    background: rgba(74, 222, 128, 0.08);
+  }
+  .sym-regime-pill[data-tone='bear'] {
+    color: #f19999;
+    border-color: rgba(248, 113, 113, 0.18);
+    background: rgba(248, 113, 113, 0.08);
+  }
+  .sym-regime-pill[data-tone='warn'] {
+    color: #e9c167;
+    border-color: rgba(251, 191, 36, 0.18);
+    background: rgba(251, 191, 36, 0.08);
+  }
   .sym-chip {
     color: rgba(255,255,255,0.48);
     padding: 2px 6px;
@@ -1622,21 +2018,6 @@
   .tf-btn:hover  { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.15); }
   .tf-btn.active { background: rgba(255,255,255,0.09); color: #fff; border-color: rgba(255,255,255,0.22); }
 
-  .save-btn {
-    padding: 2px 8px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    font-weight: 600;
-    background: rgba(38,166,154,0.1);
-    border: 1px solid rgba(38,166,154,0.3);
-    color: #26a69a;
-    border-radius: 3px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.1s;
-  }
-  .save-btn:hover { background: rgba(38,166,154,0.2); border-color: rgba(38,166,154,0.5); }
-
   /* ── States ── */
   .chart-state {
     flex: 1;
@@ -1692,7 +2073,7 @@
   .pane-cvd  { flex-shrink: 0; height: 84px; min-height: 84px; }
   .save-toast {
     position: fixed;
-    bottom: 80px;
+    bottom: calc(var(--sc-consent-reserved-h, 0px) + 20px);
     left: 50%;
     transform: translateX(-50%);
     background: #0f0f0f;
@@ -1713,12 +2094,12 @@
 
   .pane-label {
     flex-shrink: 0;
-    padding: 2px 8px;
+    padding: 1px 8px;
     font-family: var(--sc-font-mono, monospace);
     font-size: 8px;
-    color: rgba(177, 181, 189, 0.38);
-    background: #131722;
-    border-top: 1px solid rgba(42, 46, 57, 0.75);
+    color: rgba(177, 181, 189, 0.3);
+    background: rgba(19, 23, 34, 0.66);
+    border-top: 1px solid rgba(42, 46, 57, 0.55);
     letter-spacing: 0.06em;
   }
   .pane-label-split {
@@ -1749,18 +2130,18 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 4px;
-    padding: 4px 7px 5px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.01);
+    padding: 2px 4px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: transparent;
   }
   .depth-strip,
   .liq-strip {
     display: grid;
     gap: 3px;
-    padding: 4px 6px;
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 3px;
-    background: rgba(0,0,0,0.22);
+    padding: 3px 4px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
   }
   .strip-head {
     display: flex;
@@ -1789,7 +2170,7 @@
   }
   .depth-bar {
     display: flex;
-    height: 16px;
+    height: 12px;
     border-radius: 2px;
     overflow: hidden;
     background: rgba(255,255,255,0.04);
@@ -1816,7 +2197,7 @@
   }
   .liq-track {
     position: relative;
-    height: 13px;
+    height: 10px;
     border-radius: 2px;
     background: rgba(255,255,255,0.04);
     overflow: hidden;
@@ -1849,6 +2230,43 @@
   @media (max-width: 1200px) {
     .micro-bars {
       grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .chart-header--tv {
+      padding: 8px 10px 10px;
+    }
+    .tv-row--top {
+      align-items: flex-start;
+    }
+    .tv-row--capture {
+      align-items: flex-start;
+    }
+    .capture-window {
+      flex-basis: 100%;
+    }
+    .capture-actions {
+      width: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-left: auto;
+    }
+    .capture-save-btn {
+      width: auto;
+      min-height: 34px;
+      font-size: 11px;
+      background: rgba(38, 166, 154, 0.22);
+    }
+    .capture-open-btn {
+      width: auto;
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
     }
   }
 </style>
