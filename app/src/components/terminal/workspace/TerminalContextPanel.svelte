@@ -6,7 +6,6 @@
   import ActionStrip from './ActionStrip.svelte';
   import EvidenceGrid from './EvidenceGrid.svelte';
   import WhyPanel from './WhyPanel.svelte';
-  import StructureExplainViz from './StructureExplainViz.svelte';
   import SourceRow from './SourceRow.svelte';
   import {
     buildEvidenceFromAnalysis,
@@ -16,7 +15,6 @@
     type PatternRecallMatch,
     type PanelAnalyzeData,
   } from '$lib/terminal/panelAdapter';
-  import { buildStructureExplain } from '$lib/terminal/structureExplain';
 
   interface Props {
     analysisData?: PanelAnalyzeData | null;
@@ -87,7 +85,6 @@
   }
 
   const verdict = $derived(buildVerdictFromAnalysis(analysisData));
-  const structureExplainModel = $derived(buildStructureExplain(deep as Record<string, unknown> | null | undefined));
   const evidence = $derived(buildEvidenceFromAnalysis(analysisData));
   const SOURCES = $derived(buildSourcesFromAnalysis(analysisData));
 
@@ -207,10 +204,6 @@
       {/if}
       {#if verdict}
         <VerdictHeader {verdict} />
-        {#if structureExplainModel}
-          <div class="divider"></div>
-          <StructureExplainViz model={structureExplainModel} />
-        {/if}
         <div class="divider"></div>
         <ActionStrip action={verdict.action} avoid={verdict.against[0]} />
         {#if panelModel.summaryBullets.length > 0}
