@@ -2610,6 +2610,158 @@ def test_build_duration_recommendations_marks_avoid_when_clone_loses_to_parent()
     assert rec.duration_label == "short"
 
 
+def _mk_case_result(
+    *,
+    role: str = "reference",
+    entry_hit: bool = True,
+    target_hit: bool = True,
+    lead_bars: int | None = 5,
+    phase_fidelity: float = 1.0,
+    score: float = 0.8,
+    case_id: str = "case",
+    symbol: str = "PTBUSDT",
+) -> VariantCaseResult:
+    return VariantCaseResult(
+        case_id=case_id,
+        symbol=symbol,
+        role=role,
+        observed_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+        current_phase="BREAKOUT",
+        phase_fidelity=phase_fidelity,
+        phase_depth_progress=1.0,
+        entry_hit=entry_hit,
+        target_hit=target_hit,
+        lead_bars=lead_bars,
+        score=score,
+    )
+
+
+def test_build_promotion_report_promotes_when_all_gates_clear() -> None:
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__arch-soft-real-loose",
+        reference_score=0.8,
+        holdout_score=0.75,
+        overall_score=0.77,
+        case_results=[
+            _mk_case_result(role="reference", case_id="ref-1", symbol="PTBUSDT"),
+            _mk_case_result(role="reference", case_id="ref-2", symbol="PTBUSDT"),
+            _mk_case_result(role="holdout", case_id="hold-1", symbol="TRADOORUSDT"),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    assert report.decision == "promote_candidate"
+    assert report.holdout_passed is True
+    assert report.reference_recall == 1.0
+    assert report.phase_fidelity == 1.0
+    assert report.false_discovery_rate == 0.0
+    assert report.rejection_reasons == []
+    assert all(report.gate_results.values())
+
+
+def test_build_promotion_report_rejects_when_reference_recall_below_floor() -> None:
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.1,
+        holdout_score=0.1,
+        overall_score=0.1,
+        case_results=[
+            _mk_case_result(role="reference", entry_hit=False, target_hit=False, lead_bars=None, phase_fidelity=0.2, score=0.1, case_id="ref-1"),
+            _mk_case_result(role="reference", entry_hit=False, target_hit=False, lead_bars=None, phase_fidelity=0.2, score=0.1, case_id="ref-2"),
+            _mk_case_result(role="holdout", entry_hit=True, target_hit=True, lead_bars=5, score=0.8, case_id="hold-1", symbol="TRADOORUSDT"),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    assert report.decision == "reject"
+    assert report.reference_recall == 0.0
+    assert report.gate_results["reference_recall"] is False
+    assert any("reference_recall" in reason for reason in report.rejection_reasons)
+
+
+def test_build_promotion_report_rejects_when_holdout_fails() -> None:
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.8,
+        holdout_score=0.1,
+        overall_score=0.5,
+        case_results=[
+            _mk_case_result(role="reference", case_id="ref-1"),
+            _mk_case_result(role="reference", case_id="ref-2"),
+            _mk_case_result(role="holdout", entry_hit=False, target_hit=False, lead_bars=None, phase_fidelity=0.2, score=0.1, case_id="hold-1", symbol="TRADOORUSDT"),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    assert report.decision == "reject"
+    assert report.holdout_passed is False
+    assert report.gate_results["holdout_passed"] is False
+    assert "holdout_passed=False" in report.rejection_reasons
+
+
+def test_build_promotion_report_rejects_when_false_discovery_rate_exceeds_ceiling() -> None:
+    # three entries, only one hits the target => FDR = 2/3 > default 0.4 ceiling
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.5,
+        holdout_score=0.5,
+        overall_score=0.5,
+        case_results=[
+            _mk_case_result(role="reference", entry_hit=True, target_hit=True, lead_bars=5, case_id="ref-1"),
+            _mk_case_result(role="reference", entry_hit=True, target_hit=False, lead_bars=None, case_id="ref-2"),
+            _mk_case_result(role="reference", entry_hit=True, target_hit=False, lead_bars=None, case_id="ref-3"),
+            _mk_case_result(role="holdout", entry_hit=True, target_hit=True, lead_bars=5, case_id="hold-1", symbol="TRADOORUSDT"),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    assert report.false_discovery_rate > 0.4
+    assert report.gate_results["false_discovery_rate"] is False
+    assert report.decision == "reject"
+
+
+def test_build_promotion_report_allows_override_policy() -> None:
+    strict_policy = PromotionGatePolicy(
+        policy_id="strict-v1",
+        min_reference_recall=0.9,
+        min_phase_fidelity=0.9,
+        min_lead_time_bars=3.0,
+        max_false_discovery_rate=0.1,
+        max_robustness_spread=0.1,
+        require_holdout_passed=True,
+    )
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.6,
+        holdout_score=0.6,
+        overall_score=0.6,
+        case_results=[
+            _mk_case_result(role="reference", phase_fidelity=0.7, score=0.6, case_id="ref-1"),
+            _mk_case_result(role="reference", phase_fidelity=0.7, score=0.6, case_id="ref-2"),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner, policy=strict_policy)
+
+    # 0.7 phase_fidelity < 0.9 floor under strict policy
+    assert report.gate_policy.policy_id == "strict-v1"
+    assert report.gate_results["phase_fidelity"] is False
+    assert report.decision == "reject"
+
+
+def test_default_promotion_gate_policy_has_stable_id() -> None:
+    assert DEFAULT_PROMOTION_GATE_POLICY.policy_id == "promotion-gate-v1"
+
+
 def test_depth_progress_distinguishes_deeper_holdout_paths() -> None:
     from research.pattern_search import _phase_depth_progress
 

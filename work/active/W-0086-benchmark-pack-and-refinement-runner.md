@@ -82,6 +82,8 @@ engine
 - search runs now emit a `timeframe_recommendations` surface that compares each `timeframe_family` best-clone against its 1h parent and classifies the swing as `upgrade`, `keep`, or `avoid`; the real run on `2026-04-18` (artifact `c13d5d25-5bc4-4868-a8ac-96c25aeada00`) emitted 13 recommendations, all classified `avoid` with deltas from `-0.073` (`reset-real-proxy-balance`) to `-0.253` (`arch-soft-real-loose`, `reset-reclaim-compression`), which converts the earlier assumption that "4h clones underperform at current benchmark" into a persisted structural fact rather than an inferred hunch
 - `PatternVariantSpec` now carries a `duration_scale` axis (0.5 / 1.0 / 2.0) that rescales each phase's `min_bars`, `max_bars`, and `transition_window_bars` at build time, without cross-producting with the timeframe axis; search now evaluates `duration_family` variants as a separate axis and emits `duration_recommendations` paralleling the timeframe surface
 - the real run on `2026-04-18` (artifact `9128d385-ca46-4d27-99f2-7e9d7a487491`) expanded from 16 to 48 variants (6 manual + 12 timeframe_family + 2 auto_evidence + 4 reset_lane + 24 duration_family) and emitted 12 duration recommendations, all classified `keep` with delta `±0.000`, which establishes that the current 0.5x / 2.0x duration scaling does not move replay scores on the current benchmark cases and tells the next search to widen the duration scales or attach duration-sensitive scoring rather than re-explore 2x bands
+- search runs now build an explicit `PromotionReport` against a `PromotionGatePolicy` (`promotion-gate-v1`) using six design-spec gates (`reference_recall`, `phase_fidelity`, `lead_time_bars`, `false_discovery_rate`, `robustness_spread`, `holdout_passed`); the report is persisted on the artifact and its decision is carried into run metrics and handoff payload (`promotion_decision`, `promotion_report_id`, `promotion_rejection_reasons`)
+- the real run on `2026-04-18` (artifact `47515075-699e-484b-b102-a28c9daf9ccf`) rejected winner `reset-real-proxy-balance__dur-long` because `false_discovery_rate=1.0` (every reference entry hit ACCUMULATION but none reached BREAKOUT) and `holdout_passed=False`, even though search aggregate scores looked competitive; this proves the gate catches structural defects the scalar search score would otherwise have promoted, which is exactly the core-loop responsibility the design assigns to promotion
 
 ## Assumptions
 
@@ -126,11 +128,13 @@ engine
 
 ## Next Steps
 
-1. Decide whether family-level promotion deserves first-class persistence in `research_state_store` instead of only run payloads.
-2. Keep sub-hour search blocked on finer raw cache support instead of piggybacking on 1h resampling.
-3. Decide whether `avoid`-classified timeframe recommendations should feed back into `build_search_variants` to prune known-damaging timeframe clones on the next run, so dead-end 4h variants stop burning replay budget.
-4. Widen the duration-family scale set or attach duration-sensitive scoring (e.g. lead-time-per-phase weight) now that the first 0.5x / 2.0x pass proved flat across all 12 base variants on the current benchmark; continuing to explore only 2x bands is a confirmed dead end for the current benchmark pack.
-5. Decide whether a structurally-diverse runner-up should be preserved alongside the raw winner so ties (like the current duration-family flat landscape) don't collapse exploration into a single path.
+1. Wire `promotion_decision="promote_candidate"` into the downstream refinement and train-handoff lanes so a gate-cleared variant actually becomes a canonical baseline candidate instead of only surfacing the decision in a run artifact.
+2. Diagnose why `reset-real-proxy-balance__dur-long` hits ACCUMULATION but never BREAKOUT (FDR=1.0) on reference cases; this is a real phase-runtime defect the promotion gate just exposed, and it will block every future promotion until fixed.
+3. Decide whether family-level promotion deserves first-class persistence in `research_state_store` instead of only run payloads.
+4. Keep sub-hour search blocked on finer raw cache support instead of piggybacking on 1h resampling.
+5. Decide whether `avoid`-classified timeframe recommendations should feed back into `build_search_variants` to prune known-damaging timeframe clones on the next run, so dead-end 4h variants stop burning replay budget.
+6. Widen the duration-family scale set or attach duration-sensitive scoring (e.g. lead-time-per-phase weight) now that the first 0.5x / 2.0x pass proved flat across all 12 base variants on the current benchmark; continuing to explore only 2x bands is a confirmed dead end for the current benchmark pack.
+7. Decide whether a structurally-diverse runner-up should be preserved alongside the raw winner so ties (like the current duration-family flat landscape) don't collapse exploration into a single path.
 
 ## Exit Criteria
 
