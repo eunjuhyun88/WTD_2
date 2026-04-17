@@ -1248,6 +1248,13 @@
   <TerminalShell
     showRail={true}
     railWidth={330}
+    verdict={activeVerdict ?? null}
+    evidence={activeEvidence ?? []}
+    captureId={lastSavedCaptureId ?? null}
+    marketRows={[]}
+    alerts={[]}
+    onAlertFeedback={() => {}}
+    onMarketRefresh={() => {}}
   >
   {#snippet slotTopBar()}
     <section class="terminal-shell-head">
