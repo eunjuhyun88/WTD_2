@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
-   Cogochi Design Token System — Terminal Brutalism
+   Cogochi Design Token System — LIS (Lost In Space) palette
+   Canonical brand: pink (#db9a9f) + ivory (#f7f2ea) on deep black.
    Single source of truth for all visual properties.
    ═══════════════════════════════════════════════════════════════ */
 
@@ -40,8 +41,8 @@
   --sc-yellow-400: #facc15;
   --sc-yellow-300: #fde047;
 
-  /* ── Terminal Brutalism accent ── */
-  --sc-orange-500: #FF6B35;   /* warm orange — primary Terminal Brutalism accent */
+  /* ── Orange scale (optional accent, NOT the brand primary) ── */
+  --sc-orange-500: #FF6B35;
   --sc-orange-400: #ff8558;
   --sc-orange-300: #ffa07a;
 
@@ -94,11 +95,11 @@
   --sc-line-soft: var(--lis-border-soft);
   --sc-line-hard: var(--lis-border-strong);
 
-  /* ── COLORS: Accent (Terminal Brutalism — warm orange) ── */
-  --sc-accent: #FF6B35;                        /* primary accent */
-  --sc-accent-hover: var(--sc-orange-400);
-  --sc-accent-bg: rgba(255, 107, 53, 0.10);
-  --sc-accent-bg-subtle: rgba(255, 107, 53, 0.06);
+  /* ── COLORS: Accent (LIS pink — canonical Cogochi brand) ── */
+  --sc-accent: var(--lis-accent);              /* primary accent (pink #db9a9f) */
+  --sc-accent-hover: #e6a9ad;
+  --sc-accent-bg: rgba(var(--lis-rgb-pink), 0.08);
+  --sc-accent-bg-subtle: rgba(var(--lis-rgb-pink), 0.05);
   --sc-accent-2: var(--lis-accent);            /* legacy alias -> LIS pink */
   --sc-accent-3: var(--lis-ivory);             /* legacy decorative alias -> ivory text */
 
@@ -115,9 +116,9 @@
   --sc-good-bg: rgba(var(--lis-rgb-lime), 0.16);
   --sc-bad: var(--sc-market-down);             /* loss, error, short */
   --sc-bad-bg: rgba(248, 113, 113, 0.16);
-  --sc-warn: var(--sc-warning);                /* warning state */
-  --sc-warn-bg: rgba(234, 179, 8, 0.12);
-  --sc-info: var(--sc-blue-400);               /* informational */
+  --sc-warn: var(--lis-accent);                /* legacy: pink-themed warning */
+  --sc-warn-bg: rgba(var(--lis-rgb-pink), 0.12);
+  --sc-info: rgba(var(--lis-rgb-pink), 0.88);  /* legacy: pink informational */
 
   /* ── COLORS: Bias aliases (terminal usage) ── */
   --sc-bias-bull: var(--sc-market-up);
@@ -137,12 +138,13 @@
 
   /* ══════════════════════════════════════════════════════════════
      SECTION 3 — TYPOGRAPHY: Font Families
+     Canonical Cogochi stack: Bebas Neue display + Space Grotesk body
+     + JetBrains Mono mono. DO NOT replace with IBM Plex.
      ══════════════════════════════════════════════════════════════ */
 
-  /* Terminal Brutalism stacks — IBM Plex Mono first */
-  --sc-font-mono:    'IBM Plex Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-  --sc-font-display: 'IBM Plex Mono', 'Söhne Mono', ui-monospace, monospace;
-  --sc-font-body:    'IBM Plex Sans', -apple-system, system-ui, 'Helvetica Neue', sans-serif;
+  --sc-font-display: 'Bebas Neue', 'Orbitron', monospace;
+  --sc-font-body:    'Space Grotesk', sans-serif;
+  --sc-font-mono:    'JetBrains Mono', monospace;
 
   /* Legacy specialty stacks preserved */
   --sc-font-pixel: 'Press Start 2P', monospace;
