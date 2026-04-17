@@ -1064,7 +1064,9 @@
   });
   onDestroy(() => {
     saveModeUnsubscribe?.();
-    window.removeEventListener('keydown', handleRangeModeKeydown);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', handleRangeModeKeydown);
+    }
     destroyCharts();
   });
 

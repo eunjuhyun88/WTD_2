@@ -108,4 +108,38 @@
   .shell-footer {
     flex-shrink: 0;
   }
+
+  /* ── Responsive collapse (W-0087 tier boundaries) ── */
+  @media (max-width: 1279px) {
+    .shell-rail {
+      width: 320px;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .shell-rail {
+      width: 280px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    /* MOBILE tier: stack vertically, whole shell scrolls so footer is reachable */
+    .desktop-shell {
+      height: auto;
+      min-height: 100%;
+      overflow: visible;
+    }
+    .shell-workspace {
+      flex-direction: column;
+      overflow: visible;
+    }
+    .shell-rail {
+      display: none;
+    }
+    .shell-chart {
+      /* Bounded chart portion on mobile so indicator pane + footer stay reachable */
+      min-height: 60vh;
+      flex: 0 0 auto;
+    }
+  }
 </style>
