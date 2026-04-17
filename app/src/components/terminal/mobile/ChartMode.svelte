@@ -17,15 +17,28 @@
    */
 
   import CanvasHost from '../chart/CanvasHost.svelte';
+  import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
+  import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
+  import { activePairState } from '$lib/stores/activePairStore';
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
-  // TODO: pass real symbol/tf from activePairStore when mobile Save Setup
-  // header row is implemented.
+  // Derive symbol (e.g. 'BTC/USDT' → 'BTCUSDT') and tf from live store
+  const symbol = $derived($activePairState.pair.replace('/', ''));
+  const tf = $derived($activePairState.timeframe);
 </script>
 
 <div class="chart-mode">
   <div class="canvas-area">
-    <!-- TODO: bind:this for imperative API if needed; pass symbol/tf from store -->
-    <CanvasHost symbol="BTCUSDT" tf="1h" />
+    <CanvasHost {symbol} {tf} />
+    <!-- Layer 2 overlay — pointer-events: none on container (W-0086) -->
+    <div class="canvas-overlay">
+      <div class="overlay-topright">
+        {#if $chartSaveMode.active}
+          <RangeModeToast active={$chartSaveMode.active} anchorASet={$chartSaveMode.anchorA !== null} />
+        {/if}
+        <PhaseBadge phase={null} />
+      </div>
+    </div>
   </div>
 
   <div class="indicator-area">
@@ -52,6 +65,25 @@
     overflow: hidden;
     background: var(--sc-terminal-bg, #0a0c10);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* Layer 2 overlay — pointer-events: none so LWC crosshair/pan/zoom are unblocked (W-0086) */
+  .canvas-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .overlay-topright {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    pointer-events: none;
   }
 
   /* ~30% of available vertical space */
