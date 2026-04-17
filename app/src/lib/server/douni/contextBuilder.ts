@@ -23,9 +23,9 @@ import {
   buildDouniSystemPrompt,
   buildAnalysisContext,
   type BuildDouniPromptOptions,
-} from '$lib/engine/cogochi/douni/douniPersonality';
-import type { DouniProfile } from '$lib/engine/cogochi/douni/douniPersonality';
-import type { SignalSnapshot } from '$lib/engine/cogochi/types';
+  type DouniProfile,
+} from '$lib/server/douni/personality';
+import type { ServerSignalSnapshot as SignalSnapshot } from '$lib/server/cogochi/signalSnapshot';
 import {
   TOOL_ANALYZE_MARKET,
   TOOL_CHECK_SOCIAL,

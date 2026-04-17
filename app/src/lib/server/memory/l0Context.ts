@@ -11,7 +11,7 @@ import type {
   StageFrame,
   SignalSnapshot,
   OwnedAgent,
-} from '$lib/engine/v4/types.js';
+} from '$lib/contracts/researchV4';
 
 export function buildL0Context(
   market: MarketFrame,

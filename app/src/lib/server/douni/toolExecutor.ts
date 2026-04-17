@@ -6,12 +6,14 @@
 // 각 도구는 기존 서비스를 호출하여 결과를 생성.
 
 import type { ToolCall, ToolResult, ToolExecutorContext, DouniSSEEvent } from './types';
-import type { SignalSnapshot, ExtendedMarketData } from '$lib/engine/cogochi/types';
 import { VALID_TOOL_NAMES } from './tools';
-import { computeSignalSnapshot, computeIndicatorSeries } from '$lib/engine/cogochi/layerEngine';
-import { detectSupportResistance } from '$lib/engine/cogochi/supportResistance';
-import { signSnapshot } from '$lib/engine/cogochi/hmac';
-import type { MarketContext } from '$lib/engine/factorEngine';
+import { computeIndicatorSeries, detectSupportResistance } from '$lib/chart/analysisPrimitives';
+import {
+  computeServerSignalSnapshot,
+  type ServerExtendedMarketData as ExtendedMarketData,
+  type ServerMarketContext as MarketContext,
+  type ServerSignalSnapshot as SignalSnapshot,
+} from '$lib/server/cogochi/signalSnapshot';
 import { scanMarket, type ScanConfig } from '$lib/server/scanner';
 import { readRaw, klinesRawIdForTimeframe } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
@@ -322,8 +324,7 @@ async function executeAnalyzeMarket(
   };
 
   // Compute snapshot with extended data
-  const snapshot = computeSignalSnapshot(marketCtx, symbol, tf, ext);
-  snapshot.hmac = signSnapshot(snapshot);
+  const snapshot = computeServerSignalSnapshot(marketCtx, symbol, tf, ext, { sign: true });
 
   // Cache
   ctx.cachedSnapshot = snapshot;

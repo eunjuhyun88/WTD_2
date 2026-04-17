@@ -4,8 +4,8 @@
 // Design: Cogochi_SystemDesign § Step 4 (AutoResearch)
 // ═══════════════════════════════════════════════════════════════
 
-import { runFullBattle, createDefaultSquad } from '$lib/engine/v4/battleStateMachine.js';
-import type { BattleScenario, OwnedAgent, SignalWeights, BattleTickState } from '$lib/engine/v4/types.js';
+import { runFullBattle, createDefaultSquad } from '$lib/server/research/v4Battle';
+import type { BattleScenario, OwnedAgent, SignalWeights, BattleTickState } from '$lib/contracts/researchV4';
 
 // ─── Types ─────────────────────────────────────────────────────
 

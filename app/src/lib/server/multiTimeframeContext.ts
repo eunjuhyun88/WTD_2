@@ -1,5 +1,5 @@
-import { calcATR, calcEMA, calcMACD, calcRSI, calcSMA } from '$lib/engine/indicators';
-import type { BinanceKline } from '$lib/engine/types';
+import { calcATR, calcEMA, calcMACD, calcRSI, calcSMA } from '$lib/market/technicalAnalysis';
+import type { BinanceKline } from '$lib/contracts/marketContext';
 import { pairToSymbol } from '$lib/server/providers/binance';
 import { readRaw, type KlinesRawId } from '$lib/server/providers/rawSources';
 import { getCached, setCache } from '$lib/server/providers/cache';

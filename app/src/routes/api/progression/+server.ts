@@ -9,8 +9,13 @@ import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { resolveProgression, getTier, tierToDisplay } from '$lib/stores/progressionRules';
-import { LP_REWARDS, LOSS_STREAK_MERCY_THRESHOLD, LOSS_STREAK_MERCY_LP, CLUTCH_FBS_THRESHOLD } from '$lib/engine/constants';
-import type { LPReason } from '$lib/engine/types';
+import {
+  LP_REWARDS,
+  LOSS_STREAK_MERCY_THRESHOLD,
+  LOSS_STREAK_MERCY_LP,
+  CLUTCH_FBS_THRESHOLD,
+  type LPReason
+} from '$lib/contracts/progression';
 
 // ─── GET: 통합 프로그레션 상태 ─────────────────────────────────
 export const GET: RequestHandler = async ({ cookies }) => {
