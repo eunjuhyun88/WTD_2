@@ -4,15 +4,15 @@
 // optimize on IS, validate on OOS, detect overfitting.
 // ═══════════════════════════════════════════════════════════════
 
-import { runFullBattle, createDefaultSquad } from '$lib/engine/v4/battleStateMachine.js';
+import { runFullBattle, createDefaultSquad } from '$lib/server/research/v4Battle';
 import type {
   BattleScenario,
   BattleTickState,
   SignalWeights,
   OwnedAgent,
   ArchetypeId,
-} from '$lib/engine/v4/types.js';
-import { V4_CONFIG } from '$lib/engine/v4/types.js';
+} from '$lib/contracts/researchV4';
+import { V4_CONFIG } from '$lib/contracts/researchV4';
 
 // ─── Types ─────────────────────────────────────────────────────
 

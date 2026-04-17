@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { query } from '$lib/server/db.js';
-import type { ArchetypeId } from '$lib/engine/v4/types.js';
+import type { ArchetypeId } from '$lib/contracts/researchV4';
 
 // ─── Types ─────────────────────────────────────────────────────
 

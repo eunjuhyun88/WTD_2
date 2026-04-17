@@ -33,9 +33,10 @@ from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, evaluate_alert_policy
 from patterns.entry_scorer import score_entry_feature_snapshot
 from patterns.library import PATTERN_LIBRARY, get_pattern
+from patterns.replay import replay_pattern_frames
 from patterns.state_machine import PatternStateMachine
 from patterns.state_store import PatternStateStore
-from patterns.types import PhaseTransition
+from patterns.types import PhaseAttemptRecord, PhaseTransition
 from scanner.feature_calc import compute_features_table, compute_snapshot
 from scoring.block_evaluator import evaluate_blocks
 from universe.loader import load_universe_async
@@ -58,6 +59,7 @@ def _get_machine(pattern_slug: str) -> PatternStateMachine:
             on_transition=_on_transition,
             on_entry_signal=_on_entry_signal,
             on_success=_on_success,
+            on_phase_attempt=_on_phase_attempt,
         )
         machine.hydrate_states(STATE_STORE.hydrate_states(pattern))
         _MACHINES[pattern_slug] = machine
@@ -69,6 +71,11 @@ def _get_machine(pattern_slug: str) -> PatternStateMachine:
 def _on_transition(transition: PhaseTransition) -> None:
     """Persist every phase transition before entry/success callbacks run."""
     STATE_STORE.append_transition(transition)
+
+
+def _on_phase_attempt(attempt: PhaseAttemptRecord) -> None:
+    """Persist failed phase-advance evidence for refinement."""
+    LEDGER_RECORD_STORE.append_phase_attempt_record(attempt)
 
 def _detect_btc_trend() -> str:
     """Detect BTC trend from cached klines. Returns 'bullish'|'bearish'|'sideways'."""
@@ -108,14 +115,10 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
     """
     entry_price = _get_entry_price(transition.symbol)
     btc_trend = _detect_btc_trend()
-    try:
-        entry_score = score_entry_feature_snapshot(
-            transition.feature_snapshot,
-            pattern_slug=transition.pattern_slug,
-        )
-    except TypeError:
-        # Keep scanner compatible with older single-argument test doubles.
-        entry_score = score_entry_feature_snapshot(transition.feature_snapshot)
+    entry_score = score_entry_feature_snapshot(
+        transition.feature_snapshot,
+        pattern_slug=transition.pattern_slug,
+    )
 
     log.info(
         "ENTRY SIGNAL: %s → %s [%s] price=%.4f btc=%s ml=%s p_win=%s pass=%s",
@@ -268,8 +271,18 @@ def evaluate_symbol_for_patterns(
 
     # Feed into each pattern's state machine
     results: dict[str, str] = {}
+    replay_cutoff = features_df.index[-1].to_pydatetime() if hasattr(features_df.index[-1], "to_pydatetime") else features_df.index[-1]
     for slug in PATTERN_LIBRARY:
         machine = _get_machine(slug)
+        replay_pattern_frames(
+            machine,
+            symbol,
+            features_df=features_df,
+            klines_df=klines_df,
+            timestamp_limit=replay_cutoff,
+            lookback_bars=336,
+            data_quality={"has_perp": has_perp},
+        )
         machine.evaluate(
             symbol, triggered_blocks, timestamp,
             feature_snapshot=feature_snapshot,
@@ -277,6 +290,9 @@ def evaluate_symbol_for_patterns(
             trigger_bar_ts=timestamp,
             data_quality={"has_perp": has_perp},
         )
+        state_record = machine.get_state_record(symbol, last_eval_at=timestamp)
+        if state_record is not None:
+            STATE_STORE.upsert_state(state_record)
         results[slug] = machine.get_current_phase(symbol)
 
     return results

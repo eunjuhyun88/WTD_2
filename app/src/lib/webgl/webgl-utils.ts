@@ -69,6 +69,7 @@ function destroyFBO(gl: WebGL2RenderingContext, fbo: FBO): void {
 export interface PingPong {
   read: FBO;
   write: FBO;
+  clear(): void;
   swap(): void;
   resize(w: number, h: number): void;
   destroy(): void;
@@ -77,6 +78,15 @@ export interface PingPong {
 export function createPingPong(gl: WebGL2RenderingContext, w: number, h: number, useFloat: boolean): PingPong {
   let a = createFBO(gl, w, h, useFloat);
   let b = createFBO(gl, w, h, useFloat);
+  const clearBuffers = () => {
+    const prevFb = gl.getParameter(gl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, a.fb);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, b.fb);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, prevFb);
+  };
 
   return {
     get read() {
@@ -84,6 +94,9 @@ export function createPingPong(gl: WebGL2RenderingContext, w: number, h: number,
     },
     get write() {
       return b;
+    },
+    clear() {
+      clearBuffers();
     },
     swap() {
       [a, b] = [b, a];
@@ -93,6 +106,7 @@ export function createPingPong(gl: WebGL2RenderingContext, w: number, h: number,
       destroyFBO(gl, b);
       a = createFBO(gl, nw, nh, useFloat);
       b = createFBO(gl, nw, nh, useFloat);
+      clearBuffers();
     },
     destroy() {
       destroyFBO(gl, a);
@@ -117,19 +131,41 @@ export function createFullscreenTriangle(gl: WebGL2RenderingContext): WebGLVerte
   return vao;
 }
 
-export function loadTexture(gl: WebGL2RenderingContext, src: string): Promise<WebGLTexture> {
+interface LoadTextureOptions {
+  maxSize?: number;
+}
+
+export function loadTexture(
+  gl: WebGL2RenderingContext,
+  src: string,
+  options: LoadTextureOptions = {}
+): Promise<WebGLTexture> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    img.decoding = 'async';
     img.onload = () => {
       const tex = gl.createTexture();
       if (!tex) {
         reject(new Error('createTexture failed'));
         return;
       }
+      let source: TexImageSource = img;
+      const maxSize = options.maxSize;
+      if (maxSize && (img.naturalWidth > maxSize || img.naturalHeight > maxSize)) {
+        const scale = maxSize / Math.max(img.naturalWidth, img.naturalHeight);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          source = canvas;
+        }
+      }
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);

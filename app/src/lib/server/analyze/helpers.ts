@@ -1,4 +1,4 @@
-import type { BinanceKline } from '$lib/engine/types';
+import type { BinanceKline } from '$lib/contracts/marketContext';
 import type { OIHistoryPoint } from '$lib/server/marketDataService';
 import type { ForceOrderLite, BinanceKlineWithTaker } from './types';
 

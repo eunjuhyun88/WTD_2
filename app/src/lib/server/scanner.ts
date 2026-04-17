@@ -6,9 +6,12 @@
 
 import { readRaw } from './providers';
 import { KnownRawId } from '$lib/contracts/ids';
-import { computeSignalSnapshot } from '$lib/engine/cogochi/layerEngine';
-import type { SignalSnapshot, ExtendedMarketData } from '$lib/engine/cogochi/types';
-import type { MarketContext } from '$lib/engine/factorEngine';
+import {
+  computeServerSignalSnapshot,
+  type ServerExtendedMarketData as ExtendedMarketData,
+  type ServerMarketContext as MarketContext,
+  type ServerSignalSnapshot as SignalSnapshot,
+} from '$lib/server/cogochi/signalSnapshot';
 
 // --- Public types ---------------------------------------------------
 
@@ -248,7 +251,7 @@ async function scanSingleSymbol(
     };
 
     // Compute 17-layer signal snapshot
-    const snapshot = computeSignalSnapshot(ctx, symbol, '4h', ext);
+    const snapshot = computeServerSignalSnapshot(ctx, symbol, '4h', ext);
 
     // Determine notable flags
     const hasWyckoff =

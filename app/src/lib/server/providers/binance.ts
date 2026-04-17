@@ -18,19 +18,19 @@
 // Zero behavior change by design — the body below is byte-identical to
 // the previous `src/lib/server/binance.ts` except for:
 //   1. The cache import is now a relative `./cache` (same directory).
-//   2. Type imports from `$lib/engine/types` are unchanged.
+//   2. Market data type imports now come from app contracts.
 //
 // Future P1 slices will move coingecko, coinalyze, dexscreener, and the
 // other 17 providers here using the same shim-then-migrate pattern.
 
 import { getCached, setCache } from './cache';
 import { toBinanceInterval } from '$lib/utils/timeframe';
-import type { BinanceKline, Binance24hr } from '$lib/engine/types';
+import type { BinanceKline, Binance24hr } from '$lib/contracts/marketContext';
 
-// Re-export engine types for convenience — consumers can `import type
+// Re-export contract types for convenience — consumers can `import type
 // { BinanceKline } from '$lib/server/providers/binance'` once they
 // migrate off the legacy path.
-export type { BinanceKline, Binance24hr } from '$lib/engine/types';
+export type { BinanceKline, Binance24hr } from '$lib/contracts/marketContext';
 
 const BASE = 'https://api.binance.com';
 const FETCH_TIMEOUT = 8_000;

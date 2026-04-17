@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { query } from '$lib/server/db.js';
-import type { MemoryRecord } from '$lib/engine/v4/types.js';
+import type { MemoryRecord } from '$lib/contracts/researchV4';
 
 // ─── In-memory cache (5 min TTL per agent) ─────────────────────
 

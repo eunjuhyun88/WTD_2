@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BinanceKline } from '$lib/engine/types';
+  import type { BinanceKline } from '$lib/contracts/marketContext';
   import ChartStage from '../chart/ChartStage.svelte';
   import { fromLabReplay } from '$lib/chart-engine/app';
 

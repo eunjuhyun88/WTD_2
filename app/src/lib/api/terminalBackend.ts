@@ -5,6 +5,13 @@ import type {
   FlowEnvelope,
   SnapshotEnvelope,
 } from '$lib/contracts/terminalBackend';
+import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
+import {
+  fromEngineMemoryQueryWire,
+  toEngineMemoryDebugSessionWire,
+  toEngineMemoryFeedbackWire,
+  toEngineMemoryQueryWire,
+} from '$lib/api/terminalMemoryAdapter';
 
 async function readJson<T>(res: Response): Promise<T | null> {
   try {
@@ -101,11 +108,7 @@ export async function fetchMarketEvents(pair: string, tf: string): Promise<Array
   return payload?.data?.records ?? [];
 }
 
-export interface MemoryRerankRecord {
-  id: string;
-  score: number;
-  reasons: string[];
-}
+export type MemoryRerankRecord = MemoryQueryResponse['records'][number];
 
 export interface MemoryRerankResult {
   queryId: string;
@@ -140,9 +143,9 @@ async function flushMemoryFeedbackQueue(): Promise<void> {
       headers: { 'content-type': 'application/json' },
       keepalive: true,
       body: JSON.stringify({
-        items: batch.map((args) => ({
-          query_id: args.queryId,
-          memory_id: args.memoryId,
+        items: batch.map((args) => toEngineMemoryFeedbackWire({
+          queryId: args.queryId,
+          memoryId: args.memoryId,
           event: args.event,
           context: {
             symbol: args.symbol,
@@ -150,7 +153,7 @@ async function flushMemoryFeedbackQueue(): Promise<void> {
             intent: args.intent,
             mode: args.mode ?? 'terminal',
           },
-          occurred_at: new Date().toISOString(),
+          occurredAt: new Date().toISOString(),
         })),
       }),
     });
@@ -192,9 +195,11 @@ export async function fetchMemoryRerank(args: {
     tags?: string[];
   }>;
 }): Promise<MemoryRerankResult> {
-  const payload = {
+  const payload = toEngineMemoryQueryWire({
     query: args.query,
-    top_k: args.topK ?? Math.max(1, args.candidates.length),
+    topK: args.topK ?? Math.max(1, args.candidates.length),
+    includeRejected: false,
+    includeSnapshots: false,
     context: {
       symbol: args.symbol,
       timeframe: args.timeframe,
@@ -205,12 +210,13 @@ export async function fetchMemoryRerank(args: {
       id: candidate.id,
       kind: 'fact',
       text: candidate.text,
-      base_score: candidate.baseScore,
+      baseScore: candidate.baseScore,
       confidence: candidate.confidence ?? 'observed',
-      access_count: candidate.accessCount ?? 0,
+      accessCount: candidate.accessCount ?? 0,
       tags: candidate.tags ?? [],
+      conditions: {},
     })),
-  };
+  });
 
   const res = await fetch('/api/engine/memory/query', {
     method: 'POST',
@@ -218,17 +224,11 @@ export async function fetchMemoryRerank(args: {
     body: JSON.stringify(payload),
   });
   if (!res.ok) return { queryId: '', records: [] };
-  const body = await readJson<{ query_id?: string; records?: Array<{ id?: string; score?: number; reasons?: string[] }> }>(res);
-  const records = (body?.records ?? [])
-    .filter((record) => typeof record.id === 'string' && Number.isFinite(record.score))
-    .map((record) => ({
-      id: record.id as string,
-      score: Number(record.score),
-      reasons: Array.isArray(record.reasons) ? record.reasons : [],
-    }));
+  const body = await readJson<unknown>(res);
+  const parsed = fromEngineMemoryQueryWire(body);
   return {
-    queryId: body?.query_id ?? '',
-    records,
+    queryId: parsed.queryId,
+    records: parsed.records,
   };
 }
 
@@ -255,8 +255,8 @@ export async function sendMemoryDebugSession(args: {
   await fetch('/api/engine/memory/debug-session', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      session_id: args.sessionId,
+    body: JSON.stringify(toEngineMemoryDebugSessionWire({
+      sessionId: args.sessionId,
       context: {
         symbol: args.symbol,
         timeframe: args.timeframe,
@@ -268,10 +268,10 @@ export async function sendMemoryDebugSession(args: {
         text: hypothesis.text,
         status: hypothesis.status,
         evidence: hypothesis.evidence ?? [],
-        rejection_reason: hypothesis.rejectionReason,
+        rejectionReason: hypothesis.rejectionReason,
       })),
-      started_at: new Date().toISOString(),
-      ended_at: new Date().toISOString(),
-    }),
+      startedAt: new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+    })),
   });
 }

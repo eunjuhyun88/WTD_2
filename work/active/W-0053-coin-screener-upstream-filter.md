@@ -32,19 +32,23 @@ engine
 - `docs/domains/scanner-alerts.md`
 - `docs/product/pages/00-system-application.md`
 - `docs/product/pages/06-screener.md`
+- `engine/screener/types.py`
+- `engine/screener/pipeline.py`
+- `engine/screener/store.py`
+- `engine/api/routes/screener.py`
 - `engine/data_cache/token_universe.py`
 - `engine/universe/loader.py`
+- `engine/universe/screened.py`
 - `engine/universe/config.py`
 - `engine/scanner/scheduler.py`
 
 ## Facts
 
-- the live scanner already reads a named universe through `engine/universe/loader.py`, and the default live universe is `binance_dynamic`
-- the shared token-universe dataset already gives a ranked Binance futures symbol pool with price, volume, OI, market cap, and sector fields
-- existing Pattern Engine and scanner jobs already run every 15 minutes, so Screener should not duplicate timing logic that already exists downstream
-- the current product system does not have `/screener` as an active Day-1 page, so first rollout must work without a new primary surface
-- several proposed criteria rely on expensive or brittle dependencies (`Twitter`, event crawlers, LLM sector judgment), so a useful first slice must degrade without them and still report uncertainty explicitly
-- no engine Screener package exists yet, so the first code slice must establish types, store, and universe bridge before any collectors or UI can consume it
+- the live scanner already reads a named universe through `engine/universe/loader.py`, and the default live universe is `binance_dynamic`.
+- the shared token-universe dataset plus existing 15-minute scanner cadence give Screener an upstream base without duplicating downstream timing logic.
+- the current product system does not need a Day-1 `/screener` page, and several deferred criteria still rely on expensive or brittle dependencies that must degrade explicitly.
+- `engine/screener/*`, `engine/api/routes/screener.py`, and `engine/universe/screened.py` now provide canonical types, SQLite-backed latest/run/override storage, read-only routes, and `screened_ab` / `screened_a` fallback behavior.
+- targeted Screener/universe pytest now passes on the current branch, but this branch still contains unrelated terminal/docs/ledger work and must not be merged as one unit.
 
 ## Assumptions
 
@@ -54,9 +58,9 @@ engine
 
 ## Open Questions
 
-- whether the first persistence store should be SQLite-only or ledger-backed from Day 1
 - whether the first app surface should live under `/patterns`, `/terminal`, or a deferred dedicated `/screener` route
 - whether Binance Alpha membership should be a hard source field in Sprint 1 or a later enrichment
+- where the first population job should run: ad hoc CLI, scheduler task, or a dedicated Screener refresh worker
 
 ## Decisions
 
@@ -71,15 +75,16 @@ engine
 - Screener needs a manual override plane for blacklist names, known Binance treasury wallets, symbol identity exceptions, and supply-concentration allow/deny adjustments
 - Screener promotion value must be measured against baseline universes by downstream Pattern Engine outcomes, not assumed from intuitive scoring quality
 - `/screener` is a deferred surface in the current system guide; first delivery priority is engine run/store/read contracts, then surface
-- first implementation slice is engine-only: add `engine/screener` types, store, and aggregation helpers plus named universe support for `screened_ab` / `screened_a`
-- read-only API routes are useful but optional after the engine store exists; do not block the first slice on app-facing route work
-- branch context note: this design is being written on `task/w-0024-terminal-attention-implementation`, which already has unrelated terminal changes, so future implementation must stage Screener work carefully or move to an isolated branch
+- first implementation slice remains engine-only even though it now includes read-only engine routes; no app runtime dependency is required for the first merge
+- SQLite WAL is the chosen Day-1 persistence home for Screener latest state, run logs, and overrides
+- `screened_ab` / `screened_a` should return no symbols when the latest Screener run is stale, then fall back one layer up to `binance_dynamic` through the universe loader
+- branch context note: this implementation is currently sitting on `task/w-0024-terminal-attention-implementation`, which already has unrelated terminal changes, so future merge work must extract the Screener files onto an isolated engine branch
 
 ## Next Steps
 
-1. implement `engine/screener` types, aggregation helpers, SQLite store, and tests for `structural_grade`, `timing_score`, `confidence`, and filtered symbol retrieval
-2. wire `screened_ab` and `screened_a` into universe loading with explicit fallback to `binance_dynamic`
-3. add read-only API routes and define the uplift evaluation loop comparing `screened_ab` against `binance_dynamic` on downstream Pattern Engine hit quality before broad UI rollout
+1. extract the Screener package, engine routes, universe bridge, and tests onto a clean engine-only branch from `origin/main`
+2. add the first population path that writes Screener runs from token-universe inputs into the SQLite store
+3. define the uplift evaluation loop comparing `screened_ab` against `binance_dynamic` on downstream Pattern Engine hit quality before any config switch or UI rollout
 
 ## Exit Criteria
 
@@ -92,5 +97,6 @@ engine
 ## Handoff Checklist
 
 - current branch: `task/w-0024-terminal-attention-implementation`
-- verification status: doc-only slice; no engine or app runtime changes yet
-- remaining blockers: choose persistence home, confirm first UI mounting surface, define how Binance Alpha membership is sourced, and decide where uplift evaluation artifacts live
+- verification status:
+  - `uv run --with pytest --with pandas --with fastapi --with httpx pytest engine/tests/test_screener_engine.py engine/tests/test_screener_pipeline.py engine/tests/test_screener_routes.py engine/tests/test_screener_store.py engine/tests/test_universe.py`
+- remaining blockers: define the first population/refresh job, confirm first UI mounting surface, define how Binance Alpha membership is sourced, and decide where uplift evaluation artifacts live

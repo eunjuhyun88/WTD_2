@@ -17,7 +17,6 @@ from typing import Literal
 ResearchRunStatus = Literal["pending", "running", "completed", "failed", "cancelled"]
 ResearchDisposition = Literal["no_op", "dead_end", "train_candidate"]
 SelectionDecisionKind = Literal["advance", "reject", "dead_end", "train_candidate"]
-OperatorDecisionKind = Literal["approve", "defer", "reject"]
 ResearchMemoryKind = Literal[
     "breakthrough",
     "rejected_hypothesis",
@@ -28,7 +27,6 @@ ResearchMemoryKind = Literal[
 
 STATE_DIR = Path(__file__).resolve().parent / "state"
 DEFAULT_DB_PATH = STATE_DIR / "research_runtime.sqlite"
-_UNSET = object()
 
 
 def _json_dumps(value: object) -> str:
@@ -96,28 +94,6 @@ class ResearchMemoryNote:
     created_at: str
 
 
-@dataclass(frozen=True)
-class OperatorDecision:
-    research_run_id: str
-    decision: OperatorDecisionKind
-    decided_by: str
-    rationale: str
-    decided_at: str
-
-
-@dataclass(frozen=True)
-class PatternControlState:
-    pattern_slug: str
-    enabled: bool
-    paused_by_policy: bool
-    paused_by_operator: bool
-    approval_required: bool
-    auto_train_allowed: bool
-    cooldown_until: str | None
-    pause_reason: str | None
-    updated_at: str
-
-
 class ResearchStateStore:
     """SQLite WAL-backed store for methodology-owned refinement state."""
 
@@ -182,27 +158,6 @@ class ResearchStateStore:
 
                 CREATE INDEX IF NOT EXISTS idx_research_memory_pattern_kind
                   ON research_memory_notes(pattern_slug, note_kind, created_at DESC);
-
-                CREATE TABLE IF NOT EXISTS research_operator_decisions (
-                  research_run_id TEXT PRIMARY KEY,
-                  decision TEXT NOT NULL,
-                  decided_by TEXT NOT NULL,
-                  rationale TEXT NOT NULL,
-                  decided_at TEXT NOT NULL,
-                  FOREIGN KEY(research_run_id) REFERENCES research_runs(research_run_id)
-                );
-
-                CREATE TABLE IF NOT EXISTS research_pattern_controls (
-                  pattern_slug TEXT PRIMARY KEY,
-                  enabled INTEGER NOT NULL DEFAULT 1,
-                  paused_by_policy INTEGER NOT NULL DEFAULT 0,
-                  paused_by_operator INTEGER NOT NULL DEFAULT 0,
-                  approval_required INTEGER NOT NULL DEFAULT 1,
-                  auto_train_allowed INTEGER NOT NULL DEFAULT 0,
-                  cooldown_until TEXT,
-                  pause_reason TEXT,
-                  updated_at TEXT NOT NULL
-                );
                 """
             )
 
@@ -440,164 +395,6 @@ class ResearchStateStore:
         if row is None:
             return None
         return self._row_to_memory_note(row)
-
-    def record_operator_decision(
-        self,
-        *,
-        research_run_id: str,
-        decision: OperatorDecisionKind,
-        decided_by: str,
-        rationale: str,
-        decided_at: str,
-    ) -> OperatorDecision:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO research_operator_decisions (
-                  research_run_id, decision, decided_by, rationale, decided_at
-                ) VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(research_run_id) DO UPDATE SET
-                  decision = excluded.decision,
-                  decided_by = excluded.decided_by,
-                  rationale = excluded.rationale,
-                  decided_at = excluded.decided_at
-                """,
-                (
-                    research_run_id,
-                    decision,
-                    decided_by,
-                    rationale,
-                    decided_at,
-                ),
-            )
-        result = self.get_operator_decision(research_run_id)
-        assert result is not None
-        return result
-
-    def get_operator_decision(self, research_run_id: str) -> OperatorDecision | None:
-        with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM research_operator_decisions WHERE research_run_id = ?",
-                (research_run_id,),
-            ).fetchone()
-        if row is None:
-            return None
-        return OperatorDecision(
-            research_run_id=row["research_run_id"],
-            decision=row["decision"],
-            decided_by=row["decided_by"],
-            rationale=row["rationale"],
-            decided_at=row["decided_at"],
-        )
-
-    def upsert_pattern_control_state(
-        self,
-        pattern_slug: str,
-        *,
-        updated_at: str,
-        enabled: bool | None = None,
-        paused_by_policy: bool | None = None,
-        paused_by_operator: bool | None = None,
-        approval_required: bool | None = None,
-        auto_train_allowed: bool | None = None,
-        cooldown_until: object = _UNSET,
-        pause_reason: object = _UNSET,
-    ) -> PatternControlState:
-        current = self.get_pattern_control_state(pattern_slug)
-        merged = PatternControlState(
-            pattern_slug=pattern_slug,
-            enabled=current.enabled if enabled is None else enabled,
-            paused_by_policy=current.paused_by_policy if paused_by_policy is None else paused_by_policy,
-            paused_by_operator=current.paused_by_operator if paused_by_operator is None else paused_by_operator,
-            approval_required=current.approval_required if approval_required is None else approval_required,
-            auto_train_allowed=current.auto_train_allowed if auto_train_allowed is None else auto_train_allowed,
-            cooldown_until=current.cooldown_until if cooldown_until is _UNSET else cooldown_until,  # type: ignore[arg-type]
-            pause_reason=current.pause_reason if pause_reason is _UNSET else pause_reason,  # type: ignore[arg-type]
-            updated_at=updated_at,
-        )
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO research_pattern_controls (
-                  pattern_slug, enabled, paused_by_policy, paused_by_operator,
-                  approval_required, auto_train_allowed, cooldown_until, pause_reason, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(pattern_slug) DO UPDATE SET
-                  enabled = excluded.enabled,
-                  paused_by_policy = excluded.paused_by_policy,
-                  paused_by_operator = excluded.paused_by_operator,
-                  approval_required = excluded.approval_required,
-                  auto_train_allowed = excluded.auto_train_allowed,
-                  cooldown_until = excluded.cooldown_until,
-                  pause_reason = excluded.pause_reason,
-                  updated_at = excluded.updated_at
-                """,
-                (
-                    merged.pattern_slug,
-                    1 if merged.enabled else 0,
-                    1 if merged.paused_by_policy else 0,
-                    1 if merged.paused_by_operator else 0,
-                    1 if merged.approval_required else 0,
-                    1 if merged.auto_train_allowed else 0,
-                    merged.cooldown_until,
-                    merged.pause_reason,
-                    merged.updated_at,
-                ),
-            )
-        result = self.get_pattern_control_state(pattern_slug)
-        assert result is not None
-        return result
-
-    def get_pattern_control_state(self, pattern_slug: str) -> PatternControlState:
-        with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM research_pattern_controls WHERE pattern_slug = ?",
-                (pattern_slug,),
-            ).fetchone()
-        if row is None:
-            return PatternControlState(
-                pattern_slug=pattern_slug,
-                enabled=True,
-                paused_by_policy=False,
-                paused_by_operator=False,
-                approval_required=True,
-                auto_train_allowed=False,
-                cooldown_until=None,
-                pause_reason=None,
-                updated_at="",
-            )
-        return PatternControlState(
-            pattern_slug=row["pattern_slug"],
-            enabled=bool(row["enabled"]),
-            paused_by_policy=bool(row["paused_by_policy"]),
-            paused_by_operator=bool(row["paused_by_operator"]),
-            approval_required=bool(row["approval_required"]),
-            auto_train_allowed=bool(row["auto_train_allowed"]),
-            cooldown_until=row["cooldown_until"],
-            pause_reason=row["pause_reason"],
-            updated_at=row["updated_at"],
-        )
-
-    def list_pattern_control_states(self, *, limit: int = 50) -> list[PatternControlState]:
-        with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM research_pattern_controls ORDER BY updated_at DESC LIMIT ?",
-                (limit,),
-            ).fetchall()
-        return [
-            PatternControlState(
-                pattern_slug=row["pattern_slug"],
-                enabled=bool(row["enabled"]),
-                paused_by_policy=bool(row["paused_by_policy"]),
-                paused_by_operator=bool(row["paused_by_operator"]),
-                approval_required=bool(row["approval_required"]),
-                auto_train_allowed=bool(row["auto_train_allowed"]),
-                cooldown_until=row["cooldown_until"],
-                pause_reason=row["pause_reason"],
-                updated_at=row["updated_at"],
-            )
-            for row in rows
-        ]
 
     def list_memory_notes(
         self,

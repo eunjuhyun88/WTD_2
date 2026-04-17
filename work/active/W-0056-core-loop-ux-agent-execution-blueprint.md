@@ -74,11 +74,13 @@ contract
 - add four supporting documents for field-level contracts, state rules, wireframes, and verification so execution agents can start from files alone
 - add one route contract doc and one migration plan doc so agents can implement toward a stable target without guessing how legacy routes should evolve
 - split branch delivery for this work item because the current execution branch contains older pattern-engine commits unrelated to the standalone core-loop documentation pack
+- treat `capture-first` as the canonical Day-1 ordering: `trade review -> Save Setup -> lab evaluation/projection -> watch activation -> alert/verdict/refinement`
+- keep Day-1 watch activation exclusive to `/lab`; `/terminal` may capture and hand off, and `/dashboard` may manage existing watches only
 
 ## Next Steps
 
 1. use the execution pack to open implementation work items for capture routes, lab projection/evaluate routes, watch extraction, and alert feedback
-2. align route-level comments and schemas in code to the documented canonical routes
+2. align route-level comments and schemas in code to the canonical capture-first flow and watch ownership rules
 3. retire documented fallback behavior slice-by-slice instead of through one rewrite
 
 ## Exit Criteria

@@ -32,9 +32,9 @@ float vn(vec2 p) {
   return mix(mix(h12(i), h12(i + vec2(1, 0)), u.x),
              mix(h12(i + vec2(0, 1)), h12(i + vec2(1, 1)), u.x), u.y);
 }
-float fbm4(vec2 p) {
+float fbm2(vec2 p) {
   float v = 0.0, a = 0.5; mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
-  for (int i = 0; i < 4; i++) { v += a * vn(p); p = m * p; a *= 0.5; }
+  for (int i = 0; i < 2; i++) { v += a * vn(p); p = m * p; a *= 0.5; }
   return v;
 }
 
@@ -49,9 +49,9 @@ void main() {
   float mask = smoothstep(0.00025, 0.0015, segLen);
   float dynR = mix(RAD, RAD * 8.0, clamp(uSize, 0.0, 1.0));
   vec2 nuv = vUv * vec2(7.0, 4.8) + vec2(uTime * 0.35, -uTime * 0.22);
-  float wX = fbm4(nuv + vec2(1.7, 5.1)), wY = fbm4(nuv + vec2(8.3, 2.4));
-  float edge = (fbm4(nuv + (vec2(wX, wY) - 0.5) * 1.35) - 0.5) * 2.0;
-  float nD = d + edge * dynR * 0.22;
+  float wX = fbm2(nuv + vec2(1.7, 5.1)), wY = fbm2(nuv + vec2(8.3, 2.4));
+  float edge = (vn(nuv * 1.7 + vec2(wX, wY)) - 0.5) * 2.0;
+  float nD = d + edge * dynR * 0.16;
   float brush = exp(-pow(nD / max(1e-4, dynR), 2.0) * 2.0) * mask * STR;
   vec3 trail = max(clamp(prev + vec3(brush), 0.0, 1.0) - CUT, 0.0);
   o = vec4(trail, 1.0);
@@ -66,7 +66,7 @@ uniform vec2 uRes;
 uniform float uTime;
 out vec4 o;
 
-const float GROW = 0.18, DISS = 0.990, CUT = 0.003;
+const float GROW = 0.16, DISS = 0.991, CUT = 0.003;
 
 float h12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -82,14 +82,10 @@ float vn(vec2 p) {
 void main() {
   vec2 tx = 1.0 / max(uRes, vec2(1.0));
   vec3 c = texture(uPrev, vUv).rgb;
-  vec3 n = max(max(max(texture(uPrev, vUv + vec2(tx.x, 0)).rgb,
-                       texture(uPrev, vUv - vec2(tx.x, 0)).rgb),
-                   max(texture(uPrev, vUv + vec2(0, tx.y)).rgb,
-                       texture(uPrev, vUv - vec2(0, tx.y)).rgb)),
-               max(max(texture(uPrev, vUv + tx).rgb,
-                       texture(uPrev, vUv + vec2(-tx.x, tx.y)).rgb),
-                   max(texture(uPrev, vUv + vec2(tx.x, -tx.y)).rgb,
-                       texture(uPrev, vUv - tx).rgb)));
+  vec3 n = max(max(texture(uPrev, vUv + vec2(tx.x, 0)).rgb,
+                   texture(uPrev, vUv - vec2(tx.x, 0)).rgb),
+               max(texture(uPrev, vUv + vec2(0, tx.y)).rgb,
+                   texture(uPrev, vUv - vec2(0, tx.y)).rgb));
   vec3 grown = mix(c, max(c, n), GROW);
   float ns = vn(vUv * vec2(5.0, 3.4) + vec2(uTime * 0.18, -uTime * 0.12)) * 2.0 - 1.0;
   o = vec4(max(grown * clamp(DISS + ns * 0.04, 0.0, 1.0) - CUT, 0.0), 1.0);

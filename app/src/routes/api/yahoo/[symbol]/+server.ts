@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { analyzeTrend } from '$lib/engine/trend';
+import { analyzeTrend } from '$lib/market/technicalAnalysis';
 import { fetchYahooSeries } from '$lib/server/yahooFinance';
 
 const RANGE_SET = new Set(['5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']);

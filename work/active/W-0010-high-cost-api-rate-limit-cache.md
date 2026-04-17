@@ -44,10 +44,13 @@ app
 - `cogochi/analyze` is treated as a high-cost public compute path and must have app-level abuse protection.
 - Cache behavior should be explicit and observable via response headers, not implicit in route-local Maps only.
 - Existing per-instance micro-caches may remain, but shared cache must be the cross-instance truth path.
+- Terminal scan execution should support async job mode (`202` accept + status polling) so browser requests do not hold long-lived compute paths open under burst traffic.
+- Client-side terminal scan API should preserve the existing success envelope while transparently handling sync (`200`) and async (`202`) route behavior.
 
 ## Next Steps
 
 - add route-level cache hit/miss/429 telemetry aggregation
+- add app tests for terminal scan async handshake/poll completion/failure handling
 - move Tier B long-running or burst-sensitive execution to queue/worker plane
 - promote Redis shared cache config in production instead of relying on fallback behavior
 - revisit dedicated distributed limiter policy for `/api/terminal/intel-policy` if direct standalone traffic grows beyond shadow-driven use

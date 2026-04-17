@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { get } from 'svelte/store';
+  import { onMount } from 'svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import {
@@ -19,15 +21,18 @@
     saveResult,
     PRESET_STRATEGIES,
   } from '$lib/stores/strategyStore';
+  import { fetchPatternCaptureById } from '$lib/api/terminalPersistence';
+  import { buildLabDraftFromCapture } from '$lib/lab/captureDraft';
   import type {
     ConditionBlock,
     ExitConfig,
     RiskConfig,
     BacktestResult,
     Strategy
-  } from '$lib/engine/backtestEngine';
-  import { runMultiCycleBacktest } from '$lib/engine/backtestEngine';
-  import type { BinanceKline } from '$lib/engine/types';
+  } from '$lib/lab/backtest';
+  import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
+  import { runMultiCycleBacktest } from '$lib/lab/backtest';
+  import type { BinanceKline } from '$lib/contracts/marketContext';
   import LabChart from '../../components/lab/LabChart.svelte';
   import type { ChartMarker, PriceLine } from '../../components/lab/LabChart.svelte';
   import LabToolbar from '../../components/lab/LabToolbar.svelte';
@@ -40,6 +45,9 @@
   let interval = $state('4h');
   let isRunning = $state(false);
   let error = $state<string | null>(null);
+  let sourceCapture = $state<PatternCaptureRecord | null>(null);
+  let captureHydrationState = $state<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  let captureHydrationError = $state<string | null>(null);
 
   let klines = $state<BinanceKline[]>([]);
   let chartMarkers = $state<ChartMarker[]>([]);
@@ -68,8 +76,55 @@
   const pendingChallengeCount = $derived(Math.max(strategies.length - testedChallengeCount, 0));
   const activeChallengeLabel = $derived(strat?.name ?? 'No challenge selected');
 
+  function storageKeyForCaptureDraft(captureId: string): string {
+    return `lab:capture-draft:${captureId}`;
+  }
+
+  async function hydrateCaptureDraftFromUrl(): Promise<void> {
+    const searchParams = new URLSearchParams(window.location.search);
+    const captureId = searchParams.get('captureId');
+    if (!captureId) return;
+
+    captureHydrationState = 'loading';
+    captureHydrationError = null;
+    try {
+      const capture = await fetchPatternCaptureById(captureId);
+      if (!capture) throw new Error('capture_not_found');
+      sourceCapture = capture;
+
+      const storageKey = storageKeyForCaptureDraft(capture.id);
+      const existingStrategyId = window.sessionStorage.getItem(storageKey);
+      const state = get(strategyStore);
+      if (existingStrategyId && state.entries[existingStrategyId]) {
+        setActiveStrategy(existingStrategyId);
+        interval = buildLabDraftFromCapture(capture).interval;
+      } else {
+        const draft = buildLabDraftFromCapture(capture);
+        const strategyId = createStrategy(draft.name, draft.direction);
+        for (const condition of draft.conditions) {
+          addCondition(strategyId, condition);
+        }
+        setActiveStrategy(strategyId);
+        interval = draft.interval;
+        window.sessionStorage.setItem(storageKey, strategyId);
+      }
+
+      captureHydrationState = 'ready';
+    } catch (err) {
+      captureHydrationState = 'error';
+      captureHydrationError = err instanceof Error ? err.message : 'capture_hydration_failed';
+    }
+  }
+
+  onMount(() => {
+    void hydrateCaptureDraftFromUrl();
+  });
+
   $effect(() => {
     const store = $strategyStore;
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('captureId')) {
+      return;
+    }
     if (Object.keys(store.entries).length === 0) {
       createFromPreset(PRESET_STRATEGIES[0]);
     }
@@ -246,6 +301,43 @@
   </header>
 
   <div class="surface-scroll-body">
+    {#if captureHydrationState !== 'idle' || sourceCapture}
+      <section class="surface-card soft source-capture-shell">
+        <div class="surface-section-head">
+          <div>
+            <span class="surface-kicker">Source Capture</span>
+            <h2>터미널에서 저장한 검토 구간</h2>
+          </div>
+          <span class="surface-chip">{captureHydrationState === 'loading' ? 'Hydrating…' : sourceCapture ? 'Capture attached' : 'Awaiting capture'}</span>
+        </div>
+
+        {#if captureHydrationState === 'error'}
+          <p class="capture-error">캡처를 랩에 불러오지 못했습니다: {captureHydrationError}</p>
+        {:else if sourceCapture}
+          <div class="capture-grid">
+            <div>
+              <strong>{sourceCapture.symbol}</strong>
+              <small>{sourceCapture.timeframe.toUpperCase()} · {sourceCapture.triggerOrigin}</small>
+            </div>
+            <div>
+              <strong>{sourceCapture.reason ?? 'capture'}</strong>
+              <small>{new Date(sourceCapture.updatedAt).toLocaleString()}</small>
+            </div>
+            <div>
+              <strong>{sourceCapture.decision.verdict ?? 'unrated'}</strong>
+              <small>평가 방향 seed</small>
+            </div>
+            <div>
+              <a href={`/terminal?symbol=${encodeURIComponent(sourceCapture.symbol)}`}>터미널로 돌아가기 →</a>
+            </div>
+          </div>
+          {#if sourceCapture.note}
+            <p class="capture-note">{sourceCapture.note}</p>
+          {/if}
+        {/if}
+      </section>
+    {/if}
+
     <!-- Run Controls -->
     <section class="surface-card soft">
       <div class="surface-section-head">
@@ -566,6 +658,41 @@
   .error-bar {
     color: #ffb8bc;
   }
+  .source-capture-shell {
+    margin-bottom: 16px;
+  }
+  .capture-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .capture-grid strong,
+  .capture-grid a {
+    display: block;
+    color: rgba(243, 247, 252, 0.94);
+    font-size: 14px;
+  }
+  .capture-grid small {
+    display: block;
+    margin-top: 4px;
+    color: rgba(205, 214, 224, 0.62);
+    font-size: 12px;
+  }
+  .capture-grid a {
+    color: #7dd3fc;
+    text-decoration: underline;
+  }
+  .capture-note {
+    margin: 12px 0 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(148, 163, 184, 0.08);
+    color: rgba(233, 239, 245, 0.88);
+    line-height: 1.45;
+  }
+  .capture-error {
+    color: #fca5a5;
+  }
 
   @media (max-width: 1024px) {
     .lab-workspace {
@@ -580,6 +707,9 @@
     .manual-stats,
     .order-buttons {
       gap: 6px;
+    }
+    .capture-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .tab-content {
       padding: 12px;

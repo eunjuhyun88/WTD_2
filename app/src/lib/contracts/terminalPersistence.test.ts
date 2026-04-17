@@ -130,7 +130,6 @@ describe('terminalPersistence contract', () => {
       ],
       updatedAt: '2026-04-15T10:00:00+00:00',
     });
-
     expect(parsed.records[0]?.triggerOrigin).toBe('manual');
   });
 });

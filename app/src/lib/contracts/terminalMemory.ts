@@ -36,12 +36,25 @@ export const MemoryContextSchema = z.object({
 });
 export type MemoryContext = z.infer<typeof MemoryContextSchema>;
 
+export const MemoryCandidateSchema = z.object({
+  id: z.string().min(1),
+  kind: MemoryKindSchema.default('fact'),
+  text: z.string().min(1),
+  baseScore: z.number().default(0),
+  confidence: MemoryConfidenceSchema.default('observed'),
+  accessCount: z.number().int().nonnegative().default(0),
+  tags: z.array(z.string()).default([]),
+  conditions: z.record(z.string(), z.unknown()).default({})
+});
+export type MemoryCandidate = z.infer<typeof MemoryCandidateSchema>;
+
 export const MemoryQueryRequestSchema = z.object({
   query: z.string().min(1),
   context: MemoryContextSchema.default({}),
   topK: z.number().int().positive().max(50).default(8),
   includeRejected: z.boolean().default(false),
-  includeSnapshots: z.boolean().default(false)
+  includeSnapshots: z.boolean().default(false),
+  candidates: z.array(MemoryCandidateSchema).default([])
 });
 export type MemoryQueryRequest = z.infer<typeof MemoryQueryRequestSchema>;
 
@@ -66,7 +79,19 @@ export const MemoryQueryResponseSchema = z.object({
   ok: z.boolean(),
   schemaVersion: z.literal(TerminalMemorySchemaVersion),
   queryId: z.string().min(1),
-  records: z.array(MemoryRecordSchema),
+  records: z.array(
+    z.object({
+      id: z.string().min(1),
+      kind: MemoryKindSchema,
+      text: z.string().min(1),
+      score: z.number(),
+      baseScore: z.number(),
+      confidence: MemoryConfidenceSchema,
+      accessCount: z.number().int().nonnegative(),
+      tags: z.array(z.string()).default([]),
+      reasons: z.array(z.string()).default([])
+    })
+  ),
   debug: z.object({
     rerankApplied: z.boolean(),
     baseResultCount: z.number().int().nonnegative(),

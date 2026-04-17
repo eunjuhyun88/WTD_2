@@ -5,6 +5,7 @@
   import type { StrategyEntry } from '$lib/stores/strategyStore';
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
+  import AdapterDiffPanel from '../../components/dashboard/AdapterDiffPanel.svelte';
 
   const WATCHING_QUERIES = [
     {
@@ -19,20 +20,11 @@
     }
   ] as const;
 
-  const ADAPTER_STATES = [
-    {
-      title: 'Adapter deployment',
-      state: 'Phase 2 placeholder',
-      note: '검증을 통과한 어댑터 상태가 이곳에 모일 예정입니다.'
-    }
-  ] as const;
-
   const strategies = $derived($allStrategies);
   const prices = $derived($priceStore);
   const btcEntry = $derived(prices?.BTC);
   const btcPrice = $derived(typeof btcEntry === 'object' && btcEntry ? btcEntry.price : 0);
   const testedChallengeCount = $derived(strategies.filter((entry) => entry.lastResult).length);
-  const waitingChallengeCount = $derived(Math.max(strategies.length - testedChallengeCount, 0));
   const latestActivityText = $derived(
     strategies.length > 0
       ? timeSince(Math.max(...strategies.map((entry) => entry.lastModified)))
@@ -97,7 +89,7 @@
       <span class="surface-kicker">Dashboard</span>
       <div class="dashboard-title-stack">
         <h1 class="surface-title">My Workspace</h1>
-        <span class="dashboard-workbar-note">Inbox for saved challenges, live watches, and next actions</span>
+        <span class="dashboard-workbar-note">Inbox for saved setups, live watches, and next actions</span>
       </div>
     </div>
     <div class="surface-stats dashboard-workbar-stats">
@@ -106,7 +98,7 @@
         <strong>{fmtPrice(btcPrice)}</strong>
       </article>
       <article class="surface-stat dashboard-stat">
-        <span class="surface-meta">Challenges</span>
+        <span class="surface-meta">Setups</span>
         <strong>{strategies.length}</strong>
       </article>
       <article class="surface-stat dashboard-stat">
@@ -218,33 +210,7 @@
     </div>
 
     <div class="surface-grid">
-      <div class="surface-section-head">
-        <div>
-          <span class="surface-kicker">My Adapters</span>
-          <h2>검증 이후 상태</h2>
-        </div>
-        <span class="surface-chip">{waitingChallengeCount} waiting</span>
-      </div>
-
-      {#each ADAPTER_STATES as item}
-        <article class="surface-card watcher-card">
-          <div class="watcher-top">
-            <span class="surface-meta">Status</span>
-            <span class="surface-chip">{item.state}</span>
-          </div>
-          <strong>{item.title}</strong>
-          <p>{item.note}</p>
-        </article>
-      {/each}
-
-      <div class="surface-cta">
-        <span class="surface-kicker">Next Move</span>
-        <h2>새로운 세팅을 저장하거나 기존 결과를 재검토한다.</h2>
-        <div class="surface-inline-actions" style="margin-top:12px">
-          <button class="surface-button" onclick={() => goto('/terminal')}>Open Terminal</button>
-          <button class="surface-button-secondary" onclick={() => goto('/lab')}>Review in Lab</button>
-        </div>
-      </div>
+      <AdapterDiffPanel />
     </div>
   </section>
   </div>
@@ -410,14 +376,6 @@
     display: grid;
     gap: 12px;
     justify-items: start;
-  }
-
-  .surface-cta h2 {
-    margin: 6px 0 0;
-    font-size: clamp(1rem, 2vw, 1.3rem);
-    line-height: 1.2;
-    letter-spacing: -0.03em;
-    color: rgba(250, 247, 235, 0.92);
   }
 
   @media (max-width: 960px) {

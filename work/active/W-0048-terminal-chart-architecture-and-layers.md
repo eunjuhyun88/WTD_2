@@ -218,6 +218,30 @@ flowchart LR
 3. `ChartBoard`는 표현·동기화(리사이즈·타임스케일) 책임이 크고, 장기적으로 “스터디 레지스트리”로 분리 여지가 있다.
 4. 터미널은 분석·메모리·패턴과 같은 **다른 루프**와 같은 화면에 공존하므로 차트는 **한 뷰포트 안에서 과밀**해지기 쉽다.
 5. **Zone B**는 `CollectedMetricsDock` + `buildCollectedMetricCells` (`app/src/lib/terminal/collectedMetrics.ts`)로 **차트 헤더와 중복되지 않게** RSI·펀딩·OI·MACD·레짐·플로우를 한 줄에 모은다; 차트 헤더는 **Last / 24h / 1 bar**만 유지한다.
+6. Zone B가 숫자 텍스트만 나열하면 데이터사이언스급 판독성이 떨어지므로, 최근 추세·위치·강도를 함께 encode하는 micro-visual이 필요하다.
+
+## Decisions
+
+- Zone B는 숫자 카드가 아니라 **micro visualization strip**으로 취급한다.
+- 각 metric cell은 가능하면 값과 함께 최소 하나 이상의 시각 인코딩을 가져야 한다:
+  - bounded position (`RSI`, divergence score)
+  - signed intensity (`funding`, `OI Δ`, `MACD hist`)
+  - recent sparkline (`recent bars / recent oscillator samples`)
+- chart header는 여전히 price/timeframe 핵심만 유지하고, 분석형 시각 인코딩은 Zone B로 집중한다.
+- Zone A는 visible-range capture contract를 직접 드러내야 한다. 사용자가 저장 전에 `지금 어떤 구간이 저장되는지` 차트 위에서 읽을 수 있어야 한다.
+- 모바일에서도 core loop의 primary CTA는 workspace 안에 남아야 한다. detail sheet나 hidden mobile-only stack에만 의존하면 안 된다.
+- 모바일 보조 요약 카드는 독립 종착지가 아니라 차트 workspace로 다시 보내는 `review on chart` 진입점이어야 한다.
+- 모바일 command dock과 detail sheet는 sticky/fixed hierarchy로 유지해, 차트 검토 중에도 명령/세부 판단 전환이 끊기지 않게 한다.
+- 차트 바로 아래의 L4 요약은 bespoke card grid보다 TradingView-style status/legend strip에 가깝게 보여야 한다. 차트 근처는 패널보다 보조 legend처럼 읽혀야 한다.
+
+## Next Steps
+
+- `buildCollectedMetricCells`에 spark/range metadata를 추가한다.
+- `CollectedMetricsDock`에서 text-only cell을 micro-viz cell로 바꾼다.
+- `ChartBoard`에 visible-range capture feedback를 추가하고 모바일 Save CTA를 강화한다.
+- `MobileActiveBoard`에 chart-review CTA를 추가하고 `MobileCommandDock` / `MobileDetailSheet`를 sticky hierarchy로 조정한다.
+- Zone B를 card-like strip에서 TradingView-like compact legend strip으로 재조정한다.
+- `npm --prefix app run check`
 6. 현재 dirty 구현은 `ChartBoard.svelte`, `CollectedMetricsDock.svelte`, `collectedMetrics.ts`, `mtfAlign.ts`, `klines/+server.ts`, `terminalBoardModel.ts`, `TerminalContextPanel.svelte`, `StructureExplainViz.svelte`, `/terminal/+page.svelte`의 chart-focus UI를 함께 건드리고 있다.
 7. 같은 dirty 구현 안에 `SaveSetupModal.svelte`, `terminalPersistence.ts`, `chartViewportCapture.ts`가 섞여 있지만, 그 부분은 **W-0051 capture contract lane**에 속한다.
 8. `W-0036` terminal persistence 기준선은 이미 `origin/main`에 머지됐으므로, chart lane은 persistence rollout의 후속으로 merge되면 안 된다.

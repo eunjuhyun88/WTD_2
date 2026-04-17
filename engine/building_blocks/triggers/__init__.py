@@ -6,6 +6,8 @@ narrow the candidate bars down to a manageable set before more
 expensive confirmations run.
 """
 from building_blocks.triggers.breakout_above_high import breakout_above_high
+from building_blocks.triggers.breakout_from_pullback_range import breakout_from_pullback_range
+from building_blocks.triggers.breakout_volume_confirm import breakout_volume_confirm
 from building_blocks.triggers.consolidation_then_breakout import (
     consolidation_then_breakout,
 )
@@ -17,6 +19,8 @@ from building_blocks.triggers.volume_spike import volume_spike
 
 __all__ = [
     "breakout_above_high",
+    "breakout_from_pullback_range",
+    "breakout_volume_confirm",
     "consolidation_then_breakout",
     "gap_down",
     "gap_up",

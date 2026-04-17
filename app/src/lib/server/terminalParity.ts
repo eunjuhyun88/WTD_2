@@ -1,4 +1,4 @@
-import type { OpportunityAlert } from '$lib/engine/opportunityScanner';
+import type { OpportunityAlert } from '$lib/server/opportunity/scanner';
 import { getHotCached } from '$lib/server/hotCache';
 
 type AppFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

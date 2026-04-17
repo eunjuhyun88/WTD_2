@@ -21,9 +21,14 @@ from .pattern_refinement import (
     run_pattern_bounded_eval,
 )
 from .objectives import derive_pattern_research_objective
+from .pattern_search import (
+    PatternBenchmarkSearchConfig,
+    pattern_benchmark_search_payload,
+    run_pattern_benchmark_search,
+)
 from .train_handoff import execute_train_candidate_handoff
 from .tracker import ExperimentTracker
-from worker.research_jobs import run_pattern_refinement_once
+from worker.research_jobs import run_pattern_refinement_once, run_pattern_search_refinement_once
 
 
 def _run_eval_latest(args: argparse.Namespace) -> int:
@@ -122,6 +127,26 @@ def _run_pattern_refinement_once(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_pattern_search_refinement_once(args: argparse.Namespace) -> int:
+    payload = run_pattern_search_refinement_once(args.slug)
+    print(json.dumps(payload, indent=2, default=str))
+    return 0
+
+
+def _run_pattern_benchmark_search(args: argparse.Namespace) -> int:
+    config = PatternBenchmarkSearchConfig(
+        pattern_slug=args.slug,
+        benchmark_pack_id=args.benchmark_pack_id,
+        objective_id=args.objective_id,
+        warmup_bars=args.warmup_bars,
+        min_reference_score=args.min_reference_score,
+        min_holdout_score=args.min_holdout_score,
+    )
+    run = run_pattern_benchmark_search(config)
+    print(json.dumps(pattern_benchmark_search_payload(run), indent=2, default=str))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="WTD v2 research CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -166,6 +191,22 @@ def build_parser() -> argparse.ArgumentParser:
     once_p = sub.add_parser("pattern-refinement-once", help="Derive objective, run one refinement cycle, and write a report")
     once_p.add_argument("--slug", required=True, help="Pattern slug")
     once_p.set_defaults(func=_run_pattern_refinement_once)
+
+    search_refine_p = sub.add_parser(
+        "pattern-search-refinement-once",
+        help="Run benchmark-search, then bounded refinement on the promoted family baseline",
+    )
+    search_refine_p.add_argument("--slug", required=True, help="Pattern slug")
+    search_refine_p.set_defaults(func=_run_pattern_search_refinement_once)
+
+    benchmark_p = sub.add_parser("pattern-benchmark-search", help="Run replay benchmark-pack search for pattern variants")
+    benchmark_p.add_argument("--slug", required=True, help="Pattern slug")
+    benchmark_p.add_argument("--benchmark-pack-id")
+    benchmark_p.add_argument("--objective-id")
+    benchmark_p.add_argument("--warmup-bars", type=int, default=240)
+    benchmark_p.add_argument("--min-reference-score", type=float, default=0.55)
+    benchmark_p.add_argument("--min-holdout-score", type=float, default=0.35)
+    benchmark_p.set_defaults(func=_run_pattern_benchmark_search)
 
     return parser
 

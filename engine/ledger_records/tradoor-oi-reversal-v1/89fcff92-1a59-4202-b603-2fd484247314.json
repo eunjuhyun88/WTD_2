@@ -1,0 +1,23 @@
+{
+  "id": "89fcff92-1a59-4202-b603-2fd484247314",
+  "record_type": "outcome",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "symbol": "LOSE",
+  "user_id": null,
+  "outcome_id": "7ab62943",
+  "capture_id": null,
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-16T00:49:58.692626",
+  "payload": {
+    "previous_outcome": "pending",
+    "outcome": "failure",
+    "breakout_at": null,
+    "invalidated_at": null,
+    "peak_price": null,
+    "exit_price": null,
+    "max_gain_pct": null,
+    "exit_return_pct": null,
+    "duration_hours": null
+  }
+}

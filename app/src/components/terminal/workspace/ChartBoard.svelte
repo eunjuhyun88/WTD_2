@@ -8,6 +8,13 @@
   import { tfMinutes } from '$lib/chart/mtfAlign';
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
+  // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import { RangePrimitive } from '../chart/primitives/RangePrimitive';
+  // ── Layer 2 overlay (W-0086) ────────────────────────────────────────────────
+  import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
+  import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
+  import type { Time } from 'lightweight-charts';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -272,6 +279,54 @@
   let cvdChart:  IChartApi | null = null;
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
 
+  // ── Layer 1: Range primitive (W-0086) ─────────────────────────────────────
+  let rangePrimitive: RangePrimitive | null = null;
+  let rangeClickUnsubscribe: (() => void) | null = null;
+  let saveModeUnsubscribe: (() => void) | null = null;
+
+  function attachRangePrimitive() {
+    if (!priceSeries || rangePrimitive) return;
+    rangePrimitive = new RangePrimitive();
+    (priceSeries as ISeriesApi<SeriesType>).attachPrimitive(rangePrimitive as unknown as Parameters<ISeriesApi<SeriesType>['attachPrimitive']>[0]);
+  }
+
+  function detachRangePrimitive() {
+    if (!priceSeries || !rangePrimitive) return;
+    try {
+      (priceSeries as ISeriesApi<SeriesType>).detachPrimitive(rangePrimitive as unknown as Parameters<ISeriesApi<SeriesType>['detachPrimitive']>[0]);
+    } catch { /* ignore */ }
+    rangePrimitive = null;
+  }
+
+  function handleSaveModeChange(state: { active: boolean; anchorA: number | null; anchorB: number | null }) {
+    if (!mainChart) return;
+
+    if (state.active) {
+      if (!rangeClickUnsubscribe) {
+        const handler = (param: { time?: Time }) => {
+          if (!param.time) return;
+          const t = typeof param.time === 'number'
+            ? param.time
+            : Math.floor(new Date(param.time as string).getTime() / 1000);
+          chartSaveMode.setAnchor(t);
+        };
+        mainChart.subscribeClick(handler);
+        rangeClickUnsubscribe = () => mainChart?.unsubscribeClick(handler);
+      }
+    } else {
+      rangeClickUnsubscribe?.();
+      rangeClickUnsubscribe = null;
+    }
+
+    rangePrimitive?.setRange(state.anchorA, state.anchorB);
+  }
+
+  function handleRangeModeKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && $chartSaveMode.active) {
+      chartSaveMode.exitRangeMode();
+    }
+  }
+
   // Level price lines
   let entryLine:  ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
   let targetLine: ReturnType<ISeriesApi<SeriesType>['createPriceLine']> | null = null;
@@ -503,6 +558,8 @@
       );
       candleSeriesRef = candleSeries;
       priceSeries = candleSeries;
+      // Attach range primitive to candlestick series (Layer 1, W-0086)
+      attachRangePrimitive();
     }
 
     // SMA 20 / 60 — always on
@@ -906,6 +963,10 @@
 
   function destroyCharts() {
     clearLiqPriceLines();
+    // Detach Layer 1 primitive before removing chart (W-0086)
+    rangeClickUnsubscribe?.();
+    rangeClickUnsubscribe = null;
+    detachRangePrimitive();
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = null;
     priceSeries = null;
@@ -993,9 +1054,19 @@
   onMount(() => {
     const onWin = () => handleResize();
     window.addEventListener('resize', onWin);
-    return () => window.removeEventListener('resize', onWin);
+    // Subscribe to save-mode store for range-mode click handling (W-0086)
+    saveModeUnsubscribe = chartSaveMode.subscribe(handleSaveModeChange);
+    // ESC exits range-mode without capturing pointer events
+    window.addEventListener('keydown', handleRangeModeKeydown);
+    return () => {
+      window.removeEventListener('resize', onWin);
+    };
   });
   onDestroy(() => {
+    saveModeUnsubscribe?.();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', handleRangeModeKeydown);
+    }
     destroyCharts();
   });
 
@@ -1134,7 +1205,7 @@
       </div>
     </div>
 
-    <div class="tv-row tv-row--interval">
+    <div class="tv-row tv-row--compact">
       <div class="tf-scroll" role="tablist" aria-label="Chart interval">
         {#each TIMEFRAMES as t}
           <button
@@ -1145,9 +1216,6 @@
           >{t}</button>
         {/each}
       </div>
-    </div>
-
-    <div class="tv-row tv-row--indicators">
       <div class="tv-studies-wrap" bind:this={studiesWrapEl}>
         <button
           type="button"
@@ -1230,15 +1298,11 @@
           </div>
         {/if}
       </div>
-
-    </div>
-
-    <div class="tv-row tv-row--capture" aria-label="Visible capture window">
-      <div class="capture-window">
-        <span class="capture-kicker">Capture Window</span>
-        <strong>{captureWindowLabel}</strong>
+      <div class="capture-inline" aria-label="Visible capture window">
+        <span class="capture-kicker">CAPTURE</span>
+        <strong class="capture-label">{captureWindowLabel}</strong>
         {#if captureBarCount !== null}
-          <span class="capture-meta">{captureBarCount} bars · visible range</span>
+          <span class="capture-meta">· {captureBarCount} bars</span>
         {/if}
       </div>
       <div class="capture-actions">
@@ -1267,6 +1331,13 @@
     </div>
   {:else}
     <div class="chart-stack" bind:this={chartStackEl}>
+    <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
+    <div class="chart-layer2-overlay">
+      <div class="layer2-topright">
+        <RangeModeToast active={$chartSaveMode.active} anchorASet={$chartSaveMode.anchorA !== null} />
+        <PhaseBadge phase={null} />
+      </div>
+    </div>
     <div class="pane-main"  bind:this={mainEl}></div>
     <div class="pane-label">VOL</div>
     <div class="pane-vol"   bind:this={volEl}></div>
@@ -1380,6 +1451,26 @@
 {/if}
 
 <style>
+  /* ── Layer 2 overlay (W-0086) ── */
+  .chart-layer2-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    /* Overlay sits above chart canvas but below header chrome */
+    z-index: 15;
+    pointer-events: none;
+  }
+  .layer2-topright {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+
   .chart-board {
     display: flex;
     flex-direction: column;
@@ -1429,22 +1520,57 @@
     gap: 6px;
     flex-shrink: 0;
   }
-  .tv-row--interval {
+  .tv-row--compact {
     margin-top: 6px;
     padding-top: 6px;
     border-top: 1px solid rgba(42, 46, 57, 0.85);
+    gap: 10px;
+    flex-wrap: nowrap;
   }
   .tf-scroll {
     display: flex;
     flex-wrap: nowrap;
     gap: 2px;
-    width: 100%;
+    flex: 0 1 auto;
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 2px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  }
+  .capture-inline {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .capture-inline .capture-kicker {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: rgba(177, 181, 189, 0.5);
+  }
+  .capture-inline .capture-label {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(247, 242, 234, 0.82);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .capture-inline .capture-meta {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    color: rgba(99, 179, 237, 0.68);
+  }
+  .capture-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
   }
   .tf-scroll::-webkit-scrollbar {
     height: 4px;
@@ -1456,52 +1582,7 @@
   .tf-scroll .tf-btn {
     flex-shrink: 0;
   }
-  .tv-row--indicators {
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(42, 46, 57, 0.85);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 8px 12px;
-    min-width: 0;
-  }
-  .tv-row--capture {
-    margin-top: 6px;
-    padding-top: 7px;
-    border-top: 1px solid rgba(42, 46, 57, 0.85);
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .capture-window {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-    flex: 1 1 320px;
-  }
-  .capture-kicker,
-  .capture-meta {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .capture-kicker {
-    color: rgba(177, 181, 189, 0.46);
-  }
-  .capture-window strong {
-    min-width: 0;
-    color: rgba(247, 242, 234, 0.9);
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-  }
-  .capture-meta {
-    color: rgba(99, 179, 237, 0.72);
-  }
+  /* legacy selectors removed — compact row now owns these styles */
   .capture-save-btn {
     padding: 6px 12px;
     font-family: var(--sc-font-mono, monospace);
@@ -2055,6 +2136,8 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* Layer 2 overlay anchors to this container */
+    position: relative;
   }
   .pane-main {
     flex: 1 1 58%;

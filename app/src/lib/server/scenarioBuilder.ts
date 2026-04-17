@@ -5,8 +5,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { fetchKlines } from '$lib/api/binance.js';
-import type { BattleScenario, OIRecord, FundingRecord, LSRecord } from '$lib/engine/v4/types.js';
-import type { BinanceKline } from '$lib/engine/types.js';
+import type { BattleScenario, OIRecord, FundingRecord, LSRecord } from '$lib/contracts/researchV4';
+import type { BinanceKline } from '$lib/contracts/marketContext';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 

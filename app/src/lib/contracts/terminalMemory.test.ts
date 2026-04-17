@@ -19,6 +19,7 @@ describe('terminalMemory contract', () => {
     expect(parsed.includeRejected).toBe(false);
     expect(parsed.includeSnapshots).toBe(false);
     expect(parsed.context.symbol).toBe('BTCUSDT');
+    expect(parsed.candidates).toEqual([]);
   });
 
   it('rejects invalid query payload via safeParse', () => {

@@ -30,3 +30,16 @@ engine/state/*.sqlite*
 engine/ops/state/*.sqlite*
 engine/ops/state/*.json
 .vercel
+
+# runtime artifacts (test/eval outputs that regenerate on each run)
+output/
+research/experiments/*-walk-forward-eval-latest/
+research/experiments/experiment_log.jsonl
+# New ledger/pattern-search artifacts regenerate via test suite.
+# Already-tracked fixtures under these dirs remain tracked (git keeps them).
+engine/ledger_records/tradoor-oi-reversal-v1/*.json
+!engine/ledger_records/tradoor-oi-reversal-v1/.gitkeep
+engine/research/pattern_search/negative_memory/*.json
+!engine/research/pattern_search/negative_memory/.gitkeep
+engine/research/pattern_search/search_runs/*.json
+!engine/research/pattern_search/search_runs/.gitkeep

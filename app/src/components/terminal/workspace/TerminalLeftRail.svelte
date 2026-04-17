@@ -6,7 +6,6 @@
     TerminalAlertRule,
     TerminalWatchlistItem,
   } from '$lib/contracts/terminalPersistence';
-  import { createSymbolSelection, createTerminalSelection, type TerminalSelectionState } from '$lib/terminal/terminalSelectionState';
 
   interface AlertRow {
     id: string;
@@ -37,12 +36,10 @@
     patternPhases?: PatternPhaseRow[];
     activeSymbol?: string;
     macroItems?: MacroCalendarItem[];
-    newsItems?: Array<{ title?: string; source?: string; created_at?: string; published_at?: string }>;
     marketEvents?: Array<{ tag?: string; level?: string; text?: string }>;
     queryPresets?: TerminalPreset[];
     anomalies?: TerminalAnomaly[];
     onQuery?: (q: string) => void;
-    onSelect?: (selection: TerminalSelectionState) => void;
     onDeleteSavedAlert?: (id: string) => void;
   }
   let {
@@ -53,12 +50,10 @@
     patternPhases = [],
     activeSymbol = '',
     macroItems = [],
-    newsItems = [],
     marketEvents = [],
     queryPresets = [],
     anomalies = [],
     onQuery,
-    onSelect,
     onDeleteSavedAlert,
   }: Props = $props();
 
@@ -281,10 +276,7 @@
         <button
           class="watch-item"
           class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT' || coin.active}
-          onclick={() => {
-            onSelect?.(createSymbolSelection(`${coin.symbol}USDT`, coin.timeframe ?? '4h', 'left_watchlist'));
-            setActivePair(coin.symbol.replace(/USDT$/, '') + '/USDT');
-          }}
+          onclick={() => setActivePair(coin.symbol.replace(/USDT$/,'') + '/USDT')}
         >
           <span class="watch-sym">{coin.symbol}</span>
           <span class="watch-price">{formatPrice(coin.preview?.price ?? 0)}</span>
@@ -340,14 +332,6 @@
         {#each savedAlerts.slice(0, 4) as alert}
           <div class="saved-alert-item">
             <button class="alert-item saved" onclick={() => {
-              onSelect?.(createTerminalSelection({
-                kind: 'alert',
-                symbol: alert.symbol,
-                timeframe: alert.timeframe,
-                origin: 'left_alerts',
-                source: alert.kind,
-                reason: String(alert.sourceContext.origin ?? 'terminal'),
-              }));
               setActivePair(alert.symbol.replace('USDT','') + '/USDT');
               onQuery?.(`Analyze ${alert.symbol} with saved ${alert.kind} rule on ${alert.timeframe}.`);
             }}>
@@ -577,7 +561,7 @@
   }
   .macro-title { font-size: 8px; color: var(--sc-text-1); line-height: 1.22; }
   .macro-meta { font-family: var(--sc-font-mono); font-size: 7px; color: var(--sc-text-3); }
-  .macro-summary { font-size: 8px; color: rgba(247,242,234,0.46); line-height: 1.25; }
+  .macro-summary { font-size: 8px; color: rgba(255,255,255,0.56); line-height: 1.22; }
 
   .mover-item {
     display: flex; align-items: center; justify-content: space-between;
@@ -600,38 +584,35 @@
     color: #fbbf24; border-radius: 2px; padding: 1px 4px; margin-left: 4px;
   }
   .alert-list { display: flex; flex-direction: column; gap: 1px; }
+  .saved-alert-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px;
+    align-items: stretch;
+  }
   .alert-item {
     display: flex; flex-direction: column; gap: 2px;
     background: rgba(255,255,255,0.015); border: 1px solid transparent; cursor: pointer;
     padding: 3px 4px; border-radius: 2px; text-align: left;
     transition: background 0.12s, border-color 0.12s;
   }
-  .saved-alert-item {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 20px;
-    gap: 4px;
-    align-items: stretch;
-  }
-  .saved-alert-delete {
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.03);
-    color: rgba(247,242,234,0.46);
-    border-radius: 2px;
-    cursor: pointer;
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-  }
-  .saved-alert-delete:hover {
-    color: rgba(247,242,234,0.82);
-    border-color: rgba(255,255,255,0.18);
+  .alert-item.saved {
+    background: rgba(77,143,245,0.05);
+    border-color: rgba(77,143,245,0.08);
   }
   .alert-item:hover {
     background: rgba(251,191,36,0.06);
     border-color: rgba(251,191,36,0.12);
   }
-  .alert-item.saved {
-    background: rgba(99,179,237,0.07);
-    border-color: rgba(99,179,237,0.12);
+  .saved-alert-delete {
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.5);
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    min-width: 20px;
   }
   .alert-top { display: flex; align-items: center; gap: 4px; }
   .alert-sym { font-family: var(--sc-font-mono); font-size: 10px; font-weight: 600; color: var(--sc-text-0); }

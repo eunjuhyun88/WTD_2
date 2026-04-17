@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BacktestResult, TradeRecord } from '$lib/engine/backtestEngine';
+  import type { BacktestResult, TradeRecord } from '$lib/lab/backtest';
 
   const {
     mode,

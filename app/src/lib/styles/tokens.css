@@ -1,10 +1,52 @@
 /* ═══════════════════════════════════════════════════════════════
-   WTD Design Token System
+   Cogochi Design Token System — LIS (Lost In Space) palette
+   Canonical brand: pink (#db9a9f) + ivory (#f7f2ea) on deep black.
    Single source of truth for all visual properties.
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── LOST IN SPACE: Canonical palette ── */
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 1 — COLOR PRIMITIVES
+     Raw hex values. Semantic tokens alias these. Do not reference
+     these directly in components.
+     ══════════════════════════════════════════════════════════════ */
+
+  /* ── Neutral scale (grey 0 → 10, dark-first) ── */
+  --sc-grey-0:  #000000;
+  --sc-grey-1:  #0a0a0a;
+  --sc-grey-2:  #111111;
+  --sc-grey-3:  #1a1a1a;
+  --sc-grey-4:  #252525;
+  --sc-grey-5:  #333333;
+  --sc-grey-6:  #484848;
+  --sc-grey-7:  #666666;
+  --sc-grey-8:  #999999;
+  --sc-grey-9:  #cccccc;
+  --sc-grey-10: #f5f5f5;
+
+  /* ── Market pair ── */
+  --sc-green-500: #22c55e;   /* bull / up */
+  --sc-green-300: #4ade80;   /* bull highlight */
+  --sc-red-500:   #ef4444;   /* bear / down */
+  --sc-red-300:   #f87171;   /* bear highlight */
+
+  /* ── Blue interactive scale ── */
+  --sc-blue-600: #1d4ed8;
+  --sc-blue-500: #3b82f6;
+  --sc-blue-400: #60a5fa;
+  --sc-blue-300: #93c5fd;
+
+  /* ── Yellow warning scale ── */
+  --sc-yellow-500: #eab308;
+  --sc-yellow-400: #facc15;
+  --sc-yellow-300: #fde047;
+
+  /* ── Orange scale (optional accent, NOT the brand primary) ── */
+  --sc-orange-500: #FF6B35;
+  --sc-orange-400: #ff8558;
+  --sc-orange-300: #ffa07a;
+
+  /* ── LOST IN SPACE legacy palette (kept for backward compat) ── */
   --lis-rgb-ink: 0, 0, 0;
   --lis-rgb-panel: 10, 10, 10;
   --lis-rgb-panel-hi: 20, 20, 20;
@@ -33,13 +75,18 @@
   --lis-shadow-md: 0 18px 36px rgba(var(--lis-rgb-shadow), 0.36);
   --lis-shadow-lg: 0 32px 80px rgba(var(--lis-rgb-shadow), 0.6);
 
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 2 — SEMANTIC TOKENS
+     Aliases that give meaning to primitives. Components use these.
+     ══════════════════════════════════════════════════════════════ */
+
   /* ── COLORS: Backgrounds ── */
   --sc-bg-0: var(--lis-bg-0);          /* deepest space background */
   --sc-bg-1: var(--lis-bg-1);          /* cards, panels */
   --sc-bg-2: var(--lis-bg-2);          /* elevated surfaces */
   --sc-surface: var(--lis-surface-0);  /* interactive surface */
   --sc-surface-2: var(--lis-surface-1);/* hover / elevated */
-  --sc-overlay: rgba(0, 0, 0, 0.88); /* modal backdrop */
+  --sc-overlay: rgba(0, 0, 0, 0.88);   /* modal backdrop */
   --sc-bg-violet: var(--lis-bg-1);
   --sc-bg-dusk: var(--lis-surface-1);
 
@@ -48,37 +95,76 @@
   --sc-line-soft: var(--lis-border-soft);
   --sc-line-hard: var(--lis-border-strong);
 
-  /* ── COLORS: Accent ── */
-  --sc-accent: var(--lis-accent);        /* primary accent (pink) */
+  /* ── COLORS: Accent (LIS pink — canonical Cogochi brand) ── */
+  --sc-accent: var(--lis-accent);              /* primary accent (pink #db9a9f) */
   --sc-accent-hover: #e6a9ad;
   --sc-accent-bg: rgba(var(--lis-rgb-pink), 0.08);
   --sc-accent-bg-subtle: rgba(var(--lis-rgb-pink), 0.05);
-  --sc-accent-2: var(--lis-accent);      /* legacy alias -> pink */
-  --sc-accent-3: var(--lis-ivory);       /* legacy decorative alias -> ivory text */
+  --sc-accent-2: var(--lis-accent);            /* legacy alias -> LIS pink */
+  --sc-accent-3: var(--lis-ivory);             /* legacy decorative alias -> ivory text */
 
-  /* ── COLORS: Semantic ── */
-  --sc-good: var(--lis-positive);          /* gain, success, long */
+  /* ── COLORS: Semantic roles ── */
+  --sc-market-up:   var(--sc-green-300);       /* bull / gain */
+  --sc-market-down: var(--sc-red-300);         /* bear / loss */
+  --sc-interactive: var(--sc-blue-400);        /* active interaction state */
+  --sc-warning:     var(--sc-yellow-400);      /* warning / pending */
+  --sc-danger:      var(--sc-red-500);         /* error / risk */
+  --sc-success:     var(--sc-green-500);       /* confirmed success */
+
+  /* ── COLORS: Legacy semantic names (kept for existing components) ── */
+  --sc-good: var(--sc-market-up);              /* gain, success, long */
   --sc-good-bg: rgba(var(--lis-rgb-lime), 0.16);
-  --sc-bad: var(--lis-negative);           /* loss, error, short */
+  --sc-bad: var(--sc-market-down);             /* loss, error, short */
   --sc-bad-bg: rgba(248, 113, 113, 0.16);
-  --sc-warn: var(--lis-accent);            /* warning merges into pink */
+  --sc-warn: var(--lis-accent);                /* legacy: pink-themed warning */
   --sc-warn-bg: rgba(var(--lis-rgb-pink), 0.12);
-  --sc-info: rgba(var(--lis-rgb-pink), 0.88);          /* informational */
+  --sc-info: rgba(var(--lis-rgb-pink), 0.88);  /* legacy: pink informational */
+
+  /* ── COLORS: Bias aliases (terminal usage) ── */
+  --sc-bias-bull: var(--sc-market-up);
+  --sc-bias-bear: var(--sc-market-down);
 
   /* ── COLORS: Text (Bloomberg-tier readability) ── */
-  --sc-text-0: var(--lis-ivory);              /* primary text (warm ivory) */
-  --sc-text-1: rgba(247, 242, 234, 0.84);    /* secondary — clearly readable */
-  --sc-text-2: rgba(247, 242, 234, 0.58);    /* muted — still legible */
-  --sc-text-3: rgba(247, 242, 234, 0.40);    /* dim — labels, hints */
+  --sc-text-0: var(--lis-ivory);               /* primary text (warm ivory) */
+  --sc-text-1: rgba(247, 242, 234, 0.84);      /* secondary — clearly readable */
+  --sc-text-2: rgba(247, 242, 234, 0.58);      /* muted — still legible */
+  --sc-text-3: rgba(247, 242, 234, 0.40);      /* dim — labels, hints */
 
-  /* ── TYPOGRAPHY: Font Families ── */
+  /* ── COLORS: Terminal surface aliases (backward compat) ── */
+  --sc-terminal-bg:          var(--sc-bg-0);
+  --sc-terminal-surface:     var(--sc-bg-1);
+  --sc-terminal-border:      var(--sc-line);
+  --sc-terminal-border-soft: var(--sc-line-soft);
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 3 — TYPOGRAPHY: Font Families
+     Canonical Cogochi stack: Bebas Neue display + Space Grotesk body
+     + JetBrains Mono mono. DO NOT replace with IBM Plex.
+     ══════════════════════════════════════════════════════════════ */
+
   --sc-font-display: 'Bebas Neue', 'Orbitron', monospace;
-  --sc-font-body: 'Space Grotesk', sans-serif;
-  --sc-font-mono: 'JetBrains Mono', monospace;
+  --sc-font-body:    'Space Grotesk', sans-serif;
+  --sc-font-mono:    'JetBrains Mono', monospace;
+
+  /* Legacy specialty stacks preserved */
   --sc-font-pixel: 'Press Start 2P', monospace;
   --sc-font-retro: 'VT323', monospace;
 
-  /* ── TYPOGRAPHY: Font Sizes (WCAG: min 9px, Bloomberg readability) ── */
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 3 (cont.) — TYPOGRAPHY: Fluid scale (clamp)
+     Viewport-responsive. Use these for all new UI.
+     ══════════════════════════════════════════════════════════════ */
+  --sc-fs-9:       clamp(9px, 0.65rem + 0.1vw, 10px);    /* chart mono mini labels */
+  --sc-fs-11:      clamp(11px, 0.78rem + 0.1vw, 12px);   /* small mono */
+  --sc-fs-12:      clamp(12px, 0.8rem + 0.15vw, 13px);   /* body small */
+  --sc-fs-14:      clamp(14px, 0.9rem + 0.15vw, 15px);   /* body */
+  --sc-fs-16:      clamp(16px, 1rem + 0.2vw, 17px);      /* body large */
+  --sc-fs-20:      clamp(18px, 1.1rem + 0.3vw, 20px);    /* subheading */
+  --sc-fs-24:      clamp(22px, 1.3rem + 0.5vw, 26px);    /* heading */
+  --sc-fs-32:      clamp(26px, 1.5rem + 1vw, 34px);      /* display */
+  --sc-fs-display: clamp(32px, 2rem + 1.5vw, 48px);      /* hero */
+
+  /* ── TYPOGRAPHY: Font Sizes — fixed (WCAG: min 9px, Bloomberg readability) ── */
   --sc-fs-2xs: 10px;
   --sc-fs-xs: 11px;
   --sc-fs-sm: 12px;
@@ -95,7 +181,9 @@
   --sc-lh-normal: 1.45;
   --sc-lh-relaxed: 1.6;
 
-  /* ── SPACING (4px base) ── */
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 4 — SPACING (4px baseline)
+     ══════════════════════════════════════════════════════════════ */
   --sc-sp-0: 0;
   --sc-sp-px: 1px;
   --sc-sp-0_5: 2px;
@@ -111,14 +199,44 @@
   --sc-sp-12: 48px;
   --sc-sp-16: 64px;
 
-  /* ── BORDERS ── */
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 5 — RADII
+     ══════════════════════════════════════════════════════════════ */
+  --sc-radius-0:    0;
+  --sc-radius-1:    2px;    /* terminal — near-square */
+  --sc-radius-2:    4px;    /* compact chips, inputs */
+  --sc-radius-3:    8px;    /* cards, panels */
+  --sc-radius-full: 999px;  /* pills */
+
+  /* ── Legacy radius aliases (kept for existing components) ── */
   --sc-border: 1px solid var(--sc-line);
   --sc-border-soft: 1px solid var(--sc-line-soft);
-  --sc-radius-sm: 4px;
+  --sc-radius-sm: var(--sc-radius-2);
   --sc-radius-md: 6px;
-  --sc-radius-lg: 8px;
+  --sc-radius-lg: var(--sc-radius-3);
   --sc-radius-xl: 12px;
-  --sc-radius-pill: 999px;
+  --sc-radius-pill: var(--sc-radius-full);
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 6 — MOTION
+     ══════════════════════════════════════════════════════════════ */
+  --sc-ease:      cubic-bezier(0.22, 1, 0.36, 1);  /* Terminal Brutalism glide */
+  --sc-dur-fast:  140ms;
+  --sc-dur:       200ms;
+  --sc-dur-slow:  320ms;
+
+  /* ── Legacy motion aliases ── */
+  --sc-duration-fast:   var(--sc-dur-fast);
+  --sc-duration-normal: var(--sc-dur);
+  --sc-duration-slow:   var(--sc-dur-slow);
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 7 — ELEVATION
+     Subtle, no blur puffs. Terminal surface feel.
+     ══════════════════════════════════════════════════════════════ */
+  --sc-elev-1: 0 1px 0 rgba(255, 255, 255, 0.03) inset;          /* surface lift */
+  --sc-elev-2: 0 8px 16px -8px rgba(0, 0, 0, 0.55);             /* panel */
+  --sc-elev-3: 0 18px 32px -12px rgba(0, 0, 0, 0.65);           /* modal / overlay */
 
   /* ── SHADOWS ── */
   --sc-shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.18);

@@ -21,7 +21,9 @@ EntryRolloutState = Literal["candidate", "active"] | None
 class PatternEntryScore:
     state: EntryScoreState
     p_win: float | None
+    model_key: str | None
     model_version: str | None
+    rollout_state: EntryRolloutState
     threshold: float
     threshold_passed: bool | None
     error: str | None = None
