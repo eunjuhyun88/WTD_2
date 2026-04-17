@@ -1,6 +1,6 @@
 <script lang="ts">
   import { MARKET_CYCLES } from '$lib/data/cycles';
-  import type { Strategy } from '$lib/engine/backtestEngine';
+  import type { Strategy } from '$lib/lab/backtest';
   import type { StrategyEntry } from '$lib/stores/strategyStore';
 
   const {

@@ -6,8 +6,7 @@
 // AgentDef interface + AGDEFS export 유지 → 16개 소비 파일 import 경로 불변.
 // guardian/commander/scanner 제거, VPA/ICT/VALUATION/MACRO 자동 추가.
 
-import { AGENT_POOL, getAllAgents } from '$lib/engine/agents';
-import type { AgentDefinition } from '$lib/engine/types';
+import { getAllAgents, type AgentDefinition } from '$lib/agents/definitions';
 
 // ─── Legacy AgentDef interface (UI 소비용 — 하위호환) ─────────
 export interface AgentDef {

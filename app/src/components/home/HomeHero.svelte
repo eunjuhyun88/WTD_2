@@ -136,7 +136,7 @@
     gap: 18px;
     min-height: auto;
     padding: 10px 0 0;
-    overflow: hidden;
+    overflow: visible;
     max-width: 980px;
     justify-self: center;
     justify-items: center;
@@ -146,10 +146,10 @@
   .story-panel::before {
     content: '';
     position: absolute;
-    inset: -48px -80px -18px;
+    inset: -96px -160px -64px;
     background:
-      radial-gradient(circle at 50% 34%, rgba(7, 7, 7, 0.82), rgba(7, 7, 7, 0.42) 38%, transparent 72%);
-    filter: blur(16px);
+      radial-gradient(circle at 50% 36%, rgba(7, 7, 7, 0.58), rgba(7, 7, 7, 0.24) 42%, transparent 76%);
+    filter: blur(24px);
     pointer-events: none;
     z-index: 0;
   }

@@ -97,7 +97,7 @@
       <span class="surface-kicker">Dashboard</span>
       <div class="dashboard-title-stack">
         <h1 class="surface-title">My Workspace</h1>
-        <span class="dashboard-workbar-note">Inbox for saved challenges, live watches, and next actions</span>
+        <span class="dashboard-workbar-note">Inbox for saved setups, live watches, and next actions</span>
       </div>
     </div>
     <div class="surface-stats dashboard-workbar-stats">
@@ -106,7 +106,7 @@
         <strong>{fmtPrice(btcPrice)}</strong>
       </article>
       <article class="surface-stat dashboard-stat">
-        <span class="surface-meta">Challenges</span>
+        <span class="surface-meta">Setups</span>
         <strong>{strategies.length}</strong>
       </article>
       <article class="surface-stat dashboard-stat">
