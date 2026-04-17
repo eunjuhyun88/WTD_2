@@ -74,7 +74,23 @@ TRADOOR_OI_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="BREAKOUT",
             label="브레이크아웃",
-            required_blocks=["breakout_above_high", "oi_change", "volume_spike"],
+            # Quant-anchored breakout confirmation blocks (see each block's
+            # module docstring for the literature trail):
+            #   - breakout_above_high: 5d prior high (Park & Irwin 2007;
+            #     Hudson & Urquhart 2021)
+            #   - breakout_volume_confirm: 2.5x avg volume (Murphy 1999;
+            #     Baur & Dimpfl 2018) — replaces raw volume_spike(5x),
+            #     which is an extreme-event detector, not a confirmation.
+            #   - oi_expansion_confirm: 5% OI rise over 24h
+            #     (Bessembinder & Seguin 1993; Wang & Yau 2000) — replaces
+            #     raw oi_change(10%/1h), which is calibrated for regime
+            #     shifts such as REAL_DUMP rather than post-accumulation
+            #     breakout confirmation.
+            required_blocks=[
+                "breakout_above_high",
+                "oi_expansion_confirm",
+                "breakout_volume_confirm",
+            ],
             optional_blocks=[],
             disqualifier_blocks=[],
             min_bars=1, max_bars=12,

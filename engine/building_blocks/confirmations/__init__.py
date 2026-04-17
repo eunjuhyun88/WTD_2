@@ -16,6 +16,7 @@ from building_blocks.confirmations.golden_cross import golden_cross
 from building_blocks.confirmations.higher_lows_sequence import higher_lows_sequence
 from building_blocks.confirmations.ls_ratio_recovery import ls_ratio_recovery
 from building_blocks.confirmations.oi_change import oi_change
+from building_blocks.confirmations.oi_expansion_confirm import oi_expansion_confirm
 from building_blocks.confirmations.oi_hold_after_spike import oi_hold_after_spike
 from building_blocks.confirmations.oi_spike_with_dump import oi_spike_with_dump
 from building_blocks.confirmations.positive_funding_bias import positive_funding_bias
@@ -38,6 +39,7 @@ __all__ = [
     "higher_lows_sequence",
     "ls_ratio_recovery",
     "oi_change",
+    "oi_expansion_confirm",
     "oi_hold_after_spike",
     "oi_spike_with_dump",
     "positive_funding_bias",

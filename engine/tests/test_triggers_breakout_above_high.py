@@ -42,6 +42,42 @@ def test_requires_positive_lookback(make_ctx):
         breakout_above_high(ctx, lookback_days=-1)
 
 
+def test_default_lookback_is_five_days_quant_anchored(make_ctx):
+    """Default lookback must be 5 days, not 20.
+
+    20-day hourly = 480-bar window, which exceeds a typical benchmark-pack
+    replay horizon (≈336 bars) and makes the block unable to fire inside
+    the TRADOOR/PTB OI-reversal pattern lifecycle (2-4 day setups).
+
+    5-day (120 bars on 1h) is the quant-grounded default per Park & Irwin
+    (2007) meta-review and Hudson & Urquhart (2021) on crypto momentum;
+    see the breakout_above_high module docstring for the full citation.
+    """
+    import inspect
+
+    from building_blocks.triggers.breakout_above_high import (
+        breakout_above_high as fn,
+    )
+
+    signature = inspect.signature(fn)
+    assert signature.parameters["lookback_days"].default == 5
+
+
+def test_default_lookback_fires_inside_pattern_window(make_ctx):
+    """With the 5-day default, a fresh high within ~130 hourly bars must fire.
+
+    This regression anchors the fact that the default must be usable inside
+    the TRADOOR reference window (~60h case + warmup). Prior to the fix the
+    default required 480 bars of prior history and structurally never fired.
+    """
+    # 130 flat bars at 100, then a spike — matches the available 1h history
+    # inside a typical benchmark case + short warmup.
+    closes = [100.0] * 130 + [120.0]
+    ctx = make_ctx(close=closes)
+    mask = breakout_above_high(ctx)  # use default lookback
+    assert bool(mask.iloc[-1]) is True
+
+
 def test_past_only_excludes_current_bar(make_ctx):
     # Highs: [110, 100, 100, ... , 100, 105]. Current bar's own high (110
     # on bar 0, 105 on bar N) must not self-compare.
