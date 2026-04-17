@@ -231,8 +231,25 @@ def _encode_snapshots(snapshots: list[dict]) -> np.ndarray:
 
 
 def _derive_baseline_ref(pattern_slug: str, *, state_store: ResearchStateStore | None = None) -> str:
+    """Derive the next refinement baseline ref.
+
+    Preference order:
+    1. Most recent completed run with ``promoted_family_ref`` set (i.e. a
+       gate-cleared PromotionReport). This is the canonical post-promotion
+       baseline defined by the core loop.
+    2. Most recent completed run with ``baseline_family_ref`` set (legacy
+       pre-promotion behaviour; kept for backward compatibility with runs
+       that predate the promotion gate).
+    3. The preferred model-registry scoring model, if any.
+    4. ``pattern-shadow:rule-first`` fallback.
+    """
     if state_store is not None:
-        for run in state_store.list_runs(pattern_slug=pattern_slug, status="completed"):
+        runs = list(state_store.list_runs(pattern_slug=pattern_slug, status="completed"))
+        for run in runs:
+            promoted_family_ref = run.handoff_payload.get("promoted_family_ref")
+            if promoted_family_ref:
+                return str(promoted_family_ref)
+        for run in runs:
             baseline_family_ref = run.handoff_payload.get("baseline_family_ref")
             if baseline_family_ref:
                 return str(baseline_family_ref)

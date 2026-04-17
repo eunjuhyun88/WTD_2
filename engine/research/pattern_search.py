@@ -2752,6 +2752,16 @@ def run_pattern_benchmark_search(
             "promotion_decision": promotion_report.decision if promotion_report is not None else None,
             "promotion_report_id": promotion_report.promotion_report_id if promotion_report is not None else None,
             "promotion_gate_policy_id": promotion_report.gate_policy.policy_id if promotion_report is not None else None,
+            "promoted_variant_slug": (
+                winner.variant_slug
+                if promotion_report is not None and promotion_report.decision == "promote_candidate"
+                else None
+            ),
+            "promoted_family_ref": (
+                _family_ref(active_family)
+                if promotion_report is not None and promotion_report.decision == "promote_candidate"
+                else None
+            ),
             "reference_recall": promotion_report.reference_recall if promotion_report is not None else None,
             "phase_fidelity": promotion_report.phase_fidelity if promotion_report is not None else None,
             "lead_time_bars": promotion_report.lead_time_bars if promotion_report is not None else None,
@@ -2777,6 +2787,16 @@ def run_pattern_benchmark_search(
                     "promotion_decision": promotion_report.decision if promotion_report is not None else None,
                     "promotion_report_id": promotion_report.promotion_report_id if promotion_report is not None else None,
                     "promotion_rejection_reasons": list(promotion_report.rejection_reasons) if promotion_report is not None else [],
+                    "promoted_variant_slug": (
+                        winner.variant_slug
+                        if promotion_report is not None and promotion_report.decision == "promote_candidate"
+                        else None
+                    ),
+                    "promoted_family_ref": (
+                        _family_ref(active_family)
+                        if promotion_report is not None and promotion_report.decision == "promote_candidate"
+                        else None
+                    ),
                 },
                 selection_decision=SelectionDecisionInput(
                     decision_kind="advance",
@@ -2858,6 +2878,16 @@ def run_pattern_benchmark_search(
                 "promotion_decision": promotion_report.decision if promotion_report is not None else None,
                 "promotion_report_id": promotion_report.promotion_report_id if promotion_report is not None else None,
                 "promotion_rejection_reasons": list(promotion_report.rejection_reasons) if promotion_report is not None else [],
+                "promoted_variant_slug": (
+                    winner.variant_slug
+                    if promotion_report is not None and promotion_report.decision == "promote_candidate"
+                    else None
+                ),
+                "promoted_family_ref": (
+                    _family_ref(active_family)
+                    if promotion_report is not None and promotion_report.decision == "promote_candidate"
+                    else None
+                ),
             },
             selection_decision=SelectionDecisionInput(
                 decision_kind="dead_end",
