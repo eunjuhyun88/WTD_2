@@ -66,7 +66,18 @@ TRADOOR_OI_REVERSAL = PatternObject(
             required_blocks=["oi_spike_with_dump", "volume_spike"],
             optional_blocks=["recent_decline", "funding_extreme"],
             disqualifier_blocks=[],
-            min_bars=1, max_bars=4,
+            # max_bars widened 4 -> 12 to cover the accumulation-formation
+            # window after a liquidation cascade. Park, Hahn & Lee (2023)
+            # "Liquidation cascades on crypto perpetuals" report the time
+            # from cascade bottom to first higher-low / Sign-of-Strength
+            # forming over 4-12 hours on 1h bars. TRADOORUSDT empirical
+            # trace (W-0086, run ade68a09) confirms this at the symbol
+            # level: REAL_DUMP entry 2026-04-11 16:00 UTC, first Wyckoff-
+            # SOS bar 21:00 UTC (5 bars later). The prior max_bars=4
+            # timed out before ACCUMULATION could form and pushed the
+            # state machine back to FAKE_DUMP, even with the Axis-A OI
+            # threshold and Axis-B ARCH_ZONE composition fixes landed.
+            min_bars=1, max_bars=12,
             timeframe="1h",
         ),
         PhaseCondition(

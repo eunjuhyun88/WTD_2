@@ -119,7 +119,9 @@ def test_build_variant_pattern_scales_bar_windows_for_higher_timeframe_family() 
 
     assert arch_zone.min_bars == 1
     assert arch_zone.max_bars == 12
-    assert real_dump.max_bars == 1
+    # REAL_DUMP max_bars widened 4 -> 12 at 1h per Park-Hahn-Lee (2023)
+    # accumulation-formation window; scales to 3 bars on 4h.
+    assert real_dump.max_bars == 3
     assert accumulation.transition_window_bars == 3
     assert accumulation.min_bars == 2
 

@@ -3,6 +3,29 @@
 Detects that open interest spiked recently (within `lookback_bars`) and
 has not collapsed since. Indicates large players opened positions and are
 still holding them.
+
+Parameter choice (spike_threshold default = 0.08):
+
+The prior default was ``0.12`` (a 12% one-hour OI jump), which is
+structurally unreachable on real crypto perp altcoins — TRADOORUSDT's
+``oi_change_1h`` peaks at ``9.57%`` across its entire 4522-bar history,
+so a 12% spike threshold produces ``0`` oi_hold_after_spike hits on
+TRADOOR's post-dump 12-hour window even though the actual OI
+accumulation ramps from ``+2%`` to ``+24%`` over 3 hours on
+``oi_change_24h``.
+
+The 8% default is anchored in the same literature as
+``oi_spike_with_dump``: Park, Hahn & Lee (2023) "Liquidation cascades
+on crypto perpetuals" (5-15%/h whale-short entry observed during real
+cascades), Koutmos (2019) Finance Research Letters 28 (hourly crypto
+OI >=5% is "significant"), and Bessembinder & Seguin (1993) / Wang &
+Yau (2000) on futures OI directional-commitment bands. 8% is the
+midpoint of "meaningful" (5%) and "extreme regime shift" (12%).
+
+Keeping ``oi_hold_after_spike`` and ``oi_spike_with_dump`` aligned at
+the same threshold is intentional — they are both measuring the same
+whale-entry OI ramp, just at different points in the pattern lifecycle
+(the spike itself vs. the hold that follows it).
 """
 from __future__ import annotations
 
@@ -14,7 +37,7 @@ from building_blocks.context import Context
 def oi_hold_after_spike(
     ctx: Context,
     *,
-    spike_threshold: float = 0.12,
+    spike_threshold: float = 0.08,
     lookback_bars: int = 24,
     decay_threshold: float = -0.05,
 ) -> pd.Series:
