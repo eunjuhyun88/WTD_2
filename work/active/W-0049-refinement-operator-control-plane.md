@@ -29,6 +29,7 @@ contract
 - `docs/domains/refinement-methodology.md`
 - `docs/domains/refinement-policy-and-reporting.md`
 - `docs/domains/refinement-operator-control-plane.md`
+- `engine/research/cli.py`
 - `engine/research/state_store.py`
 - `engine/research/train_handoff.py`
 - `engine/worker/research_jobs.py`
@@ -40,7 +41,7 @@ contract
 - the system now produces durable `research_run`, `selection_decision`, `research_memory`, and optional training handoff results
 - scheduled refinement and optional auto-train already exist as internal worker-control capabilities
 - there is not yet an explicit operator approval state between `train_candidate` and actual handoff execution
-- there is not yet a dedicated read-only surface for inspecting recent refinement runs without reading raw state files or CLI JSON blobs
+- the current repo now carries CLI/state hooks for inspection, but the operator surface and approval semantics are still not cleanly separated as one merge unit
 
 ## Assumptions
 
@@ -59,6 +60,9 @@ contract
 - `train_candidate` should not imply immediate handoff once operator control is enabled
 - read-only inspection is a first-class control-plane requirement, not a debugging convenience
 - scheduler guardrails should be explicit policy, not scattered environment checks
+- this slice should merge with the refinement-methodology engine/control-plane work, not with terminal UI or strategy-replication artifacts
+- branch split reason: commit `7b845a7` mixed refinement/control-plane work with strategy-replication and chart-range spec work, so this slice needs its own execution branch and PR boundary
+- current root worktree also contains separate security/performance hardening files, so W-0049 must exclude those and keep only refinement operator/control-plane engine changes
 
 ## Next Steps
 

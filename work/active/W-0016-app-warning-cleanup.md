@@ -38,11 +38,10 @@ app
 
 ## Next Steps
 
-- patch the current warning set
-- rerun `npm --prefix app run check`
-- leave only warnings that require broader design decisions
+- keep the warning baseline green as new terminal surface edits land
+- use `npm --prefix app run check` after each structural refactor slice that touches app UI
 
 ## Exit Criteria
 
-- `npm --prefix app run check` reports no avoidable warnings in the touched files
-- terminal and wallet modal behavior remains unchanged
+- `npm --prefix app run check` reports no avoidable warnings in the touched files. Met.
+- terminal and wallet modal behavior remains unchanged. Met for the current slice.

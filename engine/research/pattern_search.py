@@ -299,6 +299,26 @@ FAMILY_TYPE_PRIORITY = {
     "mutation_branch": 1,
     "timeframe_family": 0,
 }
+
+TIMEFRAME_UPGRADE_THRESHOLD = 0.05
+TIMEFRAME_AVOID_THRESHOLD = 0.05
+
+
+@dataclass(frozen=True)
+class TimeframeRecommendation:
+    """Per-variant timeframe-family recommendation emitted by one search run."""
+
+    base_variant_slug: str
+    parent_timeframe: str
+    recommended_timeframe: str
+    parent_overall_score: float
+    clone_overall_score: float
+    clone_variant_slug: str
+    score_delta: float
+    classification: str  # "upgrade" | "keep" | "avoid"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 ACTIVE_FAMILY_STICKINESS_BAND = 0.005
 
 
@@ -331,6 +351,7 @@ class PatternSearchRunArtifact:
     variant_deltas: list[VariantDeltaInsight] = field(default_factory=list)
     branch_insights: list[MutationBranchInsight] = field(default_factory=list)
     family_insights: list[SearchFamilyInsight] = field(default_factory=list)
+    timeframe_recommendations: list[TimeframeRecommendation] = field(default_factory=list)
     family_policy: FamilySelectionPolicy | None = None
     active_family_key: str | None = None
     active_family_type: str | None = None
@@ -353,6 +374,9 @@ class PatternSearchRunArtifact:
             "family_insights": [
                 insight.to_dict() if hasattr(insight, "to_dict") else dict(insight)
                 for insight in self.family_insights
+            ],
+            "timeframe_recommendations": [
+                recommendation.to_dict() for recommendation in self.timeframe_recommendations
             ],
             "family_policy": self.family_policy.to_dict() if self.family_policy is not None else None,
             "active_family_key": self.active_family_key,
@@ -1089,6 +1113,67 @@ def build_search_family_insights(
         reverse=True,
     )
     return insights
+
+
+def build_timeframe_recommendations(
+    family_insights: list[SearchFamilyInsight],
+    variant_results: list[VariantSearchResult],
+    variant_specs: list[PatternVariantSpec],
+    *,
+    upgrade_threshold: float = TIMEFRAME_UPGRADE_THRESHOLD,
+    avoid_threshold: float = TIMEFRAME_AVOID_THRESHOLD,
+) -> list[TimeframeRecommendation]:
+    """Compare each timeframe_family best-clone against its 1h parent.
+
+    Emits one recommendation per timeframe_family insight, classified as
+    ``upgrade`` when the clone beats the parent by ``upgrade_threshold``,
+    ``avoid`` when the clone loses by ``avoid_threshold`` or more, and
+    ``keep`` when the swing stays inside the band.
+    """
+    result_lookup = {result.variant_slug: result for result in variant_results}
+    spec_lookup = {spec.variant_slug: spec for spec in variant_specs}
+
+    recommendations: list[TimeframeRecommendation] = []
+    for insight in family_insights:
+        if insight.family_type != "timeframe_family":
+            continue
+        base_slug = _strip_timeframe_suffix(insight.family_key)
+        parent_result = result_lookup.get(base_slug)
+        parent_spec = spec_lookup.get(base_slug)
+        clone_slug = insight.representative_variant_slug
+        clone_result = result_lookup.get(clone_slug)
+        clone_spec = spec_lookup.get(clone_slug)
+        if (
+            parent_result is None
+            or parent_spec is None
+            or clone_result is None
+            or clone_spec is None
+        ):
+            continue
+        delta = round(clone_result.overall_score - parent_result.overall_score, 6)
+        if delta >= upgrade_threshold:
+            classification = "upgrade"
+            recommended_tf = clone_spec.timeframe
+        elif delta <= -avoid_threshold:
+            classification = "avoid"
+            recommended_tf = parent_spec.timeframe
+        else:
+            classification = "keep"
+            recommended_tf = parent_spec.timeframe
+        recommendations.append(
+            TimeframeRecommendation(
+                base_variant_slug=base_slug,
+                parent_timeframe=parent_spec.timeframe,
+                recommended_timeframe=recommended_tf,
+                parent_overall_score=parent_result.overall_score,
+                clone_overall_score=clone_result.overall_score,
+                clone_variant_slug=clone_slug,
+                score_delta=delta,
+                classification=classification,
+            )
+        )
+    recommendations.sort(key=lambda r: (-r.score_delta, r.base_variant_slug))
+    return recommendations
 
 
 def _branch_insight_lookup(artifact: dict | None) -> dict[str, dict]:
@@ -2228,6 +2313,9 @@ def run_pattern_benchmark_search(
         variant_deltas = build_variant_delta_insights(variant_results)
         branch_insights = build_mutation_branch_insights(variant_deltas)
         family_insights = build_search_family_insights(variant_results, variants, branch_insights)
+        timeframe_recommendations = build_timeframe_recommendations(
+            family_insights, variant_results, variants
+        )
         active_family = select_active_family_insight(family_insights, recent_artifacts, family_policy)
         artifact = PatternSearchRunArtifact(
             research_run_id=run.research_run_id,
@@ -2239,6 +2327,7 @@ def run_pattern_benchmark_search(
             variant_deltas=variant_deltas,
             branch_insights=branch_insights,
             family_insights=family_insights,
+            timeframe_recommendations=timeframe_recommendations,
             family_policy=family_policy,
             active_family_key=active_family.family_key if active_family is not None else None,
             active_family_type=active_family.family_type if active_family is not None else None,

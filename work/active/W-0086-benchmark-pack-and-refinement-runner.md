@@ -79,6 +79,7 @@ engine
 - benchmark search now expands real `1h/4h` variant families and evaluates them durably, but the first `4h` run underperformed sharply because cloned `1h` contracts kept `1h` bar windows, warmup depth, and lead-time scoring semantics instead of preserving wall-clock intent
 - after wall-clock normalization, `4h` family scores improved for the best coarse variant (`arch-soft-real-loose__tf-4h` moved into the `0.166667` band), but timeframe clones are still polluting mutation-branch insights because `__tf-*` variants are being treated as descendants instead of a separate family axis
 - `__tf-*` clones are now tagged with `search_origin="timeframe_family"` at expansion time, grouped under one `{base_slug}__tf-family` insight per root variant, and excluded from `select_active_family_insight`; the real run on `2026-04-18` (artifact `7e7aba5f-d3ce-4279-81d8-089eebb7ebf8`) shows `family_types = {auto_evidence, manual, mutation_branch, reset_lane, timeframe_family}`, no `__tf-*` entries in `variant_deltas`, and the mutation-branch axis stays anchored on real 1h lineage
+- search runs now emit a `timeframe_recommendations` surface that compares each `timeframe_family` best-clone against its 1h parent and classifies the swing as `upgrade`, `keep`, or `avoid`; the real run on `2026-04-18` (artifact `c13d5d25-5bc4-4868-a8ac-96c25aeada00`) emitted 13 recommendations, all classified `avoid` with deltas from `-0.073` (`reset-real-proxy-balance`) to `-0.253` (`arch-soft-real-loose`, `reset-reclaim-compression`), which converts the earlier assumption that "4h clones underperform at current benchmark" into a persisted structural fact rather than an inferred hunch
 
 ## Assumptions
 
@@ -125,7 +126,7 @@ engine
 
 1. Decide whether family-level promotion deserves first-class persistence in `research_state_store` instead of only run payloads.
 2. Keep sub-hour search blocked on finer raw cache support instead of piggybacking on 1h resampling.
-3. Consider whether `timeframe_family` insights should feed a separate timeframe-recommendation lane (e.g. surface when a `4h` clone out-ranks its `1h` parent) rather than being purely informational.
+3. Decide whether `avoid`-classified timeframe recommendations should feed back into `build_search_variants` to prune known-damaging timeframe clones on the next run, so dead-end 4h variants stop burning replay budget.
 
 ## Exit Criteria
 
