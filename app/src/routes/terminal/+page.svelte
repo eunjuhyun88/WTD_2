@@ -54,7 +54,6 @@
     buildTerminalDecisionBundle,
     type TerminalDecisionBundle,
   } from '$lib/terminal/panelAdapter';
-  import { deriveWatchlistPreview } from '$lib/terminal/watchlistPreview';
   import {
     buildTerminalBootstrapTasks,
     buildTerminalRefreshIntervals,
@@ -451,15 +450,6 @@
     return changed;
   }
 
-  function applyWatchlistPreviewState(symbol: string, preview: TerminalWatchlistItem['preview']) {
-    if (!preview || !persistedWatchlist.some((item) => item.symbol === symbol)) return;
-    persistedWatchlist = persistedWatchlist.map((item) =>
-      item.symbol === symbol
-        ? { ...item, preview }
-        : item,
-    );
-  }
-
   function sameAsset(a?: TerminalAsset | null, b?: TerminalAsset | null): boolean {
     if (!a || !b) return false;
     return (
@@ -563,7 +553,6 @@
         }
 
         applyAnalysisState(symbol, data);
-        applyWatchlistPreviewState(symbol, deriveWatchlistPreview(data));
         const decision = applyTerminalDecision(symbol, data);
         applyDecisionState(symbol, decision, true);
         if (isCurrentActive || !persistedWatchlist.some((item) => item.symbol === symbol)) {
@@ -1443,7 +1432,6 @@
   bars={ohlcvBars}
   {layerBarsMap}
   newsItems={newsData?.records ?? []}
-  captureId={lastSavedCaptureId}
   onClose={() => showDetailSheet = false}
 />
 
