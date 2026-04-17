@@ -250,6 +250,7 @@ export const PatternCaptureCreateRequestSchema = z.object({
 export type PatternCaptureCreateRequest = z.infer<typeof PatternCaptureCreateRequestSchema>;
 
 export const PatternCaptureQuerySchema = z.object({
+  id: z.string().optional(),
   symbol: z.string().optional(),
   timeframe: z.string().optional(),
   verdict: z.enum(['bullish', 'bearish', 'neutral']).optional(),
