@@ -1205,7 +1205,7 @@
       </div>
     </div>
 
-    <div class="tv-row tv-row--interval">
+    <div class="tv-row tv-row--compact">
       <div class="tf-scroll" role="tablist" aria-label="Chart interval">
         {#each TIMEFRAMES as t}
           <button
@@ -1216,9 +1216,6 @@
           >{t}</button>
         {/each}
       </div>
-    </div>
-
-    <div class="tv-row tv-row--indicators">
       <div class="tv-studies-wrap" bind:this={studiesWrapEl}>
         <button
           type="button"
@@ -1301,15 +1298,11 @@
           </div>
         {/if}
       </div>
-
-    </div>
-
-    <div class="tv-row tv-row--capture" aria-label="Visible capture window">
-      <div class="capture-window">
-        <span class="capture-kicker">Capture Window</span>
-        <strong>{captureWindowLabel}</strong>
+      <div class="capture-inline" aria-label="Visible capture window">
+        <span class="capture-kicker">CAPTURE</span>
+        <strong class="capture-label">{captureWindowLabel}</strong>
         {#if captureBarCount !== null}
-          <span class="capture-meta">{captureBarCount} bars · visible range</span>
+          <span class="capture-meta">· {captureBarCount} bars</span>
         {/if}
       </div>
       <div class="capture-actions">
@@ -1527,22 +1520,57 @@
     gap: 6px;
     flex-shrink: 0;
   }
-  .tv-row--interval {
+  .tv-row--compact {
     margin-top: 6px;
     padding-top: 6px;
     border-top: 1px solid rgba(42, 46, 57, 0.85);
+    gap: 10px;
+    flex-wrap: nowrap;
   }
   .tf-scroll {
     display: flex;
     flex-wrap: nowrap;
     gap: 2px;
-    width: 100%;
+    flex: 0 1 auto;
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 2px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  }
+  .capture-inline {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .capture-inline .capture-kicker {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: rgba(177, 181, 189, 0.5);
+  }
+  .capture-inline .capture-label {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(247, 242, 234, 0.82);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .capture-inline .capture-meta {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 10px;
+    color: rgba(99, 179, 237, 0.68);
+  }
+  .capture-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
   }
   .tf-scroll::-webkit-scrollbar {
     height: 4px;
@@ -1554,52 +1582,7 @@
   .tf-scroll .tf-btn {
     flex-shrink: 0;
   }
-  .tv-row--indicators {
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(42, 46, 57, 0.85);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 8px 12px;
-    min-width: 0;
-  }
-  .tv-row--capture {
-    margin-top: 6px;
-    padding-top: 7px;
-    border-top: 1px solid rgba(42, 46, 57, 0.85);
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .capture-window {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-    flex: 1 1 320px;
-  }
-  .capture-kicker,
-  .capture-meta {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .capture-kicker {
-    color: rgba(177, 181, 189, 0.46);
-  }
-  .capture-window strong {
-    min-width: 0;
-    color: rgba(247, 242, 234, 0.9);
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-  }
-  .capture-meta {
-    color: rgba(99, 179, 237, 0.72);
-  }
+  /* legacy selectors removed — compact row now owns these styles */
   .capture-save-btn {
     padding: 6px 12px;
     font-family: var(--sc-font-mono, monospace);
