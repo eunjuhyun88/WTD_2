@@ -297,6 +297,7 @@ FAMILY_TYPE_PRIORITY = {
     "manual": 3,
     "auto_evidence": 2,
     "mutation_branch": 1,
+    "timeframe_family": 0,
 }
 ACTIVE_FAMILY_STICKINESS_BAND = 0.005
 
@@ -726,6 +727,15 @@ def _variant_timeframe_slug(variant_slug: str, timeframe: str, *, base_timeframe
     return f"{variant_slug}__tf-{timeframe}"
 
 
+def _strip_timeframe_suffix(variant_slug: str) -> str:
+    """Return the base slug of a timeframe-family clone (``foo__tf-4h`` -> ``foo``)."""
+    marker = "__tf-"
+    idx = variant_slug.find(marker)
+    if idx == -1:
+        return variant_slug
+    return variant_slug[:idx]
+
+
 def expand_variants_across_timeframes(
     variants: list[PatternVariantSpec],
     candidate_timeframes: list[str] | None,
@@ -737,14 +747,18 @@ def expand_variants_across_timeframes(
     expanded: dict[str, PatternVariantSpec] = {}
     for variant in variants:
         for timeframe in target_timeframes:
+            is_base_tf = timeframe == variant.timeframe
             expanded_variant = PatternVariantSpec(
                 pattern_slug=variant.pattern_slug,
                 variant_slug=_variant_timeframe_slug(variant.variant_slug, timeframe, base_timeframe=variant.timeframe),
                 timeframe=timeframe,
                 phase_overrides=copy.deepcopy(variant.phase_overrides),
-                search_origin=variant.search_origin,
+                search_origin=variant.search_origin if is_base_tf else "timeframe_family",
                 selection_bias=variant.selection_bias,
-                hypotheses=list(variant.hypotheses),
+                hypotheses=list(variant.hypotheses) if is_base_tf else [
+                    *variant.hypotheses,
+                    f"timeframe-family clone at {timeframe}",
+                ],
             )
             expanded[expanded_variant.variant_slug] = expanded_variant
     return list(expanded.values())
@@ -961,9 +975,14 @@ def build_search_family_insights(
     winner_holdout_score = winner.holdout_score
     winner_overall_score = winner.overall_score
 
+    timeframe_family_members: dict[str, list[VariantSearchResult]] = {}
     for result in variant_results:
         spec = spec_lookup.get(result.variant_slug)
         if spec is None or spec.search_origin == "auto_mutation":
+            continue
+        if spec.search_origin == "timeframe_family":
+            base_slug = _strip_timeframe_suffix(result.variant_slug)
+            timeframe_family_members.setdefault(base_slug, []).append(result)
             continue
         family_type = spec.search_origin
         family_score = round(
@@ -986,6 +1005,33 @@ def build_search_family_insights(
                     best_reference_score=result.reference_score,
                     best_holdout_score=result.holdout_score,
                     best_overall_score=result.overall_score,
+                    winner_reference_score=winner_reference_score,
+                    winner_holdout_score=winner_holdout_score,
+                    winner_overall_score=winner_overall_score,
+                ),
+            )
+        )
+
+    for base_slug, members in timeframe_family_members.items():
+        best_member = max(members, key=lambda result: result.overall_score)
+        family_score = round(
+            best_member.overall_score + 0.25 * float(best_member.holdout_score or 0.0),
+            6,
+        )
+        insights.append(
+            SearchFamilyInsight(
+                family_key=f"{base_slug}__tf-family",
+                family_type="timeframe_family",
+                representative_variant_slug=best_member.variant_slug,
+                member_variant_slugs=[result.variant_slug for result in members],
+                best_reference_score=best_member.reference_score,
+                best_holdout_score=best_member.holdout_score,
+                best_overall_score=best_member.overall_score,
+                family_score=family_score,
+                classification=_classify_family(
+                    best_reference_score=best_member.reference_score,
+                    best_holdout_score=best_member.holdout_score,
+                    best_overall_score=best_member.overall_score,
                     winner_reference_score=winner_reference_score,
                     winner_holdout_score=winner_holdout_score,
                     winner_overall_score=winner_overall_score,
@@ -1104,6 +1150,10 @@ def select_active_family_insight(
     recent_artifacts: list[dict] | None = None,
     policy: FamilySelectionPolicy = DEFAULT_FAMILY_SELECTION_POLICY,
 ) -> SearchFamilyInsight | None:
+    # timeframe_family is an informational axis, not a promotion lane.
+    family_insights = [
+        insight for insight in family_insights if insight.family_type != "timeframe_family"
+    ]
     if not family_insights:
         return None
 
