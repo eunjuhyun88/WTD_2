@@ -84,6 +84,8 @@ engine
 - the real run on `2026-04-18` (artifact `9128d385-ca46-4d27-99f2-7e9d7a487491`) expanded from 16 to 48 variants (6 manual + 12 timeframe_family + 2 auto_evidence + 4 reset_lane + 24 duration_family) and emitted 12 duration recommendations, all classified `keep` with delta `±0.000`, which establishes that the current 0.5x / 2.0x duration scaling does not move replay scores on the current benchmark cases and tells the next search to widen the duration scales or attach duration-sensitive scoring rather than re-explore 2x bands
 - search runs now build an explicit `PromotionReport` against a `PromotionGatePolicy` (`promotion-gate-v1`) using six design-spec gates (`reference_recall`, `phase_fidelity`, `lead_time_bars`, `false_discovery_rate`, `robustness_spread`, `holdout_passed`); the report is persisted on the artifact and its decision is carried into run metrics and handoff payload (`promotion_decision`, `promotion_report_id`, `promotion_rejection_reasons`)
 - the real run on `2026-04-18` (artifact `47515075-699e-484b-b102-a28c9daf9ccf`) rejected winner `reset-real-proxy-balance__dur-long` because `false_discovery_rate=1.0` (every reference entry hit ACCUMULATION but none reached BREAKOUT) and `holdout_passed=False`, even though search aggregate scores looked competitive; this proves the gate catches structural defects the scalar search score would otherwise have promoted, which is exactly the core-loop responsibility the design assigns to promotion
+- the runner handoff now carries `promoted_variant_slug` and `promoted_family_ref`, populated only when `promotion_decision == "promote_candidate"`; `_derive_baseline_ref` in `pattern_refinement.py` prefers runs with a promoted_family_ref over legacy `baseline_family_ref`, and refinement reporting surfaces the promotion decision plus rejection reasons
+- the real run on `2026-04-18` (artifact `991cc99c-6f83-40ef-8d14-4463593a5e3f`) again rejected its winner (`arch-soft-real-loose`) with `phase_fidelity 0.400 < 0.500`, `false_discovery_rate 1.000 > 0.400`, and `holdout_passed=False`, and wrote `promoted_variant_slug=None`/`promoted_family_ref=None` while preserving the legacy `baseline_family_ref` so downstream refinement still flows under backward compat until a variant actually clears the gate
 
 ## Assumptions
 
@@ -128,8 +130,8 @@ engine
 
 ## Next Steps
 
-1. Wire `promotion_decision="promote_candidate"` into the downstream refinement and train-handoff lanes so a gate-cleared variant actually becomes a canonical baseline candidate instead of only surfacing the decision in a run artifact.
-2. Diagnose why `reset-real-proxy-balance__dur-long` hits ACCUMULATION but never BREAKOUT (FDR=1.0) on reference cases; this is a real phase-runtime defect the promotion gate just exposed, and it will block every future promotion until fixed.
+1. Diagnose why every current variant hits ACCUMULATION but never BREAKOUT on reference cases (`false_discovery_rate=1.0` across runs `47515075` and `991cc99c`, with the new winner `arch-soft-real-loose` also rejected for `phase_fidelity=0.400 < 0.500`); this is a real phase-runtime defect the promotion gate now exposes on every run, and it will block every future canonical promotion until fixed.
+2. Introduce a Managed Default plane that listens for `promotion_decision="promote_candidate"` and updates the rule-first canonical default, so once the FDR defect is fixed the promoted variant actually becomes the production baseline.
 3. Decide whether family-level promotion deserves first-class persistence in `research_state_store` instead of only run payloads.
 4. Keep sub-hour search blocked on finer raw cache support instead of piggybacking on 1h resampling.
 5. Decide whether `avoid`-classified timeframe recommendations should feed back into `build_search_variants` to prune known-damaging timeframe clones on the next run, so dead-end 4h variants stop burning replay budget.

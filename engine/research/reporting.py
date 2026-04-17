@@ -89,6 +89,20 @@ def write_refinement_report(
     baseline_family_ref = run.handoff_payload.get("baseline_family_ref")
     if baseline_family_ref is not None:
         lines.append(f"- Baseline Family Ref: `{baseline_family_ref}`")
+    promotion_decision = run.handoff_payload.get("promotion_decision")
+    if promotion_decision is not None:
+        lines.append(f"- Promotion Decision: `{promotion_decision}`")
+    promoted_variant_slug = run.handoff_payload.get("promoted_variant_slug")
+    if promoted_variant_slug is not None:
+        lines.append(f"- Promoted Variant: `{promoted_variant_slug}`")
+    promoted_family_ref = run.handoff_payload.get("promoted_family_ref")
+    if promoted_family_ref is not None:
+        lines.append(f"- Promoted Family Ref: `{promoted_family_ref}`")
+    rejection_reasons = run.handoff_payload.get("promotion_rejection_reasons") or []
+    if promotion_decision == "reject" and rejection_reasons:
+        lines.append("- Promotion Rejection Reasons:")
+        for reason in rejection_reasons:
+            lines.append(f"  - {reason}")
     training_result = run.handoff_payload.get("training_result")
     if training_result is None:
         lines.append(f"- Payload: `{run.handoff_payload}`")
