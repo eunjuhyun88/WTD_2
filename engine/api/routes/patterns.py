@@ -1,43 +1,26 @@
 """GET/POST /patterns/* — pattern engine API.
 
-Endpoints:
-  GET  /patterns/library              — list all patterns
-  GET  /patterns/states               — all pattern states (symbol → phase)
-  GET  /patterns/candidates           — entry candidates across all patterns
-  GET  /patterns/{slug}/candidates    — entry candidates for one pattern
-  GET  /patterns/{slug}/stats         — ledger stats for one pattern
-  GET  /patterns/{slug}/alert-policy  — current alert policy for one pattern
-  GET  /patterns/{slug}/model-registry — current registry snapshot for one pattern
-  GET  /patterns/{slug}/library       — return pattern definition
-  POST /patterns/scan                 — trigger a scan cycle
-  POST /patterns/{slug}/verdict       — user verdict on outcome
-  POST /patterns/{slug}/evaluate      — v2: auto-evaluate pending outcomes
-  POST /patterns/{slug}/promote-model — promote a candidate model to active
-  PUT  /patterns/{slug}/alert-policy  — update alert visibility policy
-  POST /patterns/register             — v2: register user-defined pattern
-  GET  /patterns/data-quality         — v2: perp coverage and scan health
+Heavy read paths and train/evaluate/promote run in worker threads via
+`asyncio.to_thread` so the event loop stays responsive.
+
+Mutations that touch the same ledger instance synchronously (verdict,
+alert-policy PUT, register) stay on the async route without offloading.
 """
 from __future__ import annotations
+
+import asyncio
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
-from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
+from api.routes import patterns_thread
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.library import PATTERN_LIBRARY, get_pattern
-from patterns.model_registry import MODEL_REGISTRY_STORE
-from patterns.training_service import train_pattern_model_from_ledger
-from patterns.scanner import (
-    _get_machine,
-    get_entry_candidates_all,
-    get_entry_candidate_records,
-    get_raw_entry_candidates_all,
-    get_pattern_states,
-    run_pattern_scan,
-)
-from scoring.lightgbm_engine import get_engine
+from patterns.scanner import run_pattern_scan
+from patterns.types import PatternObject, PhaseCondition
+from scoring.block_evaluator import _BLOCKS
 
 router = APIRouter()
 _ledger = LedgerStore()
@@ -48,6 +31,7 @@ _ledger = LedgerStore()
 class _VerdictBody(BaseModel):
     symbol: str
     verdict: str  # "valid" | "invalid" | "missed"
+
 
 class _RegisterPatternBody(BaseModel):
     slug: str
@@ -84,61 +68,19 @@ class _PatternAlertPolicyBody(BaseModel):
 @router.get("/library")
 async def list_patterns() -> dict:
     """List all patterns in the library."""
-    return {
-        "patterns": [
-            {
-                "slug": p.slug,
-                "name": p.name,
-                "description": p.description,
-                "tags": p.tags,
-                "entry_phase": p.entry_phase,
-                "target_phase": p.target_phase,
-                "timeframe": p.timeframe,
-                "n_phases": len(p.phases),
-                "phases": [
-                    {
-                        "phase_id": ph.phase_id,
-                        "label": ph.label,
-                        "required_blocks": ph.required_blocks,
-                        "n_required": len(ph.required_blocks),
-                    }
-                    for ph in p.phases
-                ],
-            }
-            for p in PATTERN_LIBRARY.values()
-        ]
-    }
+    return await asyncio.to_thread(patterns_thread.list_patterns_sync)
 
 
 @router.get("/states")
 async def get_all_states() -> dict:
     """Current phase (rich) for all tracked symbols across all patterns."""
-    patterns_rich: dict = {}
-    for slug in PATTERN_LIBRARY:
-        machine = _get_machine(slug)
-        patterns_rich[slug] = machine.get_all_states_rich()
-    return {"patterns": patterns_rich}
+    return await asyncio.to_thread(patterns_thread.get_all_states_sync)
 
 
 @router.get("/candidates")
 async def get_all_candidates() -> dict:
     """Entry candidates across all patterns."""
-    candidates = get_entry_candidates_all()
-    raw_candidates = get_raw_entry_candidates_all()
-    records_by_pattern = get_entry_candidate_records()
-    records = [
-        record
-        for pattern_records in records_by_pattern.values()
-        for record in pattern_records
-    ]
-    total = sum(len(v) for v in candidates.values())
-    return {
-        "entry_candidates": candidates,
-        "raw_entry_candidates": raw_candidates,
-        "candidate_records": records,
-        "candidate_records_by_pattern": records_by_pattern,
-        "total_count": total,
-    }
+    return await asyncio.to_thread(patterns_thread.get_all_candidates_sync)
 
 
 # ── Scan ─────────────────────────────────────────────────────────────────────
@@ -155,144 +97,25 @@ async def trigger_pattern_scan(background_tasks: BackgroundTasks) -> dict:
 @router.get("/{slug}/candidates")
 async def get_candidates(slug: str) -> dict:
     """Entry candidates for a specific pattern."""
-    try:
-        pattern = get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    states = get_pattern_states()
-    pattern_states = states.get(slug, {})
-    candidates = [
-        sym for sym, phase in pattern_states.items()
-        if phase == pattern.entry_phase
-    ]
-    records = get_entry_candidate_records(slug).get(slug, [])
-    visible_candidates = [record["symbol"] for record in records if record.get("alert_visible")]
-    return {
-        "slug": slug,
-        "entry_phase": pattern.entry_phase,
-        "candidates": visible_candidates,
-        "raw_candidates": candidates,
-        "candidate_records": records,
-        "count": len(visible_candidates),
-    }
+    return await asyncio.to_thread(patterns_thread.get_candidates_sync, slug)
 
 
 @router.get("/{slug}/stats")
 async def get_stats(slug: str) -> dict:
     """Ledger statistics for a pattern. v3: includes ML shadow readiness."""
-    try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    stats = _ledger.compute_stats(slug)
-    outcomes = _ledger.list_all(slug)
-    record_family = LEDGER_RECORD_STORE.compute_family_stats(slug)
-    registry_entries = MODEL_REGISTRY_STORE.list(slug)
-    active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug)
-    preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
-    latest_training_run_record = next(
-        iter(LEDGER_RECORD_STORE.list(slug, record_type="training_run", limit=1)),
-        None,
-    )
-    latest_model_record = next(iter(LEDGER_RECORD_STORE.list(slug, record_type="model", limit=1)), None)
-    ml_shadow = summarize_pattern_dataset(outcomes)
-    alert_policy = ALERT_POLICY_STORE.load(slug)
-    return {
-        "pattern_slug": stats.pattern_slug,
-        "total": stats.total_instances,
-        "pending": stats.pending_count,
-        "success": stats.success_count,
-        "failure": stats.failure_count,
-        "success_rate": round(stats.success_rate, 3),
-        "avg_gain_pct": round(stats.avg_gain_pct, 3) if stats.avg_gain_pct is not None else None,
-        "avg_loss_pct": round(stats.avg_loss_pct, 3) if stats.avg_loss_pct is not None else None,
-        "expected_value": round(stats.expected_value, 4) if stats.expected_value is not None else None,
-        "avg_duration_hours": round(stats.avg_duration_hours, 1) if stats.avg_duration_hours is not None else None,
-        "recent_30d_count": stats.recent_30d_count,
-        "recent_30d_success_rate": round(stats.recent_30d_success_rate, 3) if stats.recent_30d_success_rate is not None else None,
-        # v2: BTC-conditional
-        "btc_conditional": {
-            "bullish": round(stats.btc_bullish_rate, 3) if stats.btc_bullish_rate is not None else None,
-            "bearish": round(stats.btc_bearish_rate, 3) if stats.btc_bearish_rate is not None else None,
-            "sideways": round(stats.btc_sideways_rate, 3) if stats.btc_sideways_rate is not None else None,
-        },
-        "decay_direction": stats.decay_direction,
-        "record_family": {
-            "entry_count": record_family.entry_count,
-            "capture_count": record_family.capture_count,
-            "score_count": record_family.score_count,
-            "outcome_count": record_family.outcome_count,
-            "verdict_count": record_family.verdict_count,
-            "training_run_count": record_family.training_run_count,
-            "model_count": record_family.model_count,
-            "capture_to_entry_rate": round(record_family.capture_to_entry_rate, 3) if record_family.capture_to_entry_rate is not None else None,
-            "verdict_to_entry_rate": round(record_family.verdict_to_entry_rate, 3) if record_family.verdict_to_entry_rate is not None else None,
-        },
-        "model_registry": {
-            "entry_count": len(registry_entries),
-            "active_model": active_registry_entry.to_dict() if active_registry_entry else None,
-            "preferred_scoring_model": preferred_registry_entry.to_dict() if preferred_registry_entry else None,
-        },
-        "alert_policy": alert_policy.to_dict(),
-        "latest_training_run": latest_training_run_record.to_dict() if latest_training_run_record else None,
-        "latest_model": latest_model_record.to_dict() if latest_model_record else None,
-        "ml_shadow": {
-            "total_entries": ml_shadow.total_entries,
-            "decided_entries": ml_shadow.decided_entries,
-            "state_counts": ml_shadow.state_counts,
-            "scored_entries": ml_shadow.scored_entries,
-            "scored_decided_entries": ml_shadow.scored_decided_entries,
-            "score_coverage": round(ml_shadow.score_coverage, 3) if ml_shadow.score_coverage is not None else None,
-            "avg_p_win": round(ml_shadow.avg_p_win, 4) if ml_shadow.avg_p_win is not None else None,
-            "threshold_pass_count": ml_shadow.threshold_pass_count,
-            "threshold_pass_rate": round(ml_shadow.threshold_pass_rate, 3) if ml_shadow.threshold_pass_rate is not None else None,
-            "above_threshold_success_rate": round(ml_shadow.above_threshold_success_rate, 3) if ml_shadow.above_threshold_success_rate is not None else None,
-            "below_threshold_success_rate": round(ml_shadow.below_threshold_success_rate, 3) if ml_shadow.below_threshold_success_rate is not None else None,
-            "training_usable_count": ml_shadow.training_usable_count,
-            "training_win_count": ml_shadow.training_win_count,
-            "training_loss_count": ml_shadow.training_loss_count,
-            "ready_to_train": ml_shadow.ready_to_train,
-            "readiness_reason": ml_shadow.readiness_reason,
-            "last_model_version": ml_shadow.last_model_version,
-        },
-    }
+    return await asyncio.to_thread(patterns_thread.get_stats_sync, slug, _ledger)
 
 
 @router.get("/{slug}/training-records")
 async def get_training_records(slug: str, limit: int = Query(default=25, ge=1, le=200)) -> dict:
     """Preview canonical training rows derived from the ledger."""
-    try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    outcomes = _ledger.list_all(slug)
-    records = build_pattern_training_records(outcomes)
-    summary = summarize_pattern_dataset(outcomes)
-    return {
-        "pattern_slug": slug,
-        "total_records": len(records),
-        "ready_to_train": summary.ready_to_train,
-        "readiness_reason": summary.readiness_reason,
-        "records": records[:limit],
-    }
+    return await asyncio.to_thread(patterns_thread.get_training_records_sync, slug, limit, _ledger)
 
 
 @router.get("/{slug}/alert-policy")
 async def get_alert_policy(slug: str) -> dict:
     """Return current alert policy for a pattern."""
-    try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    policy = ALERT_POLICY_STORE.load(slug)
-    return {
-        "pattern_slug": slug,
-        "policy": policy.to_dict(),
-    }
+    return await asyncio.to_thread(patterns_thread.get_alert_policy_sync, slug)
 
 
 @router.put("/{slug}/alert-policy")
@@ -301,7 +124,7 @@ async def set_alert_policy(slug: str, body: _PatternAlertPolicyBody) -> dict:
     try:
         get_pattern(slug)
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
     if body.mode not in {"shadow", "visible", "gated"}:
         raise HTTPException(status_code=400, detail="mode must be one of shadow|visible|gated")
     policy = PatternAlertPolicy(pattern_slug=slug, mode=body.mode)  # type: ignore[arg-type]
@@ -316,54 +139,13 @@ async def set_alert_policy(slug: str, body: _PatternAlertPolicyBody) -> dict:
 @router.get("/{slug}/model-registry")
 async def get_model_registry(slug: str) -> dict:
     """Return the current registry snapshot for a pattern."""
-    try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    entries = MODEL_REGISTRY_STORE.list(slug)
-    active_entry = MODEL_REGISTRY_STORE.get_active(slug)
-    preferred_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
-    return {
-        "pattern_slug": slug,
-        "entries": [entry.to_dict() for entry in entries],
-        "active_model": active_entry.to_dict() if active_entry else None,
-        "preferred_scoring_model": preferred_entry.to_dict() if preferred_entry else None,
-    }
+    return await asyncio.to_thread(patterns_thread.get_model_registry_sync, slug)
 
 
 @router.get("/{slug}/library")
 async def get_pattern_def(slug: str) -> dict:
     """Return the pattern definition."""
-    try:
-        p = get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    return {
-        "slug": p.slug,
-        "name": p.name,
-        "description": p.description,
-        "entry_phase": p.entry_phase,
-        "target_phase": p.target_phase,
-        "timeframe": p.timeframe,
-        "tags": p.tags,
-        "version": p.version,
-        "created_by": p.created_by,
-        "phases": [
-            {
-                "phase_id": ph.phase_id,
-                "label": ph.label,
-                "required_blocks": ph.required_blocks,
-                "optional_blocks": ph.optional_blocks,
-                "disqualifier_blocks": ph.disqualifier_blocks,
-                "min_bars": ph.min_bars,
-                "max_bars": ph.max_bars,
-                "timeframe": ph.timeframe,
-            }
-            for ph in p.phases
-        ],
-    }
+    return await asyncio.to_thread(patterns_thread.get_pattern_def_sync, slug)
 
 
 # ── Verdict & Evaluation ────────────────────────────────────────────────────
@@ -374,9 +156,8 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
     try:
         get_pattern(slug)
     except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
 
-    # Find the most recent pending outcome for this symbol
     pending = _ledger.list_pending(slug)
     matching = [o for o in pending if o.symbol == body.symbol]
 
@@ -403,47 +184,19 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
 
 @router.post("/{slug}/evaluate")
 async def auto_evaluate(slug: str) -> dict:
-    """v2: Auto-evaluate pending outcomes past their evaluation window.
-
-    Checks Binance prices and applies HIT/MISS/EXPIRED verdicts.
-    """
-    try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    evaluated = _ledger.auto_evaluate_pending(slug)
-    return {
-        "slug": slug,
-        "evaluated_count": len(evaluated),
-        "results": [
-            {"id": o.id, "symbol": o.symbol, "verdict": o.outcome}
-            for o in evaluated
-        ],
-    }
+    """v2: Auto-evaluate pending outcomes past their evaluation window."""
+    return await asyncio.to_thread(patterns_thread.auto_evaluate_sync, slug, _ledger)
 
 
 @router.post("/{slug}/train-model")
 async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
     """Train a pattern-scoped model from durable ledger outcomes."""
     try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    try:
-        return train_pattern_model_from_ledger(
+        return await asyncio.to_thread(
+            patterns_thread.train_pattern_model_sync,
             slug,
-            user_id=body.user_id,
-            target_name=body.target_name,
-            feature_schema_version=body.feature_schema_version,
-            label_policy_version=body.label_policy_version,
-            threshold_policy_version=body.threshold_policy_version,
-            min_records=body.min_records,
-            ledger=_ledger,
-            record_store=LEDGER_RECORD_STORE,
-            registry_store=MODEL_REGISTRY_STORE,
-            get_engine_fn=get_engine,
+            body.model_dump(),
+            _ledger,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -452,64 +205,28 @@ async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
 @router.post("/{slug}/promote-model")
 async def promote_pattern_model(slug: str, body: _PromotePatternModelBody) -> dict:
     """Promote a candidate model to active rollout state."""
-    try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    try:
-        active_entry = MODEL_REGISTRY_STORE.promote(
-            pattern_slug=slug,
-            model_key=body.model_key,
-            model_version=body.model_version,
-            threshold_policy_version=body.threshold_policy_version,
-        )
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    LEDGER_RECORD_STORE.append_model_record(
-        pattern_slug=slug,
-        model_version=active_entry.model_version,
-        payload={
-            "model_key": active_entry.model_key,
-            "timeframe": active_entry.timeframe,
-            "target_name": active_entry.target_name,
-            "feature_schema_version": active_entry.feature_schema_version,
-            "label_policy_version": active_entry.label_policy_version,
-            "threshold_policy_version": active_entry.threshold_policy_version,
-            "rollout_state": active_entry.rollout_state,
-            "promotion_event": "promote_to_active",
-        },
+    return await asyncio.to_thread(
+        patterns_thread.promote_pattern_model_sync,
+        slug,
+        body.model_key,
+        body.model_version,
+        body.threshold_policy_version,
     )
-
-    return {
-        "ok": True,
-        "pattern_slug": slug,
-        "active_model": active_entry.to_dict(),
-    }
 
 
 # ── v2: Pattern Registration ────────────────────────────────────────────────
 
 @router.post("/register")
 async def register_pattern(body: _RegisterPatternBody) -> dict:
-    """Register a user-defined pattern into the library.
-
-    Validates block names against the block evaluator registry.
-    """
-    from patterns.types import PatternObject, PhaseCondition
-    from scoring.block_evaluator import _BLOCKS
-
+    """Register a user-defined pattern into the library."""
     known_blocks = {name for name, _ in _BLOCKS}
 
-    # Validate phases
     phases = []
     for i, ph in enumerate(body.phases):
         required = ph.get("required_blocks", [])
         optional = ph.get("optional_blocks", [])
         disqualifiers = ph.get("disqualifier_blocks", [])
 
-        # Check all referenced blocks exist
         all_refs = required + optional + disqualifiers
         unknown = [b for b in all_refs if b not in known_blocks]
         if unknown:
@@ -518,18 +235,19 @@ async def register_pattern(body: _RegisterPatternBody) -> dict:
                 detail=f"Phase {i}: unknown blocks: {unknown}. Available: {sorted(known_blocks)}",
             )
 
-        phases.append(PhaseCondition(
-            phase_id=ph.get("phase_id", f"PHASE_{i}"),
-            label=ph.get("label", f"Phase {i}"),
-            required_blocks=required,
-            optional_blocks=optional,
-            disqualifier_blocks=disqualifiers,
-            min_bars=ph.get("min_bars", 1),
-            max_bars=ph.get("max_bars", 48),
-            timeframe=ph.get("timeframe", body.timeframe),
-        ))
+        phases.append(
+            PhaseCondition(
+                phase_id=ph.get("phase_id", f"PHASE_{i}"),
+                label=ph.get("label", f"Phase {i}"),
+                required_blocks=required,
+                optional_blocks=optional,
+                disqualifier_blocks=disqualifiers,
+                min_bars=ph.get("min_bars", 1),
+                max_bars=ph.get("max_bars", 48),
+                timeframe=ph.get("timeframe", body.timeframe),
+            )
+        )
 
-    # Validate entry/target phases exist
     phase_ids = {p.phase_id for p in phases}
     if body.entry_phase not in phase_ids:
         raise HTTPException(400, f"entry_phase '{body.entry_phase}' not in phases: {phase_ids}")

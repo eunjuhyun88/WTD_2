@@ -55,6 +55,7 @@ def test_pattern_bounded_eval_returns_train_candidate_when_gate_clears(tmp_path,
     run = run_pattern_bounded_eval(
         PatternBoundedEvalConfig(
             pattern_slug="tradoor-oi-reversal-v1",
+            objective_id="obj-test-train",
             n_splits=4,
             min_mean_auc=0.60,
             max_std_auc=0.10,
@@ -70,6 +71,67 @@ def test_pattern_bounded_eval_returns_train_candidate_when_gate_clears(tmp_path,
     decision = state_store.get_selection_decision(run.research_run_id)
     assert decision is not None
     assert decision.decision_kind == "train_candidate"
+
+
+def test_pattern_bounded_eval_uses_latest_promoted_family_baseline(tmp_path, monkeypatch) -> None:
+    ledger_store = LedgerStore(tmp_path / "ledger_data")
+    for idx in range(1, 25):
+        ledger_store.save(_outcome(idx, outcome="success" if idx % 3 == 0 else "failure"))
+
+    state_store = ResearchStateStore(tmp_path / "research_runtime.sqlite")
+    benchmark_run = state_store.create_run(
+        pattern_slug="tradoor-oi-reversal-v1",
+        objective_id="benchmark-search:tradoor-oi-reversal-v1__ptb-tradoor-v1",
+        baseline_ref="benchmark-pack:tradoor-oi-reversal-v1__ptb-tradoor-v1",
+        search_policy={"mode": "benchmark-pack-search", "n_variants": 11},
+        evaluation_protocol={"kind": "replay-benchmark"},
+        created_at="2026-04-16T20:00:00+00:00",
+    )
+    state_store.complete_run(
+        benchmark_run.research_run_id,
+        completed_at="2026-04-16T20:05:00+00:00",
+        disposition="dead_end",
+        winner_variant_ref="tradoor-oi-reversal-v1__arch-soft-real-loose",
+        handoff_payload={
+            "baseline_family_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
+            "active_family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+        },
+    )
+    controller = ResearchWorkerController(state_store)
+
+    def _fake_eval(X, y, n_splits):
+        assert len(X) == 24
+        assert len(y) == 24
+        return {
+            "n_samples": 24,
+            "n_splits": n_splits,
+            "mean_auc": 0.68,
+            "std_auc": 0.05,
+            "min_auc": 0.61,
+            "max_auc": 0.74,
+            "folds": [],
+        }
+
+    monkeypatch.setattr("research.pattern_refinement.walk_forward_eval", _fake_eval)
+
+    run = run_pattern_bounded_eval(
+        PatternBoundedEvalConfig(
+            pattern_slug="tradoor-oi-reversal-v1",
+            objective_id="obj-test-family-baseline",
+            n_splits=4,
+            min_mean_auc=0.60,
+            max_std_auc=0.10,
+        ),
+        controller=controller,
+        ledger_store=ledger_store,
+    )
+
+    assert run.baseline_ref == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+    assert run.handoff_payload["baseline_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+    assert run.handoff_payload["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+    decision = state_store.get_selection_decision(run.research_run_id)
+    assert decision is not None
+    assert decision.baseline_ref == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
 
 
 def test_pattern_bounded_eval_returns_no_op_when_dataset_not_ready(tmp_path) -> None:

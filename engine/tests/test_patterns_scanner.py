@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from patterns.entry_scorer import PatternEntryScore
 from patterns.state_store import PatternStateStore
-from patterns.types import PhaseTransition
+from patterns.types import PhaseAttemptRecord, PhaseTransition
 import patterns.scanner as pattern_scanner
 from ledger.types import PatternOutcome
 
@@ -279,3 +279,30 @@ def test_visible_entry_candidates_filter_shadow_and_gated_blocks(tmp_path, monke
 
     assert visible["tradoor-oi-reversal-v1"] == ["PTBUSDT"]
     assert set(raw["tradoor-oi-reversal-v1"]) == {"PTBUSDT", "ETHUSDT"}
+
+
+def test_on_phase_attempt_persists_failure_record(monkeypatch) -> None:
+    attempts = []
+
+    class FakeRecordStore:
+        def append_phase_attempt_record(self, attempt):
+            attempts.append(attempt)
+            return None
+
+    monkeypatch.setattr(pattern_scanner, "LEDGER_RECORD_STORE", FakeRecordStore())
+
+    attempt = PhaseAttemptRecord(
+        symbol="PTBUSDT",
+        pattern_slug="tradoor-oi-reversal-v1",
+        timeframe="1h",
+        from_phase="REAL_DUMP",
+        attempted_phase="ACCUMULATION",
+        phase_score=0.64,
+        missing_blocks=["positive_funding_bias"],
+        failed_reason="below_score_threshold",
+    )
+
+    pattern_scanner._on_phase_attempt(attempt)
+
+    assert len(attempts) == 1
+    assert attempts[0].failed_reason == "below_score_threshold"

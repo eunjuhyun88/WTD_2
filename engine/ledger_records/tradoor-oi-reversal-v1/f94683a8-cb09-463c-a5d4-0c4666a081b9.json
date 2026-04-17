@@ -1,0 +1,23 @@
+{
+  "id": "f94683a8-cb09-463c-a5d4-0c4666a081b9",
+  "record_type": "outcome",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "symbol": "AAVEUSDT",
+  "user_id": null,
+  "outcome_id": "f004d9e4",
+  "capture_id": null,
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-18T02:23:35.061277",
+  "payload": {
+    "previous_outcome": "pending",
+    "outcome": "failure",
+    "breakout_at": null,
+    "invalidated_at": null,
+    "peak_price": 100.0,
+    "exit_price": 89.0,
+    "max_gain_pct": 0.0,
+    "exit_return_pct": -0.11,
+    "duration_hours": null
+  }
+}

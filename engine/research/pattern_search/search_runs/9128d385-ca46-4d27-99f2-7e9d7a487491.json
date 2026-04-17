@@ -1,0 +1,4828 @@
+{
+  "research_run_id": "9128d385-ca46-4d27-99f2-7e9d7a487491",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "benchmark_pack_id": "tradoor-oi-reversal-v1__ptb-tradoor-v1",
+  "winner_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+  "variant_results": [
+    {
+      "variant_id": "f892e92e-a106-4a26-80cb-3ef1169294e4",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "366e4559-9f7a-4eb3-b5c2-05fffd669664",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical__tf-4h",
+      "reference_score": 0.0,
+      "holdout_score": 0.0,
+      "overall_score": 0.0,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "3748b97d-ac45-4f09-95d0-dc7eacd8ee6c",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "d412ebb7-007d-4313-8676-edb5b7fe176b",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__tf-4h",
+      "reference_score": 0.0,
+      "holdout_score": 0.0,
+      "overall_score": 0.0,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "3cf4c3c5-49e8-4ed2-a0b6-2c210b965117",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "08e550d3-3277-4d29-96e7-d1a55f718d01",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__tf-4h",
+      "reference_score": 0.0,
+      "holdout_score": 0.0,
+      "overall_score": 0.0,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "a5a06c80-bba4-45c3-b8e4-40958d2565aa",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "5a953d93-0349-4127-be21-091cb1c8f8c4",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h",
+      "reference_score": 0.166667,
+      "holdout_score": 0.166667,
+      "overall_score": 0.166667,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.3333333333333333,
+          "phase_depth_progress": 0.3333333333333333,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.166667,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.3333333333333333,
+          "phase_depth_progress": 0.3333333333333333,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.166667,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        }
+      ]
+    },
+    {
+      "variant_id": "53823dea-8185-4f14-9cad-4758530223ae",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "9d4cdb37-f922-48e4-b6f2-53573957fc15",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__tf-4h",
+      "reference_score": 0.0,
+      "holdout_score": 0.0,
+      "overall_score": 0.0,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "dd49c901-6a76-422a-82af-bf4cf16a5bc1",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "06a5dff4-0b4e-4fec-b932-59163179805a",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__tf-4h",
+      "reference_score": 0.0,
+      "holdout_score": 0.0,
+      "overall_score": 0.0,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "96f90b89-d827-4435-8beb-c5742e2e9447",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "5dfc3e96-2a43-403d-9d25-507605aafcbc",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__tf-4h",
+      "reference_score": 0.0,
+      "holdout_score": 0.0,
+      "overall_score": 0.0,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "54a2c36e-853a-4455-a02e-59722d6c0b40",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "7c439d91-d43d-4dea-b7f5-cd9ed1a1f1fb",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__tf-4h",
+      "reference_score": 0.0,
+      "holdout_score": 0.0,
+      "overall_score": 0.0,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "f964ec7f-ca1a-4af7-afab-da3c4f0f672e",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "241a2e7d-c4be-4bd6-9cb1-41c8401d1e6d",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__tf-4h",
+      "reference_score": 0.166667,
+      "holdout_score": 0.166667,
+      "overall_score": 0.166667,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.3333333333333333,
+          "phase_depth_progress": 0.3333333333333333,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.166667,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.3333333333333333,
+          "phase_depth_progress": 0.3333333333333333,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.166667,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "8de0a9bd-7f1e-4f68-a053-480bdc2e4e05",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "a2e53cb3-9899-4c45-918a-424a58374f9f",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__tf-4h",
+      "reference_score": 0.0,
+      "holdout_score": 0.0,
+      "overall_score": 0.0,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.0,
+          "phase_depth_progress": 0.0,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.0,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "fec437d1-f8bf-45cf-8a86-4f044a294dd4",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "30ec053e-0c20-496a-a8e4-fca1940c646d",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__tf-4h",
+      "reference_score": 0.166667,
+      "holdout_score": 0.166667,
+      "overall_score": 0.166667,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.3333333333333333,
+          "phase_depth_progress": 0.3333333333333333,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.166667,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.3333333333333333,
+          "phase_depth_progress": 0.3333333333333333,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.166667,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "81650780-b7cb-44aa-8075-2074b3093b96",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "1c98cffb-7a58-47cc-98e6-c157cf6c515a",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__tf-4h",
+      "reference_score": 0.166667,
+      "holdout_score": 0.166667,
+      "overall_score": 0.166667,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.3333333333333333,
+          "phase_depth_progress": 0.3333333333333333,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.166667,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.3333333333333333,
+          "phase_depth_progress": 0.3333333333333333,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.166667,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "8d95d63e-0df1-4a3f-8297-3866153400e1",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical__dur-short",
+      "reference_score": 0.14,
+      "holdout_score": 0.1,
+      "overall_score": 0.128,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "206333d7-cc60-4cf9-8188-fe4e223d17aa",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "4f6973a0-3ded-4500-b608-0766eb2dc519",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__dur-short",
+      "reference_score": 0.14,
+      "holdout_score": 0.1,
+      "overall_score": 0.128,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "cd689512-ffcb-4558-a167-6503ad243a1f",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "5c42e6f9-f149-4e0b-bc15-f22e1f259640",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__dur-short",
+      "reference_score": 0.14,
+      "holdout_score": 0.1,
+      "overall_score": 0.128,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "155af78f-f008-428d-8632-9451d0749be1",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "211c0bd3-ac22-4c91-a174-e57fd7056a7b",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-short",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {
+            "missing_any_group": 10
+          },
+          "missing_block_counts": {
+            "sideways_compression": 10,
+            "volume_dryup": 10,
+            "bollinger_squeeze": 10
+          }
+        }
+      ]
+    },
+    {
+      "variant_id": "0fad3f44-94e5-48f0-84a5-2b63874195bd",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "fecf128a-9521-4174-abee-f92b60fca3b7",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__dur-short",
+      "reference_score": 0.14,
+      "holdout_score": 0.1,
+      "overall_score": 0.128,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "5677b873-b461-4ee5-bbcb-fbdeb189dec3",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "7a3ac4f4-1f3f-4b41-b77e-c666c4424ba8",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-short",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "53166354-c83c-4625-be5a-49e0a8d08637",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "425a26b4-655b-42aa-8785-ea8994f865d3",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__dur-short",
+      "reference_score": 0.14,
+      "holdout_score": 0.1,
+      "overall_score": 0.128,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "bd938238-190b-407b-8f0f-7dafa8f0c236",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "61170982-a49a-4367-81bb-2fd3d0f00f49",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__dur-short",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "d9c71a64-ea5f-4c1b-aa5a-582a457ca67e",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "f0ed3638-a0d2-487a-bd40-dddcb9451648",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-short",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        }
+      ]
+    },
+    {
+      "variant_id": "c9ab12c7-89b3-4814-9a8b-03cfe06ead21",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "26869699-c9d2-43f7-8e8f-add3486f3353",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__dur-short",
+      "reference_score": 0.14,
+      "holdout_score": 0.1,
+      "overall_score": 0.128,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "44c47d0e-0deb-4a55-b7e9-5e8052014ce4",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "FAKE_DUMP"
+          ],
+          "current_phase": "FAKE_DUMP",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.2,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.1,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "e61973d9-81fa-441b-8542-e8a81a55b993",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-short",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "ff1a44b7-a095-4152-aa02-a888acdb1f5b",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    },
+    {
+      "variant_id": "51c4783f-3193-4c47-ae30-7a653991ddd5",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-short",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        }
+      ]
+    },
+    {
+      "variant_id": "8b71b265-b98a-497e-86db-d53cc662ed1a",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-long",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42,
+      "case_results": [
+        {
+          "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405",
+          "symbol": "PTBUSDT",
+          "role": "reference",
+          "observed_phase_path": [
+            "ARCH_ZONE",
+            "REAL_DUMP",
+            "ACCUMULATION"
+          ],
+          "current_phase": "ACCUMULATION",
+          "phase_fidelity": 0.6,
+          "phase_depth_progress": 0.8,
+          "entry_hit": true,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.54,
+          "failed_reason_counts": {
+            "missing_any_group": 3
+          },
+          "missing_block_counts": {
+            "sideways_compression": 3,
+            "volume_dryup": 3,
+            "bollinger_squeeze": 3
+          }
+        },
+        {
+          "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd",
+          "symbol": "TRADOORUSDT",
+          "role": "holdout",
+          "observed_phase_path": [
+            "ARCH_ZONE"
+          ],
+          "current_phase": "ARCH_ZONE",
+          "phase_fidelity": 0.2,
+          "phase_depth_progress": 0.4,
+          "entry_hit": false,
+          "target_hit": false,
+          "lead_bars": null,
+          "score": 0.14,
+          "failed_reason_counts": {},
+          "missing_block_counts": {}
+        }
+      ]
+    }
+  ],
+  "variant_specs": [
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "timeframe": "1h",
+      "phase_overrides": {},
+      "search_origin": "manual",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "canonical runtime contract"
+      ],
+      "variant_id": "f892e92e-a106-4a26-80cb-3ef1169294e4",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {},
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "canonical runtime contract",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "366e4559-9f7a-4eb3-b5c2-05fffd669664",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "phase_score_threshold": 0.65,
+          "transition_window_bars": 16
+        }
+      },
+      "search_origin": "manual",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "widen accumulation timing window",
+        "slightly lower accumulation score floor"
+      ],
+      "variant_id": "3748b97d-ac45-4f09-95d0-dc7eacd8ee6c",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "phase_score_threshold": 0.65,
+          "transition_window_bars": 16
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "widen accumulation timing window",
+        "slightly lower accumulation score floor",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "d412ebb7-007d-4313-8676-edb5b7fe176b",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "score_weights": {
+            "higher_lows_sequence": 0.35,
+            "oi_hold_after_spike": 0.3,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.1,
+            "ls_ratio_recovery": 0.1,
+            "post_dump_compression": 0.15,
+            "volume_dryup": 0.05,
+            "bollinger_squeeze": 0.05,
+            "reclaim_after_dump": 0.1
+          },
+          "phase_score_threshold": 0.68
+        }
+      },
+      "search_origin": "manual",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "reward post-dump compression more strongly"
+      ],
+      "variant_id": "3cf4c3c5-49e8-4ed2-a0b6-2c210b965117",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "score_weights": {
+            "higher_lows_sequence": 0.35,
+            "oi_hold_after_spike": 0.3,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.1,
+            "ls_ratio_recovery": 0.1,
+            "post_dump_compression": 0.15,
+            "volume_dryup": 0.05,
+            "bollinger_squeeze": 0.05,
+            "reclaim_after_dump": 0.1
+          },
+          "phase_score_threshold": 0.68
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "reward post-dump compression more strongly",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "08e550d3-3277-4d29-96e7-d1a55f718d01",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 72
+        },
+        "REAL_DUMP": {
+          "required_blocks": [
+            "oi_spike_with_dump"
+          ],
+          "optional_blocks": [
+            "volume_spike",
+            "recent_decline",
+            "funding_extreme"
+          ],
+          "max_bars": 8
+        }
+      },
+      "search_origin": "manual",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "soften arch detection",
+        "allow real dump without mandatory volume spike"
+      ],
+      "variant_id": "a5a06c80-bba4-45c3-b8e4-40958d2565aa",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 72
+        },
+        "REAL_DUMP": {
+          "required_blocks": [
+            "oi_spike_with_dump"
+          ],
+          "optional_blocks": [
+            "volume_spike",
+            "recent_decline",
+            "funding_extreme"
+          ],
+          "max_bars": 8
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "soften arch detection",
+        "allow real dump without mandatory volume spike",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "5a953d93-0349-4127-be21-091cb1c8f8c4",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "REAL_DUMP": {
+          "max_bars": 12
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump"
+            ],
+            [
+              "funding_flip",
+              "positive_funding_bias",
+              "ls_ratio_recovery"
+            ]
+          ],
+          "phase_score_threshold": 0.6,
+          "transition_window_bars": 18
+        }
+      },
+      "search_origin": "manual",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "let real dump breathe longer",
+        "allow reclaim to stand in for higher lows"
+      ],
+      "variant_id": "53823dea-8185-4f14-9cad-4758530223ae",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "REAL_DUMP": {
+          "max_bars": 12
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump"
+            ],
+            [
+              "funding_flip",
+              "positive_funding_bias",
+              "ls_ratio_recovery"
+            ]
+          ],
+          "phase_score_threshold": 0.6,
+          "transition_window_bars": 18
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "let real dump breathe longer",
+        "allow reclaim to stand in for higher lows",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "9d4cdb37-f922-48e4-b6f2-53573957fc15",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 96
+        },
+        "ARCH_ZONE": {
+          "required_blocks": [
+            "sideways_compression"
+          ],
+          "optional_blocks": [
+            "volume_dryup",
+            "bollinger_squeeze"
+          ],
+          "min_bars": 2,
+          "max_bars": 96
+        },
+        "ACCUMULATION": {
+          "score_weights": {
+            "higher_lows_sequence": 0.3,
+            "oi_hold_after_spike": 0.25,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.15,
+            "ls_ratio_recovery": 0.15,
+            "post_dump_compression": 0.1,
+            "volume_dryup": 0.1,
+            "bollinger_squeeze": 0.1,
+            "reclaim_after_dump": 0.15
+          },
+          "phase_score_threshold": 0.62,
+          "transition_window_bars": 24
+        }
+      },
+      "search_origin": "manual",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "favor slower holdout recovery structure",
+        "give reclaim and squeeze more weight"
+      ],
+      "variant_id": "dd49c901-6a76-422a-82af-bf4cf16a5bc1",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 96
+        },
+        "ARCH_ZONE": {
+          "required_blocks": [
+            "sideways_compression"
+          ],
+          "optional_blocks": [
+            "volume_dryup",
+            "bollinger_squeeze"
+          ],
+          "min_bars": 2,
+          "max_bars": 96
+        },
+        "ACCUMULATION": {
+          "score_weights": {
+            "higher_lows_sequence": 0.3,
+            "oi_hold_after_spike": 0.25,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.15,
+            "ls_ratio_recovery": 0.15,
+            "post_dump_compression": 0.1,
+            "volume_dryup": 0.1,
+            "bollinger_squeeze": 0.1,
+            "reclaim_after_dump": 0.15
+          },
+          "phase_score_threshold": 0.62,
+          "transition_window_bars": 24
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "favor slower holdout recovery structure",
+        "give reclaim and squeeze more weight",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "06a5dff4-0b4e-4fec-b932-59163179805a",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump"
+            ],
+            [
+              "funding_flip",
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "post_dump_compression"
+            ]
+          ],
+          "phase_score_threshold": 0.58,
+          "transition_window_bars": 24
+        }
+      },
+      "search_origin": "auto_evidence",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "phase attempts show funding-side misses",
+        "allow reclaim/compression to substitute into accumulation"
+      ],
+      "variant_id": "96f90b89-d827-4435-8beb-c5742e2e9447",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump"
+            ],
+            [
+              "funding_flip",
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "post_dump_compression"
+            ]
+          ],
+          "phase_score_threshold": 0.58,
+          "transition_window_bars": 24
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "phase attempts show funding-side misses",
+        "allow reclaim/compression to substitute into accumulation",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "5dfc3e96-2a43-403d-9d25-507605aafcbc",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 144
+        },
+        "ARCH_ZONE": {
+          "min_bars": 2,
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "transition_window_bars": 36,
+          "phase_score_threshold": 0.6
+        }
+      },
+      "search_origin": "auto_evidence",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "holdout progressed deeper but still missed entry",
+        "let the structure breathe longer before reset"
+      ],
+      "variant_id": "54a2c36e-853a-4455-a02e-59722d6c0b40",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 144
+        },
+        "ARCH_ZONE": {
+          "min_bars": 2,
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "transition_window_bars": 36,
+          "phase_score_threshold": 0.6
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "holdout progressed deeper but still missed entry",
+        "let the structure breathe longer before reset",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "7c439d91-d43d-4dea-b7f5-cd9ed1a1f1fb",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 120
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.56,
+          "transition_window_bars": 30
+        }
+      },
+      "search_origin": "reset_lane",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family"
+      ],
+      "variant_id": "f964ec7f-ca1a-4af7-afab-da3c4f0f672e",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 120
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.56,
+          "transition_window_bars": 30
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "241a2e7d-c4be-4bd6-9cb1-41c8401d1e6d",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip",
+              "post_dump_compression"
+            ]
+          ],
+          "phase_score_threshold": 0.54,
+          "transition_window_bars": 36
+        }
+      },
+      "search_origin": "reset_lane",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "winner branch exhausted without holdout breakthrough",
+        "reset into a longer direct-accumulation search family"
+      ],
+      "variant_id": "8de0a9bd-7f1e-4f68-a053-480bdc2e4e05",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip",
+              "post_dump_compression"
+            ]
+          ],
+          "phase_score_threshold": 0.54,
+          "transition_window_bars": 36
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "winner branch exhausted without holdout breakthrough",
+        "reset into a longer direct-accumulation search family",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "a2e53cb3-9899-4c45-918a-424a58374f9f",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 24
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.56,
+          "transition_window_bars": 36
+        }
+      },
+      "search_origin": "reset_lane",
+      "selection_bias": 0.006,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "active reset family stayed viable across runs",
+        "extend reclaim/compression wall-clock tolerance around the promoted family"
+      ],
+      "variant_id": "fec437d1-f8bf-45cf-8a86-4f044a294dd4",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 24
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.56,
+          "transition_window_bars": 36
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.006,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "active reset family stayed viable across runs",
+        "extend reclaim/compression wall-clock tolerance around the promoted family",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "30ec053e-0c20-496a-a8e4-fca1940c646d",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 120
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.54,
+          "transition_window_bars": 30,
+          "score_weights": {
+            "higher_lows_sequence": 0.24,
+            "oi_hold_after_spike": 0.26,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.14,
+            "ls_ratio_recovery": 0.14,
+            "post_dump_compression": 0.16,
+            "reclaim_after_dump": 0.16,
+            "volume_dryup": 0.08,
+            "bollinger_squeeze": 0.08
+          }
+        }
+      },
+      "search_origin": "reset_lane",
+      "selection_bias": 0.012,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "promoted reset family is reclaim/compression-led",
+        "push more score mass into reclaim/compression and funding recovery"
+      ],
+      "variant_id": "81650780-b7cb-44aa-8075-2074b3093b96",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__tf-4h",
+      "timeframe": "4h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 120
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.54,
+          "transition_window_bars": 30,
+          "score_weights": {
+            "higher_lows_sequence": 0.24,
+            "oi_hold_after_spike": 0.26,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.14,
+            "ls_ratio_recovery": 0.14,
+            "post_dump_compression": 0.16,
+            "reclaim_after_dump": 0.16,
+            "volume_dryup": 0.08,
+            "bollinger_squeeze": 0.08
+          }
+        }
+      },
+      "search_origin": "timeframe_family",
+      "selection_bias": 0.012,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "promoted reset family is reclaim/compression-led",
+        "push more score mass into reclaim/compression and funding recovery",
+        "timeframe-family clone at 4h"
+      ],
+      "variant_id": "1c98cffb-7a58-47cc-98e6-c157cf6c515a",
+      "duration_scale": 1.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {},
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "canonical runtime contract",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "8d95d63e-0df1-4a3f-8297-3866153400e1",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__canonical__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {},
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "canonical runtime contract",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "206333d7-cc60-4cf9-8188-fe4e223d17aa",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "phase_score_threshold": 0.65,
+          "transition_window_bars": 16
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "widen accumulation timing window",
+        "slightly lower accumulation score floor",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "4f6973a0-3ded-4500-b608-0766eb2dc519",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "phase_score_threshold": 0.65,
+          "transition_window_bars": 16
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "widen accumulation timing window",
+        "slightly lower accumulation score floor",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "cd689512-ffcb-4558-a167-6503ad243a1f",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "score_weights": {
+            "higher_lows_sequence": 0.35,
+            "oi_hold_after_spike": 0.3,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.1,
+            "ls_ratio_recovery": 0.1,
+            "post_dump_compression": 0.15,
+            "volume_dryup": 0.05,
+            "bollinger_squeeze": 0.05,
+            "reclaim_after_dump": 0.1
+          },
+          "phase_score_threshold": 0.68
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "reward post-dump compression more strongly",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "5c42e6f9-f149-4e0b-bc15-f22e1f259640",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "score_weights": {
+            "higher_lows_sequence": 0.35,
+            "oi_hold_after_spike": 0.3,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.1,
+            "ls_ratio_recovery": 0.1,
+            "post_dump_compression": 0.15,
+            "volume_dryup": 0.05,
+            "bollinger_squeeze": 0.05,
+            "reclaim_after_dump": 0.1
+          },
+          "phase_score_threshold": 0.68
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "reward post-dump compression more strongly",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "155af78f-f008-428d-8632-9451d0749be1",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 72
+        },
+        "REAL_DUMP": {
+          "required_blocks": [
+            "oi_spike_with_dump"
+          ],
+          "optional_blocks": [
+            "volume_spike",
+            "recent_decline",
+            "funding_extreme"
+          ],
+          "max_bars": 8
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "soften arch detection",
+        "allow real dump without mandatory volume spike",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "211c0bd3-ac22-4c91-a174-e57fd7056a7b",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 72
+        },
+        "REAL_DUMP": {
+          "required_blocks": [
+            "oi_spike_with_dump"
+          ],
+          "optional_blocks": [
+            "volume_spike",
+            "recent_decline",
+            "funding_extreme"
+          ],
+          "max_bars": 8
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "soften arch detection",
+        "allow real dump without mandatory volume spike",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "0fad3f44-94e5-48f0-84a5-2b63874195bd",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "REAL_DUMP": {
+          "max_bars": 12
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump"
+            ],
+            [
+              "funding_flip",
+              "positive_funding_bias",
+              "ls_ratio_recovery"
+            ]
+          ],
+          "phase_score_threshold": 0.6,
+          "transition_window_bars": 18
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "let real dump breathe longer",
+        "allow reclaim to stand in for higher lows",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "fecf128a-9521-4174-abee-f92b60fca3b7",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "REAL_DUMP": {
+          "max_bars": 12
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump"
+            ],
+            [
+              "funding_flip",
+              "positive_funding_bias",
+              "ls_ratio_recovery"
+            ]
+          ],
+          "phase_score_threshold": 0.6,
+          "transition_window_bars": 18
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "let real dump breathe longer",
+        "allow reclaim to stand in for higher lows",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "5677b873-b461-4ee5-bbcb-fbdeb189dec3",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 96
+        },
+        "ARCH_ZONE": {
+          "required_blocks": [
+            "sideways_compression"
+          ],
+          "optional_blocks": [
+            "volume_dryup",
+            "bollinger_squeeze"
+          ],
+          "min_bars": 2,
+          "max_bars": 96
+        },
+        "ACCUMULATION": {
+          "score_weights": {
+            "higher_lows_sequence": 0.3,
+            "oi_hold_after_spike": 0.25,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.15,
+            "ls_ratio_recovery": 0.15,
+            "post_dump_compression": 0.1,
+            "volume_dryup": 0.1,
+            "bollinger_squeeze": 0.1,
+            "reclaim_after_dump": 0.15
+          },
+          "phase_score_threshold": 0.62,
+          "transition_window_bars": 24
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "favor slower holdout recovery structure",
+        "give reclaim and squeeze more weight",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "7a3ac4f4-1f3f-4b41-b77e-c666c4424ba8",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 96
+        },
+        "ARCH_ZONE": {
+          "required_blocks": [
+            "sideways_compression"
+          ],
+          "optional_blocks": [
+            "volume_dryup",
+            "bollinger_squeeze"
+          ],
+          "min_bars": 2,
+          "max_bars": 96
+        },
+        "ACCUMULATION": {
+          "score_weights": {
+            "higher_lows_sequence": 0.3,
+            "oi_hold_after_spike": 0.25,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.15,
+            "ls_ratio_recovery": 0.15,
+            "post_dump_compression": 0.1,
+            "volume_dryup": 0.1,
+            "bollinger_squeeze": 0.1,
+            "reclaim_after_dump": 0.15
+          },
+          "phase_score_threshold": 0.62,
+          "transition_window_bars": 24
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "favor slower holdout recovery structure",
+        "give reclaim and squeeze more weight",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "53166354-c83c-4625-be5a-49e0a8d08637",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump"
+            ],
+            [
+              "funding_flip",
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "post_dump_compression"
+            ]
+          ],
+          "phase_score_threshold": 0.58,
+          "transition_window_bars": 24
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "phase attempts show funding-side misses",
+        "allow reclaim/compression to substitute into accumulation",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "425a26b4-655b-42aa-8785-ea8994f865d3",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump"
+            ],
+            [
+              "funding_flip",
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "post_dump_compression"
+            ]
+          ],
+          "phase_score_threshold": 0.58,
+          "transition_window_bars": 24
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "phase attempts show funding-side misses",
+        "allow reclaim/compression to substitute into accumulation",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "bd938238-190b-407b-8f0f-7dafa8f0c236",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 144
+        },
+        "ARCH_ZONE": {
+          "min_bars": 2,
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "transition_window_bars": 36,
+          "phase_score_threshold": 0.6
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "holdout progressed deeper but still missed entry",
+        "let the structure breathe longer before reset",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "61170982-a49a-4367-81bb-2fd3d0f00f49",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 144
+        },
+        "ARCH_ZONE": {
+          "min_bars": 2,
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "transition_window_bars": 36,
+          "phase_score_threshold": 0.6
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "holdout progressed deeper but still missed entry",
+        "let the structure breathe longer before reset",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "d9c71a64-ea5f-4c1b-aa5a-582a457ca67e",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 120
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.56,
+          "transition_window_bars": 30
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "f0ed3638-a0d2-487a-bd40-dddcb9451648",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 120
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.56,
+          "transition_window_bars": 30
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "c9ab12c7-89b3-4814-9a8b-03cfe06ead21",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip",
+              "post_dump_compression"
+            ]
+          ],
+          "phase_score_threshold": 0.54,
+          "transition_window_bars": 36
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "winner branch exhausted without holdout breakthrough",
+        "reset into a longer direct-accumulation search family",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "26869699-c9d2-43f7-8e8f-add3486f3353",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "FAKE_DUMP": {
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip",
+              "post_dump_compression"
+            ]
+          ],
+          "phase_score_threshold": 0.54,
+          "transition_window_bars": 36
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.0,
+      "hypotheses": [
+        "winner branch exhausted without holdout breakthrough",
+        "reset into a longer direct-accumulation search family",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "44c47d0e-0deb-4a55-b7e9-5e8052014ce4",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 24
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.56,
+          "transition_window_bars": 36
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.006,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "active reset family stayed viable across runs",
+        "extend reclaim/compression wall-clock tolerance around the promoted family",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "e61973d9-81fa-441b-8542-e8a81a55b993",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 144
+        },
+        "REAL_DUMP": {
+          "max_bars": 24
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.56,
+          "transition_window_bars": 36
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.006,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "active reset family stayed viable across runs",
+        "extend reclaim/compression wall-clock tolerance around the promoted family",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "ff1a44b7-a095-4152-aa02-a888acdb1f5b",
+      "duration_scale": 2.0
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-short",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 120
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.54,
+          "transition_window_bars": 30,
+          "score_weights": {
+            "higher_lows_sequence": 0.24,
+            "oi_hold_after_spike": 0.26,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.14,
+            "ls_ratio_recovery": 0.14,
+            "post_dump_compression": 0.16,
+            "reclaim_after_dump": 0.16,
+            "volume_dryup": 0.08,
+            "bollinger_squeeze": 0.08
+          }
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.012,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "promoted reset family is reclaim/compression-led",
+        "push more score mass into reclaim/compression and funding recovery",
+        "duration-family clone scale=0.5 (short)"
+      ],
+      "variant_id": "51c4783f-3193-4c47-ae30-7a653991ddd5",
+      "duration_scale": 0.5
+    },
+    {
+      "pattern_slug": "tradoor-oi-reversal-v1",
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-long",
+      "timeframe": "1h",
+      "phase_overrides": {
+        "ARCH_ZONE": {
+          "required_blocks": [],
+          "required_any_groups": [
+            [
+              "sideways_compression",
+              "volume_dryup",
+              "bollinger_squeeze"
+            ]
+          ],
+          "min_bars": 2,
+          "max_bars": 120
+        },
+        "REAL_DUMP": {
+          "max_bars": 18
+        },
+        "ACCUMULATION": {
+          "required_blocks": [
+            "oi_hold_after_spike"
+          ],
+          "required_any_groups": [
+            [
+              "higher_lows_sequence",
+              "reclaim_after_dump",
+              "post_dump_compression"
+            ],
+            [
+              "positive_funding_bias",
+              "ls_ratio_recovery",
+              "funding_flip"
+            ]
+          ],
+          "phase_score_threshold": 0.54,
+          "transition_window_bars": 30,
+          "score_weights": {
+            "higher_lows_sequence": 0.24,
+            "oi_hold_after_spike": 0.26,
+            "funding_flip": 0.1,
+            "positive_funding_bias": 0.14,
+            "ls_ratio_recovery": 0.14,
+            "post_dump_compression": 0.16,
+            "reclaim_after_dump": 0.16,
+            "volume_dryup": 0.08,
+            "bollinger_squeeze": 0.08
+          }
+        }
+      },
+      "search_origin": "duration_family",
+      "selection_bias": 0.012,
+      "hypotheses": [
+        "current winner branch no longer yields productive descendants",
+        "reset into reclaim/compression-led accumulation family",
+        "promoted reset family is reclaim/compression-led",
+        "push more score mass into reclaim/compression and funding recovery",
+        "duration-family clone scale=2 (long)"
+      ],
+      "variant_id": "8b71b265-b98a-497e-86db-d53cc662ed1a",
+      "duration_scale": 2.0
+    }
+  ],
+  "variant_deltas": [
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "reference_delta": 0.0,
+      "holdout_delta": 0.0,
+      "overall_delta": 0.0,
+      "damage_adjusted_gain": 0.0,
+      "classification": "flat"
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "reference_delta": 0.0,
+      "holdout_delta": 0.0,
+      "overall_delta": 0.0,
+      "damage_adjusted_gain": 0.0,
+      "classification": "flat"
+    }
+  ],
+  "branch_insights": [
+    {
+      "anchor_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "descendant_count": 2,
+      "productive_count": 0,
+      "damaging_count": 0,
+      "flat_count": 2,
+      "avg_damage_adjusted_gain": 0.0,
+      "best_damage_adjusted_gain": 0.0,
+      "best_overall_delta": 0.0,
+      "branch_score": -0.06
+    }
+  ],
+  "family_insights": [
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+      "family_type": "reset_lane",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.467,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+      "family_type": "reset_lane",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.461,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__arch-soft-real-loose"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.455,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "family_type": "reset_lane",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.455,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-short",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-short",
+        "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.455,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-short",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-short",
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.455,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-short",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-short",
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.455,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-short",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-short",
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.455,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__canonical",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__canonical"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__funding-bias-window16"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__compression-emphasis",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__compression-emphasis"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__real-patience-accum-early"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__holdout-recovery-bias"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "family_type": "auto_evidence",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__auto-funding-flex"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "family_type": "auto_evidence",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__auto-holdout-depth"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "family_type": "reset_lane",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-direct-accum"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__canonical__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__canonical__dur-long",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__canonical__dur-short",
+        "tradoor-oi-reversal-v1__canonical__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__funding-bias-window16__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__dur-long",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__funding-bias-window16__dur-short",
+        "tradoor-oi-reversal-v1__funding-bias-window16__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__compression-emphasis__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__dur-long",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__compression-emphasis__dur-short",
+        "tradoor-oi-reversal-v1__compression-emphasis__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__real-patience-accum-early__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__dur-long",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__real-patience-accum-early__dur-short",
+        "tradoor-oi-reversal-v1__real-patience-accum-early__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-short",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-short",
+        "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__auto-funding-flex__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__dur-long",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__auto-funding-flex__dur-short",
+        "tradoor-oi-reversal-v1__auto-funding-flex__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__auto-holdout-depth__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__dur-short",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__auto-holdout-depth__dur-short",
+        "tradoor-oi-reversal-v1__auto-holdout-depth__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-direct-accum__dur-family",
+      "family_type": "duration_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__dur-long",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-direct-accum__dur-short",
+        "tradoor-oi-reversal-v1__reset-direct-accum__dur-long"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "family_type": "mutation_branch",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias"
+      ],
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.395,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h"
+      ],
+      "best_reference_score": 0.166667,
+      "best_holdout_score": 0.166667,
+      "best_overall_score": 0.166667,
+      "family_score": 0.208334,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__tf-4h"
+      ],
+      "best_reference_score": 0.166667,
+      "best_holdout_score": 0.166667,
+      "best_overall_score": 0.166667,
+      "family_score": 0.208334,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__tf-4h"
+      ],
+      "best_reference_score": 0.166667,
+      "best_holdout_score": 0.166667,
+      "best_overall_score": 0.166667,
+      "family_score": 0.208334,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__tf-4h"
+      ],
+      "best_reference_score": 0.166667,
+      "best_holdout_score": 0.166667,
+      "best_overall_score": 0.166667,
+      "family_score": 0.208334,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__canonical__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__canonical__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__canonical__tf-4h"
+      ],
+      "best_reference_score": 0.0,
+      "best_holdout_score": 0.0,
+      "best_overall_score": 0.0,
+      "family_score": 0.0,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__funding-bias-window16__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__funding-bias-window16__tf-4h"
+      ],
+      "best_reference_score": 0.0,
+      "best_holdout_score": 0.0,
+      "best_overall_score": 0.0,
+      "family_score": 0.0,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__compression-emphasis__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__compression-emphasis__tf-4h"
+      ],
+      "best_reference_score": 0.0,
+      "best_holdout_score": 0.0,
+      "best_overall_score": 0.0,
+      "family_score": 0.0,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__real-patience-accum-early__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__real-patience-accum-early__tf-4h"
+      ],
+      "best_reference_score": 0.0,
+      "best_holdout_score": 0.0,
+      "best_overall_score": 0.0,
+      "family_score": 0.0,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__holdout-recovery-bias__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__holdout-recovery-bias__tf-4h"
+      ],
+      "best_reference_score": 0.0,
+      "best_holdout_score": 0.0,
+      "best_overall_score": 0.0,
+      "family_score": 0.0,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__auto-funding-flex__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__auto-funding-flex__tf-4h"
+      ],
+      "best_reference_score": 0.0,
+      "best_holdout_score": 0.0,
+      "best_overall_score": 0.0,
+      "family_score": 0.0,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__auto-holdout-depth__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__auto-holdout-depth__tf-4h"
+      ],
+      "best_reference_score": 0.0,
+      "best_holdout_score": 0.0,
+      "best_overall_score": 0.0,
+      "family_score": 0.0,
+      "classification": "damaging"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-direct-accum__tf-family",
+      "family_type": "timeframe_family",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__tf-4h",
+      "member_variant_slugs": [
+        "tradoor-oi-reversal-v1__reset-direct-accum__tf-4h"
+      ],
+      "best_reference_score": 0.0,
+      "best_holdout_score": 0.0,
+      "best_overall_score": 0.0,
+      "family_score": 0.0,
+      "classification": "damaging"
+    }
+  ],
+  "timeframe_recommendations": [
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.42,
+      "clone_overall_score": 0.166667,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__tf-4h",
+      "score_delta": -0.253333,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.42,
+      "clone_overall_score": 0.166667,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__tf-4h",
+      "score_delta": -0.253333,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.42,
+      "clone_overall_score": 0.166667,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__tf-4h",
+      "score_delta": -0.253333,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.42,
+      "clone_overall_score": 0.166667,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__tf-4h",
+      "score_delta": -0.253333,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.0,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__tf-4h",
+      "score_delta": -0.408,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.0,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__tf-4h",
+      "score_delta": -0.408,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.0,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__canonical__tf-4h",
+      "score_delta": -0.408,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.0,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__tf-4h",
+      "score_delta": -0.408,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.0,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__tf-4h",
+      "score_delta": -0.408,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.0,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__tf-4h",
+      "score_delta": -0.408,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.0,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__tf-4h",
+      "score_delta": -0.408,
+      "classification": "avoid"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "parent_timeframe": "1h",
+      "recommended_timeframe": "1h",
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.0,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__tf-4h",
+      "score_delta": -0.408,
+      "classification": "avoid"
+    }
+  ],
+  "duration_recommendations": [
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.42,
+      "clone_overall_score": 0.42,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__dur-short",
+      "duration_label": "short",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.408,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex__dur-long",
+      "duration_label": "long",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.408,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth__dur-short",
+      "duration_label": "short",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.408,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__canonical__dur-long",
+      "duration_label": "long",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.408,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__compression-emphasis__dur-long",
+      "duration_label": "long",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.408,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16__dur-long",
+      "duration_label": "long",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.408,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias__dur-short",
+      "duration_label": "short",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.408,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early__dur-long",
+      "duration_label": "long",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.408,
+      "clone_overall_score": 0.408,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum__dur-long",
+      "duration_label": "long",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.42,
+      "clone_overall_score": 0.42,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__dur-short",
+      "duration_label": "short",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.42,
+      "clone_overall_score": 0.42,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias__dur-short",
+      "duration_label": "short",
+      "score_delta": 0.0,
+      "classification": "keep"
+    },
+    {
+      "base_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window",
+      "parent_duration_scale": 1.0,
+      "recommended_duration_scale": 1.0,
+      "parent_overall_score": 0.42,
+      "clone_overall_score": 0.42,
+      "clone_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-window__dur-short",
+      "duration_label": "short",
+      "score_delta": 0.0,
+      "classification": "keep"
+    }
+  ],
+  "family_policy": {
+    "policy_id": "family-selection-v1",
+    "family_type_priority": {
+      "reset_lane": 4,
+      "manual": 3,
+      "auto_evidence": 2,
+      "mutation_branch": 1,
+      "timeframe_family": 0,
+      "duration_family": 0
+    },
+    "active_family_stickiness_band": 0.005,
+    "bias_mode": "selection_bias_v1"
+  },
+  "active_family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+  "active_family_type": "reset_lane",
+  "active_family_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression__fam-reclaim-bias",
+  "created_at": "2026-04-17T16:55:19.225371+00:00"
+}

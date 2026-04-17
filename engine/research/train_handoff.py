@@ -49,6 +49,8 @@ def execute_train_candidate_handoff(
                 "rollout_state": result["rollout_state"],
                 "auc": result["auc"],
                 "n_records": result["n_records"],
+                "baseline_ref": payload.get("baseline_ref"),
+                "baseline_family_ref": payload.get("baseline_family_ref"),
             }
         },
         updated_at=_utcnow_iso(),

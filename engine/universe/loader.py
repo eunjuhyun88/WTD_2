@@ -18,6 +18,8 @@ def load_universe(name: str) -> list[str]:
                             Binance spot pairs. See universe/binance_30.py.
         "binance_dynamic" — active USDT-M perps filtered by 24h volume.
         "binance_all"     — broader dynamic set with a looser cap/filter.
+        "screened_ab"     — Screener latest A/B structural grades with fallback.
+        "screened_a"      — Screener latest A structural grades with fallback.
 
     Raises:
         KeyError: if name is unknown.
@@ -30,8 +32,14 @@ def load_universe(name: str) -> list[str]:
     if name == "binance_all":
         from universe.dynamic import load_dynamic_universe
         return load_dynamic_universe(min_volume_usd=0, max_symbols=500)
+    if name == "screened_ab":
+        from universe.screened import load_screened_universe
+        return load_screened_universe(min_structural_grade="B")
+    if name == "screened_a":
+        from universe.screened import load_screened_universe
+        return load_screened_universe(min_structural_grade="A")
     raise KeyError(
-        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all')"
+        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all', 'screened_ab', 'screened_a')"
     )
 
 
@@ -45,6 +53,12 @@ async def load_universe_async(name: str) -> list[str]:
     if name == "binance_all":
         from universe.dynamic import load_dynamic_universe_async
         return await load_dynamic_universe_async(min_volume_usd=0, max_symbols=500)
+    if name == "screened_ab":
+        from universe.screened import load_screened_universe_async
+        return await load_screened_universe_async(min_structural_grade="B")
+    if name == "screened_a":
+        from universe.screened import load_screened_universe_async
+        return await load_screened_universe_async(min_structural_grade="A")
     raise KeyError(
-        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all')"
+        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all', 'screened_ab', 'screened_a')"
     )

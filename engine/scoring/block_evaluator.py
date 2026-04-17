@@ -44,9 +44,13 @@ from building_blocks.confirmations.bollinger_expansion import bollinger_expansio
 from building_blocks.confirmations.funding_extreme import funding_extreme
 from building_blocks.confirmations.funding_flip import funding_flip
 from building_blocks.confirmations.higher_lows_sequence import higher_lows_sequence
+from building_blocks.confirmations.ls_ratio_recovery import ls_ratio_recovery
 from building_blocks.confirmations.oi_change import oi_change
 from building_blocks.confirmations.oi_hold_after_spike import oi_hold_after_spike
 from building_blocks.confirmations.oi_spike_with_dump import oi_spike_with_dump
+from building_blocks.confirmations.positive_funding_bias import positive_funding_bias
+from building_blocks.confirmations.post_dump_compression import post_dump_compression
+from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
 from building_blocks.confirmations.volume_dryup import volume_dryup
@@ -86,9 +90,13 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("funding_extreme",    funding_extreme),
     ("funding_flip",       funding_flip),
     ("higher_lows_sequence", higher_lows_sequence),
+    ("ls_ratio_recovery",  ls_ratio_recovery),
     ("oi_change",          oi_change),
     ("oi_hold_after_spike", oi_hold_after_spike),
     ("oi_spike_with_dump", oi_spike_with_dump),
+    ("positive_funding_bias", positive_funding_bias),
+    ("post_dump_compression", post_dump_compression),
+    ("reclaim_after_dump", reclaim_after_dump),
     ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
     ("volume_dryup",       volume_dryup),
@@ -114,19 +122,36 @@ def evaluate_blocks(
     Returns:
         List of block names that returned True (or non-zero).
     """
-    ctx = Context(klines=klines_df, features=features_df, symbol=snap.symbol)
-    active: list[str] = []
+    masks = evaluate_block_masks(features_df, klines_df, snap.symbol)
+    return [
+        name
+        for name, mask in masks.items()
+        if len(mask) > 0 and bool(mask.iloc[-1])
+    ]
+
+
+def evaluate_block_masks(
+    features_df: pd.DataFrame,
+    klines_df: pd.DataFrame,
+    symbol: str,
+) -> dict[str, pd.Series]:
+    """Return boolean Series masks for every block over the full features frame."""
+    ctx = Context(klines=klines_df, features=features_df, symbol=symbol)
+    masks: dict[str, pd.Series] = {}
 
     for name, fn in _BLOCKS:
         try:
             result = fn(ctx)
-            # Blocks return pd.Series (vectorised over features_df).
-            # We only care about the last bar — the current signal bar.
             if isinstance(result, pd.Series):
-                result = bool(result.iloc[-1]) if len(result) > 0 else False
-            if result:
-                active.append(name)
+                masks[name] = result.fillna(False).astype(bool).reindex(features_df.index, fill_value=False)
+            else:
+                masks[name] = pd.Series(
+                    [bool(result)] * len(features_df),
+                    index=features_df.index,
+                    dtype=bool,
+                )
         except Exception as exc:
             log.debug("Block %s raised: %s", name, exc)
+            masks[name] = pd.Series([False] * len(features_df), index=features_df.index, dtype=bool)
 
-    return active
+    return masks

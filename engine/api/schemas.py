@@ -24,6 +24,21 @@ from api.schemas_memory import (
     MemoryQueryResponse,
     MemoryRankedRecord,
 )
+from api.schemas_opportunity import (
+    OpportunityMacroBackdrop,
+    OpportunityRunRequest,
+    OpportunityRunResponse,
+    OpportunityScore,
+)
+from api.schemas_rag import (
+    RagDedupeHashRequest,
+    RagDedupeHashResponse,
+    RagQuickTradeEmbeddingRequest,
+    RagSignalActionEmbeddingRequest,
+    RagTerminalScanEmbeddingRequest,
+    RagVectorResponse,
+    RagScanSignal,
+)
 from api.schemas_shared import BacktestConfig, BlockSet, KlineBar, PerpSnapshot, SnapInput, TradeRecord
 from api.schemas_train_deep_universe import (
     DeepPerpData,
@@ -65,7 +80,18 @@ __all__ = [
     "MemoryQueryRequest",
     "MemoryQueryResponse",
     "MemoryRankedRecord",
+    "OpportunityMacroBackdrop",
+    "OpportunityRunRequest",
+    "OpportunityRunResponse",
+    "OpportunityScore",
     "PerpSnapshot",
+    "RagDedupeHashRequest",
+    "RagDedupeHashResponse",
+    "RagQuickTradeEmbeddingRequest",
+    "RagScanSignal",
+    "RagSignalActionEmbeddingRequest",
+    "RagTerminalScanEmbeddingRequest",
+    "RagVectorResponse",
     "ScanMatch",
     "ScoreRequest",
     "ScoreResponse",

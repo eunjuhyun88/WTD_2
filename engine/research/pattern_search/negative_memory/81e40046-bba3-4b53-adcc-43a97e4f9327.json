@@ -1,0 +1,90 @@
+{
+  "memory_id": "81e40046-bba3-4b53-adcc-43a97e4f9327",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "research_run_id": "47055879-19a2-49b6-b099-88dbef574c22",
+  "benchmark_pack_id": "tradoor-oi-reversal-v1__ptb-tradoor-v1",
+  "winner_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+  "summary": "Benchmark search dead end",
+  "detail": "Best variant tradoor-oi-reversal-v1__arch-soft-real-loose did not clear benchmark floors (reference=0.540, holdout=0.14).",
+  "tags": [
+    "benchmark-pack",
+    "dead-end",
+    "variant-miss",
+    "tradoor-oi-reversal-v1"
+  ],
+  "variant_scores": [
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__auto-reclaim-early",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__mut-real-unlock",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__mut-real-proxy",
+      "reference_score": 0.24,
+      "holdout_score": 0.24,
+      "overall_score": 0.24
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose__mut-holdout-window",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42
+    }
+  ],
+  "created_at": "2026-04-16T18:46:06.090708+00:00"
+}

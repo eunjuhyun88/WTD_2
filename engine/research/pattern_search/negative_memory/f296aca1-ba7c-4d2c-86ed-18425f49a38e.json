@@ -1,0 +1,184 @@
+{
+  "memory_id": "f296aca1-ba7c-4d2c-86ed-18425f49a38e",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "research_run_id": "eb1a086a-7489-441a-a262-58ef6cd90c9f",
+  "benchmark_pack_id": "tradoor-oi-reversal-v1__ptb-tradoor-v1",
+  "winner_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+  "summary": "Benchmark search dead end",
+  "detail": "Best variant tradoor-oi-reversal-v1__arch-soft-real-loose did not clear benchmark floors (reference=0.540, holdout=0.14).",
+  "tags": [
+    "benchmark-pack",
+    "dead-end",
+    "variant-miss",
+    "tradoor-oi-reversal-v1"
+  ],
+  "variant_scores": [
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "reference_score": 0.54,
+      "holdout_score": 0.14,
+      "overall_score": 0.42
+    },
+    {
+      "variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "reference_score": 0.54,
+      "holdout_score": 0.1,
+      "overall_score": 0.408
+    }
+  ],
+  "family_scores": [
+    {
+      "family_key": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__arch-soft-real-loose",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.455,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "family_type": "reset_lane",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.14,
+      "best_overall_score": 0.42,
+      "family_score": 0.455,
+      "classification": "viable"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__canonical",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__canonical",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__funding-bias-window16",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__compression-emphasis",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__compression-emphasis",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__real-patience-accum-early",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "family_type": "manual",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__holdout-recovery-bias",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "family_type": "auto_evidence",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__auto-funding-flex",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "family_type": "auto_evidence",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__auto-holdout-depth",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    },
+    {
+      "family_key": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "family_type": "reset_lane",
+      "representative_variant_slug": "tradoor-oi-reversal-v1__reset-direct-accum",
+      "best_reference_score": 0.54,
+      "best_holdout_score": 0.1,
+      "best_overall_score": 0.408,
+      "family_score": 0.433,
+      "classification": "exploratory"
+    }
+  ],
+  "active_family_key": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+  "active_family_type": "reset_lane",
+  "active_family_variant_slug": "tradoor-oi-reversal-v1__reset-reclaim-compression",
+  "baseline_family_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
+  "created_at": "2026-04-17T04:54:32.648256+00:00"
+}

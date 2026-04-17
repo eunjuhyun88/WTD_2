@@ -1,0 +1,23 @@
+{
+  "id": "8bf174f4-f83b-4323-8bab-6e1c358e5c4d",
+  "record_type": "outcome",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "symbol": "SYM1",
+  "user_id": null,
+  "outcome_id": "84c4f954",
+  "capture_id": null,
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-18T02:23:35.071265",
+  "payload": {
+    "previous_outcome": "pending",
+    "outcome": "success",
+    "breakout_at": null,
+    "invalidated_at": null,
+    "peak_price": 120.0,
+    "exit_price": null,
+    "max_gain_pct": 0.2,
+    "exit_return_pct": null,
+    "duration_hours": null
+  }
+}
