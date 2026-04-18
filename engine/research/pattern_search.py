@@ -381,6 +381,14 @@ class PromotionGatePolicy:
     max_false_discovery_rate: float = 0.4
     max_robustness_spread: float = 0.3
     require_holdout_passed: bool = True
+    # W-0088 trading-edge parallel path. Promotion accepts a candidate
+    # whose forward return clears these thresholds even when strict
+    # pattern-completion (FDR ceiling) fails. Set
+    # ``min_entry_profitable_rate=None`` to disable the parallel path
+    # and fall back to strict-only behaviour.
+    min_entry_profit_pct: float = 5.0
+    entry_profit_horizon_bars: int = 48
+    min_entry_profitable_rate: float | None = 0.5
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -412,6 +420,19 @@ class PromotionReport:
     gate_results: dict[str, bool]
     decision: str  # "promote_candidate" | "reject"
     rejection_reasons: list[str]
+    # W-0088 trading-edge fields. entry_profitable_rate is the fraction of
+    # entered cases whose forward_peak_return_pct >= min_entry_profit_pct
+    # (None when no entered cases produced measurable forward returns, i.e.
+    # the metric is undefined for this winner). entry_profitable_gate is
+    # True when the rate cleared min_entry_profitable_rate, False when it
+    # didn't, and None when the parallel path is disabled or unmeasured.
+    # decision_path is one of "strict" (all 6 original gates passed),
+    # "trading_edge" (FDR waived, entry_profitable_gate True), or
+    # "rejected". The 6-key gate_results dict is intentionally unchanged
+    # so legacy ``all(gate_results.values())`` consumers stay correct.
+    entry_profitable_rate: float | None = None
+    entry_profitable_gate: bool | None = None
+    decision_path: str = "rejected"
     created_at: datetime = field(default_factory=_utcnow)
 
     def to_dict(self) -> dict:
@@ -1431,7 +1452,9 @@ def build_duration_recommendations(
 
 def _promotion_metrics_from_cases(
     case_results: list[VariantCaseResult],
-) -> dict[str, float]:
+    *,
+    min_entry_profit_pct: float = 5.0,
+) -> dict[str, float | None]:
     """Compute promotion-gate metrics from per-case replay outcomes."""
     reference_cases = [case for case in case_results if case.role == "reference"]
     holdout_cases = [case for case in case_results if case.role == "holdout"]
@@ -1475,6 +1498,24 @@ def _promotion_metrics_from_cases(
     else:
         holdout_passed_value = 1.0
 
+    # entry_profitable_rate (W-0088): fraction of entered cases with a
+    # measured forward return >= threshold. Undefined (None) when no
+    # entered case has a measured forward return, so callers can tell
+    # "metric absent" from "metric present and zero".
+    measured_entered = [
+        case for case in entered_cases if case.forward_peak_return_pct is not None
+    ]
+    if measured_entered:
+        profitable = sum(
+            1
+            for case in measured_entered
+            if case.forward_peak_return_pct is not None
+            and case.forward_peak_return_pct >= min_entry_profit_pct
+        )
+        entry_profitable_rate: float | None = round(profitable / len(measured_entered), 6)
+    else:
+        entry_profitable_rate = None
+
     return {
         "reference_recall": round(float(reference_recall), 6),
         "phase_fidelity": round(float(phase_fidelity), 6),
@@ -1482,6 +1523,7 @@ def _promotion_metrics_from_cases(
         "false_discovery_rate": round(float(false_discovery_rate), 6),
         "robustness_spread": round(float(robustness_spread), 6),
         "holdout_passed": holdout_passed_value,
+        "entry_profitable_rate": entry_profitable_rate,
     }
 
 
@@ -1492,11 +1534,30 @@ def build_promotion_report(
     policy: PromotionGatePolicy = DEFAULT_PROMOTION_GATE_POLICY,
     report_id: str | None = None,
 ) -> PromotionReport:
-    """Build a PromotionReport for the search winner against the gate policy."""
-    metrics = _promotion_metrics_from_cases(winner.case_results)
-    holdout_passed_bool = bool(metrics["holdout_passed"] >= 1.0)
+    """Build a PromotionReport for the search winner against the gate policy.
 
-    gate_results: dict[str, bool] = {
+    Decision logic (W-0088):
+      - **strict path**: all 6 original gates pass → promote_candidate
+      - **trading_edge path**: reference_recall + phase_fidelity +
+        lead_time_bars + robustness_spread + holdout_passed all pass AND
+        entry_profitable_rate gate passes → promote_candidate
+      - otherwise → reject
+
+    The trading_edge path waives ``false_discovery_rate``: a slow-recovery
+    case (KOMA, DYM-class) by definition enters but never reaches the
+    target phase, so FDR=1.0 by construction. Including it would defeat
+    the parallel-path purpose. The path is only available when the
+    policy's ``min_entry_profitable_rate`` is set and the metric was
+    actually measured.
+    """
+    metrics = _promotion_metrics_from_cases(
+        winner.case_results,
+        min_entry_profit_pct=policy.min_entry_profit_pct,
+    )
+    holdout_passed_bool = bool((metrics["holdout_passed"] or 0.0) >= 1.0)
+    entry_profitable_rate = metrics["entry_profitable_rate"]
+
+    strict_gate_results: dict[str, bool] = {
         "reference_recall": metrics["reference_recall"] >= policy.min_reference_recall,
         "phase_fidelity": metrics["phase_fidelity"] >= policy.min_phase_fidelity,
         "lead_time_bars": metrics["lead_time_bars"] >= policy.min_lead_time_bars,
@@ -1505,31 +1566,74 @@ def build_promotion_report(
         "holdout_passed": (not policy.require_holdout_passed) or holdout_passed_bool,
     }
 
-    rejection_reasons: list[str] = []
-    if not gate_results["reference_recall"]:
-        rejection_reasons.append(
-            f"reference_recall {metrics['reference_recall']:.3f} < floor {policy.min_reference_recall:.3f}"
+    trading_edge_available = (
+        policy.min_entry_profitable_rate is not None
+        and entry_profitable_rate is not None
+    )
+    if trading_edge_available:
+        entry_profitable_gate: bool | None = (
+            entry_profitable_rate >= policy.min_entry_profitable_rate
         )
-    if not gate_results["phase_fidelity"]:
-        rejection_reasons.append(
-            f"phase_fidelity {metrics['phase_fidelity']:.3f} < floor {policy.min_phase_fidelity:.3f}"
-        )
-    if not gate_results["lead_time_bars"]:
-        rejection_reasons.append(
-            f"lead_time_bars {metrics['lead_time_bars']:.3f} < floor {policy.min_lead_time_bars:.3f}"
-        )
-    if not gate_results["false_discovery_rate"]:
-        rejection_reasons.append(
-            f"false_discovery_rate {metrics['false_discovery_rate']:.3f} > ceiling {policy.max_false_discovery_rate:.3f}"
-        )
-    if not gate_results["robustness_spread"]:
-        rejection_reasons.append(
-            f"robustness_spread {metrics['robustness_spread']:.3f} > bound {policy.max_robustness_spread:.3f}"
-        )
-    if not gate_results["holdout_passed"]:
-        rejection_reasons.append("holdout_passed=False")
+    elif policy.min_entry_profitable_rate is None:
+        entry_profitable_gate = None  # parallel path disabled
+    else:
+        entry_profitable_gate = False  # enabled but unmeasured
+    gate_results: dict[str, bool] = dict(strict_gate_results)
 
-    decision = "promote_candidate" if all(gate_results.values()) else "reject"
+    strict_pass = all(strict_gate_results.values())
+    trading_edge_pass = (
+        trading_edge_available
+        and entry_profitable_gate is True
+        and strict_gate_results["reference_recall"]
+        and strict_gate_results["phase_fidelity"]
+        and strict_gate_results["lead_time_bars"]
+        and strict_gate_results["robustness_spread"]
+        and strict_gate_results["holdout_passed"]
+    )
+
+    if strict_pass:
+        decision = "promote_candidate"
+        decision_path = "strict"
+    elif trading_edge_pass:
+        decision = "promote_candidate"
+        decision_path = "trading_edge"
+    else:
+        decision = "reject"
+        decision_path = "rejected"
+
+    rejection_reasons: list[str] = []
+    if decision == "reject":
+        if not strict_gate_results["reference_recall"]:
+            rejection_reasons.append(
+                f"reference_recall {metrics['reference_recall']:.3f} < floor {policy.min_reference_recall:.3f}"
+            )
+        if not strict_gate_results["phase_fidelity"]:
+            rejection_reasons.append(
+                f"phase_fidelity {metrics['phase_fidelity']:.3f} < floor {policy.min_phase_fidelity:.3f}"
+            )
+        if not strict_gate_results["lead_time_bars"]:
+            rejection_reasons.append(
+                f"lead_time_bars {metrics['lead_time_bars']:.3f} < floor {policy.min_lead_time_bars:.3f}"
+            )
+        if not strict_gate_results["false_discovery_rate"]:
+            rejection_reasons.append(
+                f"false_discovery_rate {metrics['false_discovery_rate']:.3f} > ceiling {policy.max_false_discovery_rate:.3f}"
+            )
+        if not strict_gate_results["robustness_spread"]:
+            rejection_reasons.append(
+                f"robustness_spread {metrics['robustness_spread']:.3f} > bound {policy.max_robustness_spread:.3f}"
+            )
+        if not strict_gate_results["holdout_passed"]:
+            rejection_reasons.append("holdout_passed=False")
+        if policy.min_entry_profitable_rate is not None:
+            if entry_profitable_rate is None:
+                rejection_reasons.append(
+                    "entry_profitable_rate=unmeasured (no entered case had forward-return data)"
+                )
+            elif not entry_profitable_gate:
+                rejection_reasons.append(
+                    f"entry_profitable_rate {entry_profitable_rate:.3f} < floor {policy.min_entry_profitable_rate:.3f}"
+                )
 
     return PromotionReport(
         promotion_report_id=report_id or str(uuid.uuid4()),
@@ -1546,6 +1650,9 @@ def build_promotion_report(
         gate_results=gate_results,
         decision=decision,
         rejection_reasons=rejection_reasons,
+        entry_profitable_rate=entry_profitable_rate,
+        entry_profitable_gate=entry_profitable_gate,
+        decision_path=decision_path,
     )
 
 
