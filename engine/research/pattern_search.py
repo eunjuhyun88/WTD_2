@@ -2493,6 +2493,48 @@ def build_search_variants(
     return expand_variants_across_timeframes(with_duration, candidate_timeframes)
 
 
+DEFAULT_ENTRY_PROFIT_HORIZON_BARS = 48
+
+
+def _measure_forward_peak_return(
+    *,
+    symbol: str,
+    timeframe: str,
+    entry_ts: datetime,
+    horizon_bars: int,
+) -> tuple[float | None, float | None]:
+    """Return (entry_close, forward_peak_return_pct) measured from entry_ts.
+
+    Loads cached klines and computes the peak close-to-close return across
+    the next ``horizon_bars`` bars after ``entry_ts``. Returns (None, None)
+    when the data is unavailable, the entry bar is missing, or fewer than
+    one forward bar exists. Used by the W-0088 trading-edge promotion path.
+    """
+    if horizon_bars <= 0:
+        return None, None
+    try:
+        klines = load_klines(symbol, timeframe, offline=True)
+    except Exception:
+        return None, None
+    if klines is None or klines.empty:
+        return None, None
+    entry_mask = klines.index >= entry_ts
+    if not entry_mask.any():
+        return None, None
+    entry_pos = int(entry_mask.nonzero()[0][0])
+    forward_window = klines.iloc[entry_pos : entry_pos + horizon_bars + 1]
+    if len(forward_window) < 2:
+        return None, None
+    if "close" not in forward_window.columns:
+        return None, None
+    entry_close = float(forward_window.iloc[0]["close"])
+    if entry_close <= 0:
+        return None, None
+    peak_close = float(forward_window["close"].iloc[1:].max())
+    forward_peak_return_pct = round((peak_close - entry_close) / entry_close * 100.0, 6)
+    return round(entry_close, 8), forward_peak_return_pct
+
+
 def _slice_case_frames(case: BenchmarkCase, *, timeframe: str, warmup_bars: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     klines = load_klines(case.symbol, timeframe, offline=True)
     if klines is None or klines.empty:
@@ -2526,6 +2568,7 @@ def evaluate_variant_on_case(
     *,
     timeframe: str,
     warmup_bars: int = 240,
+    entry_profit_horizon_bars: int = DEFAULT_ENTRY_PROFIT_HORIZON_BARS,
 ) -> VariantCaseResult:
     scaled_warmup_bars = _scale_warmup_bars(
         warmup_bars,
@@ -2559,12 +2602,23 @@ def evaluate_variant_on_case(
     depth_progress = _phase_depth_progress(expected_phase_path, observed_path, replay.current_phase)
     entry_hit = pattern.entry_phase in observed_path
     target_hit = pattern.target_phase in observed_path
-    lead_bars: int | None = None
-    if entry_hit and target_hit:
+    entry_ts: datetime | None = None
+    if entry_hit:
         entry_ts = next(ts for phase, ts in filtered_history if phase == pattern.entry_phase)
+    lead_bars: int | None = None
+    if entry_hit and target_hit and entry_ts is not None:
         target_ts = next(ts for phase, ts in filtered_history if phase == pattern.target_phase)
         bar_minutes = tf_string_to_minutes(timeframe)
         lead_bars = int((target_ts - entry_ts).total_seconds() / (bar_minutes * 60))
+    entry_close: float | None = None
+    forward_peak_return_pct: float | None = None
+    if entry_hit and entry_ts is not None:
+        entry_close, forward_peak_return_pct = _measure_forward_peak_return(
+            symbol=case.symbol,
+            timeframe=timeframe,
+            entry_ts=entry_ts,
+            horizon_bars=entry_profit_horizon_bars,
+        )
     lead_score = _lead_score_from_minutes(
         lead_bars,
         variant_timeframe=timeframe,
@@ -2607,6 +2661,8 @@ def evaluate_variant_on_case(
         score=score,
         failed_reason_counts=attempt_summary.failed_reason_counts,
         missing_block_counts=attempt_summary.missing_block_counts,
+        entry_close=entry_close,
+        forward_peak_return_pct=forward_peak_return_pct,
     )
 
 
