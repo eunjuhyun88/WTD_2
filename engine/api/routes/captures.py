@@ -20,9 +20,9 @@ class CaptureCreateBody(BaseModel):
     capture_kind: CaptureKind = "pattern_candidate"
     user_id: str | None = None
     symbol: str
-    pattern_slug: str
+    pattern_slug: str = ""
     pattern_version: int = 1
-    phase: str
+    phase: str = ""
     timeframe: str = "1h"
     candidate_transition_id: str | None = None
     candidate_id: str | None = None
