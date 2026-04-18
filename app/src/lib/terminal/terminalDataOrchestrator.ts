@@ -254,7 +254,7 @@ export interface LiveSignalsEnvelope {
 }
 
 export async function fetchLiveSignals(): Promise<LiveSignalsEnvelope | null> {
-  const res = await fetch('/api/engine/live-signals');
+  const res = await fetch('/api/live-signals');
   if (!res.ok) return null;
   return res.json() as Promise<LiveSignalsEnvelope>;
 }
@@ -265,7 +265,7 @@ export async function postLiveSignalVerdict(
   note?: string,
 ): Promise<boolean> {
   const signalId = `${signal.symbol}_${signal.scanned_at}`;
-  const res = await fetch('/api/engine/live-signals/verdict', {
+  const res = await fetch('/api/live-signals/verdict', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({

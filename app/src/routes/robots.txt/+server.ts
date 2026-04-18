@@ -6,7 +6,7 @@ import { resolveSiteUrl } from '$lib/seo/site';
 export const config = {
 	runtime: 'nodejs22.x',
 	regions: ['iad1'],
-	memory: 256,
+	memory: 128,
 	maxDuration: 5,
 };
 

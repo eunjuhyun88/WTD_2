@@ -6,7 +6,7 @@
 // NOTE: Response compression should be handled by CDN/reverse proxy.
 
 import type { Handle } from '@sveltejs/kit';
-import { dev } from '$app/environment';
+import { building, dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { readRequestHost, isHostAllowed } from '$lib/server/hostSecurity';
 import { runMutatingApiOriginGuard } from '$lib/server/originGuard';
@@ -16,9 +16,14 @@ import { shouldApplyNoIndexHeader } from '$lib/seo/policy';
 // Immutable asset path pattern (Vite hashed filenames)
 const IMMUTABLE_ASSET = /\/_app\/immutable\//;
 
-assertAppServerRuntimeSecurity(env);
-
 export const handle: Handle = async ({ event, resolve }) => {
+  // Runtime security validation runs once per worker on the first real request.
+  // Skipped during build (prerender) since SECURITY_ALLOWED_HOSTS is not present
+  // at build time and there's no live traffic to defend.
+  if (!building) {
+    assertAppServerRuntimeSecurity(env);
+  }
+
   const requestHost = readRequestHost(event.request);
   if (!isHostAllowed(requestHost)) {
     return new Response('Unrecognized host', { status: 421 });
