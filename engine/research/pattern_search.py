@@ -223,6 +223,11 @@ class VariantCaseResult:
     score: float
     failed_reason_counts: dict[str, int] = field(default_factory=dict)
     missing_block_counts: dict[str, int] = field(default_factory=dict)
+    # Trading-edge measurement (W-0088). Populated when entry_hit and forward
+    # bars beyond the case window are available. forward_peak_return_pct is the
+    # max close-to-close return across `entry_profit_horizon_bars` after entry.
+    entry_close: float | None = None
+    forward_peak_return_pct: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
