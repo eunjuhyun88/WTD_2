@@ -62,6 +62,12 @@ WALLET_TYPE_WHALE = "3"
 # Symbol → (chainIndex, tokenContractAddress)
 # Covers on-chain tokens that trade on Binance as well as on DEXes.
 # BTC/ETH are CEX-native → empty strings → graceful skip.
+#
+# chainIndex values: "501" = Solana, "1" = Ethereum, "" = CEX-only skip.
+# When adding a symbol, verify the contract address against an authoritative
+# source (Coinbase Assets post, CoinGecko, official project channel). Wrong
+# addresses silently return empty signals — they don't crash, but they waste
+# API quota and mislead whale-accumulation detection.
 SYMBOL_CHAIN_MAP: dict[str, tuple[str, str]] = {
     # Solana
     "FARTCOINUSDT":  ("501", "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump"),
@@ -69,6 +75,9 @@ SYMBOL_CHAIN_MAP: dict[str, tuple[str, str]] = {
     "BONKUSDT":      ("501", "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"),
     "JUPUSDT":       ("501", "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"),
     "RAYUSDT":       ("501", "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"),
+    # W-0097 P2 additions — verified via Coinbase Assets on X (2026-04-19).
+    "TRUMPUSDT":     ("501", "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"),
+    "POPCATUSDT":    ("501", "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr"),
     # Ethereum
     "PEPEUSDT":      ("1",   "0x6982508145454Ce325dDbE47a25d4ec3d2311933"),
     "SHIBUSDT":      ("1",   "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE"),
@@ -78,6 +87,56 @@ SYMBOL_CHAIN_MAP: dict[str, tuple[str, str]] = {
     "ETHUSDT":  ("", ""),
     "SOLUSDT":  ("", ""),
 }
+
+
+SUPPORTED_CHAIN_INDICES = frozenset({"", "1", "501"})
+# Minimum realistic lengths for address formats we accept. Ethereum 0x +
+# 40 hex = 42. Solana base58 addresses are typically 32-44 chars.
+_ETH_ADDR_LEN = 42
+_SOL_ADDR_MIN_LEN = 32
+_SOL_ADDR_MAX_LEN = 44
+
+
+def validate_symbol_chain_map(
+    mapping: dict[str, tuple[str, str]] | None = None,
+) -> list[str]:
+    """Return a list of format errors, one per offending entry. Empty = OK.
+
+    Kept as a helper (not module-import assert) so new symbols can be added
+    incrementally without breaking a live service. Called from the test
+    suite as a regression gate.
+    """
+    target = mapping if mapping is not None else SYMBOL_CHAIN_MAP
+    errors: list[str] = []
+    for symbol, pair in target.items():
+        if not isinstance(pair, tuple) or len(pair) != 2:
+            errors.append(f"{symbol}: value must be (chain_index, address) tuple")
+            continue
+        chain, addr = pair
+        if chain not in SUPPORTED_CHAIN_INDICES:
+            errors.append(
+                f"{symbol}: chain_index {chain!r} not in SUPPORTED_CHAIN_INDICES"
+            )
+            continue
+        if chain == "" and addr != "":
+            errors.append(f"{symbol}: CEX-native entry must have empty address")
+            continue
+        if chain == "" and addr == "":
+            continue  # CEX-native, fine
+        if not addr:
+            errors.append(f"{symbol}: on-chain entry missing contract address")
+            continue
+        if chain == "1":
+            if not addr.startswith("0x") or len(addr) != _ETH_ADDR_LEN:
+                errors.append(
+                    f"{symbol}: Ethereum address must be 0x + 40 hex, got {addr!r}"
+                )
+        elif chain == "501":
+            if not (_SOL_ADDR_MIN_LEN <= len(addr) <= _SOL_ADDR_MAX_LEN):
+                errors.append(
+                    f"{symbol}: Solana address length out of {_SOL_ADDR_MIN_LEN}-{_SOL_ADDR_MAX_LEN}"
+                )
+    return errors
 
 
 def _build_signed_headers(method: str, path: str, query_or_body: str = "") -> dict:
