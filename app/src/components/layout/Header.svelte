@@ -7,39 +7,14 @@
   import { openWalletModal } from '$lib/stores/walletModalStore';
   import { hydrateAuthSession } from '$lib/stores/walletStore';
   import { hydrateDomainStores } from '$lib/stores/hydration';
-  import { livePrices } from '$lib/stores/priceStore';
-  import { updatePrice } from '$lib/stores/priceStore';
-  import { fetchPrice } from '$lib/api/binance';
-  import { TOKEN_MAP } from '$lib/data/tokens';
   import { buildDeepLink } from '$lib/utils/deepLinks';
   import { DESKTOP_NAV_SURFACES, isAppSurfaceActive } from '$lib/navigation/appSurfaces';
 
   const gState = $derived($activePairState);
   const wallet = $derived($walletStore);
   const connected = $derived($isWalletConnected);
-  const liveP = $derived($livePrices);
   const activePath = $derived($page.url.pathname);
   const isHomeRoute = $derived(activePath === '/');
-  // Terminal already surfaces symbol + price in its own chart header and
-  // watchlist rail, so the nav ticker becomes 중복 there (W-0102 audit).
-  const isTerminalRoute = $derived(activePath.startsWith('/terminal'));
-
-  let _lastFetchedToken = '';
-
-  $effect(() => {
-    const token = gState.pair.split('/')[0] || 'BTC';
-    if (token !== _lastFetchedToken && !(token in liveP)) {
-      _lastFetchedToken = token;
-      const tokDef = TOKEN_MAP.get(token);
-      if (tokDef) {
-        fetchPrice(tokDef.binanceSymbol).then(price => {
-          if (Number.isFinite(price) && price > 0) {
-            updatePrice(token, price, 'rest');
-          }
-        }).catch(() => {});
-      }
-    }
-  });
 
   onMount(() => {
     void (async () => {
@@ -91,16 +66,6 @@
     disconnectWallet();
   }
 
-  const selectedToken = $derived(gState.pair.split('/')[0] || 'BTC');
-  const selectedPrice = $derived(liveP[selectedToken] || 0);
-  const selectedPriceText = $derived(
-    selectedPrice > 0
-      ? Number(selectedPrice).toLocaleString('en-US', {
-          minimumFractionDigits: selectedPrice >= 1000 ? 0 : 2,
-          maximumFractionDigits: selectedPrice >= 1000 ? 0 : 2
-        })
-      : '---'
-  );
   const mobileContextLabel = $derived(
     activePath === '/'
       ? 'Home'
@@ -123,14 +88,6 @@
       <span class="nav-logo-main">COGOCHI</span>
     </a>
 
-    <!-- Ticker / mobile page context. Hidden on Terminal to avoid duplication
-         with chart-header's canonical `SOL/USDT · Last · 24h%` strip. -->
-    {#if !isTerminalRoute}
-      <div class="selected-ticker">
-        <span class="st-pair">{selectedToken}</span>
-        <span class="st-price">${selectedPriceText}</span>
-      </div>
-    {/if}
     {#if !isHomeRoute}
       <div class="mobile-page-chip">{mobileContextLabel}</div>
     {/if}
@@ -252,18 +209,6 @@
     text-shadow: 0 0 10px rgba(219, 154, 159, 0.06);
   }
 
-  /* Ticker */
-  .selected-ticker {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 8px;
-    height: 28px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(249, 216, 194, 0.08);
-    flex-shrink: 0;
-  }
   .mobile-page-chip {
     display: none;
     align-items: center;
@@ -279,19 +224,6 @@
     letter-spacing: 0.01em;
     flex-shrink: 0;
   }
-  .st-pair {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    color: var(--sc-text-3);
-    letter-spacing: 0.12em;
-  }
-  .st-price {
-    font-family: var(--sc-font-body);
-    font-size: 11px;
-    color: var(--sc-text-0);
-    font-weight: 600;
-  }
-
   /* Desktop Nav Tabs */
   .nav-tab-desktop {
     font-family: var(--sc-font-body);
@@ -456,7 +388,6 @@
     backdrop-filter: blur(20px);
   }
 
-  #nav.home-mode .selected-ticker,
   #nav.home-mode .settings-btn {
     display: none;
   }
@@ -587,7 +518,6 @@
   /* ═══ COMPACT DESKTOP / TABLET (769-1024px) ═══ */
   @media (max-width: 1024px) and (min-width: 769px) {
     .desktop-only { display: none; }
-    .selected-ticker { display: none; }
     #nav { padding: 0 16px; }
     .nav-tab-desktop {
       padding: 0 var(--sc-sp-2);
@@ -620,7 +550,6 @@
     .desktop-only { display: none; }
     .nav-tab-desktop { display: none; }
     .nav-logo-main { font-size: 0.92rem; letter-spacing: 1px; }
-    .selected-ticker { display: none; }
     .mobile-page-chip {
       display: inline-flex;
       padding: 0 10px;
