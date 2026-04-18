@@ -16,7 +16,6 @@ and by downstream go/no-go decisions on Phase C/D work.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
@@ -67,21 +66,10 @@ def compute_flywheel_health(*, now: datetime | None = None) -> dict[str, Any]:
     captures_7d = _count_within(records, record_type="capture", since=since_7d)
     captures_per_day_7d = captures_7d / 7.0
 
-    # axis 1→2: share of captures whose paired outcome exists.
-    capture_records = [r for r in records if r.record_type == "capture"]
-    capture_ids = {r.capture_id for r in capture_records if r.capture_id}
-    outcome_capture_links = sum(
-        1
-        for r in records
-        if r.record_type == "outcome"
-        and r.payload.get("linked_capture_id") in capture_ids
-    )
-    # Fallback to CaptureStore status when LEDGER link metadata missing.
-    outcome_ready_rows = _capture_store.list(status="outcome_ready", limit=10000)
-    verdict_ready_rows = _capture_store.list(status="verdict_ready", limit=10000)
-    total_captures_rows = _capture_store.list(limit=10000)
-    resolved_count = len(outcome_ready_rows) + len(verdict_ready_rows)
-    total_captures = len(total_captures_rows) or len(capture_records)
+    # axis 1→2: share of captures that have been resolved by the outcome resolver.
+    status_counts = _capture_store.count_by_status()
+    resolved_count = status_counts.get("outcome_ready", 0) + status_counts.get("verdict_ready", 0)
+    total_captures = sum(status_counts.values())
     captures_to_outcome_rate = (
         resolved_count / total_captures if total_captures else 0.0
     )
@@ -111,9 +99,6 @@ def compute_flywheel_health(*, now: datetime | None = None) -> dict[str, Any]:
     promotion_gate_pass_rate_30d = (
         model_30d / training_30d if training_30d else 0.0
     )
-
-    _ = outcome_capture_links  # retained for future exact-link metric
-    _ = Path  # type: ignore[assignment]  # import guard; used indirectly
 
     return {
         "captures_per_day_7d": round(captures_per_day_7d, 4),
