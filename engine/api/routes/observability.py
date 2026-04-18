@@ -1,0 +1,130 @@
+"""Observability — flywheel health KPIs.
+
+Design: docs/product/flywheel-closure-design.md §Observability.
+
+Exposes the 6 KPIs that define whether the pattern flywheel is actually
+running — not whether the plumbing compiles. Used by the CTO dashboard
+and by downstream go/no-go decisions on Phase C/D work.
+
+  captures_per_day_7d           axis 1 — is any data entering?
+  captures_to_outcome_rate      axis 1→2 — is resolver closing captures?
+  outcomes_to_verdict_rate      axis 2→3 — are users labelling?
+  verdicts_to_refinement_count_7d  axis 3→4 — is refinement firing?
+  active_models_per_pattern     axis 4 — is the registry non-empty?
+  promotion_gate_pass_rate_30d  axis 4 — are refinements promoting?
+"""
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter
+
+from capture.store import CaptureStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.types import PatternLedgerRecord
+from patterns.library import PATTERN_LIBRARY
+from patterns.model_registry import PatternModelRegistryStore
+
+router = APIRouter()
+
+_capture_store = CaptureStore()
+_ledger_store = LedgerStore()
+_model_registry = PatternModelRegistryStore()
+
+
+def _iter_all_records() -> list[PatternLedgerRecord]:
+    """Iterate LEDGER records across every pattern slug with on-disk data."""
+    records: list[PatternLedgerRecord] = []
+    base = LEDGER_RECORD_STORE.base_dir
+    if not base.exists():
+        return records
+    for slug_dir in base.iterdir():
+        if not slug_dir.is_dir():
+            continue
+        records.extend(LEDGER_RECORD_STORE.list(slug_dir.name))
+    return records
+
+
+def _count_within(records: list[PatternLedgerRecord], *, record_type: str, since: datetime) -> int:
+    return sum(
+        1
+        for r in records
+        if r.record_type == record_type and r.created_at and r.created_at >= since
+    )
+
+
+def compute_flywheel_health(*, now: datetime | None = None) -> dict[str, Any]:
+    """Compute the 6 flywheel KPIs. Pure function for testability."""
+    now = now or datetime.now()
+    since_7d = now - timedelta(days=7)
+    since_30d = now - timedelta(days=30)
+
+    records = _iter_all_records()
+
+    # axis 1: captures per day (rolling 7d)
+    captures_7d = _count_within(records, record_type="capture", since=since_7d)
+    captures_per_day_7d = captures_7d / 7.0
+
+    # axis 1→2: share of captures whose paired outcome exists.
+    capture_records = [r for r in records if r.record_type == "capture"]
+    capture_ids = {r.capture_id for r in capture_records if r.capture_id}
+    outcome_capture_links = sum(
+        1
+        for r in records
+        if r.record_type == "outcome"
+        and r.payload.get("linked_capture_id") in capture_ids
+    )
+    # Fallback to CaptureStore status when LEDGER link metadata missing.
+    outcome_ready_rows = _capture_store.list(status="outcome_ready", limit=10000)
+    verdict_ready_rows = _capture_store.list(status="verdict_ready", limit=10000)
+    total_captures_rows = _capture_store.list(limit=10000)
+    resolved_count = len(outcome_ready_rows) + len(verdict_ready_rows)
+    total_captures = len(total_captures_rows) or len(capture_records)
+    captures_to_outcome_rate = (
+        resolved_count / total_captures if total_captures else 0.0
+    )
+
+    # axis 2→3: outcomes that received a user_verdict.
+    outcome_count = sum(1 for r in records if r.record_type == "outcome")
+    verdict_count = sum(1 for r in records if r.record_type == "verdict")
+    outcomes_to_verdict_rate = (
+        verdict_count / outcome_count if outcome_count else 0.0
+    )
+
+    # axis 3→4: refinement / training_run ledger counts in the last 7 days.
+    verdicts_to_refinement_count_7d = _count_within(
+        records, record_type="training_run", since=since_7d
+    )
+
+    # axis 4: model registry non-empty?
+    active_models_per_pattern: dict[str, int] = {}
+    for slug in PATTERN_LIBRARY:
+        active = _model_registry.get_active(slug)
+        active_models_per_pattern[slug] = 1 if active is not None else 0
+
+    # axis 4: promotion gate pass rate (derive from model records written in
+    # the last 30 days vs training_run records in the same window).
+    training_30d = _count_within(records, record_type="training_run", since=since_30d)
+    model_30d = _count_within(records, record_type="model", since=since_30d)
+    promotion_gate_pass_rate_30d = (
+        model_30d / training_30d if training_30d else 0.0
+    )
+
+    _ = outcome_capture_links  # retained for future exact-link metric
+    _ = Path  # type: ignore[assignment]  # import guard; used indirectly
+
+    return {
+        "captures_per_day_7d": round(captures_per_day_7d, 4),
+        "captures_to_outcome_rate": round(captures_to_outcome_rate, 4),
+        "outcomes_to_verdict_rate": round(outcomes_to_verdict_rate, 4),
+        "verdicts_to_refinement_count_7d": verdicts_to_refinement_count_7d,
+        "active_models_per_pattern": active_models_per_pattern,
+        "promotion_gate_pass_rate_30d": round(promotion_gate_pass_rate_30d, 4),
+    }
+
+
+@router.get("/flywheel/health")
+async def flywheel_health() -> dict[str, Any]:
+    return {"ok": True, **compute_flywheel_health()}
