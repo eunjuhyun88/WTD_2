@@ -1,0 +1,221 @@
+"""OKX On-chain Smart Money real-time signal fetcher.
+
+Endpoint: web3.okx.com/api/v6/dex/market/signal/list (via MCP or direct API)
+
+Design: The OKX Signal API is a real-time feed — no historical daily data.
+This module provides a TTL-cached lookup function used directly by the
+smart_money_accumulation confirmation block at score time.
+
+API returns signals triggered when tracked wallets (Smart Money / KOL / Whales)
+make large trades. Each signal includes:
+    - walletType  : 1=Smart Money, 2=KOL, 3=Whale
+    - amountUsd   : total USD traded in the signal event
+    - soldRatioPercent : % of position already sold (low = accumulating)
+    - triggerWalletCount : # of distinct tracked wallets in the event
+    - timestamp   : unix ms
+
+Supported chains: Solana (501), Ethereum (1), BSC (56), Base (8453).
+BTC (native chain) not supported — returns empty result gracefully.
+
+Auth: OKX_API_KEY + OKX_SECRET_KEY + OKX_PASSPHRASE in env.
+Falls back to public sandbox key if env absent (rate-limited, dev only).
+
+Anchor:
+    OKX Onchain OS Signal API — "Smart Money" tag = wallets with sustained
+    high win-rate and PnL over rolling 30d window, tracked by OKX on-chain
+    analytics. Analogous to Nansen Smart Money label.
+"""
+from __future__ import annotations
+
+import base64
+import hashlib
+import hmac as hmac_mod
+import json
+import logging
+import os
+import subprocess
+import time
+import urllib.request
+from typing import Optional
+
+log = logging.getLogger("engine.data_cache.okx_smart_money")
+
+_BASE = "https://web3.okx.com"
+_TIMEOUT = 15
+_UA = "cogochi-autoresearch/data_cache"
+
+# Public sandbox key from OKX docs — dev/testing only
+_SANDBOX_KEY = "d573a84c-8e79-4a35-b0c6-427e9ad2478d"
+
+# TTL for cached signal results (seconds)
+_CACHE_TTL = 300  # 5 min
+
+# In-memory cache: key → (timestamp, result)
+_CACHE: dict[str, tuple[float, list[dict]]] = {}
+
+# walletType: 1=Smart Money, 2=KOL, 3=Whale (MCP convention)
+WALLET_TYPE_SMART_MONEY = "1"
+WALLET_TYPE_KOL = "2"
+WALLET_TYPE_WHALE = "3"
+
+# Symbol → (chainIndex, tokenContractAddress)
+# Covers on-chain tokens that trade on Binance as well as on DEXes.
+# BTC/ETH are CEX-native → empty strings → graceful skip.
+SYMBOL_CHAIN_MAP: dict[str, tuple[str, str]] = {
+    # Solana
+    "FARTCOINUSDT":  ("501", "9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump"),
+    "WIFUSDT":       ("501", "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm"),
+    "BONKUSDT":      ("501", "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"),
+    "JUPUSDT":       ("501", "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"),
+    "RAYUSDT":       ("501", "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"),
+    # Ethereum
+    "PEPEUSDT":      ("1",   "0x6982508145454Ce325dDbE47a25d4ec3d2311933"),
+    "SHIBUSDT":      ("1",   "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE"),
+    "FLOKIUSDT":     ("1",   "0xcf0C122c6b73ff809C693DB761e7BaeBe62b6a2E"),
+    # CEX-native perps → not on-chain
+    "BTCUSDT": ("", ""),
+    "ETHUSDT":  ("", ""),
+    "SOLUSDT":  ("", ""),
+}
+
+
+def _build_signed_headers(method: str, path: str, query: str = "") -> dict:
+    """Build OKX HMAC-signed request headers from env vars."""
+    api_key = os.environ.get("OKX_API_KEY", "")
+    secret_key = os.environ.get("OKX_SECRET_KEY", "")
+    passphrase = os.environ.get("OKX_PASSPHRASE", "")
+
+    if not all([api_key, secret_key, passphrase]):
+        return {
+            "OK-ACCESS-KEY": _SANDBOX_KEY,
+            "User-Agent": _UA,
+            "Accept": "application/json",
+        }
+
+    from datetime import datetime, timezone
+    ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    pre_hash = ts + method + path + (f"?{query}" if query else "")
+    sig = base64.b64encode(
+        hmac_mod.new(secret_key.encode(), pre_hash.encode(), hashlib.sha256).digest()
+    ).decode()
+
+    return {
+        "OK-ACCESS-KEY": api_key,
+        "OK-ACCESS-SIGN": sig,
+        "OK-ACCESS-TIMESTAMP": ts,
+        "OK-ACCESS-PASSPHRASE": passphrase,
+        "User-Agent": _UA,
+        "Accept": "application/json",
+    }
+
+
+def _fetch_signals_raw(
+    chain_index: str,
+    token_address: str,
+    wallet_types: str = "1,2,3",
+    min_amount_usd: float = 1000.0,
+    limit: int = 100,
+) -> list[dict]:
+    """Fetch raw signal list from OKX API."""
+    path = "/api/v6/dex/market/signal/list"
+    params: dict[str, str] = {
+        "chainIndex": chain_index,
+        "tokenAddress": token_address,
+        "walletType": wallet_types,
+        "minAmountUsd": str(min_amount_usd),
+        "limit": str(limit),
+    }
+    query = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+    url = f"{_BASE}{path}?{query}"
+
+    headers = _build_signed_headers("GET", path, query)
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if data.get("code") not in ("0", 0):
+                log.debug("OKX signal error [%s]: %s", data.get("code"), data.get("msg"))
+                return []
+            return data.get("data") or []
+    except Exception as exc:
+        log.debug("OKX signal fetch failed: %s", exc)
+        return []
+
+
+def get_smart_money_signals(
+    symbol: str,
+    wallet_types: str = "1,2,3",
+    min_amount_usd: float = 1000.0,
+    max_age_hours: float = 24.0,
+) -> list[dict]:
+    """Return recent smart money signals for `symbol` (TTL-cached).
+
+    Args:
+        symbol:         Binance-style symbol e.g. "FARTCOINUSDT"
+        wallet_types:   Comma-separated wallet type IDs (1=Smart Money, 2=KOL, 3=Whale)
+        min_amount_usd: Minimum trade size in USD
+        max_age_hours:  Filter out signals older than this many hours
+
+    Returns:
+        List of signal dicts, empty if symbol not on-chain or on failure.
+    """
+    chain_index, token_address = SYMBOL_CHAIN_MAP.get(symbol, ("", ""))
+    if not chain_index or not token_address:
+        return []
+
+    cache_key = f"{symbol}:{wallet_types}:{min_amount_usd}"
+    cached_ts, cached_result = _CACHE.get(cache_key, (0.0, []))
+    if time.time() - cached_ts < _CACHE_TTL:
+        return cached_result
+
+    signals = _fetch_signals_raw(chain_index, token_address, wallet_types, min_amount_usd)
+
+    # Filter by age
+    cutoff_ms = (time.time() - max_age_hours * 3600) * 1000
+    signals = [s for s in signals if int(s.get("timestamp", 0)) >= cutoff_ms]
+
+    _CACHE[cache_key] = (time.time(), signals)
+    return signals
+
+
+def compute_smart_money_score(signals: list[dict]) -> dict:
+    """Aggregate signals into a structured score dict.
+
+    Returns:
+        {
+            "buy_wallet_count"  : # unique buying wallets,
+            "sell_wallet_count" : # unique selling wallets (high soldRatio),
+            "net_buy_usd"       : net USD (buy - sell),
+            "accumulating"      : True if buy_wallet_count >= 2 and net_buy_usd > 0,
+        }
+    """
+    buy_wallets: set[str] = set()
+    sell_wallets: set[str] = set()
+    total_buy_usd = 0.0
+    total_sell_usd = 0.0
+
+    for sig in signals:
+        amount = float(sig.get("amountUsd", 0))
+        sold_pct = float(sig.get("soldRatioPercent", 0)) / 100.0
+        buy_usd = amount * (1 - sold_pct)
+        sell_usd = amount * sold_pct
+
+        for addr in sig.get("triggerWalletAddress", "").split(","):
+            addr = addr.strip()
+            if not addr:
+                continue
+            if sold_pct < 0.5:
+                buy_wallets.add(addr)
+            else:
+                sell_wallets.add(addr)
+
+        total_buy_usd += buy_usd
+        total_sell_usd += sell_usd
+
+    net = total_buy_usd - total_sell_usd
+    return {
+        "buy_wallet_count": len(buy_wallets),
+        "sell_wallet_count": len(sell_wallets),
+        "net_buy_usd": net,
+        "accumulating": len(buy_wallets) >= 2 and net > 0,
+    }
