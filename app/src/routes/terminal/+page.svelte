@@ -1890,11 +1890,10 @@
   /* Mobile */
   @media (max-width: 768px) {
     .terminal-page {
-      width: min(100%, calc(100% - 16px));
-      height: auto;
-      min-height: calc(100dvh - 12px);
-      padding-bottom: max(10px, var(--sc-consent-reserved-h, 0px));
-      overflow: visible;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
     .terminal-shell-head {
       padding: 8px 10px 6px;

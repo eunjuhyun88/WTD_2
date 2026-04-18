@@ -94,8 +94,8 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100dvh;
-    min-height: 100dvh;
+    height: 100%;
+    min-height: 0;
     overflow: hidden;
     background: var(--sc-terminal-bg, #0a0c10);
     /* Reserve space at the bottom for the fixed BottomTabBar */
