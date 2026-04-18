@@ -2,6 +2,23 @@
 // Source: engine/scripts/export_openapi.py
 
 export interface paths {
+    "/chart/klines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Chart Klines */
+        get: operations["chart_klines_chart_klines_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/score": {
         parameters: {
             query?: never;
@@ -616,6 +633,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/captures/bulk_import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Import Captures
+         * @description Cold-start lane: ingest N founder hypotheses in one call.
+         *
+         *     Every row becomes a ``manual_hypothesis`` CaptureRecord with
+         *     ``status='pending_outcome'`` so outcome_resolver (scanner Job 3b)
+         *     picks it up on the next window tick.
+         */
+        post: operations["bulk_import_captures_captures_bulk_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Label Capture Verdict
+         * @description Attach a founder verdict to a resolved capture (axis 3 close).
+         *
+         *     Requires status='outcome_ready'. The linked PatternOutcome is updated
+         *     with user_verdict, a LEDGER:verdict record is appended, and the capture
+         *     status advances to 'verdict_ready'.
+         */
+        post: operations["label_capture_verdict_captures__capture_id__verdict_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/captures/{capture_id}": {
         parameters: {
             query?: never;
@@ -899,6 +964,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/observability/flywheel/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Flywheel Health */
+        get: operations["flywheel_health_observability_flywheel_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -1035,6 +1117,52 @@ export interface components {
             /** Disqualifiers */
             disqualifiers?: string[];
         };
+        /** BulkImportBody */
+        BulkImportBody: {
+            /** User Id */
+            user_id: string;
+            /** Rows */
+            rows: components["schemas"]["BulkImportRow"][];
+        };
+        /**
+         * BulkImportRow
+         * @description One row in a founder bulk-import payload.
+         *
+         *     Constraints are intentionally minimal to ease CSV translation — the
+         *     resolver handles missing OHLCV gracefully by leaving the capture as
+         *     pending_outcome for the next tick.
+         */
+        BulkImportRow: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Timeframe
+             * @default 1h
+             */
+            timeframe: string;
+            /**
+             * Captured At Ms
+             * @description Unix ms when the setup was observed
+             */
+            captured_at_ms: number;
+            /**
+             * Pattern Slug
+             * @default
+             */
+            pattern_slug: string;
+            /**
+             * Phase
+             * @default
+             */
+            phase: string;
+            /** User Note */
+            user_note?: string | null;
+            /**
+             * Entry Price
+             * @description Optional hint. Resolver derives entry_price from OHLCV regardless.
+             */
+            entry_price?: number | null;
+        };
         /** CaptureCreateBody */
         CaptureCreateBody: {
             /**
@@ -1047,14 +1175,20 @@ export interface components {
             user_id?: string | null;
             /** Symbol */
             symbol: string;
-            /** Pattern Slug */
+            /**
+             * Pattern Slug
+             * @default
+             */
             pattern_slug: string;
             /**
              * Pattern Version
              * @default 1
              */
             pattern_version: number;
-            /** Phase */
+            /**
+             * Phase
+             * @default
+             */
             phase: string;
             /**
              * Timeframe
@@ -1900,6 +2034,16 @@ export interface components {
             /** C */
             c: number;
         };
+        /** VerdictBody */
+        VerdictBody: {
+            /**
+             * User Verdict
+             * @enum {string}
+             */
+            user_verdict: "valid" | "invalid" | "missed";
+            /** User Note */
+            user_note?: string | null;
+        };
         /** VerdictRequest */
         VerdictRequest: {
             /** Entry Price */
@@ -2044,6 +2188,44 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    chart_klines_chart_klines_get: {
+        parameters: {
+            query?: {
+                /** @description Trading pair, e.g. BTCUSDT */
+                symbol?: string;
+                /** @description Timeframe string, e.g. 1h / 4h / 1d */
+                tf?: string;
+                /** @description Number of bars to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     score_score_post: {
         parameters: {
             query?: never;
@@ -3051,6 +3233,78 @@ export interface operations {
             };
         };
     };
+    bulk_import_captures_captures_bulk_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkImportBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    label_capture_verdict_captures__capture_id__verdict_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerdictBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_capture_captures__capture_id__get: {
         parameters: {
             query?: never;
@@ -3559,6 +3813,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    flywheel_health_observability_flywheel_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
