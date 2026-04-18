@@ -6,8 +6,6 @@
     assetsCount?: number;
     marketRailOpen?: boolean;
     onToggleMarketRail?: () => void;
-    tf?: string;
-    onTfChange?: (tf: string) => void;
     price?: number | null;
     change24h?: number | null;
   }
@@ -16,19 +14,11 @@
     assetsCount = 0,
     marketRailOpen = false,
     onToggleMarketRail,
-    tf = '4h',
-    onTfChange,
     price = null,
     change24h = null,
   }: Props = $props();
 
   let showSymbolDrop = $state(false);
-
-  const TF_LIST = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
-
-  function normTf(t: string) {
-    return t.toLowerCase();
-  }
 
   function fmtPrice(p: number): string {
     if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -57,20 +47,6 @@
       {/if}
     </div>
   {/if}
-
-  <div class="cmd-divider" aria-hidden="true"></div>
-
-  <!-- Timeframe pills -->
-  <div class="tf-group" role="group" aria-label="Timeframe">
-    {#each TF_LIST as t}
-      <button
-        class="tf-pill"
-        class:active={normTf(tf) === normTf(t)}
-        type="button"
-        onclick={() => onTfChange?.(t)}
-      >{t.toUpperCase()}</button>
-    {/each}
-  </div>
 
   <div class="cmd-spacer" aria-hidden="true"></div>
 
@@ -172,46 +148,6 @@
   }
   .price-delta.up { color: var(--tv-green, #22AB94); }
   .price-delta.dn { color: var(--tv-red, #F23645); }
-
-  /* Divider */
-  .cmd-divider {
-    width: 1px;
-    height: 18px;
-    background: var(--tv-border-strong, rgba(255,255,255,0.11));
-    flex-shrink: 0;
-    margin-right: 12px;
-  }
-
-  /* TF pills */
-  .tf-group {
-    display: flex;
-    align-items: center;
-    gap: 1px;
-    flex-shrink: 0;
-  }
-  .tf-pill {
-    padding: 3px 8px;
-    border-radius: 3px;
-    border: none;
-    background: transparent;
-    color: var(--tv-text-2, rgba(209,212,220,0.4));
-    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition: color 80ms, background 80ms;
-    min-height: 26px;
-  }
-  .tf-pill:hover {
-    color: var(--tv-text-0, #D1D4DC);
-    background: rgba(255,255,255,0.06);
-  }
-  .tf-pill.active {
-    color: var(--tv-text-0, #D1D4DC);
-    background: rgba(255,255,255,0.10);
-    font-weight: 700;
-  }
 
   /* Spacer */
   .cmd-spacer { flex: 1 1 auto; min-width: 8px; }
