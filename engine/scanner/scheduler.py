@@ -38,6 +38,7 @@ from scanner.alerts import (
 from scanner.jobs.auto_evaluate import auto_evaluate_job
 from scanner.jobs.outcome_resolver import outcome_resolver_job
 from scanner.jobs.pattern_refinement import pattern_refinement_job
+from scanner.jobs.refinement_trigger import refinement_trigger_job
 from scanner.jobs.pattern_scan import pattern_scan_job
 from scanner.jobs.universe_scan import (
     push_alert,
@@ -149,6 +150,10 @@ async def _pattern_refinement_job() -> None:
     await pattern_refinement_job(auto_train_candidate=PATTERN_REFINEMENT_AUTO_TRAIN)
 
 
+async def _refinement_trigger_job() -> None:
+    await refinement_trigger_job()
+
+
 def start_scheduler() -> None:
     """Start the APScheduler background scan loop."""
     global _scheduler
@@ -205,6 +210,19 @@ def start_scheduler() -> None:
         max_instances=1,
         coalesce=True,
         misfire_grace_time=300,
+    )
+
+    # Job 3c: Refinement trigger (flywheel axis 3→4) — daily, data-driven
+    # Fires pattern_refinement only when verdict_count >= 10 AND days_since >= 7.
+    _scheduler.add_job(
+        _refinement_trigger_job,
+        trigger="interval",
+        seconds=86400,
+        id="refinement_trigger",
+        name="Data-driven refinement trigger",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=3600,
     )
 
     if PATTERN_REFINEMENT_ENABLED:
