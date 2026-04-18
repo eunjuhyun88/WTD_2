@@ -77,8 +77,6 @@ _BLOCK_CATEGORIES: dict[str, BlockCategory] = {
     "oi_change": BlockCategory.CONFIRMATION,
     "cvd_state_eq": BlockCategory.CONFIRMATION,
     "cvd_buying": BlockCategory.CONFIRMATION,
-    "absorption_signal": BlockCategory.CONFIRMATION,
-    "alt_btc_accel_ratio": BlockCategory.CONFIRMATION,
     "volume_dryup": BlockCategory.CONFIRMATION,
     "coinbase_premium_positive": BlockCategory.CONFIRMATION,
     "smart_money_accumulation": BlockCategory.CONFIRMATION,
