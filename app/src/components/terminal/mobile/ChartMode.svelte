@@ -34,6 +34,24 @@
   const symbol = $derived($activePairState.pair.replace('/', ''));
   const tf = $derived($activePairState.timeframe);
 
+  // CanvasHost ref for imperative setCandles() call
+  let canvasRef = $state<ReturnType<typeof CanvasHost> | null>(null);
+
+  // Fetch klines whenever symbol or tf changes and push to canvas
+  $effect(() => {
+    const sym = symbol;
+    const timeframe = tf;
+    if (!browser || !sym) return;
+    fetch(`/api/chart/klines?symbol=${encodeURIComponent(sym)}&tf=${encodeURIComponent(timeframe)}&limit=500`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        if (data?.klines?.length && canvasRef) {
+          canvasRef.setCandles(data.klines);
+        }
+      })
+      .catch(() => {/* silent — chart stays empty on network error */});
+  });
+
   /**
    * First-use drag hint — visible for 3 seconds then fades.
    * Only shown when chart data is present and save mode not active.
@@ -70,7 +88,7 @@
 
 <div class="chart-mode">
   <div class="canvas-area">
-    <CanvasHost {symbol} {tf} />
+    <CanvasHost bind:this={canvasRef} {symbol} {tf} />
     <!-- Layer 2 overlay — pointer-events: none on container (W-0086) -->
     <div class="canvas-overlay">
       <div class="overlay-topright">
