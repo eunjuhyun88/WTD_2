@@ -1661,19 +1661,12 @@
   }
 
   .terminal-shell-head {
+    /* Transparent passthrough — cmd-bar owns all its own styling */
     display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 8px 10px 6px;
-    background:
-      linear-gradient(180deg, rgba(9, 12, 17, 0.96), rgba(9, 12, 17, 0.88));
+    align-items: stretch;
     position: sticky;
     top: 0;
     z-index: 25;
-    border-radius: 8px 8px 0 0;
-    backdrop-filter: blur(18px);
-    border: 1px solid rgba(255,255,255,0.04);
-    border-bottom-color: rgba(255,255,255,0.02);
   }
 
   /* ── Lab CTA banner ── */

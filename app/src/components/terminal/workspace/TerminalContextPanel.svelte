@@ -167,10 +167,23 @@
 </script>
 
 <aside class="context-panel">
+  {#if verdict}
+    <div class="verdict-hero" class:bull={verdict.direction === 'bullish'} class:bear={verdict.direction === 'bearish'}>
+      <div class="vh-top">
+        <span class="vh-dir">{verdict.direction?.toUpperCase() ?? '—'}</span>
+        <span class="vh-action">{verdict.action || '—'}</span>
+      </div>
+      {#if verdict.invalidation}
+        <div class="vh-inv">
+          <span class="vh-inv-label">If wrong</span>
+          <span class="vh-inv-val">{verdict.invalidation}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
   <div class="panel-header">
     <div class="panel-symbol-line">
-      <span class="panel-context">Analysis</span>
-      <span class="panel-symbol">{panelSymbol}/USDT</span>
+      <span class="panel-symbol">{panelSymbol}/USDT · {panelTimeframe}</span>
     </div>
     <div class="panel-actions">
       <button type="button" class:active={isPinned} onclick={() => onPinToggle?.()}>{isPinned ? 'Pinned' : 'Pin'}</button>
@@ -448,20 +461,6 @@
     {/if}
   </div>
 
-  <div class="panel-conclusion">
-    <div class="conclusion-row">
-      <span class="conclusion-label">Bias</span>
-      <span class="conclusion-value">{panelConclusion.bias}</span>
-    </div>
-    <div class="conclusion-row">
-      <span class="conclusion-label">Action</span>
-      <span class="conclusion-value">{panelConclusion.action}</span>
-    </div>
-    <div class="conclusion-row">
-      <span class="conclusion-label">Invalidation</span>
-      <span class="conclusion-value">{panelConclusion.invalidation}</span>
-    </div>
-  </div>
 </aside>
 
 <style>
@@ -497,14 +496,7 @@
     color: rgba(247,242,234,0.92);
     white-space: nowrap;
   }
-  .panel-context {
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(247,242,234,0.34);
-  }
-  .panel-actions {
+.panel-actions {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -872,6 +864,72 @@
     margin: 0;
   }
 
+  /* Verdict hero — top of panel, always visible */
+  .verdict-hero {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 9px 10px 8px;
+    background: rgba(255,255,255,0.015);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .verdict-hero.bull {
+    background: rgba(34,171,148,0.055);
+    border-bottom-color: rgba(34,171,148,0.14);
+  }
+  .verdict-hero.bear {
+    background: rgba(242,54,69,0.055);
+    border-bottom-color: rgba(242,54,69,0.14);
+  }
+  .vh-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .vh-dir {
+    font-family: var(--sc-font-mono);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: rgba(209,212,220,0.55);
+    flex-shrink: 0;
+  }
+  .verdict-hero.bull .vh-dir { color: var(--tv-green, #22AB94); }
+  .verdict-hero.bear .vh-dir { color: var(--tv-red, #F23645); }
+  .vh-action {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(209,212,220,0.52);
+    flex: 1;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vh-inv {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .vh-inv-label {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(209,212,220,0.28);
+    flex-shrink: 0;
+  }
+  .vh-inv-val {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(209,212,220,0.62);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .stop { color: var(--sc-bad, #cf7f8f) !important; }
   .tp   { color: var(--sc-good, #adca7c) !important; }
   .news-list { display: flex; flex-direction: column; gap: 4px; }
@@ -879,37 +937,5 @@
   .news-time { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); }
   .news-title { font-size: 10px; color: var(--sc-text-1); margin: 0; line-height: 1.25; }
 
-  .panel-conclusion {
-    flex-shrink: 0;
-    display: grid;
-    gap: 1px;
-    padding: 6px 7px 7px;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.02)),
-      rgba(5, 7, 10, 0.96);
-  }
-
-  .conclusion-row {
-    display: grid;
-    grid-template-columns: 56px minmax(0, 1fr);
-    gap: 5px;
-    align-items: start;
-  }
-
-  .conclusion-label {
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(247,242,234,0.42);
-  }
-
-  .conclusion-value {
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    line-height: 1.25;
-    color: rgba(247,242,234,0.82);
-  }
 
 </style>
