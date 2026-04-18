@@ -1,11 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-// Pin to Asia regions — Binance FAPI is geo-restricted from US (Vercel IAD1 gets 451).
-export const config = {
-  regions: ['sin1', 'icn1', 'hnd1'],
-};
-
 /**
  * GET /api/market/ohlcv?symbol=BTCUSDT&interval=1h&limit=100
  *

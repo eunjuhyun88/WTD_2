@@ -10,7 +10,7 @@ const config = {
 	kit: {
 		adapter: adapter({
 			runtime: 'nodejs22.x',
-			regions: ['iad1'],
+			regions: ['sin1'],
 			memory: 1024,
 			maxDuration: 60
 		}),
