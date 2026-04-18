@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from api.limiter import limiter
 from api.schemas import ScoreRequest, ScoreResponse
 from api.routes.score_thread import score_sync
 from scanner.feature_calc import MIN_HISTORY_BARS
@@ -17,7 +18,8 @@ router = APIRouter()
 
 
 @router.post("", response_model=ScoreResponse)
-async def score(req: ScoreRequest) -> ScoreResponse:
+@limiter.limit("60/minute")
+async def score(request: Request, req: ScoreRequest) -> ScoreResponse:
     """Compute features + ML score for the latest bar."""
     if len(req.klines) < MIN_HISTORY_BARS:
         raise HTTPException(

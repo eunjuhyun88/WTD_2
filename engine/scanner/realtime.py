@@ -28,6 +28,8 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 import httpx
+
+from cache.http_client import get_client
 import numpy as np
 import pandas as pd
 
@@ -254,9 +256,9 @@ async def run_scan(
             except Exception as exc:
                 errors.append(f"{sym}: {exc}")
 
-    async with httpx.AsyncClient() as client:
-        tasks = [scan_one(client, sym) for sym in symbols]
-        await asyncio.gather(*tasks, return_exceptions=True)
+    client = get_client()
+    tasks = [scan_one(client, sym) for sym in symbols]
+    await asyncio.gather(*tasks, return_exceptions=True)
 
     duration = time.monotonic() - start
     log.info(

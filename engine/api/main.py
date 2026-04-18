@@ -18,9 +18,13 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler  # type: ignore[import]
+from slowapi.errors import RateLimitExceeded  # type: ignore[import]
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from api.limiter import limiter
 from api.routes import backtest, captures, challenge, chart, ctx, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability
+from cache.http_client import close_client, init_client
 from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
@@ -59,7 +63,10 @@ def scheduler_enabled() -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
-    # Redis pool — must be first so downstream warm-ups can write
+    # HTTP pool — shared AsyncClient for all engine outbound requests
+    await init_client()
+
+    # Redis pool — must be second so downstream warm-ups can write to cache
     await init_pool()
 
     # Warm up L0 GlobalCtx cache before serving requests
@@ -101,6 +108,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     else:
         log.info("Engine shutdown")
     await close_pool()
+    await close_client()
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +130,9 @@ app = FastAPI(
     openapi_url=openapi_url,
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=build_allowed_hosts())
 

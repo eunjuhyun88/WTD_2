@@ -19,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from cache.http_client import get_client
 from market_engine.types import GlobalCtx
 
 log = logging.getLogger("engine.ctx_cache")
@@ -98,13 +99,13 @@ async def refresh_global_ctx() -> GlobalCtx:
         log.info("GlobalCtx refresh starting …")
         new_ctx = GlobalCtx()
 
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            results = await asyncio.gather(
-                _fetch_fear_greed(client, new_ctx),
-                _fetch_krw_and_korean_prices(client, new_ctx),
-                _fetch_btc_onchain(client, new_ctx),
-                return_exceptions=True,
-            )
+        client = get_client()
+        results = await asyncio.gather(
+            _fetch_fear_greed(client, new_ctx),
+            _fetch_krw_and_korean_prices(client, new_ctx),
+            _fetch_btc_onchain(client, new_ctx),
+            return_exceptions=True,
+        )
 
         for r in results:
             if isinstance(r, Exception):
