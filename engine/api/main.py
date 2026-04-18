@@ -20,7 +20,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from api.routes import backtest, captures, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals
+from api.routes import backtest, captures, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
 from security_runtime import (
@@ -140,6 +140,7 @@ app.include_router(memory.router, prefix="/memory", tags=["memory"])
 app.include_router(screener.router, prefix="/screener", tags=["screener"])
 app.include_router(rag.router, prefix="/rag", tags=["rag"])
 app.include_router(live_signals.router, prefix="/live-signals", tags=["live-signals"])
+app.include_router(observability.router, prefix="/observability", tags=["observability"])
 
 
 @app.get("/healthz", tags=["meta"])
