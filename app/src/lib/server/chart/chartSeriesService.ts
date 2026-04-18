@@ -51,6 +51,7 @@ export type ChartSeriesResult = {
 type FetchLike = typeof fetch;
 
 import { alignHtfSeriesToLtfTimes, isStrictlyHigherTf } from '$lib/chart/mtfAlign';
+import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
 
 const CHART_CACHE_TTL_MS = 15_000;
 const chartCache = new Map<string, { expiresAt: number; payload: ChartPayload }>();
@@ -188,6 +189,13 @@ export async function getChartSeries(
       payload: cached.payload,
       cacheStatus: 'hit',
     };
+  }
+
+  // Check shared Redis cache (cross-instance, degrades gracefully if unavailable)
+  const shared = await getSharedCache<ChartPayload>('chart', cacheKey);
+  if (shared) {
+    chartCache.set(cacheKey, { expiresAt: now + CHART_CACHE_TTL_MS, payload: shared });
+    return { payload: shared, cacheStatus: 'hit' };
   }
 
   const [klinesResp, fundingResp] = await Promise.all([
@@ -386,6 +394,8 @@ export async function getChartSeries(
     expiresAt: now + CHART_CACHE_TTL_MS,
     payload,
   });
+  // Populate shared cache for other Vercel instances (fire-and-forget)
+  void setSharedCache('chart', cacheKey, payload, CHART_CACHE_TTL_MS);
 
   return {
     payload,

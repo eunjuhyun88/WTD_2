@@ -183,3 +183,9 @@ export const passportTrainJobCreateLimiter = createRateLimiter({ windowMs: 60_00
 
 // War Room
 export const emergencyMeetingLimiter = createRateLimiter({ windowMs: 60_000, max: 5 });
+
+/** Chart klines: 120 per minute per IP — client polls ~every 15s, burst for tab switches */
+export const chartKlinesLimiter = createRateLimiter({ windowMs: 60_000, max: 120 });
+
+/** Engine proxy (heavy CPU/LightGBM): 60 per minute per IP */
+export const engineProxyLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });

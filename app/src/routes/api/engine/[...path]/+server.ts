@@ -15,9 +15,10 @@
  *   GET  /api/engine/healthz        → GET http://engine:8000/healthz
  */
 
-import { error } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
+import { engineProxyLimiter } from '$lib/server/rateLimit';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -81,11 +82,22 @@ async function proxy(request: Request, path: string): Promise<Response> {
   }
 }
 
+const HEAVY_ENGINE_PATHS = new Set(['score', 'deep', 'backtest', 'train', 'opportunity']);
+
+function isHeavyPath(path: string): boolean {
+  const first = path.split('/')[0];
+  return HEAVY_ENGINE_PATHS.has(first);
+}
+
 export const GET: RequestHandler = ({ request, params }) =>
   proxy(request, params.path);
 
-export const POST: RequestHandler = ({ request, params }) =>
-  proxy(request, params.path);
+export const POST: RequestHandler = ({ request, params, getClientAddress }) => {
+  if (isHeavyPath(params.path) && !engineProxyLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
+  return proxy(request, params.path);
+};
 
 export const PUT: RequestHandler = ({ request, params }) =>
   proxy(request, params.path);
