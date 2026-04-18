@@ -6,6 +6,45 @@
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
   import AdapterDiffPanel from '../../components/dashboard/AdapterDiffPanel.svelte';
+  import type { CaptureRow } from './+page.server';
+
+  const { data } = $props();
+
+  let pendingVerdicts = $state<CaptureRow[]>(data.pendingVerdicts ?? []);
+  let labellingId = $state<string | null>(null);
+  let labelError = $state<string | null>(null);
+
+  async function submitVerdict(captureId: string, verdict: 'valid' | 'invalid' | 'missed', note?: string) {
+    labellingId = captureId;
+    labelError = null;
+    try {
+      const resp = await fetch(`/api/engine/captures/${captureId}/verdict`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_verdict: verdict, user_note: note ?? null }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        labelError = (err as { detail?: string }).detail ?? `Error ${resp.status}`;
+        return;
+      }
+      pendingVerdicts = pendingVerdicts.filter(c => c.capture_id !== captureId);
+    } catch (e) {
+      labelError = (e as Error).message;
+    } finally {
+      labellingId = null;
+    }
+  }
+
+  function fmtDate(ms: number): string {
+    return new Date(ms).toLocaleDateString('ko-KR', {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  function fmtSlug(slug: string): string {
+    return slug.replace(/-v\d+$/, '').replace(/-/g, ' ');
+  }
 
   const WATCHING_QUERIES = [
     {
@@ -184,6 +223,63 @@
       </div>
     {/if}
   </section>
+
+  <!-- Verdict Inbox -->
+  {#if pendingVerdicts.length > 0}
+  <section class="surface-grid">
+    <div class="surface-section-head">
+      <div>
+        <span class="surface-kicker">Flywheel</span>
+        <h2>Verdict Inbox</h2>
+      </div>
+      <span class="surface-chip">{pendingVerdicts.length} pending</span>
+    </div>
+
+    {#if labelError}
+      <p class="verdict-error">{labelError}</p>
+    {/if}
+
+    <div class="verdict-grid">
+      {#each pendingVerdicts as capture (capture.capture_id)}
+        {@const busy = labellingId === capture.capture_id}
+        <div class="surface-card verdict-card" class:verdict-card--busy={busy}>
+          <div class="verdict-card-top">
+            <div class="verdict-card-meta">
+              <strong class="verdict-symbol">{capture.symbol}</strong>
+              <span class="surface-chip verdict-tf">{capture.timeframe}</span>
+            </div>
+            <span class="surface-meta">{fmtDate(capture.captured_at_ms)}</span>
+          </div>
+
+          {#if capture.pattern_slug}
+            <span class="surface-meta verdict-slug">{fmtSlug(capture.pattern_slug)}</span>
+          {/if}
+          {#if capture.user_note}
+            <p class="verdict-note">{capture.user_note}</p>
+          {/if}
+
+          <div class="verdict-actions">
+            <button
+              class="verdict-btn verdict-btn--valid"
+              disabled={busy}
+              onclick={() => submitVerdict(capture.capture_id, 'valid')}
+            >Valid</button>
+            <button
+              class="verdict-btn verdict-btn--invalid"
+              disabled={busy}
+              onclick={() => submitVerdict(capture.capture_id, 'invalid')}
+            >Invalid</button>
+            <button
+              class="verdict-btn verdict-btn--missed"
+              disabled={busy}
+              onclick={() => submitVerdict(capture.capture_id, 'missed')}
+            >Missed</button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  </section>
+  {/if}
 
   <!-- Watching + Adapters -->
   <section class="surface-grid cols-2">
@@ -382,6 +478,111 @@
     .challenge-stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+  }
+
+  /* ── Verdict Inbox ─────────────────────────────────────────────────── */
+
+  .verdict-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  .verdict-card {
+    display: grid;
+    gap: 10px;
+    transition: opacity var(--sc-duration-fast);
+  }
+
+  .verdict-card--busy {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .verdict-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .verdict-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .verdict-symbol {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--sc-text-0);
+    letter-spacing: -0.02em;
+  }
+
+  .verdict-tf {
+    font-size: 0.72rem;
+  }
+
+  .verdict-slug {
+    font-size: 0.78rem;
+    text-transform: capitalize;
+    color: var(--sc-text-2);
+  }
+
+  .verdict-note {
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--sc-text-1);
+    line-height: 1.45;
+  }
+
+  .verdict-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .verdict-btn {
+    flex: 1;
+    padding: 6px 0;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity var(--sc-duration-fast), background var(--sc-duration-fast);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--sc-text-1);
+  }
+
+  .verdict-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .verdict-btn:hover:not(:disabled) { opacity: 0.85; }
+
+  .verdict-btn--valid:hover:not(:disabled) {
+    background: rgba(74, 222, 128, 0.18);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: #4ade80;
+  }
+
+  .verdict-btn--invalid:hover:not(:disabled) {
+    background: rgba(248, 113, 113, 0.18);
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #f87171;
+  }
+
+  .verdict-btn--missed:hover:not(:disabled) {
+    background: rgba(251, 191, 36, 0.18);
+    border-color: rgba(251, 191, 36, 0.35);
+    color: #fbbf24;
+  }
+
+  .verdict-error {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    font-size: 0.82rem;
+    color: #f87171;
   }
 
   @media (max-width: 640px) {
