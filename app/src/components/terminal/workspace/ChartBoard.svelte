@@ -1264,45 +1264,14 @@
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
   <div class="chart-header chart-header--tv">
     <div class="tv-row tv-row--top">
-      <div class="chart-symbol tv-symbol-cluster">
-        <div class="sym-block">
-          <!-- Symbol ticker lives in the global CommandBar directly above;
-               this header only tags the venue flavor (PERP vs spot) so the
-               quant operator still knows which book they're reading from. -->
-          <span class="sym-name"><span class="sym-quote">PERP</span></span>
-          {#if currentPrice !== null}
-            <div class="price-row">
-              <span class="sym-kicker">Last</span>
-              <span class="sym-price">{currentPrice.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
-            </div>
-          {/if}
-        </div>
-        <div class="sym-metrics">
-          {#if change24hPct != null && Number.isFinite(change24hPct)}
-            <span
-              class="sym-change"
-              class:price-up={change24hPct >= 0}
-              class:price-down={change24hPct < 0}
-              aria-label="24h change"
-            >
-              <span class="metric-label">24h</span>
-              {change24hPct >= 0 ? '+' : ''}{change24hPct.toFixed(2)}%
-            </span>
-          {:else if currentChangePct !== null}
-            <span
-              class="sym-change sym-change-muted"
-              class:price-up={currentChangePct >= 0}
-              class:price-down={currentChangePct < 0}
-              aria-label="1 bar change"
-            >
-              <span class="metric-label">1 bar</span>
-              {currentChangePct >= 0 ? '+' : ''}{currentChangePct.toFixed(2)}%
-            </span>
-          {/if}
-          {#if quantRegime?.label}
-            <span class="sym-regime-pill" data-tone={quantRegime.tone}>{quantRegime.label}</span>
-          {/if}
-        </div>
+      <!-- Single compact toolbar: venue tag + regime (unique to this pane) +
+           chart mode + studies popover + capture controls. Price/%/TF are
+           handled by the global CommandBar directly above. -->
+      <div class="chart-symbol tv-symbol-cluster chart-symbol--compact">
+        <span class="sym-quote">PERP</span>
+        {#if quantRegime?.label}
+          <span class="sym-regime-pill" data-tone={quantRegime.tone}>{quantRegime.label}</span>
+        {/if}
       </div>
 
       <div class="tv-actions">
@@ -1311,12 +1280,8 @@
           <button class="mode-btn" class:active={chartMode === 'line'} onclick={() => { chartMode = 'line'; }}>Line</button>
         </div>
       </div>
-    </div>
-
-    <div class="tv-row tv-row--compact">
-      <!-- TF pills live in the global CommandBar now to avoid the
-           duplicate strip that used to sit here (W-0102 audit).
-           The tv-studies-wrap sibling below keeps using this row. -->
+      <!-- Studies / capture / save actions inline on the same row -->
+      <!-- (tv-studies-wrap and following siblings continue below inside tv-row--top) -->
       <div class="tv-studies-wrap" bind:this={studiesWrapEl}>
         <button
           type="button"
