@@ -11,6 +11,7 @@ import {
   atr, bollingerBands, emaPoints, macd, rsi, sma, vwap,
   type MacdPoint, type TimePoint,
 } from './indicatorUtils';
+import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -214,6 +215,13 @@ export async function getChartSeries(args: {
   const cached = chartCache.get(cacheKey);
   if (cached && cached.expiresAt > now) return { payload: cached.payload, cacheStatus: 'hit' };
 
+  // Shared cache (cross-instance Redis) — before hitting Binance FAPI
+  const shared = await getSharedCache<ChartPayload>('chart', cacheKey);
+  if (shared) {
+    chartCache.set(cacheKey, { expiresAt: now + CHART_CACHE_TTL_MS, payload: shared });
+    return { payload: shared, cacheStatus: 'hit' };
+  }
+
   // Parallel fetch: klines + funding (OI needs the period key resolved first)
   const [klines, fundingBars] = await Promise.all([
     fetchKlines(symbol, interval, limit, startTime, fetchImpl),
@@ -236,6 +244,7 @@ export async function getChartSeries(args: {
 
   const payload: ChartPayload = { symbol, tf, klines, oiBars, fundingBars, indicators };
   chartCache.set(cacheKey, { expiresAt: now + CHART_CACHE_TTL_MS, payload });
+  void setSharedCache('chart', cacheKey, payload, CHART_CACHE_TTL_MS);
 
   return { payload, cacheStatus: 'miss' };
 }

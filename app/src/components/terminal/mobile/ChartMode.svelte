@@ -42,14 +42,18 @@
     const sym = symbol;
     const timeframe = tf;
     if (!browser || !sym) return;
-    fetch(`/api/chart/klines?symbol=${encodeURIComponent(sym)}&tf=${encodeURIComponent(timeframe)}&limit=500`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data) => {
-        if (data?.klines?.length && canvasRef) {
-          canvasRef.setCandles(data.klines);
-        }
-      })
-      .catch(() => {/* silent — chart stays empty on network error */});
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    async function load(isRetry = false) {
+      try {
+        const r = await fetch(`/api/chart/klines?symbol=${encodeURIComponent(sym)}&tf=${encodeURIComponent(timeframe)}&limit=500`);
+        if (r.status === 429 && !isRetry) { retryTimer = setTimeout(() => load(true), 5_000); return; }
+        if (!r.ok) return;
+        const data = await r.json();
+        if (data?.klines?.length && canvasRef) canvasRef.setCandles(data.klines);
+      } catch { /* silent */ }
+    }
+    load();
+    return () => { if (retryTimer) clearTimeout(retryTimer); };
   });
 
   /**
