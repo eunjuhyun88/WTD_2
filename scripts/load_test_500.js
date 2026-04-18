@@ -63,20 +63,8 @@ export default function () {
 
   sleep(0.5);
 
-  // 2. Engine score (heavy — ~20% of users trigger on chart load)
-  if (Math.random() < 0.2) {
-    // Minimal payload: just symbol + 2 bars (engine validates min bars separately)
-    // In real usage the app sends full klines, but for load testing we probe availability
-    const scoreRes = http.get(
-      `${BASE}/api/engine/healthz`,
-      { tags: { name: 'engine_health' } }
-    );
-    const scoreOk = check(scoreRes, {
-      'engine health 200': (r) => r.status === 200,
-    });
-    errorRate.add(!scoreOk);
-    scoreP95.add(scoreRes.timings.duration);
-  }
+  // 2. Engine score — use load_test_score.js for dedicated score test.
+  // /api/engine/healthz is not a valid proxy route; skipped in this script.
 
   sleep(0.1);
 }
