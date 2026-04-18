@@ -76,6 +76,7 @@ _BLOCK_CATEGORIES: dict[str, BlockCategory] = {
     "oi_change": BlockCategory.CONFIRMATION,
     "cvd_state_eq": BlockCategory.CONFIRMATION,
     "volume_dryup": BlockCategory.CONFIRMATION,
+    "coinbase_premium_positive": BlockCategory.CONFIRMATION,
     # disqualifiers
     "volume_below_average": BlockCategory.DISQUALIFIER,
     "extreme_volatility": BlockCategory.DISQUALIFIER,
@@ -92,6 +93,7 @@ _BULLISH_BLOCKS: frozenset[str] = frozenset({
     "bullish_engulfing", "long_lower_wick", "rsi_bullish_divergence",
     "support_bounce", "recent_rally", "gap_up", "breakout_above_high",
     "consolidation_then_breakout", "golden_cross", "ema_pullback",
+    "coinbase_premium_positive",
 })
 
 # Ensemble weights (tuned via walk-forward analysis on BTCUSDT 6yr data)

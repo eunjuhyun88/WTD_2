@@ -46,6 +46,7 @@ from data_cache.fetch_macro import (
     fetch_btc_dominance,
     fetch_macro_yahoo,
 )
+from data_cache.fetch_coinbase import fetch_coinbase_premium
 from data_cache.fetch_onchain import (
     fetch_active_addresses,
     fetch_tx_count,
@@ -87,6 +88,14 @@ MACRO_SOURCES: list[DataSource] = [
         },
         scope="global",
         cache_file="src_yahoo_macro.csv",
+    ),
+    DataSource(
+        name="coinbase_premium",
+        fetcher=fetch_coinbase_premium,
+        columns=["coinbase_premium", "coinbase_premium_norm"],
+        defaults={"coinbase_premium": 0.0, "coinbase_premium_norm": 0.0},
+        scope="global",
+        cache_file="src_coinbase_premium.csv",
     ),
     # ── Add new global sources here ──────────────────────────────────────────
     # Example:
