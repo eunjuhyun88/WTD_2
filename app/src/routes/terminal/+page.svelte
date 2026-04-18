@@ -8,12 +8,10 @@
    *   [TerminalBottomDock]
    *
    * Mobile:
-   *   [TerminalCommandBar]
-   *   [ChartBoard]
-   *   [MobileCommandDock]
-   *   [MobileShell via TerminalShell]
+   *   [MobileShell via TerminalShell] — owns all content (slots ignored)
    */
   import { onMount, onDestroy, untrack } from 'svelte';
+  import { viewportTier } from '$lib/stores/viewportTier';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
   import { normalizeTimeframe } from '$lib/utils/timeframe';
   import { buildCanonicalHref } from '$lib/seo/site';
@@ -70,7 +68,6 @@
     findTerminalAlertRule,
     getTerminalExportCompletionMessage,
     pollTerminalExportJobOnce,
-    type PatternTransitionAlert,
     removeSavedTerminalAlert,
     toggleAnalysisPin,
     toggleRiskAlert,
@@ -104,14 +101,10 @@
   import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
 
-  // Mobile components
-  import MobileCommandDock from '../../components/terminal/mobile/MobileCommandDock.svelte';
-
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
 
   // ─── State ──────────────────────────────────────────────────
 
-  let layout = $state<'hero3' | 'compare2x2' | 'focus'>('focus');
   let boardSymbols = $state<string[]>([]);
   let stubAssetMap = $state<Record<string, TerminalAsset>>({});
   let decisionMap = $state<Record<string, TerminalDecisionBundle>>({});
@@ -159,7 +152,6 @@
   // ── Pattern Engine state ───────────────────────────────────
   interface PatternPhaseRow { slug: string; phaseName: string; symbols: string[]; }
   let patternPhases = $state<PatternPhaseRow[]>([]);
-  let patternTransitionAlerts = $state<PatternTransitionAlert[]>([]);
   let liveSignals = $state<LiveSignal[]>([]);
   let liveSignalsCached = $state(false);
   let liveSignalsScannedAt = $state('');
@@ -172,7 +164,9 @@
   let exportPollTimer: ReturnType<typeof setInterval> | null = null;
 
   // ── Capture modal ──────────────────────────────────────────
-  let showLeftRail = $state(false);
+  // On desktop the persistent left rail is always shown; drawer is for tablet/mobile only
+  const isDesktop = $derived($viewportTier.tier === 'DESKTOP');
+  let showLeftRail = $state(true);
   let activeAnalysisTab = $state<'summary' | 'entry' | 'risk' | 'catalysts' | 'metrics'>('summary');
   let chartWorkspaceEl = $state<HTMLElement | undefined>(undefined);
 
@@ -698,7 +692,6 @@
       if (restore.compareSymbols.length >= 2) {
         boardSymbols = restore.compareSymbols;
         stubAssetMap = Object.fromEntries(restore.compareSymbols.map((symbol) => [symbol, buildStubAsset(symbol)]));
-        layout = 'compare2x2';
         activeSymbol = restore.activeSymbol ?? activeSymbol;
         if (restore.compareTimeframe) {
           setActiveTimeframe(normalizeTimeframe(restore.compareTimeframe));
@@ -766,10 +759,6 @@
         liveSignalsScannedAt = envelope.scanned_at;
       }
     } catch {}
-  }
-
-  function dismissPatternAlert(id: string) {
-    patternTransitionAlerts = patternTransitionAlerts.filter((item) => item.id !== id);
   }
 
   // ─── SSE Command Flow ─────────────────────────────────────────
@@ -878,7 +867,6 @@
         const decision = applyTerminalDecision(sym, envelope);
         const hadAsset = boardSymbols.includes(sym);
         applyDecisionState(sym, decision, true);
-        if (!hadAsset && boardSymbols.length > 1) layout = 'hero3';
         if (!activeSymbol) activeSymbol = sym;
         // Update chart levels for active symbol
         if (sym === activeSymbol || !activeSymbol) chartLevels = extractLevels(envelope);
@@ -922,7 +910,7 @@
     analysisDataMap = {};
     analysisFingerprintMap = {};
     chartPayloadMap = {};
-    activeSymbol = ''; layout = 'focus';
+    activeSymbol = '';
     activeChartPayload = null;
     chartLevels = {};
     activeAnalysisTab = 'summary';
@@ -1110,7 +1098,6 @@
         analysisFingerprintMap = {};
         chartPayloadMap = {};
         activeChartPayload = null;
-        layout = 'focus';
       }
       loadAnalysis(symbol, symbolToTF(tf));
       loadActiveReadPath(symbol, symbolToTF(tf));
@@ -1133,42 +1120,11 @@
   let isLoadingActive = $derived(loadingSymbols.has(activeSymbol));
   let activePairDisplay = $derived(gPair.split('/')[0] ?? 'BTC');
 
-  // ─── Panel visibility + resize ───────────────────────────────
-  let leftWidth = $state(232);
-
+  // ─── Panel visibility ────────────────────────────────────────
   function toggleLeftRail() {
     showLeftRail = !showLeftRail;
   }
 
-  function startResize(e: MouseEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = leftWidth;
-
-    const onMove = (ev: MouseEvent) => {
-      const delta = ev.clientX - startX;
-      leftWidth = Math.max(132, Math.min(320, startW + delta));
-    };
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }
-
-  // ─── Mobile ─────────────────────────────────────────────────
-  let showDetailSheet = $state(false);
-
-  function openMobileDetail(tab: typeof activeAnalysisTab = 'summary') {
-    activeAnalysisTab = tab;
-    showDetailSheet = true;
-  }
   let boardAssets = $derived.by(() =>
     boardSymbols
       .map((symbol) => decisionMap[symbol]?.asset ?? stubAssetMap[symbol])
@@ -1233,15 +1189,6 @@
     readPathDepth,
     readPathLiq,
   }));
-  // Quick chips for mobile dock
-  const MOBILE_CHIPS = $derived([
-    { id: 'top-oi',    label: 'Top OI',         action: 'Show assets with highest OI expansion right now' },
-    { id: 'alts',      label: 'Hot Alts',        action: 'Show hot altcoins with breakout signals' },
-    { id: 'long-bias', label: 'LONG setups',     action: 'Show best long setups with high confluence' },
-    { id: 'risk',      label: 'Risk check',      action: `What are the main risks for ${gPair.split('/')[0]}?` },
-    { id: 'compare',   label: 'BTC vs ETH',      action: 'Compare BTC and ETH side by side' },
-  ]);
-
   // ─── Mobile ModeRouter data ──────────────────────────────────
 
   /**
@@ -1394,23 +1341,25 @@
 <!-- Terminal Shell (W-0086: TerminalShell wrapper)      -->
 <!-- ═══════════════════════════════════════════════════ -->
 
-<!-- Market drawer (W-0086: opens from top-bar market button; left drawer not permanent column) -->
-<MarketDrawer
-  open={showLeftRail}
-  onClose={toggleLeftRail}
-  {trendingData}
-  watchlistRows={persistedWatchlist}
-  alerts={scannerAlerts}
-  savedAlerts={savedAlertRules}
-  {patternPhases}
-  activeSymbol={activeSymbol || pairToSymbol(gPair)}
-  macroItems={macroCalendarItems}
-  {marketEvents}
-  queryPresets={terminalQueryPresets}
-  anomalies={terminalAnomalies}
-  onQuery={handleQueryChip}
-  onDeleteSavedAlert={handleDeleteSavedAlert}
-/>
+<!-- Market drawer — overlay for tablet/mobile only; desktop uses persistent left rail -->
+{#if !isDesktop}
+  <MarketDrawer
+    open={showLeftRail}
+    onClose={toggleLeftRail}
+    {trendingData}
+    watchlistRows={persistedWatchlist}
+    alerts={scannerAlerts}
+    savedAlerts={savedAlertRules}
+    {patternPhases}
+    activeSymbol={activeSymbol || pairToSymbol(gPair)}
+    macroItems={macroCalendarItems}
+    {marketEvents}
+    queryPresets={terminalQueryPresets}
+    anomalies={terminalAnomalies}
+    onQuery={handleQueryChip}
+    onDeleteSavedAlert={handleDeleteSavedAlert}
+  />
+{/if}
 
 <div class="surface-page terminal-page">
   <TerminalShell
@@ -1604,27 +1553,14 @@
   {/snippet}
 
   {#snippet slotFooter()}
-    <!-- Desktop bottom dock (W-0078: footer owns prompt) -->
-    <div class="desktop-dock">
-      <TerminalBottomDock
-        loading={isStreaming || isLoadingActive}
-        assistantText={assistantBannerText}
-        history={recentDockHistory}
-        onSend={sendCommand}
-        onDockAction={handleDockAction}
-      />
-    </div>
-    <!-- Mobile board + dock -->
-    <div class="mobile-board-wrap">
-      <MobileCommandDock
-        loading={isStreaming}
-        queryChips={MOBILE_CHIPS}
-        assistantText={assistantBannerText}
-        onOpenDetail={() => openMobileDetail('summary')}
-        onSend={sendCommand}
-        onChip={(action) => sendCommand(action)}
-      />
-    </div>
+    <!-- Desktop/tablet bottom dock (W-0078: footer owns prompt) -->
+    <TerminalBottomDock
+      loading={isStreaming || isLoadingActive}
+      assistantText={assistantBannerText}
+      history={recentDockHistory}
+      onSend={sendCommand}
+      onDockAction={handleDockAction}
+    />
   {/snippet}
   </TerminalShell>
 </div>
@@ -1881,42 +1817,6 @@
   .loading-msg {
     font-family: var(--sc-font-mono);
     font-size: 12px; color: var(--sc-text-2); margin: 0;
-  }
-
-  .desktop-dock {
-    flex-shrink: 0;
-  }
-
-  /* Mobile */
-  @media (max-width: 768px) {
-    .terminal-page {
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-      overflow: hidden;
-    }
-    .terminal-shell-head {
-      padding: 8px 10px 6px;
-      position: sticky;
-      top: 0;
-      z-index: 40;
-    }
-    .analysis-rail { display: none; }
-    .desktop-dock  { display: none; }
-    .mobile-board-wrap {
-      display: block;
-      position: sticky;
-      bottom: var(--sc-consent-reserved-h, 0px);
-      z-index: 30;
-      margin-top: auto;
-      padding-top: 8px;
-      background: linear-gradient(180deg, rgba(6,8,13,0), rgba(6,8,13,0.92) 24%, rgba(6,8,13,0.98));
-    }
-  }
-
-  /* Hide mobile wrap on desktop */
-  @media (min-width: 769px) {
-    .mobile-board-wrap { display: none; }
   }
 
   @media (max-width: 540px) {
