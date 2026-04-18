@@ -20,11 +20,6 @@
     },
   ];
 
-  const LEGAL_LINKS = [
-    { label: 'Privacy', href: '/privacy' },
-    { label: 'Terms', href: '/terms' },
-  ];
-
   const YEAR = new Date().getFullYear();
 
   function nav(href: string) {
@@ -61,11 +56,6 @@
   <!-- Tier 2: Legal -->
   <div class="footer-legal">
     <span class="copy">© {YEAR} Cogochi. All rights reserved.</span>
-    <div class="legal-links">
-      {#each LEGAL_LINKS as link}
-        <button class="legal-link" onclick={() => nav(link.href)}>{link.label}</button>
-      {/each}
-    </div>
   </div>
 </footer>
 
@@ -175,27 +165,6 @@
     font-size: 0.68rem;
     letter-spacing: 0.04em;
     color: rgba(250, 247, 235, 0.28);
-  }
-
-  .legal-links {
-    display: flex;
-    gap: 16px;
-  }
-
-  .legal-link {
-    background: none;
-    border: none;
-    padding: 0;
-    font-family: var(--sc-font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.04em;
-    color: rgba(250, 247, 235, 0.28);
-    cursor: pointer;
-    transition: color 120ms ease;
-  }
-
-  .legal-link:hover {
-    color: rgba(250, 247, 235, 0.6);
   }
 
   /* ─── Mobile ─── */
