@@ -34,7 +34,7 @@ export const options = {
   },
 };
 
-const BASE = __ENV.BASE || 'http://localhost:5173';
+const BASE = __ENV.BASE || 'https://app.cogotchi.dev';
 
 const SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'];
 const TFS     = ['1h', '4h', '1d'];
