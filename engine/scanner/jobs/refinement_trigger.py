@@ -44,18 +44,19 @@ def check_refinement_gates(
     eligible: list[str] = []
 
     for slug in slugs:
+        # LedgerRecordStore.list() returns newest-first; [0] is the most recent.
         training_runs = store.list(slug, record_type="training_run")
-        last_run = training_runs[0] if training_runs else None  # newest-first
+        most_recent_run = training_runs[0] if training_runs else None
 
-        if last_run is not None:
-            days_since = (_now - last_run.created_at).total_seconds() / 86400
+        if most_recent_run is not None:
+            days_since = (_now - most_recent_run.created_at).total_seconds() / 86400
             if days_since < min_days:
                 log.debug(
                     "Refinement gate 1 blocked: slug=%s days_since=%.1f < %.1f",
                     slug, days_since, min_days,
                 )
                 continue
-            verdict_cutoff = last_run.created_at
+            verdict_cutoff = most_recent_run.created_at
         else:
             verdict_cutoff = datetime.min
 
@@ -72,7 +73,7 @@ def check_refinement_gates(
         log.info(
             "Refinement gates cleared: slug=%s new_verdicts=%d last_run=%s",
             slug, len(new_verdicts),
-            last_run.created_at.isoformat() if last_run else "never",
+            most_recent_run.created_at.isoformat() if most_recent_run else "never",
         )
         eligible.append(slug)
 
