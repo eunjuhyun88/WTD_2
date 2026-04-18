@@ -151,6 +151,7 @@ class CaptureStore:
         user_id: str | None = None,
         pattern_slug: str | None = None,
         symbol: str | None = None,
+        status: str | None = None,
         limit: int = 100,
     ) -> list[CaptureRecord]:
         clauses: list[str] = []
@@ -164,6 +165,9 @@ class CaptureStore:
         if symbol is not None:
             clauses.append("symbol = ?")
             params.append(symbol)
+        if status is not None:
+            clauses.append("status = ?")
+            params.append(status)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         params.append(limit)
         with self._connect() as conn:
@@ -172,6 +176,52 @@ class CaptureStore:
                 tuple(params),
             ).fetchall()
         return [self._row_to_record(row) for row in rows]
+
+    def list_due_for_outcome(
+        self,
+        *,
+        now_ms_val: int,
+        window_hours: float = 72.0,
+        limit: int = 500,
+    ) -> list[CaptureRecord]:
+        """Return pending_outcome captures whose evaluation window has elapsed."""
+        cutoff_ms = now_ms_val - int(window_hours * 3600 * 1000)
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM capture_records
+                WHERE status = 'pending_outcome' AND captured_at_ms <= ?
+                ORDER BY captured_at_ms ASC
+                LIMIT ?
+                """,
+                (cutoff_ms, limit),
+            ).fetchall()
+        return [self._row_to_record(row) for row in rows]
+
+    def update_status(
+        self,
+        capture_id: str,
+        status: str,
+        *,
+        outcome_id: str | None = None,
+        verdict_id: str | None = None,
+    ) -> bool:
+        """Update a capture's lifecycle status, optionally linking outcome/verdict."""
+        sets = ["status = ?"]
+        params: list[Any] = [status]
+        if outcome_id is not None:
+            sets.append("outcome_id = ?")
+            params.append(outcome_id)
+        if verdict_id is not None:
+            sets.append("verdict_id = ?")
+            params.append(verdict_id)
+        params.append(capture_id)
+        with self._connect() as conn:
+            cur = conn.execute(
+                f"UPDATE capture_records SET {', '.join(sets)} WHERE capture_id = ?",
+                tuple(params),
+            )
+            return cur.rowcount > 0
 
     @staticmethod
     def _row_to_record(row: sqlite3.Row) -> CaptureRecord:
