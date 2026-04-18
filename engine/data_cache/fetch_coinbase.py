@@ -24,11 +24,14 @@ Anchor (Coinbase Premium as institutional signal):
 from __future__ import annotations
 
 import json
+import logging
 import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
+
+log = logging.getLogger("engine.data_cache.coinbase")
 
 _UA = "cogochi-autoresearch/data_cache"
 _TIMEOUT = 15
@@ -148,4 +151,5 @@ def fetch_coinbase_premium(days: int = 365) -> pd.DataFrame | None:
         )
 
     except Exception:
+        log.exception("fetch_coinbase_premium failed")
         return None
