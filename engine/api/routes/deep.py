@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from api.limiter import limiter
 from api.schemas import DeepRequest, DeepResponse
 from api.routes.deep_thread import deep_sync
 from market_engine.ctx_cache import ensure_fresh_ctx
@@ -19,7 +20,8 @@ _MIN_KLINES = 120
 
 
 @router.post("", response_model=DeepResponse)
-async def deep(req: DeepRequest) -> DeepResponse:
+@limiter.limit("30/minute")
+async def deep(request: Request, req: DeepRequest) -> DeepResponse:
     """Run all L2 market_engine indicators for a single symbol."""
     if len(req.klines) < _MIN_KLINES:
         raise HTTPException(
