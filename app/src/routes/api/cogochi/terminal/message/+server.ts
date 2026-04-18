@@ -9,6 +9,13 @@
 
 import type { RequestHandler } from './$types';
 import { callLLMStreamWithTools, type LLMMessage } from '$lib/server/llmService';
+
+export const config = {
+  runtime: 'nodejs22.x',
+  regions: ['iad1'],
+  memory: 1769,
+  maxDuration: 300,
+};
 import type { DouniProfile } from '$lib/server/douni/personality';
 import type { ServerSignalSnapshot as SignalSnapshot } from '$lib/server/cogochi/signalSnapshot';
 import type { SignalSnapshotRaw } from '$lib/server/engineClient';
