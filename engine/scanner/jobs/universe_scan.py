@@ -6,6 +6,7 @@ from typing import Any, Awaitable, Callable
 
 import httpx
 
+from cache.http_client import get_client
 from exceptions import CacheMiss
 
 log = logging.getLogger("engine.scanner.jobs")
@@ -25,10 +26,10 @@ async def push_alert(payload: dict[str, Any], supabase_url: str, supabase_role_k
         "Prefer": "return=minimal",
     }
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            resp.raise_for_status()
-            log.info("Alert pushed: %s blocks=%s", payload["symbol"], payload["blocks_triggered"])
+        client = get_client()
+        resp = await client.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        log.info("Alert pushed: %s blocks=%s", payload["symbol"], payload["blocks_triggered"])
     except Exception as exc:
         log.error("Failed to push alert for %s: %s", payload.get("symbol"), exc)
 

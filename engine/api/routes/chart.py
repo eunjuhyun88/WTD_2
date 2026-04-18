@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
+from api.limiter import limiter
 from cache.kline_cache import get_klines, set_klines
 from data_cache.loader import SUPPORTED_TF_STRINGS, load_klines
 
@@ -27,7 +28,9 @@ _MAX_LIMIT = 1000
 
 
 @router.get("/klines")
+@limiter.limit("120/minute")
 async def chart_klines(
+    request: Request,
     symbol: str = Query(default="BTCUSDT", description="Trading pair, e.g. BTCUSDT"),
     tf: str = Query(default="4h", description="Timeframe string, e.g. 1h / 4h / 1d"),
     limit: int = Query(default=200, ge=1, le=_MAX_LIMIT, description="Number of bars to return"),

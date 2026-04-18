@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 
+from cache.http_client import get_client
 from market_engine.types import GlobalCtx
 
 log = logging.getLogger("engine.l0")
@@ -57,17 +58,17 @@ async def fetch_global_ctx() -> GlobalCtx:
     """Fetch all global context in parallel. Takes ~2-4 s."""
     ctx = GlobalCtx()
 
-    async with httpx.AsyncClient() as c:
-        (fg_data, cg_data, bc_data, mp_data, mp_fees,
-         upbit_data, bithumb_data) = await asyncio.gather(
-            _safe_get(c, "https://api.alternative.me/fng/?limit=1"),
-            _safe_get(c, "https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=krw"),
-            _safe_get(c, "https://blockchain.info/stats?format=json"),
-            _safe_get(c, "https://mempool.space/api/mempool"),
-            _safe_get(c, "https://mempool.space/api/v1/fees/recommended"),
-            _safe_get(c, "https://api.upbit.com/v1/ticker?markets=" + _upbit_market_string()),
-            _safe_get(c, "https://api.bithumb.com/public/ticker/ALL_KRW"),
-        )
+    c = get_client()
+    (fg_data, cg_data, bc_data, mp_data, mp_fees,
+     upbit_data, bithumb_data) = await asyncio.gather(
+        _safe_get(c, "https://api.alternative.me/fng/?limit=1"),
+        _safe_get(c, "https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=krw"),
+        _safe_get(c, "https://blockchain.info/stats?format=json"),
+        _safe_get(c, "https://mempool.space/api/mempool"),
+        _safe_get(c, "https://mempool.space/api/v1/fees/recommended"),
+        _safe_get(c, "https://api.upbit.com/v1/ticker?markets=" + _upbit_market_string()),
+        _safe_get(c, "https://api.bithumb.com/public/ticker/ALL_KRW"),
+    )
 
     # ── Fear & Greed ─────────────────────────────────────────────────────
     if fg_data:
