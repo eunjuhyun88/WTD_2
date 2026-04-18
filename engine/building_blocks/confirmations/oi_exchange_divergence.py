@@ -57,19 +57,11 @@ def oi_exchange_divergence(
     if mode not in ("high_concentration", "low_concentration"):
         raise ValueError(f"mode must be 'high_concentration' or 'low_concentration', got {mode!r}")
 
-    conc = ctx.features.get("oi_exchange_conc", pd.Series(1.0, index=ctx.features.index))
-    if hasattr(conc, "fillna"):
-        conc = conc.fillna(1.0)
-
-    if mode == "high_concentration":
-        mask = conc >= conc_threshold
-    else:
-        mask = conc < conc_threshold
+    conc = ctx.features.get("oi_exchange_conc", pd.Series(1.0, index=ctx.features.index)).fillna(1.0)
+    mask = conc >= conc_threshold if mode == "high_concentration" else conc < conc_threshold
 
     if require_oi_spike:
-        oi_chg = ctx.features.get("total_oi_change_1h", pd.Series(0.0, index=ctx.features.index))
-        if hasattr(oi_chg, "fillna"):
-            oi_chg = oi_chg.fillna(0.0)
+        oi_chg = ctx.features.get("total_oi_change_1h", pd.Series(0.0, index=ctx.features.index)).fillna(0.0)
         mask = mask & (oi_chg.abs() >= oi_spike_threshold)
 
     return mask.astype(bool)

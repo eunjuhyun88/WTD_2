@@ -37,13 +37,6 @@ def coinbase_premium_positive(
     Returns:
         pd.Series[bool] aligned to ctx.features.index.
     """
-    premium = ctx.features.get("coinbase_premium", pd.Series(0.0, index=ctx.features.index))
-    norm = ctx.features.get("coinbase_premium_norm", pd.Series(0.0, index=ctx.features.index))
-
-    if hasattr(premium, "fillna"):
-        premium = premium.fillna(0.0)
-    if hasattr(norm, "fillna"):
-        norm = norm.fillna(0.0)
-
-    mask = (premium > min_premium) & (norm >= min_norm)
-    return mask.astype(bool)
+    premium = ctx.features.get("coinbase_premium", pd.Series(0.0, index=ctx.features.index)).fillna(0.0)
+    norm = ctx.features.get("coinbase_premium_norm", pd.Series(0.0, index=ctx.features.index)).fillna(0.0)
+    return ((premium > min_premium) & (norm >= min_norm)).astype(bool)
