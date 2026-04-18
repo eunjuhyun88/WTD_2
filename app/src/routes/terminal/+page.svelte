@@ -29,6 +29,8 @@
     fetchNewsData,
     fetchPatternPhasesData,
     fetchScannerAlerts,
+    fetchLiveSignals,
+    type LiveSignal,
     fetchTerminalAnalysisBundle,
     fetchTrendingData,
     type TerminalAnalyzeData,
@@ -99,6 +101,7 @@
   // W-0086 shell components
   import TerminalShell from '../../components/terminal/shell/TerminalShell.svelte';
   import SaveStrip from '../../components/terminal/workspace/SaveStrip.svelte';
+  import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
 
   // Mobile components
@@ -157,6 +160,9 @@
   interface PatternPhaseRow { slug: string; phaseName: string; symbols: string[]; }
   let patternPhases = $state<PatternPhaseRow[]>([]);
   let patternTransitionAlerts = $state<PatternTransitionAlert[]>([]);
+  let liveSignals = $state<LiveSignal[]>([]);
+  let liveSignalsCached = $state(false);
+  let liveSignalsScannedAt = $state('');
   let showPatternLibrary = $state(false);
   let patternCaptureRecords = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let lastSavedCaptureId = $state<string | null>(null);
@@ -749,6 +755,17 @@
     }
   }
 
+  async function loadLiveSignals() {
+    try {
+      const envelope = await fetchLiveSignals();
+      if (envelope) {
+        liveSignals = envelope.signals;
+        liveSignalsCached = envelope.cached;
+        liveSignalsScannedAt = envelope.scanned_at;
+      }
+    } catch {}
+  }
+
   function dismissPatternAlert(id: string) {
     patternTransitionAlerts = patternTransitionAlerts.filter((item) => item.id !== id);
   }
@@ -1014,6 +1031,7 @@
       loadAlerts,
       loadPatternPhases,
       loadPatternCaptures,
+      loadLiveSignals,
     })) {
       scheduleBootstrapTask(item.task, item.delayMs);
     }
@@ -1450,6 +1468,14 @@
           <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
         {/if}
       </div>
+      <!-- W-0092: Live signal overlay — shown when ACCUMULATION/REAL_DUMP signals exist -->
+      {#if liveSignals.length > 0}
+        <LiveSignalPanel
+          signals={liveSignals}
+          cached={liveSignalsCached}
+          scannedAt={liveSignalsScannedAt}
+        />
+      {/if}
       <!-- MODE B — Scan results list -->
       {#if isScanMode}
         <div class="scan-list">
