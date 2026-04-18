@@ -7,6 +7,9 @@ from fastapi.testclient import TestClient
 
 from api.routes import captures
 from capture.store import CaptureStore
+from capture.types import CaptureRecord
+from ledger.store import LedgerStore
+from ledger.types import PatternOutcome
 from patterns.state_store import PatternStateStore
 from patterns.types import PhaseTransition
 
@@ -30,6 +33,33 @@ def _client(tmp_path, monkeypatch) -> TestClient:
     client.capture_store = capture_store  # type: ignore[attr-defined]
     client.state_store = state_store  # type: ignore[attr-defined]
     client.appended_records = appended  # type: ignore[attr-defined]
+    return client
+
+
+def _client_with_ledger(tmp_path, monkeypatch) -> TestClient:
+    capture_store = CaptureStore(tmp_path / "capture.sqlite")
+    state_store = PatternStateStore(tmp_path / "runtime.sqlite")
+    ledger_store = LedgerStore(tmp_path / "ledger")
+    verdict_records: list = []
+    capture_records: list = []
+
+    class FakeRecordStore:
+        def append_capture_record(self, record):
+            capture_records.append(record)
+
+        def append_verdict_record(self, outcome):
+            verdict_records.append(outcome)
+
+    monkeypatch.setattr(captures, "_capture_store", capture_store)
+    monkeypatch.setattr(captures, "_state_store", state_store)
+    monkeypatch.setattr(captures, "_ledger_store", ledger_store)
+    monkeypatch.setattr(captures, "LEDGER_RECORD_STORE", FakeRecordStore())
+    app = FastAPI()
+    app.include_router(captures.router, prefix="/captures")
+    client = TestClient(app)
+    client.capture_store = capture_store  # type: ignore[attr-defined]
+    client.ledger_store = ledger_store  # type: ignore[attr-defined]
+    client.verdict_records = verdict_records  # type: ignore[attr-defined]
     return client
 
 
@@ -217,3 +247,107 @@ def test_create_capture_rejects_transition_context_mismatch(tmp_path, monkeypatc
 
     assert response.status_code == 400
     assert response.json()["detail"]["message"] == "Capture context does not match referenced transition"
+
+
+# ---------------------------------------------------------------------------
+# Phase C: verdict labeling (axis 3 close)
+# ---------------------------------------------------------------------------
+
+
+def _outcome_ready_capture(capture_store: CaptureStore, ledger_store: LedgerStore) -> CaptureRecord:
+    outcome = PatternOutcome(
+        id="out-1",
+        pattern_slug="tradoor-oi-reversal-v1",
+        symbol="BTCUSDT",
+        outcome="success",
+    )
+    ledger_store.save(outcome)
+
+    capture = CaptureRecord(
+        capture_kind="manual_hypothesis",
+        user_id="founder",
+        symbol="BTCUSDT",
+        pattern_slug="tradoor-oi-reversal-v1",
+        timeframe="1h",
+        captured_at_ms=1770000000000,
+        outcome_id="out-1",
+        status="outcome_ready",
+    )
+    capture_store.save(capture)
+    return capture
+
+
+def test_label_verdict_happy_path(tmp_path, monkeypatch) -> None:
+    client = _client_with_ledger(tmp_path, monkeypatch)
+    capture = _outcome_ready_capture(
+        client.capture_store,  # type: ignore[attr-defined]
+        client.ledger_store,  # type: ignore[attr-defined]
+    )
+
+    response = client.post(
+        f"/captures/{capture.capture_id}/verdict",
+        json={"user_verdict": "valid", "user_note": "clean entry"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["verdict"] == "valid"
+    assert payload["outcome_id"] == "out-1"
+
+    reloaded = client.capture_store.load(capture.capture_id)  # type: ignore[attr-defined]
+    assert reloaded.status == "verdict_ready"
+    assert reloaded.verdict_id == "out-1"
+
+    updated = client.ledger_store.load("tradoor-oi-reversal-v1", "out-1")  # type: ignore[attr-defined]
+    assert updated.user_verdict == "valid"
+    assert updated.user_note == "clean entry"
+
+    assert len(client.verdict_records) == 1  # type: ignore[attr-defined]
+
+
+def test_label_verdict_rejects_pending_capture(tmp_path, monkeypatch) -> None:
+    client = _client_with_ledger(tmp_path, monkeypatch)
+    capture = CaptureRecord(
+        capture_kind="manual_hypothesis",
+        user_id="founder",
+        symbol="BTCUSDT",
+        pattern_slug="tradoor-oi-reversal-v1",
+        timeframe="1h",
+        captured_at_ms=1770000000000,
+        status="pending_outcome",
+    )
+    client.capture_store.save(capture)  # type: ignore[attr-defined]
+
+    response = client.post(
+        f"/captures/{capture.capture_id}/verdict",
+        json={"user_verdict": "valid"},
+    )
+    assert response.status_code == 409
+
+
+def test_label_verdict_capture_not_found(tmp_path, monkeypatch) -> None:
+    client = _client_with_ledger(tmp_path, monkeypatch)
+    response = client.post("/captures/no-such-id/verdict", json={"user_verdict": "valid"})
+    assert response.status_code == 404
+
+
+def test_label_verdict_no_outcome_id_returns_422(tmp_path, monkeypatch) -> None:
+    client = _client_with_ledger(tmp_path, monkeypatch)
+    capture = CaptureRecord(
+        capture_kind="manual_hypothesis",
+        user_id="founder",
+        symbol="BTCUSDT",
+        pattern_slug="tradoor-oi-reversal-v1",
+        timeframe="1h",
+        captured_at_ms=1770000000000,
+        outcome_id=None,
+        status="outcome_ready",
+    )
+    client.capture_store.save(capture)  # type: ignore[attr-defined]
+
+    response = client.post(
+        f"/captures/{capture.capture_id}/verdict",
+        json={"user_verdict": "valid"},
+    )
+    assert response.status_code == 422
