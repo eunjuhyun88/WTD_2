@@ -3262,3 +3262,43 @@ def test_select_active_family_insight_ignores_timeframe_family() -> None:
     assert active is not None
     assert active.family_type == "manual"
     assert active.family_key == "tradoor-oi-reversal-v1__arch-soft-real-loose"
+
+
+# ---------------------------------------------------------------------------
+# W-0086 slice #4 — forward-walk validation: no future-leak in detection
+# ---------------------------------------------------------------------------
+
+
+def test_slice_case_frames_clips_at_case_end_at_no_future_leak(monkeypatch) -> None:
+    from datetime import timedelta
+    from research.pattern_search import _slice_case_frames
+
+    case_end = _dt("2026-04-14T00:00:00+00:00")
+    case = BenchmarkCase(
+        symbol="TESTUSDT",
+        timeframe="1h",
+        start_at=_dt("2026-04-13T00:00:00+00:00"),
+        end_at=case_end,
+        expected_phase_path=["FAKE_DUMP", "BREAKOUT"],
+    )
+    # klines extend 48 bars (2 days) beyond case.end_at
+    extra_end = case_end + timedelta(hours=48)
+    full_index = pd.date_range(_dt("2026-04-12T00:00:00+00:00"), extra_end, freq="1h", tz="UTC")
+    full_klines = pd.DataFrame(
+        {"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 100.0},
+        index=full_index,
+    )
+
+    monkeypatch.setattr("research.pattern_search.load_klines", lambda *a, **kw: full_klines)
+    monkeypatch.setattr("research.pattern_search.load_perp", lambda *a, **kw: None)
+    monkeypatch.setattr(
+        "research.pattern_search.compute_features_table",
+        lambda klines, *a, **kw: klines,
+    )
+
+    sliced_klines, _ = _slice_case_frames(case, timeframe="1h", warmup_bars=0)
+
+    assert sliced_klines.index[-1] <= case_end, (
+        f"future data leaked: last bar {sliced_klines.index[-1]} > case.end_at {case_end}"
+    )
+
