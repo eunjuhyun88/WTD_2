@@ -57,6 +57,10 @@ from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
 from building_blocks.confirmations.volume_dryup import volume_dryup
+from building_blocks.confirmations.coinbase_premium_positive import coinbase_premium_positive
+from building_blocks.confirmations.smart_money_accumulation import smart_money_accumulation
+from building_blocks.confirmations.total_oi_spike import total_oi_spike
+from building_blocks.confirmations.oi_exchange_divergence import oi_exchange_divergence
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -107,6 +111,10 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
     ("volume_dryup",       volume_dryup),
+    ("coinbase_premium_positive", coinbase_premium_positive),
+    ("smart_money_accumulation", smart_money_accumulation),
+    ("total_oi_spike",          total_oi_spike),
+    ("oi_exchange_divergence",  oi_exchange_divergence),
     # disqualifiers
     ("volume_below_average", volume_below_average),
     ("extreme_volatility",   extreme_volatility),
