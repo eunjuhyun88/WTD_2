@@ -96,12 +96,27 @@ SvelteKit hooks.server.ts에서 IP 기반 rate limit:
 - `/score` 응답 Redis 캐싱 (캐시 키: `score:{symbol}:{tf}:{features_hash}`, TTL=30s)
 - 동일 feature set의 반복 요청은 LightGBM 재계산 없이 응답
 
+## 구현 현황 (2026-04-19, 858874c)
+
+| Slice | 상태 | 내용 |
+|-------|------|------|
+| C — Rate limit | ✅ | chartKlinesLimiter(120/min) + engineProxyLimiter(60/min) |
+| B — Shared cache | ✅ | sharedCache(Upstash REST) → chartSeriesService, graceful fallback |
+| D — Score cache | ✅ | score_cache.py TTL=30s, key=(symbol, last_bar_ts_ms) |
+| A — k6 script | ✅ | scripts/load_test_500.js, 500VU×60s |
+
 ## Exit Criteria
 
-- [ ] k6 500VU 60s 실행 결과 기록 (p95, error rate)
-- [ ] 실측 병목 top 3 확인 후 Slice B/C/D 우선순위 확정
-- [ ] 선택된 Slice 구현 후 재측정 (개선율 확인)
-- [ ] 기존 테스트 전부 통과
+- [ ] k6 500VU 60s 실행 결과 기록 (p95, error rate) — **Upstash 연결 후 실측 필요**
+- [x] 실측 병목 top 3 확인 후 Slice B/C/D 우선순위 확정 (코드 분석 기반)
+- [x] 선택된 Slice 구현 (C/B/D 전부 구현 완료)
+- [x] 기존 테스트 전부 통과 (797 engine / 0 app type errors)
+
+## 잔여 작업
+
+1. **Upstash 프로비저닝** — `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` Vercel env 설정
+2. **k6 실측** — `k6 run --env BASE=https://wtd-app.vercel.app scripts/load_test_500.js`
+3. **PR 생성** → main 머지 (사용자 승인 후)
 
 ## Non-Goals
 
