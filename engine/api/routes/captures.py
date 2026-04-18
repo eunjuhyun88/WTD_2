@@ -1,8 +1,9 @@
 """Capture endpoints — canonical Save Setup records.
 
 Routes:
-  POST /captures             single capture (pattern_candidate, manual_hypothesis, ...)
-  POST /captures/bulk_import founder cold-start: bulk-ingest manual hypothesis setups
+  POST /captures                      single capture (pattern_candidate, manual_hypothesis, ...)
+  POST /captures/bulk_import          founder cold-start: bulk-ingest manual hypothesis setups
+  POST /captures/{id}/verdict         label outcome after resolver runs (axis 3 close)
   GET  /captures/{id}
   GET  /captures
 
@@ -10,22 +11,25 @@ Cold-start lane (design: docs/product/flywheel-closure-design.md):
   - manual_hypothesis captures enter with status='pending_outcome' so the
     outcome_resolver closes them via the same pipeline as pattern_candidate.
   - Bulk import is the founder's seed lane before external users arrive.
+  - Verdict label closes axis 3: founder reviews resolved outcomes and
+    annotates them as valid/invalid/missed so axis 4 (refinement) can train.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
-from ledger.store import LEDGER_RECORD_STORE
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from patterns.state_store import PatternStateStore
 
 router = APIRouter()
 _capture_store = CaptureStore()
 _state_store = PatternStateStore()
+_ledger_store = LedgerStore()
 
 
 def _status_for_kind(kind: CaptureKind) -> str:
@@ -188,6 +192,51 @@ async def bulk_import_captures(body: BulkImportBody) -> dict:
         "ok": True,
         "count": len(stored),
         "capture_ids": [r.capture_id for r in stored],
+    }
+
+
+class VerdictBody(BaseModel):
+    user_verdict: Literal["valid", "invalid", "missed"]
+    user_note: str | None = None
+
+
+@router.post("/{capture_id}/verdict")
+async def label_capture_verdict(capture_id: str, body: VerdictBody) -> dict:
+    """Attach a founder verdict to a resolved capture (axis 3 close).
+
+    Requires status='outcome_ready'. The linked PatternOutcome is updated
+    with user_verdict, a LEDGER:verdict record is appended, and the capture
+    status advances to 'verdict_ready'.
+    """
+    capture = _capture_store.load(capture_id)
+    if capture is None:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    if capture.status not in ("outcome_ready", "verdict_ready"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Capture is {capture.status!r} — must be 'outcome_ready' to label",
+        )
+    if not capture.outcome_id or not capture.pattern_slug:
+        raise HTTPException(
+            status_code=422,
+            detail="Capture has no linked outcome — wait for outcome_resolver to run",
+        )
+
+    outcome = _ledger_store.load(capture.pattern_slug, capture.outcome_id)
+    if outcome is None:
+        raise HTTPException(status_code=404, detail=f"Outcome not found: {capture.outcome_id}")
+
+    outcome.user_verdict = body.user_verdict
+    outcome.user_note = body.user_note
+    _ledger_store.save(outcome)
+    LEDGER_RECORD_STORE.append_verdict_record(outcome)
+    _capture_store.update_status(capture_id, "verdict_ready", verdict_id=outcome.id)
+
+    return {
+        "ok": True,
+        "capture_id": capture_id,
+        "verdict": body.user_verdict,
+        "outcome_id": outcome.id,
     }
 
 
