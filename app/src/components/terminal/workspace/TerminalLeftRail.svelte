@@ -6,6 +6,11 @@
     TerminalAlertRule,
     TerminalWatchlistItem,
   } from '$lib/contracts/terminalPersistence';
+  import {
+    createSymbolSelection,
+    createTerminalSelection,
+    type TerminalSelectionState,
+  } from '$lib/terminal/terminalSelectionState';
 
   interface AlertRow {
     id: string;
@@ -39,6 +44,7 @@
     marketEvents?: Array<{ tag?: string; level?: string; text?: string }>;
     queryPresets?: TerminalPreset[];
     anomalies?: TerminalAnomaly[];
+    onSelect?: (s: TerminalSelectionState) => void;
     onQuery?: (q: string) => void;
     onDeleteSavedAlert?: (id: string) => void;
   }
@@ -53,6 +59,7 @@
     marketEvents = [],
     queryPresets = [],
     anomalies = [],
+    onSelect,
     onQuery,
     onDeleteSavedAlert,
   }: Props = $props();
