@@ -51,7 +51,7 @@
     bottom: 0;
     z-index: var(--sc-z-sticky, 140);
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     height: calc(var(--sc-mobile-nav-h, 68px) + env(safe-area-inset-bottom, 0px));
     padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
