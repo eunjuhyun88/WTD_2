@@ -198,6 +198,14 @@ class CaptureStore:
             ).fetchall()
         return [self._row_to_record(row) for row in rows]
 
+    def count_by_status(self) -> dict[str, int]:
+        """Return status → count for all capture records (single GROUP BY query)."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT status, COUNT(*) AS n FROM capture_records GROUP BY status"
+            ).fetchall()
+        return {row["status"]: int(row["n"]) for row in rows}
+
     def update_status(
         self,
         capture_id: str,
