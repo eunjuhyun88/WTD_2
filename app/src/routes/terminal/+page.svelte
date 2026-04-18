@@ -879,6 +879,24 @@
       applyDecisionState(sym, decision, false);
       if (sym === activeSymbol) chartLevels = extractLevels(event.data);
     }
+    // W-0102 Slice 2: chart_action SSE → ChartBoard reflection.
+    // LLM tool call from chart_control tool emits these so natural-language
+    // "4h로 전환" / "ETH 보여줘" drives the chart. add_indicator is Slice 3.
+    if (event.type === 'chart_action') {
+      const action = event.action as string | undefined;
+      const payload = (event.payload ?? {}) as Record<string, unknown>;
+      if (action === 'change_symbol' && typeof payload.symbol === 'string') {
+        const raw = payload.symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const sym = raw.endsWith('USDT') ? raw : `${raw}USDT`;
+        if (sym.length > 4) selectAsset(sym);
+      } else if (action === 'change_timeframe' && typeof payload.timeframe === 'string') {
+        try {
+          setActiveTimeframe(normalizeTimeframe(payload.timeframe));
+        } catch (err) {
+          console.warn('chart_action: invalid timeframe', payload.timeframe, err);
+        }
+      }
+    }
   }
 
   function handleQueryChip(query: string) { sendCommand(query); }
@@ -1007,6 +1025,24 @@
     if (symbolParam) {
       const pairStr = symbolParam.toUpperCase().replace(/USDT$/, '') + '/USDT';
       setActivePair(pairStr);
+    }
+
+    // ── URL param: ?q=<prompt> auto-submits to BottomDock (W-0102 Slice 1) ──
+    // Home composer / Dashboard Watching cards send users here via /terminal?q=…
+    // so the prompt becomes the first message in the Terminal SSE thread.
+    const qParam = searchParams.get('q');
+    if (qParam && qParam.trim()) {
+      const qText = qParam.trim();
+      // Strip ?q= from URL so page refresh does not re-submit the same prompt.
+      const cleanedUrl = new URL(window.location.href);
+      cleanedUrl.searchParams.delete('q');
+      window.history.replaceState({}, '', cleanedUrl.toString());
+      // Defer submit so store hydration + initial bootstrap tasks can settle.
+      // TODO(W-0102 Slice 4): wait on analysisData ready instead of fixed delay
+      const qAutoSubmitTimer = window.setTimeout(() => {
+        void sendCommand(qText);
+      }, 500);
+      bootstrapTimers = [...bootstrapTimers, qAutoSubmitTimer];
     }
 
     // $effect handles initial loadAnalysis + loadFlow — only set up intervals and one-shot fetches here
