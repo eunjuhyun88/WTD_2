@@ -6,7 +6,7 @@
   } = $props();
 </script>
 
-<footer class="home-footer">
+<section class="home-cta">
   <div class="footer-shell">
     <div class="footer-copy">
       <span class="footer-label">NEXT MOVE</span>
@@ -25,10 +25,10 @@
       </button>
     </div>
   </div>
-</footer>
+</section>
 
 <style>
-  .home-footer {
+  .home-cta {
     position: relative;
     z-index: 3;
     padding: 8px clamp(22px, 4vw, 48px) calc(52px + env(safe-area-inset-bottom, 0px));
@@ -102,7 +102,7 @@
   }
 
   @media (max-width: 540px) {
-    .home-footer {
+    .home-cta {
       padding-left: 18px;
       padding-right: 18px;
     }
