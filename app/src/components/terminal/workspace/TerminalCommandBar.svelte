@@ -6,37 +6,87 @@
     assetsCount?: number;
     marketRailOpen?: boolean;
     onToggleMarketRail?: () => void;
+    tf?: string;
+    onTfChange?: (tf: string) => void;
+    price?: number | null;
+    change24h?: number | null;
   }
 
   let {
     assetsCount = 0,
     marketRailOpen = false,
     onToggleMarketRail,
+    tf = '4h',
+    onTfChange,
+    price = null,
+    change24h = null,
   }: Props = $props();
+
   let showSymbolDrop = $state(false);
+
+  const TF_LIST = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
+
+  function normTf(t: string) {
+    return t.toLowerCase();
+  }
+
+  function fmtPrice(p: number): string {
+    if (p >= 10000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (p >= 1000)  return p.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    if (p >= 1)     return p.toFixed(4);
+    return p.toPrecision(4);
+  }
 </script>
 
-<nav class="command-bar" aria-label="Terminal command bar">
-  <button
-    class="sym-chip"
-    type="button"
-    title={assetsCount > 1 ? `${assetsCount} active assets in scan context` : '심볼 변경'}
-    onclick={() => showSymbolDrop = !showSymbolDrop}
-  >
-    <span class="sym-kicker">SYMBOL</span>
-    <strong class="sym-value">{$activePair || 'BTC/USDT'}</strong>
-    <span class="sym-caret" aria-hidden="true">▾</span>
+<nav class="cmd-bar" aria-label="Terminal command bar">
+  <!-- Symbol ticker — most prominent element -->
+  <button class="ticker-btn" type="button" onclick={() => showSymbolDrop = !showSymbolDrop}>
+    <span class="ticker-pair">{$activePair?.split('/')[0] ?? 'BTC'}</span>
+    <span class="ticker-quote">/{$activePair?.split('/')[1] ?? 'USDT'}</span>
+    <span class="ticker-caret">▾</span>
   </button>
 
+  <!-- Live price -->
+  {#if price != null}
+    <div class="ticker-price">
+      <span class="price-num">{fmtPrice(price)}</span>
+      {#if change24h != null}
+        <span class="price-delta" class:up={change24h >= 0} class:dn={change24h < 0}>
+          {change24h >= 0 ? '▲' : '▼'}{Math.abs(change24h).toFixed(2)}%
+        </span>
+      {/if}
+    </div>
+  {/if}
+
+  <div class="cmd-divider" aria-hidden="true"></div>
+
+  <!-- Timeframe pills -->
+  <div class="tf-group" role="group" aria-label="Timeframe">
+    {#each TF_LIST as t}
+      <button
+        class="tf-pill"
+        class:active={normTf(tf) === normTf(t)}
+        type="button"
+        onclick={() => onTfChange?.(t)}
+      >{t.toUpperCase()}</button>
+    {/each}
+  </div>
+
+  <div class="cmd-spacer" aria-hidden="true"></div>
+
+  <!-- Markets toggle -->
   <button
-    class="rail-toggle"
+    class="markets-btn"
+    class:open={marketRailOpen}
     type="button"
     onclick={() => onToggleMarketRail?.()}
     aria-pressed={marketRailOpen}
-    title="Market list"
   >
-    <span class="rail-kicker">MARKETS</span>
-    <span class="rail-state">{marketRailOpen ? '●' : '○'}</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    </svg>
+    <span class="markets-label">Markets</span>
   </button>
 </nav>
 
@@ -49,93 +99,158 @@
 {/if}
 
 <style>
-  .command-bar {
+  .cmd-bar {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    background: transparent;
-    min-height: 36px;
+    gap: 0;
+    height: 42px;
+    padding: 0 12px;
+    background: var(--tv-bg-1, #131722);
+    border-bottom: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+  .cmd-bar::-webkit-scrollbar { display: none; }
 
-  .sym-chip {
+  /* Symbol ticker */
+  .ticker-btn {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+    padding: 6px 10px 6px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
+    flex-shrink: 0;
+    margin-right: 12px;
+  }
+  .ticker-btn:hover .ticker-pair { color: #fff; }
+
+  .ticker-pair {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--tv-text-0, #D1D4DC);
+    letter-spacing: -0.01em;
+    transition: color 100ms;
+  }
+  .ticker-quote {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--tv-text-2, rgba(209,212,220,0.4));
+    margin-left: 1px;
+  }
+  .ticker-caret {
+    font-size: 9px;
+    color: var(--tv-text-2, rgba(209,212,220,0.4));
+    margin-left: 4px;
+    transition: color 100ms;
+  }
+  .ticker-btn:hover .ticker-caret { color: var(--tv-text-1); }
+
+  /* Price */
+  .ticker-price {
     display: inline-flex;
     align-items: baseline;
     gap: 6px;
-    padding: 4px 10px;
-    border-radius: var(--sc-radius-1, 2px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.028);
-    color: var(--sc-text-0);
-    cursor: pointer;
-    transition: background var(--sc-dur-fast, 140ms) ease, border-color var(--sc-dur-fast, 140ms) ease;
-    font-family: var(--sc-font-mono);
+    flex-shrink: 0;
+    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
+    margin-right: 16px;
   }
-
-  .sym-chip:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.14);
+  .price-num {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tv-text-0, #D1D4DC);
+    letter-spacing: 0.01em;
   }
-
-  .sym-kicker {
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    color: rgba(177, 181, 189, 0.5);
-  }
-
-  .sym-value {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--sc-text-0);
-    letter-spacing: 0.02em;
-  }
-
-  .sym-caret {
-    font-size: 10px;
-    color: rgba(247, 242, 234, 0.58);
-  }
-
-  .rail-toggle {
+  .price-delta {
+    font-size: 11px;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: var(--sc-radius-1, 2px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.028);
-    cursor: pointer;
-    font-family: var(--sc-font-mono);
-    transition: background var(--sc-dur-fast, 140ms) ease, border-color var(--sc-dur-fast, 140ms) ease;
+    gap: 2px;
+  }
+  .price-delta.up { color: var(--tv-green, #22AB94); }
+  .price-delta.dn { color: var(--tv-red, #F23645); }
+
+  /* Divider */
+  .cmd-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--tv-border-strong, rgba(255,255,255,0.11));
+    flex-shrink: 0;
+    margin-right: 12px;
   }
 
-  .rail-toggle:hover {
-    background: rgba(255, 255, 255, 0.05);
+  /* TF pills */
+  .tf-group {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    flex-shrink: 0;
   }
-
-  .rail-toggle[aria-pressed='true'] {
-    border-color: rgba(99, 179, 237, 0.28);
-    background: rgba(99, 179, 237, 0.1);
-  }
-
-  .rail-kicker {
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    color: rgba(177, 181, 189, 0.5);
-  }
-
-  .rail-state {
+  .tf-pill {
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: none;
+    background: transparent;
+    color: var(--tv-text-2, rgba(209,212,220,0.4));
+    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
     font-size: 11px;
-    color: rgba(99, 179, 237, 0.72);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: color 80ms, background 80ms;
+    min-height: 26px;
   }
+  .tf-pill:hover {
+    color: var(--tv-text-0, #D1D4DC);
+    background: rgba(255,255,255,0.06);
+  }
+  .tf-pill.active {
+    color: var(--tv-text-0, #D1D4DC);
+    background: rgba(255,255,255,0.10);
+    font-weight: 700;
+  }
+
+  /* Spacer */
+  .cmd-spacer { flex: 1 1 auto; min-width: 8px; }
+
+  /* Markets button */
+  .markets-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    border-radius: 4px;
+    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    background: rgba(255,255,255,0.025);
+    color: var(--tv-text-1, rgba(209,212,220,0.72));
+    font-family: var(--sc-font-mono, 'IBM Plex Mono', monospace);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 100ms, border-color 100ms, color 100ms;
+    flex-shrink: 0;
+  }
+  .markets-btn:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--tv-text-0);
+    border-color: var(--tv-border-strong);
+  }
+  .markets-btn.open {
+    background: rgba(75,158,253,0.10);
+    border-color: rgba(75,158,253,0.3);
+    color: var(--tv-blue, #4B9EFD);
+  }
+  .markets-label { font-size: 10px; }
 
   @media (max-width: 767px) {
-    .command-bar {
-      padding: 4px 8px;
-      min-height: 32px;
-    }
-    .sym-chip {
-      flex: 1 1 auto;
-      justify-content: flex-start;
-    }
+    .cmd-bar { height: 38px; padding: 0 8px; }
+    .ticker-pair { font-size: 13px; }
+    .ticker-price { display: none; }
+    .markets-label { display: none; }
+    .tf-pill { padding: 3px 5px; font-size: 10px; }
   }
 </style>

@@ -14,9 +14,6 @@ export interface paths {
         /**
          * Score
          * @description Compute features + ML score for the latest bar.
-         *
-         *     Minimum klines required: MIN_HISTORY_BARS (500) for EMA200 warmup.
-         *     If fewer are sent, a 400 is returned — caller should send more history.
          */
         post: operations["score_score_post"];
         delete?: never;
@@ -37,9 +34,6 @@ export interface paths {
         /**
          * Deep
          * @description Run all L2 market_engine indicators for a single symbol.
-         *
-         *     Requires at least 120 kline bars (ATR 100-bar percentile window).
-         *     Perp data is optional — missing values score 0 in the corresponding layer.
          */
         post: operations["deep_deep_post"];
         delete?: never;
@@ -131,6 +125,23 @@ export interface paths {
         get: operations["sectors_universe_sectors_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/opportunity/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run */
+        post: operations["run_opportunity_run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -516,8 +527,6 @@ export interface paths {
         /**
          * Auto Evaluate
          * @description v2: Auto-evaluate pending outcomes past their evaluation window.
-         *
-         *     Checks Binance prices and applies HIT/MISS/EXPIRED verdicts.
          */
         post: operations["auto_evaluate_patterns__slug__evaluate_post"];
         delete?: never;
@@ -578,8 +587,6 @@ export interface paths {
         /**
          * Register Pattern
          * @description Register a user-defined pattern into the library.
-         *
-         *     Validates block names against the block evaluator registry.
          */
         post: operations["register_pattern_patterns_register_post"];
         delete?: never;
@@ -705,6 +712,187 @@ export interface paths {
         put?: never;
         /** Memory Rejected Search */
         post: operations["memory_rejected_search_memory_rejected_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/screener/runs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest Run */
+        get: operations["latest_run_screener_runs_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/screener/listings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listings */
+        get: operations["listings_screener_listings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/screener/assets/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset Detail */
+        get: operations["asset_detail_screener_assets__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/screener/universe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Filtered Universe */
+        get: operations["filtered_universe_screener_universe_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rag/terminal-scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Terminal Scan */
+        post: operations["terminal_scan_rag_terminal_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rag/quick-trade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quick Trade */
+        post: operations["quick_trade_rag_quick_trade_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rag/signal-action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signal Action */
+        post: operations["signal_action_rag_signal_action_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rag/dedupe-hash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dedupe Hash */
+        post: operations["dedupe_hash_rag_dedupe_hash_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/live-signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Live Signals
+         * @description Return current live scan results (ACCUMULATION / REAL_DUMP candidates).
+         *
+         *     Results are cached for LIVE_SIGNAL_CACHE_TTL_SECONDS (default 1h) to
+         *     avoid hammering the Binance API on every terminal load.
+         */
+        get: operations["get_live_signals_live_signals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/live-signals/verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Verdict
+         * @description Record user verdict for a live signal.
+         *
+         *     Appends one JSON line to verdicts.jsonl.
+         */
+        post: operations["post_verdict_live_signals_verdict_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1332,6 +1520,84 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        /** OpportunityMacroBackdrop */
+        OpportunityMacroBackdrop: {
+            /** Fedfundsrate */
+            fedFundsRate?: number | null;
+            /** Yieldcurvespread */
+            yieldCurveSpread?: number | null;
+            /** M2Changepct */
+            m2ChangePct?: number | null;
+            /** Overallmacroscore */
+            overallMacroScore: number;
+            /** Regime */
+            regime: string;
+        };
+        /** OpportunityRunRequest */
+        OpportunityRunRequest: {
+            /**
+             * Limit
+             * @default 15
+             */
+            limit: number;
+        };
+        /** OpportunityRunResponse */
+        OpportunityRunResponse: {
+            /** Coins */
+            coins: components["schemas"]["OpportunityScore"][];
+            macroBackdrop: components["schemas"]["OpportunityMacroBackdrop"];
+            /** Scannedat */
+            scannedAt: number;
+            /** Scandurationms */
+            scanDurationMs: number;
+        };
+        /** OpportunityScore */
+        OpportunityScore: {
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Price */
+            price: number;
+            /** Change1H */
+            change1h: number;
+            /** Change24H */
+            change24h: number;
+            /** Change7D */
+            change7d: number;
+            /** Volume24H */
+            volume24h: number;
+            /** Marketcap */
+            marketCap: number;
+            /** Momentumscore */
+            momentumScore: number;
+            /** Volumescore */
+            volumeScore: number;
+            /** Socialscore */
+            socialScore: number;
+            /** Macroscore */
+            macroScore: number;
+            /** Onchainscore */
+            onchainScore: number;
+            /** Totalscore */
+            totalScore: number;
+            /** Direction */
+            direction: string;
+            /** Confidence */
+            confidence: number;
+            /** Reasons */
+            reasons: string[];
+            /** Sentiment */
+            sentiment?: number | null;
+            /** Socialvolume */
+            socialVolume?: number | null;
+            /** Galaxyscore */
+            galaxyScore?: number | null;
+            /** Alerts */
+            alerts: string[];
+        };
         /**
          * PerpSnapshot
          * @description Current-bar derivatives data with neutral-safe defaults.
@@ -1359,6 +1625,100 @@ export interface components {
             long_short_ratio: number;
             /** Taker Buy Ratio */
             taker_buy_ratio?: number | null;
+        };
+        /** RagDedupeHashRequest */
+        RagDedupeHashRequest: {
+            /** Pair */
+            pair: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Direction */
+            direction: string;
+            /** Regime */
+            regime: string;
+            /** Source */
+            source: string;
+            /**
+             * Windowminutes
+             * @default 60
+             */
+            windowMinutes: number;
+        };
+        /** RagDedupeHashResponse */
+        RagDedupeHashResponse: {
+            /** Dedupehash */
+            dedupeHash: string;
+        };
+        /** RagQuickTradeEmbeddingRequest */
+        RagQuickTradeEmbeddingRequest: {
+            /** Pair */
+            pair: string;
+            /** Direction */
+            direction: string;
+            /** Entryprice */
+            entryPrice: number;
+            /** Currentprice */
+            currentPrice: number;
+            /** Tp */
+            tp?: number | null;
+            /** Sl */
+            sl?: number | null;
+            /** Source */
+            source: string;
+            /**
+             * Confidence
+             * @default 50
+             */
+            confidence: number;
+            /**
+             * Timeframe
+             * @default 4h
+             */
+            timeframe: string;
+        };
+        /** RagScanSignal */
+        RagScanSignal: {
+            /** Agentid */
+            agentId: string;
+            /** Vote */
+            vote: string;
+            /** Confidence */
+            confidence: number;
+        };
+        /** RagSignalActionEmbeddingRequest */
+        RagSignalActionEmbeddingRequest: {
+            /** Pair */
+            pair: string;
+            /** Direction */
+            direction: string;
+            /** Actiontype */
+            actionType: string;
+            /** Confidence */
+            confidence?: number | null;
+            /** Source */
+            source: string;
+            /**
+             * Timeframe
+             * @default 4h
+             */
+            timeframe: string;
+        };
+        /** RagTerminalScanEmbeddingRequest */
+        RagTerminalScanEmbeddingRequest: {
+            /** Signals */
+            signals: components["schemas"]["RagScanSignal"][];
+            /** Timeframe */
+            timeframe: string;
+            /**
+             * Datacompleteness
+             * @default 0.7
+             */
+            dataCompleteness: number;
+        };
+        /** RagVectorResponse */
+        RagVectorResponse: {
+            /** Embedding */
+            embedding: number[];
         };
         /** ScanMatch */
         ScanMatch: {
@@ -1656,7 +2016,20 @@ export interface components {
             tags: string[];
         };
         /** _VerdictBody */
-        _VerdictBody: {
+        api__routes__live_signals___VerdictBody: {
+            /** Signal Id */
+            signal_id: string;
+            /** Symbol */
+            symbol: string;
+            /** Phase */
+            phase: string;
+            /** Verdict */
+            verdict: string;
+            /** Note */
+            note?: string | null;
+        };
+        /** _VerdictBody */
+        api__routes__patterns___VerdictBody: {
             /** Symbol */
             symbol: string;
             /** Verdict */
@@ -1836,6 +2209,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    run_opportunity_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2406,7 +2812,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["_VerdictBody"];
+                "application/json": components["schemas"]["api__routes__patterns___VerdictBody"];
             };
         };
         responses: {
@@ -2830,6 +3236,320 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemoryRejectedLookupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_run_screener_runs_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listings_screener_listings_get: {
+        parameters: {
+            query?: {
+                /** @description A | B | C | excluded */
+                grade?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    asset_detail_screener_assets__symbol__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    filtered_universe_screener_universe_get: {
+        parameters: {
+            query?: {
+                /** @description A | B */
+                min_grade?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    terminal_scan_rag_terminal_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RagTerminalScanEmbeddingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RagVectorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quick_trade_rag_quick_trade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RagQuickTradeEmbeddingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RagVectorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    signal_action_rag_signal_action_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RagSignalActionEmbeddingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RagVectorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dedupe_hash_rag_dedupe_hash_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RagDedupeHashRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RagDedupeHashResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_live_signals_live_signals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    post_verdict_live_signals_verdict_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["api__routes__live_signals___VerdictBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

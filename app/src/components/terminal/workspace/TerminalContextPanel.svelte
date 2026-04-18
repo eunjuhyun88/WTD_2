@@ -26,6 +26,7 @@
     onAction?: (text: string) => void;
     onPinToggle?: () => void;
     onAlertToggle?: () => void;
+    onRetry?: () => void;
     bars?: any[];
     layerBarsMap?: Record<string, any[]>;
     isPinned?: boolean;
@@ -40,6 +41,7 @@
     onAction,
     onPinToggle,
     onAlertToggle,
+    onRetry,
     bars = [],
     layerBarsMap = {},
     isPinned = false,
@@ -47,14 +49,12 @@
     patternRecallMatches = [],
   }: Props = $props();
 
-  // W-0086: 4 tabs per rail spec — Verdict | Why | Risk | Sources
-  // 'metrics' (Flow) and 'catalysts' (News) collapsed into Sources tab
   const TABS = [
-    { id: 'summary', label: 'Verdict' },
-    { id: 'entry',   label: 'Why' },
-    { id: 'risk',    label: 'Risk' },
-    // Sources tab aggregates metrics/flow + news + evidence sources
-    { id: 'metrics', label: 'Sources' },
+    { id: 'summary',   label: 'Summary' },
+    { id: 'entry',     label: 'Entry' },
+    { id: 'risk',      label: 'Risk' },
+    { id: 'catalysts', label: 'Catalysts' },
+    { id: 'metrics',   label: 'Metrics' },
   ];
 
   // ── Deep pipeline data ──────────────────────────────────────────────────
@@ -87,6 +87,20 @@
   }
 
   const verdict = $derived(buildVerdictFromAnalysis(analysisData));
+
+  // Detect engine-degraded state: verdict present but all engine layers absent/failed
+  const isEngineDegraded = $derived(
+    verdict != null && !deepVerdict && pWin == null && (
+      verdict.action?.toLowerCase().includes('wait for clarity') ||
+      (verdict.against ?? []).some(s =>
+        s.toLowerCase().includes('unavail') ||
+        s.toLowerCase().includes('engine') ||
+        s.toLowerCase().includes('failed') ||
+        s.toLowerCase().includes('request failed')
+      )
+    )
+  );
+
   const structureExplainModel = $derived(buildStructureExplain(deep as Record<string, unknown> | null | undefined));
   const evidence = $derived(buildEvidenceFromAnalysis(analysisData));
   const SOURCES = $derived(buildSourcesFromAnalysis(analysisData));
@@ -153,10 +167,23 @@
 </script>
 
 <aside class="context-panel">
+  {#if verdict}
+    <div class="verdict-hero" class:bull={verdict.direction === 'bullish'} class:bear={verdict.direction === 'bearish'}>
+      <div class="vh-top">
+        <span class="vh-dir">{verdict.direction?.toUpperCase() ?? '—'}</span>
+        <span class="vh-action">{verdict.action || '—'}</span>
+      </div>
+      {#if verdict.invalidation}
+        <div class="vh-inv">
+          <span class="vh-inv-label">If wrong</span>
+          <span class="vh-inv-val">{verdict.invalidation}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
   <div class="panel-header">
     <div class="panel-symbol-line">
-      <span class="panel-context">Analysis</span>
-      <span class="panel-symbol">{panelSymbol}/USDT</span>
+      <span class="panel-symbol">{panelSymbol}/USDT · {panelTimeframe}</span>
     </div>
     <div class="panel-actions">
       <button type="button" class:active={isPinned} onclick={() => onPinToggle?.()}>{isPinned ? 'Pinned' : 'Pin'}</button>
@@ -174,6 +201,22 @@
 
   <div class="panel-body">
     {#if activeTab === 'summary'}
+      {#if isEngineDegraded}
+        <!-- Engine degraded / failed state -->
+        <div class="degraded-card">
+          <div class="degraded-row">
+            <span class="degraded-icon">⚠</span>
+            <span class="degraded-msg">Engine analysis unavailable</span>
+          </div>
+          <p class="degraded-hint">Backend engines did not return data for this asset. Check connection or retry.</p>
+          {#if onRetry}
+            <button class="retry-btn" onclick={() => onRetry?.()}>
+              ↺ Retry Analysis
+            </button>
+          {/if}
+        </div>
+        <div class="divider"></div>
+      {/if}
       {#if deepVerdict}
         <!-- Deep Score (primary) -->
         <div class="ml-score-row">
@@ -259,7 +302,16 @@
         <SourceRow sources={SOURCES} />
       {:else}
         <div class="empty-panel">
-          <p>Select an asset or run a query to see analysis.</p>
+          {#if analysisData}
+            <!-- analysisData exists but no verdict — engine returned partial data -->
+            <p class="empty-warn">⚠ Partial data</p>
+            <p>Engine returned incomplete analysis.</p>
+            {#if onRetry}
+              <button class="retry-btn" onclick={() => onRetry?.()}>↺ Retry</button>
+            {/if}
+          {:else}
+            <p>Select an asset or run a query to see analysis.</p>
+          {/if}
         </div>
       {/if}
 
@@ -409,20 +461,6 @@
     {/if}
   </div>
 
-  <div class="panel-conclusion">
-    <div class="conclusion-row">
-      <span class="conclusion-label">Bias</span>
-      <span class="conclusion-value">{panelConclusion.bias}</span>
-    </div>
-    <div class="conclusion-row">
-      <span class="conclusion-label">Action</span>
-      <span class="conclusion-value">{panelConclusion.action}</span>
-    </div>
-    <div class="conclusion-row">
-      <span class="conclusion-label">Invalidation</span>
-      <span class="conclusion-value">{panelConclusion.invalidation}</span>
-    </div>
-  </div>
 </aside>
 
 <style>
@@ -458,14 +496,7 @@
     color: rgba(247,242,234,0.92);
     white-space: nowrap;
   }
-  .panel-context {
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(247,242,234,0.34);
-  }
-  .panel-actions {
+.panel-actions {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -773,6 +804,132 @@
   .ml-score-row.secondary { margin-top: -6px; }
   .ml-value-sm { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 600; line-height: 1; }
 
+  /* Engine degraded card */
+  .degraded-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 9px;
+    border: 1px solid rgba(251, 191, 36, 0.22);
+    border-radius: 5px;
+    background: rgba(251, 191, 36, 0.04);
+  }
+  .degraded-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .degraded-icon {
+    font-size: 13px;
+    color: #fbbf24;
+    flex-shrink: 0;
+  }
+  .degraded-msg {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(251, 191, 36, 0.88);
+    letter-spacing: 0.04em;
+  }
+  .degraded-hint {
+    margin: 0;
+    font-size: 9px;
+    line-height: 1.45;
+    color: rgba(247, 242, 234, 0.42);
+  }
+  .retry-btn {
+    align-self: flex-start;
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(247, 242, 234, 0.82);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 3px;
+    padding: 4px 9px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .retry-btn:hover {
+    background: rgba(77, 143, 245, 0.12);
+    border-color: rgba(99, 179, 237, 0.3);
+    color: rgba(247, 242, 234, 1);
+  }
+  .empty-warn {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: #fbbf24;
+    margin: 0;
+  }
+
+  /* Verdict hero — top of panel, always visible */
+  .verdict-hero {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 9px 10px 8px;
+    background: rgba(255,255,255,0.015);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .verdict-hero.bull {
+    background: rgba(34,171,148,0.055);
+    border-bottom-color: rgba(34,171,148,0.14);
+  }
+  .verdict-hero.bear {
+    background: rgba(242,54,69,0.055);
+    border-bottom-color: rgba(242,54,69,0.14);
+  }
+  .vh-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .vh-dir {
+    font-family: var(--sc-font-mono);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: rgba(209,212,220,0.55);
+    flex-shrink: 0;
+  }
+  .verdict-hero.bull .vh-dir { color: var(--tv-green, #22AB94); }
+  .verdict-hero.bear .vh-dir { color: var(--tv-red, #F23645); }
+  .vh-action {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(209,212,220,0.52);
+    flex: 1;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vh-inv {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .vh-inv-label {
+    font-family: var(--sc-font-mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(209,212,220,0.28);
+    flex-shrink: 0;
+  }
+  .vh-inv-val {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(209,212,220,0.62);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .stop { color: var(--sc-bad, #cf7f8f) !important; }
   .tp   { color: var(--sc-good, #adca7c) !important; }
   .news-list { display: flex; flex-direction: column; gap: 4px; }
@@ -780,37 +937,5 @@
   .news-time { font-family: var(--sc-font-mono); font-size: 8px; color: var(--sc-text-2); }
   .news-title { font-size: 10px; color: var(--sc-text-1); margin: 0; line-height: 1.25; }
 
-  .panel-conclusion {
-    flex-shrink: 0;
-    display: grid;
-    gap: 1px;
-    padding: 6px 7px 7px;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.02)),
-      rgba(5, 7, 10, 0.96);
-  }
-
-  .conclusion-row {
-    display: grid;
-    grid-template-columns: 56px minmax(0, 1fr);
-    gap: 5px;
-    align-items: start;
-  }
-
-  .conclusion-label {
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(247,242,234,0.42);
-  }
-
-  .conclusion-value {
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    line-height: 1.25;
-    color: rgba(247,242,234,0.82);
-  }
 
 </style>

@@ -66,12 +66,6 @@
 </script>
 
 <div class="mobile-hero" class:mounted>
-  <!-- App mark + sign-in -->
-  <header class="app-bar">
-    <span class="brand">COGOCHI</span>
-    <a class="signin-link" href="/dashboard">대시보드</a>
-  </header>
-
   <!-- Thesis -->
   <div class="thesis-block">
     <h1 class="thesis-h1">Markets move on.<br/>Your judgment<br/>should stay.</h1>
@@ -170,40 +164,9 @@
     color: var(--sc-text-0, rgba(247, 242, 234, 0.98));
   }
 
-  /* App bar */
-  .app-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 44px;
-    padding: 0 18px;
-    flex-shrink: 0;
-  }
-
-  .brand {
-    font-family: var(--sc-font-mono);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    color: rgba(var(--home-accent-rgb, 219, 154, 159), 0.7);
-  }
-
-  .signin-link {
-    font-family: var(--sc-font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgba(247, 242, 234, 0.5);
-    text-decoration: none;
-    /* 44pt touch target */
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-  }
-
   /* Thesis */
   .thesis-block {
-    padding: 28px 18px 24px;
+    padding: 20px 18px 20px;
     display: flex;
     flex-direction: column;
     gap: 14px;

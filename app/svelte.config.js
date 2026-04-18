@@ -8,7 +8,12 @@ const trustedOrigins = (process.env.CSRF_TRUSTED_ORIGINS ?? '')
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter(),
+		adapter: adapter({
+			runtime: 'nodejs22.x',
+			regions: ['iad1'],
+			memory: 1024,
+			maxDuration: 60
+		}),
 		csrf: {
 			trustedOrigins
 		}

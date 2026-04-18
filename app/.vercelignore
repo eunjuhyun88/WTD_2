@@ -1,0 +1,24 @@
+# Exclude non-runtime artifacts from Vercel deployment upload
+node_modules
+.svelte-kit
+.vercel
+build
+docs
+_archive
+scripts/research
+scripts/dev
+scripts/security
+scripts/perf
+scripts/contracts
+scripts/audit
+scripts/ai
+scripts/stability
+src/**/*.test.ts
+src/**/*.spec.ts
+src/**/__tests__
+src/test
+*.md
+.env
+.env.*
+!.env.example
+.DS_Store

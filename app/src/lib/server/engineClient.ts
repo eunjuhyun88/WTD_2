@@ -475,4 +475,36 @@ export const engine = {
       return false;
     }
   },
+
+  // ---------------------------------------------------------------------------
+  // /captures — canonical flywheel capture store
+  // ---------------------------------------------------------------------------
+
+  async createCapture(body: {
+    capture_kind?: string;
+    user_id?: string;
+    symbol: string;
+    pattern_slug?: string;
+    phase?: string;
+    timeframe: string;
+    user_note?: string;
+    chart_context?: Record<string, unknown>;
+  }): Promise<{ ok: boolean; capture: Record<string, unknown> }> {
+    return call('POST', '/captures', body);
+  },
+
+  async listCaptures(params: {
+    user_id?: string;
+    symbol?: string;
+    pattern_slug?: string;
+    limit?: number;
+  }): Promise<{ ok: boolean; captures: Array<Record<string, unknown>>; count: number }> {
+    const qs = new URLSearchParams();
+    if (params.user_id) qs.set('user_id', params.user_id);
+    if (params.symbol) qs.set('symbol', params.symbol);
+    if (params.pattern_slug) qs.set('pattern_slug', params.pattern_slug);
+    if (params.limit != null) qs.set('limit', String(params.limit));
+    const q = qs.size ? `?${qs}` : '';
+    return call('GET', `/captures${q}`);
+  },
 };

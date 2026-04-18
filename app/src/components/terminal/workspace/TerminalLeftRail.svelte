@@ -6,6 +6,11 @@
     TerminalAlertRule,
     TerminalWatchlistItem,
   } from '$lib/contracts/terminalPersistence';
+  import {
+    createSymbolSelection,
+    createTerminalSelection,
+    type TerminalSelectionState,
+  } from '$lib/terminal/terminalSelectionState';
 
   interface AlertRow {
     id: string;
@@ -39,6 +44,7 @@
     marketEvents?: Array<{ tag?: string; level?: string; text?: string }>;
     queryPresets?: TerminalPreset[];
     anomalies?: TerminalAnomaly[];
+    onSelect?: (s: TerminalSelectionState) => void;
     onQuery?: (q: string) => void;
     onDeleteSavedAlert?: (id: string) => void;
   }
@@ -53,6 +59,7 @@
     marketEvents = [],
     queryPresets = [],
     anomalies = [],
+    onSelect,
     onQuery,
     onDeleteSavedAlert,
   }: Props = $props();
@@ -189,6 +196,34 @@
 
 <aside class="left-rail">
 
+  <!-- Watchlist — first, most prominent -->
+  <section class="rail-section">
+    <h3 class="section-title">
+      Watchlist
+      <span class="alert-count">{watchlist.length}</span>
+    </h3>
+    <div class="watchlist">
+      {#each watchlist as coin}
+        {@const chg = coin.preview?.change24h ?? 0}
+        {@const isActive = activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT' || coin.active}
+        <button
+          class="watch-item"
+          class:active={isActive}
+          onclick={() => setActivePair(coin.symbol.replace(/USDT$/,'') + '/USDT')}
+        >
+          <span class="watch-sym">{coin.symbol.replace(/USDT$/, '')}</span>
+          <div class="watch-right">
+            <span class="watch-price">{formatPrice(coin.preview?.price ?? 0)}</span>
+            <span class="watch-chg" style="color:{pctColor(chg)}">{formatPct(chg)}</span>
+          </div>
+        </button>
+      {/each}
+      {#if watchlist.length === 0}
+        <p class="empty-text">Loading watchlist…</p>
+      {/if}
+    </div>
+  </section>
+
   <!-- Pattern Engine -->
   {#if patternPhases.length > 0}
   <section class="rail-section pattern-section">
@@ -253,42 +288,6 @@
           <span class="query-count">{queryCount(q.id)}</span>
         </button>
       {/each}
-    </div>
-  </section>
-
-  <!-- Watchlist -->
-  <section class="rail-section">
-    <h3 class="section-title">
-      Watchlist
-      <span class="alert-count">{watchlist.length}</span>
-    </h3>
-    <div class="watchlist">
-      {#if watchlist.length > 0}
-        <div class="watch-head">
-          <span>SYM</span>
-          <span>PRICE</span>
-          <span>24H</span>
-          <span>SIG</span>
-        </div>
-      {/if}
-      {#each watchlist as coin}
-        {@const chg = coin.preview?.change24h ?? 0}
-        <button
-          class="watch-item"
-          class:active={activeSymbol === coin.symbol || activeSymbol === coin.symbol + 'USDT' || coin.active}
-          onclick={() => setActivePair(coin.symbol.replace(/USDT$/,'') + '/USDT')}
-        >
-          <span class="watch-sym">{coin.symbol}</span>
-          <span class="watch-price">{formatPrice(coin.preview?.price ?? 0)}</span>
-          <span class="watch-chg" style="color:{pctColor(chg)}">
-            {formatPct(chg)}
-          </span>
-          <span class="watch-sig">{signalMark(chg)}</span>
-        </button>
-      {/each}
-      {#if watchlist.length === 0}
-        <p class="empty-text">Loading watchlist…</p>
-      {/if}
     </div>
   </section>
 
@@ -498,46 +497,53 @@
     flex-shrink: 0;
   }
 
-  .watch-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 52px 38px 20px;
-    gap: 4px;
-    padding: 1px 4px 2px;
-    border-bottom: 1px solid rgba(255,255,255,0.045);
-  }
-
-  .watch-head span {
-    font-family: var(--sc-font-mono);
-    font-size: 7px;
-    color: rgba(255,255,255,0.18);
-    letter-spacing: 0.08em;
-  }
-
-  .watch-head span:nth-child(2),
-  .watch-head span:nth-child(3),
-  .watch-head span:nth-child(4) {
-    text-align: right;
-  }
-
   .watch-item {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 52px 38px 20px;
+    display: flex;
     align-items: center;
-    gap: 4px;
-    background: none; border: 1px solid transparent; cursor: pointer; padding: 2px 4px;
-    border-radius: 2px; transition: background 0.12s, border-color 0.12s;
+    justify-content: space-between;
+    gap: 6px;
+    min-height: 36px;
+    background: none;
+    border: 1px solid transparent;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    padding: 4px 6px 4px 8px;
+    border-radius: 2px;
+    transition: background 0.12s, border-color 0.12s;
+    width: 100%;
+    text-align: left;
   }
-  .watch-item:hover, .watch-item.active {
-    background: rgba(77,143,245,0.08);
-    border-color: rgba(77,143,245,0.12);
+  .watch-item:hover {
+    background: rgba(255,255,255,0.04);
   }
-  .watch-sym { font-family: var(--sc-font-mono); font-size: 9px; font-weight: 700; color: var(--sc-text-0); letter-spacing: 0.02em; }
-  .watch-price, .watch-chg { font-family: var(--sc-font-mono); font-size: 8px; text-align: right; }
-  .watch-sig {
+  .watch-item.active {
+    background: rgba(75,158,253,0.06);
+    border-left-color: var(--tv-blue, #4B9EFD);
+  }
+  .watch-sym {
     font-family: var(--sc-font-mono);
-    font-size: 8px;
-    color: rgba(247,242,234,0.5);
-    text-align: right;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--sc-text-0);
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  .watch-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    min-width: 0;
+  }
+  .watch-price {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: var(--sc-text-1);
+  }
+  .watch-chg {
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    font-weight: 600;
   }
 
   .anomaly-item {
