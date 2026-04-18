@@ -19,6 +19,13 @@ import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
+export const config = {
+  runtime: 'nodejs22.x',
+  regions: ['iad1'],
+  memory: 1024,
+  maxDuration: 90,
+};
+
 const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
 function timeoutFor(path: string, method: string): number {

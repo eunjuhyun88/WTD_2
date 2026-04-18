@@ -11,6 +11,7 @@ import type {
   TerminalWatchlistItem,
 } from '$lib/contracts/terminalPersistence';
 import { query, withTransaction } from '$lib/server/db';
+import { engine } from '$lib/server/engineClient';
 
 type Queryable = {
   query: (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
@@ -348,6 +349,27 @@ export async function createPatternCapture(
   userId: string,
   input: PatternCaptureCreateRequest
 ): Promise<PatternCaptureRecord> {
+  // Engine is the canonical capture store (W-0088 Phase A dual-write).
+  // Engine POST runs first; failure blocks the write so the user gets a clear error.
+  await engine.createCapture({
+    capture_kind: 'manual_hypothesis',
+    user_id: userId,
+    symbol: input.symbol,
+    pattern_slug: input.patternSlug ?? '',
+    phase: '',
+    timeframe: input.timeframe,
+    user_note: input.note ?? undefined,
+    chart_context: {
+      contextKind: input.contextKind,
+      triggerOrigin: input.triggerOrigin,
+      reason: input.reason,
+      snapshot: input.snapshot,
+      decision: input.decision,
+      evidenceHash: input.evidenceHash,
+      sourceFreshness: input.sourceFreshness,
+    },
+  });
+
   const id = `pcap-${randomUUID()}`;
   const result = await query(
     `
@@ -377,46 +399,88 @@ export async function createPatternCapture(
   return mapPatternCaptureRow(result.rows[0] ?? {});
 }
 
+function mapEngineCaptureRow(raw: Record<string, unknown>): PatternCaptureRecord {
+  const ctx = (raw.chart_context as Record<string, unknown> | null | undefined) ?? {};
+  const capturedMs = typeof raw.captured_at_ms === 'number' ? raw.captured_at_ms : 0;
+  const ts = capturedMs ? new Date(capturedMs).toISOString() : new Date().toISOString();
+  return {
+    id: String(raw.capture_id ?? randomUUID()),
+    symbol: String(raw.symbol ?? ''),
+    timeframe: String(raw.timeframe ?? '1h'),
+    contextKind: (ctx.contextKind as PatternCaptureRecord['contextKind']) ?? 'symbol',
+    triggerOrigin: (ctx.triggerOrigin as PatternCaptureRecord['triggerOrigin']) ?? 'manual',
+    patternSlug: (raw.pattern_slug as string | undefined) || (ctx.patternSlug as string | undefined) || undefined,
+    reason: (ctx.reason as string | undefined) ?? undefined,
+    note: (raw.user_note as string | undefined) ?? undefined,
+    snapshot: (ctx.snapshot as PatternCaptureRecord['snapshot']) ?? {},
+    decision: (ctx.decision as PatternCaptureRecord['decision']) ?? {},
+    evidenceHash: (ctx.evidenceHash as string | undefined) ?? undefined,
+    sourceFreshness: (ctx.sourceFreshness as Record<string, string>) ?? {},
+    createdAt: ts,
+    updatedAt: ts,
+  };
+}
+
 export async function listPatternCaptures(
   userId: string,
   queryInput: PatternCaptureQuery
 ): Promise<PatternCaptureRecord[]> {
-  const where: string[] = ['user_id = $1'];
-  const params: unknown[] = [userId];
-  let idx = 2;
+  // Engine read-through (W-0088 Phase A). Falls back to app DB if engine is unavailable.
+  try {
+    const engineResult = await engine.listCaptures({
+      user_id: userId,
+      symbol: queryInput.symbol,
+      pattern_slug: queryInput.id ? undefined : undefined,
+      limit: queryInput.limit,
+    });
+    let records = engineResult.captures.map((c) => mapEngineCaptureRow(c as Record<string, unknown>));
 
-  if (queryInput.id) {
-    where.push(`id = $${idx++}`);
-    params.push(queryInput.id);
-  }
-  if (queryInput.symbol) {
-    where.push(`symbol = $${idx++}`);
-    params.push(queryInput.symbol);
-  }
-  if (queryInput.timeframe) {
-    where.push(`timeframe = $${idx++}`);
-    params.push(queryInput.timeframe);
-  }
-  if (queryInput.triggerOrigin) {
-    where.push(`trigger_origin = $${idx++}`);
-    params.push(queryInput.triggerOrigin);
-  }
-  if (queryInput.verdict) {
-    where.push(`decision ->> 'verdict' = $${idx++}`);
-    params.push(queryInput.verdict);
-  }
-  params.push(queryInput.limit);
+    // Client-side filters the engine doesn't support natively
+    if (queryInput.id) records = records.filter((r) => r.id === queryInput.id);
+    if (queryInput.timeframe) records = records.filter((r) => r.timeframe === queryInput.timeframe);
+    if (queryInput.triggerOrigin) records = records.filter((r) => r.triggerOrigin === queryInput.triggerOrigin);
+    if (queryInput.verdict) records = records.filter((r) => r.decision?.verdict === queryInput.verdict);
 
-  const result = await query(
-    `
-      SELECT id, symbol, timeframe, context_kind, trigger_origin, pattern_slug, reason, note,
-             snapshot, decision, evidence_hash, source_freshness, created_at, updated_at
-      FROM terminal_pattern_captures
-      WHERE ${where.join(' AND ')}
-      ORDER BY updated_at DESC
-      LIMIT $${idx}
-    `,
-    params,
-  );
-  return result.rows.map(mapPatternCaptureRow);
+    return records;
+  } catch {
+    // Engine unreachable — fall back to app DB so existing rows remain accessible
+    const where: string[] = ['user_id = $1'];
+    const params: unknown[] = [userId];
+    let idx = 2;
+
+    if (queryInput.id) {
+      where.push(`id = $${idx++}`);
+      params.push(queryInput.id);
+    }
+    if (queryInput.symbol) {
+      where.push(`symbol = $${idx++}`);
+      params.push(queryInput.symbol);
+    }
+    if (queryInput.timeframe) {
+      where.push(`timeframe = $${idx++}`);
+      params.push(queryInput.timeframe);
+    }
+    if (queryInput.triggerOrigin) {
+      where.push(`trigger_origin = $${idx++}`);
+      params.push(queryInput.triggerOrigin);
+    }
+    if (queryInput.verdict) {
+      where.push(`decision ->> 'verdict' = $${idx++}`);
+      params.push(queryInput.verdict);
+    }
+    params.push(queryInput.limit);
+
+    const result = await query(
+      `
+        SELECT id, symbol, timeframe, context_kind, trigger_origin, pattern_slug, reason, note,
+               snapshot, decision, evidence_hash, source_freshness, created_at, updated_at
+        FROM terminal_pattern_captures
+        WHERE ${where.join(' AND ')}
+        ORDER BY updated_at DESC
+        LIMIT $${idx}
+      `,
+      params,
+    );
+    return result.rows.map(mapPatternCaptureRow);
+  }
 }

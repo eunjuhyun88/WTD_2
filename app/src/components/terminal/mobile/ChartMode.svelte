@@ -34,6 +34,24 @@
   const symbol = $derived($activePairState.pair.replace('/', ''));
   const tf = $derived($activePairState.timeframe);
 
+  // CanvasHost ref for imperative setCandles() call
+  let canvasRef = $state<ReturnType<typeof CanvasHost> | null>(null);
+
+  // Fetch klines whenever symbol or tf changes and push to canvas
+  $effect(() => {
+    const sym = symbol;
+    const timeframe = tf;
+    if (!browser || !sym) return;
+    fetch(`/api/chart/klines?symbol=${encodeURIComponent(sym)}&tf=${encodeURIComponent(timeframe)}&limit=500`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        if (data?.klines?.length && canvasRef) {
+          canvasRef.setCandles(data.klines);
+        }
+      })
+      .catch(() => {/* silent — chart stays empty on network error */});
+  });
+
   /**
    * First-use drag hint — visible for 3 seconds then fades.
    * Only shown when chart data is present and save mode not active.
@@ -70,7 +88,7 @@
 
 <div class="chart-mode">
   <div class="canvas-area">
-    <CanvasHost {symbol} {tf} />
+    <CanvasHost bind:this={canvasRef} {symbol} {tf} />
     <!-- Layer 2 overlay — pointer-events: none on container (W-0086) -->
     <div class="canvas-overlay">
       <div class="overlay-topright">
@@ -90,11 +108,6 @@
     <MobileOnboardingOverlay />
   </div>
 
-  <div class="indicator-area">
-    <div class="indicator-placeholder">
-      <span class="indicator-label">INDICATOR PANE</span>
-    </div>
-  </div>
 </div>
 
 <style>
@@ -106,14 +119,13 @@
     overflow: hidden;
   }
 
-  /* ~70% of available vertical space */
+  /* Full available vertical space */
   .canvas-area {
-    flex: 7;
+    flex: 1;
     min-height: 0;
     position: relative;
     overflow: hidden;
     background: var(--sc-terminal-bg, #0a0c10);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   /* Layer 2 overlay — pointer-events: none so LWC crosshair/pan/zoom are unblocked (W-0086) */
@@ -133,31 +145,6 @@
     align-items: flex-end;
     gap: 6px;
     pointer-events: none;
-  }
-
-  /* ~30% of available vertical space */
-  .indicator-area {
-    flex: 3;
-    min-height: 0;
-    overflow: hidden;
-    background: var(--sc-terminal-bg, #0a0c10);
-  }
-
-  .indicator-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .indicator-label {
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: var(--sc-text-3, rgba(255,255,255,0.2));
-    text-transform: uppercase;
   }
 
   /* First-use hint: bottom-center, semi-transparent, fades after mount via animation */

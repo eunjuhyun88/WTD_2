@@ -166,6 +166,8 @@
   let showPatternLibrary = $state(false);
   let patternCaptureRecords = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let lastSavedCaptureId = $state<string | null>(null);
+  let showLabCta = $state(false);
+  let labCtaSlug = $state<string | null>(null);
   let patternCaptureLoading = $state(false);
   let exportPollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -945,11 +947,22 @@
     activeAnalysisTab = tab as typeof activeAnalysisTab;
   }
 
+  function handleRetryAnalysis() {
+    const sym = activeSymbol || pairToSymbol(gPair);
+    if (!sym) return;
+    analysisData = null;
+    const tf = symbolToTF(gTf);
+    void loadAnalysis(sym, tf);
+  }
+
   function handleCaptureSaved(captureId: string) {
     lastSavedCaptureId = captureId;
+    labCtaSlug = activeSymbol ? activeSymbol.toLowerCase().replace('usdt', '') : null;
+    showLabCta = true;
     setTimeout(() => {
       if (lastSavedCaptureId === captureId) lastSavedCaptureId = null;
     }, 5000);
+    setTimeout(() => { showLabCta = false; }, 8000);
     void loadPatternCaptures();
     if (activeSymbol) {
       trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
@@ -1413,12 +1426,33 @@
     onAlertFeedback={handleMobileAlertFeedback}
     onMarketRefresh={refreshWatchlistForMobile}
   >
+  {#snippet slotLeftRail()}
+    <TerminalLeftRail
+      {trendingData}
+      watchlistRows={persistedWatchlist}
+      alerts={scannerAlerts}
+      savedAlerts={savedAlertRules}
+      {patternPhases}
+      activeSymbol={activeSymbol || pairToSymbol(gPair)}
+      macroItems={macroCalendarItems}
+      {marketEvents}
+      queryPresets={terminalQueryPresets}
+      anomalies={terminalAnomalies}
+      onQuery={handleQueryChip}
+      onDeleteSavedAlert={handleDeleteSavedAlert}
+    />
+  {/snippet}
+
   {#snippet slotTopBar()}
     <section class="terminal-shell-head">
       <TerminalCommandBar
         assetsCount={boardAssets.length}
         marketRailOpen={showLeftRail}
         onToggleMarketRail={toggleLeftRail}
+        tf={gTf}
+        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+        price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
+        change24h={activeAnalysisData?.change24h ?? activeAnalysisData?.snapshot?.change24h ?? null}
       />
     </section>
   {/snippet}
@@ -1447,6 +1481,14 @@
         ohlcvBars={ohlcvBars}
         onSaved={handleCaptureSaved}
       />
+      {#if showLabCta}
+        <div class="lab-cta-banner">
+          <span class="lab-cta-check">✓</span>
+          <span class="lab-cta-text">Setup saved</span>
+          <a class="lab-cta-link" href={labCtaSlug ? `/lab?slug=${labCtaSlug}` : '/lab'}>Open in Lab →</a>
+          <button class="lab-cta-close" onclick={() => showLabCta = false} aria-label="Dismiss">×</button>
+        </div>
+      {/if}
     </div>
   {/snippet}
 
@@ -1517,6 +1559,7 @@
               onAction={sendCommand}
               onPinToggle={handlePinToggle}
               onAlertToggle={handleAlertToggle}
+              onRetry={handleRetryAnalysis}
               isPinned={isActivePinned}
               hasSavedAlert={hasActiveSavedAlert}
               bars={ohlcvBars}
@@ -1541,6 +1584,7 @@
           onAction={sendCommand}
           onPinToggle={handlePinToggle}
           onAlertToggle={handleAlertToggle}
+          onRetry={handleRetryAnalysis}
           isPinned={isActivePinned}
           hasSavedAlert={hasActiveSavedAlert}
           bars={ohlcvBars}
@@ -1550,7 +1594,10 @@
       {:else}
         <div class="board-empty">
           <p class="empty-icon">◈</p>
-          <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
+          <p class="empty-text">No analysis loaded</p>
+          <button class="empty-retry-btn" onclick={handleRetryAnalysis}>
+            Analyze {activePairDisplay} →
+          </button>
         </div>
       {/if}
     </div>
@@ -1591,14 +1638,6 @@
   onSelect={handlePatternLibrarySelect}
 />
 
-<PatternLibraryPanel
-  open={showPatternLibrary}
-  records={patternCaptureRecords}
-  loading={patternCaptureLoading}
-  onClose={() => showPatternLibrary = false}
-  onSelect={handlePatternLibrarySelect}
-/>
-
 <style>
   /* W-0086: chart-and-strip fills all available vertical space in its slot */
   .chart-and-strip {
@@ -1622,20 +1661,47 @@
   }
 
   .terminal-shell-head {
+    /* Transparent passthrough — cmd-bar owns all its own styling */
     display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 8px 10px 6px;
-    background:
-      linear-gradient(180deg, rgba(9, 12, 17, 0.96), rgba(9, 12, 17, 0.88));
+    align-items: stretch;
     position: sticky;
     top: 0;
     z-index: 25;
-    border-radius: 8px 8px 0 0;
-    backdrop-filter: blur(18px);
-    border: 1px solid rgba(255,255,255,0.04);
-    border-bottom-color: rgba(255,255,255,0.02);
   }
+
+  /* ── Lab CTA banner ── */
+  .lab-cta-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(99, 179, 237, 0.10);
+    border-top: 1px solid rgba(99, 179, 237, 0.22);
+    flex-shrink: 0;
+    font-family: var(--sc-font-mono);
+    font-size: 12px;
+  }
+  .lab-cta-check { color: var(--sc-good, #adca7c); font-size: 13px; }
+  .lab-cta-text { color: rgba(247, 242, 234, 0.72); }
+  .lab-cta-link {
+    color: rgba(99, 179, 237, 0.92);
+    text-decoration: none;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-left: 4px;
+  }
+  .lab-cta-link:hover { text-decoration: underline; }
+  .lab-cta-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: rgba(247, 242, 234, 0.36);
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  .lab-cta-close:hover { color: rgba(247, 242, 234, 0.72); }
 
   /* Analysis rail — always visible right panel, scrollable */
   .analysis-rail {
@@ -1761,7 +1827,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    opacity: 0.5;
+    opacity: 0.65;
   }
   .empty-icon {
     font-size: 28px;
@@ -1770,9 +1836,29 @@
   }
   .empty-text {
     font-family: var(--sc-font-mono);
-    font-size: 13px;
+    font-size: 12px;
     color: var(--sc-text-2);
     margin: 0;
+  }
+  .empty-retry-btn {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(247, 242, 234, 0.82);
+    background: rgba(77, 143, 245, 0.08);
+    border: 1px solid rgba(99, 179, 237, 0.22);
+    border-radius: 4px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    margin-top: 4px;
+    opacity: 1;
+  }
+  .empty-retry-btn:hover {
+    background: rgba(77, 143, 245, 0.16);
+    border-color: rgba(99, 179, 237, 0.4);
+    color: rgba(247, 242, 234, 1);
   }
 
   /* Loading */
@@ -1804,11 +1890,10 @@
   /* Mobile */
   @media (max-width: 768px) {
     .terminal-page {
-      width: min(100%, calc(100% - 16px));
-      height: auto;
-      min-height: calc(100dvh - 12px);
-      padding-bottom: max(10px, var(--sc-consent-reserved-h, 0px));
-      overflow: visible;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
     .terminal-shell-head {
       padding: 8px 10px 6px;

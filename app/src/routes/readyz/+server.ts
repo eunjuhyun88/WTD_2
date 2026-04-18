@@ -4,6 +4,13 @@ import type { RequestHandler } from './$types';
 
 const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
+export const config = {
+  runtime: 'nodejs22.x',
+  regions: ['iad1'],
+  memory: 256,
+  maxDuration: 10,
+};
+
 export const GET: RequestHandler = async () => {
   const startedAt = Date.now();
   let engineReady = false;

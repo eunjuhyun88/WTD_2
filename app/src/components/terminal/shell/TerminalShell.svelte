@@ -47,6 +47,7 @@
     slotChart?: import('svelte').Snippet;
     slotRail?: import('svelte').Snippet;
     slotFooter?: import('svelte').Snippet;
+    slotLeftRail?: import('svelte').Snippet;
     /** Whether the analysis rail is visible (DESKTOP/TABLET only) */
     showRail?: boolean;
     /** Rail width px (DESKTOP/TABLET only) */
@@ -68,6 +69,7 @@
     slotChart,
     slotRail,
     slotFooter,
+    slotLeftRail,
     showRail = true,
     railWidth = 330,
     verdict = null,
@@ -106,5 +108,5 @@
     {/snippet}
   </TabletShell>
 {:else}
-  <DesktopShell {showRail} {railWidth} {slotTopBar} {slotChart} {slotRail} {slotFooter} />
+  <DesktopShell {showRail} {railWidth} {slotTopBar} {slotChart} {slotRail} {slotFooter} {slotLeftRail} />
 {/if}

@@ -125,7 +125,8 @@ describe('buildTerminalRestorePlan', () => {
       loadAlerts: noop,
       loadPatternPhases: noop,
       loadPatternCaptures: noop,
-    }).map((item) => item.delayMs)).toEqual([120, 220, 320, 420, 520]);
+      loadLiveSignals: noop,
+    }).map((item) => item.delayMs)).toEqual([120, 220, 320, 420, 520, 620]);
 
     expect(buildTerminalRefreshIntervals({
       loadFlow: noop,

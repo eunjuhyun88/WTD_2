@@ -21,6 +21,21 @@
   let files = $state<File[]>([]);
   let fileInputRef = $state<HTMLInputElement | null>(null);
 
+  const SYMBOL_RE = /\b([A-Z]{2,10})(?:\/?(USDT|BTC|ETH))?\b/i;
+  const TF_RE = /\b(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|1w)\b/i;
+
+  const parseHint = $derived(
+    (() => {
+      if (!inputText.trim()) return null;
+      const symMatch = inputText.match(SYMBOL_RE);
+      const tfMatch = inputText.match(TF_RE);
+      if (!symMatch && !tfMatch) return null;
+      const sym = symMatch ? symMatch[1].toUpperCase() + (symMatch[2] ? '/' + symMatch[2].toUpperCase() : '/USDT') : null;
+      const tf = tfMatch ? tfMatch[1].toLowerCase() : null;
+      return { sym, tf };
+    })()
+  );
+
   const dockActions = [
     {
       label: 'Scan',
@@ -72,331 +87,251 @@
   }
 </script>
 
-<div class="bottom-dock">
-  <div class="dock-grid">
-    <section class="dock-composer-panel">
-      <div class="dock-head">
-        <div class="dock-title">
-          <span class="dock-kicker">Prompt Lane</span>
-          <strong>{$activePair || 'BTC/USDT'}</strong>
-        </div>
-        <span class="dock-hint">
-          {loading ? 'Analyzing active market…' : 'Ask before you save or hand off.'}
-        </span>
-      </div>
-
-      <div class="composer-shell">
-        <textarea
-          class="cmd-input"
-          placeholder="Ask before you save or hand off this setup."
-          bind:value={inputText}
-          onkeydown={handleKeydown}
-          rows="1"
-        ></textarea>
-
-        <div class="composer-actions">
-          <button class="icon-btn" type="button" title="Attach image" onclick={() => fileInputRef?.click()} aria-label="Attach image">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-            </svg>
-          </button>
-          <input type="file" accept="image/*" multiple bind:this={fileInputRef} onchange={handleFileChange} style="display:none" />
-
-          <button
-            class="send-btn"
-            class:active={inputText.trim().length > 0}
-            onclick={handleSend}
-            disabled={loading}
-            aria-label="Send"
-          >
-            {#if loading}
-              <span class="send-pulse">●</span>
-            {:else}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            {/if}
-          </button>
-        </div>
-      </div>
-
-      {#if files.length > 0}
-        <div class="file-row">
-          {#each files as f, i}
-            <span class="file-chip">
-              {f.name}
-              <button onclick={() => files = files.filter((_, j) => j !== i)} aria-label="Remove file">×</button>
-            </span>
-          {/each}
-        </div>
-      {/if}
-
-      <div class="quick-strip" aria-label="Quick prompts">
-        {#each dockActions as action}
-          <button
-            type="button"
-            class="quick-btn"
-            disabled={loading}
-            onclick={() => runDockAction(action)}
-          >
-            {action.label}
-          </button>
-        {/each}
-      </div>
-    </section>
-
-    <aside class="dock-response-panel" data-live={loading}>
-      <span class="response-kicker">{loading ? 'Streaming' : previewAssistantText ? 'Latest Response' : 'Last Prompt'}</span>
-      <p>{previewAssistantText || lastUserPrompt || 'AI output appears here after you send a prompt.'}</p>
-    </aside>
+<div class="slim-dock">
+  <!-- Quick action pills -->
+  <div class="dock-pills">
+    {#each dockActions as action}
+      <button
+        type="button"
+        class="dock-pill"
+        disabled={loading}
+        onclick={() => runDockAction(action)}
+      >{action.label}</button>
+    {/each}
   </div>
+
+  <div class="dock-sep" aria-hidden="true"></div>
+
+  <!-- Input row -->
+  <div class="dock-input-row">
+    {#if parseHint}
+      <span class="dock-parse-hint">→ {parseHint.sym ?? $activePair}{parseHint.tf ? ` · ${parseHint.tf.toUpperCase()}` : ''}</span>
+    {/if}
+    <textarea
+      class="dock-input"
+      placeholder="Ask before you save or act…"
+      bind:value={inputText}
+      onkeydown={handleKeydown}
+      rows="1"
+    ></textarea>
+    <button
+      class="dock-send"
+      class:active={inputText.trim().length > 0}
+      onclick={handleSend}
+      disabled={loading}
+      aria-label="Send"
+    >
+      {#if loading}
+        <span class="dock-pulse">●</span>
+      {:else}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      {/if}
+    </button>
+    <button class="dock-attach" type="button" title="Attach" onclick={() => fileInputRef?.click()} aria-label="Attach">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+      </svg>
+    </button>
+    <input type="file" accept="image/*" multiple bind:this={fileInputRef} onchange={handleFileChange} style="display:none" />
+  </div>
+
+  <!-- Response preview — only visible when streaming or has content -->
+  {#if loading || previewAssistantText}
+    <div class="dock-response" class:live={loading}>
+      <span class="dock-response-kicker">{loading ? 'Streaming' : 'Response'}</span>
+      <span class="dock-response-text">{previewAssistantText || '…'}</span>
+    </div>
+  {/if}
+
+  {#if files.length > 0}
+    <div class="dock-files">
+      {#each files as f, i}
+        <span class="dock-file-chip">
+          {f.name}
+          <button onclick={() => files = files.filter((_, j) => j !== i)} aria-label="Remove">×</button>
+        </span>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <style>
-  .bottom-dock {
+  .slim-dock {
     position: relative;
     flex-shrink: 0;
-    background: var(--sc-bg-1, #0a0a0a);
-    border-top: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
-    padding: 8px 10px 10px;
-  }
-
-  .dock-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.85fr);
-    gap: 8px;
-    align-items: stretch;
-  }
-
-  .dock-composer-panel,
-  .dock-response-panel {
-    min-width: 0;
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 8px;
-    background: rgba(255,255,255,0.02);
-  }
-
-  .dock-composer-panel {
-    display: grid;
-    gap: 7px;
-    padding: 9px;
-  }
-
-  .dock-head {
+    background: var(--tv-bg-1, #131722);
+    border-top: 1px solid var(--tv-border, rgba(255,255,255,0.055));
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
+    flex-direction: column;
+    gap: 0;
   }
 
-  .dock-title {
-    display: inline-grid;
-    gap: 2px;
+  /* Pills row */
+  .dock-pills {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px 0;
   }
-
-  .dock-kicker,
-  .response-kicker,
-  .dock-hint {
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
+  .dock-pill {
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    background: rgba(255,255,255,0.025);
+    color: var(--tv-text-2, rgba(209,212,220,0.4));
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    cursor: pointer;
+    transition: all 80ms;
+  }
+  .dock-pill:hover:not(:disabled) {
+    background: rgba(75,158,253,0.08);
+    border-color: rgba(75,158,253,0.22);
+    color: var(--tv-text-0, #D1D4DC);
+  }
+  .dock-pill:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .dock-sep {
+    height: 1px;
+    margin: 6px 12px 0;
+    background: var(--tv-border, rgba(255,255,255,0.055));
   }
 
-  .dock-kicker,
-  .response-kicker {
-    color: rgba(131, 188, 255, 0.82);
-  }
-
-  .dock-title strong {
-    font-family: var(--sc-font-mono);
-    font-size: 11px;
-    color: rgba(247,242,234,0.86);
-  }
-
-  .dock-hint {
-    color: rgba(247,242,234,0.3);
-    max-width: 40%;
-    text-align: right;
-    font-size: 7px;
-  }
-
-  .composer-shell {
+  /* Input row */
+  .dock-input-row {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 6px;
-    min-height: 60px;
-    padding: 7px 7px 7px 11px;
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(8,12,18,0.72);
+    padding: 6px 12px 8px;
+    position: relative;
   }
-
-  .cmd-input {
+  .dock-parse-hint {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 9px;
+    color: var(--tv-blue, #4B9EFD);
+    opacity: 0.75;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .dock-input {
     flex: 1;
     min-width: 0;
     background: none;
     border: none;
     outline: none;
     resize: none;
-    font-family: var(--sc-font-body);
+    font-family: var(--sc-font-body, sans-serif);
     font-size: 13px;
-    color: var(--sc-text-0);
-    line-height: 1.45;
-    padding: 6px 0;
-    min-height: 42px;
-    max-height: 96px;
+    color: var(--tv-text-0, #D1D4DC);
+    line-height: 1.4;
+    padding: 0;
+    min-height: 22px;
+    max-height: 72px;
     appearance: none;
     -webkit-appearance: none;
   }
-
-  .cmd-input::placeholder {
-    color: var(--sc-text-3);
+  .dock-input::placeholder {
+    color: var(--tv-text-2, rgba(209,212,220,0.4));
   }
-
-  .composer-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-
-  .icon-btn,
-  .send-btn {
+  .dock-send,
+  .dock-attach {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 36px;
-    min-height: 36px;
-    border-radius: 7px;
-    border: 1px solid rgba(255,255,255,0.08);
-    color: var(--sc-text-2);
-    background: rgba(255,255,255,0.03);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    color: var(--tv-text-2);
+    background: rgba(255,255,255,0.02);
     cursor: pointer;
-    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    flex-shrink: 0;
+    transition: all 80ms;
   }
-
-  .icon-btn:hover,
-  .send-btn:hover:not(:disabled) {
-    background: rgba(255,255,255,0.07);
-    color: var(--sc-text-0);
+  .dock-send:hover:not(:disabled),
+  .dock-attach:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--tv-text-0);
   }
-
-  .send-btn.active {
-    background: rgba(77,143,245,0.18);
-    border-color: rgba(99,179,237,0.3);
-    color: var(--sc-text-0);
+  .dock-send.active {
+    background: rgba(34,171,148,0.15);
+    border-color: rgba(34,171,148,0.35);
+    color: var(--tv-green, #22AB94);
   }
-
-  .send-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .send-pulse {
+  .dock-send:disabled { opacity: 0.35; cursor: not-allowed; }
+  .dock-pulse {
     font-size: 6px;
-    color: #fbbf24;
-    animation: pulse 0.7s ease-in-out infinite;
+    color: var(--tv-amber, #EFC050);
+    animation: dock-pulse 0.7s ease-in-out infinite;
   }
 
-  .file-row {
+  /* Response preview strip */
+  .dock-response {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 12px 6px;
+    border-top: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    background: rgba(255,255,255,0.01);
+  }
+  .dock-response.live {
+    background: rgba(34,171,148,0.04);
+    border-top-color: rgba(34,171,148,0.14);
+  }
+  .dock-response-kicker {
+    font-family: var(--sc-font-mono, monospace);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tv-text-2, rgba(209,212,220,0.4));
+    flex-shrink: 0;
+  }
+  .dock-response.live .dock-response-kicker { color: var(--tv-green, #22AB94); }
+  .dock-response-text {
+    font-size: 11px;
+    color: var(--tv-text-1, rgba(209,212,220,0.72));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  /* Files */
+  .dock-files {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
+    padding: 0 12px 6px;
   }
-
-  .file-chip {
+  .dock-file-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.06);
-    font-family: var(--sc-font-mono);
+    background: rgba(255,255,255,0.05);
+    font-family: var(--sc-font-mono, monospace);
     font-size: 9px;
-    color: var(--sc-text-1);
+    color: var(--tv-text-1);
   }
-
-  .file-chip button {
+  .dock-file-chip button {
     background: none;
     border: none;
-    color: var(--sc-text-3);
+    color: var(--tv-text-2);
     cursor: pointer;
     padding: 0;
     line-height: 1;
   }
 
-  .quick-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .quick-btn {
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 999px;
-    background: rgba(255,255,255,0.04);
-    color: rgba(247,242,234,0.72);
-    font-family: var(--sc-font-mono);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    padding: 5px 9px;
-    cursor: pointer;
-    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
-  }
-
-  .quick-btn:hover:not(:disabled) {
-    background: rgba(77,143,245,0.11);
-    border-color: rgba(77,143,245,0.28);
-    color: rgba(220,232,255,0.96);
-  }
-
-  .quick-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .dock-response-panel {
-    display: grid;
-    gap: 6px;
-    padding: 9px 10px;
-    align-content: start;
-  }
-
-  .dock-response-panel[data-live='true'] {
-    border-color: rgba(74,222,128,0.16);
-    background: rgba(74,222,128,0.04);
-  }
-
-  .dock-response-panel p {
-    margin: 0;
-    font-size: 11px;
-    line-height: 1.42;
-    color: rgba(247,242,234,0.68);
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+  @keyframes dock-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
   @media (max-width: 1024px) {
-    .dock-grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .dock-hint {
-      display: none;
-    }
-
-    .dock-response-panel p {
-      -webkit-line-clamp: 3;
-      line-clamp: 3;
-    }
+    .dock-parse-hint { display: none; }
   }
 </style>
