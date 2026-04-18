@@ -20,9 +20,6 @@
       <span class="dot"></span>
       {dirLabel[verdict.direction]}
     </span>
-    {#if symbol}
-      <span class="meta">{symbol}{timeframe ? ` · ${timeframe.toUpperCase()}` : ''}</span>
-    {/if}
     <span class="meta-right">
       <FreshnessBadge status="recent" updatedAt={verdict.updatedAt} />
     </span>
