@@ -42,7 +42,8 @@ log = logging.getLogger("engine.data_cache.okx_smart_money")
 
 _BASE = "https://web3.okx.com"
 _TIMEOUT = 15
-_UA = "cogochi-autoresearch/data_cache"
+_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+_EXTRA_HEADERS = {"Origin": "https://web3.okx.com", "Referer": "https://web3.okx.com/"}
 
 # Public sandbox key from OKX docs — dev/testing only
 _SANDBOX_KEY = "d573a84c-8e79-4a35-b0c6-427e9ad2478d"
@@ -79,22 +80,30 @@ SYMBOL_CHAIN_MAP: dict[str, tuple[str, str]] = {
 }
 
 
-def _build_signed_headers(method: str, path: str, query: str = "") -> dict:
+def _build_signed_headers(method: str, path: str, query_or_body: str = "") -> dict:
     """Build OKX HMAC-signed request headers from env vars."""
     api_key = os.environ.get("OKX_API_KEY", "")
     secret_key = os.environ.get("OKX_SECRET_KEY", "")
     passphrase = os.environ.get("OKX_PASSPHRASE", "")
 
+    base = {
+        "User-Agent": _UA,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        **_EXTRA_HEADERS,
+    }
+
     if not all([api_key, secret_key, passphrase]):
-        return {
-            "OK-ACCESS-KEY": _SANDBOX_KEY,
-            "User-Agent": _UA,
-            "Accept": "application/json",
-        }
+        return {"OK-ACCESS-KEY": _SANDBOX_KEY, **base}
 
     from datetime import datetime, timezone
     ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-    pre_hash = ts + method + path + (f"?{query}" if query else "")
+    # GET: append ?query_string; POST: append raw body
+    if method == "GET" and query_or_body:
+        suffix = f"?{query_or_body}"
+    else:
+        suffix = query_or_body
+    pre_hash = ts + method + path + suffix
     sig = base64.b64encode(
         hmac_mod.new(secret_key.encode(), pre_hash.encode(), hashlib.sha256).digest()
     ).decode()
@@ -104,8 +113,7 @@ def _build_signed_headers(method: str, path: str, query: str = "") -> dict:
         "OK-ACCESS-SIGN": sig,
         "OK-ACCESS-TIMESTAMP": ts,
         "OK-ACCESS-PASSPHRASE": passphrase,
-        "User-Agent": _UA,
-        "Accept": "application/json",
+        **base,
     }
 
 
@@ -116,20 +124,25 @@ def _fetch_signals_raw(
     min_amount_usd: float = 1000.0,
     limit: int = 100,
 ) -> list[dict]:
-    """Fetch raw signal list from OKX API."""
+    """Fetch raw signal list from OKX API (POST)."""
     path = "/api/v6/dex/market/signal/list"
-    params: dict[str, str] = {
+    body: dict[str, str] = {
         "chainIndex": chain_index,
-        "tokenAddress": token_address,
         "walletType": wallet_types,
         "minAmountUsd": str(min_amount_usd),
         "limit": str(limit),
     }
-    query = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
-    url = f"{_BASE}{path}?{query}"
+    if token_address:
+        body["tokenAddress"] = token_address
 
-    headers = _build_signed_headers("GET", path, query)
-    req = urllib.request.Request(url, headers=headers)
+    body_str = json.dumps(body)
+    headers = _build_signed_headers("POST", path, body_str)
+    req = urllib.request.Request(
+        f"{_BASE}{path}",
+        data=body_str.encode(),
+        headers=headers,
+        method="POST",
+    )
     try:
         with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
             data = json.loads(resp.read().decode("utf-8"))
