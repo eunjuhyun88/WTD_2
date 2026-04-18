@@ -78,6 +78,8 @@ _BLOCK_CATEGORIES: dict[str, BlockCategory] = {
     "volume_dryup": BlockCategory.CONFIRMATION,
     "coinbase_premium_positive": BlockCategory.CONFIRMATION,
     "smart_money_accumulation": BlockCategory.CONFIRMATION,
+    "total_oi_spike": BlockCategory.CONFIRMATION,
+    "oi_exchange_divergence": BlockCategory.CONFIRMATION,
     # disqualifiers
     "volume_below_average": BlockCategory.DISQUALIFIER,
     "extreme_volatility": BlockCategory.DISQUALIFIER,
