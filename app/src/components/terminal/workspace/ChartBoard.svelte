@@ -88,6 +88,13 @@
   // ── UI state ───────────────────────────────────────────────────────────────
   let loading  = $state(true);
   let error    = $state<string | null>(null);
+
+  // ── History lazy-load state ────────────────────────────────────────────────
+  let historyLoadingMore = $state(false);
+  let earliestBarTimeMs  = $state<number | null>(null);
+
+  // ── Live WS reference (non-reactive) ──────────────────────────────────────
+  let _ws: WebSocket | null = null;
   let currentPrice = $state<number | null>(null);
   let currentTime  = $state<number | null>(null);
   let currentChangePct = $state<number | null>(null);
@@ -450,11 +457,95 @@
       liqData = liqSnapshot;
       loading = false;
       lastDataKey = dataKey;
+      const firstBar = (data.klines as Array<{time: number}>)[0];
+      if (firstBar) earliestBarTimeMs = firstBar.time * 1000;
     } catch (e) {
       if (token !== loadToken) return;
       error = String(e);
       loading = false;
     }
+  }
+
+  // ── History lazy-load ────────────────────────────────────────────────────
+  const LAZY_TRIGGER_BARS = 30; // fetch more when within this many bars of the left edge
+
+  async function loadMoreHistory() {
+    if (historyLoadingMore || earliestBarTimeMs == null || !symbol) return;
+    const tfMs = tfMinutes(tf) * 60_000;
+    const startTime = earliestBarTimeMs - 500 * tfMs;
+    if (startTime < 0) return;
+
+    historyLoadingMore = true;
+    try {
+      const emaQ = emaTf ? `&emaTf=${encodeURIComponent(emaTf)}` : '';
+      const res = await fetch(
+        `/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500&startTime=${startTime}${emaQ}`,
+      );
+      if (!res.ok) return;
+      const older = await res.json() as { klines?: Array<{time: number; open: number; high: number; low: number; close: number; volume: number}> };
+      if (!older.klines?.length) return;
+
+      earliestBarTimeMs = older.klines[0].time * 1000;
+
+      // Prepend bars to existing series — restore visible range after setData
+      const savedRange = mainChart?.timeScale().getVisibleLogicalRange();
+      const current = (chartData?.klines ?? []) as Array<{time: number; open: number; high: number; low: number; close: number; volume: number}>;
+      const cutoff = older.klines[older.klines.length - 1].time;
+      const merged = [...older.klines, ...current.filter((k) => k.time > cutoff)];
+
+      if (priceSeries) {
+        priceSeries.setData(
+          merged.map((k) => ({
+            time: k.time as UTCTimestamp,
+            open: k.open, high: k.high, low: k.low, close: k.close,
+          })),
+        );
+      }
+      if (savedRange) {
+        // Shift range by the number of newly prepended bars so the view stays stable
+        const prepended = older.klines.length;
+        mainChart?.timeScale().setVisibleLogicalRange({
+          from: savedRange.from + prepended,
+          to:   savedRange.to  + prepended,
+        });
+      }
+    } catch { /* lazy load is best-effort */ }
+    finally { historyLoadingMore = false; }
+  }
+
+  // ── Binance WebSocket live candle ─────────────────────────────────────────
+
+  function connectKlineWS(sym: string, timeframe: string) {
+    if (typeof window === 'undefined') return;
+    _ws?.close();
+    const stream = `${sym.toLowerCase()}@kline_${timeframe}`;
+    _ws = new WebSocket(`wss://fstream.binance.com/ws/${stream}`);
+
+    _ws.onmessage = (ev: MessageEvent) => {
+      try {
+        const msg = JSON.parse(ev.data as string) as {
+          k: { t: number; o: string; h: string; l: string; c: string; v: string; x: boolean };
+        };
+        const k = msg.k;
+        const bar = {
+          time:  Math.floor(k.t / 1000) as UTCTimestamp,
+          open:  parseFloat(k.o),
+          high:  parseFloat(k.h),
+          low:   parseFloat(k.l),
+          close: parseFloat(k.c),
+        };
+        (priceSeries as ISeriesApi<'Candlestick'> | null)?.update(bar);
+        currentPrice = bar.close;
+      } catch { /* ignore malformed message */ }
+    };
+
+    _ws.onerror = () => { _ws?.close(); };
+    _ws.onclose = () => { _ws = null; };
+  }
+
+  function disconnectWS() {
+    _ws?.close();
+    _ws = null;
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -950,6 +1041,7 @@
       if (!range) return;
       subsWithCvd.forEach(c => c.timeScale().setVisibleLogicalRange(range));
       refreshCaptureWindowSummary();
+      if (range.from < LAZY_TRIGGER_BARS) void loadMoreHistory();
     });
     subsWithCvd.forEach(c => {
       c.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -1067,6 +1159,7 @@
     if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', handleRangeModeKeydown);
     }
+    disconnectWS();
     destroyCharts();
   });
 
@@ -1088,6 +1181,14 @@
     void emaTf;
     void initialData;
     void loadData();
+  });
+
+  // WebSocket real-time candle feed — reconnects when symbol or tf changes.
+  $effect(() => {
+    const sym = symbol;
+    const timeframe = tf;
+    connectKlineWS(sym, timeframe);
+    return () => disconnectWS();
   });
 
   // Depth/liquidation data comes from the parent terminal page to avoid duplicate requests.
