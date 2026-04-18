@@ -302,17 +302,21 @@ class TestScoreBasedAccumulation:
     def test_transition_window_blocks_late_accumulation(self) -> None:
         pattern = copy.deepcopy(TRADOOR_OI_REVERSAL)
         real_dump = next(phase for phase in pattern.phases if phase.phase_id == "REAL_DUMP")
-        real_dump.max_bars = 20
+        # Keep REAL_DUMP active well past ACCUMULATION.transition_window_bars so
+        # the only reason the transition can fail is outside_transition_window.
+        # Library default transition_window_bars = 18 (W-0086 FARTCOIN slice,
+        # 2026-04-18); so trigger an ACCUMULATION attempt at offset 19.
+        real_dump.max_bars = 26
 
         attempts: list[PhaseAttemptRecord] = []
         sm = PatternStateMachine(pattern, on_phase_attempt=attempts.append)
         sym = "LATEUSDT"
 
         h = _walk_to_real_dump(sm, sym)
-        for offset in range(13):
+        for offset in range(19):
             sm.evaluate(sym, QUIET_BLOCKS, ts(h + offset))
 
-        t = sm.evaluate(sym, ACCUMULATION_BLOCKS, ts(h + 13))
+        t = sm.evaluate(sym, ACCUMULATION_BLOCKS, ts(h + 19))
 
         assert t is None
         assert sm.get_current_phase(sym) == "REAL_DUMP"
