@@ -108,11 +108,6 @@
     <MobileOnboardingOverlay />
   </div>
 
-  <div class="indicator-area">
-    <div class="indicator-placeholder">
-      <span class="indicator-label">INDICATOR PANE</span>
-    </div>
-  </div>
 </div>
 
 <style>
@@ -124,14 +119,13 @@
     overflow: hidden;
   }
 
-  /* ~70% of available vertical space */
+  /* Full available vertical space */
   .canvas-area {
-    flex: 7;
+    flex: 1;
     min-height: 0;
     position: relative;
     overflow: hidden;
     background: var(--sc-terminal-bg, #0a0c10);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   /* Layer 2 overlay — pointer-events: none so LWC crosshair/pan/zoom are unblocked (W-0086) */
@@ -151,31 +145,6 @@
     align-items: flex-end;
     gap: 6px;
     pointer-events: none;
-  }
-
-  /* ~30% of available vertical space */
-  .indicator-area {
-    flex: 3;
-    min-height: 0;
-    overflow: hidden;
-    background: var(--sc-terminal-bg, #0a0c10);
-  }
-
-  .indicator-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .indicator-label {
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: var(--sc-text-3, rgba(255,255,255,0.2));
-    text-transform: uppercase;
   }
 
   /* First-use hint: bottom-center, semi-transparent, fades after mount via animation */

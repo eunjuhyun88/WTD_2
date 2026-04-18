@@ -180,9 +180,7 @@
       overscroll-behavior-y: contain;
     }
     #main-content.terminal-route {
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior-y: contain;
+      overflow: hidden;
     }
     #main-content.home-route {
       overflow: visible;
