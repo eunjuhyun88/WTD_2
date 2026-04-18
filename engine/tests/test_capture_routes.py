@@ -286,13 +286,13 @@ def test_label_verdict_happy_path(tmp_path, monkeypatch) -> None:
 
     response = client.post(
         f"/captures/{capture.capture_id}/verdict",
-        json={"user_verdict": "valid", "user_note": "clean entry"},
+        json={"verdict": "valid", "user_note": "clean entry"},
     )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["ok"] is True
-    assert payload["verdict"] == "valid"
+    assert payload["user_verdict"] == "valid"
     assert payload["outcome_id"] == "out-1"
 
     reloaded = client.capture_store.load(capture.capture_id)  # type: ignore[attr-defined]
@@ -321,18 +321,18 @@ def test_label_verdict_rejects_pending_capture(tmp_path, monkeypatch) -> None:
 
     response = client.post(
         f"/captures/{capture.capture_id}/verdict",
-        json={"user_verdict": "valid"},
+        json={"verdict": "valid"},
     )
     assert response.status_code == 409
 
 
 def test_label_verdict_capture_not_found(tmp_path, monkeypatch) -> None:
     client = _client_with_ledger(tmp_path, monkeypatch)
-    response = client.post("/captures/no-such-id/verdict", json={"user_verdict": "valid"})
+    response = client.post("/captures/no-such-id/verdict", json={"verdict": "valid"})
     assert response.status_code == 404
 
 
-def test_label_verdict_no_outcome_id_returns_422(tmp_path, monkeypatch) -> None:
+def test_label_verdict_no_outcome_id_returns_409(tmp_path, monkeypatch) -> None:
     client = _client_with_ledger(tmp_path, monkeypatch)
     capture = CaptureRecord(
         capture_kind="manual_hypothesis",
@@ -348,6 +348,6 @@ def test_label_verdict_no_outcome_id_returns_422(tmp_path, monkeypatch) -> None:
 
     response = client.post(
         f"/captures/{capture.capture_id}/verdict",
-        json={"user_verdict": "valid"},
+        json={"verdict": "valid"},
     )
-    assert response.status_code == 422
+    assert response.status_code == 409
