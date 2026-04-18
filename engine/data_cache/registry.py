@@ -47,6 +47,7 @@ from data_cache.fetch_macro import (
     fetch_macro_yahoo,
 )
 from data_cache.fetch_coinbase import fetch_coinbase_premium
+from data_cache.fetch_exchange_oi import fetch_exchange_oi
 from data_cache.fetch_onchain import (
     fetch_active_addresses,
     fetch_tx_count,
@@ -144,6 +145,28 @@ ONCHAIN_SOURCES: list[DataSource] = [
         defaults={"puell_multiple": 1.0},
         scope="per_symbol",
         cache_file="src_{symbol}_puell.csv",
+    ),
+    DataSource(
+        name="exchange_oi",
+        fetcher=fetch_exchange_oi,
+        columns=[
+            "binance_oi", "bybit_oi", "okx_oi",
+            "total_perp_oi", "oi_exchange_conc",
+            "total_oi_change_1h", "total_oi_change_24h",
+            "cme_oi",
+        ],
+        defaults={
+            "binance_oi": 0.0,
+            "bybit_oi": 0.0,
+            "okx_oi": 0.0,
+            "total_perp_oi": 0.0,
+            "oi_exchange_conc": 1.0,
+            "total_oi_change_1h": 0.0,
+            "total_oi_change_24h": 0.0,
+            "cme_oi": 0.0,
+        },
+        scope="per_symbol",
+        cache_file="src_{symbol}_exchange_oi.csv",
     ),
     # ── Add new per-symbol sources here ──────────────────────────────────────
     # Example:
