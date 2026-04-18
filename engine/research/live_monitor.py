@@ -54,7 +54,7 @@ PHASE_ORDER = {
 # Add new patterns here as they are promoted.
 PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
     ("tradoor-oi-reversal-v1",    "tradoor-oi-reversal-v1__canonical",    {"ACCUMULATION", "REAL_DUMP"}),
-    ("funding-flip-reversal-v1",  "funding-flip-reversal-v1__canonical",  {"ENTRY_ZONE", "FLIP_SIGNAL"}),
+    ("funding-flip-reversal-v1",  "funding-flip-reversal-v1__canonical__dur-long",  {"ENTRY_ZONE", "FLIP_SIGNAL"}),
 ]
 
 

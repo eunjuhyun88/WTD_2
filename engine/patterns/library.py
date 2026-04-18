@@ -225,6 +225,9 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 "bollinger_squeeze",
                 "volume_dryup",
                 "oi_expansion_confirm",
+                # cvd_buying: taker order-flow is net-buy while we await squeeze.
+                # Mirrors ALPHA TERMINAL S1 "CVD from multiple exchanges aligning".
+                "cvd_buying",
             ],
             disqualifier_blocks=[],
             score_weights={
@@ -234,6 +237,7 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 "bollinger_squeeze": 0.05,
                 "volume_dryup": 0.05,
                 "oi_expansion_confirm": 0.10,
+                "cvd_buying": 0.08,
             },
             phase_score_threshold=0.70,
             transition_window_bars=12,

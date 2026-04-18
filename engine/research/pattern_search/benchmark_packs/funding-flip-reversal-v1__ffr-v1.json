@@ -67,6 +67,28 @@
                 "Second holdout confirming the COMPRESSION\u2192FLIP_SIGNAL\u2192ENTRY_ZONE\u2192SQUEEZE sub-structure."
             ],
             "case_id": "dfe99185-663b-4724-9164-08047e0fb71c"
+        },
+        {
+            "symbol": "KOMAUSDT",
+            "timeframe": "1h",
+            "start_at": "2026-03-17T00:00:00+00:00",
+            "end_at": "2026-04-10T00:00:00+00:00",
+            "expected_phase_path": [
+                "SHORT_OVERHEAT",
+                "COMPRESSION",
+                "FLIP_SIGNAL",
+                "ENTRY_ZONE",
+                "SQUEEZE"
+            ],
+            "role": "holdout",
+            "notes": [
+                "Source: 나혼자매매-차트&온체인 텔레그램 채널 (아카) + perp data verification.",
+                "KOMA funding_rate < -0.00056 on Mar 23, 2026 (short overheat confirmed).",
+                "Price: 0.0064 (Mar 23) \u2192 0.0078 (Apr 5) = +21.5% in ~13 days.",
+                "Pattern: SHORT_OVERHEAT (Mar23) \u2192 compression \u2192 FLIP_SIGNAL \u2192 SQUEEZE.",
+                "KOMA referenced in W-0091 as a candidate alongside DYM (both had TRADOOR misfire but actual gains)."
+            ],
+            "case_id": "c9f3a1b7-4e82-4d5c-8f7e-a2b3c4d5e6f7"
         }
     ],
     "created_at": "2026-04-19T00:00:00+00:00"
