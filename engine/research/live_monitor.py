@@ -50,6 +50,9 @@ PHASE_ORDER = {
     "COMPRESSION": 2, "SHORT_OVERHEAT": 3, "SQUEEZE": 4,
     # whale-accumulation-reversal-v1 phases (W-0097 P0.5)
     "BOTTOM_CONFIRM": 0, "WHALE_ACCUMULATION": 1, "ENTRY_CONFIRM": 2,
+    # wyckoff-spring-reversal-v1 phases (W-0100)
+    "SIGN_OF_STRENGTH": 0, "LAST_POINT_OF_SUPPORT": 1, "COMPRESSION_ZONE": 2,
+    "SPRING": 3, "MARKUP": 4,
 }
 
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)

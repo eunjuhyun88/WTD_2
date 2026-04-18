@@ -124,8 +124,8 @@ class TestRegressionGuards:
         assert "funding-flip-reversal-v1" in PATTERN_LIBRARY
 
     def test_library_count(self):
-        # TRADOOR + FFR + whale-accumulation = 3 patterns registered.
-        assert len(PATTERN_LIBRARY) == 3
+        # TRADOOR + FFR + wyckoff-spring + whale-accumulation = 4 patterns registered.
+        assert len(PATTERN_LIBRARY) == 4
 
 
 class TestPhaseOrderMap:
