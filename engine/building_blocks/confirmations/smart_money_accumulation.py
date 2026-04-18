@@ -66,12 +66,11 @@ def smart_money_accumulation(
     if not score["accumulating"] or score["buy_wallet_count"] < min_buy_wallets:
         return false_series
 
-    # Mark bars that fall within the signal age window as True.
-    # Convert to UTC seconds for comparison (avoids ns/us ambiguity).
+    # Mark bars within the signal age window as True.
+    # Use .to_pydatetime() → .timestamp() to avoid ns/us int-cast ambiguity.
     cutoff_s = time.time() - max_age_hours * 3600
-    # Index is datetime64[us] → int64 gives microseconds; divide by 1e6 for seconds
-    bar_seconds = ctx.features.index.astype("int64") / 1e6
-    mask = bar_seconds >= cutoff_s
-    result = pd.Series(False, index=ctx.features.index, dtype=bool)
-    result[mask] = True
-    return result
+    bar_seconds = pd.Series(
+        [ts.timestamp() for ts in ctx.features.index.to_pydatetime()],
+        index=ctx.features.index,
+    )
+    return (bar_seconds >= cutoff_s).astype(bool)
