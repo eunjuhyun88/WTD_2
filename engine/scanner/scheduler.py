@@ -36,6 +36,7 @@ from scanner.alerts import (
     send_scan_summary,
 )
 from scanner.jobs.auto_evaluate import auto_evaluate_job
+from scanner.jobs.outcome_resolver import outcome_resolver_job
 from scanner.jobs.pattern_refinement import pattern_refinement_job
 from scanner.jobs.pattern_scan import pattern_scan_job
 from scanner.jobs.universe_scan import (
@@ -140,6 +141,10 @@ async def _auto_evaluate_job() -> None:
     await auto_evaluate_job()
 
 
+async def _outcome_resolver_job() -> None:
+    await outcome_resolver_job()
+
+
 async def _pattern_refinement_job() -> None:
     await pattern_refinement_job(auto_train_candidate=PATTERN_REFINEMENT_AUTO_TRAIN)
 
@@ -185,6 +190,18 @@ def start_scheduler() -> None:
         seconds=3600,
         id="auto_evaluate",
         name="Ledger auto-evaluator",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
+    )
+
+    # Job 3b: Outcome resolver for user captures (flywheel axis 1→2) — hourly
+    _scheduler.add_job(
+        _outcome_resolver_job,
+        trigger="interval",
+        seconds=3600,
+        id="outcome_resolver",
+        name="Capture outcome resolver",
         max_instances=1,
         coalesce=True,
         misfire_grace_time=300,
