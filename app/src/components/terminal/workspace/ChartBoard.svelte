@@ -1284,7 +1284,10 @@
     <div class="tv-row tv-row--top">
       <div class="chart-symbol tv-symbol-cluster">
         <div class="sym-block">
-          <span class="sym-name">{symbol.replace('USDT','')}<span class="sym-quote">/USDT·PERP</span></span>
+          <!-- Symbol ticker lives in the global CommandBar directly above;
+               this header only tags the venue flavor (PERP vs spot) so the
+               quant operator still knows which book they're reading from. -->
+          <span class="sym-name"><span class="sym-quote">PERP</span></span>
           {#if currentPrice !== null}
             <div class="price-row">
               <span class="sym-kicker">Last</span>
@@ -1329,16 +1332,9 @@
     </div>
 
     <div class="tv-row tv-row--compact">
-      <div class="tf-scroll" role="tablist" aria-label="Chart interval">
-        {#each TIMEFRAMES as t}
-          <button
-            type="button"
-            class="tf-btn"
-            class:active={tf === t}
-            onclick={() => selectTf(t)}
-          >{t}</button>
-        {/each}
-      </div>
+      <!-- TF pills live in the global CommandBar now to avoid the
+           duplicate strip that used to sit here (W-0102 audit).
+           The tv-studies-wrap sibling below keeps using this row. -->
       <div class="tv-studies-wrap" bind:this={studiesWrapEl}>
         <button
           type="button"

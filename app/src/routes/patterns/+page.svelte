@@ -11,6 +11,7 @@
   import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
+  import VerdictInboxSection from '$lib/components/patterns/VerdictInboxSection.svelte';
 
   // ── Types ──────────────────────────────────────────────────────────────────
   interface PhaseState {
@@ -393,6 +394,9 @@
           </div>
         </div>
       </section>
+
+      <!-- Verdict Inbox — flywheel axis 3 -->
+      <VerdictInboxSection />
     {/if}
   </div>
 </div>
