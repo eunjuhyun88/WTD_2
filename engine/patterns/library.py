@@ -165,9 +165,107 @@ TRADOOR_OI_REVERSAL = PatternObject(
     tags=["oi_reversal", "whale_short_squeeze", "altcoin", "perp"],
 )
 
+FUNDING_FLIP_REVERSAL = PatternObject(
+    slug="funding-flip-reversal-v1",
+    name="펀딩 과적재 반전 패턴 (숏 스퀴즈형)",
+    description=(
+        "펀딩 극단 마이너스(숏 과적재) → 가격 압축 → 펀딩 플립(음→양) + OI 확장"
+        " → 고점 상향 형성(축적) → 숏 스퀴즈 브레이크아웃. "
+        "OI 급락보다 펀딩 레이트 극단으로 시작한다는 점에서 TRADOOR와 구별됨."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="SHORT_OVERHEAT",
+            label="숏 과적재 (관망)",
+            # Funding rate deeply negative = crowded shorts.
+            # `funding_extreme_short` is an alias registered in
+            # block_evaluator that calls funding_extreme(direction="short_overheat").
+            # recent_decline: price usually falling when shorts pile in.
+            required_blocks=["funding_extreme_short"],
+            optional_blocks=["recent_decline"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=8,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="COMPRESSION",
+            label="횡보 압축 (숏 추가 멈춤)",
+            # Price stops falling while shorts remain crowded.
+            # Any one compression signal is sufficient — same
+            # required_any_groups approach as TRADOOR's ARCH_ZONE.
+            required_blocks=[],
+            required_any_groups=[
+                ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
+            ],
+            optional_blocks=["volume_dryup"],
+            disqualifier_blocks=[],
+            min_bars=4, max_bars=48,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="FLIP_SIGNAL",
+            label="펀딩 플립 — 핵심 이벤트",
+            # Shorts start capitulating: funding crosses zero + OI expanding.
+            # funding_flip: last N bars negative → current bar positive.
+            # oi_expansion_confirm: 5% OI rise over 24h (Bessembinder 1993).
+            required_blocks=["funding_flip", "oi_expansion_confirm"],
+            optional_blocks=["positive_funding_bias"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ENTRY_ZONE",
+            label="숏 스퀴즈 진입 구간",
+            # Funding stays positive while structure improves (higher lows).
+            # Analogous to TRADOOR's ACCUMULATION phase.
+            required_blocks=["higher_lows_sequence"],
+            required_any_groups=[["positive_funding_bias", "funding_flip"]],
+            soft_blocks=[
+                "bollinger_squeeze",
+                "volume_dryup",
+                "oi_expansion_confirm",
+            ],
+            disqualifier_blocks=[],
+            score_weights={
+                "higher_lows_sequence": 0.45,
+                "positive_funding_bias": 0.30,
+                "funding_flip": 0.20,
+                "bollinger_squeeze": 0.05,
+                "volume_dryup": 0.05,
+                "oi_expansion_confirm": 0.10,
+            },
+            phase_score_threshold=0.70,
+            transition_window_bars=12,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="FLIP_SIGNAL",
+            min_bars=4, max_bars=48,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SQUEEZE",
+            label="숏 스퀴즈 브레이크아웃",
+            required_blocks=[
+                "breakout_from_pullback_range",
+                "oi_expansion_confirm",
+            ],
+            optional_blocks=["breakout_volume_confirm"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="ENTRY_ZONE",
+    target_phase="SQUEEZE",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    tags=["funding_reversal", "short_squeeze", "altcoin", "perp"],
+)
+
 # Registry: slug → PatternObject
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
+    FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
 }
 
 def get_pattern(slug: str) -> PatternObject:
