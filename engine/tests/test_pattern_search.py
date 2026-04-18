@@ -119,10 +119,11 @@ def test_build_variant_pattern_scales_bar_windows_for_higher_timeframe_family() 
 
     assert arch_zone.min_bars == 1
     assert arch_zone.max_bars == 12
-    # REAL_DUMP max_bars widened 4 -> 12 at 1h per Park-Hahn-Lee (2023)
-    # accumulation-formation window; scales to 3 bars on 4h.
-    assert real_dump.max_bars == 3
-    assert accumulation.transition_window_bars == 3
+    # REAL_DUMP max_bars widened 4 -> 12 -> 18 at 1h (Park-Hahn-Lee 2023 +
+    # W-0086 FARTCOIN empirical calibration). 18 * (60/240) = 4.5 → 4 at 4h
+    # under Python banker's rounding. transition_window_bars tracks max_bars.
+    assert real_dump.max_bars == 4
+    assert accumulation.transition_window_bars == 4
     assert accumulation.min_bars == 2
 
 

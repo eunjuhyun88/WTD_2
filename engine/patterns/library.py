@@ -66,18 +66,26 @@ TRADOOR_OI_REVERSAL = PatternObject(
             required_blocks=["oi_spike_with_dump", "volume_spike"],
             optional_blocks=["recent_decline", "funding_extreme"],
             disqualifier_blocks=[],
-            # max_bars widened 4 -> 12 to cover the accumulation-formation
-            # window after a liquidation cascade. Park, Hahn & Lee (2023)
-            # "Liquidation cascades on crypto perpetuals" report the time
-            # from cascade bottom to first higher-low / Sign-of-Strength
-            # forming over 4-12 hours on 1h bars. TRADOORUSDT empirical
-            # trace (W-0086, run ade68a09) confirms this at the symbol
-            # level: REAL_DUMP entry 2026-04-11 16:00 UTC, first Wyckoff-
-            # SOS bar 21:00 UTC (5 bars later). The prior max_bars=4
-            # timed out before ACCUMULATION could form and pushed the
-            # state machine back to FAKE_DUMP, even with the Axis-A OI
-            # threshold and Axis-B ARCH_ZONE composition fixes landed.
-            min_bars=1, max_bars=12,
+            # max_bars widening trail:
+            #   4  -> 12 (W-0086 run ade68a09, Park-Hahn-Lee 2023 central
+            #            4-12h higher-lows formation range, calibrated on
+            #            TRADOOR's observed 5-bar gap)
+            #   12 -> 18 (W-0086 slice 2026-04-18, FARTCOIN diagnosis:
+            #            first higher_lows_sequence fire at bar 16 after
+            #            REAL_DUMP entry — 4 bars outside the 12-bar
+            #            ceiling — caused state-machine regression to
+            #            ARCH_ZONE before ACCUMULATION could form. Park-
+            #            Hahn-Lee's cited range captures TRADOOR but not
+            #            the slower-consolidation tail. 18 = FARTCOIN's
+            #            observed 16-bar gap + 2-bar safety margin, and
+            #            is the minimum that preserves multi-symbol
+            #            coverage without widening into the "pattern is
+            #            silent because the setup is not a real cascade"
+            #            regime beyond 24h.)
+            # ACCUMULATION.transition_window_bars must track max_bars —
+            # ACCUMULATION can only anchor while REAL_DUMP is still the
+            # current phase (state_machine._get_anchor_transition_id).
+            min_bars=1, max_bars=18,
             timeframe="1h",
         ),
         PhaseCondition(
@@ -104,7 +112,11 @@ TRADOOR_OI_REVERSAL = PatternObject(
                 "reclaim_after_dump": 0.05,
             },
             phase_score_threshold=0.70,
-            transition_window_bars=12,
+            # Kept aligned with REAL_DUMP.max_bars (see REAL_DUMP widening
+            # trail comment) so ACCUMULATION has the full REAL_DUMP-active
+            # window to anchor. Narrower would waste the REAL_DUMP hold,
+            # wider would be inert.
+            transition_window_bars=18,
             anchor_from_previous_phase=True,
             anchor_phase_id="REAL_DUMP",
             min_bars=6, max_bars=72,
