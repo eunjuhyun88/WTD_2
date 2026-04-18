@@ -106,6 +106,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("reclaim_after_dump", reclaim_after_dump),
     ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
+    ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
     ("volume_dryup",       volume_dryup),
     # disqualifiers
     ("volume_below_average", volume_below_average),
