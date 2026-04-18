@@ -2,6 +2,12 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType, SeriesMarker } from 'lightweight-charts';
+  import {
+    chartIndicators,
+    toggleIndicator as toggleChartIndicator,
+    removeIndicator as removeChartIndicator,
+    type IndicatorKey,
+  } from '$lib/stores/chartIndicators';
   import type { DepthLadderEnvelope, LiquidationClustersEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { ChartViewportSnapshot } from '$lib/contracts/terminalPersistence';
@@ -148,16 +154,18 @@
   let showSaveModal = $state(false);
   let savedCaptureId = $state<string | null>(null);   // shown as toast after save
 
-  // Indicator toggles
-  let showVWAP = $state(false);
-  let showBB   = $state(false);
-  let showEMA  = $state(true);
-  let showATRBands = $state(false);
-  let showCVD = $state(true);
-  let showMACD = $state(false);   // replaces RSI pane when active
+  // Indicator toggles — backed by the shared chartIndicators store so that
+  // the SSE `chart_action` handler, the studies popover, and pane × buttons
+  // all mutate one source of truth (W-0102 Slice 3).
+  let showVWAP = $derived($chartIndicators.vwap);
+  let showBB   = $derived($chartIndicators.bb);
+  let showEMA  = $derived($chartIndicators.ema);
+  let showATRBands = $derived($chartIndicators.atr_bands);
+  let showCVD = $derived($chartIndicators.cvd);
+  let showMACD = $derived($chartIndicators.macd);   // replaces RSI pane when active
+  let derivativesOnMain = $derived($chartIndicators.derivatives);
+
   let chartMode = $state<'candle' | 'line'>('candle');
-  /** Fund % + CVD cum on main chart (CQ-style); OI Δ stays in sub-pane (different unit). */
-  let derivativesOnMain = $state(true);
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
   let contextStripOpen = $state(false);
 
@@ -608,9 +616,14 @@
           });
         })();
 
-    const overlayOnMain =
-      derivativesOnMain && chartMode === 'candle' && (Boolean(fundingBars?.length) || (showCVD && cvdCumBars.length > 0));
-    const mainChartHeight = measureMainChartHeight(overlayOnMain);
+    // Main chart overlays only host true price-aligned studies (EMA / BB /
+    // VWAP / ATR bands) plus the CQ-style Funding % line on the left axis.
+    // CVD is a sub-pane indicator — it belongs in `.pane-cvd`, never on the
+    // price pane (user feedback 2026-04-19: "보조지표만 같이 나오고 나머지는
+    // 하단으로 붙어야지").
+    const hasFundingOverlay =
+      derivativesOnMain && chartMode === 'candle' && Boolean(fundingBars?.length);
+    const mainChartHeight = measureMainChartHeight(hasFundingOverlay);
 
     // ── Main (candles + overlays) ────────────────────────────────────────────
     mainChart = createChart(mainEl, {
@@ -619,14 +632,11 @@
       height: mainChartHeight,
       rightPriceScale: {
         ...baseTheme.rightPriceScale,
-        scaleMargins: overlayOnMain
-          ? { top: 0.06, bottom: showCVD ? 0.36 : 0.1 }
-          : { top: 0.08, bottom: 0.08 },
+        scaleMargins: { top: 0.08, bottom: 0.08 },
       },
-      leftPriceScale:
-        overlayOnMain && fundingBars != null && fundingBars.length > 0
-          ? { visible: true, borderColor: BORDER, scaleMargins: { top: 0.06, bottom: 0.06 } }
-          : { visible: false },
+      leftPriceScale: hasFundingOverlay
+        ? { visible: true, borderColor: BORDER, scaleMargins: { top: 0.06, bottom: 0.06 } }
+        : { visible: false },
     });
 
     const lastBar = klines[klines.length - 1];
@@ -754,8 +764,9 @@
       }
     }
 
-    // Fund % + CVD cumulative on main pane (shared time axis — CryptoQuant-style overlay on price)
-    if (overlayOnMain && fundingBars != null && fundingBars.length > 0) {
+    // Fund % on main pane (left axis, shared time axis — CryptoQuant-style
+    // derivative overlay on price). CVD moved out to the sub-pane.
+    if (hasFundingOverlay && fundingBars != null && fundingBars.length > 0) {
       const fMain = mainChart.addSeries(LineSeries, {
         priceScaleId: 'left',
         color: 'rgba(251,191,36,0.92)',
@@ -765,21 +776,6 @@
         priceLineVisible: false,
       });
       fMain.setData(toLine(fundingBars.map((f) => ({ time: f.time, value: f.value }))));
-    }
-    if (overlayOnMain && showCVD && cvdCumBars.length > 0) {
-      const cMain = mainChart.addSeries(LineSeries, {
-        priceScaleId: 'cvd',
-        color: 'rgba(94,234,212,0.95)',
-        lineWidth: 1,
-        lastValueVisible: true,
-        priceLineVisible: false,
-      });
-      cMain.setData(toLine(cvdCumBars));
-      mainChart.priceScale('cvd').applyOptions({
-        scaleMargins: { top: 0.64, bottom: 0.02 },
-        borderVisible: true,
-        entireTextOnly: true,
-      });
     }
 
     // Verdict price levels + liquidation rails (price-scale aligned)
@@ -867,7 +863,7 @@
     // ── OI Δ% pane (funding on main when overlay — here OI hist only) ───────
     if (oiEl) {
       const fundInOiPane =
-        !overlayOnMain && fundingBars != null && fundingBars.length > 0;
+        !hasFundingOverlay && fundingBars != null && fundingBars.length > 0;
       oiChart = createChart(oiEl, {
         ...baseTheme,
         width: w,
@@ -904,9 +900,9 @@
       }
     }
 
-    // ── CVD: Δ vol histogram; cumulative on main when overlay ───────────────
+    // ── CVD pane: Δ vol histogram + cumulative (always lives here now) ───────
     if (cvdEl && showCVD) {
-      const cumInCvdPane = !overlayOnMain;
+      const cumInCvdPane = true;
       cvdChart = createChart(cvdEl, {
         ...baseTheme,
         width: w,
@@ -1149,14 +1145,24 @@
     onTfChange?.(t);
   }
 
+  const STUDY_TO_INDICATOR: Record<StudyId, IndicatorKey> = {
+    ema: 'ema',
+    vwap: 'vwap',
+    bb: 'bb',
+    atr: 'atr_bands',
+    macd: 'macd',
+    cvd: 'cvd',
+    overlay: 'derivatives',
+  };
+
   function toggleStudy(id: StudyId) {
-    if (id === 'ema') showEMA = !showEMA;
-    if (id === 'vwap') showVWAP = !showVWAP;
-    if (id === 'bb') showBB = !showBB;
-    if (id === 'atr') showATRBands = !showATRBands;
-    if (id === 'macd') showMACD = !showMACD;
-    if (id === 'cvd') showCVD = !showCVD;
-    if (id === 'overlay') derivativesOnMain = !derivativesOnMain;
+    const key = STUDY_TO_INDICATOR[id];
+    if (key) toggleChartIndicator(key);
+  }
+
+  /** Hide a sub-pane indicator — fires from pane × buttons (W-0102 Slice 3). */
+  function hidePane(key: IndicatorKey) {
+    removeChartIndicator(key);
   }
 
   onMount(() => {
@@ -1477,6 +1483,12 @@
           <span>CVD</span>
           <span class="pane-hint">Δ vol</span>
           <span class="pane-hint pane-hint-mint">cum</span>
+          <button
+            type="button"
+            class="pane-close"
+            aria-label="Hide CVD pane"
+            onclick={() => hidePane('cvd')}
+          >×</button>
         </div>
         <div class="pane-cvd" bind:this={cvdEl}></div>
       {/if}
@@ -2295,36 +2307,65 @@
   .toast-link { color: #63b3ed; text-decoration: underline; }
   @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
+  /* Bloomberg-style pane header — 10px mono, tight 4/8px rhythm. */
   .pane-label {
     flex-shrink: 0;
-    padding: 1px 8px;
+    padding: 2px 8px;
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    color: rgba(177, 181, 189, 0.3);
+    font-size: 10px;
+    color: rgba(177, 181, 189, 0.58);
     background: rgba(19, 23, 34, 0.66);
     border-top: 1px solid rgba(42, 46, 57, 0.55);
     letter-spacing: 0.06em;
+    line-height: 1.4;
   }
   .pane-label-split {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
+    align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
   .pane-label-split > span:first-child {
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    color: rgba(177, 181, 189, 0.82);
   }
   .pane-hint {
-    font-size: 7px;
+    font-size: 9px;
     font-weight: 500;
     letter-spacing: 0.04em;
-    color: rgba(255, 255, 255, 0.28);
+    color: rgba(255, 255, 255, 0.38);
   }
   .pane-hint-gold {
     color: rgba(251, 191, 36, 0.72);
   }
+  .pane-close {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: rgba(177, 181, 189, 0.42);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 2px;
+    font-family: inherit;
+    transition: color 80ms ease, background 80ms ease;
+  }
+  .pane-close:hover {
+    color: rgba(239, 68, 68, 0.86);
+    background: rgba(239, 68, 68, 0.08);
+  }
+  .pane-close:focus-visible {
+    outline: 1px solid rgba(94, 234, 212, 0.5);
+    outline-offset: 1px;
+  }
+
   .pane-hint-mint {
     color: rgba(94, 234, 212, 0.72);
   }
