@@ -13,21 +13,26 @@
     showRail?: boolean;
     /** Rail width in px (default: 330) */
     railWidth?: number;
+    /** Left rail width in px (default: 240) */
+    leftRailWidth?: number;
     children?: import('svelte').Snippet;
     slotChart?: import('svelte').Snippet;
     slotRail?: import('svelte').Snippet;
     slotFooter?: import('svelte').Snippet;
     slotTopBar?: import('svelte').Snippet;
+    slotLeftRail?: import('svelte').Snippet;
   }
 
   let {
     showRail = true,
     railWidth = 330,
+    leftRailWidth = 240,
     children,
     slotChart,
     slotRail,
     slotFooter,
     slotTopBar,
+    slotLeftRail,
   }: Props = $props();
 </script>
 
@@ -40,7 +45,14 @@
   {/if}
 
   <!-- Row 2: Main workspace -->
-  <div class="shell-workspace" style="--rail-width: {railWidth}px">
+  <div class="shell-workspace" style="--rail-width: {railWidth}px; --left-rail-width: {leftRailWidth}px">
+    <!-- Left persistent rail (market list / watchlist) -->
+    {#if slotLeftRail}
+      <aside class="shell-left-rail">
+        {@render slotLeftRail()}
+      </aside>
+    {/if}
+
     <!-- Center chart -->
     <div class="shell-chart">
       {#if slotChart}
@@ -96,6 +108,15 @@
     overflow: hidden;
   }
 
+  .shell-left-rail {
+    flex-shrink: 0;
+    width: var(--left-rail-width, 240px);
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
   .shell-rail {
     flex-shrink: 0;
     width: var(--rail-width, 330px);
@@ -132,6 +153,9 @@
     .shell-workspace {
       flex-direction: column;
       overflow: visible;
+    }
+    .shell-left-rail {
+      display: none;
     }
     .shell-rail {
       display: none;

@@ -21,6 +21,21 @@
   let files = $state<File[]>([]);
   let fileInputRef = $state<HTMLInputElement | null>(null);
 
+  const SYMBOL_RE = /\b([A-Z]{2,10})(?:\/?(USDT|BTC|ETH))?\b/i;
+  const TF_RE = /\b(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|1w)\b/i;
+
+  const parseHint = $derived(
+    (() => {
+      if (!inputText.trim()) return null;
+      const symMatch = inputText.match(SYMBOL_RE);
+      const tfMatch = inputText.match(TF_RE);
+      if (!symMatch && !tfMatch) return null;
+      const sym = symMatch ? symMatch[1].toUpperCase() + (symMatch[2] ? '/' + symMatch[2].toUpperCase() : '/USDT') : null;
+      const tf = tfMatch ? tfMatch[1].toLowerCase() : null;
+      return { sym, tf };
+    })()
+  );
+
   const dockActions = [
     {
       label: 'Scan',
@@ -129,6 +144,12 @@
               <button onclick={() => files = files.filter((_, j) => j !== i)} aria-label="Remove file">×</button>
             </span>
           {/each}
+        </div>
+      {/if}
+
+      {#if parseHint}
+        <div class="parse-hint">
+          → {parseHint.sym ?? $activePair}{parseHint.tf ? ` · ${parseHint.tf.toUpperCase()}` : ''}
         </div>
       {/if}
 
@@ -326,6 +347,14 @@
     cursor: pointer;
     padding: 0;
     line-height: 1;
+  }
+
+  .parse-hint {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    color: rgba(99, 179, 237, 0.65);
+    padding: 2px 2px 4px;
+    letter-spacing: 0.04em;
   }
 
   .quick-strip {
