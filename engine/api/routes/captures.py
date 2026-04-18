@@ -1,7 +1,19 @@
-"""Capture endpoints — canonical Save Setup records."""
+"""Capture endpoints — canonical Save Setup records.
+
+Routes:
+  POST /captures             single capture (pattern_candidate, manual_hypothesis, ...)
+  POST /captures/bulk_import founder cold-start: bulk-ingest manual hypothesis setups
+  GET  /captures/{id}
+  GET  /captures
+
+Cold-start lane (design: docs/product/flywheel-closure-design.md):
+  - manual_hypothesis captures enter with status='pending_outcome' so the
+    outcome_resolver closes them via the same pipeline as pattern_candidate.
+  - Bulk import is the founder's seed lane before external users arrive.
+"""
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -14,6 +26,18 @@ from patterns.state_store import PatternStateStore
 router = APIRouter()
 _capture_store = CaptureStore()
 _state_store = PatternStateStore()
+
+
+def _status_for_kind(kind: CaptureKind) -> str:
+    """Lifecycle status assigned at ingest time.
+
+    pattern_candidate and manual_hypothesis enter the resolver pipeline.
+    chart_bookmark and post_trade_review are terminal on write (no
+    outcome to compute).
+    """
+    if kind in ("pattern_candidate", "manual_hypothesis"):
+        return "pending_outcome"
+    return "closed"
 
 
 class CaptureCreateBody(BaseModel):
@@ -99,11 +123,72 @@ async def create_capture(body: CaptureCreateBody) -> dict:
         chart_context=body.chart_context,
         feature_snapshot=body.feature_snapshot if body.feature_snapshot is not None else transition_snapshot,
         block_scores=body.block_scores or transition_defaults.get("block_scores", {}),
-        status="pending_outcome" if body.capture_kind == "pattern_candidate" else "closed",
+        status=_status_for_kind(body.capture_kind),
     )
     _capture_store.save(record)
     LEDGER_RECORD_STORE.append_capture_record(record)
     return {"ok": True, "capture": record.to_dict()}
+
+
+class BulkImportRow(BaseModel):
+    """One row in a founder bulk-import payload.
+
+    Constraints are intentionally minimal to ease CSV translation — the
+    resolver handles missing OHLCV gracefully by leaving the capture as
+    pending_outcome for the next tick.
+    """
+
+    symbol: str
+    timeframe: str = "1h"
+    captured_at_ms: int = Field(..., description="Unix ms when the setup was observed")
+    pattern_slug: str = ""
+    phase: str = ""
+    user_note: str | None = None
+    entry_price: float | None = Field(
+        default=None,
+        description="Optional hint. Resolver derives entry_price from OHLCV regardless.",
+    )
+
+
+class BulkImportBody(BaseModel):
+    user_id: str
+    rows: list[BulkImportRow] = Field(..., min_length=1, max_length=1000)
+
+
+@router.post("/bulk_import")
+async def bulk_import_captures(body: BulkImportBody) -> dict:
+    """Cold-start lane: ingest N founder hypotheses in one call.
+
+    Every row becomes a ``manual_hypothesis`` CaptureRecord with
+    ``status='pending_outcome'`` so outcome_resolver (scanner Job 3b)
+    picks it up on the next window tick.
+    """
+    stored: list[CaptureRecord] = []
+    for row in body.rows:
+        chart_context: dict[str, Any] = {}
+        if row.entry_price is not None:
+            chart_context["hypothetical_entry_price"] = row.entry_price
+        record = CaptureRecord(
+            capture_kind="manual_hypothesis",
+            user_id=body.user_id,
+            symbol=row.symbol,
+            pattern_slug=row.pattern_slug,
+            pattern_version=1,
+            phase=row.phase,
+            timeframe=row.timeframe,
+            captured_at_ms=row.captured_at_ms,
+            user_note=row.user_note,
+            chart_context=chart_context,
+            status="pending_outcome",
+        )
+        _capture_store.save(record)
+        LEDGER_RECORD_STORE.append_capture_record(record)
+        stored.append(record)
+    return {
+        "ok": True,
+        "count": len(stored),
+        "capture_ids": [r.capture_id for r in stored],
+    }
 
 
 @router.get("/{capture_id}")

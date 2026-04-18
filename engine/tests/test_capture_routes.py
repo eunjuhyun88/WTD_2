@@ -107,6 +107,98 @@ def test_create_pattern_candidate_capture_with_transition(tmp_path, monkeypatch)
     assert get_response.json()["capture"]["capture_id"] == capture["capture_id"]
 
 
+def test_manual_hypothesis_capture_is_pending_outcome(tmp_path, monkeypatch) -> None:
+    """manual_hypothesis must enter the resolver pipeline (cold-start lane)."""
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "user_note": "H1 hypothesis",
+        },
+    )
+
+    assert response.status_code == 200
+    capture = response.json()["capture"]
+    assert capture["capture_kind"] == "manual_hypothesis"
+    assert capture["status"] == "pending_outcome"
+
+
+def test_chart_bookmark_capture_is_closed(tmp_path, monkeypatch) -> None:
+    """chart_bookmark captures have no outcome to compute — terminal on write."""
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "chart_bookmark",
+            "user_id": "user-1",
+            "symbol": "BTCUSDT",
+            "timeframe": "4h",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["capture"]["status"] == "closed"
+
+
+def test_bulk_import_creates_pending_outcome_manual_hypotheses(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures/bulk_import",
+        json={
+            "user_id": "founder",
+            "rows": [
+                {
+                    "symbol": "BTCUSDT",
+                    "timeframe": "1h",
+                    "captured_at_ms": 1770000000000,
+                    "pattern_slug": "tradoor-oi-reversal-v1",
+                    "phase": "ACCUMULATION",
+                    "user_note": "H1",
+                    "entry_price": 60000.0,
+                },
+                {
+                    "symbol": "ETHUSDT",
+                    "timeframe": "1h",
+                    "captured_at_ms": 1770003600000,
+                    "user_note": "H2",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["count"] == 2
+    assert len(payload["capture_ids"]) == 2
+
+    rows = client.capture_store.list(  # type: ignore[attr-defined]
+        user_id="founder", status="pending_outcome"
+    )
+    assert len(rows) == 2
+    assert {r.symbol for r in rows} == {"BTCUSDT", "ETHUSDT"}
+    assert all(r.capture_kind == "manual_hypothesis" for r in rows)
+    btc = next(r for r in rows if r.symbol == "BTCUSDT")
+    assert btc.chart_context["hypothetical_entry_price"] == 60000.0
+
+
+def test_bulk_import_rejects_empty_rows(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures/bulk_import",
+        json={"user_id": "founder", "rows": []},
+    )
+
+    assert response.status_code == 422  # pydantic min_length violation
+
+
 def test_create_capture_rejects_transition_context_mismatch(tmp_path, monkeypatch) -> None:
     client = _client(tmp_path, monkeypatch)
     transition = _persist_transition(client.state_store)  # type: ignore[arg-type, attr-defined]
