@@ -94,6 +94,22 @@ class ResearchMemoryNote:
     created_at: str
 
 
+@dataclass(frozen=True)
+class OperatorDecision:
+    research_run_id: str
+    decision: str
+    decided_by: str
+    rationale: str
+    decided_at: str
+
+
+@dataclass(frozen=True)
+class PatternControlState:
+    pattern_slug: str
+    paused_by_operator: bool
+    updated_at: str
+
+
 class ResearchStateStore:
     """SQLite WAL-backed store for methodology-owned refinement state."""
 
@@ -158,6 +174,21 @@ class ResearchStateStore:
 
                 CREATE INDEX IF NOT EXISTS idx_research_memory_pattern_kind
                   ON research_memory_notes(pattern_slug, note_kind, created_at DESC);
+
+                CREATE TABLE IF NOT EXISTS research_operator_decisions (
+                  research_run_id TEXT PRIMARY KEY,
+                  decision TEXT NOT NULL,
+                  decided_by TEXT NOT NULL,
+                  rationale TEXT NOT NULL,
+                  decided_at TEXT NOT NULL,
+                  FOREIGN KEY(research_run_id) REFERENCES research_runs(research_run_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS pattern_control_states (
+                  pattern_slug TEXT PRIMARY KEY,
+                  paused_by_operator INTEGER NOT NULL DEFAULT 0,
+                  updated_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -497,4 +528,88 @@ class ResearchStateStore:
             detail=row["detail"],
             tags=_json_loads_list(row["tags_json"]),
             created_at=row["created_at"],
+        )
+
+    def record_operator_decision(
+        self,
+        *,
+        research_run_id: str,
+        decision: str,
+        decided_by: str,
+        rationale: str,
+        decided_at: str,
+    ) -> OperatorDecision:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO research_operator_decisions
+                  (research_run_id, decision, decided_by, rationale, decided_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (research_run_id, decision, decided_by, rationale, decided_at),
+            )
+        return OperatorDecision(
+            research_run_id=research_run_id,
+            decision=decision,
+            decided_by=decided_by,
+            rationale=rationale,
+            decided_at=decided_at,
+        )
+
+    def get_operator_decision(self, research_run_id: str) -> OperatorDecision | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM research_operator_decisions WHERE research_run_id = ?",
+                (research_run_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return OperatorDecision(
+            research_run_id=row["research_run_id"],
+            decision=row["decision"],
+            decided_by=row["decided_by"],
+            rationale=row["rationale"],
+            decided_at=row["decided_at"],
+        )
+
+    def upsert_pattern_control_state(
+        self,
+        pattern_slug: str,
+        *,
+        updated_at: str,
+        paused_by_operator: bool = False,
+    ) -> PatternControlState:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO pattern_control_states (pattern_slug, paused_by_operator, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(pattern_slug) DO UPDATE SET
+                  paused_by_operator = excluded.paused_by_operator,
+                  updated_at = excluded.updated_at
+                """,
+                (pattern_slug, int(paused_by_operator), updated_at),
+            )
+        return PatternControlState(
+            pattern_slug=pattern_slug,
+            paused_by_operator=paused_by_operator,
+            updated_at=updated_at,
+        )
+
+    def get_pattern_control_state(self, pattern_slug: str) -> PatternControlState:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM pattern_control_states WHERE pattern_slug = ?",
+                (pattern_slug,),
+            ).fetchone()
+        if row is None:
+            return PatternControlState(
+                pattern_slug=pattern_slug,
+                paused_by_operator=False,
+                updated_at="",
+            )
+        return PatternControlState(
+            pattern_slug=row["pattern_slug"],
+            paused_by_operator=bool(row["paused_by_operator"]),
+            updated_at=row["updated_at"],
         )

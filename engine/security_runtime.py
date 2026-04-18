@@ -11,18 +11,15 @@ def _csv(name: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-def _default_host_from_origin(origin: str) -> str | None:
-    if not origin:
-        return None
-    parsed = urlparse(origin)
-    return parsed.netloc or None
+def _is_production() -> bool:
+    return bool(os.getenv("K_SERVICE", "").strip())
 
 
 def build_allowed_origins() -> list[str]:
-    app_origin = os.getenv("APP_ORIGIN", "http://localhost:3000").strip()
+    app_origin = os.getenv("APP_ORIGIN", "").strip()
     extra = _csv("ENGINE_ALLOWED_ORIGINS")
-    origins: list[str] = []
-    if app_origin:
+    origins: list[str] = ["http://localhost:5173", "http://localhost:4173"]
+    if app_origin and app_origin not in origins:
         origins.append(app_origin)
     for origin in extra:
         if origin not in origins:
@@ -31,15 +28,25 @@ def build_allowed_origins() -> list[str]:
 
 
 def build_allowed_hosts() -> list[str]:
+    app_origin = os.getenv("APP_ORIGIN", "").strip()
     explicit = _csv("ENGINE_ALLOWED_HOSTS")
-    if explicit:
-        return explicit
-    app_origin = os.getenv("APP_ORIGIN", "http://localhost:3000").strip()
-    inferred = _default_host_from_origin(app_origin)
-    default_hosts = ["localhost", "127.0.0.1", "0.0.0.0"]
-    if inferred and inferred not in default_hosts:
-        default_hosts.append(inferred)
-    return default_hosts
+    hosts: list[str] = [
+        "localhost",
+        "127.0.0.1",
+        "localhost:8000",
+        "127.0.0.1:8000",
+        "testserver",
+        "testserver:80",
+    ]
+    if app_origin:
+        parsed = urlparse(app_origin)
+        host = parsed.netloc or None
+        if host and host not in hosts:
+            hosts.append(host)
+    for h in explicit:
+        if h not in hosts:
+            hosts.append(h)
+    return hosts
 
 
 def build_docs_urls() -> tuple[str | None, str | None]:
@@ -49,12 +56,20 @@ def build_docs_urls() -> tuple[str | None, str | None]:
     return None, None
 
 
+def get_public_runtime_security_errors() -> list[str]:
+    errors: list[str] = []
+    if not _is_production():
+        return errors
+    app_origin = os.getenv("APP_ORIGIN", "").strip()
+    if not app_origin.startswith("https://"):
+        errors.append("APP_ORIGIN must be a valid https origin in production.")
+    if not os.getenv("ENGINE_ALLOWED_HOSTS", "").strip():
+        errors.append("ENGINE_ALLOWED_HOSTS is required in production.")
+    return errors
+
+
 def get_public_runtime_security_warnings() -> list[str]:
     warnings: list[str] = []
-    if not os.getenv("ENGINE_ALLOWED_HOSTS", "").strip():
-        warnings.append(
-            "ENGINE_ALLOWED_HOSTS is empty; default localhost host filtering is applied."
-        )
     if os.getenv("ENGINE_EXPOSE_DOCS", "false").strip().lower() in {
         "1",
         "true",
@@ -62,11 +77,10 @@ def get_public_runtime_security_warnings() -> list[str]:
         "on",
     }:
         warnings.append(
-            "ENGINE_EXPOSE_DOCS=true exposes /docs and /openapi.json; disable in public runtime."
+            "ENGINE_EXPOSE_DOCS=true exposes FastAPI docs on the public engine runtime."
         )
     return warnings
 
 
 def assert_public_runtime_security() -> None:
-    # Keep runtime non-blocking in local/dev while still surfacing warnings.
     return None
