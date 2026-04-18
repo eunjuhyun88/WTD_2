@@ -230,3 +230,51 @@ export async function fetchLiquidationClustersData(pair: string, timeframe: stri
   const data = (await res.json()) as LiquidationClustersEnvelope;
   return data.data ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Live signals — W-0092
+// ---------------------------------------------------------------------------
+
+export interface LiveSignal {
+  symbol: string;
+  phase: string;
+  path: string;
+  entry_hit: boolean;
+  fwd_peak_pct: number | null;
+  realistic_pct: number | null;
+  phase_fidelity: number;
+  scanned_at: string;
+}
+
+export interface LiveSignalsEnvelope {
+  signals: LiveSignal[];
+  cached: boolean;
+  scanned_at: string;
+  cache_ttl_seconds: number;
+}
+
+export async function fetchLiveSignals(): Promise<LiveSignalsEnvelope | null> {
+  const res = await fetch('/api/engine/live-signals');
+  if (!res.ok) return null;
+  return res.json() as Promise<LiveSignalsEnvelope>;
+}
+
+export async function postLiveSignalVerdict(
+  signal: LiveSignal,
+  verdict: 'valid' | 'invalid' | 'late' | 'noisy',
+  note?: string,
+): Promise<boolean> {
+  const signalId = `${signal.symbol}_${signal.scanned_at}`;
+  const res = await fetch('/api/engine/live-signals/verdict', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      signal_id: signalId,
+      symbol: signal.symbol,
+      phase: signal.phase,
+      verdict,
+      note: note ?? null,
+    }),
+  });
+  return res.ok;
+}
