@@ -11,11 +11,6 @@ import type { BinanceKline } from '$lib/contracts/marketContext';
 import { getCycle, dateToMs, BACKTEST_INTERVALS } from '$lib/data/cycles';
 import type { BacktestInterval } from '$lib/data/cycles';
 
-// Pin to Asia regions — Binance API is geo-restricted from US (Vercel IAD1 gets 451).
-export const config = {
-  regions: ['sin1', 'icn1', 'hnd1'],
-};
-
 const BINANCE_BASE = 'https://api.binance.com';
 const MAX_KLINES_PER_REQUEST = 1000;
 const FETCH_TIMEOUT = 15_000; // 15s for historical data

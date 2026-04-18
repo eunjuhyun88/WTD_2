@@ -5,7 +5,7 @@
   "installCommand": "npm ci",
   "outputDirectory": ".vercel/output",
   "devCommand": "npm run dev",
-  "regions": ["iad1"],
+  "regions": ["sin1"],
   "github": {
     "silent": false
   }
