@@ -31,7 +31,7 @@ export const options = {
   },
 };
 
-const BASE = __ENV.BASE || 'http://localhost:5173';
+const BASE = __ENV.BASE || 'https://app.cogotchi.dev';
 
 // Minimal 200-bar fixture: all bars identical for the purpose of load testing.
 // Real usage sends live klines from Binance — this just exercises the CPU path.
