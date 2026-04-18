@@ -3,10 +3,12 @@ import type { RequestHandler } from './$types';
 import { getChartSeries } from '$lib/server/chart/chartSeriesService';
 
 export const GET: RequestHandler = async ({ url, fetch }) => {
-  const symbol = url.searchParams.get('symbol') ?? 'BTCUSDT';
-  const tf = url.searchParams.get('tf') ?? '1h';
-  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '500'), 1000);
-  const emaTf = url.searchParams.get('emaTf')?.trim() ?? '';
+  const symbol    = url.searchParams.get('symbol') ?? 'BTCUSDT';
+  const tf        = url.searchParams.get('tf') ?? '1h';
+  const limit     = Math.min(parseInt(url.searchParams.get('limit') ?? '500'), 1000);
+  const emaTf     = url.searchParams.get('emaTf')?.trim() ?? '';
+  const stRaw     = url.searchParams.get('startTime');
+  const startTime = stRaw ? parseInt(stRaw) : undefined;
 
   try {
     const { payload, cacheStatus } = await getChartSeries({
@@ -14,6 +16,7 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       tf,
       limit,
       emaTf,
+      startTime,
       fetchImpl: fetch,
     });
     return json(payload, {
