@@ -5,3 +5,4 @@ __pycache__/
 memory/state/*.sqlite
 research/state/*.sqlite
 research/state/reports/*.md
+.env

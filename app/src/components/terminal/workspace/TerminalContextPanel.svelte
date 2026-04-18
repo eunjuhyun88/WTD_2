@@ -47,14 +47,12 @@
     patternRecallMatches = [],
   }: Props = $props();
 
-  // W-0086: 4 tabs per rail spec — Verdict | Why | Risk | Sources
-  // 'metrics' (Flow) and 'catalysts' (News) collapsed into Sources tab
   const TABS = [
-    { id: 'summary', label: 'Verdict' },
-    { id: 'entry',   label: 'Why' },
-    { id: 'risk',    label: 'Risk' },
-    // Sources tab aggregates metrics/flow + news + evidence sources
-    { id: 'metrics', label: 'Sources' },
+    { id: 'summary',   label: 'Summary' },
+    { id: 'entry',     label: 'Entry' },
+    { id: 'risk',      label: 'Risk' },
+    { id: 'catalysts', label: 'Catalysts' },
+    { id: 'metrics',   label: 'Metrics' },
   ];
 
   // ── Deep pipeline data ──────────────────────────────────────────────────

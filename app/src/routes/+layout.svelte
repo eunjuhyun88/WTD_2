@@ -42,7 +42,7 @@
   // - All routes ≤768px: status bar adds no value on phones
   let windowWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1200);
   // Hide mobile nav on terminal — terminal has its own TerminalBottomDock
-  const showMobileBottomNav = $derived(windowWidth <= 768 && !$isHome && !$isTerminal);
+  const showMobileBottomNav = $derived(windowWidth <= 768 && !$isTerminal);
   // Terminal has its own CommandBar with price — BottomBar would duplicate it
   const showBottomBar = $derived(
     windowWidth > 768 && !$isHome && !$isTerminal
@@ -168,7 +168,7 @@
     }
     #app.home-mode {
       min-height: 100svh;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-bottom: calc(var(--sc-mobile-nav-h, 68px) + env(safe-area-inset-bottom, 0px));
     }
     /* Terminal has its own bottom dock — no MobileBottomNav padding needed */
     #app.terminal-mode {
