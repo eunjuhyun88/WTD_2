@@ -5,8 +5,12 @@ per-symbol DataFrame. Gives total perp OI across venues and per-exchange
 breakdown — enabling divergence signals (one exchange spiking alone =
 potential manipulation) and institutional-proxy metrics.
 
-CME OI is not available via free public API; placeholder column is zero-filled
-until Coinglass integration is added.
+CME OI is sourced from the CFTC Commitments of Traders report via
+``fetch_cme_cot.py``. The weekly report is forward-filled onto the hourly
+index and returned in base-asset units (BTC / ETH). The integration is
+feature-flagged behind ``CME_OI_ENABLED`` (env var) and off by default so
+existing callers keep the zero-filled placeholder semantics until the
+CFTC Socrata endpoint is validated end-to-end in production.
 
 Exchange endpoints (all public / free-tier):
   Binance  : /futures/data/openInterestHist?symbol=BTCUSDT&period=1h&limit=500
@@ -232,7 +236,26 @@ def fetch_exchange_oi(symbol: str, days: int = 30) -> pd.DataFrame | None:
 
     df["total_oi_change_1h"] = df["total_perp_oi"].pct_change(1).fillna(0.0)
     df["total_oi_change_24h"] = df["total_perp_oi"].pct_change(24).fillna(0.0)
-    df["cme_oi"] = 0.0  # placeholder
+
+    # CME OI via CFTC COT (weekly, forward-filled to hourly). Feature-flagged
+    # off by default so existing callers see the same zero-filled column
+    # until the Socrata endpoint is validated end-to-end in production.
+    if os.environ.get("CME_OI_ENABLED", "").lower() in ("1", "true", "yes"):
+        try:
+            from data_cache.fetch_cme_cot import (
+                fetch_cot_latest,
+                resolve_cme_oi_for_symbol,
+            )
+
+            cot_df = fetch_cot_latest()
+            df["cme_oi"] = resolve_cme_oi_for_symbol(
+                symbol, df.index, cot_df
+            )
+        except Exception as exc:  # pragma: no cover — network contingency
+            log.debug("CME COT lookup failed for %s: %s", symbol, exc)
+            df["cme_oi"] = 0.0
+    else:
+        df["cme_oi"] = 0.0  # placeholder when feature flag off
 
     # Trim to requested days
     cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=days)
