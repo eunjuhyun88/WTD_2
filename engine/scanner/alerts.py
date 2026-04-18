@@ -19,6 +19,8 @@ from typing import Optional
 
 import httpx
 
+from cache.http_client import get_client
+
 log = logging.getLogger("engine.alerts")
 
 TELEGRAM_API = "https://api.telegram.org/bot{token}"
@@ -145,17 +147,17 @@ async def send_telegram_alert(
         payload["reply_markup"] = keyboard
 
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json=payload, timeout=10.0)
-            if resp.status_code == 200:
-                log.info("Telegram alert sent: %s %s", signal["symbol"], signal["direction"])
-                return True
-            else:
-                # Retry with plain text if markdown fails
-                payload["parse_mode"] = "HTML"
-                payload["text"] = text.replace("*", "<b>").replace("`", "<code>")
-                resp2 = await client.post(url, json=payload, timeout=10.0)
-                return resp2.status_code == 200
+        client = get_client()
+        resp = await client.post(url, json=payload, timeout=10.0)
+        if resp.status_code == 200:
+            log.info("Telegram alert sent: %s %s", signal["symbol"], signal["direction"])
+            return True
+        else:
+            # Retry with plain text if markdown fails
+            payload["parse_mode"] = "HTML"
+            payload["text"] = text.replace("*", "<b>").replace("`", "<code>")
+            resp2 = await client.post(url, json=payload, timeout=10.0)
+            return resp2.status_code == 200
     except Exception as exc:
         log.warning("Telegram send failed: %s", exc)
         return False
@@ -186,13 +188,13 @@ async def send_scan_summary(
     url = f"{TELEGRAM_API.format(token=_token)}/sendMessage"
 
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json={
-                "chat_id": _chat_id,
-                "text": text,
-                "disable_notification": n_signals == 0,  # silent if no signals
-            }, timeout=10.0)
-            return resp.status_code == 200
+        client = get_client()
+        resp = await client.post(url, json={
+            "chat_id": _chat_id,
+            "text": text,
+            "disable_notification": n_signals == 0,
+        }, timeout=10.0)
+        return resp.status_code == 200
     except Exception:
         return False
 
@@ -219,9 +221,9 @@ async def send_pattern_engine_alert(
         "disable_web_page_preview": True,
     }
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json=payload, timeout=10.0)
-            return resp.status_code == 200
+        client = get_client()
+        resp = await client.post(url, json=payload, timeout=10.0)
+        return resp.status_code == 200
     except Exception as exc:
         log.warning("Telegram pattern alert failed: %s", exc)
         return False
@@ -261,17 +263,17 @@ async def send_pattern_scan_summary(
 
     url = f"{TELEGRAM_API.format(token=_token)}/sendMessage"
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                url,
-                json={
-                    "chat_id": _chat_id,
-                    "text": "\n".join(lines),
-                    "disable_web_page_preview": True,
-                },
-                timeout=10.0,
-            )
-            return resp.status_code == 200
+        client = get_client()
+        resp = await client.post(
+            url,
+            json={
+                "chat_id": _chat_id,
+                "text": "\n".join(lines),
+                "disable_web_page_preview": True,
+            },
+            timeout=10.0,
+        )
+        return resp.status_code == 200
     except Exception as exc:
         log.warning("Telegram pattern summary failed: %s", exc)
         return False
