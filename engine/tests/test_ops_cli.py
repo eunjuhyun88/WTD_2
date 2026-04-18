@@ -26,6 +26,7 @@ def _init_repo(tmp_path: Path) -> tuple[Path, Path]:
     _git(repo, "init")
     _git(repo, "config", "user.name", "Codex")
     _git(repo, "config", "user.email", "codex@example.com")
+    _git(repo, "config", "commit.gpgsign", "false")
     _git(repo, "checkout", "-b", "main")
     (repo / "README.md").write_text("seed\n", encoding="utf-8")
     _git(repo, "add", "README.md")
