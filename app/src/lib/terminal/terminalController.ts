@@ -580,6 +580,7 @@ export function buildTerminalBootstrapTasks(args: {
   loadAlerts: () => void;
   loadPatternPhases: () => void;
   loadPatternCaptures: () => void;
+  loadLiveSignals: () => void;
 }): TerminalBootstrapTask[] {
   return [
     { delayMs: 120, task: args.loadTrending },
@@ -587,6 +588,7 @@ export function buildTerminalBootstrapTasks(args: {
     { delayMs: 320, task: args.loadAlerts },
     { delayMs: 420, task: args.loadPatternPhases },
     { delayMs: 520, task: args.loadPatternCaptures },
+    { delayMs: 620, task: args.loadLiveSignals },
   ];
 }
 
