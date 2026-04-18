@@ -3,10 +3,10 @@
   import { onMount } from 'svelte';
   import HomeFinalCta from '../components/home/HomeFinalCta.svelte';
   import HomeHero from '../components/home/HomeHero.svelte';
+  import SiteFooter from '../components/home/SiteFooter.svelte';
   import HomeLearningLoop from '../components/home/HomeLearningLoop.svelte';
   import HomeSurfaceCards from '../components/home/HomeSurfaceCards.svelte';
   import WebGLAsciiBackground from '../components/home/WebGLAsciiBackground.svelte';
-  import MobileHomeHero from '../components/home/MobileHomeHero.svelte';
   import { trackHomeFunnel } from '../components/home/homeData';
   import { buildCanonicalHref } from '$lib/seo/site';
   import {
@@ -15,8 +15,6 @@
     HOME_PROOF_ROWS,
     HOME_SURFACES
   } from '$lib/home/homeLanding';
-  import { viewportTier } from '$lib/stores/viewportTier';
-
   let mounted = $state(false);
   let promptText = $state('');
   let showAnimatedBackground = $state(false);
@@ -204,31 +202,23 @@
 {/if}
 
 <div class="page">
-  {#if $viewportTier.tier === 'MOBILE'}
-    <MobileHomeHero
-      {mounted}
-      promptText={promptText}
-      surfaces={HOME_SURFACES}
-      onPromptInput={(value: string) => { promptText = value; }}
-    />
-  {:else}
-    <HomeHero
-      {mounted}
-      promptText={promptText}
-      examplePrompts={HOME_EXAMPLE_PROMPTS}
-      proofRows={HOME_PROOF_ROWS}
-      {mx}
-      {my}
-      onPromptInput={(value: string) => { promptText = value; }}
-      onPromptSubmit={handlePromptSubmit}
-      onPickPrompt={handlePromptChip}
-      onOpen={openPath}
-    />
+  <HomeHero
+    {mounted}
+    promptText={promptText}
+    examplePrompts={HOME_EXAMPLE_PROMPTS}
+    proofRows={HOME_PROOF_ROWS}
+    {mx}
+    {my}
+    onPromptInput={(value: string) => { promptText = value; }}
+    onPromptSubmit={handlePromptSubmit}
+    onPickPrompt={handlePromptChip}
+    onOpen={openPath}
+  />
 
-    <HomeLearningLoop steps={HOME_LEARNING_STEPS} />
-    <HomeSurfaceCards surfaces={HOME_SURFACES} onOpen={openPath} />
-    <HomeFinalCta onOpen={openPath} />
-  {/if}
+  <HomeLearningLoop steps={HOME_LEARNING_STEPS} />
+  <HomeSurfaceCards surfaces={HOME_SURFACES} onOpen={openPath} />
+  <HomeFinalCta onOpen={openPath} />
+  <SiteFooter />
 </div>
 
 <style>
