@@ -93,6 +93,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("bollinger_squeeze",  bollinger_squeeze),
     ("bollinger_expansion", bollinger_expansion),
     ("funding_extreme",    funding_extreme),
+    ("funding_extreme_short", lambda ctx: funding_extreme(ctx, direction="short_overheat")),
     ("funding_flip",       funding_flip),
     ("higher_lows_sequence", higher_lows_sequence),
     ("ls_ratio_recovery",  ls_ratio_recovery),
