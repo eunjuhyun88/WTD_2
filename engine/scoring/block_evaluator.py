@@ -36,6 +36,7 @@ from building_blocks.triggers.breakout_from_pullback_range import breakout_from_
 from building_blocks.triggers.breakout_volume_confirm import breakout_volume_confirm
 from building_blocks.triggers.consolidation_then_breakout import consolidation_then_breakout
 from building_blocks.triggers.volume_spike import volume_spike
+from building_blocks.triggers.volume_spike_down import volume_spike_down
 
 # --- Confirmations ---
 from building_blocks.confirmations.absorption_signal import absorption_signal
@@ -63,6 +64,7 @@ from building_blocks.confirmations.coinbase_premium_positive import coinbase_pre
 from building_blocks.confirmations.smart_money_accumulation import smart_money_accumulation
 from building_blocks.confirmations.total_oi_spike import total_oi_spike
 from building_blocks.confirmations.oi_exchange_divergence import oi_exchange_divergence
+from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -92,6 +94,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("breakout_volume_confirm",   breakout_volume_confirm),
     ("consolidation_then_breakout", consolidation_then_breakout),
     ("volume_spike",              volume_spike),
+    ("volume_spike_down",         volume_spike_down),
     # confirmations
     ("golden_cross",       golden_cross),
     ("dead_cross",         dead_cross),
@@ -120,6 +123,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("smart_money_accumulation", smart_money_accumulation),
     ("total_oi_spike",          total_oi_spike),
     ("oi_exchange_divergence",  oi_exchange_divergence),
+    ("delta_flip_positive",     delta_flip_positive),
     # disqualifiers
     ("volume_below_average", volume_below_average),
     ("extreme_volatility",   extreme_volatility),
