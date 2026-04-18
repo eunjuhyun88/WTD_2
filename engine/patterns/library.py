@@ -361,10 +361,104 @@ WHALE_ACCUMULATION_REVERSAL = PatternObject(
     tags=["whale_accumulation", "smart_money", "onchain_confirm", "altcoin", "perp"],
 )
 
+WYCKOFF_SPRING_REVERSAL = PatternObject(
+    slug="wyckoff-spring-reversal-v1",
+    name="Wyckoff 스프링 반전 패턴 (지지선 압축형)",
+    description=(
+        "지지선 근처 횡보 압축 → 거짓 하방 이탈(Spring, 약손 청산) → 즉각 회복 + 거래량 폭발(SoS)"
+        " → Spring 저점 위 풀백(LPS) → 축적 레인지 완전 이탈(Markup). "
+        "순수 가격 구조 + 거래량 패턴 기반. 퍼프 데이터 불필요. "
+        "TRADOOR(OI기반)/FFR(펀딩기반)와 구별되는 price-action-driven 패턴. "
+        "실증: ENA +20.3%, FARTCOIN +14.2%, STRK +13.7%, KAITO +11.8% (2026-04-19)."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="COMPRESSION_ZONE",
+            label="지지선 압축 (매집 준비)",
+            required_blocks=[],
+            required_any_groups=[
+                ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
+            ],
+            optional_blocks=["volume_dryup"],
+            soft_blocks=["absorption_signal"],
+            disqualifier_blocks=[],
+            score_weights={
+                "sideways_compression": 0.50,
+                "bollinger_squeeze": 0.30,
+                "volume_dryup": 0.20,
+                "absorption_signal": 0.15,
+            },
+            min_bars=6, max_bars=48,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SPRING",
+            label="스프링 — 거짓 하방 이탈",
+            required_blocks=["post_dump_compression"],
+            optional_blocks=["reclaim_after_dump"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=8,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SIGN_OF_STRENGTH",
+            label="강도 신호 — 거래량 폭발 돌파",
+            required_blocks=["higher_lows_sequence"],
+            optional_blocks=[
+                "breakout_volume_confirm",
+                "cvd_buying",
+                "absorption_signal",
+            ],
+            disqualifier_blocks=[],
+            score_weights={
+                "higher_lows_sequence": 0.55,
+                "breakout_volume_confirm": 0.25,
+                "cvd_buying": 0.15,
+                "absorption_signal": 0.10,
+            },
+            phase_score_threshold=0.55,
+            min_bars=2, max_bars=24,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="LAST_POINT_OF_SUPPORT",
+            label="최후 지지점 — 진입 구간",
+            required_blocks=["reclaim_after_dump", "higher_lows_sequence"],
+            optional_blocks=[],
+            disqualifier_blocks=[],
+            score_weights={
+                "reclaim_after_dump": 0.55,
+                "higher_lows_sequence": 0.45,
+            },
+            phase_score_threshold=0.60,
+            transition_window_bars=24,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="SIGN_OF_STRENGTH",
+            min_bars=2, max_bars=24,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="MARKUP",
+            label="마크업 — 축적 레인지 완전 이탈",
+            required_blocks=["breakout_above_high"],
+            optional_blocks=["breakout_volume_confirm"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="SIGN_OF_STRENGTH",
+    target_phase="MARKUP",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    tags=["wyckoff", "spring", "price_action", "accumulation", "altcoin"],
+)
+
 # Registry: slug → PatternObject
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
+    WYCKOFF_SPRING_REVERSAL.slug: WYCKOFF_SPRING_REVERSAL,
     WHALE_ACCUMULATION_REVERSAL.slug: WHALE_ACCUMULATION_REVERSAL,
 }
 

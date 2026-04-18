@@ -1,0 +1,90 @@
+{
+    "benchmark_pack_id": "wyckoff-spring-reversal-v1__wsr-v1",
+    "pattern_slug": "wyckoff-spring-reversal-v1",
+    "candidate_timeframes": ["1h"],
+    "cases": [
+        {
+            "symbol": "ENAUSDT",
+            "timeframe": "1h",
+            "start_at": "2026-04-05T00:00:00+00:00",
+            "end_at": "2026-04-20T00:00:00+00:00",
+            "expected_phase_path": [
+                "COMPRESSION_ZONE",
+                "SPRING",
+                "SIGN_OF_STRENGTH",
+                "LAST_POINT_OF_SUPPORT",
+                "MARKUP"
+            ],
+            "role": "reference",
+            "notes": [
+                "ENA Wyckoff Spring cycle (2026-04-09 to 2026-04-16). +20.3% in 72h.",
+                "COMPRESSION_ZONE: Apr 9-12, 0.086-0.097, volume 2-5M/h (dry-up).",
+                "SPRING: Apr 13 07:00, low 0.0907, 10.2M volume — false breakdown below support.",
+                "SIGN_OF_STRENGTH: Apr 13 22:00, 0.0996, 30.4M volume — decisive breakout.",
+                "LAST_POINT_OF_SUPPORT: Apr 14-15, 0.0945-0.097, 1.7-7M — higher-low pullback.",
+                "MARKUP: Apr 15-16, 0.1000 → 0.1145, +20.3%."
+            ],
+            "case_id": "wsr-v1-ena-apr2026"
+        },
+        {
+            "symbol": "FARTCOINUSDT",
+            "timeframe": "1h",
+            "start_at": "2026-04-07T00:00:00+00:00",
+            "end_at": "2026-04-22T00:00:00+00:00",
+            "expected_phase_path": [
+                "COMPRESSION_ZONE",
+                "SPRING",
+                "SIGN_OF_STRENGTH",
+                "LAST_POINT_OF_SUPPORT",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "FARTCOIN Wyckoff Spring cycle. Spring: Apr 15. +14.2% in 48h post-spring.",
+                "Holdout case: pattern confirmed independently of ENA reference."
+            ],
+            "case_id": "wsr-v1-fartcoin-apr2026"
+        },
+        {
+            "symbol": "STRKUSDT",
+            "timeframe": "1h",
+            "start_at": "2026-04-06T00:00:00+00:00",
+            "end_at": "2026-04-21T00:00:00+00:00",
+            "expected_phase_path": [
+                "COMPRESSION_ZONE",
+                "SPRING",
+                "SIGN_OF_STRENGTH",
+                "LAST_POINT_OF_SUPPORT",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "STRK Wyckoff Spring cycle. Spring: Apr 14. +13.7% in 48h post-spring.",
+                "Holdout case: price-action structure confirmed without perp dependency."
+            ],
+            "case_id": "wsr-v1-strk-apr2026"
+        },
+        {
+            "symbol": "KAITOUSDT",
+            "timeframe": "1h",
+            "start_at": "2026-04-04T00:00:00+00:00",
+            "end_at": "2026-04-19T00:00:00+00:00",
+            "expected_phase_path": [
+                "COMPRESSION_ZONE",
+                "SPRING",
+                "SIGN_OF_STRENGTH",
+                "LAST_POINT_OF_SUPPORT",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "KAITO Wyckoff Spring cycle. Spring: Apr 12. +11.8% in 48h post-spring.",
+                "Holdout case: earliest spring in the cohort, confirms multi-symbol generality."
+            ],
+            "case_id": "wsr-v1-kaito-apr2026"
+        }
+    ],
+    "created_at": "2026-04-19T00:00:00+00:00",
+    "_generated_by": "Manual — W-0100 (wyckoff-spring-reversal-v1)",
+    "_notes": "3-pattern system: TRADOOR (OI-driven) + FFR (funding-driven) + WYCKOFF_SPRING (price-action-driven). All three mechanically distinct. WYCKOFF_SPRING requires only 1h OHLCV — no perp data for core phases."
+}
