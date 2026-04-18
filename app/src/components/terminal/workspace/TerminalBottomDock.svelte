@@ -173,48 +173,48 @@
   .dock-pills {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 6px 12px 0;
+    gap: 5px;
+    padding: 8px 14px 0;
   }
   .dock-pill {
-    padding: 2px 8px;
-    border-radius: 3px;
-    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
-    background: rgba(255,255,255,0.025);
-    color: var(--tv-text-2, rgba(209,212,220,0.4));
+    padding: 4px 11px;
+    border-radius: 4px;
+    border: 1px solid var(--tv-border, rgba(255,255,255,0.07));
+    background: rgba(255,255,255,0.03);
+    color: var(--tv-text-1, rgba(209,212,220,0.58));
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.07em;
+    letter-spacing: 0.06em;
     cursor: pointer;
     transition: all 80ms;
   }
   .dock-pill:hover:not(:disabled) {
-    background: rgba(75,158,253,0.08);
-    border-color: rgba(75,158,253,0.22);
+    background: rgba(75,158,253,0.10);
+    border-color: rgba(75,158,253,0.28);
     color: var(--tv-text-0, #D1D4DC);
   }
   .dock-pill:disabled { opacity: 0.35; cursor: not-allowed; }
 
   .dock-sep {
     height: 1px;
-    margin: 6px 12px 0;
-    background: var(--tv-border, rgba(255,255,255,0.055));
+    margin: 8px 14px 0;
+    background: var(--tv-border, rgba(255,255,255,0.07));
   }
 
   /* Input row */
   .dock-input-row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px 8px;
+    gap: 8px;
+    padding: 8px 14px 10px;
     position: relative;
   }
   .dock-parse-hint {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    font-size: 10px;
     color: var(--tv-blue, #4B9EFD);
-    opacity: 0.75;
+    opacity: 0.80;
     flex-shrink: 0;
     white-space: nowrap;
   }
@@ -236,36 +236,37 @@
     -webkit-appearance: none;
   }
   .dock-input::placeholder {
-    color: var(--tv-text-2, rgba(209,212,220,0.4));
+    color: var(--tv-text-2, rgba(209,212,220,0.38));
   }
   .dock-send,
   .dock-attach {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    border: 1px solid var(--tv-border, rgba(255,255,255,0.055));
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    border: 1px solid var(--tv-border, rgba(255,255,255,0.07));
     color: var(--tv-text-2);
-    background: rgba(255,255,255,0.02);
+    background: rgba(255,255,255,0.025);
     cursor: pointer;
     flex-shrink: 0;
     transition: all 80ms;
   }
   .dock-send:hover:not(:disabled),
   .dock-attach:hover {
-    background: rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.07);
     color: var(--tv-text-0);
+    border-color: rgba(255,255,255,0.12);
   }
   .dock-send.active {
     background: rgba(34,171,148,0.15);
-    border-color: rgba(34,171,148,0.35);
+    border-color: rgba(34,171,148,0.38);
     color: var(--tv-green, #22AB94);
   }
   .dock-send:disabled { opacity: 0.35; cursor: not-allowed; }
   .dock-pulse {
-    font-size: 6px;
+    font-size: 7px;
     color: var(--tv-amber, #EFC050);
     animation: dock-pulse 0.7s ease-in-out infinite;
   }
@@ -274,27 +275,27 @@
   .dock-response {
     display: flex;
     align-items: baseline;
-    gap: 6px;
-    padding: 4px 12px 6px;
-    border-top: 1px solid var(--tv-border, rgba(255,255,255,0.055));
-    background: rgba(255,255,255,0.01);
+    gap: 8px;
+    padding: 5px 14px 7px;
+    border-top: 1px solid var(--tv-border, rgba(255,255,255,0.07));
+    background: rgba(255,255,255,0.012);
   }
   .dock-response.live {
-    background: rgba(34,171,148,0.04);
-    border-top-color: rgba(34,171,148,0.14);
+    background: rgba(34,171,148,0.05);
+    border-top-color: rgba(34,171,148,0.18);
   }
   .dock-response-kicker {
     font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--tv-text-2, rgba(209,212,220,0.4));
+    color: var(--tv-text-2, rgba(209,212,220,0.42));
     flex-shrink: 0;
   }
   .dock-response.live .dock-response-kicker { color: var(--tv-green, #22AB94); }
   .dock-response-text {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--tv-text-1, rgba(209,212,220,0.72));
     overflow: hidden;
     text-overflow: ellipsis;

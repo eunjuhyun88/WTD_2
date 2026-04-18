@@ -17,7 +17,7 @@
   } from '$lib/home/homeLanding';
   let mounted = $state(false);
   let promptText = $state('');
-  let showAnimatedBackground = $state(false);
+  let showAnimatedBackground = $state(true);
   let backgroundQuality = $state<'full' | 'lite'>('full');
   let mouseX = $state(50);
   let mouseY = $state(50);
