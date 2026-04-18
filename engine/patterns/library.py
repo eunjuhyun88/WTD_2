@@ -454,12 +454,137 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
     tags=["wyckoff", "spring", "price_action", "accumulation", "altcoin"],
 )
 
+VOLUME_ABSORPTION_REVERSAL = PatternObject(
+    slug="volume-absorption-reversal-v1",
+    name="볼륨 흡수 반전 패턴 (VAR / 셀링 클라이맥스형)",
+    description=(
+        "고거래량 급락(셀링 클라이맥스) → CVD delta 양전환(매도세 소진 + 매수 흡수) "
+        "→ 저점 상승 + 거래량 dry-up(BASE_FORMATION) → 이전 고점 돌파(BREAKOUT). "
+        "퍼프 OI/펀딩 불필요. 순수 OHLCV + taker buy volume 기반. "
+        "현물 거래소 포함 전 마켓 커버 가능. "
+        "TRADOOR(OI)/FFR(펀딩)/WSR(price-action)과 구별되는 volume-exhaustion 패턴."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="SELLING_CLIMAX",
+            label="셀링 클라이맥스 — 고거래량 급락",
+            # Entry condition: a volume-spiked down bar marks seller exhaustion.
+            # volume_spike_down: close < open AND volume >= 3× prior 24-bar avg.
+            # post_dump_compression: realized range compresses immediately after
+            #   (optional) — confirms the spike was climactic, not the start of
+            #   a sustained cascade. If present, score rises.
+            # recent_decline: price has been falling into the climax (context).
+            required_blocks=["volume_spike_down"],
+            optional_blocks=["recent_decline", "post_dump_compression"],
+            disqualifier_blocks=[],
+            score_weights={
+                "volume_spike_down": 1.00,
+                "recent_decline": 0.15,
+                "post_dump_compression": 0.10,
+            },
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ABSORPTION",
+            label="흡수 구간 — CVD delta 양전환",
+            # Core event: taker order-flow flips from net-selling to net-buying
+            # while price is still near the low (hasn't moved up yet).
+            # delta_flip_positive: rolling taker-buy ratio crosses above 0.5.
+            # absorption_signal (soft): large CVD buying while price is flat —
+            #   "sell-wall being absorbed" (ALPHA TERMINAL S2 concept).
+            # volume_dryup (soft): volume falling after the climax spike signals
+            #   supply exhaustion (Wyckoff "no supply" after selling climax).
+            required_blocks=["delta_flip_positive"],
+            soft_blocks=[
+                "absorption_signal",
+                "volume_dryup",
+                "post_dump_compression",
+            ],
+            optional_blocks=["absorption_signal", "volume_dryup"],
+            disqualifier_blocks=[],
+            score_weights={
+                "delta_flip_positive": 1.00,
+                "absorption_signal": 0.20,
+                "volume_dryup": 0.15,
+                "post_dump_compression": 0.10,
+            },
+            # Anchored to SELLING_CLIMAX so ABSORPTION can only form while
+            # the climax bar is still within the transition window.
+            phase_score_threshold=0.65,
+            transition_window_bars=12,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="SELLING_CLIMAX",
+            min_bars=2, max_bars=24,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BASE_FORMATION",
+            label="베이스 형성 — 진입 구간",
+            # Buyers have absorbed supply; price forms higher lows and range
+            # tightens. This is the safest entry window before markup.
+            # higher_lows_sequence: price making higher successive lows.
+            # volume_dryup (soft): low-volume base = "no supply" (Wyckoff).
+            # cvd_buying (soft): taker buy ratio sustained above neutral.
+            # bollinger_squeeze (soft): volatility collapsing into base.
+            required_blocks=["higher_lows_sequence"],
+            soft_blocks=[
+                "volume_dryup",
+                "cvd_buying",
+                "bollinger_squeeze",
+                "reclaim_after_dump",
+            ],
+            optional_blocks=["volume_dryup", "cvd_buying", "bollinger_squeeze"],
+            disqualifier_blocks=[],
+            score_weights={
+                "higher_lows_sequence": 0.60,
+                "volume_dryup": 0.15,
+                "cvd_buying": 0.15,
+                "bollinger_squeeze": 0.10,
+                "reclaim_after_dump": 0.10,
+            },
+            phase_score_threshold=0.60,
+            transition_window_bars=24,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="ABSORPTION",
+            min_bars=4, max_bars=48,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BREAKOUT",
+            label="브레이크아웃 — 이전 고점 돌파",
+            # Markup: price breaks above the pre-climax high. Unlike TRADOOR
+            # this pattern does not require OI gating — perp data is optional.
+            # breakout_above_high: price closes above the rolling prior high.
+            # breakout_volume_confirm (optional): 2.5× avg volume on breakout
+            #   bar — extra conviction but not required (same rationale as
+            #   TRADOOR BREAKOUT: crypto V-reversals often run on quiet volume).
+            required_blocks=["breakout_above_high"],
+            optional_blocks=["breakout_volume_confirm", "cvd_buying"],
+            disqualifier_blocks=[],
+            score_weights={
+                "breakout_above_high": 1.00,
+                "breakout_volume_confirm": 0.20,
+                "cvd_buying": 0.10,
+            },
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="BASE_FORMATION",
+    target_phase="BREAKOUT",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    tags=["volume_absorption", "selling_climax", "price_action", "ohlcv_only", "altcoin"],
+)
+
 # Registry: slug → PatternObject
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
     WYCKOFF_SPRING_REVERSAL.slug: WYCKOFF_SPRING_REVERSAL,
     WHALE_ACCUMULATION_REVERSAL.slug: WHALE_ACCUMULATION_REVERSAL,
+    VOLUME_ABSORPTION_REVERSAL.slug: VOLUME_ABSORPTION_REVERSAL,
 }
 
 def get_pattern(slug: str) -> PatternObject:
