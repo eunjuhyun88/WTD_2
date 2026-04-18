@@ -112,11 +112,20 @@ SvelteKit hooks.server.ts에서 IP 기반 rate limit:
 - [x] 선택된 Slice 구현 (C/B/D 전부 구현 완료)
 - [x] 기존 테스트 전부 통과 (797 engine / 0 app type errors)
 
-## 잔여 작업
+## 추가 구현 (41ccbf4)
 
-1. **Upstash 프로비저닝** — `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` Vercel env 설정
-2. **k6 실측** — `k6 run --env BASE=https://wtd-app.vercel.app scripts/load_test_500.js`
-3. **PR 생성** → main 머지 (사용자 승인 후)
+| 항목 | 내용 |
+|------|------|
+| `engine/Dockerfile` | `UVICORN_WORKERS` env var 지원 (기본값 1) |
+| `tests/test_score_cache.py` | 9개 단위 테스트 (hit/miss/expiry/eviction) 전부 통과 |
+| `scripts/load_test_score.js` | /score 전용 k6 (200-bar fixture, 3 symbols) |
+
+## 잔여 작업 (사용자 액션 필요)
+
+1. **Upstash 프로비저닝** — Vercel env에 `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
+2. **프로덕션 엔진 스케일** — `UVICORN_WORKERS=4` + `ENGINE_ENABLE_SCHEDULER=false` (worker-control이 스케줄러 전담)
+3. **k6 실측** — `k6 run --env BASE=https://... scripts/load_test_500.js`
+4. **PR 생성 + main 머지** — 사용자 승인 후
 
 ## Non-Goals
 
