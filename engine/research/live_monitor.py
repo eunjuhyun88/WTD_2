@@ -45,7 +45,17 @@ WATCH_PHASES = {"ACCUMULATION", "REAL_DUMP"}
 PHASE_ORDER = {
     "ACCUMULATION": 0, "REAL_DUMP": 1,
     "ARCH_ZONE": 2, "FAKE_DUMP": 3, "BREAKOUT": 4,
+    # FFR phases
+    "ENTRY_ZONE": 0, "FLIP_SIGNAL": 1,
+    "COMPRESSION": 2, "SHORT_OVERHEAT": 3, "SQUEEZE": 4,
 }
+
+# Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
+# Add new patterns here as they are promoted.
+PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
+    ("tradoor-oi-reversal-v1",    "tradoor-oi-reversal-v1__canonical",    {"ACCUMULATION", "REAL_DUMP"}),
+    ("funding-flip-reversal-v1",  "funding-flip-reversal-v1__canonical",  {"ENTRY_ZONE", "FLIP_SIGNAL"}),
+]
 
 
 @dataclass
@@ -57,15 +67,17 @@ class LiveScanResult:
     fwd_peak_pct: float | None
     realistic_pct: float | None
     phase_fidelity: float
+    pattern_slug: str = "tradoor-oi-reversal-v1"
     scanned_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def is_entry_candidate(self) -> bool:
-        return self.phase == "ACCUMULATION" and self.entry_hit
+        # ACCUMULATION for TRADOOR; ENTRY_ZONE for FFR — both signal entry readiness
+        return self.phase in {"ACCUMULATION", "ENTRY_ZONE"} and self.entry_hit
 
     @property
     def is_watch(self) -> bool:
-        return self.phase in WATCH_PHASES
+        return self.phase in WATCH_PHASES | {"ENTRY_ZONE", "FLIP_SIGNAL"}
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -82,6 +94,7 @@ def scan_universe_live(
     staleness_hours: int = 48,
     warmup_bars: int = 240,
     log_to_experiment: bool = True,
+    watch_phases: set[str] | None = None,
 ) -> list[LiveScanResult]:
     """Scan universe for active phase signals.
 
@@ -93,12 +106,15 @@ def scan_universe_live(
         window_bars: lookback bars for phase detection (default 120 = 5 days)
         staleness_hours: skip symbols whose latest bar is older than this
         log_to_experiment: append summary to experiment_log.jsonl
+        watch_phases: set of phase IDs to watch (default: WATCH_PHASES for TRADOOR)
 
     Returns:
         List of LiveScanResult sorted by phase priority (ACCUMULATION first).
     """
     if universe is None:
         universe = DEFAULT_UNIVERSE
+    if watch_phases is None:
+        watch_phases = WATCH_PHASES
 
     now = datetime.now(timezone.utc)
     variant = PatternVariantSpec(
@@ -107,6 +123,7 @@ def scan_universe_live(
         timeframe=timeframe,
     )
     pattern = build_variant_pattern(pattern_slug, variant)
+    expected_phase_path = [ph.phase_id for ph in pattern.phases]
 
     results: list[LiveScanResult] = []
 
@@ -131,7 +148,7 @@ def scan_universe_live(
             timeframe=timeframe,
             start_at=start_at,
             end_at=end_at,
-            expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+            expected_phase_path=expected_phase_path,
         )
         try:
             r = evaluate_variant_on_case(pattern, case, timeframe=timeframe, warmup_bars=warmup_bars)
@@ -147,6 +164,7 @@ def scan_universe_live(
             fwd_peak_pct=r.forward_peak_return_pct,
             realistic_pct=r.realistic_forward_peak_return_pct,
             phase_fidelity=r.phase_fidelity or 0.0,
+            pattern_slug=pattern_slug,
             scanned_at=now,
         ))
 
@@ -157,8 +175,9 @@ def scan_universe_live(
     ))
 
     if log_to_experiment and _EXPERIMENT_LOG.exists():
-        entry_candidates = [r for r in results if r.is_entry_candidate]
-        watch_list = [r for r in results if r.is_watch and not r.is_entry_candidate]
+        entry_phase = pattern.entry_phase
+        entry_candidates = [r for r in results if r.phase == entry_phase and r.entry_hit]
+        watch_list = [r for r in results if r.phase in watch_phases and not (r.phase == entry_phase and r.entry_hit)]
         log_entry = {
             "timestamp": now.strftime("%Y%m%d_%H%M%S"),
             "name": "live-phase-scan",
@@ -182,6 +201,48 @@ def scan_universe_live(
             f.write(json.dumps(log_entry) + "\n")
 
     return results
+
+
+def scan_all_patterns_live(
+    universe: list[str] | None = None,
+    timeframe: str = "1h",
+    window_bars: int = 120,
+    staleness_hours: int = 48,
+    warmup_bars: int = 240,
+    log_to_experiment: bool = True,
+) -> list[LiveScanResult]:
+    """Scan universe across all promoted patterns and return merged results.
+
+    Iterates over PROMOTED_PATTERNS and calls scan_universe_live() for each,
+    deduplicating by (symbol, pattern_slug). Results are sorted by phase
+    priority: entry candidates first, then watch list, then others.
+    """
+    all_results: list[LiveScanResult] = []
+    seen: set[tuple[str, str]] = set()
+    for pat_slug, var_slug, wp in PROMOTED_PATTERNS:
+        results = scan_universe_live(
+            universe=universe,
+            variant_slug=var_slug,
+            pattern_slug=pat_slug,
+            timeframe=timeframe,
+            window_bars=window_bars,
+            staleness_hours=staleness_hours,
+            warmup_bars=warmup_bars,
+            log_to_experiment=log_to_experiment,
+            watch_phases=wp,
+        )
+        for r in results:
+            key = (r.symbol, r.pattern_slug)
+            if key not in seen:
+                seen.add(key)
+                all_results.append(r)
+
+    all_results.sort(key=lambda x: (
+        PHASE_ORDER.get(x.phase, 9),
+        not x.entry_hit,
+        -(x.fwd_peak_pct or -999),
+    ))
+    return all_results
 
 
 def print_scan_report(results: list[LiveScanResult], title: str = "LIVE PHASE SCAN") -> None:
