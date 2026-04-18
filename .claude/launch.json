@@ -6,6 +6,12 @@
       "runtimeExecutable": "/bin/bash",
       "runtimeArgs": ["-c", "cd /Users/ej/Projects/wtd-v2/app && node_modules/.bin/vite dev --port 5173"],
       "port": 5173
+    },
+    {
+      "name": "w0102-preview",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "cd /Users/ej/Projects/wtd-v2/.claude/worktrees/w0102-preview/app && node_modules/.bin/vite dev --port 5174"],
+      "port": 5174
     }
   ]
 }

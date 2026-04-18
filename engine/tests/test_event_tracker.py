@@ -296,3 +296,44 @@ class TestBenchmarkPackBuilder:
         detected = datetime(2026, 4, 1, tzinfo=timezone.utc)
         assert (detected - start).days == 7
         assert (end - detected).days == 7
+
+
+# ---------------------------------------------------------------------------
+# pattern_discovery_agent CLI
+# ---------------------------------------------------------------------------
+
+class TestPatternDiscoveryAgentCLI:
+    def test_main_dry_run_no_events_returns_zero(self) -> None:
+        """--dry-run with no cache events should return 0 (no crash)."""
+        from research.pattern_discovery_agent import main
+
+        with (
+            patch("research.pattern_discovery_agent._run_scan", return_value=[]),
+        ):
+            rc = main(["--dry-run", "--event-type", "funding_extreme"])
+        assert rc == 0
+
+    def test_main_dry_run_with_predictive_events_returns_zero(self, tmp_path: Path) -> None:
+        """--dry-run with predictive events builds pack but does not save."""
+        from research.event_tracker.models import ExtremeEvent
+        from research.pattern_discovery_agent import main
+
+        ev = ExtremeEvent(
+            symbol="TESTUSDT",
+            event_type="funding_extreme",
+            detected_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+            trigger_value=-0.002,
+            outcome_72h=0.25,
+            is_predictive=True,
+        )
+
+        with (
+            patch("research.pattern_discovery_agent._run_scan", return_value=[ev, ev]),
+            patch("research.pattern_discovery_agent._resolve_and_filter", return_value=[ev, ev]),
+            patch("research.pattern_discovery_agent._build_pack", return_value={"benchmark_pack_id": "test", "cases": []}),
+            patch("research.pattern_discovery_agent._run_benchmark_search") as mock_search,
+        ):
+            rc = main(["--dry-run"])
+        # --dry-run: benchmark search must NOT be called
+        mock_search.assert_not_called()
+        assert rc == 0
