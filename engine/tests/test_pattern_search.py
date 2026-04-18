@@ -3302,3 +3302,143 @@ def test_slice_case_frames_clips_at_case_end_at_no_future_leak(monkeypatch) -> N
         f"future data leaked: last bar {sliced_klines.index[-1]} > case.end_at {case_end}"
     )
 
+
+def test_evaluate_variant_on_case_filters_phase_history_outside_window(monkeypatch) -> None:
+    """Phase detections beyond case.end_at must not affect entry_hit / target_hit."""
+    from research.pattern_search import evaluate_variant_on_case
+
+    case_end = _dt("2026-04-14T00:00:00+00:00")
+    case = BenchmarkCase(
+        symbol="PTBUSDT",
+        timeframe="1h",
+        start_at=_dt("2026-04-13T00:00:00+00:00"),
+        end_at=case_end,
+        expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+    )
+
+    def _fake_slice(c, *, timeframe, warmup_bars):
+        index = pd.date_range(c.start_at, periods=4, freq="6h", tz="UTC")
+        frames = pd.DataFrame({"close": [1.0] * 4}, index=index)
+        return frames, frames
+
+    class _FakeReplay:
+        current_phase = "BREAKOUT"
+        # ACCUMULATION within window; BREAKOUT is 6h BEYOND case.end_at
+        phase_history = [
+            ("FAKE_DUMP", _dt("2026-04-13T06:00:00+00:00")),
+            ("REAL_DUMP", _dt("2026-04-13T12:00:00+00:00")),
+            ("ACCUMULATION", _dt("2026-04-13T18:00:00+00:00")),
+            ("BREAKOUT", _dt("2026-04-14T06:00:00+00:00")),  # future — must be filtered
+        ]
+
+    monkeypatch.setattr("research.pattern_search._slice_case_frames", _fake_slice)
+    monkeypatch.setattr(
+        "research.pattern_search.replay_pattern_frames", lambda *a, **kw: _FakeReplay()
+    )
+    monkeypatch.setattr(
+        "research.pattern_search._measure_forward_peak_return",
+        lambda **kw: (None, None, None, None),
+    )
+
+    pattern = build_variant_pattern(
+        "tradoor-oi-reversal-v1",
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug="tradoor-oi-reversal-v1__canonical",
+            timeframe="1h",
+        ),
+    )
+    result = evaluate_variant_on_case(pattern, case, timeframe="1h", warmup_bars=0)
+
+    # ACCUMULATION (entry_phase) is within window → entry_hit=True
+    assert result.entry_hit is True
+    # BREAKOUT (target_phase) is BEYOND case.end_at → filtered out → target_hit=False
+    assert result.target_hit is False
+    assert "BREAKOUT" not in result.observed_phase_path
+
+
+# ---------------------------------------------------------------------------
+# W-0086 slice #5 — realistic entry price + slippage
+# ---------------------------------------------------------------------------
+
+
+def test_measure_forward_peak_return_computes_realistic_entry_with_slippage(monkeypatch) -> None:
+    from research.pattern_search import _measure_forward_peak_return
+
+    # Build klines: entry bar close=100, next bar open=101 (real price), forward closes rise to 120
+    index = pd.date_range(_dt("2026-04-13T00:00:00+00:00"), periods=5, freq="1h", tz="UTC")
+    klines = pd.DataFrame(
+        {
+            "open": [99.0, 101.0, 105.0, 115.0, 118.0],
+            "close": [100.0, 103.0, 108.0, 118.0, 120.0],
+        },
+        index=index,
+    )
+    monkeypatch.setattr("research.pattern_search.load_klines", lambda *a, **kw: klines)
+
+    entry_ts = _dt("2026-04-13T00:00:00+00:00")
+    entry_close, paper_pct, entry_next_open, realistic_pct = _measure_forward_peak_return(
+        symbol="TESTUSDT",
+        timeframe="1h",
+        entry_ts=entry_ts,
+        horizon_bars=4,
+        entry_slippage_pct=0.1,
+    )
+
+    assert entry_close == pytest.approx(100.0, rel=1e-6)
+    # paper: (120 - 100) / 100 * 100 = 20.0%
+    assert paper_pct == pytest.approx(20.0, rel=1e-4)
+    # next open = 101.0, slippage 0.1% → adjusted = 101.101
+    assert entry_next_open == pytest.approx(101.0 * 1.001, rel=1e-6)
+    # realistic: (120 - 101.101) / 101.101 * 100
+    expected_realistic = (120.0 - 101.0 * 1.001) / (101.0 * 1.001) * 100.0
+    assert realistic_pct == pytest.approx(expected_realistic, rel=1e-4)
+
+
+def test_evaluate_variant_on_case_populates_realistic_return_fields(monkeypatch) -> None:
+    from research.pattern_search import evaluate_variant_on_case
+
+    case = BenchmarkCase(
+        symbol="PTBUSDT",
+        timeframe="1h",
+        start_at=_dt("2026-04-13T00:00:00+00:00"),
+        end_at=_dt("2026-04-14T00:00:00+00:00"),
+        expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+    )
+
+    def _fake_slice(c, *, timeframe, warmup_bars):
+        index = pd.date_range(c.start_at, periods=4, freq="6h", tz="UTC")
+        frames = pd.DataFrame({"close": [1.0] * 4}, index=index)
+        return frames, frames
+
+    class _FakeReplay:
+        current_phase = "ACCUMULATION"
+        phase_history = [
+            ("FAKE_DUMP", _dt("2026-04-13T06:00:00+00:00")),
+            ("ACCUMULATION", _dt("2026-04-13T12:00:00+00:00")),
+        ]
+
+    monkeypatch.setattr("research.pattern_search._slice_case_frames", _fake_slice)
+    monkeypatch.setattr(
+        "research.pattern_search.replay_pattern_frames", lambda *a, **kw: _FakeReplay()
+    )
+    monkeypatch.setattr(
+        "research.pattern_search._measure_forward_peak_return",
+        lambda **kw: (0.01, 15.0, 0.010101, 14.5),
+    )
+
+    pattern = build_variant_pattern(
+        "tradoor-oi-reversal-v1",
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug="tradoor-oi-reversal-v1__canonical",
+            timeframe="1h",
+        ),
+    )
+    result = evaluate_variant_on_case(pattern, case, timeframe="1h", warmup_bars=0, entry_slippage_pct=0.1)
+
+    assert result.entry_close == pytest.approx(0.01)
+    assert result.forward_peak_return_pct == pytest.approx(15.0)
+    assert result.entry_next_open == pytest.approx(0.010101)
+    assert result.realistic_forward_peak_return_pct == pytest.approx(14.5)
+

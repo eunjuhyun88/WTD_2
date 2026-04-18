@@ -228,6 +228,11 @@ class VariantCaseResult:
     # max close-to-close return across `entry_profit_horizon_bars` after entry.
     entry_close: float | None = None
     forward_peak_return_pct: float | None = None
+    # W-0086 slice #5: realistic entry price = open of bar after entry_ts,
+    # with slippage applied. realistic_forward_peak_return_pct shows paper→real
+    # delta; informational only (gate still uses forward_peak_return_pct).
+    entry_next_open: float | None = None
+    realistic_forward_peak_return_pct: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -2609,37 +2614,48 @@ def _measure_forward_peak_return(
     timeframe: str,
     entry_ts: datetime,
     horizon_bars: int,
-) -> tuple[float | None, float | None]:
-    """Return (entry_close, forward_peak_return_pct) measured from entry_ts.
+    entry_slippage_pct: float = 0.1,
+) -> tuple[float | None, float | None, float | None, float | None]:
+    """Return (entry_close, paper_peak_return_pct, entry_next_open, realistic_peak_return_pct).
 
-    Loads cached klines and computes the peak close-to-close return across
-    the next ``horizon_bars`` bars after ``entry_ts``. Returns (None, None)
-    when the data is unavailable, the entry bar is missing, or fewer than
-    one forward bar exists. Used by the W-0088 trading-edge promotion path.
+    paper_peak_return_pct: peak return using entry bar's close as the reference price.
+    realistic_peak_return_pct: peak return using the next bar's open + slippage (W-0086 slice #5).
+    Either realistic field is None when the next bar is unavailable or entry_next_open <= 0.
+    Returns (None, None, None, None) when data or forward bars are unavailable.
     """
     if horizon_bars <= 0:
-        return None, None
+        return None, None, None, None
     try:
         klines = load_klines(symbol, timeframe, offline=True)
     except Exception:
-        return None, None
+        return None, None, None, None
     if klines is None or klines.empty:
-        return None, None
+        return None, None, None, None
     entry_mask = klines.index >= entry_ts
     if not entry_mask.any():
-        return None, None
+        return None, None, None, None
     entry_pos = int(entry_mask.nonzero()[0][0])
     forward_window = klines.iloc[entry_pos : entry_pos + horizon_bars + 1]
     if len(forward_window) < 2:
-        return None, None
+        return None, None, None, None
     if "close" not in forward_window.columns:
-        return None, None
+        return None, None, None, None
     entry_close = float(forward_window.iloc[0]["close"])
     if entry_close <= 0:
-        return None, None
+        return None, None, None, None
     peak_close = float(forward_window["close"].iloc[1:].max())
-    forward_peak_return_pct = round((peak_close - entry_close) / entry_close * 100.0, 6)
-    return round(entry_close, 8), forward_peak_return_pct
+    paper_peak_return_pct = round((peak_close - entry_close) / entry_close * 100.0, 6)
+    # Realistic entry: open of the bar immediately after entry_ts + slippage.
+    entry_next_open: float | None = None
+    realistic_peak_return_pct: float | None = None
+    if "open" in forward_window.columns and len(forward_window) >= 2:
+        raw_next_open = float(forward_window.iloc[1]["open"])
+        if raw_next_open > 0:
+            entry_next_open = round(raw_next_open * (1.0 + entry_slippage_pct / 100.0), 8)
+            realistic_peak_return_pct = round(
+                (peak_close - entry_next_open) / entry_next_open * 100.0, 6
+            )
+    return round(entry_close, 8), paper_peak_return_pct, entry_next_open, realistic_peak_return_pct
 
 
 def _slice_case_frames(case: BenchmarkCase, *, timeframe: str, warmup_bars: int) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -2676,6 +2692,7 @@ def evaluate_variant_on_case(
     timeframe: str,
     warmup_bars: int = 240,
     entry_profit_horizon_bars: int = DEFAULT_ENTRY_PROFIT_HORIZON_BARS,
+    entry_slippage_pct: float = 0.1,
 ) -> VariantCaseResult:
     scaled_warmup_bars = _scale_warmup_bars(
         warmup_bars,
@@ -2719,12 +2736,17 @@ def evaluate_variant_on_case(
         lead_bars = int((target_ts - entry_ts).total_seconds() / (bar_minutes * 60))
     entry_close: float | None = None
     forward_peak_return_pct: float | None = None
+    entry_next_open: float | None = None
+    realistic_forward_peak_return_pct: float | None = None
     if entry_hit and entry_ts is not None:
-        entry_close, forward_peak_return_pct = _measure_forward_peak_return(
-            symbol=case.symbol,
-            timeframe=timeframe,
-            entry_ts=entry_ts,
-            horizon_bars=entry_profit_horizon_bars,
+        entry_close, forward_peak_return_pct, entry_next_open, realistic_forward_peak_return_pct = (
+            _measure_forward_peak_return(
+                symbol=case.symbol,
+                timeframe=timeframe,
+                entry_ts=entry_ts,
+                horizon_bars=entry_profit_horizon_bars,
+                entry_slippage_pct=entry_slippage_pct,
+            )
         )
     lead_score = _lead_score_from_minutes(
         lead_bars,
@@ -2770,6 +2792,8 @@ def evaluate_variant_on_case(
         missing_block_counts=attempt_summary.missing_block_counts,
         entry_close=entry_close,
         forward_peak_return_pct=forward_peak_return_pct,
+        entry_next_open=entry_next_open,
+        realistic_forward_peak_return_pct=realistic_forward_peak_return_pct,
     )
 
 
