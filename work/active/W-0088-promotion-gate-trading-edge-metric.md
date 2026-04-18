@@ -63,7 +63,7 @@ engine
 1. ~~Implement VariantCaseResult fields + slice extension + return computation.~~ — done (commits c4bba19 + fc4e4fd)
 2. ~~Implement policy + report extension + OR-gate logic.~~ — done (commit fb1e318)
 3. ~~Add unit tests + verify existing tests stay green.~~ — done (5 new tests pass; full suite 720 passed, 1 pre-existing unrelated failure in test_research_inspection.py).
-4. Run scratch H6 multi-symbol pack against new gate; expect KOMA / DYM to flip to `decision_path="trading_edge"`, FARTCOIN to stay rejected (no entry). **Pending — operator action.**
+4. ~~Run scratch H6 multi-symbol pack against new gate; expect KOMA / DYM to flip to `decision_path="trading_edge"`, FARTCOIN to stay rejected (no entry).~~ — done (2026-04-18). Results: KOMA fwd_peak=+15.39%, DYM=+5.21%, TRADOOR=+85.67% → decision=promote_candidate/trading_edge. FARTCOIN entry=False (path ARCH_ZONE→REAL_DUMP→ARCH_ZONE, never reaches ACCUMULATION — confirms W-0086 next-slice #2 diagnosis target). entry_profitable_rate=0.60 (≥0.50 threshold).
 
 ## Exit Criteria
 
@@ -71,7 +71,7 @@ engine
 - ✅ New unit tests pass: V-reversal strict, slow-recovery trading-edge, pump-and-dump reject, no-entry reject, plus parallel-path-disabled fallback.
 - ✅ `PromotionReport` schema includes `entry_profitable_rate`, `entry_profitable_gate`, `decision_path` fields; decision_path values are one of `"strict" | "trading_edge" | "rejected"`.
 - ✅ Atomic commit chain: each of 4 commits changes one logical axis; all commits keep baseline test count.
-- ⚠️ H6 scratch verification (slice 4 above) still pending — recommended before promoting H6 holdouts into the canonical pack (W-0086 next-slice 6).
+- ✅ H6 scratch verification passed (2026-04-18). Gate promotes via trading_edge with FDR=0.8, entry_profitable_rate=0.60. KOMA/DYM forward returns positive above threshold. FARTCOIN correctly rejected (no entry). Gate is ready for W-0086 next-slice 6 (canonical pack promotion).
 
 ## Handoff Checklist
 
