@@ -4,6 +4,14 @@ Use case: classic trend-following trigger — "something just made a new
 multi-day high, worth looking at." Past-only: the reference high window
 does NOT include the current bar.
 
+Preserved as a registered building block for autoresearch and future
+pattern definitions. The TRADOOR OI-reversal pattern (W-0086) replaced
+this block in its BREAKOUT phase with ``breakout_from_pullback_range``,
+which anchors the reference high to the phase structure rather than a
+fixed calendar window, avoiding false triggers from the pre-dump rally
+peak. This block remains appropriate for swing-style patterns where a
+rolling-window breakout is a valid signal.
+
 Parameter choice (lookback_days default = 5):
 
 The original Donchian / Turtle breakout rule (Dennis & Eckhardt 1983)
@@ -11,9 +19,9 @@ used 20 DAILY bars, i.e. 20 calendar days of daily-timeframe data.
 Naively reusing "20 days" on hourly bars inflates the window to
 20 * 24 = 480 bars, which exceeds the typical replay horizon used by
 this engine (a few days to two weeks) and makes the block structurally
-unable to fire inside the pattern's own lifecycle.
+unable to fire inside short-lifecycle patterns.
 
-The 5-day default reflects three quantitative anchors that generalise
+The 5-day default reflects two quantitative anchors that generalise
 better to hourly crypto data:
 
 1. Park & Irwin (2007), "What do we know about the profitability of
@@ -24,10 +32,6 @@ better to hourly crypto data:
    (Annals of Operations Research) — calibrates momentum and breakout
    rules on crypto and finds shorter breakout windows dominate on
    high-frequency series where volatility clustering is stronger.
-3. The TRADOOR / PTB OI-reversal setup this block is consumed by
-   resolves its ACCUMULATION -> BREAKOUT transition within 2-4 days in
-   the reference cases, so a breakout reference longer than the setup
-   itself can never fire inside the pattern window.
 
 Callers that want the longer swing-style window (e.g., daily-timeframe
 patterns) should pass ``lookback_days=20`` explicitly.
