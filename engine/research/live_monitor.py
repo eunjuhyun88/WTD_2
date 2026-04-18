@@ -58,8 +58,9 @@ PHASE_ORDER = {
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
 # Add new patterns here as they are promoted.
 PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
-    ("tradoor-oi-reversal-v1",    "tradoor-oi-reversal-v1__canonical",    {"ACCUMULATION", "REAL_DUMP"}),
-    ("funding-flip-reversal-v1",  "funding-flip-reversal-v1__canonical__dur-long",  {"ENTRY_ZONE", "FLIP_SIGNAL"}),
+    ("tradoor-oi-reversal-v1",       "tradoor-oi-reversal-v1__canonical",               {"ACCUMULATION", "REAL_DUMP"}),
+    ("funding-flip-reversal-v1",     "funding-flip-reversal-v1__canonical__dur-long",   {"ENTRY_ZONE", "FLIP_SIGNAL"}),
+    ("wyckoff-spring-reversal-v1",   "wyckoff-spring-reversal-v1__canonical__dur-long", {"SPRING", "SIGN_OF_STRENGTH"}),
 ]
 
 
