@@ -3,6 +3,11 @@ import type { RequestHandler } from './$types';
 import { getChartSeries } from '$lib/server/chart/chartSeriesService';
 import { chartKlinesLimiter } from '$lib/server/rateLimit';
 
+// Pin to Asia regions — Binance FAPI is geo-restricted from US (Vercel IAD1 gets 451).
+export const config = {
+  regions: ['sin1', 'icn1', 'hnd1'],
+};
+
 export const GET: RequestHandler = async ({ url, fetch, getClientAddress }) => {
   if (!chartKlinesLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
