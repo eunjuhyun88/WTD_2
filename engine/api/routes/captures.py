@@ -1,10 +1,10 @@
 """Capture endpoints — canonical Save Setup records.
 
 Routes:
-  POST /captures             single capture (pattern_candidate, manual_hypothesis, ...)
-  POST /captures/bulk_import founder cold-start: bulk-ingest manual hypothesis setups
-  GET  /captures/outcomes    Verdict Inbox — captures with status='outcome_ready'
-  POST /captures/{id}/verdict apply user verdict to a resolved capture (Phase C)
+  POST /captures                      single capture (pattern_candidate, manual_hypothesis, ...)
+  POST /captures/bulk_import          founder cold-start: bulk-ingest manual hypothesis setups
+  GET  /captures/outcomes             Verdict Inbox — captures with status='outcome_ready'
+  POST /captures/{id}/verdict         apply user verdict to a resolved capture (Phase C)
   GET  /captures/{id}
   GET  /captures
 
@@ -12,6 +12,8 @@ Cold-start lane (design: docs/product/flywheel-closure-design.md):
   - manual_hypothesis captures enter with status='pending_outcome' so the
     outcome_resolver closes them via the same pipeline as pattern_candidate.
   - Bulk import is the founder's seed lane before external users arrive.
+  - Verdict label closes axis 3: founder reviews resolved outcomes and
+    annotates them as valid/invalid/missed so axis 4 (refinement) can train.
 
 Verdict Inbox (W-0088 Phase C, flywheel axis 3):
   - outcome_resolver flips pending_outcome → outcome_ready once the

@@ -3,7 +3,6 @@
   import { dev } from '$app/environment';
   import { injectAnalytics } from '@vercel/analytics/sveltekit';
   import Header from '../components/layout/Header.svelte';
-  import BottomBar from '../components/layout/BottomBar.svelte';
   import MobileBottomNav from '../components/layout/MobileBottomNav.svelte';
   import WalletModal from '../components/modals/WalletModal.svelte';
   import NotificationTray from '../components/shared/NotificationTray.svelte';
@@ -11,9 +10,7 @@
   import CookieConsent from '../components/shared/CookieConsent.svelte';
   import P0Banner from '../components/shared/P0Banner.svelte';
   import { page } from '$app/stores';
-  import { activePairState, setActiveView } from '$lib/stores/activePairStore';
-  import { alphaBuckets } from '$lib/stores/alphaBuckets';
-  import { EMPTY_THERMO_DATA, type ThermoData, startThermoPolling } from '$lib/cogochi/marketPulse';
+  import { setActiveView } from '$lib/stores/activePairStore';
   import { startGlobalPriceFeed } from '$lib/layout/globalPriceFeed';
   import { derived } from 'svelte/store';
   import { onMount, onDestroy } from 'svelte';
@@ -21,9 +18,6 @@
   injectAnalytics({ mode: dev ? 'development' : 'production' });
 
   let { children } = $props();
-
-  let thermoData = $state<ThermoData>(EMPTY_THERMO_DATA);
-  const currentBuckets = $derived($alphaBuckets);
 
   const isTerminal = derived(page, $p => $p.url.pathname.startsWith('/terminal'));
   const isHome = derived(page, $p => $p.url.pathname === '/');
@@ -37,16 +31,8 @@
     $p => !$p.url.pathname.startsWith('/terminal') && !$p.url.pathname.startsWith('/cogochi') && $p.url.pathname !== '/'
   );
 
-  // Hide global BottomBar on mobile (unneeded chrome on small screens)
-  // - Terminal routes ≤1024px: terminal has its own bottom nav
-  // - All routes ≤768px: status bar adds no value on phones
   let windowWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  // Hide mobile nav on terminal — terminal has its own TerminalBottomDock
   const showMobileBottomNav = $derived(windowWidth <= 768 && !$isTerminal);
-  // Terminal has its own CommandBar with price — BottomBar would duplicate it
-  const showBottomBar = $derived(
-    windowWidth > 768 && !$isHome && !$isTerminal
-  );
 
   // Sync currentView store from URL via effect
   $effect(() => {
@@ -59,7 +45,6 @@
     setActiveView(view);
   });
 
-  let stopThermoPolling: (() => void) | null = null;
   let stopGlobalPriceFeed: (() => void) | null = null;
   let stopResizeTracking: (() => void) | null = null;
 
@@ -67,16 +52,12 @@
     const handleResize = () => { windowWidth = window.innerWidth; };
     window.addEventListener('resize', handleResize);
     stopResizeTracking = () => window.removeEventListener('resize', handleResize);
-    stopThermoPolling = startThermoPolling((next) => {
-      thermoData = next;
-    });
     stopGlobalPriceFeed = startGlobalPriceFeed();
   });
 
   onDestroy(() => {
     if (stopGlobalPriceFeed) stopGlobalPriceFeed();
     if (stopResizeTracking) stopResizeTracking();
-    if (stopThermoPolling) stopThermoPolling();
   });
 </script>
 
@@ -96,12 +77,8 @@
   >
     {@render children()}
   </div>
-  {#if !$isCogochi}
-    {#if showBottomBar}
-      <BottomBar thermo={thermoData} buckets={currentBuckets} />
-    {:else if showMobileBottomNav}
-      <MobileBottomNav />
-    {/if}
+  {#if !$isCogochi && showMobileBottomNav}
+    <MobileBottomNav />
   {/if}
 </div>
 

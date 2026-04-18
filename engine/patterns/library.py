@@ -198,7 +198,18 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
             ],
             optional_blocks=["volume_dryup"],
+            # absorption_signal: heavy CVD buying while price is flat signals
+            # hidden accumulation — a sell-wall being absorbed. This is the
+            # ALPHA TERMINAL S2 "흡수(Absorption)" concept: "CVD 대량 매수인데
+            # 가격 미반응 → 매도벽 흡수 중" (ORDI Apr14 case: 0.0-0.1M volume).
+            soft_blocks=["absorption_signal"],
             disqualifier_blocks=[],
+            score_weights={
+                "sideways_compression": 0.50,
+                "bollinger_squeeze": 0.30,
+                "volume_dryup": 0.20,
+                "absorption_signal": 0.15,
+            },
             min_bars=4, max_bars=48,
             timeframe="1h",
         ),
@@ -225,6 +236,13 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 "bollinger_squeeze",
                 "volume_dryup",
                 "oi_expansion_confirm",
+                # cvd_buying: taker order-flow is net-buy while we await squeeze.
+                # Mirrors ALPHA TERMINAL S1 "CVD from multiple exchanges aligning".
+                "cvd_buying",
+                # absorption_signal: carry-over from COMPRESSION — if buying is still
+                # being absorbed by remaining sell-walls in ENTRY_ZONE, squeeze is
+                # even more imminent when the wall finally exhausts.
+                "absorption_signal",
             ],
             disqualifier_blocks=[],
             score_weights={
@@ -234,6 +252,8 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 "bollinger_squeeze": 0.05,
                 "volume_dryup": 0.05,
                 "oi_expansion_confirm": 0.10,
+                "cvd_buying": 0.08,
+                "absorption_signal": 0.08,
             },
             phase_score_threshold=0.70,
             transition_window_bars=12,
@@ -262,10 +282,90 @@ FUNDING_FLIP_REVERSAL = PatternObject(
     tags=["funding_reversal", "short_squeeze", "altcoin", "perp"],
 )
 
+WHALE_ACCUMULATION_REVERSAL = PatternObject(
+    slug="whale-accumulation-reversal-v1",
+    name="세력 매집 반전 패턴 (채널 분석 기반)",
+    description=(
+        "세력이 OI 급등과 함께 개인 롱 청산 유도(과열 숏 펀딩) → "
+        "스마트머니 저점 매집 + 구조 반전(저점 상승) → "
+        "기관 매수세(코인베이스 프리미엄) + 전 거래소 동반 OI 상승 = 진짜 반등. "
+        "TRADOOR와 달리 온체인/거래소 스프레드 신호로 진짜 반등을 판별한다."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="WHALE_ACCUMULATION",
+            label="세력 매집 — 숏 누적 + 개인 청산 유도",
+            # OI 급등+급락 + 스마트머니 매집 + 펀딩 극단 음수.
+            # oi_spike_with_dump: OI 급등 + 가격 급락 = 강제 청산 cascade
+            # smart_money_accumulation: OKX OnchainOS 대형 지갑 매집
+            # funding_extreme_short: 펀딩 극단 음수 = 숏 과적재
+            # (funding_extreme_short is an alias registered in block_evaluator
+            #  that calls funding_extreme(direction="short_overheat").)
+            required_blocks=[
+                "oi_spike_with_dump",
+                "smart_money_accumulation",
+                "funding_extreme_short",
+            ],
+            optional_blocks=["recent_decline"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BOTTOM_CONFIRM",
+            label="저점 확인 — 구조 반전 + 숏 축소",
+            # 하락 멈춤 + 저점 상승 구조 + long-short ratio 회복.
+            # higher_lows_sequence: 저점이 올라가는 구조
+            # ls_ratio_recovery: long-short ratio 회복 (숏 축소 신호)
+            # oi_spike_with_dump 은 disqualifier — 신규 덤프 발생 시 매집 무효화.
+            required_blocks=["higher_lows_sequence", "ls_ratio_recovery"],
+            soft_blocks=[
+                "smart_money_accumulation",
+                "volume_dryup",
+                "bollinger_squeeze",
+            ],
+            disqualifier_blocks=["oi_spike_with_dump"],
+            score_weights={
+                "higher_lows_sequence": 0.40,
+                "ls_ratio_recovery": 0.30,
+                "smart_money_accumulation": 0.20,
+                "volume_dryup": 0.10,
+                "bollinger_squeeze": 0.05,
+            },
+            phase_score_threshold=0.70,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="WHALE_ACCUMULATION",
+            transition_window_bars=24,
+            min_bars=4, max_bars=48,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ENTRY_CONFIRM",
+            label="진입 확정 — 기관 매수 + 전 거래소 동반 상승",
+            # coinbase_premium_positive: Coinbase-Binance 스프레드 양수
+            #   = 미국 기관(스팟) 매수 압력 (진짜 반등의 leading signal)
+            # total_oi_spike(increase): Binance+Bybit+OKX 집계 OI 동반 상승
+            # oi_exchange_divergence(low_concentration, 선택): 단일 거래소가
+            #   혼자 끄는 반등이 아니라 전 거래소에서 합의된 반등.
+            required_blocks=["coinbase_premium_positive", "total_oi_spike"],
+            optional_blocks=["oi_exchange_divergence"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="BOTTOM_CONFIRM",
+    target_phase="ENTRY_CONFIRM",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    tags=["whale_accumulation", "smart_money", "onchain_confirm", "altcoin", "perp"],
+)
+
 # Registry: slug → PatternObject
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
+    WHALE_ACCUMULATION_REVERSAL.slug: WHALE_ACCUMULATION_REVERSAL,
 }
 
 def get_pattern(slug: str) -> PatternObject:

@@ -102,12 +102,12 @@ export const DESKTOP_NAV_SURFACES = [
   SURFACE_MAP.dashboard,
 ] as const;
 
-// Mobile nav: Home | Terminal | Dashboard | Passport (+ More popover in component)
+// Mobile nav: Home | Terminal | Lab | Dashboard — mirrors desktop IA priority
 export const MOBILE_NAV_SURFACES = [
   SURFACE_MAP.home,
   SURFACE_MAP.terminal,
+  SURFACE_MAP.lab,
   SURFACE_MAP.dashboard,
-  SURFACE_MAP.passport,
 ] as const;
 
 export const HOME_SURFACES = [

@@ -48,13 +48,15 @@ PHASE_ORDER = {
     # FFR phases
     "ENTRY_ZONE": 0, "FLIP_SIGNAL": 1,
     "COMPRESSION": 2, "SHORT_OVERHEAT": 3, "SQUEEZE": 4,
+    # whale-accumulation-reversal-v1 phases (W-0097 P0.5)
+    "BOTTOM_CONFIRM": 0, "WHALE_ACCUMULATION": 1, "ENTRY_CONFIRM": 2,
 }
 
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
 # Add new patterns here as they are promoted.
 PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
     ("tradoor-oi-reversal-v1",    "tradoor-oi-reversal-v1__canonical",    {"ACCUMULATION", "REAL_DUMP"}),
-    ("funding-flip-reversal-v1",  "funding-flip-reversal-v1__canonical",  {"ENTRY_ZONE", "FLIP_SIGNAL"}),
+    ("funding-flip-reversal-v1",  "funding-flip-reversal-v1__canonical__dur-long",  {"ENTRY_ZONE", "FLIP_SIGNAL"}),
 ]
 
 

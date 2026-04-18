@@ -26,16 +26,13 @@ from ledger.types import (
     PatternOutcome,
     PatternStats,
 )
+from patterns.outcome_policy import decide_outcome, policy_for
 from patterns.types import PhaseAttemptRecord
 
 log = logging.getLogger("engine.ledger")
 
 LEDGER_DIR = Path(__file__).parent.parent / "ledger_data"
 LEDGER_RECORDS_DIR = Path(__file__).parent.parent / "ledger_records"
-
-# Verdict thresholds (from design doc §6.2)
-HIT_THRESHOLD_PCT = 0.15   # peak_return >= +15% = HIT
-MISS_THRESHOLD_PCT = -0.10  # exit_return <= -10% = MISS
 
 
 class LedgerStore:
@@ -219,28 +216,25 @@ class LedgerStore:
                 )
                 continue
 
-            # Evaluate only with data inside the post-entry evaluation window.
-            current_price = float(window_close.iloc[-1])
-            peak = max(float(entry), float(window_close.max()))
-
-            peak_return = (peak - entry) / entry
-            exit_return = (current_price - entry) / entry
-
-            if peak_return >= HIT_THRESHOLD_PCT:
-                verdict: Outcome = "success"
-            elif exit_return <= MISS_THRESHOLD_PCT:
-                verdict = "failure"
-            else:
-                verdict = "timeout"  # EXPIRED — neither threshold reached
+            # Delegate to outcome_policy.decide_outcome — single source of truth
+            # for HIT/MISS/TIMEOUT thresholds.
+            forward_closes = list(window_close.astype(float))
+            decision = decide_outcome(
+                entry_price=entry,
+                forward_closes=forward_closes,
+                policy=policy_for(pattern_slug),
+            )
+            if decision is None:
+                continue
 
             closed = self.close_outcome(
-                pattern_slug, outcome.id, verdict,
-                peak_price=peak, exit_price=current_price,
+                pattern_slug, outcome.id, decision.outcome,
+                peak_price=decision.peak_price, exit_price=decision.exit_price,
             )
             log.info(
                 "AUTO-VERDICT: %s/%s → %s (peak=%.1f%%, exit=%.1f%%)",
-                outcome.symbol, outcome.id, verdict,
-                peak_return * 100, exit_return * 100,
+                outcome.symbol, outcome.id, decision.outcome,
+                decision.max_gain_pct * 100, decision.exit_return_pct * 100,
             )
             if closed:
                 evaluated.append(closed)
