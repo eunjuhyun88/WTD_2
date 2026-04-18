@@ -2764,6 +2764,259 @@ def test_default_promotion_gate_policy_has_stable_id() -> None:
     assert DEFAULT_PROMOTION_GATE_POLICY.policy_id == "promotion-gate-v1"
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# W-0088: trading-edge parallel promotion path
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def _mk_case_result_with_return(
+    *,
+    role: str = "reference",
+    entry_hit: bool = True,
+    target_hit: bool = True,
+    forward_peak_return_pct: float | None = None,
+    case_id: str = "case",
+    symbol: str = "PTBUSDT",
+    phase_fidelity: float = 1.0,
+) -> VariantCaseResult:
+    return VariantCaseResult(
+        case_id=case_id,
+        symbol=symbol,
+        role=role,
+        observed_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"]
+        if target_hit
+        else ["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION"],
+        current_phase="BREAKOUT" if target_hit else "ACCUMULATION",
+        phase_fidelity=phase_fidelity,
+        phase_depth_progress=1.0 if target_hit else 0.8,
+        entry_hit=entry_hit,
+        target_hit=target_hit,
+        lead_bars=5 if (entry_hit and target_hit) else None,
+        score=0.8 if (entry_hit and target_hit) else 0.55,
+        entry_close=100.0 if forward_peak_return_pct is not None else None,
+        forward_peak_return_pct=forward_peak_return_pct,
+    )
+
+
+def test_build_promotion_report_v_reversal_promotes_via_strict_path() -> None:
+    """TRADOOR-class: full path completes, FDR=0, forward return strong."""
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.8,
+        holdout_score=0.75,
+        overall_score=0.77,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference", forward_peak_return_pct=60.0, case_id="ref-1"
+            ),
+            _mk_case_result_with_return(
+                role="reference", forward_peak_return_pct=55.0, case_id="ref-2"
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                forward_peak_return_pct=111.0,
+                case_id="hold-1",
+                symbol="TRADOORUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    assert report.decision == "promote_candidate"
+    assert report.decision_path == "strict"
+    assert report.entry_profitable_rate == 1.0
+    assert report.entry_profitable_gate is True
+
+
+def test_build_promotion_report_slow_recovery_promotes_via_trading_edge_path() -> None:
+    """KOMA / DYM-class: pattern stops at ACCUMULATION (FDR=1.0) but
+    forward return clears 5% threshold for a majority of cases — should
+    promote via the trading-edge path with FDR waived."""
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.55,
+        holdout_score=0.55,
+        overall_score=0.55,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=20.9,
+                case_id="ref-koma",
+                symbol="KOMAUSDT",
+            ),
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=7.1,
+                case_id="ref-dym",
+                symbol="DYMUSDT",
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                target_hit=False,
+                forward_peak_return_pct=22.1,
+                case_id="hold-fart",
+                symbol="FARTCOINUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    # FDR is 1.0 (no target hits) — strict path fails by construction
+    assert report.false_discovery_rate == 1.0
+    assert report.gate_results["false_discovery_rate"] is False
+    # But forward returns >= 5% for all 3 entered cases — trading-edge path passes
+    assert report.entry_profitable_rate == 1.0
+    assert report.entry_profitable_gate is True
+    assert report.decision == "promote_candidate"
+    assert report.decision_path == "trading_edge"
+
+
+def test_build_promotion_report_pump_and_dump_rejects_when_forward_return_below_threshold() -> None:
+    """Pattern completes (entry + target hit) but forward return is
+    below the 5% trading-edge floor — strict path passes only if FDR
+    is acceptable. Here we contrive the case where strict fails on
+    FDR and forward returns are too small for trading-edge → reject."""
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.4,
+        holdout_score=0.4,
+        overall_score=0.4,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=True,
+                forward_peak_return_pct=2.0,
+                case_id="ref-1",
+            ),
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=1.5,
+                case_id="ref-2",
+            ),
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=3.0,
+                case_id="ref-3",
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                target_hit=True,
+                forward_peak_return_pct=1.0,
+                case_id="hold-1",
+                symbol="TRADOORUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    # FDR = 2/4 = 0.5 > 0.4 ceiling → strict path fails
+    assert report.gate_results["false_discovery_rate"] is False
+    # No forward return clears 5% → entry_profitable_rate = 0.0 → trading-edge fails
+    assert report.entry_profitable_rate == 0.0
+    assert report.entry_profitable_gate is False
+    assert report.decision == "reject"
+    assert report.decision_path == "rejected"
+    assert any("entry_profitable_rate" in reason for reason in report.rejection_reasons)
+
+
+def test_build_promotion_report_no_entry_rejects_with_unmeasured_metric() -> None:
+    """No case ever hit entry phase — entry_profitable_rate is undefined
+    (None), trading-edge path is unavailable, and strict path fails on
+    reference_recall. Rejection reason should flag the unmeasured
+    metric rather than reporting a numeric floor breach."""
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.1,
+        holdout_score=0.1,
+        overall_score=0.1,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference",
+                entry_hit=False,
+                target_hit=False,
+                phase_fidelity=0.2,
+                case_id="ref-1",
+            ),
+            _mk_case_result_with_return(
+                role="reference",
+                entry_hit=False,
+                target_hit=False,
+                phase_fidelity=0.2,
+                case_id="ref-2",
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                entry_hit=False,
+                target_hit=False,
+                phase_fidelity=0.2,
+                case_id="hold-1",
+                symbol="TRADOORUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    assert report.decision == "reject"
+    assert report.decision_path == "rejected"
+    assert report.entry_profitable_rate is None
+    assert report.entry_profitable_gate is False  # enabled but unmeasured
+    assert any("unmeasured" in reason for reason in report.rejection_reasons)
+
+
+def test_build_promotion_report_trading_edge_path_disabled_falls_back_to_strict() -> None:
+    """When the policy disables the parallel path
+    (min_entry_profitable_rate=None), the gate behaves exactly like
+    the original strict-only gate: a KOMA/DYM-class result that would
+    promote via trading_edge is rejected."""
+    strict_only = PromotionGatePolicy(
+        policy_id="strict-only-v1",
+        min_entry_profitable_rate=None,
+    )
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.55,
+        holdout_score=0.55,
+        overall_score=0.55,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=20.9,
+                case_id="ref-koma",
+                symbol="KOMAUSDT",
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                target_hit=False,
+                forward_peak_return_pct=22.1,
+                case_id="hold-fart",
+                symbol="FARTCOINUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report(
+        "tradoor-oi-reversal-v1", winner, policy=strict_only
+    )
+
+    assert report.entry_profitable_gate is None  # parallel path disabled
+    assert report.decision == "reject"
+    assert report.decision_path == "rejected"
+
+
 def test_depth_progress_distinguishes_deeper_holdout_paths() -> None:
     from research.pattern_search import _phase_depth_progress
 
@@ -3009,3 +3262,183 @@ def test_select_active_family_insight_ignores_timeframe_family() -> None:
     assert active is not None
     assert active.family_type == "manual"
     assert active.family_key == "tradoor-oi-reversal-v1__arch-soft-real-loose"
+
+
+# ---------------------------------------------------------------------------
+# W-0086 slice #4 — forward-walk validation: no future-leak in detection
+# ---------------------------------------------------------------------------
+
+
+def test_slice_case_frames_clips_at_case_end_at_no_future_leak(monkeypatch) -> None:
+    from datetime import timedelta
+    from research.pattern_search import _slice_case_frames
+
+    case_end = _dt("2026-04-14T00:00:00+00:00")
+    case = BenchmarkCase(
+        symbol="TESTUSDT",
+        timeframe="1h",
+        start_at=_dt("2026-04-13T00:00:00+00:00"),
+        end_at=case_end,
+        expected_phase_path=["FAKE_DUMP", "BREAKOUT"],
+    )
+    # klines extend 48 bars (2 days) beyond case.end_at
+    extra_end = case_end + timedelta(hours=48)
+    full_index = pd.date_range(_dt("2026-04-12T00:00:00+00:00"), extra_end, freq="1h", tz="UTC")
+    full_klines = pd.DataFrame(
+        {"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 100.0},
+        index=full_index,
+    )
+
+    monkeypatch.setattr("research.pattern_search.load_klines", lambda *a, **kw: full_klines)
+    monkeypatch.setattr("research.pattern_search.load_perp", lambda *a, **kw: None)
+    monkeypatch.setattr(
+        "research.pattern_search.compute_features_table",
+        lambda klines, *a, **kw: klines,
+    )
+
+    sliced_klines, _ = _slice_case_frames(case, timeframe="1h", warmup_bars=0)
+
+    assert sliced_klines.index[-1] <= case_end, (
+        f"future data leaked: last bar {sliced_klines.index[-1]} > case.end_at {case_end}"
+    )
+
+
+def test_evaluate_variant_on_case_filters_phase_history_outside_window(monkeypatch) -> None:
+    """Phase detections beyond case.end_at must not affect entry_hit / target_hit."""
+    from research.pattern_search import evaluate_variant_on_case
+
+    case_end = _dt("2026-04-14T00:00:00+00:00")
+    case = BenchmarkCase(
+        symbol="PTBUSDT",
+        timeframe="1h",
+        start_at=_dt("2026-04-13T00:00:00+00:00"),
+        end_at=case_end,
+        expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+    )
+
+    def _fake_slice(c, *, timeframe, warmup_bars):
+        index = pd.date_range(c.start_at, periods=4, freq="6h", tz="UTC")
+        frames = pd.DataFrame({"close": [1.0] * 4}, index=index)
+        return frames, frames
+
+    class _FakeReplay:
+        current_phase = "BREAKOUT"
+        # ACCUMULATION within window; BREAKOUT is 6h BEYOND case.end_at
+        phase_history = [
+            ("FAKE_DUMP", _dt("2026-04-13T06:00:00+00:00")),
+            ("REAL_DUMP", _dt("2026-04-13T12:00:00+00:00")),
+            ("ACCUMULATION", _dt("2026-04-13T18:00:00+00:00")),
+            ("BREAKOUT", _dt("2026-04-14T06:00:00+00:00")),  # future — must be filtered
+        ]
+
+    monkeypatch.setattr("research.pattern_search._slice_case_frames", _fake_slice)
+    monkeypatch.setattr(
+        "research.pattern_search.replay_pattern_frames", lambda *a, **kw: _FakeReplay()
+    )
+    monkeypatch.setattr(
+        "research.pattern_search._measure_forward_peak_return",
+        lambda **kw: (None, None, None, None),
+    )
+
+    pattern = build_variant_pattern(
+        "tradoor-oi-reversal-v1",
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug="tradoor-oi-reversal-v1__canonical",
+            timeframe="1h",
+        ),
+    )
+    result = evaluate_variant_on_case(pattern, case, timeframe="1h", warmup_bars=0)
+
+    # ACCUMULATION (entry_phase) is within window → entry_hit=True
+    assert result.entry_hit is True
+    # BREAKOUT (target_phase) is BEYOND case.end_at → filtered out → target_hit=False
+    assert result.target_hit is False
+    assert "BREAKOUT" not in result.observed_phase_path
+
+
+# ---------------------------------------------------------------------------
+# W-0086 slice #5 — realistic entry price + slippage
+# ---------------------------------------------------------------------------
+
+
+def test_measure_forward_peak_return_computes_realistic_entry_with_slippage(monkeypatch) -> None:
+    from research.pattern_search import _measure_forward_peak_return
+
+    # Build klines: entry bar close=100, next bar open=101 (real price), forward closes rise to 120
+    index = pd.date_range(_dt("2026-04-13T00:00:00+00:00"), periods=5, freq="1h", tz="UTC")
+    klines = pd.DataFrame(
+        {
+            "open": [99.0, 101.0, 105.0, 115.0, 118.0],
+            "close": [100.0, 103.0, 108.0, 118.0, 120.0],
+        },
+        index=index,
+    )
+    monkeypatch.setattr("research.pattern_search.load_klines", lambda *a, **kw: klines)
+
+    entry_ts = _dt("2026-04-13T00:00:00+00:00")
+    entry_close, paper_pct, entry_next_open, realistic_pct = _measure_forward_peak_return(
+        symbol="TESTUSDT",
+        timeframe="1h",
+        entry_ts=entry_ts,
+        horizon_bars=4,
+        entry_slippage_pct=0.1,
+    )
+
+    assert entry_close == pytest.approx(100.0, rel=1e-6)
+    # paper: (120 - 100) / 100 * 100 = 20.0%
+    assert paper_pct == pytest.approx(20.0, rel=1e-4)
+    # next open = 101.0, slippage 0.1% → adjusted = 101.101
+    assert entry_next_open == pytest.approx(101.0 * 1.001, rel=1e-6)
+    # realistic: (120 - 101.101) / 101.101 * 100
+    expected_realistic = (120.0 - 101.0 * 1.001) / (101.0 * 1.001) * 100.0
+    assert realistic_pct == pytest.approx(expected_realistic, rel=1e-4)
+
+
+def test_evaluate_variant_on_case_populates_realistic_return_fields(monkeypatch) -> None:
+    from research.pattern_search import evaluate_variant_on_case
+
+    case = BenchmarkCase(
+        symbol="PTBUSDT",
+        timeframe="1h",
+        start_at=_dt("2026-04-13T00:00:00+00:00"),
+        end_at=_dt("2026-04-14T00:00:00+00:00"),
+        expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+    )
+
+    def _fake_slice(c, *, timeframe, warmup_bars):
+        index = pd.date_range(c.start_at, periods=4, freq="6h", tz="UTC")
+        frames = pd.DataFrame({"close": [1.0] * 4}, index=index)
+        return frames, frames
+
+    class _FakeReplay:
+        current_phase = "ACCUMULATION"
+        phase_history = [
+            ("FAKE_DUMP", _dt("2026-04-13T06:00:00+00:00")),
+            ("ACCUMULATION", _dt("2026-04-13T12:00:00+00:00")),
+        ]
+
+    monkeypatch.setattr("research.pattern_search._slice_case_frames", _fake_slice)
+    monkeypatch.setattr(
+        "research.pattern_search.replay_pattern_frames", lambda *a, **kw: _FakeReplay()
+    )
+    monkeypatch.setattr(
+        "research.pattern_search._measure_forward_peak_return",
+        lambda **kw: (0.01, 15.0, 0.010101, 14.5),
+    )
+
+    pattern = build_variant_pattern(
+        "tradoor-oi-reversal-v1",
+        PatternVariantSpec(
+            pattern_slug="tradoor-oi-reversal-v1",
+            variant_slug="tradoor-oi-reversal-v1__canonical",
+            timeframe="1h",
+        ),
+    )
+    result = evaluate_variant_on_case(pattern, case, timeframe="1h", warmup_bars=0, entry_slippage_pct=0.1)
+
+    assert result.entry_close == pytest.approx(0.01)
+    assert result.forward_peak_return_pct == pytest.approx(15.0)
+    assert result.entry_next_open == pytest.approx(0.010101)
+    assert result.realistic_forward_peak_return_pct == pytest.approx(14.5)
+
