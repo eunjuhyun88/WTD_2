@@ -1446,10 +1446,8 @@
         assetsCount={boardAssets.length}
         marketRailOpen={showLeftRail}
         onToggleMarketRail={toggleLeftRail}
-        tf={gTf}
-        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
         price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
-        change24h={activeAnalysisData?.change24h ?? activeAnalysisData?.snapshot?.change24h ?? null}
+        change24h={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
       />
     </section>
   {/snippet}
@@ -1466,7 +1464,7 @@
         liqSnapshot={readPathLiq}
         quantRegime={boardModel.quantRegime}
         cvdDivergence={boardModel.cvdDivergence}
-        change24hPct={activeAnalysisData?.change24h ?? activeAnalysisData?.snapshot?.change24h ?? null}
+        change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
         contextMode="chart"
         onCaptureSaved={handleCaptureSaved}
         onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
