@@ -616,9 +616,14 @@
           });
         })();
 
-    const overlayOnMain =
-      derivativesOnMain && chartMode === 'candle' && (Boolean(fundingBars?.length) || (showCVD && cvdCumBars.length > 0));
-    const mainChartHeight = measureMainChartHeight(overlayOnMain);
+    // Main chart overlays only host true price-aligned studies (EMA / BB /
+    // VWAP / ATR bands) plus the CQ-style Funding % line on the left axis.
+    // CVD is a sub-pane indicator — it belongs in `.pane-cvd`, never on the
+    // price pane (user feedback 2026-04-19: "보조지표만 같이 나오고 나머지는
+    // 하단으로 붙어야지").
+    const hasFundingOverlay =
+      derivativesOnMain && chartMode === 'candle' && Boolean(fundingBars?.length);
+    const mainChartHeight = measureMainChartHeight(hasFundingOverlay);
 
     // ── Main (candles + overlays) ────────────────────────────────────────────
     mainChart = createChart(mainEl, {
@@ -627,14 +632,11 @@
       height: mainChartHeight,
       rightPriceScale: {
         ...baseTheme.rightPriceScale,
-        scaleMargins: overlayOnMain
-          ? { top: 0.06, bottom: showCVD ? 0.36 : 0.1 }
-          : { top: 0.08, bottom: 0.08 },
+        scaleMargins: { top: 0.08, bottom: 0.08 },
       },
-      leftPriceScale:
-        overlayOnMain && fundingBars != null && fundingBars.length > 0
-          ? { visible: true, borderColor: BORDER, scaleMargins: { top: 0.06, bottom: 0.06 } }
-          : { visible: false },
+      leftPriceScale: hasFundingOverlay
+        ? { visible: true, borderColor: BORDER, scaleMargins: { top: 0.06, bottom: 0.06 } }
+        : { visible: false },
     });
 
     const lastBar = klines[klines.length - 1];
@@ -762,8 +764,9 @@
       }
     }
 
-    // Fund % + CVD cumulative on main pane (shared time axis — CryptoQuant-style overlay on price)
-    if (overlayOnMain && fundingBars != null && fundingBars.length > 0) {
+    // Fund % on main pane (left axis, shared time axis — CryptoQuant-style
+    // derivative overlay on price). CVD moved out to the sub-pane.
+    if (hasFundingOverlay && fundingBars != null && fundingBars.length > 0) {
       const fMain = mainChart.addSeries(LineSeries, {
         priceScaleId: 'left',
         color: 'rgba(251,191,36,0.92)',
@@ -773,21 +776,6 @@
         priceLineVisible: false,
       });
       fMain.setData(toLine(fundingBars.map((f) => ({ time: f.time, value: f.value }))));
-    }
-    if (overlayOnMain && showCVD && cvdCumBars.length > 0) {
-      const cMain = mainChart.addSeries(LineSeries, {
-        priceScaleId: 'cvd',
-        color: 'rgba(94,234,212,0.95)',
-        lineWidth: 1,
-        lastValueVisible: true,
-        priceLineVisible: false,
-      });
-      cMain.setData(toLine(cvdCumBars));
-      mainChart.priceScale('cvd').applyOptions({
-        scaleMargins: { top: 0.64, bottom: 0.02 },
-        borderVisible: true,
-        entireTextOnly: true,
-      });
     }
 
     // Verdict price levels + liquidation rails (price-scale aligned)
@@ -875,7 +863,7 @@
     // ── OI Δ% pane (funding on main when overlay — here OI hist only) ───────
     if (oiEl) {
       const fundInOiPane =
-        !overlayOnMain && fundingBars != null && fundingBars.length > 0;
+        !hasFundingOverlay && fundingBars != null && fundingBars.length > 0;
       oiChart = createChart(oiEl, {
         ...baseTheme,
         width: w,
@@ -912,9 +900,9 @@
       }
     }
 
-    // ── CVD: Δ vol histogram; cumulative on main when overlay ───────────────
+    // ── CVD pane: Δ vol histogram + cumulative (always lives here now) ───────
     if (cvdEl && showCVD) {
-      const cumInCvdPane = !overlayOnMain;
+      const cumInCvdPane = true;
       cvdChart = createChart(cvdEl, {
         ...baseTheme,
         width: w,
