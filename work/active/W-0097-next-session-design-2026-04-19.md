@@ -28,6 +28,37 @@
 
 ---
 
+### P0.5 — 채널 패턴 → PatternLibrary 등록 (W-0097-channel-pattern)
+
+**Why:** 이번 세션에서 분석가 툴킷의 **재료(블록)**는 만들었지만, 분석가의 실제 **패턴 로직**을 PatternLibrary에 등록하지 않음. 블록이 있어도 패턴으로 묶이지 않으면 `pattern_search`가 탐지할 수 없음.
+
+**분석가 패턴 구조 (채널 반복 패턴):**
+```
+PHASE 1 — 세력_매집
+  조건: oi_spike_with_dump + smart_money_accumulation + funding_extreme(음수)
+  해석: 세력이 숏 포지션 쌓으면서 개인 롱 청산 유도
+
+PHASE 2 — 저점_확인
+  조건: higher_lows_sequence + ls_ratio_recovery
+  해석: 하락 멈추고 스마트머니 저점 매수 시작
+
+PHASE 3 — 진입
+  조건: coinbase_premium_positive + total_oi_spike(increase) + oi_exchange_divergence(low_concentration)
+  해석: 기관 매수세 + 전 거래소 OI 동반 상승 = 진짜 반등
+```
+
+**What:**
+1. `engine/patterns/` 에 새 패턴 YAML/Python 정의 추가
+2. benchmark pack 구성 (채널에서 나온 사례 코인들: BTC, FARTCOIN 등)
+3. `pattern_search.py` 로 backtest
+4. `promote_candidate` 통과 시 PROMOTED_PATTERNS 등록
+
+**Exit criteria:**
+- `pattern_search` 가 채널 패턴 탐지 결과 반환
+- reference_score 측정 (TRADOOR와 비교)
+
+---
+
 ### P1 — CME OI 통합 (W-0097-cme)
 
 **Why:** 분석가 툴킷 커버리지 100% 마지막 갭. `cme_oi = 0.0` placeholder.
