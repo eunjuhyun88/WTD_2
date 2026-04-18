@@ -947,6 +947,14 @@
     activeAnalysisTab = tab as typeof activeAnalysisTab;
   }
 
+  function handleRetryAnalysis() {
+    const sym = activeSymbol || pairToSymbol(gPair);
+    if (!sym) return;
+    analysisData = null;
+    const tf = symbolToTF(gTf);
+    void loadAnalysis(sym, tf);
+  }
+
   function handleCaptureSaved(captureId: string) {
     lastSavedCaptureId = captureId;
     labCtaSlug = activeSymbol ? activeSymbol.toLowerCase().replace('usdt', '') : null;
@@ -1551,6 +1559,7 @@
               onAction={sendCommand}
               onPinToggle={handlePinToggle}
               onAlertToggle={handleAlertToggle}
+              onRetry={handleRetryAnalysis}
               isPinned={isActivePinned}
               hasSavedAlert={hasActiveSavedAlert}
               bars={ohlcvBars}
@@ -1575,6 +1584,7 @@
           onAction={sendCommand}
           onPinToggle={handlePinToggle}
           onAlertToggle={handleAlertToggle}
+          onRetry={handleRetryAnalysis}
           isPinned={isActivePinned}
           hasSavedAlert={hasActiveSavedAlert}
           bars={ohlcvBars}
@@ -1584,7 +1594,10 @@
       {:else}
         <div class="board-empty">
           <p class="empty-icon">◈</p>
-          <p class="empty-text">아래에서 {activePairDisplay} 분석 시작</p>
+          <p class="empty-text">No analysis loaded</p>
+          <button class="empty-retry-btn" onclick={handleRetryAnalysis}>
+            Analyze {activePairDisplay} →
+          </button>
         </div>
       {/if}
     </div>
@@ -1616,14 +1629,6 @@
   </TerminalShell>
 </div>
 
-
-<PatternLibraryPanel
-  open={showPatternLibrary}
-  records={patternCaptureRecords}
-  loading={patternCaptureLoading}
-  onClose={() => showPatternLibrary = false}
-  onSelect={handlePatternLibrarySelect}
-/>
 
 <PatternLibraryPanel
   open={showPatternLibrary}
@@ -1829,7 +1834,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    opacity: 0.5;
+    opacity: 0.65;
   }
   .empty-icon {
     font-size: 28px;
@@ -1838,9 +1843,29 @@
   }
   .empty-text {
     font-family: var(--sc-font-mono);
-    font-size: 13px;
+    font-size: 12px;
     color: var(--sc-text-2);
     margin: 0;
+  }
+  .empty-retry-btn {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(247, 242, 234, 0.82);
+    background: rgba(77, 143, 245, 0.08);
+    border: 1px solid rgba(99, 179, 237, 0.22);
+    border-radius: 4px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    margin-top: 4px;
+    opacity: 1;
+  }
+  .empty-retry-btn:hover {
+    background: rgba(77, 143, 245, 0.16);
+    border-color: rgba(99, 179, 237, 0.4);
+    color: rgba(247, 242, 234, 1);
   }
 
   /* Loading */
