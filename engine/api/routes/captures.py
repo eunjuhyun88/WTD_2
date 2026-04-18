@@ -3,6 +3,8 @@
 Routes:
   POST /captures             single capture (pattern_candidate, manual_hypothesis, ...)
   POST /captures/bulk_import founder cold-start: bulk-ingest manual hypothesis setups
+  GET  /captures/outcomes    Verdict Inbox — captures with status='outcome_ready'
+  POST /captures/{id}/verdict apply user verdict to a resolved capture (Phase C)
   GET  /captures/{id}
   GET  /captures
 
@@ -10,22 +12,35 @@ Cold-start lane (design: docs/product/flywheel-closure-design.md):
   - manual_hypothesis captures enter with status='pending_outcome' so the
     outcome_resolver closes them via the same pipeline as pattern_candidate.
   - Bulk import is the founder's seed lane before external users arrive.
+
+Verdict Inbox (W-0088 Phase C, flywheel axis 3):
+  - outcome_resolver flips pending_outcome → outcome_ready once the
+    evaluation window elapses and a PatternOutcome is computed.
+  - GET /captures/outcomes returns these resolved-but-unverified captures
+    joined with their PatternOutcome payload so the founder can review.
+  - POST /captures/{id}/verdict writes user_verdict back to the
+    PatternOutcome, appends LEDGER:verdict, and flips the capture to
+    status='verdict_ready' — closing flywheel axis 3.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
-from ledger.store import LEDGER_RECORD_STORE
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from patterns.state_store import PatternStateStore
 
 router = APIRouter()
 _capture_store = CaptureStore()
 _state_store = PatternStateStore()
+_ledger_store = LedgerStore()
+
+# Literal alias documents the accepted values and lets pydantic validate.
+VerdictLabel = Literal["valid", "invalid", "missed"]
 
 
 def _status_for_kind(kind: CaptureKind) -> str:
@@ -191,6 +206,104 @@ async def bulk_import_captures(body: BulkImportBody) -> dict:
     }
 
 
+# ── Verdict Inbox (Phase C — flywheel axis 3) ───────────────────────────────
+
+def _join_outcome(capture: CaptureRecord) -> dict[str, Any]:
+    """Return {capture, outcome} — outcome is None when the linked PatternOutcome
+    cannot be loaded (e.g. pattern_slug mismatch, file deleted).
+
+    Kept private so the list/verdict endpoints share one join shape.
+    """
+    outcome = None
+    if capture.outcome_id and capture.pattern_slug:
+        loaded = _ledger_store.load(capture.pattern_slug, capture.outcome_id)
+        if loaded is not None:
+            outcome = loaded.to_dict()
+    return {"capture": capture.to_dict(), "outcome": outcome}
+
+
+@router.get("/outcomes")
+async def list_verdict_inbox(
+    user_id: str | None = None,
+    pattern_slug: str | None = None,
+    symbol: str | None = None,
+    status: Literal["outcome_ready", "verdict_ready"] = "outcome_ready",
+    limit: int = Query(default=100, ge=1, le=500),
+) -> dict:
+    """Verdict Inbox — resolved captures awaiting user verdict.
+
+    Defaults to ``status='outcome_ready'`` (needs review). Pass
+    ``status='verdict_ready'`` to inspect previously labelled items.
+    """
+    captures = _capture_store.list(
+        user_id=user_id,
+        pattern_slug=pattern_slug,
+        symbol=symbol,
+        status=status,
+        limit=limit,
+    )
+    rows = [_join_outcome(c) for c in captures]
+    return {"ok": True, "status": status, "count": len(rows), "items": rows}
+
+
+class _VerdictBody(BaseModel):
+    verdict: VerdictLabel
+    user_note: str | None = None
+
+
+@router.post("/{capture_id}/verdict")
+async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
+    """Apply user verdict to a resolved capture.
+
+    Requires status in {'outcome_ready', 'verdict_ready'} — the capture must
+    have a linked PatternOutcome. The verdict is written to the outcome
+    record, appended to LEDGER:verdict, and the capture is flipped to
+    ``status='verdict_ready'`` so it leaves the inbox.
+    """
+    capture = _capture_store.load(capture_id)
+    if capture is None:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    if capture.status not in ("outcome_ready", "verdict_ready"):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Capture {capture_id} is in status={capture.status!r}; "
+                "only outcome_ready/verdict_ready captures accept a verdict."
+            ),
+        )
+    if not capture.outcome_id or not capture.pattern_slug:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Capture {capture_id} has no linked outcome — cannot verdict.",
+        )
+
+    outcome = _ledger_store.load(capture.pattern_slug, capture.outcome_id)
+    if outcome is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Linked outcome {capture.outcome_id} missing for capture {capture_id}",
+        )
+
+    outcome.user_verdict = body.verdict  # type: ignore[assignment]
+    if body.user_note is not None:
+        outcome.user_note = body.user_note
+    _ledger_store.save(outcome)
+    LEDGER_RECORD_STORE.append_verdict_record(outcome)
+    _capture_store.update_status(
+        capture_id,
+        "verdict_ready",
+        verdict_id=outcome.id,
+    )
+
+    return {
+        "ok": True,
+        "capture_id": capture_id,
+        "outcome_id": outcome.id,
+        "user_verdict": outcome.user_verdict,
+        "status": "verdict_ready",
+    }
+
+
 @router.get("/{capture_id}")
 async def get_capture(capture_id: str) -> dict:
     capture = _capture_store.load(capture_id)
@@ -204,12 +317,14 @@ async def list_captures(
     user_id: str | None = None,
     pattern_slug: str | None = None,
     symbol: str | None = None,
+    status: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
 ) -> dict:
     captures = _capture_store.list(
         user_id=user_id,
         pattern_slug=pattern_slug,
         symbol=symbol,
+        status=status,
         limit=limit,
     )
     return {
