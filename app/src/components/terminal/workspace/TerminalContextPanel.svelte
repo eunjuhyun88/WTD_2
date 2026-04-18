@@ -26,6 +26,7 @@
     onAction?: (text: string) => void;
     onPinToggle?: () => void;
     onAlertToggle?: () => void;
+    onRetry?: () => void;
     bars?: any[];
     layerBarsMap?: Record<string, any[]>;
     isPinned?: boolean;
@@ -40,6 +41,7 @@
     onAction,
     onPinToggle,
     onAlertToggle,
+    onRetry,
     bars = [],
     layerBarsMap = {},
     isPinned = false,
@@ -85,6 +87,20 @@
   }
 
   const verdict = $derived(buildVerdictFromAnalysis(analysisData));
+
+  // Detect engine-degraded state: verdict present but all engine layers absent/failed
+  const isEngineDegraded = $derived(
+    verdict != null && !deepVerdict && pWin == null && (
+      verdict.action?.toLowerCase().includes('wait for clarity') ||
+      (verdict.against ?? []).some(s =>
+        s.toLowerCase().includes('unavail') ||
+        s.toLowerCase().includes('engine') ||
+        s.toLowerCase().includes('failed') ||
+        s.toLowerCase().includes('request failed')
+      )
+    )
+  );
+
   const structureExplainModel = $derived(buildStructureExplain(deep as Record<string, unknown> | null | undefined));
   const evidence = $derived(buildEvidenceFromAnalysis(analysisData));
   const SOURCES = $derived(buildSourcesFromAnalysis(analysisData));
@@ -172,6 +188,22 @@
 
   <div class="panel-body">
     {#if activeTab === 'summary'}
+      {#if isEngineDegraded}
+        <!-- Engine degraded / failed state -->
+        <div class="degraded-card">
+          <div class="degraded-row">
+            <span class="degraded-icon">⚠</span>
+            <span class="degraded-msg">Engine analysis unavailable</span>
+          </div>
+          <p class="degraded-hint">Backend engines did not return data for this asset. Check connection or retry.</p>
+          {#if onRetry}
+            <button class="retry-btn" onclick={() => onRetry?.()}>
+              ↺ Retry Analysis
+            </button>
+          {/if}
+        </div>
+        <div class="divider"></div>
+      {/if}
       {#if deepVerdict}
         <!-- Deep Score (primary) -->
         <div class="ml-score-row">
@@ -257,7 +289,16 @@
         <SourceRow sources={SOURCES} />
       {:else}
         <div class="empty-panel">
-          <p>Select an asset or run a query to see analysis.</p>
+          {#if analysisData}
+            <!-- analysisData exists but no verdict — engine returned partial data -->
+            <p class="empty-warn">⚠ Partial data</p>
+            <p>Engine returned incomplete analysis.</p>
+            {#if onRetry}
+              <button class="retry-btn" onclick={() => onRetry?.()}>↺ Retry</button>
+            {/if}
+          {:else}
+            <p>Select an asset or run a query to see analysis.</p>
+          {/if}
         </div>
       {/if}
 
@@ -770,6 +811,66 @@
   .deep-verdict-badge.bear { color: var(--sc-bad, #cf7f8f); background: rgba(207,127,143,0.10); border-color: rgba(207,127,143,0.28); }
   .ml-score-row.secondary { margin-top: -6px; }
   .ml-value-sm { font-family: var(--sc-font-mono); font-size: 12px; font-weight: 600; line-height: 1; }
+
+  /* Engine degraded card */
+  .degraded-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 9px;
+    border: 1px solid rgba(251, 191, 36, 0.22);
+    border-radius: 5px;
+    background: rgba(251, 191, 36, 0.04);
+  }
+  .degraded-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .degraded-icon {
+    font-size: 13px;
+    color: #fbbf24;
+    flex-shrink: 0;
+  }
+  .degraded-msg {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(251, 191, 36, 0.88);
+    letter-spacing: 0.04em;
+  }
+  .degraded-hint {
+    margin: 0;
+    font-size: 9px;
+    line-height: 1.45;
+    color: rgba(247, 242, 234, 0.42);
+  }
+  .retry-btn {
+    align-self: flex-start;
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(247, 242, 234, 0.82);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 3px;
+    padding: 4px 9px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .retry-btn:hover {
+    background: rgba(77, 143, 245, 0.12);
+    border-color: rgba(99, 179, 237, 0.3);
+    color: rgba(247, 242, 234, 1);
+  }
+  .empty-warn {
+    font-family: var(--sc-font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: #fbbf24;
+    margin: 0;
+  }
 
   .stop { color: var(--sc-bad, #cf7f8f) !important; }
   .tp   { color: var(--sc-good, #adca7c) !important; }
