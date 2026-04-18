@@ -13,6 +13,11 @@
   import { onMount, onDestroy, untrack } from 'svelte';
   import { viewportTier } from '$lib/stores/viewportTier';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
+  import {
+    addIndicator as addChartIndicator,
+    removeIndicator as removeChartIndicator,
+    normalizeIndicatorKey,
+  } from '$lib/stores/chartIndicators';
   import { normalizeTimeframe } from '$lib/utils/timeframe';
   import { buildCanonicalHref } from '$lib/seo/site';
   import { get } from 'svelte/store';
@@ -879,9 +884,9 @@
       applyDecisionState(sym, decision, false);
       if (sym === activeSymbol) chartLevels = extractLevels(event.data);
     }
-    // W-0102 Slice 2: chart_action SSE → ChartBoard reflection.
+    // W-0102 Slice 2/3: chart_action SSE → ChartBoard reflection.
     // LLM tool call from chart_control tool emits these so natural-language
-    // "4h로 전환" / "ETH 보여줘" drives the chart. add_indicator is Slice 3.
+    // "4h 보여줘" / "ETH로 전환" / "CVD 추가해" drive the chart directly.
     if (event.type === 'chart_action') {
       const action = event.action as string | undefined;
       const payload = (event.payload ?? {}) as Record<string, unknown>;
@@ -895,6 +900,13 @@
         } catch (err) {
           console.warn('chart_action: invalid timeframe', payload.timeframe, err);
         }
+      } else if (action === 'add_indicator' && typeof payload.indicator === 'string') {
+        const key = normalizeIndicatorKey(payload.indicator);
+        if (key) addChartIndicator(key);
+        else console.warn('chart_action: unknown indicator', payload.indicator);
+      } else if (action === 'remove_indicator' && typeof payload.indicator === 'string') {
+        const key = normalizeIndicatorKey(payload.indicator);
+        if (key) removeChartIndicator(key);
       }
     }
   }
