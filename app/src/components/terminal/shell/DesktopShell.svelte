@@ -25,8 +25,8 @@
 
   let {
     showRail = true,
-    railWidth = 330,
-    leftRailWidth = 240,
+    railWidth = 300,
+    leftRailWidth = 200,
     children,
     slotChart,
     slotRail,
@@ -80,15 +80,43 @@
 
 <style>
   .desktop-shell {
+    /* TradingView-inspired color palette */
+    --tv-bg-0: #0B0E11;
+    --tv-bg-1: #131722;
+    --tv-bg-2: #1E222D;
+    --tv-border: rgba(255,255,255,0.055);
+    --tv-border-strong: rgba(255,255,255,0.11);
+    --tv-text-0: #D1D4DC;
+    --tv-text-1: rgba(209,212,220,0.72);
+    --tv-text-2: rgba(209,212,220,0.40);
+    --tv-green: #22AB94;
+    --tv-red: #F23645;
+    --tv-amber: #EFC050;
+    --tv-blue: #4B9EFD;
+
+    /* Override SC vars for terminal context */
+    --sc-bg-0: var(--tv-bg-0);
+    --sc-bg-1: var(--tv-bg-1);
+    --sc-terminal-bg: var(--tv-bg-0);
+    --sc-terminal-surface: var(--tv-bg-1);
+    --sc-terminal-border: var(--tv-border);
+    --sc-good: var(--tv-green);
+    --sc-bad: var(--tv-red);
+    --sc-text-0: var(--tv-text-0);
+    --sc-text-1: var(--tv-text-1);
+    --sc-text-2: var(--tv-text-2);
+
     display: flex;
     flex-direction: column;
     width: 100%;
     height: 100%;
     overflow: hidden;
+    background: var(--tv-bg-0);
   }
 
   .shell-topbar {
     flex-shrink: 0;
+    /* cmd-bar owns its own border-bottom — no double border here */
   }
 
   .shell-workspace {
@@ -110,20 +138,22 @@
 
   .shell-left-rail {
     flex-shrink: 0;
-    width: var(--left-rail-width, 240px);
+    width: var(--left-rail-width, 200px);
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    border-right: 1px solid var(--tv-border);
+    background: var(--tv-bg-1);
   }
 
   .shell-rail {
     flex-shrink: 0;
-    width: var(--rail-width, 330px);
+    width: var(--rail-width, 300px);
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    border-left: 1px solid rgba(255, 255, 255, 0.07);
+    border-left: 1px solid var(--tv-border);
+    background: var(--tv-bg-1);
   }
 
   .shell-footer {
@@ -133,13 +163,13 @@
   /* ── Responsive collapse (W-0087 tier boundaries) ── */
   @media (max-width: 1279px) {
     .shell-rail {
-      width: 320px;
+      width: 280px;
     }
   }
 
   @media (max-width: 1023px) {
     .shell-rail {
-      width: 280px;
+      width: 260px;
     }
   }
 
