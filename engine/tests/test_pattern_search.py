@@ -2764,6 +2764,259 @@ def test_default_promotion_gate_policy_has_stable_id() -> None:
     assert DEFAULT_PROMOTION_GATE_POLICY.policy_id == "promotion-gate-v1"
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# W-0088: trading-edge parallel promotion path
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def _mk_case_result_with_return(
+    *,
+    role: str = "reference",
+    entry_hit: bool = True,
+    target_hit: bool = True,
+    forward_peak_return_pct: float | None = None,
+    case_id: str = "case",
+    symbol: str = "PTBUSDT",
+    phase_fidelity: float = 1.0,
+) -> VariantCaseResult:
+    return VariantCaseResult(
+        case_id=case_id,
+        symbol=symbol,
+        role=role,
+        observed_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"]
+        if target_hit
+        else ["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION"],
+        current_phase="BREAKOUT" if target_hit else "ACCUMULATION",
+        phase_fidelity=phase_fidelity,
+        phase_depth_progress=1.0 if target_hit else 0.8,
+        entry_hit=entry_hit,
+        target_hit=target_hit,
+        lead_bars=5 if (entry_hit and target_hit) else None,
+        score=0.8 if (entry_hit and target_hit) else 0.55,
+        entry_close=100.0 if forward_peak_return_pct is not None else None,
+        forward_peak_return_pct=forward_peak_return_pct,
+    )
+
+
+def test_build_promotion_report_v_reversal_promotes_via_strict_path() -> None:
+    """TRADOOR-class: full path completes, FDR=0, forward return strong."""
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.8,
+        holdout_score=0.75,
+        overall_score=0.77,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference", forward_peak_return_pct=60.0, case_id="ref-1"
+            ),
+            _mk_case_result_with_return(
+                role="reference", forward_peak_return_pct=55.0, case_id="ref-2"
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                forward_peak_return_pct=111.0,
+                case_id="hold-1",
+                symbol="TRADOORUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    assert report.decision == "promote_candidate"
+    assert report.decision_path == "strict"
+    assert report.entry_profitable_rate == 1.0
+    assert report.entry_profitable_gate is True
+
+
+def test_build_promotion_report_slow_recovery_promotes_via_trading_edge_path() -> None:
+    """KOMA / DYM-class: pattern stops at ACCUMULATION (FDR=1.0) but
+    forward return clears 5% threshold for a majority of cases — should
+    promote via the trading-edge path with FDR waived."""
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.55,
+        holdout_score=0.55,
+        overall_score=0.55,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=20.9,
+                case_id="ref-koma",
+                symbol="KOMAUSDT",
+            ),
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=7.1,
+                case_id="ref-dym",
+                symbol="DYMUSDT",
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                target_hit=False,
+                forward_peak_return_pct=22.1,
+                case_id="hold-fart",
+                symbol="FARTCOINUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    # FDR is 1.0 (no target hits) — strict path fails by construction
+    assert report.false_discovery_rate == 1.0
+    assert report.gate_results["false_discovery_rate"] is False
+    # But forward returns >= 5% for all 3 entered cases — trading-edge path passes
+    assert report.entry_profitable_rate == 1.0
+    assert report.entry_profitable_gate is True
+    assert report.decision == "promote_candidate"
+    assert report.decision_path == "trading_edge"
+
+
+def test_build_promotion_report_pump_and_dump_rejects_when_forward_return_below_threshold() -> None:
+    """Pattern completes (entry + target hit) but forward return is
+    below the 5% trading-edge floor — strict path passes only if FDR
+    is acceptable. Here we contrive the case where strict fails on
+    FDR and forward returns are too small for trading-edge → reject."""
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.4,
+        holdout_score=0.4,
+        overall_score=0.4,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=True,
+                forward_peak_return_pct=2.0,
+                case_id="ref-1",
+            ),
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=1.5,
+                case_id="ref-2",
+            ),
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=3.0,
+                case_id="ref-3",
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                target_hit=True,
+                forward_peak_return_pct=1.0,
+                case_id="hold-1",
+                symbol="TRADOORUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    # FDR = 2/4 = 0.5 > 0.4 ceiling → strict path fails
+    assert report.gate_results["false_discovery_rate"] is False
+    # No forward return clears 5% → entry_profitable_rate = 0.0 → trading-edge fails
+    assert report.entry_profitable_rate == 0.0
+    assert report.entry_profitable_gate is False
+    assert report.decision == "reject"
+    assert report.decision_path == "rejected"
+    assert any("entry_profitable_rate" in reason for reason in report.rejection_reasons)
+
+
+def test_build_promotion_report_no_entry_rejects_with_unmeasured_metric() -> None:
+    """No case ever hit entry phase — entry_profitable_rate is undefined
+    (None), trading-edge path is unavailable, and strict path fails on
+    reference_recall. Rejection reason should flag the unmeasured
+    metric rather than reporting a numeric floor breach."""
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.1,
+        holdout_score=0.1,
+        overall_score=0.1,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference",
+                entry_hit=False,
+                target_hit=False,
+                phase_fidelity=0.2,
+                case_id="ref-1",
+            ),
+            _mk_case_result_with_return(
+                role="reference",
+                entry_hit=False,
+                target_hit=False,
+                phase_fidelity=0.2,
+                case_id="ref-2",
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                entry_hit=False,
+                target_hit=False,
+                phase_fidelity=0.2,
+                case_id="hold-1",
+                symbol="TRADOORUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report("tradoor-oi-reversal-v1", winner)
+
+    assert report.decision == "reject"
+    assert report.decision_path == "rejected"
+    assert report.entry_profitable_rate is None
+    assert report.entry_profitable_gate is False  # enabled but unmeasured
+    assert any("unmeasured" in reason for reason in report.rejection_reasons)
+
+
+def test_build_promotion_report_trading_edge_path_disabled_falls_back_to_strict() -> None:
+    """When the policy disables the parallel path
+    (min_entry_profitable_rate=None), the gate behaves exactly like
+    the original strict-only gate: a KOMA/DYM-class result that would
+    promote via trading_edge is rejected."""
+    strict_only = PromotionGatePolicy(
+        policy_id="strict-only-v1",
+        min_entry_profitable_rate=None,
+    )
+    winner = VariantSearchResult(
+        variant_id="winner",
+        variant_slug="tradoor-oi-reversal-v1__canonical",
+        reference_score=0.55,
+        holdout_score=0.55,
+        overall_score=0.55,
+        case_results=[
+            _mk_case_result_with_return(
+                role="reference",
+                target_hit=False,
+                forward_peak_return_pct=20.9,
+                case_id="ref-koma",
+                symbol="KOMAUSDT",
+            ),
+            _mk_case_result_with_return(
+                role="holdout",
+                target_hit=False,
+                forward_peak_return_pct=22.1,
+                case_id="hold-fart",
+                symbol="FARTCOINUSDT",
+            ),
+        ],
+    )
+
+    report = build_promotion_report(
+        "tradoor-oi-reversal-v1", winner, policy=strict_only
+    )
+
+    assert report.entry_profitable_gate is None  # parallel path disabled
+    assert report.decision == "reject"
+    assert report.decision_path == "rejected"
+
+
 def test_depth_progress_distinguishes_deeper_holdout_paths() -> None:
     from research.pattern_search import _phase_depth_progress
 

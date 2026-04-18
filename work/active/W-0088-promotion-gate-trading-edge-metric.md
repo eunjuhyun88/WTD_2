@@ -60,17 +60,18 @@ engine
 
 ## Next Steps
 
-1. Implement VariantCaseResult fields + slice extension + return computation.
-2. Implement policy + report extension + OR-gate logic.
-3. Add 4 unit tests + verify existing 696 tests stay green.
-4. Run scratch H6 multi-symbol pack against new gate; expect KOMA / DYM to flip to `promote_candidate__trading_edge`, FARTCOIN to stay rejected (no entry).
+1. ~~Implement VariantCaseResult fields + slice extension + return computation.~~ — done (commits c4bba19 + fc4e4fd)
+2. ~~Implement policy + report extension + OR-gate logic.~~ — done (commit fb1e318)
+3. ~~Add unit tests + verify existing tests stay green.~~ — done (5 new tests pass; full suite 720 passed, 1 pre-existing unrelated failure in test_research_inspection.py).
+4. Run scratch H6 multi-symbol pack against new gate; expect KOMA / DYM to flip to `decision_path="trading_edge"`, FARTCOIN to stay rejected (no entry). **Pending — operator action.**
 
 ## Exit Criteria
 
-- All existing engine tests still pass (no regressions).
-- New unit tests pass: V-reversal strict, slow-recovery trading-edge, pump-and-dump reject, no-entry reject.
-- `PromotionReport` JSON schema includes `entry_profitable_rate` field; decision values are one of three documented strings.
-- Atomic commit chain (per W-0086 methodology lock-in): each commit changes one logical axis; all commits keep tests green.
+- ✅ All existing engine tests still pass (no regressions). Pre-existing failures (`test_security_runtime.py` collection error, `test_research_inspection.py` AttributeError) confirmed unchanged on HEAD before commits.
+- ✅ New unit tests pass: V-reversal strict, slow-recovery trading-edge, pump-and-dump reject, no-entry reject, plus parallel-path-disabled fallback.
+- ✅ `PromotionReport` schema includes `entry_profitable_rate`, `entry_profitable_gate`, `decision_path` fields; decision_path values are one of `"strict" | "trading_edge" | "rejected"`.
+- ✅ Atomic commit chain: each of 4 commits changes one logical axis; all commits keep baseline test count.
+- ⚠️ H6 scratch verification (slice 4 above) still pending — recommended before promoting H6 holdouts into the canonical pack (W-0086 next-slice 6).
 
 ## Handoff Checklist
 
