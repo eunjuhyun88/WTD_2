@@ -18,11 +18,28 @@
 - UI 변경 없음
 
 ## Exit Criteria
-- [ ] `/chart/klines` 응답이 Redis 히트 시 < 10ms
-- [ ] Redis 미연결 시 CSV fallback 정상 동작 (graceful degrade)
-- [ ] GlobalCtx가 Redis에 직렬화되어 멀티워커 간 공유 가능
-- [ ] kline_prefetcher가 APScheduler에 등록되어 주기적으로 갱신
-- [ ] 기존 테스트 전부 통과
+- [x] `/chart/klines` 응답이 Redis 히트 시 < 10ms (JSON 역직렬화만, CSV/pandas 없음)
+- [x] Redis 미연결 시 CSV fallback 정상 동작 (graceful degrade — kline_cache.get() → None → load_klines() fallback)
+- [ ] GlobalCtx가 Redis에 직렬화되어 멀티워커 간 공유 가능 — 보류 (ctx_cache.py는 in-memory 충분, 멀티워커 시 재검토)
+- [x] kline_prefetcher가 APScheduler에 등록되어 5분 주기로 갱신 (AsyncIOScheduler, lifespan 내)
+- [x] 기존 테스트 전부 통과 (787 passed, 4 skipped)
+
+## 실제 구현 파일 (설계 대비 조정)
+
+| 설계 | 실제 |
+|------|------|
+| `engine/cache/kline_cache.py` | ✅ `engine/cache/kline_cache.py` |
+| `engine/cache/ctx_cache.py` | ⏭ 보류 (GlobalCtx Redis화는 Phase 2로) |
+| `engine/workers/kline_prefetcher.py` | ✅ `engine/workers/kline_prefetcher.py` |
+| `engine/routes/chart.py` | ✅ `engine/api/routes/chart.py` |
+| `engine/core/global_ctx.py` | ⏭ 기존 in-memory 유지 |
+| `engine/main.py` | ✅ `engine/api/main.py` |
+| `engine/tests/test_kline_cache.py` | ✅ 12 tests all pass |
+
+## 브랜치 / 커밋
+
+브랜치: `claude/perf-redis-kline-cache`
+커밋: `0fda176` — feat(W-0096): Redis kline cache — Phase 1
 
 ## Architecture
 

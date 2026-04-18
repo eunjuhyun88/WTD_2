@@ -20,9 +20,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from api.routes import backtest, captures, challenge, ctx, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability
+from api.routes import backtest, captures, challenge, chart, ctx, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability
+from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
+from workers.kline_prefetcher import prefetch_klines
 from security_runtime import (
     assert_public_runtime_security,
     build_allowed_hosts,
@@ -57,22 +59,48 @@ def scheduler_enabled() -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
+    # Redis pool — must be first so downstream warm-ups can write
+    await init_pool()
+
     # Warm up L0 GlobalCtx cache before serving requests
     try:
         await refresh_global_ctx()
     except Exception as exc:
         log.warning("GlobalCtx warm-up failed (non-fatal): %s", exc)
+
+    # Pre-populate Redis kline cache from local CSV (non-blocking, best-effort)
+    try:
+        await prefetch_klines()
+    except Exception as exc:
+        log.warning("kline prefetch warm-up failed (non-fatal): %s", exc)
+
     if scheduler_enabled():
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore[import]
+        _kline_scheduler = AsyncIOScheduler()
+        _kline_scheduler.add_job(
+            prefetch_klines,
+            "interval",
+            minutes=5,
+            id="kline_prefetch",
+            replace_existing=True,
+        )
+        _kline_scheduler.start()
         start_scheduler()
-        log.info("Engine started — GlobalCtx warm, background scanner active")
+        log.info("Engine started — Redis warm, GlobalCtx warm, background scanner active")
     else:
-        log.info("Engine started — GlobalCtx warm, scheduler disabled")
+        _kline_scheduler = None
+        log.info("Engine started — Redis warm, GlobalCtx warm, scheduler disabled")
+
     yield
+
+    if _kline_scheduler is not None:
+        _kline_scheduler.shutdown(wait=False)
     if scheduler_enabled():
         stop_scheduler()
         log.info("Engine shutdown — scanner stopped")
     else:
         log.info("Engine shutdown")
+    await close_pool()
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +152,7 @@ async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
 # Routes
 # ---------------------------------------------------------------------------
 
+app.include_router(chart.router,    prefix="/chart",    tags=["chart"])
 app.include_router(score.router,    prefix="/score",    tags=["scoring"])
 app.include_router(deep.router,     prefix="/deep",     tags=["deep"])
 app.include_router(ctx.router,      prefix="/ctx",      tags=["context"])
