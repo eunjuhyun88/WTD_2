@@ -14,6 +14,7 @@ dependencies = [
     "uvicorn>=0.44.0",
     "fastapi>=0.135.3",
     "apscheduler>=3.11.2",
+    "redis[asyncio]>=4.6",
 ]
 
 [project.optional-dependencies]
