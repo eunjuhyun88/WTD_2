@@ -88,6 +88,7 @@
   // ── UI state ───────────────────────────────────────────────────────────────
   let loading  = $state(true);
   let error    = $state<string | null>(null);
+  let rateLimitRetryIn = $state<number | null>(null);
 
   // ── History lazy-load state ────────────────────────────────────────────────
   let historyLoadingMore = $state(false);
@@ -442,9 +443,24 @@
     const token = ++loadToken;
     loading = true;
     error = null;
+    rateLimitRetryIn = null;
     try {
       const emaQ = emaTf ? `&emaTf=${encodeURIComponent(emaTf)}` : '';
       const chartRes = await fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500${emaQ}`);
+      if (chartRes.status === 429) {
+        if (token !== loadToken) return;
+        loading = false;
+        rateLimitRetryIn = 10;
+        const countdown = setInterval(() => {
+          rateLimitRetryIn = (rateLimitRetryIn ?? 0) - 1;
+          if ((rateLimitRetryIn ?? 0) <= 0) {
+            clearInterval(countdown);
+            rateLimitRetryIn = null;
+            loadData();
+          }
+        }, 1_000);
+        return;
+      }
       if (!chartRes.ok) throw new Error(`HTTP ${chartRes.status}`);
       const data = await chartRes.json() as ChartSeriesPayload & { error?: unknown };
       if (data.error) {
@@ -1425,6 +1441,11 @@
       <span class="pulse"></span>
       <span class="state-text">Loading {symbol} {tf}…</span>
     </div>
+  {:else if rateLimitRetryIn !== null}
+    <div class="chart-state rate-limit">
+      <span class="pulse rate-limit-pulse"></span>
+      <span class="state-text">Throttled — retrying in {rateLimitRetryIn}s</span>
+    </div>
   {:else if error}
     <div class="chart-state error">
       <span>! {error}</span>
@@ -2213,6 +2234,8 @@
     min-height: 400px;
   }
   .chart-state.error { flex-direction: column; gap: 8px; }
+  .chart-state.rate-limit { color: rgba(251,191,36,0.55); }
+  .rate-limit-pulse { background: rgba(251,191,36,0.5) !important; }
   .chart-state button {
     padding: 3px 8px;
     background: transparent;

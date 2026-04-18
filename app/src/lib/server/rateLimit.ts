@@ -183,3 +183,10 @@ export const passportTrainJobCreateLimiter = createRateLimiter({ windowMs: 60_00
 
 // War Room
 export const emergencyMeetingLimiter = createRateLimiter({ windowMs: 60_000, max: 5 });
+
+// ── W-0098: 500-user safety ───────────────────────────────────────────────────
+/** Chart klines poll: 120 per minute per IP (15s interval × 4 tabs + burst headroom) */
+export const chartKlinesLimiter = createRateLimiter({ windowMs: 60_000, max: 120 });
+
+/** Heavy engine paths (score, deep, backtest, train): 60 per minute per IP */
+export const engineProxyLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
