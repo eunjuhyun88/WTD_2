@@ -113,45 +113,6 @@
     return () => clearTimeout(timer);
   });
 
-  let viewportPreview = $state<ChartViewportSnapshot | null>(null);
-  let similarMatches = $state<PatternCaptureSimilarityMatch[]>([]);
-  let similarLoading = $state(false);
-  $effect(() => {
-    if (open && captureContext?.phase) {
-      selectedPhase = captureContext.phase;
-    }
-  });
-  $effect(() => {
-    if (open) {
-      viewportPreview = getViewportCapture?.() ?? null;
-    }
-  });
-  $effect(() => {
-    if (!open) {
-      similarMatches = [];
-      similarLoading = false;
-      return;
-    }
-    const timer = setTimeout(async () => {
-      similarLoading = true;
-      try {
-        similarMatches = await fetchSimilarPatternCaptures({
-          symbol,
-          timeframe: captureContext?.timeframe ?? tf,
-          triggerOrigin: canSavePatternCapture ? 'pattern_transition' : 'manual',
-          patternSlug: captureContext?.patternSlug ?? captureContext?.slug ?? undefined,
-          reason: selectedPhase,
-          note,
-          snapshot: viewportPreview ? { viewport: viewportPreview } : {},
-          limit: 4,
-        });
-      } finally {
-        similarLoading = false;
-      }
-    }, 180);
-    return () => clearTimeout(timer);
-  });
-
   async function handleSave() {
     if (saving) return;
     const viewportAtSave = getViewportCapture?.() ?? viewportPreview ?? null;
