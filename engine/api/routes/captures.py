@@ -253,12 +253,14 @@ async def list_captures(
     user_id: str | None = None,
     pattern_slug: str | None = None,
     symbol: str | None = None,
+    status: str | None = None,
     limit: int = Query(default=100, ge=1, le=500),
 ) -> dict:
     captures = _capture_store.list(
         user_id=user_id,
         pattern_slug=pattern_slug,
         symbol=symbol,
+        status=status,
         limit=limit,
     )
     return {
