@@ -166,6 +166,8 @@
   let showPatternLibrary = $state(false);
   let patternCaptureRecords = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let lastSavedCaptureId = $state<string | null>(null);
+  let showLabCta = $state(false);
+  let labCtaSlug = $state<string | null>(null);
   let patternCaptureLoading = $state(false);
   let exportPollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -947,9 +949,12 @@
 
   function handleCaptureSaved(captureId: string) {
     lastSavedCaptureId = captureId;
+    labCtaSlug = activeSymbol ? activeSymbol.toLowerCase().replace('usdt', '') : null;
+    showLabCta = true;
     setTimeout(() => {
       if (lastSavedCaptureId === captureId) lastSavedCaptureId = null;
     }, 5000);
+    setTimeout(() => { showLabCta = false; }, 8000);
     void loadPatternCaptures();
     if (activeSymbol) {
       trackMemoryFeedbackForSymbol(activeSymbol, 'confirmed');
@@ -1413,12 +1418,33 @@
     onAlertFeedback={handleMobileAlertFeedback}
     onMarketRefresh={refreshWatchlistForMobile}
   >
+  {#snippet slotLeftRail()}
+    <TerminalLeftRail
+      {trendingData}
+      watchlistRows={persistedWatchlist}
+      alerts={scannerAlerts}
+      savedAlerts={savedAlertRules}
+      {patternPhases}
+      activeSymbol={activeSymbol || pairToSymbol(gPair)}
+      macroItems={macroCalendarItems}
+      {marketEvents}
+      queryPresets={terminalQueryPresets}
+      anomalies={terminalAnomalies}
+      onQuery={handleQueryChip}
+      onDeleteSavedAlert={handleDeleteSavedAlert}
+    />
+  {/snippet}
+
   {#snippet slotTopBar()}
     <section class="terminal-shell-head">
       <TerminalCommandBar
         assetsCount={boardAssets.length}
         marketRailOpen={showLeftRail}
         onToggleMarketRail={toggleLeftRail}
+        tf={gTf}
+        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+        price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
+        change24h={activeAnalysisData?.change24h ?? activeAnalysisData?.snapshot?.change24h ?? null}
       />
     </section>
   {/snippet}
@@ -1447,6 +1473,14 @@
         ohlcvBars={ohlcvBars}
         onSaved={handleCaptureSaved}
       />
+      {#if showLabCta}
+        <div class="lab-cta-banner">
+          <span class="lab-cta-check">✓</span>
+          <span class="lab-cta-text">Setup saved</span>
+          <a class="lab-cta-link" href={labCtaSlug ? `/lab?slug=${labCtaSlug}` : '/lab'}>Open in Lab →</a>
+          <button class="lab-cta-close" onclick={() => showLabCta = false} aria-label="Dismiss">×</button>
+        </div>
+      {/if}
     </div>
   {/snippet}
 
@@ -1636,6 +1670,40 @@
     border: 1px solid rgba(255,255,255,0.04);
     border-bottom-color: rgba(255,255,255,0.02);
   }
+
+  /* ── Lab CTA banner ── */
+  .lab-cta-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(99, 179, 237, 0.10);
+    border-top: 1px solid rgba(99, 179, 237, 0.22);
+    flex-shrink: 0;
+    font-family: var(--sc-font-mono);
+    font-size: 12px;
+  }
+  .lab-cta-check { color: var(--sc-good, #adca7c); font-size: 13px; }
+  .lab-cta-text { color: rgba(247, 242, 234, 0.72); }
+  .lab-cta-link {
+    color: rgba(99, 179, 237, 0.92);
+    text-decoration: none;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-left: 4px;
+  }
+  .lab-cta-link:hover { text-decoration: underline; }
+  .lab-cta-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: rgba(247, 242, 234, 0.36);
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  .lab-cta-close:hover { color: rgba(247, 242, 234, 0.72); }
 
   /* Analysis rail — always visible right panel, scrollable */
   .analysis-rail {
