@@ -48,6 +48,8 @@ PHASE_ORDER = {
     # FFR phases
     "ENTRY_ZONE": 0, "FLIP_SIGNAL": 1,
     "COMPRESSION": 2, "SHORT_OVERHEAT": 3, "SQUEEZE": 4,
+    # whale-accumulation-reversal-v1 phases (W-0097 P0.5)
+    "BOTTOM_CONFIRM": 0, "WHALE_ACCUMULATION": 1, "ENTRY_CONFIRM": 2,
 }
 
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
