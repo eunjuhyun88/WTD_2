@@ -4,6 +4,8 @@ A confirmation answers "is this setup real, or a false start?" by checking
 structural or technical conditions that accompany the main event. Patterns
 typically compose 1-3 confirmations after the trigger.
 """
+from building_blocks.confirmations.absorption_signal import absorption_signal
+from building_blocks.confirmations.alt_btc_accel_ratio import alt_btc_accel_ratio
 from building_blocks.confirmations.bollinger_expansion import bollinger_expansion
 from building_blocks.confirmations.bollinger_squeeze import bollinger_squeeze
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
@@ -27,6 +29,8 @@ from building_blocks.confirmations.sideways_compression import sideways_compress
 from building_blocks.confirmations.volume_dryup import volume_dryup
 
 __all__ = [
+    "absorption_signal",
+    "alt_btc_accel_ratio",
     "bollinger_expansion",
     "bollinger_squeeze",
     "cvd_state_eq",

@@ -198,7 +198,18 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
             ],
             optional_blocks=["volume_dryup"],
+            # absorption_signal: heavy CVD buying while price is flat signals
+            # hidden accumulation — a sell-wall being absorbed. This is the
+            # ALPHA TERMINAL S2 "흡수(Absorption)" concept: "CVD 대량 매수인데
+            # 가격 미반응 → 매도벽 흡수 중" (ORDI Apr14 case: 0.0-0.1M volume).
+            soft_blocks=["absorption_signal"],
             disqualifier_blocks=[],
+            score_weights={
+                "sideways_compression": 0.50,
+                "bollinger_squeeze": 0.30,
+                "volume_dryup": 0.20,
+                "absorption_signal": 0.15,
+            },
             min_bars=4, max_bars=48,
             timeframe="1h",
         ),
@@ -228,6 +239,10 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 # cvd_buying: taker order-flow is net-buy while we await squeeze.
                 # Mirrors ALPHA TERMINAL S1 "CVD from multiple exchanges aligning".
                 "cvd_buying",
+                # absorption_signal: carry-over from COMPRESSION — if buying is still
+                # being absorbed by remaining sell-walls in ENTRY_ZONE, squeeze is
+                # even more imminent when the wall finally exhausts.
+                "absorption_signal",
             ],
             disqualifier_blocks=[],
             score_weights={
@@ -238,6 +253,7 @@ FUNDING_FLIP_REVERSAL = PatternObject(
                 "volume_dryup": 0.05,
                 "oi_expansion_confirm": 0.10,
                 "cvd_buying": 0.08,
+                "absorption_signal": 0.08,
             },
             phase_score_threshold=0.70,
             transition_window_bars=12,

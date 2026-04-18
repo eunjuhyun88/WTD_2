@@ -38,6 +38,8 @@ from building_blocks.triggers.consolidation_then_breakout import consolidation_t
 from building_blocks.triggers.volume_spike import volume_spike
 
 # --- Confirmations ---
+from building_blocks.confirmations.absorption_signal import absorption_signal
+from building_blocks.confirmations.alt_btc_accel_ratio import alt_btc_accel_ratio
 from building_blocks.confirmations.golden_cross import golden_cross
 from building_blocks.confirmations.dead_cross import dead_cross
 from building_blocks.confirmations.ema_pullback import ema_pullback
@@ -111,6 +113,8 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("sideways_compression", sideways_compression),
     ("cvd_state_eq",       cvd_state_eq),
     ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
+    ("absorption_signal",  absorption_signal),
+    ("alt_btc_accel_ratio", alt_btc_accel_ratio),
     ("volume_dryup",       volume_dryup),
     ("coinbase_premium_positive", coinbase_premium_positive),
     ("smart_money_accumulation", smart_money_accumulation),
