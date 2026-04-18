@@ -181,10 +181,9 @@
       {/if}
     </div>
   {/if}
-  <div class="panel-header">
-    <div class="panel-symbol-line">
-      <span class="panel-symbol">{panelSymbol}/USDT · {panelTimeframe}</span>
-    </div>
+  <!-- Symbol + timeframe live in the chart header; the right panel only
+       hosts contextual actions (W-0102 audit: remove .panel-symbol-line). -->
+  <div class="panel-header panel-header-actions-only">
     <div class="panel-actions">
       <button type="button" class:active={isPinned} onclick={() => onPinToggle?.()}>{isPinned ? 'Pinned' : 'Pin'}</button>
       <button type="button" class:active={hasSavedAlert} onclick={() => onAlertToggle?.()}>{hasSavedAlert ? 'Alert Saved' : 'Alert+'}</button>
