@@ -20,6 +20,9 @@
   const liveP = $derived($livePrices);
   const activePath = $derived($page.url.pathname);
   const isHomeRoute = $derived(activePath === '/');
+  // Terminal already surfaces symbol + price in its own chart header and
+  // watchlist rail, so the nav ticker becomes 중복 there (W-0102 audit).
+  const isTerminalRoute = $derived(activePath.startsWith('/terminal'));
 
   let _lastFetchedToken = '';
 
@@ -120,11 +123,14 @@
       <span class="nav-logo-main">COGOCHI</span>
     </a>
 
-    <!-- Ticker / mobile page context -->
-    <div class="selected-ticker">
-      <span class="st-pair">{selectedToken}</span>
-      <span class="st-price">${selectedPriceText}</span>
-    </div>
+    <!-- Ticker / mobile page context. Hidden on Terminal to avoid duplication
+         with chart-header's canonical `SOL/USDT · Last · 24h%` strip. -->
+    {#if !isTerminalRoute}
+      <div class="selected-ticker">
+        <span class="st-pair">{selectedToken}</span>
+        <span class="st-price">${selectedPriceText}</span>
+      </div>
+    {/if}
     {#if !isHomeRoute}
       <div class="mobile-page-chip">{mobileContextLabel}</div>
     {/if}
