@@ -1,6 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { normalizeWalletModeInput } from '$lib/wallet-intel/walletIntelController';
+
+export const config = {
+  runtime: 'nodejs22.x',
+  regions: ['iad1'],
+  memory: 1024,
+  maxDuration: 30,
+};
+
 import type { WalletIntelApiMeta } from '$lib/wallet-intel/walletIntelTypes';
 import { buildWalletIntelServerDataset } from '$lib/server/walletIntelServer';
 import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';

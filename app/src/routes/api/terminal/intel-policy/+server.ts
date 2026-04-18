@@ -2,6 +2,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { buildIntelPolicyOutput, emptyPanels } from '$lib/server/intelPolicyRuntime';
+
+export const config = {
+	runtime: 'nodejs22.x',
+	regions: ['iad1'],
+	memory: 1024,
+	maxDuration: 30,
+};
+
 import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
 import { createSharedPublicRouteCache } from '$lib/server/publicRouteCache';
 
