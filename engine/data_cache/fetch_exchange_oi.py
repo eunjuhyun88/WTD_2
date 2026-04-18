@@ -66,28 +66,19 @@ def _fetch_binance_oi(symbol: str, limit: int = 500) -> pd.Series | None:
     if not data or not isinstance(data, list):
         return None
 
-    rows = [
-        {
-            "ts": pd.Timestamp(int(r["timestamp"]), unit="ms", tz="UTC"),
-            "binance_oi": float(r["sumOpenInterest"]) * float(r.get("sumOpenInterestValue", 1)),
-        }
-        for r in data
-        if "timestamp" in r and "sumOpenInterest" in r
-    ]
+    rows = []
+    for r in data:
+        if "timestamp" not in r:
+            continue
+        ts = pd.Timestamp(int(r["timestamp"]), unit="ms", tz="UTC")
+        # sumOpenInterestValue is USD notional; fall back to contract count only if absent
+        oi_usd = float(r.get("sumOpenInterestValue") or r.get("sumOpenInterest", 0))
+        rows.append({"ts": ts, "binance_oi": oi_usd})
+
     if not rows:
         return None
 
-    # sumOpenInterest is in contracts (BTC), sumOpenInterestValue is in USDT
-    # Re-fetch with proper USDT value
-    rows2 = []
-    for r in data:
-        ts = pd.Timestamp(int(r["timestamp"]), unit="ms", tz="UTC")
-        # Use notional USD value: sumOpenInterest * price approximation
-        # Binance also provides sumOpenInterestValue directly in some responses
-        oi_usd = float(r.get("sumOpenInterestValue", 0)) or float(r["sumOpenInterest"])
-        rows2.append({"ts": ts, "binance_oi": oi_usd})
-
-    df = pd.DataFrame(rows2).set_index("ts").sort_index()
+    df = pd.DataFrame(rows).set_index("ts").sort_index()
     df = df[~df.index.duplicated(keep="last")]
     return df["binance_oi"]
 
@@ -219,8 +210,12 @@ def fetch_exchange_oi(symbol: str, days: int = 30) -> pd.DataFrame | None:
         if col not in df.columns:
             df[col] = 0.0
 
-    # OKX: only snapshot — broadcast to all rows as approximation
+    # OKX: only snapshot — broadcast to all rows as approximation.
+    # Warn if snapshot is stale (>4h) — data may be misleading.
     if okx_snap is not None and not okx_snap.empty:
+        snap_age_h = (pd.Timestamp.now(tz="UTC") - okx_snap.index[-1]).total_seconds() / 3600
+        if snap_age_h > 4:
+            log.debug("OKX OI snapshot for %s is %.1fh stale — broadcasting anyway", symbol, snap_age_h)
         df["okx_oi"] = float(okx_snap.iloc[-1])
 
     df = df.fillna(0.0)

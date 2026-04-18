@@ -45,11 +45,5 @@ def total_oi_spike(
         raise ValueError(f"threshold must be > 0, got {threshold}")
 
     col = f"total_oi_change_{window}"
-    oi = ctx.features.get(col, pd.Series(0.0, index=ctx.features.index))
-    if hasattr(oi, "fillna"):
-        oi = oi.fillna(0.0)
-
-    if direction == "increase":
-        return (oi >= threshold).astype(bool)
-    else:
-        return (oi <= -threshold).astype(bool)
+    oi = ctx.features.get(col, pd.Series(0.0, index=ctx.features.index)).fillna(0.0)
+    return (oi >= threshold if direction == "increase" else oi <= -threshold).astype(bool)

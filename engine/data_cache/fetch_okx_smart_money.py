@@ -33,10 +33,9 @@ import hmac as hmac_mod
 import json
 import logging
 import os
-import subprocess
 import time
 import urllib.request
-from typing import Optional
+from datetime import datetime, timezone
 
 log = logging.getLogger("engine.data_cache.okx_smart_money")
 
@@ -51,8 +50,9 @@ _SANDBOX_KEY = "d573a84c-8e79-4a35-b0c6-427e9ad2478d"
 # TTL for cached signal results (seconds)
 _CACHE_TTL = 300  # 5 min
 
-# In-memory cache: key → (timestamp, result)
+# In-memory cache: key → (timestamp, result). Max 64 entries — evict oldest on overflow.
 _CACHE: dict[str, tuple[float, list[dict]]] = {}
+_CACHE_MAX = 64
 
 # walletType: 1=Smart Money, 2=KOL, 3=Whale (MCP convention)
 WALLET_TYPE_SMART_MONEY = "1"
@@ -96,7 +96,6 @@ def _build_signed_headers(method: str, path: str, query_or_body: str = "") -> di
     if not all([api_key, secret_key, passphrase]):
         return {"OK-ACCESS-KEY": _SANDBOX_KEY, **base}
 
-    from datetime import datetime, timezone
     ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     # GET: append ?query_string; POST: append raw body
     if method == "GET" and query_or_body:
@@ -176,7 +175,7 @@ def get_smart_money_signals(
     if not chain_index or not token_address:
         return []
 
-    cache_key = f"{symbol}:{wallet_types}:{min_amount_usd}"
+    cache_key = f"{symbol}:{wallet_types}:{min_amount_usd}:{max_age_hours}"
     cached_ts, cached_result = _CACHE.get(cache_key, (0.0, []))
     if time.time() - cached_ts < _CACHE_TTL:
         return cached_result
@@ -186,6 +185,11 @@ def get_smart_money_signals(
     # Filter by age
     cutoff_ms = (time.time() - max_age_hours * 3600) * 1000
     signals = [s for s in signals if int(s.get("timestamp", 0)) >= cutoff_ms]
+
+    # Evict oldest entry if cache is at capacity
+    if len(_CACHE) >= _CACHE_MAX:
+        oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
+        del _CACHE[oldest]
 
     _CACHE[cache_key] = (time.time(), signals)
     return signals
