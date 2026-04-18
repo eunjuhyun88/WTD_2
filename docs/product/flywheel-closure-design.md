@@ -1,5 +1,25 @@
 # Flywheel Closure Design
 
+## Implementation Status (2026-04-19)
+
+**엔진 사이드 완전 완료. 4축 전부 닫힘.**
+
+| Phase | Status | Main commit | Notes |
+|-------|--------|------------|-------|
+| A — Capture wiring | ✅ done | earlier session | dual-write + engine canonical |
+| B — Outcome resolver | ✅ done | `ced6b20` | hourly Job 3b |
+| E — Cold-start + observability | ✅ done | `d6d20e1` | CTO pivot: shipped before C/D |
+| C — Verdict labeling | ✅ done | `47afb72` | `POST /captures/{id}/verdict` |
+| D — Refinement trigger | ✅ done | `f380610` | daily Job 3c, 10 verdicts + 7 days gate |
+| Refactor | ✅ done | `a97d019` | threshold dedup, count_by_status, dead code |
+
+**남은 작업:**
+- Verdict Inbox UI (app `/dashboard`) — `W-0097`
+- Founder seeding via `POST /captures/bulk_import` (human action)
+- Public report publishing (Phase E §3) — after data accumulation
+
+---
+
 ## Purpose
 
 이 문서는 WTD v2 제품의 학습 루프를 코드 수준에서 닫는 설계를 canonical 하게 정의한다.
@@ -206,7 +226,26 @@ GET /observability/flywheel/health
 | `engine/scanner/jobs/refinement_trigger.py` | scheduled refinement | engine |
 | `engine/patterns/outcome_policy.py` | success/failure decision rules | engine |
 
-## Execution Roadmap
+## Actual Execution Order
+
+CTO priority pivot: Phase E (cold-start data + observability) was shipped BEFORE Phase C/D.
+Rationale: axes 1-2 닫혔지만 트래픽=0. Phase C/D는 데이터 없이 cargo cult.
+
+실제 순서: A → B → E → C → D → Refactor
+
+### Key implementation files
+
+| Component | File | Job/Route |
+|-----------|------|-----------|
+| Capture ingest | `engine/api/routes/captures.py` | `POST /captures`, `POST /captures/bulk_import` |
+| Outcome policy | `engine/patterns/outcome_policy.py` | `decide_outcome()`, `policy_for()` |
+| Outcome resolver | `engine/scanner/jobs/outcome_resolver.py` | Job 3b, 3600s |
+| Verdict labeling | `engine/api/routes/captures.py` | `POST /captures/{id}/verdict` |
+| Refinement trigger | `engine/scanner/jobs/refinement_trigger.py` | Job 3c, 86400s |
+| Observability | `engine/api/routes/observability.py` | `GET /observability/flywheel/health` |
+| Capture store | `engine/capture/store.py` | `count_by_status()`, `update_status()`, `list_due_for_outcome()` |
+
+## Execution Roadmap (original, for reference)
 
 ### Phase A — Capture wiring (P0, ~3 weeks)
 
