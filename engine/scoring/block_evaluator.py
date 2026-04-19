@@ -118,6 +118,11 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
     ("absorption_signal",  absorption_signal),
     ("delta_flip_positive", delta_flip_positive),
+    # VAR-tuned variant: shorter window + looser thresholds for post-climax recovery.
+    # After a selling climax the 6-bar rolling sum is dominated by the high-volume
+    # climax bar (≈0.48 tbv_ratio), pushing the ratio below 0.55. w=3 + lower
+    # to_at_least=0.52 captures the CVD transition in the 12-36h absorption window.
+    ("delta_flip_var",      lambda ctx: delta_flip_positive(ctx, window=3, flip_from_below=0.48, flip_to_at_least=0.52)),
     ("alt_btc_accel_ratio", alt_btc_accel_ratio),
     ("volume_dryup",       volume_dryup),
     ("coinbase_premium_positive", coinbase_premium_positive),
