@@ -109,74 +109,72 @@ class TestDeltaFlipPositive:
         )
 
     def test_flip_detected_when_ratio_crosses_above_neutral(self, make_ctx):
-        """Ratio goes from 0.40 → 0.60 over flip_window=1 → flip at last bar."""
-        # 5 bars below 0.5, then 1 bar above 0.5
-        ratios = [0.40] * 5 + [0.60]
+        """Ratio goes from 0.40 → 0.60 over window=2 → flip at last bar."""
+        # 6 bars below 0.5, then 2 bars above 0.5 (window=2 rolling sum)
+        ratios = [0.40] * 6 + [0.60] * 2
         ctx = self._make_tbv_ctx(make_ctx, ratios)
-        mask = delta_flip_positive(ctx, flip_window=1, neutral_threshold=0.50)
+        mask = delta_flip_positive(ctx, window=2, flip_from_below=0.50, flip_to_at_least=0.55)
         assert bool(mask.iloc[-1]) is True
-        # No prior bar should be True (ratio was already above-or-below but
-        # never crossed from below → above except at last)
+        # Prior bars: ratio was below 0.50 throughout → no prior flip
         assert not mask.iloc[:-1].any()
 
     def test_no_flip_when_already_above(self, make_ctx):
         """Ratio is above 0.5 all the time → no crossing → all False."""
         ratios = [0.60] * 10
         ctx = self._make_tbv_ctx(make_ctx, ratios)
-        mask = delta_flip_positive(ctx, flip_window=1, neutral_threshold=0.50)
-        # First bar has no previous → NaN → False; rest are above but were
-        # already above (no transition)
+        mask = delta_flip_positive(ctx, window=2, flip_from_below=0.50, flip_to_at_least=0.55)
+        # Prior window always above → prior_ratio >= flip_from_below → no flip
         assert not mask.any()
 
     def test_no_flip_when_always_below(self, make_ctx):
         """Ratio is always below 0.5 → never crosses → all False."""
         ratios = [0.40] * 10
         ctx = self._make_tbv_ctx(make_ctx, ratios)
-        mask = delta_flip_positive(ctx, flip_window=1, neutral_threshold=0.50)
+        mask = delta_flip_positive(ctx, window=2, flip_from_below=0.50, flip_to_at_least=0.55)
         assert not mask.any()
 
     def test_multiple_flips_detected(self, make_ctx):
         """Two distinct flip events should both be detected."""
-        ratios = [0.40, 0.40, 0.60, 0.40, 0.40, 0.60, 0.40]
+        # window=2: prior=[i-3,i-2], current=[i-1,i]
+        # need 2 low bars, then 2 high bars for each flip
+        ratios = [0.40, 0.40, 0.60, 0.60, 0.40, 0.40, 0.60, 0.60]
         ctx = self._make_tbv_ctx(make_ctx, ratios)
-        mask = delta_flip_positive(ctx, flip_window=1, neutral_threshold=0.50)
-        assert bool(mask.iloc[2]) is True   # first flip
-        assert bool(mask.iloc[5]) is True   # second flip
+        mask = delta_flip_positive(ctx, window=2, flip_from_below=0.50, flip_to_at_least=0.55)
+        assert bool(mask.iloc[3]) is True   # first flip (bars 2+3 high, bars 0+1 low)
+        assert bool(mask.iloc[7]) is True   # second flip (bars 6+7 high, bars 4+5 low)
 
     def test_rolling_window_smooths_single_noisy_bar(self, make_ctx):
-        """flip_window=3 means a single spike bar doesn't trigger alone."""
+        """window=3 means a single spike bar doesn't trigger alone."""
         # 7 bars at 0.40, then 1 at 0.80, then back to 0.40
-        # With window=3, rolling mean at bar 7 = (0.40+0.40+0.80)/3 = 0.533 > 0.5
-        # But bar 6 rolling = (0.40+0.40+0.40)/3 = 0.40 ≤ 0.5 → flip!
+        # With window=3, rolling sum at bar 7 = (0.40+0.40+0.80)/3 ≈ 0.533 ≥ 0.52
+        # Prior window at bar 7 = bars [4,5,6] = all 0.40 < 0.50 → flip!
         ratios = [0.40] * 7 + [0.80] + [0.40]
         ctx = self._make_tbv_ctx(make_ctx, ratios)
-        mask = delta_flip_positive(ctx, flip_window=3, neutral_threshold=0.50)
+        mask = delta_flip_positive(ctx, window=3, flip_from_below=0.50, flip_to_at_least=0.52)
         assert bool(mask.iloc[7]) is True
 
     def test_insufficient_history_returns_false(self, make_ctx):
-        """With only 2 bars and flip_window=5, nothing can flip."""
+        """With only 2 bars and window=5, nothing can flip."""
         ratios = [0.60, 0.60]
         ctx = self._make_tbv_ctx(make_ctx, ratios)
-        mask = delta_flip_positive(ctx, flip_window=5, neutral_threshold=0.50)
+        mask = delta_flip_positive(ctx, window=5, flip_from_below=0.50, flip_to_at_least=0.55)
         assert not mask.any()
 
     def test_invalid_flip_window_raises(self, make_ctx):
         ctx = self._make_tbv_ctx(make_ctx, [0.5] * 5)
         with pytest.raises(ValueError):
-            delta_flip_positive(ctx, flip_window=0)
+            delta_flip_positive(ctx, window=1)  # must be >= 2
 
     def test_invalid_threshold_raises(self, make_ctx):
         ctx = self._make_tbv_ctx(make_ctx, [0.5] * 5)
         with pytest.raises(ValueError):
-            delta_flip_positive(ctx, neutral_threshold=1.0)
+            delta_flip_positive(ctx, flip_from_below=1.0)
         with pytest.raises(ValueError):
-            delta_flip_positive(ctx, neutral_threshold=0.0)
+            delta_flip_positive(ctx, flip_from_below=0.0)
 
     def test_zero_volume_bars_treated_as_neutral(self, make_ctx):
-        """Zero-volume bars fill to neutral threshold — do not trigger alone."""
+        """Zero-volume bars fill to neutral (0.5) — do not trigger alone."""
         n = 10
-        ratios = [0.50] * n  # tbv / vol = 0.5 always → never crosses
-        ctx = self._make_tbv_ctx(make_ctx, ratios)
         # Override volume to zero for the last 3 bars
         vols = [1000.0] * (n - 3) + [0.0, 0.0, 0.0]
         tbv  = [500.0] * (n - 3) + [0.0, 0.0, 0.0]
@@ -184,8 +182,8 @@ class TestDeltaFlipPositive:
             close=[100.0] * n,
             overrides={"volume": vols, "taker_buy_base_volume": tbv},
         )
-        mask = delta_flip_positive(ctx2, flip_window=1, neutral_threshold=0.50)
-        # Zero-vol bars fill to neutral (0.5) which is not > 0.5 → no flip
+        mask = delta_flip_positive(ctx2, window=2, flip_from_below=0.50, flip_to_at_least=0.55)
+        # Zero-vol bars fill to neutral (0.5) which is < flip_to_at_least → no flip
         assert not mask.any()
 
 
@@ -199,10 +197,11 @@ def test_var_pattern_registered():
     pat = get_pattern("volume-absorption-reversal-v1")
     assert pat.slug == "volume-absorption-reversal-v1"
     phase_ids = {p.phase_id for p in pat.phases}
-    assert phase_ids == {"SELLING_CLIMAX", "ABSORPTION", "BASE_FORMATION", "BREAKOUT"}
-    assert pat.entry_phase == "BASE_FORMATION"
-    assert pat.target_phase == "BREAKOUT"
-    assert "ohlcv_only" in pat.tags
+    # CTO fix (W-0103 Slice 3): BASE_FORMATION→DELTA_FLIP, BREAKOUT→MARKUP
+    assert phase_ids == {"SELLING_CLIMAX", "ABSORPTION", "DELTA_FLIP", "MARKUP"}
+    assert pat.entry_phase == "DELTA_FLIP"
+    assert pat.target_phase == "MARKUP"
+    assert "spot_compatible" in pat.tags
 
 
 def test_var_block_evaluator_registered():

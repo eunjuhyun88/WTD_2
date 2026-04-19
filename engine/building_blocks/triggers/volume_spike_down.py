@@ -1,25 +1,22 @@
-"""Trigger: high-volume selling pressure — large down-move with volume spike.
+"""Trigger: volume spike on a downward bar — "selling climax".
 
-Rationale:
-    Volume Absorption Reversal (VAR) requires a SELLING_CLIMAX anchor: a bar
-    or window where sellers are exhausting themselves at high volume while
-    pushing price sharply lower. This is the starting event that sets up the
-    subsequent absorption and markup phases.
+Detects a capitulation-style bar where volume explodes relative to recent
+history AND price closes below open by at least `price_drop_pct`. This is
+the entry event for the Volume Absorption Reversal (VAR) pattern:
 
-    A selling climax is characterised by:
-      (a) Volume well above the recent average (panic / capitulation),
-      (b) Price closing materially lower than the open (directional sell).
+    SELLING_CLIMAX (this block) → ABSORPTION → BASE → MARKUP
 
-    Literature:
-      - Wyckoff (1911): "Selling Climax" is the terminal event of a decline;
-        enormous volume + wide spread down bar.
-      - Edwards & Magee (1948): climactic selling volume often 2-5x average.
-      - Murphy (1999): high-volume down bars mark exhaustion, not acceleration.
+Distinct from ``volume_spike`` in two ways:
+  1. Directional: requires a bearish bar (close < open by threshold).
+  2. Self-contained: computes against the same-bar percentage drop rather
+     than requiring ``features['price_change_1h']`` to be present.
 
-    In practice we require close < open (the bar is red) AND current volume
-    exceeds `multiple` × mean of the prior `vs_window` bars.  Both conditions
-    must hold simultaneously so a flat-to-up bar with heavy volume (e.g. a
-    breakout) does not trigger.
+References:
+  - Wyckoff (1931), "Selling Climax" — high-volume single-bar panic marks
+    the end of the previous downtrend.
+  - Koutmos (2019), Finance Research Letters 28 — classifies hourly
+    intra-bar moves above 3% as "significant" for perpetual-style
+    instruments on altcoins.
 """
 from __future__ import annotations
 
@@ -33,44 +30,40 @@ def volume_spike_down(
     *,
     multiple: float = 3.0,
     vs_window: int = 24,
+    price_drop_pct: float = 0.03,
 ) -> pd.Series:
-    """Return a bool Series where a bar is a high-volume down bar.
-
-    True when:
-      - close < open (red / bearish bar), AND
-      - volume >= `multiple` × mean(volume over prior `vs_window` bars).
-
-    Past-only: the rolling window is [t-vs_window : t-1], so the signal is
-    fully causal — no look-ahead.
+    """Return a bool Series where this bar is a down-bar with volume >=
+    `multiple` × average past volume.
 
     Args:
-        ctx: Per-symbol Context. ``ctx.klines`` must have ``open``,
-            ``close``, and ``volume`` columns.
-        multiple: Volume multiplier vs the prior average. Must be > 0.
-            Default 3.0 (3× average) flags obvious capitulation while
-            staying selective enough to avoid noise.
-        vs_window: Rolling window length (bars). Must be > 0. Default 24
-            (one day of 1h bars).
+        ctx: Per-symbol Context. ``ctx.klines`` must have columns
+            ``volume``, ``open``, ``close``.
+        multiple: Multiplier vs average volume. Must be > 0. Default 3.0.
+        vs_window: Past window length in bars. Must be > 0. Default 24.
+        price_drop_pct: Minimum fractional drop from open to close required
+            for the bar to count as a down-bar. Must be > 0. Default 0.03
+            (3%).
 
     Returns:
-        pd.Series[bool] aligned to ctx.features.index. True on bars where
-        a selling climax is detected.
+        pd.Series[bool] aligned to ctx.features.index.
     """
     if multiple <= 0:
         raise ValueError(f"multiple must be > 0, got {multiple}")
     if vs_window <= 0:
         raise ValueError(f"vs_window must be > 0, got {vs_window}")
+    if price_drop_pct <= 0:
+        raise ValueError(f"price_drop_pct must be > 0, got {price_drop_pct}")
 
-    o = ctx.klines["open"].astype(float)
-    c = ctx.klines["close"].astype(float)
     vol = ctx.klines["volume"].astype(float)
+    open_ = ctx.klines["open"].astype(float)
+    close = ctx.klines["close"].astype(float)
 
-    # Bearish bar: close strictly below open
-    is_down = c < o
+    avg = vol.shift(1).rolling(vs_window, min_periods=vs_window).mean()
+    spike = vol >= multiple * avg
 
-    # Volume spike vs past average (past-only — shift by 1 before rolling)
-    avg_vol = vol.shift(1).rolling(vs_window, min_periods=vs_window).mean()
-    is_spike = vol >= multiple * avg_vol
+    # Fractional drop from open to close; positive number means price fell.
+    drop_frac = (open_ - close) / open_.replace(0, float("nan"))
+    is_down_bar = drop_frac >= price_drop_pct
 
-    result = is_down & is_spike
-    return result.reindex(ctx.features.index, fill_value=False).astype(bool)
+    mask = spike & is_down_bar
+    return mask.fillna(False).reindex(ctx.features.index, fill_value=False).astype(bool)

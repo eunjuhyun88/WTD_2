@@ -16,6 +16,7 @@ from building_blocks.triggers.gap_up import gap_up
 from building_blocks.triggers.recent_decline import recent_decline
 from building_blocks.triggers.recent_rally import recent_rally
 from building_blocks.triggers.volume_spike import volume_spike
+from building_blocks.triggers.volume_spike_down import volume_spike_down
 
 __all__ = [
     "breakout_above_high",
@@ -27,4 +28,5 @@ __all__ = [
     "recent_decline",
     "recent_rally",
     "volume_spike",
+    "volume_spike_down",
 ]

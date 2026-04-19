@@ -1,0 +1,93 @@
+{
+    "benchmark_pack_id": "volume-absorption-reversal-v1__var-v1",
+    "pattern_slug": "volume-absorption-reversal-v1",
+    "candidate_timeframes": ["1h"],
+    "cases": [
+        {
+            "symbol": "FARTCOINUSDT",
+            "timeframe": "1h",
+            "start_at": "2025-10-07T00:00:00+00:00",
+            "end_at": "2025-10-25T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "DELTA_FLIP",
+                "MARKUP"
+            ],
+            "role": "reference",
+            "notes": [
+                "FARTCOIN Oct 2025 Volume Absorption Reversal. +34% fwd peak from entry.",
+                "SELLING_CLIMAX: Oct 10 21:00 UTC — vol=9.5x avg (open 0.5055 → close 0.4056, -19.8%).",
+                "ABSORPTION: Oct 11-12, price stabilises 0.33-0.39, volume declines to 30-50M/h.",
+                "DELTA_FLIP (entry): Oct 12 12:00, tbv_ratio crosses 0.52+ after sub-0.48 window.",
+                "MARKUP (target): Oct 12 14:00-17:00, breakout above post-climax range high. +34% 48h peak."
+            ],
+            "case_id": "var-v1-fartcoin-oct2025"
+        },
+        {
+            "symbol": "1000PEPEUSDT",
+            "timeframe": "1h",
+            "start_at": "2025-10-07T00:00:00+00:00",
+            "end_at": "2025-10-22T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "DELTA_FLIP",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "1000PEPE Oct 2025 VAR — same macro crash as FARTCOIN reference, different asset.",
+                "SELLING_CLIMAX: Oct 10 21:00 UTC — vol=10.0x avg (open 0.00812 → close 0.00682, -16.1%).",
+                "Cross-asset validation: tests pattern fires on high-liquidity meme token.",
+                "All 4 phases complete: MARKUP fires Oct 12-13. Holdout confirms no FARTCOIN overfit."
+            ],
+            "case_id": "var-v1-1000pepe-oct2025"
+        },
+        {
+            "symbol": "WIFUSDT",
+            "timeframe": "1h",
+            "start_at": "2024-08-01T00:00:00+00:00",
+            "end_at": "2024-08-22T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "DELTA_FLIP",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "WIFUSDT Aug 2024 VAR — global risk-off event (Yen carry trade unwind, Aug 5 crypto crash).",
+                "SELLING_CLIMAX: Aug 5 2024 — vol=7.1x avg, drop=5.8%.",
+                "Temporal holdout: 14 months before the 2025 reference cases. Different market cycle.",
+                "Strong forward return: +45.1% peak in 48h from entry. Confirms pattern works across cycles.",
+                "Replaced BONK Jan 2024 which had weak forward return and no MARKUP completion — W-0103 CTO fix Slice 3."
+            ],
+            "case_id": "var-v1-wif-aug2024"
+        },
+        {
+            "symbol": "KOMAUSDT",
+            "timeframe": "1h",
+            "start_at": "2025-10-03T00:00:00+00:00",
+            "end_at": "2025-10-22T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "DELTA_FLIP",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "KOMAUSDT Oct 2025 VAR — strong selling climax (vol=11.2x avg, drop=12.9%).",
+                "SELLING_CLIMAX: Oct 7 2025 — strongest climax in scan (11.2x vol, -12.9% candle).",
+                "Forward return: +86.5% 48h peak from entry. Highest-confidence VAR case in cache.",
+                "Cross-asset: small-cap KOMA vs larger meme tokens — tests pattern on lower-liquidity asset.",
+                "Replaced PEPE-Nov 2025 which had weak climax (7x, -6.2%) and DELTA_FLIP never fired — W-0103 CTO fix Slice 3."
+            ],
+            "case_id": "var-v1-koma-oct2025"
+        }
+    ],
+    "created_at": "2026-04-19T00:00:00+00:00",
+    "_generated_by": "Manual — W-0103 Slice 3 (CTO redesign: breakout_from_pullback_range + strong holdouts)",
+    "_notes": "5th pattern. Pure OHLCV + taker buy volume. 4 cases: 1 reference + 3 holdouts. v2 pack replaces BONK (weak fwd) and PEPE-Nov (no DELTA_FLIP) with WIFUSDT Aug 2024 (+45.1%) and KOMAUSDT Oct 2025 (+86.5%). All 4 are confirmed strong VAR events. Blocks: volume_spike_down, volume_dryup, delta_flip_var (w=3), breakout_from_pullback_range."
+}
