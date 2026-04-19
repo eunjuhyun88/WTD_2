@@ -728,6 +728,66 @@ ALPHA_CONFLUENCE = PatternObject(
     tags=["multi_layer", "confluence", "aka_alpha_terminal", "cvd", "funding", "bollinger"],
 )
 
+RADAR_GOLDEN_ENTRY = PatternObject(
+    slug="radar-golden-entry-v1",
+    name="Signal Radar 골든 진입 패턴 (GOLDEN 신호형)",
+    description=(
+        "바이낸스 ALPHA HUNTER V4.0 PRO의 GOLDEN 신호 조건을 WTD 빌딩 블록으로 이식. "
+        "볼륨 가속(필터1) + CVD 방향성(필터2) + BTC 상대강도(필터3) 복합 충족 시 진입. "
+        "fakeout 필터: cvd_price_divergence가 있으면 진입 차단 (가격 고점 + CVD 하락 = 분산 구조)."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="MOMENTUM_BASE",
+            label="모멘텀 기저 — 볼륨 가속 확인 (필터 1)",
+            # Signal Radar filter 1: velocity >= 3.0 (big volume vs avg)
+            # volume_surge_bull = vol_acceleration(3봉/24봉) >= surge_factor AND bullish bar
+            required_blocks=["volume_surge_bull"],
+            # BTC 상대강도: alt velocity / BTC velocity >= 1.2 (필터 4)
+            required_any_groups=[["relative_velocity_bull", "alt_btc_accel_ratio"]],
+            soft_blocks=["recent_rally"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SIGNAL_ENTRY",
+            label="진입 신호 — CVD 방향성 + fakeout 차단 (필터 2+3)",
+            # Signal Radar filter 2: CVD > dynCvdTarget AND NOT fakeout
+            # delta_flip_positive = CVD turned net-buying (taker flow reversal)
+            # absorption_signal = heavy net-buying while price flat (accumulation)
+            required_blocks=[],
+            required_any_groups=[
+                ["delta_flip_positive", "absorption_signal"],
+            ],
+            soft_blocks=[
+                # OB 불균형 (필터 3 근사): orderbook bid 달러 >> ask 달러
+                "orderbook_imbalance_ratio",
+                "higher_lows_sequence",
+                "bollinger_expansion",
+            ],
+            # fakeout disqualifier: price at high but CVD declining = distribution
+            disqualifier_blocks=["cvd_price_divergence"],
+            score_weights={
+                "delta_flip_positive": 0.50,
+                "absorption_signal": 0.50,
+                "orderbook_imbalance_ratio": 0.20,
+                "higher_lows_sequence": 0.15,
+                "bollinger_expansion": 0.15,
+            },
+            phase_score_threshold=0.50,
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="SIGNAL_ENTRY",
+    target_phase="SIGNAL_ENTRY",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["signal_radar", "golden", "momentum", "cvd", "fakeout_filter", "velocity"],
+)
+
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
@@ -738,6 +798,7 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     GAP_FADE_SHORT.slug: GAP_FADE_SHORT,
     VOLATILITY_SQUEEZE_BREAKOUT.slug: VOLATILITY_SQUEEZE_BREAKOUT,
     ALPHA_CONFLUENCE.slug: ALPHA_CONFLUENCE,
+    RADAR_GOLDEN_ENTRY.slug: RADAR_GOLDEN_ENTRY,
 }
 
 def get_pattern(slug: str) -> PatternObject:
