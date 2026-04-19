@@ -4,10 +4,8 @@
 
   interface Props {
     verdict: TerminalVerdict;
-    symbol?: string;
-    timeframe?: string;
   }
-  let { verdict, symbol, timeframe }: Props = $props();
+  let { verdict }: Props = $props();
 
   const dirColor = { bullish: '#4ade80', bearish: '#f87171', neutral: 'rgba(247,242,234,0.5)' };
   const dirLabel = { bullish: 'BULLISH', bearish: 'BEARISH', neutral: 'NEUTRAL' };
@@ -42,7 +40,6 @@
     letter-spacing: 0.08em; color: var(--dir-color);
   }
   .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dir-color); }
-  .meta { font-family: var(--sc-font-mono); font-size: 11px; color: var(--sc-text-2); }
   .meta-right { margin-left: auto; }
   .reason { font-size: 13px; color: var(--sc-text-1); line-height: 1.4; margin: 0; }
   .conf-row { display: flex; align-items: center; gap: 12px; }

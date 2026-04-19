@@ -67,7 +67,7 @@
   </div>
 
   <!-- Verdict -->
-  <VerdictHeader {verdict} symbol={asset.symbol} timeframe="1H" />
+  <VerdictHeader {verdict} />
 
   <!-- Action strip -->
   <ActionStrip action={verdict.action} invalidation={verdict.invalidation} avoid={verdict.against[0]} />
