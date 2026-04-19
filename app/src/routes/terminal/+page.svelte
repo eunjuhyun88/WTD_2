@@ -13,6 +13,7 @@
   import { onMount, onDestroy, untrack } from 'svelte';
   import { viewportTier } from '$lib/stores/viewportTier';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
+  import { terminalState } from '$lib/stores/terminalState';
   import {
     addIndicator as addChartIndicator,
     removeIndicator as removeChartIndicator,
@@ -52,6 +53,7 @@
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import {
     fetchPatternCaptures,
+    createPatternCapture,
   } from '$lib/api/terminalPersistence';
   import { fetchTerminalSession } from '$lib/api/terminalSession';
   import {
@@ -1054,6 +1056,7 @@
   let trendingInterval: ReturnType<typeof setInterval>;
   let readPathInterval: ReturnType<typeof setInterval>;
   let alertsInterval: ReturnType<typeof setInterval>;
+  let peekCapturesInterval: ReturnType<typeof setInterval>;
   let eventsInterval: ReturnType<typeof setInterval>;
   let patternInterval: ReturnType<typeof setInterval>;
   let bootstrapTimers: Array<ReturnType<typeof setTimeout>> = [];
@@ -1116,6 +1119,7 @@
     loadTerminalPersistenceState();
     loadEvents();
     loadPeekCaptures();
+    peekCapturesInterval = setInterval(() => runIfVisible(loadPeekCaptures), 120_000);
     for (const item of buildTerminalBootstrapTasks({
       loadTrending,
       loadNews,
@@ -1158,6 +1162,7 @@
     clearInterval(alertsInterval);
     clearInterval(eventsInterval);
     clearInterval(patternInterval);
+    clearInterval(peekCapturesInterval);
     if (exportPollTimer) clearInterval(exportPollTimer);
     bootstrapTimers.forEach((timer) => clearTimeout(timer));
     bootstrapTimers = [];
@@ -1260,6 +1265,14 @@
   let hasActiveSavedAlert = $derived.by(() => {
     if (!activeSymbol) return false;
     return Boolean(findTerminalAlertRule(savedAlertRules, activeSymbol, symbolToTF(gTf)));
+  });
+
+  // Sync 24h-change to terminalState canonical store
+  $effect(() => {
+    const change = activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null;
+    if (change !== null) {
+      terminalState.setLast24hChange(change);
+    }
   });
 
   // ── Analysis rail mode ────────────────────────────────────────
@@ -1437,12 +1450,21 @@
   async function handlePeekSaveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
     const symbol = activeSymbol || pairToSymbol(gPair);
     const timeframe = symbolToTF(gTf);
-    console.log('[peek] saveJudgment (UI stub)', {
+    if (!symbol) return;
+    const data = analysisData;
+    await createPatternCapture({
       symbol,
       timeframe,
-      ...input,
+      contextKind: 'symbol',
+      triggerOrigin: 'manual',
+      note: input.note || undefined,
+      snapshot: { freshness: 'live' },
+      decision: {
+        verdict: input.verdict,
+        confidence: (data as any)?.p_win ?? undefined,
+      },
+      sourceFreshness: { manual: new Date().toISOString() },
     });
-    // TODO: POST /api/terminal/pattern-captures when backend is ready.
     await loadPeekCaptures();
   }
 
@@ -1811,7 +1833,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
+    flex: 1;
     min-height: 0;
     overflow: hidden;
   }
