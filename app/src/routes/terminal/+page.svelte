@@ -105,8 +105,12 @@
   import SaveStrip from '../../components/terminal/workspace/SaveStrip.svelte';
   import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
+  import PeekDrawer from '../../components/terminal/peek/PeekDrawer.svelte';
+  import ScanGrid from '../../components/terminal/peek/ScanGrid.svelte';
+  import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
+  import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
 
   // ─── State ──────────────────────────────────────────────────
 
@@ -167,6 +171,11 @@
   let labCtaSlug = $state<string | null>(null);
   let patternCaptureLoading = $state(false);
   let exportPollTimer: ReturnType<typeof setInterval> | null = null;
+
+  // ── PEEK drawer state ──────────────────────────────────────
+  let peekCaptures = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
+  let peekSimilar = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
+  let peekLoadingSimilar = $state(false);
 
   // ── Capture modal ──────────────────────────────────────────
   // On desktop the persistent left rail is always shown; drawer is for tablet/mobile only
@@ -766,6 +775,38 @@
     } catch {}
   }
 
+  // ── PEEK drawer loaders ────────────────────────────────────
+  async function loadPeekCaptures() {
+    try {
+      peekCaptures = await fetchPatternCaptures({ limit: 60 });
+    } catch (e) {
+      console.error('[peek] captures load failed:', e);
+    }
+  }
+
+  async function loadPeekSimilar(symbol: string, tf: string) {
+    if (!symbol) return;
+    peekLoadingSimilar = true;
+    try {
+      const draft = {
+        symbol,
+        timeframe: tf,
+        triggerOrigin: 'manual' as const,
+        markers: [],
+      } as any;
+      try {
+        const matches = await fetchSimilarPatternCaptures(draft);
+        peekSimilar = (matches ?? []).map((m: any) => m.record ?? m).filter(Boolean);
+      } catch {
+        peekSimilar = peekCaptures.filter(
+          (r) => r.symbol.toUpperCase().includes(symbol.replace(/USDT$/, ''))
+        );
+      }
+    } finally {
+      peekLoadingSimilar = false;
+    }
+  }
+
   // ─── SSE Command Flow ─────────────────────────────────────────
 
   async function sendCommand(text: string, _files?: File[]) {
@@ -1074,6 +1115,7 @@
     loadTerminalReadPath();
     loadTerminalPersistenceState();
     loadEvents();
+    loadPeekCaptures();
     for (const item of buildTerminalBootstrapTasks({
       loadTrending,
       loadNews,
@@ -1151,6 +1193,7 @@
       loadActiveReadPath(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
       loadEvents();
+      loadPeekSimilar(symbol, symbolToTF(tf));
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
@@ -1162,6 +1205,7 @@
       loadActiveReadPath(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
       loadEvents();
+      loadPeekSimilar(symbol, symbolToTF(tf));
     }
   });
 
@@ -1374,6 +1418,43 @@
   async function refreshWatchlistForMobile() {
     await Promise.all([loadTerminalPersistenceState(), loadTrending()]);
   }
+
+  // ── PEEK drawer derived + handlers ────────────────────────
+  const peekAnalyzeCount = $derived(analysisData?.verdict ? 1 : 0);
+  const peekScanCount = $derived(scannerAlerts.length);
+  const peekJudgeCount = $derived(peekCaptures.filter((c: any) => {
+    const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
+    return !hasOutcome;
+  }).length);
+
+  const peekVerdict = $derived(analysisData?.verdict ?? null);
+  const peekEntry = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
+  const peekStop = $derived((analysisData as any)?.verdict?.stop ?? (analysisData as any)?.deep?.stop ?? null);
+  const peekTarget = $derived((analysisData as any)?.verdict?.target ?? (analysisData as any)?.deep?.target ?? null);
+  const peekPWin = $derived(analysisData?.p_win ?? null);
+  const peekLast = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
+
+  async function handlePeekSaveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
+    const symbol = activeSymbol || pairToSymbol(gPair);
+    const timeframe = symbolToTF(gTf);
+    console.log('[peek] saveJudgment (UI stub)', {
+      symbol,
+      timeframe,
+      ...input,
+    });
+    // TODO: POST /api/terminal/pattern-captures when backend is ready.
+    await loadPeekCaptures();
+  }
+
+  async function handlePeekRejudge(input: { captureId: string; outcome: 'correct' | 'wrong' | 'partial' | 'timeout'; note: string }) {
+    console.log('[peek] rejudge (UI stub)', input);
+    // TODO: PATCH /api/terminal/pattern-captures/[id] when backend route exists.
+    await loadPeekCaptures();
+  }
+
+  function handlePeekOpenCapture(record: any) {
+    setActivePair(record.symbol.replace(/USDT$/, '') + '/USDT');
+  }
 </script>
 
 <svelte:head>
@@ -1386,11 +1467,112 @@
 </svelte:head>
 
 <!-- ═══════════════════════════════════════════════════ -->
-<!-- Terminal Shell (W-0086: TerminalShell wrapper)      -->
+<!-- PEEK layout (chart-first + bottom drawer) -->
 <!-- ═══════════════════════════════════════════════════ -->
 
-<!-- Market drawer — overlay for tablet/mobile only; desktop uses persistent left rail -->
-{#if !isDesktop}
+<div class="surface-page terminal-page-peek">
+  <!-- Command bar -->
+  <section class="terminal-shell-head">
+    <TerminalCommandBar
+      assetsCount={boardAssets.length}
+      marketRailOpen={showLeftRail}
+      onToggleMarketRail={toggleLeftRail}
+      price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
+      change24h={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+    />
+  </section>
+
+  <!-- Chart + SaveStrip + PEEK drawer -->
+  <main class="peek-main">
+    <div class="chart-and-strip" bind:this={chartWorkspaceEl}>
+      <ChartBoard
+        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+        tf={symbolToTF(gTf)}
+        verdictLevels={chartLevels}
+        initialData={activeChartPayload}
+        depthSnapshot={readPathDepth}
+        liqSnapshot={readPathLiq}
+        quantRegime={boardModel.quantRegime}
+        cvdDivergence={boardModel.cvdDivergence}
+        change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+        contextMode="chart"
+        onCaptureSaved={handleCaptureSaved}
+        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+      />
+      <SaveStrip
+        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+        tf={symbolToTF(gTf)}
+        ohlcvBars={ohlcvBars}
+        onSaved={handleCaptureSaved}
+      />
+      {#if showLabCta}
+        <div class="lab-cta-banner">
+          <span class="lab-cta-check">✓</span>
+          <span class="lab-cta-text">Setup saved</span>
+          <div class="lab-cta-actions">
+            <a class="lab-cta-link lab-cta-link--dash" href="/dashboard">Dashboard →</a>
+            <a class="lab-cta-link" href={labCtaSlug ? `/lab?slug=${labCtaSlug}` : '/lab'}>Lab →</a>
+          </div>
+          <button class="lab-cta-close" onclick={() => showLabCta = false} aria-label="Dismiss">×</button>
+        </div>
+      {/if}
+    </div>
+
+    <!-- PEEK drawer — 3-tab bottom overlay -->
+    <PeekDrawer analyzeCount={peekAnalyzeCount} scanCount={peekScanCount} judgeCount={peekJudgeCount}>
+      <svelte:fragment slot="analyze">
+        <TerminalContextPanel
+          analysisData={activeAnalysisData}
+          newsData={newsData}
+          activeTab={activeAnalysisTab}
+          onTabChange={handleAnalysisTabChange}
+          onAction={sendCommand}
+          onPinToggle={handlePinToggle}
+          onAlertToggle={handleAlertToggle}
+          onRetry={handleRetryAnalysis}
+          isPinned={isActivePinned}
+          hasSavedAlert={hasActiveSavedAlert}
+          bars={ohlcvBars}
+          {layerBarsMap}
+          {patternRecallMatches}
+        />
+      </svelte:fragment>
+
+      <svelte:fragment slot="scan">
+        <ScanGrid
+          alerts={scannerAlerts}
+          similar={peekSimilar}
+          activeSymbol={activeSymbol || pairToSymbol(gPair)}
+          loadingSimilar={peekLoadingSimilar}
+          onOpenCapture={handlePeekOpenCapture}
+        />
+      </svelte:fragment>
+
+      <svelte:fragment slot="judge">
+        <JudgePanel
+          symbol={activeSymbol || pairToSymbol(gPair)}
+          timeframe={symbolToTF(gTf)}
+          verdict={peekVerdict}
+          entry={peekEntry}
+          stop={peekStop}
+          target={peekTarget}
+          pWin={peekPWin}
+          lastPrice={peekLast}
+          captures={peekCaptures}
+          saving={false}
+          onSaveJudgment={handlePeekSaveJudgment}
+          onRejudge={handlePeekRejudge}
+          onOpenCapture={handlePeekOpenCapture}
+        />
+      </svelte:fragment>
+    </PeekDrawer>
+  </main>
+</div>
+
+<!-- MOBILE: TerminalShell with mode routing (fallback, currently unused) -->
+{#if false}
+  <!-- Disabled until mobile support is added back -->
+  <!-- Market drawer — overlay for tablet/mobile only; desktop uses persistent left rail -->
   <MarketDrawer
     open={showLeftRail}
     onClose={toggleLeftRail}
@@ -1407,9 +1589,8 @@
     onQuery={handleQueryChip}
     onDeleteSavedAlert={handleDeleteSavedAlert}
   />
-{/if}
 
-<div class="surface-page terminal-page">
+  <div class="surface-page terminal-page">
   <TerminalShell
     showRail={true}
     railWidth={330}
@@ -1612,7 +1793,8 @@
     />
   {/snippet}
   </TerminalShell>
-</div>
+  </div>
+{/if}
 
 
 <PatternLibraryPanel
@@ -1632,6 +1814,26 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
+  }
+
+  /* PEEK layout for desktop */
+  .terminal-page-peek {
+    width: min(100%, calc(100% - 8px));
+    height: calc(100dvh - 8px);
+    display: flex;
+    flex-direction: column;
+    padding-top: 2px;
+    padding-bottom: max(4px, var(--sc-consent-reserved-h, 0px));
+    overflow: hidden;
+    background: var(--sc-bg-0, #0b0e14);
+    color: var(--sc-text-0, #f7f2ea);
+  }
+
+  .peek-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
   }
 
   .terminal-page {
