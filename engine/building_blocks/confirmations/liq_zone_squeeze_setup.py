@@ -1,17 +1,22 @@
-"""Confirmation: liquidation squeeze setup — longs are over-crowded.
+"""Confirmation: Liquidity cluster detected — price is consolidating.
 
-Detects when the market is loaded with long positions AND open interest is
-still rising, creating a fragile state where a small price drop triggers
-cascading long liquidations (or, from a contrarian view, a squeeze potential
-when shorts try to push it down and fail).
+Rationale:
+    On crypto futures, traders place limit orders at round numbers and
+    support/resistance zones. When price oscillates in a tight range,
+    order clusters accumulate in that zone. This liquidity zone persists
+    until price breaks out with volume.
 
-Logic derived from 아카 Alpha Terminal L5 Liquidation Estimate:
-  - funding_rate > threshold_fr → longs paying high funding (over-crowded)
-  - oi_change_1h > threshold_oi → fresh long positions still being added
+    GAP_FADE_SHORT uses this: after a gap up, price rejects if it consolidates
+    just above the gap. The tight range indicates liquidity zone at the gap level,
+    which sellers will breach to return to fair value.
 
-This is a confirmation block, not a reversal trigger: use in combination with
-price-action blocks (e.g., recent_decline, reclaim_after_dump) to identify
-when a bullish reversal will be amplified by short-squeeze dynamics.
+    Operationally: low(t-lookback to t) near high(t-lookback to t) indicates
+    a tight range where orders are stacked.
+
+    Literature:
+      - Wyckoff: "accumulation" and "distribution" zones form when price
+        oscillates in narrow ranges before breakout.
+      - Crypto microstructure: limit order book clustering at round numbers.
 """
 from __future__ import annotations
 
@@ -23,29 +28,45 @@ from building_blocks.context import Context
 def liq_zone_squeeze_setup(
     ctx: Context,
     *,
-    threshold_fr: float = 0.0005,
-    threshold_oi: float = 0.03,
+    lookback_bars: int = 8,
+    range_threshold: float = 0.01,
 ) -> pd.Series:
-    """Return a bool Series where funding_rate > threshold_fr AND
-    oi_change_1h > threshold_oi (longs crowded, OI still rising).
+    """Return a bool Series where price is consolidated in a tight range.
+
+    True when the range (high - low) over the lookback window is <= threshold
+    of the current price. Indicates a liquidity cluster / consolidation zone.
 
     Args:
-        ctx: Per-symbol Context.
-        threshold_fr: Minimum funding_rate to qualify as long-crowded.
-            Default 0.0005 (5 bps). 아카 L5 uses 0.05% = 0.0005. Must be > 0.
-        threshold_oi: Minimum oi_change_1h fraction for fresh longs being
-            added. Default 0.03 (3%). Must be > 0.
+        ctx: Per-symbol Context. ``ctx.klines`` must have columns
+            ``high``, ``low``, ``close``.
+        lookback_bars: Number of bars to measure range. Default 8.
+        range_threshold: Max range as fraction of current price.
+            Default 0.01 (1% range = tight squeeze).
 
     Returns:
-        pd.Series[bool] aligned to ctx.features.index.
+        pd.Series[bool] aligned to ctx.features.index. True where price
+        is in a tight consolidation.
     """
-    if threshold_fr <= 0:
-        raise ValueError(f"threshold_fr must be > 0, got {threshold_fr}")
-    if threshold_oi <= 0:
-        raise ValueError(f"threshold_oi must be > 0, got {threshold_oi}")
+    if lookback_bars < 2:
+        raise ValueError(f"lookback_bars must be >= 2, got {lookback_bars}")
+    if range_threshold <= 0 or range_threshold >= 1:
+        raise ValueError(
+            f"range_threshold must be in (0, 1), got {range_threshold}"
+        )
 
-    fr = ctx.features["funding_rate"]
-    oi = ctx.features["oi_change_1h"]
+    high = ctx.klines["high"].astype(float)
+    low = ctx.klines["low"].astype(float)
+    close = ctx.klines["close"].astype(float)
 
-    mask = (fr > threshold_fr) & (oi > threshold_oi)
-    return mask.fillna(False).reindex(ctx.features.index, fill_value=False).astype(bool)
+    # Range over lookback window
+    rolling_high = high.rolling(lookback_bars, min_periods=lookback_bars).max()
+    rolling_low = low.rolling(lookback_bars, min_periods=lookback_bars).min()
+    range_val = rolling_high - rolling_low
+
+    # Fractional range relative to current price
+    frac_range = range_val / close.replace(0, float("nan"))
+
+    # True where range is tight (below threshold)
+    squeezed = frac_range <= range_threshold
+
+    return squeezed.reindex(ctx.features.index, fill_value=False).astype(bool)
