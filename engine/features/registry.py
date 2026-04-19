@@ -104,7 +104,7 @@ MICROSTRUCTURE = register(FeatureGroup(
 ORDER_FLOW = register(FeatureGroup(
     name="order_flow",
     domain="microstructure",
-    output_columns=("cvd_state", "taker_buy_ratio_1h"),
+    output_columns=("cvd_state", "taker_buy_ratio_1h", "cvd_cumulative"),
     warmup_bars=0,
     input_columns=("volume", "taker_buy_base_volume"),
 ))

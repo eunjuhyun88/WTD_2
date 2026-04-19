@@ -282,3 +282,58 @@ def test_pattern_matches_vectorized_supports_in_operator():
         ],
     )
     assert p.matches_vectorized(df).all()
+
+
+def test_cvd_cumulative_in_features_table():
+    """cvd_cumulative must be present and monotonically non-trivial."""
+    k = _make_klines(MIN_HISTORY_BARS + 50)
+    df = compute_features_table(k, symbol="TEST")
+    assert "cvd_cumulative" in df.columns, "cvd_cumulative missing from feature table"
+    assert df["cvd_cumulative"].notna().all(), "cvd_cumulative contains NaN"
+
+
+def test_cvd_cumulative_direction():
+    """With all-buy klines cvd_cumulative should strictly increase."""
+    n = MIN_HISTORY_BARS + 30
+    idx = pd.date_range("2025-01-01", periods=n, freq="1h", tz="UTC")
+    close = pd.Series(100.0, index=idx)
+    volume = pd.Series(1000.0, index=idx)
+    k = pd.DataFrame(
+        {
+            "open": close,
+            "high": close * 1.001,
+            "low": close * 0.999,
+            "close": close,
+            "volume": volume,
+            "taker_buy_base_volume": volume,  # 100% buy — CVD always rising
+        },
+        index=idx,
+    )
+    df = compute_features_table(k, symbol="TEST")
+    # All-buy: every bar adds +volume to cumulative → strictly increasing
+    assert (df["cvd_cumulative"].diff().dropna() > 0).all(), (
+        "With all-buy bars cvd_cumulative should strictly increase"
+    )
+
+
+def test_cvd_cumulative_all_sell():
+    """With all-sell klines cvd_cumulative should strictly decrease."""
+    n = MIN_HISTORY_BARS + 30
+    idx = pd.date_range("2025-01-01", periods=n, freq="1h", tz="UTC")
+    close = pd.Series(100.0, index=idx)
+    volume = pd.Series(1000.0, index=idx)
+    k = pd.DataFrame(
+        {
+            "open": close,
+            "high": close * 1.001,
+            "low": close * 0.999,
+            "close": close,
+            "volume": volume,
+            "taker_buy_base_volume": pd.Series(0.0, index=idx),  # 0% buy
+        },
+        index=idx,
+    )
+    df = compute_features_table(k, symbol="TEST")
+    assert (df["cvd_cumulative"].diff().dropna() < 0).all(), (
+        "With all-sell bars cvd_cumulative should strictly decrease"
+    )
