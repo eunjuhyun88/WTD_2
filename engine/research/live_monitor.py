@@ -53,14 +53,17 @@ PHASE_ORDER = {
     # wyckoff-spring-reversal-v1 phases (W-0100)
     "SIGN_OF_STRENGTH": 0, "LAST_POINT_OF_SUPPORT": 1, "COMPRESSION_ZONE": 2,
     "SPRING": 3, "MARKUP": 4,
+    # volume-absorption-reversal-v1 phases (W-0103)
+    "BASE_FORMATION": 0, "ABSORPTION": 1, "SELLING_CLIMAX": 2,
 }
 
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
 # Add new patterns here as they are promoted.
 PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
-    ("tradoor-oi-reversal-v1",       "tradoor-oi-reversal-v1__canonical",               {"ACCUMULATION", "REAL_DUMP"}),
-    ("funding-flip-reversal-v1",     "funding-flip-reversal-v1__canonical__dur-long",   {"ENTRY_ZONE", "FLIP_SIGNAL"}),
-    ("wyckoff-spring-reversal-v1",   "wyckoff-spring-reversal-v1__canonical__dur-long", {"SPRING", "SIGN_OF_STRENGTH"}),
+    ("tradoor-oi-reversal-v1",          "tradoor-oi-reversal-v1__canonical",               {"ACCUMULATION", "REAL_DUMP"}),
+    ("funding-flip-reversal-v1",        "funding-flip-reversal-v1__canonical__dur-long",   {"ENTRY_ZONE", "FLIP_SIGNAL"}),
+    ("wyckoff-spring-reversal-v1",      "wyckoff-spring-reversal-v1__canonical__dur-long", {"SPRING", "SIGN_OF_STRENGTH"}),
+    ("whale-accumulation-reversal-v1",  "whale-accumulation-reversal-v1__canonical",       {"BOTTOM_CONFIRM", "WHALE_ACCUMULATION"}),
 ]
 
 
@@ -78,12 +81,27 @@ class LiveScanResult:
 
     @property
     def is_entry_candidate(self) -> bool:
-        # ACCUMULATION for TRADOOR; ENTRY_ZONE for FFR — both signal entry readiness
-        return self.phase in {"ACCUMULATION", "ENTRY_ZONE"} and self.entry_hit
+        # Entry phases across all promoted patterns:
+        #   TRADOOR:  ACCUMULATION
+        #   FFR:      ENTRY_ZONE
+        #   WSR:      SIGN_OF_STRENGTH
+        #   WHALE:    BOTTOM_CONFIRM
+        #   VAR:      BASE_FORMATION
+        _entry_phases = {
+            "ACCUMULATION", "ENTRY_ZONE", "SIGN_OF_STRENGTH",
+            "BOTTOM_CONFIRM", "BASE_FORMATION",
+        }
+        return self.phase in _entry_phases and self.entry_hit
 
     @property
     def is_watch(self) -> bool:
-        return self.phase in WATCH_PHASES | {"ENTRY_ZONE", "FLIP_SIGNAL"}
+        _watch = WATCH_PHASES | {
+            "ENTRY_ZONE", "FLIP_SIGNAL",       # FFR
+            "SPRING", "SIGN_OF_STRENGTH",      # WSR
+            "WHALE_ACCUMULATION",              # WHALE
+            "ABSORPTION",                      # VAR
+        }
+        return self.phase in _watch
 
     def to_dict(self) -> dict:
         d = asdict(self)
