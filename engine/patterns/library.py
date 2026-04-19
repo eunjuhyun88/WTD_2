@@ -295,20 +295,20 @@ WHALE_ACCUMULATION_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="WHALE_ACCUMULATION",
             label="세력 매집 — 숏 누적 + 개인 청산 유도",
-            # OI 급등+급락 + 스마트머니 매집 + 펀딩 극단 음수.
-            # oi_spike_with_dump: OI 급등 + 가격 급락 = 강제 청산 cascade
-            # smart_money_accumulation: OKX OnchainOS 대형 지갑 매집
-            # funding_extreme_short: 펀딩 극단 음수 = 숏 과적재
+            # required_any_groups 사용 — OR 시맨틱: 두 신호 중 하나면 충분.
+            # oi_spike_with_dump: OI 급등 + 가격 급락 = 강제 청산 cascade (Scenario A)
+            # funding_extreme_short: 펀딩 극단 음수 = 숏 과적재 (Scenario B)
+            # (두 신호가 동시에 발화하는 경우는 극히 드물므로 AND는 비현실적.)
             # (funding_extreme_short is an alias registered in block_evaluator
             #  that calls funding_extreme(direction="short_overheat").)
-            required_blocks=[
-                "oi_spike_with_dump",
-                "smart_money_accumulation",
-                "funding_extreme_short",
-            ],
+            # smart_money_accumulation (soft): OKX live API — 과거 데이터 없음,
+            #   라이브 모니터링에서만 스코어 보너스.
+            required_blocks=[],
+            required_any_groups=[["oi_spike_with_dump", "funding_extreme_short"]],
+            soft_blocks=["smart_money_accumulation"],
             optional_blocks=["recent_decline"],
             disqualifier_blocks=[],
-            min_bars=1, max_bars=12,
+            min_bars=1, max_bars=24,
             timeframe="1h",
         ),
         PhaseCondition(
@@ -342,13 +342,12 @@ WHALE_ACCUMULATION_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="ENTRY_CONFIRM",
             label="진입 확정 — 기관 매수 + 전 거래소 동반 상승",
-            # coinbase_premium_positive: Coinbase-Binance 스프레드 양수
-            #   = 미국 기관(스팟) 매수 압력 (진짜 반등의 leading signal)
-            # total_oi_spike(increase): Binance+Bybit+OKX 집계 OI 동반 상승
-            # oi_exchange_divergence(low_concentration, 선택): 단일 거래소가
-            #   혼자 끄는 반등이 아니라 전 거래소에서 합의된 반등.
-            required_blocks=["coinbase_premium_positive", "total_oi_spike"],
-            optional_blocks=["oi_exchange_divergence"],
+            # oi_hold_after_spike: 선행 OI 스파이크 후 보유 유지 = 세력이 청산 안 함.
+            #   Binance perp oi_change_1h/24h 기반 — 역사 데이터 사용 가능.
+            # total_oi_spike (optional): 다거래소 동반 OI 상승 (fetch_exchange_oi 필요 — 라이브 전용).
+            # coinbase_premium_positive (optional): 기관 매수 확인 — 라이브 전용.
+            required_blocks=["oi_hold_after_spike"],
+            optional_blocks=["total_oi_spike", "coinbase_premium_positive", "oi_exchange_divergence"],
             disqualifier_blocks=[],
             min_bars=1, max_bars=12,
             timeframe="1h",
