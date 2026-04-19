@@ -1394,8 +1394,8 @@
           Save Setup
         </button>
         {#if savedCaptureId}
-          <a class="capture-open-btn" href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}`}>
-            Open in Lab
+          <a class="capture-open-btn" href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}&autorun=1`}>
+            이거 찾아줘 →
           </a>
         {/if}
       </div>
@@ -1541,7 +1541,7 @@
 <!-- Toast: saved confirmation -->
 {#if savedCaptureId}
   <div class="save-toast">
-    ✓ 캡처 저장됨 — <a href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}`} class="toast-link">랩에서 평가 시작 →</a>
+    ✓ 캡처 저장됨 — <a href={`/lab?captureId=${encodeURIComponent(savedCaptureId)}&autorun=1`} class="toast-link">이거 찾아줘 →</a>
   </div>
 {/if}
 
