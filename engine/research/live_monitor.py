@@ -53,6 +53,8 @@ PHASE_ORDER = {
     # wyckoff-spring-reversal-v1 phases (W-0100)
     "SIGN_OF_STRENGTH": 0, "LAST_POINT_OF_SUPPORT": 1, "COMPRESSION_ZONE": 2,
     "SPRING": 3, "MARKUP": 4,
+    # volume-absorption-reversal-v1 phases (W-0103 P0)
+    "DELTA_FLIP": 0, "ABSORPTION": 1, "SELLING_CLIMAX": 2,
 }
 
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
