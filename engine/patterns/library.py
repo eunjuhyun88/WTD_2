@@ -843,6 +843,59 @@ RADAR_GOLDEN_ENTRY = PatternObject(
     tags=["signal_radar", "golden", "momentum", "cvd", "fakeout_filter", "velocity"],
 )
 
+INSTITUTIONAL_DISTRIBUTION = PatternObject(
+    slug="institutional-distribution-v1",
+    name="기관 분배 숏 패턴 (CVD 이탈 + 유동성 약화형)",
+    description=(
+        "매수 플로우가 상승 중인데 가격이 하락(CVD 스팟 괴리) → OI 약화 → "
+        "베어리시 진입 캔들. 기관이 매수세를 이용해 물량을 분배하는 구간을 포착. "
+        "코인베이스 프리미엄 약세 + 롱 과열 구간에서 강도 상승."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="CVD_DECOUPLING",
+            label="CVD 이탈 (매수 플로우 vs 가격 괴리)",
+            required_blocks=["recent_decline"],
+            required_any_groups=[
+                ["delta_flip_positive", "cvd_spot_price_divergence_bear"],
+            ],
+            disqualifier_blocks=["higher_lows_sequence"],
+            # higher_lows_sequence disqualifies: accumulation not distribution
+            min_bars=2, max_bars=16,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="LIQUIDITY_WEAKENING",
+            label="유동성 약화 (OI 확인)",
+            required_blocks=[],
+            soft_blocks=["oi_exchange_divergence", "oi_spike_with_dump", "total_oi_spike"],
+            # At least 1 soft OI block raises phase score; gating is via
+            # required_any_groups=[] so the phase can advance without them
+            # (OI data may be absent on some symbols).
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SHORT_ENTRY",
+            label="숏 진입 (베어리시 캔들 확인)",
+            required_blocks=[],
+            required_any_groups=[
+                ["bearish_engulfing", "long_upper_wick", "volume_surge_bear"],
+            ],
+            disqualifier_blocks=["bollinger_squeeze"],
+            # bollinger_squeeze: price compressed = not yet breaking down
+            min_bars=1, max_bars=4,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="SHORT_ENTRY",
+    target_phase="SHORT_ENTRY",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="short",
+    tags=["distribution", "short", "cvd", "institutional", "liquidity"],
+)
+
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
@@ -855,6 +908,7 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     ALPHA_CONFLUENCE.slug: ALPHA_CONFLUENCE,
     RADAR_GOLDEN_ENTRY.slug: RADAR_GOLDEN_ENTRY,
     COMPRESSION_BREAKOUT_REVERSAL.slug: COMPRESSION_BREAKOUT_REVERSAL,
+    INSTITUTIONAL_DISTRIBUTION.slug: INSTITUTIONAL_DISTRIBUTION,
 }
 
 def get_pattern(slug: str) -> PatternObject:
