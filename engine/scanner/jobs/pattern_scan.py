@@ -40,8 +40,14 @@ async def pattern_scan_job(
     load_universe_async: Callable[[str], Awaitable[list[str]]],
     send_pattern_scan_summary: Callable[[dict[str, Any]], Awaitable[bool | None]],
 ) -> tuple[set[str], dict[str, Any]]:
-    """Run pattern state-machine scan and return updated candidate key state."""
+    """Run pattern state-machine scan and return updated candidate key state.
+
+    On new entry candidates:
+    1. Send per-symbol detailed entry alert (price / target / stop / p_win gate).
+    2. Send brief summary as before (kept for channel overview).
+    """
     from patterns.scanner import prewarm_perp_cache, run_pattern_scan
+    from scanner.alerts_pattern import send_pattern_entry_alerts
 
     universe = await load_universe_async(universe_name)
     prewarm_perp_cache(universe, max_workers=5)
@@ -49,7 +55,17 @@ async def pattern_scan_job(
 
     n_candidates = sum(len(v) for v in result.get("entry_candidates", {}).values())
     new_candidate_result, n_new_candidates, current_keys = filter_new_pattern_entries(result, last_pattern_entry_keys)
+
     if scan_telegram_enabled and n_new_candidates > 0:
+        # 1. Per-symbol detailed entry alerts (with p_win gate + entry/target/stop)
+        new_keys = current_keys - last_pattern_entry_keys
+        try:
+            n_sent = await send_pattern_entry_alerts(new_keys, new_candidate_result)
+            log.info("Entry alerts sent: %d/%d candidates passed p_win gate", n_sent, n_new_candidates)
+        except Exception as exc:
+            log.warning("Entry alert dispatch failed: %s", exc)
+
+        # 2. Channel summary (kept for overview)
         await send_pattern_scan_summary(new_candidate_result, universe_name=universe_name)
 
     log.info(
