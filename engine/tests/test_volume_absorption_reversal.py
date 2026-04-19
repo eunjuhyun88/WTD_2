@@ -7,8 +7,10 @@ Validates:
   2. All 4 phases present in correct order
   3. Required blocks match VAR spec:
      - SELLING_CLIMAX: volume_spike_down
-     - ABSORPTION: absorption_signal (entry phase predecessor)
-     - DELTA_FLIP: delta_flip_positive (entry phase)
+     - ABSORPTION: volume_dryup (replaces absorption_signal — post-climax
+       price is too volatile for absorption_signal's 0.5% price gate)
+     - DELTA_FLIP: delta_flip_var (tuned w=3 lambda — replaces
+       delta_flip_positive whose w=6 default is dominated by the climax bar)
      - MARKUP: breakout_above_high (target phase)
   4. Library count updated to 5
   5. All referenced blocks registered in block_evaluator
@@ -62,7 +64,9 @@ class TestVolumeAbsorptionReversalPattern:
     def test_absorption_required_blocks(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "ABSORPTION")
-        assert "absorption_signal" in phase.required_blocks
+        # volume_dryup replaces absorption_signal: post-climax price is too volatile
+        # for absorption_signal's flat-price gate (W-0103 CTO fix, Slice 3).
+        assert "volume_dryup" in phase.required_blocks
         assert phase.phase_score_threshold == pytest.approx(0.55)
 
     def test_absorption_anchored_to_selling_climax(self):
@@ -74,7 +78,9 @@ class TestVolumeAbsorptionReversalPattern:
     def test_delta_flip_required_block(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "DELTA_FLIP")
-        assert "delta_flip_positive" in phase.required_blocks
+        # delta_flip_var (w=3, 0.48→0.52) replaces delta_flip_positive
+        # whose w=6 default is dominated by the high-volume climax bar.
+        assert "delta_flip_var" in phase.required_blocks
         assert phase.phase_score_threshold == pytest.approx(0.60)
 
     def test_delta_flip_disqualified_by_fresh_climax(self):
@@ -97,18 +103,18 @@ class TestReferencedBlocksRegistered:
         return {name for name, _ in BLOCK_REGISTRY}
 
     def test_new_blocks_registered(self, block_names):
-        # The two VAR-specific blocks added in Slice 1.
-        for b in ("volume_spike_down", "delta_flip_positive"):
+        # VAR-specific blocks: original detectors + VAR-tuned lambda.
+        for b in ("volume_spike_down", "delta_flip_positive", "delta_flip_var"):
             assert b in block_names, f"{b!r} missing from block_evaluator"
 
     def test_reused_blocks_registered(self, block_names):
         for b in (
-            "absorption_signal",
             "volume_dryup",
             "cvd_buying",
             "higher_lows_sequence",
             "breakout_above_high",
             "breakout_volume_confirm",
+            "sideways_compression",
         ):
             assert b in block_names, f"{b!r} missing from block_evaluator"
 

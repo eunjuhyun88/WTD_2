@@ -1,0 +1,98 @@
+{
+    "benchmark_pack_id": "volume-absorption-reversal-v1__var-v1",
+    "pattern_slug": "volume-absorption-reversal-v1",
+    "candidate_timeframes": ["1h"],
+    "cases": [
+        {
+            "symbol": "FARTCOINUSDT",
+            "timeframe": "1h",
+            "start_at": "2025-10-07T00:00:00+00:00",
+            "end_at": "2025-10-25T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "DELTA_FLIP",
+                "MARKUP"
+            ],
+            "role": "reference",
+            "notes": [
+                "FARTCOIN Oct 2025 Volume Absorption Reversal. +54% in 48h from climax low.",
+                "SELLING_CLIMAX: Oct 10 21:00 UTC — vol=9.5x avg (open 0.5055 → close 0.4056, -19.8%).",
+                "Context: broad crypto market crash event (BTC, ETH, alts all hit simultaneously).",
+                "ABSORPTION: Oct 11-12, price stabilises 0.33-0.39, volume declines to 30-50M/h.",
+                "DELTA_FLIP: Oct 12 12:00-15:00, tbv_ratio crosses 0.55+ after sustained sub-0.50 window.",
+                "MARKUP: Oct 12 14:00-17:00, vol spike to 90-150M/h, price reclaims 0.38-0.45 range (+20% in 4h).",
+                "Total recovery by Oct 25: 0.38 → follow-through rally confirms pattern completion."
+            ],
+            "case_id": "var-v1-fartcoin-oct2025"
+        },
+        {
+            "symbol": "1000PEPEUSDT",
+            "timeframe": "1h",
+            "start_at": "2025-10-07T00:00:00+00:00",
+            "end_at": "2025-10-22T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "DELTA_FLIP",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "1000PEPE Oct 2025 VAR — same macro crash event as FARTCOIN reference, different asset.",
+                "SELLING_CLIMAX: Oct 10 21:00 UTC — vol=10.0x avg (open 0.00812 → close 0.00682, -16.1%).",
+                "Cross-asset validation: tests pattern fires on high-liquidity meme token vs FARTCOIN.",
+                "Lower mcap / higher liquidity than FARTCOIN — expected slightly faster delta flip recovery.",
+                "Holdout: confirms pattern is not overfitted to single asset within same market event."
+            ],
+            "case_id": "var-v1-1000pepe-oct2025"
+        },
+        {
+            "symbol": "1000BONKUSDT",
+            "timeframe": "1h",
+            "start_at": "2023-12-28T00:00:00+00:00",
+            "end_at": "2024-01-15T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "DELTA_FLIP",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "1000BONK Jan 2024 VAR — early bull market meme correction. +26% in 120h from climax.",
+                "SELLING_CLIMAX: Jan 3 12:00 UTC — vol=9.8x avg (open 0.01318 → close 0.01196, -9.2%).",
+                "Context: BONK had run up 300%+ since Nov 2023 launch; sharp profit-taking event.",
+                "ABSORPTION: Jan 3-7, price holds 0.011-0.012 with volume declining (0.3-1x avg).",
+                "DELTA_FLIP: Jan 4-5, tbv_ratio begins sustained move above 0.50 while prior window was sub-0.50.",
+                "MARKUP: Jan 8-10, vol spike to 5.8x avg on Jan 8 19:00, price reclaims 0.012 → 0.015 (+26%).",
+                "Temporal holdout: tests VAR 18 months before the reference case (different market phase)."
+            ],
+            "case_id": "var-v1-1000bonk-jan2024"
+        },
+        {
+            "symbol": "1000PEPEUSDT",
+            "timeframe": "1h",
+            "start_at": "2025-11-01T00:00:00+00:00",
+            "end_at": "2025-11-15T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "DELTA_FLIP",
+                "MARKUP"
+            ],
+            "role": "holdout",
+            "notes": [
+                "1000PEPE Nov 2025 VAR — smaller climax (7x vol, -6.2%), tests lower-threshold detection.",
+                "SELLING_CLIMAX: Nov 3 15:00 UTC — vol=7.0x avg (open 0.006122 → close 0.005743, -6.2%).",
+                "Smaller climax magnitude vs Oct 2025 case — validates pattern fires on moderate events.",
+                "Different time period from Oct 2025 cases — tests temporal generality (same asset, different event).",
+                "Holdout: if pattern fires here, confirms it's not just catching extreme 10x+ events."
+            ],
+            "case_id": "var-v1-1000pepe-nov2025"
+        }
+    ],
+    "created_at": "2026-04-19T00:00:00+00:00",
+    "_generated_by": "Manual — W-0103 (volume-absorption-reversal-v1)",
+    "_notes": "5th pattern. Pure OHLCV + taker buy volume — no perp OI/funding required. Detects selling climax → CVD delta flip → base formation → breakout. Mechanically distinct from TRADOOR (OI-driven), FFR (funding-driven), WSR (price-action spring), WHALE (accumulation). Spot-compatible. 4 cases: 1 reference + 3 holdouts across 3 different time periods and 2 assets."
+}
