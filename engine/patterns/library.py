@@ -538,6 +538,61 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
     tags=["volume_absorption", "cvd", "selling_climax", "spot_compatible"],
 )
 
+COMPRESSION_BREAKOUT_REVERSAL = PatternObject(
+    slug="compression-breakout-reversal-v1",
+    name="압축 돌파 반전 패턴 (가격 코일링형)",
+    description=(
+        "하락 조정 → 횡보 압축(가격 레인지 ≤6%, 거래량 수렴) → 레인지 상단 돌파. "
+        "순수 OHLCV 기반 — 퍼프/OI/펀딩 데이터 불필요, 현물 거래소 커버 가능. "
+        "볼린저/ATR 지표 없이 가격 레인지 자체로 코일링을 감지. "
+        "VAR과 달리 셀링 클라이맥스를 요구하지 않음 — 일반 조정 후 횡보에도 발동."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="SETUP",
+            label="선행 하락 — 코일링 전 조정 확인",
+            required_blocks=["recent_decline"],
+            optional_blocks=[],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=48,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="COILING",
+            label="코일링 — 횡보 압축 + 거래량 수렴",
+            required_blocks=["sideways_compression_cbr"],
+            optional_blocks=["volume_dryup", "bollinger_squeeze"],
+            soft_blocks=["post_dump_compression"],
+            disqualifier_blocks=[],
+            score_weights={
+                "sideways_compression_cbr": 0.65,
+                "volume_dryup": 0.25,
+                "bollinger_squeeze": 0.10,
+            },
+            phase_score_threshold=0.55,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="SETUP",
+            transition_window_bars=120,
+            min_bars=6, max_bars=72,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BREAKOUT",
+            label="돌파 — 압축 레인지 상단 이탈",
+            required_blocks=["consolidation_breakout_cbr"],
+            optional_blocks=["breakout_volume_confirm"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=8,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="COILING",
+    target_phase="BREAKOUT",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    tags=["compression", "breakout", "coiling", "post_decline", "spot_compatible"],
+)
+
 FUNDING_FLIP_SHORT = PatternObject(
     slug="funding-flip-short-v1",
     name="펀딩 플립 숏 패턴 (롱 과열 → 반전형)",
@@ -799,6 +854,7 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     VOLATILITY_SQUEEZE_BREAKOUT.slug: VOLATILITY_SQUEEZE_BREAKOUT,
     ALPHA_CONFLUENCE.slug: ALPHA_CONFLUENCE,
     RADAR_GOLDEN_ENTRY.slug: RADAR_GOLDEN_ENTRY,
+    COMPRESSION_BREAKOUT_REVERSAL.slug: COMPRESSION_BREAKOUT_REVERSAL,
 }
 
 def get_pattern(slug: str) -> PatternObject:

@@ -132,8 +132,8 @@ class TestRegressionGuards:
         # TRADOOR + FFR + wyckoff-spring + whale-accumulation + VAR
         # + FFR_SHORT + GAP_FADE_SHORT (W-0106)
         # + VOLATILITY_SQUEEZE_BREAKOUT + ALPHA_CONFLUENCE (W-0107)
-        # + RADAR_GOLDEN_ENTRY (W-0108) = 10
-        assert len(PATTERN_LIBRARY) == 10
+        # + RADAR_GOLDEN_ENTRY (W-0108) + COMPRESSION_BREAKOUT_REVERSAL (W-0108 S2) = 11
+        assert len(PATTERN_LIBRARY) == 11
 
     def test_whale_accumulation_in_promoted_patterns(self):
         from research.live_monitor import PROMOTED_PATTERNS

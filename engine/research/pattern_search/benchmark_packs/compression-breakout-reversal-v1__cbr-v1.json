@@ -1,0 +1,79 @@
+{
+  "benchmark_pack_id": "compression-breakout-reversal-v1__cbr-v1",
+  "pattern_slug": "compression-breakout-reversal-v1",
+  "candidate_timeframes": ["1h"],
+  "created_at": "2026-04-19T00:00:00+00:00",
+  "_generated_by": "W-0104 CBR pattern scan — 143 hits across 44 symbols",
+  "_notes": [
+    "Scanner: decline≥10%/72h + sideways range≤6%/12h + coil≥6h + close>12h_high + fwd24h≥3%.",
+    "Reference: ALTUSDT Jun 2025 — 51h coil at 3% range, +47.8% fwd24h.",
+    "Holdouts: TIAUSDT Feb 2026, PENGUUSDT Dec 2025, 1000RATSUSDT Jan 2026.",
+    "All cases: post-decline ≥10% → horizontal compression → clean upside breakout."
+  ],
+  "cases": [
+    {
+      "symbol": "ALTUSDT",
+      "timeframe": "1h",
+      "start_at": "2025-06-10T00:00:00+00:00",
+      "end_at": "2025-06-18T00:00:00+00:00",
+      "expected_phase_path": ["SETUP", "COILING", "BREAKOUT"],
+      "role": "reference",
+      "notes": [
+        "ALT Jun 2025 Compression Breakout. +47.8% fwd24h from breakout bar.",
+        "SETUP: ALT declined 10.1% over 72h into Jun-13.",
+        "COILING: Jun-13 11:00 to Jun-15 14:00 — 51 consecutive hours within 3% range.",
+        "BREAKOUT: Jun-15 14:00 UTC — close breaks above 12h rolling high.",
+        "Post-breakout: +47.8% peak within 24h. Clean textbook coil → expansion."
+      ],
+      "case_id": "cbr-v1-alt-jun2025"
+    },
+    {
+      "symbol": "TIAUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-02-19T00:00:00+00:00",
+      "end_at": "2026-02-28T00:00:00+00:00",
+      "expected_phase_path": ["SETUP", "COILING", "BREAKOUT"],
+      "role": "holdout",
+      "notes": [
+        "TIA Feb 2026 Compression Breakout. +22.1% fwd24h.",
+        "SETUP: TIA declined 10.9% over 72h into Feb-22.",
+        "COILING: Feb-23 00:00 to Feb-24 16:00 — 16h coil within 4.2% range.",
+        "BREAKOUT: Feb-24 16:00 UTC — range upper bound break.",
+        "Modular blockchain sector. Different period and sector from reference."
+      ],
+      "case_id": "cbr-v1-tia-feb2026"
+    },
+    {
+      "symbol": "PENGUUSDT",
+      "timeframe": "1h",
+      "start_at": "2025-11-28T00:00:00+00:00",
+      "end_at": "2025-12-06T00:00:00+00:00",
+      "expected_phase_path": ["SETUP", "COILING", "BREAKOUT"],
+      "role": "holdout",
+      "notes": [
+        "PENGU Dec 2025 Compression Breakout. +19.4% fwd24h (+24.9% fwd12h peak).",
+        "SETUP: PENGU declined 11.0% over 72h into Dec-01.",
+        "COILING: Dec-01 00:00 to Dec-02 10:00 — 10h coil within 3.8% range.",
+        "BREAKOUT: Dec-02 10:00 UTC.",
+        "Meme/NFT sector (Pudgy Penguins). Q4 2025."
+      ],
+      "case_id": "cbr-v1-pengu-dec2025"
+    },
+    {
+      "symbol": "1000RATSUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-01-22T00:00:00+00:00",
+      "end_at": "2026-01-30T00:00:00+00:00",
+      "expected_phase_path": ["SETUP", "COILING", "BREAKOUT"],
+      "role": "holdout",
+      "notes": [
+        "1000RATS Jan 2026 Compression Breakout. +20.7% fwd24h (+44.5% fwd48h).",
+        "SETUP: 1000RATS declined 10.9% over 72h into Jan-24.",
+        "COILING: Jan-25 22:00 to Jan-26 05:00 — 7h minimum coil within 5.9% range.",
+        "BREAKOUT: Jan-26 05:00 UTC.",
+        "Ordinals/meme sector. Jan 2026. Short coil but strong breakout."
+      ],
+      "case_id": "cbr-v1-1000rats-jan2026"
+    }
+  ]
+}
