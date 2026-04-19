@@ -129,8 +129,10 @@ class TestRegressionGuards:
         assert "funding-flip-reversal-v1" in PATTERN_LIBRARY
 
     def test_library_count(self):
-        # TRADOOR + FFR + wyckoff-spring + whale-accumulation + VAR + FFR_SHORT + GAP_FADE_SHORT = 7
-        assert len(PATTERN_LIBRARY) == 7  # +2 short patterns (W-0106)
+        # TRADOOR + FFR + wyckoff-spring + whale-accumulation + VAR
+        # + FFR_SHORT + GAP_FADE_SHORT (W-0106)
+        # + VOLATILITY_SQUEEZE_BREAKOUT + ALPHA_CONFLUENCE (W-0107) = 9
+        assert len(PATTERN_LIBRARY) == 9
 
     def test_whale_accumulation_in_promoted_patterns(self):
         from research.live_monitor import PROMOTED_PATTERNS

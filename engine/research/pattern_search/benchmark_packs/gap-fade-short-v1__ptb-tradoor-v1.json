@@ -1,0 +1,47 @@
+{
+  "benchmark_pack_id": "gap-fade-short-v1__ptb-tradoor-v1",
+  "pattern_slug": "gap-fade-short-v1",
+  "candidate_timeframes": [
+    "1h",
+    "4h"
+  ],
+  "cases": [
+    {
+      "symbol": "PTBUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-13T00:00:00+00:00",
+      "end_at": "2026-04-15T12:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "reference",
+      "notes": [
+        "reference PTB reversal window"
+      ],
+      "case_id": "62c91877-98dd-4d3b-98ff-508cb0468c43"
+    },
+    {
+      "symbol": "TRADOORUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-11T00:00:00+00:00",
+      "end_at": "2026-04-14T18:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "holdout",
+      "notes": [
+        "holdout TRADOOR replay window"
+      ],
+      "case_id": "794bf9c2-ce45-4d56-8f7b-e858ed6406da"
+    }
+  ],
+  "created_at": "2026-04-19T11:24:29.768603+00:00"
+}

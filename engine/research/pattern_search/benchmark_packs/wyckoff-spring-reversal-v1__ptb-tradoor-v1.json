@@ -1,0 +1,47 @@
+{
+  "benchmark_pack_id": "wyckoff-spring-reversal-v1__ptb-tradoor-v1",
+  "pattern_slug": "wyckoff-spring-reversal-v1",
+  "candidate_timeframes": [
+    "1h",
+    "4h"
+  ],
+  "cases": [
+    {
+      "symbol": "PTBUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-13T00:00:00+00:00",
+      "end_at": "2026-04-15T12:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "reference",
+      "notes": [
+        "reference PTB reversal window"
+      ],
+      "case_id": "d80ce8af-4a17-47cc-b09a-d6e9f40bb29d"
+    },
+    {
+      "symbol": "TRADOORUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-11T00:00:00+00:00",
+      "end_at": "2026-04-14T18:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "holdout",
+      "notes": [
+        "holdout TRADOOR replay window"
+      ],
+      "case_id": "5cb4b212-0c7b-474e-9a52-9570f1108ec7"
+    }
+  ],
+  "created_at": "2026-04-19T11:25:04.676696+00:00"
+}

@@ -133,6 +133,18 @@ def _run_pattern_search_refinement_once(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_sweep(args: argparse.Namespace) -> int:
+    from .sweep_parameters import sweep_timeframes
+    result = sweep_timeframes(
+        pattern_slug=args.pattern,
+        timeframes=args.timeframes,
+        since=args.since,
+        timeout_sec=args.timeout,
+    )
+    print(result.summary())
+    return 0
+
+
 def _run_pattern_benchmark_search(args: argparse.Namespace) -> int:
     config = PatternBenchmarkSearchConfig(
         pattern_slug=args.slug,
@@ -207,6 +219,14 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_p.add_argument("--min-reference-score", type=float, default=0.55)
     benchmark_p.add_argument("--min-holdout-score", type=float, default=0.35)
     benchmark_p.set_defaults(func=_run_pattern_benchmark_search)
+
+    sweep_p = sub.add_parser("sweep", help="Auto-sweep timeframes and find optimal for a pattern")
+    sweep_p.add_argument("--pattern", required=True, help="Pattern slug")
+    sweep_p.add_argument("--timeframes", nargs="+", default=["1h", "2h", "4h", "8h"],
+                         metavar="TF", help="Timeframes to test (default: 1h 2h 4h 8h)")
+    sweep_p.add_argument("--since", default="2024-01-01", help="Backtest start date")
+    sweep_p.add_argument("--timeout", type=int, default=120, help="Per-TF timeout in seconds")
+    sweep_p.set_defaults(func=_run_sweep)
 
     return parser
 
