@@ -74,6 +74,8 @@ from building_blocks.confirmations.orderbook_imbalance_ratio import orderbook_im
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
 from building_blocks.disqualifiers.extreme_volatility import extreme_volatility
 from building_blocks.disqualifiers.extended_from_ma import extended_from_ma
+from building_blocks.disqualifiers.cvd_spot_price_divergence_bear import cvd_spot_price_divergence_bear
+from building_blocks.disqualifiers.coinbase_premium_weak import coinbase_premium_weak
 
 log = logging.getLogger("engine.blocks")
 
@@ -142,9 +144,11 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("cvd_price_divergence",       cvd_price_divergence),
     ("orderbook_imbalance_ratio",  orderbook_imbalance_ratio),
     # disqualifiers
-    ("volume_below_average", volume_below_average),
-    ("extreme_volatility",   extreme_volatility),
-    ("extended_from_ma",     extended_from_ma),
+    ("volume_below_average",            volume_below_average),
+    ("extreme_volatility",              extreme_volatility),
+    ("extended_from_ma",                extended_from_ma),
+    ("cvd_spot_price_divergence_bear",  cvd_spot_price_divergence_bear),
+    ("coinbase_premium_weak",           coinbase_premium_weak),
 ]
 
 
