@@ -34,15 +34,26 @@ class ExtremeEventDetector:
 
         detector = ExtremeEventDetector()
         events = detector.scan_universe(["DYMUSDT", "ORDIUSDT"], since=...)
+
+    onset_only / min_gap_bars
+    --------------------------
+    When ``onset_only=True`` (default), compression events fire only at the
+    *start* of a new compression zone and are suppressed if the previous onset
+    was fewer than ``min_gap_bars`` bars ago.  This reduces noise from
+    114K per-bar events to ~1K zone-onset events.
     """
 
     def __init__(
         self,
         funding_threshold: float = FUNDING_EXTREME_THRESHOLD,
         oi_zscore: float = OI_SPIKE_ZSCORE,
+        onset_only: bool = True,
+        min_gap_bars: int = 12,
     ) -> None:
         self.funding_threshold = funding_threshold
         self.oi_zscore = oi_zscore
+        self.onset_only = onset_only
+        self.min_gap_bars = min_gap_bars
 
     def scan_universe(
         self,
@@ -153,20 +164,26 @@ class ExtremeEventDetector:
 
         events: list[ExtremeEvent] = []
         in_event = False
-        for ts, flag in zip(klines.index, is_compression):
+        last_onset_idx = -(self.min_gap_bars + 1)  # ensures first onset always fires
+        for i, (ts, flag) in enumerate(zip(klines.index, is_compression)):
             if since is not None and ts < since:
                 continue
             if bool(flag) and not in_event:
                 in_event = True
-                events.append(
-                    ExtremeEvent(
-                        symbol=symbol,
-                        timeframe=timeframe,
-                        event_type="compression",
-                        detected_at=ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts,
-                        trigger_value=float(range_pct[ts]) if ts in range_pct.index else 0.0,
+                # onset_only: suppress if previous onset was too recent
+                if self.onset_only and (i - last_onset_idx) < self.min_gap_bars:
+                    pass  # within min_gap — skip this onset
+                else:
+                    last_onset_idx = i
+                    events.append(
+                        ExtremeEvent(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            event_type="compression",
+                            detected_at=ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts,
+                            trigger_value=float(range_pct[ts]) if ts in range_pct.index else 0.0,
+                        )
                     )
-                )
             elif not bool(flag):
                 in_event = False
 
