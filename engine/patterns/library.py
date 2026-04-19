@@ -1004,6 +1004,82 @@ INSTITUTIONAL_DISTRIBUTION = PatternObject(
 )
 
 
+# ─── W-0110: 유동성 스윕 반전 ─────────────────────────────────────────────────
+LIQUIDITY_SWEEP_REVERSAL = PatternObject(
+    slug="liquidity-sweep-reversal-v1",
+    name="유동성 스윕 반전 패턴 (스탑 사냥 → 반전형)",
+    description=(
+        "마켓 메이커가 스탑 오더 스윕 → 즉각 가격 반전. "
+        "급격한 탈출 후 낮은 수급으로 축적 형성. "
+        "온체인 MEV 기술로 가시적인 암호 고유 현상. "
+        "50~100% 목표."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="BREAKOUT_CLIMAX",
+            label="스윕 진입 (스탑 청산 구간)",
+            required_blocks=["breakout_above_high", "volume_spike"],
+            # Price breaks recent high + volume surge = MM stop hunt
+            optional_blocks=["recent_rally"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=4,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="REVERSAL_SIGNAL",
+            label="반전 신호 (스탑 후 가격 반전)",
+            # Phase transition happens automatically; no blocks required.
+            # This phase captures the moment where price reverses from the
+            # sweep climax. Minimal volume expected (shorts covering silently).
+            required_blocks=[],
+            optional_blocks=[],
+            disqualifier_blocks=["oi_spike_with_dump"],
+            # If another dump occurs, not a sweep reversal
+            min_bars=1, max_bars=3,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ACCUMULATION",
+            label="축적 구간 — 진입 구간",
+            required_blocks=["higher_lows_sequence", "oi_hold_after_spike"],
+            required_any_groups=[["funding_flip", "positive_funding_bias", "ls_ratio_recovery"]],
+            soft_blocks=["volume_dryup", "bollinger_squeeze"],
+            disqualifier_blocks=["oi_spike_with_dump"],
+            score_weights={
+                "higher_lows_sequence": 0.45,
+                "oi_hold_after_spike": 0.30,
+                "funding_flip": 0.15,
+                "positive_funding_bias": 0.15,
+                "ls_ratio_recovery": 0.15,
+                "volume_dryup": 0.05,
+                "bollinger_squeeze": 0.05,
+            },
+            phase_score_threshold=0.70,
+            transition_window_bars=18,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="REVERSAL_SIGNAL",
+            min_bars=6, max_bars=72,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BREAKOUT",
+            label="브레이크아웃",
+            required_blocks=["breakout_from_pullback_range"],
+            optional_blocks=["breakout_volume_confirm"],
+            soft_blocks=["oi_expansion_confirm"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=48,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="ACCUMULATION",
+    target_phase="BREAKOUT",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["reversal", "long", "sweep", "liquidity", "crypto-native"],
+)
+
 # ─── W-0114: 딸깍 전략 ──────────────────────────────────────────────────────
 # OI 선취매 + Social Ignition + Breakout 순차 발화 패턴
 # Phase 1: OI 오르는데 가격 안 움직임 (선취매 구간)
@@ -1092,6 +1168,7 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     ALPHA_CONFLUENCE.slug: ALPHA_CONFLUENCE,
     RADAR_GOLDEN_ENTRY.slug: RADAR_GOLDEN_ENTRY,
     COMPRESSION_BREAKOUT_REVERSAL.slug: COMPRESSION_BREAKOUT_REVERSAL,
+    LIQUIDITY_SWEEP_REVERSAL.slug: LIQUIDITY_SWEEP_REVERSAL,
     INSTITUTIONAL_DISTRIBUTION.slug: INSTITUTIONAL_DISTRIBUTION,
     FUNDING_FLIP_REVERSAL_SHORT.slug: FUNDING_FLIP_REVERSAL_SHORT,
     OI_PRESURGE_LONG.slug: OI_PRESURGE_LONG,  # W-0114 딸깍 전략
