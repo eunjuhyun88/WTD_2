@@ -611,6 +611,159 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
     tags=["volume_absorption", "selling_climax", "price_action", "ohlcv_only", "altcoin"],
 )
 
+FUNDING_FLIP_REVERSAL_SHORT = PatternObject(
+    slug="funding-flip-reversal-short-v1",
+    name="펀딩 과적재 반전 패턴 숏 버전 (롱 스퀴즈형)",
+    description=(
+        "펀딩 극단 플러스(롱 과적재) → 가격 상승 추세 → 펀딩 플립(양→음) + 매도 폭증"
+        " → 저점 하향 형성(축적) → 숏 돌파. "
+        "FFR의 반대: 롱 과적재 환경에서 펀딩 반전 = 강제 청산 시나리오. "
+        "숏 수익성: 조정 + 하락 추세 캐치 (2026-04-19 실증)."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="LONG_OVERHEAT",
+            label="롱 과적재 (관망)",
+            # Funding rate deeply positive = crowded longs.
+            # `funding_extreme_long` calls funding_extreme(direction="long_overheat").
+            # recent_rally: price usually rising when longs pile in.
+            required_blocks=["funding_extreme_long"],
+            optional_blocks=["recent_rally"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=8,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="DELTA_FLIP_NEGATIVE",
+            label="펀딩 플립 — 핵심 이벤트",
+            # Longs capitulating: funding crosses zero (positive→negative).
+            # delta_flip_negative: recent bars positive funding → current bar negative.
+            # oi_contraction_confirm: OI dropping 5% over 24h = longs unwinding.
+            required_blocks=["delta_flip_negative", "oi_contraction_confirm"],
+            optional_blocks=["negative_funding_bias"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SELLING_CLIMAX",
+            label="매도 폭증 — 강제 청산",
+            # After funding flips, longs are forced out with volume.
+            # volume_surge_bear: taker-sell ratio >= 0.60 (elevated selling).
+            # recent_decline: price has dropped >= 5% in 24h post-flip.
+            required_blocks=["volume_surge_bear"],
+            optional_blocks=["recent_decline"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ENTRY_ZONE",
+            label="숏 진입 구간 — 구조 확인",
+            # Longs exhausted; price forming lower highs.
+            # Funding stays negative while structure improves (lower highs).
+            required_blocks=["lower_highs_sequence"],
+            required_any_groups=[["negative_funding_bias", "delta_flip_negative"]],
+            soft_blocks=[
+                "bollinger_squeeze",
+                "atr_ultra_low",
+                "oi_contraction_confirm",
+                "volume_surge_bear",
+            ],
+            disqualifier_blocks=[],
+            score_weights={
+                "lower_highs_sequence": 0.45,
+                "negative_funding_bias": 0.30,
+                "delta_flip_negative": 0.20,
+                "bollinger_squeeze": 0.05,
+                "atr_ultra_low": 0.05,
+                "oi_contraction_confirm": 0.10,
+                "volume_surge_bear": 0.08,
+            },
+            phase_score_threshold=0.70,
+            transition_window_bars=12,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="DELTA_FLIP_NEGATIVE",
+            min_bars=4, max_bars=48,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BREAKDOWN",
+            label="숏 돌파 — 이전 지지선 붕괴",
+            # Previous support breaks on volume = shorts in profit.
+            required_blocks=[
+                "breakout_below_low",
+                "volume_surge_bear",
+            ],
+            optional_blocks=["lower_highs_sequence"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="ENTRY_ZONE",
+    target_phase="BREAKDOWN",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    tags=["funding_reversal", "long_squeeze_short", "altcoin", "perp"],
+)
+
+GAP_FADE_SHORT = PatternObject(
+    slug="gap-fade-short-v1",
+    name="갭 페이드 숏 패턴 (갭 업→거절형)",
+    description="야간 갭 업(공정가치 이탈) → 빠른 거절 → 매도 폭증 → 갭 메우기(공정가치 복귀)",
+    phases=[
+        PhaseCondition(
+            phase_id="GAP_UP",
+            label="갭 업 형성 (관망)",
+            required_blocks=["intraday_gap_up"],
+            optional_blocks=["atr_ultra_low"],
+            min_bars=1, max_bars=2,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="REJECTION",
+            label="갭 거절 — 빠른 역행",
+            required_blocks=["gap_rejection_signal"],
+            optional_blocks=["higher_highs_broken"],
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="CLIMAX",
+            label="매도 폭증 — 갭 흡수",
+            required_blocks=["volume_surge_bear"],
+            optional_blocks=["liq_zone_squeeze_setup"],
+            min_bars=1, max_bars=4,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ENTRY_ZONE",
+            label="숏 진입 구간 — 갭 메움 확인",
+            required_blocks=["return_to_gap_level"],
+            required_any_groups=[["volume_surge_bear", "liq_zone_squeeze_setup"]],
+            soft_blocks=["atr_ultra_low", "recent_decline"],
+            score_weights={
+                "volume_surge_bear": 0.40,
+                "liq_zone_squeeze_setup": 0.30,
+                "atr_ultra_low": 0.20,
+                "return_to_gap_level": 0.10,
+            },
+            phase_score_threshold=0.65,
+            transition_window_bars=12,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="CLIMAX",
+            min_bars=2, max_bars=24,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="ENTRY_ZONE",
+    target_phase="ENTRY_ZONE",  # Gap fade completes when price returns to gap level
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    tags=["gap_fade", "mean_reversion", "altcoin", "short_entry"],
+)
+
 # Registry: slug → PatternObject
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
@@ -618,6 +771,8 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     WYCKOFF_SPRING_REVERSAL.slug: WYCKOFF_SPRING_REVERSAL,
     WHALE_ACCUMULATION_REVERSAL.slug: WHALE_ACCUMULATION_REVERSAL,
     VOLUME_ABSORPTION_REVERSAL.slug: VOLUME_ABSORPTION_REVERSAL,
+    FUNDING_FLIP_REVERSAL_SHORT.slug: FUNDING_FLIP_REVERSAL_SHORT,
+    GAP_FADE_SHORT.slug: GAP_FADE_SHORT,
 }
 
 def get_pattern(slug: str) -> PatternObject:
