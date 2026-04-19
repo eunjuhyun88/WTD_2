@@ -55,6 +55,10 @@ PHASE_ORDER = {
     "SPRING": 3, "MARKUP": 4,
     # volume-absorption-reversal-v1 phases (W-0103 P0)
     "DELTA_FLIP": 0, "ABSORPTION": 1, "SELLING_CLIMAX": 2,
+    # funding-flip-short-v1 phases (W-0106)
+    "LONG_OVERHEAT": 0, "FUNDING_NORMALIZE": 1, "SHORT_ENTRY": 2,
+    # gap-fade-short-v1 phases (W-0106)
+    "EXTENDED_RALLY": 0, "GAP_REJECTION": 1, "BREAKDOWN_CONFIRM": 2,
 }
 
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)

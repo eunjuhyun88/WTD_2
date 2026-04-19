@@ -50,6 +50,7 @@ class PatternObject:
     tags: list[str] = field(default_factory=list)
     version: int = 1
     created_by: str = "system"
+    direction: Literal["long", "short"] = "long"  # trade direction
 
 @dataclass
 class SymbolPhaseState:
