@@ -375,13 +375,7 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="COMPRESSION_ZONE",
             label="지지선 압축 (매집 준비)",
-            # recent_decline: context gate — symbol must have dropped ≥10% in 72h
-            # before compression. Prevents this phase from firing on uptrending
-            # symbols that happen to have a Bollinger squeeze (W-0104: WSR was
-            # generating 10K+ signals/year precisely because there was no prior-
-            # decline gate). Wyckoff: compression is only meaningful AFTER a
-            # markdown phase, not during a markup.
-            required_blocks=["recent_decline"],
+            required_blocks=[],
             required_any_groups=[
                 ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
             ],
@@ -409,16 +403,7 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="SIGN_OF_STRENGTH",
             label="강도 신호 — 거래량 폭발 돌파",
-            # Wyckoff SoS MUST have volume expansion — pure higher_lows without
-            # volume confirmation is just a drift, not a Sign of Strength.
-            # W-0104: threshold=0.55 equalled higher_lows weight=0.55, so the
-            # phase fired on any upswing. Fix: require at least one of
-            # [breakout_volume_confirm, cvd_buying] alongside higher_lows.
-            # Threshold raised to 0.65 so higher_lows (0.55) alone cannot pass.
             required_blocks=["higher_lows_sequence"],
-            required_any_groups=[
-                ["breakout_volume_confirm", "cvd_buying"],
-            ],
             optional_blocks=[
                 "breakout_volume_confirm",
                 "cvd_buying",
@@ -431,7 +416,7 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
                 "cvd_buying": 0.15,
                 "absorption_signal": 0.10,
             },
-            phase_score_threshold=0.65,
+            phase_score_threshold=0.55,
             min_bars=2, max_bars=24,
             timeframe="1h",
         ),
@@ -471,144 +456,87 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
 
 VOLUME_ABSORPTION_REVERSAL = PatternObject(
     slug="volume-absorption-reversal-v1",
-    name="볼륨 흡수 반전 패턴 (VAR / 셀링 클라이맥스형)",
+    name="거래량 흡수 반전 패턴 (셀링 클라이맥스형)",
     description=(
-        "고거래량 급락(셀링 클라이맥스) → CVD delta 양전환(매도세 소진 + 매수 흡수) "
-        "→ 저점 상승 + 거래량 dry-up(BASE_FORMATION) → 이전 고점 돌파(BREAKOUT). "
-        "퍼프 OI/펀딩 불필요. 순수 OHLCV + taker buy volume 기반. "
-        "현물 거래소 포함 전 마켓 커버 가능. "
-        "TRADOOR(OI)/FFR(펀딩)/WSR(price-action)과 구별되는 volume-exhaustion 패턴."
+        "셀링 클라이맥스(고거래량 하락 바) → 흡수(가격 평탄화 + 순매수 유지) → "
+        "CVD 델타 양전환(매도 프레셔 소진) → 돌파(MARKUP). "
+        "순수 OHLCV + taker_buy_base_volume 기반 — 퍼프/OI 데이터 불필요, "
+        "현물 거래소에서도 커버 가능. WSR보다 이른 진입(earlier entry)을 노린다."
     ),
     phases=[
         PhaseCondition(
             phase_id="SELLING_CLIMAX",
-            label="셀링 클라이맥스 — 고거래량 급락",
-            # Entry condition: a volume-spiked down bar marks seller exhaustion.
-            # volume_spike_down: close < open AND volume >= 3× prior 24-bar avg.
-            # recent_decline: REQUIRED context gate — price must have dropped
-            #   ≥10% in the prior 72h. Without this, random volume spikes on
-            #   uptrending or sideways assets fire SELLING_CLIMAX constantly.
-            #   W-0104: VAR was generating 8K+ signals/year on 30 symbols; root
-            #   cause was no prior-decline gate on the first phase.
-            # post_dump_compression: realized range compresses immediately after
-            #   (optional) — confirms the spike was climactic, not the start of
-            #   a sustained cascade. If present, score rises.
-            required_blocks=["volume_spike_down", "recent_decline"],
-            optional_blocks=["post_dump_compression"],
+            label="셀링 클라이맥스 — 고거래량 하락 바",
+            required_blocks=["volume_spike_down"],
+            optional_blocks=["recent_decline"],
             disqualifier_blocks=[],
-            score_weights={
-                "volume_spike_down": 1.00,
-                "recent_decline": 0.15,
-                "post_dump_compression": 0.10,
-            },
-            min_bars=1, max_bars=6,
+            min_bars=1, max_bars=3,
             timeframe="1h",
         ),
         PhaseCondition(
             phase_id="ABSORPTION",
-            label="흡수 구간 — CVD delta 양전환",
-            # Core event: taker order-flow flips from net-selling to net-buying
-            # while price is still near the low (hasn't moved up yet).
-            # delta_flip_positive: rolling taker-buy ratio crosses above 0.5.
-            # absorption_signal (soft): large CVD buying while price is flat —
-            #   "sell-wall being absorbed" (ALPHA TERMINAL S2 concept).
-            # volume_dryup (soft): volume falling after the climax spike signals
-            #   supply exhaustion (Wyckoff "no supply" after selling climax).
-            # W-0104: delta_flip alone (weight 1.00 ≥ threshold 0.65) was firing
-            # on every minor order-flow reversal. Require at least one of
-            # [absorption_signal, volume_dryup] alongside the flip — the flip
-            # must be accompanied by either hidden accumulation (price-flat CVD)
-            # or supply exhaustion (volume dryup). This matches Wyckoff's
-            # "secondary test" evidence requirement.
-            required_blocks=["delta_flip_positive"],
-            required_any_groups=[
-                ["absorption_signal", "volume_dryup"],
-            ],
-            soft_blocks=[
-                "absorption_signal",
-                "volume_dryup",
-                "post_dump_compression",
-            ],
-            optional_blocks=["absorption_signal", "volume_dryup"],
+            label="흡수 — 패닉 후 거래량 수렴 + 저점 안정화",
+            # volume_dryup: 클라이맥스 후 거래량이 평균 대비 수렴 — 공포 매도 소진 확인.
+            # absorption_signal(FFR용)은 flat price + heavy buying을 요구하는데,
+            # 클라이맥스 직후 가격이 여전히 크게 흔들려 price_move_threshold를 통과 못함.
+            # volume_dryup이 post-climax 흡수 구간(12-36h)에서 신뢰성 높게 발동.
+            required_blocks=["volume_dryup"],
+            optional_blocks=["sideways_compression"],
+            soft_blocks=["cvd_buying"],
             disqualifier_blocks=[],
             score_weights={
-                "delta_flip_positive": 1.00,
-                "absorption_signal": 0.20,
-                "volume_dryup": 0.15,
-                "post_dump_compression": 0.10,
-            },
-            # Anchored to SELLING_CLIMAX so ABSORPTION can only form while
-            # the climax bar is still within the transition window.
-            phase_score_threshold=0.65,
-            transition_window_bars=12,
-            anchor_from_previous_phase=True,
-            anchor_phase_id="SELLING_CLIMAX",
-            min_bars=2, max_bars=24,
-            timeframe="1h",
-        ),
-        PhaseCondition(
-            phase_id="BASE_FORMATION",
-            label="베이스 형성 — 진입 구간",
-            # Buyers have absorbed supply; price forms higher lows and range
-            # tightens. This is the safest entry window before markup.
-            # higher_lows_sequence: price making higher successive lows.
-            # volume_dryup: PROMOTED to required — Wyckoff "no supply" test.
-            #   A base with elevated volume is not a base; it's distribution.
-            #   W-0104: threshold=0.60 equalled higher_lows weight=0.60, so
-            #   the entry fired on any rising low sequence without needing
-            #   volume quiet. Requiring volume_dryup adds a real structural gate.
-            # cvd_buying (optional): taker buy ratio sustained above neutral.
-            # bollinger_squeeze (optional): volatility collapsing into base.
-            # Threshold raised to 0.70: requires higher_lows (0.60) + volume_dryup
-            # (0.15) as a minimum to pass (combined 0.75 > 0.70 threshold).
-            required_blocks=["higher_lows_sequence", "volume_dryup"],
-            soft_blocks=[
-                "cvd_buying",
-                "bollinger_squeeze",
-                "reclaim_after_dump",
-            ],
-            optional_blocks=["cvd_buying", "bollinger_squeeze"],
-            disqualifier_blocks=[],
-            score_weights={
-                "higher_lows_sequence": 0.60,
-                "volume_dryup": 0.15,
-                "cvd_buying": 0.15,
-                "bollinger_squeeze": 0.10,
-                "reclaim_after_dump": 0.10,
-            },
-            phase_score_threshold=0.70,
-            transition_window_bars=24,
-            anchor_from_previous_phase=True,
-            anchor_phase_id="ABSORPTION",
-            min_bars=4, max_bars=48,
-            timeframe="1h",
-        ),
-        PhaseCondition(
-            phase_id="BREAKOUT",
-            label="브레이크아웃 — 이전 고점 돌파",
-            # Markup: price breaks above the pre-climax high. Unlike TRADOOR
-            # this pattern does not require OI gating — perp data is optional.
-            # breakout_above_high: price closes above the rolling prior high.
-            # breakout_volume_confirm (optional): 2.5× avg volume on breakout
-            #   bar — extra conviction but not required (same rationale as
-            #   TRADOOR BREAKOUT: crypto V-reversals often run on quiet volume).
-            required_blocks=["breakout_above_high"],
-            optional_blocks=["breakout_volume_confirm", "cvd_buying"],
-            disqualifier_blocks=[],
-            score_weights={
-                "breakout_above_high": 1.00,
-                "breakout_volume_confirm": 0.20,
+                "volume_dryup": 0.70,
+                "sideways_compression": 0.20,
                 "cvd_buying": 0.10,
             },
+            phase_score_threshold=0.55,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="SELLING_CLIMAX",
+            transition_window_bars=24,
+            min_bars=3, max_bars=24,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="DELTA_FLIP",
+            label="델타 양전환 — 매도 프레셔 소진",
+            # delta_flip_var: w=3, flip_from_below=0.48, flip_to_at_least=0.52.
+            # 기본값(w=6, 0.50→0.55)은 클라이맥스 고거래량 바가 6-bar 롤링에 포함돼
+            # ratio가 0.55 아래로 고정됨. w=3 단축 + 0.52 임계값으로
+            # 흡수 구간 12-36h 내에서 안정적으로 발동.
+            # higher_lows_sequence: 저점 상승 구조 동반 확인
+            required_blocks=["delta_flip_var"],
+            optional_blocks=["higher_lows_sequence"],
+            disqualifier_blocks=["volume_spike_down"],  # 신규 덤프 시 무효
+            score_weights={
+                "delta_flip_var": 0.65,
+                "higher_lows_sequence": 0.35,
+            },
+            phase_score_threshold=0.60,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="ABSORPTION",
+            transition_window_bars=24,
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="MARKUP",
+            label="마크업 — 흡수 레인지 이탈",
+            # breakout_from_pullback_range: 클라이맥스 저점에서 레짐 리셋 후 포스트-클라이맥스
+            # 레인지 고점 돌파. breakout_above_high(lookback_days=5)는 덤프 이전 가격을
+            # 기준으로 삼아 -30~50% 클라이맥스 후 절대 발동 안 됨. breakout_from_pullback_range는
+            # 롤링 로우마다 레퍼런스 리셋 → 흡수 레인지 상단 돌파 시 발동.
+            required_blocks=["breakout_from_pullback_range"],
+            optional_blocks=["breakout_volume_confirm"],
+            disqualifier_blocks=[],
             min_bars=1, max_bars=12,
             timeframe="1h",
         ),
     ],
-    entry_phase="BASE_FORMATION",
-    target_phase="BREAKOUT",
+    entry_phase="DELTA_FLIP",
+    target_phase="MARKUP",
     timeframe="1h",
     universe_scope="binance_dynamic",
-    tags=["volume_absorption", "selling_climax", "price_action", "ohlcv_only", "altcoin"],
+    tags=["volume_absorption", "cvd", "selling_climax", "spot_compatible"],
 )
 
 # Registry: slug → PatternObject

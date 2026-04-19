@@ -10,6 +10,7 @@ from building_blocks.confirmations.bollinger_expansion import bollinger_expansio
 from building_blocks.confirmations.bollinger_squeeze import bollinger_squeeze
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
 from building_blocks.confirmations.dead_cross import dead_cross
+from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 from building_blocks.confirmations.ema_pullback import ema_pullback
 from building_blocks.confirmations.fib_retracement import fib_retracement
 from building_blocks.confirmations.funding_extreme import funding_extreme
@@ -35,6 +36,7 @@ __all__ = [
     "bollinger_squeeze",
     "cvd_state_eq",
     "dead_cross",
+    "delta_flip_positive",
     "ema_pullback",
     "fib_retracement",
     "funding_extreme",

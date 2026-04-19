@@ -59,6 +59,7 @@ from building_blocks.confirmations.post_dump_compression import post_dump_compre
 from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
+from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 from building_blocks.confirmations.volume_dryup import volume_dryup
 from building_blocks.confirmations.coinbase_premium_positive import coinbase_premium_positive
 from building_blocks.confirmations.smart_money_accumulation import smart_money_accumulation
@@ -117,6 +118,12 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("cvd_state_eq",       cvd_state_eq),
     ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
     ("absorption_signal",  absorption_signal),
+    ("delta_flip_positive", delta_flip_positive),
+    # VAR-tuned variant: shorter window + looser thresholds for post-climax recovery.
+    # After a selling climax the 6-bar rolling sum is dominated by the high-volume
+    # climax bar (≈0.48 tbv_ratio), pushing the ratio below 0.55. w=3 + lower
+    # to_at_least=0.52 captures the CVD transition in the 12-36h absorption window.
+    ("delta_flip_var",      lambda ctx: delta_flip_positive(ctx, window=3, flip_from_below=0.48, flip_to_at_least=0.52)),
     ("alt_btc_accel_ratio", alt_btc_accel_ratio),
     ("volume_dryup",       volume_dryup),
     ("coinbase_premium_positive", coinbase_premium_positive),

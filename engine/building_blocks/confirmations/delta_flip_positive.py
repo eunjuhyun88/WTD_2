@@ -1,34 +1,24 @@
-"""Confirmation: taker buy ratio flips from below-neutral to above-neutral.
+"""Confirmation: CVD delta flips from net-selling to net-buying.
 
-Rationale:
-    Volume Absorption Reversal (VAR) ABSORPTION phase is confirmed when the
-    aggregate order-flow direction switches from net-selling to net-buying.
-    This is the CVD "delta flip": the rolling taker-buy ratio crosses above
-    the neutral threshold (0.5) after spending the prior window below it.
+Detects the "absorption → markup" handoff where taker-buy aggression
+returns above a positive threshold after being below a neutral baseline
+in the immediately preceding window. Used in Phase 3 of the Volume
+Absorption Reversal (VAR) pattern:
 
-    Market structure interpretation:
-      - Sellers exhaust supply → taker-sell ratio falls.
-      - Buyers begin to step in → taker-buy ratio rises above 0.5.
-      - The transition (negative → positive delta) is the earliest sign that
-        absorption is complete and markup may begin.
+    SELLING_CLIMAX → ABSORPTION → DELTA_FLIP (this block) → MARKUP
 
-    Literature:
-      - Easley, López de Prado & O'Hara (2021): order-flow imbalance is the
-        highest-frequency leading indicator of short-term price moves.
-      - Weis & Wyckoff (2013): "The buying wave after the selling climax is
-        the first tangible evidence of demand entering the market."
-      - ALPHA TERMINAL (2026-04-10): "CVD 방향 전환 = 세력 포지션 전환 신호"
-        (CVD direction flip = smart money position change signal).
+Distinct from ``cvd_state_eq(state='buying')``:
+  - ``cvd_state_eq`` fires on any bar that is currently net-buying.
+  - ``delta_flip_positive`` fires only on the transition bar: the
+    previous ``window`` bars had a taker-buy ratio below
+    ``flip_from_below``, and the current ``window`` bars are at or above
+    ``flip_to_at_least``. That transition carries more information than
+    absolute state.
 
-    Implementation:
-      - `tbv_ratio[t]` = taker_buy_base_volume[t] / volume[t]  (per bar)
-      - `neutral` = 0.5 (equal taker buy / sell)
-      - True at bar t when:
-          rolling_mean(tbv_ratio, flip_window)[t] > neutral_threshold  AND
-          rolling_mean(tbv_ratio, flip_window)[t-1] <= neutral_threshold
-        i.e. the window average just crossed above neutral this bar.
-
-    Using a rolling mean (not per-bar) to smooth micro-noise from thin bars.
+References:
+  - Easley, López de Prado & O'Hara (2012), "The Volume Clock: Insights
+    into the High Frequency Paradigm" — establishes order-flow imbalance
+    shifts as leading indicators of short-horizon reversals.
 """
 from __future__ import annotations
 
@@ -40,57 +30,56 @@ from building_blocks.context import Context
 def delta_flip_positive(
     ctx: Context,
     *,
-    flip_window: int = 3,
-    neutral_threshold: float = 0.50,
+    window: int = 6,
+    flip_from_below: float = 0.50,
+    flip_to_at_least: float = 0.55,
 ) -> pd.Series:
-    """Return a bool Series where the rolling taker-buy ratio crosses above neutral.
-
-    True on bars where:
-      - The `flip_window`-bar rolling mean of taker_buy_base_volume / volume
-        is above `neutral_threshold` at bar t, AND
-      - It was at or below `neutral_threshold` at bar t-1.
-
-    This captures the exact transition bar where order-flow flips from
-    net-selling to net-buying, the core evidence of completed absorption.
+    """Return a bool Series where the rolling taker-buy ratio just flipped
+    from below ``flip_from_below`` to at or above ``flip_to_at_least``.
 
     Args:
         ctx: Per-symbol Context. ``ctx.klines`` must have columns
             ``taker_buy_base_volume`` and ``volume``.
-        flip_window: Rolling window (bars) for averaging the taker-buy ratio.
-            Must be >= 1. Default 3 (3-bar average reduces single-bar noise
-            while staying responsive to the flip event).
-        neutral_threshold: Taker-buy ratio threshold for "net-buying".
-            Must be in (0, 1). Default 0.50.
+        window: Rolling window (bars) used for both the "prior" and
+            "current" taker-buy ratios. Must be >= 2. Default 6.
+        flip_from_below: The prior window ratio must be strictly less
+            than this. Range (0, 1). Default 0.50 (neutral).
+        flip_to_at_least: The current window ratio must be at or above
+            this. Range (0, 1), and must be >= ``flip_from_below``.
+            Default 0.55.
 
     Returns:
-        pd.Series[bool] aligned to ctx.features.index. True only on the
-        exact bar where the rolling ratio crosses above neutral (transition).
+        pd.Series[bool] aligned to ctx.features.index. True on the bar
+        where the flip is first observable given the rolling windows.
     """
-    if flip_window < 1:
-        raise ValueError(f"flip_window must be >= 1, got {flip_window}")
-    if not 0.0 < neutral_threshold < 1.0:
+    if window < 2:
+        raise ValueError(f"window must be >= 2, got {window}")
+    if not 0.0 < flip_from_below < 1.0:
         raise ValueError(
-            f"neutral_threshold must be in (0, 1), got {neutral_threshold}"
+            f"flip_from_below must be in (0, 1), got {flip_from_below}"
+        )
+    if not 0.0 < flip_to_at_least < 1.0:
+        raise ValueError(
+            f"flip_to_at_least must be in (0, 1), got {flip_to_at_least}"
+        )
+    if flip_to_at_least < flip_from_below:
+        raise ValueError(
+            f"flip_to_at_least ({flip_to_at_least}) must be >= "
+            f"flip_from_below ({flip_from_below})"
         )
 
     tbv = ctx.klines["taker_buy_base_volume"].astype(float)
     vol = ctx.klines["volume"].astype(float)
 
-    # Per-bar taker-buy ratio; treat zero-volume bars as neutral (0.5)
-    per_bar_ratio = (tbv / vol.replace(0, float("nan"))).fillna(neutral_threshold)
+    # Rolling taker-buy ratio over `window` bars. Zero-volume windows are
+    # neutral (0.5).
+    rolling_tbv = tbv.rolling(window, min_periods=window).sum()
+    rolling_vol = vol.rolling(window, min_periods=window).sum()
+    current_ratio = (rolling_tbv / rolling_vol.replace(0, float("nan"))).fillna(0.5)
 
-    # Rolling mean over flip_window bars (current bar included, no shift)
-    rolling_ratio = per_bar_ratio.rolling(flip_window, min_periods=flip_window).mean()
+    # Prior window = same rolling ratio shifted back by `window` bars so
+    # the two windows do not overlap.
+    prior_ratio = current_ratio.shift(window)
 
-    above_now = rolling_ratio > neutral_threshold
-    prev_ratio = rolling_ratio.shift(1)
-    above_prev = prev_ratio > neutral_threshold
-    # Require previous bar is known: the first bar in a window has no prior
-    # history, so we cannot confirm a transition — suppress it.
-    prev_known = prev_ratio.notna()
-
-    # True only on the crossing bar (was not above, now is above, and we
-    # have a prior bar to compare against)
-    flip = above_now & ~above_prev & prev_known
-
-    return flip.fillna(False).reindex(ctx.features.index, fill_value=False).astype(bool)
+    flipped = (prior_ratio < flip_from_below) & (current_ratio >= flip_to_at_least)
+    return flipped.fillna(False).reindex(ctx.features.index, fill_value=False).astype(bool)
