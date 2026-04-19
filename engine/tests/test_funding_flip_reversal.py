@@ -122,10 +122,7 @@ class TestPromotedPatternsRegistry:
             log_to_experiment=False,
         )
         assert isinstance(results, list)
-        # Each result must have a pattern_slug field
+        # Each result must have a pattern_slug field that's registered in PATTERN_LIBRARY
+        from patterns.library import PATTERN_LIBRARY
         for r in results:
-            assert r.pattern_slug in {
-                "tradoor-oi-reversal-v1", "funding-flip-reversal-v1",
-                "wyckoff-spring-reversal-v1", "whale-accumulation-reversal-v1",
-                "volume-absorption-reversal-v1",
-            }
+            assert r.pattern_slug in PATTERN_LIBRARY
