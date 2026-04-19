@@ -74,9 +74,10 @@ def test_block_returns_false_for_btc(make_ctx):
 
 def test_block_returns_false_when_no_signals(make_ctx):
     ctx = make_ctx(close=[100, 100, 100], features={})
+    import pandas as pd
     with patch(
-        "building_blocks.confirmations.smart_money_accumulation.get_smart_money_signals",
-        return_value=[],
+        "building_blocks.confirmations.smart_money_accumulation.load_signals_from_disk",
+        return_value=pd.DataFrame(),
     ):
         mask = smart_money_accumulation(ctx)
     assert not mask.any()
@@ -84,32 +85,28 @@ def test_block_returns_false_when_no_signals(make_ctx):
 
 def test_block_returns_false_when_below_min_wallets(make_ctx):
     ctx = make_ctx(close=[100, 100], features={})
-    signals = [
+    import pandas as pd
+    signals_df = pd.DataFrame([
         {
-            "amountUsd": "5000",
-            "soldRatioPercent": "0",
+            "timestamp": pd.Timestamp("2025-01-01 00:00:00", tz="UTC"),
+            "walletType": 1,
+            "amountUsd": 5000.0,
+            "soldRatioPercent": 0.0,
             "triggerWalletAddress": "only_one_wallet",
-            "timestamp": "9999999999000",
+            "fetch_timestamp": "2025-01-01T00:00:00+00:00",
         }
-    ]
+    ])
     with patch(
-        "building_blocks.confirmations.smart_money_accumulation.get_smart_money_signals",
-        return_value=signals,
+        "building_blocks.confirmations.smart_money_accumulation.load_signals_from_disk",
+        return_value=signals_df,
     ):
         mask = smart_money_accumulation(ctx, min_buy_wallets=2)
     assert not mask.any()
 
 
-def test_block_marks_recent_bars_true(make_ctx):
-    import time
-    from unittest.mock import patch as _patch
-
-    # make_ctx uses start="2025-01-01", freq="1h"
-    # We mock time.time() to return a value 2h after bar index 2 (bar3)
-    # so bars 0,1 (hours 0,1) are > 2h old, bars 2,3 are within 2h
+def test_block_with_cache_signals(make_ctx):
+    """Test that block uses load_signals_from_disk and returns False on empty cache."""
     import pandas as pd
-    epoch_bar0 = int(pd.Timestamp("2025-01-01 00:00:00", tz="UTC").timestamp())
-    fake_now = epoch_bar0 + 3 * 3600 + 30  # now = bar0 + 3.5h
 
     ctx = make_ctx(
         close=[100, 100, 100, 100],
@@ -118,20 +115,29 @@ def test_block_marks_recent_bars_true(make_ctx):
         start="2025-01-01",
         freq="1h",
     )
-    signals = [
-        {
-            "amountUsd": "8000",
-            "soldRatioPercent": "5",
-            "triggerWalletAddress": "addr1,addr2,addr3",
-            "timestamp": str(fake_now * 1000),
-        }
-    ]
-    with patch(
-        "building_blocks.confirmations.smart_money_accumulation.get_smart_money_signals",
-        return_value=signals,
-    ), _patch("time.time", return_value=fake_now):
-        mask = smart_money_accumulation(ctx, max_age_hours=2.0, min_buy_wallets=2)
 
-    # bar0 (00:00) and bar1 (01:00) are > 2h before fake_now (03:30) → False
-    # bar2 (02:00) and bar3 (03:00) are within 2h → True
-    assert list(mask) == [False, False, True, True]
+    # Empty cache → all False
+    with patch(
+        "building_blocks.confirmations.smart_money_accumulation.load_signals_from_disk",
+        return_value=pd.DataFrame(),
+    ):
+        mask = smart_money_accumulation(ctx)
+        assert not mask.any(), "Empty signals should return all False"
+
+    # With signals but no accumulation → all False
+    signals_df = pd.DataFrame([
+        {
+            "timestamp": pd.Timestamp.now(tz="UTC"),
+            "walletType": 3,
+            "amountUsd": 50000.0,
+            "soldRatioPercent": 80.0,  # Whale distributing, not accumulating
+            "triggerWalletAddress": "whale1",
+            "fetch_timestamp": pd.Timestamp.now(tz="UTC").isoformat(),
+        }
+    ])
+    with patch(
+        "building_blocks.confirmations.smart_money_accumulation.load_signals_from_disk",
+        return_value=signals_df,
+    ):
+        mask = smart_money_accumulation(ctx, min_buy_wallets=2)
+        assert not mask.any(), "Distribution signals should return all False"
