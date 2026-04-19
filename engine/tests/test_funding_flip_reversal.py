@@ -127,4 +127,5 @@ class TestPromotedPatternsRegistry:
             assert r.pattern_slug in {
                 "tradoor-oi-reversal-v1", "funding-flip-reversal-v1",
                 "wyckoff-spring-reversal-v1", "whale-accumulation-reversal-v1",
+                "volume-absorption-reversal-v1",
             }

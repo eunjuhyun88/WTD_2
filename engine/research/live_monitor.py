@@ -64,6 +64,7 @@ PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
     ("funding-flip-reversal-v1",        "funding-flip-reversal-v1__canonical__dur-long",   {"ENTRY_ZONE", "FLIP_SIGNAL"}),
     ("wyckoff-spring-reversal-v1",      "wyckoff-spring-reversal-v1__canonical__dur-long", {"SPRING", "SIGN_OF_STRENGTH"}),
     ("whale-accumulation-reversal-v1",  "whale-accumulation-reversal-v1__canonical",       {"BOTTOM_CONFIRM", "WHALE_ACCUMULATION"}),
+    ("volume-absorption-reversal-v1",   "volume-absorption-reversal-v1__canonical",        {"ABSORPTION", "BASE_FORMATION"}),
 ]
 
 
