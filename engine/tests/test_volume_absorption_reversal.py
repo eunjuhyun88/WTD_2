@@ -92,7 +92,10 @@ class TestVolumeAbsorptionReversalPattern:
     def test_markup_required_block(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "MARKUP")
-        assert "breakout_above_high" in phase.required_blocks
+        # breakout_from_pullback_range resets reference at climax low → fires on
+        # post-climax range breakout. breakout_above_high(lookback_days=5) includes
+        # pre-dump highs that recovery never reaches (W-0103 CTO fix, Slice 3).
+        assert "breakout_from_pullback_range" in phase.required_blocks
 
 
 class TestReferencedBlocksRegistered:
@@ -112,7 +115,7 @@ class TestReferencedBlocksRegistered:
             "volume_dryup",
             "cvd_buying",
             "higher_lows_sequence",
-            "breakout_above_high",
+            "breakout_from_pullback_range",
             "breakout_volume_confirm",
             "sideways_compression",
         ):

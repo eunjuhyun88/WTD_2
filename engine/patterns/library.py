@@ -521,7 +521,11 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="MARKUP",
             label="마크업 — 흡수 레인지 이탈",
-            required_blocks=["breakout_above_high"],
+            # breakout_from_pullback_range: 클라이맥스 저점에서 레짐 리셋 후 포스트-클라이맥스
+            # 레인지 고점 돌파. breakout_above_high(lookback_days=5)는 덤프 이전 가격을
+            # 기준으로 삼아 -30~50% 클라이맥스 후 절대 발동 안 됨. breakout_from_pullback_range는
+            # 롤링 로우마다 레퍼런스 리셋 → 흡수 레인지 상단 돌파 시 발동.
+            required_blocks=["breakout_from_pullback_range"],
             optional_blocks=["breakout_volume_confirm"],
             disqualifier_blocks=[],
             min_bars=1, max_bars=12,
