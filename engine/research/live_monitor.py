@@ -59,6 +59,10 @@ PHASE_ORDER = {
     "LONG_OVERHEAT": 0, "FUNDING_NORMALIZE": 1, "SHORT_ENTRY": 2,
     # gap-fade-short-v1 phases (W-0106)
     "EXTENDED_RALLY": 0, "GAP_REJECTION": 1, "BREAKDOWN_CONFIRM": 2,
+    # volatility-squeeze-breakout-v1 phases (W-0107)
+    "BREAKOUT_SIGNAL": 1, "TREND_CONFIRM": 2,
+    # alpha-confluence-v1 phases (W-0107)
+    "LAYER_SETUP": 0, "CVD_SIGNAL": 1, "ALPHA_ENTRY": 2,
 }
 
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)

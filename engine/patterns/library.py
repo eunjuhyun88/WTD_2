@@ -633,6 +633,101 @@ GAP_FADE_SHORT = PatternObject(
 )
 
 # Registry: slug → PatternObject
+VOLATILITY_SQUEEZE_BREAKOUT = PatternObject(
+    slug="volatility-squeeze-breakout-v1",
+    name="변동성 스퀴즈 돌파 패턴 (아카 L14+L15+L13형)",
+    description=(
+        "BB 스퀴즈 + ATR 극저 압축 → 볼륨 확인 돌파. "
+        "아카 Alpha Terminal L14(볼린저 스퀴즈) + L15(ATR 극저) + L13(고가 돌파) 조합. "
+        "Minervini VCP 크립토 적용형."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="COMPRESSION",
+            label="변동성 압축 (BB + ATR 이중 스퀴즈)",
+            required_blocks=["bollinger_squeeze"],
+            optional_blocks=["atr_ultra_low"],
+            disqualifier_blocks=["extreme_volatility"],
+            min_bars=3, max_bars=40,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BREAKOUT_SIGNAL",
+            label="돌파 신호 (볼륨 + 고가 돌파)",
+            required_blocks=["breakout_above_high", "breakout_volume_confirm"],
+            optional_blocks=["bollinger_expansion"],
+            soft_blocks=["volume_surge_bull"],
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="TREND_CONFIRM",
+            label="추세 확인 (저점 상승)",
+            required_blocks=[],
+            required_any_groups=[
+                ["higher_lows_sequence", "ema_pullback"],
+            ],
+            soft_blocks=["delta_flip_positive"],
+            min_bars=2, max_bars=20,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="BREAKOUT_SIGNAL",
+    target_phase="TREND_CONFIRM",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["volatility_squeeze", "breakout", "minervini_vcp", "bollinger", "atr", "aka_l14_l15"],
+)
+
+ALPHA_CONFLUENCE = PatternObject(
+    slug="alpha-confluence-v1",
+    name="알파 컨플루언스 패턴 (아카 15레이어 복합형)",
+    description=(
+        "아카 Alpha Terminal의 핵심 레이어(L2 Flow + L11 CVD + L14 BB + L1 Wyckoff)가 "
+        "동시에 강세 신호를 낼 때 진입. 단일 패턴보다 레이어 합산으로 신뢰도 극대화."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="LAYER_SETUP",
+            label="레이어 조건 형성 (FR + OI + 압축)",
+            required_blocks=["funding_extreme", "bollinger_squeeze"],
+            optional_blocks=["atr_ultra_low", "sideways_compression"],
+            soft_blocks=["liq_zone_squeeze_setup"],
+            disqualifier_blocks=["extreme_volatility"],
+            min_bars=2, max_bars=30,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="CVD_SIGNAL",
+            label="CVD 흡수 + 저점 상승 (L11 + L1)",
+            required_blocks=["delta_flip_positive"],
+            optional_blocks=["absorption_signal", "higher_lows_sequence"],
+            soft_blocks=["smart_money_accumulation", "coinbase_premium_positive"],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ALPHA_ENTRY",
+            label="알파 진입 (볼륨 + 캔들)",
+            required_blocks=[],
+            required_any_groups=[
+                ["volume_surge_bull", "breakout_volume_confirm"],
+                ["bullish_engulfing", "long_lower_wick"],
+            ],
+            soft_blocks=["breakout_above_high", "ema_pullback"],
+            min_bars=1, max_bars=4,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="ALPHA_ENTRY",
+    target_phase="ALPHA_ENTRY",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["multi_layer", "confluence", "aka_alpha_terminal", "cvd", "funding", "bollinger"],
+)
+
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
@@ -641,6 +736,8 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     VOLUME_ABSORPTION_REVERSAL.slug: VOLUME_ABSORPTION_REVERSAL,
     FUNDING_FLIP_SHORT.slug: FUNDING_FLIP_SHORT,
     GAP_FADE_SHORT.slug: GAP_FADE_SHORT,
+    VOLATILITY_SQUEEZE_BREAKOUT.slug: VOLATILITY_SQUEEZE_BREAKOUT,
+    ALPHA_CONFLUENCE.slug: ALPHA_CONFLUENCE,
 }
 
 def get_pattern(slug: str) -> PatternObject:
