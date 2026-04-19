@@ -36,6 +36,7 @@ from building_blocks.triggers.breakout_from_pullback_range import breakout_from_
 from building_blocks.triggers.breakout_volume_confirm import breakout_volume_confirm
 from building_blocks.triggers.consolidation_then_breakout import consolidation_then_breakout
 from building_blocks.triggers.volume_spike import volume_spike
+from building_blocks.triggers.volume_spike_down import volume_spike_down
 
 # --- Confirmations ---
 from building_blocks.confirmations.absorption_signal import absorption_signal
@@ -58,6 +59,7 @@ from building_blocks.confirmations.post_dump_compression import post_dump_compre
 from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.cvd_state_eq import cvd_state_eq
+from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 from building_blocks.confirmations.volume_dryup import volume_dryup
 from building_blocks.confirmations.coinbase_premium_positive import coinbase_premium_positive
 from building_blocks.confirmations.smart_money_accumulation import smart_money_accumulation
@@ -92,6 +94,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("breakout_volume_confirm",   breakout_volume_confirm),
     ("consolidation_then_breakout", consolidation_then_breakout),
     ("volume_spike",              volume_spike),
+    ("volume_spike_down",         volume_spike_down),
     # confirmations
     ("golden_cross",       golden_cross),
     ("dead_cross",         dead_cross),
@@ -114,6 +117,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("cvd_state_eq",       cvd_state_eq),
     ("cvd_buying",         lambda ctx: cvd_state_eq(ctx, state="buying")),
     ("absorption_signal",  absorption_signal),
+    ("delta_flip_positive", delta_flip_positive),
     ("alt_btc_accel_ratio", alt_btc_accel_ratio),
     ("volume_dryup",       volume_dryup),
     ("coinbase_premium_positive", coinbase_premium_positive),

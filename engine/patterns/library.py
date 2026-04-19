@@ -454,12 +454,89 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
     tags=["wyckoff", "spring", "price_action", "accumulation", "altcoin"],
 )
 
+VOLUME_ABSORPTION_REVERSAL = PatternObject(
+    slug="volume-absorption-reversal-v1",
+    name="거래량 흡수 반전 패턴 (셀링 클라이맥스형)",
+    description=(
+        "셀링 클라이맥스(고거래량 하락 바) → 흡수(가격 평탄화 + 순매수 유지) → "
+        "CVD 델타 양전환(매도 프레셔 소진) → 돌파(MARKUP). "
+        "순수 OHLCV + taker_buy_base_volume 기반 — 퍼프/OI 데이터 불필요, "
+        "현물 거래소에서도 커버 가능. WSR보다 이른 진입(earlier entry)을 노린다."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="SELLING_CLIMAX",
+            label="셀링 클라이맥스 — 고거래량 하락 바",
+            required_blocks=["volume_spike_down"],
+            optional_blocks=["recent_decline"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=3,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ABSORPTION",
+            label="흡수 — 순매수 유지 + 가격 평탄화",
+            # absorption_signal: 강한 taker-buy + 가격 정체 (매도벽 흡수 중)
+            # volume_dryup: 패닉 후 거래량 수렴
+            required_blocks=["absorption_signal"],
+            optional_blocks=["volume_dryup"],
+            soft_blocks=["cvd_buying"],
+            disqualifier_blocks=[],
+            score_weights={
+                "absorption_signal": 0.60,
+                "volume_dryup": 0.25,
+                "cvd_buying": 0.15,
+            },
+            phase_score_threshold=0.55,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="SELLING_CLIMAX",
+            transition_window_bars=24,
+            min_bars=3, max_bars=24,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="DELTA_FLIP",
+            label="델타 양전환 — 매도 프레셔 소진",
+            # delta_flip_positive: 직전 window 순매도 → 현재 window 순매수
+            # higher_lows_sequence: 저점 상승 구조 동반 확인
+            required_blocks=["delta_flip_positive"],
+            optional_blocks=["higher_lows_sequence"],
+            disqualifier_blocks=["volume_spike_down"],  # 신규 덤프 시 무효
+            score_weights={
+                "delta_flip_positive": 0.65,
+                "higher_lows_sequence": 0.35,
+            },
+            phase_score_threshold=0.60,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="ABSORPTION",
+            transition_window_bars=24,
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="MARKUP",
+            label="마크업 — 흡수 레인지 이탈",
+            required_blocks=["breakout_above_high"],
+            optional_blocks=["breakout_volume_confirm"],
+            disqualifier_blocks=[],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="DELTA_FLIP",
+    target_phase="MARKUP",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    tags=["volume_absorption", "cvd", "selling_climax", "spot_compatible"],
+)
+
 # Registry: slug → PatternObject
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
     WYCKOFF_SPRING_REVERSAL.slug: WYCKOFF_SPRING_REVERSAL,
     WHALE_ACCUMULATION_REVERSAL.slug: WHALE_ACCUMULATION_REVERSAL,
+    VOLUME_ABSORPTION_REVERSAL.slug: VOLUME_ABSORPTION_REVERSAL,
 }
 
 def get_pattern(slug: str) -> PatternObject:
