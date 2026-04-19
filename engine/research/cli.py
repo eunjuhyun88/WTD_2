@@ -133,6 +133,35 @@ def _run_pattern_search_refinement_once(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_backtest(args: argparse.Namespace) -> int:
+    from datetime import timedelta
+
+    from research.backtest import run_pattern_backtest
+    from research.live_monitor import DEFAULT_UNIVERSE, PROMOTED_PATTERNS
+
+    slugs: list[str]
+    if args.pattern == "all":
+        slugs = [slug for slug, _, _ in PROMOTED_PATTERNS]
+    else:
+        slugs = [args.pattern]
+
+    universe = DEFAULT_UNIVERSE if args.universe == "default" else args.universe.split(",")
+
+    since = None
+    if args.since:
+        from datetime import datetime, timezone
+        since = datetime.fromisoformat(args.since).replace(tzinfo=timezone.utc)
+    elif args.days:
+        from datetime import datetime, timezone
+        since = datetime.now(timezone.utc) - timedelta(days=args.days)
+
+    for slug in slugs:
+        result = run_pattern_backtest(slug, universe, since=since, forward_bars=args.forward_bars)
+        print()
+        print(result.summary())
+    return 0
+
+
 def _run_pattern_benchmark_search(args: argparse.Namespace) -> int:
     config = PatternBenchmarkSearchConfig(
         pattern_slug=args.slug,
@@ -198,6 +227,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     search_refine_p.add_argument("--slug", required=True, help="Pattern slug")
     search_refine_p.set_defaults(func=_run_pattern_search_refinement_once)
+
+    backtest_p = sub.add_parser("backtest", help="Full historical backtest — scan all history, measure forward returns")
+    backtest_p.add_argument("--pattern", default="all", help="Pattern slug or 'all'")
+    backtest_p.add_argument("--universe", default="default", help="'default' or comma-separated symbols")
+    backtest_p.add_argument("--since", default=None, help="ISO date e.g. 2024-01-01")
+    backtest_p.add_argument("--days", type=int, default=365, help="Look-back days (ignored if --since set)")
+    backtest_p.add_argument("--forward-bars", type=int, default=72, help="Forward return horizon bars")
+    backtest_p.set_defaults(func=_run_backtest)
 
     benchmark_p = sub.add_parser("pattern-benchmark-search", help="Run replay benchmark-pack search for pattern variants")
     benchmark_p.add_argument("--slug", required=True, help="Pattern slug")
