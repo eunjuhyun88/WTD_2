@@ -66,6 +66,8 @@ from building_blocks.confirmations.smart_money_accumulation import smart_money_a
 from building_blocks.confirmations.total_oi_spike import total_oi_spike
 from building_blocks.confirmations.oi_exchange_divergence import oi_exchange_divergence
 from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
+from building_blocks.confirmations.relative_velocity_bull import relative_velocity_bull
+from building_blocks.confirmations.cvd_price_divergence import cvd_price_divergence
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -131,6 +133,12 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("total_oi_spike",          total_oi_spike),
     ("oi_exchange_divergence",  oi_exchange_divergence),
     ("delta_flip_positive",     delta_flip_positive),
+    # CBR-specific lambdas (post-decline compression breakout, W-0104)
+    ("sideways_compression_cbr",   lambda ctx: sideways_compression(ctx, max_range_pct=0.06, lookback=12)),
+    ("consolidation_breakout_cbr", lambda ctx: consolidation_then_breakout(ctx, range_bars=12, range_pct=0.06)),
+    # Signal Radar blocks (W-0108)
+    ("relative_velocity_bull", relative_velocity_bull),
+    ("cvd_price_divergence",   cvd_price_divergence),
     # disqualifiers
     ("volume_below_average", volume_below_average),
     ("extreme_volatility",   extreme_volatility),
