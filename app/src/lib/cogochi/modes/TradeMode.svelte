@@ -1,5 +1,9 @@
 <script lang="ts">
   import Splitter from '../Splitter.svelte';
+  import ChartBoard from '$lib/components/terminal/workspace/ChartBoard.svelte';
+  import ScanGrid from '$lib/components/terminal/peek/ScanGrid.svelte';
+  import JudgePanel from '$lib/components/terminal/peek/JudgePanel.svelte';
+  import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
 
   interface TabState {
     tradePrompt: string;
@@ -20,19 +24,18 @@
     splitX: number;
     onResizeY: (dy: number) => void;
     onResizeX: (dx: number) => void;
+    symbol?: string;
+    timeframe?: string;
   }
 
-  const { mode, tabState, updateTabState, splitY, splitX, onResizeY, onResizeX }: Props = $props();
-</script>
+  let { mode, tabState, updateTabState, splitY, splitX, onResizeY, onResizeX, symbol = 'BTCUSDT', timeframe = '4h' }: Props = $props();
+
+  let selectedCapture = $state<PatternCaptureRecord | null>(null);
+
 
 <div class="trade-mode">
   <div style:flex={`${splitY}%`} style:min-height="0" style:display="flex" style:flex-direction="column" style:overflow="hidden">
-    <div class="analyze-pane">
-      <div class="pane-header">ANALYZE</div>
-      <div class="pane-content">
-        <p>Chart content (will integrate existing ChartBoard)</p>
-      </div>
-    </div>
+    <ChartBoard {symbol} tf={timeframe} contextMode="chart" />
   </div>
 
   <Splitter orientation="horizontal" onDrag={onResizeY} />
@@ -41,23 +44,13 @@
     <div class="bottom-pane">
       <div style:display="flex" style:height="100%" style:gap="1px">
         <div style:flex={`${splitX}%`} style:min-width="0" style:display="flex" style:flex-direction="column" style:overflow="hidden">
-          <div class="sub-pane">
-            <div class="pane-header">SCAN</div>
-            <div class="pane-content">
-              <p>Scan grid (existing ScanGrid)</p>
-            </div>
-          </div>
+          <ScanGrid activeSymbol={symbol} onOpenCapture={(r) => (selectedCapture = r)} />
         </div>
 
         <Splitter orientation="vertical" onDrag={onResizeX} />
 
         <div style:flex={`${100 - splitX}%`} style:min-width="0" style:display="flex" style:flex-direction="column" style:overflow="hidden">
-          <div class="sub-pane">
-            <div class="pane-header">JUDGE</div>
-            <div class="pane-content">
-              <p>Judge panel (existing JudgePanel)</p>
-            </div>
-          </div>
+          <JudgePanel {symbol} {timeframe} />
         </div>
       </div>
     </div>
@@ -73,36 +66,9 @@
     background: var(--g0);
   }
 
-  .analyze-pane,
-  .sub-pane {
-    display: flex;
-    flex-direction: column;
-    background: var(--g0);
-    border: 0.5px solid var(--g3);
-  }
-
   .bottom-pane {
     display: flex;
     height: 100%;
     overflow: hidden;
-  }
-
-  .pane-header {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    padding: 8px 12px;
-    background: var(--g1);
-    border-bottom: 0.5px solid var(--g3);
-    color: var(--g6);
-    letter-spacing: 0.1em;
-    flex-shrink: 0;
-  }
-
-  .pane-content {
-    flex: 1;
-    overflow: auto;
-    padding: 12px;
-    color: var(--g7);
-    font-size: 11px;
   }
 </style>

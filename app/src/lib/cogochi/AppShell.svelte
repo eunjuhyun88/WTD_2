@@ -118,6 +118,8 @@
           splitX={$shellStore.canvasSplitX}
           onResizeY={(dy) => shellStore.resizeCanvasY(dy)}
           onResizeX={(dx) => shellStore.resizeCanvasX(dx)}
+          symbol="BTCUSDT"
+          timeframe="4h"
         />
       {:else if $activeMode === 'train'}
         <TrainMode mode={$activeMode} />
