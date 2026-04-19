@@ -475,17 +475,19 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
         ),
         PhaseCondition(
             phase_id="ABSORPTION",
-            label="흡수 — 순매수 유지 + 가격 평탄화",
-            # absorption_signal: 강한 taker-buy + 가격 정체 (매도벽 흡수 중)
-            # volume_dryup: 패닉 후 거래량 수렴
-            required_blocks=["absorption_signal"],
-            optional_blocks=["volume_dryup"],
+            label="흡수 — 패닉 후 거래량 수렴 + 저점 안정화",
+            # volume_dryup: 클라이맥스 후 거래량이 평균 대비 수렴 — 공포 매도 소진 확인.
+            # absorption_signal(FFR용)은 flat price + heavy buying을 요구하는데,
+            # 클라이맥스 직후 가격이 여전히 크게 흔들려 price_move_threshold를 통과 못함.
+            # volume_dryup이 post-climax 흡수 구간(12-36h)에서 신뢰성 높게 발동.
+            required_blocks=["volume_dryup"],
+            optional_blocks=["sideways_compression"],
             soft_blocks=["cvd_buying"],
             disqualifier_blocks=[],
             score_weights={
-                "absorption_signal": 0.60,
-                "volume_dryup": 0.25,
-                "cvd_buying": 0.15,
+                "volume_dryup": 0.70,
+                "sideways_compression": 0.20,
+                "cvd_buying": 0.10,
             },
             phase_score_threshold=0.55,
             anchor_from_previous_phase=True,
@@ -497,13 +499,16 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="DELTA_FLIP",
             label="델타 양전환 — 매도 프레셔 소진",
-            # delta_flip_positive: 직전 window 순매도 → 현재 window 순매수
+            # delta_flip_var: w=3, flip_from_below=0.48, flip_to_at_least=0.52.
+            # 기본값(w=6, 0.50→0.55)은 클라이맥스 고거래량 바가 6-bar 롤링에 포함돼
+            # ratio가 0.55 아래로 고정됨. w=3 단축 + 0.52 임계값으로
+            # 흡수 구간 12-36h 내에서 안정적으로 발동.
             # higher_lows_sequence: 저점 상승 구조 동반 확인
-            required_blocks=["delta_flip_positive"],
+            required_blocks=["delta_flip_var"],
             optional_blocks=["higher_lows_sequence"],
             disqualifier_blocks=["volume_spike_down"],  # 신규 덤프 시 무효
             score_weights={
-                "delta_flip_positive": 0.65,
+                "delta_flip_var": 0.65,
                 "higher_lows_sequence": 0.35,
             },
             phase_score_threshold=0.60,
