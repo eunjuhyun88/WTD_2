@@ -375,7 +375,13 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="COMPRESSION_ZONE",
             label="지지선 압축 (매집 준비)",
-            required_blocks=[],
+            # recent_decline: context gate — symbol must have dropped ≥10% in 72h
+            # before compression. Prevents this phase from firing on uptrending
+            # symbols that happen to have a Bollinger squeeze (W-0104: WSR was
+            # generating 10K+ signals/year precisely because there was no prior-
+            # decline gate). Wyckoff: compression is only meaningful AFTER a
+            # markdown phase, not during a markup.
+            required_blocks=["recent_decline"],
             required_any_groups=[
                 ["sideways_compression", "bollinger_squeeze", "volume_dryup"],
             ],
@@ -403,7 +409,16 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="SIGN_OF_STRENGTH",
             label="강도 신호 — 거래량 폭발 돌파",
+            # Wyckoff SoS MUST have volume expansion — pure higher_lows without
+            # volume confirmation is just a drift, not a Sign of Strength.
+            # W-0104: threshold=0.55 equalled higher_lows weight=0.55, so the
+            # phase fired on any upswing. Fix: require at least one of
+            # [breakout_volume_confirm, cvd_buying] alongside higher_lows.
+            # Threshold raised to 0.65 so higher_lows (0.55) alone cannot pass.
             required_blocks=["higher_lows_sequence"],
+            required_any_groups=[
+                ["breakout_volume_confirm", "cvd_buying"],
+            ],
             optional_blocks=[
                 "breakout_volume_confirm",
                 "cvd_buying",
@@ -416,7 +431,7 @@ WYCKOFF_SPRING_REVERSAL = PatternObject(
                 "cvd_buying": 0.15,
                 "absorption_signal": 0.10,
             },
-            phase_score_threshold=0.55,
+            phase_score_threshold=0.65,
             min_bars=2, max_bars=24,
             timeframe="1h",
         ),
@@ -470,12 +485,16 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
             label="셀링 클라이맥스 — 고거래량 급락",
             # Entry condition: a volume-spiked down bar marks seller exhaustion.
             # volume_spike_down: close < open AND volume >= 3× prior 24-bar avg.
+            # recent_decline: REQUIRED context gate — price must have dropped
+            #   ≥10% in the prior 72h. Without this, random volume spikes on
+            #   uptrending or sideways assets fire SELLING_CLIMAX constantly.
+            #   W-0104: VAR was generating 8K+ signals/year on 30 symbols; root
+            #   cause was no prior-decline gate on the first phase.
             # post_dump_compression: realized range compresses immediately after
             #   (optional) — confirms the spike was climactic, not the start of
             #   a sustained cascade. If present, score rises.
-            # recent_decline: price has been falling into the climax (context).
-            required_blocks=["volume_spike_down"],
-            optional_blocks=["recent_decline", "post_dump_compression"],
+            required_blocks=["volume_spike_down", "recent_decline"],
+            optional_blocks=["post_dump_compression"],
             disqualifier_blocks=[],
             score_weights={
                 "volume_spike_down": 1.00,
@@ -495,7 +514,16 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
             #   "sell-wall being absorbed" (ALPHA TERMINAL S2 concept).
             # volume_dryup (soft): volume falling after the climax spike signals
             #   supply exhaustion (Wyckoff "no supply" after selling climax).
+            # W-0104: delta_flip alone (weight 1.00 ≥ threshold 0.65) was firing
+            # on every minor order-flow reversal. Require at least one of
+            # [absorption_signal, volume_dryup] alongside the flip — the flip
+            # must be accompanied by either hidden accumulation (price-flat CVD)
+            # or supply exhaustion (volume dryup). This matches Wyckoff's
+            # "secondary test" evidence requirement.
             required_blocks=["delta_flip_positive"],
+            required_any_groups=[
+                ["absorption_signal", "volume_dryup"],
+            ],
             soft_blocks=[
                 "absorption_signal",
                 "volume_dryup",
@@ -524,17 +552,22 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
             # Buyers have absorbed supply; price forms higher lows and range
             # tightens. This is the safest entry window before markup.
             # higher_lows_sequence: price making higher successive lows.
-            # volume_dryup (soft): low-volume base = "no supply" (Wyckoff).
-            # cvd_buying (soft): taker buy ratio sustained above neutral.
-            # bollinger_squeeze (soft): volatility collapsing into base.
-            required_blocks=["higher_lows_sequence"],
+            # volume_dryup: PROMOTED to required — Wyckoff "no supply" test.
+            #   A base with elevated volume is not a base; it's distribution.
+            #   W-0104: threshold=0.60 equalled higher_lows weight=0.60, so
+            #   the entry fired on any rising low sequence without needing
+            #   volume quiet. Requiring volume_dryup adds a real structural gate.
+            # cvd_buying (optional): taker buy ratio sustained above neutral.
+            # bollinger_squeeze (optional): volatility collapsing into base.
+            # Threshold raised to 0.70: requires higher_lows (0.60) + volume_dryup
+            # (0.15) as a minimum to pass (combined 0.75 > 0.70 threshold).
+            required_blocks=["higher_lows_sequence", "volume_dryup"],
             soft_blocks=[
-                "volume_dryup",
                 "cvd_buying",
                 "bollinger_squeeze",
                 "reclaim_after_dump",
             ],
-            optional_blocks=["volume_dryup", "cvd_buying", "bollinger_squeeze"],
+            optional_blocks=["cvd_buying", "bollinger_squeeze"],
             disqualifier_blocks=[],
             score_weights={
                 "higher_lows_sequence": 0.60,
@@ -543,7 +576,7 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
                 "bollinger_squeeze": 0.10,
                 "reclaim_after_dump": 0.10,
             },
-            phase_score_threshold=0.60,
+            phase_score_threshold=0.70,
             transition_window_bars=24,
             anchor_from_previous_phase=True,
             anchor_phase_id="ABSORPTION",
