@@ -68,6 +68,7 @@ from building_blocks.confirmations.oi_exchange_divergence import oi_exchange_div
 from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 from building_blocks.confirmations.relative_velocity_bull import relative_velocity_bull
 from building_blocks.confirmations.cvd_price_divergence import cvd_price_divergence
+from building_blocks.confirmations.orderbook_imbalance_ratio import orderbook_imbalance_ratio
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -137,8 +138,9 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("sideways_compression_cbr",   lambda ctx: sideways_compression(ctx, max_range_pct=0.06, lookback=12)),
     ("consolidation_breakout_cbr", lambda ctx: consolidation_then_breakout(ctx, range_bars=12, range_pct=0.06)),
     # Signal Radar blocks (W-0108)
-    ("relative_velocity_bull", relative_velocity_bull),
-    ("cvd_price_divergence",   cvd_price_divergence),
+    ("relative_velocity_bull",     relative_velocity_bull),
+    ("cvd_price_divergence",       cvd_price_divergence),
+    ("orderbook_imbalance_ratio",  orderbook_imbalance_ratio),
     # disqualifiers
     ("volume_below_average", volume_below_average),
     ("extreme_volatility",   extreme_volatility),
