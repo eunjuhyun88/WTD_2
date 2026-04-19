@@ -1,0 +1,47 @@
+{
+  "benchmark_pack_id": "volume-absorption-reversal-v1__ptb-tradoor-v1",
+  "pattern_slug": "volume-absorption-reversal-v1",
+  "candidate_timeframes": [
+    "1h",
+    "4h"
+  ],
+  "cases": [
+    {
+      "symbol": "PTBUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-13T00:00:00+00:00",
+      "end_at": "2026-04-15T12:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "reference",
+      "notes": [
+        "reference PTB reversal window"
+      ],
+      "case_id": "140ceaa2-298e-4020-a4a8-97c7fd507413"
+    },
+    {
+      "symbol": "TRADOORUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-11T00:00:00+00:00",
+      "end_at": "2026-04-14T18:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "holdout",
+      "notes": [
+        "holdout TRADOOR replay window"
+      ],
+      "case_id": "fc6b8dd6-f56f-49e6-b7ec-43f87ae50110"
+    }
+  ],
+  "created_at": "2026-04-19T11:23:53.092442+00:00"
+}

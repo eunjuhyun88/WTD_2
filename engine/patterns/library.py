@@ -295,20 +295,20 @@ WHALE_ACCUMULATION_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="WHALE_ACCUMULATION",
             label="세력 매집 — 숏 누적 + 개인 청산 유도",
-            # OI 급등+급락 + 스마트머니 매집 + 펀딩 극단 음수.
-            # oi_spike_with_dump: OI 급등 + 가격 급락 = 강제 청산 cascade
-            # smart_money_accumulation: OKX OnchainOS 대형 지갑 매집
-            # funding_extreme_short: 펀딩 극단 음수 = 숏 과적재
+            # required_any_groups 사용 — OR 시맨틱: 두 신호 중 하나면 충분.
+            # oi_spike_with_dump: OI 급등 + 가격 급락 = 강제 청산 cascade (Scenario A)
+            # funding_extreme_short: 펀딩 극단 음수 = 숏 과적재 (Scenario B)
+            # (두 신호가 동시에 발화하는 경우는 극히 드물므로 AND는 비현실적.)
             # (funding_extreme_short is an alias registered in block_evaluator
             #  that calls funding_extreme(direction="short_overheat").)
-            required_blocks=[
-                "oi_spike_with_dump",
-                "smart_money_accumulation",
-                "funding_extreme_short",
-            ],
+            # smart_money_accumulation (soft): OKX live API — 과거 데이터 없음,
+            #   라이브 모니터링에서만 스코어 보너스.
+            required_blocks=[],
+            required_any_groups=[["oi_spike_with_dump", "funding_extreme_short"]],
+            soft_blocks=["smart_money_accumulation"],
             optional_blocks=["recent_decline"],
             disqualifier_blocks=[],
-            min_bars=1, max_bars=12,
+            min_bars=1, max_bars=24,
             timeframe="1h",
         ),
         PhaseCondition(
@@ -342,13 +342,12 @@ WHALE_ACCUMULATION_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="ENTRY_CONFIRM",
             label="진입 확정 — 기관 매수 + 전 거래소 동반 상승",
-            # coinbase_premium_positive: Coinbase-Binance 스프레드 양수
-            #   = 미국 기관(스팟) 매수 압력 (진짜 반등의 leading signal)
-            # total_oi_spike(increase): Binance+Bybit+OKX 집계 OI 동반 상승
-            # oi_exchange_divergence(low_concentration, 선택): 단일 거래소가
-            #   혼자 끄는 반등이 아니라 전 거래소에서 합의된 반등.
-            required_blocks=["coinbase_premium_positive", "total_oi_spike"],
-            optional_blocks=["oi_exchange_divergence"],
+            # oi_hold_after_spike: 선행 OI 스파이크 후 보유 유지 = 세력이 청산 안 함.
+            #   Binance perp oi_change_1h/24h 기반 — 역사 데이터 사용 가능.
+            # total_oi_spike (optional): 다거래소 동반 OI 상승 (fetch_exchange_oi 필요 — 라이브 전용).
+            # coinbase_premium_positive (optional): 기관 매수 확인 — 라이브 전용.
+            required_blocks=["oi_hold_after_spike"],
+            optional_blocks=["total_oi_spike", "coinbase_premium_positive", "oi_exchange_divergence"],
             disqualifier_blocks=[],
             min_bars=1, max_bars=12,
             timeframe="1h",
@@ -539,13 +538,206 @@ VOLUME_ABSORPTION_REVERSAL = PatternObject(
     tags=["volume_absorption", "cvd", "selling_climax", "spot_compatible"],
 )
 
+FUNDING_FLIP_SHORT = PatternObject(
+    slug="funding-flip-short-v1",
+    name="펀딩 플립 숏 패턴 (롱 과열 → 반전형)",
+    description=(
+        "롱 포지션이 극단적으로 과열(펀딩률 높음) → 펀딩 정상화 → 베어리시 캔들 진입. "
+        "FFR의 숏 버전. 롱이 극단적으로 몰린 상황에서 숏 기회를 포착."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="LONG_OVERHEAT",
+            label="롱 과열 (숏 대기)",
+            required_blocks=["funding_extreme"],
+            # funding_extreme defaults to direction="long_overheat"
+            min_bars=1, max_bars=8,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="FUNDING_NORMALIZE",
+            label="펀딩 정상화 (롱 청산 시작)",
+            required_blocks=["funding_flip"],
+            # Note: funding_flip detects negative→positive flip for longs.
+            # For short setup we use this as a signal that crowded longs
+            # are unwinding (funding dropping from extreme positive).
+            # A dedicated funding_flip_down block would be more precise;
+            # for v1 we use funding_extreme as a soft disqualifier instead.
+            disqualifier_blocks=["funding_extreme"],  # extreme must be gone
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SHORT_ENTRY",
+            label="숏 진입 (베어리시 캔들)",
+            required_blocks=[],
+            required_any_groups=[
+                ["bearish_engulfing", "long_upper_wick"],
+            ],
+            min_bars=1, max_bars=4,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="SHORT_ENTRY",
+    target_phase="SHORT_ENTRY",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="short",
+    tags=["funding", "short", "reversal", "crowded_longs"],
+)
+
+GAP_FADE_SHORT = PatternObject(
+    slug="gap-fade-short-v1",
+    name="갭 페이드 숏 패턴 (갭업 → 되돌림형)",
+    description=(
+        "랠리 후 갭업 오픈 → 상단 캔들 거부 → 되돌림 숏. "
+        "리테일 FOMO 갭에서 공급 소진을 포착."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="EXTENDED_RALLY",
+            label="과도한 랠리 (갭 조건 형성)",
+            required_blocks=["recent_rally"],
+            disqualifier_blocks=["volume_below_average"],
+            min_bars=2, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="GAP_REJECTION",
+            label="갭업 + 상단 거부",
+            required_blocks=["gap_up"],
+            required_any_groups=[
+                ["long_upper_wick", "bearish_engulfing"],
+            ],
+            min_bars=1, max_bars=3,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BREAKDOWN_CONFIRM",
+            label="하락 확인",
+            required_blocks=[],
+            required_any_groups=[
+                ["dead_cross", "bearish_engulfing"],
+            ],
+            soft_blocks=["volume_spike_down"],
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="GAP_REJECTION",
+    target_phase="BREAKDOWN_CONFIRM",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="short",
+    tags=["gap", "short", "fade", "mean_reversion", "retail_fomo"],
+)
+
 # Registry: slug → PatternObject
+VOLATILITY_SQUEEZE_BREAKOUT = PatternObject(
+    slug="volatility-squeeze-breakout-v1",
+    name="변동성 스퀴즈 돌파 패턴 (아카 L14+L15+L13형)",
+    description=(
+        "BB 스퀴즈 + ATR 극저 압축 → 볼륨 확인 돌파. "
+        "아카 Alpha Terminal L14(볼린저 스퀴즈) + L15(ATR 극저) + L13(고가 돌파) 조합. "
+        "Minervini VCP 크립토 적용형."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="COMPRESSION",
+            label="변동성 압축 (BB + ATR 이중 스퀴즈)",
+            required_blocks=["bollinger_squeeze"],
+            optional_blocks=["atr_ultra_low"],
+            disqualifier_blocks=["extreme_volatility"],
+            min_bars=3, max_bars=40,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BREAKOUT_SIGNAL",
+            label="돌파 신호 (볼륨 + 고가 돌파)",
+            required_blocks=["breakout_above_high", "breakout_volume_confirm"],
+            optional_blocks=["bollinger_expansion"],
+            soft_blocks=["volume_surge_bull"],
+            min_bars=1, max_bars=6,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="TREND_CONFIRM",
+            label="추세 확인 (저점 상승)",
+            required_blocks=[],
+            required_any_groups=[
+                ["higher_lows_sequence", "ema_pullback"],
+            ],
+            soft_blocks=["delta_flip_positive"],
+            min_bars=2, max_bars=20,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="BREAKOUT_SIGNAL",
+    target_phase="TREND_CONFIRM",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["volatility_squeeze", "breakout", "minervini_vcp", "bollinger", "atr", "aka_l14_l15"],
+)
+
+ALPHA_CONFLUENCE = PatternObject(
+    slug="alpha-confluence-v1",
+    name="알파 컨플루언스 패턴 (아카 15레이어 복합형)",
+    description=(
+        "아카 Alpha Terminal의 핵심 레이어(L2 Flow + L11 CVD + L14 BB + L1 Wyckoff)가 "
+        "동시에 강세 신호를 낼 때 진입. 단일 패턴보다 레이어 합산으로 신뢰도 극대화."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="LAYER_SETUP",
+            label="레이어 조건 형성 (FR + OI + 압축)",
+            required_blocks=["funding_extreme", "bollinger_squeeze"],
+            optional_blocks=["atr_ultra_low", "sideways_compression"],
+            soft_blocks=["liq_zone_squeeze_setup"],
+            disqualifier_blocks=["extreme_volatility"],
+            min_bars=2, max_bars=30,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="CVD_SIGNAL",
+            label="CVD 흡수 + 저점 상승 (L11 + L1)",
+            required_blocks=["delta_flip_positive"],
+            optional_blocks=["absorption_signal", "higher_lows_sequence"],
+            soft_blocks=["smart_money_accumulation", "coinbase_premium_positive"],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ALPHA_ENTRY",
+            label="알파 진입 (볼륨 + 캔들)",
+            required_blocks=[],
+            required_any_groups=[
+                ["volume_surge_bull", "breakout_volume_confirm"],
+                ["bullish_engulfing", "long_lower_wick"],
+            ],
+            soft_blocks=["breakout_above_high", "ema_pullback"],
+            min_bars=1, max_bars=4,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="ALPHA_ENTRY",
+    target_phase="ALPHA_ENTRY",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["multi_layer", "confluence", "aka_alpha_terminal", "cvd", "funding", "bollinger"],
+)
+
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
     WYCKOFF_SPRING_REVERSAL.slug: WYCKOFF_SPRING_REVERSAL,
     WHALE_ACCUMULATION_REVERSAL.slug: WHALE_ACCUMULATION_REVERSAL,
     VOLUME_ABSORPTION_REVERSAL.slug: VOLUME_ABSORPTION_REVERSAL,
+    FUNDING_FLIP_SHORT.slug: FUNDING_FLIP_SHORT,
+    GAP_FADE_SHORT.slug: GAP_FADE_SHORT,
+    VOLATILITY_SQUEEZE_BREAKOUT.slug: VOLATILITY_SQUEEZE_BREAKOUT,
+    ALPHA_CONFLUENCE.slug: ALPHA_CONFLUENCE,
 }
 
 def get_pattern(slug: str) -> PatternObject:
