@@ -65,6 +65,7 @@ from building_blocks.confirmations.coinbase_premium_positive import coinbase_pre
 from building_blocks.confirmations.smart_money_accumulation import smart_money_accumulation
 from building_blocks.confirmations.total_oi_spike import total_oi_spike
 from building_blocks.confirmations.oi_exchange_divergence import oi_exchange_divergence
+from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -129,6 +130,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("smart_money_accumulation", smart_money_accumulation),
     ("total_oi_spike",          total_oi_spike),
     ("oi_exchange_divergence",  oi_exchange_divergence),
+    ("delta_flip_positive",     delta_flip_positive),
     # disqualifiers
     ("volume_below_average", volume_below_average),
     ("extreme_volatility",   extreme_volatility),
