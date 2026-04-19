@@ -1,12 +1,16 @@
 """Disqualifier: taker buy flow is rising while price is falling (bearish divergence).
 
 Rationale:
-    When taker buy ratio (tbv / volume) trends upward over ``lookback`` bars but
-    price declines over the same window, the ostensible "buying" is being absorbed
-    by the sell side — a hallmark of institutional distribution. We reject long
-    entries in this environment.
+    When net buy pressure trends upward over ``lookback`` bars but price declines
+    over the same window, the ostensible "buying" is being absorbed by the sell
+    side — a hallmark of institutional distribution (ETF-era hedge selling).
+    We reject long entries in this environment.
 
-Detection logic:
+Detection logic (preferred — uses cvd_cumulative feature):
+    cvd_rising  = cvd_cumulative.diff(lookback) > 0
+    falling_price = close.pct_change(lookback) < -min_price_drop
+
+Fallback (no cvd_cumulative in features):
     tbv_ratio[t]  = taker_buy_base_volume[t] / volume[t]   (per bar)
     rising_flow   = tbv_ratio.rolling(lookback).mean() > net_buy_threshold
     falling_price = close.pct_change(lookback) < -min_price_drop
@@ -16,7 +20,7 @@ Detection logic:
 Differences from cvd_price_divergence:
     ``cvd_price_divergence`` catches fakeout breakouts (price near high, CVD
     rolling over). This block catches the opposite: price already *falling* while
-    flow looks healthy — absorption / hidden selling phase.
+    flow looks healthy — absorption / hidden selling phase (ETF-era M1 signal).
 """
 from __future__ import annotations
 
@@ -33,15 +37,18 @@ def cvd_spot_price_divergence_bear(
     min_price_drop: float = 0.003,
     min_bars: int = 2,
 ) -> pd.Series:
-    """Return True where taker buy flow is rising while price is falling.
+    """Return True where net buy flow is rising while price is falling.
+
+    Uses ``cvd_cumulative`` from ctx.features when available (preferred path);
+    falls back to per-bar taker buy ratio otherwise.
 
     Args:
         ctx: Per-symbol Context. ``ctx.klines`` must have ``close``,
             ``volume``, and ``taker_buy_base_volume``.
-        lookback: Rolling window (bars) for flow average and price change.
+        lookback: Window (bars) for CVD direction and price change.
             Default 10 (≈ half a session on 1 h bars).
-        net_buy_threshold: tbv_ratio rolling mean must exceed this to be
-            considered "rising flow". Default 0.50 (net buy majority).
+        net_buy_threshold: Fallback only — tbv_ratio rolling mean must exceed
+            this to be considered "rising flow". Default 0.50.
         min_price_drop: Price pct_change(lookback) must be below this
             *negative* threshold to flag price as falling.
             Default 0.003 = price down ≥ 0.3% over the window.
@@ -61,25 +68,26 @@ def cvd_spot_price_divergence_bear(
         raise ValueError(f"min_bars must be >= 1, got {min_bars}")
 
     close = ctx.klines["close"].astype(float)
-    tbv = ctx.klines["taker_buy_base_volume"].astype(float)
-    vol = ctx.klines["volume"].astype(float)
 
-    # Per-bar taker buy ratio; guard against zero volume
-    safe_vol = vol.replace(0, float("nan"))
-    tbv_ratio = (tbv / safe_vol).fillna(0.5)
-
-    # Rolling average of taker buy ratio over lookback bars
-    flow_avg = tbv_ratio.rolling(lookback, min_periods=lookback).mean()
-    rising_flow = flow_avg > net_buy_threshold
+    # --- Rising flow detection ---
+    if "cvd_cumulative" in ctx.features.columns:
+        # Preferred: use accumulated net-buy volume from feature pipeline
+        cvd = ctx.features["cvd_cumulative"].reindex(close.index, method="ffill")
+        rising_flow = cvd.diff(lookback) > 0
+    else:
+        # Fallback: per-bar taker buy ratio proxy
+        tbv = ctx.klines["taker_buy_base_volume"].astype(float)
+        vol = ctx.klines["volume"].astype(float)
+        safe_vol = vol.replace(0, float("nan"))
+        tbv_ratio = (tbv / safe_vol).fillna(0.5)
+        flow_avg = tbv_ratio.rolling(lookback, min_periods=lookback).mean()
+        rising_flow = flow_avg > net_buy_threshold
 
     # Price change over the same window
-    price_chg = close.pct_change(lookback)
-    falling_price = price_chg < -min_price_drop
+    falling_price = close.pct_change(lookback) < -min_price_drop
 
-    # Raw divergence signal
     divergence = rising_flow & falling_price
 
-    # Require min_bars consecutive bars of divergence
     if min_bars <= 1:
         sustained = divergence
     else:

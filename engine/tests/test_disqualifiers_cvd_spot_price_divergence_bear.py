@@ -1,8 +1,10 @@
 """Tests for building_blocks.disqualifiers.cvd_spot_price_divergence_bear."""
 from __future__ import annotations
 
+import pandas as pd
 import pytest
 
+from building_blocks.context import Context
 from building_blocks.disqualifiers.cvd_spot_price_divergence_bear import (
     cvd_spot_price_divergence_bear,
 )
@@ -136,3 +138,44 @@ def test_invalid_params_raise():
         cvd_spot_price_divergence_bear(ctx, min_price_drop=-0.01)
     with pytest.raises(ValueError, match="min_bars"):
         cvd_spot_price_divergence_bear(ctx, min_bars=0)
+
+
+def test_cvd_cumulative_preferred_path(make_ctx):
+    """When cvd_cumulative is in features, the block uses it (preferred path)."""
+    n = 20
+    close = [100.0 - i * 0.3 for i in range(n)]  # falling price
+    idx = pd.date_range("2025-01-01", periods=n, freq="1h", tz="UTC")
+
+    # Build a ctx with cvd_cumulative rising (net buy) while price falls
+    klines = pd.DataFrame(
+        {
+            "open": close,
+            "high": [c * 1.001 for c in close],
+            "low": [c * 0.999 for c in close],
+            "close": close,
+            "volume": [1000.0] * n,
+            "taker_buy_base_volume": [600.0] * n,
+        },
+        index=idx,
+    )
+    # cvd_cumulative = cumsum(2*tbv - vol) = cumsum(200) → rising
+    cvd_cum = pd.Series([200.0 * (i + 1) for i in range(n)], index=idx, name="cvd_cumulative")
+    features = pd.DataFrame({"cvd_cumulative": cvd_cum, "_dummy": 0.0})
+
+    ctx = Context(klines=klines, features=features, symbol="TEST")
+    mask = cvd_spot_price_divergence_bear(ctx, lookback=5, min_price_drop=0.001, min_bars=1)
+    assert mask.any(), "cvd_cumulative preferred path should detect divergence"
+
+
+def test_fallback_path_without_cvd_cumulative(make_ctx):
+    """Without cvd_cumulative in features, block falls back to tbv_ratio proxy."""
+    n = 20
+    close = [100.0 - i * 0.2 for i in range(n)]
+    ctx = make_ctx(
+        close=close,
+        overrides={"volume": [1000.0] * n, "taker_buy_base_volume": [700.0] * n},
+    )
+    # make_ctx doesn't inject cvd_cumulative — should use fallback
+    assert "cvd_cumulative" not in ctx.features.columns
+    mask = cvd_spot_price_divergence_bear(ctx, lookback=10, min_price_drop=0.003, min_bars=2)
+    assert mask.any(), "Fallback tbv_ratio path should still detect divergence"

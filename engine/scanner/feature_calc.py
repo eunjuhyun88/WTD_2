@@ -1125,6 +1125,7 @@ _CORE_FEATURE_COLUMNS: tuple[str, ...] = (
     "long_short_ratio",
     "cvd_state",
     "taker_buy_ratio_1h",
+    "cvd_cumulative",
     # H. Price changes
     "price_change_1h",
     "price_change_4h",
@@ -1381,6 +1382,9 @@ def compute_features_table(
         taker_buy_ratio_1h >= 0.55, CVDState.BUYING.value,
         np.where(taker_buy_ratio_1h <= 0.45, CVDState.SELLING.value, CVDState.NEUTRAL.value),
     )
+    # cvd_cumulative: running net buy volume (taker_buy - taker_sell = 2*tbv - vol)
+    cvd_net_per_bar = (2.0 * taker_buy - volume).fillna(0.0)
+    cvd_cumulative = cvd_net_per_bar.cumsum()
 
     # --- H. Price changes — tf-scaled bar counts ---
     price_change_1h  = close.pct_change(_b1h).fillna(0.0)
@@ -1624,6 +1628,7 @@ def compute_features_table(
             "long_short_ratio": long_short_ratio,
             "cvd_state": cvd_state,
             "taker_buy_ratio_1h": taker_buy_ratio_1h.to_numpy(),
+            "cvd_cumulative": cvd_cumulative.to_numpy(),
             # H. Price changes
             "price_change_1h": price_change_1h.to_numpy(),
             "price_change_4h": price_change_4h.to_numpy(),
