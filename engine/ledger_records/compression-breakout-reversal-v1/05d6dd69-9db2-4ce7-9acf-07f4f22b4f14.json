@@ -1,0 +1,22 @@
+{
+  "id": "05d6dd69-9db2-4ce7-9acf-07f4f22b4f14",
+  "record_type": "capture",
+  "pattern_slug": "compression-breakout-reversal-v1",
+  "symbol": "DOGEUSDT",
+  "user_id": "founder_seed",
+  "outcome_id": null,
+  "capture_id": "a03d9b24-6af1-4cf8-b162-acab7f8b2e73",
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-20T02:03:09.091488",
+  "payload": {
+    "capture_kind": "manual_hypothesis",
+    "pattern_version": 1,
+    "phase": "COILING",
+    "timeframe": "1h",
+    "status": "pending_outcome",
+    "user_note": "Test setup 6",
+    "outcome_id": null,
+    "verdict_id": null
+  }
+}

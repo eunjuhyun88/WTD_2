@@ -65,6 +65,7 @@ _BLOCK_CATEGORIES: dict[str, BlockCategory] = {
     "gap_down": BlockCategory.TRIGGER,
     "breakout_above_high": BlockCategory.TRIGGER,
     "consolidation_then_breakout": BlockCategory.TRIGGER,
+    "sweep_below_low": BlockCategory.TRIGGER,
     "volume_spike": BlockCategory.TRIGGER,
     # confirmations
     "golden_cross": BlockCategory.CONFIRMATION,

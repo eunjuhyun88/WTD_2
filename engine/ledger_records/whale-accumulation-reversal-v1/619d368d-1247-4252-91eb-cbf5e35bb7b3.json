@@ -1,0 +1,22 @@
+{
+  "id": "619d368d-1247-4252-91eb-cbf5e35bb7b3",
+  "record_type": "capture",
+  "pattern_slug": "whale-accumulation-reversal-v1",
+  "symbol": "BNBUSDT",
+  "user_id": "founder_seed",
+  "outcome_id": null,
+  "capture_id": "6aedbf98-065f-41dd-a355-d2d6dbe4f9bb",
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-20T02:03:09.083064",
+  "payload": {
+    "capture_kind": "manual_hypothesis",
+    "pattern_version": 1,
+    "phase": "ACCUMULATION",
+    "timeframe": "1h",
+    "status": "pending_outcome",
+    "user_note": "Test setup 3",
+    "outcome_id": null,
+    "verdict_id": null
+  }
+}

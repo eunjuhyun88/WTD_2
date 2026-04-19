@@ -15,6 +15,7 @@ from building_blocks.triggers.gap_down import gap_down
 from building_blocks.triggers.gap_up import gap_up
 from building_blocks.triggers.recent_decline import recent_decline
 from building_blocks.triggers.recent_rally import recent_rally
+from building_blocks.triggers.sweep_below_low import sweep_below_low
 from building_blocks.triggers.volume_spike import volume_spike
 from building_blocks.triggers.volume_spike_down import volume_spike_down
 
@@ -27,6 +28,7 @@ __all__ = [
     "gap_up",
     "recent_decline",
     "recent_rally",
+    "sweep_below_low",
     "volume_spike",
     "volume_spike_down",
 ]
