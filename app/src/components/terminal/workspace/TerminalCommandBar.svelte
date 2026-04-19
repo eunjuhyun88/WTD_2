@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { canonicalSymbol, terminalState } from '$lib/stores/terminalState';
+  import { canonicalSymbol, canonicalChange24h, terminalState } from '$lib/stores/terminalState';
   import SymbolPicker from './SymbolPicker.svelte';
 
   interface Props {
@@ -17,6 +17,8 @@
     price = null,
     change24h = null,
   }: Props = $props();
+
+  const displayChange = $derived(change24h ?? $canonicalChange24h);
 
   let showSymbolDrop = $state(false);
 
@@ -47,9 +49,9 @@
   {#if price != null}
     <div class="ticker-price">
       <span class="price-num">{fmtPrice(price)}</span>
-      {#if change24h != null}
-        <span class="price-delta" class:up={change24h >= 0} class:dn={change24h < 0}>
-          {change24h >= 0 ? '▲' : '▼'}{Math.abs(change24h).toFixed(2)}%
+      {#if displayChange != null}
+        <span class="price-delta" class:up={displayChange >= 0} class:dn={displayChange < 0}>
+          {displayChange >= 0 ? '▲' : '▼'}{Math.abs(displayChange).toFixed(2)}%
         </span>
       {/if}
     </div>
