@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { activePair, setActivePair } from '$lib/stores/activePairStore';
+  import { canonicalSymbol, terminalState } from '$lib/stores/terminalState';
   import SymbolPicker from './SymbolPicker.svelte';
 
   interface Props {
@@ -26,13 +26,20 @@
     if (p >= 1)     return p.toFixed(4);
     return p.toPrecision(4);
   }
+
+  function handleSymbolSelect(pair: string) {
+    // Extract symbol from BTC/USDT format
+    const base = pair.split('/')[0] ?? 'BTC';
+    terminalState.setSymbol(`${base}USDT`);
+    showSymbolDrop = false;
+  }
 </script>
 
 <nav class="cmd-bar" aria-label="Terminal command bar">
   <!-- Symbol ticker — most prominent element -->
   <button class="ticker-btn" type="button" onclick={() => showSymbolDrop = !showSymbolDrop}>
-    <span class="ticker-pair">{$activePair?.split('/')[0] ?? 'BTC'}</span>
-    <span class="ticker-quote">/{$activePair?.split('/')[1] ?? 'USDT'}</span>
+    <span class="ticker-pair">{$canonicalSymbol?.slice(0, -4) ?? 'BTC'}</span>
+    <span class="ticker-quote">/USDT</span>
     <span class="ticker-caret">▾</span>
   </button>
 
@@ -68,8 +75,8 @@
 
 {#if showSymbolDrop}
   <SymbolPicker
-    activePair={$activePair || 'BTC/USDT'}
-    onSelect={(pair) => setActivePair(pair)}
+    activePair={($canonicalSymbol?.slice(0, -4) ?? 'BTC') + '/USDT'}
+    onSelect={handleSymbolSelect}
     onClose={() => showSymbolDrop = false}
   />
 {/if}
