@@ -55,16 +55,24 @@ PHASE_ORDER = {
     "SPRING": 3, "MARKUP": 4,
     # volume-absorption-reversal-v1 phases (W-0103 P0)
     "DELTA_FLIP": 0, "ABSORPTION": 1, "SELLING_CLIMAX": 2,
+    # funding-flip-short-v1 phases (W-0106)
+    "LONG_OVERHEAT": 0, "FUNDING_NORMALIZE": 1, "SHORT_ENTRY": 2,
+    # gap-fade-short-v1 phases (W-0106)
+    "EXTENDED_RALLY": 0, "GAP_REJECTION": 1, "BREAKDOWN_CONFIRM": 2,
+    # volatility-squeeze-breakout-v1 phases (W-0107)
+    "BREAKOUT_SIGNAL": 1, "TREND_CONFIRM": 2,
+    # alpha-confluence-v1 phases (W-0107)
+    "LAYER_SETUP": 0, "CVD_SIGNAL": 1, "ALPHA_ENTRY": 2,
 }
 
 # Promoted pattern registry — each entry is (pattern_slug, variant_slug, watch_phases)
 # Add new patterns here as they are promoted.
 PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
-    ("tradoor-oi-reversal-v1",          "tradoor-oi-reversal-v1__canonical",               {"ACCUMULATION", "REAL_DUMP"}),
-    ("funding-flip-reversal-v1",        "funding-flip-reversal-v1__canonical__dur-long",   {"ENTRY_ZONE", "FLIP_SIGNAL"}),
-    ("wyckoff-spring-reversal-v1",      "wyckoff-spring-reversal-v1__canonical__dur-long", {"SPRING", "SIGN_OF_STRENGTH"}),
-    ("whale-accumulation-reversal-v1",  "whale-accumulation-reversal-v1__canonical__dur-long", {"BOTTOM_CONFIRM", "WHALE_ACCUMULATION"}),
-    ("volume-absorption-reversal-v1",   "volume-absorption-reversal-v1__canonical",        {"SELLING_CLIMAX", "ABSORPTION"}),
+    ("tradoor-oi-reversal-v1",          "tradoor-oi-reversal-v1__canonical",                    {"ACCUMULATION", "REAL_DUMP"}),
+    ("funding-flip-reversal-v1",        "funding-flip-reversal-v1__canonical__dur-long",        {"ENTRY_ZONE", "FLIP_SIGNAL"}),
+    ("wyckoff-spring-reversal-v1",      "wyckoff-spring-reversal-v1__canonical__dur-long",      {"SPRING", "SIGN_OF_STRENGTH"}),
+    ("whale-accumulation-reversal-v1",  "whale-accumulation-reversal-v1__canonical__dur-long",  {"BOTTOM_CONFIRM", "WHALE_ACCUMULATION"}),
+    ("volume-absorption-reversal-v1",   "volume-absorption-reversal-v1__canonical",             {"SELLING_CLIMAX", "ABSORPTION"}),
 ]
 
 
