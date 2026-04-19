@@ -59,9 +59,12 @@ class TestWhaleAccumulationReversalPattern:
     def test_whale_accumulation_required_blocks(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "WHALE_ACCUMULATION")
-        assert "oi_spike_with_dump" in phase.required_blocks
-        assert "smart_money_accumulation" in phase.required_blocks
-        assert "funding_extreme_short" in phase.required_blocks
+        # OR semantics: either cascade dump OR extreme funding triggers the phase.
+        # required_blocks is empty; required_any_groups contains the OR group.
+        assert phase.required_blocks == []
+        assert ["oi_spike_with_dump", "funding_extreme_short"] in phase.required_any_groups
+        # smart_money_accumulation is live-only (OKX API) → soft, not required.
+        assert "smart_money_accumulation" in phase.soft_blocks
 
     def test_bottom_confirm_required_blocks(self):
         p = get_pattern(SLUG)
@@ -85,13 +88,16 @@ class TestWhaleAccumulationReversalPattern:
     def test_entry_confirm_required_blocks(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "ENTRY_CONFIRM")
-        assert "coinbase_premium_positive" in phase.required_blocks
+        # total_oi_spike (perp data) is required — historically detectable.
         assert "total_oi_spike" in phase.required_blocks
+        # coinbase_premium_positive requires live coinbase_premium feature → optional.
+        assert "coinbase_premium_positive" not in phase.required_blocks
+        assert "coinbase_premium_positive" in phase.optional_blocks
 
     def test_entry_confirm_optional_divergence(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "ENTRY_CONFIRM")
-        # Broad-venue consensus is a bonus confirmation, not required.
+        # Both institutional buy signal and exchange divergence are bonus confirmations.
         assert "oi_exchange_divergence" in phase.optional_blocks
 
 
@@ -103,7 +109,7 @@ class TestReferencedBlocksRegistered:
         return {name for name, _ in BLOCK_REGISTRY}
 
     def test_whale_accumulation_blocks(self, block_names):
-        for b in ("oi_spike_with_dump", "smart_money_accumulation", "funding_extreme_short"):
+        for b in ("oi_spike_with_dump", "funding_extreme_short", "smart_money_accumulation"):
             assert b in block_names, f"{b!r} missing from block_evaluator"
 
     def test_bottom_confirm_blocks(self, block_names):
