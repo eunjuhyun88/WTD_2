@@ -1,0 +1,89 @@
+{
+    "benchmark_pack_id": "volume-absorption-reversal-v1__var-v1",
+    "pattern_slug": "volume-absorption-reversal-v1",
+    "candidate_timeframes": ["1h"],
+    "cases": [
+        {
+            "symbol": "1000RATSUSDT",
+            "timeframe": "1h",
+            "start_at": "2025-09-27T00:00:00+00:00",
+            "end_at": "2025-10-25T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "BASE_FORMATION",
+                "BREAKOUT"
+            ],
+            "role": "reference",
+            "notes": [
+                "1000RATS Oct 2025 Volume Absorption Reversal. +156.3% in 168h.",
+                "SELLING_CLIMAX: Oct 10 21:00 UTC — vol=13.2× avg (strongest single-bar capitulation in dataset), close=0.0130.",
+                "Prior 48h: -52.1% dump. Classic panic selling exhaustion.",
+                "ABSORPTION: Oct 11-12, delta_flip_positive fires — taker buy ratio crosses above 0.5 while price holds near low.",
+                "BASE_FORMATION: Oct 12-14, higher lows, volume dry-up ~40-60% of climax peak.",
+                "BREAKOUT: Oct 14-17, reclaim of pre-dump range on expanding volume. +156.3% in 168h."
+            ],
+            "case_id": "var-v1-1000rats-oct2025"
+        },
+        {
+            "symbol": "SUIUSDT",
+            "timeframe": "1h",
+            "start_at": "2024-07-22T00:00:00+00:00",
+            "end_at": "2024-08-19T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "BASE_FORMATION",
+                "BREAKOUT"
+            ],
+            "role": "holdout",
+            "notes": [
+                "SUI Aug 2024 post-BTC-crash absorption reversal. +127.7% in 168h.",
+                "SELLING_CLIMAX: Aug 5 00:00-06:00 UTC — vol=3.9-8.2× avg (BTC macro crash event).",
+                "Macro-driven climax context — tests VAR in broad market sell-off vs coin-specific panic."
+            ],
+            "case_id": "var-v1-sui-aug2024"
+        },
+        {
+            "symbol": "ALCHUSDT",
+            "timeframe": "1h",
+            "start_at": "2025-02-10T00:00:00+00:00",
+            "end_at": "2025-03-10T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "BASE_FORMATION",
+                "BREAKOUT"
+            ],
+            "role": "holdout",
+            "notes": [
+                "ALCH Feb 2025 absorption reversal. +220.7% in 168h from climax low.",
+                "SELLING_CLIMAX: Feb 21 — vol=4.4× avg, small-cap AI-sector capitulation.",
+                "Distinct period (Q1 2025), distinct sector (AI tokens) — tests cross-sector generality."
+            ],
+            "case_id": "var-v1-alch-feb2025"
+        },
+        {
+            "symbol": "1000BONKUSDT",
+            "timeframe": "1h",
+            "start_at": "2024-02-15T00:00:00+00:00",
+            "end_at": "2024-03-15T00:00:00+00:00",
+            "expected_phase_path": [
+                "SELLING_CLIMAX",
+                "ABSORPTION",
+                "BASE_FORMATION",
+                "BREAKOUT"
+            ],
+            "role": "holdout",
+            "notes": [
+                "1000BONK Feb 2024 meme-coin absorption reversal. +198.8% in 168h.",
+                "SELLING_CLIMAX: Feb 26 — vol=4.2× avg, meme-season capitulation.",
+                "Earliest case in dataset (Feb 2024) — tests temporal generality across bull cycles."
+            ],
+            "case_id": "var-v1-1000bonk-feb2024"
+        }
+    ],
+    "created_at": "2026-04-19T00:00:00+00:00",
+    "_generated_by": "Manual — W-0103 (volume-absorption-reversal-v1)",
+    "_notes": "5th pattern. Pure OHLCV + taker buy volume — no perp OI/funding required. Detects selling climax → CVD delta flip → base formation → breakout. Mechanically distinct from TRADOOR (OI-driven), FFR (funding-driven), WSR (price-action spring), WHALE (accumulation). Covers spot exchanges too."
+}
