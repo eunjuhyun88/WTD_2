@@ -6,9 +6,9 @@ Validates:
   1. Pattern loads from PATTERN_LIBRARY with correct structure
   2. All 3 phases present in correct order
   3. Required blocks match channel-analysis spec:
-     - WHALE_ACCUMULATION: oi_spike_with_dump + smart_money_accumulation + funding_extreme_short
+     - WHALE_ACCUMULATION: oi_spike_with_dump OR funding_extreme_short (OR semantics)
      - BOTTOM_CONFIRM: higher_lows_sequence + ls_ratio_recovery (entry phase)
-     - ENTRY_CONFIRM: coinbase_premium_positive + total_oi_spike (target phase)
+     - ENTRY_CONFIRM: oi_hold_after_spike required; live-only blocks optional (target phase)
   4. TRADOOR and FFR regression (unchanged)
   5. All referenced blocks are registered in block_evaluator
 """
@@ -59,9 +59,12 @@ class TestWhaleAccumulationReversalPattern:
     def test_whale_accumulation_required_blocks(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "WHALE_ACCUMULATION")
-        assert "oi_spike_with_dump" in phase.required_blocks
-        assert "smart_money_accumulation" in phase.required_blocks
-        assert "funding_extreme_short" in phase.required_blocks
+        # OR semantics: either cascade dump OR extreme funding triggers the phase.
+        # required_blocks is empty; required_any_groups contains the OR group.
+        assert phase.required_blocks == []
+        assert ["oi_spike_with_dump", "funding_extreme_short"] in phase.required_any_groups
+        # smart_money_accumulation is live-only (OKX API) → soft, not required.
+        assert "smart_money_accumulation" in phase.soft_blocks
 
     def test_bottom_confirm_required_blocks(self):
         p = get_pattern(SLUG)
@@ -85,13 +88,15 @@ class TestWhaleAccumulationReversalPattern:
     def test_entry_confirm_required_blocks(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "ENTRY_CONFIRM")
-        assert "coinbase_premium_positive" in phase.required_blocks
-        assert "total_oi_spike" in phase.required_blocks
+        # oi_hold_after_spike (Binance perp) is required — historically detectable.
+        assert "oi_hold_after_spike" in phase.required_blocks
+        # Live-only confirmations are optional.
+        assert "total_oi_spike" in phase.optional_blocks
+        assert "coinbase_premium_positive" in phase.optional_blocks
 
-    def test_entry_confirm_optional_divergence(self):
+    def test_entry_confirm_optional_blocks(self):
         p = get_pattern(SLUG)
         phase = next(ph for ph in p.phases if ph.phase_id == "ENTRY_CONFIRM")
-        # Broad-venue consensus is a bonus confirmation, not required.
         assert "oi_exchange_divergence" in phase.optional_blocks
 
 
@@ -103,7 +108,7 @@ class TestReferencedBlocksRegistered:
         return {name for name, _ in BLOCK_REGISTRY}
 
     def test_whale_accumulation_blocks(self, block_names):
-        for b in ("oi_spike_with_dump", "smart_money_accumulation", "funding_extreme_short"):
+        for b in ("oi_spike_with_dump", "funding_extreme_short", "smart_money_accumulation"):
             assert b in block_names, f"{b!r} missing from block_evaluator"
 
     def test_bottom_confirm_blocks(self, block_names):
@@ -112,7 +117,7 @@ class TestReferencedBlocksRegistered:
             assert b in block_names, f"{b!r} missing from block_evaluator"
 
     def test_entry_confirm_blocks(self, block_names):
-        for b in ("coinbase_premium_positive", "total_oi_spike", "oi_exchange_divergence"):
+        for b in ("oi_hold_after_spike", "total_oi_spike", "coinbase_premium_positive", "oi_exchange_divergence"):
             assert b in block_names, f"{b!r} missing from block_evaluator"
 
 
@@ -126,6 +131,11 @@ class TestRegressionGuards:
     def test_library_count(self):
         # TRADOOR + FFR + wyckoff-spring + whale-accumulation + VAR = 5 patterns registered.
         assert len(PATTERN_LIBRARY) == 5
+
+    def test_whale_accumulation_in_promoted_patterns(self):
+        from research.live_monitor import PROMOTED_PATTERNS
+        slugs = [slug for slug, _, _ in PROMOTED_PATTERNS]
+        assert "whale-accumulation-reversal-v1" in slugs
 
 
 class TestPhaseOrderMap:
