@@ -1489,7 +1489,7 @@
 </svelte:head>
 
 <!-- ═══════════════════════════════════════════════════ -->
-<!-- PEEK layout (chart-first + bottom drawer) -->
+<!-- PEEK 3-pane layout: Left Rail + Chart + Right Rail + Bottom Drawer -->
 <!-- ═══════════════════════════════════════════════════ -->
 
 <div class="surface-page terminal-page-peek">
@@ -1504,45 +1504,191 @@
     />
   </section>
 
-  <!-- Chart + SaveStrip + PEEK drawer -->
-  <main class="peek-main">
-    <div class="chart-and-strip" bind:this={chartWorkspaceEl}>
-      <ChartBoard
-        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-        tf={symbolToTF(gTf)}
-        verdictLevels={chartLevels}
-        initialData={activeChartPayload}
-        depthSnapshot={readPathDepth}
-        liqSnapshot={readPathLiq}
-        quantRegime={boardModel.quantRegime}
-        cvdDivergence={boardModel.cvdDivergence}
-        change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
-        contextMode="chart"
-        onCaptureSaved={handleCaptureSaved}
-        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
-      />
-      <SaveStrip
-        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-        tf={symbolToTF(gTf)}
-        ohlcvBars={ohlcvBars}
-        onSaved={handleCaptureSaved}
-      />
-      {#if showLabCta}
-        <div class="lab-cta-banner">
-          <span class="lab-cta-check">✓</span>
-          <span class="lab-cta-text">Setup saved</span>
-          <div class="lab-cta-actions">
-            <a class="lab-cta-link lab-cta-link--dash" href="/dashboard">Dashboard →</a>
-            <a class="lab-cta-link" href={labCtaSlug ? `/lab?slug=${labCtaSlug}` : '/lab'}>Lab →</a>
-          </div>
-          <button class="lab-cta-close" onclick={() => showLabCta = false} aria-label="Dismiss">×</button>
-        </div>
-      {/if}
-    </div>
+  <!-- 3-pane body: left rail + center (chart+drawer) + right rail -->
+  <div class="peek-body">
 
-    <!-- PEEK drawer — 3-tab bottom overlay -->
-    <PeekDrawer analyzeCount={peekAnalyzeCount} scanCount={peekScanCount} judgeCount={peekJudgeCount}>
-      <svelte:fragment slot="analyze">
+    <!-- LEFT RAIL: market data, watchlist, patterns -->
+    {#if showLeftRail}
+    <aside class="peek-left-rail">
+      <TerminalLeftRail
+        {trendingData}
+        watchlistRows={persistedWatchlist}
+        alerts={scannerAlerts}
+        savedAlerts={savedAlertRules}
+        {patternPhases}
+        activeSymbol={activeSymbol || pairToSymbol(gPair)}
+        macroItems={macroCalendarItems}
+        {marketEvents}
+        queryPresets={terminalQueryPresets}
+        anomalies={terminalAnomalies}
+        onQuery={handleQueryChip}
+        onDeleteSavedAlert={handleDeleteSavedAlert}
+      />
+    </aside>
+    {/if}
+
+    <!-- CENTER: full-bleed chart + bottom PEEK drawer -->
+    <main class="peek-main">
+      <div class="chart-and-strip" bind:this={chartWorkspaceEl}>
+        <ChartBoard
+          symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+          tf={symbolToTF(gTf)}
+          verdictLevels={chartLevels}
+          initialData={activeChartPayload}
+          depthSnapshot={readPathDepth}
+          liqSnapshot={readPathLiq}
+          quantRegime={boardModel.quantRegime}
+          cvdDivergence={boardModel.cvdDivergence}
+          change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+          contextMode="chart"
+          onCaptureSaved={handleCaptureSaved}
+          onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+        />
+        <SaveStrip
+          symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+          tf={symbolToTF(gTf)}
+          ohlcvBars={ohlcvBars}
+          onSaved={handleCaptureSaved}
+        />
+        {#if showLabCta}
+          <div class="lab-cta-banner">
+            <span class="lab-cta-check">✓</span>
+            <span class="lab-cta-text">Setup saved</span>
+            <div class="lab-cta-actions">
+              <a class="lab-cta-link lab-cta-link--dash" href="/dashboard">Dashboard →</a>
+              <a class="lab-cta-link" href={labCtaSlug ? `/lab?slug=${labCtaSlug}` : '/lab'}>Lab →</a>
+            </div>
+            <button class="lab-cta-close" onclick={() => showLabCta = false} aria-label="Dismiss">×</button>
+          </div>
+        {/if}
+      </div>
+
+      <!-- PEEK drawer — SCAN + JUDGE tabs (analysis in right rail) -->
+      <PeekDrawer analyzeCount={peekAnalyzeCount} scanCount={peekScanCount} judgeCount={peekJudgeCount}>
+        <svelte:fragment slot="analyze">
+          <TerminalContextPanel
+            analysisData={activeAnalysisData}
+            newsData={newsData}
+            activeTab={activeAnalysisTab}
+            onTabChange={handleAnalysisTabChange}
+            onAction={sendCommand}
+            onPinToggle={handlePinToggle}
+            onAlertToggle={handleAlertToggle}
+            onRetry={handleRetryAnalysis}
+            isPinned={isActivePinned}
+            hasSavedAlert={hasActiveSavedAlert}
+            bars={ohlcvBars}
+            {layerBarsMap}
+            {patternRecallMatches}
+          />
+        </svelte:fragment>
+
+        <svelte:fragment slot="scan">
+          <ScanGrid
+            alerts={scannerAlerts}
+            similar={peekSimilar}
+            activeSymbol={activeSymbol || pairToSymbol(gPair)}
+            loadingSimilar={peekLoadingSimilar}
+            onOpenCapture={handlePeekOpenCapture}
+          />
+        </svelte:fragment>
+
+        <svelte:fragment slot="judge">
+          <JudgePanel
+            symbol={activeSymbol || pairToSymbol(gPair)}
+            timeframe={symbolToTF(gTf)}
+            verdict={peekVerdict}
+            entry={peekEntry}
+            stop={peekStop}
+            target={peekTarget}
+            pWin={peekPWin}
+            lastPrice={peekLast}
+            captures={peekCaptures}
+            saving={false}
+            onSaveJudgment={handlePeekSaveJudgment}
+            onRejudge={handlePeekRejudge}
+            onOpenCapture={handlePeekOpenCapture}
+          />
+        </svelte:fragment>
+      </PeekDrawer>
+    </main>
+
+    <!-- RIGHT RAIL: analysis context, streaming, scan results -->
+    <aside class="peek-right-rail">
+      <div class="rail-header">
+        {#if isStreaming}
+          <span class="rail-badge streaming">
+            <span class="stream-dot pulsing">●</span>
+            Analyzing…
+          </span>
+        {:else if isScanMode}
+          <span class="rail-badge scan">{boardAssets.length} RESULTS</span>
+          <button class="rail-back" onclick={clearBoard}>← Back</button>
+        {:else}
+          <span class="rail-mode">Analysis</span>
+          <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
+        {/if}
+      </div>
+      {#if liveSignals.length > 0}
+        <LiveSignalPanel
+          signals={liveSignals}
+          cached={liveSignalsCached}
+          scannedAt={liveSignalsScannedAt}
+        />
+      {/if}
+      {#if isScanMode}
+        <div class="scan-list">
+          {#each scanAssets as { asset, verdict } (asset.symbol)}
+            {@const sym = asset.symbol.replace('USDT','')}
+            {@const dir = verdict?.direction ?? asset.bias}
+            {@const active = asset.symbol === activeSymbol}
+            <button
+              class="scan-card"
+              class:active
+              class:bullish={dir === 'bullish'}
+              class:bearish={dir === 'bearish'}
+              onclick={() => selectAsset(asset.symbol)}
+            >
+              <div class="sc-left">
+                <span class="sc-sym">{sym}</span>
+                <span class="sc-venue">USDT·PERP</span>
+              </div>
+              <div class="sc-right">
+                <span class="sc-dir">{dir?.toUpperCase() ?? '—'}</span>
+                {#if verdict?.reason}
+                  <span class="sc-reason">{verdict.reason.slice(0, 48)}{verdict.reason.length > 48 ? '…' : ''}</span>
+                {:else if verdictMap[asset.symbol] === undefined && loadingSymbols.has(asset.symbol)}
+                  <span class="sc-loading">analyzing…</span>
+                {/if}
+              </div>
+            </button>
+          {/each}
+        </div>
+        {#if heroAsset && heroVerdict}
+          <div class="scan-detail">
+            <TerminalContextPanel
+              analysisData={activeAnalysisData}
+              newsData={newsData}
+              activeTab={activeAnalysisTab}
+              onTabChange={handleAnalysisTabChange}
+              onAction={sendCommand}
+              onPinToggle={handlePinToggle}
+              onAlertToggle={handleAlertToggle}
+              onRetry={handleRetryAnalysis}
+              isPinned={isActivePinned}
+              hasSavedAlert={hasActiveSavedAlert}
+              bars={ohlcvBars}
+              {layerBarsMap}
+              {patternRecallMatches}
+            />
+          </div>
+        {/if}
+      {:else if isLoadingActive && !heroVerdict}
+        <div class="board-loading">
+          <div class="loading-ring"></div>
+          <p class="loading-msg">Analyzing {activePairDisplay}…</p>
+        </div>
+      {:else if heroAsset && heroVerdict}
         <TerminalContextPanel
           analysisData={activeAnalysisData}
           newsData={newsData}
@@ -1558,59 +1704,40 @@
           {layerBarsMap}
           {patternRecallMatches}
         />
-      </svelte:fragment>
+      {:else}
+        <div class="board-empty">
+          <p class="empty-icon">◈</p>
+          <p class="empty-text">No analysis loaded</p>
+          <button class="empty-retry-btn" onclick={handleRetryAnalysis}>
+            Analyze {activePairDisplay} →
+          </button>
+        </div>
+      {/if}
+    </aside>
 
-      <svelte:fragment slot="scan">
-        <ScanGrid
-          alerts={scannerAlerts}
-          similar={peekSimilar}
-          activeSymbol={activeSymbol || pairToSymbol(gPair)}
-          loadingSimilar={peekLoadingSimilar}
-          onOpenCapture={handlePeekOpenCapture}
-        />
-      </svelte:fragment>
-
-      <svelte:fragment slot="judge">
-        <JudgePanel
-          symbol={activeSymbol || pairToSymbol(gPair)}
-          timeframe={symbolToTF(gTf)}
-          verdict={peekVerdict}
-          entry={peekEntry}
-          stop={peekStop}
-          target={peekTarget}
-          pWin={peekPWin}
-          lastPrice={peekLast}
-          captures={peekCaptures}
-          saving={false}
-          onSaveJudgment={handlePeekSaveJudgment}
-          onRejudge={handlePeekRejudge}
-          onOpenCapture={handlePeekOpenCapture}
-        />
-      </svelte:fragment>
-    </PeekDrawer>
-  </main>
+  </div><!-- .peek-body -->
 </div>
 
-<!-- MOBILE: TerminalShell with mode routing (fallback, currently unused) -->
+<!-- MarketDrawer: tablet/mobile overlay (left side) -->
+<MarketDrawer
+  open={showLeftRail}
+  onClose={toggleLeftRail}
+  {trendingData}
+  watchlistRows={persistedWatchlist}
+  alerts={scannerAlerts}
+  savedAlerts={savedAlertRules}
+  {patternPhases}
+  activeSymbol={activeSymbol || pairToSymbol(gPair)}
+  macroItems={macroCalendarItems}
+  {marketEvents}
+  queryPresets={terminalQueryPresets}
+  anomalies={terminalAnomalies}
+  onQuery={handleQueryChip}
+  onDeleteSavedAlert={handleDeleteSavedAlert}
+/>
+
 {#if false}
-  <!-- Disabled until mobile support is added back -->
-  <!-- Market drawer — overlay for tablet/mobile only; desktop uses persistent left rail -->
-  <MarketDrawer
-    open={showLeftRail}
-    onClose={toggleLeftRail}
-    {trendingData}
-    watchlistRows={persistedWatchlist}
-    alerts={scannerAlerts}
-    savedAlerts={savedAlertRules}
-    {patternPhases}
-    activeSymbol={activeSymbol || pairToSymbol(gPair)}
-    macroItems={macroCalendarItems}
-    {marketEvents}
-    queryPresets={terminalQueryPresets}
-    anomalies={terminalAnomalies}
-    onQuery={handleQueryChip}
-    onDeleteSavedAlert={handleDeleteSavedAlert}
-  />
+  <!-- Legacy TerminalShell — disabled, replaced by PEEK 3-pane layout -->
 
   <div class="surface-page terminal-page">
   <TerminalShell
@@ -1851,11 +1978,54 @@
     color: var(--sc-text-0, #f7f2ea);
   }
 
+  /* 3-pane body: left rail + center + right rail */
+  .peek-body {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Left market rail */
+  .peek-left-rail {
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--sc-bg-0, #0b0e14);
+  }
+
+  /* Center: chart + bottom drawer */
   .peek-main {
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-width: 0;
     min-height: 0;
+  }
+
+  /* Right analysis rail */
+  .peek-right-rail {
+    width: 320px;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(255,255,255,0.06);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--sc-bg-0, #0b0e14);
+  }
+
+  @media (max-width: 1279px) {
+    .peek-left-rail { display: none; }
+    .peek-right-rail { width: 280px; }
+  }
+  @media (max-width: 959px) {
+    .peek-right-rail { display: none; }
   }
 
   .terminal-page {
