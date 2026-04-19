@@ -134,8 +134,9 @@ class TestRegressionGuards:
         # + VOLATILITY_SQUEEZE_BREAKOUT + ALPHA_CONFLUENCE (W-0107)
         # + RADAR_GOLDEN_ENTRY + COMPRESSION_BREAKOUT_REVERSAL (W-0108)
         # + INSTITUTIONAL_DISTRIBUTION (W-0109)
-        # + FUNDING_FLIP_REVERSAL_SHORT (W-0106) = 13
-        assert len(PATTERN_LIBRARY) == 13
+        # + FUNDING_FLIP_REVERSAL_SHORT (W-0106)
+        # + LIQUIDITY_SWEEP_REVERSAL (W-0110) = 14
+        assert len(PATTERN_LIBRARY) == 14
 
     def test_whale_accumulation_in_promoted_patterns(self):
         from research.live_monitor import PROMOTED_PATTERNS

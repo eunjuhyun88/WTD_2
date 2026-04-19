@@ -1003,6 +1003,83 @@ INSTITUTIONAL_DISTRIBUTION = PatternObject(
     tags=["distribution", "short", "cvd", "institutional", "liquidity"],
 )
 
+LIQUIDITY_SWEEP_REVERSAL = PatternObject(
+    slug="liquidity-sweep-reversal-v1",
+    name="유동성 스윕 반전 패턴 (지지선 스톱헌트형)",
+    description=(
+        "지지선 하방 순간 이탈로 롱 손절을 청산(Liquidity Sweep)한 뒤 "
+        "즉각 회복 반전하는 크립토 고유 스톱헌트 패턴. "
+        "WSR(와이코프 스프링)의 압축→스프링 단계를 단순화: "
+        "지지선 근처 압축 없이도 발동 가능한 단기 스윕 버전. "
+        "핵심 신호: low가 N일 최저점 이탈 + close가 그 위에서 회복 = 스윕 캔들."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="LIQUIDITY_GRAB",
+            label="유동성 스윕 — 지지선 이탈 후 즉각 회복",
+            required_blocks=["sweep_below_low"],
+            required_any_groups=[
+                ["volume_spike", "long_lower_wick"],
+            ],
+            soft_blocks=["absorption_signal"],
+            disqualifier_blocks=["extreme_volatility", "oi_spike_with_dump"],
+            score_weights={
+                "sweep_below_low": 0.50,
+                "volume_spike": 0.30,
+                "long_lower_wick": 0.20,
+                "absorption_signal": 0.10,
+            },
+            min_bars=1, max_bars=4,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="RECOVERY",
+            label="반전 확인 — 저점 상승 + 매수 재개",
+            required_blocks=["recent_rally"],
+            required_any_groups=[
+                ["higher_lows_sequence", "delta_flip_positive"],
+                ["bullish_engulfing", "reclaim_after_dump"],
+            ],
+            soft_blocks=["absorption_signal", "positive_funding_bias"],
+            disqualifier_blocks=["oi_spike_with_dump", "recent_decline"],
+            score_weights={
+                "recent_rally": 0.40,
+                "higher_lows_sequence": 0.25,
+                "delta_flip_positive": 0.20,
+                "bullish_engulfing": 0.15,
+                "reclaim_after_dump": 0.15,
+                "absorption_signal": 0.10,
+                "positive_funding_bias": 0.10,
+            },
+            phase_score_threshold=0.60,
+            transition_window_bars=6,
+            anchor_from_previous_phase=True,
+            anchor_phase_id="LIQUIDITY_GRAB",
+            min_bars=2, max_bars=24,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="CONTINUATION",
+            label="추세 재개 — 스윕 이전 고점 돌파",
+            required_blocks=[],
+            required_any_groups=[
+                ["breakout_from_pullback_range", "breakout_above_high"],
+            ],
+            optional_blocks=["breakout_volume_confirm"],
+            soft_blocks=["volume_surge_bull", "oi_expansion_confirm"],
+            disqualifier_blocks=["recent_decline"],
+            min_bars=1, max_bars=12,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="RECOVERY",
+    target_phase="CONTINUATION",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["liquidity_sweep", "stop_hunt", "price_action", "reversal", "crypto_native"],
+)
+
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
@@ -1017,6 +1094,7 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     COMPRESSION_BREAKOUT_REVERSAL.slug: COMPRESSION_BREAKOUT_REVERSAL,
     INSTITUTIONAL_DISTRIBUTION.slug: INSTITUTIONAL_DISTRIBUTION,
     FUNDING_FLIP_REVERSAL_SHORT.slug: FUNDING_FLIP_REVERSAL_SHORT,
+    LIQUIDITY_SWEEP_REVERSAL.slug: LIQUIDITY_SWEEP_REVERSAL,
 }
 
 def get_pattern(slug: str) -> PatternObject:

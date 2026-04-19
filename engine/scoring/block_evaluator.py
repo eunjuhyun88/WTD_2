@@ -36,6 +36,7 @@ from building_blocks.triggers.breakout_from_pullback_range import breakout_from_
 from building_blocks.triggers.breakout_volume_confirm import breakout_volume_confirm
 from building_blocks.triggers.consolidation_then_breakout import consolidation_then_breakout
 from building_blocks.triggers.volume_spike import volume_spike
+from building_blocks.triggers.sweep_below_low import sweep_below_low
 from building_blocks.triggers.volume_spike_down import volume_spike_down
 
 # --- Confirmations ---
@@ -99,6 +100,7 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("breakout_from_pullback_range", breakout_from_pullback_range),
     ("breakout_volume_confirm",   breakout_volume_confirm),
     ("consolidation_then_breakout", consolidation_then_breakout),
+    ("sweep_below_low",           sweep_below_low),
     ("volume_spike",              volume_spike),
     ("volume_spike_down",         volume_spike_down),
     # confirmations
