@@ -1167,6 +1167,8 @@
   /* Fix 1: 모바일에서 ChartBoard 데스크탑 툴바 숨김 (+98px 확보) */
   :global(.mobile-chart-section .chart-toolbar) { display: none; }
   :global(.mobile-chart-section .chart-header--tv) { display: none; }
+  /* Fix 2: ChartBoard min-height 420px 오버라이드 → 42vh 컨테이너에 맞춤 */
+  :global(.mobile-chart-section .chart-board) { min-height: 0 !important; }
 
   .trade-mode {
     flex: 1;
@@ -2210,6 +2212,7 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    overflow: hidden;
   }
 
   .mobile-chart-section.mobile-chart-fullscreen {
