@@ -84,7 +84,7 @@
   <div class="nav-main">
     <!-- Logo -->
     <a class="nav-logo" href={buildDeepLink(connected ? '/dashboard' : '/')} aria-label="Home">
-      <span class="nav-logo-main">COGOCHI</span>
+      <span class="nav-logo-main">COGOTCHI</span>
     </a>
 
     {#if !isHomeRoute}
