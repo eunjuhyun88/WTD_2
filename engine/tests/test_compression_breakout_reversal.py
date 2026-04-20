@@ -136,6 +136,10 @@ class TestCBRBenchmarkPack:
             assert case["expected_phase_path"] == ["SETUP", "COILING", "BREAKOUT"]
 
 
+@pytest.mark.skipif(
+    not Path("engine/data_cache/cache/ALTUSDT_1h.csv").exists(),
+    reason="ALTUSDT_1h klines cache not available (offline-only test)"
+)
 def test_cbr_promotion_gate():
     """Full promotion gate: all 6 strict-path metrics must pass."""
     from research.pattern_search import (

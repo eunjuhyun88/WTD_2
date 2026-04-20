@@ -30,6 +30,7 @@ except ModuleNotFoundError:
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from data_cache.loader import load_klines, load_macro_bundle, load_perp
+from data_cache.fetch_okx_historical import fetch_and_cache_signals, SYMBOL_CHAIN_MAP
 from scanner.alerts import (
     send_pattern_engine_alert,
     send_pattern_scan_summary,
@@ -154,6 +155,27 @@ async def _refinement_trigger_job() -> None:
     await refinement_trigger_job()
 
 
+async def _fetch_okx_signals_job() -> None:
+    """Fetch and cache recent OKX smart money signals (every 6 hours).
+
+    W-0109 integration: Populates historical cache for smart_money_accumulation block.
+    """
+    log.debug("Fetching OKX smart money signals...")
+    results = []
+    for symbol in list(SYMBOL_CHAIN_MAP.keys())[:20]:  # Limit to avoid rate limit
+        result = fetch_and_cache_signals(
+            symbol,
+            wallet_types="1,2,3",
+            min_amount_usd=1000.0,
+            max_age_hours=24.0,
+        )
+        results.append(result)
+        if result.get("signals_appended", 0) > 0:
+            log.info(f"  {symbol}: {result['signals_appended']} signals cached")
+    total_appended = sum(r.get("signals_appended", 0) for r in results)
+    log.info(f"✓ OKX signals job complete: {total_appended} total signals cached")
+
+
 def start_scheduler() -> None:
     """Start the APScheduler background scan loop."""
     global _scheduler
@@ -223,6 +245,18 @@ def start_scheduler() -> None:
         max_instances=1,
         coalesce=True,
         misfire_grace_time=3600,
+    )
+
+    # Job 4: OKX Smart Money signals cache refresh (W-0109) — every 6 hours
+    _scheduler.add_job(
+        _fetch_okx_signals_job,
+        trigger="interval",
+        seconds=21600,  # 6 hours
+        id="fetch_okx_signals",
+        name="OKX smart money signal fetcher",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
     )
 
     if PATTERN_REFINEMENT_ENABLED:

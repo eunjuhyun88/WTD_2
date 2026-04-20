@@ -1,0 +1,22 @@
+{
+  "id": "629c4be4-80eb-4c43-afa0-e7ace3574b66",
+  "record_type": "capture",
+  "pattern_slug": "radar-golden-entry-v1",
+  "symbol": "AVAXUSDT",
+  "user_id": "founder_seed",
+  "outcome_id": null,
+  "capture_id": "fe22b574-2acf-4a7e-bd1f-1e35d24da49e",
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-20T02:03:09.101729",
+  "payload": {
+    "capture_kind": "manual_hypothesis",
+    "pattern_version": 1,
+    "phase": "ENTRY",
+    "timeframe": "1h",
+    "status": "pending_outcome",
+    "user_note": "Test setup 10",
+    "outcome_id": null,
+    "verdict_id": null
+  }
+}

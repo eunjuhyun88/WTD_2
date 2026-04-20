@@ -1,0 +1,22 @@
+{
+  "id": "4b0c09a5-f81b-493b-8a0e-116b75691a0b",
+  "record_type": "capture",
+  "pattern_slug": "funding-flip-reversal-v1",
+  "symbol": "ETHUSDT",
+  "user_id": "founder_seed",
+  "outcome_id": null,
+  "capture_id": "b6cffe65-baaf-4895-9cdc-58c4a919e73d",
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-20T02:03:09.077909",
+  "payload": {
+    "capture_kind": "manual_hypothesis",
+    "pattern_version": 1,
+    "phase": "FUNDING_NORMALIZE",
+    "timeframe": "1h",
+    "status": "pending_outcome",
+    "user_note": "Test setup 2",
+    "outcome_id": null,
+    "verdict_id": null
+  }
+}

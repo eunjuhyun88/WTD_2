@@ -1,0 +1,22 @@
+{
+  "id": "e84e30d7-7ed6-4ac9-b99b-81d457290d39",
+  "record_type": "capture",
+  "pattern_slug": "volume-absorption-reversal-v1",
+  "symbol": "ADAUSDT",
+  "user_id": "founder_seed",
+  "outcome_id": null,
+  "capture_id": "adf4ad78-d634-47ec-bf3f-07930c11b967",
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-20T02:03:09.086627",
+  "payload": {
+    "capture_kind": "manual_hypothesis",
+    "pattern_version": 1,
+    "phase": "ABSORPTION",
+    "timeframe": "1h",
+    "status": "pending_outcome",
+    "user_note": "Test setup 5",
+    "outcome_id": null,
+    "verdict_id": null
+  }
+}
