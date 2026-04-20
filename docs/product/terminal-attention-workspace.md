@@ -534,3 +534,77 @@ Expanded detail components:
 - Right rail becomes the clear destination for verdict, action, risk, and catalyst reading.
 - New prompts can change emphasis without causing disruptive layout shifts.
 - The design remains stable even as new data sources are added.
+
+---
+
+## Implementation Status (2026-04-21)
+
+> 아래 섹션은 설계 north star와 실제 구현 사이의 현재 상태를 기록한다.
+> 설계 원칙은 여전히 유효하며, 구현이 수렴해야 할 방향이다.
+
+### 실제 구현 구조: Cogochi Shell
+
+3-rail 레이아웃 대신 **IDE-style Cogochi AppShell** 로 구현됨.
+
+```
+DESKTOP (≥1280px)
+  CommandBar (top)
+  TabBar
+  ┌─────────────┬──────────────────────┬───────────┐
+  │  Sidebar    │  TradeMode           │  AIPanel  │
+  │  (240px,    │  (flex: 1)           │  (380px,  │
+  │  toggle)    │                      │  toggle)  │
+  └─────────────┴──────────────────────┴───────────┘
+  StatusBar (bottom)
+
+MOBILE (<768px)
+  MobileTopBar (symbol / TF / AI toggle)
+  mobile-canvas → TradeMode (mobileView prop)
+    chart-section (ChartBoard)
+    tab-strip (02 ANL / 03 SCAN / 04 JUDGE)
+    scrollable panel
+  MobileFooter (ticker strip)
+  AI bottom sheet (52%, slide-up animation)
+
+TABLET (768-1279px)
+  Same as desktop shell, but layoutMode forced to 'D', sidebar/AI hidden
+```
+
+### TradeMode Layout Modes (데스크탑)
+
+| Mode | 설명 | 구현 상태 |
+|------|------|-----------|
+| A (PEEK) | 차트 상단 + 3탭 드로어 (ANALYZE/SCAN/JUDGE) | ✅ |
+| B | 차트 + 우측 패널 | ✅ |
+| C | 풀스크린 차트 | ✅ |
+| D | 기본 (모바일·태블릿 강제) | ✅ |
+
+### ChartBoard 실제 구현
+
+- LightweightCharts 기반, 500-bar 캔들
+- 인디케이터 pane: OI, CVD/Volume, 추가 지표 스택 (IndicatorPaneStack)
+- 데스크탑 툴바 (ChartToolbar): TF 선택, Save Setup 진입점
+- 모바일: chart-toolbar + chart-header--tv 숨김 (`:global()` CSS override)
+- 라이브 데이터: Redis kline cache → Binance WS fallback
+
+### 설계 대비 미구현
+
+| 설계 항목 | 상태 |
+|-----------|------|
+| Attention weights (pane/right-rail 동적 강조) | ❌ 미구현 |
+| Right Rail 블록 랭킹 변동 | ❌ 미구현 |
+| terminalSelectionState.ts canonical store | ❌ 미구현 |
+| terminalAttentionModel.ts | ❌ 미구현 |
+| Progressive disclosure (chip click → detail panel) | ❌ 미구현 |
+
+### 실제 파일 위치
+
+| 역할 | 실제 파일 |
+|------|-----------|
+| Shell orchestration | `app/src/lib/cogochi/AppShell.svelte` |
+| Store | `app/src/lib/cogochi/shell.store.ts` |
+| Trade view (desktop+mobile) | `app/src/lib/cogochi/modes/TradeMode.svelte` |
+| Chart board | `app/src/components/terminal/workspace/ChartBoard.svelte` |
+| Mobile top bar | `app/src/lib/cogochi/MobileTopBar.svelte` |
+| AI panel | `app/src/lib/cogochi/AIPanel.svelte` |
+| Viewport tier | `app/src/lib/stores/viewportTier.ts` |

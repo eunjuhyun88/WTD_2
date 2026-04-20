@@ -6,8 +6,6 @@ import pytest
 from patterns.library import LIQUIDITY_SWEEP_REVERSAL, get_pattern
 from patterns.state_machine import PatternStateMachine
 from building_blocks.context import Context
-from models.market import Kline
-
 
 def test_pattern_registered():
     """Verify pattern is in library."""
@@ -56,7 +54,7 @@ def test_state_machine_instantiation():
     sm = PatternStateMachine(LIQUIDITY_SWEEP_REVERSAL)
     assert sm.pattern.slug == "liquidity-sweep-reversal-v1"
 
-    # Initial state should be None (not started)
+    # Initial state should be None / 'NONE' (not started)
     sym = "BTCUSDT"
     assert sm.get_current_phase(sym) == "NONE"
 
