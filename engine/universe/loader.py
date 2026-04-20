@@ -38,8 +38,11 @@ def load_universe(name: str) -> list[str]:
     if name == "screened_a":
         from universe.screened import load_screened_universe
         return load_screened_universe(min_structural_grade="A")
+    if name == "alpha":
+        from data_cache.fetch_alpha_universe import get_watchlist_symbols
+        return get_watchlist_symbols()
     raise KeyError(
-        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all', 'screened_ab', 'screened_a')"
+        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all', 'screened_ab', 'screened_a', 'alpha')"
     )
 
 
@@ -59,6 +62,9 @@ async def load_universe_async(name: str) -> list[str]:
     if name == "screened_a":
         from universe.screened import load_screened_universe_async
         return await load_screened_universe_async(min_structural_grade="A")
+    if name == "alpha":
+        from data_cache.fetch_alpha_universe import get_watchlist_symbols
+        return get_watchlist_symbols()
     raise KeyError(
-        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all', 'screened_ab', 'screened_a')"
+        f"unknown universe {name!r} (available: 'binance_30', 'binance_dynamic', 'binance_all', 'screened_ab', 'screened_a', 'alpha')"
     )

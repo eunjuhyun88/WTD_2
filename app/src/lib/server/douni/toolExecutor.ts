@@ -146,6 +146,18 @@ export async function executeTool(
       case 'query_memory':
         data = await executeQueryMemory(args, ctx, events);
         break;
+      case 'get_alpha_world_model':
+        data = await executeGetAlphaWorldModel(args, events);
+        break;
+      case 'get_alpha_token_detail':
+        data = await executeGetAlphaTokenDetail(args, events);
+        break;
+      case 'find_tokens':
+        data = await executeFindTokens(args, events);
+        break;
+      case 'set_alpha_watch':
+        data = await executeSetAlphaWatch(args, ctx, events);
+        break;
       default:
         data = null;
     }
@@ -874,4 +886,103 @@ async function executeCheckPatternStatus(
 
 function getEngineUrl(): string {
   return (process.env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+}
+
+// ─── get_alpha_world_model ────────────────────────────────────
+
+async function executeGetAlphaWorldModel(
+  args: Record<string, unknown>,
+  events: DouniSSEEvent[],
+): Promise<Record<string, unknown>> {
+  const grade = (args.grade as string) || 'all';
+  events.push({ type: 'text_delta', text: 'Loading Alpha universe state...' });
+
+  try {
+    const res = await fetch(`${getEngineUrl()}/alpha/world-model?grade=${grade}`);
+    if (!res.ok) throw new Error(`Engine returned ${res.status}`);
+    const data = await res.json();
+    return data;
+  } catch (err: any) {
+    return { error: `Alpha world model unavailable: ${err.message}`, phases: {}, anomalies: [] };
+  }
+}
+
+// ─── get_alpha_token_detail ───────────────────────────────────
+
+async function executeGetAlphaTokenDetail(
+  args: Record<string, unknown>,
+  events: DouniSSEEvent[],
+): Promise<Record<string, unknown>> {
+  const symbol = (args.symbol as string)?.toUpperCase();
+  if (!symbol) return { error: 'symbol required' };
+
+  events.push({ type: 'text_delta', text: `Loading Alpha detail for ${symbol}...` });
+
+  try {
+    const res = await fetch(`${getEngineUrl()}/alpha/token/${symbol}`);
+    if (!res.ok) throw new Error(`Engine returned ${res.status}`);
+    return await res.json();
+  } catch (err: any) {
+    return { error: `Alpha token detail unavailable: ${err.message}`, symbol };
+  }
+}
+
+// ─── find_tokens ─────────────────────────────────────────────
+
+async function executeFindTokens(
+  args: Record<string, unknown>,
+  events: DouniSSEEvent[],
+): Promise<Record<string, unknown>> {
+  const conditions = args.conditions as unknown[] ?? [];
+  const universe = (args.universe as string) || 'alpha';
+  const minMatch = (args.min_match as number) || 1;
+
+  events.push({ type: 'text_delta', text: `Scanning ${universe} universe for matching tokens...` });
+
+  try {
+    const res = await fetch(`${getEngineUrl()}/alpha/find`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conditions, universe, min_match: minMatch }),
+    });
+    if (!res.ok) throw new Error(`Engine returned ${res.status}`);
+    const data = await res.json();
+    events.push({ type: 'scan_result', sort: 'match_score', count: data.matches?.length ?? 0 });
+    return data;
+  } catch (err: any) {
+    return { error: `find_tokens failed: ${err.message}`, matches: [] };
+  }
+}
+
+// ─── set_alpha_watch ──────────────────────────────────────────
+
+async function executeSetAlphaWatch(
+  args: Record<string, unknown>,
+  ctx: ToolExecutorContext,
+  events: DouniSSEEvent[],
+): Promise<Record<string, unknown>> {
+  const symbol = (args.symbol as string)?.toUpperCase();
+  const targetPhase = (args.target_phase as string) || 'SQUEEZE_TRIGGER';
+  const minConfidence = (args.min_confidence as number) || 0.70;
+
+  if (!symbol) return { error: 'symbol required' };
+
+  events.push({ type: 'text_delta', text: `Setting watch on ${symbol} → ${targetPhase}...` });
+
+  try {
+    const res = await fetch(`${getEngineUrl()}/alpha/watch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: ctx.userId ?? 'anonymous',
+        symbol,
+        target_phase: targetPhase,
+        min_confidence: minConfidence,
+      }),
+    });
+    if (!res.ok) throw new Error(`Engine returned ${res.status}`);
+    return await res.json();
+  } catch (err: any) {
+    return { error: `set_alpha_watch failed: ${err.message}`, symbol, target_phase: targetPhase };
+  }
 }

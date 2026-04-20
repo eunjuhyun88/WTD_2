@@ -294,3 +294,38 @@ ONCHAIN = register(FeatureGroup(
     input_columns=(),
     version="registry-driven",
 ))
+
+DEX = register(FeatureGroup(
+    name="dex",
+    domain="external",
+    output_columns=(
+        "dex_market_cap",
+        "dex_fdv",
+        "dex_liquidity_usd",
+        "dex_volume_h24",
+        "dex_buy_txns_h24",
+        "dex_sell_txns_h24",
+        "dex_buy_pct",
+        "dex_price_change_h24",
+        "dex_price_change_h6",
+        "dex_has_twitter",
+        "dex_boost_active",
+        "dex_pair_age_days",
+    ),
+    warmup_bars=0,
+    input_columns=(),
+    version="registry-driven",
+))
+
+CHAIN = register(FeatureGroup(
+    name="chain",
+    domain="external",
+    output_columns=(
+        "holder_top10_pct",
+        "holder_top3_pct",
+        "holder_treasury_flag",
+    ),
+    warmup_bars=0,
+    input_columns=(),
+    version="registry-driven",
+))

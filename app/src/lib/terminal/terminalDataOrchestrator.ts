@@ -167,6 +167,17 @@ export async function fetchNewsData(): Promise<any | null> {
   return res.json();
 }
 
+export async function fetchAlphaWorldModel(grade?: 'A' | 'B' | 'all'): Promise<{
+  phases: Array<{ symbol: string; grade: string; phase: string; bars_in_phase: number; entered_at: string | null; active: boolean }>;
+  phase_counts: Record<string, number>;
+  n_symbols: number;
+}> {
+  const params = grade ? `?grade=${grade}` : '';
+  const res = await fetch(`/api/cogochi/alpha/world-model${params}`);
+  if (!res.ok) return { phases: [], phase_counts: {}, n_symbols: 0 };
+  return res.json();
+}
+
 export async function fetchScannerAlerts(limit = 12): Promise<any[]> {
   const res = await fetch(`/api/cogochi/alerts?limit=${limit}`);
   if (!res.ok) return [];

@@ -1156,6 +1156,92 @@ OI_PRESURGE_LONG = PatternObject(
 )
 
 
+ALPHA_PRESURGE = PatternObject(
+    slug="alpha-presurge-v1",
+    name="Binance Alpha → Futures 펌프 예비 패턴",
+    description=(
+        "BSC/ETH 소형 토큰이 Binance Alpha에 상장 후 Futures 상장 전후로 "
+        "10-30x 펌핑하는 패턴. 세 단계: "
+        "(1) SCREENING_GATE — MC < 100M, DEX 유동성 확인, 홀더 구조 적정 "
+        "(2) ACCUMULATION_ZONE — 세력 선물 숏 매집 + 현물 CVD 분리 + 음펀비 "
+        "(3) SQUEEZE_TRIGGER — 개미 롱 청산 시작, 펀비 반전, OI 재확장. "
+        "기준: MC 최저점 기준 < 100M, 고점 대비 낙폭 > 80%, SNS 활성. "
+        "사례: RIVER, SIREN, RAVE, MYX, AIOT, XPIN (BSC 위주). "
+        "출처: 2026-04-21 사용자 분석 문서."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="SCREENING_GATE",
+            label="스크리닝 통과 (MC/홀더/DEX 유동성)",
+            # DEX 데이터가 있어야 함 (Alpha 코인 = DEX에 먼저 상장)
+            # dex_buy_pressure는 DEX 볼륨이 있을 때만 발화 — 없으면 패스
+            required_blocks=[],
+            required_any_groups=[
+                # Criterion 1: MC range gate (소형주)
+                # dex_buy_pressure fires only when dex_volume_h24 > 10K
+                # = DEX 활성화 확인. 없으면 다음 그룹 통과로 진행
+                ["dex_buy_pressure", "volume_dryup"],  # DEX active OR compressed CEX vol
+            ],
+            optional_blocks=[
+                "holder_concentration_ok",  # holder data가 있으면 bonus
+            ],
+            disqualifier_blocks=["extreme_volatility"],
+            min_bars=1, max_bars=72,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="ACCUMULATION_ZONE",
+            label="세력 숏 매집 구간 (음펀비 + CVD 분리)",
+            # $IN 분석: spot CVD 회복 중인데 선물 CVD는 밀림 = 세력 숏 매집
+            required_blocks=["spot_futures_cvd_divergence"],
+            required_any_groups=[
+                # 음펀비 지속 OR 극단적 음펀비
+                ["negative_funding_bias", "funding_extreme"],
+                # 가격 우하향 or 박스권 (아직 추세 전환 전)
+                ["recent_decline", "sideways_compression", "bollinger_squeeze"],
+            ],
+            optional_blocks=[
+                "oi_contraction_confirm",  # OI 감소 = 아직 발사 준비 안 됨 (확인)
+                "volume_dryup",            # 볼륨 감소 = 개미 관심 식음
+                "dex_buy_pressure",        # DEX에서는 사고 있음
+            ],
+            disqualifier_blocks=["oi_spike_with_dump"],  # 진짜 덤프는 아니어야 함
+            min_bars=3, max_bars=96,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SQUEEZE_TRIGGER",
+            label="스퀴즈 트리거 (숏 청산 + 추세 전환)",
+            # 세력 숏 청산 시작 → 개미 롱 청산 → 가격 급등
+            required_blocks=["ls_ratio_recovery"],      # 개미 롱 비율 감소 시작
+            required_any_groups=[
+                # 펀딩 반전 OR OI 재팽창 (둘 중 하나면 됨)
+                ["funding_flip", "oi_expansion_confirm"],
+                # 추세 전환 신호
+                ["higher_lows_sequence", "reclaim_after_dump", "breakout_above_high"],
+            ],
+            optional_blocks=[
+                "dex_buy_pressure",     # DEX 매수 동반
+                "volume_surge_bull",    # 볼륨 동반 상승
+                "positive_funding_bias",
+                "holder_concentration_ok",
+            ],
+            disqualifier_blocks=["extended_from_ma"],  # 이미 많이 오른 건 제외
+            min_bars=1, max_bars=24,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="SQUEEZE_TRIGGER",
+    target_phase="SQUEEZE_TRIGGER",
+    timeframe="1h",
+    universe_scope="binance_dynamic",
+    direction="long",
+    tags=["alpha-presurge", "bsc", "small-cap", "futures-listing", "squeeze"],
+    version=1,
+    created_by="cto-research",
+)
+
+
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
@@ -1172,6 +1258,7 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     INSTITUTIONAL_DISTRIBUTION.slug: INSTITUTIONAL_DISTRIBUTION,
     FUNDING_FLIP_REVERSAL_SHORT.slug: FUNDING_FLIP_REVERSAL_SHORT,
     OI_PRESURGE_LONG.slug: OI_PRESURGE_LONG,  # W-0114 딸깍 전략
+    ALPHA_PRESURGE.slug: ALPHA_PRESURGE,      # W-0115 Alpha Universe
 }
 
 def get_pattern(slug: str) -> PatternObject:
