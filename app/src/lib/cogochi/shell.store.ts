@@ -12,6 +12,7 @@ export interface TabState {
   peekOpen: boolean;
   peekHeight: number;
   drawerTab: 'analyze' | 'scan' | 'judge';
+  layoutMode: 'A' | 'B' | 'C' | 'D';
 }
 
 export interface Tab {
@@ -39,7 +40,7 @@ export interface ShellState {
 }
 
 const FRESH_TAB_STATE = (): TabState => ({
-  tradePrompt: 'OI 급증 후 번지대 3시간 accumulation',
+  tradePrompt: '',
   rangeSelection: false,
   setupTokens: null,
   verdicts: {},
@@ -50,6 +51,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   peekOpen: false,
   peekHeight: 56,
   drawerTab: 'analyze',
+  layoutMode: 'D',
 });
 
 const makeDefault = (): ShellState => ({
@@ -58,7 +60,7 @@ const makeDefault = (): ShellState => ({
   ],
   activeTabId: 't1',
   sidebarVisible: true,
-  aiVisible: false,
+  aiVisible: true,
   activeSection: 'library',
   sidebarWidth: 220,
   aiWidth: 280,
@@ -69,7 +71,7 @@ const makeDefault = (): ShellState => ({
 });
 
 function createShellStore() {
-  const stored = typeof window !== 'undefined' ? localStorage.getItem('cogochi_shell_v3') : null;
+  const stored = typeof window !== 'undefined' ? localStorage.getItem('cogochi_shell_v4') : null;
   let initial: ShellState;
 
   try {
@@ -85,7 +87,7 @@ function createShellStore() {
   // Persist to localStorage
   subscribe(state => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cogochi_shell_v3', JSON.stringify(state));
+      localStorage.setItem('cogochi_shell_v4', JSON.stringify(state));
     }
   });
 
@@ -205,7 +207,7 @@ function createShellStore() {
     reset: () => {
       set(makeDefault());
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('cogochi_shell_v3');
+        localStorage.removeItem('cogochi_shell_v4');
       }
     },
   };
