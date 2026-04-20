@@ -29,7 +29,10 @@
   let chartPayload = $state<ChartSeriesPayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
+  let klineWs = $state<WebSocket | null>(null);
+  let lastCandleTime = $state<number | null>(null);
 
+  // Fetch initial bundle
   $effect(() => {
     const sym = symbol;
     const tf = timeframe;
@@ -39,8 +42,49 @@
         chartPayload = result.chartPayload ?? null;
         analyzeData = result.analyze ?? null;
         chartLoading = false;
+        if (result.chartPayload?.klines?.length) {
+          lastCandleTime = result.chartPayload.klines[result.chartPayload.klines.length - 1].time;
+        }
       })
       .catch(() => { chartLoading = false; });
+  });
+
+  // WebSocket connection for real-time candle updates + analyze refresh
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const sym = symbol.toLowerCase();
+    const tf = timeframe;
+    const stream = `${sym}@kline_${tf}`;
+    const wsUrl = `wss://fstream.binance.com/ws/${stream}`;
+    try {
+      klineWs?.close();
+      klineWs = new WebSocket(wsUrl);
+      klineWs.onmessage = (ev: MessageEvent) => {
+        try {
+          const msg = JSON.parse(ev.data as string) as {
+            k: { t: number; x: boolean; c: string; o: string; h: string; l: string; v: string };
+          };
+          const k = msg.k;
+          const candleTime = Math.floor(k.t / 1000);
+          if (k.x && lastCandleTime !== candleTime) {
+            lastCandleTime = candleTime;
+            fetchTerminalBundle({ symbol, tf })
+              .then(result => {
+                analyzeData = result.analyze ?? null;
+                if (result.chartPayload) chartPayload = result.chartPayload;
+              })
+              .catch(() => { /* retry on next candle */ });
+          }
+        } catch {
+          // Ignore malformed WS messages
+        }
+      };
+      klineWs.onerror = () => { klineWs?.close(); };
+      klineWs.onclose = () => { klineWs = null; };
+    } catch (err) {
+      console.error('WS connection failed:', err);
+    }
+    return () => { klineWs?.close(); klineWs = null; };
   });
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
@@ -161,6 +205,17 @@
   let judgeOutcome = $state<'win' | 'loss' | 'flat' | null>(null);
   let judgeRejudged = $state<'right' | 'wrong' | null>(null);
 
+  // Keyboard shortcuts for judge verdict (Y/N)
+  function handleJudgeKeydown(e: KeyboardEvent) {
+    if (e.key === 'y' || e.key === 'Y') { judgeVerdict = 'agree'; e.preventDefault(); }
+    else if (e.key === 'n' || e.key === 'N') { judgeVerdict = 'disagree'; e.preventDefault(); }
+  }
+  $effect(() => {
+    if (typeof window === 'undefined' || mobileView !== 'judge') return;
+    window.addEventListener('keydown', handleJudgeKeydown);
+    return () => window.removeEventListener('keydown', handleJudgeKeydown);
+  });
+
   // ── SCAN state (trade_scan.jsx ScanPanel) ────────────────────────────────
   let scanSelected = $state('a8');
   const scanCandidates = [
@@ -280,7 +335,7 @@
 <div bind:this={containerEl} class="trade-mode">
   {#if mobileView !== undefined}
     <!-- ── MOBILE: chart on top, tab strip, scrollable panel ── -->
-    <div class="mobile-chart-section" class:mobile-chart-fullscreen={mobileView === 'chart'}>
+    <div class="mobile-chart-section" class:mobile-chart-fullscreen={mobileView === 'chart'} role="region" aria-label="Chart display">
       <ChartBoard
         {symbol}
         tf={timeframe}
@@ -295,9 +350,17 @@
         </button>
       {/if}
     </div>
-    <div class="mobile-tab-strip">
+    <div class="mobile-tab-strip" role="tablist" aria-label="Analysis tabs">
       {#each (['chart', 'analyze', 'scan', 'judge'] as const) as t}
-        <button class="mts-tab" class:active={mobileView === t} onclick={() => setMobileView?.(t)}>
+        <button
+          class="mts-tab"
+          class:active={mobileView === t}
+          onclick={() => setMobileView?.(t)}
+          role="tab"
+          aria-selected={mobileView === t}
+          aria-controls="{t}-panel"
+          tabindex={mobileView === t ? 0 : -1}
+        >
           {t === 'chart' ? '01 CHART' : t === 'analyze' ? '02 ANL' : t === 'scan' ? '03 SCAN' : '04 JUDGE'}
         </button>
       {/each}
