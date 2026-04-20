@@ -1265,3 +1265,13 @@ def get_pattern(slug: str) -> PatternObject:
     if slug not in PATTERN_LIBRARY:
         raise KeyError(f"Unknown pattern: {slug!r}. Available: {list(PATTERN_LIBRARY)}")
     return PATTERN_LIBRARY[slug]
+
+
+# ── Registry seeding ────────────────────────────────────────────────────────
+# On module load, seed the JSON-backed registry from the static library.
+# Only writes entries that don't already exist (preserves user-created patterns).
+try:
+    from patterns.registry import PATTERN_REGISTRY_STORE as _REGISTRY_STORE
+    _REGISTRY_STORE.seed_from_library(PATTERN_LIBRARY)
+except Exception:
+    pass  # Never break startup if registry write fails

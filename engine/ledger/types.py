@@ -128,6 +128,102 @@ class PatternLedgerRecord:
         return d
 
 
+# ── Typed ledger planes (W-0118 Slice 5) ────────────────────────────────────
+# One typed dataclass per record_type. PatternOutcome remains the canonical
+# in-memory aggregate; these are typed read-models for each plane.
+
+@dataclass
+class EntryPayload:
+    """Typed payload for record_type='entry'."""
+    accumulation_at: str | None = None
+    entry_price: float | None = None
+    btc_trend_at_entry: str | None = None
+    entry_block_coverage: float | None = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "EntryPayload":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__})
+
+
+@dataclass
+class ScorePayload:
+    """Typed payload for record_type='score'."""
+    entry_p_win: float | None = None
+    entry_ml_state: str | None = None
+    entry_model_key: str | None = None
+    entry_model_version: str | None = None
+    entry_rollout_state: str | None = None
+    entry_threshold: float | None = None
+    entry_threshold_passed: bool | None = None
+    entry_ml_error: str | None = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ScorePayload":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__})
+
+
+@dataclass
+class OutcomePayload:
+    """Typed payload for record_type='outcome'."""
+    outcome: str | None = None
+    previous_outcome: str | None = None
+    breakout_at: str | None = None
+    invalidated_at: str | None = None
+    peak_price: float | None = None
+    exit_price: float | None = None
+    max_gain_pct: float | None = None
+    exit_return_pct: float | None = None
+    duration_hours: float | None = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "OutcomePayload":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__})
+
+
+@dataclass
+class VerdictPayload:
+    """Typed payload for record_type='verdict'."""
+    user_verdict: str | None = None
+    user_note: str | None = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "VerdictPayload":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__})
+
+
+@dataclass
+class ModelPayload:
+    """Typed payload for record_type='model'."""
+    model_version: str | None = None
+    model_key: str | None = None
+    timeframe: str | None = None
+    target_name: str | None = None
+    feature_schema_version: int | None = None
+    label_policy_version: int | None = None
+    threshold_policy_version: int | None = None
+    rollout_state: str | None = None
+    promotion_event: str | None = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ModelPayload":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__})
+
+
+@dataclass
+class TrainingRunPayload:
+    """Typed payload for record_type='training_run'."""
+    model_key: str | None = None
+    auc: float | None = None
+    n_records: int | None = None
+    target_name: str | None = None
+    feature_schema_version: int | None = None
+    label_policy_version: int | None = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "TrainingRunPayload":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__})
+
+
 @dataclass
 class PatternLedgerFamilyStats:
     pattern_slug: str
