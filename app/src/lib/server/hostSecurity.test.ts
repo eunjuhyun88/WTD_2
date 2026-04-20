@@ -9,7 +9,7 @@ describe('hostSecurity', () => {
           SECURITY_ALLOWED_HOSTS: 'app.cogotchi.dev, api.cogotchi.dev:443 , localhost:5173',
         }),
       ),
-    ).toEqual(['app.cogotchi.dev', 'api.cogotchi.dev:443', 'localhost:5173']);
+    ).toEqual(['app.cogotchi.dev', 'api.cogotchi.dev', 'localhost']);
   });
 
   it('allows all hosts when no allowlist is configured', () => {
