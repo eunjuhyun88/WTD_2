@@ -106,11 +106,8 @@
           updateTabState={(updater) => shellStore.updateTabState(updater)}
           symbol={mobileSymbol}
           timeframe={mobileTF}
-          mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : 'analyze'}
-          setMobileView={(v) => {
-            const map = { analyze: 'chart', scan: 'scan', judge: 'judge' } as const;
-            mobileMode.setActive(map[v]);
-          }}
+          mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : $mobileMode.active === 'chart' ? 'chart' : 'analyze'}
+          setMobileView={(v) => mobileMode.setActive(v)}
         />
       {/if}
     </div>
@@ -258,6 +255,7 @@
     right: 0;
     bottom: 0;
     height: 52%;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     z-index: 200;
     background: var(--g1);
     border-top: 1px solid var(--g5);
