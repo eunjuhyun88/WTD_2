@@ -184,9 +184,11 @@ export async function checkDistributedRateLimit(args: {
 
     const hitCount = Number(result.rows[0]?.hit_count ?? 0);
     return hitCount <= max;
-  } catch {
-    // Fallback when DB is unavailable: still enforce per-instance protection.
-    const local = getLocalFallback(scope, windowMs, max);
-    return local.check(key);
+  } catch (err: any) {
+    // Both Redis and DB are unavailable.
+    // Fail-closed: deny the request rather than silently bypassing the rate limit.
+    // A per-instance fallback still allows N*max across N workers — unsafe for auth paths.
+    console.error('[distributedRateLimit] infrastructure failure, denying request (fail-closed):', err?.message || err);
+    return false;
   }
 }

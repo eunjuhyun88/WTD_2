@@ -58,9 +58,13 @@ export function getPool(): pg.Pool {
     console.warn('[DB Pool] PGSSL_INSECURE_SKIP_VERIFY=true (TLS certificate validation disabled)');
   }
 
-  // Set statement_timeout on every new connection to prevent runaway queries
+  // Set statement_timeout on every new connection to prevent runaway queries.
+  // Log failures rather than silently swallowing them — a failed SET means the
+  // timeout is not actually in effect, which is a correctness issue.
   _pool.on('connect', (client: pg.PoolClient) => {
-    client.query(`SET statement_timeout = ${statementTimeoutMs}`).catch(() => {});
+    client.query(`SET statement_timeout = ${statementTimeoutMs}`).catch((err: Error) => {
+      console.error('[DB Pool] Failed to set statement_timeout on new connection:', err.message);
+    });
   });
 
   // Log pool errors (connection drops, etc.) instead of crashing
