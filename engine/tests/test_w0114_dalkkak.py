@@ -275,3 +275,217 @@ class TestTwitterClientFallback:
         client = WTDTwitterClient()
         result = client.post_pnl_card("test", "/tmp/test.png")
         assert result is None
+
+
+
+# ── PositionGuard ─────────────────────────────────────────────────────────
+
+class TestPositionGuard:
+    def _guard(self):
+        from patterns.position_guard import PositionGuard
+        return PositionGuard()
+
+    def _pos(self, symbol="BTCUSDT", direction="long"):
+        from patterns.position_guard import Direction, OpenPosition
+        return OpenPosition(
+            symbol=symbol,
+            direction=Direction(direction),
+            entry_price=100.0,
+            size_coin=1.0,
+            stop_price=99.0,
+            target_price=103.0,
+        )
+
+    def test_can_enter_empty_guard(self):
+        from patterns.position_guard import Direction
+        g = self._guard()
+        ok, reason = g.can_enter("BTCUSDT", Direction.LONG)
+        assert ok is True
+        assert reason == ""
+
+    def test_blocks_duplicate_same_direction(self):
+        from patterns.position_guard import Direction
+        g = self._guard()
+        g.register(self._pos("BTCUSDT", "long"))
+        ok, reason = g.can_enter("BTCUSDT", Direction.LONG)
+        assert ok is False
+        assert "already has" in reason
+
+    def test_blocks_opposite_direction(self):
+        from patterns.position_guard import Direction
+        g = self._guard()
+        g.register(self._pos("BTCUSDT", "long"))
+        ok, reason = g.can_enter("BTCUSDT", Direction.SHORT)
+        assert ok is False
+        assert "opposing" in reason
+
+    def test_close_removes_position(self):
+        from patterns.position_guard import Direction
+        g = self._guard()
+        g.register(self._pos("BTCUSDT", "long"))
+        g.close("BTCUSDT")
+        ok, _ = g.can_enter("BTCUSDT", Direction.LONG)
+        assert ok is True
+
+    def test_different_symbols_independent(self):
+        from patterns.position_guard import Direction
+        g = self._guard()
+        g.register(self._pos("BTCUSDT", "long"))
+        ok, _ = g.can_enter("ETHUSDT", Direction.LONG)
+        assert ok is True
+
+    def test_summary_returns_list(self):
+        g = self._guard()
+        g.register(self._pos("BTCUSDT", "long"))
+        s = g.summary()
+        assert isinstance(s, list)
+        assert len(s) == 1
+        assert s[0]["symbol"] == "BTCUSDT"
+        assert s[0]["direction"] == "long"
+
+
+# ── KolStyleEngine ────────────────────────────────────────────────────────
+
+class TestKolStyleEngine:
+    def _trade(self, pnl=+600.0, pct=+15.0):
+        from branding.kol_style_engine import TradeCaption
+        return TradeCaption(
+            symbol="BTCUSDT",
+            direction="long",
+            entry_price=94200.0,
+            exit_price=97000.0 if pnl > 0 else 93990.0,
+            pnl_usdt=pnl,
+            pnl_pct=pct,
+            pattern_name="oi-presurge-long-v1",
+            hold_hours=4.5,
+        )
+
+    def test_plain_caption_win(self, monkeypatch):
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        from branding.kol_style_engine import generate_kol_caption
+        cap = generate_kol_caption(self._trade(pnl=+600.0, pct=+15.0))
+        assert isinstance(cap, str)
+        assert len(cap) > 10
+        assert "BTCUSDT" in cap
+
+    def test_plain_caption_stop(self, monkeypatch):
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        from branding.kol_style_engine import generate_kol_caption
+        cap = generate_kol_caption(self._trade(pnl=-200.0, pct=-3.0))
+        assert isinstance(cap, str)
+        assert "손절" in cap or "200" in cap
+
+    def test_is_win_property(self):
+        win = self._trade(pnl=+600.0)
+        loss = self._trade(pnl=-200.0)
+        assert win.is_win is True
+        assert loss.is_win is False
+
+
+# ── Gainers Screener (unit — offline) ────────────────────────────────────
+
+class TestGainersScreener:
+    def test_dataclass_fields(self):
+        from universe.gainers import GainerCandidate
+        c = GainerCandidate(
+            symbol="XYZUSDT",
+            price_change_24h_pct=8.5,
+            atr_pct=12.0,
+            volume_usdt_24h=10_000_000.0,
+            listing_age_days=30,
+            is_new_listing=True,
+            composite_score=15.3,
+        )
+        assert c.is_new_listing is True
+        assert c.composite_score == 15.3
+
+    def test_load_gainer_candidates_offline(self, monkeypatch):
+        """_fetch를 monkeypatch해서 오프라인 테스트."""
+        import universe.gainers as mod
+
+        now_ms = int(1_700_000_000_000)  # fixed timestamp
+
+        mock_tickers = [
+            {
+                "symbol": "NEWUSDT",
+                "priceChangePercent": "15.0",
+                "quoteVolume": "20000000",
+                "highPrice": "1.20",
+                "lowPrice": "0.90",
+                "lastPrice": "1.10",
+            },
+            {
+                "symbol": "OLDUSDT",
+                "priceChangePercent": "5.0",
+                "quoteVolume": "8000000",
+                "highPrice": "2.10",
+                "lowPrice": "1.95",
+                "lastPrice": "2.00",
+            },
+            # below min volume → filtered
+            {
+                "symbol": "TINUSDT",
+                "priceChangePercent": "10.0",
+                "quoteVolume": "100000",
+                "highPrice": "0.05",
+                "lowPrice": "0.04",
+                "lastPrice": "0.045",
+            },
+        ]
+
+        thirty_days_ms = 30 * 86400 * 1000
+        year_ms = 400 * 86400 * 1000
+        mock_info = {
+            "symbols": [
+                {
+                    "symbol": "NEWUSDT",
+                    "status": "TRADING",
+                    "contractType": "PERPETUAL",
+                    "quoteAsset": "USDT",
+                    "onboardDate": now_ms - thirty_days_ms,
+                },
+                {
+                    "symbol": "OLDUSDT",
+                    "status": "TRADING",
+                    "contractType": "PERPETUAL",
+                    "quoteAsset": "USDT",
+                    "onboardDate": now_ms - year_ms,
+                },
+                {
+                    "symbol": "TINUSDT",
+                    "status": "TRADING",
+                    "contractType": "PERPETUAL",
+                    "quoteAsset": "USDT",
+                    "onboardDate": now_ms - thirty_days_ms,
+                },
+            ]
+        }
+
+        call_count = [0]
+
+        def fake_fetch(path):
+            call_count[0] += 1
+            if "ticker" in path:
+                return mock_tickers
+            return mock_info
+
+        monkeypatch.setattr(mod, "_fetch", fake_fetch)
+        monkeypatch.setattr("time.time", lambda: now_ms / 1000)
+
+        candidates = mod.load_gainer_candidates(top_n=5, min_volume_usdt=5_000_000)
+
+        assert len(candidates) == 2, f"expected 2, got {candidates}"
+        # NEWUSDT = new listing → boosted score → should rank first
+        assert candidates[0].symbol == "NEWUSDT"
+        assert candidates[0].is_new_listing is True
+        assert candidates[1].symbol == "OLDUSDT"
+        assert candidates[1].is_new_listing is False
+        # composite score sorted descending
+        assert candidates[0].composite_score >= candidates[1].composite_score
+
+    def test_api_failure_raises_runtime_error(self, monkeypatch):
+        import universe.gainers as mod
+        monkeypatch.setattr(mod, "_fetch", lambda _: (_ for _ in ()).throw(Exception("timeout")))
+        with pytest.raises(RuntimeError, match="Binance API fetch failed"):
+            mod.load_gainer_candidates()
+
