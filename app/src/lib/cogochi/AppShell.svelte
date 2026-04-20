@@ -15,6 +15,7 @@
   import MobileTopBar from './MobileTopBar.svelte';
   import MobileFooter from './MobileFooter.svelte';
   import SymbolPickerSheet from './SymbolPickerSheet.svelte';
+  import ModeSheet from './ModeSheet.svelte';
 
   interface Props {
     canvasComponent?: any;
@@ -27,6 +28,7 @@
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
   let symbolPickerOpen = $state(false);
+  let modeSheetOpen = $state(false);
 
   // AI sheet swipe-down dismiss
   let aiSwipeTouchStartY = $state(0);
@@ -107,6 +109,7 @@
       toggleAI={() => shellStore.toggleAI()}
       onTFChange={(tf) => (mobileTF = tf)}
       onSymbolTap={() => (symbolPickerOpen = true)}
+      onModeTap={() => (modeSheetOpen = true)}
     />
     <div class="mobile-canvas">
       {#if $activeMode === 'trade'}
@@ -128,6 +131,12 @@
         currentSymbol={mobileSymbol}
         onSelect={(s) => (mobileSymbol = s)}
         onClose={() => (symbolPickerOpen = false)}
+      />
+    {/if}
+    {#if modeSheetOpen}
+      <ModeSheet
+        activeMode={$activeMode}
+        onClose={() => (modeSheetOpen = false)}
       />
     {/if}
     {#if $shellStore.aiVisible}
