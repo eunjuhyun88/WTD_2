@@ -2,6 +2,7 @@
   import { get } from 'svelte/store';
   import { onMount } from 'svelte';
   import { buildCanonicalHref } from '$lib/seo/site';
+  import PageCover from '../../components/shared/PageCover.svelte';
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import {
     strategyStore,
@@ -282,6 +283,8 @@
   function handleClosePosition() { manualPosition = null; chartPriceLines = []; }
 </script>
 
+<PageCover title="LAB" description="준비 중입니다." />
+
 <svelte:head>
   <title>Lab — Cogochi</title>
   <meta
@@ -342,7 +345,7 @@
               <small>평가 방향 seed</small>
             </div>
             <div>
-              <a href={`/terminal?symbol=${encodeURIComponent(sourceCapture.symbol)}`}>터미널로 돌아가기 →</a>
+              <a href={`/cogochi?symbol=${encodeURIComponent(sourceCapture.symbol)}`}>터미널로 돌아가기 →</a>
             </div>
           </div>
           {#if sourceCapture.note}

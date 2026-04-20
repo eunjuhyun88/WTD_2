@@ -13,7 +13,6 @@
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
-  import MobileFooter from './MobileFooter.svelte';
   import SymbolPickerSheet from './SymbolPickerSheet.svelte';
   import ModeSheet from './ModeSheet.svelte';
 
@@ -125,7 +124,6 @@
         />
       {/if}
     </div>
-    <MobileFooter symCount={300} live={true} />
     {#if symbolPickerOpen}
       <SymbolPickerSheet
         currentSymbol={mobileSymbol}
@@ -257,8 +255,13 @@
     font-family: 'Geist', 'Inter', system-ui, sans-serif;
     font-size: 11px;
     color: var(--g9);
-    /* Fix 5: iOS safe area — 홈 인디케이터 뒤 안 가려짐 */
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  @media (max-width: 768px) {
+    .app-shell {
+      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    }
   }
 
   .main-row {

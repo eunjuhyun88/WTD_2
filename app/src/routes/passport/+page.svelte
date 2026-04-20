@@ -110,7 +110,7 @@
       <h2>{error}</h2>
       <div class="surface-inline-actions">
         <button class="surface-button" onclick={openWalletModal}>지갑 연결 열기</button>
-        <button class="surface-button-secondary" onclick={() => goto('/terminal')}>Open Terminal</button>
+        <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Open Terminal</button>
       </div>
     </section>
   {:else if passport}

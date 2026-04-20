@@ -5,7 +5,7 @@
     {
       heading: 'Product',
       links: [
-        { label: 'Terminal', href: '/terminal' },
+        { label: 'Terminal', href: '/cogochi' },
         { label: 'Lab', href: '/lab' },
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Patterns', href: '/patterns' },
@@ -172,18 +172,29 @@
     .footer-nav {
       grid-template-columns: 1fr;
       gap: 28px;
-      padding: 36px 18px 24px;
+      padding: 32px 18px 20px;
     }
 
     .footer-cols {
-      gap: 32px;
+      gap: 40px;
+    }
+
+    .footer-col {
+      gap: 4px;
+    }
+
+    .footer-link {
+      padding: 7px 0;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
     }
 
     .footer-legal {
       flex-direction: column;
       align-items: flex-start;
       gap: 8px;
-      padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+      padding: 12px 18px 16px;
     }
   }
 </style>

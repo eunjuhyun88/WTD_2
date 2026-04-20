@@ -69,7 +69,7 @@ export const HOME_SURFACES: SurfaceCard[] = [
     label: '01 · TERMINAL',
     title: 'Capture it first',
     copy: 'Search the live scene and save the setup you want to keep.',
-    path: '/terminal',
+    path: '/cogochi',
     cta: 'surface_terminal',
     actionLabel: 'Open Terminal'
   },
