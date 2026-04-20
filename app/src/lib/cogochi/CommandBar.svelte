@@ -210,4 +210,9 @@
   .dot.active {
     background: var(--brand);
   }
+
+  @media (max-width: 900px) {
+    .session-chip { display: none; }
+    .kbd { display: none; }
+  }
 </style>

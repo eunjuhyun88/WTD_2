@@ -63,12 +63,14 @@
 
   <span class="spacer" />
 
-  <span class="status-item">⌘B <span class="divider">·</span> sidebar</span>
-  <span class="divider">│</span>
-  <span class="status-item">⌘K <span class="divider">·</span> prompt</span>
-  <span class="divider">│</span>
-  <span class="status-item">⌘T <span class="divider">·</span> new tab</span>
-  <span class="divider">│</span>
+  <span class="shortcuts">
+    <span class="status-item">⌘B <span class="divider">·</span> sidebar</span>
+    <span class="divider">│</span>
+    <span class="status-item">⌘K <span class="divider">·</span> prompt</span>
+    <span class="divider">│</span>
+    <span class="status-item">⌘T <span class="divider">·</span> new tab</span>
+    <span class="divider">│</span>
+  </span>
   <span class="time">{currentTime}</span>
 </div>
 
@@ -153,5 +155,15 @@
 
   .time {
     color: var(--g7);
+  }
+
+  .shortcuts {
+    display: contents;
+  }
+
+  @media (max-width: 1279px) {
+    .shortcuts {
+      display: none;
+    }
   }
 </style>
