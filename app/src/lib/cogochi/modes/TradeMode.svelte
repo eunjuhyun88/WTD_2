@@ -28,7 +28,10 @@
   let chartPayload = $state<ChartSeriesPayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
+  let klineWs = $state<WebSocket | null>(null);
+  let lastCandleTime = $state<number | null>(null);
 
+  // Fetch initial bundle
   $effect(() => {
     const sym = symbol;
     const tf = timeframe;
@@ -38,8 +41,64 @@
         chartPayload = result.chartPayload ?? null;
         analyzeData = result.analyze ?? null;
         chartLoading = false;
+        // Track the last candle time from initial data
+        if (result.chartPayload?.klines?.length) {
+          lastCandleTime = result.chartPayload.klines[result.chartPayload.klines.length - 1].time;
+        }
       })
       .catch(() => { chartLoading = false; });
+  });
+
+  // WebSocket connection for real-time candle updates + analyze refresh
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+
+    const sym = symbol.toLowerCase();
+    const tf = timeframe;
+    const stream = `${sym}@kline_${tf}`;
+    const wsUrl = `wss://fstream.binance.com/ws/${stream}`;
+
+    try {
+      klineWs?.close();
+      klineWs = new WebSocket(wsUrl);
+
+      klineWs.onmessage = (ev: MessageEvent) => {
+        try {
+          const msg = JSON.parse(ev.data as string) as {
+            k: { t: number; x: boolean; c: string; o: string; h: string; l: string; v: string };
+          };
+          const k = msg.k;
+          const candleTime = Math.floor(k.t / 1000);
+
+          // Detect candle closure (x=true) and refetch analyze + chart data
+          if (k.x && lastCandleTime !== candleTime) {
+            lastCandleTime = candleTime;
+            // Refetch analyze + chart data when new candle closes
+            fetchTerminalBundle({ symbol, tf })
+              .then(result => {
+                analyzeData = result.analyze ?? null;
+                // Update chart klines from new fetch
+                if (result.chartPayload) {
+                  chartPayload = result.chartPayload;
+                }
+              })
+              .catch(() => { /* retry on next candle */ });
+          }
+        } catch {
+          // Ignore malformed WS messages
+        }
+      };
+
+      klineWs.onerror = () => { klineWs?.close(); };
+      klineWs.onclose = () => { klineWs = null; };
+    } catch (err) {
+      console.error('WS connection failed:', err);
+    }
+
+    return () => {
+      klineWs?.close();
+      klineWs = null;
+    };
   });
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {

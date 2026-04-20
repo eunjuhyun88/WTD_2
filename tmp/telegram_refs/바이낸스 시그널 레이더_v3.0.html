@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALPHA HUNTER V3.6 | 핫 타겟 & 알파 토큰 교차 검증</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070500; --bg2: #0e0900; --bg3: #150e00; --bd: #332800;
+    --text: #a08060; --text2: #705030; --white: #ffe0a0;
+    --gold: #ffaa00; --bull: #00ffaa; --bear: #ff3355; --warn: #ff8800;
+    --spot: #44aaff; --fut: #a020f0; --whale: #ff33ff; --sqz: #00ffff; --alpha: #ff5500;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 12px;
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  body::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(rgba(255,170,0,.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,170,0,.015) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  header {
+    position: relative; z-index: 10; padding: 12px 20px; border-bottom: 1px solid var(--bd);
+    background: linear-gradient(180deg, #0e0800 0%, var(--bg2) 100%);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .h-title { font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 900; color: var(--gold); letter-spacing: 0.1em; }
+  .h-sub { font-size: 9px; color: var(--text2); letter-spacing: 0.05em; margin-top: 2px; }
+  .ctrl-group { display: flex; gap: 10px; align-items: center; }
+  
+  .btn {
+    background: transparent; border: 1px solid var(--gold); color: var(--gold);
+    font-family: inherit; font-size: 11px; font-weight: 700; padding: 6px 14px;
+    cursor: pointer; transition: all 0.2s; border-radius: 2px;
+  }
+  .btn:hover { background: rgba(255,170,0,.1); box-shadow: 0 0 10px rgba(255,170,0,.3); }
+  .btn.run { border-color: var(--bull); color: var(--bull); animation: pulse 1.5s infinite; }
+  
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 4px rgba(0,255,170,.2); } 50% { box-shadow: 0 0 12px rgba(0,255,170,.5); } }
+
+  .content-wrapper { display: flex; flex: 1; overflow: hidden; position: relative; z-index: 10; }
+  .main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  
+  .radar-pane { flex: 4; display: flex; flex-direction: column; border-bottom: 2px solid var(--gold); background: var(--bg2); overflow: hidden; }
+  .pane-header { padding: 8px 15px; border-bottom: 1px solid var(--bd); background: var(--bg3); display: flex; justify-content: space-between; align-items: center; }
+  .pane-title { font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; color: var(--white); display: flex; align-items: center; gap: 8px; }
+  .pane-desc { font-size: 10px; color: var(--text2); }
+  
+  .table-wrap { flex: 1; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  thead th { position: sticky; top: 0; background: var(--bg3); color: var(--text); font-size: 10px; padding: 8px 15px; border-bottom: 1px solid var(--bd); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid rgba(51,40,0,0.5); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(255,170,0,.04); }
+  tbody td { padding: 8px 15px; font-size: 11px; white-space: nowrap; vertical-align: middle; }
+  
+  .bottom-split { flex: 5; display: flex; overflow: hidden; background: var(--bg); }
+  .sniper-pane { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--bd); }
+  .sniper-pane:last-child { border-right: none; }
+  .log-container { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  
+  .signal-card {
+    background: var(--bg3); border: 1px solid var(--bd); border-left: 4px solid var(--bull);
+    padding: 10px 12px; border-radius: 2px; display: flex; flex-direction: column; gap: 6px;
+    animation: slideIn 0.3s ease-out; box-shadow: 0 0 10px rgba(0,255,170,.05);
+  }
+  .signal-card.whale { border-color: var(--whale); border-left: 4px solid var(--whale); box-shadow: 0 0 15px rgba(255,51,255,.15); }
+  .signal-card.sqz { border-color: var(--sqz); border-left: 4px solid var(--sqz); box-shadow: 0 0 15px rgba(0,255,255,.15); }
+  .signal-card.imb { border-color: var(--gold); border-left: 4px solid var(--gold); box-shadow: 0 0 15px rgba(255,170,0,.15); }
+  
+  @keyframes slideIn { from { transform: translateY(-5px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .sig-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .sig-sym { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; color: var(--white); }
+  .sig-time { font-size: 9px; color: var(--text2); }
+  
+  .type-badge { font-size: 8px; padding: 2px 4px; border-radius: 2px; font-weight: bold; margin-left: 5px; vertical-align: middle; }
+  .tb-spot { background: rgba(68,170,255,0.15); color: var(--spot); border: 1px solid var(--spot); }
+  .tb-fut { background: rgba(160,32,240,0.15); color: var(--fut); border: 1px solid var(--fut); }
+  .tb-alpha { background: rgba(255,85,0,0.15); color: var(--alpha); border: 1px solid var(--alpha); text-shadow: 0 0 5px rgba(255,85,0,.5); }
+
+  .sig-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 4px; margin-top: 4px; }
+  .sig-item { font-size: 10px; display: flex; align-items: center; gap: 5px; }
+  .sig-item span:first-child { color: var(--text); }
+  .sig-item span:last-child { font-weight: bold; }
+
+  .sidebar { width: 290px; background: var(--bg2); border-left: 2px solid var(--gold); display: flex; flex-direction: column; z-index: 10; }
+  .rank-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .rank-card { padding: 12px 15px; border-bottom: 1px solid var(--bd); display: flex; flex-direction: column; gap: 6px; transition: background 0.2s; }
+  .rank-card:hover { background: rgba(255,170,0,.05); }
+  
+  .rk-head { display: flex; justify-content: space-between; align-items: center; }
+  .rk-sym { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; color: var(--white); }
+  .rk-cnt { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 900; }
+  
+  .rk-cnt.normal { color: var(--bull); }
+  .rk-cnt.hot { color: var(--warn); text-shadow: 0 0 10px rgba(255,136,0,.6); }
+  .rk-cnt.fire { color: var(--bear); text-shadow: 0 0 12px rgba(255,51,85,.8); animation: firePulse 0.8s infinite alternate; }
+  @keyframes firePulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+  
+  .rk-det { display: flex; gap: 4px; font-size: 9px; flex-wrap: wrap; margin-top: 2px;}
+  .rk-tag { padding: 2px 5px; border-radius: 2px; border: 1px solid currentColor; font-weight: bold; }
+
+  .c-bull { color: var(--bull) !important; } .c-bear { color: var(--bear) !important; }
+  .c-warn { color: var(--warn) !important; } .c-gold { color: var(--gold) !important; } 
+  .c-whale { color: var(--whale) !important; } .c-sqz { color: var(--sqz) !important; }
+  .empty-msg { text-align: center; padding: 40px 20px; color: var(--text2); font-style: italic; font-size: 11px; line-height: 1.6; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--bd); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="h-title">◈ ALPHA HUNTER V3.6</div>
+    <div class="h-sub">핫 타겟 랭킹 + 실시간 ALPHA 토큰 교차 검증 시스템</div>
+  </div>
+  <div class="ctrl-group">
+    <span id="statusTxt" style="font-size:10px; color:var(--text2);">시스템 대기중...</span>
+    <button id="testBtn" class="btn" style="border-color:var(--text2); color:var(--text2);" onclick="testSignal()">테스트 알람</button>
+    <button id="startBtn" class="btn" onclick="startSystem()">▶ 시스템 가동</button>
+  </div>
+</header>
+
+<div class="content-wrapper">
+  <div class="main-area">
+    <div class="radar-pane">
+      <div class="pane-header">
+        <div class="pane-title">🌐 1-MIN ROLLING RADAR</div>
+        <div class="pane-desc">1분 거래량 가속도 2.5배 이상 스캔</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>구분</th><th>SYMBOL</th><th>현재가</th><th>1분 거래량</th><th>1분 평균</th><th>가속도</th><th>상태</th>
+            </tr>
+          </thead>
+          <tbody id="radarBody">
+            <tr><td colspan="7" class="empty-msg">시스템을 가동하여 데이터를 축적하세요...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bottom-split">
+      <div class="sniper-pane">
+        <div class="pane-header">
+          <div class="pane-title" style="color:var(--bull);">🎯 일반 CVD 돌파 로그</div>
+          <div class="pane-desc">순매수(CVD) +20K 돌파</div>
+        </div>
+        <div class="log-container" id="cvdLog">
+          <div class="empty-msg" id="cvdEmpty">포착된 일반 돌파 셋업이 없습니다.</div>
+        </div>
+      </div>
+
+      <div class="sniper-pane">
+        <div class="pane-header">
+          <div class="pane-title" style="color:var(--gold);">🚨 고급 시그널 특화 스트림</div>
+          <div class="pane-desc">고래 블록트레이드, 매수벽 3배 지지, 변동성 압축 </div>
+        </div>
+        <div class="log-container" id="advLog">
+          <div class="empty-msg" id="advEmpty">포착된 특수 시그널이 없습니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="pane-header" style="background:var(--bg4); border-bottom:1px solid var(--gold);">
+      <div class="pane-title" style="color:var(--gold);">🔥 HOT TARGET</div>
+      <div class="pane-desc">최근 30분 누적 타격 순위</div>
+    </div>
+    <div class="rank-list" id="rankingBody">
+      <div class="empty-msg">시그널 발생 시<br>자동으로 랭킹이 집계됩니다.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- 임계값 설정 ---
+const THRESHOLDS = {
+  radarVelocity: 2.5,   
+  radarMinVol: 20000,   
+  cvdBreakout: 20000,   
+  whaleTick: 50000,     
+  imbRatio: 3.0,        
+  sqzPct: 0.8           
+};
+
+let isRunning = false;
+let audioCtx = null;
+let spotWs = null, futWs = null;
+let radarInterval = null;
+
+const markets = {}; 
+const sniperData = {}; 
+let signalHistory = [];
+
+// 💡 바이낸스 알파 토큰 리스트 저장소
+const alphaSet = new Set();
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playBeep(type = 'normal') {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  
+  if (type === 'whale') {
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); 
+  } else {
+    osc.type = 'square'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+  }
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+  osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+}
+
+// 💡 알파 리스트를 가져오는 프록시 우회 함수
+async function fetchAlphaList() {
+  const ALPHA_LIST = 'https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list';
+  const PROXY = 'https://api.allorigins.win/get?url=';
+  try {
+    const res = await fetch(ALPHA_LIST);
+    if (!res.ok) throw new Error('CORS block');
+    const data = await res.json();
+    (data.data || []).forEach(t => { if(t.symbol) alphaSet.add(t.symbol.toUpperCase()); });
+  } catch(e) {
+    try {
+      const res = await fetch(PROXY + encodeURIComponent(ALPHA_LIST));
+      const pData = await res.json();
+      const data = JSON.parse(pData.contents);
+      (data.data || []).forEach(t => { if(t.symbol) alphaSet.add(t.symbol.toUpperCase()); });
+    } catch(e2) {
+      // API 실패 시 핵심 알파/트렌드 코인 수동 Fallback
+      const fallbacks = ['WLD','TIA','SEI','SUI','ORDI','PEPE','MEME','PENDLE','ARKM','FET','RNDR','BONK','WIF','FLOKI','STRK','MANTA','ALT','JUP','PYTH','ONDO','PIXEL','PORTAL','ENA','W','TNSR','OMNI','REZ','BB','NOT','IO','ZK','ZRO','BANANA','RENDER','TON','DOGS','NEIRO','TURBO'];
+      fallbacks.forEach(s => alphaSet.add(s));
+    }
+  }
+}
+
+async function startSystem() {
+  if (isRunning) return;
+  isRunning = true; initAudio();
+  
+  const btn = document.getElementById('startBtn');
+  btn.textContent = '■ 감시 중 (STOP)'; btn.classList.add('run');
+  document.getElementById('statusTxt').textContent = '알파 DB 로딩 및 시장 연동 중...';
+
+  try {
+    // 알파 리스트 로딩 대기
+    await fetchAlphaList();
+
+    const [spotRes, futRes] = await Promise.all([
+      fetch('https://api.binance.com/api/v3/exchangeInfo').then(r=>r.json()),
+      fetch('https://fapi.binance.com/fapi/v1/exchangeInfo').then(r=>r.json())
+    ]);
+    
+    spotRes.symbols.forEach(s => { if (s.quoteAsset === 'USDT' && s.status === 'TRADING') markets[`${s.symbol}_SPOT`] = initMarketData(s.symbol, 'SPOT'); });
+    futRes.symbols.forEach(s => { if (s.quoteAsset === 'USDT' && s.status === 'TRADING') markets[`${s.symbol}_FUT`] = initMarketData(s.symbol, 'FUT'); });
+
+    document.getElementById('statusTxt').innerHTML = `<span class="c-bull">정상 가동중 (전체: ${Object.keys(markets).length}개 / 알파 DB: ${alphaSet.size}개)</span>`;
+    openWebSockets();
+    
+    radarInterval = setInterval(() => {
+      processRollingVolume();
+      updateRankingSidebar(); 
+    }, 10000);
+    
+  } catch (e) {
+    alert("데이터 로딩 실패."); isRunning = false; btn.textContent = '▶ 시스템 가동'; btn.classList.remove('run');
+  }
+}
+
+function initMarketData(symbol, type) {
+  return {
+    symbol: symbol, type: type, price: 0, currentQ: 0, 
+    snapshots: [], priceHistory: [], vol1m: 0, avgVol1m: 0, velocity: 0, inSniper: false
+  };
+}
+
+function openWebSockets() {
+  spotWs = new WebSocket('wss://stream.binance.com:9443/ws/!miniTicker@arr');
+  spotWs.onmessage = (e) => handleTickerData(JSON.parse(e.data), 'SPOT');
+  spotWs.onclose = () => { if(isRunning) setTimeout(openWebSockets, 3000); };
+
+  futWs = new WebSocket('wss://fstream.binance.com/ws/!miniTicker@arr');
+  futWs.onmessage = (e) => handleTickerData(JSON.parse(e.data), 'FUT');
+  futWs.onclose = () => { if(isRunning) setTimeout(openWebSockets, 3000); };
+}
+
+function handleTickerData(ticks, type) {
+  ticks.forEach(t => {
+    const key = `${t.s}_${type}`;
+    if (markets[key]) {
+      markets[key].price = parseFloat(t.c);
+      markets[key].currentQ = parseFloat(t.q);
+    }
+  });
+}
+
+function processRollingVolume() {
+  let sortable = [];
+  for (const key in markets) {
+    const m = markets[key];
+    if (m.currentQ === 0) continue; 
+    
+    m.snapshots.push(m.currentQ);
+    m.priceHistory.push(m.price);
+    
+    if (m.snapshots.length > 360) m.snapshots.shift(); 
+    if (m.priceHistory.length > 18) m.priceHistory.shift(); 
+    if (m.snapshots.length < 7) continue; 
+    
+    const latest = m.snapshots.length - 1;
+    m.vol1m = m.snapshots[latest] - m.snapshots[latest - 6];
+    const totalVolStored = m.snapshots[latest] - m.snapshots[0];
+    m.avgVol1m = totalVolStored / (latest * (10 / 60)); 
+    
+    m.velocity = m.avgVol1m > 5000 ? (m.vol1m / m.avgVol1m) : (m.vol1m > 50000 ? 5.0 : 0);
+    sortable.push(m);
+
+    if (m.velocity >= THRESHOLDS.radarVelocity && m.vol1m > THRESHOLDS.radarMinVol && !m.inSniper) {
+      promoteToSniper(key);
+    }
+  }
+
+  if (sortable.length > 0) {
+    sortable.sort((a, b) => b.velocity - a.velocity);
+    renderRadarTable(sortable.slice(0, 15));
+  }
+}
+
+// 💡 렌더링 헬퍼: 알파 뱃지 생성기
+function getBadges(m) {
+  const baseSym = m.symbol.replace('USDT', '');
+  const typeBadge = m.type === 'SPOT' ? '<span class="type-badge tb-spot">S</span>' : '<span class="type-badge tb-fut">F</span>';
+  const alphaBadge = alphaSet.has(baseSym) ? '<span class="type-badge tb-alpha">🔥 ALPHA</span>' : '';
+  return typeBadge + alphaBadge;
+}
+
+function renderRadarTable(topItems) {
+  const tbody = document.getElementById('radarBody');
+  tbody.innerHTML = topItems.map(item => {
+    const vCol = item.velocity >= 3 ? 'c-gold' : (item.velocity >= 2.5 ? 'c-warn' : '');
+    const badges = getBadges(item);
+    return `<tr>
+      <td>${badges}</td>
+      <td style="font-weight:bold; color:var(--white)">${item.symbol}</td>
+      <td>$${item.price.toFixed(4)}</td>
+      <td style="color:var(--white)">$${(item.vol1m).toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+      <td style="color:var(--text2)">$${(item.avgVol1m).toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+      <td class="${vCol}" style="font-weight:bold">${item.velocity.toFixed(2)}x</td>
+      <td>${item.inSniper?'<span style="color:var(--bull);">🎯 추적중</span>':'<span style="color:var(--text3)">대기중</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function promoteToSniper(key) {
+  const m = markets[key];
+  m.inSniper = true;
+  const baseWsUrl = m.type === 'SPOT' ? 'wss://stream.binance.com:9443/ws/' : 'wss://fstream.binance.com/ws/';
+  const symLower = m.symbol.toLowerCase();
+
+  sniperData[key] = { 
+    cvd: 0, imbalance: 1.0, 
+    alertedCvd: false, alertedAdv: false, 
+    wsTrades: null, wsDepth: null 
+  };
+
+  sniperData[key].wsTrades = new WebSocket(`${baseWsUrl}${symLower}@aggTrade`);
+  sniperData[key].wsTrades.onmessage = (event) => {
+    const t = JSON.parse(event.data);
+    const tradeSizeUsdt = parseFloat(t.p) * parseFloat(t.q);
+    
+    if (t.m) sniperData[key].cvd -= tradeSizeUsdt;
+    else sniperData[key].cvd += tradeSizeUsdt;
+
+    if (!t.m && tradeSizeUsdt >= THRESHOLDS.whaleTick) {
+      logAdvancedSignal(key, 'WHALE', tradeSizeUsdt, t.p);
+    }
+    checkBreakout(key);
+  };
+
+  sniperData[key].wsDepth = new WebSocket(`${baseWsUrl}${symLower}@depth5@1000ms`);
+  sniperData[key].wsDepth.onmessage = (event) => {
+    const d = JSON.parse(event.data);
+    const bidVol = d.bids.reduce((sum, b) => sum + (parseFloat(b[0]) * parseFloat(b[1])), 0);
+    const askVol = d.asks.reduce((sum, a) => sum + (parseFloat(a[0]) * parseFloat(a[1])), 0);
+    sniperData[key].imbalance = askVol > 0 ? (bidVol / askVol) : 999;
+  };
+  
+  setTimeout(() => demoteSniper(key), 3 * 60 * 1000);
+}
+
+function demoteSniper(key) {
+  if(sniperData[key]) {
+    if(sniperData[key].wsTrades) sniperData[key].wsTrades.close();
+    if(sniperData[key].wsDepth) sniperData[key].wsDepth.close();
+  }
+  delete sniperData[key];
+  if(markets[key]) markets[key].inSniper = false;
+}
+
+let lastCheckTime = {};
+function checkBreakout(key) {
+  const now = Date.now();
+  if (lastCheckTime[key] && now - lastCheckTime[key] < 2000) return; 
+  lastCheckTime[key] = now;
+
+  const data = sniperData[key];
+  const m = markets[key];
+  if (!data) return;
+
+  if (data.cvd > THRESHOLDS.cvdBreakout) {
+    if (!data.alertedCvd) {
+      data.alertedCvd = true;
+      logNormalCVD(key, data);
+    }
+
+    if (!data.alertedAdv) {
+      let isSqueezed = false;
+      if (m.priceHistory.length >= 18) {
+        const maxP = Math.max(...m.priceHistory);
+        const minP = Math.min(...m.priceHistory);
+        if (((maxP - minP) / minP * 100) <= THRESHOLDS.sqzPct) isSqueezed = true;
+      }
+
+      if (isSqueezed) {
+        data.alertedAdv = true;
+        logAdvancedSignal(key, 'SQUEEZE', data.cvd, null);
+      } else if (data.imbalance >= THRESHOLDS.imbRatio) {
+        data.alertedAdv = true;
+        logAdvancedSignal(key, 'IMBALANCE', data.cvd, null);
+      }
+    }
+  }
+}
+
+function recordSignal(key, type) {
+  signalHistory.push({ key, type, time: Date.now() });
+  updateRankingSidebar();
+}
+
+function updateRankingSidebar() {
+  const now = Date.now();
+  const cutoff = now - (30 * 60 * 1000); 
+  signalHistory = signalHistory.filter(s => s.time >= cutoff);
+
+  const counts = {};
+  signalHistory.forEach(s => {
+    if (!counts[s.key]) counts[s.key] = { total: 0, CVD: 0, WHALE: 0, SQUEEZE: 0, IMBALANCE: 0 };
+    counts[s.key].total++;
+    if (counts[s.key][s.type] !== undefined) counts[s.key][s.type]++;
+  });
+
+  const sorted = Object.keys(counts).map(k => ({ key: k, ...counts[k] })).sort((a,b) => b.total - a.total);
+
+  const rkBody = document.getElementById('rankingBody');
+  if (sorted.length === 0) {
+    rkBody.innerHTML = '<div class="empty-msg">최근 30분간 포착된<br>핫 타겟 시그널이 없습니다.<br><br><span style="color:var(--text3)">시장 자금 유입 대기 중...</span></div>';
+    return;
+  }
+
+  rkBody.innerHTML = sorted.map((item, idx) => {
+    const m = markets[item.key];
+    if(!m) return '';
+    const badges = getBadges(m);
+    
+    let cntClass = 'normal';
+    if (item.total >= 10) cntClass = 'fire';
+    else if (item.total >= 5) cntClass = 'hot';
+    
+    let detHtml = '';
+    if(item.CVD > 0) detHtml += `<span class="rk-tag" style="color:var(--bull)">일반 ${item.CVD}</span>`;
+    if(item.WHALE > 0) detHtml += `<span class="rk-tag" style="color:var(--whale)">고래 ${item.WHALE}</span>`;
+    if(item.SQUEEZE > 0) detHtml += `<span class="rk-tag" style="color:var(--sqz)">압축 ${item.SQUEEZE}</span>`;
+    if(item.IMBALANCE > 0) detHtml += `<span class="rk-tag" style="color:var(--gold)">매수벽 ${item.IMBALANCE}</span>`;
+
+    return `
+      <div class="rank-card">
+        <div class="rk-head">
+          <div><span style="color:var(--text3); font-size:10px; margin-right:4px;">${idx+1}.</span><span class="rk-sym">${m.symbol}</span> ${badges}</div>
+          <div class="rk-cnt ${cntClass}">${item.total}회</div>
+        </div>
+        <div class="rk-det">${detHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+
+function logNormalCVD(key, data) {
+  playBeep();
+  recordSignal(key, 'CVD'); 
+  
+  document.getElementById('cvdEmpty').style.display = 'none';
+  const m = markets[key];
+  const timeStr = new Date().toLocaleTimeString('ko-KR');
+  const cvdStr = (data.cvd / 1000).toFixed(1) + 'K';
+  const badges = getBadges(m);
+  
+  const card = document.createElement('div');
+  card.className = 'signal-card';
+  card.innerHTML = `
+    <div class="sig-head">
+      <div><span class="sig-sym">${m.symbol}</span> ${badges}</div>
+      <div class="sig-time">${timeStr}</div>
+    </div>
+    <div style="margin-bottom:2px;"><span class="sig-verdict">🚀 자금 유입 돌파</span></div>
+    <div class="sig-grid">
+      <div class="sig-item"><span>CVD:</span> <span class="c-bull">+${cvdStr} USDT</span></div>
+      <div class="sig-item"><span>가속도:</span> <span class="c-warn">${m.velocity.toFixed(1)}x</span></div>
+    </div>
+  `;
+  const el = document.getElementById('cvdLog');
+  el.prepend(card);
+  if (el.children.length > 30) el.removeChild(el.lastChild);
+}
+
+function logAdvancedSignal(key, type, val1, val2) {
+  playBeep(type === 'WHALE' ? 'whale' : 'normal');
+  recordSignal(key, type); 
+  
+  document.getElementById('advEmpty').style.display = 'none';
+  const m = markets[key];
+  const timeStr = new Date().toLocaleTimeString('ko-KR');
+  const badges = getBadges(m);
+  
+  let typeClass, title, htmlGrid;
+
+  if (type === 'WHALE') {
+    typeClass = 'whale'; title = '🚨 WHALE BLOCK TRADE';
+    htmlGrid = `<div class="sig-item"><span>체결액:</span> <span class="c-whale">+${(val1/1000).toFixed(1)}K</span></div>
+                <div class="sig-item"><span>단가:</span> <span class="c-white">$${val2}</span></div>`;
+  } else if (type === 'SQUEEZE') {
+    typeClass = 'sqz'; title = '💎 MICRO-SQUEEZE BREAKOUT';
+    htmlGrid = `<div class="sig-item"><span>순매수:</span> <span class="c-sqz">+${(val1/1000).toFixed(1)}K</span></div>
+                <div class="sig-item"><span>상태:</span> <span class="c-white">바닥 압축 후 발산</span></div>`;
+  } else if (type === 'IMBALANCE') {
+    typeClass = 'imb'; title = '🧱 ORDERBOOK IMBALANCE';
+    htmlGrid = `<div class="sig-item"><span>순매수:</span> <span class="c-bull">+${(val1/1000).toFixed(1)}K</span></div>
+                <div class="sig-item"><span>매수벽:</span> <span class="c-gold">${sniperData[key].imbalance.toFixed(1)}배 지지</span></div>`;
+  }
+  
+  const card = document.createElement('div');
+  card.className = `signal-card ${typeClass}`;
+  card.innerHTML = `
+    <div class="sig-head">
+      <div><span class="sig-sym">${m.symbol}</span> ${badges}</div>
+      <div class="sig-time">${timeStr}</div>
+    </div>
+    <div style="margin-bottom:2px; font-weight:bold; font-size:11px;" class="c-${typeClass}">${title}</div>
+    <div class="sig-grid">${htmlGrid}</div>
+  `;
+  const el = document.getElementById('advLog');
+  el.prepend(card);
+  if (el.children.length > 30) el.removeChild(el.lastChild);
+}
+
+function testSignal() {
+  initAudio(); playBeep(); playBeep('whale');
+  
+  // 알파 셋 임의 주입
+  alphaSet.add('ETH');
+  
+  if(!markets['BTCUSDT_FUT']) markets['BTCUSDT_FUT'] = { symbol: 'BTCUSDT', type: 'FUT' };
+  if(!markets['ETHUSDT_SPOT']) markets['ETHUSDT_SPOT'] = { symbol: 'ETHUSDT', type: 'SPOT' };
+
+  for(let i=0; i<6; i++) recordSignal('BTCUSDT_FUT', 'CVD');
+  for(let i=0; i<2; i++) recordSignal('BTCUSDT_FUT', 'SQUEEZE');
+  for(let i=0; i<12; i++) recordSignal('ETHUSDT_SPOT', 'WHALE'); 
+
+  document.getElementById('cvdEmpty').style.display = 'none';
+  document.getElementById('advEmpty').style.display = 'none';
+  
+  const c1 = document.createElement('div'); c1.className = 'signal-card';
+  c1.innerHTML = `<div class="sig-head"><div><span class="sig-sym">BTCUSDT</span><span class="type-badge tb-fut">F</span></div></div>
+  <div style="margin-bottom:2px;"><span class="sig-verdict">🚀 자금 유입 돌파</span></div>
+  <div class="sig-grid"><div class="sig-item"><span>CVD:</span> <span class="c-bull">+22.5K USDT</span></div></div>`;
+  document.getElementById('cvdLog').prepend(c1);
+
+  const c2 = document.createElement('div'); c2.className = 'signal-card whale';
+  c2.innerHTML = `<div class="sig-head"><div><span class="sig-sym">ETHUSDT</span><span class="type-badge tb-spot">S</span><span class="type-badge tb-alpha">🔥 ALPHA</span></div></div>
+  <div style="margin-bottom:2px; font-weight:bold; font-size:11px;" class="c-whale">🚨 WHALE BLOCK TRADE</div>
+  <div class="sig-grid"><div class="sig-item"><span>체결액:</span> <span class="c-whale">+85.0K</span></div></div>`;
+  document.getElementById('advLog').prepend(c2);
+}
+</script>
+</body>
+</html>
