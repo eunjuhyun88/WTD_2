@@ -24,7 +24,7 @@
   const isCogochi = derived(page, $p => $p.url.pathname.startsWith('/cogochi'));
   const showGlobalChrome = derived(page, $p => {
     const path = $p.url.pathname;
-    return !path.startsWith('/terminal');
+    return !path.startsWith('/terminal') && !path.startsWith('/cogochi');
   });
   const isScrollableSurface = derived(
     page,
@@ -86,10 +86,10 @@
 <WalletModal />
 
 <!-- Global Notification Tray (bottom-right bell + slide-up panel) -->
-<NotificationTray />
+{#if !$isCogochi}<NotificationTray />{/if}
 
 <!-- Global Toast Stack (bottom-right, above bell) -->
-<ToastStack />
+{#if !$isCogochi}<ToastStack />{/if}
 
 <!-- Cookie Consent Banner -->
 <CookieConsent />
@@ -105,7 +105,7 @@
     position: relative;
   }
   #app.cogochi-mode {
-    /* keeps global header visible; no override needed */
+    padding-top: 0;
   }
   #app.terminal-mode {
     --sc-consent-reserved-h: 0px;

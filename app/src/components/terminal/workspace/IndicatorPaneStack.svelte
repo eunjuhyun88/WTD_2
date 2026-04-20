@@ -1,47 +1,15 @@
 <script lang="ts">
-  import type { TimePoint, MacdPoint } from '$lib/server/chart/indicatorUtils';
-
   interface Props {
-    indicators?: {
-      sma5?: TimePoint[];
-      sma20?: TimePoint[];
-      sma60?: TimePoint[];
-      ema21?: TimePoint[];
-      ema55?: TimePoint[];
-      atr14?: TimePoint[];
-      vwap?: TimePoint[];
-      bbUpper?: TimePoint[];
-      bbLower?: TimePoint[];
-      rsi14?: TimePoint[];
-      macd?: MacdPoint[];
-    };
+    showMACD?: boolean;
     showCVD?: boolean;
-    cvdBars?: Array<{ time: number; value: number }>;
+    onHidePane?: (key: string) => void;
   }
 
-  let { indicators, showCVD = true, cvdBars } = $props();
+  let { showMACD = false, showCVD = true, onHidePane } = $props();
 </script>
 
 <div class="indicator-pane-stack">
-  {#if showCVD && cvdBars?.length}
-    <div class="cvd-pane">
-      <div class="pane-label">CVD</div>
-      <!-- Chart will be rendered here by parent -->
-    </div>
-  {/if}
-
-  <div class="study-pane">
-    <div class="pane-label">Studies</div>
-    <!-- Indicators rendered by parent -->
-    <div class="placeholder">
-      {#if indicators?.macd?.length}
-        MACD: {indicators.macd.length} points
-      {/if}
-      {#if indicators?.rsi14?.length}
-        RSI: {indicators.rsi14.length} points
-      {/if}
-    </div>
-  </div>
+  <slot></slot>
 </div>
 
 <style>

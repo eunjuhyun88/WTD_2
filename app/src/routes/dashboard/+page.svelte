@@ -6,11 +6,44 @@
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
   import AdapterDiffPanel from '../../components/dashboard/AdapterDiffPanel.svelte';
-  import type { CaptureRow } from './+page.server';
+  import type { CaptureRow, FlywheelHealth } from './+page.server';
 
   const { data } = $props();
 
   let pendingVerdicts = $state<CaptureRow[]>(data.pendingVerdicts ?? []);
+  const flywheel = data.flywheelHealth as FlywheelHealth | null;
+
+  // Gate specs — 6 business gate KPIs (fmtPct defined below alongside other fmt helpers)
+  const GATE_SPECS = [
+    { key: 'captures_per_day_7d',            label: 'Captures / day (7d)', fmt: (v: number) => v.toFixed(2) },
+    { key: 'captures_to_outcome_rate',        label: 'Capture → Outcome',   fmt: (v: number) => gatePct(v) },
+    { key: 'outcomes_to_verdict_rate',        label: 'Outcome → Verdict',   fmt: (v: number) => gatePct(v) },
+    { key: 'verdicts_to_refinement_count_7d', label: 'Refinements (7d)',    fmt: (v: number) => String(v) },
+    { key: 'promotion_gate_pass_rate_30d',    label: 'Promotion rate (30d)',fmt: (v: number) => gatePct(v) },
+  ] as const;
+
+  function gatePct(v: number): string { return (v * 100).toFixed(1) + '%'; }
+
+  type GateKey = keyof Omit<FlywheelHealth, 'ok' | 'active_models_per_pattern'>;
+
+  function gateValue(key: GateKey): number {
+    if (!flywheel) return 0;
+    return (flywheel[key] as number) ?? 0;
+  }
+
+  const activeModels = $derived.by(() => {
+    if (!flywheel?.active_models_per_pattern) return { total: 0, active: 0 };
+    const entries = Object.values(flywheel.active_models_per_pattern);
+    return { total: entries.length, active: entries.filter(v => v > 0).length };
+  });
+
+  const gatesOpen = $derived.by(() => {
+    if (!flywheel) return 0;
+    const kpiOpen = GATE_SPECS.filter(s => gateValue(s.key as GateKey) > 0).length;
+    const modelOpen = activeModels.active >= 1 ? 1 : 0;
+    return kpiOpen + modelOpen;
+  });
+
   let labellingId = $state<string | null>(null);
   let labelError = $state<string | null>(null);
 
@@ -221,6 +254,51 @@
           </button>
         {/each}
       </div>
+    {/if}
+  </section>
+
+  <!-- Flywheel Gate Panel -->
+  <section class="surface-grid">
+    <div class="surface-section-head">
+      <div>
+        <span class="surface-kicker">Business Gate</span>
+        <h2>Flywheel Health</h2>
+      </div>
+      {#if flywheel?.ok}
+        <span class="surface-chip gate-chip" class:gate-chip--open={gatesOpen === 6}>{gatesOpen}/6 open</span>
+      {:else}
+        <span class="surface-chip gate-chip--offline">engine offline</span>
+      {/if}
+    </div>
+
+    {#if flywheel?.ok}
+    <div class="gate-grid">
+      {#each GATE_SPECS as spec}
+        {@const val = gateValue(spec.key as GateKey)}
+        {@const open = val > 0}
+        <div class="gate-card" class:gate-card--open={open}>
+          <span class="gate-label">{spec.label}</span>
+          <span class="gate-value">{spec.fmt(val)}</span>
+          <span class="gate-dot">{open ? '●' : '○'}</span>
+        </div>
+      {/each}
+      <!-- active_models gate -->
+      <div class="gate-card" class:gate-card--open={activeModels.active >= 1}>
+        <span class="gate-label">Active models</span>
+        <span class="gate-value">{activeModels.active}/{activeModels.total}</span>
+        <span class="gate-dot">{activeModels.active >= 1 ? '●' : '○'}</span>
+      </div>
+    </div>
+
+    {#if gatesOpen === 0}
+      <p class="gate-hint">플라이휠이 아직 시작되지 않았습니다. 터미널에서 Save Setup으로 캡처를 시작하세요.</p>
+    {:else if gatesOpen < 6}
+      <p class="gate-hint">{6 - gatesOpen}개 게이트가 아직 닫혀 있습니다. 캡처 → 판정 → 보정 순서로 채워주세요.</p>
+    {:else}
+      <p class="gate-hint gate-hint--success">모든 게이트 통과. 사업화 준비 완료.</p>
+    {/if}
+    {:else}
+      <p class="gate-hint">엔진 연결 없음 — 로컬 엔진을 실행하면 KPI가 여기에 표시됩니다.</p>
     {/if}
   </section>
 
@@ -479,6 +557,63 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
+
+  /* ── Flywheel Gate Panel ────────────────────────────────────────────── */
+  .gate-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 4px;
+  }
+  @media (max-width: 640px) {
+    .gate-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .gate-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: rgba(19, 23, 34, 0.6);
+    border: 1px solid rgba(42, 46, 57, 0.8);
+    border-radius: 6px;
+    position: relative;
+  }
+  .gate-card--open {
+    border-color: rgba(0, 188, 139, 0.4);
+    background: rgba(0, 188, 139, 0.05);
+  }
+  .gate-label {
+    font-size: 10px;
+    color: rgba(177, 181, 189, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: var(--sc-font-mono, monospace);
+  }
+  .gate-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--sc-text-primary, #e8e9ed);
+    font-family: var(--sc-font-mono, monospace);
+  }
+  .gate-dot {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 8px;
+    color: rgba(177, 181, 189, 0.3);
+  }
+  .gate-card--open .gate-dot { color: rgb(0, 188, 139); }
+  .gate-chip { background: rgba(42, 46, 57, 0.8); }
+  .gate-chip--open { background: rgba(0, 188, 139, 0.15); color: rgb(0, 188, 139); }
+  .gate-chip--offline { background: rgba(239, 83, 80, 0.1); color: rgba(239, 83, 80, 0.7); font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+  .gate-hint {
+    margin-top: 8px;
+    font-size: 11px;
+    color: rgba(177, 181, 189, 0.5);
+    font-family: var(--sc-font-mono, monospace);
+  }
+  .gate-hint--success { color: rgb(0, 188, 139); }
 
   /* ── Verdict Inbox ─────────────────────────────────────────────────── */
 

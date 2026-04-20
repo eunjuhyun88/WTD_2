@@ -15,6 +15,7 @@
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
+  import IndicatorPaneStack from './IndicatorPaneStack.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
@@ -383,11 +384,12 @@
     rightPriceScale: { borderColor: BORDER },
   };
 
-  /** Sub-pane pixel heights — must match CSS and `createChart` initial sizes. */
-  const PANE_VOL_H = 60;
-  const PANE_SUB_H = 80;
-  const PANE_OI_H = 72;
-  const PANE_CVD_H = 84;
+  /** Sub-pane pixel heights — responsive to viewport width (W-0114 Phase A) */
+  let viewportWidth = $state<number | null>(null);
+  let PANE_VOL_H = $derived(viewportWidth && viewportWidth < 768 ? 48 : 60);
+  let PANE_SUB_H = $derived(viewportWidth && viewportWidth < 768 ? 64 : 80);
+  let PANE_OI_H = $derived(viewportWidth && viewportWidth < 768 ? 56 : 72);
+  let PANE_CVD_H = $derived(viewportWidth && viewportWidth < 768 ? 64 : 84);
 
   function formatCaptureTime(ts: number): string {
     return new Date(ts * 1000).toLocaleString('en-US', {
@@ -1168,12 +1170,17 @@
   }
 
   onMount(() => {
-    const onWin = () => handleResize();
+    const onWin = () => {
+      viewportWidth = containerEl?.offsetWidth ?? window.innerWidth;
+      handleResize();
+    };
     window.addEventListener('resize', onWin);
     // Subscribe to save-mode store for range-mode click handling (W-0086)
     saveModeUnsubscribe = chartSaveMode.subscribe(handleSaveModeChange);
     // ESC exits range-mode without capturing pointer events
     window.addEventListener('keydown', handleRangeModeKeydown);
+    // Initial viewport width
+    onWin();
     return () => {
       window.removeEventListener('resize', onWin);
     };
@@ -1433,21 +1440,27 @@
       </div>
     </div>
     <div class="pane-main"  bind:this={mainEl}></div>
-    <div class="pane-label">VOL</div>
-    <div class="pane-vol"   bind:this={volEl}></div>
-    {#if showMACD}
-      <div class="pane-label">MACD</div>
-      <div class="pane-sub"  bind:this={macdEl}></div>
-    {:else}
-      <div class="pane-label">RSI 14</div>
-      <div class="pane-sub"  bind:this={rsiEl}></div>
-    {/if}
-    <div class="pane-label pane-label-split">
-      <span>OI Δ%</span>
-      <span class="pane-hint">hist</span>
-      <span class="pane-hint pane-hint-gold">Fund %</span>
-    </div>
-    <div class="pane-oi"    bind:this={oiEl}></div>
+
+    <!-- Indicator panes (Vol, MACD/RSI, OI, CVD) ────────────────────────────── -->
+    <IndicatorPaneStack {showMACD} {showCVD} onHidePane={hidePane}>
+      <div class="pane-label">VOL</div>
+      <div class="pane-vol"   bind:this={volEl}></div>
+
+      {#if showMACD}
+        <div class="pane-label">MACD</div>
+        <div class="pane-sub"  bind:this={macdEl}></div>
+      {:else}
+        <div class="pane-label">RSI 14</div>
+        <div class="pane-sub"  bind:this={rsiEl}></div>
+      {/if}
+
+      <div class="pane-label pane-label-split">
+        <span>OI Δ%</span>
+        <span class="pane-hint">hist</span>
+        <span class="pane-hint pane-hint-gold">Fund %</span>
+      </div>
+      <div class="pane-oi"    bind:this={oiEl}></div>
+
       {#if showCVD}
         <div class="pane-label pane-label-split">
           <span>CVD</span>
@@ -1462,6 +1475,7 @@
         </div>
         <div class="pane-cvd" bind:this={cvdEl}></div>
       {/if}
+    </IndicatorPaneStack>
     </div>
     {#if contextMode === 'full'}
     <details class="tv-context-strip" bind:open={contextStripOpen}>
@@ -2481,6 +2495,34 @@
       align-items: center;
       justify-content: center;
       font-size: 11px;
+    }
+    /* Mobile indicator pane adjustments (W-0114 Phase A) */
+    .pane-label {
+      font-size: 9px;
+      margin-bottom: 3px;
+    }
+    .pane-vol {
+      min-height: 48px;
+    }
+    .pane-sub {
+      min-height: 64px;
+    }
+    .pane-oi {
+      min-height: 56px;
+    }
+    .pane-cvd {
+      min-height: 64px;
+    }
+  }
+
+  @media (max-width: 425px) {
+    /* Extra small mobile adjustments */
+    .chart-board {
+      min-height: 300px;
+    }
+    .pane-label {
+      font-size: 8px;
+      margin-bottom: 2px;
     }
   }
 </style>

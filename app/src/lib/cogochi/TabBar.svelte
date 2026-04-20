@@ -24,7 +24,7 @@
   }
 
   function tabColor(kind: string): string {
-    if (kind === 'trade') return 'var(--pos)';
+    if (kind === 'trade') return 'var(--brand)';
     if (kind === 'train') return 'var(--amb)';
     if (kind === 'flywheel') return '#7aa2e0';
     return 'var(--g6)';
@@ -74,7 +74,7 @@
     display: flex;
     align-items: stretch;
     background: var(--g0);
-    border-bottom: 1px solid var(--g4);
+    border-bottom: 1px solid var(--g5);
     flex-shrink: 0;
   }
 
@@ -84,7 +84,7 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border-right: 1px solid var(--g4);
+    border-right: 1px solid var(--g5);
     cursor: pointer;
     font-size: 13px;
     color: var(--g6);
@@ -107,7 +107,7 @@
     gap: 8px;
     padding: 0 10px 0 12px;
     background: transparent;
-    border-right: 1px solid var(--g4);
+    border-right: 1px solid var(--g5);
     border-top: 1.5px solid transparent;
     cursor: pointer;
     min-width: 140px;
