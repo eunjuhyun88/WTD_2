@@ -16,6 +16,8 @@ dependencies = [
     "apscheduler>=3.11.2",
     "redis[asyncio]>=4.6",
     "slowapi>=0.1.9",
+    "twitter-plugin-gamesdk>=0.2.11",
+    "pillow>=12.2.0",
 ]
 
 [project.optional-dependencies]
