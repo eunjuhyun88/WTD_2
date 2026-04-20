@@ -54,6 +54,11 @@ from data_cache.fetch_onchain import (
     fetch_mvrv_zscore,
     fetch_puell_multiple,
 )
+from data_cache.fetch_social import (
+    fetch_coingecko_trending,
+    fetch_binance_square_sentiment,
+    fetch_coingecko_social_volume,
+)
 
 
 # ─── Global macro sources (symbol-independent) ──────────────────────────────
@@ -168,16 +173,31 @@ ONCHAIN_SOURCES: list[DataSource] = [
         scope="per_symbol",
         cache_file="src_{symbol}_exchange_oi.csv",
     ),
-    # ── Add new per-symbol sources here ──────────────────────────────────────
-    # Example:
-    # DataSource(
-    #     name="exchange_netflow",
-    #     fetcher=fetch_cryptoquant_netflow,
-    #     columns=["netflow_usd", "netflow_norm"],
-    #     defaults={"netflow_usd": 0.0, "netflow_norm": 0.5},
-    #     scope="per_symbol",
-    #     cache_file="src_{symbol}_netflow.csv",
-    # ),
+    # ── W-0114 딸깍 전략: 소셜 신호 (Twitter 없이 실제 데이터) ──────────────
+    DataSource(
+        name="coingecko_trending",
+        fetcher=fetch_coingecko_trending,
+        columns=["coingecko_trending"],
+        defaults={"coingecko_trending": 0.0},
+        scope="per_symbol",
+        cache_file="src_{symbol}_cg_trending.csv",
+    ),
+    DataSource(
+        name="binance_square",
+        fetcher=fetch_binance_square_sentiment,
+        columns=["square_post_count", "square_spike"],
+        defaults={"square_post_count": 0.0, "square_spike": 0.0},
+        scope="per_symbol",
+        cache_file="src_{symbol}_square.csv",
+    ),
+    DataSource(
+        name="coingecko_social",
+        fetcher=fetch_coingecko_social_volume,
+        columns=["community_score", "sentiment_up_pct"],
+        defaults={"community_score": 0.0, "sentiment_up_pct": 50.0},
+        scope="per_symbol",
+        cache_file="src_{symbol}_cg_social.csv",
+    ),
 ]
 
 
