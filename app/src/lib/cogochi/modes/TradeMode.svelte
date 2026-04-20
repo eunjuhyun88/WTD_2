@@ -288,6 +288,11 @@
         change24hPct={analyzeData?.change24h ?? null}
         contextMode="chart"
       />
+      {#if mobileView !== 'chart'}
+        <button class="chart-expand-btn" onclick={() => setMobileView?.('chart')} aria-label="차트 전체 보기">
+          ⤢
+        </button>
+      {/if}
     </div>
     <div class="mobile-tab-strip">
       {#each (['chart', 'analyze', 'scan', 'judge'] as const) as t}
@@ -2236,11 +2241,39 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    position: relative;
   }
 
   .mobile-chart-section.mobile-chart-fullscreen {
     flex: 1;
     height: auto;
+  }
+
+  .chart-expand-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    border: 0.5px solid var(--g5);
+    border-radius: 4px;
+    color: var(--g7);
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 10;
+    line-height: 1;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: background 0.12s;
+  }
+
+  .chart-expand-btn:active {
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--brand);
   }
 
   .mobile-tab-strip {
