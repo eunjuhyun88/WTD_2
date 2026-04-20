@@ -23,7 +23,7 @@ from slowapi.errors import RateLimitExceeded  # type: ignore[import]
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
-from api.routes import backtest, captures, challenge, chart, ctx, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability
+from api.routes import backtest, captures, challenge, chart, ctx, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak
 from cache.http_client import close_client, init_client
 from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
@@ -181,6 +181,7 @@ app.include_router(screener.router, prefix="/screener", tags=["screener"])
 app.include_router(rag.router, prefix="/rag", tags=["rag"])
 app.include_router(live_signals.router, prefix="/live-signals", tags=["live-signals"])
 app.include_router(observability.router, prefix="/observability", tags=["observability"])
+app.include_router(dalkkak.router,     prefix="/dalkkak",     tags=["dalkkak"])
 
 
 @app.get("/healthz", tags=["meta"])
