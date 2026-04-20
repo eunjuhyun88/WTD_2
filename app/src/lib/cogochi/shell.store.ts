@@ -39,7 +39,7 @@ export interface ShellState {
 }
 
 const FRESH_TAB_STATE = (): TabState => ({
-  tradePrompt: '',
+  tradePrompt: 'OI 급증 후 번지대 3시간 accumulation',
   rangeSelection: false,
   setupTokens: null,
   verdicts: {},
@@ -58,10 +58,10 @@ const makeDefault = (): ShellState => ({
   ],
   activeTabId: 't1',
   sidebarVisible: true,
-  aiVisible: true,
+  aiVisible: false,
   activeSection: 'library',
-  sidebarWidth: 240,
-  aiWidth: 300,
+  sidebarWidth: 220,
+  aiWidth: 280,
   canvasSplitY: 50,
   canvasSplitX: 58,
   flywheelTurns: 0,
