@@ -7,8 +7,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { query } from '$lib/server/db.js';
+import { getAuthUserFromCookies } from '$lib/server/authGuard.js';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, cookies }) => {
   try {
     const agentId = url.searchParams.get('agentId');
     const userId = url.searchParams.get('userId');
@@ -16,6 +17,10 @@ export const GET: RequestHandler = async ({ url }) => {
     if (!agentId || !userId) {
       return json({ error: 'agentId and userId required' }, { status: 400 });
     }
+
+    const authUser = await getAuthUserFromCookies(cookies);
+    if (!authUser) return json({ error: 'Unauthorized' }, { status: 401 });
+    if (authUser.id !== userId) return json({ error: 'Forbidden' }, { status: 403 });
 
     const result = await query(
       `SELECT * FROM doctrines WHERE agent_id = $1 AND user_id = $2 AND active = true LIMIT 1`,
@@ -33,7 +38,7 @@ export const GET: RequestHandler = async ({ url }) => {
   }
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
     const body = await request.json();
     const {
@@ -45,6 +50,10 @@ export const POST: RequestHandler = async ({ request }) => {
     if (!agentId || !userId || !archetype || !systemPrompt) {
       return json({ error: 'agentId, userId, archetype, systemPrompt required' }, { status: 400 });
     }
+
+    const authUser = await getAuthUserFromCookies(cookies);
+    if (!authUser) return json({ error: 'Unauthorized' }, { status: 401 });
+    if (authUser.id !== userId) return json({ error: 'Forbidden' }, { status: 403 });
 
     // Deactivate previous doctrine
     await query(

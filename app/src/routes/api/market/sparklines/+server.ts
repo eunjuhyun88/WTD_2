@@ -1,5 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
+
+const VALID_SYMBOL = /^[A-Z0-9]{2,20}$/;
 
 /**
  * GET /api/market/sparklines?symbols=BTCUSDT,ETHUSDT,SOLUSDT
@@ -46,12 +49,15 @@ async function fetchKlines(symbol: string): Promise<SparklineData | null> {
   }
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   const symbolsParam = url.searchParams.get('symbols') || '';
   const symbols = symbolsParam
     .split(',')
     .map(s => s.trim().toUpperCase())
-    .filter(Boolean)
+    .filter(s => VALID_SYMBOL.test(s))
     .slice(0, MAX_SYMBOLS);
 
   if (symbols.length === 0) {

@@ -6,11 +6,15 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
+import { autorunLimiter } from '$lib/server/rateLimit';
 import { runForwardWalk } from '$lib/server/autoResearch/forwardWalk.js';
 import { buildScenarioById, SCENARIO_CATALOG } from '$lib/server/scenarioBuilder.js';
 import type { ArchetypeId } from '$lib/contracts/researchV4';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+  if (!autorunLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   try {
     const body = await request.json();
     const {

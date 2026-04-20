@@ -7,6 +7,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { toBoundedInt } from '$lib/server/apiValidation';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
 import { fetchNews, type NewsRecord } from '$lib/server/marketFeedService';
 import { fetchTopicPosts, hasLunarCrushKey, type LunarCrushPost } from '$lib/server/lunarcrush';
 
@@ -50,7 +51,10 @@ function computeImportance(item: { interactions: number; publishedAt: number; cr
   return Math.round(engScore + recencyScore + influenceScore);
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   try {
     const limit = toBoundedInt(url.searchParams.get('limit'), 30, 1, 100);
     const offset = toBoundedInt(url.searchParams.get('offset'), 0, 0, 500);

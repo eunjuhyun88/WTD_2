@@ -7,6 +7,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
 import {
   fetchCMCTrending,
   fetchCMCGainersLosers,
@@ -207,7 +208,10 @@ async function enrichDexHotTokens(tokens: DexTrendingToken[]): Promise<DexTrendi
 
 // ─── Handler ──────────────────────────────────────────────────
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   const limitParam = Math.min(Math.max(Number(url.searchParams.get('limit')) || 20, 1), 50);
   const section = url.searchParams.get('section') ?? 'all'; // all, trending, gainers, dex
 

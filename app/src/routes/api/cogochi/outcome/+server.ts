@@ -17,10 +17,14 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
 import { engine } from '$lib/server/engineClient';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
 
 const MIN_TRAIN_RECORDS = 20;
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   // Auth: prefer session user, fall back to anonymous bucket
   const userId: string =
     (locals as any)?.user?.id ?? (locals as any)?.session?.user?.id ?? 'anon';

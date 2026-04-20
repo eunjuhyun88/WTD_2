@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
 import { fetchDerivatives, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import {
   fetchDexAdsLatest,
@@ -91,7 +92,10 @@ function tokenLabel(chainId: string, tokenAddress: string, metaMap: Map<string, 
   return `${chain} ${addr}`;
 }
 
-export const GET: RequestHandler = async ({ fetch, url }) => {
+export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   try {
     const pair = normalizePair(url.searchParams.get('pair'));
     const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
