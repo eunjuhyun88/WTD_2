@@ -307,10 +307,14 @@
   let cvdChart:  IChartApi | null = null;
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
 
-  // ── Layer 1: Range primitive (W-0086) ─────────────────────────────────────
+  // ── Layer 1: Range primitive (W-0086 / W-0117) ────────────────────────────
   let rangePrimitive: RangePrimitive | null = null;
-  let rangeClickUnsubscribe: (() => void) | null = null;
   let saveModeUnsubscribe: (() => void) | null = null;
+
+  // Drag state — managed as plain variables (not reactive) to avoid cycles
+  let _dragActive = false;
+  let _dragOnMouseMove: ((e: MouseEvent) => void) | null = null;
+  let _dragOnMouseUp: ((e: MouseEvent) => void) | null = null;
 
   function attachRangePrimitive() {
     if (!priceSeries || rangePrimitive) return;
@@ -326,24 +330,68 @@
     rangePrimitive = null;
   }
 
+  /** Convert clientX to chart time using mainEl bounding rect. */
+  function clientXToChartTime(clientX: number): number | null {
+    if (!mainChart || !mainEl) return null;
+    const rect = mainEl.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const t = mainChart.timeScale().coordinateToTime(x);
+    if (t === null) return null;
+    return typeof t === 'number' ? t : Math.floor(new Date(t as string).getTime() / 1000);
+  }
+
+  function attachDragHandlers() {
+    if (!mainEl || _dragOnMouseMove) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      const t = clientXToChartTime(e.clientX);
+      if (t === null) return;
+      chartSaveMode.startDrag(t);
+      _dragActive = true;
+      e.preventDefault(); // block text-selection during drag
+    };
+
+    _dragOnMouseMove = (e: MouseEvent) => {
+      if (!_dragActive) return;
+      const t = clientXToChartTime(e.clientX);
+      if (t !== null) chartSaveMode.adjustAnchor('B', t);
+    };
+
+    _dragOnMouseUp = (e: MouseEvent) => {
+      if (!_dragActive) return;
+      const t = clientXToChartTime(e.clientX);
+      if (t !== null) chartSaveMode.adjustAnchor('B', t);
+      _dragActive = false;
+    };
+
+    mainEl.addEventListener('mousedown', onMouseDown);
+    mainEl.addEventListener('mousemove', _dragOnMouseMove);
+    mainEl.addEventListener('mouseup', _dragOnMouseUp);
+    // catch mouseup outside chart bounds too
+    window.addEventListener('mouseup', _dragOnMouseUp);
+  }
+
+  function detachDragHandlers() {
+    if (_dragOnMouseMove && mainEl) {
+      mainEl.removeEventListener('mousemove', _dragOnMouseMove);
+      mainEl.removeEventListener('mouseup', _dragOnMouseUp!);
+    }
+    if (_dragOnMouseUp) window.removeEventListener('mouseup', _dragOnMouseUp);
+    _dragOnMouseMove = null;
+    _dragOnMouseUp = null;
+    _dragActive = false;
+  }
+
   function handleSaveModeChange(state: { active: boolean; anchorA: number | null; anchorB: number | null }) {
     if (!mainChart) return;
 
     if (state.active) {
-      if (!rangeClickUnsubscribe) {
-        const handler = (param: { time?: Time }) => {
-          if (!param.time) return;
-          const t = typeof param.time === 'number'
-            ? param.time
-            : Math.floor(new Date(param.time as string).getTime() / 1000);
-          chartSaveMode.setAnchor(t);
-        };
-        mainChart.subscribeClick(handler);
-        rangeClickUnsubscribe = () => mainChart?.unsubscribeClick(handler);
-      }
+      // Disable LWC pan/scale so drag selects range instead of panning
+      mainChart.applyOptions({ handleScroll: false, handleScale: false });
+      attachDragHandlers();
     } else {
-      rangeClickUnsubscribe?.();
-      rangeClickUnsubscribe = null;
+      detachDragHandlers();
+      mainChart.applyOptions({ handleScroll: true, handleScale: true });
     }
 
     rangePrimitive?.setRange(state.anchorA, state.anchorB);
@@ -431,6 +479,11 @@
 
   // ── Data load ─────────────────────────────────────────────────────────────
   let chartData = $state<ChartSeriesPayload | null>(null);
+
+  // Keep chartSaveMode payload in sync so SaveStrip can slice indicators (W-0117 Slice B)
+  $effect(() => {
+    chartSaveMode.setPayload(chartData);
+  });
   const chartDataCache = new Map<string, ChartSeriesPayload>();
   let loadToken = 0;
   let lastDataKey = '';
@@ -1092,9 +1145,8 @@
 
   function destroyCharts() {
     clearLiqPriceLines();
-    // Detach Layer 1 primitive before removing chart (W-0086)
-    rangeClickUnsubscribe?.();
-    rangeClickUnsubscribe = null;
+    // Detach Layer 1 primitive before removing chart (W-0086 / W-0117)
+    detachDragHandlers();
     detachRangePrimitive();
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = null;
@@ -1574,6 +1626,14 @@
   {/if}
 
 </div>
+
+<!-- W-0117: SaveStrip — appears below chart when range is selected -->
+<SaveStrip
+  {symbol}
+  tf={tf}
+  ohlcvBars={(chartData?.klines ?? []) as Array<{ time: number; open: number; high: number; low: number; close: number; volume?: number }>}
+  onSaved={(id) => { savedCaptureId = id; }}
+/>
 
 <!-- Save Setup Modal -->
 <SaveSetupModal
