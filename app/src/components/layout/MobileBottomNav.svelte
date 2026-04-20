@@ -1,44 +1,64 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { MOBILE_NAV_SURFACES, isAppSurfaceActive } from '$lib/navigation/appSurfaces';
-
-  type NavItem = {
-    id: import('$lib/navigation/appSurfaces').AppSurfaceId;
-    label: string;
-    icon: string;
-    href: string;
-    badge?: number;
-    highlight?: boolean;
-  };
 
   const activePath = $derived($page.url.pathname);
 
-  const items = $derived<NavItem[]>(
-    MOBILE_NAV_SURFACES.map((surface) => ({
-      id: surface.id,
-      label: surface.label,
-      icon: surface.mobileIcon,
-      href: surface.href,
-      badge: undefined,
-      highlight: surface.highlight === true,
-    }))
-  );
+  const items = [
+    { label: 'Home',      href: '/',          icon: 'home'      },
+    { label: 'Terminal',  href: '/terminal',  icon: 'terminal'  },
+    { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
+    { label: 'Lab',       href: '/lab',       icon: 'lab'       },
+    { label: 'Market',    href: '/market',    icon: 'market'    },
+  ];
+
+  function active(href: string) {
+    if (href === '/') return activePath === '/';
+    if (href === '/terminal') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
+    return activePath === href || activePath.startsWith(href + '/');
+  }
 </script>
 
-<nav class="mobile-nav" aria-label="Primary mobile navigation">
-  {#each items as item (item.id)}
+<nav class="mobile-nav" aria-label="Mobile navigation">
+  {#each items as item}
     <a
-      class="mobile-nav-item"
-      class:active={isAppSurfaceActive(item.id, activePath)}
-      class:highlight={item.highlight}
-      aria-current={isAppSurfaceActive(item.id, activePath) ? 'page' : undefined}
+      class="nav-item"
+      class:active={active(item.href)}
       href={item.href}
+      aria-label={item.label}
+      aria-current={active(item.href) ? 'page' : undefined}
     >
-      <span class="icon" aria-hidden="true">{item.icon}</span>
-      <span class="label">{item.label}{#if item.highlight}<span class="star">&#9733;</span>{/if}</span>
-      {#if item.badge}
-        <span class="badge">{item.badge > 99 ? '99+' : item.badge}</span>
-      {/if}
+      <span class="nav-icon" aria-hidden="true">
+        {#if item.icon === 'home'}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M2 8L9 2L16 8V16H12V12H6V16H2V8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+        {:else if item.icon === 'terminal'}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <polyline points="3,6 7,9 3,12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="9" y1="12" x2="15" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        {:else if item.icon === 'dashboard'}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+            <rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+            <rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+            <rect x="10" y="10" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+          </svg>
+        {:else if item.icon === 'lab'}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M7 2V8.5L3 15H15L11 8.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="6" y1="2" x2="12" y2="2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        {:else if item.icon === 'market'}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <rect x="5" y="7" width="2.5" height="7" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+            <rect x="10.5" y="4" width="2.5" height="10" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+            <line x1="6.25" y1="5" x2="6.25" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="11.75" y1="2" x2="11.75" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        {/if}
+      </span>
+      <span class="nav-label">{item.label}</span>
     </a>
   {/each}
 </nav>
@@ -51,107 +71,62 @@
     bottom: 0;
     z-index: var(--sc-z-sticky, 140);
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    height: calc(var(--sc-mobile-nav-h, 68px) + env(safe-area-inset-bottom, 0px));
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
     background:
-      linear-gradient(180deg, rgba(8, 8, 10, 0.94), rgba(5, 5, 7, 0.96)),
-      radial-gradient(circle at center top, rgba(249, 216, 194, 0.035), transparent 40%);
+      linear-gradient(180deg, rgba(8, 8, 10, 0.96), rgba(5, 5, 7, 0.98));
     border-top: 1px solid rgba(249, 216, 194, 0.07);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
   }
 
-  .mobile-nav-item {
-    position: relative;
-    display: grid;
-    place-items: center;
-    gap: 4px;
-    border: 1px solid rgba(249, 216, 194, 0.06);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.025);
-    color: rgba(250, 247, 235, 0.44);
-    font-family: var(--sc-font-body);
-    font-weight: 600;
-    cursor: pointer;
-    min-height: 48px;
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 10px;
+    color: rgba(250, 247, 235, 0.3);
     text-decoration: none;
-    transition:
-      color 100ms ease,
-      background 100ms ease,
-      border-color 100ms ease,
-      transform 80ms ease;
+    transition: color 0.12s, background 0.12s;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    padding: 4px 2px;
   }
 
-  .mobile-nav-item:active {
-    transform: scale(0.96);
+  .nav-item:active {
+    transform: scale(0.94);
   }
 
-  /* Highlight tab (LAB) */
-  .mobile-nav-item.highlight {
-    color: rgba(var(--home-ref-accent-rgb, 219, 154, 159), 0.78);
+  .nav-item.active {
+    color: rgba(250, 247, 235, 0.95);
+    background: rgba(255, 255, 255, 0.06);
   }
 
-  /* Active state */
-  .mobile-nav-item.active {
-    color: rgba(250, 247, 235, 0.96);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025));
-    border-color: rgba(249, 216, 194, 0.11);
-  }
-
-  .mobile-nav-item.active::after {
+  .nav-item.active .nav-icon::after {
     content: '';
-    position: absolute;
-    top: 7px;
-    left: 28%;
-    right: 28%;
+    display: block;
+    width: 16px;
     height: 2px;
     border-radius: 999px;
-    background: linear-gradient(90deg, rgba(219, 154, 159, 0.9), rgba(249, 216, 194, 0.7));
+    background: linear-gradient(90deg, rgba(219, 154, 159, 0.9), rgba(249, 216, 194, 0.6));
+    margin: 2px auto 0;
   }
 
-  .mobile-nav-item.active.highlight {
-    color: var(--sc-accent);
-  }
-  .mobile-nav-item.active.highlight::after {
-    background: var(--sc-accent);
-  }
-
-  .icon {
-    font-size: 15px;
-    line-height: 1;
+  .nav-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
   }
 
-  .label {
-    font-size: 10px;
+  .nav-label {
+    font-family: var(--sc-font-body, sans-serif);
+    font-size: 9px;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-  }
-
-  .star {
-    margin-left: 2px;
-    font-size: 9px;
-  }
-
-  .badge {
-    position: absolute;
-    top: 7px;
-    right: calc(50% - 22px);
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--sc-accent);
-    color: #0f0f12;
-    font-family: var(--sc-font-mono);
-    font-size: 9px;
-    font-weight: 700;
   }
 </style>
