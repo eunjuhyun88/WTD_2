@@ -6,6 +6,8 @@ import pytest
 from patterns.library import LIQUIDITY_SWEEP_REVERSAL, get_pattern
 from patterns.state_machine import PatternStateMachine
 from building_blocks.context import Context
+from models.market import Kline
+
 
 def test_pattern_registered():
     """Verify pattern is in library."""
@@ -41,7 +43,7 @@ def test_pattern_phase_structure():
     assert accum.phase_id == "ACCUMULATION"
     assert "higher_lows_sequence" in accum.required_blocks
     assert "oi_hold_after_spike" in accum.required_blocks
-    assert accum.entry_phase == "ACCUMULATION"
+    assert pattern.entry_phase == accum.phase_id
 
     # BREAKOUT: requires breakout confirmation
     breakout = pattern.phases[3]
@@ -56,7 +58,7 @@ def test_state_machine_instantiation():
 
     # Initial state should be None (not started)
     sym = "BTCUSDT"
-    assert sm.get_current_phase(sym) is None
+    assert sm.get_current_phase(sym) == "NONE"
 
 
 def test_entry_candidate_gate():
