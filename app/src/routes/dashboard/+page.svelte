@@ -145,7 +145,7 @@
   }
 
   function openWatching(query: string) {
-    goto(`/terminal?q=${encodeURIComponent(query)}`);
+    goto(`/cogochi?q=${encodeURIComponent(query)}`);
   }
 </script>
 

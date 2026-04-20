@@ -29,7 +29,7 @@
   });
 
   let windowWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1200);
-  const showMobileBottomNav = $derived(windowWidth <= 768 && !$isTerminal);
+  const showMobileBottomNav = $derived(windowWidth <= 768);
 
   $effect(() => {
     const path = $page.url.pathname;

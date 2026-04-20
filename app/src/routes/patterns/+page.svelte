@@ -233,7 +233,7 @@
       <button class="surface-button" onclick={triggerScan} disabled={scanning}>
         {scanning ? 'Scanning…' : 'Run Scan'}
       </button>
-      <button class="surface-button-secondary" onclick={() => goto('/terminal')}>Open Terminal</button>
+      <button class="surface-button-secondary" onclick={() => goto('/cogochi')}>Open Terminal</button>
     </div>
   </header>
 
@@ -278,7 +278,7 @@
                   <span>{cand.since ? sinceHours(cand.since) : '진입 시간 미상'}</span>
                 </div>
                 <div class="cand-actions">
-                  <a class="surface-button-ghost compact-action" href="/terminal?symbol={cand.symbol}">Open Chart</a>
+                  <a class="surface-button-ghost compact-action" href="/cogochi?symbol={cand.symbol}">Open Chart</a>
                   <button class="surface-button-secondary compact-action valid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'valid')}>Valid</button>
                   <button class="surface-button-ghost compact-action invalid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'invalid')}>Skip</button>
                 </div>
@@ -316,7 +316,7 @@
                   {@const meta = PHASE_META[s.current_phase] ?? { label: String(s.current_phase), color: 'rgba(255,255,255,0.4)' }}
                   <div class="table-row" class:highlight={s.current_phase === 3}>
                     <span class="row-sym">
-                      <a href="/terminal?symbol={s.symbol}">{s.symbol.replace('USDT','')}</a>
+                      <a href="/cogochi?symbol={s.symbol}">{s.symbol.replace('USDT','')}</a>
                     </span>
                     <span class="row-pattern">{s.pattern_id.replace(/_/g,' ')}</span>
                     <span class="row-phase" style="--phase-color:{meta.color}">{meta.label}</span>

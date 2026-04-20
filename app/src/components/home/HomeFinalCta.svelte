@@ -14,7 +14,7 @@
     </div>
 
     <div class="footer-actions">
-      <button type="button" class="footer-link footer-link-strong" onclick={() => onOpen('/terminal', 'footer_open_terminal')}>
+      <button type="button" class="footer-link footer-link-strong" onclick={() => onOpen('/cogochi', 'footer_open_terminal')}>
         Start in Terminal
       </button>
       <button type="button" class="footer-link" onclick={() => onOpen('/lab', 'footer_open_lab_secondary')}>
@@ -31,7 +31,7 @@
   .home-cta {
     position: relative;
     z-index: 3;
-    padding: 8px clamp(22px, 4vw, 48px) calc(52px + env(safe-area-inset-bottom, 0px));
+    padding: 8px clamp(22px, 4vw, 48px) 48px;
     font-family: var(--sc-font-body);
   }
 
