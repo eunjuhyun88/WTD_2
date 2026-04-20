@@ -66,7 +66,7 @@
   .slash {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    color: var(--pos);
+    color: var(--brand);
   }
 
   .tag {
@@ -79,7 +79,7 @@
   .matches {
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
-    color: var(--pos);
+    color: var(--amb);
     margin-left: auto;
   }
 
