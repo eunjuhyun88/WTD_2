@@ -43,3 +43,8 @@ engine/research/pattern_search/negative_memory/*.json
 !engine/research/pattern_search/negative_memory/.gitkeep
 engine/research/pattern_search/search_runs/*.json
 !engine/research/pattern_search/search_runs/.gitkeep
+
+# dev artifacts
+*.tar.gz
+cogochi-handoff*
+Core Loop*.html

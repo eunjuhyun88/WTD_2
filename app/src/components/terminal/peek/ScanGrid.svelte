@@ -1,9 +1,4 @@
 <script lang="ts">
-  /**
-   * ScanGrid — SCAN tab content.
-   * Wide grid layout: 5-col candidate cards + PastSamplesStrip at bottom.
-   */
-  import { setActivePair } from '$lib/stores/activePairStore';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
 
   interface AlertRow {
@@ -13,26 +8,7 @@
     blocks_triggered: string[];
     p_win: number | null;
     created_at: string;
-  }
-
-  interface CandidateItem {
-    id: string;
-    symbol: string;
-    tf: string;
-    pattern: string;
-    phase: number;
-    alpha: number;
-    age: string;
-    sim: number;
-    dir: 'long' | 'short';
-  }
-
-  interface PastSample {
-    sym: string;
-    when: string;
-    sim: number;
-    pnl: number;
-    bars: number;
+    preview?: { price?: number; rsi14?: number; funding_rate?: number; regime?: string };
   }
 
   interface Props {
@@ -51,324 +27,361 @@
     onOpenCapture,
   }: Props = $props();
 
-  let expandedSample = $state<number | null>(null);
-  let selectedId = $state<string | null>(null);
-  let viewMode = $state<'grid' | 'table'>('grid');
-
-  // Static demo candidates (will be API-driven)
-  const candidates: CandidateItem[] = [
-    { id: 'c1', symbol: 'BTCUSDT',  tf: '4H',  pattern: 'OI +18% · accum',    phase: 4, alpha: 82, age: '09:14', sim: 0.95, dir: 'long' },
-    { id: 'c2', symbol: 'ETHUSDT',  tf: '1M',  pattern: 'VWAP reclaim',       phase: 4, alpha: 68, age: '09:01', sim: 0.91, dir: 'long' },
-    { id: 'c3', symbol: 'SOLUSDT',  tf: '15m', pattern: 'Higher lows 5/5',    phase: 4, alpha: 71, age: '08:52', sim: 0.87, dir: 'long' },
-    { id: 'c4', symbol: 'ARBUSDT',  tf: '1M',  pattern: 'Funding flip',       phase: 3, alpha: 66, age: '08:44', sim: 0.83, dir: 'long' },
-    { id: 'c5', symbol: 'LINKUSDT', tf: '1M',  pattern: 'BB squeeze',         phase: 3, alpha: 59, age: '07:33', sim: 0.79, dir: 'long' },
-    { id: 'c6', symbol: 'INJUSDT',  tf: '4H',  pattern: '번지대 4h · CVD 양', phase: 4, alpha: 73, age: '07:48', sim: 0.76, dir: 'long' },
-    { id: 'c7', symbol: 'FETUSDT',  tf: '1H',  pattern: 'Higher lows 6/6',    phase: 4, alpha: 70, age: '07:22', sim: 0.73, dir: 'long' },
-    { id: 'c8', symbol: 'SEIUSDT',  tf: '1H',  pattern: 'OI + accum',         phase: 3, alpha: 64, age: '06:58', sim: 0.70, dir: 'long' },
-    { id: 'c9', symbol: 'LDOUSDT',  tf: '1H',  pattern: 'CVD divergence',     phase: 4, alpha: 77, age: '08:12', sim: 0.68, dir: 'long' },
+  // Fixed MiniChart points (from prototype, 180x60 viewBox)
+  const CHART_PTS: [number, number][] = [
+    [0,14],[8,22],[16,30],[24,38],[32,32],[40,36],[48,40],[56,44],
+    [64,52],[72,48],[80,44],[88,42],[96,40],[104,38],[112,36],[120,34],
+    [128,30],[136,28],[144,26],[152,22],[160,18],[168,14],[176,10],[180,8]
   ];
+  const NOW_X = 128;
 
-  const pastSamples: PastSample[] = [
-    { sym: 'TRADOOR', when: '2024-11-12', sim: 94, pnl: +6.2, bars: 12 },
-    { sym: 'PTB',     when: '2025-01-03', sim: 91, pnl: +2.1, bars: 9  },
-    { sym: 'JUP',     when: '2025-02-18', sim: 88, pnl: -1.4, bars: 14 },
-    { sym: 'ARB',     when: '2025-03-11', sim: 86, pnl: +4.7, bars: 8  },
-    { sym: 'AVAX',    when: '2025-04-02', sim: 83, pnl: +1.8, bars: 11 },
-    { sym: 'SUI',     when: '2025-05-19', sim: 80, pnl: +3.3, bars: 10 },
-    { sym: 'ONDO',    when: '2025-06-24', sim: 78, pnl: -0.6, bars: 13 },
-    { sym: 'WIF',     when: '2025-07-08', sim: 76, pnl: +2.9, bars: 9  },
+  // Build SVG polyline points string
+  const chartPolyline = CHART_PTS.map(([x,y]) => `${x},${y}`).join(' ');
+
+  // Past samples expanded state
+  let expandedId = $state<string | null>(null);
+
+  function relativeTime(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    return `${Math.floor(h / 24)}d`;
+  }
+
+  function sym(s: string): string {
+    return s.replace(/USDT$/, '');
+  }
+
+  function outcomePct(record: PatternCaptureRecord): number | null {
+    const r = record as Record<string, unknown>;
+    const decision = r['decision'] as Record<string, unknown> | undefined;
+    const outcome = r['outcome'] as Record<string, unknown> | undefined;
+    const v = (decision?.['outcomePct'] ?? outcome?.['pnlPct']) as number | undefined;
+    return v != null ? v : null;
+  }
+
+  function outcomePctStr(record: PatternCaptureRecord): string {
+    const pnl = outcomePct(record);
+    if (pnl == null) return '—';
+    return `${pnl >= 0 ? '+' : ''}${pnl.toFixed(1)}%`;
+  }
+
+  function outcomeTone(record: PatternCaptureRecord): 'win' | 'loss' | 'pending' {
+    const pnl = outcomePct(record);
+    if (pnl == null) return 'pending';
+    return pnl > 0 ? 'win' : 'loss';
+  }
+
+  function cardTone(record: PatternCaptureRecord): 'pos' | 'amb' | 'neutral' {
+    const conf = record.decision?.confidence;
+    if (conf != null) {
+      if (conf >= 0.75) return 'pos';
+      if (conf >= 0.58) return 'amb';
+    }
+    return 'neutral';
+  }
+
+  function simPct(record: PatternCaptureRecord, idx: number): number {
+    // Synthetic similarity score based on index (prototype fallback)
+    const r = record as Record<string, unknown>;
+    const v = (r['similarity'] ?? r['simScore']) as number | undefined;
+    if (v != null) return Math.round(v * 100);
+    // Fallback: descending from 94
+    return Math.max(60, 94 - idx * 3);
+  }
+
+  // PastSamplesStrip stats
+  const stripStats = $derived.by(() => {
+    const wins = similar.filter(r => outcomeTone(r) === 'win').length;
+    const losses = similar.filter(r => outcomeTone(r) === 'loss').length;
+    const pnls = similar.map(r => outcomePct(r)).filter((v): v is number => v != null);
+    const avgWin = pnls.filter(v => v > 0).reduce((s, v) => s + v, 0) / (wins || 1);
+    return { wins, losses, avgWin };
+  });
+
+  // Synthetic fallback strip data when similar is empty
+  const SYNTHETIC_STRIP = [
+    { sym: 'TRADOOR', pnl: 6.2, tone: 'win' as const },
+    { sym: 'PTB', pnl: 2.1, tone: 'win' as const },
+    { sym: 'JUP', pnl: -1.4, tone: 'loss' as const },
+    { sym: 'SOL', pnl: 4.8, tone: 'win' as const },
+    { sym: 'DOGE', pnl: -0.9, tone: 'loss' as const },
   ];
-
-  const wins = pastSamples.filter(s => s.pnl > 0).length;
-  const losses = pastSamples.length - wins;
-  const avgWin = pastSamples.filter(s => s.pnl > 0).reduce((a, s) => a + s.pnl, 0) / wins;
-
-  // Chart path helper
-  function miniPath(phase: number): string {
-    const pts = [
-      [0,14],[8,22],[16,30],[24,38],[32,32],[40,36],[48,40],[56,44],
-      [64,52],[72,48],[80,44],[88,42],[96,40],[104,38],[112,36],[120,34],
-      [128,30],[136,28],[144,26],[152,22],[160,18],[168,14],[176,10],[180,8],
-    ];
-    return pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y + 8}`).join(' ');
-  }
-
-  function nowX(phase: number): number {
-    return phase === 3 ? 72 : phase === 4 ? 128 : phase === 5 ? 170 : 40;
-  }
-
-  function alphaColor(a: number): string {
-    return a >= 75 ? 'var(--pos)' : a >= 60 ? 'var(--amb)' : 'var(--g7)';
-  }
 </script>
 
-<div class="scan">
-  <!-- Header -->
-  <div class="header">
-    <span class="step">STEP 03 · SIMILAR NOW</span>
-    <span class="hdiv"></span>
-    <span class="count">{candidates.length} candidates</span>
-    <span class="spacer"></span>
-    <span class="meta">matching hypothesis · 300 sym · 14s</span>
-    <span class="sort-label">SORT</span>
-    <span class="sort-val">similarity ▾</span>
-    <div class="view-toggle">
-      {#each ['grid', 'table'] as v}
-        <button class="vt-btn" class:active={viewMode === v} onclick={() => viewMode = v as 'grid' | 'table'}>{v.toUpperCase()}</button>
-      {/each}
-    </div>
+<div class="scan-grid">
+  <!-- Header bar -->
+  <div class="header-bar">
+    <span class="step">STEP 03</span>
+    <span class="sep">·</span>
+    <span class="title">SIMILAR NOW</span>
+    <span class="sep">·</span>
+    <span class="count">{similar.length} candidates</span>
+    <span class="sort-label">SORT: similarity</span>
   </div>
 
-  <!-- Candidate grid / table -->
-  <div class="grid-wrap" class:table-mode={viewMode === 'table'}>
-    {#if viewMode === 'grid'}
-      <div class="grid">
-        {#each candidates as c}
-          {@const ac = alphaColor(c.alpha)}
+  <!-- WideGridView: 5-col grid -->
+  <div class="grid-area">
+    {#if loadingSimilar}
+      <div class="empty-state">Searching similar setups…</div>
+    {:else if similar.length === 0}
+      <div class="empty-state">No similar setups found. Save more judgments to build history.</div>
+    {:else}
+      <div class="wide-grid">
+        {#each similar as rec, i}
+          {@const tone = cardTone(rec)}
+          {@const ot = outcomeTone(rec)}
+          {@const sp = simPct(rec, i)}
           <button
-            class="card"
-            class:selected={selectedId === c.id}
-            style:--ac={ac}
-            onclick={() => {
-              selectedId = c.id;
-              setActivePair(c.symbol.replace(/USDT$/, '') + '/USDT');
-            }}
+            class="grid-card"
+            data-tone={tone}
+            data-outcome={ot}
+            onclick={() => onOpenCapture?.(rec)}
           >
+            <!-- Top row: symbol / tf / alpha -->
             <div class="card-top">
-              <span class="card-sym">{c.symbol.replace('USDT', '')}</span>
-              <span class="card-tf">{c.tf}</span>
-              <span class="spacer"></span>
-              <span class="card-alpha">α{c.alpha}</span>
+              <span class="card-sym">{sym(rec.symbol)}</span>
+              <span class="card-tf">{rec.timeframe.toUpperCase()}</span>
+              <span class="card-alpha" data-tone={tone}>
+                {rec.decision?.confidence != null
+                  ? `α${Math.round(rec.decision.confidence * 100)}`
+                  : rec.decision?.verdict?.toUpperCase() ?? '—'}
+              </span>
             </div>
-            <svg viewBox="0 0 180 68" preserveAspectRatio="none" class="mini-chart">
-              <rect x={nowX(c.phase) - 8} y={0} width={16} height={68} fill={ac} opacity="0.08"/>
-              <path d={`${miniPath(c.phase)} L180,68 L0,68 Z`} fill={ac} opacity="0.05"/>
-              <path d={miniPath(c.phase)} fill="none" stroke="var(--g6)" stroke-width="1"/>
-              <line x1={nowX(c.phase)} y1={0} x2={nowX(c.phase)} y2={68} stroke={ac} stroke-width="0.5" stroke-dasharray="2 2" opacity="0.7"/>
-              <circle cx={nowX(c.phase)} cy="38" r="2.5" fill={ac}/>
+
+            <!-- MiniChart SVG -->
+            <svg class="mini-chart" viewBox="0 0 180 60" preserveAspectRatio="none">
+              <!-- Phase highlight band -->
+              <rect x={NOW_X - 32} y="0" width="64" height="60"
+                fill={tone === 'pos' ? 'rgba(173,202,124,0.07)' : tone === 'amb' ? 'rgba(233,193,103,0.07)' : 'rgba(247,242,234,0.04)'}
+              />
+              <!-- Price line -->
+              <polyline
+                points={chartPolyline}
+                fill="none"
+                stroke={tone === 'pos' ? 'var(--pos, #adca7c)' : tone === 'amb' ? 'var(--amb, #e9c167)' : 'var(--g6, #6b7280)'}
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <!-- Entry dot at nowX -->
+              <circle cx={NOW_X} cy="30" r="3"
+                fill={tone === 'pos' ? 'var(--pos, #adca7c)' : tone === 'amb' ? 'var(--amb, #e9c167)' : 'var(--g5, #9ca3af)'}
+              />
             </svg>
-            <div class="sim-row">
-              <div class="sim-bar"><div class="sim-fill" style:width="{c.sim * 100}%" style:background={ac}></div></div>
-              <span class="sim-pct">{Math.round(c.sim * 100)}%</span>
+
+            <!-- Sim% bar + age -->
+            <div class="card-bot">
+              <div class="sim-bar-wrap">
+                <div class="sim-bar" style="width: {sp}%;" data-tone={tone}></div>
+              </div>
+              <span class="sim-pct">{sp}%</span>
+              <span class="card-age">{relativeTime(rec.updatedAt)}</span>
             </div>
-            <div class="card-age">{c.age}</div>
           </button>
         {/each}
       </div>
-    {:else}
-      <!-- Table view -->
-      <div class="tbl-head">
-        <span>SYM</span><span>TF</span><span class="tbl-pat">PATTERN</span>
-        <span class="tbl-r">SIM</span><span class="tbl-r">α</span><span class="tbl-r">AGE</span>
-      </div>
-      {#each candidates as c}
-        {@const ac = alphaColor(c.alpha)}
-        <button
-          class="tbl-row"
-          class:selected={selectedId === c.id}
-          style:--ac={ac}
-          onclick={() => { selectedId = c.id; setActivePair(c.symbol.replace(/USDT$/, '') + '/USDT'); }}
-        >
-          <span class="tbl-sym">{c.symbol.replace('USDT', '')}</span>
-          <span class="tbl-tf">{c.tf}</span>
-          <span class="tbl-pat tbl-pat-val">{c.pattern}</span>
-          <span class="tbl-r tbl-sim">{Math.round(c.sim * 100)}%</span>
-          <span class="tbl-r tbl-alpha" style:color={ac}>α{c.alpha}</span>
-          <span class="tbl-r tbl-age">{c.age}</span>
-        </button>
-      {/each}
     {/if}
   </div>
 
-  <!-- Past samples strip -->
-  <div class="past-strip">
-    <div class="past-header">
-      <span class="past-title">★ PAST · 14 similar</span>
-      <span class="past-div">│</span>
-      <span class="past-wins">{wins}W</span>
-      <span class="past-losses">{losses}L</span>
-      <span class="past-avg">avg win +{avgWin.toFixed(1)}%</span>
-      <span class="spacer"></span>
-      <span class="past-hint">클릭 → 차트로 보기</span>
-    </div>
-    <div class="past-tiles">
-      {#each pastSamples as s, i}
-        {@const color = s.pnl >= 0 ? 'var(--pos)' : 'var(--neg)'}
-        <button
-          class="past-tile"
-          class:expanded={expandedSample === i}
-          style:--pc={color}
-          onclick={() => expandedSample = expandedSample === i ? null : i}
-        >
-          <span class="pt-sym">{s.sym}</span>
-          <span class="pt-pnl">{s.pnl >= 0 ? '+' : ''}{s.pnl.toFixed(1)}%</span>
-          <span class="pt-sim">{s.sim}%</span>
-        </button>
-      {/each}
+  <!-- PastSamplesStrip -->
+  <div class="strip-area">
+    <div class="strip-header">
+      <span class="strip-star">★</span>
+      <span class="strip-label">PAST</span>
+      <span class="strip-count">
+        {similar.length > 0 ? similar.length : SYNTHETIC_STRIP.length} similar
+      </span>
+      {#if similar.length > 0}
+        <span class="strip-stats">
+          {stripStats.wins}W {stripStats.losses}L
+          avg win {stripStats.avgWin >= 0 ? '+' : ''}{stripStats.avgWin.toFixed(1)}%
+        </span>
+      {/if}
+      <span class="strip-hint">click →</span>
     </div>
 
-    {#if expandedSample !== null}
-      {@const s = pastSamples[expandedSample]}
-      {@const color = s.pnl >= 0 ? 'var(--pos)' : 'var(--neg)'}
-      <div class="expanded-sample" style:border-color="{color}44">
-        <div class="exp-top">
-          <span class="exp-sym">{s.sym}</span>
-          <span class="exp-when">{s.when}</span>
-          <span class="exp-meta">sim {s.sim}%</span>
-          <span class="exp-meta">{s.bars} bars</span>
-          <span class="spacer"></span>
-          <span class="exp-pnl" style:color={color}>{s.pnl >= 0 ? '+' : ''}{s.pnl.toFixed(1)}%</span>
-          <button class="exp-close" onclick={() => expandedSample = null}>×</button>
-        </div>
-        <div class="exp-chart">
-          <svg viewBox="0 0 360 100" preserveAspectRatio="none" style="width:100%;height:100%;display:block;">
-            <path d="M0,70 L20,65 L40,58 L60,72 L80,60 L100,45 L120,40 L140,35 L160,30 L180,28 L200,25 L220,22 L240,20 L260,18 L280,15 L300,12 L320,10 L340,8 L360,6 L360,100 L0,100 Z"
-              fill={color} opacity="0.06"/>
-            <path d="M0,70 L20,65 L40,58 L60,72 L80,60 L100,45 L120,40 L140,35 L160,30 L180,28 L200,25 L220,22 L240,20 L260,18 L280,15 L300,12 L320,10 L340,8 L360,6"
-              fill="none" stroke="var(--g6)" stroke-width="1.5"/>
-            <line x1="100" y1="0" x2="100" y2="100" stroke={color} stroke-width="0.5" stroke-dasharray="3 2" opacity="0.5"/>
+    <!-- Horizontal scroll pills -->
+    <div class="strip-scroll">
+      {#if similar.length > 0}
+        {#each similar as rec}
+          {@const pnl = outcomePct(rec)}
+          {@const ot = outcomeTone(rec)}
+          <button
+            class="strip-pill"
+            data-tone={ot}
+            class:expanded={expandedId === rec.id}
+            onclick={() => { expandedId = expandedId === rec.id ? null : rec.id; }}
+          >
+            <span class="pill-sym">{sym(rec.symbol)}</span>
+            <span class="pill-pnl" data-tone={ot}>
+              {pnl != null ? `${pnl >= 0 ? '+' : ''}${pnl.toFixed(1)}%` : '—'}
+            </span>
+          </button>
+        {/each}
+      {:else}
+        {#each SYNTHETIC_STRIP as s}
+          <div class="strip-pill" data-tone={s.tone}>
+            <span class="pill-sym">{s.sym}</span>
+            <span class="pill-pnl" data-tone={s.tone}>
+              {s.pnl >= 0 ? '+' : ''}{s.pnl.toFixed(1)}%
+            </span>
+          </div>
+        {/each}
+      {/if}
+    </div>
+
+    <!-- Expanded sample overlay -->
+    {#if expandedId != null}
+      {@const rec = similar.find(r => r.id === expandedId)}
+      {#if rec}
+        {@const ot = outcomeTone(rec)}
+        {@const tone = cardTone(rec)}
+        <div class="expanded-sample">
+          <div class="exp-top">
+            <strong class="exp-sym">{sym(rec.symbol)}</strong>
+            <span class="exp-tf">{rec.timeframe.toUpperCase()}</span>
+            <span class="exp-verdict v-{rec.decision?.verdict ?? 'neutral'}">
+              {(rec.decision?.verdict ?? '—').toUpperCase()}
+            </span>
+            <span class="exp-pnl" data-tone={ot}>{outcomePctStr(rec)}</span>
+            <button class="exp-close" onclick={() => { expandedId = null; }}>✕</button>
+          </div>
+          <!-- Mini chart in expanded view -->
+          <svg class="exp-chart" viewBox="0 0 180 60" preserveAspectRatio="none">
+            <rect x={NOW_X - 32} y="0" width="64" height="60"
+              fill={tone === 'pos' ? 'rgba(173,202,124,0.09)' : 'rgba(247,242,234,0.04)'}
+            />
+            <polyline
+              points={chartPolyline}
+              fill="none"
+              stroke={tone === 'pos' ? 'var(--pos, #adca7c)' : tone === 'amb' ? 'var(--amb, #e9c167)' : 'var(--g6, #6b7280)'}
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx={NOW_X} cy="30" r="3"
+              fill={tone === 'pos' ? 'var(--pos, #adca7c)' : 'var(--g5, #9ca3af)'}
+            />
           </svg>
+          {#if rec.note}
+            <p class="exp-note">{rec.note}</p>
+          {/if}
+          <div class="exp-actions">
+            <button class="exp-open" onclick={() => { onOpenCapture?.(rec); expandedId = null; }}>
+              Open full →
+            </button>
+          </div>
         </div>
-        <div class="exp-note">
-          이 케이스는 <code>real_dump 후 번지대 {Math.round(s.bars / 2)}h</code>,
-          OI +{(Math.random() * 12 + 10).toFixed(1)}%, accum {s.bars} bars.
-          Entry에서 {s.pnl > 0 ? '목표 도달' : 'STOP 히트'}.
-        </div>
-      </div>
+      {/if}
     {/if}
   </div>
 </div>
 
 <style>
-  .scan {
-    flex: 1;
+  .scan-grid {
     display: flex;
     flex-direction: column;
+    height: 100%;
     min-height: 0;
-    overflow: hidden;
-    font-family: 'JetBrains Mono', monospace;
-    background: var(--g1);
+    background: var(--sc-bg-0, #0b0e14);
+    font-family: var(--sc-font-mono, monospace);
+    color: var(--sc-text-0, #f7f2ea);
   }
 
-  .header {
-    padding: 7px 12px;
-    border-bottom: 0.5px solid var(--g3);
+  /* Header */
+  .header-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    background: var(--g0);
+    gap: 6px;
+    padding: 7px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
     flex-shrink: 0;
   }
-  .step { font-size: 7px; color: #7aa2e0; letter-spacing: 0.22em; }
-  .hdiv { width: 1px; height: 12px; background: var(--g3); }
-  .count { font-size: 13px; color: var(--g9); font-weight: 600; }
-  .spacer { flex: 1; }
-  .meta { font-size: 9px; color: var(--g6); letter-spacing: 0.06em; }
-  .sort-label { font-size: 9px; color: var(--g5); letter-spacing: 0.14em; }
-  .sort-val {
+  .step {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: rgba(247,242,234,0.38);
+  }
+  .sep {
+    font-size: 9px;
+    color: rgba(247,242,234,0.22);
+  }
+  .title {
     font-size: 10px;
-    color: var(--g8);
-    font-weight: 500;
-    padding: 3px 8px;
-    background: var(--g2);
-    border-radius: 3px;
-  }
-
-  /* View toggle */
-  .view-toggle {
-    display: flex;
-    gap: 1px;
-    background: var(--g2);
-    border-radius: 3px;
-    padding: 2px;
-  }
-  .vt-btn {
-    padding: 3px 9px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    background: transparent;
-    color: var(--g6);
-    border: none;
-    border-radius: 2px;
-    cursor: pointer;
+    font-weight: 700;
     letter-spacing: 0.1em;
-    font-weight: 500;
+    color: rgba(247,242,234,0.85);
   }
-  .vt-btn.active { background: var(--g0); color: var(--g9); }
+  .count {
+    font-size: 9px;
+    color: rgba(247,242,234,0.45);
+    letter-spacing: 0.06em;
+  }
+  .sort-label {
+    margin-left: auto;
+    font-size: 9px;
+    color: rgba(247,242,234,0.32);
+    letter-spacing: 0.08em;
+  }
 
-  /* Grid */
-  .grid-wrap {
+  /* Grid area */
+  .grid-area {
     flex: 1;
-    overflow: auto;
-    padding: 10px 12px;
     min-height: 0;
+    overflow-y: auto;
+    padding: 8px;
   }
-  .grid-wrap.table-mode { padding: 0; }
-  .grid {
+
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 80px;
+    font-size: 11px;
+    color: rgba(247,242,234,0.38);
+    text-align: center;
+    padding: 16px;
+  }
+
+  .wide-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 7px;
+    gap: 6px;
   }
 
-  /* Table view */
-  .tbl-head {
-    display: grid;
-    grid-template-columns: 80px 44px 1fr 60px 54px 46px;
-    gap: 10px;
-    padding: 9px 14px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    color: var(--g5);
-    letter-spacing: 0.18em;
-    border-bottom: 1px solid var(--g4);
-    position: sticky;
-    top: 0;
-    background: var(--g1);
-    font-weight: 500;
+  @media (max-width: 900px) {
+    .wide-grid { grid-template-columns: repeat(3, 1fr); }
   }
-  .tbl-row {
-    display: grid;
-    grid-template-columns: 80px 44px 1fr 60px 54px 46px;
-    gap: 10px;
-    padding: 9px 14px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    background: transparent;
-    border: none;
-    border-left: 2px solid transparent;
-    border-bottom: 1px solid var(--g3);
-    cursor: pointer;
-    text-align: left;
-    width: 100%;
-    transition: all 0.1s;
-    color: var(--g7);
+  @media (max-width: 600px) {
+    .wide-grid { grid-template-columns: repeat(2, 1fr); }
   }
-  .tbl-row:hover { background: var(--g2); }
-  .tbl-row.selected { background: var(--g2); border-left-color: var(--ac); }
-  .tbl-sym { color: var(--g9); font-weight: 500; }
-  .tbl-tf { color: var(--g6); font-size: 9px; }
-  .tbl-pat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tbl-pat-val { color: var(--g7); font-size: 9px; }
-  .tbl-r { text-align: right; }
-  .tbl-sim { color: var(--g8); }
-  .tbl-alpha { font-weight: 600; }
-  .tbl-age { color: var(--g5); font-size: 9px; }
-  .card {
-    padding: 7px 8px 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    background: var(--g0);
-    border: 0.5px solid var(--g3);
-    transition: all 0.12s;
-    min-width: 0;
-    overflow: hidden;
+
+  /* Grid card */
+  .grid-card {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
+    padding: 7px 8px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 3px;
+    cursor: pointer;
     text-align: left;
+    transition: background 0.1s, border-color 0.1s, transform 0.1s;
   }
-  .card:hover { background: var(--g2); border-color: var(--ac); }
-  .card.selected { background: var(--g2); border-color: var(--ac); }
+  .grid-card:hover {
+    background: rgba(255,255,255,0.05);
+    transform: translateY(-1px);
+  }
+  .grid-card[data-tone='pos'] { border-top: 2px solid var(--pos, #adca7c); }
+  .grid-card[data-tone='amb'] { border-top: 2px solid var(--amb, #e9c167); }
+  .grid-card[data-tone='neutral'] { border-top: 2px solid rgba(247,242,234,0.15); }
 
   .card-top {
     display: flex;
@@ -377,135 +390,229 @@
   }
   .card-sym {
     font-size: 11px;
-    color: var(--g9);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    color: rgba(247,242,234,0.95);
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .card-tf {
-    font-size: 7.5px;
-    color: var(--g6);
+    font-size: 8px;
     padding: 1px 4px;
-    background: var(--g2);
+    background: rgba(255,255,255,0.07);
     border-radius: 2px;
+    color: rgba(247,242,234,0.5);
+    flex-shrink: 0;
   }
   .card-alpha {
-    font-size: 10px;
-    color: var(--ac);
-    font-weight: 600;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+    color: rgba(247,242,234,0.5);
   }
+  .card-alpha[data-tone='pos'] { color: var(--pos, #adca7c); }
+  .card-alpha[data-tone='amb'] { color: var(--amb, #e9c167); }
 
+  /* MiniChart */
   .mini-chart {
     width: 100%;
-    height: 44px;
+    height: 38px;
     display: block;
+    border-radius: 2px;
+    overflow: hidden;
   }
 
-  .sim-row {
+  /* Sim bar + age */
+  .card-bot {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .sim-bar-wrap {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .sim-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: rgba(247,242,234,0.25);
+    transition: width 0.3s;
+  }
+  .sim-bar[data-tone='pos'] { background: var(--pos, #adca7c); opacity: 0.7; }
+  .sim-bar[data-tone='amb'] { background: var(--amb, #e9c167); opacity: 0.7; }
+  .sim-pct {
+    font-size: 8px;
+    color: rgba(247,242,234,0.45);
+    flex-shrink: 0;
+  }
+  .card-age {
+    font-size: 8px;
+    color: rgba(247,242,234,0.32);
+    flex-shrink: 0;
+  }
+
+  /* Strip area */
+  .strip-area {
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.15);
+  }
+
+  .strip-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 4px;
+  }
+  .strip-star {
+    font-size: 9px;
+    color: var(--amb, #e9c167);
+  }
+  .strip-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: rgba(247,242,234,0.6);
+  }
+  .strip-count {
+    font-size: 9px;
+    color: rgba(247,242,234,0.4);
+  }
+  .strip-stats {
+    font-size: 9px;
+    color: rgba(247,242,234,0.38);
+  }
+  .strip-hint {
+    margin-left: auto;
+    font-size: 9px;
+    color: rgba(247,242,234,0.25);
+  }
+
+  .strip-scroll {
+    display: flex;
+    gap: 5px;
+    padding: 0 10px 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .strip-scroll::-webkit-scrollbar { display: none; }
+
+  .strip-pill {
     display: flex;
     align-items: center;
     gap: 4px;
-  }
-  .sim-bar {
-    flex: 1;
-    height: 2.5px;
-    background: var(--g3);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .sim-fill { height: 100%; opacity: 0.85; border-radius: 2px; }
-  .sim-pct {
-    font-size: 8.5px;
-    color: var(--g8);
-    width: 24px;
-    text-align: right;
-  }
-  .card-age { font-size: 8.5px; color: var(--g5); font-family: 'Geist', sans-serif; }
-
-  /* Past strip */
-  .past-strip {
-    border-top: 0.5px solid var(--g3);
-    background: var(--g0);
-    padding: 9px 12px;
-    flex-shrink: 0;
-  }
-  .past-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 7px;
-    font-size: 8px;
-    color: var(--amb);
-    letter-spacing: 0.22em;
-    font-weight: 500;
-  }
-  .past-div { color: var(--g4); }
-  .past-wins { color: var(--pos); }
-  .past-losses { color: var(--neg); }
-  .past-avg { color: var(--g6); }
-  .past-hint { color: var(--g5); letter-spacing: 0.04em; text-transform: none; font-family: 'Geist', sans-serif; }
-
-  .past-tiles {
-    display: flex;
-    gap: 5px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-  .past-tile {
-    padding: 6px 9px;
-    border-radius: 3px;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
     cursor: pointer;
-    min-width: 62px;
     flex-shrink: 0;
-    background: var(--g1);
-    border: 0.5px solid var(--g3);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    text-align: left;
-    transition: all 0.12s;
+    transition: background 0.1s, border-color 0.1s;
+    font-family: inherit;
   }
-  .past-tile.expanded { background: var(--g2); border-color: var(--pc); }
-  .pt-sym { font-size: 10px; color: var(--g9); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
-  .pt-pnl { font-size: 9.5px; color: var(--pc); font-weight: 600; font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
-  .pt-sim { font-size: 8px; color: var(--g5); font-family: 'JetBrains Mono', monospace; }
+  .strip-pill:hover,
+  .strip-pill.expanded {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.18);
+  }
+  .strip-pill[data-tone='win'] { border-color: rgba(173,202,124,0.3); }
+  .strip-pill[data-tone='loss'] { border-color: rgba(207,127,143,0.3); }
+
+  .pill-sym {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(247,242,234,0.78);
+  }
+  .pill-pnl {
+    font-size: 9px;
+    color: rgba(247,242,234,0.5);
+  }
+  .pill-pnl[data-tone='win'] { color: var(--pos, #adca7c); }
+  .pill-pnl[data-tone='loss'] { color: var(--neg, #cf7f8f); }
 
   /* Expanded sample */
   .expanded-sample {
-    margin-top: 9px;
-    padding: 11px;
-    background: var(--g1);
-    border: 0.5px solid;
+    margin: 0 8px 8px;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 4px;
   }
   .exp-top {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    font-family: 'JetBrains Mono', monospace;
+    gap: 7px;
+    margin-bottom: 6px;
   }
-  .exp-sym { font-size: 11px; color: var(--g9); font-weight: 600; }
-  .exp-when, .exp-meta { font-size: 9px; color: var(--g6); }
-  .exp-pnl { font-size: 13px; font-weight: 600; }
-  .exp-close { color: var(--g5); font-size: 14px; padding: 0 5px; background: none; border: none; cursor: pointer; }
+  .exp-sym {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(247,242,234,0.95);
+  }
+  .exp-tf {
+    font-size: 8px;
+    padding: 1px 5px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 2px;
+    color: rgba(247,242,234,0.5);
+  }
+  .exp-verdict {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: rgba(247,242,234,0.6);
+  }
+  .exp-verdict.v-bullish { color: var(--pos, #adca7c); }
+  .exp-verdict.v-bearish { color: var(--neg, #cf7f8f); }
+  .exp-pnl {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(247,242,234,0.6);
+  }
+  .exp-pnl[data-tone='win'] { color: var(--pos, #adca7c); }
+  .exp-pnl[data-tone='loss'] { color: var(--neg, #cf7f8f); }
+  .exp-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: rgba(247,242,234,0.4);
+    cursor: pointer;
+    font-size: 10px;
+    padding: 2px 4px;
+    font-family: inherit;
+  }
+  .exp-close:hover { color: rgba(247,242,234,0.8); }
 
   .exp-chart {
-    height: 80px;
-    background: var(--g0);
-    border-radius: 2px;
-    overflow: hidden;
+    width: 100%;
+    height: 50px;
+    display: block;
+    margin-bottom: 6px;
   }
   .exp-note {
-    margin-top: 8px;
     font-size: 10px;
-    color: var(--g6);
-    line-height: 1.6;
-    font-family: 'Geist', sans-serif;
+    color: rgba(247,242,234,0.5);
+    margin: 0 0 6px;
+    font-style: italic;
   }
-  .exp-note code {
-    color: var(--g9);
-    font-family: 'JetBrains Mono', monospace;
+  .exp-actions { display: flex; gap: 6px; }
+  .exp-open {
+    font-family: inherit;
+    font-size: 9px;
+    padding: 3px 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 2px;
+    color: rgba(247,242,234,0.75);
+    cursor: pointer;
+    letter-spacing: 0.06em;
+  }
+  .exp-open:hover {
+    background: rgba(255,255,255,0.1);
+    color: rgba(247,242,234,0.95);
   }
 </style>

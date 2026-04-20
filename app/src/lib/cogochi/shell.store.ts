@@ -9,6 +9,10 @@ export interface TabState {
   scanView: 'grid' | 'list';
   expandedSample: string | null;
   chat: Array<{ role: 'user' | 'assistant'; text: string }>;
+  peekOpen: boolean;
+  peekHeight: number;
+  drawerTab: 'analyze' | 'scan' | 'judge';
+  layoutMode: 'A' | 'B' | 'C' | 'D';
 }
 
 export interface Tab {
@@ -44,6 +48,10 @@ const FRESH_TAB_STATE = (): TabState => ({
   scanView: 'grid',
   expandedSample: null,
   chat: [],
+  peekOpen: false,
+  peekHeight: 56,
+  drawerTab: 'analyze',
+  layoutMode: 'D',
 });
 
 const makeDefault = (): ShellState => ({
@@ -54,8 +62,8 @@ const makeDefault = (): ShellState => ({
   sidebarVisible: true,
   aiVisible: true,
   activeSection: 'library',
-  sidebarWidth: 240,
-  aiWidth: 320,
+  sidebarWidth: 220,
+  aiWidth: 280,
   canvasSplitY: 50,
   canvasSplitX: 58,
   flywheelTurns: 0,
@@ -63,7 +71,7 @@ const makeDefault = (): ShellState => ({
 });
 
 function createShellStore() {
-  const stored = typeof window !== 'undefined' ? localStorage.getItem('cogochi_shell_v3') : null;
+  const stored = typeof window !== 'undefined' ? localStorage.getItem('cogochi_shell_v4') : null;
   let initial: ShellState;
 
   try {
@@ -79,7 +87,7 @@ function createShellStore() {
   // Persist to localStorage
   subscribe(state => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cogochi_shell_v3', JSON.stringify(state));
+      localStorage.setItem('cogochi_shell_v4', JSON.stringify(state));
     }
   });
 
@@ -199,7 +207,7 @@ function createShellStore() {
     reset: () => {
       set(makeDefault());
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('cogochi_shell_v3');
+        localStorage.removeItem('cogochi_shell_v4');
       }
     },
   };

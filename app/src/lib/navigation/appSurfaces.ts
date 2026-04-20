@@ -5,7 +5,7 @@ import {
   buildDashboardLink,
 } from '$lib/utils/deepLinks';
 
-export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'scanner' | 'lab' | 'passport' | 'patterns' | 'agent' | 'market';
+export type AppSurfaceId = 'home' | 'dashboard' | 'terminal' | 'scanner' | 'lab' | 'passport' | 'patterns' | 'agent' | 'market' | 'analyze';
 
 export interface AppSurface {
   id: AppSurfaceId;
@@ -92,6 +92,16 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     href: '/patterns',
     activePatterns: ['/patterns'],
   },
+  analyze: {
+    id: 'analyze',
+    label: 'Analyze',
+    shortLabel: 'ANL',
+    mobileIcon: '⟁',
+    description: 'multi-LLM signal analyzer — paste analysis text, compare models',
+    homeDetail: 'AI 신호 분석',
+    href: '/analyze',
+    activePatterns: ['/analyze'],
+  },
   agent: {
     id: 'agent',
     label: 'Agent',
@@ -118,6 +128,7 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
 export const DESKTOP_NAV_SURFACES = [
   SURFACE_MAP.terminal,
   SURFACE_MAP.patterns,
+  SURFACE_MAP.analyze,
   SURFACE_MAP.lab,
   SURFACE_MAP.dashboard,
 ] as const;

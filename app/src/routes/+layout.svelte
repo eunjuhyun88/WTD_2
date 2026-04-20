@@ -91,8 +91,8 @@
 
 <!-- Global overlays -->
 <WalletModal />
-<NotificationTray />
-<ToastStack />
+{#if !$isTerminal}<NotificationTray />{/if}
+{#if !$isTerminal}<ToastStack />{/if}
 <CookieConsent />
 
 <style>
@@ -115,7 +115,7 @@
     padding-left: 0;
   }
 
-  /* ── Terminal: rail on left, no topbar, full height ── */
+  /* ── Terminal: no rail, no topbar, full height ── */
   #app.terminal-mode {
     height: 100dvh;
     overflow: hidden;
