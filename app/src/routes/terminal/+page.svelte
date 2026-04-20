@@ -33,6 +33,7 @@
     fetchNewsData,
     fetchPatternPhasesData,
     fetchScannerAlerts,
+    fetchAlphaWorldModel,
     fetchLiveSignals,
     type LiveSignal,
     fetchTerminalAnalysisBundle,
@@ -135,6 +136,10 @@
   let flowBias = $state<'LONG' | 'SHORT' | 'NEUTRAL'>('NEUTRAL');
   let trendingData = $state<any>(null);
   let scannerAlerts = $state<any[]>([]);
+  let alphaMarkers = $state<Array<{ timestamp: number; phase: string; label: string; color?: string }>>([]);
+  let alphaUniverse = $state<'ALL' | 'ALPHA' | 'SHORT'>('ALL');
+  let alphaWorldData = $state<{ phases: any[]; phase_counts: Record<string, number>; n_symbols: number } | null>(null);
+  let alphaWorldLoading = $state(false);
   let savedAlertRules = $state<TerminalAlertRule[]>([]);
   let persistedWatchlist = $state<TerminalWatchlistItem[]>([]);
   let persistedPins = $state<TerminalPin[]>([]);
@@ -945,6 +950,27 @@
       } else if (action === 'remove_indicator' && typeof payload.indicator === 'string') {
         const key = normalizeIndicatorKey(payload.indicator);
         if (key) removeChartIndicator(key);
+      } else if (action === 'add_phase_marker') {
+        // Alpha Universe phase transition marker
+        const marker = {
+          timestamp: (payload.timestamp as number) ?? Math.floor(Date.now() / 1000),
+          phase: (payload.phase as string) ?? '',
+          label: (payload.label as string) ?? (payload.phase as string) ?? '',
+          color: (payload.color as string) ?? '#a78bfa',
+        };
+        alphaMarkers = [...alphaMarkers.filter(m => m.phase !== marker.phase), marker];
+      } else if (action === 'clear_alpha_markers') {
+        alphaMarkers = [];
+      } else if (action === 'add_level_line') {
+        // Alpha entry/target/stop levels from find_tokens or token detail
+        const kind = (payload.kind as string) ?? 'entry';
+        const price = payload.price as number | undefined;
+        if (price != null && Number.isFinite(price)) {
+          chartLevels = {
+            ...chartLevels,
+            [kind]: price,
+          };
+        }
       }
     }
   }
@@ -1519,6 +1545,7 @@
       symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
       tf={symbolToTF(gTf)}
       verdictLevels={chartLevels as Record<string, number>}
+      {alphaMarkers}
       initialData={activeChartPayload}
       depthSnapshot={readPathDepth}
       liqSnapshot={readPathLiq}
@@ -1553,13 +1580,59 @@
         />
       {/snippet}
       {#snippet scan()}
-        <ScanGrid
-          alerts={scannerAlerts}
-          similar={peekSimilar}
-          activeSymbol={activeSymbol || pairToSymbol(gPair)}
-          loadingSimilar={peekLoadingSimilar}
-          onOpenCapture={handlePeekOpenCapture}
-        />
+        <div class="scan-universe-tabs">
+          {#each (['ALL', 'ALPHA', 'SHORT'] as const) as u}
+            <button
+              class="scan-tab {alphaUniverse === u ? 'scan-tab--active' : ''}"
+              onclick={async () => {
+                alphaUniverse = u;
+                if (u === 'ALPHA' && !alphaWorldData && !alphaWorldLoading) {
+                  alphaWorldLoading = true;
+                  try { alphaWorldData = await fetchAlphaWorldModel(); }
+                  finally { alphaWorldLoading = false; }
+                }
+              }}
+            >{u === 'ALPHA' ? 'ALPHA ▲' : u === 'SHORT' ? 'SHORT ↓' : 'ALL'}</button>
+          {/each}
+        </div>
+        {#if alphaUniverse === 'ALPHA'}
+          <div class="alpha-world-pane">
+            {#if alphaWorldLoading}
+              <div class="alpha-loading">Loading Alpha Universe…</div>
+            {:else if alphaWorldData}
+              {#each alphaWorldData.phases.filter(p => p.phase !== 'IDLE') as row}
+                <button
+                  class="alpha-row"
+                  onclick={() => selectAsset(row.symbol)}
+                >
+                  <span class="alpha-sym">{row.symbol.replace('USDT','')}</span>
+                  <span class="alpha-grade grade-{row.grade}">{row.grade}</span>
+                  <span class="alpha-phase phase-{row.phase}">{row.phase}</span>
+                  <span class="alpha-bars">{row.bars_in_phase}b</span>
+                </button>
+              {/each}
+              {#if alphaWorldData.phases.filter(p => p.phase !== 'IDLE').length === 0}
+                <div class="alpha-empty">No active Alpha tokens — next COLD scan in up to 4h</div>
+              {/if}
+            {:else}
+              <button class="alpha-fetch-btn" onclick={async () => {
+                alphaWorldLoading = true;
+                try { alphaWorldData = await fetchAlphaWorldModel(); }
+                finally { alphaWorldLoading = false; }
+              }}>Load Alpha Universe</button>
+            {/if}
+          </div>
+        {:else}
+          <ScanGrid
+            alerts={alphaUniverse === 'SHORT'
+              ? scannerAlerts.filter((a: any) => (a.blocks_triggered ?? []).some((b: string) => b.includes('short') || b.includes('bear')))
+              : scannerAlerts}
+            similar={peekSimilar}
+            activeSymbol={activeSymbol || pairToSymbol(gPair)}
+            loadingSimilar={peekLoadingSimilar}
+            onOpenCapture={handlePeekOpenCapture}
+          />
+        {/if}
       {/snippet}
       {#snippet judge()}
         <JudgePanel
@@ -1643,6 +1716,70 @@
 />
 
 <style>
+  /* ── Alpha Universe scan tab ──────────────────────────────── */
+  .scan-universe-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px 8px 0;
+  }
+  .scan-tab {
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid var(--g3, #2a2e3a);
+    background: transparent;
+    color: var(--sc-text-2, #8892a0);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+  }
+  .scan-tab--active {
+    background: var(--g3, #2a2e3a);
+    color: var(--sc-text-0, #f7f2ea);
+    border-color: var(--g4, #373d4a);
+  }
+  .alpha-world-pane {
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .alpha-row {
+    display: grid;
+    grid-template-columns: 72px 20px 1fr 36px;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: var(--g2, #161a22);
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+  }
+  .alpha-row:hover { background: var(--g3, #2a2e3a); }
+  .alpha-sym { font-size: 11px; font-weight: 700; color: var(--sc-text-0, #f7f2ea); }
+  .alpha-grade { font-size: 9px; font-weight: 800; }
+  .grade-A { color: #4ade80; }
+  .grade-B { color: #facc15; }
+  .alpha-phase { font-size: 9px; font-weight: 600; color: var(--sc-text-2, #8892a0); }
+  .phase-SQUEEZE_TRIGGER { color: #f87171; }
+  .phase-ACCUMULATION_ZONE { color: #60a5fa; }
+  .alpha-bars { font-size: 9px; color: var(--sc-text-3, #555e6e); text-align: right; }
+  .alpha-loading, .alpha-empty { font-size: 11px; color: var(--sc-text-3, #555e6e); padding: 12px 6px; }
+  .alpha-fetch-btn {
+    margin: 8px auto;
+    padding: 6px 14px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid var(--g3, #2a2e3a);
+    background: var(--g2, #161a22);
+    color: var(--sc-text-1, #c4cad6);
+    cursor: pointer;
+  }
+
   .terminal-page-peek {
     width: min(100%, calc(100% - 8px));
     height: calc(100dvh - 8px);

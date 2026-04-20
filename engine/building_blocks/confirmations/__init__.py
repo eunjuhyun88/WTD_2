@@ -31,6 +31,9 @@ from building_blocks.confirmations.volume_dryup import volume_dryup
 from building_blocks.confirmations.spot_futures_cvd_divergence import spot_futures_cvd_divergence
 from building_blocks.confirmations.dex_buy_pressure import dex_buy_pressure
 from building_blocks.confirmations.holder_concentration_ok import holder_concentration_ok
+from building_blocks.confirmations.vwap_break import vwap_break
+from building_blocks.confirmations.relative_strength_btc import relative_strength_btc
+from building_blocks.confirmations.oi_acceleration import oi_acceleration
 
 __all__ = [
     "absorption_signal",
@@ -60,4 +63,7 @@ __all__ = [
     "spot_futures_cvd_divergence",
     "dex_buy_pressure",
     "holder_concentration_ok",
+    "vwap_break",
+    "relative_strength_btc",
+    "oi_acceleration",
 ]
