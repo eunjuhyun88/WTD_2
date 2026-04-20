@@ -94,7 +94,7 @@
       </button>
 
       <!-- App mark -->
-      <p class="app-mark">COGOCHI</p>
+      <p class="app-mark">COGOTCHI</p>
 
       <!-- Steps -->
       <ol class="steps" aria-label="시작 안내 단계">
