@@ -191,7 +191,7 @@
     <!-- Empty canvas — shown until AI panel "RUN →" or SELECT RANGE -->
     <div class="empty-canvas">
       <div class="ec-inner">
-        <div class="ec-logo mono">COGOCHI</div>
+        <div class="ec-logo mono">COGOTCHI</div>
         <div class="ec-tagline">Core Loop · 트레이딩 사고의 운영체제</div>
         <div class="ec-divider"></div>
         <div class="ec-cta-group">

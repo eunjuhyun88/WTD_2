@@ -40,7 +40,7 @@
 
 <header class="app-topbar">
   <div class="topbar-left">
-    <a class="topbar-logo" href="/" aria-label="Cogochi Home">COGOCHI</a>
+    <a class="topbar-logo" href="/" aria-label="Cogotchi Home">COGOTCHI</a>
     {#if pageLabel}
       <span class="topbar-divider" aria-hidden="true">/</span>
       <span class="topbar-page">{pageLabel}</span>

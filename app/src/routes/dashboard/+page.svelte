@@ -150,7 +150,7 @@
 </script>
 
 <svelte:head>
-  <title>Dashboard — Cogochi</title>
+  <title>Dashboard — Cogotchi</title>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="canonical" href={buildCanonicalHref('/dashboard')} />
 </svelte:head>
@@ -183,7 +183,7 @@
       </article>
     </div>
     <div class="topbar-actions">
-      <button class="surface-button" onclick={() => goto('/terminal')}>Open Terminal</button>
+      <button class="surface-button" onclick={() => goto('/cogochi')}>Open Terminal</button>
       <button class="surface-button-secondary" onclick={() => goto('/lab')}>Open Lab</button>
     </div>
   </header>
@@ -201,7 +201,7 @@
     {#if strategies.length === 0}
       <div class="surface-card empty-card">
         <p>아직 저장된 챌린지가 없습니다.</p>
-        <button class="surface-button" onclick={() => goto('/terminal')}>Terminal에서 시작</button>
+        <button class="surface-button" onclick={() => goto('/cogochi')}>Terminal에서 시작</button>
       </div>
     {:else}
       <div class="challenge-grid">
@@ -392,8 +392,8 @@
 
 <style>
   .dashboard-workbar {
-    padding: 12px 16px;
-    gap: 12px;
+    padding: 16px 20px;
+    gap: 16px;
     border-radius: 8px;
     align-items: center;
   }
@@ -453,13 +453,13 @@
   .challenge-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    gap: 16px;
   }
 
   .challenge-card,
   .watcher-card {
     display: grid;
-    gap: 14px;
+    gap: 16px;
     text-align: left;
     cursor: pointer;
     transition: transform var(--sc-duration-fast), border-color var(--sc-duration-fast);
@@ -468,7 +468,7 @@
   .challenge-card:hover,
   .watcher-card:hover {
     transform: translateY(-2px);
-    border-color: var(--home-ref-border-strong);
+    border-color: rgba(249, 216, 194, 0.2);
   }
 
   .challenge-top,

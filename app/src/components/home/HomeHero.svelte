@@ -42,7 +42,7 @@
       </div>
 
       <div class="headline-block">
-        <span class="brand-name">COGOCHI</span>
+        <span class="brand-name">COGOTCHI</span>
         <h1 class:visible={mounted}>Markets move on. Your judgment should stay.</h1>
       </div>
 
@@ -155,7 +155,7 @@
   }
 
   .story-panel::after {
-    content: 'COGOCHI';
+    content: 'COGOTCHI';
     position: absolute;
     left: 55%;
     top: clamp(116px, 13vw, 166px);

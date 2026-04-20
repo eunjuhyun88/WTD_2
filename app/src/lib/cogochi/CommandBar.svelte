@@ -20,7 +20,7 @@
 </script>
 
 <div class="command-bar">
-  <span class="logo">COGOCHI</span>
+  <span class="logo">COGOTCHI</span>
   <span class="divider" />
 
   <div class="session-chip">

@@ -31,7 +31,7 @@
   <!-- Tier 1: Navigation -->
   <div class="footer-nav">
     <div class="footer-brand">
-      <span class="brand-mark">COGOCHI</span>
+      <span class="brand-mark">COGOTCHI</span>
       <p class="brand-tagline">Your personal market memory.</p>
     </div>
 
