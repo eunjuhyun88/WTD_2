@@ -305,24 +305,35 @@
     {#if mobileView !== 'chart'}
     <div class="mobile-panel">
       {#if mobileView === 'analyze'}
-        <div class="narrative"><span class="bull">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}</div>
-        <div class="evidence-grid">
-          {#each evidenceItems as item}
-            <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
-              <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
-              <span class="ev-key">{item.k}</span>
-              <span class="ev-val">{item.v}</span>
-            </div>
-          {/each}
-        </div>
-        <div class="proposal-label" style="margin-top:8px">PROPOSAL</div>
-        {#each proposal as p}
-          <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-            <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
+        {#if chartLoading}
+          <div class="mobile-loading">
+            <div class="ml-spinner"></div>
+            <span>{symbol} {timeframe} 로딩 중…</span>
           </div>
-        {/each}
-        {#if !analyzeData}
-          <div class="mobile-analyze-hint">/ analyze 실행 시 실시간 데이터로 업데이트</div>
+        {:else}
+          <div class="narrative"><span class="bull">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}</div>
+          <div class="evidence-grid">
+            {#each evidenceItems as item}
+              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                <span class="ev-key">{item.k}</span>
+                <span class="ev-val">{item.v}</span>
+              </div>
+            {/each}
+          </div>
+          <div class="proposal-label" style="margin-top:8px">PROPOSAL</div>
+          {#if !analyzeData?.entryPlan}
+            <button class="proposal-ai-cta" onclick={() => shellStore.update(s => ({...s, aiVisible: true}))}>
+              <span class="pcta-icon">◆</span>
+              <span class="pcta-text">AI 진입 플랜 실행 →</span>
+            </button>
+          {:else}
+            {#each proposal as p}
+              <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
+              </div>
+            {/each}
+          {/if}
         {/if}
       {:else if mobileView === 'scan'}
         {#each scanCandidates as x}
@@ -339,6 +350,15 @@
           </button>
         {/each}
       {:else if mobileView === 'judge'}
+        <div class="judge-ctx">
+          <span class="jc-sym">{symbol.replace('USDT', '')}</span>
+          <span class="jc-sep">/</span>
+          <span class="jc-tf">{timeframe.toUpperCase()}</span>
+          <span class="jc-spacer"></span>
+          {#if narrativeBias}
+            <span class="jc-bias">{narrativeDir} 편향</span>
+          {/if}
+        </div>
         <div class="mp-section">
           <div class="mp-header">A · TRADE PLAN</div>
           <div class="lvl-row">
@@ -589,13 +609,21 @@
             </div>
             <div class="analyze-right">
               <div class="proposal-label">PROPOSAL</div>
-              {#each proposal as p}
-                <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-                  <span class="prop-l">{p.label}</span>
-                  <span class="prop-v">{p.val}</span>
-                  <span class="prop-h">{p.hint}</span>
+              {#if !analyzeData?.entryPlan}
+                <div class="proposal-hint">
+                  <span class="ph-icon">◆</span>
+                  <span>AI 패널에 셋업 설명 후 RUN</span>
+                  <span class="ph-arrow">→</span>
                 </div>
-              {/each}
+              {:else}
+                {#each proposal as p}
+                  <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                    <span class="prop-l">{p.label}</span>
+                    <span class="prop-v">{p.val}</span>
+                    <span class="prop-h">{p.hint}</span>
+                  </div>
+                {/each}
+              {/if}
             </div>
           </div>
         {:else if bDrawerTab === 'scan'}
@@ -2327,5 +2355,86 @@
     font-size: 8px;
     color: var(--g5);
     letter-spacing: 0.14em;
+  }
+
+  /* ── Mobile loading ── */
+  .mobile-loading {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--g5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .ml-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--g3);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Proposal AI CTA (mobile) ── */
+  .proposal-ai-cta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--g2);
+    border: 0.5px dashed var(--brand-d);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--brand);
+  }
+  .proposal-ai-cta:active { background: var(--brand-dd); }
+  .pcta-icon { font-size: 11px; flex-shrink: 0; }
+  .pcta-text { flex: 1; }
+
+  /* ── Proposal hint (desktop) ── */
+  .proposal-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    background: var(--g2);
+    border: 0.5px dashed var(--g4);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g6);
+    margin-top: 4px;
+  }
+  .ph-icon { color: var(--brand); font-size: 10px; }
+  .ph-arrow { color: var(--brand); margin-left: auto; }
+
+  /* ── JUDGE context header ── */
+  .judge-ctx {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0 10px;
+    border-bottom: 0.5px solid var(--g3);
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .jc-sym { font-size: 14px; font-weight: 600; color: var(--g9); }
+  .jc-sep { font-size: 10px; color: var(--g4); }
+  .jc-tf { font-size: 10px; color: var(--g6); letter-spacing: 0.06em; }
+  .jc-spacer { flex: 1; }
+  .jc-bias {
+    font-size: 9px;
+    color: var(--brand);
+    background: var(--brand-dd);
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
   }
 </style>
