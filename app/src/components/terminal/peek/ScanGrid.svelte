@@ -53,6 +53,7 @@
 
   let expandedSample = $state<number | null>(null);
   let selectedId = $state<string | null>(null);
+  let viewMode = $state<'grid' | 'table'>('grid');
 
   // Static demo candidates (will be API-driven)
   const candidates: CandidateItem[] = [
@@ -111,50 +112,72 @@
     <span class="meta">matching hypothesis · 300 sym · 14s</span>
     <span class="sort-label">SORT</span>
     <span class="sort-val">similarity ▾</span>
+    <div class="view-toggle">
+      {#each ['grid', 'table'] as v}
+        <button class="vt-btn" class:active={viewMode === v} onclick={() => viewMode = v as 'grid' | 'table'}>{v.toUpperCase()}</button>
+      {/each}
+    </div>
   </div>
 
-  <!-- Candidate grid -->
-  <div class="grid-wrap">
-    <div class="grid">
+  <!-- Candidate grid / table -->
+  <div class="grid-wrap" class:table-mode={viewMode === 'table'}>
+    {#if viewMode === 'grid'}
+      <div class="grid">
+        {#each candidates as c}
+          {@const ac = alphaColor(c.alpha)}
+          <button
+            class="card"
+            class:selected={selectedId === c.id}
+            style:--ac={ac}
+            onclick={() => {
+              selectedId = c.id;
+              setActivePair(c.symbol.replace(/USDT$/, '') + '/USDT');
+            }}
+          >
+            <div class="card-top">
+              <span class="card-sym">{c.symbol.replace('USDT', '')}</span>
+              <span class="card-tf">{c.tf}</span>
+              <span class="spacer"></span>
+              <span class="card-alpha">α{c.alpha}</span>
+            </div>
+            <svg viewBox="0 0 180 68" preserveAspectRatio="none" class="mini-chart">
+              <rect x={nowX(c.phase) - 8} y={0} width={16} height={68} fill={ac} opacity="0.08"/>
+              <path d={`${miniPath(c.phase)} L180,68 L0,68 Z`} fill={ac} opacity="0.05"/>
+              <path d={miniPath(c.phase)} fill="none" stroke="var(--g6)" stroke-width="1"/>
+              <line x1={nowX(c.phase)} y1={0} x2={nowX(c.phase)} y2={68} stroke={ac} stroke-width="0.5" stroke-dasharray="2 2" opacity="0.7"/>
+              <circle cx={nowX(c.phase)} cy="38" r="2.5" fill={ac}/>
+            </svg>
+            <div class="sim-row">
+              <div class="sim-bar"><div class="sim-fill" style:width="{c.sim * 100}%" style:background={ac}></div></div>
+              <span class="sim-pct">{Math.round(c.sim * 100)}%</span>
+            </div>
+            <div class="card-age">{c.age}</div>
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <!-- Table view -->
+      <div class="tbl-head">
+        <span>SYM</span><span>TF</span><span class="tbl-pat">PATTERN</span>
+        <span class="tbl-r">SIM</span><span class="tbl-r">α</span><span class="tbl-r">AGE</span>
+      </div>
       {#each candidates as c}
         {@const ac = alphaColor(c.alpha)}
         <button
-          class="card"
+          class="tbl-row"
           class:selected={selectedId === c.id}
           style:--ac={ac}
-          onclick={() => {
-            selectedId = c.id;
-            setActivePair(c.symbol.replace(/USDT$/, '') + '/USDT');
-          }}
+          onclick={() => { selectedId = c.id; setActivePair(c.symbol.replace(/USDT$/, '') + '/USDT'); }}
         >
-          <div class="card-top">
-            <span class="card-sym">{c.symbol.replace('USDT', '')}</span>
-            <span class="card-tf">{c.tf}</span>
-            <span class="spacer"></span>
-            <span class="card-alpha">α{c.alpha}</span>
-          </div>
-
-          <!-- Mini chart SVG -->
-          <svg viewBox="0 0 180 68" preserveAspectRatio="none" class="mini-chart">
-            <rect x={nowX(c.phase) - 8} y={0} width={16} height={68} fill={ac} opacity="0.08"/>
-            <path d={`${miniPath(c.phase)} L180,68 L0,68 Z`} fill={ac} opacity="0.05"/>
-            <path d={miniPath(c.phase)} fill="none" stroke="var(--g6)" stroke-width="1"/>
-            <line x1={nowX(c.phase)} y1={0} x2={nowX(c.phase)} y2={68} stroke={ac} stroke-width="0.5" stroke-dasharray="2 2" opacity="0.7"/>
-            <circle cx={nowX(c.phase)} cy="38" r="2.5" fill={ac}/>
-          </svg>
-
-          <!-- Similarity bar -->
-          <div class="sim-row">
-            <div class="sim-bar">
-              <div class="sim-fill" style:width="{c.sim * 100}%" style:background={ac}></div>
-            </div>
-            <span class="sim-pct">{Math.round(c.sim * 100)}%</span>
-          </div>
-
-          <div class="card-age">{c.age}</div>
+          <span class="tbl-sym">{c.symbol.replace('USDT', '')}</span>
+          <span class="tbl-tf">{c.tf}</span>
+          <span class="tbl-pat tbl-pat-val">{c.pattern}</span>
+          <span class="tbl-r tbl-sim">{Math.round(c.sim * 100)}%</span>
+          <span class="tbl-r tbl-alpha" style:color={ac}>α{c.alpha}</span>
+          <span class="tbl-r tbl-age">{c.age}</span>
         </button>
       {/each}
-    </div>
+    {/if}
   </div>
 
   <!-- Past samples strip -->
@@ -251,6 +274,28 @@
     border-radius: 3px;
   }
 
+  /* View toggle */
+  .view-toggle {
+    display: flex;
+    gap: 1px;
+    background: var(--g2);
+    border-radius: 3px;
+    padding: 2px;
+  }
+  .vt-btn {
+    padding: 3px 9px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    background: transparent;
+    color: var(--g6);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .vt-btn.active { background: var(--g0); color: var(--g9); }
+
   /* Grid */
   .grid-wrap {
     flex: 1;
@@ -258,11 +303,56 @@
     padding: 10px 12px;
     min-height: 0;
   }
+  .grid-wrap.table-mode { padding: 0; }
   .grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 7px;
   }
+
+  /* Table view */
+  .tbl-head {
+    display: grid;
+    grid-template-columns: 80px 44px 1fr 60px 54px 46px;
+    gap: 10px;
+    padding: 9px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g5);
+    letter-spacing: 0.18em;
+    border-bottom: 1px solid var(--g4);
+    position: sticky;
+    top: 0;
+    background: var(--g1);
+    font-weight: 500;
+  }
+  .tbl-row {
+    display: grid;
+    grid-template-columns: 80px 44px 1fr 60px 54px 46px;
+    gap: 10px;
+    padding: 9px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: transparent;
+    border: none;
+    border-left: 2px solid transparent;
+    border-bottom: 1px solid var(--g3);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: all 0.1s;
+    color: var(--g7);
+  }
+  .tbl-row:hover { background: var(--g2); }
+  .tbl-row.selected { background: var(--g2); border-left-color: var(--ac); }
+  .tbl-sym { color: var(--g9); font-weight: 500; }
+  .tbl-tf { color: var(--g6); font-size: 9px; }
+  .tbl-pat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tbl-pat-val { color: var(--g7); font-size: 9px; }
+  .tbl-r { text-align: right; }
+  .tbl-sim { color: var(--g8); }
+  .tbl-alpha { font-weight: 600; }
+  .tbl-age { color: var(--g5); font-size: 9px; }
   .card {
     padding: 7px 8px 6px;
     border-radius: 4px;
