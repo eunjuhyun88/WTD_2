@@ -14,6 +14,7 @@
   import { tfMinutes } from '$lib/chart/mtfAlign';
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
+  import SaveStrip from './SaveStrip.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
   import IndicatorPaneStack from './IndicatorPaneStack.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
@@ -1451,7 +1452,7 @@
       <button onclick={loadData}>Retry</button>
     </div>
   {:else}
-    <div class="chart-stack" bind:this={chartStackEl}>
+    <div class="chart-stack" class:range-mode={$chartSaveMode.active} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
       <div class="layer2-topright">
@@ -1497,6 +1498,12 @@
       {/if}
     </IndicatorPaneStack>
     </div>
+    <SaveStrip
+      {symbol}
+      {tf}
+      ohlcvBars={chartData?.klines ?? []}
+      onSaved={(id) => { onCaptureSaved?.(id); }}
+    />
     {#if contextMode === 'full'}
     <details class="tv-context-strip" bind:open={contextStripOpen}>
       <summary class="tv-context-summary">
@@ -2274,6 +2281,10 @@
     overflow: hidden;
     /* Layer 2 overlay anchors to this container */
     position: relative;
+  }
+  .chart-stack.range-mode,
+  .chart-stack.range-mode * {
+    cursor: crosshair !important;
   }
   .pane-main {
     flex: 1 1 58%;
