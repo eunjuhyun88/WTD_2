@@ -1,5 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
+
+const VALID_SYMBOL = /^[A-Z0-9]{2,20}$/;
 
 /**
  * GET /api/market/oi?symbol=BTCUSDT&period=1h&limit=96
@@ -15,11 +18,17 @@ import type { RequestHandler } from './$types';
 const BINANCE_FDATA = 'https://fapi.binance.com/futures/data';
 const VALID_PERIODS = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d'];
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   const symbol = (url.searchParams.get('symbol') || 'BTCUSDT').toUpperCase();
   const period = url.searchParams.get('period') || '1h';
   const limit = Math.min(Number(url.searchParams.get('limit') || '96'), 500);
 
+  if (!VALID_SYMBOL.test(symbol)) {
+    return json({ error: 'Invalid symbol' }, { status: 400 });
+  }
   if (!VALID_PERIODS.includes(period)) {
     return json({ error: `Invalid period. Use: ${VALID_PERIODS.join(', ')}` }, { status: 400 });
   }

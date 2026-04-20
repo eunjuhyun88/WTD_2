@@ -7,6 +7,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env as privateEnv } from '$env/dynamic/private';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
 
 const BASE = 'https://api.coinalyze.net/v1';
 
@@ -23,7 +24,10 @@ const ALLOWED_ENDPOINTS = [
   'exchanges'
 ];
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   const endpoint = url.searchParams.get('endpoint');
   const apiKey = privateEnv.COINALYZE_API_KEY?.trim() ?? '';
 

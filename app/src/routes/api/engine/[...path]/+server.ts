@@ -21,9 +21,14 @@ import type { RequestHandler } from './$types';
 import { engineProxyLimiter } from '$lib/server/rateLimit';
 
 const HEAVY_ENGINE_PATHS = new Set(['score', 'deep', 'backtest', 'train', 'opportunity']);
+const BLOCKED_ENGINE_PATHS = new Set(['docs', 'redoc', 'openapi.json', 'metrics']);
 
 function isHeavyPath(path: string): boolean {
   return HEAVY_ENGINE_PATHS.has(path.split('/')[0]);
+}
+
+function isBlockedPath(path: string): boolean {
+  return BLOCKED_ENGINE_PATHS.has(path.split('/')[0]);
 }
 
 export const config = {
@@ -88,18 +93,25 @@ async function proxy(request: Request, path: string): Promise<Response> {
   }
 }
 
-export const GET: RequestHandler = ({ request, params }) =>
-  proxy(request, params.path);
+export const GET: RequestHandler = ({ request, params }) => {
+  if (isBlockedPath(params.path)) return json({ error: 'Not found' }, { status: 404 });
+  return proxy(request, params.path);
+};
 
 export const POST: RequestHandler = ({ request, params, getClientAddress }) => {
+  if (isBlockedPath(params.path)) return json({ error: 'Not found' }, { status: 404 });
   if (isHeavyPath(params.path) && !engineProxyLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
   return proxy(request, params.path);
 };
 
-export const PUT: RequestHandler = ({ request, params }) =>
-  proxy(request, params.path);
+export const PUT: RequestHandler = ({ request, params }) => {
+  if (isBlockedPath(params.path)) return json({ error: 'Not found' }, { status: 404 });
+  return proxy(request, params.path);
+};
 
-export const DELETE: RequestHandler = ({ request, params }) =>
-  proxy(request, params.path);
+export const DELETE: RequestHandler = ({ request, params }) => {
+  if (isBlockedPath(params.path)) return json({ error: 'Not found' }, { status: 404 });
+  return proxy(request, params.path);
+};

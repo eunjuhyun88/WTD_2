@@ -6,13 +6,18 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { analyzeTradePattern } from '$lib/server/exchange/patternAnalyzer.js';
+import { getAuthUserFromCookies } from '$lib/server/authGuard.js';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, cookies }) => {
   try {
     const userId = url.searchParams.get('userId');
     if (!userId) {
       return json({ error: 'userId required' }, { status: 400 });
     }
+
+    const authUser = await getAuthUserFromCookies(cookies);
+    if (!authUser) return json({ error: 'Unauthorized' }, { status: 401 });
+    if (authUser.id !== userId) return json({ error: 'Forbidden' }, { status: 403 });
 
     const { profile, error } = await analyzeTradePattern(userId);
 

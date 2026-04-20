@@ -1,5 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
+
+const VALID_SYMBOL = /^[A-Z0-9]{2,20}$/;
 
 /**
  * GET /api/market/ohlcv?symbol=BTCUSDT&interval=1h&limit=100
@@ -27,11 +30,17 @@ export interface OhlcvBar {
   cvd: number;    // cumulative volume delta
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   const symbol = (url.searchParams.get('symbol') || 'BTCUSDT').toUpperCase();
   const interval = url.searchParams.get('interval') || '1h';
   const limit = Math.min(Number(url.searchParams.get('limit') || '100'), 500);
 
+  if (!VALID_SYMBOL.test(symbol)) {
+    return json({ error: 'Invalid symbol' }, { status: 400 });
+  }
   if (!VALID_INTERVALS.includes(interval)) {
     return json({ error: `Invalid interval. Use: ${VALID_INTERVALS.join(', ')}` }, { status: 400 });
   }

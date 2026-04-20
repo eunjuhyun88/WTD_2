@@ -1,5 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
+
+const VALID_SYMBOL = /^[A-Z0-9]{2,20}$/;
 
 /**
  * GET /api/market/funding?symbol=BTCUSDT&limit=96
@@ -15,9 +18,15 @@ import type { RequestHandler } from './$types';
 
 const BINANCE_FAPI = 'https://fapi.binance.com';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   const symbol = (url.searchParams.get('symbol') || 'BTCUSDT').toUpperCase();
   const limit = Math.min(Number(url.searchParams.get('limit') || '96'), 1000);
+  if (!VALID_SYMBOL.test(symbol)) {
+    return json({ error: 'Invalid symbol' }, { status: 400 });
+  }
 
   try {
     const res = await fetch(

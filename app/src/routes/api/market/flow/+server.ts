@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
 import { pairToSymbol } from '$lib/server/providers/binance';
 import { readRaw } from '$lib/server/providers/rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
@@ -16,7 +17,10 @@ function pickBias(funding: number | null, lsRatio: number | null, liqLong: numbe
   return 'NEUTRAL';
 }
 
-export const GET: RequestHandler = async ({ fetch, url }) => {
+export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   try {
     const pair = normalizePair(url.searchParams.get('pair'));
     const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
