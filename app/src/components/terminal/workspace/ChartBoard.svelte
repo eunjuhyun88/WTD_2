@@ -344,7 +344,6 @@
     if (!mainEl || _dragOnMouseMove) return;
 
     const onMouseDown = (e: MouseEvent) => {
-      if (!$chartSaveMode.active) return;
       const t = clientXToChartTime(e.clientX);
       if (t === null) return;
       chartSaveMode.startDrag(t);
@@ -1628,6 +1627,14 @@
   {/if}
 
 </div>
+
+<!-- W-0117: SaveStrip — appears below chart when range is selected -->
+<SaveStrip
+  {symbol}
+  tf={tf}
+  ohlcvBars={(chartData?.klines ?? []) as Array<{ time: number; open: number; high: number; low: number; close: number; volume?: number }>}
+  onSaved={(id) => { savedCaptureId = id; }}
+/>
 
 <!-- Save Setup Modal -->
 <SaveSetupModal
