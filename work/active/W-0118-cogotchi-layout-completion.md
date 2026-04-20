@@ -1,7 +1,9 @@
 # W-0118 — COGOTCHI Layout A/B/C 완성 + JudgePanel 3열
 
 ## Status
-`PLANNED` — 미착수
+`DONE` — commit a2ee644 (2026-04-21)
+Slice D (JudgePanel 3-col) was pre-existing. Layouts A/B/C already had ChartBoard.
+Slice F (evidence/proposal/α binding) + Slice E (PeekDrawer animation) implemented.
 
 ## Goal
 COGOTCHI TradeMode의 Layout A/B/C stub 구현 완성 + JudgePanel 수직→3열 수평 전환.
