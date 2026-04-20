@@ -59,7 +59,7 @@
     width: 240px;
     flex-shrink: 0;
     background: var(--g1);
-    border-right: 0.5px solid var(--g3);
+    border-right: 0.5px solid var(--g4);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -67,7 +67,7 @@
 
   .section-tabs {
     display: flex;
-    border-bottom: 0.5px solid var(--g3);
+    border-bottom: 0.5px solid var(--g4);
     height: 30px;
     flex-shrink: 0;
   }
@@ -109,7 +109,7 @@
 
   .footer {
     height: 22px;
-    border-top: 0.5px solid var(--g3);
+    border-top: 0.5px solid var(--g4);
     padding: 0 10px;
     display: flex;
     align-items: center;

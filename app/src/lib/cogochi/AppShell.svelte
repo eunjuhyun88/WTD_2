@@ -129,7 +129,18 @@
       <div style:width={`${$shellStore.aiWidth}px`} style:flex-shrink="0">
         <AIPanel
           messages={$activeTabState.chat || []}
-          onSend={(text) => shellStore.updateTabState(s => ({ ...s, chat: [...(s.chat || []), { role: 'user', text }, { role: 'assistant', text: 'Processing: ' + text }] }))}
+          onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
+          onApplySetup={(setup) => {
+            shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
+            shellStore.update(st => ({
+              ...st,
+              tabs: st.tabs.map(t =>
+                t.id === st.activeTabId
+                  ? { ...t, title: setup.text.slice(0, 30) }
+                  : t
+              ),
+            }));
+          }}
           onClose={() => shellStore.toggleAI()}
         />
       </div>
