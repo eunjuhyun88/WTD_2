@@ -50,12 +50,47 @@ Component rules:
 
 - `Save Setup` stays in fixed visible location near reviewed chart context
 - selected range must remain visible even while right rail changes
-- note input sits adjacent to save flow, not buried in a later modal step
+- note input sits adjacent to save flow, not buried in a later modal step (inline SaveStrip, not modal)
 - similar capture preview appears after or beside save context, not as the hero
+
+Drag range selection wireframe:
+
+```text
++-----------------------------------------------------------------------------------+
+| Main chart board                                                                   |
+| - hero chart (lightweight-charts)                                                  |
+|                                                                                    |
+|   [drag area — mousedown → blue rect live → mouseup]                              |
+|   ████████████████████████████████████                                            |
+|   ▌ anchorA                        anchorB ▐                                      |
+|                                                                                    |
++-----------------------------------------------------------------------------------+
+| SaveStrip (appears after drag completes, anchorA + anchorB set):                  |
+| ⊡ Apr21 14:00→16:00 · 4H (8봉)  [EMA · BB · CVD · OI]  H:84,200 L:81,900 +2.8%  |
+| [메모 입력......................]  [취소]  [저장]  [Save & Open in Lab →]          |
++-----------------------------------------------------------------------------------+
+```
+
+SaveStrip content contract:
+
+1. Range label: `시작 → 끝 · TF · N봉`
+2. Collected indicator pills: list of active indicators found in selected range
+3. Range stats: H/L/change% within bars
+4. Inline note textarea (single line, expandable)
+5. Action buttons: 취소 · 저장 · Save & Open in Lab
+
+Drag interaction rules:
+
+- `SELECT RANGE` button click → enter range mode → chart cursor becomes crosshair
+- `mousedown` on chart → anchorA set, drag begins
+- `mousemove` while button held → anchorB updated via `adjustAnchor('B', t)`, RangePrimitive re-renders live
+- `mouseup` → anchorB confirmed, SaveStrip appears
+- `Escape` → exitRangeMode, SaveStrip dismissed
+- Range mode OFF: normal pan/zoom/crosshair behavior intact
 
 Disabled-state rules:
 
-- `Save Setup` disabled when no explicit range exists
+- `Save Setup` / `SELECT RANGE` disabled when no explicit range exists
 - `Open in Lab` disabled until a durable capture or challenge projection exists
 
 Loading and error states:
@@ -260,9 +295,12 @@ Mobile rules:
 ## Micro-Interaction Rules
 
 1. Save confirmation must identify what symbol, timeframe, and range were saved.
-2. Evaluation completion must identify score, instance count, and next valid action.
-3. Alert judgment must update immediately and remain reversible only through explicit follow-up logic, not silent toggle drift.
-4. Paused watch state must be visually distinct from live state.
+2. Save confirmation must list which indicators were collected in the saved payload.
+3. Evaluation completion must identify score, instance count, and next valid action.
+4. Alert judgment must update immediately and remain reversible only through explicit follow-up logic, not silent toggle drift.
+5. Paused watch state must be visually distinct from live state.
+6. Drag range selection must give real-time visual feedback (live blue rectangle) during the drag, not only after mouseup.
+7. Range mode cursor must be clearly distinct from default cursor so user knows drag is available.
 
 ## Accessibility and Clarity Rules
 

@@ -1,7 +1,8 @@
 # W-0115 — Cogochi Live Chart (ChartBoard 교체 + 실시간 데이터)
 
 ## Status
-`IN PROGRESS` — branch `claude/w-0114-mobile-state-persistence`
+`SLICE 1 DONE` — PR #124 merged to main (2026-04-21)
+Slice 2 + 3 pending — next execution target
 
 ## Goal
 `/cogochi` TradeMode를 실시간 터미널급 차트로 업그레이드.
@@ -57,3 +58,7 @@ evidence/proposal/α를 analyze API 응답에 바인딩한다.
 - `terminalState` 결합도 없음 확인 → 리팩토링 없이 직접 import 가능
 - `chartSaveMode` 전역 스토어 → cogochi SELECT RANGE 버튼과 자연스럽게 연결
 - Polling(15s) 먼저, WS는 Slice 3에서 proper하게 구현
+
+## Next Steps
+1. Slice 2: `/api/cogochi/analyze` 응답 contract 확인 → TradeMode adapter 함수 작성
+2. Slice 3: Binance WS kline 구독 → ChartBoard update() 연결
