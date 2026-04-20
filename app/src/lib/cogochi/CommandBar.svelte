@@ -77,14 +77,14 @@
     gap: 6px;
     padding: 0 10px;
     background: var(--g1);
-    border-bottom: 1px solid var(--g4);
+    border-bottom: 1px solid var(--g5);
     flex-shrink: 0;
   }
 
   .logo {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    color: var(--g9);
+    color: var(--brand);
     font-weight: 600;
     letter-spacing: 0.14em;
     margin-right: 2px;

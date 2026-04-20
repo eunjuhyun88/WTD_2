@@ -277,6 +277,7 @@ class TestTwitterClientFallback:
         assert result is None
 
 
+
 # ── PositionGuard ─────────────────────────────────────────────────────────
 
 class TestPositionGuard:
@@ -487,3 +488,4 @@ class TestGainersScreener:
         monkeypatch.setattr(mod, "_fetch", lambda _: (_ for _ in ()).throw(Exception("timeout")))
         with pytest.raises(RuntimeError, match="Binance API fetch failed"):
             mod.load_gainer_candidates()
+

@@ -5,7 +5,7 @@
     color?: string;
   }
 
-  const { orientation, onDrag, color = 'var(--g4)' }: Props = $props();
+  const { orientation, onDrag, color = 'var(--g5)' }: Props = $props();
 
   let isDragging = $state(false);
 
@@ -42,26 +42,47 @@
 <style>
   .splitter {
     flex-shrink: 0;
+    position: relative;
+    background: transparent;
+    transition: background 0.1s;
+    z-index: 1;
+  }
+
+  /* Visible 1px line in center + invisible 4px hit zone */
+  .splitter::before {
+    content: '';
+    position: absolute;
     background: var(--splitter-color);
-    cursor: col-resize;
-    transition: background 0.15s;
+    transition: background 0.1s;
   }
 
   .splitter.vertical {
-    width: 4px;
+    width: 5px;
     height: 100%;
+    cursor: col-resize;
+  }
+  .splitter.vertical::before {
+    top: 0; bottom: 0;
+    left: 2px;
+    width: 1px;
   }
 
   .splitter.horizontal {
     width: 100%;
-    height: 4px;
+    height: 5px;
+    cursor: row-resize;
+  }
+  .splitter.horizontal::before {
+    left: 0; right: 0;
+    top: 2px;
+    height: 1px;
   }
 
-  .splitter:hover {
-    background: var(--g5);
+  .splitter:hover::before {
+    background: var(--g7);
   }
 
-  .splitter.dragging {
+  .splitter.dragging::before {
     background: var(--pos);
   }
 </style>

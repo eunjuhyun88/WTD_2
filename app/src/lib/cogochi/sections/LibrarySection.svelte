@@ -25,7 +25,8 @@
       onclick={() => onOpenTab({ id: `setup_${i}`, kind: 'trade', title: `/ ${s.tag}`, prompt: s.text })}
     >
       <div class="item-header">
-        <span class="tag">/{s.tag}</span>
+        <span class="slash">/</span>
+        <span class="tag">{s.tag}</span>
         <span class="matches">{s.matches}</span>
       </div>
       <div class="item-text">{s.text}</div>
@@ -60,6 +61,12 @@
     display: flex;
     align-items: center;
     gap: 5px;
+  }
+
+  .slash {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--pos);
   }
 
   .tag {

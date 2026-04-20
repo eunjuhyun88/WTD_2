@@ -10,7 +10,7 @@
   const { mode, verdicts, modelDelta, onSwitchMode, sidebarVisible }: Props = $props();
 
   const modes = [
-    { id: 'trade', label: 'TRADE', color: 'var(--pos)' },
+    { id: 'trade', label: 'TRADE', color: 'var(--brand)' },
     { id: 'train', label: 'TRAIN', color: 'var(--amb)' },
     { id: 'flywheel', label: 'FLYWHEEL', color: '#7aa2e0' },
   ];
@@ -81,7 +81,7 @@
     gap: 12px;
     padding: 0 10px;
     background: var(--g1);
-    border-top: 1px solid var(--g4);
+    border-top: 1px solid var(--g5);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     color: var(--g7);
@@ -113,8 +113,7 @@
     background: var(--g0);
     color: var(--mode-color);
     font-weight: 600;
-    border-color: var(--mode-color);
-    border-opacity: 0.27;
+    border-color: color-mix(in srgb, var(--mode-color) 27%, transparent);
   }
 
   .divider {
