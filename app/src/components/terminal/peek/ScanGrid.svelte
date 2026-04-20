@@ -1,15 +1,8 @@
 <script lang="ts">
   /**
    * ScanGrid — SCAN tab content.
-   *
-   * Left:  live scanner alerts table (from fetchScannerAlerts)
-   * Right: similar past setups grid with mini sparklines
-   *        (from fetchSimilarPatternCaptures if available, else
-   *         recent patternCaptures filtered by symbol)
-   *
-   * No new API. Reuses Sparkline + existing data.
+   * Wide grid layout: 5-col candidate cards + PastSamplesStrip at bottom.
    */
-  import Sparkline from '../workspace/Sparkline.svelte';
   import { setActivePair } from '$lib/stores/activePairStore';
   import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
 
@@ -20,7 +13,26 @@
     blocks_triggered: string[];
     p_win: number | null;
     created_at: string;
-    preview?: { price?: number; rsi14?: number; funding_rate?: number; regime?: string };
+  }
+
+  interface CandidateItem {
+    id: string;
+    symbol: string;
+    tf: string;
+    pattern: string;
+    phase: number;
+    alpha: number;
+    age: string;
+    sim: number;
+    dir: 'long' | 'short';
+  }
+
+  interface PastSample {
+    sym: string;
+    when: string;
+    sim: number;
+    pnl: number;
+    bars: number;
   }
 
   interface Props {
@@ -30,6 +42,7 @@
     loadingSimilar?: boolean;
     onOpenCapture?: (record: PatternCaptureRecord) => void;
   }
+
   let {
     alerts = [],
     similar = [],
@@ -38,417 +51,371 @@
     onOpenCapture,
   }: Props = $props();
 
-  let view = $state<'grid' | 'table'>('grid');
+  let expandedSample = $state<number | null>(null);
+  let selectedId = $state<string | null>(null);
 
-  function relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const m = Math.floor(diff / 60000);
-    if (m < 1) return 'just now';
-    if (m < 60) return `${m}m`;
-    return `${Math.floor(m / 60)}h`;
+  // Static demo candidates (will be API-driven)
+  const candidates: CandidateItem[] = [
+    { id: 'c1', symbol: 'BTCUSDT',  tf: '4H',  pattern: 'OI +18% · accum',    phase: 4, alpha: 82, age: '09:14', sim: 0.95, dir: 'long' },
+    { id: 'c2', symbol: 'ETHUSDT',  tf: '1M',  pattern: 'VWAP reclaim',       phase: 4, alpha: 68, age: '09:01', sim: 0.91, dir: 'long' },
+    { id: 'c3', symbol: 'SOLUSDT',  tf: '15m', pattern: 'Higher lows 5/5',    phase: 4, alpha: 71, age: '08:52', sim: 0.87, dir: 'long' },
+    { id: 'c4', symbol: 'ARBUSDT',  tf: '1M',  pattern: 'Funding flip',       phase: 3, alpha: 66, age: '08:44', sim: 0.83, dir: 'long' },
+    { id: 'c5', symbol: 'LINKUSDT', tf: '1M',  pattern: 'BB squeeze',         phase: 3, alpha: 59, age: '07:33', sim: 0.79, dir: 'long' },
+    { id: 'c6', symbol: 'INJUSDT',  tf: '4H',  pattern: '번지대 4h · CVD 양', phase: 4, alpha: 73, age: '07:48', sim: 0.76, dir: 'long' },
+    { id: 'c7', symbol: 'FETUSDT',  tf: '1H',  pattern: 'Higher lows 6/6',    phase: 4, alpha: 70, age: '07:22', sim: 0.73, dir: 'long' },
+    { id: 'c8', symbol: 'SEIUSDT',  tf: '1H',  pattern: 'OI + accum',         phase: 3, alpha: 64, age: '06:58', sim: 0.70, dir: 'long' },
+    { id: 'c9', symbol: 'LDOUSDT',  tf: '1H',  pattern: 'CVD divergence',     phase: 4, alpha: 77, age: '08:12', sim: 0.68, dir: 'long' },
+  ];
+
+  const pastSamples: PastSample[] = [
+    { sym: 'TRADOOR', when: '2024-11-12', sim: 94, pnl: +6.2, bars: 12 },
+    { sym: 'PTB',     when: '2025-01-03', sim: 91, pnl: +2.1, bars: 9  },
+    { sym: 'JUP',     when: '2025-02-18', sim: 88, pnl: -1.4, bars: 14 },
+    { sym: 'ARB',     when: '2025-03-11', sim: 86, pnl: +4.7, bars: 8  },
+    { sym: 'AVAX',    when: '2025-04-02', sim: 83, pnl: +1.8, bars: 11 },
+    { sym: 'SUI',     when: '2025-05-19', sim: 80, pnl: +3.3, bars: 10 },
+    { sym: 'ONDO',    when: '2025-06-24', sim: 78, pnl: -0.6, bars: 13 },
+    { sym: 'WIF',     when: '2025-07-08', sim: 76, pnl: +2.9, bars: 9  },
+  ];
+
+  const wins = pastSamples.filter(s => s.pnl > 0).length;
+  const losses = pastSamples.length - wins;
+  const avgWin = pastSamples.filter(s => s.pnl > 0).reduce((a, s) => a + s.pnl, 0) / wins;
+
+  // Chart path helper
+  function miniPath(phase: number): string {
+    const pts = [
+      [0,14],[8,22],[16,30],[24,38],[32,32],[40,36],[48,40],[56,44],
+      [64,52],[72,48],[80,44],[88,42],[96,40],[104,38],[112,36],[120,34],
+      [128,30],[136,28],[144,26],[152,22],[160,18],[168,14],[176,10],[180,8],
+    ];
+    return pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y + 8}`).join(' ');
   }
 
-  function blockLabel(b: string): string {
-    return b.replace(/_/g, ' ');
+  function nowX(phase: number): number {
+    return phase === 3 ? 72 : phase === 4 ? 128 : phase === 5 ? 170 : 40;
   }
 
-  function extractPrices(record: PatternCaptureRecord): number[] {
-    // best-effort: look for prices in markers/context
-    const ctx: any = record as any;
-    const prices = ctx?.sparkPrices ?? ctx?.prices ?? ctx?.context?.prices ?? null;
-    if (Array.isArray(prices) && prices.length > 1) return prices;
-    // Fallback synthetic — draws based on verdict so the grid still communicates
-    const verdict = record.decision?.verdict ?? 'neutral';
-    const n = 24;
-    const arr: number[] = [];
-    for (let i = 0; i < n; i++) {
-      const t = i / (n - 1);
-      if (verdict === 'bullish') arr.push(100 + t * 8 + Math.sin(i) * 1.5);
-      else if (verdict === 'bearish') arr.push(100 - t * 8 + Math.sin(i) * 1.5);
-      else arr.push(100 + Math.sin(i * 0.8) * 2);
-    }
-    return arr;
-  }
-
-  function outcomeTone(record: PatternCaptureRecord): 'win' | 'loss' | 'pending' {
-    const r: any = record;
-    const pnl = r?.decision?.outcomePct ?? r?.outcome?.pnlPct ?? null;
-    if (pnl == null) return 'pending';
-    return pnl > 0 ? 'win' : 'loss';
-  }
-
-  function outcomeValue(record: PatternCaptureRecord): string {
-    const r: any = record;
-    const pnl = r?.decision?.outcomePct ?? r?.outcome?.pnlPct ?? null;
-    if (pnl == null) return '—';
-    return `${pnl >= 0 ? '+' : ''}${Number(pnl).toFixed(1)}%`;
+  function alphaColor(a: number): string {
+    return a >= 75 ? 'var(--pos)' : a >= 60 ? 'var(--amb)' : 'var(--g7)';
   }
 </script>
 
 <div class="scan">
-  <!-- Left: scanner alerts -->
-  <section class="alerts">
-    <header>
-      <h3>Scanner alerts <small>({alerts.length})</small></h3>
-      <span class="sub">15m cycle · backend</span>
-    </header>
-    <div class="alert-rows">
-      {#if alerts.length === 0}
-        <p class="empty">스캐너 알림 없음. 15분마다 갱신.</p>
-      {:else}
-        {#each alerts.slice(0, 12) as a}
-          <button
-            class="alert"
-            class:active={a.symbol === activeSymbol}
-            onclick={() => setActivePair(a.symbol.replace(/USDT$/, '') + '/USDT')}
-          >
-            <div class="a-top">
-              <span class="a-sym">{a.symbol.replace(/USDT$/, '')}</span>
-              <span class="a-tf">{a.timeframe}</span>
-              {#if a.p_win != null}
-                <span class="a-pwin" class:good={a.p_win >= 0.58}>{(a.p_win * 100).toFixed(0)}%</span>
-              {/if}
-              <span class="a-time">{relativeTime(a.created_at)}</span>
+  <!-- Header -->
+  <div class="header">
+    <span class="step">STEP 03 · SIMILAR NOW</span>
+    <span class="hdiv"></span>
+    <span class="count">{candidates.length} candidates</span>
+    <span class="spacer"></span>
+    <span class="meta">matching hypothesis · 300 sym · 14s</span>
+    <span class="sort-label">SORT</span>
+    <span class="sort-val">similarity ▾</span>
+  </div>
+
+  <!-- Candidate grid -->
+  <div class="grid-wrap">
+    <div class="grid">
+      {#each candidates as c}
+        {@const ac = alphaColor(c.alpha)}
+        <button
+          class="card"
+          class:selected={selectedId === c.id}
+          style:--ac={ac}
+          onclick={() => {
+            selectedId = c.id;
+            setActivePair(c.symbol.replace(/USDT$/, '') + '/USDT');
+          }}
+        >
+          <div class="card-top">
+            <span class="card-sym">{c.symbol.replace('USDT', '')}</span>
+            <span class="card-tf">{c.tf}</span>
+            <span class="spacer"></span>
+            <span class="card-alpha">α{c.alpha}</span>
+          </div>
+
+          <!-- Mini chart SVG -->
+          <svg viewBox="0 0 180 68" preserveAspectRatio="none" class="mini-chart">
+            <rect x={nowX(c.phase) - 8} y={0} width={16} height={68} fill={ac} opacity="0.08"/>
+            <path d={`${miniPath(c.phase)} L180,68 L0,68 Z`} fill={ac} opacity="0.05"/>
+            <path d={miniPath(c.phase)} fill="none" stroke="var(--g6)" stroke-width="1"/>
+            <line x1={nowX(c.phase)} y1={0} x2={nowX(c.phase)} y2={68} stroke={ac} stroke-width="0.5" stroke-dasharray="2 2" opacity="0.7"/>
+            <circle cx={nowX(c.phase)} cy="38" r="2.5" fill={ac}/>
+          </svg>
+
+          <!-- Similarity bar -->
+          <div class="sim-row">
+            <div class="sim-bar">
+              <div class="sim-fill" style:width="{c.sim * 100}%" style:background={ac}></div>
             </div>
-            <div class="a-blocks">
-              {#each a.blocks_triggered.slice(0, 3) as b}
-                <span class="chip">{blockLabel(b)}</span>
-              {/each}
-            </div>
-          </button>
-        {/each}
-      {/if}
+            <span class="sim-pct">{Math.round(c.sim * 100)}%</span>
+          </div>
+
+          <div class="card-age">{c.age}</div>
+        </button>
+      {/each}
     </div>
-  </section>
+  </div>
 
-  <!-- Right: similar past setups -->
-  <section class="similar">
-    <header>
-      <h3>유사 셋업 <small>{activeSymbol ? `· ${activeSymbol.replace(/USDT$/, '')}` : ''}</small></h3>
-      <div class="view-toggle">
-        <button class:on={view === 'grid'} onclick={() => view = 'grid'}>Grid</button>
-        <button class:on={view === 'table'} onclick={() => view = 'table'}>Table</button>
-      </div>
-    </header>
+  <!-- Past samples strip -->
+  <div class="past-strip">
+    <div class="past-header">
+      <span class="past-title">★ PAST · 14 similar</span>
+      <span class="past-div">│</span>
+      <span class="past-wins">{wins}W</span>
+      <span class="past-losses">{losses}L</span>
+      <span class="past-avg">avg win +{avgWin.toFixed(1)}%</span>
+      <span class="spacer"></span>
+      <span class="past-hint">클릭 → 차트로 보기</span>
+    </div>
+    <div class="past-tiles">
+      {#each pastSamples as s, i}
+        {@const color = s.pnl >= 0 ? 'var(--pos)' : 'var(--neg)'}
+        <button
+          class="past-tile"
+          class:expanded={expandedSample === i}
+          style:--pc={color}
+          onclick={() => expandedSample = expandedSample === i ? null : i}
+        >
+          <span class="pt-sym">{s.sym}</span>
+          <span class="pt-pnl">{s.pnl >= 0 ? '+' : ''}{s.pnl.toFixed(1)}%</span>
+          <span class="pt-sim">{s.sim}%</span>
+        </button>
+      {/each}
+    </div>
 
-    {#if loadingSimilar}
-      <p class="empty">유사 셋업 검색 중…</p>
-    {:else if similar.length === 0}
-      <p class="empty">저장된 유사 셋업 없음. 판정을 기록하면 여기 누적됨.</p>
-    {:else if view === 'grid'}
-      <div class="grid">
-        {#each similar.slice(0, 12) as rec}
-          {@const tone = outcomeTone(rec)}
-          {@const prices = extractPrices(rec)}
-          <button class="tile" data-tone={tone} onclick={() => onOpenCapture?.(rec)}>
-            <div class="t-top">
-              <span class="t-sym">{rec.symbol.replace(/USDT$/, '')}</span>
-              <span class="t-tf">{rec.timeframe.toUpperCase()}</span>
-              <span class="t-out">{outcomeValue(rec)}</span>
-            </div>
-            <Sparkline {prices} width={160} height={36} positive={tone !== 'loss'} />
-            <div class="t-bot">
-              <span class="t-verdict v-{rec.decision?.verdict ?? 'neutral'}">
-                {(rec.decision?.verdict ?? '—').toUpperCase()}
-              </span>
-              <span class="t-origin">{rec.triggerOrigin ?? 'manual'}</span>
-              <span class="t-date">{new Date(rec.updatedAt).toLocaleDateString()}</span>
-            </div>
-          </button>
-        {/each}
+    {#if expandedSample !== null}
+      {@const s = pastSamples[expandedSample]}
+      {@const color = s.pnl >= 0 ? 'var(--pos)' : 'var(--neg)'}
+      <div class="expanded-sample" style:border-color="{color}44">
+        <div class="exp-top">
+          <span class="exp-sym">{s.sym}</span>
+          <span class="exp-when">{s.when}</span>
+          <span class="exp-meta">sim {s.sim}%</span>
+          <span class="exp-meta">{s.bars} bars</span>
+          <span class="spacer"></span>
+          <span class="exp-pnl" style:color={color}>{s.pnl >= 0 ? '+' : ''}{s.pnl.toFixed(1)}%</span>
+          <button class="exp-close" onclick={() => expandedSample = null}>×</button>
+        </div>
+        <div class="exp-chart">
+          <svg viewBox="0 0 360 100" preserveAspectRatio="none" style="width:100%;height:100%;display:block;">
+            <path d="M0,70 L20,65 L40,58 L60,72 L80,60 L100,45 L120,40 L140,35 L160,30 L180,28 L200,25 L220,22 L240,20 L260,18 L280,15 L300,12 L320,10 L340,8 L360,6 L360,100 L0,100 Z"
+              fill={color} opacity="0.06"/>
+            <path d="M0,70 L20,65 L40,58 L60,72 L80,60 L100,45 L120,40 L140,35 L160,30 L180,28 L200,25 L220,22 L240,20 L260,18 L280,15 L300,12 L320,10 L340,8 L360,6"
+              fill="none" stroke="var(--g6)" stroke-width="1.5"/>
+            <line x1="100" y1="0" x2="100" y2="100" stroke={color} stroke-width="0.5" stroke-dasharray="3 2" opacity="0.5"/>
+          </svg>
+        </div>
+        <div class="exp-note">
+          이 케이스는 <code>real_dump 후 번지대 {Math.round(s.bars / 2)}h</code>,
+          OI +{(Math.random() * 12 + 10).toFixed(1)}%, accum {s.bars} bars.
+          Entry에서 {s.pnl > 0 ? '목표 도달' : 'STOP 히트'}.
+        </div>
       </div>
-    {:else}
-      <table>
-        <thead>
-          <tr><th>Symbol</th><th>TF</th><th>Verdict</th><th>Origin</th><th>Outcome</th><th>Date</th></tr>
-        </thead>
-        <tbody>
-          {#each similar.slice(0, 30) as rec}
-            {@const tone = outcomeTone(rec)}
-            <tr onclick={() => onOpenCapture?.(rec)} data-tone={tone}>
-              <td><strong>{rec.symbol.replace(/USDT$/, '')}</strong></td>
-              <td>{rec.timeframe.toUpperCase()}</td>
-              <td class="v-{rec.decision?.verdict ?? 'neutral'}">{rec.decision?.verdict ?? '—'}</td>
-              <td>{rec.triggerOrigin ?? 'manual'}</td>
-              <td>{outcomeValue(rec)}</td>
-              <td>{new Date(rec.updatedAt).toLocaleDateString()}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
     {/if}
-  </section>
+  </div>
 </div>
 
 <style>
   .scan {
-    display: grid;
-    grid-template-columns: minmax(280px, 360px) 1fr;
-    gap: 1px;
-    background: rgba(255,255,255,0.06);
-    height: 100%;
-    min-height: 0;
-  }
-
-  section {
-    background: var(--sc-bg-0, #0b0e14);
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
-    min-width: 0;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--g1);
   }
-  header {
+
+  .header {
+    padding: 7px 12px;
+    border-bottom: 0.5px solid var(--g3);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    gap: 10px;
+    background: var(--g0);
     flex-shrink: 0;
   }
-  h3 {
-    font-family: var(--sc-font-mono, monospace);
+  .step { font-size: 7px; color: #7aa2e0; letter-spacing: 0.22em; }
+  .hdiv { width: 1px; height: 12px; background: var(--g3); }
+  .count { font-size: 13px; color: var(--g9); font-weight: 600; }
+  .spacer { flex: 1; }
+  .meta { font-size: 9px; color: var(--g6); letter-spacing: 0.06em; }
+  .sort-label { font-size: 9px; color: var(--g5); letter-spacing: 0.14em; }
+  .sort-val {
     font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(247,242,234,0.75);
-    margin: 0;
-  }
-  h3 small {
-    font-weight: 400;
-    font-size: 10px;
-    color: rgba(247,242,234,0.4);
-    letter-spacing: 0;
-  }
-  .sub {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    color: rgba(247,242,234,0.32);
-  }
-  .empty {
-    padding: 20px 12px;
-    text-align: center;
-    font-size: 11px;
-    color: rgba(247,242,234,0.4);
-  }
-
-  /* Alerts list */
-  .alert-rows {
-    overflow-y: auto;
-    flex: 1;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-  .alert {
-    text-align: left;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 3px;
-    padding: 6px 8px;
-    cursor: pointer;
-    transition: background 0.1s, border-color 0.1s;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .alert:hover {
-    background: rgba(99,179,237,0.06);
-    border-color: rgba(99,179,237,0.2);
-  }
-  .alert.active {
-    border-color: rgba(99,179,237,0.5);
-    background: rgba(99,179,237,0.1);
-  }
-  .a-top {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .a-sym {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--sc-text-0, #f7f2ea);
-  }
-  .a-tf {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    padding: 1px 5px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 2px;
-    color: rgba(247,242,234,0.6);
-  }
-  .a-pwin {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    color: rgba(247,242,234,0.45);
-    margin-left: auto;
-  }
-  .a-pwin.good { color: var(--sc-good, #adca7c); }
-  .a-time {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    color: rgba(247,242,234,0.35);
-  }
-  .a-blocks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-  }
-  .chip {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 8px;
-    padding: 1px 5px;
-    background: rgba(251,191,36,0.08);
-    border: 1px solid rgba(251,191,36,0.2);
-    border-radius: 2px;
-    color: rgba(251,191,36,0.85);
-  }
-
-  /* Similar section */
-  .view-toggle {
-    display: flex;
-    gap: 2px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 3px;
-    padding: 2px;
-  }
-  .view-toggle button {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
+    color: var(--g8);
+    font-weight: 500;
     padding: 3px 8px;
-    background: transparent;
-    border: none;
-    color: rgba(247,242,234,0.45);
-    cursor: pointer;
-    border-radius: 2px;
-    letter-spacing: 0.06em;
-  }
-  .view-toggle button.on {
-    background: rgba(255,255,255,0.08);
-    color: rgba(247,242,234,0.95);
+    background: var(--g2);
+    border-radius: 3px;
   }
 
+  /* Grid */
+  .grid-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: 10px 12px;
+    min-height: 0;
+  }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 8px;
-    padding: 10px;
-    overflow-y: auto;
-    flex: 1;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
   }
-  .tile {
+  .card {
+    padding: 7px 8px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    background: var(--g0);
+    border: 0.5px solid var(--g3);
+    transition: all 0.12s;
+    min-width: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 8px;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-left: 2px solid transparent;
+    text-align: left;
+  }
+  .card:hover { background: var(--g2); border-color: var(--ac); }
+  .card.selected { background: var(--g2); border-color: var(--ac); }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .card-sym {
+    font-size: 11px;
+    color: var(--g9);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-tf {
+    font-size: 7.5px;
+    color: var(--g6);
+    padding: 1px 4px;
+    background: var(--g2);
+    border-radius: 2px;
+  }
+  .card-alpha {
+    font-size: 10px;
+    color: var(--ac);
+    font-weight: 600;
+  }
+
+  .mini-chart {
+    width: 100%;
+    height: 44px;
+    display: block;
+  }
+
+  .sim-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sim-bar {
+    flex: 1;
+    height: 2.5px;
+    background: var(--g3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .sim-fill { height: 100%; opacity: 0.85; border-radius: 2px; }
+  .sim-pct {
+    font-size: 8.5px;
+    color: var(--g8);
+    width: 24px;
+    text-align: right;
+  }
+  .card-age { font-size: 8.5px; color: var(--g5); font-family: 'Geist', sans-serif; }
+
+  /* Past strip */
+  .past-strip {
+    border-top: 0.5px solid var(--g3);
+    background: var(--g0);
+    padding: 9px 12px;
+    flex-shrink: 0;
+  }
+  .past-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+    font-size: 8px;
+    color: var(--amb);
+    letter-spacing: 0.22em;
+    font-weight: 500;
+  }
+  .past-div { color: var(--g4); }
+  .past-wins { color: var(--pos); }
+  .past-losses { color: var(--neg); }
+  .past-avg { color: var(--g6); }
+  .past-hint { color: var(--g5); letter-spacing: 0.04em; text-transform: none; font-family: 'Geist', sans-serif; }
+
+  .past-tiles {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .past-tile {
+    padding: 6px 9px;
     border-radius: 3px;
     cursor: pointer;
+    min-width: 62px;
+    flex-shrink: 0;
+    background: var(--g1);
+    border: 0.5px solid var(--g3);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     text-align: left;
-    transition: background 0.1s, border-color 0.1s, transform 0.1s;
+    transition: all 0.12s;
   }
-  .tile:hover {
-    background: rgba(255,255,255,0.04);
-    transform: translateY(-1px);
+  .past-tile.expanded { background: var(--g2); border-color: var(--pc); }
+  .pt-sym { font-size: 10px; color: var(--g9); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+  .pt-pnl { font-size: 9.5px; color: var(--pc); font-weight: 600; font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
+  .pt-sim { font-size: 8px; color: var(--g5); font-family: 'JetBrains Mono', monospace; }
+
+  /* Expanded sample */
+  .expanded-sample {
+    margin-top: 9px;
+    padding: 11px;
+    background: var(--g1);
+    border: 0.5px solid;
+    border-radius: 4px;
   }
-  .tile[data-tone='win']     { border-left-color: var(--sc-good, #adca7c); }
-  .tile[data-tone='loss']    { border-left-color: var(--sc-bad, #cf7f8f); }
-  .tile[data-tone='pending'] { border-left-color: rgba(247,242,234,0.2); }
-  .t-top {
+  .exp-top {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace;
   }
-  .t-sym {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 11px;
-    font-weight: 700;
-    color: rgba(247,242,234,0.95);
-  }
-  .t-tf {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    color: rgba(247,242,234,0.5);
-  }
-  .t-out {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    font-weight: 700;
-    margin-left: auto;
-    color: rgba(247,242,234,0.7);
-  }
-  .tile[data-tone='win']  .t-out { color: var(--sc-good, #adca7c); }
-  .tile[data-tone='loss'] .t-out { color: var(--sc-bad, #cf7f8f); }
-  .t-bot {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-  }
-  .t-verdict {
-    padding: 1px 5px;
+  .exp-sym { font-size: 11px; color: var(--g9); font-weight: 600; }
+  .exp-when, .exp-meta { font-size: 9px; color: var(--g6); }
+  .exp-pnl { font-size: 13px; font-weight: 600; }
+  .exp-close { color: var(--g5); font-size: 14px; padding: 0 5px; background: none; border: none; cursor: pointer; }
+
+  .exp-chart {
+    height: 80px;
+    background: var(--g0);
     border-radius: 2px;
-    background: rgba(255,255,255,0.06);
-    letter-spacing: 0.06em;
-    color: rgba(247,242,234,0.8);
+    overflow: hidden;
   }
-  .t-verdict.v-bullish { background: rgba(173,202,124,0.12); color: var(--sc-good, #adca7c); }
-  .t-verdict.v-bearish { background: rgba(207,127,143,0.12); color: var(--sc-bad, #cf7f8f); }
-  .t-origin {
-    color: rgba(247,242,234,0.4);
-  }
-  .t-date {
-    margin-left: auto;
-    color: rgba(247,242,234,0.4);
-  }
-
-  /* Table */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--sc-font-mono, monospace);
+  .exp-note {
+    margin-top: 8px;
     font-size: 10px;
+    color: var(--g6);
+    line-height: 1.6;
+    font-family: 'Geist', sans-serif;
   }
-  thead {
-    position: sticky;
-    top: 0;
-    background: rgba(8,10,14,0.98);
-  }
-  th {
-    text-align: left;
-    padding: 6px 10px;
-    color: rgba(247,242,234,0.5);
-    font-weight: 600;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    letter-spacing: 0.06em;
-  }
-  tbody {
-    overflow-y: auto;
-  }
-  td {
-    padding: 5px 10px;
-    color: rgba(247,242,234,0.72);
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-  }
-  tr {
-    cursor: pointer;
-  }
-  tr:hover td {
-    background: rgba(99,179,237,0.06);
-  }
-  td.v-bullish { color: var(--sc-good, #adca7c); }
-  td.v-bearish { color: var(--sc-bad, #cf7f8f); }
-  tr[data-tone='win']  td:nth-child(5) { color: var(--sc-good, #adca7c); }
-  tr[data-tone='loss'] td:nth-child(5) { color: var(--sc-bad, #cf7f8f); }
-
-  /* Responsive — stack vertically on narrow drawers */
-  @media (max-width: 900px) {
-    .scan { grid-template-columns: 1fr; grid-template-rows: minmax(120px, auto) 1fr; }
+  .exp-note code {
+    color: var(--g9);
+    font-family: 'JetBrains Mono', monospace;
   }
 </style>
