@@ -29,7 +29,7 @@
     <span class="text">{sessionName}</span>
   </div>
 
-  <button class="palette-btn" onclick={() => setPaletteOpen(true)}>
+  <button class="palette-btn" class:open={paletteOpen} onclick={() => setPaletteOpen(!paletteOpen)}>
     <span class="dim">/</span>
     <span>command</span>
     <span class="kbd">⌘P</span>
@@ -136,9 +136,11 @@
     transition: all 0.15s;
   }
 
-  .palette-btn:hover {
+  .palette-btn:hover,
+  .palette-btn.open {
     background: var(--g3);
-    color: var(--g7);
+    color: var(--g8);
+    border-color: var(--g5);
   }
 
   .kbd {

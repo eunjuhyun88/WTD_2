@@ -50,12 +50,12 @@
   </span>
 
   <span class="divider">│</span>
-  <span class="status-item">
+  <span class="status-item" title="누적 판단 (AGREE/DISAGREE) 수">
     verdicts <strong>{verdicts}</strong>
   </span>
 
   <span class="divider">│</span>
-  <span class="status-item">
+  <span class="status-item" title="모델 예측 대비 실제 수익 편차">
     drift <strong class:positive={modelDelta >= 0} class:negative={modelDelta < 0}>
       {modelDelta >= 0 ? '+' : ''}{modelDelta.toFixed(3)}
     </strong>
