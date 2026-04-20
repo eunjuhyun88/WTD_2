@@ -51,7 +51,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   peekOpen: false,
   peekHeight: 56,
   drawerTab: 'analyze',
-  layoutMode: 'D',
+  layoutMode: 'B',
 });
 
 const makeDefault = (): ShellState => ({
@@ -71,7 +71,7 @@ const makeDefault = (): ShellState => ({
 });
 
 function createShellStore() {
-  const stored = typeof window !== 'undefined' ? localStorage.getItem('cogochi_shell_v4') : null;
+  const stored = typeof window !== 'undefined' ? localStorage.getItem('cogochi_shell_v5') : null;
   let initial: ShellState;
 
   try {
@@ -87,7 +87,7 @@ function createShellStore() {
   // Persist to localStorage
   subscribe(state => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cogochi_shell_v4', JSON.stringify(state));
+      localStorage.setItem('cogochi_shell_v5', JSON.stringify(state));
     }
   });
 
@@ -207,7 +207,7 @@ function createShellStore() {
     reset: () => {
       set(makeDefault());
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('cogochi_shell_v4');
+        localStorage.removeItem('cogochi_shell_v5');
       }
     },
   };

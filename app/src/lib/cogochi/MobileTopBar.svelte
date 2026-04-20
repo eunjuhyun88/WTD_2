@@ -6,11 +6,12 @@
     timeframe: string;
     aiVisible: boolean;
     toggleAI: () => void;
-    onSymbolChange?: (s: string) => void;
+    onSymbolTap?: () => void;
     onTFChange?: (tf: string) => void;
+    onModeTap?: () => void;
   }
 
-  const { symbol, timeframe, aiVisible, toggleAI, onSymbolChange, onTFChange }: Props = $props();
+  const { symbol, timeframe, aiVisible, toggleAI, onSymbolTap, onTFChange, onModeTap }: Props = $props();
 
   function cycleTF() {
     const idx = TF_CYCLE.indexOf(timeframe);
@@ -23,7 +24,7 @@
   <span class="logo">COGOCHI</span>
   <span class="sep">│</span>
 
-  <button class="chip symbol-chip" onclick={() => onSymbolChange?.(symbol)}>
+  <button class="chip symbol-chip" onclick={() => onSymbolTap?.()}>
     {symbol.replace('USDT', '')} <span class="dim">/ USDT</span> ▾
   </button>
 
@@ -37,6 +38,8 @@
     <span class="dot" class:active={aiVisible} />
     AI
   </button>
+
+  <button class="mode-btn" onclick={() => onModeTap?.()} title="모드 선택">···</button>
 </div>
 
 <style>
@@ -127,6 +130,23 @@
     color: var(--brand);
     border-color: var(--brand-d);
   }
+
+  .mode-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--g5);
+    font-size: 14px;
+    cursor: pointer;
+    letter-spacing: -0.05em;
+    transition: color 0.12s;
+    flex-shrink: 0;
+  }
+  .mode-btn:active { color: var(--g8); }
 
   .dot {
     width: 5px;

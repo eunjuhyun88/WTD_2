@@ -13,8 +13,9 @@
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
-  import MobileFooter from './MobileFooter.svelte';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import SymbolPickerSheet from './SymbolPickerSheet.svelte';
+  import ModeSheet from './ModeSheet.svelte';
 
   interface Props {
     canvasComponent?: any;
@@ -26,13 +27,23 @@
   let shellState = $state<any>(null);
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
+  let symbolPickerOpen = $state(false);
+  let modeSheetOpen = $state(false);
+
+  // AI sheet swipe-down dismiss
+  let aiSwipeTouchStartY = $state(0);
+  function onAITouchStart(e: TouchEvent) { aiSwipeTouchStartY = e.touches[0].clientY; }
+  function onAITouchEnd(e: TouchEvent) {
+    const dy = e.changedTouches[0].clientY - aiSwipeTouchStartY;
+    if (dy > 60) shellStore.update(s => ({ ...s, aiVisible: false }));
+  }
 
   $effect(() => {
     shellStore.subscribe(s => (shellState = s))();
   });
 
   $effect(() => {
-    if ($viewportTier.tier !== 'DESKTOP') {
+    if ($viewportTier.tier === 'MOBILE') {
       shellStore.update(s => ({ ...s, sidebarVisible: false, aiVisible: false }));
       shellStore.updateTabState(s => ({ ...s, layoutMode: 'D' }));
     }
@@ -97,7 +108,8 @@
       aiVisible={$shellStore.aiVisible}
       toggleAI={() => shellStore.toggleAI()}
       onTFChange={(tf) => (mobileTF = tf)}
-      onSymbolChange={(s) => (mobileSymbol = s)}
+      onSymbolTap={() => (symbolPickerOpen = true)}
+      onModeTap={() => (modeSheetOpen = true)}
     />
     <div class="mobile-canvas">
       {#if $activeMode === 'trade'}
@@ -107,17 +119,27 @@
           updateTabState={(updater) => shellStore.updateTabState(updater)}
           symbol={mobileSymbol}
           timeframe={mobileTF}
-          mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : 'analyze'}
-          setMobileView={(v) => {
-            const map = { analyze: 'chart', scan: 'scan', judge: 'judge' } as const;
-            mobileMode.setActive(map[v]);
-          }}
+          mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : $mobileMode.active === 'chart' ? 'chart' : 'analyze'}
+          setMobileView={(v) => mobileMode.setActive(v)}
+          setMobileSymbol={(s) => (mobileSymbol = s)}
         />
       {/if}
     </div>
-    <MobileFooter symCount={300} live={true} />
+    {#if symbolPickerOpen}
+      <SymbolPickerSheet
+        currentSymbol={mobileSymbol}
+        onSelect={(s) => (mobileSymbol = s)}
+        onClose={() => (symbolPickerOpen = false)}
+      />
+    {/if}
+    {#if modeSheetOpen}
+      <ModeSheet
+        activeMode={$activeMode}
+        onClose={() => (modeSheetOpen = false)}
+      />
+    {/if}
     {#if $shellStore.aiVisible}
-      <div class="mobile-ai-sheet">
+      <div class="mobile-ai-sheet" ontouchstart={onAITouchStart} ontouchend={onAITouchEnd}>
         <div class="sheet-topbar">
           <div class="sheet-handle"></div>
           <button class="sheet-close" onclick={() => shellStore.toggleAI()}>×</button>
@@ -239,8 +261,13 @@
     font-family: 'Geist', 'Inter', system-ui, sans-serif;
     font-size: 11px;
     color: var(--g9);
-    /* Fix 5: iOS safe area — 홈 인디케이터 뒤 안 가려짐 */
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  @media (max-width: 768px) {
+    .app-shell {
+      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    }
   }
 
   .main-row {
@@ -264,6 +291,7 @@
     right: 0;
     bottom: 0;
     height: 52%;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     z-index: 200;
     background: var(--g1);
     border-top: 1px solid var(--g5);

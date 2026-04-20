@@ -4,12 +4,12 @@
   const activePath = $derived($page.url.pathname);
 
   function active(href: string) {
-    if (href === '/terminal') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
+    if (href === '/cogochi') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
     return activePath === href || activePath.startsWith(href + '/');
   }
 
   const primary = [
-    { href: '/terminal', label: 'Terminal', icon: 'terminal' },
+    { href: '/cogochi', label: 'Terminal', icon: 'terminal' },
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { href: '/lab', label: 'Lab', icon: 'lab' },
     { href: '/patterns', label: 'Patterns', icon: 'patterns' },

@@ -72,9 +72,9 @@
 
   function buildTerminalHref(query: string) {
     const text = query.trim();
-    if (!text) return '/terminal';
+    if (!text) return '/cogochi';
     const params = new URLSearchParams({ q: text });
-    return `/terminal?${params.toString()}`;
+    return `/cogochi?${params.toString()}`;
   }
 
   function handlePromptSubmit() {
@@ -91,7 +91,7 @@
     promptText = prompt;
     trackHomeFunnel('hero_feature_select', 'click', {
       path_id: 'prompt_chip',
-      target: '/terminal',
+      target: '/cogochi',
       prompt
     });
   }
