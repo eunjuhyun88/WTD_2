@@ -16,6 +16,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/server/db';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
+
+const VALID_SYMBOL = /^[A-Z0-9]{2,20}$/;
 
 export interface AlertRow {
   id: string;
@@ -34,11 +37,23 @@ export interface AlertRow {
   };
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const limitRaw = Number(url.searchParams.get('limit') ?? '20');
   const limit = Math.min(Math.max(1, limitRaw), 100);
-  const symbol = url.searchParams.get('symbol') ?? null;
+  const symbolRaw = url.searchParams.get('symbol') ?? null;
   const since  = url.searchParams.get('since')  ?? null;
+
+  const symbol = symbolRaw ? symbolRaw.toUpperCase() : null;
+  if (symbol && !VALID_SYMBOL.test(symbol)) {
+    return json({ error: 'Invalid symbol' }, { status: 400 });
+  }
+  if (since && isNaN(Date.parse(since))) {
+    return json({ error: 'Invalid since date' }, { status: 400 });
+  }
 
   try {
     // Build WHERE clauses
@@ -46,7 +61,7 @@ export const GET: RequestHandler = async ({ url }) => {
     const params: unknown[] = [];
 
     if (symbol) {
-      params.push(symbol.toUpperCase());
+      params.push(symbol);
       conditions.push(`symbol = $${params.length}`);
     }
     if (since) {

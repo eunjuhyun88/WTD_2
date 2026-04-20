@@ -28,7 +28,7 @@ function isHeavyPath(path: string): boolean {
 }
 
 function isBlockedPath(path: string): boolean {
-  return BLOCKED_ENGINE_PATHS.has(path.split('/')[0]);
+  return BLOCKED_ENGINE_PATHS.has(path.toLowerCase().split('/')[0]);
 }
 
 export const config = {
