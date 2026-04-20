@@ -120,6 +120,20 @@
     void hydrateCaptureDraftFromUrl();
   });
 
+  // Auto-run backtest when navigated from "이거 찾아줘" (captureId + autorun=1 in URL)
+  $effect(() => {
+    if (
+      captureHydrationState === 'ready' &&
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('autorun') === '1' &&
+      strat &&
+      !isRunning &&
+      !backtestResult
+    ) {
+      void runBacktest();
+    }
+  });
+
   $effect(() => {
     const store = $strategyStore;
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('captureId')) {

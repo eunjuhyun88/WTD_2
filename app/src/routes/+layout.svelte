@@ -20,12 +20,9 @@
 
   let { children } = $props();
 
-  // Context classification
   const isHome     = derived(page, $p => $p.url.pathname === '/');
   const isTerminal = derived(page, $p => $p.url.pathname.startsWith('/terminal') || $p.url.pathname.startsWith('/cogochi'));
-  // Context 3 = all app pages (including terminal)
   const isApp      = derived(page, $p => $p.url.pathname !== '/');
-  // AppTopBar shown on app pages EXCEPT terminal (terminal has its own CommandBar)
   const showTopBar = derived(page, $p => {
     const path = $p.url.pathname;
     return path !== '/' && !path.startsWith('/terminal') && !path.startsWith('/cogochi');
@@ -65,12 +62,10 @@
   class:terminal-mode={$isTerminal}
   class:app-mode={$isApp && !$isTerminal}
 >
-  <!-- Context 1: Home → floating marketing header -->
   {#if $isHome}
     <Header />
   {/if}
 
-  <!-- Context 3: All app pages → NavRail (including terminal) -->
   {#if $isApp}
     <AppNavRail />
   {/if}
@@ -78,18 +73,15 @@
     <AppTopBar />
   {/if}
 
-  <!-- Main content -->
   <div id="main-content">
     {@render children()}
   </div>
 
-  <!-- Mobile bottom nav (all app pages except terminal) -->
   {#if showMobileBottomNav}
     <MobileBottomNav />
   {/if}
 </div>
 
-<!-- Global overlays -->
 <WalletModal />
 {#if !$isTerminal}<NotificationTray />{/if}
 {#if !$isTerminal}<ToastStack />{/if}
@@ -103,7 +95,6 @@
     position: relative;
   }
 
-  /* ── Home: no rail, no topbar, scrollable ── */
   #app.home-mode {
     height: auto;
     overflow: visible;
@@ -115,7 +106,6 @@
     padding-left: 0;
   }
 
-  /* ── Terminal: no rail, no topbar, full height ── */
   #app.terminal-mode {
     height: 100dvh;
     overflow: hidden;
@@ -130,7 +120,6 @@
     overflow: hidden;
   }
 
-  /* ── App pages: rail + topbar ── */
   #app.app-mode #main-content {
     padding-top: 44px;
     padding-left: 52px;
@@ -140,7 +129,6 @@
     flex: 1;
   }
 
-  /* ── Mobile overrides ── */
   @media (max-width: 768px) {
     #app.terminal-mode #main-content {
       padding-left: 0;

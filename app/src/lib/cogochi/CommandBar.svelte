@@ -109,7 +109,7 @@
   }
 
   .pos {
-    color: var(--pos);
+    color: var(--brand);
   }
 
   .dim {
@@ -194,9 +194,9 @@
   }
 
   .ai-btn.active {
-    background: var(--pos-dd);
-    color: var(--pos);
-    border-color: var(--pos-d);
+    background: var(--brand-dd);
+    color: var(--brand);
+    border-color: var(--brand-d);
   }
 
   .dot {
@@ -208,6 +208,6 @@
   }
 
   .dot.active {
-    background: var(--pos);
+    background: var(--brand);
   }
 </style>
