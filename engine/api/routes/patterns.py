@@ -19,6 +19,7 @@ from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.library import PATTERN_LIBRARY, get_pattern
+from patterns.registry import PATTERN_REGISTRY_STORE
 from patterns.scanner import run_pattern_scan
 from patterns.types import PatternObject, PhaseCondition
 from scoring.block_evaluator import _BLOCKS
@@ -86,6 +87,19 @@ class _CaptureBody(BaseModel):
 async def list_patterns() -> dict:
     """List all patterns in the library."""
     return await asyncio.to_thread(patterns_thread.list_patterns_sync)
+
+
+@router.get("/registry")
+async def get_pattern_registry() -> dict:
+    """Return the JSON-backed pattern registry (versioned metadata per slug)."""
+    def _sync():
+        entries = PATTERN_REGISTRY_STORE.list_all()
+        return {
+            "ok": True,
+            "count": len(entries),
+            "entries": [e.to_dict() for e in entries],
+        }
+    return await asyncio.to_thread(_sync)
 
 
 @router.get("/states")
