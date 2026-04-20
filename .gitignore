@@ -29,6 +29,7 @@ engine/data_cache/cache/
 engine/state/*.sqlite*
 engine/ops/state/*.sqlite*
 engine/ops/state/*.json
+engine/pattern_registry/*.json
 .vercel
 
 # runtime artifacts (test/eval outputs that regenerate on each run)
