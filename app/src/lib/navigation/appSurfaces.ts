@@ -48,8 +48,8 @@ const SURFACE_MAP: Record<AppSurfaceId, AppSurface> = {
     mobileIcon: '~',
     description: 'review + capture — chart, inspect, save setup',
     homeDetail: 'review & capture',
-    href: buildTerminalLink(),
-    activePatterns: ['/terminal'],
+    href: '/cogochi',
+    activePatterns: ['/terminal', '/cogochi'],
   },
   scanner: {
     id: 'scanner',

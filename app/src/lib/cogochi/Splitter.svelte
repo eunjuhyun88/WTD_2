@@ -5,7 +5,7 @@
     color?: string;
   }
 
-  const { orientation, onDrag, color = 'var(--g2)' }: Props = $props();
+  const { orientation, onDrag, color = 'var(--g4)' }: Props = $props();
 
   let isDragging = $state(false);
 
@@ -48,17 +48,17 @@
   }
 
   .splitter.vertical {
-    width: 1px;
+    width: 4px;
     height: 100%;
   }
 
   .splitter.horizontal {
     width: 100%;
-    height: 1px;
+    height: 4px;
   }
 
   .splitter:hover {
-    background: var(--g3);
+    background: var(--g5);
   }
 
   .splitter.dragging {

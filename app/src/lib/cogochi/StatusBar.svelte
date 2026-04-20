@@ -81,10 +81,10 @@
     gap: 12px;
     padding: 0 10px;
     background: var(--g1);
-    border-top: 0.5px solid var(--g3);
+    border-top: 1px solid var(--g4);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: var(--g6);
+    color: var(--g7);
     letter-spacing: 0.04em;
   }
 
@@ -101,7 +101,7 @@
     border-radius: 2px;
     font-size: 9px;
     background: transparent;
-    color: var(--g6);
+    color: var(--g7);
     letter-spacing: 0.1em;
     font-weight: 400;
     cursor: pointer;

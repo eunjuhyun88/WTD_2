@@ -74,7 +74,7 @@
     display: flex;
     align-items: stretch;
     background: var(--g0);
-    border-bottom: 0.5px solid var(--g3);
+    border-bottom: 1px solid var(--g4);
     flex-shrink: 0;
   }
 
@@ -84,7 +84,7 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border-right: 0.5px solid var(--g3);
+    border-right: 1px solid var(--g4);
     cursor: pointer;
     font-size: 13px;
     color: var(--g6);
@@ -107,7 +107,7 @@
     gap: 8px;
     padding: 0 10px 0 12px;
     background: transparent;
-    border-right: 0.5px solid var(--g3);
+    border-right: 1px solid var(--g4);
     border-top: 1.5px solid transparent;
     cursor: pointer;
     min-width: 140px;
@@ -128,7 +128,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
-    color: var(--g6);
+    color: var(--g7);
   }
 
   .tab.active .tab-text {

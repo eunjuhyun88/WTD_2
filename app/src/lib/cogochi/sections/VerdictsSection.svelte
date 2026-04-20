@@ -93,7 +93,7 @@
   .time {
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
-    color: var(--g5);
+    color: var(--g7);
     margin-left: auto;
   }
 
@@ -111,7 +111,7 @@
   }
 
   .alpha {
-    color: var(--g5);
+    color: var(--g7);
   }
 
   .pnl {
