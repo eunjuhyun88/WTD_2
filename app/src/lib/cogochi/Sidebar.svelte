@@ -13,7 +13,7 @@
   const { visible, activeSection, setActiveSection, onOpenTab }: Props = $props();
 
   const sections = [
-    { id: 'library', label: 'Library', color: 'var(--pos)', count: 8 },
+    { id: 'library', label: 'Library', color: 'var(--brand)', count: 8 },
     { id: 'verdicts', label: 'Verdicts', color: 'var(--amb)', count: 5 },
     { id: 'rules', label: 'Rules', color: '#7aa2e0', count: 4 },
   ] as const;
@@ -123,7 +123,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--pos);
+    background: var(--brand);
   }
 
   .spacer {
