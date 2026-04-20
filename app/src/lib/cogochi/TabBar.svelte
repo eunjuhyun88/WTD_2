@@ -88,7 +88,7 @@
     border-right: 0.5px solid var(--g4);
     cursor: pointer;
     font-size: 13px;
-    color: var(--g5);
+    color: var(--g6);
     transition: color 0.15s;
   }
 
@@ -141,7 +141,7 @@
   }
 
   .close-btn {
-    color: var(--g5);
+    color: var(--g6);
     font-size: 12px;
     line-height: 1;
     padding: 0 2px;
@@ -157,7 +157,7 @@
 
   .new-tab-btn {
     width: 28px;
-    color: var(--g5);
+    color: var(--g6);
     font-size: 14px;
     cursor: pointer;
     background: transparent;

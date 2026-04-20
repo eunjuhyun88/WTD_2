@@ -56,7 +56,7 @@
 
 <style>
   .sidebar {
-    width: 240px;
+    width: 100%;
     flex-shrink: 0;
     background: var(--g1);
     border-right: 0.5px solid var(--g4);
