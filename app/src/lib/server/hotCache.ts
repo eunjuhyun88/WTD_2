@@ -12,6 +12,13 @@ function pruneExpiredEntries(now: number) {
   }
 }
 
+// Background cleanup every 5 minutes to prevent unbounded memory growth.
+// Without this, stale entries accumulate at ~200B each with no eviction.
+const _cleanupTimer = setInterval(() => pruneExpiredEntries(Date.now()), 5 * 60 * 1000);
+if (_cleanupTimer && typeof _cleanupTimer === 'object' && 'unref' in _cleanupTimer) {
+  (_cleanupTimer as NodeJS.Timeout).unref();
+}
+
 export async function getHotCached<T>(key: string, ttlMs: number, producer: () => Promise<T>): Promise<T> {
   const now = Date.now();
   const cached = valueCache.get(key) as CacheEntry<T> | undefined;

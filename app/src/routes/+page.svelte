@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { openWalletModal } from '$lib/stores/walletModalStore';
   import HomeFinalCta from '../components/home/HomeFinalCta.svelte';
   import HomeHero from '../components/home/HomeHero.svelte';
   import SiteFooter from '../components/home/SiteFooter.svelte';
@@ -106,6 +108,15 @@
   }
 
   onMount(() => {
+    // Open login modal when redirected from a protected route
+    if ($page.url.searchParams.get('auth') === 'required') {
+      openWalletModal();
+      // Clean up the param from the URL without a full navigation
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('auth');
+      window.history.replaceState({}, '', clean.toString());
+    }
+
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handleMotionChange = () => syncAnimatedBackgroundPreference(reducedMotionQuery);
     syncAnimatedBackgroundPreference(reducedMotionQuery);
