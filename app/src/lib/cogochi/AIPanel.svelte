@@ -249,7 +249,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--pos);
+    background: var(--brand);
     animation: pulse 2s infinite;
   }
   @keyframes pulse {
@@ -312,7 +312,7 @@
     font-size: 10px;
   }
   .wl-hint { color: var(--g6); }
-  .wl-run { color: var(--pos); font-style: normal; }
+  .wl-run { color: var(--brand); font-style: normal; }
   .wl-picks { display: flex; flex-direction: column; gap: 3px; }
   .wl-pick {
     text-align: left;
@@ -328,7 +328,7 @@
     transition: background 0.1s;
   }
   .wl-pick:hover { background: var(--g3); }
-  .pick-slash { color: var(--pos); margin-right: 5px; font-family: 'JetBrains Mono', monospace; }
+  .pick-slash { color: var(--brand); margin-right: 5px; font-family: 'JetBrains Mono', monospace; }
 
   /* Messages */
   .msg-user, .msg-ai { margin-bottom: 12px; }
@@ -341,8 +341,8 @@
     align-items: center;
     gap: 5px;
   }
-  .msg-from.ai { color: var(--pos); }
-  .ai-dot-sm { width: 5px; height: 5px; border-radius: 50%; background: var(--pos); }
+  .msg-from.ai { color: var(--brand); }
+  .ai-dot-sm { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); }
   .msg-bubble {
     font-size: 11px;
     color: var(--g8);
@@ -393,9 +393,9 @@
   .setup-div { color: var(--g4); }
   .run-btn {
     padding: 3px 10px;
-    background: var(--pos-dd);
-    color: var(--pos);
-    border: 0.5px solid var(--pos-d);
+    background: var(--brand-dd);
+    color: var(--brand);
+    border: 0.5px solid var(--brand-d);
     border-radius: 3px;
     font-size: 9px;
     font-weight: 600;
@@ -457,11 +457,11 @@
     transition: all 0.12s;
   }
   .send-btn.active {
-    background: var(--pos-dd);
-    color: var(--pos);
-    border-color: var(--pos-d);
+    background: var(--brand-dd);
+    color: var(--brand);
+    border-color: var(--brand-d);
   }
-  .send-btn.active:hover { background: var(--pos-d); }
+  .send-btn.active:hover { background: var(--brand-d); }
 
   .context-chips {
     display: flex;
