@@ -268,15 +268,57 @@
     return () => window.removeEventListener('keydown', handleJudgeKeydown);
   });
 
-  // ── SCAN state (trade_scan.jsx ScanPanel) ────────────────────────────────
-  let scanSelected = $state('a8');
-  const scanCandidates = [
-    { id: 'a8',  symbol: 'LDOUSDT', tf: '1H', pattern: 'OI +14% · accum',   phase: 4, alpha: 77, age: '08:12', sim: 0.91, dir: 'long' },
-    { id: 'a9',  symbol: 'INJUSDT', tf: '4H', pattern: '번지대 4h · CVD 양', phase: 4, alpha: 73, age: '07:48', sim: 0.88, dir: 'long' },
-    { id: 'a10', symbol: 'FETUSDT', tf: '1H', pattern: 'Higher lows 6/6',   phase: 4, alpha: 70, age: '07:22', sim: 0.84, dir: 'long' },
-    { id: 'a11', symbol: 'SEIUSDT', tf: '1H', pattern: 'Funding flip',      phase: 3, alpha: 64, age: '06:58', sim: 0.79, dir: 'long' },
-    { id: 'a12', symbol: 'BNXUSDT', tf: '4H', pattern: 'OI spike accum',   phase: 4, alpha: 61, age: '06:30', sim: 0.75, dir: 'long' },
-  ];
+  // ── SCAN state — live from /api/cogochi/alpha/world-model ─────────────────
+  type ScanCandidate = { id: string; symbol: string; tf: string; pattern: string; phase: number; alpha: number; age: string; sim: number; dir: string };
+  let scanSelected = $state('');
+  let scanLoading = $state(false);
+  let scanCandidates = $state<ScanCandidate[]>([]);
+
+  const _PHASE_ORDER: Record<string, number> = { HOT: 0, COMPLETE: 1, WARM: 2, COLD: 3 };
+  const _PHASE_NUM:   Record<string, number> = { COLD: 2, WARM: 3, HOT: 4, COMPLETE: 5 };
+  const _PHASE_ALPHA: Record<string, number> = { HOT: 85, WARM: 65, COMPLETE: 90, COLD: 45 };
+  const _PHASE_SIM:   Record<string, number> = { HOT: 0.88, WARM: 0.70, COMPLETE: 0.95, COLD: 0.50 };
+
+  function _fmtAge(enteredAt: string | null): string {
+    if (!enteredAt) return '—';
+    const ms = Date.now() - new Date(enteredAt).getTime();
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  function _loadAlphaWorldModel() {
+    scanLoading = true;
+    fetch('/api/cogochi/alpha/world-model')
+      .then(r => r.json())
+      .then((data: { phases?: { symbol: string; grade: string; phase: string; entered_at: string | null }[] }) => {
+        const items = (data.phases ?? [])
+          .filter(p => p.phase !== 'IDLE')
+          .sort((a, b) => (_PHASE_ORDER[a.phase] ?? 9) - (_PHASE_ORDER[b.phase] ?? 9))
+          .map(p => ({
+            id: p.symbol,
+            symbol: p.symbol,
+            tf: '1H',
+            pattern: `Alpha presurge · ${p.phase}`,
+            phase: _PHASE_NUM[p.phase] ?? 2,
+            alpha: Math.min(99, (_PHASE_ALPHA[p.phase] ?? 50) + (p.grade === 'A' ? 5 : 0)),
+            age: _fmtAge(p.entered_at),
+            sim: _PHASE_SIM[p.phase] ?? 0.50,
+            dir: 'long',
+          }));
+        scanCandidates = items;
+        if (items.length > 0 && !scanSelected) scanSelected = items[0].id;
+      })
+      .catch(() => {})
+      .finally(() => { scanLoading = false; });
+  }
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    _loadAlphaWorldModel();
+    const iv = setInterval(_loadAlphaWorldModel, 5 * 60 * 1000);
+    return () => clearInterval(iv);
+  });
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   function _fmtNum(v: number | null | undefined): string {
@@ -453,6 +495,11 @@
           {/if}
         {/if}
       {:else if mobileView === 'scan'}
+        {#if scanLoading && scanCandidates.length === 0}
+          <div class="scan-empty">스캔 중…</div>
+        {:else if scanCandidates.length === 0}
+          <div class="scan-empty">활성 신호 없음</div>
+        {/if}
         {#each scanCandidates as x}
           {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
           <button class="scan-row" class:active={scanSelected === x.id} onclick={() => {
@@ -2449,6 +2496,7 @@
   }
 
   /* scan-row: compact horizontal scan item for A/C layouts */
+  .scan-empty { padding: 12px 0; font-size: 11px; color: var(--g6); text-align: center; }
   .scan-row {
     display: flex;
     align-items: center;
