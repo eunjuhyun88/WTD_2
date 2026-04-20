@@ -8,6 +8,8 @@
    * - Persisted: open state + height + active tab in localStorage.
    */
   import { onMount } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
 
   type Tab = 'analyze' | 'scan' | 'judge';
 
@@ -27,10 +29,15 @@
   let activeTab = $state<Tab>('analyze');
   let heightPct = $state(40); // % of viewport
   let dragging = $state(false);
+  let prefersReducedMotion = $state(false);
 
   const STORAGE_KEY = 'wtdv2:peek:v1';
 
   onMount(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    prefersReducedMotion = mq.matches;
+    mq.addEventListener('change', (e) => { prefersReducedMotion = e.matches; });
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -141,7 +148,10 @@
 
   <!-- Drawer content -->
   {#if open}
-    <div class="drawer">
+    <div
+      class="drawer"
+      transition:fly={{ y: prefersReducedMotion ? 0 : 20, duration: prefersReducedMotion ? 0 : 180, easing: cubicOut }}
+    >
       {#if activeTab === 'analyze'}
         <slot name="analyze" />
       {:else if activeTab === 'scan'}
