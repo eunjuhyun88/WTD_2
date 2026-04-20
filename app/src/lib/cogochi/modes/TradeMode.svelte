@@ -1,8 +1,10 @@
 <script lang="ts">
-  import ChartSvg from '../ChartSvg.svelte';
+  import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
   import Splitter from '../Splitter.svelte';
   import ScanGrid from '../../../components/terminal/peek/ScanGrid.svelte';
   import JudgePanel from '../../../components/terminal/peek/JudgePanel.svelte';
+  import { fetchTerminalBundle } from '$lib/api/terminalBackend';
+  import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
 
   interface TabState {
     tradePrompt: string;
@@ -36,7 +38,23 @@
   const drawerTab  = $derived(tabState.drawerTab ?? 'analyze');
   const peekHeight = $derived(tabState.peekHeight ?? 42);
   const splitY     = $derived(tabState.splitY ?? 50);
-  const analyzed   = $derived(!!tabState.tradePrompt || !!tabState.rangeSelection);
+  const analyzed   = true;
+
+  // ── live chart data ──
+  let chartPayload = $state<ChartSeriesPayload | null>(null);
+  let change24hPct = $state<number | null>(null);
+
+  $effect(() => {
+    const sym = symbol;
+    const tf = timeframe;
+    let cancelled = false;
+    fetchTerminalBundle({ symbol: sym, tf }).then(bundle => {
+      if (cancelled) return;
+      chartPayload = bundle.chartPayload;
+      change24hPct = bundle.analyze?.change24h ?? null;
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  });
 
   function setLayout(m: 'A' | 'B' | 'C' | 'D') {
     updateTabState(s => ({ ...s, layoutMode: m }));
@@ -159,7 +177,7 @@
     <!-- ── LAYOUT A · Vertical stack ── -->
     <div class="la-wrap">
       <div class="la-analyze" style:height="{splitY}%">
-        <ChartSvg showEntry={true} showRange={tabState.rangeSelection} showIndicators={true}/>
+        <ChartBoard symbol={symbol} tf={timeframe} initialData={chartPayload} contextMode="chart" change24hPct={change24hPct}/>
       </div>
       <Splitter orientation="horizontal" onDrag={(dy) => {
         const h = containerEl?.getBoundingClientRect().height || 700;
@@ -202,7 +220,7 @@
           {/each}
         </div>
         <div class="chart-body-fill">
-          <ChartSvg showEntry={true} showRange={tabState.rangeSelection} showIndicators={true}/>
+          <ChartBoard symbol={symbol} tf={timeframe} initialData={chartPayload} contextMode="chart" change24hPct={change24hPct}/>
         </div>
       </div>
       <div class="lb-drawer">
@@ -252,7 +270,7 @@
           {/each}
         </div>
         <div class="chart-body-fill">
-          <ChartSvg showEntry={true} showRange={tabState.rangeSelection} showIndicators={true}/>
+          <ChartBoard symbol={symbol} tf={timeframe} initialData={chartPayload} contextMode="chart" change24hPct={change24hPct}/>
         </div>
       </div>
       <div class="lc-info">
@@ -304,12 +322,7 @@
         </div>
         <!-- chart canvas -->
         <div class="chart-body-fill">
-          <ChartSvg
-            highlightPhase={4}
-            showEntry={true}
-            showRange={tabState.rangeSelection}
-            showIndicators={true}
-          />
+          <ChartBoard symbol={symbol} tf={timeframe} initialData={chartPayload} contextMode="chart" change24hPct={change24hPct}/>
         </div>
       </div>
 
