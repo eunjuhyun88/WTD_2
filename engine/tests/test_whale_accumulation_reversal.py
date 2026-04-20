@@ -137,7 +137,8 @@ class TestRegressionGuards:
         # + FUNDING_FLIP_REVERSAL_SHORT (W-0106) = 13
         # + OI_PRESURGE_LONG (W-0114 딸깍 전략) = 14
         # + ALPHA_PRESURGE (W-0115 Alpha pipeline) = 15
-        assert len(PATTERN_LIBRARY) == 15
+        # + LIQUIDITY_SWEEP_REVERSAL (W-0110-A) = 16
+        assert len(PATTERN_LIBRARY) == 16
 
     def test_whale_accumulation_in_promoted_patterns(self):
         from research.live_monitor import PROMOTED_PATTERNS
