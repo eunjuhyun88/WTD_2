@@ -91,6 +91,15 @@
   // ── analyzed: shows chart+PEEK only after setup is applied ──────────────
   const analyzed = $derived(!!(tabState.tradePrompt || tabState.rangeSelection));
 
+  // ── Layout mode ──────────────────────────────────────────────────────────
+  const layoutMode = $derived(tabState.layoutMode ?? 'D');
+  function setLayoutMode(m: 'A' | 'B' | 'C' | 'D') {
+    updateTabState(s => ({ ...s, layoutMode: m }));
+  }
+
+  // Layout B drawer tab state
+  let bDrawerTab = $state<'analyze' | 'scan' | 'judge'>('analyze');
+
   // ── JUDGE state (trade_act.jsx ActPanel) ────────────────────────────────
   let judgeVerdict = $state<'agree' | 'disagree' | null>(null);
   let judgeOutcome = $state<'win' | 'loss' | 'flat' | null>(null);
@@ -152,7 +161,7 @@
             { label: 'Funding flip', sub: 'higher-lows' },
             { label: 'BB squeeze 해제', sub: '15m breakout' },
           ] as q}
-            <button class="ec-quick" onclick={() => shellStore.toggleAI()}>
+            <button class="ec-quick" onclick={() => updateTabState(s => ({ ...s, tradePrompt: q.label }))}>
               <span class="eq-label">{q.label}</span>
               <span class="eq-sub">{q.sub}</span>
             </button>
@@ -161,6 +170,378 @@
       </div>
     </div>
   {:else}
+  <!-- Layout tabs -->
+  <div class="layout-strip">
+    <span class="ls-label">LAYOUT</span>
+    {#each [
+      { id: 'A', label: 'STACK',   desc: '세로 3단' },
+      { id: 'B', label: 'DRAWER',  desc: '차트 + 하단 탭' },
+      { id: 'C', label: 'SIDEBAR', desc: '차트 + AI 통합' },
+      { id: 'D', label: 'PEEK',    desc: '접이식 peek', badge: 'new' },
+    ] as lt}
+      <button
+        class="ls-tab"
+        class:active={layoutMode === lt.id}
+        onclick={() => setLayoutMode(lt.id as any)}
+      >
+        <span class="ls-id">{lt.id}</span>
+        <span class="ls-name">{lt.label}</span>
+        <span class="ls-desc">· {lt.desc}</span>
+        {#if lt.badge}
+          <span class="ls-badge">{lt.badge}</span>
+        {/if}
+      </button>
+    {/each}
+    <span class="spacer"></span>
+    <span class="ls-hint">탭 전환해서 비교</span>
+  </div>
+
+  {#if layoutMode === 'A'}
+  <!-- ═══ LAYOUT A · Chart + always-open 3-col bottom panel ═══════════════ -->
+  <div class="layout-ab">
+    <div class="chart-section no-peek">
+      <div class="chart-header">
+        <span class="symbol">{symbol}</span>
+        <span class="timeframe">{timeframe.toUpperCase()}</span>
+        <span class="pattern">Tradoor v2</span>
+        <span class="spacer"></span>
+        <div class="ind-toggles">
+          <span class="ind-label-hdr">INDICATORS</span>
+          {#each [
+            { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
+            { id: 'funding', label: 'Funding', get: () => showFunding, set: (v: boolean) => showFunding = v },
+            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
+          ] as tog}
+            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set(!tog.get())}>{tog.label}</button>
+          {/each}
+        </div>
+        <div class="conf-inline">
+          <span class="conf-label">CONFIDENCE</span>
+          <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
+          <span class="conf-val">82</span>
+        </div>
+      </div>
+      <div class="chart-body">
+        <div class="chart-live">
+          {#if chartKlines.length > 0}
+            <CgChart data={chartKlines} currentPrice={chartCurrentPrice} {symbol} {timeframe} snapshot={chartSnapshot} derivatives={chartDerivatives} tradePlan={{ entry: 83700, stopLoss: 82800, tp1: 87500 }} />
+          {:else}
+            <PhaseChart height="100%" highlightPhase={4} showEntry={true} showRange={tabState.rangeSelection} showIndicators={true} {showOI} {showFunding} {showCVD} />
+          {/if}
+        </div>
+      </div>
+    </div>
+    <!-- 3-col bottom: ANALYZE | SCAN | JUDGE all open at once -->
+    <div class="la-bottom">
+      <div class="la-col la-analyze-col">
+        <div class="la-col-header"><span class="la-step">02</span><span class="la-title">ANALYZE</span><span class="la-desc">· 가설·근거</span></div>
+        <div class="la-col-body">
+          <div class="narrative">
+            <span class="bull">롱 진입 권장 ·</span>
+            {' '}<code>real_dump</code> 후 <strong>OI +18%</strong>, <strong>번지대 3h 12m</strong> 소화.
+            {' '}Funding 플립 완료, CVD 양전환.
+            {' '}<span class="warn">BTC RANGE⚠</span>
+          </div>
+          <div class="evidence-grid">
+            {#each evidenceItems as item}
+              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                <span class="ev-key">{item.k}</span>
+                <span class="ev-val">{item.v}</span>
+              </div>
+            {/each}
+          </div>
+          <div class="proposal-label" style="margin-top: 8px;">PROPOSAL</div>
+          {#each proposal as p}
+            <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+              <span class="prop-l">{p.label}</span>
+              <span class="prop-v">{p.val}</span>
+              <span class="prop-h">{p.hint}</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+      <div class="la-vsep"></div>
+      <div class="la-col la-scan-col">
+        <div class="la-col-header"><span class="la-step">03</span><span class="la-title">SCAN</span><span class="la-desc">· {scanCandidates.length} candidates</span></div>
+        <div class="la-col-body">
+          {#each scanCandidates as x}
+            {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
+            <button class="scan-row" class:active={scanSelected === x.id} onclick={() => scanSelected = x.id}>
+              <span class="sr-sym">{x.symbol.replace('USDT','')}</span>
+              <span class="sr-tf">{x.tf}</span>
+              <div class="sr-bar"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
+              <span class="sr-alpha" style:color={sc}>α{x.alpha}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+      <div class="la-vsep"></div>
+      <div class="la-col la-judge-col">
+        <div class="la-col-header"><span class="la-step">04</span><span class="la-title">JUDGE</span><span class="la-desc">· 매매·판정</span></div>
+        <div class="la-col-body">
+          <div class="lvl-row">
+            {#each [
+              { label: 'entry',  val: '83,700', color: 'var(--g9)' },
+              { label: 'stop',   val: '82,800', color: 'var(--neg)' },
+              { label: 'target', val: '87,500', color: 'var(--pos)' },
+              { label: 'R:R',    val: '4.2x',   color: 'var(--g9)' },
+            ] as lvl}
+              <div class="lvl-cell">
+                <div class="lvl-label">{lvl.label}</div>
+                <div class="lvl-val" style:color={lvl.color}>{lvl.val}</div>
+              </div>
+            {/each}
+          </div>
+          <div class="judge-btns" style="margin-top: 10px;">
+            <button class="judge-btn agree" class:active={judgeVerdict === 'agree'} onclick={() => judgeVerdict = 'agree'}>
+              <span class="jb-key">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
+            </button>
+            <button class="judge-btn disagree" class:active={judgeVerdict === 'disagree'} onclick={() => judgeVerdict = 'disagree'}>
+              <span class="jb-key">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span></div>
+            </button>
+          </div>
+          <div class="outcome-row" style="margin-top: 8px;">
+            {#each [{ k: 'win', l: 'WIN', c: 'var(--pos)', bg: 'var(--pos-dd)' }, { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' }, { k: 'flat', l: 'FLAT', c: 'var(--g7)', bg: 'var(--g2)' }] as o}
+              <button class="outcome-btn" class:active={judgeOutcome === o.k} style:--oc={o.c} style:--obg={o.bg} onclick={() => { judgeOutcome = o.k as any; }}>{o.l}</button>
+            {/each}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {:else if layoutMode === 'B'}
+  <!-- ═══ LAYOUT B · Chart + always-open tabbed bottom panel ══════════════ -->
+  <div class="layout-ab">
+    <div class="chart-section no-peek">
+      <div class="chart-header">
+        <span class="symbol">{symbol}</span>
+        <span class="timeframe">{timeframe.toUpperCase()}</span>
+        <span class="pattern">Tradoor v2</span>
+        <span class="spacer"></span>
+        <div class="ind-toggles">
+          <span class="ind-label-hdr">INDICATORS</span>
+          {#each [
+            { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
+            { id: 'funding', label: 'Funding', get: () => showFunding, set: (v: boolean) => showFunding = v },
+            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
+          ] as tog}
+            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set(!tog.get())}>{tog.label}</button>
+          {/each}
+        </div>
+        <div class="conf-inline">
+          <span class="conf-label">CONFIDENCE</span>
+          <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
+          <span class="conf-val">82</span>
+        </div>
+      </div>
+      <div class="chart-body">
+        <div class="chart-live">
+          {#if chartKlines.length > 0}
+            <CgChart data={chartKlines} currentPrice={chartCurrentPrice} {symbol} {timeframe} snapshot={chartSnapshot} derivatives={chartDerivatives} tradePlan={{ entry: 83700, stopLoss: 82800, tp1: 87500 }} />
+          {:else}
+            <PhaseChart height="100%" highlightPhase={4} showEntry={true} showRange={tabState.rangeSelection} showIndicators={true} {showOI} {showFunding} {showCVD} />
+          {/if}
+        </div>
+      </div>
+    </div>
+    <!-- Tabbed bottom panel, always open -->
+    <div class="lb-panel">
+      <div class="drawer-header">
+        {#each [
+          { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--pos)', desc: '가설·근거' },
+          { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',    desc: '유사 셋업' },
+          { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)', desc: '매매·판정' },
+        ] as tab}
+          <button class="dh-tab" class:active={bDrawerTab === tab.id} style:--tc={tab.color} onclick={() => bDrawerTab = tab.id as any}>
+            <span class="dh-n">{tab.n}</span>
+            <span class="dh-label">{tab.label}</span>
+            <span class="dh-desc">· {tab.desc}</span>
+          </button>
+        {/each}
+        <span class="spacer"></span>
+        <div class="conf-inline small">
+          <span class="conf-label">CONFIDENCE</span>
+          <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
+          <span class="conf-val">82</span>
+        </div>
+      </div>
+      <div class="drawer-content">
+        {#if bDrawerTab === 'analyze'}
+          <div class="analyze-body">
+            <div class="analyze-left">
+              <div class="narrative">
+                <span class="bull">롱 진입 권장 ·</span>
+                {' '}<code>real_dump</code> 후 <strong>OI +18%</strong>, <strong>번지대 3h 12m</strong> 소화하고 <strong>accumulation</strong> 진입.
+                {' '}Funding 플립 완료, 15m CVD 양전환.
+                {' '}<span class="warn">BTC RANGE 주의</span> · 과거 같은 조건 <strong>11/14</strong> +3% 이상.
+              </div>
+              <div class="evidence-grid">
+                {#each evidenceItems as item}
+                  <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                    <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                    <span class="ev-key">{item.k}</span>
+                    <span class="ev-val">{item.v}</span>
+                    <span class="ev-note">{item.note}</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+            <div class="analyze-right">
+              <div class="proposal-label">PROPOSAL</div>
+              {#each proposal as p}
+                <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                  <span class="prop-l">{p.label}</span>
+                  <span class="prop-v">{p.val}</span>
+                  <span class="prop-h">{p.hint}</span>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {:else if bDrawerTab === 'scan'}
+          <div class="scan-panel">
+            <div class="scan-grid">
+              {#each scanCandidates as x}
+                {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
+                <button class="scan-card" class:active={scanSelected === x.id} style:--sc={sc} onclick={() => scanSelected = x.id}>
+                  <div class="sc-top"><span class="sc-sym">{x.symbol.replace('USDT','')}</span><span class="sc-tf">{x.tf}</span><span class="spacer"></span><span class="sc-alpha" style:color={sc}>α{x.alpha}</span></div>
+                  <div class="sc-sim-row"><div class="sc-sim-bar"><div class="sc-sim-fill" style:width="{x.sim*100}%" style:background={sc}></div></div><span class="sc-sim-pct">{Math.round(x.sim*100)}%</span></div>
+                  <div class="sc-pattern">{x.pattern}</div>
+                </button>
+              {/each}
+            </div>
+          </div>
+        {:else if bDrawerTab === 'judge'}
+          <div class="act-panel">
+            <div class="act-cols">
+              <div class="act-col plan-col">
+                <div class="col-label">A · TRADE PLAN</div>
+                <div class="lvl-row">
+                  {#each [{ label: 'entry', val: '83,700', color: 'var(--g9)' }, { label: 'stop', val: '82,800', color: 'var(--neg)' }, { label: 'target', val: '87,500', color: 'var(--pos)' }, { label: 'R:R', val: '4.2x', color: 'var(--g9)' }] as lvl}
+                    <div class="lvl-cell"><div class="lvl-label">{lvl.label}</div><div class="lvl-val" style:color={lvl.color}>{lvl.val}</div></div>
+                  {/each}
+                </div>
+              </div>
+              <div class="act-divider"></div>
+              <div class="act-col judge-col">
+                <div class="col-label">B · JUDGE NOW</div>
+                <div class="judge-btns">
+                  <button class="judge-btn agree" class:active={judgeVerdict === 'agree'} onclick={() => judgeVerdict = 'agree'}><span class="jb-key">Y</span><div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">진입</span></div></button>
+                  <button class="judge-btn disagree" class:active={judgeVerdict === 'disagree'} onclick={() => judgeVerdict = 'disagree'}><span class="jb-key">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">패스</span></div></button>
+                </div>
+              </div>
+              <div class="act-divider"></div>
+              <div class="act-col after-col">
+                <div class="col-label">C · AFTER RESULT</div>
+                <div class="outcome-row">
+                  {#each [{ k: 'win', l: 'WIN', c: 'var(--pos)', bg: 'var(--pos-dd)' }, { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' }, { k: 'flat', l: 'FLAT', c: 'var(--g7)', bg: 'var(--g2)' }] as o}
+                    <button class="outcome-btn" class:active={judgeOutcome === o.k} style:--oc={o.c} style:--obg={o.bg} onclick={() => { judgeOutcome = o.k as any; }}>{o.l}</button>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          </div>
+        {/if}
+      </div>
+    </div>
+  </div>
+
+  {:else if layoutMode === 'C'}
+  <!-- ═══ LAYOUT C · Chart left + right sidebar ═══════════════════════════ -->
+  <div class="layout-c">
+    <div class="lc-chart">
+      <div class="chart-header">
+        <span class="symbol">{symbol}</span>
+        <span class="timeframe">{timeframe.toUpperCase()}</span>
+        <span class="pattern">Tradoor v2</span>
+        <span class="spacer"></span>
+        <div class="ind-toggles">
+          <span class="ind-label-hdr">INDICATORS</span>
+          {#each [
+            { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
+            { id: 'funding', label: 'Funding', get: () => showFunding, set: (v: boolean) => showFunding = v },
+            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
+          ] as tog}
+            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set(!tog.get())}>{tog.label}</button>
+          {/each}
+        </div>
+      </div>
+      <div class="chart-body">
+        <div class="chart-live">
+          {#if chartKlines.length > 0}
+            <CgChart data={chartKlines} currentPrice={chartCurrentPrice} {symbol} {timeframe} snapshot={chartSnapshot} derivatives={chartDerivatives} tradePlan={{ entry: 83700, stopLoss: 82800, tp1: 87500 }} />
+          {:else}
+            <PhaseChart height="100%" highlightPhase={4} showEntry={true} showRange={tabState.rangeSelection} showIndicators={true} {showOI} {showFunding} {showCVD} />
+          {/if}
+        </div>
+      </div>
+    </div>
+    <div class="lc-sidebar">
+      <div class="lcs-section">
+        <div class="lcs-header"><span class="lcs-step">02</span><span class="lcs-title">ANALYZE</span></div>
+        <div class="lcs-body">
+          <div class="conf-inline small" style="margin-bottom: 6px;">
+            <span class="conf-label">CONFIDENCE</span>
+            <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
+            <span class="conf-val">82</span>
+          </div>
+          <div class="narrative" style="font-size: 9px; line-height: 1.6;">
+            <span class="bull">롱 권장 ·</span> OI +18%, 번지대 3h 소화.
+            Funding 플립, CVD 양전환.
+            <span class="warn">BTC RANGE⚠</span>
+          </div>
+          <div style="margin-top: 6px;">
+            {#each evidenceItems as item}
+              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} style="margin-bottom: 3px;">
+                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                <span class="ev-key">{item.k}</span>
+                <span class="ev-val">{item.v}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+      <div class="lcs-divider"></div>
+      <div class="lcs-section">
+        <div class="lcs-header"><span class="lcs-step">03</span><span class="lcs-title">SCAN</span><span class="lcs-meta">{scanCandidates.length} found</span></div>
+        <div class="lcs-body">
+          {#each scanCandidates as x}
+            {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
+            <button class="scan-row" class:active={scanSelected === x.id} onclick={() => scanSelected = x.id}>
+              <span class="sr-sym">{x.symbol.replace('USDT','')}</span>
+              <span class="sr-tf">{x.tf}</span>
+              <div class="sr-bar"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
+              <span class="sr-alpha" style:color={sc}>α{x.alpha}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+      <div class="lcs-divider"></div>
+      <div class="lcs-section">
+        <div class="lcs-header"><span class="lcs-step">04</span><span class="lcs-title">JUDGE</span></div>
+        <div class="lcs-body">
+          {#each proposal as p}
+            <div class="prop-cell compact" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+              <span class="prop-l">{p.label}</span>
+              <span class="prop-v">{p.val}</span>
+            </div>
+          {/each}
+          <div class="judge-btns" style="margin-top: 8px; gap: 4px;">
+            <button class="judge-btn agree" class:active={judgeVerdict === 'agree'} onclick={() => judgeVerdict = 'agree'}>
+              <span class="jb-key">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
+            </button>
+            <button class="judge-btn disagree" class:active={judgeVerdict === 'disagree'} onclick={() => judgeVerdict = 'disagree'}>
+              <span class="jb-key">N</span><div class="jb-text"><span class="jb-label">SKIP</span></div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {:else}
+  <!-- ═══ LAYOUT D · PEEK (default) ══════════════════════════════════════ -->
   <!-- Chart Hero — fills available space, position:relative for overlay -->
   <div class="chart-section">
     <div class="chart-header">
@@ -168,7 +549,6 @@
       <span class="timeframe">{timeframe.toUpperCase()}</span>
       <span class="pattern">Tradoor v2</span>
       <span class="spacer"></span>
-      {#if chartKlines.length === 0}
       <div class="ind-toggles">
         <span class="ind-label-hdr">INDICATORS</span>
         {#each [
@@ -183,7 +563,6 @@
           >{tog.label}</button>
         {/each}
       </div>
-      {/if}
       <div class="evidence-badge">
         <span class="ev-label">EVIDENCE</span>
         <span class="ev-pos">5</span>
@@ -560,7 +939,8 @@
       </div>
     {/if}
   </div>
-  {/if}
+  {/if}<!-- end layoutMode -->
+  {/if}<!-- end analyzed -->
 </div>
 
 <style>
@@ -976,6 +1356,8 @@
     cursor: pointer;
     font-family: 'JetBrains Mono', monospace;
     transition: background 0.1s;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .dh-tab:hover { background: var(--g1); }
   .dh-tab.active {
@@ -996,7 +1378,7 @@
     letter-spacing: 0.1em;
   }
   .dh-tab.active .dh-label { color: var(--g9); }
-  .dh-desc { font-size: 9px; color: var(--g5); font-family: 'Geist', sans-serif; }
+  .dh-desc { font-size: 9px; color: var(--g5); font-family: 'Geist', sans-serif; white-space: nowrap; }
 
   /* Drawer content */
   .drawer-content {
@@ -1327,4 +1709,237 @@
   .past-sym { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--g9); font-weight: 500; }
   .past-pnl { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; }
   .past-sim { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); }
+
+  /* ── Layout switcher strip ─────────────────────────────────────────────── */
+  .layout-strip {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 28px;
+    padding: 0 10px;
+    background: var(--g0);
+    border-bottom: 0.5px solid var(--g3);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .ls-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--g5);
+    letter-spacing: 0.2em;
+    margin-right: 10px;
+    white-space: nowrap;
+  }
+  .ls-tab {
+    padding: 0 12px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-right: 0.5px solid var(--g3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+    white-space: nowrap;
+  }
+  .ls-tab.active { background: var(--g1); }
+  .ls-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--g6);
+    letter-spacing: 0.1em;
+  }
+  .ls-tab.active .ls-id { color: var(--amb); }
+  .ls-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g6);
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .ls-tab.active .ls-name { color: var(--g9); }
+  .ls-desc { display: none; }
+  .ls-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    padding: 1px 5px;
+    background: var(--amb);
+    color: var(--g0);
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+  }
+  .ls-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g5);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  /* ── Shared: chart-section without peek ────────────────────────────────── */
+  .chart-section.no-peek {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
+
+  /* ── Layout A/B shared wrapper ──────────────────────────────────────────── */
+  .layout-ab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── Layout A — 3-col bottom panel ─────────────────────────────────────── */
+  .la-bottom {
+    flex-shrink: 0;
+    height: 260px;
+    display: flex;
+    flex-direction: row;
+    background: var(--g1);
+    border-top: 0.5px solid var(--g4);
+    overflow: hidden;
+  }
+  .la-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .la-col-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-bottom: 0.5px solid var(--g3);
+    background: var(--g0);
+    flex-shrink: 0;
+  }
+  .la-step {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g5);
+    letter-spacing: 0.18em;
+    font-weight: 600;
+  }
+  .la-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--g9);
+    letter-spacing: 0.1em;
+  }
+  .la-desc { font-size: 9px; color: var(--g5); }
+  .la-col-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+  }
+  .la-vsep {
+    width: 0.5px;
+    background: var(--g3);
+    flex-shrink: 0;
+  }
+
+  /* scan-row: compact horizontal scan item for A/C layouts */
+  .scan-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 0;
+    width: 100%;
+    border-bottom: 0.5px solid var(--g2);
+    cursor: pointer;
+    background: none;
+  }
+  .scan-row:hover { background: var(--g2); }
+  .scan-row.active { background: var(--g2); }
+  .sr-sym {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g9);
+    font-weight: 500;
+    width: 50px;
+    flex-shrink: 0;
+  }
+  .sr-tf { font-size: 8px; color: var(--g5); width: 22px; flex-shrink: 0; }
+  .sr-bar { flex: 1; height: 3px; background: var(--g3); border-radius: 2px; overflow: hidden; }
+  .sr-fill { height: 100%; border-radius: 2px; }
+  .sr-alpha { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; width: 30px; text-align: right; flex-shrink: 0; }
+
+  /* ── Layout B — tabbed bottom panel ────────────────────────────────────── */
+  .lb-panel {
+    flex-shrink: 0;
+    height: 240px;
+    display: flex;
+    flex-direction: column;
+    background: var(--g1);
+    border-top: 0.5px solid var(--g4);
+    overflow: hidden;
+  }
+
+  /* ── Layout C — chart left + right sidebar ──────────────────────────────── */
+  .layout-c {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .lc-chart {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .lc-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--g1);
+    border-left: 0.5px solid var(--g4);
+    overflow-y: auto;
+  }
+  .lcs-section {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .lcs-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--g0);
+    border-bottom: 0.5px solid var(--g3);
+    flex-shrink: 0;
+  }
+  .lcs-step {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--g5);
+    letter-spacing: 0.18em;
+    font-weight: 600;
+  }
+  .lcs-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--g9);
+    letter-spacing: 0.1em;
+  }
+  .lcs-meta { font-size: 8px; color: var(--g5); }
+  .lcs-body { padding: 8px 12px; }
+  .lcs-divider { height: 0.5px; background: var(--g3); flex-shrink: 0; }
+  .prop-cell.compact { padding: 3px 0; }
+  .la-meta { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); letter-spacing: 0.04em; }
 </style>
