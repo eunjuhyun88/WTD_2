@@ -403,11 +403,60 @@ Pattern Object
 
 | Area | Status | Notes |
 |---|---|---|
-| canonical `Pattern Object` module | missing | `engine/patterns` 부재 |
-| canonical phase `State Machine` | missing | phase 추적 엔진 부재 |
-| durable `Result Ledger` | missing | 결과 누적과 성과 집계의 canonical plane 부재 |
-| full save-to-ledger-to-refinement wiring | missing | app와 engine을 닫는 핵심 연결 미완 |
-| productionized LLM chart interpretation | missing | 고비용 상위 해석 레이어 미구현 |
+| canonical `Pattern Object` module | ✅ 완료 | `engine/patterns/library.py` — 16 패턴 |
+| canonical phase `State Machine` | ✅ 완료 | `engine/patterns/state_machine.py` |
+| durable `Result Ledger` | ✅ 완료 | `engine/ledger/` — capture/outcome/verdict |
+| full save-to-ledger-to-refinement wiring | ✅ 완료 | 플라이휠 4축 완료 (W-0088) |
+| productionized LLM chart interpretation | ❌ 미구현 | 고비용 상위 해석 레이어 미구현 |
+
+---
+
+## Implementation Status (2026-04-21)
+
+### 패턴 라이브러리 현황 (16개)
+
+| # | Slug | 방향 | 상태 |
+|---|------|------|------|
+| 1 | tradoor-oi-reversal-v1 | LONG | PROMOTED |
+| 2 | funding-flip-reversal-v1 | LONG | PROMOTED |
+| 3 | whale-accumulation-reversal-v1 | LONG | PROMOTED |
+| 4 | wyckoff-spring-reversal-v1 | LONG | PROMOTED |
+| 5 | volume-absorption-reversal-v1 | LONG | candidate |
+| 6 | compression-breakout-reversal-v1 | LONG | candidate |
+| 7 | funding-flip-short-v1 | SHORT | candidate |
+| 8 | funding-flip-reversal-short-v1 | SHORT | candidate |
+| 9 | gap-fade-short-v1 | SHORT | candidate |
+| 10 | volatility-squeeze-breakout-v1 | LONG | candidate |
+| 11 | alpha-confluence-v1 | LONG | candidate |
+| 12 | radar-golden-entry-v1 | LONG | candidate |
+| 13 | institutional-distribution-v1 | SHORT | candidate |
+| 14 | liquidity-sweep-reversal-v1 | LONG | candidate |
+| 15 | oi-presurge-long-v1 (딸깍형) | LONG | candidate |
+| 16 | alpha-presurge-v1 | LONG | candidate |
+
+> Five-Phase Model (FAKE_DUMP ~ BREAKOUT)은 TRADOOR의 레퍼런스 패턴이다.
+> 다른 패턴들은 각자의 phase 시퀀스를 가지며, 공통 구조는 `PatternObject` + `PhaseCondition[]` + `StateMachine` 이다.
+
+### 빌딩블록 현황
+
+- **총 29개** (`engine/building_blocks/` — triggers / confirmations / disqualifiers / entries)
+- Progressive Gates 프레임워크 적용 (W-0105)
+
+### 플라이휠 4축
+
+| 축 | 내용 | 상태 |
+|----|------|------|
+| 1 | Capture store | ✅ 완료 |
+| 2 | Outcome resolver | ✅ 완료 |
+| 3 | Verdict capture + API | ✅ 완료 |
+| 4 | Refinement trigger | ✅ 완료 |
+| — | Verdict Inbox UI (dashboard) | ❌ 미구현 |
+
+### 스캐너 현황
+
+- Binance dynamic universe 스캔 (`engine/scanner/`)
+- Redis kline cache 5분 prefetch (W-0096)
+- 16개 패턴 병렬 state machine 추적
 
 ## Product Rule
 
