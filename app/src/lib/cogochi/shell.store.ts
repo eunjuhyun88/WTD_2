@@ -9,6 +9,9 @@ export interface TabState {
   scanView: 'grid' | 'list';
   expandedSample: string | null;
   chat: Array<{ role: 'user' | 'assistant'; text: string }>;
+  peekOpen: boolean;
+  peekHeight: number;
+  drawerTab: 'analyze' | 'scan' | 'judge';
 }
 
 export interface Tab {
@@ -44,6 +47,9 @@ const FRESH_TAB_STATE = (): TabState => ({
   scanView: 'grid',
   expandedSample: null,
   chat: [],
+  peekOpen: false,
+  peekHeight: 42,
+  drawerTab: 'analyze',
 });
 
 const makeDefault = (): ShellState => ({
@@ -54,8 +60,8 @@ const makeDefault = (): ShellState => ({
   sidebarVisible: true,
   aiVisible: true,
   activeSection: 'library',
-  sidebarWidth: 240,
-  aiWidth: 320,
+  sidebarWidth: 160,
+  aiWidth: 280,
   canvasSplitY: 50,
   canvasSplitX: 58,
   flywheelTurns: 0,
