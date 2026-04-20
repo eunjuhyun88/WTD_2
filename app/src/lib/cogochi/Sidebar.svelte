@@ -56,10 +56,10 @@
 
 <style>
   .sidebar {
-    width: 240px;
+    width: 100%;
     flex-shrink: 0;
     background: var(--g1);
-    border-right: 0.5px solid var(--g3);
+    border-right: 1px solid var(--g4);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -67,7 +67,7 @@
 
   .section-tabs {
     display: flex;
-    border-bottom: 0.5px solid var(--g3);
+    border-bottom: 1px solid var(--g4);
     height: 30px;
     flex-shrink: 0;
   }
@@ -77,9 +77,9 @@
     padding: 0 6px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
-    color: var(--g6);
+    color: var(--g7);
     background: transparent;
-    border-bottom: 1.5px solid transparent;
+    border-bottom: 2px solid transparent;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     display: flex;
@@ -98,7 +98,7 @@
 
   .count {
     font-size: 8px;
-    color: var(--g5);
+    color: var(--g6);
     font-weight: 400;
   }
 
@@ -109,14 +109,14 @@
 
   .footer {
     height: 22px;
-    border-top: 0.5px solid var(--g3);
+    border-top: 1px solid var(--g4);
     padding: 0 10px;
     display: flex;
     align-items: center;
     gap: 8px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
-    color: var(--g5);
+    color: var(--g6);
   }
 
   .dot {

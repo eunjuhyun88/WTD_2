@@ -53,7 +53,7 @@
 
   .item:hover {
     background: var(--g2);
-    border-left-color: var(--g5);
+    border-left-color: var(--g7);
   }
 
   .item-header {
@@ -87,7 +87,7 @@
   .empty {
     padding: 12px;
     font-size: 10px;
-    color: var(--g5);
+    color: var(--g7);
     text-align: center;
   }
 </style>
