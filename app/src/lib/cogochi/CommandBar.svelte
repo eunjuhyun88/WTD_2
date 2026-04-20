@@ -79,7 +79,7 @@
     gap: 6px;
     padding: 0 10px;
     background: var(--g1);
-    border-bottom: 0.5px solid var(--g3);
+    border-bottom: 0.5px solid var(--g4);
     flex-shrink: 0;
   }
 
@@ -95,7 +95,7 @@
   .divider {
     width: 1px;
     height: 14px;
-    background: var(--g3);
+    background: var(--g4);
   }
 
   .session-chip {
@@ -115,7 +115,7 @@
   }
 
   .dim {
-    color: var(--g5);
+    color: var(--g6);
   }
 
   .text {

@@ -81,7 +81,7 @@
     gap: 12px;
     padding: 0 10px;
     background: var(--g1);
-    border-top: 0.5px solid var(--g3);
+    border-top: 0.5px solid var(--g4);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     color: var(--g6);
@@ -92,7 +92,7 @@
     display: flex;
     gap: 1px;
     background: var(--g2);
-    border: 0.5px solid var(--g3);
+    border: 0.5px solid var(--g4);
     border-radius: 3px;
     padding: 1px;
   }
@@ -134,7 +134,7 @@
   }
 
   .hint-item {
-    color: var(--g5);
+    color: var(--g6);
   }
 
   .dot-div {

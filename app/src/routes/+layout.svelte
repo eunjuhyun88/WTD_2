@@ -86,10 +86,10 @@
 <WalletModal />
 
 <!-- Global Notification Tray (bottom-right bell + slide-up panel) -->
-<NotificationTray />
+{#if !$isCogochi}<NotificationTray />{/if}
 
 <!-- Global Toast Stack (bottom-right, above bell) -->
-<ToastStack />
+{#if !$isCogochi}<ToastStack />{/if}
 
 <!-- Cookie Consent Banner -->
 <CookieConsent />
