@@ -1054,7 +1054,7 @@
   let peekCapturesInterval: ReturnType<typeof setInterval>;
   let eventsInterval: ReturnType<typeof setInterval>;
   let patternInterval: ReturnType<typeof setInterval>;
-  let bootstrapTimers: Array<ReturnType<typeof setTimeout>> = [];
+  let bootstrapTimers: Array<ReturnType<typeof window.setTimeout>> = [];
 
   function runIfVisible(task: () => void) {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
@@ -1090,7 +1090,7 @@
       window.history.replaceState({}, '', cleanedUrl.toString());
       // Defer submit so store hydration + initial bootstrap tasks can settle.
       // TODO(W-0102 Slice 4): wait on analysisData ready instead of fixed delay
-      const qAutoSubmitTimer = window.setTimeout(() => {
+      const qAutoSubmitTimer = setTimeout(() => {
         void sendCommand(qText);
       }, 500);
       bootstrapTimers = [...bootstrapTimers, qAutoSubmitTimer];
@@ -1428,18 +1428,18 @@
   }
 
   // ── PEEK drawer derived + handlers ────────────────────────
-  const peekAnalyzeCount = $derived(analysisData?.verdict ? 1 : 0);
+  const peekAnalyzeCount = $derived((analysisData as any)?.verdict ? 1 : 0);
   const peekScanCount = $derived(scannerAlerts.length);
   const peekJudgeCount = $derived(peekCaptures.filter((c: any) => {
     const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
     return !hasOutcome;
   }).length);
 
-  const peekVerdict = $derived(analysisData?.verdict ?? null);
+  const peekVerdict = $derived((analysisData as any)?.verdict ?? null);
   const peekEntry = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
   const peekStop = $derived((analysisData as any)?.verdict?.stop ?? (analysisData as any)?.deep?.stop ?? null);
   const peekTarget = $derived((analysisData as any)?.verdict?.target ?? (analysisData as any)?.deep?.target ?? null);
-  const peekPWin = $derived(analysisData?.p_win ?? null);
+  const peekPWin = $derived((analysisData as any)?.p_win ?? null);
   const peekLast = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
 
   async function handlePeekSaveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
@@ -1517,7 +1517,7 @@
     <CenterPanel
       symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
       tf={symbolToTF(gTf)}
-      verdictLevels={chartLevels}
+      verdictLevels={chartLevels as Record<string, number>}
       initialData={activeChartPayload}
       depthSnapshot={readPathDepth}
       liqSnapshot={readPathLiq}
