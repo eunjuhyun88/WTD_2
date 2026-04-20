@@ -84,11 +84,11 @@
   }
 
   .logo {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
     color: var(--g9);
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    font-weight: 600;
+    letter-spacing: 0.14em;
     margin-right: 2px;
   }
 
@@ -102,10 +102,9 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 3px 9px;
+    padding: 3px 7px;
     background: var(--g2);
-    border: 0.5px solid var(--g3);
-    border-radius: 999px;
+    border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
     color: var(--g7);
@@ -130,8 +129,8 @@
     height: 22px;
     padding: 0 10px;
     background: var(--g2);
-    border: 0.5px solid var(--g3);
-    border-radius: 999px;
+    border: 0.5px solid var(--g4);
+    border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     color: var(--g6);
@@ -140,7 +139,7 @@
   }
 
   .palette-btn:hover {
-    border-color: var(--g4);
+    border-color: var(--g5);
     color: var(--g7);
   }
 
@@ -187,8 +186,8 @@
     padding: 0 10px;
     background: transparent;
     color: var(--g6);
-    border: 0.5px solid var(--g3);
-    border-radius: 999px;
+    border: 0.5px solid var(--g4);
+    border-radius: 3px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
     letter-spacing: 0.1em;

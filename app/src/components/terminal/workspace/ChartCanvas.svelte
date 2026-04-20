@@ -202,6 +202,28 @@
 
   export function getChart(): IChartApi | null { return chart; }
   export function getCandleSeries(): ISeriesApi<'Candlestick'> | null { return candleSeriesRef; }
+
+  // ── Pane resize state ─────────────────────────────────────────────────
+  let oiPaneH    = $state(64);
+  let fundingPaneH = $state(44);
+  let cvdPaneH   = $state(44);
+
+  function startPaneResize(e: MouseEvent, getH: () => number, setH: (v: number) => void, min = 24, max = 200) {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = getH();
+    const onMove = (ev: MouseEvent) => setH(Math.max(min, Math.min(max, startH + ev.clientY - startY)));
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
 </script>
 
 <div class="chart-root">
@@ -210,8 +232,14 @@
 
   <!-- OI Δ pane -->
   {#if showOI && oiBars.length > 0}
-    {@const normed = normBars(oiBars, 48)}
-    <div class="ind-pane" style="--ph:64px">
+    {@const normed = normBars(oiBars, oiPaneH - 16)}
+    <div
+      class="pane-resize-handle"
+      role="separator"
+      aria-label="Resize OI pane"
+      onmousedown={(e) => startPaneResize(e, () => oiPaneH, (v) => oiPaneH = v)}
+    ></div>
+    <div class="ind-pane" style="--ph:{oiPaneH}px">
       <div class="ind-label">OI Δ <span class="ind-val {oiLatest !== null && oiLatest >= 0 ? 'pos' : 'neg'}">{oiSummary}</span></div>
       <div class="ind-bars-center">
         <div class="zero-line"></div>
@@ -232,7 +260,13 @@
 
   <!-- Funding pane -->
   {#if showFunding && fundingBars.length > 0}
-    <div class="ind-pane" style="--ph:44px">
+    <div
+      class="pane-resize-handle"
+      role="separator"
+      aria-label="Resize Funding pane"
+      onmousedown={(e) => startPaneResize(e, () => fundingPaneH, (v) => fundingPaneH = v)}
+    ></div>
+    <div class="ind-pane" style="--ph:{fundingPaneH}px">
       <div class="ind-label">
         FUNDING
         <span class="ind-val {fundingLatest !== null && fundingLatest >= 0 ? 'pos' : 'neg'}">{fundingSummary}</span>
@@ -247,7 +281,13 @@
 
   <!-- CVD pane -->
   {#if showCVD}
-    <div class="ind-pane" style="--ph:44px">
+    <div
+      class="pane-resize-handle"
+      role="separator"
+      aria-label="Resize CVD pane"
+      onmousedown={(e) => startPaneResize(e, () => cvdPaneH, (v) => cvdPaneH = v)}
+    ></div>
+    <div class="ind-pane" style="--ph:{cvdPaneH}px">
       <div class="ind-label">CVD 15m <span class="ind-val pos">양전환</span></div>
       <svg class="ind-svg" viewBox="0 0 400 28" preserveAspectRatio="none">
         <path d="M0,20 L40,22 L80,24 L120,20 L160,18 L200,16 L240,14 L280,10 L320,7 L360,5 L400,3"
@@ -270,10 +310,21 @@
     flex: 1;
     min-height: 0;
   }
+  .pane-resize-handle {
+    flex-shrink: 0;
+    height: 4px;
+    width: 100%;
+    cursor: ns-resize;
+    background: rgba(42,46,57,0.9);
+    transition: background 0.15s;
+  }
+  .pane-resize-handle:hover {
+    background: rgba(100,116,139,0.6);
+  }
   .ind-pane {
     height: var(--ph, 60px);
     flex-shrink: 0;
-    border-top: 0.5px solid rgba(42,46,57,1);
+    border-top: none;
     display: flex;
     flex-direction: column;
     padding: 0 12px 4px;

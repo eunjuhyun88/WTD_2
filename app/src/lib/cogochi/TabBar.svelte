@@ -34,6 +34,7 @@
 <div class="tab-bar">
   <button
     class="sidebar-toggle"
+    class:active={sidebarVisible}
     title="Toggle sidebar (⌘B)"
     onclick={toggleSidebar}
   >
@@ -74,7 +75,7 @@
     display: flex;
     align-items: stretch;
     background: var(--g0);
-    border-bottom: 0.5px solid var(--g3);
+    border-bottom: 0.5px solid var(--g4);
     flex-shrink: 0;
   }
 
@@ -84,11 +85,15 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border-right: 0.5px solid var(--g3);
+    border-right: 0.5px solid var(--g4);
     cursor: pointer;
     font-size: 13px;
-    color: var(--g6);
+    color: var(--g5);
     transition: color 0.15s;
+  }
+
+  .sidebar-toggle.active {
+    color: var(--g8);
   }
 
   .sidebar-toggle:hover {
@@ -107,7 +112,7 @@
     gap: 8px;
     padding: 0 10px 0 12px;
     background: transparent;
-    border-right: 0.5px solid var(--g3);
+    border-right: 0.5px solid var(--g4);
     border-top: 1.5px solid transparent;
     cursor: pointer;
     min-width: 140px;
