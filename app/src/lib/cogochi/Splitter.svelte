@@ -9,25 +9,37 @@
 
   let isDragging = $state(false);
 
-  function onMouseDown(e: MouseEvent) {
+  function startDrag(startX: number, startY: number) {
     isDragging = true;
-    const startPos = orientation === 'vertical' ? e.clientX : e.clientY;
+    const startPos = orientation === 'vertical' ? startX : startY;
 
-    function onMouseMove(e: MouseEvent) {
-      const currentPos = orientation === 'vertical' ? e.clientX : e.clientY;
-      const delta = currentPos - startPos;
-      onDrag(delta);
+    function onMove(pos: number) {
+      onDrag(pos - startPos);
     }
 
-    function onMouseUp() {
+    function onMouseMove(e: MouseEvent) {
+      onMove(orientation === 'vertical' ? e.clientX : e.clientY);
+    }
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault();
+      onMove(orientation === 'vertical' ? e.touches[0].clientX : e.touches[0].clientY);
+    }
+    function end() {
       isDragging = false;
       document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('mouseup', end);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', end);
     }
 
     document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('mouseup', end);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', end);
   }
+
+  function onMouseDown(e: MouseEvent) { startDrag(e.clientX, e.clientY); }
+  function onTouchStart(e: TouchEvent) { startDrag(e.touches[0].clientX, e.touches[0].clientY); }
 </script>
 
 <div
@@ -37,6 +49,7 @@
   class:dragging={isDragging}
   style:--splitter-color={color}
   onmousedown={onMouseDown}
+  ontouchstart={onTouchStart}
 />
 
 <style>

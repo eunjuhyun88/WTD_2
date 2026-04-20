@@ -14,6 +14,7 @@
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
   import MobileFooter from './MobileFooter.svelte';
+  import SymbolPickerSheet from './SymbolPickerSheet.svelte';
 
   interface Props {
     canvasComponent?: any;
@@ -25,13 +26,22 @@
   let shellState = $state<any>(null);
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
+  let symbolPickerOpen = $state(false);
+
+  // AI sheet swipe-down dismiss
+  let aiSwipeTouchStartY = $state(0);
+  function onAITouchStart(e: TouchEvent) { aiSwipeTouchStartY = e.touches[0].clientY; }
+  function onAITouchEnd(e: TouchEvent) {
+    const dy = e.changedTouches[0].clientY - aiSwipeTouchStartY;
+    if (dy > 60) shellStore.update(s => ({ ...s, aiVisible: false }));
+  }
 
   $effect(() => {
     shellStore.subscribe(s => (shellState = s))();
   });
 
   $effect(() => {
-    if ($viewportTier.tier !== 'DESKTOP') {
+    if ($viewportTier.tier === 'MOBILE') {
       shellStore.update(s => ({ ...s, sidebarVisible: false, aiVisible: false }));
       shellStore.updateTabState(s => ({ ...s, layoutMode: 'D' }));
     }
@@ -96,7 +106,7 @@
       aiVisible={$shellStore.aiVisible}
       toggleAI={() => shellStore.toggleAI()}
       onTFChange={(tf) => (mobileTF = tf)}
-      onSymbolChange={(s) => (mobileSymbol = s)}
+      onSymbolTap={() => (symbolPickerOpen = true)}
     />
     <div class="mobile-canvas">
       {#if $activeMode === 'trade'}
@@ -108,12 +118,20 @@
           timeframe={mobileTF}
           mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : $mobileMode.active === 'chart' ? 'chart' : 'analyze'}
           setMobileView={(v) => mobileMode.setActive(v)}
+          setMobileSymbol={(s) => (mobileSymbol = s)}
         />
       {/if}
     </div>
     <MobileFooter symCount={300} live={true} />
+    {#if symbolPickerOpen}
+      <SymbolPickerSheet
+        currentSymbol={mobileSymbol}
+        onSelect={(s) => (mobileSymbol = s)}
+        onClose={() => (symbolPickerOpen = false)}
+      />
+    {/if}
     {#if $shellStore.aiVisible}
-      <div class="mobile-ai-sheet">
+      <div class="mobile-ai-sheet" ontouchstart={onAITouchStart} ontouchend={onAITouchEnd}>
         <div class="sheet-topbar">
           <div class="sheet-handle"></div>
           <button class="sheet-close" onclick={() => shellStore.toggleAI()}>×</button>

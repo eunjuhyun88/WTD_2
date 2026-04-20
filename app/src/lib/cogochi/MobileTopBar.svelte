@@ -6,11 +6,11 @@
     timeframe: string;
     aiVisible: boolean;
     toggleAI: () => void;
-    onSymbolChange?: (s: string) => void;
+    onSymbolTap?: () => void;
     onTFChange?: (tf: string) => void;
   }
 
-  const { symbol, timeframe, aiVisible, toggleAI, onSymbolChange, onTFChange }: Props = $props();
+  const { symbol, timeframe, aiVisible, toggleAI, onSymbolTap, onTFChange }: Props = $props();
 
   function cycleTF() {
     const idx = TF_CYCLE.indexOf(timeframe);
@@ -23,7 +23,7 @@
   <span class="logo">COGOCHI</span>
   <span class="sep">│</span>
 
-  <button class="chip symbol-chip" onclick={() => onSymbolChange?.(symbol)}>
+  <button class="chip symbol-chip" onclick={() => onSymbolTap?.()}>
     {symbol.replace('USDT', '')} <span class="dim">/ USDT</span> ▾
   </button>
 
