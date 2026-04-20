@@ -1,6 +1,4 @@
 <script lang="ts">
-  import ScanGrid from '../../../components/terminal/peek/ScanGrid.svelte';
-  import JudgePanel from '../../../components/terminal/peek/JudgePanel.svelte';
   import ChartCanvas from '../../../components/terminal/workspace/ChartCanvas.svelte';
   import { fetchTerminalBundle } from '$lib/api/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
@@ -83,7 +81,22 @@
     document.body.style.userSelect = 'none';
   }
 
-  // Static evidence data (will be driven by pattern engine later)
+  // ── JUDGE state (trade_act.jsx ActPanel) ────────────────────────────────
+  let judgeVerdict = $state<'agree' | 'disagree' | null>(null);
+  let judgeOutcome = $state<'win' | 'loss' | 'flat' | null>(null);
+  let judgeRejudged = $state<'right' | 'wrong' | null>(null);
+
+  // ── SCAN state (trade_scan.jsx ScanPanel) ────────────────────────────────
+  let scanSelected = $state('a8');
+  const scanCandidates = [
+    { id: 'a8',  symbol: 'LDOUSDT', tf: '1H', pattern: 'OI +14% · accum',   phase: 4, alpha: 77, age: '08:12', sim: 0.91, dir: 'long' },
+    { id: 'a9',  symbol: 'INJUSDT', tf: '4H', pattern: '번지대 4h · CVD 양', phase: 4, alpha: 73, age: '07:48', sim: 0.88, dir: 'long' },
+    { id: 'a10', symbol: 'FETUSDT', tf: '1H', pattern: 'Higher lows 6/6',   phase: 4, alpha: 70, age: '07:22', sim: 0.84, dir: 'long' },
+    { id: 'a11', symbol: 'SEIUSDT', tf: '1H', pattern: 'Funding flip',      phase: 3, alpha: 64, age: '06:58', sim: 0.79, dir: 'long' },
+    { id: 'a12', symbol: 'BNXUSDT', tf: '4H', pattern: 'OI spike accum',   phase: 4, alpha: 61, age: '06:30', sim: 0.75, dir: 'long' },
+  ];
+
+  // ── Static evidence data (will be driven by pattern engine later)
   const evidenceItems = [
     { k: 'OI 4H', v: '+18.2%', note: 'real_dump 확증', pos: true },
     { k: 'Funding', v: '+0.018 → −0.004', note: '플립 완료', pos: true },
@@ -284,18 +297,180 @@
               </div>
             </div>
           {:else if drawerTab === 'scan'}
-            <ScanGrid
-              activeSymbol={symbol}
-              onOpenCapture={(_r: unknown) => {}}
-            />
+            <!-- trade_scan.jsx ScanPanel (WideGridView) -->
+            <div class="scan-panel">
+              <div class="scan-header">
+                <span class="scan-step">03</span>
+                <span class="scan-label">SIMILAR NOW</span>
+                <span class="scan-title">{scanCandidates.length} candidates</span>
+                <span class="spacer"></span>
+                <span class="scan-meta">matching hypothesis · 300 sym · 14s</span>
+                <span class="scan-sort-label">SORT</span>
+                <span class="scan-sort-btn">similarity ▾</span>
+              </div>
+              <div class="scan-grid">
+                {#each scanCandidates as x}
+                  {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
+                  <button
+                    class="scan-card"
+                    class:active={scanSelected === x.id}
+                    style:--sc={sc}
+                    onclick={() => scanSelected = x.id}
+                  >
+                    <div class="sc-top">
+                      <span class="sc-sym">{x.symbol.replace('USDT', '')}</span>
+                      <span class="sc-tf">{x.tf}</span>
+                      <span class="spacer"></span>
+                      <span class="sc-alpha" style:color={sc}>α{x.alpha}</span>
+                    </div>
+                    <div class="sc-sim-row">
+                      <div class="sc-sim-bar"><div class="sc-sim-fill" style:width="{x.sim * 100}%" style:background={sc}></div></div>
+                      <span class="sc-sim-pct">{Math.round(x.sim * 100)}%</span>
+                    </div>
+                    <div class="sc-pattern">{x.pattern}</div>
+                    <div class="sc-age">{x.age}</div>
+                  </button>
+                {/each}
+              </div>
+            </div>
           {:else if drawerTab === 'judge'}
-            <JudgePanel
-              {symbol}
-              {timeframe}
-              entry={83700}
-              stop={82800}
-              target={87500}
-            />
+            <!-- trade_act.jsx ActPanel: A(Plan) + B(Judge Now) + C(After Result) -->
+            <div class="act-panel">
+              <!-- Header -->
+              <div class="act-header">
+                <span class="act-step">STEP 04 · ACT & JUDGE</span>
+                <span class="act-div"></span>
+                <span class="act-sym">{symbol}</span>
+                <span class="act-tf">{timeframe.toUpperCase()}</span>
+                <span class="act-dir">LONG</span>
+                <span class="act-pat">OI reversal · accumulation</span>
+                <span class="spacer"></span>
+                <span class="act-alpha">α82</span>
+              </div>
+              <div class="act-cols">
+                <!-- A: Trade Plan -->
+                <div class="act-col plan-col">
+                  <div class="col-label">A · TRADE PLAN</div>
+                  <div class="lvl-row">
+                    {#each [
+                      { label: 'entry',  val: '83,700', color: 'var(--g9)' },
+                      { label: 'stop',   val: '82,800', color: 'var(--neg)' },
+                      { label: 'target', val: '87,500', color: 'var(--pos)' },
+                      { label: 'R:R',    val: '4.2x',   color: 'var(--g9)', hint: 'hist 3.6' },
+                    ] as lvl}
+                      <div class="lvl-cell">
+                        <div class="lvl-label">{lvl.label}</div>
+                        <div class="lvl-val" style:color={lvl.color}>{lvl.val}</div>
+                        {#if lvl.hint}<div class="lvl-hint">{lvl.hint}</div>{/if}
+                      </div>
+                    {/each}
+                  </div>
+                  <div class="rr-size-row">
+                    <div class="rr-box">
+                      <div class="rr-box-label">RISK:REWARD</div>
+                      <div class="rr-bar">
+                        <div class="rr-loss" style:width="19%"></div>
+                        <div class="rr-gain" style:width="81%"></div>
+                      </div>
+                      <div class="rr-labels"><span class="rr-r">1R</span><span class="rr-g">4.2R</span></div>
+                    </div>
+                    <div class="size-box">
+                      <div class="size-label">SIZE · 3x lev</div>
+                      <div class="size-val">1.2% <span class="size-usd">$1,200</span></div>
+                    </div>
+                  </div>
+                  <button class="exchange-btn">OPEN IN EXCHANGE ↗</button>
+                </div>
+
+                <div class="act-divider"></div>
+
+                <!-- B: Judge Now -->
+                <div class="act-col judge-col">
+                  <div class="judge-head">
+                    <span class="col-label">B · JUDGE NOW</span>
+                    <span class="judge-q">이 셋업, <strong>내 돈을 걸만한가?</strong></span>
+                  </div>
+                  <div class="judge-btns">
+                    <button
+                      class="judge-btn agree"
+                      class:active={judgeVerdict === 'agree'}
+                      onclick={() => judgeVerdict = 'agree'}
+                    >
+                      <span class="jb-key">Y</span>
+                      <div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">진입</span></div>
+                    </button>
+                    <button
+                      class="judge-btn disagree"
+                      class:active={judgeVerdict === 'disagree'}
+                      onclick={() => judgeVerdict = 'disagree'}
+                    >
+                      <span class="jb-key">N</span>
+                      <div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">패스</span></div>
+                    </button>
+                  </div>
+                  <div class="judge-tags">
+                    {#each ['확증부족', 'R:R낮음', 'regime안맞음', 'FOMO', '크기초과'] as tag}
+                      <span class="judge-tag">{tag}</span>
+                    {/each}
+                  </div>
+                </div>
+
+                <div class="act-divider"></div>
+
+                <!-- C: After Result -->
+                <div class="act-col after-col">
+                  <div class="col-label">C · AFTER RESULT</div>
+                  <div class="outcome-row">
+                    {#each [
+                      { k: 'win',  l: 'WIN',  c: 'var(--pos)', bg: 'var(--pos-dd)' },
+                      { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' },
+                      { k: 'flat', l: 'FLAT', c: 'var(--g7)',  bg: 'var(--g2)' },
+                    ] as o}
+                      <button
+                        class="outcome-btn"
+                        class:active={judgeOutcome === o.k}
+                        style:--oc={o.c}
+                        style:--obg={o.bg}
+                        onclick={() => { judgeOutcome = o.k as any; judgeRejudged = null; }}
+                      >{o.l}</button>
+                    {/each}
+                  </div>
+                  {#if judgeOutcome}
+                    <div class="result-row">
+                      <span class="result-label">RESULT</span>
+                      <span class="result-val" style:color={judgeOutcome === 'win' ? 'var(--pos)' : judgeOutcome === 'loss' ? 'var(--neg)' : 'var(--g7)'}>
+                        {judgeOutcome === 'win' ? '+3.4%' : judgeOutcome === 'loss' ? '−1.1%' : '+0.1%'}
+                      </span>
+                      <span class="spacer"></span>
+                      <span class="result-hint">
+                        {judgeOutcome === 'win' ? 'target · 2h 14m' : judgeOutcome === 'loss' ? 'stop · 42m' : 'flat · 6h'}
+                      </span>
+                    </div>
+                    <div class="rejudge-label">REJUDGE</div>
+                    <div class="rejudge-btns">
+                      <button class="rj-btn rj-pos" class:active={judgeRejudged === 'right'} onclick={() => judgeRejudged = 'right'}>
+                        옳았다 <span class="rj-sub">+보강</span>
+                      </button>
+                      <button class="rj-btn rj-neg" class:active={judgeRejudged === 'wrong'} onclick={() => judgeRejudged = 'wrong'}>
+                        틀렸다 <span class="rj-sub">뒤집기</span>
+                      </button>
+                    </div>
+                    {#if judgeVerdict && judgeRejudged}
+                      {@const consistent = (judgeVerdict === 'agree' && judgeRejudged === 'right') || (judgeVerdict === 'disagree' && judgeRejudged === 'wrong')}
+                      <div class="bias-box" class:bias-good={consistent} class:bias-warn={!consistent}>
+                        {#if consistent}
+                          <strong>✓ 일관 판정</strong> <span>· 가중치 +0.04</span>
+                        {:else}
+                          <strong>⚑ 편향 감지</strong> <span>· Train 권장</span>
+                        {/if}
+                      </div>
+                    {/if}
+                  {:else}
+                    <div class="after-empty">매매 결과 선택시<br>재판정 가능</div>
+                  {/if}
+                </div>
+              </div>
+            </div>
           {/if}
         </div>
       </div>
@@ -778,4 +953,184 @@
   .prop-cell.tone-neg .prop-v { color: var(--neg); }
   .prop-cell.tone-pos .prop-v { color: var(--pos); }
   .prop-h { font-size: 9px; color: var(--g6); margin-left: auto; }
+
+  /* ── SCAN panel (trade_scan.jsx) ── */
+  .scan-panel {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--g1); border: 0.5px solid var(--g3); border-radius: 6px;
+  }
+  .scan-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-bottom: 0.5px solid var(--g3);
+    background: var(--g0); flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .scan-step { font-size: 7px; color: #7aa2e0; letter-spacing: 0.22em; font-weight: 600; }
+  .scan-label { font-size: 7px; color: #7aa2e0; letter-spacing: 0.14em; }
+  .scan-title { font-size: 13px; color: var(--g9); font-weight: 600; }
+  .scan-meta { font-size: 9px; color: var(--g6); letter-spacing: 0.04em; }
+  .scan-sort-label { font-size: 9px; color: var(--g5); letter-spacing: 0.14em; }
+  .scan-sort-btn {
+    font-size: 10px; color: var(--g8); font-weight: 500;
+    padding: 3px 8px; background: var(--g2); border-radius: 3px; cursor: pointer;
+  }
+  .scan-grid {
+    flex: 1; overflow: auto; padding: 10px 12px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    align-content: start;
+  }
+  .scan-card {
+    padding: 8px 9px 7px; border-radius: 4px; cursor: pointer;
+    background: var(--g0); border: 0.5px solid var(--g3);
+    display: flex; flex-direction: column; gap: 4px;
+    transition: all 0.12s; text-align: left;
+  }
+  .scan-card.active { background: var(--g2); border-color: var(--sc); }
+  .sc-top { display: flex; align-items: center; gap: 4px; }
+  .sc-sym { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--g9); font-weight: 600; }
+  .sc-tf {
+    font-family: 'JetBrains Mono', monospace; font-size: 7.5px; color: var(--g6);
+    padding: 1px 4px; background: var(--g2); border-radius: 2px;
+  }
+  .sc-alpha { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
+  .sc-sim-row { display: flex; align-items: center; gap: 4px; }
+  .sc-sim-bar { flex: 1; height: 2.5px; background: var(--g3); border-radius: 2px; overflow: hidden; }
+  .sc-sim-fill { height: 100%; opacity: 0.85; }
+  .sc-sim-pct { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: var(--g8); width: 24px; text-align: right; }
+  .sc-pattern { font-size: 8.5px; color: var(--g6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sc-age { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); }
+
+  /* ── ACT panel (trade_act.jsx) ── */
+  .act-panel {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--g1); border: 0.5px solid var(--g3); border-radius: 6px;
+  }
+  .act-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-bottom: 0.5px solid var(--g3);
+    background: var(--g0); flex-shrink: 0; height: 34px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .act-step { font-size: 7px; color: var(--amb); letter-spacing: 0.22em; }
+  .act-div { width: 1px; height: 12px; background: var(--g3); }
+  .act-sym { font-size: 12px; color: var(--g9); font-weight: 600; }
+  .act-tf { font-size: 9px; color: var(--g6); }
+  .act-dir { font-size: 9px; color: var(--pos); font-weight: 600; }
+  .act-pat { font-size: 9px; color: var(--g5); }
+  .act-alpha {
+    font-size: 10px; color: var(--pos); font-weight: 600;
+    padding: 2px 7px; background: var(--g2); border-radius: 3px;
+  }
+  .act-cols { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+  .act-col { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .plan-col { flex: 1.2; min-width: 0; }
+  .judge-col { flex: 1.4; min-width: 0; }
+  .after-col { flex: 1.2; min-width: 0; }
+  .act-divider { width: 0.5px; background: var(--g3); flex-shrink: 0; }
+  .col-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g5); letter-spacing: 0.2em; }
+
+  /* Plan col */
+  .lvl-row { display: flex; gap: 6px; }
+  .lvl-cell {
+    flex: 1; padding: 6px 8px; background: var(--g0);
+    border: 0.5px solid var(--g3); border-radius: 3px; min-width: 0;
+  }
+  .lvl-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g5); letter-spacing: 0.14em; }
+  .lvl-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; margin-top: 1px; }
+  .lvl-hint { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); }
+  .rr-size-row { display: flex; gap: 6px; }
+  .rr-box, .size-box {
+    flex: 1; padding: 7px 10px; background: var(--g0);
+    border: 0.5px solid var(--g3); border-radius: 3px; min-width: 0;
+  }
+  .rr-box-label, .size-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g5); letter-spacing: 0.1em; margin-bottom: 4px; }
+  .rr-bar { height: 5px; background: var(--g2); border-radius: 3px; overflow: hidden; display: flex; }
+  .rr-loss { background: var(--neg); opacity: 0.9; }
+  .rr-gain { background: var(--pos); }
+  .rr-labels { display: flex; justify-content: space-between; margin-top: 2px; font-family: 'JetBrains Mono', monospace; font-size: 8px; }
+  .rr-r { color: var(--neg); }
+  .rr-g { color: var(--pos); }
+  .size-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--g9); font-weight: 600; display: flex; align-items: baseline; gap: 6px; }
+  .size-usd { font-size: 9px; color: var(--g6); }
+  .exchange-btn {
+    padding: 8px 12px; background: var(--pos-dd); color: var(--pos);
+    border: 0.5px solid var(--pos-d); border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;
+    letter-spacing: 0.1em; cursor: pointer;
+  }
+  .exchange-btn:hover { background: var(--pos-d); }
+
+  /* Judge col */
+  .judge-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .judge-q { font-size: 10px; color: var(--g7); }
+  .judge-q strong { color: var(--g9); }
+  .judge-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; min-height: 70px; }
+  .judge-btn {
+    padding: 8px 10px; border-radius: 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-family: 'JetBrains Mono', monospace; border: 1.5px solid;
+    transition: all 0.12s;
+  }
+  .judge-btn.agree {
+    background: var(--pos-dd); color: var(--pos); border-color: var(--pos-d);
+  }
+  .judge-btn.agree.active { background: var(--pos-d); border-color: var(--pos); }
+  .judge-btn.disagree {
+    background: var(--neg-dd); color: var(--neg); border-color: var(--neg-d);
+  }
+  .judge-btn.disagree.active { background: var(--neg-d); border-color: var(--neg); }
+  .jb-key { font-size: 22px; font-weight: 700; letter-spacing: 0.04em; }
+  .jb-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+  .jb-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; }
+  .jb-sub { font-size: 8px; opacity: 0.75; }
+  .judge-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+  .judge-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 8px;
+    padding: 2px 6px; background: var(--g2); color: var(--g6);
+    border: 0.5px solid var(--g3); border-radius: 10px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .judge-tag:hover { color: var(--g8); border-color: var(--g5); }
+
+  /* After col */
+  .outcome-row { display: flex; gap: 3px; }
+  .outcome-btn {
+    flex: 1; padding: 5px 4px; font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.08em;
+    background: transparent; color: var(--g6);
+    border: 0.5px solid var(--g3); border-radius: 2px; cursor: pointer;
+    transition: all 0.1s;
+  }
+  .outcome-btn.active { background: var(--obg); color: var(--oc); border-color: var(--oc); }
+  .result-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 8px; background: var(--g0);
+    border: 0.5px solid var(--g3); border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .result-label { font-size: 7px; color: var(--g5); letter-spacing: 0.12em; }
+  .result-val { font-size: 14px; font-weight: 600; }
+  .result-hint { font-size: 8px; color: var(--g6); }
+  .rejudge-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--amb); letter-spacing: 0.14em; }
+  .rejudge-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .rj-btn {
+    padding: 7px 6px; border-radius: 3px; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;
+    letter-spacing: 0.06em; border: 1px solid; transition: all 0.1s;
+  }
+  .rj-sub { opacity: 0.6; font-size: 8px; }
+  .rj-pos { background: var(--pos-dd); color: var(--pos); border-color: var(--pos-d); }
+  .rj-pos.active { background: var(--pos-d); border-color: var(--pos); }
+  .rj-neg { background: var(--neg-dd); color: var(--neg); border-color: var(--neg-d); }
+  .rj-neg.active { background: var(--neg-d); border-color: var(--neg); }
+  .bias-box {
+    padding: 5px 8px; border-radius: 3px; font-size: 9px; line-height: 1.5;
+  }
+  .bias-good { background: var(--pos-dd); border: 0.5px solid var(--pos-d); color: var(--pos); }
+  .bias-warn { background: var(--amb-dd); border: 0.5px solid var(--amb-d); color: var(--amb); }
+  .after-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 10px; border: 0.5px dashed var(--g3); border-radius: 3px;
+    font-size: 10px; color: var(--g5); text-align: center; line-height: 1.5;
+  }
 </style>
