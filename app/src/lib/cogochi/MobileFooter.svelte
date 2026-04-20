@@ -20,9 +20,10 @@
   });
 
   const navItems = [
-    { href: '/',          label: 'HOME' },
-    { href: '/lab',       label: 'LAB'  },
-    { href: '/dashboard', label: 'DASH' },
+    { href: '/cogochi',   label: '◉ CGC' },
+    { href: '/',          label: 'HOME'  },
+    { href: '/lab',       label: 'LAB'   },
+    { href: '/dashboard', label: 'DASH'  },
   ] as const;
 </script>
 

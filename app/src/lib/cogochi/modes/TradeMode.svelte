@@ -14,9 +14,10 @@
     timeframe?: string;
     mobileView?: 'chart' | 'analyze' | 'scan' | 'judge';
     setMobileView?: (v: 'chart' | 'analyze' | 'scan' | 'judge') => void;
+    setMobileSymbol?: (sym: string) => void;
   }
 
-  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView }: Props = $props();
+  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView, setMobileSymbol }: Props = $props();
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
@@ -326,7 +327,11 @@
       {:else if mobileView === 'scan'}
         {#each scanCandidates as x}
           {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-          <button class="scan-row" class:active={scanSelected === x.id} onclick={() => scanSelected = x.id}>
+          <button class="scan-row" class:active={scanSelected === x.id} onclick={() => {
+            scanSelected = x.id;
+            setMobileSymbol?.(x.symbol);
+            setMobileView?.('chart');
+          }}>
             <span class="sr-sym">{x.symbol.replace('USDT', '')}</span>
             <span class="sr-tf">{x.tf}</span>
             <div class="sr-bar"><div class="sr-fill" style:width="{x.sim * 100}%" style:background={sc}></div></div>
@@ -360,42 +365,6 @@
       {/if}
     </div>
     {/if}
-  {:else}
-  {#if !analyzed}
-    <!-- Empty canvas — shown until AI panel "RUN →" or SELECT RANGE -->
-    <div class="empty-canvas">
-      <div class="ec-inner">
-        <div class="ec-logo mono">COGOTCHI</div>
-        <div class="ec-tagline">Core Loop · 트레이딩 사고의 운영체제</div>
-        <div class="ec-divider"></div>
-        <div class="ec-cta-group">
-          <div class="ec-label mono">셋업을 시작하세요</div>
-          <div class="ec-options">
-            <div class="ec-opt">
-              <span class="ec-opt-key">AI ›</span>
-              <span class="ec-opt-txt">오른쪽 패널에 셋업을 말로 설명 → RUN</span>
-            </div>
-            <div class="ec-opt">
-              <span class="ec-opt-key">SELECT RANGE</span>
-              <span class="ec-opt-txt">상단 커맨드바에서 차트 구간 선택</span>
-            </div>
-          </div>
-        </div>
-        <div class="ec-quick-grid">
-          {#each [
-            { label: 'OI 급증 + 번지대', sub: 'accumulation' },
-            { label: 'VWAP reclaim', sub: 'CVD 양전환' },
-            { label: 'Funding flip', sub: 'higher-lows' },
-            { label: 'BB squeeze 해제', sub: '15m breakout' },
-          ] as q}
-            <button class="ec-quick" onclick={() => updateTabState(s => ({ ...s, tradePrompt: q.label }))}>
-              <span class="eq-label">{q.label}</span>
-              <span class="eq-sub">{q.sub}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-    </div>
   {:else}
   <!-- Layout tabs -->
   <div class="layout-strip">
@@ -1191,7 +1160,6 @@
     {/if}
   </div>
   {/if}<!-- end layoutMode -->
-  {/if}<!-- end analyzed -->
   {/if}<!-- end mobileView -->
 </div>
 
