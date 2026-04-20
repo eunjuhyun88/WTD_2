@@ -12,9 +12,11 @@
     updateTabState: (updater: (ts: TabState) => TabState) => void;
     symbol?: string;
     timeframe?: string;
+    mobileView?: 'analyze' | 'scan' | 'judge';
+    setMobileView?: (v: 'analyze' | 'scan' | 'judge') => void;
   }
 
-  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h' }: Props = $props();
+  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView }: Props = $props();
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
@@ -168,25 +170,194 @@
     { id: 'a12', symbol: 'BNXUSDT', tf: '4H', pattern: 'OI spike accum',   phase: 4, alpha: 61, age: '06:30', sim: 0.75, dir: 'long' },
   ];
 
-  // ── Static evidence data (will be driven by pattern engine later)
-  const evidenceItems = [
-    { k: 'OI 4H', v: '+18.2%', note: 'real_dump 확증', pos: true },
-    { k: 'Funding', v: '+0.018 → −0.004', note: '플립 완료', pos: true },
-    { k: 'CVD 15m', v: '양전환', note: '기관 매집', pos: true },
-    { k: '번지대', v: '3h 12m', note: '기준 만족', pos: true },
-    { k: 'Higher-lows', v: '5/5 bars', note: 'accum 무결', pos: true },
-    { k: 'BTC regime', v: 'RANGE', note: 'ADX 낮음', pos: false },
-  ];
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function _fmtNum(v: number | null | undefined): string {
+    if (v == null || v === 0) return '—';
+    return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v.toFixed(4);
+  }
+  function _pctDiff(a: number | undefined, b: number | undefined): string {
+    if (a == null || b == null || a === 0) return '';
+    const d = ((b - a) / a) * 100;
+    return `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`;
+  }
 
-  const proposal = [
-    { label: 'ENTRY',  val: '83,700', hint: 'VWAP reclaim', tone: '' },
-    { label: 'STOP',   val: '82,800', hint: '−1.08%', tone: 'neg' },
-    { label: 'TARGET', val: '87,500', hint: '+4.54%', tone: 'pos' },
-    { label: 'R:R',    val: '4.2x',   hint: 'hist 3.6', tone: '' },
-  ];
+  // ── Confidence ───────────────────────────────────────────────────────────
+  const confidence = $derived(
+    analyzeData?.entryPlan?.confidencePct ??
+    (analyzeData?.deep?.total_score != null ? Math.abs(analyzeData.deep.total_score) * 100 : null)
+  );
+  const confidencePct  = $derived(confidence != null ? `${Math.round(confidence)}%` : '0%');
+  const fmtConf        = $derived(confidence != null ? `${Math.round(confidence)}` : '—');
+  const confidenceAlpha = $derived(confidence != null ? `α${Math.round(confidence)}` : 'α—');
+
+  // ── Evidence items — derived from live analyze data ───────────────────
+  const evidenceItems = $derived((() => {
+    const snap = analyzeData?.snapshot;
+    const flow = analyzeData?.flowSummary;
+    if (!snap && !flow) return [
+      { k: 'OI 4H',       v: '+18.2%',         note: 'real_dump 확증', pos: true  },
+      { k: 'Funding',     v: '+0.018 → −0.004', note: '플립 완료',     pos: true  },
+      { k: 'CVD 15m',     v: '양전환',           note: '기관 매집',     pos: true  },
+      { k: '번지대',       v: '3h 12m',          note: '기준 만족',     pos: true  },
+      { k: 'Higher-lows', v: '5/5 bars',         note: 'accum 무결',   pos: true  },
+      { k: 'BTC regime',  v: 'RANGE',            note: 'ADX 낮음',     pos: false },
+    ];
+    const items: { k: string; v: string; note: string; pos: boolean }[] = [];
+    if (snap?.oi_change_1h != null) {
+      const oi = snap.oi_change_1h;
+      items.push({ k: 'OI 1h', v: `${oi >= 0 ? '+' : ''}${(oi * 100).toFixed(1)}%`, note: flow?.oi ?? '', pos: oi > 0.02 });
+    }
+    if (snap?.funding_rate != null) {
+      const fr = snap.funding_rate;
+      items.push({ k: 'Funding', v: `${fr >= 0 ? '+' : ''}${(fr * 100).toFixed(4)}%`, note: flow?.funding ?? '', pos: fr < 0 });
+    }
+    if (snap?.cvd_state) {
+      items.push({ k: 'CVD', v: snap.cvd_state, note: flow?.cvd ?? '', pos: /positive|양|bull/i.test(snap.cvd_state) });
+    }
+    if (snap?.regime) {
+      items.push({ k: 'BTC 레짐', v: snap.regime, note: '', pos: snap.regime === 'BULL' });
+    }
+    if (snap?.vol_ratio_3 != null) {
+      items.push({ k: 'Vol 3x', v: `${snap.vol_ratio_3.toFixed(2)}x`, note: '', pos: snap.vol_ratio_3 > 1.5 });
+    }
+    return items.length > 0 ? items : [{ k: '분석 중', v: '...', note: '', pos: true }];
+  })());
+
+  // ── Proposal — derived from entryPlan ────────────────────────────────
+  const proposal = $derived((() => {
+    const ep = analyzeData?.entryPlan;
+    if (!ep) return [
+      { label: 'ENTRY',  val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+      { label: 'STOP',   val: '—', hint: '', tone: 'neg' as '' | 'neg' | 'pos' },
+      { label: 'TARGET', val: '—', hint: '', tone: 'pos' as '' | 'neg' | 'pos' },
+      { label: 'R:R',    val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+    ];
+    return [
+      { label: 'ENTRY',  val: _fmtNum(ep.entry),                               hint: 'ATR level',                              tone: '' as '' | 'neg' | 'pos' },
+      { label: 'STOP',   val: _fmtNum(ep.stop),                                hint: _pctDiff(ep.entry, ep.stop),              tone: 'neg' as '' | 'neg' | 'pos' },
+      { label: 'TARGET', val: _fmtNum(ep.targets?.[0]?.price),                 hint: _pctDiff(ep.entry, ep.targets?.[0]?.price), tone: 'pos' as '' | 'neg' | 'pos' },
+      { label: 'R:R',    val: ep.riskReward != null ? `${ep.riskReward.toFixed(1)}x` : '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+    ];
+  })());
+
+  // ── Judge plan (for inline judge sections across all layouts) ─────────
+  const judgePlan = $derived((() => {
+    const ep = analyzeData?.entryPlan;
+    return [
+      { label: 'entry',  val: _fmtNum(ep?.entry),                               color: 'var(--g9)' },
+      { label: 'stop',   val: _fmtNum(ep?.stop),                                color: 'var(--neg)' },
+      { label: 'target', val: _fmtNum(ep?.targets?.[0]?.price),                 color: 'var(--pos)' },
+      { label: 'R:R',    val: ep?.riskReward != null ? `${ep.riskReward.toFixed(1)}x` : '—', color: 'var(--g9)' },
+    ];
+  })());
+
+  // ── Narrative ─────────────────────────────────────────────────────────
+  const narrativeDir = $derived(
+    analyzeData?.ensemble?.direction?.toLowerCase().includes('short') ||
+    analyzeData?.riskPlan?.bias?.includes('bear') ? '숏' : '롱'
+  );
+  const narrativeBias = $derived(
+    analyzeData?.riskPlan?.bias ??
+    analyzeData?.ensemble?.reason ??
+    analyzeData?.deep?.verdict ??
+    null
+  );
+  const evidencePos = $derived(evidenceItems.filter(e => e.pos).length);
+  const evidenceNeg = $derived(evidenceItems.filter(e => !e.pos).length);
+
+  // ── RR bar widths ─────────────────────────────────────────────────────
+  const rrLossPct = $derived((() => {
+    const rr = analyzeData?.entryPlan?.riskReward ?? 4.2;
+    return `${Math.round(100 / (rr + 1))}%`;
+  })());
+  const rrGainPct = $derived((() => {
+    const rr = analyzeData?.entryPlan?.riskReward ?? 4.2;
+    return `${Math.round(100 - 100 / (rr + 1))}%`;
+  })());
 </script>
 
 <div bind:this={containerEl} class="trade-mode">
+  {#if mobileView !== undefined}
+    <!-- ── MOBILE: chart on top, tab strip, scrollable panel ── -->
+    <div class="mobile-chart-section">
+      <ChartBoard
+        {symbol}
+        tf={timeframe}
+        initialData={chartPayload ?? undefined}
+        verdictLevels={verdictLevels}
+        change24hPct={analyzeData?.change24h ?? null}
+        contextMode="chart"
+      />
+    </div>
+    <div class="mobile-tab-strip">
+      {#each (['analyze', 'scan', 'judge'] as const) as t}
+        <button class="mts-tab" class:active={mobileView === t} onclick={() => setMobileView?.(t)}>
+          {t === 'analyze' ? '02 ANL' : t === 'scan' ? '03 SCAN' : '04 JUDGE'}
+        </button>
+      {/each}
+    </div>
+    <div class="mobile-panel">
+      {#if mobileView === 'analyze'}
+        {#if analyzeData}
+          <div class="narrative"><span class="bull">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '분석 완료'}</div>
+          <div class="evidence-grid">
+            {#each evidenceItems as item}
+              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                <span class="ev-key">{item.k}</span>
+                <span class="ev-val">{item.v}</span>
+              </div>
+            {/each}
+          </div>
+          <div class="proposal-label" style="margin-top:8px">PROPOSAL</div>
+          {#each proposal as p}
+            <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+              <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
+            </div>
+          {/each}
+        {:else}
+          <div class="mobile-empty">
+            <span>/ analyze 입력 또는</span>
+            <span>RANGE 선택 후 실행</span>
+          </div>
+        {/if}
+      {:else if mobileView === 'scan'}
+        {#each scanCandidates as x}
+          {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
+          <button class="scan-row" class:active={scanSelected === x.id} onclick={() => scanSelected = x.id}>
+            <span class="sr-sym">{x.symbol.replace('USDT', '')}</span>
+            <span class="sr-tf">{x.tf}</span>
+            <div class="sr-bar"><div class="sr-fill" style:width="{x.sim * 100}%" style:background={sc}></div></div>
+            <span class="sr-alpha" style:color={sc}>α{x.alpha}</span>
+          </button>
+        {/each}
+      {:else if mobileView === 'judge'}
+        <div class="mp-section">
+          <div class="mp-header">A · TRADE PLAN</div>
+          <div class="lvl-row">
+            {#each judgePlan as lvl}
+              <div class="lvl-cell"><div class="lvl-label">{lvl.label}</div><div class="lvl-val" style:color={lvl.color}>{lvl.val}</div></div>
+            {/each}
+          </div>
+        </div>
+        <div class="mp-section">
+          <div class="mp-header">B · JUDGE NOW</div>
+          <div class="judge-btns">
+            <button class="judge-btn agree" class:active={judgeVerdict === 'agree'} onclick={() => judgeVerdict = 'agree'}><span class="jb-key">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div></button>
+            <button class="judge-btn disagree" class:active={judgeVerdict === 'disagree'} onclick={() => judgeVerdict = 'disagree'}><span class="jb-key">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span></div></button>
+          </div>
+        </div>
+        <div class="mp-section">
+          <div class="mp-header">C · AFTER RESULT</div>
+          <div class="outcome-row">
+            {#each [{ k: 'win', l: 'WIN', c: 'var(--pos)', bg: 'var(--pos-dd)' }, { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' }, { k: 'flat', l: 'FLAT', c: 'var(--g7)', bg: 'var(--g2)' }] as o}
+              <button class="outcome-btn" class:active={judgeOutcome === o.k} style:--oc={o.c} style:--obg={o.bg} onclick={() => { judgeOutcome = o.k as any; }}>{o.l}</button>
+            {/each}
+          </div>
+        </div>
+      {/if}
+    </div>
+  {:else}
   {#if !analyzed}
     <!-- Empty canvas — shown until AI panel "RUN →" or SELECT RANGE -->
     <div class="empty-canvas">
@@ -270,8 +441,8 @@
         </div>
         <div class="conf-inline">
           <span class="conf-label">CONFIDENCE</span>
-          <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
-          <span class="conf-val">82</span>
+          <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
+          <span class="conf-val">{fmtConf}</span>
         </div>
       </div>
       <div class="chart-body">
@@ -293,10 +464,11 @@
         <div class="la-col-header"><span class="la-step">02</span><span class="la-title">ANALYZE</span><span class="la-desc">· 가설·근거</span></div>
         <div class="la-col-body">
           <div class="narrative">
-            <span class="bull">롱 진입 권장 ·</span>
-            {' '}<code>real_dump</code> 후 <strong>OI +18%</strong>, <strong>번지대 3h 12m</strong> 소화.
-            {' '}Funding 플립 완료, CVD 양전환.
-            {' '}<span class="warn">BTC RANGE⚠</span>
+            <span class="bull">{narrativeDir} 진입 권장 ·</span>
+            {' '}{narrativeBias ?? '분석 완료'}
+            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+            {/if}
           </div>
           <div class="evidence-grid">
             {#each evidenceItems as item}
@@ -337,12 +509,7 @@
         <div class="la-col-header"><span class="la-step">04</span><span class="la-title">JUDGE</span><span class="la-desc">· 매매·판정</span></div>
         <div class="la-col-body">
           <div class="lvl-row">
-            {#each [
-              { label: 'entry',  val: '83,700', color: 'var(--g9)' },
-              { label: 'stop',   val: '82,800', color: 'var(--neg)' },
-              { label: 'target', val: '87,500', color: 'var(--pos)' },
-              { label: 'R:R',    val: '4.2x',   color: 'var(--g9)' },
-            ] as lvl}
+            {#each judgePlan as lvl}
               <div class="lvl-cell">
                 <div class="lvl-label">{lvl.label}</div>
                 <div class="lvl-val" style:color={lvl.color}>{lvl.val}</div>
@@ -388,8 +555,8 @@
         </div>
         <div class="conf-inline">
           <span class="conf-label">CONFIDENCE</span>
-          <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
-          <span class="conf-val">82</span>
+          <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
+          <span class="conf-val">{fmtConf}</span>
         </div>
       </div>
       <div class="chart-body">
@@ -422,8 +589,8 @@
         <span class="spacer"></span>
         <div class="conf-inline small">
           <span class="conf-label">CONFIDENCE</span>
-          <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
-          <span class="conf-val">82</span>
+          <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
+          <span class="conf-val">{fmtConf}</span>
         </div>
       </div>
       <div class="drawer-content">
@@ -431,10 +598,11 @@
           <div class="analyze-body">
             <div class="analyze-left">
               <div class="narrative">
-                <span class="bull">롱 진입 권장 ·</span>
-                {' '}<code>real_dump</code> 후 <strong>OI +18%</strong>, <strong>번지대 3h 12m</strong> 소화하고 <strong>accumulation</strong> 진입.
-                {' '}Funding 플립 완료, 15m CVD 양전환.
-                {' '}<span class="warn">BTC RANGE 주의</span> · 과거 같은 조건 <strong>11/14</strong> +3% 이상.
+                <span class="bull">{narrativeDir} 진입 권장 ·</span>
+                {' '}{narrativeBias ?? '분석 완료'}
+                {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+                  {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+                {/if}
               </div>
               <div class="evidence-grid">
                 {#each evidenceItems as item}
@@ -477,7 +645,7 @@
               <div class="act-col plan-col">
                 <div class="col-label">A · TRADE PLAN</div>
                 <div class="lvl-row">
-                  {#each [{ label: 'entry', val: '83,700', color: 'var(--g9)' }, { label: 'stop', val: '82,800', color: 'var(--neg)' }, { label: 'target', val: '87,500', color: 'var(--pos)' }, { label: 'R:R', val: '4.2x', color: 'var(--g9)' }] as lvl}
+                  {#each judgePlan as lvl}
                     <div class="lvl-cell"><div class="lvl-label">{lvl.label}</div><div class="lvl-val" style:color={lvl.color}>{lvl.val}</div></div>
                   {/each}
                 </div>
@@ -545,13 +713,15 @@
         <div class="lcs-body">
           <div class="conf-inline small" style="margin-bottom: 6px;">
             <span class="conf-label">CONFIDENCE</span>
-            <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
-            <span class="conf-val">82</span>
+            <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
+            <span class="conf-val">{fmtConf}</span>
           </div>
           <div class="narrative" style="font-size: 9px; line-height: 1.6;">
-            <span class="bull">롱 권장 ·</span> OI +18%, 번지대 3h 소화.
-            Funding 플립, CVD 양전환.
-            <span class="warn">BTC RANGE⚠</span>
+            <span class="bull">{narrativeDir} 권장 ·</span>
+            {' '}{narrativeBias ?? '분석 완료'}
+            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+            {/if}
           </div>
           <div style="margin-top: 6px;">
             {#each evidenceItems as item}
@@ -636,11 +806,11 @@
       </div>
       <span class="spacer"></span>
       <div class="evidence-badge">
-        <span class="ev-pos">5</span><span class="ev-sep">/</span><span class="ev-neg">1</span>
+        <span class="ev-pos">{evidencePos}</span><span class="ev-sep">/</span><span class="ev-neg">{evidenceNeg}</span>
       </div>
       <div class="conf-inline">
-        <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
-        <span class="conf-val">α82</span>
+        <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
+        <span class="conf-val">{confidenceAlpha}</span>
       </div>
     </div>
     <div class="chart-body">
@@ -676,25 +846,29 @@
           <span class="pb-label">{tab.label}</span>
           <span class="pb-sep">·</span>
           {#if tab.id === 'analyze'}
-            <span class="pb-val pos">α82</span>
+            <span class="pb-val pos">{confidenceAlpha}</span>
             <span class="pb-sep">·</span>
-            <span class="pb-txt">롱 진입 권장</span>
-            <span class="pb-sep">·</span>
-            <span class="pb-dim">OI +18% · 번지대 3h12m</span>
-            <span class="pb-sep">·</span>
-            <span class="pb-warn">BTC RANGE⚠</span>
+            <span class="pb-txt">{narrativeDir} 진입 권장</span>
+            {#if analyzeData?.flowSummary?.oi && analyzeData.flowSummary.oi !== 'n/a'}
+              <span class="pb-sep">·</span>
+              <span class="pb-dim">OI {analyzeData.flowSummary.oi}</span>
+            {/if}
+            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+              <span class="pb-sep">·</span>
+              <span class="pb-warn">{analyzeData.snapshot.regime}⚠</span>
+            {/if}
           {:else if tab.id === 'scan'}
-            <span class="pb-val" style:color="#7aa2e0">9 candidates</span>
+            <span class="pb-val" style:color="#7aa2e0">{scanCandidates.length} candidates</span>
             <span class="pb-sep">·</span>
             <span class="pb-dim">LDO α77 · INJ α73 · FET α70</span>
             <span class="pb-sep">·</span>
             <span class="pb-val pos">past 11W 3L +3.4%</span>
           {:else if tab.id === 'judge'}
-            <span class="pb-txt">entry <span class="pb-val">83,700</span></span>
+            <span class="pb-txt">entry <span class="pb-val">{judgePlan[0].val}</span></span>
             <span class="pb-sep">·</span>
-            <span class="pb-txt">stop <span class="pb-val neg">82,800</span></span>
+            <span class="pb-txt">stop <span class="pb-val neg">{judgePlan[1].val}</span></span>
             <span class="pb-sep">·</span>
-            <span class="pb-txt">R:R <span class="pb-val pos">4.2×</span></span>
+            <span class="pb-txt">R:R <span class="pb-val pos">{judgePlan[3].val}</span></span>
             <span class="pb-sep">·</span>
             <span class="pb-txt">size <span class="pb-val">1.2%</span></span>
           {/if}
@@ -733,8 +907,8 @@
           <span class="spacer"></span>
           <div class="conf-inline small">
             <span class="conf-label">CONFIDENCE</span>
-            <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
-            <span class="conf-val">82</span>
+            <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
+            <span class="conf-val">{fmtConf}</span>
           </div>
         </div>
 
@@ -745,10 +919,11 @@
               <!-- Left: narrative + evidence chips -->
               <div class="analyze-left">
                 <div class="narrative">
-                  <span class="bull">롱 진입 권장 ·</span>
-                  {' '}<code>real_dump</code> 후 <strong>OI +18%</strong>, <strong>번지대 3h 12m</strong> 소화하고 <strong>accumulation</strong> 진입.
-                  {' '}Funding 플립 완료, 15m CVD 양전환.
-                  {' '}<span class="warn">BTC RANGE 주의</span> · 과거 같은 조건 <strong>11/14</strong> +3% 이상.
+                  <span class="bull">{narrativeDir} 진입 권장 ·</span>
+                  {' '}{narrativeBias ?? '분석 완료'}
+                  {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+                    {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+                  {/if}
                 </div>
                 <div class="evidence-grid">
                   {#each evidenceItems as item}
@@ -887,23 +1062,17 @@
                 <span class="act-dir">LONG</span>
                 <span class="act-pat">OI reversal · accumulation</span>
                 <span class="spacer"></span>
-                <span class="act-alpha">α82</span>
+                <span class="act-alpha">{confidenceAlpha}</span>
               </div>
               <div class="act-cols">
                 <!-- A: Trade Plan -->
                 <div class="act-col plan-col">
                   <div class="col-label">A · TRADE PLAN</div>
                   <div class="lvl-row">
-                    {#each [
-                      { label: 'entry',  val: '83,700', color: 'var(--g9)' },
-                      { label: 'stop',   val: '82,800', color: 'var(--neg)' },
-                      { label: 'target', val: '87,500', color: 'var(--pos)' },
-                      { label: 'R:R',    val: '4.2x',   color: 'var(--g9)', hint: 'hist 3.6' },
-                    ] as lvl}
+                    {#each judgePlan as lvl}
                       <div class="lvl-cell">
                         <div class="lvl-label">{lvl.label}</div>
                         <div class="lvl-val" style:color={lvl.color}>{lvl.val}</div>
-                        {#if lvl.hint}<div class="lvl-hint">{lvl.hint}</div>{/if}
                       </div>
                     {/each}
                   </div>
@@ -911,10 +1080,10 @@
                     <div class="rr-box">
                       <div class="rr-box-label">RISK:REWARD</div>
                       <div class="rr-bar">
-                        <div class="rr-loss" style:width="19%"></div>
-                        <div class="rr-gain" style:width="81%"></div>
+                        <div class="rr-loss" style:width={rrLossPct}></div>
+                        <div class="rr-gain" style:width={rrGainPct}></div>
                       </div>
-                      <div class="rr-labels"><span class="rr-r">1R</span><span class="rr-g">4.2R</span></div>
+                      <div class="rr-labels"><span class="rr-r">1R</span><span class="rr-g">{judgePlan[3].val}</span></div>
                     </div>
                     <div class="size-box">
                       <div class="size-label">SIZE · 3x lev</div>
@@ -1020,6 +1189,7 @@
   </div>
   {/if}<!-- end layoutMode -->
   {/if}<!-- end analyzed -->
+  {/if}<!-- end mobileView -->
 </div>
 
 <style>
@@ -2057,4 +2227,79 @@
   .lcs-divider { height: 0.5px; background: var(--g3); flex-shrink: 0; }
   .prop-cell.compact { padding: 3px 0; }
   .la-meta { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); letter-spacing: 0.04em; }
+
+  /* ── Mobile layout ── */
+  .mobile-chart-section {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-tab-strip {
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    background: var(--g2);
+    border-top: 1px solid var(--g4);
+    border-bottom: 1px solid var(--g4);
+  }
+
+  .mts-tab {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--g6);
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--g4);
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s;
+  }
+  .mts-tab:last-child { border-right: none; }
+  .mts-tab.active {
+    color: var(--brand);
+    background: var(--g1);
+    border-top: 1.5px solid var(--brand);
+  }
+
+  .mobile-panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mobile-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 1;
+    color: var(--g5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .mp-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--g3);
+  }
+  .mp-section:last-child { border-bottom: none; }
+  .mp-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g5);
+    letter-spacing: 0.14em;
+  }
 </style>

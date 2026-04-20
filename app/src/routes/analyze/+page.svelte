@@ -42,6 +42,7 @@
 
   // 항상 3개 모두 실행
   const ALL_PROVIDERS = PROVIDERS.map((p) => p.id);
+  const selectedProviders = ALL_PROVIDERS;
 
   // ── Actions ────────────────────────────────────────────────────────────────
   async function runAnalysis() {
