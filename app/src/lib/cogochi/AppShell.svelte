@@ -10,6 +10,10 @@
   import TrainMode from './modes/TrainMode.svelte';
   import RadialTopology from './modes/RadialTopology.svelte';
   import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta } from './shell.store';
+  import { viewportTier } from '$lib/stores/viewportTier';
+  import { mobileMode } from '$lib/stores/mobileMode';
+  import MobileTopBar from './MobileTopBar.svelte';
+  import MobileFooter from './MobileFooter.svelte';
 
   interface Props {
     canvasComponent?: any;
@@ -22,6 +26,12 @@
 
   $effect(() => {
     shellStore.subscribe(s => (shellState = s))();
+  });
+
+  $effect(() => {
+    if ($viewportTier.tier !== 'DESKTOP') {
+      shellStore.update(s => ({ ...s, sidebarVisible: false, aiVisible: false }));
+    }
   });
 
   onMount(() => {
@@ -75,40 +85,15 @@
 </script>
 
 <div class="app-shell">
-  <CommandBar
-    sessionName={$activeTab?.title?.slice(0, 32) || ''}
-    onRangeSelect={() => shellStore.updateTabState(s => ({ ...s, rangeSelection: !s.rangeSelection }))}
-    hasRange={$activeTabState.rangeSelection}
-    aiVisible={$shellStore.aiVisible}
-    toggleAI={() => shellStore.toggleAI()}
-    {paletteOpen}
-    setPaletteOpen={(open) => (paletteOpen = open)}
-  />
-
-  <TabBar
-    tabs={$shellStore.tabs}
-    activeTabId={$shellStore.activeTabId}
-    setActiveTabId={(id) => shellStore.setActiveTabId(id)}
-    onCloseTab={(id) => shellStore.closeTab(id)}
-    onNewTab={() => shellStore.openTab({ kind: 'trade', title: 'new session' })}
-    sidebarVisible={$shellStore.sidebarVisible}
-    toggleSidebar={() => shellStore.toggleSidebar()}
-  />
-
-  <div class="main-row">
-    {#if $shellStore.sidebarVisible}
-      <div style:width={`${$shellStore.sidebarWidth}px`} style:flex-shrink="0" style:display="flex">
-        <Sidebar
-          visible={true}
-          activeSection={$shellStore.activeSection}
-          setActiveSection={(id) => shellStore.setActiveSection(id)}
-          onOpenTab={(tab) => shellStore.openTab(tab)}
-        />
-      </div>
-      <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} />
-    {/if}
-
-    <div style:flex="1" style:min-width="0" style:display="flex" style:flex-direction="column" style:overflow="hidden">
+  {#if $viewportTier.tier === 'MOBILE'}
+    <!-- ── MOBILE shell ── -->
+    <MobileTopBar
+      symbol="BTCUSDT"
+      timeframe="4h"
+      aiVisible={$shellStore.aiVisible}
+      toggleAI={() => shellStore.toggleAI()}
+    />
+    <div class="mobile-canvas">
       {#if $activeMode === 'trade'}
         <TradeMode
           mode={$activeMode}
@@ -116,17 +101,18 @@
           updateTabState={(updater) => shellStore.updateTabState(updater)}
           symbol="BTCUSDT"
           timeframe="4h"
+          mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : 'analyze'}
+          setMobileView={(v) => {
+            const map = { analyze: 'chart', scan: 'scan', judge: 'judge' } as const;
+            mobileMode.setActive(map[v]);
+          }}
         />
-      {:else if $activeMode === 'train'}
-        <TrainMode mode={$activeMode} />
-      {:else if $activeMode === 'flywheel'}
-        <RadialTopology mode={$activeMode} />
       {/if}
     </div>
-
+    <MobileFooter symCount={300} live={true} />
     {#if $shellStore.aiVisible}
-      <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} />
-      <div style:width={`${$shellStore.aiWidth}px`} style:flex-shrink="0">
+      <div class="mobile-ai-sheet">
+        <div class="sheet-handle"></div>
         <AIPanel
           messages={$activeTabState.chat || []}
           onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
@@ -145,15 +131,88 @@
         />
       </div>
     {/if}
-  </div>
+  {:else}
+    <!-- ── DESKTOP / TABLET shell ── -->
+    <CommandBar
+      sessionName={$activeTab?.title?.slice(0, 32) || ''}
+      onRangeSelect={() => shellStore.updateTabState(s => ({ ...s, rangeSelection: !s.rangeSelection }))}
+      hasRange={$activeTabState.rangeSelection}
+      aiVisible={$shellStore.aiVisible}
+      toggleAI={() => shellStore.toggleAI()}
+      {paletteOpen}
+      setPaletteOpen={(open) => (paletteOpen = open)}
+    />
 
-  <StatusBar
-    mode={$activeMode}
-    verdicts={$verdictCount}
-    modelDelta={$modelDelta}
-    onSwitchMode={(m) => shellStore.switchMode(m)}
-    sidebarVisible={$shellStore.sidebarVisible}
-  />
+    <TabBar
+      tabs={$shellStore.tabs}
+      activeTabId={$shellStore.activeTabId}
+      setActiveTabId={(id) => shellStore.setActiveTabId(id)}
+      onCloseTab={(id) => shellStore.closeTab(id)}
+      onNewTab={() => shellStore.openTab({ kind: 'trade', title: 'new session' })}
+      sidebarVisible={$shellStore.sidebarVisible}
+      toggleSidebar={() => shellStore.toggleSidebar()}
+    />
+
+    <div class="main-row">
+      {#if $shellStore.sidebarVisible}
+        <div style:width={`${$shellStore.sidebarWidth}px`} style:flex-shrink="0" style:display="flex">
+          <Sidebar
+            visible={true}
+            activeSection={$shellStore.activeSection}
+            setActiveSection={(id) => shellStore.setActiveSection(id)}
+            onOpenTab={(tab) => shellStore.openTab(tab)}
+          />
+        </div>
+        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeSidebar(dx)} />
+      {/if}
+
+      <div style:flex="1" style:min-width="0" style:display="flex" style:flex-direction="column" style:overflow="hidden">
+        {#if $activeMode === 'trade'}
+          <TradeMode
+            mode={$activeMode}
+            tabState={$activeTabState}
+            updateTabState={(updater) => shellStore.updateTabState(updater)}
+            symbol="BTCUSDT"
+            timeframe="4h"
+          />
+        {:else if $activeMode === 'train'}
+          <TrainMode mode={$activeMode} />
+        {:else if $activeMode === 'flywheel'}
+          <RadialTopology mode={$activeMode} />
+        {/if}
+      </div>
+
+      {#if $shellStore.aiVisible}
+        <Splitter orientation="vertical" onDrag={(dx) => shellStore.resizeAI(dx)} />
+        <div style:width={`${$shellStore.aiWidth}px`} style:flex-shrink="0">
+          <AIPanel
+            messages={$activeTabState.chat || []}
+            onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
+            onApplySetup={(setup) => {
+              shellStore.updateTabState(s => ({ ...s, tradePrompt: setup.text }));
+              shellStore.update(st => ({
+                ...st,
+                tabs: st.tabs.map(t =>
+                  t.id === st.activeTabId
+                    ? { ...t, title: setup.text.slice(0, 30) }
+                    : t
+                ),
+              }));
+            }}
+            onClose={() => shellStore.toggleAI()}
+          />
+        </div>
+      {/if}
+    </div>
+
+    <StatusBar
+      mode={$activeMode}
+      verdicts={$verdictCount}
+      modelDelta={$modelDelta}
+      onSwitchMode={(m) => shellStore.switchMode(m)}
+      sidebarVisible={$shellStore.sidebarVisible}
+    />
+  {/if}
 </div>
 
 <style>
@@ -173,5 +232,42 @@
     display: flex;
     overflow: hidden;
     min-height: 0;
+  }
+
+  .mobile-canvas {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .mobile-ai-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 52%;
+    z-index: 200;
+    background: var(--g1);
+    border-top: 1px solid var(--g5);
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    flex-direction: column;
+    animation: sheetSlideUp 0.2s ease;
+  }
+
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--g5);
+    border-radius: 2px;
+    margin: 8px auto 4px;
+    flex-shrink: 0;
+  }
+
+  @keyframes sheetSlideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
   }
 </style>
