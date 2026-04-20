@@ -12,8 +12,8 @@
     updateTabState: (updater: (ts: TabState) => TabState) => void;
     symbol?: string;
     timeframe?: string;
-    mobileView?: 'analyze' | 'scan' | 'judge';
-    setMobileView?: (v: 'analyze' | 'scan' | 'judge') => void;
+    mobileView?: 'chart' | 'analyze' | 'scan' | 'judge';
+    setMobileView?: (v: 'chart' | 'analyze' | 'scan' | 'judge') => void;
   }
 
   let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView }: Props = $props();
@@ -279,7 +279,7 @@
 <div bind:this={containerEl} class="trade-mode">
   {#if mobileView !== undefined}
     <!-- ── MOBILE: chart on top, tab strip, scrollable panel ── -->
-    <div class="mobile-chart-section">
+    <div class="mobile-chart-section" class:mobile-chart-fullscreen={mobileView === 'chart'}>
       <ChartBoard
         {symbol}
         tf={timeframe}
@@ -290,12 +290,13 @@
       />
     </div>
     <div class="mobile-tab-strip">
-      {#each (['analyze', 'scan', 'judge'] as const) as t}
+      {#each (['chart', 'analyze', 'scan', 'judge'] as const) as t}
         <button class="mts-tab" class:active={mobileView === t} onclick={() => setMobileView?.(t)}>
-          {t === 'analyze' ? '02 ANL' : t === 'scan' ? '03 SCAN' : '04 JUDGE'}
+          {t === 'chart' ? '01 CHART' : t === 'analyze' ? '02 ANL' : t === 'scan' ? '03 SCAN' : '04 JUDGE'}
         </button>
       {/each}
     </div>
+    {#if mobileView !== 'chart'}
     <div class="mobile-panel">
       {#if mobileView === 'analyze'}
         <div class="narrative"><span class="bull">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}</div>
@@ -353,6 +354,7 @@
         </div>
       {/if}
     </div>
+    {/if}
   {:else}
   {#if !analyzed}
     <!-- Empty canvas — shown until AI panel "RUN →" or SELECT RANGE -->
@@ -2230,10 +2232,15 @@
 
   /* ── Mobile layout ── */
   .mobile-chart-section {
-    flex: 1;
-    min-height: 0;
+    height: 42vh;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
+  }
+
+  .mobile-chart-section.mobile-chart-fullscreen {
+    flex: 1;
+    height: auto;
   }
 
   .mobile-tab-strip {
@@ -2250,6 +2257,7 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     letter-spacing: 0.06em;
+    white-space: nowrap;
     color: var(--g6);
     background: transparent;
     border: none;
@@ -2270,6 +2278,7 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 10px 14px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -2290,12 +2299,14 @@
 
   .mobile-analyze-hint {
     margin-top: 12px;
-    padding: 6px 10px;
+    padding: 10px 14px;
     border-radius: 4px;
     background: var(--g2);
-    color: var(--g5);
+    border: 0.5px solid var(--g4);
+    color: var(--g7);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
+    line-height: 1.6;
     text-align: center;
   }
 

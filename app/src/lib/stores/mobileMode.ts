@@ -9,7 +9,7 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 
-export type MobileMode = 'chart' | 'detail' | 'scan' | 'judge';
+export type MobileMode = 'chart' | 'analyze' | 'scan' | 'judge';
 
 export interface MobileModeState {
   active: MobileMode;
@@ -19,7 +19,7 @@ export interface MobileModeState {
   pendingAlertId: string | null;
 }
 
-const VALID_MODES = new Set<MobileMode>(['chart', 'detail', 'scan', 'judge']);
+const VALID_MODES = new Set<MobileMode>(['chart', 'analyze', 'scan', 'judge']);
 
 function parseMode(raw: string | null): MobileMode {
   if (raw && VALID_MODES.has(raw as MobileMode)) return raw as MobileMode;

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { page } from '$app/stores';
+
   interface Props {
     symCount?: number;
     live?: boolean;
@@ -13,63 +15,85 @@
 
   let currentTime = $state(getTime());
   $effect(() => {
-    const interval = setInterval(() => {
-      currentTime = getTime();
-    }, 1000);
+    const interval = setInterval(() => { currentTime = getTime(); }, 1000);
     return () => clearInterval(interval);
   });
+
+  const navItems = [
+    { href: '/',          label: 'HOME' },
+    { href: '/lab',       label: 'LAB'  },
+    { href: '/dashboard', label: 'DASH' },
+  ] as const;
 </script>
 
-<div class="mobile-footer">
-  <span class="dot" class:live />
-  <span class="label">{live ? 'scanner live' : 'offline'}</span>
-  <span class="sep">·</span>
-  <span class="label">{symCount} sym</span>
-  <span class="spacer" />
-  <span class="time">{currentTime}</span>
-</div>
+<nav class="mobile-footer">
+  <div class="mf-nav">
+    {#each navItems as item}
+      <a href={item.href} class="mf-link" class:active={$page.url.pathname === item.href}>
+        {item.label}
+      </a>
+    {/each}
+  </div>
+  <div class="mf-status">
+    <span class="dot" class:live />
+    <span class="sym">{symCount}sym</span>
+    <span class="sep">·</span>
+    <span class="time">{currentTime}</span>
+  </div>
+</nav>
 
 <style>
   .mobile-footer {
-    height: 24px;
+    height: 40px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: space-between;
     padding: 0 12px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--g1);
     border-top: 1px solid var(--g4);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: var(--g6);
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
+  }
+
+  .mf-nav {
+    display: flex;
+    gap: 16px;
+  }
+
+  .mf-link {
+    color: var(--g5);
+    text-decoration: none;
+    font-size: 9px;
+    font-family: inherit;
+    letter-spacing: 0.08em;
+    transition: color 0.12s;
+  }
+
+  .mf-link:hover,
+  .mf-link.active {
+    color: var(--brand);
+  }
+
+  .mf-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--g5);
   }
 
   .dot {
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background: var(--g5);
+    background: var(--g4);
     flex-shrink: 0;
   }
 
-  .dot.live {
-    background: var(--pos);
-  }
+  .dot.live { background: var(--pos); }
 
-  .label {
-    color: var(--g7);
-  }
-
-  .sep {
-    color: var(--g4);
-  }
-
-  .spacer {
-    flex: 1;
-  }
-
-  .time {
-    color: var(--g7);
-  }
+  .sym, .time { color: var(--g6); }
+  .sep { color: var(--g3); }
 </style>
