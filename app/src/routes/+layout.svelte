@@ -70,8 +70,8 @@
     <Header />
   {/if}
 
-  <!-- Context 3: App pages (non-terminal) → NavRail + TopBar -->
-  {#if $isApp && !$isTerminal}
+  <!-- Context 3: All app pages → NavRail (including terminal) -->
+  {#if $isApp}
     <AppNavRail />
   {/if}
   {#if $showTopBar}
@@ -125,7 +125,7 @@
 
   #app.terminal-mode #main-content {
     padding-top: 0;
-    padding-left: 0;
+    padding-left: 52px;
     height: 100dvh;
     overflow: hidden;
   }
