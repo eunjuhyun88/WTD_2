@@ -70,6 +70,13 @@ from building_blocks.confirmations.delta_flip_positive import delta_flip_positiv
 from building_blocks.confirmations.relative_velocity_bull import relative_velocity_bull
 from building_blocks.confirmations.cvd_price_divergence import cvd_price_divergence
 from building_blocks.confirmations.orderbook_imbalance_ratio import orderbook_imbalance_ratio
+from building_blocks.confirmations.oi_price_lag_detect import oi_price_lag_detect
+from social.blocks import (
+    social_sentiment_spike,
+    kol_signal,
+    fear_greed_rising,
+    social_composite,
+)
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -145,6 +152,14 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("relative_velocity_bull",     relative_velocity_bull),
     ("cvd_price_divergence",       cvd_price_divergence),
     ("orderbook_imbalance_ratio",  orderbook_imbalance_ratio),
+    # 딸깍 전략 blocks (W-0114)
+    ("oi_price_lag_detect",        oi_price_lag_detect),
+    ("oi_price_lag_detect_strong", lambda ctx: oi_price_lag_detect(ctx, oi_threshold=0.15, price_threshold=0.015)),
+    # 소셜 신호 blocks — CoinGecko + Binance Square 실제 데이터
+    ("social_sentiment_spike",     social_sentiment_spike),
+    ("kol_signal",                 kol_signal),
+    ("fear_greed_rising",          fear_greed_rising),
+    ("social_composite",           social_composite),
     # disqualifiers
     ("volume_below_average",            volume_below_average),
     ("extreme_volatility",              extreme_volatility),
