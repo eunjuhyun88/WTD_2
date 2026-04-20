@@ -23,6 +23,8 @@
 
   let paletteOpen = $state(false);
   let shellState = $state<any>(null);
+  let mobileTF = $state('4h');
+  let mobileSymbol = $state('BTCUSDT');
 
   $effect(() => {
     shellStore.subscribe(s => (shellState = s))();
@@ -31,6 +33,7 @@
   $effect(() => {
     if ($viewportTier.tier !== 'DESKTOP') {
       shellStore.update(s => ({ ...s, sidebarVisible: false, aiVisible: false }));
+      shellStore.updateTabState(s => ({ ...s, layoutMode: 'D' }));
     }
   });
 
@@ -88,10 +91,12 @@
   {#if $viewportTier.tier === 'MOBILE'}
     <!-- ── MOBILE shell ── -->
     <MobileTopBar
-      symbol="BTCUSDT"
-      timeframe="4h"
+      symbol={mobileSymbol}
+      timeframe={mobileTF}
       aiVisible={$shellStore.aiVisible}
       toggleAI={() => shellStore.toggleAI()}
+      onTFChange={(tf) => (mobileTF = tf)}
+      onSymbolChange={(s) => (mobileSymbol = s)}
     />
     <div class="mobile-canvas">
       {#if $activeMode === 'trade'}
@@ -99,8 +104,8 @@
           mode={$activeMode}
           tabState={$activeTabState}
           updateTabState={(updater) => shellStore.updateTabState(updater)}
-          symbol="BTCUSDT"
-          timeframe="4h"
+          symbol={mobileSymbol}
+          timeframe={mobileTF}
           mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : 'analyze'}
           setMobileView={(v) => {
             const map = { analyze: 'chart', scan: 'scan', judge: 'judge' } as const;
@@ -112,7 +117,10 @@
     <MobileFooter symCount={300} live={true} />
     {#if $shellStore.aiVisible}
       <div class="mobile-ai-sheet">
-        <div class="sheet-handle"></div>
+        <div class="sheet-topbar">
+          <div class="sheet-handle"></div>
+          <button class="sheet-close" onclick={() => shellStore.toggleAI()}>×</button>
+        </div>
         <AIPanel
           messages={$activeTabState.chat || []}
           onSend={(_text, newMessages) => shellStore.updateTabState(s => ({ ...s, chat: newMessages }))}
@@ -225,6 +233,8 @@
     font-family: 'Geist', 'Inter', system-ui, sans-serif;
     font-size: 11px;
     color: var(--g9);
+    /* Fix 5: iOS safe area — 홈 인디케이터 뒤 안 가려짐 */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .main-row {
@@ -257,13 +267,42 @@
     animation: sheetSlideUp 0.2s ease;
   }
 
+  .sheet-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 8px 12px 4px;
+    flex-shrink: 0;
+  }
+
   .sheet-handle {
     width: 36px;
     height: 4px;
     background: var(--g5);
     border-radius: 2px;
-    margin: 8px auto 4px;
-    flex-shrink: 0;
+  }
+
+  .sheet-close {
+    position: absolute;
+    right: 12px;
+    top: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--g2);
+    border: 0.5px solid var(--g4);
+    border-radius: 4px;
+    color: var(--g6);
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .sheet-close:active {
+    background: var(--g3);
   }
 
   @keyframes sheetSlideUp {

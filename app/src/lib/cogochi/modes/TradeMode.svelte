@@ -298,28 +298,24 @@
     </div>
     <div class="mobile-panel">
       {#if mobileView === 'analyze'}
-        {#if analyzeData}
-          <div class="narrative"><span class="bull">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '분석 완료'}</div>
-          <div class="evidence-grid">
-            {#each evidenceItems as item}
-              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
-                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
-                <span class="ev-key">{item.k}</span>
-                <span class="ev-val">{item.v}</span>
-              </div>
-            {/each}
-          </div>
-          <div class="proposal-label" style="margin-top:8px">PROPOSAL</div>
-          {#each proposal as p}
-            <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-              <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
+        <div class="narrative"><span class="bull">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}</div>
+        <div class="evidence-grid">
+          {#each evidenceItems as item}
+            <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+              <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+              <span class="ev-key">{item.k}</span>
+              <span class="ev-val">{item.v}</span>
             </div>
           {/each}
-        {:else}
-          <div class="mobile-empty">
-            <span>/ analyze 입력 또는</span>
-            <span>RANGE 선택 후 실행</span>
+        </div>
+        <div class="proposal-label" style="margin-top:8px">PROPOSAL</div>
+        {#each proposal as p}
+          <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+            <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
           </div>
+        {/each}
+        {#if !analyzeData}
+          <div class="mobile-analyze-hint">/ analyze 실행 시 실시간 데이터로 업데이트</div>
         {/if}
       {:else if mobileView === 'scan'}
         {#each scanCandidates as x}
@@ -1193,6 +1189,10 @@
 </div>
 
 <style>
+  /* Fix 1: 모바일에서 ChartBoard 데스크탑 툴바 숨김 (+98px 확보) */
+  :global(.mobile-chart-section .chart-toolbar) { display: none; }
+  :global(.mobile-chart-section .chart-header--tv) { display: none; }
+
   .trade-mode {
     flex: 1;
     display: flex;
@@ -2285,6 +2285,17 @@
     color: var(--g5);
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
+    text-align: center;
+  }
+
+  .mobile-analyze-hint {
+    margin-top: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    background: var(--g2);
+    color: var(--g5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
     text-align: center;
   }
 
