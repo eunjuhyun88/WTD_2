@@ -1,7 +1,5 @@
 <script lang="ts">
-  import ChartCanvas from '../../../components/terminal/workspace/ChartCanvas.svelte';
-  import { fetchTerminalBundle } from '$lib/api/terminalBackend';
-  import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
+  import PhaseChart from '../PhaseChart.svelte';
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
 
@@ -17,26 +15,9 @@
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
-  let chartData = $state<ChartSeriesPayload | null>(null);
-  let chartLoading = $state(false);
   let showOI = $state(true);
   let showFunding = $state(true);
-  let showCVD = $state(false);
-  let showVWAP = $state(false);
-
-  async function loadChart(sym: string, tf: string) {
-    chartLoading = true;
-    try {
-      const bundle = await fetchTerminalBundle({ symbol: sym, tf });
-      chartData = bundle.chartPayload;
-    } catch {
-      chartData = null;
-    } finally {
-      chartLoading = false;
-    }
-  }
-
-  $effect(() => { loadChart(symbol, timeframe); });
+  let showCVD = $state(true);
 
   const peekOpen = $derived(tabState.peekOpen);
   const drawerTab = $derived(tabState.drawerTab);
@@ -168,7 +149,6 @@
           { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
           { id: 'funding', label: 'Funding', get: () => showFunding, set: (v: boolean) => showFunding = v },
           { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
-          { id: 'vwap',    label: 'VWAP',    get: () => showVWAP,    set: (v: boolean) => showVWAP = v },
         ] as tog}
           <button
             class="ind-tog"
@@ -192,28 +172,17 @@
       </div>
     </div>
     <div class="chart-body">
-      <!-- Phase markers -->
-      <div class="phase-markers">
-        {#each [
-          { n: '01', label: 'FAKE' },
-          { n: '02', label: 'ARCH' },
-          { n: '03', label: 'REAL_DUMP' },
-          { n: '04', label: 'ACCUM', active: true },
-          { n: '05', label: 'BREAKOUT' },
-        ] as phase}
-          <span class="phase" class:active={phase.active}>
-            <span class="ph-n">{phase.n}</span>
-            <span class="ph-label">{phase.label}</span>
-            {#if phase.active}<span class="ph-dot"></span>{/if}
-          </span>
-        {/each}
-      </div>
       <div class="chart-live">
-        {#if chartLoading}
-          <div class="chart-loading">loading chart…</div>
-        {:else}
-          <ChartCanvas {symbol} tf={timeframe} data={chartData} showVolumePane={true} {showOI} {showFunding} {showCVD} />
-        {/if}
+        <PhaseChart
+          height="100%"
+          highlightPhase={4}
+          showEntry={true}
+          showRange={tabState.rangeSelection}
+          showIndicators={true}
+          {showOI}
+          {showFunding}
+          {showCVD}
+        />
       </div>
     </div>
 
