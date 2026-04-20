@@ -132,7 +132,7 @@
           </div>
 
           <div class="chart-wrap">
-            <PhaseChart height={240} />
+            <PhaseChart height="240px" />
           </div>
 
           <div class="field-block">
