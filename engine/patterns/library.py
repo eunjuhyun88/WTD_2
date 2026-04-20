@@ -1003,6 +1003,83 @@ INSTITUTIONAL_DISTRIBUTION = PatternObject(
     tags=["distribution", "short", "cvd", "institutional", "liquidity"],
 )
 
+
+# ─── W-0114: 딸깍 전략 ──────────────────────────────────────────────────────
+# OI 선취매 + Social Ignition + Breakout 순차 발화 패턴
+# Phase 1: OI 오르는데 가격 안 움직임 (선취매 구간)
+# Phase 2: 소셜 트리거 (KOL 언급 OR 언급량 급증) — Twitter 토큰 복구 전까지 optional
+# Phase 3: 브레이크아웃 확인 (진입 신호)
+# Phase 4: TARGET 도달 = 성공
+OI_PRESURGE_LONG = PatternObject(
+    slug="oi-presurge-long-v1",
+    name="OI 선취매 롱 (딸깍형)",
+    description=(
+        "OI↑ + price flat → 소셜 촉매(KOL 언급/언급 급증) → 브레이크아웃. "
+        "Small losses(200 USDT 고정 손절), Big wins(3:1 R/R) 원칙. "
+        "신규 상장 / 변동성 이력 큰 심볼 우선."
+    ),
+    phases=[
+        PhaseCondition(
+            phase_id="QUIET_ACCUMULATION",
+            label="조용한 OI 축적 (선취매 관망)",
+            required_blocks=["oi_price_lag_detect"],
+            optional_blocks=["total_oi_spike", "bollinger_squeeze", "volume_dryup"],
+            disqualifier_blocks=["oi_spike_with_dump", "extreme_volatility"],
+            min_bars=3,
+            max_bars=48,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="SOCIAL_IGNITION",
+            label="소셜 촉매 발화 (개미 유입 시작 감지)",
+            # 실제 데이터 소스:
+            #   kol_signal           : CoinGecko trending + community_score > 50
+            #   social_sentiment_spike: CoinGecko trending OR Binance Square spike
+            #   social_composite     : 3개 소스 중 2개 이상 동시 발화
+            #   fear_greed_rising    : Alternative.me F&G 상승 (개미 유입 proxy)
+            # Twitter 토큰 복구 후: kol_mention_detect(Twitter) 추가 예정
+            required_blocks=[],
+            required_any_groups=[
+                ["kol_signal", "social_sentiment_spike", "social_composite"],
+                ["oi_price_lag_detect_strong", "relative_velocity_bull"],  # fallback
+            ],
+            optional_blocks=["fear_greed_rising", "alt_btc_accel_ratio", "coinbase_premium_positive"],
+            disqualifier_blocks=["cvd_spot_price_divergence_bear"],
+            min_bars=1,
+            max_bars=12,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="BREAKOUT_CONFIRM",
+            label="브레이크아웃 확인 (진입 신호)",
+            required_blocks=["breakout_above_high"],
+            required_any_groups=[
+                ["breakout_volume_confirm", "volume_spike", "bollinger_expansion"],
+            ],
+            optional_blocks=["oi_expansion_confirm", "positive_funding_bias"],
+            disqualifier_blocks=["extreme_volatility", "extended_from_ma"],
+            min_bars=1,
+            max_bars=6,
+            timeframe="1h",
+        ),
+        PhaseCondition(
+            phase_id="TARGET",
+            label="목표가 도달 (3:1 R/R)",
+            required_blocks=["recent_rally"],
+            optional_blocks=["oi_hold_after_spike"],
+            min_bars=1,
+            max_bars=72,
+            timeframe="1h",
+        ),
+    ],
+    entry_phase="BREAKOUT_CONFIRM",
+    target_phase="TARGET",
+    timeframe="1h",
+    direction="long",
+    tags=["dalkkak", "oi-presurge", "social-catalyst", "momentum"],
+)
+
+
 PATTERN_LIBRARY: dict[str, PatternObject] = {
     TRADOOR_OI_REVERSAL.slug: TRADOOR_OI_REVERSAL,
     FUNDING_FLIP_REVERSAL.slug: FUNDING_FLIP_REVERSAL,
@@ -1017,6 +1094,7 @@ PATTERN_LIBRARY: dict[str, PatternObject] = {
     COMPRESSION_BREAKOUT_REVERSAL.slug: COMPRESSION_BREAKOUT_REVERSAL,
     INSTITUTIONAL_DISTRIBUTION.slug: INSTITUTIONAL_DISTRIBUTION,
     FUNDING_FLIP_REVERSAL_SHORT.slug: FUNDING_FLIP_REVERSAL_SHORT,
+    OI_PRESURGE_LONG.slug: OI_PRESURGE_LONG,  # W-0114 딸깍 전략
 }
 
 def get_pattern(slug: str) -> PatternObject:
