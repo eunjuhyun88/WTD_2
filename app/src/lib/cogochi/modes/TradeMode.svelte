@@ -1,4 +1,8 @@
 <script lang="ts">
+  import ScanGrid from '$lib/components/terminal/peek/ScanGrid.svelte';
+  import JudgePanel from '$lib/components/terminal/peek/JudgePanel.svelte';
+  import type { PatternCaptureRecord } from '$lib/contracts/terminalPersistence';
+
   interface TabState {
     tradePrompt: string;
     rangeSelection: boolean;
@@ -135,16 +139,19 @@
             <div class="analysis-text">
               <span class="accent-bull">롱 진입 권장 ·</span>
               <span class="code">real_dump</span> 후 <strong>OI +18%</strong>, <strong>번지대 3h 12m</strong> 소화하고 <strong>accumulation</strong> 진입.
+              Funding 플립 완료, 15m CVD 양전환.
             </div>
           </div>
         {:else if drawerTab === 'scan'}
-          <div class="drawer-section">
-            <div>Scanner alerts + similar setups</div>
-          </div>
+          <ScanGrid
+            activeSymbol={symbol}
+            onOpenCapture={(r) => {}}
+          />
         {:else if drawerTab === 'judge'}
-          <div class="drawer-section">
-            <div>Verdict entry/stop/target + recent judgments</div>
-          </div>
+          <JudgePanel
+            {symbol}
+            {timeframe}
+          />
         {/if}
       </div>
     </div>
@@ -366,21 +373,25 @@
 
   .drawer-content {
     flex: 1;
-    padding: 14px;
-    overflow: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     font-size: 12px;
     color: var(--g8);
-    line-height: 1.7;
   }
 
   .drawer-section {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    padding: 14px;
+    overflow: auto;
+    flex: 1;
   }
 
   .analysis-text {
     font-family: 'Geist', sans-serif;
+    line-height: 1.7;
   }
 
   .accent-bull {
