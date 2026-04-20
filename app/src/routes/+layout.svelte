@@ -3,12 +3,13 @@
   import { dev } from '$app/environment';
   import { injectAnalytics } from '@vercel/analytics/sveltekit';
   import Header from '../components/layout/Header.svelte';
+  import AppNavRail from '../components/layout/AppNavRail.svelte';
+  import AppTopBar from '../components/layout/AppTopBar.svelte';
   import MobileBottomNav from '../components/layout/MobileBottomNav.svelte';
   import WalletModal from '../components/modals/WalletModal.svelte';
   import NotificationTray from '../components/shared/NotificationTray.svelte';
   import ToastStack from '../components/shared/ToastStack.svelte';
   import CookieConsent from '../components/shared/CookieConsent.svelte';
-  import P0Banner from '../components/shared/P0Banner.svelte';
   import { page } from '$app/stores';
   import { setActiveView } from '$lib/stores/activePairStore';
   import { startGlobalPriceFeed } from '$lib/layout/globalPriceFeed';
@@ -19,27 +20,24 @@
 
   let { children } = $props();
 
-  const isTerminal = derived(page, $p => $p.url.pathname.startsWith('/terminal'));
-  const isHome = derived(page, $p => $p.url.pathname === '/');
-  const isCogochi = derived(page, $p => $p.url.pathname.startsWith('/cogochi'));
-  const showGlobalChrome = derived(page, $p => {
+  // Context classification
+  const isHome     = derived(page, $p => $p.url.pathname === '/');
+  const isTerminal = derived(page, $p => $p.url.pathname.startsWith('/terminal') || $p.url.pathname.startsWith('/cogochi'));
+  // Context 3 = all app pages (including terminal)
+  const isApp      = derived(page, $p => $p.url.pathname !== '/');
+  // AppTopBar shown on app pages EXCEPT terminal (terminal has its own CommandBar)
+  const showTopBar = derived(page, $p => {
     const path = $p.url.pathname;
-    return !path.startsWith('/terminal');
+    return path !== '/' && !path.startsWith('/terminal') && !path.startsWith('/cogochi');
   });
-  const isScrollableSurface = derived(
-    page,
-    $p => !$p.url.pathname.startsWith('/terminal') && !$p.url.pathname.startsWith('/cogochi') && $p.url.pathname !== '/'
-  );
 
   let windowWidth = $state(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const showMobileBottomNav = $derived(windowWidth <= 768 && !$isTerminal);
 
-  // Sync currentView store from URL via effect
   $effect(() => {
     const path = $page.url.pathname;
-    const view = path.startsWith('/terminal') ? 'terminal'
+    const view = path.startsWith('/terminal') || path.startsWith('/cogochi') ? 'terminal'
       : path.startsWith('/passport') || path.startsWith('/lab') || path.startsWith('/agent') ? 'passport'
-      : path.startsWith('/arena') || path.startsWith('/arena-war') || path.startsWith('/arena-v2') ? 'arena'
       : null;
     if (!view) return;
     setActiveView(view);
@@ -63,105 +61,108 @@
 
 <div
   id="app"
-  class:cogochi-mode={$isCogochi}
-  class:terminal-mode={$isTerminal}
   class:home-mode={$isHome}
+  class:terminal-mode={$isTerminal}
+  class:app-mode={$isApp && !$isTerminal}
 >
-  {#if $showGlobalChrome}<Header />{/if}
-  {#if $showGlobalChrome}<P0Banner />{/if}
-  <div
-    id="main-content"
-    class:terminal-route={$isTerminal}
-    class:home-route={$isHome}
-    class:scrollable-surface={$isScrollableSurface}
-  >
+  <!-- Context 1: Home → floating marketing header -->
+  {#if $isHome}
+    <Header />
+  {/if}
+
+  <!-- Context 3: App pages (non-terminal) → NavRail + TopBar -->
+  {#if $isApp && !$isTerminal}
+    <AppNavRail />
+  {/if}
+  {#if $showTopBar}
+    <AppTopBar />
+  {/if}
+
+  <!-- Main content -->
+  <div id="main-content">
     {@render children()}
   </div>
-  {#if !$isCogochi && !$isTerminal && showMobileBottomNav}
+
+  <!-- Mobile bottom nav (all app pages except terminal) -->
+  {#if showMobileBottomNav}
     <MobileBottomNav />
   {/if}
 </div>
 
-<!-- Global Wallet Modal -->
+<!-- Global overlays -->
 <WalletModal />
-
-<!-- Global Notification Tray (bottom-right bell + slide-up panel) -->
 <NotificationTray />
-
-<!-- Global Toast Stack (bottom-right, above bell) -->
 <ToastStack />
-
-<!-- Cookie Consent Banner -->
 <CookieConsent />
 
 <style>
   #app {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
-    min-height: 100vh;
-    padding-top: var(--sc-header-h, 52px);
-    overflow: hidden;
+    min-height: 100dvh;
     position: relative;
   }
-  #app.cogochi-mode {
-    /* keeps global header visible; no override needed */
+
+  /* ── Home: no rail, no topbar, scrollable ── */
+  #app.home-mode {
+    height: auto;
+    overflow: visible;
   }
+
+  #app.home-mode #main-content {
+    overflow: visible;
+    padding-top: 0;
+    padding-left: 0;
+  }
+
+  /* ── Terminal: rail on left, no topbar, full height ── */
   #app.terminal-mode {
+    height: 100dvh;
+    overflow: hidden;
     --sc-consent-reserved-h: 0px;
     --sc-consent-bottom: 16px;
   }
-  #app.home-mode {
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
-  }
-  #main-content {
-    flex: 1;
+
+  #app.terminal-mode #main-content {
+    padding-top: 0;
+    padding-left: 0;
+    height: 100dvh;
     overflow: hidden;
-    position: relative;
-    min-height: 0;
   }
-  #main-content.scrollable-surface {
+
+  /* ── App pages: rail + topbar ── */
+  #app.app-mode #main-content {
+    padding-top: 44px;
+    padding-left: 52px;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
-  }
-  #main-content.home-route {
-    overflow: visible;
-    min-height: calc(100dvh - var(--sc-header-h, 52px));
+    flex: 1;
   }
 
-  @media (max-width: 1024px) {
-    #app {
-      height: 100svh;
-      min-height: 100svh;
+  /* ── Mobile overrides ── */
+  @media (max-width: 768px) {
+    #app.terminal-mode #main-content {
+      padding-left: 0;
+      padding-bottom: 0;
+    }
+
+    #app.app-mode #main-content {
+      padding-left: 0;
+      padding-top: 48px;
+      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    }
+
+    #app.home-mode #main-content {
+      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
     }
   }
-  @media (max-width: 768px) {
-    #app {
-      padding-top: var(--sc-header-h-mobile, 52px);
-      padding-bottom: calc(var(--sc-mobile-nav-h, 68px) + env(safe-area-inset-bottom, 0px));
-    }
-    #app.home-mode {
+
+  @media (max-width: 1024px) and (min-width: 769px) {
+    #app.terminal-mode,
+    #app.app-mode {
+      height: 100svh;
       min-height: 100svh;
-      padding-bottom: calc(var(--sc-mobile-nav-h, 68px) + env(safe-area-inset-bottom, 0px));
-    }
-    /* Terminal has its own bottom dock — no MobileBottomNav padding needed */
-    #app.terminal-mode {
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-    }
-    #main-content {
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior-y: contain;
-    }
-    #main-content.terminal-route {
-      overflow: hidden;
-    }
-    #main-content.home-route {
-      overflow: visible;
-      min-height: calc(100svh - var(--sc-header-h-mobile, 52px));
     }
   }
 </style>
