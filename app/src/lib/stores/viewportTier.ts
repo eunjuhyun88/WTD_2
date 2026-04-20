@@ -9,7 +9,7 @@
  *   DESKTOP >= 1280px
  */
 
-import { readable } from 'svelte/store';
+import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 export type ViewportTier = 'MOBILE' | 'TABLET' | 'DESKTOP';
@@ -32,22 +32,24 @@ const SERVER_DEFAULT: ViewportTierState = {
   height: 900,
 };
 
-export const viewportTier = readable<ViewportTierState>(SERVER_DEFAULT, (set) => {
-  if (!browser) return;
+function createViewportTierStore() {
+  const { subscribe, set } = writable<ViewportTierState>(SERVER_DEFAULT);
 
-  function update() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    set({ tier: getTier(w), width: w, height: h });
+  if (browser) {
+    function update() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      set({ tier: getTier(w), width: w, height: h });
+    }
+
+    // Initial update on creation
+    update();
+
+    window.addEventListener('resize', update, { passive: true });
+    window.addEventListener('orientationchange', update, { passive: true });
   }
 
-  update();
+  return { subscribe };
+}
 
-  window.addEventListener('resize', update, { passive: true });
-  window.addEventListener('orientationchange', update, { passive: true });
-
-  return () => {
-    window.removeEventListener('resize', update);
-    window.removeEventListener('orientationchange', update);
-  };
-});
+export const viewportTier = createViewportTierStore();

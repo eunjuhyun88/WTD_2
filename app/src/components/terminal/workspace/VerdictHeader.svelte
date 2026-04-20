@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TerminalVerdict } from '$lib/types/terminal';
+  import { canonicalSymbol } from '$lib/stores/terminalState';
   import FreshnessBadge from './FreshnessBadge.svelte';
 
   interface Props {
@@ -14,6 +15,7 @@
 
 <div class="verdict-header" style="--dir-color: {dirColor[verdict.direction]}">
   <div class="top-row">
+    <span class="symbol-label">{$canonicalSymbol?.slice(0, -4) ?? 'BTC'}</span>
     <span class="direction-badge">
       <span class="dot"></span>
       {dirLabel[verdict.direction]}
@@ -34,6 +36,11 @@
 <style>
   .verdict-header { display: flex; flex-direction: column; gap: 6px; }
   .top-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .symbol-label {
+    font-family: var(--sc-font-mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.04em; color: rgba(247,242,234,0.88); margin-right: 4px;
+    padding-right: 4px; border-right: 1px solid rgba(255,255,255,0.12);
+  }
   .direction-badge {
     display: inline-flex; align-items: center; gap: 5px;
     font-family: var(--sc-font-mono); font-size: 11px; font-weight: 700;

@@ -1,14 +1,13 @@
 """Confirmation: OKX on-chain smart money is accumulating this token.
 
-Calls OKX Signal API (via TTL cache) to check if tracked Smart Money /
-KOL / Whale wallets made net-positive buy trades in the last 24h for
-the token corresponding to ctx.symbol.
+Uses persistent historical cache of OKX Smart Money / KOL / Whale signals
+(build via fetch_okx_historical.fetch_and_cache_signals).
+
+This provides 24+ hours of accumulated data instead of just real-time API calls,
+improving pattern validation reliability during backtests and walk-forward CV.
 
 Applies only to on-chain tokens (Solana/ETH/BSC/Base). Returns all-False
 for BTC, ETH CEX perps, or any symbol not in the SYMBOL_CHAIN_MAP.
-
-This block is self-contained: it calls the OKX API at score time.
-It does NOT read from ctx.features (no registry column needed).
 
 Anchor:
     OKX Onchain OS — "Smart Money" wallets = sustained top-quartile
@@ -21,10 +20,8 @@ import time
 import pandas as pd
 
 from building_blocks.context import Context
-from data_cache.fetch_okx_smart_money import (
-    compute_smart_money_score,
-    get_smart_money_signals,
-)
+from data_cache.fetch_okx_smart_money import compute_smart_money_score
+from data_cache.fetch_okx_historical import load_signals_from_disk
 
 
 def smart_money_accumulation(
@@ -37,13 +34,14 @@ def smart_money_accumulation(
 ) -> pd.Series:
     """Return True on current bar if smart money is accumulating ctx.symbol.
 
-    Because OKX Signal API has no historical data, only the most recent
-    bar(s) within max_age_hours can be True. Older bars are always False.
+    Uses persistent historical cache (load_signals_from_disk) which accumulates
+    24+ hours of OKX smart money data. Provides better backtesting reliability
+    than live API calls.
 
     Args:
         ctx:             Per-symbol Context.
         wallet_types:    "1,2,3" = Smart Money + KOL + Whale (OKX type IDs).
-        min_amount_usd:  Minimum signal trade size in USD.
+        min_amount_usd:  Minimum signal trade size in USD (unused, for API compat).
         max_age_hours:   How far back to look for signals.
         min_buy_wallets: Minimum distinct buying wallets required.
 
@@ -53,14 +51,19 @@ def smart_money_accumulation(
     """
     false_series = pd.Series(False, index=ctx.features.index, dtype=bool)
 
-    signals = get_smart_money_signals(
-        ctx.symbol,
-        wallet_types=wallet_types,
-        min_amount_usd=min_amount_usd,
-        max_age_hours=max_age_hours,
-    )
-    if not signals:
+    # Load cached historical signals (preferred) instead of live API
+    df = load_signals_from_disk(ctx.symbol)
+    if df.empty:
         return false_series
+
+    # Filter by age window
+    cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=max_age_hours)
+    recent_signals = df[df["timestamp"] >= cutoff]
+    if recent_signals.empty:
+        return false_series
+
+    # Convert DataFrame to list of dicts for compute_smart_money_score()
+    signals = recent_signals.to_dict("records")
 
     score = compute_smart_money_score(signals)
     if not score["accumulating"] or score["buy_wallet_count"] < min_buy_wallets:

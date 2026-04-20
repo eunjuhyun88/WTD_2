@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TerminalHeaderBadge } from '$lib/terminal/terminalHeaderModel';
+  import { canonicalSymbol, canonicalSource } from '$lib/stores/terminalState';
 
   interface Props {
     subjectLabel?: string;
@@ -8,16 +9,19 @@
   }
 
   let {
-    subjectLabel = 'BTC',
-    sourceLabel = 'system',
+    subjectLabel,
+    sourceLabel,
     badges = [],
   }: Props = $props();
+
+  const displaySymbol = $derived(subjectLabel ?? $canonicalSymbol?.slice(0, -4) ?? 'BTC');
+  const displaySource = $derived(sourceLabel ?? $canonicalSource ?? 'system');
 </script>
 
 <div class="header-meta">
   <div class="header-subject">
-    <strong>{subjectLabel}</strong>
-    <small>{sourceLabel}</small>
+    <strong>{displaySymbol}</strong>
+    <small>{displaySource}</small>
   </div>
   <div class="header-badges">
     {#each badges as badge}

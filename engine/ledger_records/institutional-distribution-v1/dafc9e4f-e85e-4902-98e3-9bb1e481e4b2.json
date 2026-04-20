@@ -1,0 +1,22 @@
+{
+  "id": "dafc9e4f-e85e-4902-98e3-9bb1e481e4b2",
+  "record_type": "capture",
+  "pattern_slug": "institutional-distribution-v1",
+  "symbol": "MATICUSDT",
+  "user_id": "founder_seed",
+  "outcome_id": null,
+  "capture_id": "9ec884ac-fe6a-48f5-b0c0-db705afba2fb",
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-20T02:03:09.099869",
+  "payload": {
+    "capture_kind": "manual_hypothesis",
+    "pattern_version": 1,
+    "phase": "CVD_DECOUPLING",
+    "timeframe": "1h",
+    "status": "pending_outcome",
+    "user_note": "Test setup 9",
+    "outcome_id": null,
+    "verdict_id": null
+  }
+}

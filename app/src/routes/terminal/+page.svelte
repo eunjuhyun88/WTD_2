@@ -13,6 +13,7 @@
   import { onMount, onDestroy, untrack } from 'svelte';
   import { viewportTier } from '$lib/stores/viewportTier';
   import { activePairState, setActivePair, setActiveTimeframe } from '$lib/stores/activePairStore';
+  import { terminalState } from '$lib/stores/terminalState';
   import {
     addIndicator as addChartIndicator,
     removeIndicator as removeChartIndicator,
@@ -52,6 +53,7 @@
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import {
     fetchPatternCaptures,
+    createPatternCapture,
   } from '$lib/api/terminalPersistence';
   import { fetchTerminalSession } from '$lib/api/terminalSession';
   import {
@@ -96,17 +98,16 @@
 
   import TerminalCommandBar from '../../components/terminal/workspace/TerminalCommandBar.svelte';
   import TerminalLeftRail from '../../components/terminal/workspace/TerminalLeftRail.svelte';
-  import TerminalBottomDock from '../../components/terminal/workspace/TerminalBottomDock.svelte';
   import TerminalContextPanel from '../../components/terminal/workspace/TerminalContextPanel.svelte';
-  import ChartBoard from '../../components/terminal/workspace/ChartBoard.svelte';
   import PatternLibraryPanel from '../../components/terminal/workspace/PatternLibraryPanel.svelte';
-  // W-0086 shell components
-  import TerminalShell from '../../components/terminal/shell/TerminalShell.svelte';
-  import SaveStrip from '../../components/terminal/workspace/SaveStrip.svelte';
-  import LiveSignalPanel from '$lib/components/live/LiveSignalPanel.svelte';
   import MarketDrawer from '../../components/terminal/workspace/MarketDrawer.svelte';
+  import ScanGrid from '../../components/terminal/peek/ScanGrid.svelte';
+  import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
+  import CenterPanel from '../../components/terminal/peek/CenterPanel.svelte';
+  import RightRailPanel from '../../components/terminal/peek/RightRailPanel.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
+  import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
 
   // ─── State ──────────────────────────────────────────────────
 
@@ -167,6 +168,11 @@
   let labCtaSlug = $state<string | null>(null);
   let patternCaptureLoading = $state(false);
   let exportPollTimer: ReturnType<typeof setInterval> | null = null;
+
+  // ── PEEK drawer state ──────────────────────────────────────
+  let peekCaptures = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
+  let peekSimilar = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
+  let peekLoadingSimilar = $state(false);
 
   // ── Capture modal ──────────────────────────────────────────
   // On desktop the persistent left rail is always shown; drawer is for tablet/mobile only
@@ -766,6 +772,38 @@
     } catch {}
   }
 
+  // ── PEEK drawer loaders ────────────────────────────────────
+  async function loadPeekCaptures() {
+    try {
+      peekCaptures = await fetchPatternCaptures({ limit: 60 });
+    } catch (e) {
+      console.error('[peek] captures load failed:', e);
+    }
+  }
+
+  async function loadPeekSimilar(symbol: string, tf: string) {
+    if (!symbol) return;
+    peekLoadingSimilar = true;
+    try {
+      const draft = {
+        symbol,
+        timeframe: tf,
+        triggerOrigin: 'manual' as const,
+        markers: [],
+      } as any;
+      try {
+        const matches = await fetchSimilarPatternCaptures(draft);
+        peekSimilar = (matches ?? []).map((m: any) => m.record ?? m).filter(Boolean);
+      } catch {
+        peekSimilar = peekCaptures.filter(
+          (r) => r.symbol.toUpperCase().includes(symbol.replace(/USDT$/, ''))
+        );
+      }
+    } finally {
+      peekLoadingSimilar = false;
+    }
+  }
+
   // ─── SSE Command Flow ─────────────────────────────────────────
 
   async function sendCommand(text: string, _files?: File[]) {
@@ -1013,6 +1051,7 @@
   let trendingInterval: ReturnType<typeof setInterval>;
   let readPathInterval: ReturnType<typeof setInterval>;
   let alertsInterval: ReturnType<typeof setInterval>;
+  let peekCapturesInterval: ReturnType<typeof setInterval>;
   let eventsInterval: ReturnType<typeof setInterval>;
   let patternInterval: ReturnType<typeof setInterval>;
   let bootstrapTimers: Array<ReturnType<typeof setTimeout>> = [];
@@ -1074,6 +1113,8 @@
     loadTerminalReadPath();
     loadTerminalPersistenceState();
     loadEvents();
+    loadPeekCaptures();
+    peekCapturesInterval = setInterval(() => runIfVisible(loadPeekCaptures), 120_000);
     for (const item of buildTerminalBootstrapTasks({
       loadTrending,
       loadNews,
@@ -1116,6 +1157,7 @@
     clearInterval(alertsInterval);
     clearInterval(eventsInterval);
     clearInterval(patternInterval);
+    clearInterval(peekCapturesInterval);
     if (exportPollTimer) clearInterval(exportPollTimer);
     bootstrapTimers.forEach((timer) => clearTimeout(timer));
     bootstrapTimers = [];
@@ -1151,6 +1193,7 @@
       loadActiveReadPath(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
       loadEvents();
+      loadPeekSimilar(symbol, symbolToTF(tf));
     } else if (tf !== prevTf) {
       prevTf = tf;
       const symbol = pairToSymbol(pair);
@@ -1162,6 +1205,7 @@
       loadActiveReadPath(symbol, symbolToTF(tf));
       loadFlow(pair, symbolToTF(tf));
       loadEvents();
+      loadPeekSimilar(symbol, symbolToTF(tf));
     }
   });
 
@@ -1216,6 +1260,14 @@
   let hasActiveSavedAlert = $derived.by(() => {
     if (!activeSymbol) return false;
     return Boolean(findTerminalAlertRule(savedAlertRules, activeSymbol, symbolToTF(gTf)));
+  });
+
+  // Sync 24h-change to terminalState canonical store
+  $effect(() => {
+    const change = activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null;
+    if (change !== null) {
+      terminalState.setLast24hChange(change);
+    }
   });
 
   // ── Analysis rail mode ────────────────────────────────────────
@@ -1374,6 +1426,52 @@
   async function refreshWatchlistForMobile() {
     await Promise.all([loadTerminalPersistenceState(), loadTrending()]);
   }
+
+  // ── PEEK drawer derived + handlers ────────────────────────
+  const peekAnalyzeCount = $derived(analysisData?.verdict ? 1 : 0);
+  const peekScanCount = $derived(scannerAlerts.length);
+  const peekJudgeCount = $derived(peekCaptures.filter((c: any) => {
+    const hasOutcome = c?.outcome?.label || c?.decision?.outcomeLabel;
+    return !hasOutcome;
+  }).length);
+
+  const peekVerdict = $derived(analysisData?.verdict ?? null);
+  const peekEntry = $derived((analysisData as any)?.verdict?.entry ?? (analysisData as any)?.deep?.entry ?? null);
+  const peekStop = $derived((analysisData as any)?.verdict?.stop ?? (analysisData as any)?.deep?.stop ?? null);
+  const peekTarget = $derived((analysisData as any)?.verdict?.target ?? (analysisData as any)?.deep?.target ?? null);
+  const peekPWin = $derived(analysisData?.p_win ?? null);
+  const peekLast = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
+
+  async function handlePeekSaveJudgment(input: { verdict: 'bullish' | 'bearish' | 'neutral'; note: string }) {
+    const symbol = activeSymbol || pairToSymbol(gPair);
+    const timeframe = symbolToTF(gTf);
+    if (!symbol) return;
+    const data = analysisData;
+    await createPatternCapture({
+      symbol,
+      timeframe,
+      contextKind: 'symbol',
+      triggerOrigin: 'manual',
+      note: input.note || undefined,
+      snapshot: { freshness: 'live' },
+      decision: {
+        verdict: input.verdict,
+        confidence: (data as any)?.p_win ?? undefined,
+      },
+      sourceFreshness: { manual: new Date().toISOString() },
+    });
+    await loadPeekCaptures();
+  }
+
+  async function handlePeekRejudge(input: { captureId: string; outcome: 'correct' | 'wrong' | 'partial' | 'timeout'; note: string }) {
+    console.log('[peek] rejudge (UI stub)', input);
+    // TODO: PATCH /api/terminal/pattern-captures/[id] when backend route exists.
+    await loadPeekCaptures();
+  }
+
+  function handlePeekOpenCapture(record: any) {
+    setActivePair(record.symbol.replace(/USDT$/, '') + '/USDT');
+  }
 </script>
 
 <svelte:head>
@@ -1385,198 +1483,61 @@
   <link rel="canonical" href={buildCanonicalHref('/terminal')} />
 </svelte:head>
 
-<!-- ═══════════════════════════════════════════════════ -->
-<!-- Terminal Shell (W-0086: TerminalShell wrapper)      -->
-<!-- ═══════════════════════════════════════════════════ -->
-
-<!-- Market drawer — overlay for tablet/mobile only; desktop uses persistent left rail -->
-{#if !isDesktop}
-  <MarketDrawer
-    open={showLeftRail}
-    onClose={toggleLeftRail}
-    {trendingData}
-    watchlistRows={persistedWatchlist}
-    alerts={scannerAlerts}
-    savedAlerts={savedAlertRules}
-    {patternPhases}
-    activeSymbol={activeSymbol || pairToSymbol(gPair)}
-    macroItems={macroCalendarItems}
-    {marketEvents}
-    queryPresets={terminalQueryPresets}
-    anomalies={terminalAnomalies}
-    onQuery={handleQueryChip}
-    onDeleteSavedAlert={handleDeleteSavedAlert}
-  />
-{/if}
-
-<div class="surface-page terminal-page">
-  <TerminalShell
-    showRail={true}
-    railWidth={330}
-    verdict={activeVerdict ?? null}
-    evidence={activeEvidence ?? []}
-    captureId={lastSavedCaptureId ?? null}
-    marketRows={mobileMarketRows}
-    alerts={mobileAlertsWithStatus}
-    marketLoading={loadingSymbols.size > 0}
-    alertsLoading={patternCaptureLoading}
-    onAlertFeedback={handleMobileAlertFeedback}
-    onMarketRefresh={refreshWatchlistForMobile}
-  >
-  {#snippet slotLeftRail()}
-    <TerminalLeftRail
-      {trendingData}
-      watchlistRows={persistedWatchlist}
-      alerts={scannerAlerts}
-      savedAlerts={savedAlertRules}
-      {patternPhases}
-      activeSymbol={activeSymbol || pairToSymbol(gPair)}
-      macroItems={macroCalendarItems}
-      {marketEvents}
-      queryPresets={terminalQueryPresets}
-      anomalies={terminalAnomalies}
-      onQuery={handleQueryChip}
-      onDeleteSavedAlert={handleDeleteSavedAlert}
+<div class="surface-page terminal-page-peek">
+  <section class="terminal-shell-head">
+    <TerminalCommandBar
+      assetsCount={boardAssets.length}
+      marketRailOpen={showLeftRail}
+      onToggleMarketRail={toggleLeftRail}
+      price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
+      change24h={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
     />
-  {/snippet}
+  </section>
 
-  {#snippet slotTopBar()}
-    <section class="terminal-shell-head">
-      <TerminalCommandBar
-        assetsCount={boardAssets.length}
-        marketRailOpen={showLeftRail}
-        onToggleMarketRail={toggleLeftRail}
-        price={activeAnalysisData?.price ?? activeAnalysisData?.snapshot?.last_close ?? null}
-        change24h={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+  <div class="peek-body">
+    {#if showLeftRail}
+    <aside class="peek-left-rail">
+      <TerminalLeftRail
+        {trendingData}
+        watchlistRows={persistedWatchlist}
+        alerts={scannerAlerts}
+        savedAlerts={savedAlertRules}
+        {patternPhases}
+        activeSymbol={activeSymbol || pairToSymbol(gPair)}
+        macroItems={macroCalendarItems}
+        {marketEvents}
+        queryPresets={terminalQueryPresets}
+        anomalies={terminalAnomalies}
+        onQuery={handleQueryChip}
+        onDeleteSavedAlert={handleDeleteSavedAlert}
       />
-    </section>
-  {/snippet}
+    </aside>
+    {/if}
 
-  {#snippet slotChart()}
-    <!-- Chart pane + SaveStrip below (W-0086 layer architecture) -->
-    <div class="chart-and-strip" bind:this={chartWorkspaceEl}>
-      <ChartBoard
-        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-        tf={symbolToTF(gTf)}
-        verdictLevels={chartLevels}
-        initialData={activeChartPayload}
-        depthSnapshot={readPathDepth}
-        liqSnapshot={readPathLiq}
-        quantRegime={boardModel.quantRegime}
-        cvdDivergence={boardModel.cvdDivergence}
-        change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
-        contextMode="chart"
-        onCaptureSaved={handleCaptureSaved}
-        onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
-      />
-      <!-- SaveStrip appears below chart when range anchors are set (W-0086) -->
-      <SaveStrip
-        symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
-        tf={symbolToTF(gTf)}
-        ohlcvBars={ohlcvBars}
-        onSaved={handleCaptureSaved}
-      />
-      {#if showLabCta}
-        <div class="lab-cta-banner">
-          <span class="lab-cta-check">✓</span>
-          <span class="lab-cta-text">Setup saved</span>
-          <div class="lab-cta-actions">
-            <a class="lab-cta-link lab-cta-link--dash" href="/dashboard">Dashboard →</a>
-            <a class="lab-cta-link" href={labCtaSlug ? `/lab?slug=${labCtaSlug}` : '/lab'}>Lab →</a>
-          </div>
-          <button class="lab-cta-close" onclick={() => showLabCta = false} aria-label="Dismiss">×</button>
-        </div>
-      {/if}
-    </div>
-  {/snippet}
-
-  {#snippet slotRail()}
-    <!-- Analysis rail (W-0078: right rail owner) -->
-    <div class="analysis-rail">
-      <!-- Rail header: mode indicator + streaming badge -->
-      <div class="rail-header">
-        {#if isStreaming}
-          <span class="rail-badge streaming">
-            <span class="stream-dot pulsing">●</span>
-            Analyzing…
-          </span>
-        {:else if isScanMode}
-          <span class="rail-badge scan">{boardAssets.length} RESULTS</span>
-          <button class="rail-back" onclick={clearBoard}>← Back</button>
-        {:else}
-          <span class="rail-mode">Analysis</span>
-          <span class="rail-sym">{activeSymbol ? activeSymbol.replace('USDT','') : activePairDisplay}</span>
-        {/if}
-      </div>
-      <!-- W-0092: Live signal overlay — shown when ACCUMULATION/REAL_DUMP signals exist -->
-      {#if liveSignals.length > 0}
-        <LiveSignalPanel
-          signals={liveSignals}
-          cached={liveSignalsCached}
-          scannedAt={liveSignalsScannedAt}
-        />
-      {/if}
-      <!-- MODE B — Scan results list -->
-      {#if isScanMode}
-        <div class="scan-list">
-          {#each scanAssets as { asset, verdict } (asset.symbol)}
-            {@const sym = asset.symbol.replace('USDT','')}
-            {@const dir = verdict?.direction ?? asset.bias}
-            {@const active = asset.symbol === activeSymbol}
-            <button
-              class="scan-card"
-              class:active
-              class:bullish={dir === 'bullish'}
-              class:bearish={dir === 'bearish'}
-              onclick={() => selectAsset(asset.symbol)}
-            >
-              <div class="sc-left">
-                <span class="sc-sym">{sym}</span>
-                <span class="sc-venue">USDT·PERP</span>
-              </div>
-              <div class="sc-right">
-                <span class="sc-dir">{dir?.toUpperCase() ?? '—'}</span>
-                {#if verdict?.reason}
-                  <span class="sc-reason">{verdict.reason.slice(0, 48)}{verdict.reason.length > 48 ? '…' : ''}</span>
-                {:else if verdictMap[asset.symbol] === undefined && loadingSymbols.has(asset.symbol)}
-                  <span class="sc-loading">analyzing…</span>
-                {/if}
-              </div>
-            </button>
-          {/each}
-        </div>
-
-        <!-- Also show active symbol's detail rail below the scan list if loaded -->
-        {#if heroAsset && heroVerdict}
-          <div class="scan-detail">
-            <TerminalContextPanel
-              analysisData={activeAnalysisData}
-              newsData={newsData}
-              activeTab={activeAnalysisTab}
-              onTabChange={handleAnalysisTabChange}
-              onAction={sendCommand}
-              onPinToggle={handlePinToggle}
-              onAlertToggle={handleAlertToggle}
-              onRetry={handleRetryAnalysis}
-              isPinned={isActivePinned}
-              hasSavedAlert={hasActiveSavedAlert}
-              bars={ohlcvBars}
-              {layerBarsMap}
-              {patternRecallMatches}
-            />
-          </div>
-        {/if}
-
-      <!-- MODE A — Single asset compact verdict -->
-      {:else if isLoadingActive && !heroVerdict}
-        <div class="board-loading">
-          <div class="loading-ring"></div>
-          <p class="loading-msg">Analyzing {activePairDisplay}…</p>
-        </div>
-      {:else if heroAsset && heroVerdict}
+    <CenterPanel
+      symbol={activeSymbol || pairToSymbol(gPair) || 'BTCUSDT'}
+      tf={symbolToTF(gTf)}
+      verdictLevels={chartLevels}
+      initialData={activeChartPayload}
+      depthSnapshot={readPathDepth}
+      liqSnapshot={readPathLiq}
+      quantRegime={boardModel.quantRegime}
+      cvdDivergence={boardModel.cvdDivergence}
+      change24hPct={activeAnalysisData?.snapshot?.change24h ?? activeAnalysisData?.change24h ?? null}
+      {ohlcvBars}
+      {showLabCta}
+      {labCtaSlug}
+      analyzeCount={peekAnalyzeCount}
+      scanCount={peekScanCount}
+      judgeCount={peekJudgeCount}
+      onCaptureSaved={handleCaptureSaved}
+      onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
+      onDismissLabCta={() => showLabCta = false}
+    >
+      {#snippet analyze()}
         <TerminalContextPanel
           analysisData={activeAnalysisData}
-          newsData={newsData}
+          {newsData}
           activeTab={activeAnalysisTab}
           onTabChange={handleAnalysisTabChange}
           onAction={sendCommand}
@@ -1589,30 +1550,87 @@
           {layerBarsMap}
           {patternRecallMatches}
         />
-      {:else}
-        <div class="board-empty">
-          <p class="empty-icon">◈</p>
-          <p class="empty-text">No analysis loaded</p>
-          <button class="empty-retry-btn" onclick={handleRetryAnalysis}>
-            Analyze {activePairDisplay} →
-          </button>
-        </div>
-      {/if}
-    </div>
-  {/snippet}
+      {/snippet}
+      {#snippet scan()}
+        <ScanGrid
+          alerts={scannerAlerts}
+          similar={peekSimilar}
+          activeSymbol={activeSymbol || pairToSymbol(gPair)}
+          loadingSimilar={peekLoadingSimilar}
+          onOpenCapture={handlePeekOpenCapture}
+        />
+      {/snippet}
+      {#snippet judge()}
+        <JudgePanel
+          symbol={activeSymbol || pairToSymbol(gPair)}
+          timeframe={symbolToTF(gTf)}
+          verdict={peekVerdict}
+          entry={peekEntry}
+          stop={peekStop}
+          target={peekTarget}
+          pWin={peekPWin}
+          lastPrice={peekLast}
+          captures={peekCaptures}
+          saving={false}
+          onSaveJudgment={handlePeekSaveJudgment}
+          onRejudge={handlePeekRejudge}
+          onOpenCapture={handlePeekOpenCapture}
+        />
+      {/snippet}
+    </CenterPanel>
 
-  {#snippet slotFooter()}
-    <!-- Desktop/tablet bottom dock (W-0078: footer owns prompt) -->
-    <TerminalBottomDock
-      loading={isStreaming || isLoadingActive}
-      assistantText={assistantBannerText}
-      history={recentDockHistory}
-      onSend={sendCommand}
-      onDockAction={handleDockAction}
+    <RightRailPanel
+      {isStreaming}
+      {isScanMode}
+      {scanAssets}
+      boardAssetsCount={boardAssets.length}
+      {liveSignals}
+      {liveSignalsCached}
+      {liveSignalsScannedAt}
+      activeSymbol={activeSymbol || pairToSymbol(gPair)}
+      {activePairDisplay}
+      {isLoadingActive}
+      {heroAsset}
+      {heroVerdict}
+      analysisData={activeAnalysisData}
+      {newsData}
+      {activeAnalysisTab}
+      {ohlcvBars}
+      {layerBarsMap}
+      {patternRecallMatches}
+      {isActivePinned}
+      {hasActiveSavedAlert}
+      {verdictMap}
+      {loadingSymbols}
+      onTabChange={handleAnalysisTabChange}
+      onAction={sendCommand}
+      onPinToggle={handlePinToggle}
+      onAlertToggle={handleAlertToggle}
+      onRetry={handleRetryAnalysis}
+      onSelectAsset={selectAsset}
+      onClearBoard={clearBoard}
     />
-  {/snippet}
-  </TerminalShell>
+  </div>
 </div>
+
+<!-- MarketDrawer: tablet/mobile overlay (left side) -->
+<MarketDrawer
+  open={showLeftRail}
+  onClose={toggleLeftRail}
+  {trendingData}
+  watchlistRows={persistedWatchlist}
+  alerts={scannerAlerts}
+  savedAlerts={savedAlertRules}
+  {patternPhases}
+  activeSymbol={activeSymbol || pairToSymbol(gPair)}
+  macroItems={macroCalendarItems}
+  {marketEvents}
+  queryPresets={terminalQueryPresets}
+  anomalies={terminalAnomalies}
+  onQuery={handleQueryChip}
+  onDeleteSavedAlert={handleDeleteSavedAlert}
+/>
+
 
 
 <PatternLibraryPanel
@@ -1624,29 +1642,19 @@
 />
 
 <style>
-  /* W-0086: chart-and-strip fills all available vertical space in its slot */
-  .chart-and-strip {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .terminal-page {
+  .terminal-page-peek {
     width: min(100%, calc(100% - 8px));
     height: calc(100dvh - 8px);
-    /* W-0086: replaced grid with flex-column; TerminalShell manages internal layout */
     display: flex;
     flex-direction: column;
     padding-top: 2px;
     padding-bottom: max(4px, var(--sc-consent-reserved-h, 0px));
     overflow: hidden;
+    background: var(--sc-bg-0, #0b0e14);
+    color: var(--sc-text-0, #f7f2ea);
   }
 
   .terminal-shell-head {
-    /* Transparent passthrough — cmd-bar owns all its own styling */
     display: flex;
     align-items: stretch;
     position: sticky;
@@ -1654,248 +1662,24 @@
     z-index: 25;
   }
 
-  /* ── Lab CTA banner ── */
-  .lab-cta-banner {
+  .peek-body {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: rgba(99, 179, 237, 0.08);
-    border-top: 1px solid rgba(99, 179, 237, 0.20);
-    flex-shrink: 0;
-    font-family: var(--sc-font-mono);
-    font-size: 12px;
-  }
-  .lab-cta-check { color: var(--sc-good, #adca7c); font-size: 14px; }
-  .lab-cta-text { color: rgba(247, 242, 234, 0.78); font-weight: 600; }
-  .lab-cta-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: 2px;
-  }
-  .lab-cta-link {
-    color: rgba(99, 179, 237, 0.92);
-    text-decoration: none;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    padding: 2px 8px;
-    border: 1px solid rgba(99, 179, 237, 0.28);
-    border-radius: 3px;
-    background: rgba(99, 179, 237, 0.08);
-    transition: all 0.1s;
-  }
-  .lab-cta-link:hover {
-    background: rgba(99, 179, 237, 0.16);
-    border-color: rgba(99, 179, 237, 0.45);
-    color: rgba(99, 179, 237, 1);
-  }
-  .lab-cta-link--dash {
-    color: rgba(173, 202, 124, 0.88);
-    border-color: rgba(173, 202, 124, 0.24);
-    background: rgba(173, 202, 124, 0.07);
-  }
-  .lab-cta-link--dash:hover {
-    background: rgba(173, 202, 124, 0.14);
-    border-color: rgba(173, 202, 124, 0.40);
-    color: rgba(173, 202, 124, 1);
-  }
-  .lab-cta-close {
-    margin-left: auto;
-    background: transparent;
-    border: none;
-    color: rgba(247, 242, 234, 0.36);
-    font-size: 18px;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0 2px;
-    transition: color 0.1s;
-  }
-  .lab-cta-close:hover { color: rgba(247, 242, 234, 0.72); }
-
-  /* Analysis rail — always visible right panel, scrollable */
-  .analysis-rail {
-    width: auto;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--sc-terminal-bg, #000);
-    position: relative;
-    scrollbar-gutter: stable;
-    border-left: 1px solid rgba(255,255,255,0.06);
-  }
-
-  /* Rail header */
-  .rail-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
-    flex-shrink: 0;
-    min-height: 44px;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)),
-      rgba(255,255,255,0.015);
-  }
-  .rail-mode {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.40);
-    text-transform: uppercase;
-  }
-  .rail-sym {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 13px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.88);
-    margin-left: auto;
-    letter-spacing: 0.06em;
-  }
-  .rail-badge {
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    padding: 2px 7px;
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-  .rail-badge.streaming {
-    background: rgba(74,222,128,0.09);
-    color: #4ade80;
-    border: 1px solid rgba(74,222,128,0.24);
-  }
-  .rail-badge.scan {
-    background: rgba(99,179,237,0.09);
-    color: #63b3ed;
-    border: 1px solid rgba(99,179,237,0.24);
-  }
-  .rail-back {
-    margin-left: auto;
-    font-family: var(--sc-font-mono, monospace);
-    font-size: 10px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.12);
-    color: rgba(255,255,255,0.48);
-    border-radius: 3px;
-    padding: 2px 8px;
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-  .rail-back:hover { color: rgba(255,255,255,0.82); border-color: rgba(255,255,255,0.28); }
-
-  /* Scan list (Mode B) */
-  .scan-list {
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    border-bottom: 1px solid var(--sc-terminal-border, rgba(255,255,255,0.07));
-  }
-  .scan-card {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 10px;
-    border: none;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    background: transparent;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.1s;
-    width: 100%;
-  }
-  .scan-card:hover  { background: rgba(255,255,255,0.05); }
-  .scan-card.active { background: rgba(255,255,255,0.07); }
-  .scan-card.bullish .sc-dir { color: #4ade80; }
-  .scan-card.bearish .sc-dir { color: #f87171; }
-  .sc-left { display: flex; flex-direction: column; gap: 3px; min-width: 56px; }
-  .sc-sym  { font-family: var(--sc-font-mono, monospace); font-size: 12px; font-weight: 700; color: #fff; }
-  .sc-venue{ font-size: 9px; color: rgba(255,255,255,0.30); font-family: var(--sc-font-mono, monospace); }
-  .sc-right{ display: flex; flex-direction: column; gap: 3px; flex: 1; align-items: flex-end; }
-  .sc-dir  { font-family: var(--sc-font-mono, monospace); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: rgba(255,255,255,0.48); }
-  .sc-reason { font-size: 10px; color: rgba(255,255,255,0.42); text-align: right; line-height: 1.25; }
-  .sc-loading{ font-size: 9px; color: rgba(255,255,255,0.25); font-family: var(--sc-font-mono, monospace); animation: sc-pulse 1.4s ease-in-out infinite; }
-
-  /* Scan detail */
-  .scan-detail {
+    flex-direction: row;
     flex: 1;
     min-height: 0;
     overflow: hidden;
   }
 
-  /* Empty state */
-  .board-empty {
-    flex: 1;
+  .peek-left-rail {
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    opacity: 0.70;
-  }
-  .empty-icon {
-    font-size: 32px;
-    color: var(--sc-text-3);
-    margin: 0;
-  }
-  .empty-text {
-    font-family: var(--sc-font-mono);
-    font-size: 13px;
-    color: var(--sc-text-2);
-    margin: 0;
-  }
-  .empty-retry-btn {
-    font-family: var(--sc-font-mono);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: rgba(247, 242, 234, 0.85);
-    background: rgba(77, 143, 245, 0.09);
-    border: 1px solid rgba(99, 179, 237, 0.26);
-    border-radius: 4px;
-    padding: 6px 14px;
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s, color 0.12s;
-    margin-top: 4px;
-    opacity: 1;
-  }
-  .empty-retry-btn:hover {
-    background: rgba(77, 143, 245, 0.18);
-    border-color: rgba(99, 179, 237, 0.44);
-    color: rgba(247, 242, 234, 1);
+    background: var(--sc-bg-0, #0b0e14);
   }
 
-  /* Loading */
-  .board-loading {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    opacity: 0.65;
-  }
-  .loading-ring {
-    width: 36px; height: 36px;
-    border: 2px solid rgba(255,255,255,0.09);
-    border-top-color: var(--sc-text-2);
-    border-radius: 50%;
-    animation: sc-spin 0.9s linear infinite;
-  }
-  .loading-msg {
-    font-family: var(--sc-font-mono);
-    font-size: 13px; color: var(--sc-text-2); margin: 0;
-  }
-
-  @media (max-width: 540px) {
-    .terminal-page {
-      width: min(100%, calc(100% - 12px));
-    }
-  }
+  @media (max-width: 1279px) { .peek-left-rail { display: none; } }
 </style>

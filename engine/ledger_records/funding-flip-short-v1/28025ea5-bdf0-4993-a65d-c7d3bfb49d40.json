@@ -1,0 +1,22 @@
+{
+  "id": "28025ea5-bdf0-4993-a65d-c7d3bfb49d40",
+  "record_type": "capture",
+  "pattern_slug": "funding-flip-short-v1",
+  "symbol": "SOLUSDT",
+  "user_id": "founder_seed",
+  "outcome_id": null,
+  "capture_id": "1693ecaf-7561-4f28-9b13-65163cdc1f04",
+  "transition_id": null,
+  "scan_id": null,
+  "created_at": "2026-04-20T02:03:09.093668",
+  "payload": {
+    "capture_kind": "manual_hypothesis",
+    "pattern_version": 1,
+    "phase": "SHORT_ENTRY",
+    "timeframe": "1h",
+    "status": "pending_outcome",
+    "user_note": "Test setup 7",
+    "outcome_id": null,
+    "verdict_id": null
+  }
+}

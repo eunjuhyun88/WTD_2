@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { activePairState } from '$lib/stores/activePairStore';
+  import { terminalState } from '$lib/stores/terminalState';
   import { walletStore, isWalletConnected } from '$lib/stores/walletStore';
   import { openWalletModal } from '$lib/stores/walletModalStore';
   import { hydrateAuthSession } from '$lib/stores/walletStore';
@@ -10,7 +10,6 @@
   import { buildDeepLink } from '$lib/utils/deepLinks';
   import { DESKTOP_NAV_SURFACES, isAppSurfaceActive } from '$lib/navigation/appSurfaces';
 
-  const gState = $derived($activePairState);
   const wallet = $derived($walletStore);
   const connected = $derived($isWalletConnected);
   const activePath = $derived($page.url.pathname);
