@@ -5,7 +5,7 @@
 
   const items = [
     { label: 'Home',      href: '/',          icon: 'home'      },
-    { label: 'Terminal',  href: '/terminal',  icon: 'terminal'  },
+    { label: 'Terminal',  href: '/cogochi',   icon: 'terminal'  },
     { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
     { label: 'Lab',       href: '/lab',       icon: 'lab'       },
     { label: 'Market',    href: '/market',    icon: 'market'    },
@@ -13,7 +13,7 @@
 
   function active(href: string) {
     if (href === '/') return activePath === '/';
-    if (href === '/terminal') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
+    if (href === '/cogochi') return activePath.startsWith('/terminal') || activePath.startsWith('/cogochi');
     return activePath === href || activePath.startsWith(href + '/');
   }
 </script>

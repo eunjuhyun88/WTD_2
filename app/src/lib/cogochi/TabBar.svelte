@@ -136,18 +136,23 @@
   }
 
   .close-btn {
-    color: var(--g5);
+    color: transparent;
     font-size: 12px;
     line-height: 1;
     padding: 0 2px;
     cursor: pointer;
     background: none;
     border: none;
-    transition: color 0.15s;
+    transition: color 0.12s;
+    flex-shrink: 0;
+  }
+
+  .tab:hover .close-btn {
+    color: var(--g5);
   }
 
   .close-btn:hover {
-    color: var(--g7);
+    color: var(--g8) !important;
   }
 
   .new-tab-btn {

@@ -12,11 +12,12 @@
     updateTabState: (updater: (ts: TabState) => TabState) => void;
     symbol?: string;
     timeframe?: string;
-    mobileView?: 'analyze' | 'scan' | 'judge';
-    setMobileView?: (v: 'analyze' | 'scan' | 'judge') => void;
+    mobileView?: 'chart' | 'analyze' | 'scan' | 'judge';
+    setMobileView?: (v: 'chart' | 'analyze' | 'scan' | 'judge') => void;
+    setMobileSymbol?: (sym: string) => void;
   }
 
-  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView }: Props = $props();
+  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView, setMobileSymbol }: Props = $props();
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
@@ -41,7 +42,6 @@
         chartPayload = result.chartPayload ?? null;
         analyzeData = result.analyze ?? null;
         chartLoading = false;
-        // Track the last candle time from initial data
         if (result.chartPayload?.klines?.length) {
           lastCandleTime = result.chartPayload.klines[result.chartPayload.klines.length - 1].time;
         }
@@ -52,16 +52,13 @@
   // WebSocket connection for real-time candle updates + analyze refresh
   $effect(() => {
     if (typeof window === 'undefined') return;
-
     const sym = symbol.toLowerCase();
     const tf = timeframe;
     const stream = `${sym}@kline_${tf}`;
     const wsUrl = `wss://fstream.binance.com/ws/${stream}`;
-
     try {
       klineWs?.close();
       klineWs = new WebSocket(wsUrl);
-
       klineWs.onmessage = (ev: MessageEvent) => {
         try {
           const msg = JSON.parse(ev.data as string) as {
@@ -69,18 +66,12 @@
           };
           const k = msg.k;
           const candleTime = Math.floor(k.t / 1000);
-
-          // Detect candle closure (x=true) and refetch analyze + chart data
           if (k.x && lastCandleTime !== candleTime) {
             lastCandleTime = candleTime;
-            // Refetch analyze + chart data when new candle closes
             fetchTerminalBundle({ symbol, tf })
               .then(result => {
                 analyzeData = result.analyze ?? null;
-                // Update chart klines from new fetch
-                if (result.chartPayload) {
-                  chartPayload = result.chartPayload;
-                }
+                if (result.chartPayload) chartPayload = result.chartPayload;
               })
               .catch(() => { /* retry on next candle */ });
           }
@@ -88,17 +79,12 @@
           // Ignore malformed WS messages
         }
       };
-
       klineWs.onerror = () => { klineWs?.close(); };
       klineWs.onclose = () => { klineWs = null; };
     } catch (err) {
       console.error('WS connection failed:', err);
     }
-
-    return () => {
-      klineWs?.close();
-      klineWs = null;
-    };
+    return () => { klineWs?.close(); klineWs = null; };
   });
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
@@ -221,15 +207,9 @@
 
   // Keyboard shortcuts for judge verdict (Y/N)
   function handleJudgeKeydown(e: KeyboardEvent) {
-    if (e.key === 'y' || e.key === 'Y') {
-      judgeVerdict = 'agree';
-      e.preventDefault();
-    } else if (e.key === 'n' || e.key === 'N') {
-      judgeVerdict = 'disagree';
-      e.preventDefault();
-    }
+    if (e.key === 'y' || e.key === 'Y') { judgeVerdict = 'agree'; e.preventDefault(); }
+    else if (e.key === 'n' || e.key === 'N') { judgeVerdict = 'disagree'; e.preventDefault(); }
   }
-
   $effect(() => {
     if (typeof window === 'undefined' || mobileView !== 'judge') return;
     window.addEventListener('keydown', handleJudgeKeydown);
@@ -355,7 +335,7 @@
 <div bind:this={containerEl} class="trade-mode">
   {#if mobileView !== undefined}
     <!-- ── MOBILE: chart on top, tab strip, scrollable panel ── -->
-    <div class="mobile-chart-section" role="region" aria-label="Chart display">
+    <div class="mobile-chart-section" class:mobile-chart-fullscreen={mobileView === 'chart'} role="region" aria-label="Chart display">
       <ChartBoard
         {symbol}
         tf={timeframe}
@@ -364,9 +344,14 @@
         change24hPct={analyzeData?.change24h ?? null}
         contextMode="chart"
       />
+      {#if mobileView !== 'chart'}
+        <button class="chart-expand-btn" onclick={() => setMobileView?.('chart')} aria-label="차트 전체 보기">
+          ⤢
+        </button>
+      {/if}
     </div>
     <div class="mobile-tab-strip" role="tablist" aria-label="Analysis tabs">
-      {#each (['analyze', 'scan', 'judge'] as const) as t}
+      {#each (['chart', 'analyze', 'scan', 'judge'] as const) as t}
         <button
           class="mts-tab"
           class:active={mobileView === t}
@@ -376,40 +361,51 @@
           aria-controls="{t}-panel"
           tabindex={mobileView === t ? 0 : -1}
         >
-          {t === 'analyze' ? '02 ANL' : t === 'scan' ? '03 SCAN' : '04 JUDGE'}
+          {t === 'chart' ? '01 CHART' : t === 'analyze' ? '02 ANL' : t === 'scan' ? '03 SCAN' : '04 JUDGE'}
         </button>
       {/each}
     </div>
+    {#if mobileView !== 'chart'}
     <div class="mobile-panel">
       {#if mobileView === 'analyze'}
-        <div class="narrative" role="region" aria-label="Trade bias and direction">
-          <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
-        </div>
-        <div class="evidence-grid" role="list" aria-label="Evidence items">
-          {#each evidenceItems as item}
-            <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
-              <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
-              <span class="ev-key">{item.k}</span>
-              <span class="ev-val">{item.v}</span>
-              <span class="sr-only">{item.k}: {item.v}, {item.note}, {item.pos ? 'positive' : 'negative'}</span>
-            </div>
-          {/each}
-        </div>
-        <div class="proposal-label" style="margin-top:8px" role="heading" aria-level="2">PROPOSAL</div>
-        <div role="region" aria-label="Trade proposal details">
-          {#each proposal as p}
-            <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-              <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
-            </div>
-          {/each}
-        </div>
-        {#if !analyzeData}
-          <div class="mobile-analyze-hint">/ analyze 실행 시 실시간 데이터로 업데이트</div>
+        {#if chartLoading}
+          <div class="mobile-loading">
+            <div class="ml-spinner"></div>
+            <span>{symbol} {timeframe} 로딩 중…</span>
+          </div>
+        {:else}
+          <div class="narrative"><span class="bull">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}</div>
+          <div class="evidence-grid">
+            {#each evidenceItems as item}
+              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                <span class="ev-key">{item.k}</span>
+                <span class="ev-val">{item.v}</span>
+              </div>
+            {/each}
+          </div>
+          <div class="proposal-label" style="margin-top:8px">PROPOSAL</div>
+          {#if !analyzeData?.entryPlan}
+            <button class="proposal-ai-cta" onclick={() => shellStore.update(s => ({...s, aiVisible: true}))}>
+              <span class="pcta-icon">◆</span>
+              <span class="pcta-text">AI 진입 플랜 실행 →</span>
+            </button>
+          {:else}
+            {#each proposal as p}
+              <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
+              </div>
+            {/each}
+          {/if}
         {/if}
       {:else if mobileView === 'scan'}
         {#each scanCandidates as x}
           {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-          <button class="scan-row" class:active={scanSelected === x.id} onclick={() => scanSelected = x.id}>
+          <button class="scan-row" class:active={scanSelected === x.id} onclick={() => {
+            scanSelected = x.id;
+            setMobileSymbol?.(x.symbol);
+            setMobileView?.('chart');
+          }}>
             <span class="sr-sym">{x.symbol.replace('USDT', '')}</span>
             <span class="sr-tf">{x.tf}</span>
             <div class="sr-bar"><div class="sr-fill" style:width="{x.sim * 100}%" style:background={sc}></div></div>
@@ -417,102 +413,45 @@
           </button>
         {/each}
       {:else if mobileView === 'judge'}
+        <div class="judge-ctx">
+          <span class="jc-sym">{symbol.replace('USDT', '')}</span>
+          <span class="jc-sep">/</span>
+          <span class="jc-tf">{timeframe.toUpperCase()}</span>
+          <span class="jc-spacer"></span>
+          {#if narrativeBias}
+            <span class="jc-bias">{narrativeDir} 편향</span>
+          {/if}
+        </div>
         <div class="mp-section">
-          <div class="mp-header" role="heading" aria-level="2">A · TRADE PLAN</div>
-          <div class="lvl-row" role="region" aria-label="Trade plan levels">
+          <div class="mp-header">A · TRADE PLAN</div>
+          <div class="lvl-row">
             {#each judgePlan as lvl}
-              <div class="lvl-cell">
-                <div class="lvl-label">{lvl.label}</div>
-                <div class="lvl-val" style:color={lvl.color} aria-label="{lvl.label}: {lvl.val}">{lvl.val}</div>
-              </div>
+              <div class="lvl-cell"><div class="lvl-label">{lvl.label}</div><div class="lvl-val" style:color={lvl.color}>{lvl.val}</div></div>
             {/each}
           </div>
         </div>
         <div class="mp-section">
-          <div class="mp-header" role="heading" aria-level="2">B · JUDGE NOW</div>
-          <div class="judge-btns" role="group" aria-label="Verdict options">
-            <button
-              class="judge-btn agree"
-              class:active={judgeVerdict === 'agree'}
-              onclick={() => judgeVerdict = 'agree'}
-              aria-pressed={judgeVerdict === 'agree'}
-              title="Press Y or click to agree with the analysis"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut Y">Y</span>
-              <div class="jb-text"><span class="jb-label">AGREE</span></div>
-            </button>
-            <button
-              class="judge-btn disagree"
-              class:active={judgeVerdict === 'disagree'}
-              onclick={() => judgeVerdict = 'disagree'}
-              aria-pressed={judgeVerdict === 'disagree'}
-              title="Press N or click to disagree with the analysis"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut N">N</span>
-              <div class="jb-text"><span class="jb-label">DISAGREE</span></div>
-            </button>
+          <div class="mp-header">B · JUDGE NOW</div>
+          <div class="judge-btns">
+            <button class="judge-btn agree" class:active={judgeVerdict === 'agree'} onclick={() => judgeVerdict = 'agree'}><span class="jb-key">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div></button>
+            <button class="judge-btn disagree" class:active={judgeVerdict === 'disagree'} onclick={() => judgeVerdict = 'disagree'}><span class="jb-key">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span></div></button>
           </div>
         </div>
         <div class="mp-section">
-          <div class="mp-header" role="heading" aria-level="2">C · AFTER RESULT</div>
-          <div class="outcome-row" role="group" aria-label="Trade outcome options">
+          <div class="mp-header">C · AFTER RESULT</div>
+          <div class="outcome-row">
             {#each [{ k: 'win', l: 'WIN', c: 'var(--pos)', bg: 'var(--pos-dd)' }, { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' }, { k: 'flat', l: 'FLAT', c: 'var(--g7)', bg: 'var(--g2)' }] as o}
-              <button
-                class="outcome-btn"
-                class:active={judgeOutcome === o.k}
-                style:--oc={o.c}
-                style:--obg={o.bg}
-                onclick={() => { judgeOutcome = o.k as any; }}
-                aria-pressed={judgeOutcome === o.k}
-                title="Mark the trade outcome as {o.l}"
-              >
-                {o.l}
-              </button>
+              <button class="outcome-btn" class:active={judgeOutcome === o.k} style:--oc={o.c} style:--obg={o.bg} onclick={() => { judgeOutcome = o.k as any; }}>{o.l}</button>
             {/each}
           </div>
         </div>
       {/if}
     </div>
-  {:else}
-  {#if !analyzed}
-    <!-- Empty canvas — shown until AI panel "RUN →" or SELECT RANGE -->
-    <div class="empty-canvas" role="status" aria-live="polite" aria-label="Trade mode setup required">
-      <div class="ec-inner">
-        <div class="ec-logo mono">COGOTCHI</div>
-        <div class="ec-tagline">Core Loop · 트레이딩 사고의 운영체제</div>
-        <div class="ec-divider"></div>
-        <div class="ec-cta-group">
-          <div class="ec-label mono">셋업을 시작하세요</div>
-          <div class="ec-options">
-            <div class="ec-opt">
-              <span class="ec-opt-key">AI ›</span>
-              <span class="ec-opt-txt">오른쪽 패널에 셋업을 말로 설명 → RUN</span>
-            </div>
-            <div class="ec-opt">
-              <span class="ec-opt-key">SELECT RANGE</span>
-              <span class="ec-opt-txt">상단 커맨드바에서 차트 구간 선택</span>
-            </div>
-          </div>
-        </div>
-        <div class="ec-quick-grid">
-          {#each [
-            { label: 'OI 급증 + 번지대', sub: 'accumulation' },
-            { label: 'VWAP reclaim', sub: 'CVD 양전환' },
-            { label: 'Funding flip', sub: 'higher-lows' },
-            { label: 'BB squeeze 해제', sub: '15m breakout' },
-          ] as q}
-            <button class="ec-quick" onclick={() => updateTabState(s => ({ ...s, tradePrompt: q.label }))}>
-              <span class="eq-label">{q.label}</span>
-              <span class="eq-sub">{q.sub}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-    </div>
+    {/if}
   {:else}
   <!-- Layout tabs -->
-  <nav class="layout-strip" aria-label="Layout modes">
-    <span class="ls-label" id="layout-group-label">LAYOUT</span>
+  <div class="layout-strip">
+    <span class="ls-label">LAYOUT</span>
     {#each [
       { id: 'A', label: 'STACK',   desc: '세로 3단' },
       { id: 'B', label: 'DRAWER',  desc: '차트 + 하단 탭' },
@@ -523,20 +462,18 @@
         class="ls-tab"
         class:active={layoutMode === lt.id}
         onclick={() => setLayoutMode(lt.id as any)}
-        aria-pressed={layoutMode === lt.id}
-        title="Switch to {lt.label} layout: {lt.desc}"
       >
         <span class="ls-id">{lt.id}</span>
         <span class="ls-name">{lt.label}</span>
         <span class="ls-desc">· {lt.desc}</span>
         {#if lt.badge}
-          <span class="ls-badge" aria-label="new feature">{lt.badge}</span>
+          <span class="ls-badge">{lt.badge}</span>
         {/if}
       </button>
     {/each}
     <span class="spacer"></span>
-    <span class="ls-hint" role="status" aria-live="polite">탭 전환해서 비교</span>
-  </nav>
+    <span class="ls-hint">탭 전환해서 비교</span>
+  </div>
 
   {#if layoutMode === 'A'}
   <!-- ═══ LAYOUT A · Chart + always-open 3-col bottom panel ═══════════════ -->
@@ -588,45 +525,36 @@
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
           </div>
-          <div class="evidence-grid" role="list" aria-label="Evidence items">
+          <div class="evidence-grid">
             {#each evidenceItems as item}
-              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
-                <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
+              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
                 <span class="ev-key">{item.k}</span>
                 <span class="ev-val">{item.v}</span>
-                <span class="sr-only">{item.k}: {item.v}, {item.note}, {item.pos ? 'positive' : 'negative'} evidence</span>
               </div>
             {/each}
           </div>
-          <div class="proposal-label" style="margin-top: 8px;" role="heading" aria-level="3">PROPOSAL</div>
-          <div role="region" aria-label="Trade proposal details">
-            {#each proposal as p}
-              <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
-                <span class="prop-l">{p.label}</span>
-                <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
-                <span class="prop-h">{p.hint}</span>
-              </div>
-            {/each}
-          </div>
+          <div class="proposal-label" style="margin-top: 8px;">PROPOSAL</div>
+          {#each proposal as p}
+            <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+              <span class="prop-l">{p.label}</span>
+              <span class="prop-v">{p.val}</span>
+              <span class="prop-h">{p.hint}</span>
+            </div>
+          {/each}
         </div>
       </div>
       <div class="la-vsep"></div>
       <div class="la-col la-scan-col">
         <div class="la-col-header"><span class="la-step">03</span><span class="la-title">SCAN</span><span class="la-desc">· {scanCandidates.length} candidates</span></div>
-        <div class="la-col-body" role="list" aria-label="Scan candidates">
+        <div class="la-col-body">
           {#each scanCandidates as x}
             {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-            <button
-              class="scan-row"
-              class:active={scanSelected === x.id}
-              onclick={() => scanSelected = x.id}
-              aria-label="{x.symbol}: {x.pattern}, α{x.alpha}, {Math.round(x.sim * 100)}% similarity"
-              aria-current={scanSelected === x.id ? 'true' : 'false'}
-            >
+            <button class="scan-row" class:active={scanSelected === x.id} onclick={() => scanSelected = x.id}>
               <span class="sr-sym">{x.symbol.replace('USDT','')}</span>
               <span class="sr-tf">{x.tf}</span>
-              <div class="sr-bar" aria-hidden="true"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
-              <span class="sr-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span>
+              <div class="sr-bar"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
+              <span class="sr-alpha" style:color={sc}>α{x.alpha}</span>
             </button>
           {/each}
         </div>
@@ -635,45 +563,25 @@
       <div class="la-col la-judge-col">
         <div class="la-col-header"><span class="la-step">04</span><span class="la-title">JUDGE</span><span class="la-desc">· 매매·판정</span></div>
         <div class="la-col-body">
-          <div class="lvl-row" role="region" aria-label="Trade plan levels">
+          <div class="lvl-row">
             {#each judgePlan as lvl}
               <div class="lvl-cell">
                 <div class="lvl-label">{lvl.label}</div>
-                <div class="lvl-val" style:color={lvl.color} aria-label="{lvl.label}: {lvl.val}">{lvl.val}</div>
+                <div class="lvl-val" style:color={lvl.color}>{lvl.val}</div>
               </div>
             {/each}
           </div>
-          <div class="judge-btns" style="margin-top: 10px;" role="group" aria-label="Verdict options">
-            <button
-              class="judge-btn agree"
-              class:active={judgeVerdict === 'agree'}
-              onclick={() => judgeVerdict = 'agree'}
-              aria-pressed={judgeVerdict === 'agree'}
-              title="Press Y or click to agree (Y key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut Y">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
+          <div class="judge-btns" style="margin-top: 10px;">
+            <button class="judge-btn agree" class:active={judgeVerdict === 'agree'} onclick={() => judgeVerdict = 'agree'}>
+              <span class="jb-key">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
             </button>
-            <button
-              class="judge-btn disagree"
-              class:active={judgeVerdict === 'disagree'}
-              onclick={() => judgeVerdict = 'disagree'}
-              aria-pressed={judgeVerdict === 'disagree'}
-              title="Press N or click to disagree (N key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut N">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span></div>
+            <button class="judge-btn disagree" class:active={judgeVerdict === 'disagree'} onclick={() => judgeVerdict = 'disagree'}>
+              <span class="jb-key">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span></div>
             </button>
           </div>
-          <div class="outcome-row" style="margin-top: 8px;" role="group" aria-label="Trade outcome options">
+          <div class="outcome-row" style="margin-top: 8px;">
             {#each [{ k: 'win', l: 'WIN', c: 'var(--pos)', bg: 'var(--pos-dd)' }, { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' }, { k: 'flat', l: 'FLAT', c: 'var(--g7)', bg: 'var(--g2)' }] as o}
-              <button
-                class="outcome-btn"
-                class:active={judgeOutcome === o.k}
-                style:--oc={o.c}
-                style:--obg={o.bg}
-                onclick={() => { judgeOutcome = o.k as any; }}
-                aria-pressed={judgeOutcome === o.k}
-                title="Mark trade outcome as {o.l}"
-              >{o.l}</button>
+              <button class="outcome-btn" class:active={judgeOutcome === o.k} style:--oc={o.c} style:--obg={o.bg} onclick={() => { judgeOutcome = o.k as any; }}>{o.l}</button>
             {/each}
           </div>
         </div>
@@ -721,22 +629,13 @@
     </div>
     <!-- Tabbed bottom panel, always open -->
     <div class="lb-panel">
-      <div class="drawer-header" role="tablist" aria-label="Analysis tabs">
+      <div class="drawer-header">
         {#each [
           { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)', desc: '가설·근거' },
           { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',    desc: '유사 셋업' },
           { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)', desc: '매매·판정' },
         ] as tab}
-          <button
-            class="dh-tab"
-            class:active={bDrawerTab === tab.id}
-            style:--tc={tab.color}
-            onclick={() => bDrawerTab = tab.id as any}
-            role="tab"
-            aria-selected={bDrawerTab === tab.id}
-            aria-controls="{tab.id}-panel"
-            tabindex={bDrawerTab === tab.id ? 0 : -1}
-          >
+          <button class="dh-tab" class:active={bDrawerTab === tab.id} style:--tc={tab.color} onclick={() => bDrawerTab = tab.id as any}>
             <span class="dh-n">{tab.n}</span>
             <span class="dh-label">{tab.label}</span>
             <span class="dh-desc">· {tab.desc}</span>
@@ -751,105 +650,83 @@
       </div>
       <div class="drawer-content">
         {#if bDrawerTab === 'analyze'}
-          <div class="analyze-body" id="analyze-panel" role="tabpanel" aria-labelledby="analyze-tab">
+          <div class="analyze-body">
             <div class="analyze-left">
-              <div class="narrative" role="region" aria-label="Trade bias and direction">
+              <div class="narrative">
                 <span class="bull">{narrativeDir} 진입 권장 ·</span>
                 {' '}{narrativeBias ?? '분석 완료'}
                 {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
                   {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
                 {/if}
               </div>
-              <div class="evidence-grid" role="list" aria-label="Evidence items">
+              <div class="evidence-grid">
                 {#each evidenceItems as item}
-                  <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
-                    <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
+                  <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                    <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
                     <span class="ev-key">{item.k}</span>
                     <span class="ev-val">{item.v}</span>
                     <span class="ev-note">{item.note}</span>
-                    <span class="sr-only">{item.k}: {item.v}, {item.note}, {item.pos ? 'positive' : 'negative'} evidence</span>
                   </div>
                 {/each}
               </div>
             </div>
             <div class="analyze-right">
-              <div class="proposal-label" role="heading" aria-level="2">PROPOSAL</div>
-              <div role="region" aria-label="Trade proposal details">
+              <div class="proposal-label">PROPOSAL</div>
+              {#if !analyzeData?.entryPlan}
+                <div class="proposal-hint">
+                  <span class="ph-icon">◆</span>
+                  <span>AI 패널에 셋업 설명 후 RUN</span>
+                  <span class="ph-arrow">→</span>
+                </div>
+              {:else}
                 {#each proposal as p}
-                  <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
+                  <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
                     <span class="prop-l">{p.label}</span>
-                    <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
+                    <span class="prop-v">{p.val}</span>
                     <span class="prop-h">{p.hint}</span>
                   </div>
                 {/each}
-              </div>
+              {/if}
             </div>
           </div>
         {:else if bDrawerTab === 'scan'}
-          <div class="scan-panel" id="scan-panel" role="tabpanel" aria-labelledby="scan-tab">
-            <div class="scan-grid" role="list" aria-label="Scan candidates">
+          <div class="scan-panel">
+            <div class="scan-grid">
               {#each scanCandidates as x}
                 {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-                <button
-                  class="scan-card"
-                  class:active={scanSelected === x.id}
-                  style:--sc={sc}
-                  onclick={() => scanSelected = x.id}
-                  aria-label="{x.symbol}: {x.pattern}, α{x.alpha}, {Math.round(x.sim * 100)}% similarity"
-                  aria-current={scanSelected === x.id ? 'true' : 'false'}
-                >
-                  <div class="sc-top"><span class="sc-sym">{x.symbol.replace('USDT','')}</span><span class="sc-tf">{x.tf}</span><span class="spacer"></span><span class="sc-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span></div>
-                  <div class="sc-sim-row"><div class="sc-sim-bar" aria-hidden="true"><div class="sc-sim-fill" style:width="{x.sim*100}%" style:background={sc}></div></div><span class="sc-sim-pct">{Math.round(x.sim*100)}%</span></div>
+                <button class="scan-card" class:active={scanSelected === x.id} style:--sc={sc} onclick={() => scanSelected = x.id}>
+                  <div class="sc-top"><span class="sc-sym">{x.symbol.replace('USDT','')}</span><span class="sc-tf">{x.tf}</span><span class="spacer"></span><span class="sc-alpha" style:color={sc}>α{x.alpha}</span></div>
+                  <div class="sc-sim-row"><div class="sc-sim-bar"><div class="sc-sim-fill" style:width="{x.sim*100}%" style:background={sc}></div></div><span class="sc-sim-pct">{Math.round(x.sim*100)}%</span></div>
                   <div class="sc-pattern">{x.pattern}</div>
                 </button>
               {/each}
             </div>
           </div>
         {:else if bDrawerTab === 'judge'}
-          <div class="act-panel" id="judge-panel" role="tabpanel" aria-labelledby="judge-tab">
+          <div class="act-panel">
             <div class="act-cols">
               <div class="act-col plan-col">
-                <div class="col-label" role="heading" aria-level="2">A · TRADE PLAN</div>
-                <div class="lvl-row" role="region" aria-label="Trade plan levels">
+                <div class="col-label">A · TRADE PLAN</div>
+                <div class="lvl-row">
                   {#each judgePlan as lvl}
-                    <div class="lvl-cell"><div class="lvl-label">{lvl.label}</div><div class="lvl-val" style:color={lvl.color} aria-label="{lvl.label}: {lvl.val}">{lvl.val}</div></div>
+                    <div class="lvl-cell"><div class="lvl-label">{lvl.label}</div><div class="lvl-val" style:color={lvl.color}>{lvl.val}</div></div>
                   {/each}
                 </div>
               </div>
               <div class="act-divider"></div>
               <div class="act-col judge-col">
-                <div class="col-label" role="heading" aria-level="2">B · JUDGE NOW</div>
-                <div class="judge-btns" role="group" aria-label="Verdict options">
-                  <button
-                    class="judge-btn agree"
-                    class:active={judgeVerdict === 'agree'}
-                    onclick={() => judgeVerdict = 'agree'}
-                    aria-pressed={judgeVerdict === 'agree'}
-                    title="Press Y or click to agree (Y key)"
-                  ><span class="jb-key" aria-label="Keyboard shortcut Y">Y</span><div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">진입</span></div></button>
-                  <button
-                    class="judge-btn disagree"
-                    class:active={judgeVerdict === 'disagree'}
-                    onclick={() => judgeVerdict = 'disagree'}
-                    aria-pressed={judgeVerdict === 'disagree'}
-                    title="Press N or click to disagree (N key)"
-                  ><span class="jb-key" aria-label="Keyboard shortcut N">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">패스</span></div></button>
+                <div class="col-label">B · JUDGE NOW</div>
+                <div class="judge-btns">
+                  <button class="judge-btn agree" class:active={judgeVerdict === 'agree'} onclick={() => judgeVerdict = 'agree'}><span class="jb-key">Y</span><div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">진입</span></div></button>
+                  <button class="judge-btn disagree" class:active={judgeVerdict === 'disagree'} onclick={() => judgeVerdict = 'disagree'}><span class="jb-key">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">패스</span></div></button>
                 </div>
               </div>
               <div class="act-divider"></div>
               <div class="act-col after-col">
-                <div class="col-label" role="heading" aria-level="2">C · AFTER RESULT</div>
-                <div class="outcome-row" role="group" aria-label="Trade outcome options">
+                <div class="col-label">C · AFTER RESULT</div>
+                <div class="outcome-row">
                   {#each [{ k: 'win', l: 'WIN', c: 'var(--pos)', bg: 'var(--pos-dd)' }, { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' }, { k: 'flat', l: 'FLAT', c: 'var(--g7)', bg: 'var(--g2)' }] as o}
-                    <button
-                      class="outcome-btn"
-                      class:active={judgeOutcome === o.k}
-                      style:--oc={o.c}
-                      style:--obg={o.bg}
-                      onclick={() => { judgeOutcome = o.k as any; }}
-                      aria-pressed={judgeOutcome === o.k}
-                      title="Mark trade outcome as {o.l}"
-                    >{o.l}</button>
+                    <button class="outcome-btn" class:active={judgeOutcome === o.k} style:--oc={o.c} style:--obg={o.bg} onclick={() => { judgeOutcome = o.k as any; }}>{o.l}</button>
                   {/each}
                 </div>
               </div>
@@ -893,29 +770,28 @@
         </div>
       </div>
     </div>
-    <div class="lc-sidebar" role="complementary" aria-label="Sidebar analysis">
+    <div class="lc-sidebar">
       <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">02</span><span class="lcs-title">ANALYZE</span></div>
-        <div class="lcs-body" role="region" aria-label="Analysis details">
+        <div class="lcs-header"><span class="lcs-step">02</span><span class="lcs-title">ANALYZE</span></div>
+        <div class="lcs-body">
           <div class="conf-inline small" style="margin-bottom: 6px;">
             <span class="conf-label">CONFIDENCE</span>
             <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
             <span class="conf-val">{fmtConf}</span>
           </div>
-          <div class="narrative" style="font-size: 9px; line-height: 1.6;" role="region" aria-label="Trade bias">
+          <div class="narrative" style="font-size: 9px; line-height: 1.6;">
             <span class="bull">{narrativeDir} 권장 ·</span>
             {' '}{narrativeBias ?? '분석 완료'}
             {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
           </div>
-          <div style="margin-top: 6px;" role="list" aria-label="Evidence items">
+          <div style="margin-top: 6px;">
             {#each evidenceItems as item}
-              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} style="margin-bottom: 3px;" role="listitem">
-                <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
+              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} style="margin-bottom: 3px;">
+                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
                 <span class="ev-key">{item.k}</span>
                 <span class="ev-val">{item.v}</span>
-                <span class="sr-only">{item.k}: {item.v}, {item.pos ? 'positive' : 'negative'} evidence</span>
               </div>
             {/each}
           </div>
@@ -923,55 +799,35 @@
       </div>
       <div class="lcs-divider"></div>
       <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">03</span><span class="lcs-title">SCAN</span><span class="lcs-meta">{scanCandidates.length} found</span></div>
-        <div class="lcs-body" role="list" aria-label="Scan candidates">
+        <div class="lcs-header"><span class="lcs-step">03</span><span class="lcs-title">SCAN</span><span class="lcs-meta">{scanCandidates.length} found</span></div>
+        <div class="lcs-body">
           {#each scanCandidates as x}
             {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-            <button
-              class="scan-row"
-              class:active={scanSelected === x.id}
-              onclick={() => scanSelected = x.id}
-              aria-label="{x.symbol}: α{x.alpha}, {Math.round(x.sim * 100)}% similarity"
-              aria-current={scanSelected === x.id ? 'true' : 'false'}
-            >
+            <button class="scan-row" class:active={scanSelected === x.id} onclick={() => scanSelected = x.id}>
               <span class="sr-sym">{x.symbol.replace('USDT','')}</span>
               <span class="sr-tf">{x.tf}</span>
-              <div class="sr-bar" aria-hidden="true"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
-              <span class="sr-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span>
+              <div class="sr-bar"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
+              <span class="sr-alpha" style:color={sc}>α{x.alpha}</span>
             </button>
           {/each}
         </div>
       </div>
       <div class="lcs-divider"></div>
       <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">04</span><span class="lcs-title">JUDGE</span></div>
+        <div class="lcs-header"><span class="lcs-step">04</span><span class="lcs-title">JUDGE</span></div>
         <div class="lcs-body">
-          <div role="region" aria-label="Trade proposal">
-            {#each proposal as p}
-              <div class="prop-cell compact" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
-                <span class="prop-l">{p.label}</span>
-                <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
-              </div>
-            {/each}
-          </div>
-          <div class="judge-btns" style="margin-top: 8px; gap: 4px;" role="group" aria-label="Verdict options">
-            <button
-              class="judge-btn agree"
-              class:active={judgeVerdict === 'agree'}
-              onclick={() => judgeVerdict = 'agree'}
-              aria-pressed={judgeVerdict === 'agree'}
-              title="Press Y or click to agree (Y key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut Y">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
+          {#each proposal as p}
+            <div class="prop-cell compact" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+              <span class="prop-l">{p.label}</span>
+              <span class="prop-v">{p.val}</span>
+            </div>
+          {/each}
+          <div class="judge-btns" style="margin-top: 8px; gap: 4px;">
+            <button class="judge-btn agree" class:active={judgeVerdict === 'agree'} onclick={() => judgeVerdict = 'agree'}>
+              <span class="jb-key">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
             </button>
-            <button
-              class="judge-btn disagree"
-              class:active={judgeVerdict === 'disagree'}
-              onclick={() => judgeVerdict = 'disagree'}
-              aria-pressed={judgeVerdict === 'disagree'}
-              title="Press N or click to skip (N key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut N">N</span><div class="jb-text"><span class="jb-label">SKIP</span></div>
+            <button class="judge-btn disagree" class:active={judgeVerdict === 'disagree'} onclick={() => judgeVerdict = 'disagree'}>
+              <span class="jb-key">N</span><div class="jb-text"><span class="jb-label">SKIP</span></div>
             </button>
           </div>
         </div>
@@ -1034,7 +890,7 @@
     </div>
 
     <!-- PEEK bar — always visible at bottom of chart section -->
-    <div class="peek-bar" role="tablist" aria-label="Analysis tabs">
+    <div class="peek-bar">
       {#each [
         { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)',  badge: 'α82', badgeColor: 'var(--amb)' },
         { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',       badge: '5',   badgeColor: '#7aa2e0' },
@@ -1048,42 +904,39 @@
             if (drawerTab === tab.id) setPeekOpen(!peekOpen);
             else { setDrawerTab(tab.id as any); setPeekOpen(true); }
           }}
-          role="tab"
-          aria-selected={drawerTab === tab.id && peekOpen}
-          aria-controls="{tab.id}-drawer"
-          tabindex={drawerTab === tab.id && peekOpen ? 0 : -1}
-          aria-expanded={drawerTab === tab.id && peekOpen}
         >
           <span class="pb-n">{tab.n}</span>
           <span class="pb-label">{tab.label}</span>
-          <span class="pb-sep" aria-hidden="true">·</span>
+          <span class="pb-sep">·</span>
           {#if tab.id === 'analyze'}
             <span class="pb-val pos">{confidenceAlpha}</span>
-            <span class="pb-sep" aria-hidden="true">·</span>
+            <span class="pb-sep">·</span>
             <span class="pb-txt">{narrativeDir} 진입 권장</span>
             {#if analyzeData?.flowSummary?.oi && analyzeData.flowSummary.oi !== 'n/a'}
-              <span class="pb-sep" aria-hidden="true">·</span>
+              <span class="pb-sep">·</span>
               <span class="pb-dim">OI {analyzeData.flowSummary.oi}</span>
             {/if}
             {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-              <span class="pb-sep" aria-hidden="true">·</span>
+              <span class="pb-sep">·</span>
               <span class="pb-warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
           {:else if tab.id === 'scan'}
             <span class="pb-val" style:color="#7aa2e0">{scanCandidates.length} candidates</span>
-            <span class="pb-sep" aria-hidden="true">·</span>
-            <span class="pb-dim">{scanCandidates.slice(0,3).map(x => `${x.symbol.replace('USDT','')} α${x.alpha}`).join(' · ')}</span>
+            <span class="pb-sep">·</span>
+            <span class="pb-dim">LDO α77 · INJ α73 · FET α70</span>
+            <span class="pb-sep">·</span>
+            <span class="pb-val pos">past 11W 3L +3.4%</span>
           {:else if tab.id === 'judge'}
             <span class="pb-txt">entry <span class="pb-val">{judgePlan[0].val}</span></span>
-            <span class="pb-sep" aria-hidden="true">·</span>
+            <span class="pb-sep">·</span>
             <span class="pb-txt">stop <span class="pb-val neg">{judgePlan[1].val}</span></span>
-            <span class="pb-sep" aria-hidden="true">·</span>
+            <span class="pb-sep">·</span>
             <span class="pb-txt">R:R <span class="pb-val pos">{judgePlan[3].val}</span></span>
-            <span class="pb-sep" aria-hidden="true">·</span>
+            <span class="pb-sep">·</span>
             <span class="pb-txt">size <span class="pb-val">1.2%</span></span>
           {/if}
           <span class="spacer"></span>
-          <span class="pb-chevron" aria-hidden="true">{(drawerTab === tab.id && peekOpen) ? '▾' : '▸'}</span>
+          <span class="pb-chevron">{(drawerTab === tab.id && peekOpen) ? '▾' : '▸'}</span>
         </button>
       {/each}
     </div>
@@ -1092,26 +945,7 @@
     {#if peekOpen}
       <div class="peek-overlay" style:height="{peekHeight}%">
         <!-- Resize handle -->
-        <div
-          class="resizer"
-          role="slider"
-          tabindex="0"
-          aria-label="Resize peek drawer"
-          aria-valuemin="20"
-          aria-valuemax="80"
-          aria-valuenow={peekHeight}
-          aria-orientation="vertical"
-          onmousedown={onResizerDown}
-          onkeydown={(e) => {
-            if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              updateTabState(s => ({ ...s, peekHeight: Math.min(80, s.peekHeight + 5) }));
-            } else if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              updateTabState(s => ({ ...s, peekHeight: Math.max(20, s.peekHeight - 5) }));
-            }
-          }}
-        >
+        <div class="resizer" onmousedown={onResizerDown}>
           <div class="resizer-pill"></div>
         </div>
 
@@ -1417,15 +1251,15 @@
     {/if}
   </div>
   {/if}<!-- end layoutMode -->
-  {/if}<!-- end analyzed -->
   {/if}<!-- end mobileView -->
 </div>
 
 <style>
-
   /* Fix 1: 모바일에서 ChartBoard 데스크탑 툴바 숨김 (+98px 확보) */
   :global(.mobile-chart-section .chart-toolbar) { display: none; }
   :global(.mobile-chart-section .chart-header--tv) { display: none; }
+  /* Fix 2: ChartBoard min-height 420px 오버라이드 → 42vh 컨테이너에 맞춤 */
+  :global(.mobile-chart-section .chart-board) { min-height: 0 !important; }
 
   .trade-mode {
     flex: 1;
@@ -2464,10 +2298,44 @@
 
   /* ── Mobile layout ── */
   .mobile-chart-section {
-    flex: 1;
-    min-height: 0;
+    height: 42vh;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mobile-chart-section.mobile-chart-fullscreen {
+    flex: 1;
+    height: auto;
+  }
+
+  .chart-expand-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    border: 0.5px solid var(--g5);
+    border-radius: 4px;
+    color: var(--g7);
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 10;
+    line-height: 1;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: background 0.12s;
+  }
+
+  .chart-expand-btn:active {
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--brand);
   }
 
   .mobile-tab-strip {
@@ -2484,6 +2352,7 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     letter-spacing: 0.06em;
+    white-space: nowrap;
     color: var(--g6);
     background: transparent;
     border: none;
@@ -2504,6 +2373,7 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 10px 14px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -2524,12 +2394,14 @@
 
   .mobile-analyze-hint {
     margin-top: 12px;
-    padding: 6px 10px;
+    padding: 10px 14px;
     border-radius: 4px;
     background: var(--g2);
-    color: var(--g5);
+    border: 0.5px solid var(--g4);
+    color: var(--g7);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
+    line-height: 1.6;
     text-align: center;
   }
 
@@ -2548,16 +2420,84 @@
     letter-spacing: 0.14em;
   }
 
-  /* ── Accessibility: Screen reader only text ── */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
+  /* ── Mobile loading ── */
+  .mobile-loading {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--g5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .ml-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--g3);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Proposal AI CTA (mobile) ── */
+  .proposal-ai-cta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--g2);
+    border: 0.5px dashed var(--brand-d);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--brand);
+  }
+  .proposal-ai-cta:active { background: var(--brand-dd); }
+  .pcta-icon { font-size: 11px; flex-shrink: 0; }
+  .pcta-text { flex: 1; }
+
+  /* ── Proposal hint (desktop) ── */
+  .proposal-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    background: var(--g2);
+    border: 0.5px dashed var(--g4);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g6);
+    margin-top: 4px;
+  }
+  .ph-icon { color: var(--brand); font-size: 10px; }
+  .ph-arrow { color: var(--brand); margin-left: auto; }
+
+  /* ── JUDGE context header ── */
+  .judge-ctx {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0 10px;
+    border-bottom: 0.5px solid var(--g3);
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .jc-sym { font-size: 14px; font-weight: 600; color: var(--g9); }
+  .jc-sep { font-size: 10px; color: var(--g4); }
+  .jc-tf { font-size: 10px; color: var(--g6); letter-spacing: 0.06em; }
+  .jc-spacer { flex: 1; }
+  .jc-bias {
+    font-size: 9px;
+    color: var(--brand);
+    background: var(--brand-dd);
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
   }
 </style>
