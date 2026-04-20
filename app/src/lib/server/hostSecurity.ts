@@ -13,7 +13,11 @@ function normalizeHost(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const first = raw.split(',')[0]?.trim().toLowerCase();
   if (!first) return null;
-  return first;
+  // Strip port suffix (e.g. "example.com:443" → "example.com")
+  const withoutPort = first.replace(/:\d+$/, '');
+  // Strip trailing DNS dot (e.g. "example.com." → "example.com")
+  const withoutDot = withoutPort.replace(/\.$/, '');
+  return withoutDot || null;
 }
 
 function parseConfiguredHosts(raw: string | undefined): Set<string> {
