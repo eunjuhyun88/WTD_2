@@ -14,6 +14,7 @@
   import { mobileMode } from '$lib/stores/mobileMode';
   import MobileTopBar from './MobileTopBar.svelte';
   import MobileFooter from './MobileFooter.svelte';
+  import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
   interface Props {
     canvasComponent?: any;
@@ -143,8 +144,13 @@
     <!-- ── DESKTOP / TABLET shell ── -->
     <CommandBar
       sessionName={$activeTab?.title?.slice(0, 32) || ''}
-      onRangeSelect={() => shellStore.updateTabState(s => ({ ...s, rangeSelection: !s.rangeSelection }))}
-      hasRange={$activeTabState.rangeSelection}
+      onRangeSelect={() => {
+        const next = !$activeTabState.rangeSelection;
+        shellStore.updateTabState(s => ({ ...s, rangeSelection: next }));
+        if (next) chartSaveMode.enterRangeMode();
+        else chartSaveMode.exitRangeMode();
+      }}
+      hasRange={$activeTabState.rangeSelection || $chartSaveMode.active}
       aiVisible={$shellStore.aiVisible}
       toggleAI={() => shellStore.toggleAI()}
       {paletteOpen}

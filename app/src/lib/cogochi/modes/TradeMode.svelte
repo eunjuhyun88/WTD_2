@@ -856,9 +856,7 @@
           {:else if tab.id === 'scan'}
             <span class="pb-val" style:color="#7aa2e0">{scanCandidates.length} candidates</span>
             <span class="pb-sep">·</span>
-            <span class="pb-dim">LDO α77 · INJ α73 · FET α70</span>
-            <span class="pb-sep">·</span>
-            <span class="pb-val pos">past 11W 3L +3.4%</span>
+            <span class="pb-dim">{scanCandidates.slice(0,3).map(x => `${x.symbol.replace('USDT','')} α${x.alpha}`).join(' · ')}</span>
           {:else if tab.id === 'judge'}
             <span class="pb-txt">entry <span class="pb-val">{judgePlan[0].val}</span></span>
             <span class="pb-sep">·</span>

@@ -152,21 +152,24 @@ It is the primary Day-1 entry path of the core loop.
 
 It should support:
 
-`inspect -> select range -> auto-capture context -> save`
+`inspect -> select range (drag) -> auto-capture context -> save`
 
 Minimum contract:
 
 1. User inspects the active chart in `/terminal` from a real trade review, replay, or live surfaced candidate
-2. User marks the exact chart segment they mean
-3. Terminal captures the selected range plus visible chart context
-4. Terminal may attach a free-form research note describing the thesis for that exact range
-5. Terminal may preview similar saved captures using both chart-shape evidence and note overlap
-6. Terminal saves a canonical capture record that becomes durable ground truth for future retrieval, judgment, and refinement
-7. Success state exposes the saved capture or the downstream lab/deep-link
+2. User enters range-selection mode via "SELECT RANGE" button → cursor changes to crosshair
+3. User **drags** on the chart to mark the exact segment they mean
+4. Terminal captures the selected range plus all visible indicator data for that range
+5. Terminal shows SaveStrip with collected data preview (inline — no modal)
+6. Terminal may attach a free-form research note describing the thesis for that exact range
+7. Terminal may preview similar saved captures using both chart-shape evidence and note overlap
+8. Terminal saves a canonical capture record that becomes durable ground truth for future retrieval, judgment, and refinement
+9. Success state exposes the saved capture or the downstream lab/deep-link
 
 Terminal should also make the downstream use of the capture legible:
 
 - what reviewed range was saved
+- what indicators were collected
 - what note/thesis was attached
 - whether similar captures already exist
 - whether the save can be projected into a challenge for lab evaluation
@@ -177,10 +180,49 @@ Selected-range payload must include:
 - timeframe
 - selected range start/end
 - OHLCV slice for the selected range
-- rendered indicator slices for the selected range
+- rendered indicator slices for the selected range (EMA, BB, VWAP, ATR, MACD, CVD, OI, Funding, Volume — all active)
 - visible pattern context when available
 - candidate/transition linkage when the save came from a surfaced pattern candidate
 - optional free-form research note authored against that exact chart segment
+
+## Drag Range Selection Interaction Contract
+
+Range mode is entered explicitly (button press), never implicitly.
+
+Interaction sequence:
+
+1. `SELECT RANGE` button click → `chartSaveMode.enterRangeMode()` → chart cursor changes to crosshair
+2. `mousedown` on chart canvas → anchorA set, drag begins
+3. `mousemove` while dragging → anchorB updated in real-time via `adjustAnchor('B', t)` → `RangePrimitive` renders live blue rectangle
+4. `mouseup` → anchorB confirmed → `SaveStrip` appears below chart
+5. `Escape` → `exitRangeMode()`, strip dismissed
+6. Dragging outside chart bounds → clamp to first/last visible bar
+
+Implementation note:
+- Use `chart.timeScale().coordinateToTime(x)` to convert pixel X position to chart time
+- Attach `mousedown`/`mousemove`/`mouseup` to the canvas container element (not `chart.subscribeClick()`)
+- LWC pan/zoom must remain accessible when range mode is NOT active
+
+## SaveStrip Contract
+
+SaveStrip appears inline below the chart canvas when `chartSaveMode.active && anchorA !== null && anchorB !== null`.
+
+SaveStrip must show:
+
+1. **Range label**: `Apr 21 14:00 → 16:00 · 4H (8봉)`
+2. **Collected indicators**: pill list of active indicators in selected range — `EMA · BB · CVD · MACD · OI`
+3. **Range stats**: high / low / change% within selected range
+4. **Note input**: inline single-line textarea (no modal)
+5. **Actions**: `취소` · `저장` · `Save & Open in Lab`
+
+SaveStrip must not:
+
+- open a modal for the primary save action
+- show generic symbol/TF context without range specifics
+- save without at least one valid bar in range
+
+Known implementation gap (W-0117):
+- `chartSaveMode.save()` currently passes `indicators: {}` — indicator slices from `slicePayloadToViewport()` are not included in the saved payload
 
 ## AutoResearch Preview Contract
 
@@ -331,7 +373,7 @@ P1:
 
 ## Current Implementation Snapshot
 
-Implemented now:
+Implemented (as of 2026-04-21, PRs #123-#126):
 
 - desktop shell with left rail + main board + right analysis rail + bottom dock
 - mobile active board + command dock + detail sheet
@@ -339,22 +381,29 @@ Implemented now:
 - symbol/timeframe driven reload behavior
 - analysis/evidence rendering and source pills
 - pattern transition/status widgets
-- save setup modal mounted in terminal
-- `ChartBoard` already exposes a visible-range snapshot helper for save payload generation
-- `Save Setup` can reuse saved chart-range evidence plus note text to preview similar captures before save
+- `ChartBoard` (lightweight-charts) connected with real kline data (PR #124)
+- `RangePrimitive` renders blue selection rectangle on chart
+- `chartSaveMode` store manages anchorA/B state with `enterRangeMode()` / `setAnchor()` / `adjustAnchor()`
+- `chartViewportCapture.slicePayloadToViewport()` slices OHLCV + indicators to range — but not yet called in save path
+- `SaveStrip` appears below chart when both anchors set; shows range label + note + save buttons
+- Unified NavRail + TopBar + MobileBottomNav (PR #123/#125)
+- COGOTCHI brand applied globally (PR #126)
 
 Partially implemented:
 
 - query/deep-link hydration from URL (`symbol` works; other query contracts are inconsistent)
 - deterministic click-to-tab mapping exists in parts of board/actions but is not fully contract-audited
 - watchers handoff to dashboard exists at navigation level but not fully canonicalized via shared watch contract
+- range selection uses two-click flow (click=A, click=B) — drag interaction not yet implemented (W-0117)
 
 Not yet aligned with page contract:
 
+- **indicators: {} bug** — `chartSaveMode.save()` passes empty indicators; `slicePayloadToViewport()` result is never included (W-0117 Slice B)
+- **drag interaction** — range mode uses `chart.subscribeClick()` for two-click anchoring instead of drag (W-0117 Slice A)
+- **SaveStrip indicator preview** — strip shows range/bar count but not collected indicator names or range stats (W-0117 Slice C)
 - full query composer semantics (`q` seed + parser-hint + save flow parity) are not end-to-end canonical
 - wallet intel mode is not yet a complete contract-grade flow in this page
 - some right-panel tab data remains mixed between deep data and fallback/derived placeholders
-- Save Setup is not yet fully enforced as selected-range capture with auto-collected OHLCV/indicator evidence
 
 ## Prompt-Triggered GUI Contract
 

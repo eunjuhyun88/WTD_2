@@ -2,22 +2,26 @@
  * chartSaveMode.ts
  *
  * Writable store for the Save Setup range-mode flow.
- * Store never touches LWC directly; CanvasHost subscribes and drives primitives.
+ * Store never touches LWC directly; ChartBoard subscribes and drives primitives.
  *
- * State shape per W-0086 Implementation Plan.
+ * State shape per W-0086 / W-0117 Implementation Plan.
  */
 
 import { writable } from 'svelte/store';
 import { createPatternCapture } from '$lib/api/terminalPersistence';
 import type { PatternCaptureCreateRequest } from '$lib/contracts/terminalPersistence';
+import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
+import { slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
 
 export interface ChartSaveModeState {
   active: boolean;
-  anchorA: number | null;     // unix seconds, first click
-  anchorB: number | null;     // unix seconds, second click
+  anchorA: number | null;     // unix seconds, drag start
+  anchorB: number | null;     // unix seconds, drag end (live during drag)
   noteDraft: string;
   submitting: boolean;
   lastSavedCaptureId: string | null;
+  /** Full chart payload set by ChartBoard when data loads; used for indicator slicing. */
+  payload: ChartSeriesPayload | null;
 }
 
 export type CaptureId = string;
@@ -29,6 +33,7 @@ const DEFAULT_STATE: ChartSaveModeState = {
   noteDraft: '',
   submitting: false,
   lastSavedCaptureId: null,
+  payload: null,
 };
 
 function createChartSaveModeStore() {
@@ -57,7 +62,18 @@ function createChartSaveModeStore() {
   }
 
   /**
-   * Sets the next available anchor.
+   * Start a drag: set anchorA, clear anchorB.
+   * Called on mousedown when range mode is active.
+   */
+  function startDrag(t: number): void {
+    update((s) => {
+      if (!s.active) return s;
+      return { ...s, anchorA: t, anchorB: null };
+    });
+  }
+
+  /**
+   * Sets the next available anchor (legacy two-click path, kept for mobile).
    * First call sets anchorA; second call sets anchorB.
    */
   function setAnchor(t: number): void {
@@ -65,13 +81,12 @@ function createChartSaveModeStore() {
       if (!s.active) return s;
       if (s.anchorA === null) return { ...s, anchorA: t };
       if (s.anchorB === null) return { ...s, anchorB: t };
-      // Both anchors already set; replace anchorB (drag-adjust behavior)
       return { ...s, anchorB: t };
     });
   }
 
   /**
-   * Adjust a specific anchor after range is set (e.g. handle drag).
+   * Adjust a specific anchor — used for live drag updates (mousemove/mouseup).
    */
   function adjustAnchor(which: 'A' | 'B', t: number): void {
     update((s) => {
@@ -82,6 +97,14 @@ function createChartSaveModeStore() {
 
   function setNote(text: string): void {
     update((s) => ({ ...s, noteDraft: text }));
+  }
+
+  /**
+   * Store the current chart payload so save() can slice indicators.
+   * Called by ChartBoard whenever chartData changes.
+   */
+  function setPayload(p: ChartSeriesPayload | null): void {
+    update((s) => ({ ...s, payload: p }));
   }
 
   /**
@@ -107,9 +130,14 @@ function createChartSaveModeStore() {
       (b) => b.time >= anchorStart && b.time <= anchorEnd
     );
 
+    // Slice indicators from stored payload (W-0117 Slice B)
+    let viewport = state.payload
+      ? slicePayloadToViewport(state.payload, anchorStart, anchorEnd, anchorStart)
+      : null;
+
     update((s) => ({ ...s, submitting: true }));
 
-    const payload: PatternCaptureCreateRequest = {
+    const capturePayload: PatternCaptureCreateRequest = {
       symbol: opts.symbol,
       timeframe: opts.tf,
       contextKind: 'symbol',
@@ -122,7 +150,7 @@ function createChartSaveModeStore() {
         funding: null,
         oiDelta: null,
         freshness: 'recent',
-        viewport: {
+        viewport: viewport ?? {
           timeFrom: anchorStart,
           timeTo: anchorEnd,
           tf: opts.tf,
@@ -144,7 +172,7 @@ function createChartSaveModeStore() {
     };
 
     try {
-      const record = await createPatternCapture(payload);
+      const record = await createPatternCapture(capturePayload);
       if (!record) {
         update((s) => ({ ...s, submitting: false }));
         return null;
@@ -169,9 +197,11 @@ function createChartSaveModeStore() {
     subscribe,
     enterRangeMode,
     exitRangeMode,
+    startDrag,
     setAnchor,
     adjustAnchor,
     setNote,
+    setPayload,
     save,
     /** Read current state once (non-reactive). */
     snapshot(): ChartSaveModeState {
