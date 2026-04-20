@@ -1054,7 +1054,8 @@
   let peekCapturesInterval: ReturnType<typeof setInterval>;
   let eventsInterval: ReturnType<typeof setInterval>;
   let patternInterval: ReturnType<typeof setInterval>;
-  let bootstrapTimers: Array<ReturnType<typeof window.setTimeout>> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bootstrapTimers: any[] = [];
 
   function runIfVisible(task: () => void) {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
@@ -1062,7 +1063,7 @@
   }
 
   function scheduleBootstrapTask(task: () => void, delayMs: number) {
-    const timer = setTimeout(() => {
+    const timer = window.setTimeout(() => {
       bootstrapTimers = bootstrapTimers.filter((item) => item !== timer);
       runIfVisible(task);
     }, delayMs);

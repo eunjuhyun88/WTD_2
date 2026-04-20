@@ -48,7 +48,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   expandedSample: null,
   chat: [],
   peekOpen: false,
-  peekHeight: 42,
+  peekHeight: 56,
   drawerTab: 'analyze',
 });
 
@@ -101,7 +101,7 @@ function createShellStore() {
         const newTab: Tab = {
           id,
           locked: false,
-          mode: tab.mode || tab.kind || 'trade',
+          mode: tab.mode || (tab.kind === 'train' || tab.kind === 'flywheel' ? tab.kind : 'trade'),
           kind: tab.kind || 'trade',
           title: tab.title || 'new session',
           tabState: { ...FRESH_TAB_STATE(), tradePrompt: (tab as any).prompt || '' },
