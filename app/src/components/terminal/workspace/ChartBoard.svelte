@@ -1152,7 +1152,11 @@
   }
 
   function handleSaveSetup() {
-    showSaveModal = true;
+    if ($chartSaveMode.active) {
+      chartSaveMode.exitRangeMode();
+    } else {
+      chartSaveMode.enterRangeMode();
+    }
   }
 
   function handleModalSaved(captureId: string) {
