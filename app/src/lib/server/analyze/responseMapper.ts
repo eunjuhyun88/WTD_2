@@ -32,10 +32,31 @@ export function mapAnalyzeResponse(raw: AnalyzeRawBundle, derived: AnalyzeDerive
     t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume,
   }));
   const atrLevels = deepResult?.atr_levels ?? {};
-  const entry = Number(atrLevels.entry_long ?? atrLevels.entry ?? (currentPrice ? currentPrice * 0.994 : 0));
-  const stop = Number(atrLevels.stop_long ?? atrLevels.stop ?? (currentPrice ? currentPrice * 0.988 : 0));
-  const tp1 = Number(atrLevels.tp1_long ?? atrLevels.target ?? (currentPrice ? currentPrice * 1.008 : 0));
-  const tp2 = Number(atrLevels.tp2_long ?? (currentPrice ? currentPrice * 1.016 : 0));
+  const atrAbs = Number(atrLevels.atr ?? 0);
+
+  const isShort =
+    scoreResult?.ensemble?.direction?.includes('short') ||
+    String(deepResult?.verdict ?? '').includes('BEAR');
+
+  let entry: number, stop: number, tp1: number, tp2: number;
+  if (isShort) {
+    entry = Number(atrLevels.entry_short ?? (currentPrice ? currentPrice * 1.006 : 0));
+    stop  = Number(atrLevels.stop_short  ?? (currentPrice ? currentPrice * 1.014 : 0));
+    tp1   = Number(atrLevels.tp1_short   ?? (currentPrice ? currentPrice * 0.992 : 0));
+    tp2   = Number(atrLevels.tp2_short   ?? (currentPrice ? currentPrice * 0.984 : 0));
+    if (stop <= entry) stop = entry + (atrAbs > 0 ? atrAbs * 1.5 : entry * 0.014);
+    if (tp1  >= entry) tp1  = entry - (atrAbs > 0 ? atrAbs * 2.0 : entry * 0.008);
+    if (tp2  >= tp1)   tp2  = tp1  - (atrAbs > 0 ? atrAbs * 1.5 : tp1  * 0.008);
+  } else {
+    entry = Number(atrLevels.entry_long ?? atrLevels.entry ?? (currentPrice ? currentPrice * 0.994 : 0));
+    stop  = Number(atrLevels.stop_long  ?? atrLevels.stop  ?? (currentPrice ? currentPrice * 0.988 : 0));
+    tp1   = Number(atrLevels.tp1_long   ?? atrLevels.target ?? (currentPrice ? currentPrice * 1.008 : 0));
+    tp2   = Number(atrLevels.tp2_long   ?? (currentPrice ? currentPrice * 1.016 : 0));
+    if (stop >= entry) stop = entry - (atrAbs > 0 ? atrAbs * 1.5 : entry * 0.014);
+    if (tp1  <= entry) tp1  = entry + (atrAbs > 0 ? atrAbs * 2.0 : entry * 0.008);
+    if (tp2  <= tp1)   tp2  = tp1  + (atrAbs > 0 ? atrAbs * 1.5 : tp1  * 0.008);
+  }
+
   const risk = Math.abs(entry - stop);
   const reward = Math.abs(tp2 - entry);
   const riskReward = risk > 0 ? Math.max(0.1, reward / risk) : 0;
