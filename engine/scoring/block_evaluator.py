@@ -77,6 +77,9 @@ from social.blocks import (
     fear_greed_rising,
     social_composite,
 )
+from building_blocks.confirmations.cot_large_spec_short import cot_large_spec_short
+from building_blocks.confirmations.cot_commercial_net_long import cot_commercial_net_long
+from building_blocks.confirmations.cot_positioning_flip import cot_positioning_flip
 
 # --- Disqualifiers ---
 from building_blocks.disqualifiers.volume_below_average import volume_below_average
@@ -160,6 +163,10 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("kol_signal",                 kol_signal),
     ("fear_greed_rising",          fear_greed_rising),
     ("social_composite",           social_composite),
+    # COT blocks (W-0111) — macro positioning data from CFTC
+    ("cot_large_spec_short",    cot_large_spec_short),
+    ("cot_commercial_net_long", cot_commercial_net_long),
+    ("cot_positioning_flip",    cot_positioning_flip),
     # disqualifiers
     ("volume_below_average",            volume_below_average),
     ("extreme_volatility",              extreme_volatility),
