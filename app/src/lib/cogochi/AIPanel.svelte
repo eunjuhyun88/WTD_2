@@ -24,17 +24,23 @@
 
   interface Props {
     messages?: Message[];
-    onSend?: (text: string) => void;
+    onSend?: (text: string, newMessages: Message[]) => void;
     onApplySetup?: (setup: SetupResult) => void;
     onClose?: () => void;
   }
 
   let {
-    messages = $bindable([]),
+    messages = [],
     onSend,
     onApplySetup,
     onClose,
   }: Props = $props();
+
+  // Local copy — keeps AI replies even while store updates
+  let localMessages = $state<Message[]>(messages);
+  $effect(() => {
+    if (messages.length !== localMessages.length) localMessages = messages;
+  });
 
   let inputValue = $state('');
   let scrollEl: HTMLDivElement | undefined = $state();
@@ -51,12 +57,13 @@
     if (!t) return;
     const setup = convertPromptToSetup(t);
     const aiText = generateAIReply(t, setup);
-    messages = [
-      ...messages,
+    const newMessages: Message[] = [
+      ...localMessages,
       { role: 'user', text: t },
       { role: 'assistant', text: aiText, setup },
     ];
-    onSend?.(t);
+    localMessages = newMessages;
+    onSend?.(t, newMessages);
     inputValue = '';
   }
 
@@ -103,6 +110,7 @@
   }
 
   $effect(() => {
+    localMessages; // track changes
     if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
   });
 
