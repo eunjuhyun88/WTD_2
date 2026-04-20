@@ -48,6 +48,58 @@
   const drawerTab = $derived(tabState.drawerTab);
   const peekHeight = $derived(tabState.peekHeight);
 
+  // ── Scan core loop state ────────────────────────────────────────────────
+  let scanState = $state<'idle' | 'scanning' | 'done'>('idle');
+  let scanProgress = $state(0);
+  let _scanTimer: ReturnType<typeof setInterval> | null = null;
+
+  let _prevRange = false;
+  $effect(() => {
+    const active = !!tabState.rangeSelection;
+    if (active && !_prevRange) triggerScan();
+    else if (!active && _prevRange && scanState === 'scanning') cancelScan();
+    _prevRange = active;
+  });
+
+  function triggerScan() {
+    if (_scanTimer) clearInterval(_scanTimer);
+    scanState = 'scanning';
+    scanProgress = 0;
+    setDrawerTab('scan');
+    setPeekOpen(true);
+    _scanTimer = setInterval(() => {
+      scanProgress = Math.min(scanProgress + 3 + Math.random() * 9, 94);
+    }, 180);
+    setTimeout(() => {
+      if (_scanTimer) { clearInterval(_scanTimer); _scanTimer = null; }
+      scanProgress = 100;
+      scanState = 'done';
+    }, 3400);
+  }
+
+  function cancelScan() {
+    if (_scanTimer) { clearInterval(_scanTimer); _scanTimer = null; }
+    scanState = 'idle';
+    scanProgress = 0;
+  }
+
+  // ── Compact header metrics ───────────────────────────────────────────────
+  const fmtPrice = $derived(
+    chartCurrentPrice > 0
+      ? chartCurrentPrice >= 1000
+        ? chartCurrentPrice.toLocaleString('en-US', { maximumFractionDigits: 1 })
+        : chartCurrentPrice.toFixed(4)
+      : '—'
+  );
+  const fmtFunding = $derived(
+    chartDerivatives?.funding != null
+      ? `${chartDerivatives.funding >= 0 ? '+' : ''}${(chartDerivatives.funding * 100).toFixed(4)}%`
+      : '—'
+  );
+  const fmtLS = $derived(
+    chartDerivatives?.lsRatio != null ? `${chartDerivatives.lsRatio.toFixed(2)}x` : '—'
+  );
+
   function setPeekOpen(v: boolean) {
     updateTabState(s => ({ ...s, peekOpen: v }));
   }
@@ -542,18 +594,27 @@
 
   {:else}
   <!-- ═══ LAYOUT D · PEEK (default) ══════════════════════════════════════ -->
-  <!-- Chart Hero — fills available space, position:relative for overlay -->
   <div class="chart-section">
+    <!-- Compact info bar: symbol + live metrics in one row -->
     <div class="chart-header">
       <span class="symbol">{symbol}</span>
       <span class="timeframe">{timeframe.toUpperCase()}</span>
       <span class="pattern">Tradoor v2</span>
-      <span class="spacer"></span>
+      <span class="hd-sep"></span>
+      <!-- Live price + derivatives -->
+      <span class="hd-price">{fmtPrice}</span>
+      {#if chartDerivatives?.funding != null}
+        <span class="hd-chip" class:neg={chartDerivatives.funding < 0} class:pos={chartDerivatives.funding > 0}>
+          FUND {fmtFunding}
+        </span>
+      {/if}
+      {#if chartDerivatives?.lsRatio != null}
+        <span class="hd-chip">L/S {fmtLS}</span>
+      {/if}
       <div class="ind-toggles">
-        <span class="ind-label-hdr">INDICATORS</span>
         {#each [
           { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
-          { id: 'funding', label: 'Funding', get: () => showFunding, set: (v: boolean) => showFunding = v },
+          { id: 'funding', label: 'Fund',    get: () => showFunding, set: (v: boolean) => showFunding = v },
           { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
         ] as tog}
           <button
@@ -563,18 +624,13 @@
           >{tog.label}</button>
         {/each}
       </div>
+      <span class="spacer"></span>
       <div class="evidence-badge">
-        <span class="ev-label">EVIDENCE</span>
-        <span class="ev-pos">5</span>
-        <span class="ev-sep">/</span>
-        <span class="ev-neg">1</span>
+        <span class="ev-pos">5</span><span class="ev-sep">/</span><span class="ev-neg">1</span>
       </div>
       <div class="conf-inline">
-        <span class="conf-label">CONFIDENCE</span>
-        <div class="conf-bar">
-          <div class="conf-fill" style:width="82%"></div>
-        </div>
-        <span class="conf-val">82</span>
+        <div class="conf-bar"><div class="conf-fill" style:width="82%"></div></div>
+        <span class="conf-val">α82</span>
       </div>
     </div>
     <div class="chart-body">
@@ -722,31 +778,57 @@
               </div>
             </div>
           {:else if drawerTab === 'scan'}
-            <!-- trade_scan.jsx ScanPanel (WideGridView) -->
             <div class="scan-panel">
+              <!-- Scan header: idle / scanning / done -->
               <div class="scan-header">
                 <span class="scan-step">03</span>
-                <span class="scan-label">SIMILAR NOW</span>
-                <span class="scan-title">{scanCandidates.length} candidates</span>
-                <span class="spacer"></span>
-                <span class="scan-meta">matching hypothesis · 300 sym · 14s</span>
-                <span class="scan-sort-label">SORT</span>
-                <span class="scan-sort-btn">similarity ▾</span>
+                {#if scanState === 'scanning'}
+                  <span class="scan-label scanning">SCANNING</span>
+                  <span class="scan-title">{Math.round(scanProgress * 3)} / 300</span>
+                  <div class="scan-prog-track">
+                    <div class="scan-prog-fill" style:width="{scanProgress}%"></div>
+                  </div>
+                  <span class="scan-meta anim">유사 패턴 탐색 중...</span>
+                {:else}
+                  <span class="scan-label">SIMILAR NOW</span>
+                  <span class="scan-title">{scanCandidates.length} candidates</span>
+                  <span class="spacer"></span>
+                  <span class="scan-meta">300 sym · 14s</span>
+                  <span class="scan-sort-btn">sim ▾</span>
+                {/if}
               </div>
-              <div class="scan-grid">
+              <!-- Scan grid: show skeleton while scanning, results when done/idle -->
+              <div class="scan-grid" class:scanning={scanState === 'scanning'}>
+                {#if scanState === 'scanning'}
+                  {#each Array(5) as _}
+                    <div class="scan-card skeleton"></div>
+                  {/each}
+                {:else}
                 {#each scanCandidates as x}
                   {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-                  <button
+                  <div
                     class="scan-card"
                     class:active={scanSelected === x.id}
                     style:--sc={sc}
+                    role="button"
+                    tabindex="0"
                     onclick={() => scanSelected = x.id}
+                    onkeydown={(e) => e.key === 'Enter' && (scanSelected = x.id)}
                   >
                     <div class="sc-top">
                       <span class="sc-sym">{x.symbol.replace('USDT', '')}</span>
                       <span class="sc-tf">{x.tf}</span>
                       <span class="spacer"></span>
                       <span class="sc-alpha" style:color={sc}>α{x.alpha}</span>
+                      <!-- Open in new tab -->
+                      <button
+                        class="sc-open"
+                        title="새 탭에서 열기"
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          shellStore.openTab({ kind: 'trade', title: `${x.symbol.replace('USDT','')} · ${x.tf}` });
+                        }}
+                      >↗</button>
                     </div>
                     <svg viewBox="0 0 180 48" preserveAspectRatio="none" class="sc-minichart">
                       {@html (() => {
@@ -763,8 +845,9 @@
                     </div>
                     <div class="sc-pattern">{x.pattern}</div>
                     <div class="sc-age">{x.age}</div>
-                  </button>
+                  </div>
                 {/each}
+                {/if}
               </div>
               <div class="past-strip">
                 <div class="past-header">
@@ -1106,6 +1189,19 @@
     letter-spacing: 0.06em;
   }
   .spacer { flex: 1; }
+
+  .hd-sep { width: 1px; height: 14px; background: var(--g3); flex-shrink: 0; }
+  .hd-price {
+    font-size: 13px; color: var(--g9); font-weight: 600;
+    letter-spacing: -0.01em; font-family: 'JetBrains Mono', monospace;
+  }
+  .hd-chip {
+    padding: 2px 7px; border-radius: 3px;
+    background: var(--g2); border: 0.5px solid var(--g4);
+    font-size: 8px; color: var(--g6); letter-spacing: 0.06em;
+  }
+  .hd-chip.neg { color: var(--neg); border-color: color-mix(in srgb, var(--neg) 25%, transparent); }
+  .hd-chip.pos { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 25%, transparent); }
 
   .ind-toggles {
     display: flex;
@@ -1497,8 +1593,26 @@
   }
   .scan-step { font-size: 7px; color: #7aa2e0; letter-spacing: 0.22em; font-weight: 600; }
   .scan-label { font-size: 7px; color: #7aa2e0; letter-spacing: 0.14em; }
+  .scan-label.scanning { animation: scan-pulse 1.1s ease-in-out infinite; }
+  @keyframes scan-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   .scan-title { font-size: 13px; color: var(--g9); font-weight: 600; }
   .scan-meta { font-size: 9px; color: var(--g6); letter-spacing: 0.04em; }
+  .scan-meta.anim { animation: scan-pulse 1.6s ease-in-out infinite; }
+  .scan-prog-track {
+    width: 100%; height: 3px; background: var(--g3); border-radius: 2px; overflow: hidden;
+    margin: 4px 0;
+  }
+  .scan-prog-fill {
+    height: 100%; background: #7aa2e0; border-radius: 2px;
+    transition: width 0.18s ease-out;
+  }
+  .sc-open {
+    padding: 2px 7px; border-radius: 3px;
+    background: transparent; border: 0.5px solid var(--g4);
+    color: var(--g6); font-size: 9px; cursor: pointer;
+    flex-shrink: 0; transition: all 0.1s;
+  }
+  .sc-open:hover { background: var(--g2); border-color: var(--g5); color: var(--g8); }
   .scan-sort-label { font-size: 9px; color: var(--g5); letter-spacing: 0.14em; }
   .scan-sort-btn {
     font-size: 10px; color: var(--g8); font-weight: 500;
@@ -1517,6 +1631,11 @@
   }
   .scan-card:hover { background: var(--g2); border-color: var(--g4); }
   .scan-card.active { background: var(--g2); border-color: var(--sc); box-shadow: 0 0 0 0.5px var(--sc); }
+  .scan-card.skeleton {
+    min-height: 100px; background: var(--g2); border-color: var(--g3);
+    animation: skeleton-fade 1.4s ease-in-out infinite;
+  }
+  @keyframes skeleton-fade { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
   .sc-top { display: flex; align-items: center; gap: 4px; }
   .sc-sym { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--g9); font-weight: 600; }
   .sc-tf {
