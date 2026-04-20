@@ -1145,9 +1145,8 @@
 
   function destroyCharts() {
     clearLiqPriceLines();
-    // Detach Layer 1 primitive before removing chart (W-0086)
-    rangeClickUnsubscribe?.();
-    rangeClickUnsubscribe = null;
+    // Detach Layer 1 primitive before removing chart (W-0086 / W-0117)
+    detachDragHandlers();
     detachRangePrimitive();
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = null;
