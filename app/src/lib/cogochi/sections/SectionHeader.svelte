@@ -31,7 +31,7 @@
   .label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
-    color: var(--g5);
+    color: var(--g7);
     letter-spacing: 0.16em;
   }
 

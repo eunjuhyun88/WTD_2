@@ -24,7 +24,7 @@
   const isCogochi = derived(page, $p => $p.url.pathname.startsWith('/cogochi'));
   const showGlobalChrome = derived(page, $p => {
     const path = $p.url.pathname;
-    return !path.startsWith('/cogochi');
+    return !path.startsWith('/terminal');
   });
   const isScrollableSurface = derived(
     page,
@@ -77,7 +77,7 @@
   >
     {@render children()}
   </div>
-  {#if !$isCogochi && showMobileBottomNav}
+  {#if !$isCogochi && !$isTerminal && showMobileBottomNav}
     <MobileBottomNav />
   {/if}
 </div>
@@ -105,7 +105,7 @@
     position: relative;
   }
   #app.cogochi-mode {
-    padding-top: 0;
+    /* keeps global header visible; no override needed */
   }
   #app.terminal-mode {
     --sc-consent-reserved-h: 0px;
