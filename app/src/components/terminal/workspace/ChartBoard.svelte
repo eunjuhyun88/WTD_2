@@ -14,8 +14,10 @@
   import { tfMinutes } from '$lib/chart/mtfAlign';
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
+  import ChartToolbar from './ChartToolbar.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
+  import { terminalState } from '$lib/stores/terminalState';
   import { RangePrimitive } from '../chart/primitives/RangePrimitive';
   // ── Layer 2 overlay (W-0086) ────────────────────────────────────────────────
   import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
@@ -1278,6 +1280,9 @@
   data-context={contextMode}
   data-deriv-overlay={derivativesOnMain ? '1' : '0'}
 >
+
+  <!-- ── ChartToolbar (TF selector + export) ────── -->
+  <ChartToolbar {tf} onTfChange={selectTf} />
 
   <!-- ── Toolbar (TradingView-style: symbol → interval strip → studies) ────── -->
   <div class="chart-header chart-header--tv">

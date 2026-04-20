@@ -114,10 +114,6 @@
           mode={$activeMode}
           tabState={$activeTabState}
           updateTabState={(updater) => shellStore.updateTabState(updater)}
-          splitY={$shellStore.canvasSplitY}
-          splitX={$shellStore.canvasSplitX}
-          onResizeY={(dy) => shellStore.resizeCanvasY(dy)}
-          onResizeX={(dx) => shellStore.resizeCanvasX(dx)}
           symbol="BTCUSDT"
           timeframe="4h"
         />
