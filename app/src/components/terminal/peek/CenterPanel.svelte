@@ -24,6 +24,7 @@
     onCaptureSaved: (id: string) => void;
     onTfChange: (tf: string) => void;
     onDismissLabCta: () => void;
+    alphaMarkers?: Array<{ timestamp: number; phase: string; label: string; color?: string }>;
     analyze?: Snippet;
     scan?: Snippet;
     judge?: Snippet;
@@ -48,6 +49,7 @@
     onCaptureSaved,
     onTfChange,
     onDismissLabCta,
+    alphaMarkers = undefined,
     analyze,
     scan,
     judge,
@@ -67,6 +69,7 @@
       cvdDivergence={cvdDivergence ?? undefined}
       change24hPct={change24hPct}
       contextMode="chart"
+      {alphaMarkers}
       {onCaptureSaved}
       {onTfChange}
     />

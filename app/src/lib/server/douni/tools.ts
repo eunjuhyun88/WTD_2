@@ -292,6 +292,145 @@ Returns: entry candidates (ACCUMULATION phase = act now), all tracked symbol sta
   },
 };
 
+// ─── Alpha Universe Tools (W-0116) ──────────────────────────
+
+export const TOOL_GET_ALPHA_WORLD_MODEL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'get_alpha_world_model',
+    description: `Get the current phase state of all 37 Alpha Universe tokens (Binance Alpha → Futures listing pumps). Returns each token's current pattern phase, bars in phase, and entry proximity.
+
+Use when:
+- User asks "알파 토큰 어때?", "Alpha 뭐가 좋아?", "어떤 알파 토큰이 진입 구간이야?"
+- User wants an overview of all tokens being tracked
+- You need to decide which token to drill into next`,
+    parameters: {
+      type: 'object',
+      properties: {
+        grade: {
+          type: 'string',
+          enum: ['A', 'B', 'all'],
+          description: 'Filter by watchlist grade (A=highest conviction, B=secondary, all=everything)',
+        },
+      },
+    },
+  },
+};
+
+export const TOOL_GET_ALPHA_TOKEN_DETAIL: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'get_alpha_token_detail',
+    description: `Get detailed state for one Alpha Universe token: current phase, evidence blocks, phase transition history, DEX data, and holder concentration.
+
+Use when:
+- User asks about a specific Alpha token ("IN 어때?", "BOOP 지금 어느 단계야?")
+- You need evidence details after get_alpha_world_model identified it as interesting
+- User wants to understand why a token is in its current phase`,
+    parameters: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Token symbol with USDT suffix (e.g. "INUSDT", "BOOPUSDT")',
+        },
+      },
+      required: ['symbol'],
+    },
+  },
+};
+
+export const TOOL_FIND_TOKENS: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'find_tokens',
+    description: `Search Alpha Universe tokens using multi-condition logic. Each condition can be a named block (e.g. "dex_buy_pressure") or a feature comparison (e.g. funding_rate < 0). Returns matching tokens with evidence.
+
+Use when:
+- User asks "DEX 매수 60% 이상이고 펀딩 음수인 거 찾아줘"
+- User wants to filter by specific on-chain / DEX / perp conditions
+- User describes a multi-condition setup in natural language
+
+Translate natural language conditions to block names or feature comparisons.
+Available key block names: dex_buy_pressure, holder_concentration_ok, spot_futures_cvd_divergence, ls_ratio_recovery, funding_extreme_short, oi_spike_with_dump, bollinger_squeeze, higher_lows_sequence`,
+    parameters: {
+      type: 'object',
+      properties: {
+        conditions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              block: {
+                type: 'string',
+                description: 'Block name from the engine registry (e.g. "dex_buy_pressure")',
+              },
+              feature: {
+                type: 'string',
+                description: 'Raw feature column name for direct comparison (e.g. "funding_rate")',
+              },
+              op: {
+                type: 'string',
+                enum: ['gte', 'lte', 'eq', 'neg', 'pos'],
+                description: 'Comparison operator: gte/lte/eq/neg(negative)/pos(positive)',
+              },
+              value: {
+                type: 'number',
+                description: 'Threshold value for gte/lte/eq comparisons',
+              },
+              persist_bars: {
+                type: 'number',
+                description: 'Minimum consecutive bars the condition must hold',
+              },
+            },
+          },
+          description: 'List of conditions (use block OR feature+op, not both)',
+        },
+        min_match: {
+          type: 'number',
+          description: 'Minimum number of conditions that must be satisfied (default: 1)',
+        },
+        universe: {
+          type: 'string',
+          enum: ['alpha', 'all'],
+          description: 'Search universe: alpha (37 watchlist tokens) or all dynamic universe',
+        },
+      },
+      required: ['conditions'],
+    },
+  },
+};
+
+export const TOOL_SET_ALPHA_WATCH: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'set_alpha_watch',
+    description: `Register a watch on an Alpha Universe token — notify when it reaches the target phase with sufficient confidence. Use when:
+- User says "IN이 SQUEEZE_TRIGGER 되면 알려줘"
+- User wants a notification when a specific token enters entry phase
+- User wants to track a specific token's progression`,
+    parameters: {
+      type: 'object',
+      properties: {
+        symbol: {
+          type: 'string',
+          description: 'Token symbol with USDT suffix (e.g. "INUSDT")',
+        },
+        target_phase: {
+          type: 'string',
+          enum: ['ACCUMULATION_ZONE', 'SQUEEZE_TRIGGER'],
+          description: 'Phase to notify on entry',
+        },
+        min_confidence: {
+          type: 'number',
+          description: 'Minimum phase confidence threshold 0.0-1.0 (default: 0.70)',
+        },
+      },
+      required: ['symbol', 'target_phase'],
+    },
+  },
+};
+
 // ─── All Tools ──────────────────────────────────────────────
 
 export const DOUNI_TOOLS: ToolDefinition[] = [
@@ -305,6 +444,13 @@ export const DOUNI_TOOLS: ToolDefinition[] = [
   TOOL_QUERY_MEMORY,
 ];
 
+export const ALPHA_TOOLS: ToolDefinition[] = [
+  TOOL_GET_ALPHA_WORLD_MODEL,
+  TOOL_GET_ALPHA_TOKEN_DETAIL,
+  TOOL_FIND_TOKENS,
+  TOOL_SET_ALPHA_WATCH,
+];
+
 /** Tool names for validation */
 export type DouniToolName =
   | 'analyze_market'
@@ -314,7 +460,11 @@ export type DouniToolName =
   | 'chart_control'
   | 'save_pattern'
   | 'submit_feedback'
-  | 'query_memory';
+  | 'query_memory'
+  | 'get_alpha_world_model'
+  | 'get_alpha_token_detail'
+  | 'find_tokens'
+  | 'set_alpha_watch';
 
 export const VALID_TOOL_NAMES = new Set<string>([
   'analyze_market',
@@ -325,4 +475,8 @@ export const VALID_TOOL_NAMES = new Set<string>([
   'save_pattern',
   'submit_feedback',
   'query_memory',
+  'get_alpha_world_model',
+  'get_alpha_token_detail',
+  'find_tokens',
+  'set_alpha_watch',
 ]);

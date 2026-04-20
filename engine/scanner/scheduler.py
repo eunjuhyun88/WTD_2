@@ -40,6 +40,8 @@ from scanner.jobs.auto_evaluate import auto_evaluate_job
 from scanner.jobs.outcome_resolver import outcome_resolver_job
 from scanner.jobs.pattern_refinement import pattern_refinement_job
 from scanner.jobs.refinement_trigger import refinement_trigger_job
+from scanner.jobs.alpha_observer import scan_alpha_observer_job
+from scanner.jobs.alpha_warm import scan_alpha_warm_job
 from scanner.jobs.pattern_scan import pattern_scan_job
 from scanner.jobs.universe_scan import (
     push_alert,
@@ -270,6 +272,30 @@ def start_scheduler() -> None:
             coalesce=True,
             misfire_grace_time=300,
         )
+
+    # Job: Alpha Universe COLD scanner — every 4 hours
+    _scheduler.add_job(
+        scan_alpha_observer_job,
+        trigger="interval",
+        seconds=14400,
+        id="alpha_observer_cold",
+        name="Alpha Universe COLD observer (4h)",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=600,
+    )
+
+    # Job: Alpha Universe WARM scanner — every 30 minutes (active phases only)
+    _scheduler.add_job(
+        scan_alpha_warm_job,
+        trigger="interval",
+        seconds=1800,
+        id="alpha_observer_warm",
+        name="Alpha Universe WARM observer (30min)",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=120,
+    )
 
     _scheduler.start()
     log.info(

@@ -1214,10 +1214,14 @@ _CORE_FEATURE_COLUMNS: tuple[str, ...] = (
 
 # Registry-driven columns — auto-expands when new sources are added to
 # data_cache/registry.py. No edits needed here.
-from data_cache.registry import all_macro_columns, all_onchain_columns  # noqa: E402
+from data_cache.registry import (  # noqa: E402
+    all_macro_columns, all_onchain_columns,
+    all_dex_columns, all_chain_columns,
+)
 
 _REGISTRY_COLUMNS: tuple[str, ...] = tuple(
     all_macro_columns() + all_onchain_columns()
+    + all_dex_columns() + all_chain_columns()
 )
 
 # Public API: full feature column list used by Context, blocks, and models.
@@ -1230,6 +1234,8 @@ def compute_features_table(
     perp: Optional[pd.DataFrame] = None,
     macro: Optional[pd.DataFrame] = None,
     onchain: Optional[pd.DataFrame] = None,
+    dex: Optional[pd.DataFrame] = None,
+    chain: Optional[pd.DataFrame] = None,
     tf_minutes: int = 60,
 ) -> pd.DataFrame:
     """Vectorized counterpart to compute_snapshot — one row per bar.
@@ -1518,6 +1524,8 @@ def compute_features_table(
     from data_cache.registry import (  # noqa: PLC0415
         MACRO_SOURCES, ONCHAIN_SOURCES,
         macro_defaults, onchain_defaults,
+        DEX_SOURCES, CHAIN_SOURCES,
+        dex_defaults, chain_defaults,
     )
 
     # Level features that carry absolute-price information and must be
@@ -1583,6 +1591,8 @@ def compute_features_table(
 
     macro_arrays = _align_bundle(macro, MACRO_SOURCES, macro_defaults())
     onchain_arrays = _align_bundle(onchain, ONCHAIN_SOURCES, onchain_defaults())
+    dex_arrays = _align_bundle(dex, DEX_SOURCES, dex_defaults())
+    chain_arrays = _align_bundle(chain, CHAIN_SOURCES, chain_defaults())
 
     # --- Meta — regime ---
     close_slope_50 = _slope_pct_vec(close, 50)
@@ -1716,6 +1726,8 @@ def compute_features_table(
             # Registry-driven macro + on-chain (auto-expands with new sources)
             **macro_arrays,
             **onchain_arrays,
+            **dex_arrays,
+            **chain_arrays,
             "price": close.to_numpy(),
             "symbol": symbol,
         },

@@ -87,6 +87,14 @@ from building_blocks.disqualifiers.extreme_volatility import extreme_volatility
 from building_blocks.disqualifiers.extended_from_ma import extended_from_ma
 from building_blocks.disqualifiers.cvd_spot_price_divergence_bear import cvd_spot_price_divergence_bear
 from building_blocks.disqualifiers.coinbase_premium_weak import coinbase_premium_weak
+# W-0115 Alpha pipeline blocks
+from building_blocks.confirmations.spot_futures_cvd_divergence import spot_futures_cvd_divergence
+from building_blocks.confirmations.dex_buy_pressure import dex_buy_pressure
+from building_blocks.confirmations.holder_concentration_ok import holder_concentration_ok
+# W-0116 Phase 1.5 quick-win blocks
+from building_blocks.confirmations.vwap_break import vwap_break
+from building_blocks.confirmations.relative_strength_btc import relative_strength_btc
+from building_blocks.confirmations.oi_acceleration import oi_acceleration
 
 log = logging.getLogger("engine.blocks")
 
@@ -167,6 +175,14 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("cot_large_spec_short",    cot_large_spec_short),
     ("cot_commercial_net_long", cot_commercial_net_long),
     ("cot_positioning_flip",    cot_positioning_flip),
+    # W-0115 Alpha pipeline blocks
+    ("spot_futures_cvd_divergence",     spot_futures_cvd_divergence),
+    ("dex_buy_pressure",                dex_buy_pressure),
+    ("holder_concentration_ok",         holder_concentration_ok),
+    # W-0116 Phase 1.5 quick-win blocks (ALPHA TERMINAL v4 L16-L19)
+    ("vwap_break",                      vwap_break),
+    ("relative_strength_btc",           relative_strength_btc),
+    ("oi_acceleration",                 oi_acceleration),
     # disqualifiers
     ("volume_below_average",            volume_below_average),
     ("extreme_volatility",              extreme_volatility),

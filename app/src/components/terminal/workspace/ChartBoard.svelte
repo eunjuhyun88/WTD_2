@@ -60,6 +60,13 @@
     onTfChange?:    (tf: string) => void;
     /** full = slim book/liq/quant rails; chart = candle + indicator panes only (context in right rail / Flow tab). */
     contextMode?: 'full' | 'chart';
+    /** Alpha phase markers — rendered as chart markers on the candle series. */
+    alphaMarkers?: Array<{
+      timestamp: number;  // unix seconds
+      phase: string;
+      label: string;
+      color?: string;
+    }>;
   }
 
   let {
@@ -76,6 +83,7 @@
     onCaptureSaved,
     onTfChange,
     contextMode = 'full',
+    alphaMarkers = undefined,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -805,6 +813,18 @@
           shape: 'arrowDown',
           text: 'CVD',
         });
+      }
+      // Alpha phase markers (W-0116): phase transitions overlaid on candles
+      if (alphaMarkers?.length) {
+        for (const am of alphaMarkers) {
+          markers.push({
+            time: am.timestamp as UTCTimestamp,
+            position: 'belowBar',
+            color: am.color ?? '#a78bfa',
+            shape: 'circle',
+            text: am.label ?? am.phase,
+          });
+        }
       }
       // Runtime API (v5 typings omit setMarkers on some ISeriesApi variants).
       (candleSeriesRef as ISeriesApi<'Candlestick'> & { setMarkers: (m: SeriesMarker<UTCTimestamp>[]) => void }).setMarkers(markers);
