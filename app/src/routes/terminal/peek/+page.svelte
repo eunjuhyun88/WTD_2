@@ -136,7 +136,6 @@
   }
 
   // ── Auto-refresh on pair change ──────────────────────────────────────────
-  let pairWatcher = $state(0);
   $effect(() => {
     const sym = activeSymbol;
     const tf = activeTf;
@@ -146,7 +145,6 @@
         loadSimilar(sym, tf);
       }
     });
-    pairWatcher++;
   });
 
   // ── Mount + periodic refresh ─────────────────────────────────────────────
