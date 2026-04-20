@@ -1,5 +1,7 @@
 <script lang="ts">
   import PhaseChart from '../PhaseChart.svelte';
+  import CgChart from '../../../components/cogochi/CgChart.svelte';
+  import { fetchTerminalBundle } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
 
@@ -18,6 +20,29 @@
   let showOI = $state(true);
   let showFunding = $state(true);
   let showCVD = $state(true);
+
+  // ── Live chart data (CgChart) ─────────────────────────────────────────────
+  let chartKlines = $state<Array<{ t: number; o: number; h: number; l: number; c: number; v: number }>>([]);
+  let chartCurrentPrice = $state(0);
+  let chartSnapshot = $state<any>(null);
+  let chartDerivatives = $state<any>(null);
+  let chartLoading = $state(false);
+
+  $effect(() => {
+    const sym = symbol;
+    const tf = timeframe;
+    chartLoading = true;
+    fetchTerminalBundle({ symbol: sym, tf })
+      .then(result => {
+        const raw = result.chartPayload?.klines ?? [];
+        chartKlines = raw.map((k: any) => ({ t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume }));
+        chartCurrentPrice = raw.length ? raw[raw.length - 1].close : 0;
+        chartSnapshot = result.snapshot ?? null;
+        chartDerivatives = result.derivatives ?? null;
+        chartLoading = false;
+      })
+      .catch(() => { chartLoading = false; });
+  });
 
   const peekOpen = $derived(tabState.peekOpen);
   const drawerTab = $derived(tabState.drawerTab);
@@ -143,6 +168,7 @@
       <span class="timeframe">{timeframe.toUpperCase()}</span>
       <span class="pattern">Tradoor v2</span>
       <span class="spacer"></span>
+      {#if chartKlines.length === 0}
       <div class="ind-toggles">
         <span class="ind-label-hdr">INDICATORS</span>
         {#each [
@@ -157,6 +183,7 @@
           >{tog.label}</button>
         {/each}
       </div>
+      {/if}
       <div class="evidence-badge">
         <span class="ev-label">EVIDENCE</span>
         <span class="ev-pos">5</span>
@@ -173,16 +200,28 @@
     </div>
     <div class="chart-body">
       <div class="chart-live">
-        <PhaseChart
-          height="100%"
-          highlightPhase={4}
-          showEntry={true}
-          showRange={tabState.rangeSelection}
-          showIndicators={true}
-          {showOI}
-          {showFunding}
-          {showCVD}
-        />
+        {#if chartKlines.length > 0}
+          <CgChart
+            data={chartKlines}
+            currentPrice={chartCurrentPrice}
+            symbol={symbol}
+            timeframe={timeframe}
+            snapshot={chartSnapshot}
+            derivatives={chartDerivatives}
+            tradePlan={{ entry: 83700, stopLoss: 82800, tp1: 87500 }}
+          />
+        {:else}
+          <PhaseChart
+            height="100%"
+            highlightPhase={4}
+            showEntry={true}
+            showRange={tabState.rangeSelection}
+            showIndicators={true}
+            {showOI}
+            {showFunding}
+            {showCVD}
+          />
+        {/if}
       </div>
     </div>
 
