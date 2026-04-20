@@ -135,7 +135,8 @@ class TestRegressionGuards:
         # + RADAR_GOLDEN_ENTRY + COMPRESSION_BREAKOUT_REVERSAL (W-0108)
         # + INSTITUTIONAL_DISTRIBUTION (W-0109)
         # + FUNDING_FLIP_REVERSAL_SHORT (W-0106) = 13
-        assert len(PATTERN_LIBRARY) == 13
+        # + OI_PRESURGE_LONG (W-0114 딸깍 전략) = 14
+        assert len(PATTERN_LIBRARY) == 14
 
     def test_whale_accumulation_in_promoted_patterns(self):
         from research.live_monitor import PROMOTED_PATTERNS
