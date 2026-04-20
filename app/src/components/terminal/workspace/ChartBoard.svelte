@@ -15,6 +15,7 @@
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
+  import IndicatorPaneStack from './IndicatorPaneStack.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
@@ -1433,21 +1434,27 @@
       </div>
     </div>
     <div class="pane-main"  bind:this={mainEl}></div>
-    <div class="pane-label">VOL</div>
-    <div class="pane-vol"   bind:this={volEl}></div>
-    {#if showMACD}
-      <div class="pane-label">MACD</div>
-      <div class="pane-sub"  bind:this={macdEl}></div>
-    {:else}
-      <div class="pane-label">RSI 14</div>
-      <div class="pane-sub"  bind:this={rsiEl}></div>
-    {/if}
-    <div class="pane-label pane-label-split">
-      <span>OI Δ%</span>
-      <span class="pane-hint">hist</span>
-      <span class="pane-hint pane-hint-gold">Fund %</span>
-    </div>
-    <div class="pane-oi"    bind:this={oiEl}></div>
+
+    <!-- Indicator panes (Vol, MACD/RSI, OI, CVD) ────────────────────────────── -->
+    <IndicatorPaneStack {showMACD} {showCVD} onHidePane={hidePane}>
+      <div class="pane-label">VOL</div>
+      <div class="pane-vol"   bind:this={volEl}></div>
+
+      {#if showMACD}
+        <div class="pane-label">MACD</div>
+        <div class="pane-sub"  bind:this={macdEl}></div>
+      {:else}
+        <div class="pane-label">RSI 14</div>
+        <div class="pane-sub"  bind:this={rsiEl}></div>
+      {/if}
+
+      <div class="pane-label pane-label-split">
+        <span>OI Δ%</span>
+        <span class="pane-hint">hist</span>
+        <span class="pane-hint pane-hint-gold">Fund %</span>
+      </div>
+      <div class="pane-oi"    bind:this={oiEl}></div>
+
       {#if showCVD}
         <div class="pane-label pane-label-split">
           <span>CVD</span>
@@ -1462,6 +1469,7 @@
         </div>
         <div class="pane-cvd" bind:this={cvdEl}></div>
       {/if}
+    </IndicatorPaneStack>
     </div>
     {#if contextMode === 'full'}
     <details class="tv-context-strip" bind:open={contextStripOpen}>
