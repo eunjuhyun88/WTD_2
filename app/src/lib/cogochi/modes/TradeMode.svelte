@@ -225,6 +225,31 @@
   let judgeVerdict = $state<'agree' | 'disagree' | null>(null);
   let judgeOutcome = $state<'win' | 'loss' | 'flat' | null>(null);
   let judgeRejudged = $state<'right' | 'wrong' | null>(null);
+  let judgeSubmitting = $state(false);
+  let judgeSubmitResult = $state<{ saved: boolean; count: number; training_triggered: boolean } | null>(null);
+
+  // Auto-save outcome to flywheel when user selects WIN/LOSS/FLAT
+  $effect(() => {
+    const outcome = judgeOutcome;
+    if (!outcome) return;
+    const snap = analyzeData?.snapshot;
+    if (!snap) return;
+    judgeSubmitting = true;
+    fetch('/api/cogochi/outcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        snapshot: { ...snap, user_verdict: judgeVerdict },
+        outcome: outcome === 'win' ? 1 : outcome === 'loss' ? 0 : -1,
+        symbol,
+        timeframe,
+      }),
+    })
+      .then(r => r.json())
+      .then(d => { judgeSubmitResult = d; })
+      .catch(() => {})
+      .finally(() => { judgeSubmitting = false; });
+  });
 
   // Keyboard shortcuts for judge verdict (Y/N)
   function handleJudgeKeydown(e: KeyboardEvent) {
@@ -504,6 +529,15 @@
               </button>
             {/each}
           </div>
+          {#if judgeOutcome}
+            <div class="outcome-save-hint">
+              {#if judgeSubmitting}
+                <span>저장 중…</span>
+              {:else if judgeSubmitResult?.saved}
+                <span style:color="var(--pos)">{judgeSubmitResult.training_triggered ? '학습 시작됨' : `저장됨 · ${judgeSubmitResult.count}건`}</span>
+              {/if}
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
@@ -1418,12 +1452,18 @@
                     <div class="result-row">
                       <span class="result-label">RESULT</span>
                       <span class="result-val" style:color={judgeOutcome === 'win' ? 'var(--pos)' : judgeOutcome === 'loss' ? 'var(--neg)' : 'var(--g7)'}>
-                        {judgeOutcome === 'win' ? '+3.4%' : judgeOutcome === 'loss' ? '−1.1%' : '+0.1%'}
+                        {judgeOutcome.toUpperCase()}
                       </span>
                       <span class="spacer"></span>
-                      <span class="result-hint">
-                        {judgeOutcome === 'win' ? 'target · 2h 14m' : judgeOutcome === 'loss' ? 'stop · 42m' : 'flat · 6h'}
-                      </span>
+                      {#if judgeSubmitting}
+                        <span class="result-hint">저장 중…</span>
+                      {:else if judgeSubmitResult?.saved}
+                        <span class="result-hint" style:color="var(--pos)">
+                          저장됨 {judgeSubmitResult.training_triggered ? '· 학습 시작' : `· ${judgeSubmitResult.count}건`}
+                        </span>
+                      {:else}
+                        <span class="result-hint">flywheel 연결 중</span>
+                      {/if}
                     </div>
                     <div class="rejudge-label">REJUDGE</div>
                     <div class="rejudge-btns">
@@ -2186,6 +2226,7 @@
 
   /* After col */
   .outcome-row { display: flex; gap: 3px; }
+  .outcome-save-hint { margin-top: 4px; font-size: 10px; color: var(--g6); text-align: right; }
   .outcome-btn {
     flex: 1; padding: 6px 4px; font-family: 'Space Grotesk', sans-serif;
     font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
