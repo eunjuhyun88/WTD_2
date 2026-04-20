@@ -28,6 +28,9 @@ from building_blocks.confirmations.range_break_retest import range_break_retest
 from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
 from building_blocks.confirmations.volume_dryup import volume_dryup
+from building_blocks.confirmations.spot_futures_cvd_divergence import spot_futures_cvd_divergence
+from building_blocks.confirmations.dex_buy_pressure import dex_buy_pressure
+from building_blocks.confirmations.holder_concentration_ok import holder_concentration_ok
 
 __all__ = [
     "absorption_signal",
@@ -54,4 +57,7 @@ __all__ = [
     "reclaim_after_dump",
     "sideways_compression",
     "volume_dryup",
+    "spot_futures_cvd_divergence",
+    "dex_buy_pressure",
+    "holder_concentration_ok",
 ]

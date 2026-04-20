@@ -18,7 +18,7 @@ import pandas as pd
 
 from data_cache.fetch_binance import fetch_klines_max
 from data_cache.fetch_binance_perp import fetch_futures_klines_max, fetch_perp_max
-from data_cache.registry import MACRO_SOURCES, ONCHAIN_SOURCES
+from data_cache.registry import MACRO_SOURCES, ONCHAIN_SOURCES, DEX_SOURCES, CHAIN_SOURCES
 from data_cache.resample import (  # noqa: F401  (re-exported)
     SUPPORTED_TF_STRINGS,
     resample_klines,
@@ -251,5 +251,115 @@ def load_onchain_bundle(
         merged = merged.join(df, how="outer")
 
     merged = merged.sort_index().ffill(limit=3)
+    merged.to_csv(path)
+    return merged
+
+
+def load_dex_bundle(
+    symbol: str,
+    *,
+    days: int = 30,
+    offline: bool = False,
+    refresh: bool = False,
+) -> pd.DataFrame | None:
+    """Load DEX market data bundle from all DEX_SOURCES in the registry.
+
+    Snapshot-based: DexScreener provides current-state data only.
+    Each call appends today's snapshot to the per-symbol CSV, building
+    a rolling history over time (same accumulation pattern as social fetchers).
+
+    To add a new DEX source: edit data_cache/registry.py DEX_SOURCES only.
+
+    Returns:
+        Daily DataFrame with dex_* columns, or None if all sources fail.
+    """
+    path = CACHE_DIR / f"{symbol}_dex_bundle.csv"
+
+    if path.exists() and not refresh:
+        return _read_csv_tz(path)
+    if offline:
+        return None
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    frames: list[pd.DataFrame] = []
+
+    for src in DEX_SOURCES:
+        src_path = _src_cache_path(src.cache_file, symbol=symbol)
+        if src_path.exists() and not refresh:
+            print(f"  [dex] {src.name} ({symbol}): loading from cache")
+            frames.append(_read_csv_tz(src_path))
+            continue
+        print(f"  [dex] {src.name} ({symbol}): fetching...")
+        try:
+            df = src.fetcher(symbol, days)
+            if df is not None and not df.empty:
+                df.to_csv(src_path)
+                frames.append(df)
+            else:
+                print(f"  [dex] {src.name}: returned empty — using defaults")
+        except Exception as e:
+            print(f"  [dex] {src.name}: failed ({e}) — using defaults")
+
+    if not frames:
+        return None
+
+    merged = frames[0]
+    for df in frames[1:]:
+        merged = merged.join(df, how="outer")
+
+    merged = merged.sort_index().ffill(limit=2)
+    merged.to_csv(path)
+    return merged
+
+
+def load_chain_bundle(
+    symbol: str,
+    *,
+    days: int = 30,
+    offline: bool = False,
+    refresh: bool = False,
+) -> pd.DataFrame | None:
+    """Load on-chain holder/wallet data from all CHAIN_SOURCES in the registry.
+
+    Requires BSCSCAN_API_KEY or ETHERSCAN_API_KEY. Gracefully returns None
+    if no key is configured (CHAIN_SOURCES skip silently).
+
+    To add a new chain source: edit data_cache/registry.py CHAIN_SOURCES only.
+    """
+    path = CACHE_DIR / f"{symbol}_chain_bundle.csv"
+
+    if path.exists() and not refresh:
+        return _read_csv_tz(path)
+    if offline:
+        return None
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    frames: list[pd.DataFrame] = []
+
+    for src in CHAIN_SOURCES:
+        src_path = _src_cache_path(src.cache_file, symbol=symbol)
+        if src_path.exists() and not refresh:
+            print(f"  [chain] {src.name} ({symbol}): loading from cache")
+            frames.append(_read_csv_tz(src_path))
+            continue
+        print(f"  [chain] {src.name} ({symbol}): fetching...")
+        try:
+            df = src.fetcher(symbol, days)
+            if df is not None and not df.empty:
+                df.to_csv(src_path)
+                frames.append(df)
+            else:
+                print(f"  [chain] {src.name}: no data (no API key or unknown address)")
+        except Exception as e:
+            print(f"  [chain] {src.name}: failed ({e}) — skipping")
+
+    if not frames:
+        return None
+
+    merged = frames[0]
+    for df in frames[1:]:
+        merged = merged.join(df, how="outer")
+
+    merged = merged.sort_index().ffill(limit=7)
     merged.to_csv(path)
     return merged
