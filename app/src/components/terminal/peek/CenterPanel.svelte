@@ -12,8 +12,8 @@
     initialData?: ChartSeriesPayload | null;
     depthSnapshot?: any;
     liqSnapshot?: any;
-    quantRegime?: string | null;
-    cvdDivergence?: string | null;
+    quantRegime?: any;
+    cvdDivergence?: any;
     change24hPct?: number | null;
     ohlcvBars: any[];
     showLabCta: boolean;
@@ -63,8 +63,8 @@
       {initialData}
       depthSnapshot={depthSnapshot}
       liqSnapshot={liqSnapshot}
-      quantRegime={quantRegime}
-      cvdDivergence={cvdDivergence}
+      quantRegime={quantRegime ?? undefined}
+      cvdDivergence={cvdDivergence ?? undefined}
       change24hPct={change24hPct}
       contextMode="chart"
       {onCaptureSaved}

@@ -15,9 +15,7 @@
   let q = $state('');
 
   $effect(() => {
-    if (paletteOpen) {
-      setTimeout(() => inputRef?.focus(), 10);
-    } else {
+    if (!paletteOpen) {
       q = '';
     }
   });
@@ -86,11 +84,11 @@
   }
 
   .logo {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
     color: var(--g9);
-    font-weight: 600;
-    letter-spacing: 0.14em;
+    font-weight: 700;
+    letter-spacing: 0.1em;
     margin-right: 2px;
   }
 
@@ -104,9 +102,10 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 3px 7px;
+    padding: 3px 9px;
     background: var(--g2);
-    border-radius: 3px;
+    border: 0.5px solid var(--g3);
+    border-radius: 999px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
     color: var(--g7);
@@ -129,10 +128,10 @@
     align-items: center;
     gap: 6px;
     height: 22px;
-    padding: 0 8px;
+    padding: 0 10px;
     background: var(--g2);
-    border: 0.5px solid var(--g4);
-    border-radius: 3px;
+    border: 0.5px solid var(--g3);
+    border-radius: 999px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     color: var(--g6);
@@ -141,7 +140,7 @@
   }
 
   .palette-btn:hover {
-    background: var(--g3);
+    border-color: var(--g4);
     color: var(--g7);
   }
 
@@ -185,11 +184,11 @@
     align-items: center;
     gap: 5px;
     height: 22px;
-    padding: 0 8px;
+    padding: 0 10px;
     background: transparent;
     color: var(--g6);
-    border: 0.5px solid var(--g4);
-    border-radius: 3px;
+    border: 0.5px solid var(--g3);
+    border-radius: 999px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
     letter-spacing: 0.1em;
@@ -197,10 +196,12 @@
     transition: all 0.15s;
   }
 
+  .ai-btn:hover { border-color: var(--g4); color: var(--g7); }
+
   .ai-btn.active {
-    background: var(--pos-dd);
-    color: var(--pos);
-    border-color: var(--pos-d);
+    background: var(--amb-dd);
+    color: var(--amb);
+    border-color: var(--amb-d);
   }
 
   .dot {
