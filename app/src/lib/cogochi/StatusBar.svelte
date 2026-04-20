@@ -10,7 +10,7 @@
   const { mode, verdicts, modelDelta, onSwitchMode, sidebarVisible }: Props = $props();
 
   const modes = [
-    { id: 'trade', label: 'TRADE', color: 'var(--pos)' },
+    { id: 'trade', label: 'TRADE', color: 'var(--brand)' },
     { id: 'train', label: 'TRAIN', color: 'var(--amb)' },
     { id: 'flywheel', label: 'FLYWHEEL', color: '#7aa2e0' },
   ];

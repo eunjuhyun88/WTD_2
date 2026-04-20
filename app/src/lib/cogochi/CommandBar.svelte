@@ -84,7 +84,7 @@
   .logo {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    color: var(--g9);
+    color: var(--brand);
     font-weight: 600;
     letter-spacing: 0.14em;
     margin-right: 2px;

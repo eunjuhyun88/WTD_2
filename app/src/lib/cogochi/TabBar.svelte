@@ -24,7 +24,7 @@
   }
 
   function tabColor(kind: string): string {
-    if (kind === 'trade') return 'var(--pos)';
+    if (kind === 'trade') return 'var(--brand)';
     if (kind === 'train') return 'var(--amb)';
     if (kind === 'flywheel') return '#7aa2e0';
     return 'var(--g6)';

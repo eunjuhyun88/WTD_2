@@ -12,18 +12,22 @@
 <AppShell />
 
 <style>
-  /* ── Core Loop terminal palette — dark blue-gray ── */
+  /* ── Core Loop terminal palette — warm neutral dark ── */
   :global(:root) {
-    --g0: #050608;
-    --g1: #0a0c10;
-    --g2: #10131a;
-    --g3: #181c24;
-    --g4: #242932;
-    --g5: #3a4150;
-    --g6: #6a7280;
-    --g7: #9ba2ac;
-    --g8: #c8ccd2;
-    --g9: #e8eaec;
+    --g0: #060504;
+    --g1: #0c0a09;
+    --g2: #131110;
+    --g3: #1c1918;
+    --g4: #272320;
+    --g5: #3d3830;
+    --g6: #706a62;
+    --g7: #a8a09a;
+    --g8: #cec9c4;
+    --g9: #eceae8;
+
+    --brand:    #ff7f85;
+    --brand-d:  #3a1618;
+    --brand-dd: #120507;
 
     --pos:    #34c470;
     --pos-d:  #0d3e22;
