@@ -3,10 +3,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
+import { terminalReadLimiter } from '$lib/server/rateLimit';
 
 const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ getClientAddress }) => {
+  if (!terminalReadLimiter.check(getClientAddress())) {
+    return json({ error: 'Too many requests' }, { status: 429 });
+  }
   try {
     const res = await fetch(`${ENGINE_URL}/patterns/states`);
     if (!res.ok) return json({ patterns: {}, ok: false });
