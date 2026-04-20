@@ -15,9 +15,7 @@
   let q = $state('');
 
   $effect(() => {
-    if (!paletteOpen) {
-      q = '';
-    }
+    if (!paletteOpen) q = '';
   });
 </script>
 
@@ -79,7 +77,7 @@
     gap: 6px;
     padding: 0 10px;
     background: var(--g1);
-    border-bottom: 0.5px solid var(--g4);
+    border-bottom: 1px solid var(--g5);
     flex-shrink: 0;
   }
 
@@ -115,7 +113,7 @@
   }
 
   .dim {
-    color: var(--g6);
+    color: var(--g5);
   }
 
   .text {
@@ -127,7 +125,7 @@
     align-items: center;
     gap: 6px;
     height: 22px;
-    padding: 0 10px;
+    padding: 0 8px;
     background: var(--g2);
     border: 0.5px solid var(--g4);
     border-radius: 3px;
@@ -139,7 +137,7 @@
   }
 
   .palette-btn:hover {
-    border-color: var(--g5);
+    background: var(--g3);
     color: var(--g7);
   }
 
@@ -183,7 +181,7 @@
     align-items: center;
     gap: 5px;
     height: 22px;
-    padding: 0 10px;
+    padding: 0 8px;
     background: transparent;
     color: var(--g6);
     border: 0.5px solid var(--g4);
@@ -195,12 +193,10 @@
     transition: all 0.15s;
   }
 
-  .ai-btn:hover { border-color: var(--g4); color: var(--g7); }
-
   .ai-btn.active {
-    background: var(--amb-dd);
-    color: var(--amb);
-    border-color: var(--amb-d);
+    background: var(--pos-dd);
+    color: var(--pos);
+    border-color: var(--pos-d);
   }
 
   .dot {

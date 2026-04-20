@@ -158,11 +158,14 @@
 
 <style>
   .app-shell {
-    height: 100%;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     background: var(--g0);
     overflow: hidden;
+    font-family: 'Geist', 'Inter', system-ui, sans-serif;
+    font-size: 11px;
+    color: var(--g9);
   }
 
   .main-row {
