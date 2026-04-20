@@ -34,7 +34,6 @@
 <div class="tab-bar">
   <button
     class="sidebar-toggle"
-    class:active={sidebarVisible}
     title="Toggle sidebar (⌘B)"
     onclick={toggleSidebar}
   >
@@ -75,7 +74,7 @@
     display: flex;
     align-items: stretch;
     background: var(--g0);
-    border-bottom: 0.5px solid var(--g4);
+    border-bottom: 1px solid var(--g5);
     flex-shrink: 0;
   }
 
@@ -85,15 +84,11 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border-right: 0.5px solid var(--g4);
+    border-right: 1px solid var(--g5);
     cursor: pointer;
     font-size: 13px;
     color: var(--g6);
     transition: color 0.15s;
-  }
-
-  .sidebar-toggle.active {
-    color: var(--g8);
   }
 
   .sidebar-toggle:hover {
@@ -112,7 +107,7 @@
     gap: 8px;
     padding: 0 10px 0 12px;
     background: transparent;
-    border-right: 0.5px solid var(--g4);
+    border-right: 1px solid var(--g5);
     border-top: 1.5px solid transparent;
     cursor: pointer;
     min-width: 140px;
@@ -133,7 +128,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
-    color: var(--g6);
+    color: var(--g7);
   }
 
   .tab.active .tab-text {
@@ -141,7 +136,7 @@
   }
 
   .close-btn {
-    color: var(--g6);
+    color: var(--g5);
     font-size: 12px;
     line-height: 1;
     padding: 0 2px;
@@ -157,7 +152,7 @@
 
   .new-tab-btn {
     width: 28px;
-    color: var(--g6);
+    color: var(--g5);
     font-size: 14px;
     cursor: pointer;
     background: transparent;

@@ -24,24 +24,17 @@
 
   interface Props {
     messages?: Message[];
-    onSend?: (text: string, newMessages: Message[]) => void;
+    onSend?: (text: string) => void;
     onApplySetup?: (setup: SetupResult) => void;
     onClose?: () => void;
   }
 
   let {
-    messages = [],
+    messages = $bindable([]),
     onSend,
     onApplySetup,
     onClose,
   }: Props = $props();
-
-  // Local copy — keeps AI replies even while store updates
-  let localMessages = $state<Message[]>(messages);
-  $effect(() => {
-    // Sync only if parent pushed a message we don't have (avoids overwrite)
-    if (messages.length > localMessages.length) localMessages = messages;
-  });
 
   let inputValue = $state('');
   let scrollEl: HTMLDivElement | undefined = $state();
@@ -58,13 +51,12 @@
     if (!t) return;
     const setup = convertPromptToSetup(t);
     const aiText = generateAIReply(t, setup);
-    const newMessages: Message[] = [
-      ...localMessages,
+    messages = [
+      ...messages,
       { role: 'user', text: t },
       { role: 'assistant', text: aiText, setup },
     ];
-    localMessages = newMessages;
-    onSend?.(t, newMessages);
+    onSend?.(t);
     inputValue = '';
   }
 
@@ -111,7 +103,6 @@
   }
 
   $effect(() => {
-    localMessages; // track
     if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
   });
 
@@ -134,7 +125,7 @@
 
   <!-- Messages / welcome -->
   <div class="messages" bind:this={scrollEl}>
-    {#if localMessages.length === 0}
+    {#if messages.length === 0}
       <!-- Welcome -->
       <div class="welcome">
         <div class="wl-section">AI · HOW TO</div>
@@ -154,7 +145,7 @@
         </div>
       </div>
     {:else}
-      {#each localMessages as msg}
+      {#each messages as msg}
         {#if msg.role === 'user'}
           <div class="msg-user">
             <div class="msg-from">YOU</div>
@@ -229,7 +220,7 @@
     width: 300px;
     flex-shrink: 0;
     background: var(--g1);
-    border-left: 0.5px solid var(--g4);
+    border-left: 1px solid var(--g5);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -242,7 +233,7 @@
     align-items: center;
     gap: 7px;
     padding: 0 12px;
-    border-bottom: 0.5px solid var(--g4);
+    border-bottom: 1px solid var(--g5);
     background: var(--g0);
     flex-shrink: 0;
   }
@@ -319,7 +310,7 @@
     text-align: left;
     padding: 6px 9px;
     background: var(--g2);
-    border: 0.5px solid var(--g3);
+    border: 1px solid var(--g5);
     border-radius: 3px;
     font-size: 10px;
     color: var(--g7);
@@ -350,7 +341,7 @@
     line-height: 1.55;
     padding: 6px 9px;
     border-radius: 4px;
-    border: 0.5px solid var(--g3);
+    border: 1px solid var(--g5);
     font-family: 'Geist', sans-serif;
   }
   .msg-bubble.user { background: var(--g2); }
@@ -408,7 +399,7 @@
 
   /* Input */
   .input-area {
-    border-top: 0.5px solid var(--g3);
+    border-top: 1px solid var(--g5);
     padding: 9px;
     background: var(--g0);
     flex-shrink: 0;
@@ -449,7 +440,7 @@
     border-radius: 3px;
     background: var(--g3);
     color: var(--g5);
-    border: 0.5px solid var(--g3);
+    border: 1px solid var(--g5);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     font-weight: 600;
@@ -474,7 +465,7 @@
     padding: 2px 6px;
     background: var(--g2);
     color: var(--g6);
-    border: 0.5px solid var(--g3);
+    border: 1px solid var(--g5);
     border-radius: 10px;
     cursor: pointer;
     transition: background 0.1s;

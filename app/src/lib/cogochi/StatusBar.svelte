@@ -63,11 +63,11 @@
 
   <span class="spacer" />
 
-  <span class="hint-item">⌘B <span class="dot-div">·</span> sidebar</span>
+  <span class="status-item">⌘B <span class="divider">·</span> sidebar</span>
   <span class="divider">│</span>
-  <span class="hint-item">⌘K <span class="dot-div">·</span> prompt</span>
+  <span class="status-item">⌘K <span class="divider">·</span> prompt</span>
   <span class="divider">│</span>
-  <span class="hint-item">⌘T <span class="dot-div">·</span> new tab</span>
+  <span class="status-item">⌘T <span class="divider">·</span> new tab</span>
   <span class="divider">│</span>
   <span class="time">{currentTime}</span>
 </div>
@@ -81,10 +81,10 @@
     gap: 12px;
     padding: 0 10px;
     background: var(--g1);
-    border-top: 0.5px solid var(--g4);
+    border-top: 1px solid var(--g5);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: var(--g6);
+    color: var(--g7);
     letter-spacing: 0.04em;
   }
 
@@ -92,7 +92,6 @@
     display: flex;
     gap: 1px;
     background: var(--g2);
-    border: 0.5px solid var(--g4);
     border-radius: 3px;
     padding: 1px;
   }
@@ -101,9 +100,8 @@
     padding: 2px 10px;
     border-radius: 2px;
     font-size: 9px;
-    font-family: 'JetBrains Mono', monospace;
     background: transparent;
-    color: var(--g6);
+    color: var(--g7);
     letter-spacing: 0.1em;
     font-weight: 400;
     cursor: pointer;
@@ -131,15 +129,6 @@
 
   .status-item strong {
     color: var(--g8);
-  }
-
-  .hint-item {
-    color: var(--g6);
-  }
-
-  .dot-div {
-    color: var(--g4);
-    margin: 0 3px;
   }
 
   .dot {
