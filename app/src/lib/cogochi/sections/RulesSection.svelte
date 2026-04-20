@@ -66,7 +66,7 @@
   }
 
   .dot.live {
-    background: var(--pos);
+    background: var(--brand);
   }
 
   .title {
@@ -99,7 +99,7 @@
   }
 
   .fill.live {
-    background: var(--pos);
+    background: var(--amb);
   }
 
   .weight {

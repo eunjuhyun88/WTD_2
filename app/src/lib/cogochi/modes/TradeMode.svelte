@@ -1,7 +1,8 @@
 <script lang="ts">
-  import PhaseChart from '../PhaseChart.svelte';
-  import CgChart from '../../../components/cogochi/CgChart.svelte';
+  import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
   import { fetchTerminalBundle } from '$lib/api/terminalBackend';
+  import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
+  import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
 
@@ -21,11 +22,9 @@
   let showFunding = $state(true);
   let showCVD = $state(true);
 
-  // ── Live chart data (CgChart) ─────────────────────────────────────────────
-  let chartKlines = $state<Array<{ t: number; o: number; h: number; l: number; c: number; v: number }>>([]);
-  let chartCurrentPrice = $state(0);
-  let chartSnapshot = $state<any>(null);
-  let chartDerivatives = $state<any>(null);
+  // ── Live chart data ────────────────────────────────────────────────────────
+  let chartPayload = $state<ChartSeriesPayload | null>(null);
+  let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
 
   $effect(() => {
@@ -34,15 +33,18 @@
     chartLoading = true;
     fetchTerminalBundle({ symbol: sym, tf })
       .then(result => {
-        const raw = result.chartPayload?.klines ?? [];
-        chartKlines = raw.map((k: any) => ({ t: k.time, o: k.open, h: k.high, l: k.low, c: k.close, v: k.volume }));
-        chartCurrentPrice = raw.length ? raw[raw.length - 1].close : 0;
-        chartSnapshot = result.snapshot ?? null;
-        chartDerivatives = result.derivatives ?? null;
+        chartPayload = result.chartPayload ?? null;
+        analyzeData = result.analyze ?? null;
         chartLoading = false;
       })
       .catch(() => { chartLoading = false; });
   });
+
+  const verdictLevels = $derived(analyzeData?.entryPlan ? {
+    entry: analyzeData.entryPlan.entry,
+    stop: analyzeData.entryPlan.stop,
+    target: analyzeData.entryPlan.targets?.[0]?.price,
+  } : undefined);
 
   const peekOpen = $derived(tabState.peekOpen);
   const drawerTab = $derived(tabState.drawerTab);
@@ -84,21 +86,20 @@
   }
 
   // ── Compact header metrics ───────────────────────────────────────────────
+  const currentPrice = $derived(analyzeData?.price ?? 0);
   const fmtPrice = $derived(
-    chartCurrentPrice > 0
-      ? chartCurrentPrice >= 1000
-        ? chartCurrentPrice.toLocaleString('en-US', { maximumFractionDigits: 1 })
-        : chartCurrentPrice.toFixed(4)
+    currentPrice > 0
+      ? currentPrice >= 1000
+        ? currentPrice.toLocaleString('en-US', { maximumFractionDigits: 1 })
+        : currentPrice.toFixed(4)
       : '—'
   );
   const fmtFunding = $derived(
-    chartDerivatives?.funding != null
-      ? `${chartDerivatives.funding >= 0 ? '+' : ''}${(chartDerivatives.funding * 100).toFixed(4)}%`
+    analyzeData?.snapshot?.funding_rate != null
+      ? `${analyzeData.snapshot.funding_rate >= 0 ? '+' : ''}${(analyzeData.snapshot.funding_rate * 100).toFixed(4)}%`
       : '—'
   );
-  const fmtLS = $derived(
-    chartDerivatives?.lsRatio != null ? `${chartDerivatives.lsRatio.toFixed(2)}x` : '—'
-  );
+  const fmtLS = $derived('—');
 
   function setPeekOpen(v: boolean) {
     updateTabState(s => ({ ...s, peekOpen: v }));
@@ -275,11 +276,14 @@
       </div>
       <div class="chart-body">
         <div class="chart-live">
-          {#if chartKlines.length > 0}
-            <CgChart data={chartKlines} currentPrice={chartCurrentPrice} {symbol} {timeframe} snapshot={chartSnapshot} derivatives={chartDerivatives} tradePlan={{ entry: 83700, stopLoss: 82800, tp1: 87500 }} />
-          {:else}
-            <PhaseChart height="100%" highlightPhase={4} showEntry={true} showRange={tabState.rangeSelection} showIndicators={true} {showOI} {showFunding} {showCVD} />
-          {/if}
+          <ChartBoard
+            {symbol}
+            tf={timeframe}
+            initialData={chartPayload ?? undefined}
+            verdictLevels={verdictLevels}
+            change24hPct={analyzeData?.change24h ?? null}
+            contextMode="chart"
+          />
         </div>
       </div>
     </div>
@@ -390,11 +394,14 @@
       </div>
       <div class="chart-body">
         <div class="chart-live">
-          {#if chartKlines.length > 0}
-            <CgChart data={chartKlines} currentPrice={chartCurrentPrice} {symbol} {timeframe} snapshot={chartSnapshot} derivatives={chartDerivatives} tradePlan={{ entry: 83700, stopLoss: 82800, tp1: 87500 }} />
-          {:else}
-            <PhaseChart height="100%" highlightPhase={4} showEntry={true} showRange={tabState.rangeSelection} showIndicators={true} {showOI} {showFunding} {showCVD} />
-          {/if}
+          <ChartBoard
+            {symbol}
+            tf={timeframe}
+            initialData={chartPayload ?? undefined}
+            verdictLevels={verdictLevels}
+            change24hPct={analyzeData?.change24h ?? null}
+            contextMode="chart"
+          />
         </div>
       </div>
     </div>
@@ -402,7 +409,7 @@
     <div class="lb-panel">
       <div class="drawer-header">
         {#each [
-          { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--pos)', desc: '가설·근거' },
+          { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)', desc: '가설·근거' },
           { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',    desc: '유사 셋업' },
           { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)', desc: '매매·판정' },
         ] as tab}
@@ -521,11 +528,14 @@
       </div>
       <div class="chart-body">
         <div class="chart-live">
-          {#if chartKlines.length > 0}
-            <CgChart data={chartKlines} currentPrice={chartCurrentPrice} {symbol} {timeframe} snapshot={chartSnapshot} derivatives={chartDerivatives} tradePlan={{ entry: 83700, stopLoss: 82800, tp1: 87500 }} />
-          {:else}
-            <PhaseChart height="100%" highlightPhase={4} showEntry={true} showRange={tabState.rangeSelection} showIndicators={true} {showOI} {showFunding} {showCVD} />
-          {/if}
+          <ChartBoard
+            {symbol}
+            tf={timeframe}
+            initialData={chartPayload ?? undefined}
+            verdictLevels={verdictLevels}
+            change24hPct={analyzeData?.change24h ?? null}
+            contextMode="chart"
+          />
         </div>
       </div>
     </div>
@@ -603,12 +613,12 @@
       <span class="hd-sep"></span>
       <!-- Live price + derivatives -->
       <span class="hd-price">{fmtPrice}</span>
-      {#if chartDerivatives?.funding != null}
-        <span class="hd-chip" class:neg={chartDerivatives.funding < 0} class:pos={chartDerivatives.funding > 0}>
+      {#if analyzeData?.snapshot?.funding_rate != null}
+        <span class="hd-chip" class:neg={analyzeData.snapshot.funding_rate < 0} class:pos={analyzeData.snapshot.funding_rate > 0}>
           FUND {fmtFunding}
         </span>
       {/if}
-      {#if chartDerivatives?.lsRatio != null}
+      {#if false}
         <span class="hd-chip">L/S {fmtLS}</span>
       {/if}
       <div class="ind-toggles">
@@ -635,35 +645,21 @@
     </div>
     <div class="chart-body">
       <div class="chart-live">
-        {#if chartKlines.length > 0}
-          <CgChart
-            data={chartKlines}
-            currentPrice={chartCurrentPrice}
-            symbol={symbol}
-            timeframe={timeframe}
-            snapshot={chartSnapshot}
-            derivatives={chartDerivatives}
-            tradePlan={{ entry: 83700, stopLoss: 82800, tp1: 87500 }}
-          />
-        {:else}
-          <PhaseChart
-            height="100%"
-            highlightPhase={4}
-            showEntry={true}
-            showRange={tabState.rangeSelection}
-            showIndicators={true}
-            {showOI}
-            {showFunding}
-            {showCVD}
-          />
-        {/if}
+        <ChartBoard
+          {symbol}
+          tf={timeframe}
+          initialData={chartPayload ?? undefined}
+          verdictLevels={verdictLevels}
+          change24hPct={analyzeData?.change24h ?? null}
+          contextMode="chart"
+        />
       </div>
     </div>
 
     <!-- PEEK bar — always visible at bottom of chart section -->
     <div class="peek-bar">
       {#each [
-        { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--pos)',    badge: 'α82', badgeColor: 'var(--pos)' },
+        { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)',  badge: 'α82', badgeColor: 'var(--amb)' },
         { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',       badge: '5',   badgeColor: '#7aa2e0' },
         { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)',    badge: 'R:R 4.2×', badgeColor: 'var(--amb)' },
       ] as tab}
@@ -719,7 +715,7 @@
         <!-- Drawer header (tabs) -->
         <div class="drawer-header">
           {#each [
-            { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--pos)', desc: '가설·근거' },
+            { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)', desc: '가설·근거' },
             { id: 'scan', n: '03', label: 'SCAN', color: '#7aa2e0', desc: '유사 셋업' },
             { id: 'judge', n: '04', label: 'JUDGE', color: 'var(--amb)', desc: '매매·판정' },
           ] as tab}
@@ -1101,7 +1097,7 @@
   .ec-opt-key {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: var(--pos);
+    color: var(--amb);
     font-weight: 600;
     letter-spacing: 0.06em;
     white-space: nowrap;
@@ -1247,7 +1243,7 @@
     color: var(--g6);
     letter-spacing: 0.14em;
   }
-  .ev-pos { font-size: 11px; color: var(--pos); font-weight: 700; }
+  .ev-pos { font-size: 11px; color: var(--amb); font-weight: 700; }
   .ev-sep { font-size: 9px; color: var(--g4); }
   .ev-neg { font-size: 11px; color: var(--neg); font-weight: 700; }
 
@@ -1269,10 +1265,10 @@
     overflow: hidden;
   }
   .conf-inline.small .conf-bar { width: 60px; height: 4px; }
-  .conf-fill { height: 100%; background: var(--pos); border-radius: 2px; }
+  .conf-fill { height: 100%; background: var(--amb); border-radius: 2px; }
   .conf-val {
     font-size: 11px;
-    color: var(--pos);
+    color: var(--amb);
     font-weight: 600;
     width: 22px;
     text-align: right;
@@ -1665,10 +1661,10 @@
   .act-div { width: 1px; height: 12px; background: var(--g4); }
   .act-sym { font-size: 12px; color: var(--g9); font-weight: 600; }
   .act-tf { font-size: 9px; color: var(--g6); }
-  .act-dir { font-size: 9px; color: var(--pos); font-weight: 600; }
+  .act-dir { font-size: 9px; color: var(--brand); font-weight: 600; }
   .act-pat { font-size: 9px; color: var(--g6); }
   .act-alpha {
-    font-size: 10px; color: var(--pos); font-weight: 600;
+    font-size: 10px; color: var(--amb); font-weight: 600;
     padding: 2px 7px; background: var(--g2); border-radius: 3px;
   }
   .act-cols { flex: 1; display: flex; min-height: 0; overflow: hidden; }

@@ -55,7 +55,7 @@
   }
 
   .item.agree {
-    border-left-color: var(--pos-d);
+    border-left-color: var(--brand-d);
   }
 
   .item.disagree {
@@ -76,7 +76,7 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     font-weight: 600;
-    color: var(--pos);
+    color: var(--amb);
   }
 
   .item.disagree .verdict {
