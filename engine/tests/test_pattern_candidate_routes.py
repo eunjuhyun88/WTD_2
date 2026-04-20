@@ -600,3 +600,62 @@ def test_get_and_set_alert_policy(monkeypatch) -> None:
     assert put_response.json()["policy"]["mode"] == "gated"
     assert len(saved) == 1
     assert saved[0].mode == "gated"
+
+
+def test_record_capture_appends_capture_record(monkeypatch) -> None:
+    """POST /{slug}/capture creates CaptureRecord and writes to ledger record store."""
+    appended = []
+
+    class FakeRecordStore:
+        def append_capture_record(self, capture):
+            appended.append(capture)
+            return None
+
+    monkeypatch.setattr(pattern_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.post(
+        "/patterns/tradoor-oi-reversal-v1/capture",
+        json={
+            "symbol": "BTCUSDT",
+            "user_id": "user_123",
+            "phase": "ACCUMULATION",
+            "timeframe": "1h",
+            "capture_kind": "pattern_candidate",
+            "candidate_transition_id": "txn-abc-123",
+            "scan_id": "scan-xyz-456",
+            "user_note": "Strong OI spike into support",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert data["symbol"] == "BTCUSDT"
+    assert data["status"] == "pending_outcome"
+    assert "capture_id" in data
+
+    assert len(appended) == 1
+    record = appended[0]
+    assert record.symbol == "BTCUSDT"
+    assert record.pattern_slug == "tradoor-oi-reversal-v1"
+    assert record.phase == "ACCUMULATION"
+    assert record.candidate_transition_id == "txn-abc-123"
+    assert record.scan_id == "scan-xyz-456"
+    assert record.capture_kind == "pattern_candidate"
+
+
+def test_record_capture_returns_404_for_unknown_pattern(monkeypatch) -> None:
+    """POST /{slug}/capture returns 404 if pattern slug is not registered."""
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.post(
+        "/patterns/non-existent-pattern-v1/capture",
+        json={"symbol": "BTCUSDT"},
+    )
+    assert response.status_code == 404

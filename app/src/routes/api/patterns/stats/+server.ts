@@ -1,11 +1,13 @@
 // GET /api/patterns/stats
 // Returns: { stats: PatternStats[] }
-// Fetches library (to get all slugs), then per-slug stats in parallel
+// Fetches library (to get all slugs), then per-slug stats in parallel.
+// Field mapping: delegated to typed adapter — see $lib/types/patternStats.ts
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { scanLimiter } from '$lib/server/rateLimit';
+import { adaptEngineStats } from '$lib/types/patternStats';
 
 const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
@@ -31,23 +33,7 @@ export const GET: RequestHandler = async ({ getClientAddress }) => {
       if (result.status !== 'fulfilled' || !result.value.ok) continue;
 
       const raw = await result.value.json();
-      // Normalize engine field names → page field names
-      stats.push({
-        pattern_slug:    raw.pattern_slug ?? slugs[i],
-        total_instances: raw.total        ?? 0,
-        success_count:   raw.success      ?? 0,
-        failure_count:   raw.failure      ?? 0,
-        pending_count:   raw.pending      ?? 0,
-        hit_rate:        raw.success_rate ?? null,
-        avg_gain_pct:    raw.avg_gain_pct ?? null,
-        avg_loss_pct:    raw.avg_loss_pct ?? null,
-        expected_value:  raw.expected_value ?? null,
-        btc_conditional: raw.btc_conditional ?? null,
-        decay_direction: raw.decay_direction ?? null,
-        recent_30d_count: raw.recent_30d_count ?? 0,
-        recent_30d_success_rate: raw.recent_30d_success_rate ?? null,
-        ml_shadow: raw.ml_shadow ?? null,
-      });
+      stats.push(adaptEngineStats(raw, slugs[i]));
     }
 
     return json({ stats, ok: true });
