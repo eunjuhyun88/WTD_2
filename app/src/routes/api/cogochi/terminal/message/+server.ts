@@ -9,6 +9,7 @@
 
 import type { RequestHandler } from './$types';
 import { callLLMStreamWithTools, type LLMMessage } from '$lib/server/llmService';
+import { douniMessageLimiter } from '$lib/server/rateLimit';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -153,7 +154,13 @@ const DEFAULT_PROFILE: DouniProfile = {
   stage: 'EGG',
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+  if (!douniMessageLimiter.check(getClientAddress())) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
   const body = await request.json();
   const {
     message,

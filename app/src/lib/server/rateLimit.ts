@@ -190,3 +190,6 @@ export const chartKlinesLimiter = createRateLimiter({ windowMs: 60_000, max: 120
 
 /** Heavy engine paths (score, deep, backtest, train): 60 per minute per IP */
 export const engineProxyLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
+
+/** DOUNI terminal message (server-side LLM key): 15 per minute per IP */
+export const douniMessageLimiter = createRateLimiter({ windowMs: 60_000, max: 15 });
