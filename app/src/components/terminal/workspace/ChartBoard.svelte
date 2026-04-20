@@ -14,6 +14,7 @@
   import { tfMinutes } from '$lib/chart/mtfAlign';
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
+  import SaveStrip from './SaveStrip.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
   import IndicatorPaneStack from './IndicatorPaneStack.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
@@ -60,6 +61,13 @@
     onTfChange?:    (tf: string) => void;
     /** full = slim book/liq/quant rails; chart = candle + indicator panes only (context in right rail / Flow tab). */
     contextMode?: 'full' | 'chart';
+    /** Alpha phase markers — rendered as chart markers on the candle series. */
+    alphaMarkers?: Array<{
+      timestamp: number;  // unix seconds
+      phase: string;
+      label: string;
+      color?: string;
+    }>;
   }
 
   let {
@@ -76,6 +84,7 @@
     onCaptureSaved,
     onTfChange,
     contextMode = 'full',
+    alphaMarkers = undefined,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -806,6 +815,18 @@
           text: 'CVD',
         });
       }
+      // Alpha phase markers (W-0116): phase transitions overlaid on candles
+      if (alphaMarkers?.length) {
+        for (const am of alphaMarkers) {
+          markers.push({
+            time: am.timestamp as UTCTimestamp,
+            position: 'belowBar',
+            color: am.color ?? '#a78bfa',
+            shape: 'circle',
+            text: am.label ?? am.phase,
+          });
+        }
+      }
       // Runtime API (v5 typings omit setMarkers on some ISeriesApi variants).
       (candleSeriesRef as ISeriesApi<'Candlestick'> & { setMarkers: (m: SeriesMarker<UTCTimestamp>[]) => void }).setMarkers(markers);
     }
@@ -1131,7 +1152,11 @@
   }
 
   function handleSaveSetup() {
-    showSaveModal = true;
+    if ($chartSaveMode.active) {
+      chartSaveMode.exitRangeMode();
+    } else {
+      chartSaveMode.enterRangeMode();
+    }
   }
 
   function handleModalSaved(captureId: string) {
@@ -1431,7 +1456,7 @@
       <button onclick={loadData}>Retry</button>
     </div>
   {:else}
-    <div class="chart-stack" bind:this={chartStackEl}>
+    <div class="chart-stack" class:range-mode={$chartSaveMode.active} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
       <div class="layer2-topright">
@@ -1477,6 +1502,12 @@
       {/if}
     </IndicatorPaneStack>
     </div>
+    <SaveStrip
+      {symbol}
+      {tf}
+      ohlcvBars={chartData?.klines ?? []}
+      onSaved={(id) => { onCaptureSaved?.(id); }}
+    />
     {#if contextMode === 'full'}
     <details class="tv-context-strip" bind:open={contextStripOpen}>
       <summary class="tv-context-summary">
@@ -2254,6 +2285,10 @@
     overflow: hidden;
     /* Layer 2 overlay anchors to this container */
     position: relative;
+  }
+  .chart-stack.range-mode,
+  .chart-stack.range-mode * {
+    cursor: crosshair !important;
   }
   .pane-main {
     flex: 1 1 58%;

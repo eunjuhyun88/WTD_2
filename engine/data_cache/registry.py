@@ -59,6 +59,8 @@ from data_cache.fetch_social import (
     fetch_binance_square_sentiment,
     fetch_coingecko_social_volume,
 )
+from data_cache.fetch_dexscreener import fetch_dex_token_data
+from data_cache.fetch_bscscan import fetch_holder_concentration
 
 
 # ─── Global macro sources (symbol-independent) ──────────────────────────────
@@ -103,16 +105,10 @@ MACRO_SOURCES: list[DataSource] = [
         scope="global",
         cache_file="src_coinbase_premium.csv",
     ),
+    # ── W-0115 Alpha Universe: DexScreener discovery (global, chain-agnostic) ──
+    # community_takeover and boost signals are polled separately via
+    # fetch_alpha_universe.py — not registry-driven (no symbol dimension).
     # ── Add new global sources here ──────────────────────────────────────────
-    # Example:
-    # DataSource(
-    #     name="polymarket_crypto",
-    #     fetcher=fetch_polymarket_crypto_sentiment,
-    #     columns=["poly_bull_prob"],
-    #     defaults={"poly_bull_prob": 0.5},
-    #     scope="global",
-    #     cache_file="src_polymarket.csv",
-    # ),
 ]
 
 # ─── Per-symbol on-chain sources ─────────────────────────────────────────────
@@ -173,7 +169,7 @@ ONCHAIN_SOURCES: list[DataSource] = [
         scope="per_symbol",
         cache_file="src_{symbol}_exchange_oi.csv",
     ),
-    # ── W-0114 딸깍 전략: 소셜 신호 (Twitter 없이 실제 데이터) ──────────────
+    # ── W-0114 딸깍 전략: 소셜 신호 ─────────────────────────────────────────
     DataSource(
         name="coingecko_trending",
         fetcher=fetch_coingecko_trending,
@@ -231,5 +227,101 @@ def onchain_defaults() -> dict[str, float]:
     """Merged neutral defaults for all on-chain columns."""
     d: dict[str, float] = {}
     for src in ONCHAIN_SOURCES:
+        d.update(src.defaults)
+    return d
+
+
+# ─── DEX sources — per-symbol DEX market data (BSC/ETH/Base) ─────────────────
+# Fetcher signature: (symbol: str, days: int) -> pd.DataFrame | None
+# Provides on-chain trading signals unavailable from CEX klines.
+# Primary use: Binance Alpha → Futures pump screening (W-0115).
+
+DEX_SOURCES: list[DataSource] = [
+    DataSource(
+        name="dex_token",
+        fetcher=fetch_dex_token_data,
+        columns=[
+            "dex_market_cap",
+            "dex_fdv",
+            "dex_liquidity_usd",
+            "dex_volume_h24",
+            "dex_buy_txns_h24",
+            "dex_sell_txns_h24",
+            "dex_buy_pct",
+            "dex_price_change_h24",
+            "dex_price_change_h6",
+            "dex_has_twitter",
+            "dex_boost_active",
+            "dex_pair_age_days",
+        ],
+        defaults={
+            "dex_market_cap":       0.0,
+            "dex_fdv":              0.0,
+            "dex_liquidity_usd":    0.0,
+            "dex_volume_h24":       0.0,
+            "dex_buy_txns_h24":     0.0,
+            "dex_sell_txns_h24":    0.0,
+            "dex_buy_pct":          0.5,
+            "dex_price_change_h24": 0.0,
+            "dex_price_change_h6":  0.0,
+            "dex_has_twitter":      0.0,
+            "dex_boost_active":     0.0,
+            "dex_pair_age_days":    0.0,
+        },
+        scope="per_symbol",
+        cache_file="src_{symbol}_dex.csv",
+    ),
+]
+
+# ─── Chain sources — on-chain holder/wallet data ──────────────────────────────
+# Requires BSCSCAN_API_KEY or ETHERSCAN_API_KEY env var.
+# Gracefully skipped (returns None) if no key configured.
+
+CHAIN_SOURCES: list[DataSource] = [
+    DataSource(
+        name="holder_concentration",
+        fetcher=fetch_holder_concentration,
+        columns=[
+            "holder_top10_pct",
+            "holder_top3_pct",
+            "holder_treasury_flag",
+        ],
+        defaults={
+            "holder_top10_pct":     0.0,
+            "holder_top3_pct":      0.0,
+            "holder_treasury_flag": 0.0,
+        },
+        scope="per_symbol",
+        cache_file="src_{symbol}_holders.csv",
+    ),
+]
+
+
+# ─── Derived helpers ──────────────────────────────────────────────────────────
+
+def all_dex_columns() -> list[str]:
+    cols: list[str] = []
+    for src in DEX_SOURCES:
+        cols.extend(src.columns)
+    return cols
+
+
+def all_chain_columns() -> list[str]:
+    cols: list[str] = []
+    for src in CHAIN_SOURCES:
+        cols.extend(src.columns)
+    return cols
+
+
+def dex_defaults() -> dict[str, float]:
+    d: dict[str, float] = {}
+    for src in DEX_SOURCES:
+        d.update(src.defaults)
+    return d
+
+
+def chain_defaults() -> dict[str, float]:
+    d: dict[str, float] = {}
+    for src in CHAIN_SOURCES:
         d.update(src.defaults)
     return d

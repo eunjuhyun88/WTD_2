@@ -35,6 +35,10 @@ import {
   TOOL_SAVE_PATTERN,
   TOOL_SUBMIT_FEEDBACK,
   TOOL_QUERY_MEMORY,
+  TOOL_GET_ALPHA_WORLD_MODEL,
+  TOOL_GET_ALPHA_TOKEN_DETAIL,
+  TOOL_FIND_TOKENS,
+  TOOL_SET_ALPHA_WATCH,
 } from './tools';
 import {
   maybeCompactHistory,
@@ -86,6 +90,11 @@ const ALL_TOOLS: Record<string, ToolDefinition> = {
   save_pattern: TOOL_SAVE_PATTERN,
   submit_feedback: TOOL_SUBMIT_FEEDBACK,
   query_memory: TOOL_QUERY_MEMORY,
+  // Alpha Universe tools (W-0116)
+  get_alpha_world_model: TOOL_GET_ALPHA_WORLD_MODEL,
+  get_alpha_token_detail: TOOL_GET_ALPHA_TOKEN_DETAIL,
+  find_tokens: TOOL_FIND_TOKENS,
+  set_alpha_watch: TOOL_SET_ALPHA_WATCH,
 };
 
 // ─── History compression (client-side format) ────────────────
@@ -186,6 +195,12 @@ export interface BuildContextOptions {
    * e.g. 'analysis', 'scan', 'social', 'greeting', 'question'
    */
   intent?: string;
+  /**
+   * Alpha Universe world-model snapshot (JSON string from GET /alpha/world-model).
+   * When provided in alpha profile mode, injected into system prompt so the LLM
+   * can reason about token phases without an extra tool call.
+   */
+  alphaWorldModel?: string;
 }
 
 export function buildContext(opts: BuildContextOptions): BuildContextResult {
@@ -199,6 +214,7 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
     locale,
     memory,
     intent,
+    alphaWorldModel,
   } = opts;
 
   // ── Step 1: Auto-compact history ──────────────────────────
@@ -240,6 +256,13 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
   } else if (budget.tools.includes('analyze_market') || budget.tools.includes('scan_market')) {
     // Only add this hint when the LLM has tools to fetch data
     systemPrompt += `\n\n[NO DATA YET]\nUse analyze_market or scan_market to get fresh data.`;
+  }
+
+  // ── Step 3b-alpha: Alpha World Model injection ────────────
+  // When alphaWorldModel is provided (pre-fetched by the server at 4h cadence),
+  // inject the current phase table so the LLM can reason without a tool call.
+  if (alphaWorldModel) {
+    systemPrompt += `\n\n[Alpha Universe — Current State]\n${alphaWorldModel}\nUse get_alpha_token_detail or find_tokens for deeper investigation.`;
   }
 
   // ── Step 3b: Pattern Memory → Evidence Chain Layer C ──────
