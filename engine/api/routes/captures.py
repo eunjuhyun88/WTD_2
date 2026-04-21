@@ -369,8 +369,7 @@ def _get_recent_keys() -> set[str]:
 
 async def _auto_capture_job() -> None:
     """Auto-capture current pattern candidates (for Cloud Scheduler)."""
-    from api.routes.patterns import router as _patterns_router  # noqa: F401
-    from patterns.thread import get_all_candidates_sync  # type: ignore[import]
+    from api.routes.patterns_thread import get_all_candidates_sync  # type: ignore[import]
 
     candidates_data = await asyncio.to_thread(get_all_candidates_sync)
     candidates: list[dict[str, Any]] = candidates_data.get("candidates", [])
