@@ -36,6 +36,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/events',
   '/api/market/flow',
   '/api/market/derivatives',
+  '/api/market/venue-divergence',  // W-0122-A: public read-only, 30s cached, rate limited
+  '/api/market/liq-clusters',      // W-0122-B1: public read-only, derived from chart feed
   '/api/coingecko/',
   '/api/feargreed',
   '/api/chart/',          // chart klines + feed — public market data, rate-limited
