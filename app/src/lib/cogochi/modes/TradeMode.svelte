@@ -8,7 +8,12 @@
   import IndicatorPane from '$lib/components/indicators/IndicatorPane.svelte';
   import IndicatorRenderer from '$lib/components/indicators/IndicatorRenderer.svelte';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
-  import { buildIndicatorValues, type VenueDivergencePayload, type LiqClusterPayload } from '$lib/indicators/adapter';
+  import {
+    buildIndicatorValues,
+    type VenueDivergencePayload,
+    type LiqClusterPayload,
+    type IndicatorContextPayload,
+  } from '$lib/indicators/adapter';
 
   interface Props {
     mode: 'trade' | 'train' | 'flywheel';
@@ -93,19 +98,36 @@
     } catch { /* tolerate */ }
   }
 
+  // ── Rolling Percentile Context (W-0122 rolling percentile) ───────────
+  // 30d distribution data: OI deltas + funding history → real percentiles.
+  // 10-min cache on the server so polling is cheap.
+  let indicatorContext = $state<IndicatorContextPayload | null>(null);
+
+  async function refreshIndicatorContext() {
+    try {
+      const res = await fetch(`/api/market/indicator-context?symbol=${symbol}`);
+      if (!res.ok) return;
+      indicatorContext = (await res.json()) as IndicatorContextPayload;
+    } catch { /* tolerate */ }
+  }
+
   // Trigger on symbol change + initial mount. Polling every 60s as a safety net
-  // (candle close also triggers refresh above).
+  // (candle close also triggers refresh above). Indicator context polls only
+  // every 5m since its server cache TTL is 10m.
   $effect(() => {
     void symbol;
     venueDivergence = null;
     liqClusters = null;
+    indicatorContext = null;
     void refreshVenueDivergence();
     void refreshLiqClusters();
-    const iv = setInterval(() => {
+    void refreshIndicatorContext();
+    const fastIv = setInterval(() => {
       void refreshVenueDivergence();
       void refreshLiqClusters();
     }, 60_000);
-    return () => clearInterval(iv);
+    const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
+    return () => { clearInterval(fastIv); clearInterval(slowIv); };
   });
 
   // ── Indicator pipeline: analyze + side fetches → registry-keyed values ─
@@ -113,6 +135,7 @@
     analyze: analyzeData,
     venueDivergence,
     liqClusters,
+    indicatorContext,
   }));
 
   // Ordered list of indicators to render in the evidence pane — registry-driven.
