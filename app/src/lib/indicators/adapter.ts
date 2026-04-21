@@ -26,10 +26,21 @@ export interface LiqClusterPayload {
   cells: HeatmapCell[];
 }
 
+export interface IndicatorContextPayload {
+  symbol: string;
+  at: number;
+  context: {
+    oi_change_1h?: { value: number; percentile: number };
+    oi_change_4h?: { value: number; percentile: number };
+    funding_rate?: { value: number; percentile: number };
+  };
+}
+
 export interface AdapterInput {
   analyze: AnalyzeEnvelope | null;
   venueDivergence?: VenueDivergencePayload | null;
   liqClusters?: LiqClusterPayload | null;
+  indicatorContext?: IndicatorContextPayload | null;
 }
 
 /**
@@ -42,12 +53,16 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
   const now = Date.now();
 
   const snap = input.analyze?.snapshot;
+  const ctxReal = input.indicatorContext?.context;
 
-  // ── OI change (1h) ────────────────────────────────────────────────────
+  // ── OI change (1h) — prefer real 30d percentile, fall back to estimate ─
   if (snap?.oi_change_1h != null) {
+    const realCtx = ctxReal?.oi_change_1h;
     out.oi_change_1h = {
       current: snap.oi_change_1h,
-      percentile: estimatePercentileFromMagnitude(snap.oi_change_1h, 0.015, 0.08),
+      percentile: realCtx
+        ? { value: realCtx.percentile, window: '30d' }
+        : estimatePercentileFromMagnitude(snap.oi_change_1h, 0.015, 0.08),
       sparkline: syntheticSparkline(snap.oi_change_1h),
       at: now,
     };
@@ -55,10 +70,12 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
 
   // ── Funding rate ──────────────────────────────────────────────────────
   if (snap?.funding_rate != null) {
+    const realCtx = ctxReal?.funding_rate;
     out.funding_rate = {
       current: snap.funding_rate,
-      // funding typical band ±0.03% normal, ±0.1% extreme
-      percentile: estimatePercentileFromMagnitude(snap.funding_rate, 0.0003, 0.001),
+      percentile: realCtx
+        ? { value: realCtx.percentile, window: '30d' }
+        : estimatePercentileFromMagnitude(snap.funding_rate, 0.0003, 0.001),
       sparkline: syntheticSparkline(snap.funding_rate),
       at: now,
     };
