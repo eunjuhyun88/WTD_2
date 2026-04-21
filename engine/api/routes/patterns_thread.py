@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.types import PatternLedgerRecord
 from patterns.alert_policy import ALERT_POLICY_STORE
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.model_registry import MODEL_REGISTRY_STORE
@@ -104,19 +105,59 @@ def get_candidates_sync(slug: str) -> dict:
     }
 
 
+def _summarize_record_family(
+    slug: str,
+) -> tuple[dict[str, int | float | None], PatternLedgerRecord | None, PatternLedgerRecord | None]:
+    records = LEDGER_RECORD_STORE.list(slug)
+    counts = {
+        "entry": 0,
+        "capture": 0,
+        "score": 0,
+        "outcome": 0,
+        "verdict": 0,
+        "training_run": 0,
+        "model": 0,
+    }
+    latest_training_run_record: PatternLedgerRecord | None = None
+    latest_model_record: PatternLedgerRecord | None = None
+
+    for record in records:
+        record_type = record.record_type
+        if record_type in counts:
+            counts[record_type] += 1
+        if latest_training_run_record is None and record_type == "training_run":
+            latest_training_run_record = record
+        if latest_model_record is None and record_type == "model":
+            latest_model_record = record
+
+    entry_count = counts["entry"]
+    capture_count = counts["capture"]
+    verdict_count = counts["verdict"]
+    return (
+        {
+            "entry_count": entry_count,
+            "capture_count": capture_count,
+            "score_count": counts["score"],
+            "outcome_count": counts["outcome"],
+            "verdict_count": verdict_count,
+            "training_run_count": counts["training_run"],
+            "model_count": counts["model"],
+            "capture_to_entry_rate": capture_count / entry_count if entry_count > 0 else None,
+            "verdict_to_entry_rate": verdict_count / entry_count if entry_count > 0 else None,
+        },
+        latest_training_run_record,
+        latest_model_record,
+    )
+
+
 def get_stats_sync(slug: str, ledger: LedgerStore) -> dict:
     _require_pattern(slug)
     stats = ledger.compute_stats(slug)
     outcomes = ledger.list_all(slug)
-    record_family = LEDGER_RECORD_STORE.compute_family_stats(slug)
+    record_family, latest_training_run_record, latest_model_record = _summarize_record_family(slug)
     registry_entries = MODEL_REGISTRY_STORE.list(slug)
     active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug)
     preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
-    latest_training_run_record = next(
-        iter(LEDGER_RECORD_STORE.list(slug, record_type="training_run", limit=1)),
-        None,
-    )
-    latest_model_record = next(iter(LEDGER_RECORD_STORE.list(slug, record_type="model", limit=1)), None)
     ml_shadow = summarize_pattern_dataset(outcomes)
     alert_policy = ALERT_POLICY_STORE.load(slug)
     return {
@@ -141,18 +182,18 @@ def get_stats_sync(slug: str, ledger: LedgerStore) -> dict:
         },
         "decay_direction": stats.decay_direction,
         "record_family": {
-            "entry_count": record_family.entry_count,
-            "capture_count": record_family.capture_count,
-            "score_count": record_family.score_count,
-            "outcome_count": record_family.outcome_count,
-            "verdict_count": record_family.verdict_count,
-            "training_run_count": record_family.training_run_count,
-            "model_count": record_family.model_count,
-            "capture_to_entry_rate": round(record_family.capture_to_entry_rate, 3)
-            if record_family.capture_to_entry_rate is not None
+            "entry_count": record_family["entry_count"],
+            "capture_count": record_family["capture_count"],
+            "score_count": record_family["score_count"],
+            "outcome_count": record_family["outcome_count"],
+            "verdict_count": record_family["verdict_count"],
+            "training_run_count": record_family["training_run_count"],
+            "model_count": record_family["model_count"],
+            "capture_to_entry_rate": round(record_family["capture_to_entry_rate"], 3)
+            if record_family["capture_to_entry_rate"] is not None
             else None,
-            "verdict_to_entry_rate": round(record_family.verdict_to_entry_rate, 3)
-            if record_family.verdict_to_entry_rate is not None
+            "verdict_to_entry_rate": round(record_family["verdict_to_entry_rate"], 3)
+            if record_family["verdict_to_entry_rate"] is not None
             else None,
         },
         "model_registry": {

@@ -9,6 +9,8 @@ Routes:
 from __future__ import annotations
 
 from dataclasses import asdict
+import threading
+import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -19,6 +21,11 @@ from patterns.registry import PATTERN_REGISTRY_STORE
 
 router = APIRouter()
 _ledger = LedgerStore()
+_REFINEMENT_CACHE_TTL = 30.0
+_REFINEMENT_CACHE_LOCK = threading.Lock()
+_refinement_cache_ts = 0.0
+_refinement_cache_rows: list[dict[str, Any]] | None = None
+_refinement_cache_by_slug: dict[str, dict[str, Any]] | None = None
 
 
 def _stats_to_dict(s: PatternStats) -> dict[str, Any]:
@@ -49,24 +56,52 @@ def _suggestion(stats: PatternStats) -> str | None:
     return None
 
 
+def _build_refinement_snapshot() -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    rows: list[dict[str, Any]] = []
+    by_slug: dict[str, dict[str, Any]] = {}
+
+    for pattern in PATTERN_REGISTRY_STORE.list_all():
+        stats = _ledger.compute_stats(pattern.slug)
+        row = _stats_to_dict(stats)
+        row["suggestion"] = _suggestion(stats)
+        rows.append(row)
+        by_slug[pattern.slug] = row
+
+    return rows, by_slug
+
+
+def _get_refinement_snapshot() -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    global _refinement_cache_ts, _refinement_cache_rows, _refinement_cache_by_slug
+
+    now = time.monotonic()
+    with _REFINEMENT_CACHE_LOCK:
+        cached = (
+            _refinement_cache_rows is not None
+            and _refinement_cache_by_slug is not None
+            and (now - _refinement_cache_ts) < _REFINEMENT_CACHE_TTL
+        )
+        if cached:
+            return _refinement_cache_rows, _refinement_cache_by_slug
+
+        rows, by_slug = _build_refinement_snapshot()
+        _refinement_cache_rows = rows
+        _refinement_cache_by_slug = by_slug
+        _refinement_cache_ts = now
+        return rows, by_slug
+
+
 @router.get("/stats")
 async def get_all_stats() -> dict:
     """Return performance stats for all registered patterns."""
-    patterns = PATTERN_REGISTRY_STORE.list_all()
-    slugs = [p.slug for p in patterns]
-
-    results = []
-    for slug in slugs:
-        stats = _ledger.compute_stats(slug)
-        d = _stats_to_dict(stats)
-        d["suggestion"] = _suggestion(stats)
-        results.append(d)
-
-    # Sort by expected_value desc (patterns with data first)
-    results.sort(key=lambda r: (
-        r["expected_value"] is not None,
-        r["expected_value"] or 0,
-    ), reverse=True)
+    rows, _ = _get_refinement_snapshot()
+    results = sorted(
+        rows,
+        key=lambda r: (
+            r["expected_value"] is not None,
+            r["expected_value"] or 0,
+        ),
+        reverse=True,
+    )
 
     return {
         "ok": True,
@@ -78,35 +113,30 @@ async def get_all_stats() -> dict:
 @router.get("/stats/{slug}")
 async def get_pattern_stats(slug: str) -> dict:
     """Return detailed stats for a single pattern slug."""
-    patterns = PATTERN_REGISTRY_STORE.list_all()
-    known = {p.slug for p in patterns}
-    if slug not in known:
+    _, by_slug = _get_refinement_snapshot()
+    if slug not in by_slug:
         raise HTTPException(status_code=404, detail=f"Unknown pattern slug: {slug}")
 
-    stats = _ledger.compute_stats(slug)
-    d = _stats_to_dict(stats)
-    d["suggestion"] = _suggestion(stats)
-    return {"ok": True, "stats": d}
+    return {"ok": True, "stats": by_slug[slug]}
 
 
 @router.get("/suggestions")
 async def get_suggestions() -> dict:
     """Return actionable threshold suggestions for all patterns with data."""
-    patterns = PATTERN_REGISTRY_STORE.list_all()
+    rows, _ = _get_refinement_snapshot()
     out = []
-    for p in patterns:
-        stats = _ledger.compute_stats(p.slug)
-        if stats.total_instances < 5:
+    for row in rows:
+        if int(row["total_instances"]) < 5:
             continue
-        suggestion = _suggestion(stats)
+        suggestion = row.get("suggestion")
         if suggestion:
             out.append({
-                "pattern_slug": p.slug,
+                "pattern_slug": row["pattern_slug"],
                 "suggestion": suggestion,
-                "success_rate": round(stats.success_rate, 4),
-                "expected_value": round(stats.expected_value, 4) if stats.expected_value is not None else None,
-                "total_instances": stats.total_instances,
-                "decay_direction": stats.decay_direction,
+                "success_rate": row["success_rate"],
+                "expected_value": row["expected_value"],
+                "total_instances": row["total_instances"],
+                "decay_direction": row["decay_direction"],
             })
 
     return {"ok": True, "count": len(out), "suggestions": out}
@@ -115,21 +145,22 @@ async def get_suggestions() -> dict:
 @router.get("/leaderboard")
 async def get_leaderboard() -> dict:
     """Rank patterns by expected value (EV = win_rate * avg_gain + loss_rate * avg_loss)."""
-    patterns = PATTERN_REGISTRY_STORE.list_all()
-    rows = []
-    for p in patterns:
-        stats = _ledger.compute_stats(p.slug)
-        rows.append({
-            "slug": p.slug,
-            "total": stats.total_instances,
-            "win_rate": round(stats.success_rate, 3),
-            "ev": round(stats.expected_value, 4) if stats.expected_value is not None else None,
-            "avg_gain": round(stats.avg_gain_pct, 4) if stats.avg_gain_pct is not None else None,
-            "avg_loss": round(stats.avg_loss_pct, 4) if stats.avg_loss_pct is not None else None,
-            "decay": stats.decay_direction,
-            "recent_30d_rate": round(stats.recent_30d_success_rate, 3) if stats.recent_30d_success_rate is not None else None,
-        })
-
-    # Sort: patterns with EV data first, then by EV desc
-    rows.sort(key=lambda r: (r["ev"] is not None, r["ev"] or 0), reverse=True)
+    stats_rows, _ = _get_refinement_snapshot()
+    rows = sorted(
+        [
+            {
+                "slug": row["pattern_slug"],
+                "total": row["total_instances"],
+                "win_rate": round(float(row["success_rate"]), 3),
+                "ev": row["expected_value"],
+                "avg_gain": row["avg_gain_pct"],
+                "avg_loss": row["avg_loss_pct"],
+                "decay": row["decay_direction"],
+                "recent_30d_rate": row["recent_30d_success_rate"],
+            }
+            for row in stats_rows
+        ],
+        key=lambda r: (r["ev"] is not None, r["ev"] or 0),
+        reverse=True,
+    )
     return {"ok": True, "count": len(rows), "leaderboard": rows}
