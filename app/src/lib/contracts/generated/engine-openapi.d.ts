@@ -328,6 +328,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/registry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Registry
+         * @description Return the JSON-backed pattern registry (versioned metadata per slug).
+         */
+        get: operations["get_pattern_registry_patterns_registry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/states": {
         parameters: {
             query?: never;
@@ -400,6 +420,26 @@ export interface paths {
          * @description Entry candidates for a specific pattern.
          */
         get: operations["get_candidates_patterns__slug__candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/stats/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get All Stats
+         * @description Bulk ledger stats for all patterns — avoids N+1 fan-out from callers.
+         */
+        get: operations["get_all_stats_patterns_stats_all_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -532,6 +572,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/{slug}/capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Capture
+         * @description Record a Save Setup capture event into the ledger capture plane.
+         *
+         *     Links the capture to a durable phase transition via candidate_transition_id
+         *     so the full chain capture_id → transition_id → outcome_id → verdict is traceable.
+         */
+        post: operations["record_capture_patterns__slug__capture_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/evaluate": {
         parameters: {
             query?: never;
@@ -657,6 +720,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/captures/outcomes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Verdict Inbox
+         * @description Verdict Inbox — resolved captures awaiting user verdict.
+         *
+         *     Defaults to ``status='outcome_ready'`` (needs review). Pass
+         *     ``status='verdict_ready'`` to inspect previously labelled items.
+         */
+        get: operations["list_verdict_inbox_captures_outcomes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/captures/{capture_id}/verdict": {
         parameters: {
             query?: never;
@@ -667,14 +753,53 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Label Capture Verdict
-         * @description Attach a founder verdict to a resolved capture (axis 3 close).
+         * Set Capture Verdict
+         * @description Apply user verdict to a resolved capture.
          *
-         *     Requires status='outcome_ready'. The linked PatternOutcome is updated
-         *     with user_verdict, a LEDGER:verdict record is appended, and the capture
-         *     status advances to 'verdict_ready'.
+         *     Requires status in {'outcome_ready', 'verdict_ready'} — the capture must
+         *     have a linked PatternOutcome. The verdict is written to the outcome
+         *     record, appended to LEDGER:verdict, and the capture is flipped to
+         *     ``status='verdict_ready'`` so it leaves the inbox.
          */
-        post: operations["label_capture_verdict_captures__capture_id__verdict_post"];
+        post: operations["set_capture_verdict_captures__capture_id__verdict_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/chart-annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Chart Annotations
+         * @description Return capture markers formatted for TradingView chart overlay.
+         *
+         *     Poll at ~60s intervals. Each annotation includes price levels from
+         *     chart_context so the frontend can render entry/stop/tp lines.
+         *
+         *     Response shape (one entry per capture):
+         *       capture_id      — unique ID
+         *       kind            — capture_kind
+         *       status          — pending_outcome | outcome_ready | verdict_ready | closed
+         *       pattern_slug    — e.g. "tradoor-oi-reversal-v1"
+         *       phase           — e.g. "SPRING"
+         *       captured_at_s   — unix seconds (chart x-axis anchor)
+         *       entry_price     — from chart_context.entry_price (null if not set)
+         *       stop_price      — from chart_context.stop (null if not set)
+         *       tp1_price       — from chart_context.tp1 (null if not set)
+         *       tp2_price       — from chart_context.tp2 (null if not set)
+         *       eval_window_ms  — evaluation window in ms (for shading end x)
+         *       p_win           — float 0–1 if recorded
+         *       user_verdict    — "valid" | "invalid" | "missed" | null
+         */
+        get: operations["get_chart_annotations_captures_chart_annotations_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -981,6 +1106,453 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dalkkak/gainers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gainers
+         * @description 실시간 Binance Futures 상승률 상위 후보 유니버스.
+         *
+         *     딸깍 전략 원칙: 24h 상승률 + 변동성(ATR%) + 신규 상장 여부를
+         *     composite score로 조합해 진입 우선순위를 결정.
+         */
+        get: operations["gainers_dalkkak_gainers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dalkkak/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Positions
+         * @description 단방향 가드에 등록된 현재 열린 포지션 목록.
+         */
+        get: operations["list_positions_dalkkak_positions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dalkkak/positions/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Position
+         * @description 포지션 등록 — 단방향 원칙 검사 후 가드에 기록.
+         *
+         *     이 엔드포인트는 실제 주문 집행 후 호출한다.
+         *     주문 집행 자체는 클라이언트 / 별도 자동매매 모듈이 담당.
+         */
+        post: operations["open_position_dalkkak_positions_open_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dalkkak/positions/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Position
+         * @description 포지션 닫기 — 가드에서 제거.
+         */
+        post: operations["close_position_dalkkak_positions_close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dalkkak/caption": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Caption
+         * @description 트레이드 결과를 KOL 스타일 SNS 캡션으로 변환.
+         *
+         *     Claude API (ANTHROPIC_API_KEY) 없으면 plain text fallback.
+         */
+        post: operations["caption_dalkkak_caption_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dalkkak/risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Risk Plan
+         * @description 200 USDT 고정 손절 기반 포지션 플랜 계산.
+         *
+         *     진입가와 ATR을 받아서:
+         *       - stop 가격 (1.5 ATR, 최대 200U 손실 제한)
+         *       - 포지션 크기 (코인 수)
+         *       - 목표가 (3:1 R/R)
+         *     를 반환.
+         */
+        get: operations["risk_plan_dalkkak_risk_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alpha/world-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alpha World Model
+         * @description Return current phase state for all Alpha Universe symbols.
+         *
+         *     Optionally filter by watchlist grade (A / B / all).
+         */
+        get: operations["get_alpha_world_model_alpha_world_model_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alpha/token/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alpha Token Detail
+         * @description Return detailed state for one Alpha Universe token.
+         */
+        get: operations["get_alpha_token_detail_alpha_token__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alpha/token/{symbol}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alpha Token History
+         * @description Return phase transition history for one symbol.
+         */
+        get: operations["get_alpha_token_history_alpha_token__symbol__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alpha/anomalies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Alpha Anomalies
+         * @description Return anomaly queue. By default returns unreviewed anomalies.
+         */
+        get: operations["get_alpha_anomalies_alpha_anomalies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alpha/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Alpha Watch
+         * @description Register a user watch on a symbol/phase combination.
+         */
+        post: operations["post_alpha_watch_alpha_watch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alpha/find": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Alpha Find
+         * @description Ad-hoc multi-condition token filter across the Alpha Universe.
+         *
+         *     Each condition can be:
+         *       - block:  name of a block in _BLOCKS (fires True/False on latest bar)
+         *       - feature: raw column + op + value comparison on the latest features row
+         *
+         *     Returns symbols where at least min_match conditions are met.
+         */
+        post: operations["post_alpha_find_alpha_find_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/pattern_scan/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Pattern Scan
+         * @description Cloud Scheduler → trigger pattern state machine scan.
+         */
+        post: operations["run_pattern_scan_jobs_pattern_scan_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/outcome_resolver/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Outcome Resolver
+         * @description Cloud Scheduler → run outcome resolution for pending captures.
+         */
+        post: operations["run_outcome_resolver_jobs_outcome_resolver_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/auto_capture/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Auto Capture
+         * @description Cloud Scheduler → capture current pattern candidates.
+         */
+        post: operations["run_auto_capture_jobs_auto_capture_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/db_cleanup/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Db Cleanup
+         * @description Cloud Scheduler (daily) → purge stale rows from high-growth tables.
+         *
+         *     Retention policy:
+         *       engine_alerts            →  7 days  (scan signals, replaced each cycle)
+         *       opportunity_scans        →  7 days  (per-table comment: 7d recommended)
+         *       terminal_pattern_captures → 90 days (user data: longer retention)
+         */
+        post: operations["run_db_cleanup_jobs_db_cleanup_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Jobs Status
+         * @description Return resource guard state for all managed jobs.
+         */
+        get: operations["jobs_status_jobs_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refinement/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get All Stats
+         * @description Return performance stats for all registered patterns.
+         */
+        get: operations["get_all_stats_refinement_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refinement/stats/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pattern Stats
+         * @description Return detailed stats for a single pattern slug.
+         */
+        get: operations["get_pattern_stats_refinement_stats__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refinement/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Suggestions
+         * @description Return actionable threshold suggestions for all patterns with data.
+         */
+        get: operations["get_suggestions_refinement_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refinement/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Leaderboard
+         * @description Rank patterns by expected value (EV = win_rate * avg_gain + loss_rate * avg_loss).
+         */
+        get: operations["get_leaderboard_refinement_leaderboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -1162,6 +1734,43 @@ export interface components {
              * @description Optional hint. Resolver derives entry_price from OHLCV regardless.
              */
             entry_price?: number | null;
+        };
+        /** CaptionRequest */
+        CaptionRequest: {
+            /**
+             * Symbol
+             * @description 예: BTCUSDT
+             */
+            symbol: string;
+            /**
+             * Direction
+             * @description long | short
+             */
+            direction: string;
+            /** Entry Price */
+            entry_price: number;
+            /** Exit Price */
+            exit_price: number;
+            /**
+             * Pnl Usdt
+             * @description 손익 USDT (+수익 / -손실)
+             */
+            pnl_usdt: number;
+            /**
+             * Pnl Pct
+             * @description 손익 %
+             */
+            pnl_pct: number;
+            /**
+             * Pattern Name
+             * @description 발동 패턴 이름
+             */
+            pattern_name: string;
+            /**
+             * Hold Hours
+             * @description 보유 시간 (h)
+             */
+            hold_hours: number;
         };
         /** CaptureCreateBody */
         CaptureCreateBody: {
@@ -1654,6 +2263,39 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        /** OpenPositionRequest */
+        OpenPositionRequest: {
+            /**
+             * Symbol
+             * @description 예: BTCUSDT
+             */
+            symbol: string;
+            /**
+             * Direction
+             * @description long | short
+             */
+            direction: string;
+            /**
+             * Entry Price
+             * @description 진입가 USDT
+             */
+            entry_price: number;
+            /**
+             * Size Coin
+             * @description 포지션 크기 (코인 수)
+             */
+            size_coin: number;
+            /**
+             * Stop Price
+             * @description 손절가 USDT
+             */
+            stop_price: number;
+            /**
+             * Target Price
+             * @description 목표가 USDT
+             */
+            target_price: number;
+        };
         /** OpportunityMacroBackdrop */
         OpportunityMacroBackdrop: {
             /** Fedfundsrate */
@@ -2034,16 +2676,6 @@ export interface components {
             /** C */
             c: number;
         };
-        /** VerdictBody */
-        VerdictBody: {
-            /**
-             * User Verdict
-             * @enum {string}
-             */
-            user_verdict: "valid" | "invalid" | "missed";
-            /** User Note */
-            user_note?: string | null;
-        };
         /** VerdictRequest */
         VerdictRequest: {
             /** Entry Price */
@@ -2087,6 +2719,84 @@ export interface components {
             max_adverse: number;
             /** Direction */
             direction: string;
+        };
+        /** _CaptureBody */
+        _CaptureBody: {
+            /** Symbol */
+            symbol: string;
+            /** User Id */
+            user_id?: string | null;
+            /**
+             * Phase
+             * @default
+             */
+            phase: string;
+            /**
+             * Timeframe
+             * @default 1h
+             */
+            timeframe: string;
+            /**
+             * Capture Kind
+             * @default pattern_candidate
+             */
+            capture_kind: string;
+            /** Candidate Transition Id */
+            candidate_transition_id?: string | null;
+            /** Scan Id */
+            scan_id?: string | null;
+            /** User Note */
+            user_note?: string | null;
+            /**
+             * Chart Context
+             * @default {}
+             */
+            chart_context: {
+                [key: string]: unknown;
+            };
+            /** Feature Snapshot */
+            feature_snapshot?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Block Scores
+             * @default {}
+             */
+            block_scores: {
+                [key: string]: unknown;
+            };
+            /** Outcome Id */
+            outcome_id?: string | null;
+            /** Verdict Id */
+            verdict_id?: string | null;
+        };
+        /** _FindBody */
+        _FindBody: {
+            /** Conditions */
+            conditions: components["schemas"]["_FindCondition"][];
+            /**
+             * Min Match
+             * @default 1
+             */
+            min_match: number;
+            /**
+             * Universe
+             * @default alpha
+             */
+            universe: string;
+        };
+        /** _FindCondition */
+        _FindCondition: {
+            /** Block */
+            block?: string | null;
+            /** Feature */
+            feature?: string | null;
+            /** Op */
+            op?: string | null;
+            /** Value */
+            value?: number | null;
+            /** Persist Bars */
+            persist_bars?: number | null;
         };
         /** _PatternAlertPolicyBody */
         _PatternAlertPolicyBody: {
@@ -2158,6 +2868,37 @@ export interface components {
              * @default []
              */
             tags: string[];
+        };
+        /** _WatchBody */
+        _WatchBody: {
+            /** User Id */
+            user_id: string;
+            /** Symbol */
+            symbol: string;
+            /** Target Phase */
+            target_phase: string;
+            /**
+             * Min Confidence
+             * @default 0.7
+             */
+            min_confidence: number;
+            /** Notify Channels */
+            notify_channels?: string[];
+            /**
+             * Expires Hours
+             * @default 168
+             */
+            expires_hours: number;
+        };
+        /** _VerdictBody */
+        api__routes__captures___VerdictBody: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "valid" | "invalid" | "missed";
+            /** User Note */
+            user_note?: string | null;
         };
         /** _VerdictBody */
         api__routes__live_signals___VerdictBody: {
@@ -2680,6 +3421,28 @@ export interface operations {
             };
         };
     };
+    get_pattern_registry_patterns_registry_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_all_states_patterns_states_get: {
         parameters: {
             query?: never;
@@ -2775,6 +3538,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_all_stats_patterns_stats_all_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -3020,6 +3805,43 @@ export interface operations {
             };
         };
     };
+    record_capture_patterns__slug__capture_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_CaptureBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     auto_evaluate_patterns__slug__evaluate_post: {
         parameters: {
             query?: never;
@@ -3168,6 +3990,7 @@ export interface operations {
                 user_id?: string | null;
                 pattern_slug?: string | null;
                 symbol?: string | null;
+                status?: string | null;
                 limit?: number;
             };
             header?: never;
@@ -3268,7 +4091,44 @@ export interface operations {
             };
         };
     };
-    label_capture_verdict_captures__capture_id__verdict_post: {
+    list_verdict_inbox_captures_outcomes_get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+                pattern_slug?: string | null;
+                symbol?: string | null;
+                status?: "outcome_ready" | "verdict_ready";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_capture_verdict_captures__capture_id__verdict_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3279,9 +4139,45 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerdictBody"];
+                "application/json": components["schemas"]["api__routes__captures___VerdictBody"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_chart_annotations_captures_chart_annotations_get: {
+        parameters: {
+            query: {
+                /** @description e.g. BTCUSDT */
+                symbol: string;
+                timeframe?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -3818,6 +4714,614 @@ export interface operations {
         };
     };
     flywheel_health_observability_flywheel_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    gainers_dalkkak_gainers_get: {
+        parameters: {
+            query?: {
+                top_n?: number;
+                /** @description 최소 24h 거래량 */
+                min_volume_usdt?: number;
+                /** @description 최소 상승률 % */
+                min_price_change_pct?: number;
+                /** @description 신규 상장 기준일 */
+                new_listing_days?: number;
+                /** @description 신규 상장 가중치 */
+                new_listing_boost?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_positions_dalkkak_positions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    open_position_dalkkak_positions_open_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenPositionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_position_dalkkak_positions_close_post: {
+        parameters: {
+            query: {
+                /** @description 심볼 예: BTCUSDT */
+                symbol: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    caption_dalkkak_caption_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    risk_plan_dalkkak_risk_get: {
+        parameters: {
+            query: {
+                /** @description 진입가 USDT */
+                entry_price: number;
+                /** @description 현재 ATR (USDT) */
+                atr: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alpha_world_model_alpha_world_model_get: {
+        parameters: {
+            query?: {
+                grade?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alpha_token_detail_alpha_token__symbol__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alpha_token_history_alpha_token__symbol__history_get: {
+        parameters: {
+            query?: {
+                since?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alpha_anomalies_alpha_anomalies_get: {
+        parameters: {
+            query?: {
+                investigated?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_alpha_watch_alpha_watch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_WatchBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_alpha_find_alpha_find_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["_FindBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_pattern_scan_jobs_pattern_scan_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_outcome_resolver_jobs_outcome_resolver_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_auto_capture_jobs_auto_capture_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_db_cleanup_jobs_db_cleanup_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    jobs_status_jobs_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_all_stats_refinement_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_pattern_stats_refinement_stats__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_suggestions_refinement_suggestions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_leaderboard_refinement_leaderboard_get: {
         parameters: {
             query?: never;
             header?: never;
