@@ -89,6 +89,17 @@ function buildHeuristicText(snapshot: HeuristicSnapshot | undefined, locale: str
   return lines.join('\n') + footer;
 }
 
+// ── Error sanitizer — strips key fragments before sending to client ──
+// Patterns: Bearer tokens, sk-/gsk_/csk-/nvapi- prefixed keys, JSON auth fields
+const KEY_PATTERN = /\b(Bearer\s+\S+|sk-[A-Za-z0-9_-]{8,}|gsk_\S+|csk-\S+|nvapi-\S+|"(?:api_key|authorization|token)"\s*:\s*"[^"]{8,}")/gi;
+
+function sanitizeProviderError(raw: string, status: number): string {
+  if (status === 401 || status === 403) return `Authentication failed (${status})`;
+  if (status === 429) return `Rate limit reached (429)`;
+  const scrubbed = raw.replace(KEY_PATTERN, '[redacted]').slice(0, 120);
+  return scrubbed || `Provider error (${status})`;
+}
+
 // ── API mode: user's own key, OpenAI-compatible stream (no tool loop) ──
 
 const USER_KEY_ENDPOINTS: Record<string, { url: string; model: string }> = {
@@ -120,7 +131,8 @@ async function* streamWithUserKey(
     });
     if (!res.ok || !res.body) {
       const err = await res.text().catch(() => '');
-      yield { type: 'error', message: `${provider} ${res.status}: ${err.slice(0, 120)}` };
+      console.error(`[streamWithUserKey] ${provider} ${res.status}:`, err.slice(0, 200));
+      yield { type: 'error', message: sanitizeProviderError(err, res.status) };
       return;
     }
     const reader = res.body.getReader();
@@ -371,7 +383,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
         if (!textEmitted) {
           emitHeuristicFallback();
         } else {
-          emit({ type: 'error', message: err.message || 'Stream failed' });
+          const status = typeof err.status === 'number' ? err.status : 0;
+          console.error('[cogochi/message] stream error:', err.message);
+          emit({ type: 'error', message: sanitizeProviderError(err.message || '', status) });
         }
       } finally {
         controller.close();
