@@ -10,7 +10,7 @@
  */
 
 import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
-import type { IndicatorValue, VenueSeriesRow, HeatmapCell } from './types';
+import type { IndicatorValue, VenueSeriesRow, HeatmapCell, RegimeState } from './types';
 
 export interface VenueDivergencePayload {
   symbol: string;
@@ -36,11 +36,44 @@ export interface IndicatorContextPayload {
   };
 }
 
+// ── W-0122-F Free Wins payloads ─────────────────────────────────────────────
+
+export interface SsrPayload {
+  at: number;
+  current: number;
+  percentile: number;
+  sparkline: number[];
+  regime: 'dry_powder_high' | 'dry_powder_low' | 'neutral';
+}
+
+export interface RvConePayload {
+  symbol: string;
+  at: number;
+  windows: number[];
+  current: Record<string, number>;
+  cone: Record<string, { min: number; p10: number; p50: number; p90: number; max: number }>;
+  percentile: Record<string, number>;
+}
+
+export interface FundingFlipPayload {
+  symbol: string;
+  at: number;
+  currentRate: number;
+  previousRate: number;
+  flippedAt: number | null;
+  persistedHours: number;
+  direction: 'pos_to_neg' | 'neg_to_pos' | 'persisted';
+  consecutiveIntervals: number;
+}
+
 export interface AdapterInput {
   analyze: AnalyzeEnvelope | null;
   venueDivergence?: VenueDivergencePayload | null;
   liqClusters?: LiqClusterPayload | null;
   indicatorContext?: IndicatorContextPayload | null;
+  ssr?: SsrPayload | null;
+  rvCone?: RvConePayload | null;
+  fundingFlip?: FundingFlipPayload | null;
 }
 
 /**
@@ -111,6 +144,54 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
     out.liq_heatmap = {
       current: input.liqClusters.cells,
       at: input.liqClusters.at || now,
+    };
+  }
+
+  // ── Stablecoin Supply Ratio (W-0122-F) ────────────────────────────────
+  if (input.ssr) {
+    out.stablecoin_supply_ratio = {
+      current: input.ssr.current,
+      percentile: { value: input.ssr.percentile, window: '30d' },
+      sparkline: input.ssr.sparkline.slice(-24),
+      at: input.ssr.at,
+    };
+  }
+
+  // ── Realized Volatility (30d window is primary) (W-0122-F) ────────────
+  if (input.rvCone) {
+    const rv30 = input.rvCone.current['30'];
+    const pct30 = input.rvCone.percentile['30'];
+    if (rv30 != null && pct30 != null) {
+      out.realized_vol_cone = {
+        current: rv30 * 100, // present as percent
+        percentile: { value: pct30, window: '90d' },
+        sparkline: [
+          input.rvCone.current['90'] ?? rv30,
+          input.rvCone.current['60'] ?? rv30,
+          input.rvCone.current['30'] ?? rv30,
+          input.rvCone.current['14'] ?? rv30,
+          input.rvCone.current['7'] ?? rv30,
+        ].map(v => v * 100),
+        at: input.rvCone.at,
+      };
+    }
+  }
+
+  // ── Funding Flip (Archetype E — W-0122-F) ─────────────────────────────
+  if (input.fundingFlip) {
+    const f = input.fundingFlip;
+    const regime: RegimeState = {
+      label: f.direction === 'persisted'
+        ? (f.currentRate >= 0 ? 'POSITIVE' : 'NEGATIVE')
+        : 'FLIPPED',
+      direction: f.currentRate > 0 ? 'bull' : f.currentRate < 0 ? 'bear' : 'neutral',
+      flippedAt: f.flippedAt ? new Date(f.flippedAt).toISOString() : undefined,
+      persistedBars: f.consecutiveIntervals,
+    };
+    out.funding_flip = {
+      current: regime,
+      state: regime,
+      at: f.at,
     };
   }
 

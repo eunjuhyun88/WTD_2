@@ -39,6 +39,9 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/venue-divergence',  // W-0122-A: public read-only, 30s cached, rate limited
   '/api/market/liq-clusters',      // W-0122-B1: public read-only, derived from chart feed
   '/api/market/indicator-context', // W-0122 rolling percentile provider (30d distribution)
+  '/api/market/stablecoin-ssr',    // W-0122-F: derived SSR (DefiLlama + CoinGecko), 30m cache
+  '/api/market/rv-cone',           // W-0122-F: realized vol cone (Binance klines), 1h cache
+  '/api/market/funding-flip',      // W-0122-F: funding flip clock (Binance history), 10m cache
   '/api/coingecko/',
   '/api/feargreed',
   '/api/chart/',          // chart klines + feed — public market data, rate-limited

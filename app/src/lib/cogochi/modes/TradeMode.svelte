@@ -13,6 +13,9 @@
     type VenueDivergencePayload,
     type LiqClusterPayload,
     type IndicatorContextPayload,
+    type SsrPayload,
+    type RvConePayload,
+    type FundingFlipPayload,
   } from '$lib/indicators/adapter';
 
   interface Props {
@@ -111,23 +114,68 @@
     } catch { /* tolerate */ }
   }
 
+  // ── W-0122-F Free Wins — SSR, RV Cone, Funding Flip ─────────────────
+  let ssr = $state<SsrPayload | null>(null);
+  let rvCone = $state<RvConePayload | null>(null);
+  let fundingFlip = $state<FundingFlipPayload | null>(null);
+
+  async function refreshSsr() {
+    try {
+      const res = await fetch(`/api/market/stablecoin-ssr`);
+      if (!res.ok) return;
+      ssr = (await res.json()) as SsrPayload;
+    } catch { /* tolerate */ }
+  }
+
+  async function refreshRvCone() {
+    try {
+      const res = await fetch(`/api/market/rv-cone?symbol=${symbol}`);
+      if (!res.ok) return;
+      rvCone = (await res.json()) as RvConePayload;
+    } catch { /* tolerate */ }
+  }
+
+  async function refreshFundingFlip() {
+    try {
+      const res = await fetch(`/api/market/funding-flip?symbol=${symbol}`);
+      if (!res.ok) return;
+      fundingFlip = (await res.json()) as FundingFlipPayload;
+    } catch { /* tolerate */ }
+  }
+
   // Trigger on symbol change + initial mount. Polling every 60s as a safety net
   // (candle close also triggers refresh above). Indicator context polls only
-  // every 5m since its server cache TTL is 10m.
+  // every 5m since its server cache TTL is 10m. SSR/RV/flip are slower still.
   $effect(() => {
     void symbol;
     venueDivergence = null;
     liqClusters = null;
     indicatorContext = null;
+    ssr = null;
+    rvCone = null;
+    fundingFlip = null;
     void refreshVenueDivergence();
     void refreshLiqClusters();
     void refreshIndicatorContext();
+    void refreshSsr();
+    void refreshRvCone();
+    void refreshFundingFlip();
     const fastIv = setInterval(() => {
       void refreshVenueDivergence();
       void refreshLiqClusters();
     }, 60_000);
     const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
-    return () => { clearInterval(fastIv); clearInterval(slowIv); };
+    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min.
+    const flipIv = setInterval(() => void refreshFundingFlip(), 5 * 60_000);
+    const ssrIv = setInterval(() => void refreshSsr(), 10 * 60_000);
+    const rvIv = setInterval(() => void refreshRvCone(), 30 * 60_000);
+    return () => {
+      clearInterval(fastIv);
+      clearInterval(slowIv);
+      clearInterval(flipIv);
+      clearInterval(ssrIv);
+      clearInterval(rvIv);
+    };
   });
 
   // ── Indicator pipeline: analyze + side fetches → registry-keyed values ─
@@ -136,6 +184,9 @@
     venueDivergence,
     liqClusters,
     indicatorContext,
+    ssr,
+    rvCone,
+    fundingFlip,
   }));
 
   // Ordered list of indicators to render in the evidence pane — registry-driven.
