@@ -78,6 +78,14 @@ export interface OptionsSnapshotPayload {
   atmIvNearTerm: number;
   counts: { callStrikes: number; putStrikes: number; nearTermInstruments: number };
   expiries: Array<{ expiry: string; daysToExpiry: number; callOi: number; putOi: number; atmIv: number | null }>;
+  /** Phase 2 — gamma/pin heuristic (no full Greeks yet). */
+  gamma?: {
+    pinLevel: number | null;
+    pinDistancePct: number | null;
+    maxPain: number | null;
+    maxPainDistancePct: number | null;
+    pinDirection: 'above' | 'below' | 'at' | null;
+  };
 }
 
 export interface AdapterInput {
