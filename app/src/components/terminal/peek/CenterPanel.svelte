@@ -21,6 +21,7 @@
     analyzeCount: number;
     scanCount: number;
     judgeCount: number;
+    reviewCount?: number;
     onCaptureSaved: (id: string) => void;
     onTfChange: (tf: string) => void;
     onDismissLabCta: () => void;
@@ -28,6 +29,7 @@
     analyze?: Snippet;
     scan?: Snippet;
     judge?: Snippet;
+    review?: Snippet;
   }
 
   let {
@@ -46,6 +48,7 @@
     analyzeCount,
     scanCount,
     judgeCount,
+    reviewCount = 0,
     onCaptureSaved,
     onTfChange,
     onDismissLabCta,
@@ -53,6 +56,7 @@
     analyze,
     scan,
     judge,
+    review,
   }: Props = $props();
 </script>
 
@@ -92,10 +96,11 @@
     {/if}
   </div>
 
-  <PeekDrawer {analyzeCount} {scanCount} {judgeCount}>
+  <PeekDrawer {analyzeCount} {scanCount} {judgeCount} {reviewCount}>
     <svelte:fragment slot="analyze">{@render analyze?.()}</svelte:fragment>
     <svelte:fragment slot="scan">{@render scan?.()}</svelte:fragment>
     <svelte:fragment slot="judge">{@render judge?.()}</svelte:fragment>
+    <svelte:fragment slot="review">{@render review?.()}</svelte:fragment>
   </PeekDrawer>
 </main>
 
