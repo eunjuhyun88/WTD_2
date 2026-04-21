@@ -191,6 +191,17 @@ def get_stats_sync(slug: str, ledger: LedgerStore) -> dict:
     }
 
 
+def get_all_stats_sync(ledger: LedgerStore) -> dict:
+    """Return stats for all known patterns in a single call (avoids N+1 fan-out)."""
+    results: dict[str, dict] = {}
+    for slug in PATTERN_LIBRARY:
+        try:
+            results[slug] = get_stats_sync(slug, ledger)
+        except Exception:
+            results[slug] = {"pattern_slug": slug, "error": "unavailable"}
+    return {"patterns": results, "count": len(results)}
+
+
 def get_training_records_sync(slug: str, limit: int, ledger: LedgerStore) -> dict:
     _require_pattern(slug)
     outcomes = ledger.list_all(slug)
