@@ -26,10 +26,15 @@ Verdict Inbox (W-0088 Phase C, flywheel axis 3):
 """
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
+
+log = logging.getLogger("engine.captures")
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
@@ -334,3 +339,151 @@ async def list_captures(
         "captures": [capture.to_dict() for capture in captures],
         "count": len(captures),
     }
+
+
+# ── Chart annotations (TradingView overlay feed) ────────────────────────────
+
+@router.get("/chart-annotations")
+async def get_chart_annotations(
+    symbol: str = Query(..., description="e.g. BTCUSDT"),
+    timeframe: str = Query("1h"),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict:
+    """Return capture markers formatted for TradingView chart overlay.
+
+    Poll at ~60s intervals. Each annotation includes price levels from
+    chart_context so the frontend can render entry/stop/tp lines.
+
+    Response shape (one entry per capture):
+      capture_id      — unique ID
+      kind            — capture_kind
+      status          — pending_outcome | outcome_ready | verdict_ready | closed
+      pattern_slug    — e.g. "tradoor-oi-reversal-v1"
+      phase           — e.g. "SPRING"
+      captured_at_s   — unix seconds (chart x-axis anchor)
+      entry_price     — from chart_context.entry_price (null if not set)
+      stop_price      — from chart_context.stop (null if not set)
+      tp1_price       — from chart_context.tp1 (null if not set)
+      tp2_price       — from chart_context.tp2 (null if not set)
+      eval_window_ms  — evaluation window in ms (for shading end x)
+      p_win           — float 0–1 if recorded
+      user_verdict    — "valid" | "invalid" | "missed" | null
+    """
+    captures = await asyncio.to_thread(
+        _capture_store.list,
+        symbol=symbol,
+        limit=limit,
+    )
+    # Filter to matching timeframe
+    captures = [c for c in captures if c.timeframe == timeframe]
+
+    annotations = []
+    for c in captures:
+        ctx = c.chart_context or {}
+        annotation: dict[str, Any] = {
+            "capture_id": c.capture_id,
+            "kind": c.capture_kind,
+            "status": c.status,
+            "pattern_slug": c.pattern_slug,
+            "phase": c.phase,
+            "captured_at_s": c.captured_at_ms // 1000,
+            "entry_price": ctx.get("entry_price"),
+            "stop_price": ctx.get("stop"),
+            "tp1_price": ctx.get("tp1"),
+            "tp2_price": ctx.get("tp2"),
+            "eval_window_ms": ctx.get("eval_window_ms"),
+            "p_win": ctx.get("p_win"),
+            "user_verdict": None,
+        }
+        # Attach verdict if outcome is linked
+        if c.outcome_id and c.pattern_slug:
+            outcome = _ledger_store.load(c.pattern_slug, c.outcome_id)
+            if outcome is not None:
+                annotation["user_verdict"] = getattr(outcome, "user_verdict", None)
+        annotations.append(annotation)
+
+    return {
+        "ok": True,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "count": len(annotations),
+        "annotations": annotations,
+    }
+
+
+# ── Auto-capture job (called by /jobs/auto_capture/run) ──────────────────────
+
+_PRIORITY_SLUGS = [
+    "funding-flip-reversal-v1",
+    "radar-golden-entry-v1",
+    "tradoor-oi-reversal-v1",
+    "wyckoff-spring-reversal-v1",
+    "liquidity-sweep-reversal-v1",
+    "whale-accumulation-reversal-v1",
+    "var-volume-absorption-reversal-v1",
+    "wsr-wyckoff-spring-reversal-v1",
+]
+_DEDUP_WINDOW_SECONDS = 86400  # 24h
+
+
+def _get_recent_keys() -> set[str]:
+    """Return symbol+slug keys captured in the last 24h."""
+    cutoff_ms = (int(time.time()) - _DEDUP_WINDOW_SECONDS) * 1000
+    captures = _capture_store.list(limit=500)
+    return {
+        f"{c.symbol}:{c.pattern_slug}"
+        for c in captures
+        if c.captured_at_ms >= cutoff_ms
+    }
+
+
+async def _auto_capture_job() -> None:
+    """Auto-capture current pattern candidates (for Cloud Scheduler)."""
+    from api.routes.patterns_thread import get_all_candidates_sync  # type: ignore[import]
+
+    candidates_data = await asyncio.to_thread(get_all_candidates_sync)
+    candidates: list[dict[str, Any]] = candidates_data.get("candidates", [])
+
+    if not candidates:
+        log.info("auto_capture: no candidates found")
+        return
+
+    # Sort by priority order
+    slug_rank = {slug: i for i, slug in enumerate(_PRIORITY_SLUGS)}
+    candidates.sort(key=lambda c: slug_rank.get(c.get("pattern_slug", ""), 999))
+
+    recent_keys = await asyncio.to_thread(_get_recent_keys)
+
+    stored = 0
+    skipped_dedup = 0
+    for cand in candidates[:20]:  # max 20 per run
+        symbol = cand.get("symbol", "")
+        slug = cand.get("pattern_slug", "")
+        key = f"{symbol}:{slug}"
+
+        if key in recent_keys:
+            skipped_dedup += 1
+            continue
+
+        record = CaptureRecord(
+            capture_kind="pattern_candidate",
+            user_id="auto",
+            symbol=symbol,
+            pattern_slug=slug,
+            pattern_version=cand.get("pattern_version", 1),
+            phase=cand.get("current_phase", ""),
+            timeframe=cand.get("timeframe", "1h"),
+            captured_at_ms=now_ms(),
+            chart_context={"auto_capture": True, "p_win": cand.get("p_win")},
+            block_scores=cand.get("block_scores", {}),
+            status="pending_outcome",
+        )
+        _capture_store.save(record)
+        LEDGER_RECORD_STORE.append_capture_record(record)
+        recent_keys.add(key)
+        stored += 1
+
+    log.info(
+        "auto_capture done: stored=%d skipped_dedup=%d total_candidates=%d",
+        stored, skipped_dedup, len(candidates),
+    )
