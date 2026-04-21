@@ -18,6 +18,12 @@ Do not start active work from this file alone.
 - Decisions: root `../docs/decisions/*.md`
 - Legacy product reference only: `docs/COGOCHI.md`
 
+## App Deploy Guardrail
+
+- For the app Vercel project, agent/default branches are non-deploy lanes.
+- Use `release` as the production branch if Git auto-deploy is enabled again.
+- If that branch model is not explicitly confirmed, treat manual deploy as the default.
+
 ## Default Excludes
 
 - `node_modules/`

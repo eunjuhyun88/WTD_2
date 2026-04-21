@@ -83,6 +83,13 @@ Every non-trivial task must have one active work item:
 - Before merge, pass the minimum gate: clean `git status`, scoped tests/checks, and conflict review.
 - If unexpected file changes appear, stop and confirm scope before committing.
 
+## Vercel Deploy Rules
+
+- `main`, `master`, and agent branches such as `claude/*` or `codex/*` must not be used as Vercel auto-deploy branches.
+- If Git-based Vercel deploys are enabled for `app/`, use a dedicated `release` branch as the only production branch.
+- Reconnect Vercel Git auto-deploy only after repo-level branch guardrails are present in `app/vercel.json`.
+- Until that guardrail and branch split are in place, prefer manual app deploys from `app/` via Vercel CLI.
+
 ## Multi-Agent Handoff
 
 - Split multiple agents by work item or merge unit, not arbitrary file subsets.

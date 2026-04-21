@@ -6,6 +6,16 @@
   "outputDirectory": ".vercel/output",
   "devCommand": "npm run dev",
   "regions": ["sin1"],
+  "git": {
+    "deploymentEnabled": {
+      "main": false,
+      "master": false,
+      "claude/**": false,
+      "claude-*": false,
+      "codex/**": false,
+      "codex-*": false
+    }
+  },
   "github": {
     "silent": false
   }
