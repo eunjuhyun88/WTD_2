@@ -25,6 +25,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     unit: '%',
     relatedBlocks: ['oi_change', 'oi_acceleration', 'oi_hold_after_spike'],
     description: 'Open interest delta — 1h change; percentile vs 30-day distribution',
+    aiSynonyms: ['oi', 'open interest', '오아이', '미결제약정', 'oi 1h', 'oi 변화'],
+    aiExampleQueries: ['OI 보여줘', 'open interest 1h', 'OI 급증?'],
+    alternateArchetypes: ['D'],
   },
 
   oi_change_4h: {
@@ -38,6 +41,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     priority: 1,
     defaultVisible: true,
     unit: '%',
+    aiSynonyms: ['oi 4h', 'open interest 4h', '오아이 4h'],
+    aiExampleQueries: ['OI 4h 어때?'],
+    alternateArchetypes: ['D'],
   },
 
   oi_per_venue: {
@@ -57,6 +63,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
       'isolated_venue_pump',
     ],
     description: 'OI change across Binance / Bybit / OKX — divergence = isolated leverage',
+    aiSynonyms: ['oi venue', 'oi by exchange', 'exchange oi', 'venue oi divergence', '거래소별 oi'],
+    aiExampleQueries: ['거래소별 OI 보여줘', 'venue oi divergence?'],
+    alternateArchetypes: ['A'],
   },
 
   // ── Funding family ──────────────────────────────────────────────
@@ -78,6 +87,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
       'negative_funding_bias',
     ],
     description: 'Perpetual funding rate — percentile vs 30d; regime-aware extreme bands',
+    aiSynonyms: ['funding', 'funding rate', '펀딩', '펀딩율', 'fr', 'perp funding'],
+    aiExampleQueries: ['펀딩 보여줘', 'funding rate 어때?', 'funding 지금 어느 수준?'],
+    alternateArchetypes: ['F'],
   },
 
   funding_per_venue: {
@@ -91,6 +103,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     defaultVisible: true,
     unit: '%',
     relatedBlocks: ['venue_funding_spread_extreme'],
+    aiSynonyms: ['venue funding', 'funding spread', 'funding per exchange', '거래소별 펀딩'],
+    aiExampleQueries: ['거래소별 펀딩 차이?', 'funding spread 확인'],
+    alternateArchetypes: ['A'],
   },
 
   // ── CVD family ──────────────────────────────────────────────────
@@ -107,6 +122,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     unit: '',
     relatedBlocks: ['cvd_price_divergence', 'delta_flip_positive', 'delta_flip_negative'],
     description: 'Cumulative volume delta — divergence vs price is the alpha',
+    aiSynonyms: ['cvd', 'cumulative volume delta', 'delta', '델타', '누적델타', 'volume delta'],
+    aiExampleQueries: ['CVD 다이버전스?', 'delta 지금 어때', 'cvd 보여줘'],
+    alternateArchetypes: ['A'],
   },
 
   // ── Volume family ───────────────────────────────────────────────
@@ -122,6 +140,8 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     defaultVisible: true,
     unit: 'x',
     relatedBlocks: ['volume_spike', 'volume_dryup', 'volume_surge_bull', 'volume_surge_bear'],
+    aiSynonyms: ['volume', 'vol', '거래량', 'volume ratio', '볼륨'],
+    aiExampleQueries: ['거래량 체크', 'volume 이상 있어?'],
   },
 
   // ── Premium (Pillar 1 of our existing assets) ───────────────────
@@ -138,6 +158,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     unit: '%',
     relatedBlocks: ['coinbase_premium_positive', 'coinbase_premium_weak'],
     description: 'Coinbase–Binance price gap — US institutional bid proxy',
+    aiSynonyms: ['coinbase premium', 'cb premium', 'cbp', '코인베이스 프리미엄', 'us premium'],
+    aiExampleQueries: ['coinbase premium 지금?', 'US 기관 매수세 확인'],
+    alternateArchetypes: ['D'],
   },
 
   // ── Liquidations (Pillar 1 — W-0122-B) ─────────────────────────
@@ -157,6 +180,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
       'multi_venue_liq_cascade',
     ],
     description: 'Liquidation clusters — price×time heatmap. Clusters act as magnets.',
+    aiSynonyms: ['liq', 'liquidation', 'liq heatmap', '청산', '청산히트맵', 'liquidation map', 'liq cluster'],
+    aiExampleQueries: ['청산 히트맵 보여줘', 'liq cluster 어디?', '청산 매그넷 확인'],
+    alternateArchetypes: ['I'],
   },
 
   // ── Options (Pillar 2 — W-0122-C) ──────────────────────────────
@@ -173,6 +199,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     unit: 'pts',
     relatedBlocks: ['skew_extreme_fear', 'skew_extreme_greed'],
     description: 'Deribit 25-delta skew proxy (OTM put IV − OTM call IV). Positive = fear priced in.',
+    aiSynonyms: ['skew', '스큐', '25d skew', 'put call skew', 'options skew', 'iv skew', '변동성 스큐'],
+    aiExampleQueries: ['skew 보여줘', '스큐 지금 어때?', '옵션 공포 측정'],
+    alternateArchetypes: ['G'],
   },
 
   gamma_flip_level: {
@@ -186,6 +215,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     defaultVisible: false,
     relatedBlocks: ['gamma_flip_proximity'],
     description: 'Market-maker gamma flip price. Above = pin; below = trend.',
+    aiSynonyms: ['gamma', 'gamma flip', '감마', '감마플립', 'gex', 'gamma exposure', 'gamma pin'],
+    aiExampleQueries: ['gamma pin 이 뭐야?', '감마 플립 레벨?', 'gex 확인'],
+    alternateArchetypes: ['I'],
   },
 
   put_call_ratio: {
@@ -201,6 +233,8 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     unit: '',
     relatedBlocks: ['put_call_ratio_extreme'],
     description: 'Put/Call open interest ratio from Deribit — >1 = put-heavy, <1 = call-heavy',
+    aiSynonyms: ['put call ratio', 'pcr', 'p/c', 'put/call', '풋콜비율'],
+    aiExampleQueries: ['put call ratio 어때?', 'pcr 확인'],
   },
 
   // ── Netflow (Pillar 4 — W-0122-D) ──────────────────────────────
@@ -221,6 +255,9 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
       'whale_transfer_to_exchange',
     ],
     description: 'Exchange netflow via Arkham — inflow = sell pressure, outflow = hodl',
+    aiSynonyms: ['netflow', 'exchange netflow', '넷플로우', '거래소 유입', '코인 유출', 'on-chain flow'],
+    aiExampleQueries: ['거래소 유입 확인', 'netflow 지금?', '고래 거래소 이동?'],
+    alternateArchetypes: ['H'],
   },
 
   stablecoin_supply_ratio: {
@@ -235,6 +272,8 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     defaultVisible: true,
     unit: '',
     description: 'BTC mcap / stablecoin supply — low = dry powder on sidelines (bullish setup)',
+    aiSynonyms: ['ssr', 'stablecoin ratio', 'stablecoin supply', '스테이블코인 비율', 'dry powder'],
+    aiExampleQueries: ['dry powder 확인', 'ssr 지금?'],
   },
 
   // ── Volatility (Pillar-adjacent free win — W-0122-F) ────────────

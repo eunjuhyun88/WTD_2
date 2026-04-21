@@ -23,6 +23,7 @@
     type FundingFlipPayload,
     type OptionsSnapshotPayload,
   } from '$lib/indicators/adapter';
+  import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
 
   interface Props {
     mode: 'trade' | 'train' | 'flywheel';
@@ -39,9 +40,10 @@
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
-  let showOI = $state(true);
-  let showFunding = $state(true);
-  let showCVD = $state(true);
+  // Chart indicator toggles — backed by chartIndicators store (persisted, also LLM-controllable)
+  const showOI      = $derived($chartIndicators.oi);
+  const showFunding = $derived($chartIndicators.derivatives);
+  const showCVD     = $derived($chartIndicators.cvd);
 
   // ── Live chart data ────────────────────────────────────────────────────────
   // chartPayload is only for ChartBoard's initialData; ChartBoard owns live updates via DataFeed.
@@ -244,10 +246,21 @@
     optionsSnapshot,
   }));
 
-  // Ordered list of indicators to render in the evidence pane — registry-driven.
-  // Archetype A gauges (row) + Archetype F venue strips (stack).
-  const gaugePaneIds = ['oi_change_1h', 'funding_rate', 'volume_ratio'] as const;
-  const venuePaneIds = ['oi_per_venue', 'funding_per_venue'] as const;
+  // Ordered list of indicators to render — driven by ShellState.visibleIndicators.
+  // Gauge row: archetypes A, D, E (scalar / divergence / regime cards).
+  // Venue stack: archetype F (multi-venue strips).
+  const gaugePaneIds = $derived(
+    $shellStore.visibleIndicators.filter(id => {
+      const def = INDICATOR_REGISTRY[id];
+      return def && (def.archetype === 'A' || def.archetype === 'D' || def.archetype === 'E');
+    })
+  );
+  const venuePaneIds = $derived(
+    $shellStore.visibleIndicators.filter(id => {
+      const def = INDICATOR_REGISTRY[id];
+      return def && def.archetype === 'F';
+    })
+  );
   const optionsPaneIds = ['put_call_ratio', 'options_skew_25d'] as const;
 
   // ── Gamma pin derived from optionsSnapshot, passed to ChartBoard ─────
@@ -445,6 +458,25 @@
     if (typeof window === 'undefined' || mobileView !== 'judge') return;
     window.addEventListener('keydown', handleJudgeKeydown);
     return () => window.removeEventListener('keydown', handleJudgeKeydown);
+  });
+
+  // ── Slice α: focus_indicator command from AIPanel ──────────────────────────
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    function onCmd(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.id !== 'focus_indicator') return;
+      const indicatorId = detail.indicatorId as string | undefined;
+      if (!indicatorId) return;
+      const el = containerEl?.querySelector<HTMLElement>(`[data-indicator-id="${CSS.escape(indicatorId)}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        el.classList.add('highlight');
+        setTimeout(() => el.classList.remove('highlight'), 2200);
+      }
+    }
+    window.addEventListener('cogochi:cmd', onCmd);
+    return () => window.removeEventListener('cogochi:cmd', onCmd);
   });
 
   // ── SCAN state — live from /api/cogochi/alpha/world-model ─────────────────
@@ -871,11 +903,11 @@
         <div class="ind-toggles">
           <span class="ind-label-hdr">INDICATORS</span>
           {#each [
-            { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
-            { id: 'funding', label: 'Funding', get: () => showFunding, set: (v: boolean) => showFunding = v },
-            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
+            { id: 'oi',      label: 'OI',      get: () => showOI,      set: () => toggleIndicator('oi') },
+            { id: 'funding', label: 'Funding', get: () => showFunding, set: () => toggleIndicator('derivatives') },
+            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: () => toggleIndicator('cvd') },
           ] as tog}
-            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set(!tog.get())}>{tog.label}</button>
+            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set()}>{tog.label}</button>
           {/each}
         </div>
         <div class="conf-inline">
@@ -1032,11 +1064,11 @@
         <div class="ind-toggles">
           <span class="ind-label-hdr">INDICATORS</span>
           {#each [
-            { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
-            { id: 'funding', label: 'Funding', get: () => showFunding, set: (v: boolean) => showFunding = v },
-            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
+            { id: 'oi',      label: 'OI',      get: () => showOI,      set: () => toggleIndicator('oi') },
+            { id: 'funding', label: 'Funding', get: () => showFunding, set: () => toggleIndicator('derivatives') },
+            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: () => toggleIndicator('cvd') },
           ] as tog}
-            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set(!tog.get())}>{tog.label}</button>
+            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set()}>{tog.label}</button>
           {/each}
         </div>
         <div class="conf-inline">
@@ -1103,7 +1135,9 @@
               {#if confluence}
                 <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
               {/if}
-              <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+              {#if gaugePaneIds.length > 0}
+                <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+              {/if}
               {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
                 <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
               {/if}
@@ -1243,11 +1277,11 @@
         <div class="ind-toggles">
           <span class="ind-label-hdr">INDICATORS</span>
           {#each [
-            { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
-            { id: 'funding', label: 'Funding', get: () => showFunding, set: (v: boolean) => showFunding = v },
-            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
+            { id: 'oi',      label: 'OI',      get: () => showOI,      set: () => toggleIndicator('oi') },
+            { id: 'funding', label: 'Funding', get: () => showFunding, set: () => toggleIndicator('derivatives') },
+            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: () => toggleIndicator('cvd') },
           ] as tog}
-            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set(!tog.get())}>{tog.label}</button>
+            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set()}>{tog.label}</button>
           {/each}
         </div>
       </div>
@@ -1384,14 +1418,14 @@
       {/if}
       <div class="ind-toggles">
         {#each [
-          { id: 'oi',      label: 'OI',      get: () => showOI,      set: (v: boolean) => showOI = v },
-          { id: 'funding', label: 'Fund',    get: () => showFunding, set: (v: boolean) => showFunding = v },
-          { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: (v: boolean) => showCVD = v },
+          { id: 'oi',      label: 'OI',      get: () => showOI,      set: () => toggleIndicator('oi') },
+          { id: 'funding', label: 'Fund',    get: () => showFunding, set: () => toggleIndicator('derivatives') },
+          { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: () => toggleIndicator('cvd') },
         ] as tog}
           <button
             class="ind-tog"
             class:active={tog.get()}
-            onclick={() => tog.set(!tog.get())}
+            onclick={() => tog.set()}
           >{tog.label}</button>
         {/each}
       </div>
@@ -1553,6 +1587,12 @@
                     {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
                   {/if}
                 </div>
+                {#if gaugePaneIds.length > 0}
+                  <IndicatorPane ids={gaugePaneIds} values={indicatorValues} layout="row" />
+                {/if}
+                {#if venuePaneIds.length > 0}
+                  <IndicatorPane ids={venuePaneIds} values={indicatorValues} layout="stack" />
+                {/if}
                 <div class="evidence-grid">
                   {#each evidenceItems as item}
                     <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>

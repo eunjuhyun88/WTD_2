@@ -41,7 +41,9 @@
     {/if}
     <div class="ind-pane-items">
       {#each rendered as item (item.id)}
-        <IndicatorRenderer def={item.def!} value={item.value!} />
+        <div class="ind-item-wrap" data-indicator-id={item.id}>
+          <IndicatorRenderer def={item.def!} value={item.value!} />
+        </div>
       {/each}
     </div>
   </div>
@@ -91,5 +93,22 @@
 
   .layout-stack .ind-pane-items {
     flex-direction: column;
+  }
+
+  .ind-item-wrap {
+    display: contents; /* transparent wrapper — lets inner component control layout */
+  }
+
+  /* AI focus highlight: pulsing amber border, fired via JS adding .highlight class */
+  :global([data-indicator-id].highlight) {
+    display: block;
+    border-radius: 4px;
+    animation: ind-highlight-pulse 2s ease-out forwards;
+  }
+
+  @keyframes ind-highlight-pulse {
+    0%   { box-shadow: 0 0 0 2px var(--amb); background: var(--amb-dd); }
+    50%  { box-shadow: 0 0 0 3px var(--amb-d); }
+    100% { box-shadow: none; background: transparent; }
   }
 </style>
