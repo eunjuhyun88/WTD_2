@@ -166,13 +166,13 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     family: 'Options',
     archetype: 'A',
     dimensions: ['percentile'],
-    source: { provider: 'deribit', stream: 'ticker.BTC-*' },
+    source: { provider: 'deribit', endpoint: '/api/market/options-snapshot' },
     thresholds: { warn: 60, extreme: 90, historical: 98 },
     priority: 1,
-    defaultVisible: false,
-    unit: '',
+    defaultVisible: true,
+    unit: 'pts',
     relatedBlocks: ['skew_extreme_fear', 'skew_extreme_greed'],
-    description: 'Deribit 25-delta skew (IV_put25 − IV_call25). Negative = fear priced in.',
+    description: 'Deribit 25-delta skew proxy (OTM put IV − OTM call IV). Positive = fear priced in.',
   },
 
   gamma_flip_level: {
@@ -194,12 +194,13 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     family: 'Options',
     archetype: 'A',
     dimensions: ['percentile'],
-    source: { provider: 'deribit', endpoint: '/options/put-call' },
+    source: { provider: 'deribit', endpoint: '/api/market/options-snapshot' },
     thresholds: { warn: 60, extreme: 90 },
     priority: 2,
-    defaultVisible: false,
+    defaultVisible: true,
     unit: '',
     relatedBlocks: ['put_call_ratio_extreme'],
+    description: 'Put/Call open interest ratio from Deribit — >1 = put-heavy, <1 = call-heavy',
   },
 
   // ── Netflow (Pillar 4 — W-0122-D) ──────────────────────────────

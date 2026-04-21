@@ -53,14 +53,16 @@ export interface ConfluenceResult {
   divergence: boolean;
 }
 
-/** Static weights used in Phase 1 before the Flywheel learns real weights. */
+/** Static weights used in Phase 1 before the Flywheel learns real weights.
+ *  Weights sum to 1.00. */
 export const PHASE1_WEIGHTS: Record<string, number> = {
-  pattern: 0.30,           // existing 80 block ensemble — anchor of the score
-  venue_divergence: 0.20,  // our independent edge (Pillar 3)
-  funding_flip: 0.15,      // timing signal (Archetype E)
-  liq_magnet: 0.15,        // Pillar 1 magnetic attraction
-  rv_cone: 0.10,           // volatility regime
-  ssr: 0.10,               // dry powder / cycle context
+  pattern: 0.25,           // existing 80 block ensemble — anchor of the score
+  venue_divergence: 0.18,  // our independent edge (Pillar 3)
+  options: 0.15,           // Deribit skew + P/C (Pillar 2) — forward-looking
+  funding_flip: 0.12,      // timing signal (Archetype E)
+  liq_magnet: 0.12,        // Pillar 1 magnetic attraction
+  rv_cone: 0.09,           // volatility regime
+  ssr: 0.09,               // dry powder / cycle context
 };
 
 export function regimeFromScore(score: number, confidence: number): ConfluenceRegime {

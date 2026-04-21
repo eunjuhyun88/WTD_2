@@ -62,6 +62,17 @@ export interface LiqMagnetInput {
   intensity: number;
 }
 
+export interface OptionsInput {
+  /** Put/Call OI ratio — >1 = more puts than calls. */
+  putCallRatioOi: number;
+  /** Put/Call 24h volume ratio. */
+  putCallRatioVol: number;
+  /** 25-delta skew proxy (OTM put IV minus OTM call IV, in IV%-points). Positive = fear premium. */
+  skew25d: number;
+  /** Near-term ATM IV (DVOL proxy) in IV% */
+  atmIvNearTerm: number;
+}
+
 export interface ConfluenceInput {
   symbol: string;
   at: number;
@@ -71,6 +82,7 @@ export interface ConfluenceInput {
   ssr: SsrInput | null;
   fundingFlip: FundingFlipInput | null;
   liqMagnet: LiqMagnetInput | null;
+  options: OptionsInput | null;
 }
 
 // ── Per-pillar scoring ──────────────────────────────────────────────────────
@@ -255,6 +267,43 @@ function scoreLiqMagnet(l: LiqMagnetInput | null): ConfluenceContribution | null
   };
 }
 
+/** Options signal: skew + P/C ratio combined.
+ *  25d skew (put IV minus call IV) is the cleanest single-number fear gauge:
+ *    skew > +5  → strong fear priced in → contrarian bullish
+ *    skew < -2  → complacency → contrarian bearish
+ *  P/C ratio complements: extreme reading reinforces the signal.
+ */
+function scoreOptions(o: OptionsInput | null): ConfluenceContribution | null {
+  if (!o) return null;
+  // Skew component — contrarian signal, bounded to ±1.
+  // Historical BTC 25d skew ranges roughly [-5, +15]. Strong fear > +8, complacency < -2.
+  let skewRaw = 0;
+  if (o.skew25d > 8) skewRaw = Math.min(0.8, (o.skew25d - 8) / 10 + 0.3);    // +fear → +bull
+  else if (o.skew25d < -2) skewRaw = -Math.min(0.6, (-o.skew25d - 2) / 6 + 0.2); // complacent → -bear
+  else skewRaw = o.skew25d / 20; // middle band: mild
+
+  // Put/Call component — also contrarian.
+  // BTC PCR historical: ~0.5-1.2 typical, extremes 0.3 / 1.5.
+  let pcrRaw = 0;
+  if (o.putCallRatioOi > 1.2) pcrRaw = Math.min(0.6, (o.putCallRatioOi - 1.2) * 2); // put-heavy → bullish contrarian
+  else if (o.putCallRatioOi < 0.6 && o.putCallRatioOi > 0) pcrRaw = -Math.min(0.5, (0.6 - o.putCallRatioOi) * 2); // call-heavy → bearish
+  else pcrRaw = 0;
+
+  // Combined — skew dominates (more reliable signal), P/C secondary.
+  const raw = Math.max(-1, Math.min(1, skewRaw * 0.7 + pcrRaw * 0.3));
+
+  const skewLabel = o.skew25d > 8 ? 'fear premium' : o.skew25d < -2 ? 'complacent' : 'neutral';
+  return {
+    source: 'options',
+    label: 'Options',
+    score: raw,
+    weight: PHASE1_WEIGHTS.options,
+    weighted: raw * PHASE1_WEIGHTS.options,
+    magnitude: Math.abs(raw),
+    reason: `skew ${o.skew25d.toFixed(1)}pts (${skewLabel}), P/C ${o.putCallRatioOi.toFixed(2)}`,
+  };
+}
+
 // ── Composition ─────────────────────────────────────────────────────────────
 
 export function computeConfluence(input: ConfluenceInput): ConfluenceResult {
@@ -265,6 +314,7 @@ export function computeConfluence(input: ConfluenceInput): ConfluenceResult {
     scoreSsr(input.ssr),
     scoreFundingFlip(input.fundingFlip),
     scoreLiqMagnet(input.liqMagnet),
+    scoreOptions(input.options),
   ];
   const contributions = rawContributions.filter((c): c is ConfluenceContribution => c !== null);
 

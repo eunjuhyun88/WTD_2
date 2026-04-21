@@ -18,6 +18,7 @@
     type SsrPayload,
     type RvConePayload,
     type FundingFlipPayload,
+    type OptionsSnapshotPayload,
   } from '$lib/indicators/adapter';
 
   interface Props {
@@ -146,6 +147,20 @@
     } catch { /* tolerate */ }
   }
 
+  // ── Pillar 2: Options snapshot (W-0122-C1) ───────────────────────────
+  let optionsSnapshot = $state<OptionsSnapshotPayload | null>(null);
+
+  async function refreshOptionsSnapshot() {
+    // Deribit supports BTC and ETH currencies.
+    const currency = symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : null;
+    if (!currency) { optionsSnapshot = null; return; }
+    try {
+      const res = await fetch(`/api/market/options-snapshot?currency=${currency}`);
+      if (!res.ok) return;
+      optionsSnapshot = (await res.json()) as OptionsSnapshotPayload;
+    } catch { /* tolerate */ }
+  }
+
   // ── Confluence Engine (W-0122 master score) ──────────────────────────
   let confluence = $state<ConfluenceResult | null>(null);
 
@@ -168,6 +183,7 @@
     ssr = null;
     rvCone = null;
     fundingFlip = null;
+    optionsSnapshot = null;
     confluence = null;
     void refreshVenueDivergence();
     void refreshLiqClusters();
@@ -175,6 +191,7 @@
     void refreshSsr();
     void refreshRvCone();
     void refreshFundingFlip();
+    void refreshOptionsSnapshot();
     void refreshConfluence();
     const fastIv = setInterval(() => {
       void refreshVenueDivergence();
@@ -182,16 +199,18 @@
       void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
     }, 60_000);
     const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
-    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min.
+    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min, options is 5min.
     const flipIv = setInterval(() => void refreshFundingFlip(), 5 * 60_000);
     const ssrIv = setInterval(() => void refreshSsr(), 10 * 60_000);
     const rvIv = setInterval(() => void refreshRvCone(), 30 * 60_000);
+    const optIv = setInterval(() => void refreshOptionsSnapshot(), 5 * 60_000);
     return () => {
       clearInterval(fastIv);
       clearInterval(slowIv);
       clearInterval(flipIv);
       clearInterval(ssrIv);
       clearInterval(rvIv);
+      clearInterval(optIv);
     };
   });
 
@@ -204,12 +223,14 @@
     ssr,
     rvCone,
     fundingFlip,
+    optionsSnapshot,
   }));
 
   // Ordered list of indicators to render in the evidence pane — registry-driven.
   // Archetype A gauges (row) + Archetype F venue strips (stack).
   const gaugePaneIds = ['oi_change_1h', 'funding_rate', 'volume_ratio'] as const;
   const venuePaneIds = ['oi_per_venue', 'funding_per_venue'] as const;
+  const optionsPaneIds = ['put_call_ratio', 'options_skew_25d'] as const;
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
     entry: analyzeData.entryPlan.entry,
@@ -592,6 +613,9 @@
           {/if}
           <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE INDICATORS" layout="row" />
           <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" />
+          {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+            <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS (DERIBIT)" layout="row" />
+          {/if}
           {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
             <div class="liq-pane-wrap">
               <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
