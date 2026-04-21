@@ -15,9 +15,13 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from ledger.store import get_ledger_store
+import logging
+
+from ledger.store import get_ledger_store, _compute_stats_from_outcomes
 from ledger.types import PatternStats
 from patterns.registry import PATTERN_REGISTRY_STORE
+
+log = logging.getLogger("engine.refinement")
 
 router = APIRouter()
 _ledger = get_ledger_store()
@@ -57,16 +61,36 @@ def _suggestion(stats: PatternStats) -> str | None:
 
 
 def _build_refinement_snapshot() -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    t0 = time.perf_counter()
     rows: list[dict[str, Any]] = []
     by_slug: dict[str, dict[str, Any]] = {}
 
+    # Batch-prefetch all outcomes in 1 roundtrip when SupabaseLedgerStore is active.
+    # Falls back to per-slug compute_stats() in local dev (FileLedgerStore).
+    prefetched: dict[str, list] | None = None
+    if hasattr(_ledger, "batch_list_all"):
+        try:
+            prefetched = _ledger.batch_list_all()
+        except Exception:
+            prefetched = None
+
     for pattern in PATTERN_REGISTRY_STORE.list_all():
-        stats = _ledger.compute_stats(pattern.slug)
+        slug = pattern.slug
+        if prefetched is not None:
+            outcomes = prefetched.get(slug, [])
+            stats = _compute_stats_from_outcomes(slug, outcomes)
+        else:
+            stats = _ledger.compute_stats(slug)
         row = _stats_to_dict(stats)
         row["suggestion"] = _suggestion(stats)
         rows.append(row)
-        by_slug[pattern.slug] = row
+        by_slug[slug] = row
 
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    log.info(
+        "refinement snapshot: %d patterns in %dms (batch=%s)",
+        len(rows), elapsed_ms, prefetched is not None,
+    )
     return rows, by_slug
 
 

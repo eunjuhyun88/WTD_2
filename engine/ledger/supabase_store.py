@@ -185,6 +185,20 @@ class SupabaseLedgerStore:
         outcomes = self.list_all(pattern_slug)
         return _compute_stats_from_outcomes(pattern_slug, outcomes)
 
+    def batch_list_all(self) -> dict[str, list["PatternOutcome"]]:
+        """Fetch all outcomes for all slugs in a single DB roundtrip.
+
+        Returns dict[pattern_slug → list[PatternOutcome]].
+        Used by get_all_stats_sync and _build_refinement_snapshot to reduce
+        N per-slug queries to 1 bulk query.
+        """
+        result = _sb().table("pattern_outcomes").select("*").execute()
+        by_slug: dict[str, list[PatternOutcome]] = {}
+        for row in (result.data or []):
+            o = _row_to_outcome(row)
+            by_slug.setdefault(o.pattern_slug, []).append(o)
+        return by_slug
+
     # ── Auto-evaluation (identical to FileLedgerStore — Binance I/O, not storage) ──
 
     @staticmethod
