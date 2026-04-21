@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureRecord
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.outcome_policy import (
     DEFAULT_EVAL_WINDOW_HOURS,
@@ -119,7 +119,7 @@ def resolve_outcomes(
     from data_cache.loader import load_klines as default_loader
 
     captures_store = capture_store or CaptureStore()
-    outcomes_store = ledger_store or LedgerStore()
+    outcomes_store = ledger_store or get_ledger_store()
     loader = klines_loader or default_loader
     ts_now = now_ms_val if now_ms_val is not None else now_ms()
 

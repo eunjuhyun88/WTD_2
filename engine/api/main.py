@@ -178,7 +178,10 @@ async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
     observe_ms("http.request_duration_ms", duration_ms)
     increment(f"http.status.{response.status_code}")
     response.headers["x-request-id"] = request_id
-    log.info("%s %s status=%s request_id=%s", request.method, request.url.path, response.status_code, request_id)
+    response.headers["x-process-time-ms"] = f"{duration_ms:.1f}"
+    _level = logging.WARNING if duration_ms > 500 else logging.INFO
+    log.log(_level, "%s %s status=%s dur=%.0fms request_id=%s",
+            request.method, request.url.path, response.status_code, duration_ms, request_id)
     return response
 
 # ---------------------------------------------------------------------------

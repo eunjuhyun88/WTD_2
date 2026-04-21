@@ -51,10 +51,10 @@
     labellingId = captureId;
     labelError = null;
     try {
-      const resp = await fetch(`/api/engine/captures/${captureId}/verdict`, {
+      const resp = await fetch(`/api/captures/${captureId}/verdict`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ user_verdict: verdict, user_note: note ?? null }),
+        body: JSON.stringify({ verdict, user_note: note ?? null }),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));

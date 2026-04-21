@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from api.routes import patterns_thread
 from capture.types import CaptureRecord
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.library import PATTERN_LIBRARY, get_pattern
@@ -25,7 +25,7 @@ from patterns.types import PatternObject, PhaseCondition
 from scoring.block_evaluator import _BLOCKS
 
 router = APIRouter()
-_ledger = LedgerStore()
+_ledger = get_ledger_store()
 
 
 # ── Request models ───────────────────────────────────────────────────────────

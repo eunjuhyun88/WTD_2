@@ -7,10 +7,10 @@ log = logging.getLogger("engine.scanner.jobs")
 
 async def auto_evaluate_job() -> None:
     """Auto-evaluate pending ledger outcomes past their evaluation window."""
-    from ledger.store import LedgerStore
+    from ledger.store import get_ledger_store
     from patterns.library import PATTERN_LIBRARY
 
-    store = LedgerStore()
+    store = get_ledger_store()
     total_evaluated = 0
     for slug in PATTERN_LIBRARY:
         evaluated = store.auto_evaluate_pending(slug)

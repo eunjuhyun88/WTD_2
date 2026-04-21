@@ -24,7 +24,16 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
   if (!user) throw error(401, 'Authentication required');
 
   const { id } = params;
-  const body = await request.text();
+  let payload: Record<string, unknown>;
+  try {
+    payload = await request.json();
+  } catch {
+    throw error(400, 'Invalid JSON body');
+  }
+  const normalized = {
+    verdict: payload.verdict ?? payload.user_verdict,
+    user_note: payload.user_note ?? null,
+  };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8_000);
 
@@ -35,7 +44,7 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
         'content-type': request.headers.get('content-type') ?? 'application/json',
         accept: 'application/json',
       },
-      body,
+      body: JSON.stringify(normalized),
       signal: controller.signal,
     });
     const text = await res.text();

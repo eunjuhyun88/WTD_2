@@ -51,14 +51,25 @@ interface BinanceFuturesTrade {
 
 // ─── API Key encryption (simple AES-256-GCM) ──────────────────
 
-const ENCRYPTION_KEY = (() => {
-  const key = process.env.EXCHANGE_ENCRYPTION_KEY;
+const ENCRYPTION_SALT = 'cogochi-salt';
+
+export function isExchangeEncryptionConfigured(): boolean {
+  return typeof process.env.EXCHANGE_ENCRYPTION_KEY === 'string'
+    && process.env.EXCHANGE_ENCRYPTION_KEY.trim().length > 0;
+}
+
+function getEncryptionKey(): string {
+  const key = process.env.EXCHANGE_ENCRYPTION_KEY?.trim();
   if (!key) throw new Error('EXCHANGE_ENCRYPTION_KEY is required');
   return key;
-})();
+}
+
+function deriveEncryptionKey(): Buffer {
+  return crypto.scryptSync(getEncryptionKey(), ENCRYPTION_SALT, 32);
+}
 
 export function encryptApiKey(plaintext: string): string {
-  const key = crypto.scryptSync(ENCRYPTION_KEY, 'cogochi-salt', 32);
+  const key = deriveEncryptionKey();
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
@@ -69,7 +80,7 @@ export function encryptApiKey(plaintext: string): string {
 
 export function decryptApiKey(ciphertext: string): string {
   const [ivHex, authTagHex, encrypted] = ciphertext.split(':');
-  const key = crypto.scryptSync(ENCRYPTION_KEY, 'cogochi-salt', 32);
+  const key = deriveEncryptionKey();
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
   decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
