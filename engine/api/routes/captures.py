@@ -38,7 +38,7 @@ log = logging.getLogger("engine.captures")
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store, validate_pattern_slug
 from patterns.state_store import PatternStateStore
 
 log = logging.getLogger("engine.captures")
@@ -46,7 +46,7 @@ log = logging.getLogger("engine.captures")
 router = APIRouter()
 _capture_store = CaptureStore()
 _state_store = PatternStateStore()
-_ledger_store = LedgerStore()
+_ledger_store = get_ledger_store()
 
 # Literal alias documents the accepted values and lets pydantic validate.
 VerdictLabel = Literal["valid", "invalid", "missed"]
@@ -84,6 +84,10 @@ class CaptureCreateBody(BaseModel):
 def _validate_transition(body: CaptureCreateBody) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     if body.capture_kind != "pattern_candidate":
         return None, {}
+    try:
+        body.pattern_slug = validate_pattern_slug(body.pattern_slug)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not body.candidate_transition_id:
         raise HTTPException(
             status_code=400,
@@ -130,6 +134,11 @@ def _validate_transition(body: CaptureCreateBody) -> tuple[dict[str, Any] | None
 @router.post("")
 async def create_capture(body: CaptureCreateBody) -> dict:
     """Create a canonical capture record from Save Setup."""
+    if body.capture_kind != "pattern_candidate" and body.pattern_slug:
+        try:
+            body.pattern_slug = validate_pattern_slug(body.pattern_slug)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     transition_snapshot, transition_defaults = _validate_transition(body)
     record = CaptureRecord(
         capture_kind=body.capture_kind,
@@ -189,6 +198,10 @@ async def bulk_import_captures(body: BulkImportBody) -> dict:
     """
     stored: list[CaptureRecord] = []
     for row in body.rows:
+        try:
+            row.pattern_slug = validate_pattern_slug(row.pattern_slug, allow_empty=True)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         chart_context: dict[str, Any] = {}
         if row.entry_price is not None:
             chart_context["hypothetical_entry_price"] = row.entry_price
@@ -318,6 +331,7 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
 
 @router.get("/chart-annotations")
 async def get_chart_annotations(
+    user_id: str | None = None,
     symbol: str = Query(..., description="e.g. BTCUSDT"),
     timeframe: str = Query("1h"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -344,6 +358,7 @@ async def get_chart_annotations(
     """
     captures = await asyncio.to_thread(
         _capture_store.list,
+        user_id=user_id,
         symbol=symbol,
         limit=limit,
     )
