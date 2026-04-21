@@ -53,6 +53,11 @@ export interface ChartSeriesPayload {
     time: number;
     value: number;
   }>;
+  liqBars?: Array<{
+    time: number;
+    longUsd: number;
+    shortUsd: number;
+  }>;
   indicators: Record<string, unknown>;
 }
 
