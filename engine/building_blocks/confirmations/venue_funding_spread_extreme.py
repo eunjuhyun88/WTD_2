@@ -30,7 +30,7 @@ def venue_funding_spread_extreme(
     okx = f.get("okx_funding")
 
     if binance is None or bybit is None or okx is None:
-        return pd.Series(False, index=ctx.bars.index)
+        return pd.Series(False, index=ctx.features.index)
 
     stacked = pd.concat([binance, bybit, okx], axis=1)
     spread = stacked.max(axis=1) - stacked.min(axis=1)

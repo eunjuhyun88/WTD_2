@@ -66,6 +66,10 @@ from building_blocks.confirmations.coinbase_premium_positive import coinbase_pre
 from building_blocks.confirmations.smart_money_accumulation import smart_money_accumulation
 from building_blocks.confirmations.total_oi_spike import total_oi_spike
 from building_blocks.confirmations.oi_exchange_divergence import oi_exchange_divergence
+# W-0122 Pillar 3: Venue Divergence blocks
+from building_blocks.confirmations.venue_oi_divergence import venue_oi_divergence
+from building_blocks.confirmations.venue_funding_spread_extreme import venue_funding_spread_extreme
+from building_blocks.confirmations.isolated_venue_pump import isolated_venue_pump
 from building_blocks.confirmations.delta_flip_positive import delta_flip_positive
 from building_blocks.confirmations.relative_velocity_bull import relative_velocity_bull
 from building_blocks.confirmations.cvd_price_divergence import cvd_price_divergence
@@ -155,6 +159,11 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("smart_money_accumulation", smart_money_accumulation),
     ("total_oi_spike",          total_oi_spike),
     ("oi_exchange_divergence",  oi_exchange_divergence),
+    # W-0122 Pillar 3: Venue Divergence
+    ("venue_oi_divergence_bear", lambda ctx: venue_oi_divergence(ctx, mode="bear_divergence")),
+    ("venue_oi_divergence_bull", lambda ctx: venue_oi_divergence(ctx, mode="bull_divergence")),
+    ("venue_funding_spread_extreme", venue_funding_spread_extreme),
+    ("isolated_venue_pump",      isolated_venue_pump),
     ("delta_flip_positive",     delta_flip_positive),
     # CBR-specific lambdas (post-decline compression breakout, W-0104)
     ("sideways_compression_cbr",   lambda ctx: sideways_compression(ctx, max_range_pct=0.06, lookback=12)),
