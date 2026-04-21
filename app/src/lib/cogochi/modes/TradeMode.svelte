@@ -120,9 +120,13 @@
   let _prevRange = false;
   $effect(() => {
     const active = !!tabState.rangeSelection;
-    if (active && !_prevRange) triggerScan();
-    else if (!active && _prevRange && scanState === 'scanning') cancelScan();
+    const prev = _prevRange;
     _prevRange = active;
+    const scanningNow = scanState;
+    Promise.resolve().then(() => {
+      if (active && !prev) triggerScan();
+      else if (!active && prev && scanningNow === 'scanning') cancelScan();
+    });
   });
 
   function triggerScan() {
@@ -225,6 +229,34 @@
   let judgeVerdict = $state<'agree' | 'disagree' | null>(null);
   let judgeOutcome = $state<'win' | 'loss' | 'flat' | null>(null);
   let judgeRejudged = $state<'right' | 'wrong' | null>(null);
+  let judgeSubmitting = $state(false);
+  let judgeSubmitResult = $state<{ saved: boolean; count: number; training_triggered: boolean } | null>(null);
+
+  // Auto-save outcome to flywheel when user selects WIN/LOSS/FLAT
+  $effect(() => {
+    const outcome = judgeOutcome;
+    if (!outcome) return;
+    const snap = analyzeData?.snapshot;
+    if (!snap) return;
+    // Move state mutation out of sync effect body to avoid Svelte 5 unsafe-mutation warning
+    Promise.resolve().then(() => {
+      judgeSubmitting = true;
+      fetch('/api/cogochi/outcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          snapshot: { ...snap, user_verdict: judgeVerdict },
+          outcome: outcome === 'win' ? 1 : outcome === 'loss' ? 0 : -1,
+          symbol,
+          timeframe,
+        }),
+      })
+        .then(r => r.json())
+        .then(d => { judgeSubmitResult = d; })
+        .catch(() => {})
+        .finally(() => { judgeSubmitting = false; });
+    });
+  });
 
   // Keyboard shortcuts for judge verdict (Y/N)
   function handleJudgeKeydown(e: KeyboardEvent) {
@@ -243,15 +275,57 @@
     return () => window.removeEventListener('keydown', handleJudgeKeydown);
   });
 
-  // ── SCAN state (trade_scan.jsx ScanPanel) ────────────────────────────────
-  let scanSelected = $state('a8');
-  const scanCandidates = [
-    { id: 'a8',  symbol: 'LDOUSDT', tf: '1H', pattern: 'OI +14% · accum',   phase: 4, alpha: 77, age: '08:12', sim: 0.91, dir: 'long' },
-    { id: 'a9',  symbol: 'INJUSDT', tf: '4H', pattern: '번지대 4h · CVD 양', phase: 4, alpha: 73, age: '07:48', sim: 0.88, dir: 'long' },
-    { id: 'a10', symbol: 'FETUSDT', tf: '1H', pattern: 'Higher lows 6/6',   phase: 4, alpha: 70, age: '07:22', sim: 0.84, dir: 'long' },
-    { id: 'a11', symbol: 'SEIUSDT', tf: '1H', pattern: 'Funding flip',      phase: 3, alpha: 64, age: '06:58', sim: 0.79, dir: 'long' },
-    { id: 'a12', symbol: 'BNXUSDT', tf: '4H', pattern: 'OI spike accum',   phase: 4, alpha: 61, age: '06:30', sim: 0.75, dir: 'long' },
-  ];
+  // ── SCAN state — live from /api/cogochi/alpha/world-model ─────────────────
+  type ScanCandidate = { id: string; symbol: string; tf: string; pattern: string; phase: number; alpha: number; age: string; sim: number; dir: string };
+  let scanSelected = $state('');
+  let scanLoading = $state(false);
+  let scanCandidates = $state<ScanCandidate[]>([]);
+
+  const _PHASE_ORDER: Record<string, number> = { HOT: 0, COMPLETE: 1, WARM: 2, COLD: 3 };
+  const _PHASE_NUM:   Record<string, number> = { COLD: 2, WARM: 3, HOT: 4, COMPLETE: 5 };
+  const _PHASE_ALPHA: Record<string, number> = { HOT: 85, WARM: 65, COMPLETE: 90, COLD: 45 };
+  const _PHASE_SIM:   Record<string, number> = { HOT: 0.88, WARM: 0.70, COMPLETE: 0.95, COLD: 0.50 };
+
+  function _fmtAge(enteredAt: string | null): string {
+    if (!enteredAt) return '—';
+    const ms = Date.now() - new Date(enteredAt).getTime();
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  function _loadAlphaWorldModel() {
+    scanLoading = true;
+    fetch('/api/cogochi/alpha/world-model')
+      .then(r => r.json())
+      .then((data: { phases?: { symbol: string; grade: string; phase: string; entered_at: string | null }[] }) => {
+        const items = (data.phases ?? [])
+          .filter(p => p.phase !== 'IDLE')
+          .sort((a, b) => (_PHASE_ORDER[a.phase] ?? 9) - (_PHASE_ORDER[b.phase] ?? 9))
+          .map(p => ({
+            id: p.symbol,
+            symbol: p.symbol,
+            tf: '1H',
+            pattern: `Alpha presurge · ${p.phase}`,
+            phase: _PHASE_NUM[p.phase] ?? 2,
+            alpha: Math.min(99, (_PHASE_ALPHA[p.phase] ?? 50) + (p.grade === 'A' ? 5 : 0)),
+            age: _fmtAge(p.entered_at),
+            sim: _PHASE_SIM[p.phase] ?? 0.50,
+            dir: 'long',
+          }));
+        scanCandidates = items;
+        if (items.length > 0 && !scanSelected) scanSelected = items[0].id;
+      })
+      .catch(() => {})
+      .finally(() => { scanLoading = false; });
+  }
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    Promise.resolve().then(_loadAlphaWorldModel);
+    const iv = setInterval(_loadAlphaWorldModel, 5 * 60 * 1000);
+    return () => clearInterval(iv);
+  });
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   function _fmtNum(v: number | null | undefined): string {
@@ -428,6 +502,11 @@
           {/if}
         {/if}
       {:else if mobileView === 'scan'}
+        {#if scanLoading && scanCandidates.length === 0}
+          <div class="scan-empty">스캔 중…</div>
+        {:else if scanCandidates.length === 0}
+          <div class="scan-empty">활성 신호 없음</div>
+        {/if}
         {#each scanCandidates as x}
           {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
           <button class="scan-row" class:active={scanSelected === x.id} onclick={() => {
@@ -504,6 +583,15 @@
               </button>
             {/each}
           </div>
+          {#if judgeOutcome}
+            <div class="outcome-save-hint">
+              {#if judgeSubmitting}
+                <span>저장 중…</span>
+              {:else if judgeSubmitResult?.saved}
+                <span style:color="var(--pos)">{judgeSubmitResult.training_triggered ? '학습 시작됨' : `저장됨 · ${judgeSubmitResult.count}건`}</span>
+              {/if}
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
@@ -1418,12 +1506,18 @@
                     <div class="result-row">
                       <span class="result-label">RESULT</span>
                       <span class="result-val" style:color={judgeOutcome === 'win' ? 'var(--pos)' : judgeOutcome === 'loss' ? 'var(--neg)' : 'var(--g7)'}>
-                        {judgeOutcome === 'win' ? '+3.4%' : judgeOutcome === 'loss' ? '−1.1%' : '+0.1%'}
+                        {judgeOutcome.toUpperCase()}
                       </span>
                       <span class="spacer"></span>
-                      <span class="result-hint">
-                        {judgeOutcome === 'win' ? 'target · 2h 14m' : judgeOutcome === 'loss' ? 'stop · 42m' : 'flat · 6h'}
-                      </span>
+                      {#if judgeSubmitting}
+                        <span class="result-hint">저장 중…</span>
+                      {:else if judgeSubmitResult?.saved}
+                        <span class="result-hint" style:color="var(--pos)">
+                          저장됨 {judgeSubmitResult.training_triggered ? '· 학습 시작' : `· ${judgeSubmitResult.count}건`}
+                        </span>
+                      {:else}
+                        <span class="result-hint">flywheel 연결 중</span>
+                      {/if}
                     </div>
                     <div class="rejudge-label">REJUDGE</div>
                     <div class="rejudge-btns">
@@ -2186,6 +2280,7 @@
 
   /* After col */
   .outcome-row { display: flex; gap: 3px; }
+  .outcome-save-hint { margin-top: 4px; font-size: 10px; color: var(--g6); text-align: right; }
   .outcome-btn {
     flex: 1; padding: 6px 4px; font-family: 'Space Grotesk', sans-serif;
     font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
@@ -2408,6 +2503,7 @@
   }
 
   /* scan-row: compact horizontal scan item for A/C layouts */
+  .scan-empty { padding: 12px 0; font-size: 11px; color: var(--g6); text-align: center; }
   .scan-row {
     display: flex;
     align-items: center;
@@ -2720,3 +2816,4 @@
     letter-spacing: 0.06em;
   }
 </style>
+
