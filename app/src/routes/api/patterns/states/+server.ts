@@ -18,6 +18,7 @@ export const GET: RequestHandler = async ({ getClientAddress }) => {
     const data = await res.json();
     return json({ ...data, ok: true });
   } catch (err) {
-    return json({ patterns: {}, ok: false, error: String(err) });
+    console.error('[api/patterns/states] engine error:', err);
+    return json({ patterns: {}, ok: false, error: 'engine unavailable' });
   }
 };
