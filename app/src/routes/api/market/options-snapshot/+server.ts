@@ -47,6 +47,18 @@ export interface OptionsSnapshotPayload {
     putOi: number;
     atmIv: number | null;
   }>;
+  /** Gamma-flip heuristic. Without full Greeks we proxy it with:
+   *  max-OI strike across near-term expiries (the "pin" level) and
+   *  max-pain per nearest expiry (strike minimizing total option-writer loss).
+   *  Distance to these levels, as % of spot, acts as a magnet signal. */
+  gamma: {
+    pinLevel: number | null;
+    pinDistancePct: number | null;
+    maxPain: number | null;
+    maxPainDistancePct: number | null;
+    /** Sign convention: positive = above spot (upside pull), negative = below. */
+    pinDirection: 'above' | 'below' | 'at' | null;
+  };
 }
 
 const VALID_CURRENCY = /^(BTC|ETH)$/;
@@ -165,6 +177,10 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
   let atmIvSum = 0, atmIvCount = 0;
   let nearTermInstruments = 0;
 
+  // Per-strike OI across near-term expiries (≤45d) — for gamma/pin heuristic.
+  // Keyed by strike. Tracks separately call/put to later run max-pain.
+  const strikeAgg = new Map<number, { call: number; put: number }>();
+
   for (const inst of instruments) {
     const parsed = parseInstrument(inst.instrument_name);
     if (!parsed) continue;
@@ -226,6 +242,14 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
         nearTermCallIvCount++;
       }
     }
+
+    // Per-strike aggregation for gamma/pin — near-term only (≤45d), ±20% band.
+    if (daysToExpiry <= 45 && moneyness >= 0.8 && moneyness <= 1.2 && oi > 0) {
+      const s = strikeAgg.get(parsed.strike) ?? { call: 0, put: 0 };
+      if (parsed.type === 'C') s.call += oi;
+      else s.put += oi;
+      strikeAgg.set(parsed.strike, s);
+    }
   }
 
   const putCallRatioOi = callOi > 0 ? putOi / callOi : 0;
@@ -236,6 +260,54 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
   const skew25d = avgPutIv && avgCallIv ? avgPutIv - avgCallIv : 0;
 
   const atmIvNearTerm = atmIvCount > 0 ? atmIvSum / atmIvCount : 0;
+
+  // ── Gamma / pin heuristic ─────────────────────────────────────────────
+  // Without real Greeks, approximate the pinning level with the strike carrying
+  // the most total OI (weighted slightly toward the ATM side of the distribution).
+  // Max-pain: strike that minimizes total intrinsic value of ITM calls + puts —
+  // conventionally where option writers prefer price to settle.
+  let pinLevel: number | null = null;
+  let maxCombinedOi = 0;
+  for (const [strike, v] of strikeAgg) {
+    const combined = v.call + v.put;
+    // Damp strikes far from spot.
+    const moneyness = strike / underlyingPrice;
+    const centeringWeight = 1 - Math.min(0.5, Math.abs(moneyness - 1));
+    const weighted = combined * centeringWeight;
+    if (weighted > maxCombinedOi) {
+      maxCombinedOi = weighted;
+      pinLevel = strike;
+    }
+  }
+
+  // Max-pain: iterate candidate strikes, compute total ITM payout to holders.
+  let maxPain: number | null = null;
+  let minPainValue = Infinity;
+  const strikes = [...strikeAgg.keys()].sort((a, b) => a - b);
+  for (const candidate of strikes) {
+    let totalPayout = 0;
+    for (const [strike, v] of strikeAgg) {
+      // Calls ITM if candidate > strike.
+      if (candidate > strike) totalPayout += (candidate - strike) * v.call;
+      // Puts ITM if candidate < strike.
+      if (candidate < strike) totalPayout += (strike - candidate) * v.put;
+    }
+    if (totalPayout < minPainValue) {
+      minPainValue = totalPayout;
+      maxPain = candidate;
+    }
+  }
+
+  const pinDistancePct = pinLevel != null
+    ? ((pinLevel - underlyingPrice) / underlyingPrice) * 100
+    : null;
+  const maxPainDistancePct = maxPain != null
+    ? ((maxPain - underlyingPrice) / underlyingPrice) * 100
+    : null;
+  const pinDirection: 'above' | 'below' | 'at' | null = pinLevel == null
+    ? null
+    : Math.abs(pinDistancePct!) < 0.1 ? 'at'
+    : pinDistancePct! > 0 ? 'above' : 'below';
 
   const expiries = [...byExpiry.values()]
     .filter(b => b.expiryTs > now)
@@ -260,6 +332,13 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
     skew25d,
     atmIvNearTerm,
     counts: { callStrikes, putStrikes, nearTermInstruments },
+    gamma: {
+      pinLevel,
+      pinDistancePct,
+      maxPain,
+      maxPainDistancePct,
+      pinDirection,
+    },
     expiries,
   };
 

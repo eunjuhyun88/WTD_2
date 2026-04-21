@@ -71,6 +71,11 @@ export interface OptionsInput {
   skew25d: number;
   /** Near-term ATM IV (DVOL proxy) in IV% */
   atmIvNearTerm: number;
+  /** Phase 2 — distance from spot to near-term pin level, as % (signed: +above, -below).
+   *  null if pin not resolvable. */
+  pinDistancePct?: number | null;
+  /** Phase 2 — max-pain strike distance from spot as % (signed). */
+  maxPainDistancePct?: number | null;
 }
 
 export interface ConfluenceInput {
@@ -289,10 +294,28 @@ function scoreOptions(o: OptionsInput | null): ConfluenceContribution | null {
   else if (o.putCallRatioOi < 0.6 && o.putCallRatioOi > 0) pcrRaw = -Math.min(0.5, (0.6 - o.putCallRatioOi) * 2); // call-heavy → bearish
   else pcrRaw = 0;
 
-  // Combined — skew dominates (more reliable signal), P/C secondary.
-  const raw = Math.max(-1, Math.min(1, skewRaw * 0.7 + pcrRaw * 0.3));
+  // Gamma pin component (Phase 2) — close pin above = bullish magnet, below = bearish.
+  // Magnet strength decays with distance. Only meaningful within ±3%.
+  let gammaRaw = 0;
+  let gammaReason = '';
+  if (o.pinDistancePct != null && Number.isFinite(o.pinDistancePct)) {
+    const d = o.pinDistancePct;
+    const abs = Math.abs(d);
+    if (abs < 3) {
+      const strength = abs < 0.5 ? 1 : abs < 1.5 ? 0.7 : 0.4;
+      gammaRaw = Math.sign(d) * strength * 0.4; // max |0.4|
+      gammaReason = `pin ${d >= 0 ? '+' : ''}${d.toFixed(1)}% away`;
+    }
+  }
+
+  // Combined — skew dominates (0.55), P/C secondary (0.25), gamma magnet (0.20).
+  const raw = Math.max(-1, Math.min(1, skewRaw * 0.55 + pcrRaw * 0.25 + gammaRaw * 0.20));
 
   const skewLabel = o.skew25d > 8 ? 'fear premium' : o.skew25d < -2 ? 'complacent' : 'neutral';
+  const reason = gammaReason
+    ? `skew ${o.skew25d.toFixed(1)}pts (${skewLabel}), P/C ${o.putCallRatioOi.toFixed(2)}, ${gammaReason}`
+    : `skew ${o.skew25d.toFixed(1)}pts (${skewLabel}), P/C ${o.putCallRatioOi.toFixed(2)}`;
+
   return {
     source: 'options',
     label: 'Options',
@@ -300,7 +323,7 @@ function scoreOptions(o: OptionsInput | null): ConfluenceContribution | null {
     weight: PHASE1_WEIGHTS.options,
     weighted: raw * PHASE1_WEIGHTS.options,
     magnitude: Math.abs(raw),
-    reason: `skew ${o.skew25d.toFixed(1)}pts (${skewLabel}), P/C ${o.putCallRatioOi.toFixed(2)}`,
+    reason,
   };
 }
 

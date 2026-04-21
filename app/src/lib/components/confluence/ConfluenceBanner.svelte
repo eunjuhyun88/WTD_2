@@ -12,12 +12,22 @@
    */
   import type { ConfluenceResult, ConfluenceContribution } from '$lib/confluence/types';
 
+  /** History entry shape from /api/confluence/history. */
+  interface HistoryEntry {
+    at: number;
+    score: number;
+    confidence: number;
+    regime: string;
+    divergence: boolean;
+  }
+
   interface Props {
     value: ConfluenceResult | null;
     compact?: boolean;
+    history?: HistoryEntry[] | null;
   }
 
-  let { value, compact = false }: Props = $props();
+  let { value, compact = false, history = null }: Props = $props();
 
   const pct = $derived(value?.score ?? 0);
   const confPct = $derived(Math.round((value?.confidence ?? 0) * 100));
@@ -57,6 +67,33 @@
   // Bar shows score from -100 to +100 centered at 0 (50% mark visually).
   const barWidth = $derived(Math.min(100, Math.abs(pct) / 2)); // 0-50 each side
   const barSide = $derived(pct >= 0 ? 'right' : 'left');
+
+  // ── Sparkline computation (SVG polyline points in 0..100 × 0..100 viewBox) ─
+  const sparklinePoints = $derived.by(() => {
+    if (!history || history.length < 2) return '';
+    const n = history.length;
+    // Y axis: 0 (bottom) = -100 score, 100 (top) = +100. We invert because SVG Y grows down.
+    const pts = history.map((e, i) => {
+      const x = (i / (n - 1)) * 100;
+      const scoreClamped = Math.max(-100, Math.min(100, e.score));
+      // Map score [-100, +100] to y [100, 0] (invert).
+      const y = 50 - (scoreClamped / 100) * 50;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    });
+    return pts.join(' ');
+  });
+
+  // Streak derivation — prefer server-computed streak; fall back to scanning history.
+  const divStreak = $derived.by(() => {
+    if (value?.divergenceStreak != null) return value.divergenceStreak;
+    if (!history?.length) return 0;
+    let n = 0;
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].divergence) n++;
+      else break;
+    }
+    return n;
+  });
 </script>
 
 {#if value}
@@ -80,10 +117,21 @@
       </div>
       {#if value.divergence}
         <span class="divergence-badge" title="Material contributions disagree — rare high-alpha window">
-          ⚠ DIV
+          ⚠ DIV{divStreak > 1 ? ` · ${divStreak}` : ''}
         </span>
       {/if}
     </div>
+
+    {#if sparklinePoints}
+      <svg class="sparkline" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="0" y1="25" x2="100" y2="25" class="spark-axis" />
+        <polyline
+          points={sparklinePoints}
+          fill="none"
+          class="spark-line"
+        />
+      </svg>
+    {/if}
 
     {#if !compact && value.top.length}
       <ul class="contrib-list">
@@ -216,4 +264,26 @@
 
   .bar-right { background: linear-gradient(90deg, rgba(120, 220, 140, 0.25), rgba(120, 220, 140, 0.8)); }
   .bar-left  { background: linear-gradient(270deg, rgba(240, 120, 120, 0.25), rgba(240, 120, 120, 0.8)); }
+
+  .sparkline {
+    width: 100%;
+    height: 28px;
+    display: block;
+  }
+  .spark-axis {
+    stroke: rgba(255, 255, 255, 0.12);
+    stroke-width: 0.5;
+    stroke-dasharray: 1 2;
+    vector-effect: non-scaling-stroke;
+  }
+  .spark-line {
+    stroke: rgba(180, 200, 220, 0.9);
+    stroke-width: 1.4;
+    vector-effect: non-scaling-stroke;
+    fill: none;
+  }
+  .regime-strong-bull .spark-line,
+  .regime-bull       .spark-line { stroke: rgba(120, 220, 140, 0.95); }
+  .regime-strong-bear .spark-line,
+  .regime-bear       .spark-line { stroke: rgba(240, 120, 120, 0.95); }
 </style>
