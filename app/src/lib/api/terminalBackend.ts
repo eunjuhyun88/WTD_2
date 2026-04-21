@@ -99,6 +99,31 @@ export async function fetchTerminalBundle(args: {
   };
 }
 
+/**
+ * Lightweight version for callers (e.g. cogochi TradeMode) that only need
+ * analyze + chart klines — skips the 2 extra market/* fetches the terminal
+ * orchestrator needs.
+ */
+export async function fetchAnalyzeAndChart(args: {
+  symbol: string;
+  tf: string;
+}): Promise<{ analyze: AnalyzeEnvelope | null; chartPayload: ChartSeriesPayload | null }> {
+  const { symbol, tf } = args;
+  const [analyzeRes, chartRes] = await Promise.allSettled([
+    fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
+    fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500`),
+  ]);
+  const analyze =
+    analyzeRes.status === 'fulfilled' && analyzeRes.value.ok
+      ? await readJson<AnalyzeEnvelope>(analyzeRes.value)
+      : null;
+  const chartPayload =
+    chartRes.status === 'fulfilled' && chartRes.value.ok
+      ? await readJson<ChartSeriesPayload>(chartRes.value)
+      : null;
+  return { analyze, chartPayload };
+}
+
 export async function fetchFlowBias(pair: string, tf: string): Promise<'LONG' | 'SHORT' | 'NEUTRAL'> {
   const res = await fetch(`/api/market/flow?pair=${encodeURIComponent(pair)}&timeframe=${tf}`);
   if (!res.ok) return 'NEUTRAL';

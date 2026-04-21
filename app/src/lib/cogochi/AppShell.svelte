@@ -120,7 +120,7 @@
           symbol={mobileSymbol}
           timeframe={mobileTF}
           mobileView={$mobileMode.active === 'scan' ? 'scan' : $mobileMode.active === 'judge' ? 'judge' : $mobileMode.active === 'chart' ? 'chart' : 'analyze'}
-          setMobileView={(v) => mobileMode.setActive(v)}
+          setMobileView={(v) => mobileMode.setActive(v === 'analyze' ? 'detail' : v)}
           setMobileSymbol={(s) => (mobileSymbol = s)}
         />
       {/if}
