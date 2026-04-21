@@ -44,7 +44,17 @@ const PUBLIC_API_PREFIXES = [
   '/api/polymarket/',
   '/api/onchain/',
   '/api/etherscan/',
-  '/api/patterns/',
+  // Pattern routes: only read-only sub-paths are public.
+  // /api/patterns/scan, /api/patterns/[slug]/capture, and /api/patterns/[slug]/verdict
+  // require auth — they are mutating or cost-bearing.
+  '/api/patterns/stats',
+  '/api/patterns/alerts',
+  '/api/patterns/states',
+  '/api/patterns/alpha',
+  '/api/patterns/thermometer',
+  '/api/patterns/analyze',
+  '/api/patterns/outcome',
+  '/api/patterns/terminal',
   '/api/senti/',
   '/api/doctrine',
 ];

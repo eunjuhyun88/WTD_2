@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import tempfile
+import time as _time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
@@ -33,6 +34,10 @@ log = logging.getLogger("engine.ledger")
 
 LEDGER_DIR = Path(__file__).parent.parent / "ledger_data"
 LEDGER_RECORDS_DIR = Path(__file__).parent.parent / "ledger_records"
+
+# In-process cache for list_all() — bounded per slug, 30s TTL, invalidated on write.
+_list_all_cache: dict[str, tuple[float, list]] = {}
+_LIST_ALL_TTL = 30.0
 
 
 class LedgerStore:
@@ -58,6 +63,8 @@ class LedgerStore:
             json.dump(outcome.to_dict(), f, indent=2)
             temp_path = Path(f.name)
         temp_path.replace(path)
+        # Invalidate list_all cache for this slug on every write.
+        _list_all_cache.pop(outcome.pattern_slug, None)
         return path
 
     def load(self, pattern_slug: str, outcome_id: str) -> PatternOutcome | None:
@@ -113,13 +120,20 @@ class LedgerStore:
         return close.loc[(index >= start) & (index <= end)]
 
     def list_all(self, pattern_slug: str) -> list[PatternOutcome]:
+        cached = _list_all_cache.get(pattern_slug)
+        if cached is not None:
+            ts, data = cached
+            if _time.monotonic() - ts < _LIST_ALL_TTL:
+                return data
         d = self._dir(pattern_slug)
         results = []
         for p in d.glob("*.json"):
             outcome = self.load(pattern_slug, p.stem)
             if outcome:
                 results.append(outcome)
-        return sorted(results, key=lambda o: o.created_at or datetime.min, reverse=True)
+        data = sorted(results, key=lambda o: o.created_at or datetime.min, reverse=True)
+        _list_all_cache[pattern_slug] = (_time.monotonic(), data)
+        return data
 
     def list_pending(self, pattern_slug: str) -> list[PatternOutcome]:
         return [o for o in self.list_all(pattern_slug) if o.outcome == "pending"]
