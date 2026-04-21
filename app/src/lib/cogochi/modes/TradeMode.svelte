@@ -1550,7 +1550,8 @@
     {/if}
   </div>
   {/if}<!-- end layoutMode -->
-  {/if}<!-- end mobileView -->
+  {/if}<!-- end !analyzed -->
+{/if}<!-- end mobileView -->
 </div>
 
 <style>
