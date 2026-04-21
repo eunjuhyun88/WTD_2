@@ -669,7 +669,6 @@
     if (showMACD && !macdEl) return;
     if (!showMACD && !rsiEl) return;
     if (showCVD && !cvdEl) return;
-    if (!liqEl) return;
     destroyCharts();
 
     let candleSeriesRef: ISeriesApi<'Candlestick'> | null = null;
