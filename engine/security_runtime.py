@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import os
 from urllib.parse import urlparse
 
@@ -60,8 +61,16 @@ def get_internal_secret() -> str:
     return os.getenv("ENGINE_INTERNAL_SECRET", "").strip()
 
 
+_SCHEDULER_JOB_RUN_PATHS = {
+    "/jobs/pattern_scan/run",
+    "/jobs/outcome_resolver/run",
+    "/jobs/auto_capture/run",
+    "/jobs/db_cleanup/run",
+}
+
+
 def is_internal_auth_exempt_path(path: str) -> bool:
-    return path in {"/healthz", "/readyz"} or path.startswith("/jobs/")
+    return path in {"/healthz", "/readyz"} or path in _SCHEDULER_JOB_RUN_PATHS
 
 
 def validate_internal_request(path: str, provided_secret: str) -> tuple[int, str] | None:
@@ -72,7 +81,7 @@ def validate_internal_request(path: str, provided_secret: str) -> tuple[int, str
         return 503, "engine internal secret not configured"
     if not provided_secret:
         return 401, "missing engine internal secret"
-    if provided_secret != configured:
+    if not hmac.compare_digest(provided_secret, configured):
         return 403, "invalid engine internal secret"
     return None
 

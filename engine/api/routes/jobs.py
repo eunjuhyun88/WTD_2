@@ -167,7 +167,7 @@ async def _run_with_guard(job: str, coro) -> JSONResponse:  # noqa: ANN001
         await _record_failure(job, str(exc))
         log.exception("Job %s failed after %.1fs: %s", job, elapsed_run, exc)
         return JSONResponse(
-            {"status": "error", "error": str(exc)[:200], "elapsed_s": elapsed_run},
+            {"status": "error", "error": "job execution failed", "elapsed_s": elapsed_run},
             status_code=500,
         )
     finally:
