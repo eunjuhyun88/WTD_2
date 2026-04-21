@@ -5,36 +5,25 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
+import { engineFetch } from '$lib/server/engineTransport';
 import { scanLimiter } from '$lib/server/rateLimit';
 import { adaptEngineStats } from '$lib/types/patternStats';
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
 export const GET: RequestHandler = async ({ getClientAddress }) => {
   if (!scanLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
   try {
-    // 1. Get all pattern slugs from library
-    const libRes = await fetch(`${ENGINE_URL}/patterns/library`);
-    if (!libRes.ok) return json({ stats: [], ok: false });
-    const libData: { patterns: Array<{ slug: string }> } = await libRes.json();
-    const slugs = (libData.patterns ?? []).map(p => p.slug);
+    const res = await engineFetch('/patterns/stats/all');
+    if (!res.ok) return json({ stats: [], ok: false });
 
-    // 2. Fetch stats for each slug in parallel
-    const statsResults = await Promise.allSettled(
-      slugs.map(slug => fetch(`${ENGINE_URL}/patterns/${slug}/stats`))
-    );
+    const body = await res.json() as {
+      patterns?: Record<string, Record<string, unknown>>;
+    };
 
-    const stats = [];
-    for (let i = 0; i < slugs.length; i++) {
-      const result = statsResults[i];
-      if (result.status !== 'fulfilled' || !result.value.ok) continue;
-
-      const raw = await result.value.json();
-      stats.push(adaptEngineStats(raw, slugs[i]));
-    }
+    const stats = Object.entries(body.patterns ?? {})
+      .filter(([, raw]) => !('error' in raw))
+      .map(([slug, raw]) => adaptEngineStats(raw, slug));
 
     return json({ stats, ok: true });
   } catch (err) {
