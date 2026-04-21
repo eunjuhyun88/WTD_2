@@ -242,7 +242,7 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     id: 'exchange_netflow',
     label: 'Netflow',
     family: 'Netflow',
-    archetype: 'A',
+    archetype: 'H',
     dimensions: ['venue', 'horizon', 'percentile'],
     source: { provider: 'arkham', endpoint: '/netflow/{exchange}' },
     thresholds: { warn: 70, extreme: 92 },
@@ -257,6 +257,54 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     description: 'Exchange netflow via Arkham — inflow = sell pressure, outflow = hodl',
     aiSynonyms: ['netflow', 'exchange netflow', '넷플로우', '거래소 유입', '코인 유출', 'on-chain flow'],
     aiExampleQueries: ['거래소 유입 확인', 'netflow 지금?', '고래 거래소 이동?'],
+    alternateArchetypes: ['A'],
+  },
+
+  // ── Netflow derived ──────────────────────────────────────────────────
+  funding_term_structure: {
+    id: 'funding_term_structure',
+    label: 'Fund curve',
+    family: 'Funding',
+    archetype: 'G',
+    dimensions: ['horizon'],
+    source: { provider: 'derived' },
+    priority: 2,
+    defaultVisible: false,
+    unit: '%',
+    description: 'Funding rate across tenors (8h/1d/7d/30d/90d) — contango vs backwardation',
+    aiSynonyms: ['funding curve', 'funding term structure', '펀딩 커브', '선물 베이시스 커브'],
+    aiExampleQueries: ['funding curve 어때?', '펀딩 장기 추세?'],
+  },
+
+  // ── Liquidations derived ─────────────────────────────────────────────
+  liq_by_level: {
+    id: 'liq_by_level',
+    label: 'Liq levels',
+    family: 'Liquidations',
+    archetype: 'I',
+    dimensions: ['price_level', 'side'],
+    source: { provider: 'derived' },
+    priority: 1,
+    defaultVisible: false,
+    description: 'Liquidation notional by price level — shows magnet zones as histogram',
+    aiSynonyms: ['liq by level', 'liquidation histogram', '청산 레벨', 'liq histogram'],
+    aiExampleQueries: ['청산 레벨 분포?', 'liq histogram'],
+    alternateArchetypes: ['C'],
+  },
+
+  // ── Whale events ────────────────────────────────────────────────────
+  whale_transfers: {
+    id: 'whale_transfers',
+    label: 'Whale moves',
+    family: 'Netflow',
+    archetype: 'J',
+    dimensions: ['venue', 'side'],
+    source: { provider: 'arkham', endpoint: '/transfers' },
+    priority: 3,
+    defaultVisible: false,
+    description: 'Large wallet transfers — Phase 2 Arkham integration',
+    aiSynonyms: ['whale', '고래', '고래 이동', 'whale transfer', 'large transfer'],
+    aiExampleQueries: ['고래 이동?', 'whale 거래소 이동?'],
     alternateArchetypes: ['H'],
   },
 

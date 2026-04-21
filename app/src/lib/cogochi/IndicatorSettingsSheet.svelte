@@ -30,7 +30,7 @@
   const visibleSet = $derived(new Set($shellStore.visibleIndicators));
   const archetypePrefs = $derived($shellStore.archetypePrefs);
 
-  const ARCHETYPE_OPTIONS: IndicatorArchetype[] = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const ARCHETYPE_OPTIONS: IndicatorArchetype[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
   const ARCHETYPE_LABEL: Record<IndicatorArchetype, string> = {
     A: 'Gauge',
     B: 'Stack',
@@ -38,6 +38,10 @@
     D: 'Divergence',
     E: 'Regime',
     F: 'Venue',
+    G: 'Curve',
+    H: 'Flow',
+    I: 'Histogram',
+    J: 'Timeline',
   };
 
   function toggleId(id: string) {

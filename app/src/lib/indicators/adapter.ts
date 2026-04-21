@@ -10,7 +10,16 @@
  */
 
 import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
-import type { IndicatorValue, VenueSeriesRow, HeatmapCell, RegimeState } from './types';
+import type {
+  IndicatorValue,
+  VenueSeriesRow,
+  HeatmapCell,
+  RegimeState,
+  CurvePoint,
+  SankeyEdge,
+  HistogramBucket,
+  TimelineEvent,
+} from './types';
 
 export interface VenueDivergencePayload {
   symbol: string;
@@ -221,9 +230,6 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
   // ── Options snapshot (Pillar 2 — W-0122-C1) ──────────────────────────
   if (input.optionsSnapshot) {
     const o = input.optionsSnapshot;
-    // Put/Call ratio gauge — presented as percentage of historical distribution.
-    // Without full history we map |PCR - 1| to percentile band heuristically:
-    // PCR 1.0 → p50, 1.5 → p90 (put-heavy), 0.67 → p90 (call-heavy but same magnitude).
     const pcrDelta = Math.abs(o.putCallRatioOi - 1);
     const pcrPct = 50 + Math.sign(o.putCallRatioOi - 1) * Math.min(45, pcrDelta * 90);
     out.put_call_ratio = {
@@ -232,7 +238,6 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
       sparkline: [o.putCallRatioOi, o.putCallRatioVol],
       at: o.at,
     };
-    // 25d skew: IV points (put - call). Positive = fear premium on puts.
     const skewPct = 50 + Math.max(-45, Math.min(45, o.skew25d * 4));
     out.options_skew_25d = {
       current: o.skew25d,
@@ -241,6 +246,52 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
       at: o.at,
     };
   }
+
+  // ── G: Funding term-structure curve (synthetic tenors — Phase 2: funding_by_horizon) ─
+  if (snap?.funding_rate != null) {
+    const base = snap.funding_rate;
+    const tenors: CurvePoint[] = [
+      { tenor: '8h',  value: base },
+      { tenor: '1d',  value: base * 0.95 },
+      { tenor: '7d',  value: base * 0.75 },
+      { tenor: '30d', value: base * 0.50 },
+      { tenor: '90d', value: base * 0.30 },
+    ];
+    out.funding_term_structure = { current: tenors, at: now };
+  }
+
+  // ── H: Exchange netflow sankey (stub — Phase 2: Arkham real data) ──────────
+  if (snap) {
+    const priceDir = (snap.change24h ?? 0) >= 0;
+    const edges: SankeyEdge[] = [
+      { source: 'Binance', sink: 'Spot',    value: 120e6, direction: priceDir ? 'out' : 'in' },
+      { source: 'Bybit',   sink: 'Perp',    value:  80e6, direction: priceDir ? 'out' : 'in' },
+      { source: 'OKX',     sink: 'Wallets', value:  40e6, direction: 'out' },
+    ];
+    out.exchange_netflow = { current: edges, at: now };
+  }
+
+  // ── I: Liq-by-level histogram (derive from liqClusters cells) ─────────────
+  if (input.liqClusters?.cells?.length) {
+    const cells = input.liqClusters.cells;
+    const bucketMap = new Map<number, number>();
+    let currentPrice = 0;
+    for (const cell of cells) {
+      const rounded = Math.round(cell.priceBucket / 100) * 100;
+      bucketMap.set(rounded, (bucketMap.get(rounded) ?? 0) + cell.intensity);
+      if (cell.highlight) currentPrice = rounded;
+    }
+    const sorted = [...bucketMap.entries()].sort((a, b) => a[0] - b[0]);
+    const histBuckets: HistogramBucket[] = sorted.map(([bucket, value]) => ({
+      bucket: (bucket / 1000).toFixed(0) + 'k',
+      value,
+      highlight: Math.abs(bucket - currentPrice) < 200,
+    }));
+    out.liq_by_level = { current: histBuckets, at: input.liqClusters.at || now };
+  }
+
+  // ── J: Whale transfers timeline (stub — Phase 2: Arkham real data) ─────────
+  out.whale_transfers = { current: [] as TimelineEvent[], at: now };
 
   // ── CVD divergence (Archetype D) ──────────────────────────────────────
   // Derive a DivergenceState from snapshot.cvd_state + flowSummary.cvd.

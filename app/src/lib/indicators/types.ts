@@ -145,6 +145,37 @@ export interface IndicatorDef {
   alternateArchetypes?: IndicatorArchetype[];
 }
 
+// ── New archetype data shapes (G / H / I / J) ────────────────────────────────
+
+/** Term-structure point (Archetype G) */
+export interface CurvePoint {
+  tenor: string;     // e.g. '1d', '7d', '30d', '90d', '180d'
+  value: number;
+  prevWeek?: number; // optional second series for comparison overlay
+}
+
+/** Sankey edge (Archetype H) */
+export interface SankeyEdge {
+  source: string;
+  sink: string;
+  value: number;   // USD or normalised magnitude
+  direction: 'in' | 'out';
+}
+
+/** Histogram bucket (Archetype I) */
+export interface HistogramBucket {
+  bucket: string | number;   // label or price level
+  value: number;
+  highlight?: boolean;       // true = current-price band
+}
+
+/** Timeline event (Archetype J) */
+export interface TimelineEvent {
+  ts: number;     // Unix ms
+  label: string;
+  impact: number; // 0-1; drives dot radius
+}
+
 // ── IndicatorValue — live data from engine ───────────────────────────────────
 
 /** Heatmap cell (Archetype C) */
@@ -197,6 +228,10 @@ export interface IndicatorValue {
     | HeatmapCell[]                       // C
     | DivergenceState                     // D
     | RegimeState                         // E (state part)
+    | CurvePoint[]                        // G
+    | SankeyEdge[]                        // H
+    | HistogramBucket[]                   // I
+    | TimelineEvent[]                     // J
     | Record<string, number>;             // general
 
   /** Archetype A, D — percentile band position */
