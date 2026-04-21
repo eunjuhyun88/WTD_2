@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler  # type: ignore[import]
 from slowapi.errors import RateLimitExceeded  # type: ignore[import]
@@ -35,6 +36,7 @@ from security_runtime import (
     build_allowed_origins,
     build_docs_urls,
     get_public_runtime_security_warnings,
+    validate_internal_request,
 )
 from universe.config import DEFAULT_SCAN_UNIVERSE
 from observability.health import health_payload, readiness_payload
@@ -145,14 +147,34 @@ app.add_middleware(
 )
 
 
+import re as _re
+
+def _route_label(path: str) -> str:
+    """Normalise dynamic path segments so metric keys stay bounded."""
+    path = _re.sub(r'/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', '/{uuid}', path)
+    path = _re.sub(r'/[A-Z]{2,10}USDT?(?=/|$)', '/{symbol}', path)
+    path = _re.sub(r'/\d+(?=/|$)', '/{id}', path)
+    return path
+
+
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
     start = time.perf_counter()
     request_id = request.headers.get("x-request-id") or str(uuid4())
     increment("http.requests_total")
+    auth_error = validate_internal_request(
+        request.url.path,
+        request.headers.get("x-engine-internal-secret", "").strip(),
+    )
+    if auth_error is not None:
+        status, detail = auth_error
+        response = JSONResponse({"detail": detail}, status_code=status)
+        response.headers["x-request-id"] = request_id
+        increment(f"http.status.{status}")
+        return response
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000.0
-    observe_ms(f"http.route.{request.url.path}", duration_ms)
+    observe_ms(f"http.route.{_route_label(request.url.path)}", duration_ms)
     observe_ms("http.request_duration_ms", duration_ms)
     increment(f"http.status.{response.status_code}")
     response.headers["x-request-id"] = request_id

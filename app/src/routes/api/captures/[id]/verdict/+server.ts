@@ -7,10 +7,10 @@
  * Body: { verdict: 'valid' | 'invalid' | 'missed', user_note?: string }
  */
 
-import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { engineFetch } from '$lib/server/engineTransport';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -18,8 +18,6 @@ export const config = {
   memory: 256,
   maxDuration: 10,
 };
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
 export const POST: RequestHandler = async ({ params, request, cookies }) => {
   const user = await getAuthUserFromCookies(cookies);
@@ -31,7 +29,7 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
   const timeout = setTimeout(() => controller.abort(), 8_000);
 
   try {
-    const res = await fetch(`${ENGINE_URL}/captures/${id}/verdict`, {
+    const res = await engineFetch(`/captures/${id}/verdict`, {
       method: 'POST',
       headers: {
         'content-type': request.headers.get('content-type') ?? 'application/json',

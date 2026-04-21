@@ -23,7 +23,8 @@ def _bars(n: int = 520) -> list[dict]:
     ]
 
 
-def test_score_roundtrip_contract() -> None:
+def test_score_roundtrip_contract(monkeypatch) -> None:
+    monkeypatch.setenv("ENGINE_INTERNAL_SECRET", "test-secret")
     client = TestClient(app, base_url="http://localhost")
     payload = {
         "symbol": "BTCUSDT",
@@ -35,10 +36,13 @@ def test_score_roundtrip_contract() -> None:
             "long_short_ratio": 1.0,
         },
     }
-    r = client.post("/score", json=payload)
+    r = client.post(
+        "/score",
+        json=payload,
+        headers={"x-engine-internal-secret": "test-secret"},
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     assert "snapshot" in body
     assert "p_win" in body
     assert "blocks_triggered" in body
-

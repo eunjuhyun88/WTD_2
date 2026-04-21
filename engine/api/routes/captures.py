@@ -314,7 +314,7 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
 
 
 # ── Chart annotations (TradingView overlay feed) ────────────────────────────
-# NOTE: must be registered BEFORE /{capture_id} to avoid path collision
+# NOTE: must be registered BEFORE /{capture_id} to avoid route collision.
 
 @router.get("/chart-annotations")
 async def get_chart_annotations(
@@ -383,6 +383,8 @@ async def get_chart_annotations(
         "annotations": annotations,
     }
 
+
+# ── Single + list (MUST be after /chart-annotations to avoid collision) ──────
 
 @router.get("/{capture_id}")
 async def get_capture(capture_id: str) -> dict:

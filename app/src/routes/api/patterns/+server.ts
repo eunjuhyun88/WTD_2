@@ -2,17 +2,15 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
+import { engineFetch } from '$lib/server/engineTransport';
 import { scanLimiter } from '$lib/server/rateLimit';
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
 export const GET: RequestHandler = async ({ getClientAddress }) => {
   if (!scanLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
   try {
-    const res = await fetch(`${ENGINE_URL}/patterns/candidates`);
+    const res = await engineFetch('/patterns/candidates');
     if (!res.ok) return json({ entry_candidates: {}, total_count: 0, ok: false });
 
     const data = await res.json();

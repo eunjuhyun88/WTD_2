@@ -72,3 +72,10 @@ Do not read these unless explicitly required:
 - Split commits first; split branches only for a new merge unit.
 - If the branch changes but the work item does not, continue on the same thread after explicit confirmation.
 - If the work item changes, start a new thread or explicitly rebind the thread to the new branch.
+
+## Vercel Deploy Guardrail
+
+- Treat Vercel production deploy as a dedicated release lane, not as a side-effect of agent branches.
+- Do not route Vercel auto-deploy through `main`, `master`, `claude/*`, or `codex/*`.
+- For `app/`, reconnect Git deploys only after `app/vercel.json` contains branch deployment guardrails and Vercel production is reassigned to `release`.
+- If that remote setup is not confirmed, assume manual `vercel deploy --prod` is the safe path.

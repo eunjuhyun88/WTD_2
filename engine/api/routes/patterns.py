@@ -123,6 +123,14 @@ async def trigger_pattern_scan(background_tasks: BackgroundTasks) -> dict:
     return {"status": "scan_started", "patterns": list(PATTERN_LIBRARY.keys())}
 
 
+# ── Bulk read (static paths before parameterised routes) ────────────────────
+
+@router.get("/stats/all")
+async def get_all_stats() -> dict:
+    """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
+    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
+
+
 # ── Per-pattern endpoints ────────────────────────────────────────────────────
 
 @router.get("/{slug}/candidates")
@@ -283,72 +291,6 @@ async def promote_pattern_model(slug: str, body: _PromotePatternModelBody) -> di
         body.model_version,
         body.threshold_policy_version,
     )
-
-
-@router.post("/{slug}/train-model")
-async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
-    """Train a pattern-scoped model from durable ledger outcomes."""
-    try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    try:
-        return train_pattern_model_from_ledger(
-            slug,
-            user_id=body.user_id,
-            target_name=body.target_name,
-            feature_schema_version=body.feature_schema_version,
-            label_policy_version=body.label_policy_version,
-            threshold_policy_version=body.threshold_policy_version,
-            min_records=body.min_records,
-            ledger=_ledger,
-            record_store=LEDGER_RECORD_STORE,
-            registry_store=MODEL_REGISTRY_STORE,
-            get_engine_fn=get_engine,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post("/{slug}/promote-model")
-async def promote_pattern_model(slug: str, body: _PromotePatternModelBody) -> dict:
-    """Promote a candidate model to active rollout state."""
-    try:
-        get_pattern(slug)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}")
-
-    try:
-        active_entry = MODEL_REGISTRY_STORE.promote(
-            pattern_slug=slug,
-            model_key=body.model_key,
-            model_version=body.model_version,
-            threshold_policy_version=body.threshold_policy_version,
-        )
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    LEDGER_RECORD_STORE.append_model_record(
-        pattern_slug=slug,
-        model_version=active_entry.model_version,
-        payload={
-            "model_key": active_entry.model_key,
-            "timeframe": active_entry.timeframe,
-            "target_name": active_entry.target_name,
-            "feature_schema_version": active_entry.feature_schema_version,
-            "label_policy_version": active_entry.label_policy_version,
-            "threshold_policy_version": active_entry.threshold_policy_version,
-            "rollout_state": active_entry.rollout_state,
-            "promotion_event": "promote_to_active",
-        },
-    )
-
-    return {
-        "ok": True,
-        "pattern_slug": slug,
-        "active_model": active_entry.to_dict(),
-    }
 
 
 # ── v2: Pattern Registration ────────────────────────────────────────────────

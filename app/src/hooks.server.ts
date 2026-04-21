@@ -36,6 +36,14 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/events',
   '/api/market/flow',
   '/api/market/derivatives',
+  '/api/market/venue-divergence',  // W-0122-A: public read-only, 30s cached, rate limited
+  '/api/market/liq-clusters',      // W-0122-B1: public read-only, derived from chart feed
+  '/api/market/indicator-context', // W-0122 rolling percentile provider (30d distribution)
+  '/api/market/stablecoin-ssr',    // W-0122-F: derived SSR (DefiLlama + CoinGecko), 30m cache
+  '/api/market/rv-cone',           // W-0122-F: realized vol cone (Binance klines), 1h cache
+  '/api/market/funding-flip',      // W-0122-F: funding flip clock (Binance history), 10m cache
+  '/api/confluence/',              // W-0122-Confluence: score aggregator (read-only)
+  '/api/market/options-snapshot',  // W-0122-C1: Deribit options snapshot (public), 5m cache
   '/api/coingecko/',
   '/api/feargreed',
   '/api/chart/',          // chart klines + feed — public market data, rate-limited
@@ -44,7 +52,17 @@ const PUBLIC_API_PREFIXES = [
   '/api/polymarket/',
   '/api/onchain/',
   '/api/etherscan/',
-  '/api/patterns/',
+  // Pattern routes: only read-only sub-paths are public.
+  // /api/patterns/scan, /api/patterns/[slug]/capture, and /api/patterns/[slug]/verdict
+  // require auth — they are mutating or cost-bearing.
+  '/api/patterns/stats',
+  '/api/patterns/alerts',
+  '/api/patterns/states',
+  '/api/patterns/alpha',
+  '/api/patterns/thermometer',
+  '/api/patterns/analyze',
+  '/api/patterns/outcome',
+  '/api/patterns/terminal',
   '/api/senti/',
   '/api/doctrine',
 ];

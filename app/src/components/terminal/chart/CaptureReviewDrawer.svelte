@@ -354,7 +354,6 @@
     font-family: monospace;
     margin-top: auto;
   }
-
   /* ── Bottom sheet variant (mobile) ── */
   .drawer--sheet {
     top: auto;

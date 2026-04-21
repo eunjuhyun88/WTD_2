@@ -46,7 +46,6 @@
   let selectedCapture = $state<CaptureAnnotation | null>(null);
 
   function _onChartReady() {
-    // getMainSeries() available once chart init completes
     _candleSeries = canvasRef?.getMainSeries() as ISeriesApi<'Candlestick'> | null;
   }
 

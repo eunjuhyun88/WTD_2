@@ -21,6 +21,7 @@
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
   import { RangePrimitive } from '../chart/primitives/RangePrimitive';
+  import { GammaPinPrimitive, type GammaPinData } from '../chart/primitives/GammaPinPrimitive';
   // ── Layer 2 overlay (W-0086) ────────────────────────────────────────────────
   import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
   // ── Layer 3: Capture annotations (W-0120) ───────────────────────────────────
@@ -73,6 +74,10 @@
       label: string;
       color?: string;
     }>;
+    /** Fired when a candle closes (WS k.x=true). Parent can refresh analyze/verdict state. */
+    onCandleClose?: (bar: { time: number; open: number; high: number; low: number; close: number; volume: number }) => void;
+    /** Gamma pin overlay — pass from parent when options-snapshot data is live. null hides line. */
+    gammaPin?: GammaPinData | null;
   }
 
   let {
@@ -90,6 +95,8 @@
     onTfChange,
     contextMode = 'full',
     alphaMarkers = undefined,
+    onCandleClose,
+    gammaPin = null,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -321,12 +328,15 @@
   let rangePrimitive: RangePrimitive | null = null;
   let saveModeUnsubscribe: (() => void) | null = null;
 
+  // ── Layer 4: Gamma pin primitive (W-0122-Phase3) ──────────────────────────
+  let gammaPinPrimitive: GammaPinPrimitive | null = null;
+
   // ── Layer 3: Capture annotations (W-0120) ────────────────────────────────
   let candleSeriesForAnnotations = $state<ISeriesApi<'Candlestick'> | null>(null);
   let selectedCapture = $state<CaptureAnnotation | null>(null);
   let _annotationsCache = $state<CaptureAnnotation[]>([]);
 
-  /** Convert tf string to seconds for ±2-bar click threshold. */
+  /** Convert tf string to seconds for ±2-bar click threshold (W-0124). */
   function _tfToSec(t: string): number {
     const map: Record<string, number> = {
       '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
@@ -354,6 +364,35 @@
     } catch { /* ignore */ }
     rangePrimitive = null;
   }
+
+  /** Attach/update/detach gamma pin line based on the `gammaPin` prop. */
+  function syncGammaPinPrimitive(data: GammaPinData | null) {
+    if (!priceSeries) return;
+    const hasPin = data && data.pinLevel != null;
+    if (hasPin) {
+      if (!gammaPinPrimitive) {
+        gammaPinPrimitive = new GammaPinPrimitive(data);
+        (priceSeries as ISeriesApi<SeriesType>).attachPrimitive(
+          gammaPinPrimitive as unknown as Parameters<ISeriesApi<SeriesType>['attachPrimitive']>[0]
+        );
+      } else {
+        gammaPinPrimitive.update(data);
+      }
+    } else if (gammaPinPrimitive) {
+      try {
+        (priceSeries as ISeriesApi<SeriesType>).detachPrimitive(
+          gammaPinPrimitive as unknown as Parameters<ISeriesApi<SeriesType>['detachPrimitive']>[0]
+        );
+      } catch { /* ignore */ }
+      gammaPinPrimitive = null;
+    }
+  }
+
+  // React to gamma prop changes — after priceSeries is created, keep primitive in sync.
+  $effect(() => {
+    void gammaPin;       // subscribe
+    syncGammaPinPrimitive(gammaPin);
+  });
 
   /** Convert clientX to chart time using mainEl bounding rect. */
   function clientXToChartTime(clientX: number): number | null {
@@ -637,7 +676,7 @@
     _dataFeed = new DataFeed({ symbol: sym, tf: timeframe });
 
     // Live tick → update price series in real-time
-    _dataFeed.onBar = (bar, _isClosed) => {
+    _dataFeed.onBar = (bar, isClosed) => {
       (priceSeries as ISeriesApi<'Candlestick'> | null)?.update({
         time:  bar.time as UTCTimestamp,
         open:  bar.open,
@@ -646,6 +685,7 @@
         close: bar.close,
       });
       currentPrice = bar.close;
+      if (isClosed) onCandleClose?.(bar);
     };
 
     // Initial historical load → render liq sub-pane
@@ -2469,16 +2509,16 @@
     /* Layer 2 overlay anchors to this container */
     position: relative;
   }
-  .chart-stack.range-mode,
-  .chart-stack.range-mode * {
-    cursor: crosshair !important;
-  }
-  /* Shift chart right when capture drawer is open (desktop) */
+  /* Shift chart right when capture review drawer is open (desktop only) */
   @media (min-width: 768px) {
     .chart-stack.drawer-open {
       padding-right: 304px;
       transition: padding-right 240ms ease-out;
     }
+  }
+  .chart-stack.range-mode,
+  .chart-stack.range-mode * {
+    cursor: crosshair !important;
   }
   .pane-main {
     flex: 1 1 58%;
