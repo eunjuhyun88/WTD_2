@@ -140,7 +140,7 @@ export const getKimiApiKey = (): string => kimiPool.get();
 export const rotateKimiKey = (): void => kimiPool.rotate();
 export const getKimiKeyCount = (): number => kimiPool.count();
 export const KIMI_API_KEY = kimiPool.primary;
-export const KIMI_MODEL = env.KIMI_MODEL ?? 'kimi-k2.5';
+export const KIMI_MODEL = env.KIMI_MODEL ?? 'kimi-k2.6';
 export const KIMI_ENDPOINT = 'https://api.moonshot.ai/v1';
 
 export function kimiUrl(path = '/chat/completions'): string {
