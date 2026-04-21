@@ -35,9 +35,10 @@ SCHEDULER_SECRET = os.environ.get("SCHEDULER_SECRET", "")
 
 # Minimum seconds between successful runs (anti-thrash)
 _MIN_INTERVAL: dict[str, int] = {
-    "pattern_scan":     600,   # 10 min minimum (scheduled every 15)
-    "outcome_resolver": 3300,  # 55 min minimum (scheduled hourly)
-    "auto_capture":     600,   # 10 min minimum (scheduled every 15)
+    "pattern_scan":     600,    # 10 min minimum (scheduled every 15)
+    "outcome_resolver": 3300,   # 55 min minimum (scheduled hourly)
+    "auto_capture":     600,    # 10 min minimum (scheduled every 15)
+    "db_cleanup":       82800,  # 23 hr minimum (scheduled daily)
 }
 
 # Redis lock TTL = max allowed job duration
@@ -45,6 +46,7 @@ _LOCK_TTL: dict[str, int] = {
     "pattern_scan":     840,   # 14 min
     "outcome_resolver": 300,   # 5 min
     "auto_capture":     120,   # 2 min
+    "db_cleanup":       120,   # 2 min
 }
 
 # Circuit breaker: pause job after N consecutive failures
@@ -204,11 +206,54 @@ async def run_auto_capture(
     return await _run_with_guard("auto_capture", _auto_capture_job())
 
 
+@router.post("/db_cleanup/run")
+async def run_db_cleanup(
+    _: None = Depends(_require_scheduler),
+) -> JSONResponse:
+    """Cloud Scheduler (daily) → purge stale rows from high-growth tables.
+
+    Retention policy:
+      engine_alerts            →  7 days  (scan signals, replaced each cycle)
+      opportunity_scans        →  7 days  (per-table comment: 7d recommended)
+      terminal_pattern_captures → 90 days (user data: longer retention)
+    """
+    async def _job() -> None:
+        import os
+        from datetime import datetime, timedelta, timezone
+        from supabase import create_client  # type: ignore[import]
+
+        url = os.environ.get("SUPABASE_URL", "")
+        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        if not url or not key:
+            raise RuntimeError("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set")
+
+        sb = create_client(url, key)
+        now = datetime.now(timezone.utc)
+        cutoff_7d  = (now - timedelta(days=7)).isoformat()
+        cutoff_90d = (now - timedelta(days=90)).isoformat()
+
+        # engine_alerts uses scanned_at; 7-day retention
+        r1 = sb.table("engine_alerts").delete().lt("scanned_at", cutoff_7d).execute()
+        # opportunity_scans uses created_at; 7-day retention (per table comment)
+        r2 = sb.table("opportunity_scans").delete().lt("created_at", cutoff_7d).execute()
+        # terminal_pattern_captures: user data, 90-day retention
+        r3 = sb.table("terminal_pattern_captures").delete().lt("created_at", cutoff_90d).execute()
+
+        deleted = {
+            "engine_alerts":            len(r1.data or []),
+            "opportunity_scans":        len(r2.data or []),
+            "terminal_pattern_captures": len(r3.data or []),
+        }
+        log.info("db_cleanup deleted: %s", deleted)
+
+    return await _run_with_guard("db_cleanup", _job())
+
+
 @router.get("/status")
 async def jobs_status() -> JSONResponse:
     """Return resource guard state for all managed jobs."""
     r = await _redis()
-    jobs = ["pattern_scan", "outcome_resolver", "auto_capture"]
+    jobs = ["pattern_scan", "outcome_resolver", "auto_capture", "db_cleanup"]
     result: dict[str, Any] = {}
 
     for job in jobs:
