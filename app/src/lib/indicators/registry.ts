@@ -228,12 +228,42 @@ export const INDICATOR_REGISTRY: Record<string, IndicatorDef> = {
     family: 'Netflow',
     archetype: 'A',
     dimensions: ['percentile'],
-    source: { provider: 'derived' },
+    source: { provider: 'derived', endpoint: '/api/market/stablecoin-ssr' },
     thresholds: { warn: 60, extreme: 90 },
     priority: 2,
-    defaultVisible: false,
+    defaultVisible: true,
     unit: '',
-    description: 'Stablecoin market cap / BTC market cap — dry powder on sidelines',
+    description: 'BTC mcap / stablecoin supply — low = dry powder on sidelines (bullish setup)',
+  },
+
+  // ── Volatility (Pillar-adjacent free win — W-0122-F) ────────────
+  realized_vol_cone: {
+    id: 'realized_vol_cone',
+    label: 'RV 30d',
+    family: 'Volatility',
+    archetype: 'A',
+    dimensions: ['percentile'],
+    source: { provider: 'derived', endpoint: '/api/market/rv-cone' },
+    thresholds: { warn: 60, extreme: 90, historical: 98 },
+    priority: 1,
+    defaultVisible: true,
+    unit: '%',
+    relatedBlocks: ['atr_ultra_low', 'bollinger_squeeze', 'bollinger_expansion'],
+    description: 'Annualized 30d realized volatility vs 180d cone. Low = compression setup.',
+  },
+
+  // ── Funding regime flip (Archetype E — W-0122-F) ────────────────
+  funding_flip: {
+    id: 'funding_flip',
+    label: 'Funding regime',
+    family: 'Funding',
+    archetype: 'E',
+    dimensions: ['regime'],
+    source: { provider: 'binance', endpoint: '/api/market/funding-flip' },
+    priority: 0,
+    defaultVisible: true,
+    relatedBlocks: ['funding_flip', 'positive_funding_bias', 'negative_funding_bias'],
+    description: 'Time since last funding sign flip — fresh flips unwind one-sided leverage.',
   },
 };
 
