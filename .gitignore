@@ -41,8 +41,6 @@ research/experiments/experiment_log.jsonl
 engine/ledger_data/
 engine/ledger_records/*.json
 engine/ledger_records/**/*.json
-engine/ledger_records/tradoor-oi-reversal-v1/*.json
-!engine/ledger_records/tradoor-oi-reversal-v1/.gitkeep
 engine/research/pattern_search/negative_memory/*.json
 !engine/research/pattern_search/negative_memory/.gitkeep
 engine/research/pattern_search/search_runs/*.json
