@@ -1,10 +1,14 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import { fetchTerminalBundle } from '$lib/api/terminalBackend';
+  import { fetchAnalyzeAndChart } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
+  import IndicatorPane from '$lib/components/indicators/IndicatorPane.svelte';
+  import IndicatorRenderer from '$lib/components/indicators/IndicatorRenderer.svelte';
+  import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
+  import { buildIndicatorValues, type VenueDivergencePayload, type LiqClusterPayload } from '$lib/indicators/adapter';
 
   interface Props {
     mode: 'trade' | 'train' | 'flywheel';
@@ -26,23 +30,24 @@
   let showCVD = $state(true);
 
   // ── Live chart data ────────────────────────────────────────────────────────
+  // chartPayload is only for ChartBoard's initialData; ChartBoard owns live updates via DataFeed.
+  // analyzeData is refreshed on candle close via ChartBoard's onCandleClose callback.
   let chartPayload = $state<ChartSeriesPayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
-  let klineWs: WebSocket | null = null; // plain ref — not $state (reads+writes inside $effect would loop)
-  let lastCandleTime = $state<number | null>(null);
+  let lastCandleTime: number | null = null; // plain ref — guards against duplicate onCandleClose fires
 
-  // Fetch initial bundle
+  // Fetch initial bundle (one-shot per symbol/tf)
   $effect(() => {
     const sym = symbol;
     const tf = timeframe;
     chartLoading = true;
-    fetchTerminalBundle({ symbol: sym, tf })
+    lastCandleTime = null;
+    fetchAnalyzeAndChart({ symbol: sym, tf })
       .then(result => {
         chartPayload = result.chartPayload ?? null;
         analyzeData = result.analyze ?? null;
         chartLoading = false;
-        // Track the last candle time from initial data
         if (result.chartPayload?.klines?.length) {
           lastCandleTime = result.chartPayload.klines[result.chartPayload.klines.length - 1].time;
         }
@@ -50,57 +55,70 @@
       .catch(() => { chartLoading = false; });
   });
 
-  // WebSocket connection for real-time candle updates + analyze refresh
-  $effect(() => {
-    if (typeof window === 'undefined') return;
-
-    const sym = symbol.toLowerCase();
-    const tf = timeframe;
-    const stream = `${sym}@kline_${tf}`;
-    const wsUrl = `wss://fstream.binance.com/ws/${stream}`;
-
+  // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
+  // On candle close, refresh analyze only — chart live updates are handled inside ChartBoard.
+  async function handleCandleClose(bar: { time: number }) {
+    if (lastCandleTime === bar.time) return; // dedup duplicate fires
+    lastCandleTime = bar.time;
     try {
-      klineWs?.close();
-      klineWs = new WebSocket(wsUrl);
+      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}`);
+      if (!res.ok) return;
+      analyzeData = (await res.json()) as AnalyzeEnvelope;
+    } catch { /* retry on next candle */ }
+    // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
+    // in lock-step with analyze on candle close.
+    void refreshVenueDivergence();
+    void refreshLiqClusters();
+  }
 
-      klineWs.onmessage = (ev: MessageEvent) => {
-        try {
-          const msg = JSON.parse(ev.data as string) as {
-            k: { t: number; x: boolean; c: string; o: string; h: string; l: string; v: string };
-          };
-          const k = msg.k;
-          const candleTime = Math.floor(k.t / 1000);
+  // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
+  let venueDivergence = $state<VenueDivergencePayload | null>(null);
 
-          // Detect candle closure (x=true) and refetch analyze + chart data
-          if (k.x && lastCandleTime !== candleTime) {
-            lastCandleTime = candleTime;
-            // Refetch analyze + chart data when new candle closes
-            fetchTerminalBundle({ symbol, tf })
-              .then(result => {
-                analyzeData = result.analyze ?? null;
-                // Update chart klines from new fetch
-                if (result.chartPayload) {
-                  chartPayload = result.chartPayload;
-                }
-              })
-              .catch(() => { /* retry on next candle */ });
-          }
-        } catch {
-          // Ignore malformed WS messages
-        }
-      };
+  async function refreshVenueDivergence() {
+    try {
+      const res = await fetch(`/api/market/venue-divergence?symbol=${symbol}`);
+      if (!res.ok) return;
+      venueDivergence = (await res.json()) as VenueDivergencePayload;
+    } catch { /* tolerate: next refresh will retry */ }
+  }
 
-      klineWs.onerror = () => { klineWs?.close(); };
-      klineWs.onclose = () => { klineWs = null; };
-    } catch (err) {
-      console.error('WS connection failed:', err);
-    }
+  // ── Pillar 1: Liquidation Clusters (W-0122-B1) ───────────────────────
+  let liqClusters = $state<LiqClusterPayload | null>(null);
 
-    return () => {
-      klineWs?.close();
-      klineWs = null;
-    };
+  async function refreshLiqClusters() {
+    try {
+      const res = await fetch(`/api/market/liq-clusters?symbol=${symbol}&window=4h`);
+      if (!res.ok) return;
+      liqClusters = (await res.json()) as LiqClusterPayload;
+    } catch { /* tolerate */ }
+  }
+
+  // Trigger on symbol change + initial mount. Polling every 60s as a safety net
+  // (candle close also triggers refresh above).
+  $effect(() => {
+    void symbol;
+    venueDivergence = null;
+    liqClusters = null;
+    void refreshVenueDivergence();
+    void refreshLiqClusters();
+    const iv = setInterval(() => {
+      void refreshVenueDivergence();
+      void refreshLiqClusters();
+    }, 60_000);
+    return () => clearInterval(iv);
   });
+
+  // ── Indicator pipeline: analyze + side fetches → registry-keyed values ─
+  const indicatorValues = $derived(buildIndicatorValues({
+    analyze: analyzeData,
+    venueDivergence,
+    liqClusters,
+  }));
+
+  // Ordered list of indicators to render in the evidence pane — registry-driven.
+  // Archetype A gauges (row) + Archetype F venue strips (stack).
+  const gaugePaneIds = ['oi_change_1h', 'funding_rate', 'volume_ratio'] as const;
+  const venuePaneIds = ['oi_per_venue', 'funding_per_venue'] as const;
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
     entry: analyzeData.entryPlan.entry,
@@ -444,6 +462,7 @@
         verdictLevels={verdictLevels}
         change24hPct={analyzeData?.change24h ?? null}
         contextMode="chart"
+        onCandleClose={handleCandleClose}
       />
       {#if mobileView !== 'chart'}
         <button class="chart-expand-btn" onclick={() => setMobileView?.('chart')} aria-label="차트 전체 보기">
@@ -477,6 +496,13 @@
           <div class="narrative" role="region" aria-label="Trade bias and direction">
             <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
           </div>
+          <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE INDICATORS" layout="row" />
+          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" />
+          {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+            <div class="liq-pane-wrap">
+              <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+            </div>
+          {/if}
           <div class="evidence-grid" role="list" aria-label="Evidence items">
             {#each evidenceItems as item}
               <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
@@ -695,6 +721,7 @@
             verdictLevels={verdictLevels}
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
+            onCandleClose={handleCandleClose}
           />
         </div>
       </div>
@@ -838,6 +865,7 @@
             verdictLevels={verdictLevels}
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
+            onCandleClose={handleCandleClose}
           />
         </div>
       </div>
@@ -1016,6 +1044,7 @@
             verdictLevels={verdictLevels}
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
+            onCandleClose={handleCandleClose}
           />
         </div>
       </div>
@@ -1156,6 +1185,7 @@
           verdictLevels={verdictLevels}
           change24hPct={analyzeData?.change24h ?? null}
           contextMode="chart"
+          onCandleClose={handleCandleClose}
         />
       </div>
     </div>

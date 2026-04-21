@@ -2,6 +2,8 @@
  * mobileMode.ts
  * Owns the active mode in the 4-tab mobile shell.
  * Serializes to URL query `?m=chart|detail|scan|judge`.
+ * Note: 'detail' is the semantic name (DetailMode.svelte renders it); avoid
+ * 'analyze' to match BottomTabBar/ModeRouter and the URL contract.
  * Only meaningful when viewportTier === 'MOBILE'.
  */
 
@@ -9,7 +11,7 @@ import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 
-export type MobileMode = 'chart' | 'analyze' | 'scan' | 'judge';
+export type MobileMode = 'chart' | 'detail' | 'scan' | 'judge';
 
 export interface MobileModeState {
   active: MobileMode;
@@ -19,7 +21,7 @@ export interface MobileModeState {
   pendingAlertId: string | null;
 }
 
-const VALID_MODES = new Set<MobileMode>(['chart', 'analyze', 'scan', 'judge']);
+const VALID_MODES = new Set<MobileMode>(['chart', 'detail', 'scan', 'judge']);
 
 function parseMode(raw: string | null): MobileMode {
   if (raw && VALID_MODES.has(raw as MobileMode)) return raw as MobileMode;
