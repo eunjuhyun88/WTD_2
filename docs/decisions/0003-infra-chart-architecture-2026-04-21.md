@@ -1143,3 +1143,177 @@ The app is currently **read-only in production** — market data panels may work
 API routes call the engine which has its own data keys), but any write path
 (verdicts, captures, user preferences, trajectory data) silently fails because
 `DATABASE_URL` is absent.
+
+---
+
+## Section 7: TradingView-급 Capture Chart — 최종 완성 설계 (2026-04-21)
+
+### 7A. 완료된 것 (PR #149 + #150, commit 614e96ad)
+
+```
+엔진
+  jobs.py          — Cloud Scheduler 4개 엔드포인트 + ResourceGuard
+                     (Redis lock + adaptive throttle + circuit breaker)
+  captures.py      — GET /captures/chart-annotations?symbol=&timeframe=&limit=
+                     (60s poll feed, outcome verdict join 포함)
+                     + _auto_capture_job() (priority dedup, max 20/run)
+  main.py          — jobs router 등록
+
+GCP
+  db-cleanup       — Cloud Scheduler job (daily 02:00 UTC)
+                     7d retention: engine_alerts, opportunity_scans
+                     90d retention: terminal_pattern_captures
+
+Supabase
+  0013_capture_records.sql
+                   — capture_records 테이블 + indexes + RLS
+                     (service_role bypass / auth uid / auto rows)
+                     + updated_at trigger
+
+Frontend (LWC v5 primitives)
+  CaptureMarkerPrimitive.ts   — vertical entry line + stop/tp1/tp2 horiz lines
+                                + phase badge (status별 색상)
+  EvalWindowPrimitive.ts      — shaded eval window zone
+                                (blue=pending / amber=needs review /
+                                 green=valid / red=invalid)
+  captureAnnotationsStore.ts  — 60s polling Svelte store
+  CaptureAnnotationLayer.svelte — headless; primitive lifecycle on LWC series
+  CaptureReviewDrawer.svelte  — verdict form right-rail drawer
+  ChartBoard.svelte           — Layer 3 wire-up (22줄 추가)
+```
+
+### 7B. TradingView-급 렌더링 스펙
+
+```
+시간축 (X)
+  ● 캡처 시점 = captured_at_s (unix seconds)
+  ● 평가 윈도우 끝 = captured_at_s + eval_window_ms/1000
+  ● 위 두 점 사이 = shaded zone (EvalWindowPrimitive)
+
+가격축 (Y)
+  ── entry_price    파란 실선 ──────────── (진입)
+  ── stop_price     빨간 점선 ──────────── (손절)
+  ── tp1_price      초록 실선 ──────────── (TP1)
+  ── tp2_price      연초록 실선 ─────────── (TP2)
+
+배지 (badge)
+  [PHASE 72%]  ← phase명 + p_win%
+  색상: 회색=pending / 노랑=needs review / 초록=valid / 빨강=invalid
+
+클릭 → CaptureReviewDrawer
+  ├─ 패턴명, phase, status
+  ├─ entry/stop/tp1/tp2 가격표
+  ├─ eval window 시간
+  ├─ verdict 버튼 (valid / missed / invalid)
+  └─ POST /api/engine/captures/{id}/verdict
+```
+
+### 7C. 미완료 — 다음 스프린트 필수 (W-0121~W-0124)
+
+#### W-0121: Supabase capture_records sync (P0 — 데이터 영속성)
+**문제:** Cloud Run restart 시 SQLite 소실 → 패턴 이력 전부 날아감
+
+```python
+# captures.py _capture_store.save() 직후에 추가 (fire-and-forget)
+async def _mirror_to_supabase(record: CaptureRecord) -> None:
+    try:
+        sb = _get_supabase_client()
+        await asyncio.to_thread(
+            sb.table("capture_records").upsert(
+                _record_to_supabase_dict(record)
+            ).execute
+        )
+    except Exception as e:
+        log.warning("supabase mirror failed: %s", e)
+        # Non-fatal — SQLite is still source of truth
+```
+
+**구현 체크리스트:**
+- [ ] `_get_supabase_client()` 싱글턴 (env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+- [ ] `_record_to_supabase_dict()` — SQLite Row → Supabase insert dict
+- [ ] `captures.py: save()` 후 `asyncio.create_task(_mirror_to_supabase(record))`
+- [ ] `outcome_resolver.py: update_status()` 후 동일 mirror
+- [ ] Supabase migration 실행 (0013_capture_records.sql — SQL 준비 완료)
+
+#### W-0122: Supabase migration 실행
+```sql
+-- Supabase Dashboard > SQL Editor에서 직접 실행
+-- 파일: app/db/migrations/0013_capture_records.sql (이미 작성 완료)
+```
+MCP 연결 불가 → Dashboard에서 수동 실행 필요
+
+#### W-0123: cogotchi-worker 삭제 + Cloud Run 최적화
+**현재:** worker가 아무것도 안 함 (Cloud Scheduler가 cogotchi API 직접 호출)
+
+```bash
+# Worker 삭제
+gcloud run services delete cogotchi-worker \
+  --project=notional-impact-463709-e3 \
+  --region=us-east4 --quiet
+
+# cogotchi CPU 최적화 (always-on 대신 CPU throttling)
+gcloud run services update cogotchi \
+  --project=notional-impact-463709-e3 \
+  --region=us-east4 \
+  --cpu-throttling \        # idle시 CPU 0 → cold start ~1s 증가 but 비용 -60%
+  --min-instances=1         # keep warm for UX
+```
+
+비용 절감 예상:
+| 항목 | 현재 | 최적화 후 |
+|------|------|---------|
+| cogotchi-worker | ~$6/mo (min=0이지만 가끔 spin-up) | $0 (삭제) |
+| cogotchi CPU throttling | N/A | -$3~5/mo |
+| **합계** | ~$18-24/mo | **~$9-15/mo** |
+
+#### W-0124: 클릭 이벤트 연결 (chart click → capture selection)
+
+현재 `CaptureAnnotationLayer`는 `onSelect` prop을 받지만 **LWC click 이벤트가 아직 연결 안 됨**.
+ChartBoard에서 `mainChart.subscribeClick()` 추가 필요:
+
+```typescript
+// ChartBoard.svelte — chart 초기화 직후 추가
+mainChart.subscribeClick((param) => {
+  if (!param.time) return;
+  const clickedTimeS = param.time as number;
+  // captureAnnotationsStore에서 가장 가까운 annotation 찾기
+  // TODO: store.find(ann => Math.abs(ann.captured_at_s - clickedTimeS) < 2 * barWidth)
+});
+```
+
+### 7D. 최종 데이터 흐름 (완성 후)
+
+```
+Cloud Scheduler (*/15min)
+  └─► POST /jobs/auto_capture/run
+        └─► ResourceGuard (Redis lock + throttle + circuit)
+              └─► _auto_capture_job()
+                    ├─► SQLite: CaptureRecord.save()
+                    └─► Supabase: capture_records.upsert() [W-0121]
+
+브라우저 (60s poll)
+  └─► GET /api/engine/captures/chart-annotations?symbol=BTCUSDT&timeframe=1h
+        └─► SvelteKit proxy → cogotchi /captures/chart-annotations
+              └─► SQLite: list() + ledger outcome join
+                    └─► CaptureAnnotation[]
+
+LWC Chart (CaptureAnnotationLayer)
+  ├─► CaptureMarkerPrimitive × N  (entry/stop/tp lines)
+  └─► EvalWindowPrimitive × N     (shaded zones)
+
+클릭 → CaptureReviewDrawer
+  └─► POST /api/engine/captures/{id}/verdict
+        └─► ledger.save(outcome) + SQLite.update_status()
+              └─► Supabase mirror [W-0121]
+```
+
+### 7E. 구현 완료 기준 (Definition of Done)
+
+- [ ] `GET /api/engine/captures/chart-annotations` → 200, 캡처 목록 반환
+- [ ] ChartBoard에 phase badge + price lines visible (캡처 있을 때)
+- [ ] EvalWindow shaded zone 보임
+- [ ] click → CaptureReviewDrawer 열림 (W-0124 완료 후)
+- [ ] Verdict submit → POST 200 + drawer 닫힘 + 색상 업데이트
+- [ ] Cloud Run restart 후에도 capture 이력 유지 (W-0121 완료 후)
+- [ ] cogotchi-worker 삭제 확인 (W-0123 완료 후)
+- [ ] `/api/engine/jobs/status` → `redis_connected: true`, 4개 jobs last_ok 있음
