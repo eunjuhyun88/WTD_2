@@ -18,6 +18,15 @@ describe('/api/engine/[...path]', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:8000/healthz',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.any(Headers),
+      }),
+    );
+    const [, init] = vi.mocked(globalThis.fetch).mock.calls[0]!;
+    expect(new Headers(init?.headers).get('x-engine-internal-secret')).toBe('test-engine-secret');
   });
 });
-

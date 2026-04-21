@@ -12,10 +12,8 @@
  *   const { snapshot, p_win } = await engine.score(symbol, klines, perp);
  */
 
-import { env } from '$env/dynamic/private';
 import type { components, operations } from '$lib/contracts/generated/engine-openapi';
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 // ---------------------------------------------------------------------------
@@ -318,9 +316,9 @@ async function call<T>(
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
   try {
-    const headers: Record<string, string> = {};
-    if (body) headers['Content-Type'] = 'application/json';
-    if (options?.requestId) headers['x-request-id'] = options.requestId;
+    const headers = buildEngineHeaders();
+    if (body) headers.set('Content-Type', 'application/json');
+    if (options?.requestId) headers.set('x-request-id', options.requestId);
 
     const res = await fetch(url, {
       method,

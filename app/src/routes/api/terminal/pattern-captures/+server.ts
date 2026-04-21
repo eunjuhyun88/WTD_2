@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { errorContains } from '$lib/utils/errorUtils';
+import { engineFetch } from '$lib/server/engineTransport';
 import {
   PatternCaptureCreateRequestSchema,
   PatternCaptureQuerySchema,
@@ -11,13 +11,11 @@ import {
 } from '$lib/contracts/terminalPersistence';
 import { createPatternCapture, listPatternCaptures } from '$lib/server/terminalPersistence';
 
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
-
 // Phase A dual-write: replicate Save Setup to the engine CaptureStore so the
 // flywheel outcome resolver and refinement trigger have data to work with.
 // Non-blocking — engine failures must never break the user's Save Setup UX.
 function syncCaptureToEngine(userId: string, body: PatternCaptureCreateRequest): void {
-  fetch(`${ENGINE_URL}/captures`, {
+  engineFetch('/captures', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({

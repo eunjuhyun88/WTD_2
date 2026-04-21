@@ -27,6 +27,7 @@ import {
   getToolGuardrailMode,
 } from '$lib/guardrails/runtime/toolPolicyConfig';
 import { recordGuardrailAudit } from '$lib/guardrails/core/audit';
+import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
 function toFiniteNumber(value: number | string): number {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -807,8 +808,8 @@ async function executeCheckPatternStatus(
   try {
     // Fetch entry candidates + all states in parallel
     const [candRes, stateRes] = await Promise.all([
-      fetch(`${getEngineUrl()}/patterns/candidates`),
-      fetch(`${getEngineUrl()}/patterns/states`),
+      fetchEngine('/patterns/candidates'),
+      fetchEngine('/patterns/states'),
     ]);
 
     const candidates: Record<string, string[]> = candRes.ok
@@ -841,7 +842,7 @@ async function executeCheckPatternStatus(
     if (includeStats) {
       try {
         // Single bulk endpoint — avoids N+1 per-slug fan-out (HOTSPOT-003).
-        const statsRes = await fetch(`${getEngineUrl()}/patterns/stats/all`);
+        const statsRes = await fetchEngine('/patterns/stats/all');
         if (statsRes.ok) {
           const bulk = await statsRes.json() as { patterns: Record<string, unknown> };
           stats = bulk.patterns ?? null;
@@ -878,8 +879,11 @@ async function executeCheckPatternStatus(
   }
 }
 
-function getEngineUrl(): string {
-  return (process.env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+function fetchEngine(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(`${ENGINE_URL}${path}`, {
+    ...init,
+    headers: buildEngineHeaders(init.headers),
+  });
 }
 
 // ─── get_alpha_world_model ────────────────────────────────────
@@ -892,7 +896,7 @@ async function executeGetAlphaWorldModel(
   events.push({ type: 'text_delta', text: 'Loading Alpha universe state...' });
 
   try {
-    const res = await fetch(`${getEngineUrl()}/alpha/world-model?grade=${grade}`);
+    const res = await fetchEngine(`/alpha/world-model?grade=${grade}`);
     if (!res.ok) throw new Error(`Engine returned ${res.status}`);
     const data = await res.json();
     return data;
@@ -913,7 +917,7 @@ async function executeGetAlphaTokenDetail(
   events.push({ type: 'text_delta', text: `Loading Alpha detail for ${symbol}...` });
 
   try {
-    const res = await fetch(`${getEngineUrl()}/alpha/token/${symbol}`);
+    const res = await fetchEngine(`/alpha/token/${symbol}`);
     if (!res.ok) throw new Error(`Engine returned ${res.status}`);
     return await res.json();
   } catch (err: any) {
@@ -934,7 +938,7 @@ async function executeFindTokens(
   events.push({ type: 'text_delta', text: `Scanning ${universe} universe for matching tokens...` });
 
   try {
-    const res = await fetch(`${getEngineUrl()}/alpha/find`, {
+    const res = await fetchEngine('/alpha/find', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conditions, universe, min_match: minMatch }),
@@ -964,7 +968,7 @@ async function executeSetAlphaWatch(
   events.push({ type: 'text_delta', text: `Setting watch on ${symbol} → ${targetPhase}...` });
 
   try {
-    const res = await fetch(`${getEngineUrl()}/alpha/watch`, {
+    const res = await fetchEngine('/alpha/watch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

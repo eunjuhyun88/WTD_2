@@ -56,6 +56,27 @@ def build_docs_urls() -> tuple[str | None, str | None]:
     return None, None
 
 
+def get_internal_secret() -> str:
+    return os.getenv("ENGINE_INTERNAL_SECRET", "").strip()
+
+
+def is_internal_auth_exempt_path(path: str) -> bool:
+    return path in {"/healthz", "/readyz"} or path.startswith("/jobs/")
+
+
+def validate_internal_request(path: str, provided_secret: str) -> tuple[int, str] | None:
+    if is_internal_auth_exempt_path(path):
+        return None
+    configured = get_internal_secret()
+    if not configured:
+        return 503, "engine internal secret not configured"
+    if not provided_secret:
+        return 401, "missing engine internal secret"
+    if provided_secret != configured:
+        return 403, "invalid engine internal secret"
+    return None
+
+
 def get_public_runtime_security_errors() -> list[str]:
     errors: list[str] = []
     if not _is_production():
@@ -65,6 +86,8 @@ def get_public_runtime_security_errors() -> list[str]:
         errors.append("APP_ORIGIN must be a valid https origin in production.")
     if not os.getenv("ENGINE_ALLOWED_HOSTS", "").strip():
         errors.append("ENGINE_ALLOWED_HOSTS is required in production.")
+    if not get_internal_secret():
+        errors.append("ENGINE_INTERNAL_SECRET is required in production.")
     return errors
 
 

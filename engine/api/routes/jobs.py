@@ -56,8 +56,7 @@ _CIRCUIT_PAUSE_SECONDS  = 300  # 5 min pause
 
 def _require_scheduler(request: Request) -> None:
     if not SCHEDULER_SECRET:
-        # Secret not configured → open (dev mode only)
-        return
+        raise HTTPException(status_code=503, detail="scheduler secret not configured")
     auth = request.headers.get("authorization", "")
     if not auth.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="missing bearer token")

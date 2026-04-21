@@ -16,8 +16,8 @@
  */
 
 import { error, json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
+import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
 import { engineProxyLimiter } from '$lib/server/rateLimit';
 
 const HEAVY_ENGINE_PATHS = new Set(['score', 'deep', 'backtest', 'train', 'opportunity']);
@@ -37,8 +37,6 @@ export const config = {
   memory: 1024,
   maxDuration: 90,
 };
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
 function timeoutFor(path: string, method: string): number {
   if (method === 'GET') {
@@ -61,7 +59,7 @@ async function proxy(request: Request, path: string): Promise<Response> {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const headers = new Headers();
+    const headers = buildEngineHeaders();
     const contentType = request.headers.get('content-type');
     if (contentType) headers.set('content-type', contentType);
 
