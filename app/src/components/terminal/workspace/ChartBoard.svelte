@@ -25,6 +25,7 @@
   import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
   import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
   import type { Time } from 'lightweight-charts';
+  import { DataFeed } from '$lib/chart/DataFeed';
 
   // ── Props ──────────────────────────────────────────────────────────────────
   interface VerdictLevels {
@@ -102,6 +103,7 @@
   let macdEl       = $state<HTMLDivElement | undefined>(undefined);
   let oiEl         = $state<HTMLDivElement | undefined>(undefined);
   let cvdEl        = $state<HTMLDivElement | undefined>(undefined);
+  let liqEl        = $state<HTMLDivElement | undefined>(undefined);
 
   // ── UI state ───────────────────────────────────────────────────────────────
   let loading  = $state(true);
@@ -305,7 +307,11 @@
   let macdChart: IChartApi | null = null;
   let oiChart:   IChartApi | null = null;
   let cvdChart:  IChartApi | null = null;
+  let liqChart:  IChartApi | null = null;
   let priceSeries: ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null = null;
+
+  // ── DataFeed (resilient WS + polling) ─────────────────────────────────────
+  let _dataFeed: DataFeed | null = null;
 
   // ── Layer 1: Range primitive (W-0086 / W-0117) ────────────────────────────
   let rangePrimitive: RangePrimitive | null = null;
@@ -447,6 +453,7 @@
   let PANE_SUB_H = $derived(viewportWidth && viewportWidth < 768 ? 64 : 80);
   let PANE_OI_H = $derived(viewportWidth && viewportWidth < 768 ? 56 : 72);
   let PANE_CVD_H = $derived(viewportWidth && viewportWidth < 768 ? 64 : 84);
+  let PANE_LIQ_H = $derived(viewportWidth && viewportWidth < 768 ? 56 : 72);
 
   function formatCaptureTime(ts: number): string {
     return new Date(ts * 1000).toLocaleString('en-US', {
@@ -603,40 +610,46 @@
     finally { historyLoadingMore = false; }
   }
 
-  // ── Binance WebSocket live candle ─────────────────────────────────────────
+  // ── DataFeed: resilient WS + polling (replaces bare connectKlineWS) ────────
 
-  function connectKlineWS(sym: string, timeframe: string) {
+  function initDataFeed(sym: string, timeframe: string) {
     if (typeof window === 'undefined') return;
-    _ws?.close();
-    const stream = `${sym.toLowerCase()}@kline_${timeframe}`;
-    _ws = new WebSocket(`wss://fstream.binance.com/ws/${stream}`);
+    _dataFeed?.disconnect();
+    _dataFeed = new DataFeed({ symbol: sym, tf: timeframe });
 
-    _ws.onmessage = (ev: MessageEvent) => {
-      try {
-        const msg = JSON.parse(ev.data as string) as {
-          k: { t: number; o: string; h: string; l: string; c: string; v: string; x: boolean };
-        };
-        const k = msg.k;
-        const bar = {
-          time:  Math.floor(k.t / 1000) as UTCTimestamp,
-          open:  parseFloat(k.o),
-          high:  parseFloat(k.h),
-          low:   parseFloat(k.l),
-          close: parseFloat(k.c),
-        };
-        (priceSeries as ISeriesApi<'Candlestick'> | null)?.update(bar);
-        currentPrice = bar.close;
-      } catch { /* ignore malformed message */ }
+    // Live tick → update price series in real-time
+    _dataFeed.onBar = (bar, _isClosed) => {
+      (priceSeries as ISeriesApi<'Candlestick'> | null)?.update({
+        time:  bar.time as UTCTimestamp,
+        open:  bar.open,
+        high:  bar.high,
+        low:   bar.low,
+        close: bar.close,
+      });
+      currentPrice = bar.close;
     };
 
-    _ws.onerror = () => { _ws?.close(); };
-    _ws.onclose = () => { _ws = null; };
+    // Initial historical load → render liq sub-pane
+    _dataFeed.onLoad = (payload) => {
+      if (payload.liqBars?.length) _initLiqPane(payload.liqBars);
+    };
+
+    // Poll refresh (60s) → update liq pane with fresh data
+    _dataFeed.onPoll = (payload) => {
+      if (payload.liqBars?.length) _refreshLiqPane(payload.liqBars);
+    };
+
+    void _dataFeed.connect();
   }
 
-  function disconnectWS() {
-    _ws?.close();
-    _ws = null;
+  function disconnectFeed() {
+    _dataFeed?.disconnect();
+    _dataFeed = null;
   }
+
+  // Legacy alias used by existing $effect below — keeps change minimal
+  function connectKlineWS(sym: string, timeframe: string) { initDataFeed(sym, timeframe); }
+  function disconnectWS() { disconnectFeed(); }
 
   // ── Render ────────────────────────────────────────────────────────────────
   type LinePoint  = { time: UTCTimestamp; value: number };
@@ -1023,6 +1036,11 @@
       }
     }
 
+    // Liq sub-pane — uses data from ChartPayload (via DataFeed) or initialData if available
+    if (liqEl) {
+      _initLiqPane((data as { liqBars?: { time: number; longUsd: number; shortUsd: number }[] }).liqBars ?? []);
+    }
+
     syncTimeScales();
     void tick().then(() => {
       handleResize();
@@ -1124,23 +1142,66 @@
     const subs = [volChart, rsiChart, macdChart, oiChart].filter(
       (c): c is IChartApi => c !== null
     );
-    const subsWithCvd = [...subs, cvdChart].filter(
+    const subsAll = [...subs, cvdChart, liqChart].filter(
       (c): c is IChartApi => c !== null
     );
     mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       if (!range) return;
-      subsWithCvd.forEach(c => c.timeScale().setVisibleLogicalRange(range));
+      subsAll.forEach(c => c.timeScale().setVisibleLogicalRange(range));
       refreshCaptureWindowSummary();
       if (range.from < LAZY_TRIGGER_BARS) void loadMoreHistory();
     });
-    subsWithCvd.forEach(c => {
+    subsAll.forEach(c => {
       c.timeScale().subscribeVisibleLogicalRangeChange((range) => {
         if (!range) return;
         mainChart!.timeScale().setVisibleLogicalRange(range);
-        subsWithCvd.filter(o => o !== c).forEach(o => o.timeScale().setVisibleLogicalRange(range));
+        subsAll.filter(o => o !== c).forEach(o => o.timeScale().setVisibleLogicalRange(range));
         refreshCaptureWindowSummary();
       });
     });
+  }
+
+  // ── Liq pane helpers ────────────────────────────────────────────────────────
+
+  type LiqBarRaw = { time: number; longUsd: number; shortUsd: number };
+
+  function _initLiqPane(liqBars: LiqBarRaw[]) {
+    if (!liqEl) return;
+    liqChart?.remove();
+    liqChart = createChart(liqEl, {
+      ...baseTheme,
+      height: PANE_LIQ_H,
+      leftPriceScale: { visible: false },
+      rightPriceScale: {
+        visible: true,
+        borderColor: BORDER,
+        scaleMargins: { top: 0.05, bottom: 0.05 },
+      },
+      timeScale: { ...baseTheme.timeScale, visible: false },
+    });
+    const longSeries = liqChart.addSeries(HistogramSeries, {
+      color: 'rgba(52,211,153,0.75)',  // green — short liquidations (fuel for up)
+      priceScaleId: 'right',
+      priceFormat: { type: 'volume' },
+    });
+    const shortSeries = liqChart.addSeries(HistogramSeries, {
+      color: 'rgba(248,113,113,0.75)', // red — long liquidations (cascade down)
+      priceScaleId: 'right',
+      priceFormat: { type: 'volume' },
+    });
+    const longData = liqBars.map(b => ({ time: b.time as UTCTimestamp, value: b.shortUsd }));
+    const shortData = liqBars.map(b => ({ time: b.time as UTCTimestamp, value: -b.longUsd }));
+    if (longData.length)  longSeries.setData(longData);
+    if (shortData.length) shortSeries.setData(shortData);
+  }
+
+  function _refreshLiqPane(liqBars: LiqBarRaw[]) {
+    if (!liqChart || !liqEl || liqBars.length === 0) return;
+    // Lightweight-charts doesn't expose series after creation — re-init is simplest
+    _initLiqPane(liqBars);
+    // Re-sync time scale with main chart
+    const range = mainChart?.timeScale().getVisibleLogicalRange();
+    if (range) liqChart.timeScale().setVisibleLogicalRange(range);
   }
 
   function destroyCharts() {
@@ -1148,8 +1209,8 @@
     // Detach Layer 1 primitive before removing chart (W-0086 / W-0117)
     detachDragHandlers();
     detachRangePrimitive();
-    [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart].forEach(c => c?.remove());
-    mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = null;
+    [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart, liqChart].forEach(c => c?.remove());
+    mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = liqChart = null;
     priceSeries = null;
     entryLine = targetLine = stopLine = null;
   }
@@ -1175,6 +1236,8 @@
     oiChart?.resize(w, oih);
     const cvdh = cvdEl && cvdEl.clientHeight > 24 ? cvdEl.clientHeight : PANE_CVD_H;
     cvdChart?.resize(w, cvdh);
+    const liqh = liqEl && liqEl.clientHeight > 24 ? liqEl.clientHeight : PANE_LIQ_H;
+    liqChart?.resize(w, liqh);
     refreshCaptureWindowSummary();
   }
 
@@ -1552,6 +1615,14 @@
         </div>
         <div class="pane-cvd" bind:this={cvdEl}></div>
       {/if}
+
+      <!-- Liquidation sub-pane: green = short liq (fuel), red = long liq (cascade) -->
+      <div class="pane-label pane-label-split">
+        <span>Liquidations</span>
+        <span class="pane-hint pane-hint-mint">Short liq</span>
+        <span class="pane-hint" style="color:rgba(248,113,113,0.8)">Long liq</span>
+      </div>
+      <div class="pane-liq" bind:this={liqEl}></div>
     </IndicatorPaneStack>
     </div>
     <SaveStrip
