@@ -34,6 +34,8 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+log = logging.getLogger("engine.captures")
+
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore
@@ -338,6 +340,76 @@ async def list_captures(
         "ok": True,
         "captures": [capture.to_dict() for capture in captures],
         "count": len(captures),
+    }
+
+
+# ── Chart annotations (TradingView overlay feed) ────────────────────────────
+
+@router.get("/chart-annotations")
+async def get_chart_annotations(
+    symbol: str = Query(..., description="e.g. BTCUSDT"),
+    timeframe: str = Query("1h"),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict:
+    """Return capture markers formatted for TradingView chart overlay.
+
+    Poll at ~60s intervals. Each annotation includes price levels from
+    chart_context so the frontend can render entry/stop/tp lines.
+
+    Response shape (one entry per capture):
+      capture_id      — unique ID
+      kind            — capture_kind
+      status          — pending_outcome | outcome_ready | verdict_ready | closed
+      pattern_slug    — e.g. "tradoor-oi-reversal-v1"
+      phase           — e.g. "SPRING"
+      captured_at_s   — unix seconds (chart x-axis anchor)
+      entry_price     — from chart_context.entry_price (null if not set)
+      stop_price      — from chart_context.stop (null if not set)
+      tp1_price       — from chart_context.tp1 (null if not set)
+      tp2_price       — from chart_context.tp2 (null if not set)
+      eval_window_ms  — evaluation window in ms (for shading end x)
+      p_win           — float 0–1 if recorded
+      user_verdict    — "valid" | "invalid" | "missed" | null
+    """
+    captures = await asyncio.to_thread(
+        _capture_store.list,
+        symbol=symbol,
+        limit=limit,
+    )
+    # Filter to matching timeframe
+    captures = [c for c in captures if c.timeframe == timeframe]
+
+    annotations = []
+    for c in captures:
+        ctx = c.chart_context or {}
+        annotation: dict[str, Any] = {
+            "capture_id": c.capture_id,
+            "kind": c.capture_kind,
+            "status": c.status,
+            "pattern_slug": c.pattern_slug,
+            "phase": c.phase,
+            "captured_at_s": c.captured_at_ms // 1000,
+            "entry_price": ctx.get("entry_price"),
+            "stop_price": ctx.get("stop"),
+            "tp1_price": ctx.get("tp1"),
+            "tp2_price": ctx.get("tp2"),
+            "eval_window_ms": ctx.get("eval_window_ms"),
+            "p_win": ctx.get("p_win"),
+            "user_verdict": None,
+        }
+        # Attach verdict if outcome is linked
+        if c.outcome_id and c.pattern_slug:
+            outcome = _ledger_store.load(c.pattern_slug, c.outcome_id)
+            if outcome is not None:
+                annotation["user_verdict"] = getattr(outcome, "user_verdict", None)
+        annotations.append(annotation)
+
+    return {
+        "ok": True,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "count": len(annotations),
+        "annotations": annotations,
     }
 
 
