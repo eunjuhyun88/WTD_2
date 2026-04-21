@@ -28,7 +28,7 @@ def isolated_venue_pump(
     cols = ["binance_price_change_1h", "bybit_price_change_1h", "okx_price_change_1h"]
     series = [f.get(c) for c in cols]
     if any(s is None for s in series):
-        return pd.Series(False, index=ctx.bars.index)
+        return pd.Series(False, index=ctx.features.index)
 
     # For each bar, count how many venues exceed the leader threshold.
     exceeds = pd.concat(

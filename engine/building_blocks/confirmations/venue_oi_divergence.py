@@ -54,7 +54,7 @@ def venue_oi_divergence(
         follower_threshold: Max Δ for a follower venue to count as lagging.
 
     Returns:
-        Boolean pd.Series aligned with ctx.bars.index.
+        Boolean pd.Series aligned with ctx.features.index.
     """
     f = ctx.features
     binance = f.get("binance_oi_change_1h")
@@ -63,7 +63,7 @@ def venue_oi_divergence(
 
     # Graceful fallback: if any series is missing, return all-False aligned series.
     if binance is None or bybit is None or okx is None:
-        return pd.Series(False, index=ctx.bars.index)
+        return pd.Series(False, index=ctx.features.index)
 
     if mode == "bull_divergence":
         # Binance leading, others following in same direction but less aggressively.

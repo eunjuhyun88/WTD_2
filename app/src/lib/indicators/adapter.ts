@@ -97,6 +97,31 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
     };
   }
 
+  // ── CVD divergence (Archetype D) ──────────────────────────────────────
+  // Derive a DivergenceState from snapshot.cvd_state + flowSummary.cvd.
+  // Phase 2: engine will emit a pre-computed DivergenceState with real
+  // rolling correlation + bars since last pivot.
+  if (snap?.cvd_state) {
+    const raw = snap.cvd_state.toLowerCase();
+    const priceChange = snap.change24h ?? snap.price_change_pct_24h;
+    let type: 'bullish' | 'bearish' | 'aligned' | 'unknown' = 'unknown';
+    const cvdPos = /positive|양|bull/.test(raw);
+    const cvdNeg = /negative|음|bear/.test(raw);
+    if (priceChange != null) {
+      if (priceChange > 0 && cvdNeg) type = 'bearish';
+      else if (priceChange < 0 && cvdPos) type = 'bullish';
+      else if ((priceChange > 0 && cvdPos) || (priceChange < 0 && cvdNeg)) type = 'aligned';
+    }
+    out.cvd_state = {
+      current: {
+        type,
+        barsSince: 0, // unknown without rolling series; engine will fill
+        strength: 0.5,
+      },
+      at: now,
+    };
+  }
+
   return out;
 }
 
