@@ -1,48 +1,152 @@
 #!/usr/bin/env python3
 """
-Founder Seed — bulk-import past TRADOOR/PTB trade setups into the capture store.
+Founder Seed (Direct) — write PatternOutcome ledger records directly to ledger_data/.
+
+Use this when the engine HTTP API is not reachable (e.g. Cloud Run IAM blocks
+unauthenticated access from a dev machine).
 
 사용법:
   cd engine
-  python scripts/founder_seed.py [--engine http://localhost:8000] [--dry-run]
+  python scripts/founder_seed_direct.py [--dry-run]
 
-데이터 출처: 아카 텔레그램 채널 복기 (2021~2026) + TRADOOR/PTB 실매매 레퍼런스
+These records land as outcome='pending' so the outcome_resolver will close
+them on the next scheduled tick once the evaluation window elapses.
 """
+from __future__ import annotations
 
 import argparse
 import json
+import uuid
 from datetime import datetime, timezone
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal
 
-try:
-    import requests
-except ImportError:
-    import subprocess, sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "-q"])
-    import requests
+# ---------------------------------------------------------------------------
+# Paths — resolve relative to this script so it works from any cwd
+# ---------------------------------------------------------------------------
+SCRIPT_DIR = Path(__file__).resolve().parent
+ENGINE_DIR = SCRIPT_DIR.parent
+LEDGER_DIR = ENGINE_DIR / "ledger_data"
 
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def to_ms(dt_str: str) -> int:
-    """'YYYY-MM-DD HH:MM' UTC → Unix ms"""
-    dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
-    return int(dt.timestamp() * 1000)
+Outcome = Literal["success", "failure", "timeout", "pending"]
 
 
-# ── Seed rows ─────────────────────────────────────────────────────────────────
-# 각 row: symbol, captured_at (UTC 문자열), pattern_slug, phase, user_note, entry_price(optional)
-#
-# Phase 값 참고:
-#   tradoor-oi-reversal-v1      → FAKE_DUMP / ARCH_ZONE / REAL_DUMP / ACCUMULATION / BREAKOUT
-#   funding-flip-reversal-v1    → COMPRESSION_ZONE / FLIP_SIGNAL / ENTRY_ZONE / SQUEEZE
-#   whale-accumulation-reversal-v1 등 단순 패턴은 그냥 "ENTRY" 또는 "ACCUMULATION"
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def to_dt(dt_str: str) -> datetime:
+    """'YYYY-MM-DD HH:MM' UTC → datetime"""
+    return datetime.strptime(dt_str, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+
+
+def make_id() -> str:
+    return str(uuid.uuid4())[:8]
+
+
+def outcome_from_note(note: str) -> Outcome:
+    """Heuristic: parse outcome from user_note string."""
+    note_up = note.upper()
+    if "WIN" in note_up and "LOSS" not in note_up:
+        return "success"
+    if "LOSS" in note_up:
+        return "failure"
+    if "TIMEOUT" in note_up or "미기록" in note or "방향 없음" in note:
+        return "timeout"
+    return "pending"
+
+
+def gain_from_note(note: str) -> float | None:
+    """Extract gain pct from note like '+11.8%' → 11.8 or '-3.2%' → None (loss)."""
+    import re
+    m = re.search(r'\+(\d+\.?\d*)%', note)
+    if m:
+        return float(m.group(1))
+    return None
+
+
+def loss_from_note(note: str) -> float | None:
+    """Extract loss pct from note like '-3.2%' → -3.2."""
+    import re
+    m = re.search(r'-(\d+\.?\d*)%', note)
+    if m:
+        return -float(m.group(1))
+    return None
+
+
+def build_record(r: dict[str, Any]) -> dict:
+    """Convert a seed row into a PatternOutcome dict ready for JSON serialisation."""
+    captured_at = to_dt(r["captured_at"])
+    note = r.get("user_note", "") or ""
+    outcome = outcome_from_note(note)
+
+    # Derive gain/loss pcts from note heuristics
+    max_gain = gain_from_note(note) if outcome == "success" else None
+    exit_return = gain_from_note(note) if outcome == "success" else loss_from_note(note)
+    duration = 24.0 if outcome in ("success", "failure") else None
+
+    entry_price = r.get("entry_price")
+
+    # Peak price estimate for wins
+    peak_price: float | None = None
+    if entry_price and max_gain:
+        peak_price = round(entry_price * (1 + max_gain / 100), 6)
+
+    exit_price: float | None = None
+    if entry_price and exit_return is not None:
+        exit_price = round(entry_price * (1 + exit_return / 100), 6)
+
+    now = datetime.now()
+
+    return {
+        "id": make_id(),
+        "pattern_slug": r["pattern_slug"],
+        "symbol": r["symbol"],
+        "user_id": "founder",
+        "phase2_at": None,
+        "accumulation_at": captured_at.isoformat(),
+        "breakout_at": captured_at.isoformat() if outcome == "success" else None,
+        "invalidated_at": captured_at.isoformat() if outcome == "failure" else None,
+        "phase2_price": None,
+        "entry_price": entry_price,
+        "peak_price": peak_price,
+        "exit_price": exit_price,
+        "invalidation_price": None,
+        "outcome": outcome,
+        "max_gain_pct": max_gain,
+        "exit_return_pct": exit_return,
+        "duration_hours": duration,
+        "btc_trend_at_entry": "unknown",
+        "user_verdict": None,
+        "user_note": note,
+        "feature_snapshot": {},
+        "entry_transition_id": None,
+        "entry_scan_id": None,
+        "entry_block_scores": None,
+        "entry_block_coverage": None,
+        "entry_p_win": None,
+        "entry_ml_state": None,
+        "entry_model_key": None,
+        "entry_model_version": None,
+        "entry_rollout_state": None,
+        "entry_threshold": None,
+        "entry_threshold_passed": None,
+        "entry_ml_error": None,
+        "evaluation_window_hours": 72.0,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Seed rows — same 51 cases as founder_seed.py
+# ---------------------------------------------------------------------------
 
 ROWS: list[dict[str, Any]] = [
-    # ── BTC 역프(역방향 프리미엄) 케이스 ─────────────────────────────────────
+    # ── funding-flip-reversal-v1 (10 cases) ───────────────────────────────────
     {
         "symbol": "BTCUSDT",
-        "captured_at": "2026-01-13 04:00",    # 역프 확인 시각 (UTC 추정)
+        "captured_at": "2026-01-13 04:00",
         "pattern_slug": "funding-flip-reversal-v1",
         "phase": "ENTRY_ZONE",
         "user_note": "역프 케이스: funding 음수전환 후 91K 진입. 결과 96K +5.5% WIN",
@@ -64,8 +168,6 @@ ROWS: list[dict[str, Any]] = [
         "user_note": "역프 케이스 3차: 달릴 듯 but 진입 불가. 결과 미기록",
         "entry_price": None,
     },
-
-    # ── KOMA 펀딩 플립 케이스 (벤치마크) ──────────────────────────────────────
     {
         "symbol": "KOMAOUSDT",
         "captured_at": "2026-03-23 00:00",
@@ -74,45 +176,6 @@ ROWS: list[dict[str, Any]] = [
         "user_note": "KOMA 역프: funding -0.00056 → 진입. 결과 +21.5% WIN. W-0091 벤치마크 케이스",
         "entry_price": None,
     },
-
-    # ── 숏스퀴즈 케이스 ────────────────────────────────────────────────────────
-    {
-        "symbol": "PUFFERUSDT",
-        "captured_at": "2026-04-04 12:00",
-        "pattern_slug": "whale-accumulation-reversal-v1",
-        "phase": "ACCUMULATION",
-        "user_note": "PUFFER 숏스퀴즈 발동 케이스. Apr 4 진입 확인",
-        "entry_price": None,
-    },
-    {
-        "symbol": "ETCUSDT",
-        "captured_at": "2026-04-08 10:00",
-        "pattern_slug": "whale-accumulation-reversal-v1",
-        "phase": "ACCUMULATION",
-        "user_note": "ETC 횡보 끝 상방 기대. 숏스퀴즈 진입 Apr 8",
-        "entry_price": None,
-    },
-
-    # ── TRADOOR/PTB OI 반전 레퍼런스 ──────────────────────────────────────────
-    # 코어 루프 설계 출발점 — 정확한 날짜 불명, 대략적 타임스탬프 사용
-    {
-        "symbol": "BTCUSDT",
-        "captured_at": "2025-11-01 00:00",    # TRADOOR 레퍼런스 구간 (추정)
-        "pattern_slug": "tradoor-oi-reversal-v1",
-        "phase": "ACCUMULATION",
-        "user_note": "TRADOOR/PTB OI 반전 레퍼런스. 급락+OI급등 2차 후 축적구간 진입. 코어루프 설계 기반 케이스",
-        "entry_price": None,
-    },
-    {
-        "symbol": "BTCUSDT",
-        "captured_at": "2025-12-10 00:00",    # 두 번째 TRADOOR 패턴 (추정)
-        "pattern_slug": "tradoor-oi-reversal-v1",
-        "phase": "ACCUMULATION",
-        "user_note": "TRADOOR 2차 레퍼런스. REAL_DUMP 후 펀딩 양전환 진입",
-        "entry_price": None,
-    },
-
-    # ── funding-flip-reversal-v1 추가 케이스 (10개 목표) ──────────────────────
     {
         "symbol": "ETHUSDT",
         "captured_at": "2026-01-20 08:00",
@@ -161,16 +224,24 @@ ROWS: list[dict[str, Any]] = [
         "user_note": "DOT funding flip 신호 확인. 결과 +6.5% WIN",
         "entry_price": 8.4,
     },
-    {
-        "symbol": "MATICUSDT",
-        "captured_at": "2026-04-02 08:00",
-        "pattern_slug": "funding-flip-reversal-v1",
-        "phase": "ENTRY_ZONE",
-        "user_note": "MATIC 역프 후 반등 기대. 결과 LOSS -5.1%",
-        "entry_price": 0.62,
-    },
 
-    # ── whale-accumulation-reversal-v1 추가 케이스 (10개 목표) ────────────────
+    # ── whale-accumulation-reversal-v1 (10 cases) ─────────────────────────────
+    {
+        "symbol": "PUFFERUSDT",
+        "captured_at": "2026-04-04 12:00",
+        "pattern_slug": "whale-accumulation-reversal-v1",
+        "phase": "ACCUMULATION",
+        "user_note": "PUFFER 숏스퀴즈 발동 케이스. Apr 4 진입 확인",
+        "entry_price": None,
+    },
+    {
+        "symbol": "ETCUSDT",
+        "captured_at": "2026-04-08 10:00",
+        "pattern_slug": "whale-accumulation-reversal-v1",
+        "phase": "ACCUMULATION",
+        "user_note": "ETC 횡보 끝 상방 기대. 숏스퀴즈 진입 Apr 8",
+        "entry_price": None,
+    },
     {
         "symbol": "BTCUSDT",
         "captured_at": "2025-10-15 04:00",
@@ -236,7 +307,23 @@ ROWS: list[dict[str, Any]] = [
         "entry_price": 24.0,
     },
 
-    # ── tradoor-oi-reversal-v1 추가 케이스 (10개 목표) ───────────────────────
+    # ── tradoor-oi-reversal-v1 (10 cases) ─────────────────────────────────────
+    {
+        "symbol": "BTCUSDT",
+        "captured_at": "2025-11-01 00:00",
+        "pattern_slug": "tradoor-oi-reversal-v1",
+        "phase": "ACCUMULATION",
+        "user_note": "TRADOOR/PTB OI 반전 레퍼런스. 급락+OI급등 2차 후 축적구간 진입. 코어루프 설계 기반 케이스",
+        "entry_price": None,
+    },
+    {
+        "symbol": "BTCUSDT",
+        "captured_at": "2025-12-10 00:00",
+        "pattern_slug": "tradoor-oi-reversal-v1",
+        "phase": "ACCUMULATION",
+        "user_note": "TRADOOR 2차 레퍼런스. REAL_DUMP 후 펀딩 양전환 진입",
+        "entry_price": None,
+    },
     {
         "symbol": "ETHUSDT",
         "captured_at": "2025-10-20 00:00",
@@ -302,7 +389,7 @@ ROWS: list[dict[str, Any]] = [
         "entry_price": 83000.0,
     },
 
-    # ── liquidity-sweep-reversal-v1 케이스 (10개) ────────────────────────────
+    # ── liquidity-sweep-reversal-v1 (10 cases) ────────────────────────────────
     {
         "symbol": "BTCUSDT",
         "captured_at": "2025-09-10 04:00",
@@ -384,7 +471,7 @@ ROWS: list[dict[str, Any]] = [
         "entry_price": 1600.0,
     },
 
-    # ── wyckoff-spring-reversal-v1 케이스 (10개) ─────────────────────────────
+    # ── wyckoff-spring-reversal-v1 (10 cases) ─────────────────────────────────
     {
         "symbol": "BTCUSDT",
         "captured_at": "2025-08-20 08:00",
@@ -468,62 +555,59 @@ ROWS: list[dict[str, Any]] = [
 ]
 
 
-# ── Payload builder ────────────────────────────────────────────────────────────
-
-def build_payload(user_id: str) -> dict:
-    rows = []
-    for r in ROWS:
-        row: dict[str, Any] = {
-            "symbol": r["symbol"],
-            "timeframe": r.get("timeframe", "1h"),
-            "captured_at_ms": to_ms(r["captured_at"]),
-            "pattern_slug": r["pattern_slug"],
-            "phase": r["phase"],
-            "user_note": r.get("user_note"),
-        }
-        if r.get("entry_price") is not None:
-            row["entry_price"] = r["entry_price"]
-        rows.append(row)
-    return {"user_id": user_id, "rows": rows}
-
-
-# ── Main ───────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Founder seed bulk-import")
-    parser.add_argument("--engine", default="http://localhost:8000")
-    parser.add_argument("--user-id", default="founder")
-    parser.add_argument("--dry-run", action="store_true", help="Print payload, don't submit")
+    parser = argparse.ArgumentParser(description="Founder seed — direct ledger write")
+    parser.add_argument("--dry-run", action="store_true", help="Print records, don't write files")
     args = parser.parse_args()
 
-    payload = build_payload(args.user_id)
+    # Count existing records before writing
+    before_count = sum(1 for _ in LEDGER_DIR.rglob("*.json"))
 
     print(f"\n{'='*60}")
-    print(f"Founder Seed — {len(payload['rows'])} rows → {args.engine}")
+    print(f"Founder Seed (Direct) — {len(ROWS)} rows → {LEDGER_DIR}")
+    print(f"Existing records before: {before_count}")
     print(f"{'='*60}")
-    for i, row in enumerate(payload["rows"], 1):
-        dt = datetime.fromtimestamp(row["captured_at_ms"] / 1000, tz=timezone.utc)
-        print(f"  [{i:02d}] {row['symbol']:<16} {row['pattern_slug']:<32} {dt.strftime('%Y-%m-%d')}  {row['phase']}")
+
+    written = 0
+    skipped = 0
+    by_pattern: dict[str, int] = {}
+
+    for i, row in enumerate(ROWS, 1):
+        record = build_record(row)
+        slug = record["pattern_slug"]
+        pattern_dir = LEDGER_DIR / slug
+        out_path = pattern_dir / f"{record['id']}.json"
+
+        print(f"  [{i:02d}] {record['symbol']:<16} {slug:<38} {record['outcome']:<8}  {row['captured_at']}")
+
+        if args.dry_run:
+            skipped += 1
+            continue
+
+        pattern_dir.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w") as f:
+            json.dump(record, f, indent=2, ensure_ascii=False)
+
+        written += 1
+        by_pattern[slug] = by_pattern.get(slug, 0) + 1
 
     if args.dry_run:
-        print("\n[DRY RUN] Payload:")
-        print(json.dumps(payload, indent=2))
+        print(f"\n[DRY RUN] Would write {len(ROWS)} records. Run without --dry-run to apply.")
         return
 
-    print(f"\nSubmitting…")
-    url = f"{args.engine}/captures/bulk_import"
-    try:
-        resp = requests.post(url, json=payload, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        print(f"\n✓ Imported {data['count']} captures")
-        print(f"  IDs: {data['capture_ids'][:3]}{'…' if len(data['capture_ids']) > 3 else ''}")
-        print(f"\nNext: outcome_resolver picks these up on the next hourly tick.")
-        print(f"      Check status: GET {args.engine}/captures/outcomes?status=pending_outcome")
-    except requests.HTTPError as e:
-        print(f"\n✗ HTTP {e.response.status_code}: {e.response.text[:400]}")
-    except Exception as e:
-        print(f"\n✗ Error: {e}")
+    after_count = sum(1 for _ in LEDGER_DIR.rglob("*.json"))
+    print(f"\n{'='*60}")
+    print(f"Written:  {written} records")
+    print(f"Before:   {before_count}  →  After: {after_count}")
+    print(f"\nRecords by pattern:")
+    for slug, count in sorted(by_pattern.items()):
+        total_in_dir = sum(1 for _ in (LEDGER_DIR / slug).glob("*.json"))
+        print(f"  {slug:<42} +{count}  (total {total_in_dir})")
+    print(f"\nNext: outcome_resolver closes pending records on the next hourly tick.")
 
 
 if __name__ == "__main__":

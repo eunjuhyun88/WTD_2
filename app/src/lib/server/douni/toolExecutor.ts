@@ -840,17 +840,11 @@ async function executeCheckPatternStatus(
     let stats: Record<string, unknown> | null = null;
     if (includeStats) {
       try {
-        const statsRes = await fetch(`${getEngineUrl()}/patterns/library`);
+        // Single bulk endpoint — avoids N+1 per-slug fan-out (HOTSPOT-003).
+        const statsRes = await fetch(`${getEngineUrl()}/patterns/stats/all`);
         if (statsRes.ok) {
-          const lib = await statsRes.json();
-          const slugs = (lib.patterns as Array<{ slug: string }>).map(p => p.slug);
-          const statsResults = await Promise.all(
-            slugs.map(s => fetch(`${getEngineUrl()}/patterns/${s}/stats`).then(r => r.ok ? r.json() : null))
-          );
-          stats = {};
-          for (let i = 0; i < slugs.length; i++) {
-            if (statsResults[i]) (stats as Record<string, unknown>)[slugs[i]] = statsResults[i];
-          }
+          const bulk = await statsRes.json() as { patterns: Record<string, unknown> };
+          stats = bulk.patterns ?? null;
         }
       } catch { /* non-fatal */ }
     }

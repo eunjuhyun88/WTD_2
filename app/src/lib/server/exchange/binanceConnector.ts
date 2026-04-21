@@ -51,7 +51,11 @@ interface BinanceFuturesTrade {
 
 // ─── API Key encryption (simple AES-256-GCM) ──────────────────
 
-const ENCRYPTION_KEY = process.env.EXCHANGE_ENCRYPTION_KEY ?? 'default-dev-key-change-in-production!!';
+const ENCRYPTION_KEY = (() => {
+  const key = process.env.EXCHANGE_ENCRYPTION_KEY;
+  if (!key) throw new Error('EXCHANGE_ENCRYPTION_KEY is required');
+  return key;
+})();
 
 export function encryptApiKey(plaintext: string): string {
   const key = crypto.scryptSync(ENCRYPTION_KEY, 'cogochi-salt', 32);
@@ -142,33 +146,45 @@ export async function fetchBinanceTrades(
 
 // ─── Save imported trades to DB ────────────────────────────────
 
+const IMPORT_CHUNK = 50; // rows per batch INSERT
+
 export async function saveImportedTrades(
   userId: string,
   connectionId: string,
   trades: NormalizedTrade[],
   source: string = 'binance_api',
 ): Promise<{ saved: number; skipped: number }> {
+  if (trades.length === 0) return { saved: 0, skipped: 0 };
+
   let saved = 0;
   let skipped = 0;
 
-  for (const trade of trades) {
+  // Batch upsert in chunks to avoid unbounded query size.
+  for (let i = 0; i < trades.length; i += IMPORT_CHUNK) {
+    const chunk = trades.slice(i, i + IMPORT_CHUNK);
+    const values: unknown[] = [];
+    const placeholders = chunk.map((trade, idx) => {
+      const base = idx * 13;
+      values.push(
+        userId, connectionId, source, trade.symbol, trade.side,
+        trade.price, trade.quantity, trade.quoteQuantity,
+        trade.fee, trade.feeAsset, trade.realizedPnl,
+        trade.tradeTime, trade.externalId,
+      );
+      return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7},$${base+8},$${base+9},$${base+10},$${base+11},$${base+12},$${base+13})`;
+    });
     try {
       await query(
         `INSERT INTO imported_trades (
           user_id, connection_id, source, symbol, side, price, quantity,
           quote_quantity, fee, fee_asset, realized_pnl, trade_time, external_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ) VALUES ${placeholders.join(',')}
         ON CONFLICT (user_id, source, external_id) WHERE external_id IS NOT NULL DO NOTHING`,
-        [
-          userId, connectionId, source, trade.symbol, trade.side,
-          trade.price, trade.quantity, trade.quoteQuantity,
-          trade.fee, trade.feeAsset, trade.realizedPnl,
-          trade.tradeTime, trade.externalId,
-        ],
+        values,
       );
-      saved++;
+      saved += chunk.length;
     } catch {
-      skipped++;
+      skipped += chunk.length;
     }
   }
 
