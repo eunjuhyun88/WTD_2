@@ -29,7 +29,7 @@
   let chartPayload = $state<ChartSeriesPayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
-  let klineWs = $state<WebSocket | null>(null);
+  let klineWs: WebSocket | null = null; // plain ref — not $state (reads+writes inside $effect would loop)
   let lastCandleTime = $state<number | null>(null);
 
   // Fetch initial bundle
@@ -199,6 +199,12 @@
 
   // Layout B drawer tab state
   let bDrawerTab = $state<'analyze' | 'scan' | 'judge'>('analyze');
+
+  const DRAWER_TABS = [
+    { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)', desc: '가설·근거' },
+    { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',    desc: '유사 셋업' },
+    { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)', desc: '매매·판정' },
+  ] as const;
 
   // ── JUDGE state (trade_act.jsx ActPanel) ────────────────────────────────
   let judgeVerdict = $state<'agree' | 'disagree' | null>(null);
@@ -630,11 +636,7 @@
     <!-- Tabbed bottom panel, always open -->
     <div class="lb-panel">
       <div class="drawer-header">
-        {#each [
-          { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)', desc: '가설·근거' },
-          { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',    desc: '유사 셋업' },
-          { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)', desc: '매매·판정' },
-        ] as tab}
+        {#each DRAWER_TABS as tab}
           <button class="dh-tab" class:active={bDrawerTab === tab.id} style:--tc={tab.color} onclick={() => bDrawerTab = tab.id as any}>
             <span class="dh-n">{tab.n}</span>
             <span class="dh-label">{tab.label}</span>
