@@ -5,6 +5,10 @@
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
+  import IndicatorPane from '$lib/components/indicators/IndicatorPane.svelte';
+  import IndicatorRenderer from '$lib/components/indicators/IndicatorRenderer.svelte';
+  import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
+  import { buildIndicatorValues, type VenueDivergencePayload, type LiqClusterPayload } from '$lib/indicators/adapter';
 
   interface Props {
     mode: 'trade' | 'train' | 'flywheel';
@@ -61,7 +65,60 @@
       if (!res.ok) return;
       analyzeData = (await res.json()) as AnalyzeEnvelope;
     } catch { /* retry on next candle */ }
+    // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
+    // in lock-step with analyze on candle close.
+    void refreshVenueDivergence();
+    void refreshLiqClusters();
   }
+
+  // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
+  let venueDivergence = $state<VenueDivergencePayload | null>(null);
+
+  async function refreshVenueDivergence() {
+    try {
+      const res = await fetch(`/api/market/venue-divergence?symbol=${symbol}`);
+      if (!res.ok) return;
+      venueDivergence = (await res.json()) as VenueDivergencePayload;
+    } catch { /* tolerate: next refresh will retry */ }
+  }
+
+  // ── Pillar 1: Liquidation Clusters (W-0122-B1) ───────────────────────
+  let liqClusters = $state<LiqClusterPayload | null>(null);
+
+  async function refreshLiqClusters() {
+    try {
+      const res = await fetch(`/api/market/liq-clusters?symbol=${symbol}&window=4h`);
+      if (!res.ok) return;
+      liqClusters = (await res.json()) as LiqClusterPayload;
+    } catch { /* tolerate */ }
+  }
+
+  // Trigger on symbol change + initial mount. Polling every 60s as a safety net
+  // (candle close also triggers refresh above).
+  $effect(() => {
+    void symbol;
+    venueDivergence = null;
+    liqClusters = null;
+    void refreshVenueDivergence();
+    void refreshLiqClusters();
+    const iv = setInterval(() => {
+      void refreshVenueDivergence();
+      void refreshLiqClusters();
+    }, 60_000);
+    return () => clearInterval(iv);
+  });
+
+  // ── Indicator pipeline: analyze + side fetches → registry-keyed values ─
+  const indicatorValues = $derived(buildIndicatorValues({
+    analyze: analyzeData,
+    venueDivergence,
+    liqClusters,
+  }));
+
+  // Ordered list of indicators to render in the evidence pane — registry-driven.
+  // Archetype A gauges (row) + Archetype F venue strips (stack).
+  const gaugePaneIds = ['oi_change_1h', 'funding_rate', 'volume_ratio'] as const;
+  const venuePaneIds = ['oi_per_venue', 'funding_per_venue'] as const;
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
     entry: analyzeData.entryPlan.entry,
@@ -439,6 +496,13 @@
           <div class="narrative" role="region" aria-label="Trade bias and direction">
             <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
           </div>
+          <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE INDICATORS" layout="row" />
+          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" />
+          {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+            <div class="liq-pane-wrap">
+              <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+            </div>
+          {/if}
           <div class="evidence-grid" role="list" aria-label="Evidence items">
             {#each evidenceItems as item}
               <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
