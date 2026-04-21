@@ -12,7 +12,7 @@
  */
 
 import { writable, type Readable } from 'svelte/store';
-import type { CaptureAnnotation } from '$components/terminal/chart/primitives/CaptureMarkerPrimitive';
+import type { CaptureAnnotation } from '../../components/terminal/chart/primitives/CaptureMarkerPrimitive';
 
 export interface CaptureAnnotationsState {
   annotations: CaptureAnnotation[];
