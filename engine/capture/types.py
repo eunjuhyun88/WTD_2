@@ -48,3 +48,27 @@ class CaptureRecord:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+    def to_supabase_dict(self) -> dict[str, Any]:
+        """Return a dict shaped for the Supabase capture_records table (JSONB fields)."""
+        return {
+            "capture_id": self.capture_id,
+            "capture_kind": self.capture_kind,
+            "user_id": self.user_id or "auto",
+            "symbol": self.symbol,
+            "pattern_slug": self.pattern_slug,
+            "pattern_version": self.pattern_version,
+            "phase": self.phase,
+            "timeframe": self.timeframe,
+            "captured_at_ms": self.captured_at_ms,
+            "candidate_transition_id": self.candidate_transition_id,
+            "candidate_id": self.candidate_id,
+            "scan_id": self.scan_id,
+            "user_note": self.user_note,
+            "chart_context_json": self.chart_context or {},
+            "feature_snapshot_json": self.feature_snapshot,
+            "block_scores_json": self.block_scores or {},
+            "verdict_id": self.verdict_id,
+            "outcome_id": self.outcome_id,
+            "status": self.status,
+        }

@@ -15,12 +15,12 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from ledger.store import LedgerStore
+from ledger.store import get_ledger_store
 from ledger.types import PatternStats
 from patterns.registry import PATTERN_REGISTRY_STORE
 
 router = APIRouter()
-_ledger = LedgerStore()
+_ledger = get_ledger_store()
 _REFINEMENT_CACHE_TTL = 30.0
 _REFINEMENT_CACHE_LOCK = threading.Lock()
 _refinement_cache_ts = 0.0
