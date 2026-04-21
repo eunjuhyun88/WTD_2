@@ -55,7 +55,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     });
   } catch (err: any) {
     console.error('[api/lab/forward-walk] POST error:', err);
-    return json({ error: err.message ?? 'Forward-walk failed' }, { status: 500 });
+    return json({ error: 'Forward-walk failed' }, { status: 500 });
   }
 };
 

@@ -55,6 +55,7 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
       { headers: { 'Cache-Control': 'public, max-age=120' } }
     );
   } catch (err: any) {
-    return json({ error: err.message || 'Failed to fetch funding rate history' }, { status: 502 });
+    console.error('[api/market/funding] upstream error:', err);
+    return json({ error: 'Failed to fetch funding rate history' }, { status: 502 });
   }
 };

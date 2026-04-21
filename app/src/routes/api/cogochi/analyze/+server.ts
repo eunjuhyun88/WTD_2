@@ -138,13 +138,14 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
         tf,
         status: error.status,
         error: 'upstream_error',
-        reason: error.message,
+        reason: 'engine error',
       });
+      console.error('[cogochi/analyze] EngineError:', error.message);
       return json(
         createAnalyzeErrorEnvelope({
           requestId,
           error: 'upstream_error',
-          reason: error.message,
+          reason: 'engine error',
           status: error.status,
           upstream: 'engine',
         }),
@@ -158,7 +159,7 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
       );
     }
 
-    const message = error instanceof Error ? error.message : 'Analysis failed';
+    console.error('[cogochi/analyze] unexpected error:', error);
     logAnalyzeRouteEvent({
       event: 'error',
       requestId,
@@ -166,13 +167,13 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
       tf,
       status: 500,
       error: 'analysis_failed',
-      reason: message,
+      reason: 'Analysis failed',
     });
     return json(
       createAnalyzeErrorEnvelope({
         requestId,
         error: 'analysis_failed',
-        reason: message,
+        reason: 'Analysis failed',
         status: 500,
         upstream: 'route',
       }),

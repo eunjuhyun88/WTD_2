@@ -38,6 +38,7 @@ export const GET: RequestHandler = async ({ getClientAddress }) => {
 
     return json({ stats, ok: true });
   } catch (err) {
-    return json({ stats: [], ok: false, error: String(err) });
+    console.error('[api/patterns/stats] engine error:', err);
+    return json({ stats: [], ok: false, error: 'engine unavailable' });
   }
 };

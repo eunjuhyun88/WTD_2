@@ -52,6 +52,7 @@ export const GET: RequestHandler = async ({ url, fetch, getClientAddress }) => {
       },
     });
   } catch (err) {
-    return json({ error: String(err) }, { status: 500 });
+    console.error('[api/chart/feed] error:', err);
+    return json({ error: 'chart data unavailable' }, { status: 500 });
   }
 };

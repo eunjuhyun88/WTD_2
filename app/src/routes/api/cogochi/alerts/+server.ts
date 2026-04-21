@@ -123,9 +123,8 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
     });
 
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'DB query failed';
-    console.error('[alerts] DB error:', msg);
+    console.error('[alerts] DB error:', err);
     // Return empty gracefully — alerts are non-critical
-    return json({ alerts: [], total: 0, scanned_at: new Date().toISOString(), error: msg });
+    return json({ alerts: [], total: 0, scanned_at: new Date().toISOString(), error: 'query failed' });
   }
 };
