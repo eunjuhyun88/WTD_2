@@ -42,6 +42,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/stablecoin-ssr',    // W-0122-F: derived SSR (DefiLlama + CoinGecko), 30m cache
   '/api/market/rv-cone',           // W-0122-F: realized vol cone (Binance klines), 1h cache
   '/api/market/funding-flip',      // W-0122-F: funding flip clock (Binance history), 10m cache
+  '/api/confluence/',              // W-0122-Confluence: score aggregator (read-only)
   '/api/coingecko/',
   '/api/feargreed',
   '/api/chart/',          // chart klines + feed — public market data, rate-limited

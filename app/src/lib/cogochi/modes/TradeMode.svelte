@@ -7,6 +7,8 @@
   import { shellStore } from '$lib/cogochi/shell.store';
   import IndicatorPane from '$lib/components/indicators/IndicatorPane.svelte';
   import IndicatorRenderer from '$lib/components/indicators/IndicatorRenderer.svelte';
+  import ConfluenceBanner from '$lib/components/confluence/ConfluenceBanner.svelte';
+  import type { ConfluenceResult } from '$lib/confluence/types';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
   import {
     buildIndicatorValues,
@@ -77,6 +79,7 @@
     // in lock-step with analyze on candle close.
     void refreshVenueDivergence();
     void refreshLiqClusters();
+    void refreshConfluence();
   }
 
   // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
@@ -143,6 +146,17 @@
     } catch { /* tolerate */ }
   }
 
+  // ── Confluence Engine (W-0122 master score) ──────────────────────────
+  let confluence = $state<ConfluenceResult | null>(null);
+
+  async function refreshConfluence() {
+    try {
+      const res = await fetch(`/api/confluence/current?symbol=${symbol}&tf=${timeframe}`);
+      if (!res.ok) return;
+      confluence = (await res.json()) as ConfluenceResult;
+    } catch { /* tolerate */ }
+  }
+
   // Trigger on symbol change + initial mount. Polling every 60s as a safety net
   // (candle close also triggers refresh above). Indicator context polls only
   // every 5m since its server cache TTL is 10m. SSR/RV/flip are slower still.
@@ -154,15 +168,18 @@
     ssr = null;
     rvCone = null;
     fundingFlip = null;
+    confluence = null;
     void refreshVenueDivergence();
     void refreshLiqClusters();
     void refreshIndicatorContext();
     void refreshSsr();
     void refreshRvCone();
     void refreshFundingFlip();
+    void refreshConfluence();
     const fastIv = setInterval(() => {
       void refreshVenueDivergence();
       void refreshLiqClusters();
+      void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
     }, 60_000);
     const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
     // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min.
@@ -570,6 +587,9 @@
           <div class="narrative" role="region" aria-label="Trade bias and direction">
             <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
           </div>
+          {#if confluence}
+            <ConfluenceBanner value={confluence} compact />
+          {/if}
           <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE INDICATORS" layout="row" />
           <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" />
           {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
@@ -812,6 +832,9 @@
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
           </div>
+          {#if confluence}
+            <ConfluenceBanner value={confluence} />
+          {/if}
           <div class="evidence-grid" role="list" aria-label="Evidence items">
             {#each evidenceItems as item}
               <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
