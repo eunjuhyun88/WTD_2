@@ -18,6 +18,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "twitter-plugin-gamesdk>=0.2.11",
     "pillow>=12.2.0",
+    "supabase>=2.0",
 ]
 
 [project.optional-dependencies]

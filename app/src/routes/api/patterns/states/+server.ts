@@ -11,12 +11,15 @@ export const GET: RequestHandler = async ({ getClientAddress }) => {
   }
   try {
     const res = await engineFetch('/patterns/states');
-    if (!res.ok) return json({ patterns: {}, ok: false });
-
-    const data = await res.json();
-    return json({ ...data, ok: true });
+    const body = await res.text();
+    return new Response(body, {
+      status: res.status,
+      headers: {
+        'content-type': res.headers.get('content-type') ?? 'application/json',
+      },
+    });
   } catch (err) {
     console.error('[api/patterns/states] engine error:', err);
-    return json({ patterns: {}, ok: false, error: 'engine unavailable' });
+    return json({ error: 'engine unavailable' }, { status: 503 });
   }
 };

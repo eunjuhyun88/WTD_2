@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from ledger.dataset import build_pattern_training_records
-from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore, LedgerStore, get_ledger_store
 from patterns.library import get_pattern
 from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE, PatternModelRegistryStore
@@ -29,7 +29,7 @@ def train_pattern_model_from_ledger(
 ) -> dict:
     """Train a pattern-scoped model from ledger evidence and record artifacts."""
     pattern = get_pattern(pattern_slug)
-    ledger = ledger or LedgerStore()
+    ledger = ledger or get_ledger_store()
     record_store = record_store or LEDGER_RECORD_STORE
     registry_store = registry_store or MODEL_REGISTRY_STORE
 
