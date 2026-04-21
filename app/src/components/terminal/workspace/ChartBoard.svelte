@@ -334,6 +334,17 @@
   // ── Layer 3: Capture annotations (W-0120) ────────────────────────────────
   let candleSeriesForAnnotations = $state<ISeriesApi<'Candlestick'> | null>(null);
   let selectedCapture = $state<CaptureAnnotation | null>(null);
+  let _annotationsCache = $state<CaptureAnnotation[]>([]);
+
+  /** Convert tf string to seconds for ±2-bar click threshold (W-0124). */
+  function _tfToSec(t: string): number {
+    const map: Record<string, number> = {
+      '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
+      '1h': 3600, '2h': 7200, '4h': 14400, '6h': 21600, '12h': 43200,
+      '1d': 86400, '3d': 259200, '1w': 604800,
+    };
+    return map[t] ?? 3600;
+  }
 
   // Drag state — managed as plain variables (not reactive) to avoid cycles
   let _dragActive = false;
@@ -955,6 +966,24 @@
           if (d?.close != null) currentPrice = d.close;
           else if (d?.value != null) currentPrice = d.value;
         }
+      }
+    });
+
+    // Capture annotation click: open drawer for nearest marker within ±2 bars (W-0124)
+    mainChart.subscribeClick((param) => {
+      if (!param.time || !_annotationsCache.length || selectedCapture) return;
+      const ts = typeof param.time === 'number'
+        ? param.time
+        : Math.floor(new Date(param.time as string).getTime() / 1000);
+      const threshold = _tfToSec(tf) * 2;
+      let nearest: CaptureAnnotation | null = null;
+      let nearestDist = Infinity;
+      for (const ann of _annotationsCache) {
+        const d = Math.abs(ann.captured_at_s - ts);
+        if (d < nearestDist) { nearestDist = d; nearest = ann; }
+      }
+      if (nearest && nearestDist <= threshold) {
+        selectedCapture = nearest;
       }
     });
 
@@ -1620,7 +1649,7 @@
       <button onclick={loadData}>Retry</button>
     </div>
   {:else}
-    <div class="chart-stack" class:range-mode={$chartSaveMode.active} bind:this={chartStackEl}>
+    <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
       <div class="layer2-topright">
@@ -1774,6 +1803,7 @@
   {symbol}
   timeframe={tf}
   onSelect={(ann) => { selectedCapture = ann; }}
+  onAnnotationsChange={(anns) => { _annotationsCache = anns; }}
 />
 <CaptureReviewDrawer
   annotation={selectedCapture}
@@ -2478,6 +2508,13 @@
     overflow: hidden;
     /* Layer 2 overlay anchors to this container */
     position: relative;
+  }
+  /* Shift chart right when capture review drawer is open (desktop only) */
+  @media (min-width: 768px) {
+    .chart-stack.drawer-open {
+      padding-right: 304px;
+      transition: padding-right 240ms ease-out;
+    }
   }
   .chart-stack.range-mode,
   .chart-stack.range-mode * {

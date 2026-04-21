@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ALPHA HUNTER | 나혼자 매매 아카 + 퀀트 전략 완벽 패치</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:   #070500;
+  --bg2:  #0e0900;
+  --bg3:  #150e00;
+  --bg4:  #1c1400;
+  --bd:   #221a00;
+  --bd2:  #332800;
+  --text: #806040;
+  --text2:#5a3e20;
+  --text3:#3a2510;
+  --gold: #ffaa00;
+  --gold2:#cc8800;
+  --bull: #00ffaa;
+  --bear: #ff3355;
+  --warn: #ff8800;
+  --blue: #44aaff;
+  --white:#ffe0a0;
+  --dim:  #180f00;
+  --pre:  #ffaa00; 
+  --spot: #44ff88; 
+  --fut:  #44aaff; 
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Share Tech Mono','Courier New',monospace;
+  font-size:11px;min-height:100vh;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 20%,rgba(255,170,0,.05) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 60% at 80% 80%,rgba(255,136,0,.03) 0%,transparent 60%);
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(255,170,0,.012) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,170,0,.012) 1px,transparent 1px);
+  background-size:22px 22px;
+}
+
+#wm{position:fixed;bottom:14px;right:18px;z-index:2147483647;opacity:.2;cursor:pointer;text-decoration:none;display:block;transition:opacity .25s;}
+#wm:hover{opacity:.6;}
+.wm-i{position:relative;padding:7px 11px;text-align:right;}
+.wm-b1{position:absolute;top:-4px;right:-4px;width:8px;height:8px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);}
+.wm-b2{position:absolute;bottom:-4px;left:-4px;width:8px;height:8px;border-bottom:1px solid var(--gold);border-left:1px solid var(--gold);}
+.wm-t{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.18em;text-shadow:0 0 12px rgba(255,170,0,.5);}
+.wm-s{font-size:7.5px;color:var(--text2);letter-spacing:.08em;margin-top:1px;}
+.wm-tg{font-size:8px;color:var(--blue);margin-top:2px;}
+#wm *{user-select:none!important;}
+
+header{
+  position:relative;z-index:10;
+  padding:13px 24px 10px;border-bottom:1px solid var(--bd);
+  background:linear-gradient(180deg,#0e0800 0%,var(--bg2) 100%);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.h-logo{display:flex;align-items:baseline;gap:12px;}
+.h-main{
+  font-family:'Orbitron',monospace;font-size:18px;font-weight:900;
+  color:var(--gold);letter-spacing:.12em;
+  text-shadow:0 0 30px rgba(255,170,0,.55),0 0 70px rgba(255,170,0,.2);
+}
+.h-sub{font-size:8px;color:var(--text2);letter-spacing:.08em;}
+.h-right{display:flex;align-items:center;gap:14px;}
+.creator{text-align:right;border-right:1px solid var(--bd);padding-right:14px;margin-right:2px;cursor:pointer;}
+.c-lbl{font-size:7px;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;}
+.c-name{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;color:var(--gold);}
+.pulse{display:flex;align-items:center;gap:6px;font-size:8px;color:var(--text2);}
+.pulse::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--gold);box-shadow:0 0 7px var(--gold);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.1}}
+
+.legend{
+  position:relative;z-index:10;
+  padding:7px 24px;border-bottom:1px solid var(--bd);
+  background:var(--bg2);display:flex;gap:20px;align-items:center;
+}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:9px;}
+.leg-dot{width:8px;height:8px;border-radius:50%;}
+
+.mbar{
+  position:relative;z-index:10;
+  padding:8px 24px;border-bottom:1px solid var(--bd);
+  background:var(--bg2);display:flex;gap:0;overflow-x:auto;
+}
+.mb-i{display:flex;flex-direction:column;gap:2px;padding:0 16px 0 0;border-right:1px solid var(--bd);margin-right:16px;flex-shrink:0;}
+.mb-i:last-child{border-right:none;}
+.mb-l{font-size:7px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;}
+.mb-v{font-size:15px;font-weight:700;font-family:'Orbitron',monospace;}
+.mb-s{font-size:7.5px;color:var(--text2);}
+.c-gold{color:var(--gold);text-shadow:0 0 10px rgba(255,170,0,.4);}
+.c-bull{color:var(--bull);}
+.c-bear{color:var(--bear);}
+.c-warn{color:var(--warn);}
+.c-blue{color:var(--blue);}
+.c-wht{color:var(--white);}
+.c-pre{color:var(--pre);}
+.c-spot{color:var(--spot);}
+.c-fut{color:var(--fut);}
+.shim{display:inline-block;width:40px;height:14px;background:linear-gradient(90deg,var(--dim) 25%,var(--bg3) 50%,var(--dim) 75%);background-size:200% 100%;animation:shim 1.5s infinite;border-radius:2px;}
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+.controls{
+  position:relative;z-index:10;
+  padding:9px 24px;border-bottom:1px solid var(--bd);
+  background:var(--bg2);display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;
+}
+.cg{display:flex;flex-direction:column;gap:4px;}
+.clabel{font-size:7px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;}
+select{background:var(--bg3);border:1px solid var(--bd);color:var(--white);font-family:inherit;font-size:10px;padding:4px 8px;border-radius:2px;outline:none;}
+select:focus{border-color:var(--gold);}
+.scan-btn{
+  padding:7px 22px;background:transparent;border:1px solid var(--gold);
+  color:var(--gold);font-family:inherit;font-size:11px;font-weight:700;
+  letter-spacing:.1em;cursor:pointer;transition:all .2s;border-radius:2px;
+}
+.scan-btn:hover{background:rgba(255,170,0,.09);box-shadow:0 0 22px rgba(255,170,0,.3);}
+.scan-btn.run{border-color:var(--warn);color:var(--warn);animation:glow 1s ease-in-out infinite;}
+@keyframes glow{0%,100%{box-shadow:0 0 4px rgba(255,136,0,.3)}50%{box-shadow:0 0 18px rgba(255,136,0,.6)}}
+.stop-btn{padding:7px 13px;background:transparent;border:1px solid var(--bear);color:var(--bear);font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px;display:none;}
+
+.prog{position:relative;z-index:10;padding:7px 24px;border-bottom:1px solid var(--bd);background:var(--bg);}
+.prog-head{display:flex;justify-content:space-between;margin-bottom:4px;}
+.prog-msg,.prog-pct{font-size:9px;color:var(--text2);}
+.prog-track{height:2px;background:var(--dim);border-radius:1px;overflow:hidden;}
+.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--gold2),var(--gold));box-shadow:0 0 8px var(--gold);transition:width .3s;}
+
+.stats-bar{
+  position:relative;z-index:10;padding:7px 24px;
+  border-bottom:1px solid var(--bd);background:var(--bg2);
+  display:flex;gap:22px;align-items:center;flex-wrap:wrap;
+}
+.st{display:flex;align-items:baseline;gap:7px;}
+.st-l{font-size:7px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;}
+.st-v{font-size:16px;font-weight:700;font-family:'Orbitron',monospace;}
+
+.fbar{position:relative;z-index:10;padding:7px 24px;border-bottom:1px solid var(--bd);display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+.sbox{background:var(--bg3);border:1px solid var(--bd);color:var(--white);font-family:inherit;font-size:10px;padding:3px 8px;border-radius:2px;width:130px;outline:none;}
+.sbox:focus{border-color:var(--gold);}
+.fbtn{padding:3px 10px;background:transparent;border:1px solid var(--bd);color:var(--text2);font-family:inherit;font-size:8px;cursor:pointer;letter-spacing:.07em;border-radius:2px;transition:all .15s;}
+.fbtn:hover{border-color:var(--bd2);color:var(--text);}
+.fa{border-color:var(--gold);color:var(--gold);background:rgba(255,170,0,.07);}
+.rcount{margin-left:auto;font-size:8px;color:var(--text3);}
+
+.tbl-wrap{position:relative;z-index:10;overflow-x:auto;padding:0 24px 44px;}
+table{width:100%;border-collapse:collapse;margin-top:8px;}
+thead th{
+  text-align:left;padding:7px 9px;font-size:7px;font-weight:700;
+  color:var(--text3);letter-spacing:.13em;text-transform:uppercase;
+  border-bottom:1px solid var(--bd);cursor:pointer;user-select:none;white-space:nowrap;
+}
+thead th:hover{color:var(--text2);}
+thead th.sorted{color:var(--gold);}
+tbody tr{border-bottom:1px solid rgba(34,26,0,.8);transition:background .1s;cursor:pointer;}
+tbody tr:hover{background:var(--bg2);}
+tbody tr.sel{background:rgba(255,170,0,.04);border-left:2px solid var(--gold);}
+tbody td{padding:6px 9px;white-space:nowrap;vertical-align:middle;}
+
+.as-wrap{display:flex;align-items:center;gap:8px;}
+.as-num{font-family:'Orbitron',monospace;font-size:19px;font-weight:800;min-width:46px;text-align:right;}
+.as-meta{display:flex;flex-direction:column;gap:2px;}
+.as-bar-bg{width:58px;height:4px;background:var(--dim);border-radius:2px;overflow:hidden;}
+.as-bar-f{height:100%;border-radius:2px;}
+.as-lbl{font-size:7.5px;letter-spacing:.08em;font-weight:700;}
+
+.stage{font-size:7px;padding:2px 6px;border-radius:2px;font-weight:700;letter-spacing:.06em;}
+.st-pre{background:rgba(255,170,0,.12);border:1px solid rgba(255,170,0,.35);color:var(--pre);}
+.st-spot{background:rgba(68,255,136,.1);border:1px solid rgba(68,255,136,.3);color:var(--spot);}
+.st-fut{background:rgba(68,170,255,.1);border:1px solid rgba(68,170,255,.3);color:var(--fut);}
+
+.sig-tag{font-size:7px;padding:1px 5px;border-radius:2px;font-weight:700;}
+.sg-bull{background:rgba(0,255,170,.1);border:1px solid rgba(0,255,170,.3);color:var(--bull);}
+.sg-bear{background:rgba(255,51,85,.1);border:1px solid rgba(255,51,85,.3);color:var(--bear);}
+.sg-warn{background:rgba(255,136,0,.1);border:1px solid rgba(255,136,0,.3);color:var(--warn);}
+.sg-neut{background:rgba(68,170,255,.07);border:1px solid rgba(68,170,255,.25);color:var(--blue);}
+
+.sym-n{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;color:var(--white);}
+.tag-row{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;}
+
+.ddpanel{position:relative;z-index:10;margin:0 24px 14px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);overflow:hidden;display:none;}
+.ddpanel.open{display:block;}
+.ddp-hdr{
+  padding:11px 16px;border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(90deg,rgba(255,170,0,.06),transparent);
+}
+.ddp-sym{font-family:'Orbitron',monospace;font-size:18px;font-weight:800;color:var(--white);}
+.ddp-cls{cursor:pointer;color:var(--text2);background:none;border:none;font-size:14px;font-family:inherit;}
+.ddp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));}
+.ddp-sec{padding:12px 15px;border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);}
+.ddp-sec:last-child{border-right:none;}
+.ddp-t{font-size:7px;color:var(--text3);text-transform:uppercase;letter-spacing:.14em;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between;}
+.kv{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.kv-k{font-size:9px;color:var(--text2);}
+.kv-v{font-size:10px;color:var(--white);}
+.lbar{width:100%;height:2px;background:var(--dim);border-radius:1px;margin-top:7px;overflow:hidden;}
+.lbar-f{height:100%;border-radius:1px;}
+.sig-line{font-size:8.5px;margin-top:3px;line-height:1.6;}
+
+.vbox{position:relative;z-index:10;margin:0 24px;padding:12px 16px;border:1px solid var(--bd2);border-radius:2px;background:var(--bg3);display:none;}
+.vbox.open{display:block;margin-bottom:12px;}
+.vb-t{font-size:7.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px;}
+.vb-sigs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+.vsig{font-size:9px;padding:3px 9px;border-radius:2px;font-weight:600;}
+.vs-bull{background:rgba(0,255,170,.1);border:1px solid rgba(0,255,170,.3);color:var(--bull);}
+.vs-bear{background:rgba(255,51,85,.1);border:1px solid rgba(255,51,85,.3);color:var(--bear);}
+.vs-neut{background:rgba(68,170,255,.08);border:1px solid rgba(68,170,255,.3);color:var(--blue);}
+.vs-warn{background:rgba(255,136,0,.08);border:1px solid rgba(255,136,0,.3);color:var(--warn);}
+.vverdict{font-family:'Orbitron',monospace;font-size:13px;font-weight:800;padding:9px 14px;border-radius:2px;margin-bottom:7px;}
+.vv-bull{background:rgba(0,255,170,.07);border:1px solid rgba(0,255,170,.4);color:var(--bull);}
+.vv-bear{background:rgba(255,51,85,.07);border:1px solid rgba(255,51,85,.4);color:var(--bear);}
+.vv-neut{background:rgba(68,170,255,.07);border:1px solid rgba(68,170,255,.4);color:var(--blue);}
+.vv-warn{background:rgba(255,136,0,.07);border:1px solid rgba(255,136,0,.4);color:var(--warn);}
+.vnote{font-size:8.5px;color:var(--text2);line-height:1.6;margin-bottom:7px;}
+
+.empty{text-align:center;padding:60px;color:var(--text3);}
+.e-ico{font-size:36px;margin-bottom:14px;opacity:.18;}
+.e-t{font-size:14px;color:var(--text2);font-family:'Orbitron',monospace;font-weight:700;margin-bottom:8px;}
+.e-s{font-size:9px;color:var(--text3);line-height:1.9;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<a id="wm" href="https://t.me/easychartgo" target="_blank" rel="noopener">
+  <div class="wm-i">
+    <div class="wm-b1"></div><div class="wm-b2"></div>
+    <div class="wm-t" id="_wmt"></div>
+    <div class="wm-s">ALPHA HUNTER</div>
+    <div class="wm-tg">📢 t.me/easychartgo</div>
+  </div>
+</a>
+
+<header>
+  <div class="h-logo">
+    <div class="h-main">◈ ALPHA HUNTER</div>
+    <div class="h-sub">바이낸스 알파 전종목 퀀트 지표 (S16~S18 동적 라우팅 완벽 대응)</div>
+  </div>
+  <div class="h-right">
+    <div class="creator" onclick="window.open('https://t.me/easychartgo','_blank')">
+      <div class="c-lbl">Created by</div>
+      <div class="c-name" id="_hcn"></div>
+    </div>
+    <div class="pulse">LIVE</div>
+  </div>
+</header>
+
+<div class="legend">
+  <span style="font-size:8px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;">STAGE</span>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--pre)"></div><span style="color:var(--pre)">PRE-LISTING — DEX 전용 (미상장)</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--spot)"></div><span style="color:var(--spot)">SPOT — 현물 상장</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--fut)"></div><span style="color:var(--fut)">FUTURES — 선물 상장</span></div>
+  <div style="margin-left:auto;font-size:8px;color:var(--text3)">Binance Public API · 동적 라우팅 패치</div>
+</div>
+
+<div class="mbar">
+  <div class="mb-i"><div class="mb-l">전체 알파 토큰</div><div class="mb-v c-gold" id="mb-total"><div class="shim"></div></div><div class="mb-s">Alpha 등록 종목</div></div>
+  <div class="mb-i"><div class="mb-l">미상장 (Pre-listing)</div><div class="mb-v c-pre" id="mb-pre"><div class="shim"></div></div><div class="mb-s">DEX Only</div></div>
+  <div class="mb-i"><div class="mb-l">Spot 상장</div><div class="mb-v c-spot" id="mb-spot"><div class="shim"></div></div><div class="mb-s">바이낸스 현물</div></div>
+  <div class="mb-i"><div class="mb-l">Futures 상장</div><div class="mb-v c-fut" id="mb-fut"><div class="shim"></div></div><div class="mb-s">바이낸스 선물</div></div>
+  <div class="mb-i"><div class="mb-l">총 시총 (Alpha)</div><div class="mb-v c-gold" id="mb-mcap"><div class="shim"></div></div><div class="mb-s">합산</div></div>
+  <div class="mb-i"><div class="mb-l">24H 총 거래량</div><div class="mb-v c-wht" id="mb-vol"><div class="shim"></div></div><div class="mb-s">합산</div></div>
+  <div class="mb-i"><div class="mb-l">🚀 급등 전 신호</div><div class="mb-v c-bull" id="mb-bull">—</div><div class="mb-s">Pre-Pump 감지</div></div>
+  <div class="mb-i"><div class="mb-l">🚨 급락 전 신호</div><div class="mb-v c-bear" id="mb-bear">—</div><div class="mb-s">Pre-Dump 감지</div></div>
+</div>
+
+<div class="controls">
+  <div class="cg">
+    <div class="clabel">▸ 상장 단계 필터</div>
+    <select id="stageFilter">
+      <option value="ALL">전체 (All)</option>
+      <option value="PRE" selected>PRE-LISTING (미상장)</option>
+      <option value="SPOT">SPOT 상장</option>
+      <option value="FUTURES">FUTURES 상장</option>
+    </select>
+  </div>
+  <div class="cg">
+    <div class="clabel">▸ 체인 필터</div>
+    <select id="chainFilter">
+      <option value="ALL">전체 체인</option>
+      <option value="BSC">BSC</option>
+      <option value="Ethereum">Ethereum</option>
+      <option value="Base">Base</option>
+      <option value="Solana">Solana</option>
+    </select>
+  </div>
+  <div class="cg">
+    <div class="clabel">▸ 상세 분석 종목 수</div>
+    <select id="deepN">
+      <option value="40">상위 40개 정밀분석</option>
+      <option value="80">상위 80개 정밀분석</option>
+      <option value="999" selected>전체 풀스캔 (권장)</option> 
+    </select>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+    <button class="stop-btn" id="stopBtn" onclick="doStop()">■ STOP</button>
+    <button class="scan-btn" id="scanBtn" onclick="doScan()">▶ HUNT ALPHA</button>
+  </div>
+</div>
+
+<div class="prog">
+  <div class="prog-head">
+    <div class="prog-msg" id="pMsg">준비 완료 — HUNT ALPHA를 눌러 스캔을 시작하세요</div>
+    <div class="prog-pct" id="pPct">—</div>
+  </div>
+  <div class="prog-track"><div class="prog-fill" id="pFill"></div></div>
+</div>
+
+<div class="stats-bar">
+  <div class="st"><div class="st-l">Strong Bull</div><div class="st-v c-bull" id="ss-sb">—</div></div>
+  <div class="st"><div class="st-l">Bull</div><div class="st-v c-bull" id="ss-b" style="opacity:.65">—</div></div>
+  <div class="st"><div class="st-l">Neutral</div><div class="st-v c-blue" id="ss-n">—</div></div>
+  <div class="st"><div class="st-l">Bear</div><div class="st-v c-bear" id="ss-be" style="opacity:.65">—</div></div>
+  <div class="st"><div class="st-l">Strong Bear</div><div class="st-v c-bear" id="ss-sbe">—</div></div>
+  <div class="st"><div class="st-l">분석 완료</div><div class="st-v c-wht" id="ss-tot">—</div></div>
+  <div class="st"><div class="st-l">축적 신호</div><div class="st-v c-gold" id="ss-acc">—</div></div>
+  <div class="st"><div class="st-l">위험 경보</div><div class="st-v c-warn" id="ss-risk">—</div></div>
+</div>
+
+<div class="fbar">
+  <input class="sbox" id="searchBox" placeholder="Symbol 검색…" oninput="renderTable()">
+  <button class="fbtn fa" id="f-all"   onclick="setFilter('ALL')">ALL</button>
+  <button class="fbtn"    id="f-bull"  onclick="setFilter('BULL')">▲ 상승 신호</button>
+  <button class="fbtn"    id="f-bear"  onclick="setFilter('BEAR')">▼ 하락 경보</button>
+  <button class="fbtn"    id="f-pump"  onclick="setFilter('PUMP')">🚀 급등 전</button>
+  <button class="fbtn"    id="f-dump"  onclick="setFilter('DUMP')">🚨 급락 전</button>
+  <button class="fbtn"    id="f-acc"   onclick="setFilter('ACC')">💎 매집</button>
+  <button class="fbtn"    id="f-risk"  onclick="setFilter('RISK')">⚠ 위험</button>
+  <button class="fbtn"    id="f-pre"   onclick="setFilter('PRE')">🔥 Pre-listing</button>
+  <button class="fbtn"    id="f-lead"  onclick="setFilter('LEAD')">📊 MEXC 선행</button>
+  <div class="rcount" id="rcount"></div>
+</div>
+
+<div class="ddpanel" id="ddPanel">
+  <div class="ddp-hdr">
+    <div><span class="ddp-sym" id="ddp-sym">—</span><span style="font-size:10px;color:var(--text2);margin-left:12px;" id="ddp-sub"></span></div>
+    <button class="ddp-cls" onclick="closeDd()">✕</button>
+  </div>
+  <div class="ddp-grid" id="ddp-grid"></div>
+</div>
+<div class="vbox" id="vbox">
+  <div class="vb-t" id="vb-t">◈ Alpha Score 종합 분석</div>
+  <div class="vb-sigs" id="vb-sigs"></div>
+  <div class="vverdict" id="vverdict"></div>
+  <div class="vnote" id="vnote"></div>
+</div>
+
+<div class="tbl-wrap">
+  <div class="empty" id="emptyState">
+    <div class="e-ico">◈</div>
+    <div class="e-t">ALPHA HUNTER PRO</div>
+    <div class="e-s">
+      HUNT ALPHA 버튼으로 바이낸스 알파 전종목 스캔을 시작하세요<br><br>
+      <span style="color:var(--text3)">
+        <strong style="color:var(--gold)">[🔥 NEW 컬럼 추가 및 동적 라우팅 해결 완료]</strong><br>
+        S16 볼린저 밴드 스퀴즈 — 폭발 임박 감지<br>
+        S17 호가창(Orderbook) — 뎁스 불균형 매수/매도벽<br>
+        S18 고래 체결 추적 — 1만불 이상 시장가 체결 흐름<br>
+        *선물 전용 종목도 fapi 통신으로 완벽 처리됨*
+      </span>
+    </div>
+  </div>
+  <table id="tbl" style="display:none">
+    <thead>
+      <tr>
+        <th onclick="sortBy('symbol')">Symbol</th>
+        <th onclick="sortBy('huntScore')" class="sorted">Hunt Score ↓</th>
+        <th onclick="sortBy('alphaScore')">Alpha</th>
+        <th onclick="sortBy('stage')">Stage</th>
+        <th onclick="sortBy('sector')">섹터</th>
+        <th onclick="sortBy('s3Score')" title="S3 체결 방향">S3 체결</th>
+        <th onclick="sortBy('s4Score')" title="S4 모멘텀">S4 모멘텀</th>
+        <th onclick="sortBy('s7Score')" title="S7 DEX">S7 DEX</th>
+        <th onclick="sortBy('s9Score')" title="S9 매집">S9 매집</th>
+        <th onclick="sortBy('s15Score')" title="S15 멀티수급">S15 수급</th>
+        <th onclick="sortBy('s16Score')" title="S16 볼린저 밴드 스퀴즈">S16 BB</th>
+        <th onclick="sortBy('s17Score')" title="S17 오더북 매수매도벽">S17 뎁스</th>
+        <th onclick="sortBy('s18Score')" title="S18 고래 1만불 이상 순매수">S18 고래</th>
+        <th onclick="sortBy('percentChange24h')">24H%</th>
+        <th onclick="sortBy('volume24h')">Volume</th>
+        <th onclick="sortBy('marketCap')">MCap</th>
+        <th onclick="sortBy('holders')">Holders</th>
+        <th>Signals</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready(); tg.expand();
+  tg.MainButton.setText('▶ HUNT ALPHA');
+  tg.MainButton.show();
+  tg.MainButton.onClick(() => doScan());
+  window.tgH = t => tg.HapticFeedback?.impactOccurred(t);
+} else { window.tgH = () => {}; }
+
+const ALPHA_LIST  = 'https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list';
+const SPOT_INFO   = 'https://api.binance.com/api/v3/exchangeInfo';
+const FUT_INFO    = 'https://fapi.binance.com/fapi/v1/exchangeInfo';
+const MEXC_SPOT   = 'https://api.mexc.com/api/v3/exchangeInfo';
+const MEXC_FR     = 'https://contract.mexc.com/api/v1/contract/funding_rate/';
+const BITGET_SPOT = 'https://api.bitget.com/api/v2/spot/public/symbols';
+const BITGET_FR   = 'https://api.bitget.com/api/v2/mix/market/current-fund-rate?productType=usdt-futures&symbol=';
+const DEX_TOKEN   = 'https://api.dexscreener.com/latest/dex/tokens/';
+const PROXY       = 'https://api.allorigins.win/get?url=';
+
+const SECTOR_MAP = {
+  AI:['WLD','FET','AGIX','OCEAN','TAO','RNDR','NMR','GRT','ARKM','VIRTUAL','AIXBT','GRIFFAIN'],
+  DEFI:['UNI','AAVE','MKR','CRV','COMP','SNX','LDO','GMX','DYDX','INJ','JUP','PYTH'],
+  GAMING:['AXS','SAND','MANA','GALA','IMX','BEAM','PRIME','YGG','PYR','ILLUVIUM'],
+  MEME:['DOGE','SHIB','PEPE','FLOKI','BONK','WIF','POPCAT','MOG','BRETT','TURBO'],
+  LAYER1:['SOL','AVAX','NEAR','FTM','APT','SUI','SEI','TIA','ATOM','DOT','ALGO'],
+  LAYER2:['ARB','OP','MATIC','IMX','STRK','MANTA','SCROLL','ZK','LINEA'],
+  RWA:['ONDO','RIO','POLYX','CPOOL','MPL','LQTY'],
+  DEPIN:['RNDR','FIL','AR','STORJ','ANKR','HNT','MOBILE'],
+};
+
+let results=[], running=false, stopFlag=false;
+let sort={col:'huntScore',dir:-1}, activeFilter='ALL', selectedSym=null;
+let spotSet=new Set(), futSet=new Set();
+let mexcSet=new Set(), bitgetSet=new Set();
+
+// 💡 초당 API Limit 방어 (500ms당 4개씩 = 1초당 최대 8건. 매우 안정적)
+class RL {
+  constructor(max=4,iv=500){this.q=[];this.r=0;this.max=max;this.iv=iv;this.last=0;}
+  run(fn){return new Promise((res,rej)=>{this.q.push({fn,res,rej});this._n();});}
+  async _n(){
+    if(this.r>=this.max||!this.q.length)return;
+    const wait=Math.max(0,this.iv-(Date.now()-this.last));
+    if(wait>0){setTimeout(()=>this._n(),wait);return;}
+    this.r++;this.last=Date.now();
+    const{fn,res,rej}=this.q.shift();
+    try{res(await fn());}catch(e){rej(e);}finally{this.r--;this._n();}
+  }
+}
+const rl=new RL(4,500); 
+
+async function jFetch(url,timeout=12000){
+  return rl.run(async()=>{
+    const r=await fetch(url,{signal:AbortSignal.timeout(timeout)});
+    if(r.status===418||r.status===429)throw new Error('RATE_LIMIT');
+    if(!r.ok)throw new Error(r.status);
+    return r.json();
+  });
+}
+
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function fmtB(n){
+  if(!n||isNaN(n))return'—';
+  if(n>=1e9)return(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return(n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+  return(+n).toFixed(2);
+}
+function fmtP(n){
+  if(n===null||n===undefined)return'—';
+  if(n>=10000)return n.toFixed(1);
+  if(n>=100)return n.toFixed(2);
+  if(n>=1)return n.toFixed(4);
+  if(n>=0.0001)return n.toFixed(6);
+  return n.toExponential(3);
+}
+function setProg(pct,msg){
+  document.getElementById('pFill').style.width=Math.max(0,pct)+'%';
+  document.getElementById('pMsg').textContent=msg;
+  document.getElementById('pPct').textContent=pct>0?Math.round(pct)+'%':'—';
+}
+function asColor(s){
+  if(s>=60)return'var(--bull)';
+  if(s>=30)return'#44cc88';
+  if(s<=-60)return'var(--bear)';
+  if(s<=-30)return'#cc3355';
+  return'var(--blue)';
+}
+function asLabel(s){
+  if(s>=60)return'STRONG BULL';
+  if(s>=30)return'BULLISH';
+  if(s<=-60)return'STRONG BEAR';
+  if(s<=-30)return'BEARISH';
+  return'NEUTRAL';
+}
+
+function S1_activity(token) {
+  const vol = parseFloat(token.volume24h)||0;
+  const mc  = parseFloat(token.marketCap)||1;
+  const cnt = parseInt(token.count24h)||0;
+  const ratio = vol/mc;
+  const avgTrade = cnt>0?vol/cnt:0;
+  let score=0; const sigs=[];
+  if      (ratio>1.0){score+=20;sigs.push({t:`거래량/시총 ${(ratio*100).toFixed(0)}% 극도 활발 ⚡ — 펌프 또는 덤프 임박`,type:'warn'});}
+  else if (ratio>0.5){score+=15;sigs.push({t:`거래량/시총 ${(ratio*100).toFixed(0)}% 매우 활발 — 강한 관심`,type:'bull'});}
+  else if (ratio>0.2){score+=10;sigs.push({t:`거래량/시총 ${(ratio*100).toFixed(0)}% 활발`,type:'bull'});}
+  else if (ratio>0.1){score+= 5;sigs.push({t:`거래량/시총 ${(ratio*100).toFixed(0)}% 보통`,type:'neut'});}
+  else               {score-=8;sigs.push({t:`거래량/시총 ${(ratio*100).toFixed(2)}% 극저 — 관심 없음`,type:'bear'});}
+  if(avgTrade>0){
+    if(avgTrade<100){score+=5;sigs.push({t:`평균 체결 $${avgTrade.toFixed(1)} — 소액 다수 (리테일 축적)`,type:'bull'});}
+    else if(avgTrade>10000){score-=3;sigs.push({t:`평균 체결 $${fmtB(avgTrade)} — 대형 거래 집중`,type:'warn'});}
+  }
+  return {score:Math.max(-15,Math.min(20,Math.round(score))),sigs,ratio,cnt,avgTrade};
+}
+
+function S2_liquidity(token) {
+  const liq = parseFloat(token.liquidity)||0;
+  const mc  = parseFloat(token.marketCap)||1;
+  const vol = parseFloat(token.volume24h)||0;
+  const liqRatio = liq/mc;
+  const liqVol   = vol>0?liq/vol:999;
+  let score=0; const sigs=[];
+  if      (liqRatio>0.5){score+=15;sigs.push({t:`유동성/시총 ${(liqRatio*100).toFixed(0)}% 매우 건강 — 풀 지지 탄탄`,type:'bull'});}
+  else if (liqRatio>0.2){score+=10;sigs.push({t:`유동성/시총 ${(liqRatio*100).toFixed(0)}% 건강`,type:'bull'});}
+  else if (liqRatio>0.1){score+= 5;sigs.push({t:`유동성/시총 ${(liqRatio*100).toFixed(0)}% 보통`,type:'neut'});}
+  else if (liqRatio>0.05){score-= 3;sigs.push({t:`유동성/시총 ${(liqRatio*100).toFixed(1)}% 낮음 — 슬리피지 위험`,type:'bear'});}
+  else                  {score-=12;sigs.push({t:`유동성/시총 ${(liqRatio*100).toFixed(2)}% 극저 ⚠ — 러그풀 위험`,type:'bear'});}
+  if(liqVol<0.5){score-=5;sigs.push({t:`유동성이 거래량보다 적음 ⚠ — 고슬리피지`,type:'warn'});}
+  else if(liqVol>5){score+=3;sigs.push({t:`유동성 충분 (vol 대비 ${liqVol.toFixed(1)}배)`,type:'bull'});}
+  return {score:Math.max(-15,Math.min(15,Math.round(score))),sigs,liqRatio,liqVol,liq};
+}
+
+function S3_trades(trades) {
+  if(!trades||trades.length===0) return {score:0,sigs:[{t:'체결 데이터 없음',type:'neut'}],buyPct:50,sellPct:50};
+  const buyTrades  = trades.filter(t=>!t.m); 
+  const sellTrades = trades.filter(t=>t.m);
+  const buyVol     = buyTrades.reduce((s,t)=>s+parseFloat(t.q)*parseFloat(t.p),0);
+  const sellVol    = sellTrades.reduce((s,t)=>s+parseFloat(t.q)*parseFloat(t.p),0);
+  const total      = buyVol+sellVol||1;
+  const buyPct     = +(buyVol/total*100).toFixed(1);
+  const sellPct    = +(sellVol/total*100).toFixed(1);
+  let score=0; const sigs=[];
+  if      (buyPct>=75){score+=18;sigs.push({t:`매수 주도 ${buyPct}% ⚡ — 강한 축적 진행 중`,type:'bull'});}
+  else if (buyPct>=65){score+=12;sigs.push({t:`매수 주도 ${buyPct}% — 매수 압력 강함`,type:'bull'});}
+  else if (buyPct>=55){score+= 6;sigs.push({t:`매수 주도 ${buyPct}% — 약한 매수 우세`,type:'bull'});}
+  else if (buyPct<=25){score-=18;sigs.push({t:`매도 주도 ${sellPct}% ⚠ — 강한 분산/매도`,type:'bear'});}
+  else if (buyPct<=35){score-=12;sigs.push({t:`매도 주도 ${sellPct}% — 매도 압력 강함`,type:'bear'});}
+  else if (buyPct<=45){score-= 6;sigs.push({t:`매도 주도 ${sellPct}% — 약한 매도 우세`,type:'bear'});}
+  else                {sigs.push({t:`매수/매도 균형 (${buyPct}% / ${sellPct}%)`,type:'neut'});}
+  let consecutive=0,maxConsec=0,dir=null;
+  for(const t of trades){
+    const isBuy=!t.m;
+    if(dir===null){dir=isBuy;consecutive=1;}
+    else if(dir===isBuy){consecutive++;maxConsec=Math.max(maxConsec,consecutive);}
+    else{dir=isBuy;consecutive=1;}
+  }
+  if(maxConsec>=8&&buyPct>50){score+=4;sigs.push({t:`연속 매수 체결 ${maxConsec}회 — 조직적 축적 가능`,type:'bull'});}
+  if(maxConsec>=8&&buyPct<50){score-=4;sigs.push({t:`연속 매도 체결 ${maxConsec}회 — 조직적 분산 가능`,type:'bear'});}
+  return {score:Math.max(-20,Math.min(20,Math.round(score))),sigs,buyPct,sellPct,buyVol,sellVol};
+}
+
+function S4_momentum(klines) {
+  if(!klines||klines.length<15) return {score:0,sigs:[{t:'캔들 데이터 없음',type:'neut'}],rsi:50,trend:'FLAT'};
+  const closes=klines.map(k=>parseFloat(k[4]));
+  const vols  =klines.map(k=>parseFloat(k[5]));
+  const gains=[],losses=[];
+  for(let i=1;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    gains.push(Math.max(0,d));losses.push(Math.max(0,-d));
+  }
+  const ag=gains.slice(-14).reduce((s,v)=>s+v,0)/14;
+  const al=losses.slice(-14).reduce((s,v)=>s+v,0)/14;
+  const rsi=al===0?100:+(100-100/(1+(ag/al))).toFixed(1);
+  const ag2=gains.slice(-28,-14).reduce((s,v)=>s+v,0)/14||ag;
+  const al2=losses.slice(-28,-14).reduce((s,v)=>s+v,0)/14||al;
+  const rsiPrev=al2===0?100:100-100/(1+(ag2/al2));
+  const bullDiv=closes[closes.length-1]<closes[closes.length-14]&&rsi>rsiPrev;
+  const bearDiv=closes[closes.length-1]>closes[closes.length-14]&&rsi<rsiPrev;
+  const ema=(arr,n)=>{const k=2/(n+1);let e=arr[0];arr.forEach(v=>{e=v*k+e*(1-k);});return e;};
+  const ema7 =ema(closes.slice(-30),7);
+  const ema25=ema(closes.slice(-30),25);
+  const trend=ema7>ema25*1.01?'UP':ema7<ema25*0.99?'DOWN':'FLAT';
+  const recentVol=vols.slice(-5).reduce((s,v)=>s+v,0)/5;
+  const prevVol  =vols.slice(-15,-5).reduce((s,v)=>s+v,0)/10;
+  const volRising=recentVol>prevVol*1.3;
+  let score=0; const sigs=[];
+  if      (rsi<=20){score+=12;sigs.push({t:`RSI ${rsi} 극단 과매도 — 강한 반등 가능성`,type:'bull'});}
+  else if (rsi<=35){score+= 7;sigs.push({t:`RSI ${rsi} 과매도 구간`,type:'bull'});}
+  else if (rsi>=80){score-=12;sigs.push({t:`RSI ${rsi} 극단 과매수 — 하락 조정 경보`,type:'bear'});}
+  else if (rsi>=65){score-= 7;sigs.push({t:`RSI ${rsi} 과매수 주의`,type:'bear'});}
+  else             {sigs.push({t:`RSI ${rsi} 중립`,type:'neut'});}
+  if(bullDiv){score+=8;sigs.push({t:'RSI 강세 다이버전스 ★ — 가격↓ RSI↑ (반전 선행)',type:'bull'});}
+  if(bearDiv){score-=8;sigs.push({t:'RSI 약세 다이버전스 ★ — 가격↑ RSI↓ (하락 선행)',type:'bear'});}
+  if      (trend==='UP'  &&volRising){score+= 8;sigs.push({t:'상승 추세 + 거래량 동반 ★ — 강한 모멘텀',type:'bull'});}
+  else if (trend==='UP'             ){score+= 4;sigs.push({t:'상승 추세 (거래량 미동반)',type:'bull'});}
+  else if (trend==='DOWN'&&volRising){score-= 8;sigs.push({t:'하락 추세 + 거래량 동반 — 강한 하락',type:'bear'});}
+  else if (trend==='DOWN'           ){score-= 4;sigs.push({t:'하락 추세',type:'bear'});}
+  else                               {sigs.push({t:'횡보 (추세 없음)',type:'neut'});}
+  return {score:Math.max(-20,Math.min(20,Math.round(score))),sigs,rsi,trend,bullDiv,bearDiv,volRising};
+}
+
+function S5_holders(token) {
+  const holders = parseInt(token.holders)||0;
+  const mc      = parseFloat(token.marketCap)||1;
+  const liq     = parseFloat(token.liquidity)||0;
+  let score=0; const sigs=[];
+  if      (holders>50000){score+=10;sigs.push({t:`홀더 ${holders.toLocaleString()}명 — 대형 커뮤니티`,type:'bull'});}
+  else if (holders>10000){score+= 7;sigs.push({t:`홀더 ${holders.toLocaleString()}명 — 중형 커뮤니티`,type:'bull'});}
+  else if (holders> 3000){score+= 4;sigs.push({t:`홀더 ${holders.toLocaleString()}명`,type:'bull'});}
+  else if (holders>  500){score+= 1;sigs.push({t:`홀더 ${holders.toLocaleString()}명 — 소규모`,type:'neut'});}
+  else                   {score-= 5;sigs.push({t:`홀더 ${holders}명 — 매우 적음 (러그풀 위험)`,type:'bear'});}
+  if(holders>0){
+    const perHolder=mc/holders;
+    if(perHolder<100)     {score+= 5;sigs.push({t:`홀더당 평균 $${perHolder.toFixed(0)} — 분산 양호`,type:'bull'});}
+    else if(perHolder>10000){score-= 5;sigs.push({t:`홀더당 평균 $${fmtB(perHolder)} — 집중 (고래 지배)`,type:'warn'});}
+  }
+  const isRug = liq < 10000 && mc > 100000;
+  if(isRug){score-=10;sigs.push({t:'⚠ 유동성 극저 vs 시총 — 러그풀 위험 높음',type:'bear'});}
+  return {score:Math.max(-15,Math.min(12,Math.round(score))),sigs,holders};
+}
+
+function S6_stage(token, isSpot, isFut) {
+  let score=0; const sigs=[];
+  const pct=parseFloat(token.percentChange24h)||0;
+  if(isFut){
+    score+=5; sigs.push({t:'바이낸스 선물 상장 — 레버리지 수요 있음',type:'bull'});
+    if(pct>20){score+=5;sigs.push({t:`선물 상장 후 +${pct.toFixed(1)}% — 강한 수요`,type:'bull'});}
+    else if(pct<-20){score-=5;sigs.push({t:`선물 상장 후 ${pct.toFixed(1)}% — 조정 중`,type:'bear'});}
+  } else if(isSpot){
+    score+=8; sigs.push({t:'바이낸스 현물 상장 — 신규 유동성 유입',type:'bull'});
+    if(pct>30){score+=8;sigs.push({t:`현물 상장 초기 +${pct.toFixed(1)}% 급등`,type:'bull'});}
+    else if(pct<-10){score-=5;sigs.push({t:`현물 상장 후 조정 ${pct.toFixed(1)}%`,type:'bear'});}
+  } else {
+    if(pct>20)     {score+=10;sigs.push({t:`DEX 미상장 상태에서 +${pct.toFixed(1)}% ⚡ — Spot 상장 기대감`,type:'bull'});}
+    else if(pct>5) {score+= 5;sigs.push({t:`DEX 미상장 +${pct.toFixed(1)}% 상승 중`,type:'bull'});}
+    else if(pct<-20){score-=8;sigs.push({t:`DEX 미상장 ${pct.toFixed(1)}% 하락 — 관심 이탈`,type:'bear'});}
+    else            {sigs.push({t:'DEX 전용 — 바이낸스 Spot/Futures 미상장',type:'neut'});}
+  }
+  return {score:Math.max(-10,Math.min(15,Math.round(score))),sigs};
+}
+
+async function fetchDex(contractAddress, chainName) {
+  if(!contractAddress) return null;
+  try {
+    const r = await fetch(`${DEX_TOKEN}${contractAddress}`, {signal:AbortSignal.timeout(8000)});
+    if(!r.ok) return null;
+    const d = await r.json();
+    const pairs = (d.pairs||[]);
+    if(!pairs.length) return null;
+    pairs.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0));
+    return pairs[0];
+  } catch(e) { return null; }
+}
+
+function S7_dex(pair) {
+  if(!pair) return {score:0,sigs:[{t:'DexScreener 데이터 없음',type:'neut'}],hasDex:false};
+  let score=0; const sigs=[];
+  const txns = pair.txns || {}; const m5 = txns.m5 || {}; const h1 = txns.h1 || {}; const h6 = txns.h6 || {};
+  const pc = pair.priceChange || {}; const liq = pair.liquidity?.usd || 0;
+  const vol5m = pair.volume?.m5 || 0; const vol1h = pair.volume?.h1 || 0;
+  const buys5m = m5.buys || 0; const sells5m = m5.sells || 0;
+  const total5m = buys5m + sells5m || 1; const buyPct5m = buys5m / total5m * 100;
+
+  if      (buyPct5m >= 75) { score += 15; sigs.push({t:`DEX 5분 매수 ${buyPct5m.toFixed(0)}% ⚡ — 즉각 매수 압력 폭발`,type:'bull'}); }
+  else if (buyPct5m >= 60) { score += 8;  sigs.push({t:`DEX 5분 매수 ${buyPct5m.toFixed(0)}% — 매수 우세`,type:'bull'}); }
+  else if (buyPct5m <= 25) { score -= 15; sigs.push({t:`DEX 5분 매도 ${(100-buyPct5m).toFixed(0)}% ⚠ — 즉각 매도 압력`,type:'bear'}); }
+  else if (buyPct5m <= 40) { score -= 8;  sigs.push({t:`DEX 5분 매도 ${(100-buyPct5m).toFixed(0)}% — 매도 우세`,type:'bear'}); }
+  else                     { sigs.push({t:`DEX 5분 균형 (매수 ${buyPct5m.toFixed(0)}%)`,type:'neut'}); }
+
+  const buys1h = h1.buys || 0; const sells1h = h1.sells || 0;
+  const total1h = buys1h + sells1h || 1; const buyPct1h = buys1h / total1h * 100;
+  if      (buyPct1h >= 65) { score += 8; sigs.push({t:`DEX 1H 매수 ${buyPct1h.toFixed(0)}% — 지속적 축적`,type:'bull'}); }
+  else if (buyPct1h <= 35) { score -= 8; sigs.push({t:`DEX 1H 매도 ${(100-buyPct1h).toFixed(0)}% — 지속적 분산`,type:'bear'}); }
+
+  const pm5 = parseFloat(pc.m5) || 0; const ph1 = parseFloat(pc.h1) || 0; const ph6 = parseFloat(pc.h6) || 0;
+  if (pm5 > 5 && Math.abs(ph6) < 5)  { score += 8; sigs.push({t:`5분 +${pm5.toFixed(1)}% 급등 + 6H 보합 — 초기 선행 신호 ★`,type:'bull'}); }
+  if (pm5 > 2 && ph1 < 0)             { score += 5; sigs.push({t:`5분 상승 중 + 1H 아직 하락 — 반전 선행 가능`,type:'bull'}); }
+  if (pm5 < -5 && Math.abs(ph6) < 5) { score -= 8; sigs.push({t:`5분 ${pm5.toFixed(1)}% 급락 + 6H 보합 — 하락 선행 신호 ★`,type:'bear'}); }
+
+  const avgVol1hPer5m = vol1h / 12;
+  if (vol5m > 0 && avgVol1hPer5m > 0) {
+    const volRatio = vol5m / avgVol1hPer5m;
+    if      (volRatio > 5) { score += 8; sigs.push({t:`DEX 5분 거래량 평소의 ${volRatio.toFixed(0)}배 ⚡`,type:'bull'}); }
+    else if (volRatio > 3) { score += 5; sigs.push({t:`DEX 5분 거래량 평소의 ${volRatio.toFixed(0)}배`,type:'bull'}); }
+    else if (volRatio < 0.2){ score -= 3; sigs.push({t:'DEX 거래 극히 저조',type:'bear'}); }
+  }
+
+  if      (liq > 1000000) { score += 5; sigs.push({t:`DEX 유동성 $${fmtB(liq)} — 우수`,type:'bull'}); }
+  else if (liq > 100000)  { score += 2; sigs.push({t:`DEX 유동성 $${fmtB(liq)} — 양호`,type:'bull'}); }
+  else if (liq < 10000)   { score -= 8; sigs.push({t:`DEX 유동성 $${fmtB(liq)} 극저 ⚠ — 러그풀 위험`,type:'bear'}); }
+  else if (liq < 50000)   { score -= 3; sigs.push({t:`DEX 유동성 $${fmtB(liq)} — 낮음`,type:'bear'}); }
+
+  return {
+    score: Math.max(-20, Math.min(20, Math.round(score))),
+    sigs, hasDex: true, buyPct5m: +buyPct5m.toFixed(1), buyPct1h: +buyPct1h.toFixed(1),
+    buys5m, sells5m, buys1h, sells1h, pm5, ph1, ph6, liq, vol5m, vol1h,
+    dexUrl: pair.url || '', dexName: pair.dexId || '', pairAddr: pair.pairAddress || '',
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// NEW QUANT LAYERS (S16, S17, S18)
+// ═══════════════════════════════════════════════════════
+
+function S16_bbSqueeze(klines) {
+  if(!klines||klines.length<20) return {score:0,sigs:[{t:'BB 데이터 부족',type:'neut'}],bandwidth:null};
+  const closes=klines.map(k=>parseFloat(k[4]));
+  const slice20=closes.slice(-20);
+  const sma=slice20.reduce((s,v)=>s+v,0)/20;
+  const variance=slice20.reduce((s,v)=>s+Math.pow(v-sma,2),0)/20;
+  const stdDev=Math.sqrt(variance);
+  const bandwidth=sma>0?(((sma+stdDev*2)-(sma-stdDev*2))/sma*100):0;
+
+  let score=0; const sigs=[];
+  if(bandwidth>0 && bandwidth<3.5){score+=15;sigs.push({t:`BB폭 ${bandwidth.toFixed(1)}% 극수렴 ⚠️ — 변동성 폭발 (Squeeze) 임박`,type:'warn'});}
+  else if(bandwidth<5.0){score+=6;sigs.push({t:`BB폭 ${bandwidth.toFixed(1)}% 수렴 진행 중`,type:'bull'});}
+  else if(bandwidth>15){score-=5;sigs.push({t:`BB폭 ${bandwidth.toFixed(1)}% 확산 (변동성 소진 가능성)`,type:'bear'});}
+  else{sigs.push({t:`BB폭 ${bandwidth.toFixed(1)}% 보통`,type:'neut'});}
+
+  return {score:Math.max(-10,Math.min(15,Math.round(score))),sigs,bandwidth};
+}
+
+function S17_orderbook(depth) {
+  if(!depth||!depth.bids||depth.bids.length===0) return {score:0,sigs:[{t:'호가 데이터 없음',type:'neut'}],bidRatio:null};
+  const sumBids=depth.bids.reduce((s,i)=>s+parseFloat(i[0])*parseFloat(i[1]),0);
+  const sumAsks=depth.asks.reduce((s,i)=>s+parseFloat(i[0])*parseFloat(i[1]),0);
+  const total=sumBids+sumAsks||1;
+  const bidRatio=(sumBids/total)*100;
+
+  let score=0; const sigs=[];
+  if(bidRatio>=70){score+=12;sigs.push({t:`매수벽 ${bidRatio.toFixed(0)}% 압도적 🧱 — 강력한 하방 방어`,type:'bull'});}
+  else if(bidRatio>=60){score+=6;sigs.push({t:`매수벽 ${bidRatio.toFixed(0)}% 우위`,type:'bull'});}
+  else if(bidRatio<=30){score-=12;sigs.push({t:`매도벽 ${(100-bidRatio).toFixed(0)}% 압도적 🧱 — 강력한 상승 억제`,type:'bear'});}
+  else if(bidRatio<=40){score-=6;sigs.push({t:`매도벽 ${(100-bidRatio).toFixed(0)}% 우위`,type:'bear'});}
+  else{sigs.push({t:`매수/매도 호가 균형 (${bidRatio.toFixed(0)}%)`,type:'neut'});}
+
+  return {score:Math.max(-15,Math.min(15,Math.round(score))),sigs,bidRatio};
+}
+
+function S18_whaleFlow(trades) {
+  if(!trades||trades.length===0) return {score:0,sigs:[{t:'고래 체결 데이터 없음',type:'neut'}],whaleBuyPct:null,totalWhale:0};
+  let wBuy=0, wSell=0;
+  trades.forEach(t=>{
+    const vol=parseFloat(t.p)*parseFloat(t.q);
+    if(vol>10000){ if(t.m) wSell+=vol; else wBuy+=vol; } // $10k 이상만
+  });
+  const tot=wBuy+wSell||1;
+  const pct=(wBuy/tot)*100;
+
+  let score=0; const sigs=[];
+  if(tot>50000){
+    if(pct>=75){score+=15;sigs.push({t:`고래 순매수 ${pct.toFixed(0)}% 🐳 — $${fmtB(tot)} 집중 긁음`,type:'bull'});}
+    else if(pct>=60){score+=8;sigs.push({t:`고래 매수 우위 ${pct.toFixed(0)}%`,type:'bull'});}
+    else if(pct<=25){score-=15;sigs.push({t:`고래 순매도 ${(100-pct).toFixed(0)}% 🐳 — $${fmtB(tot)} 집중 던짐`,type:'bear'});}
+    else if(pct<=40){score-=8;sigs.push({t:`고래 매도 우위 ${(100-pct).toFixed(0)}%`,type:'bear'});}
+    else{sigs.push({t:`고래 체결 팽팽 ($${fmtB(tot)})`,type:'neut'});}
+  } else {
+    sigs.push({t:`고래급(>10k) 유의미한 체결 없음 ($${fmtB(tot)})`,type:'neut'});
+  }
+
+  return {score:Math.max(-20,Math.min(20,Math.round(score))),sigs,whaleBuyPct:pct,totalWhale:tot};
+}
+
+function computeAlpha(scores) {
+  const raw=scores.s1.score+scores.s2.score+scores.s3.score+scores.s4.score
+    +scores.s5.score+scores.s6.score+(scores.s7?.score||0)+(scores.s8?.score||0)
+    +(scores.s9?.score||0)+(scores.s10?.score||0)+(scores.s11?.score||0)
+    +(scores.s12?.score||0)+(scores.s14?.score||0)+(scores.s15?.score||0)
+    +(scores.s16?.score||0)+(scores.s17?.score||0)+(scores.s18?.score||0); 
+
+  const score=Math.max(-100,Math.min(100,Math.round(raw)));
+  let verdict,vClass;
+  if     (score>=60){verdict='⚡ STRONG BULL — 강한 상승 선행 신호';vClass='vv-bull';}
+  else if(score>=30){verdict='▲ BULLISH — 축적 신호';              vClass='vv-bull';}
+  else if(score>=-30){verdict='◆ NEUTRAL — 방향 불명확';            vClass='vv-neut';}
+  else if(score>=-60){verdict='▼ BEARISH — 하락/분산 신호';         vClass='vv-bear';}
+  else               {verdict='⚠ STRONG BEAR — 위험 경보';          vClass='vv-warn';}
+
+  if(scores.s15?.mexcRatio>3&&(scores.s15?.mexcPct||0)>5) verdict='🔥 멀티 거래소 선행 수급 — MEXC 선행 폭발';
+  if(scores.s10?.isPrePump && score>20)                    verdict='🚀 PRE-PUMP — 급등 임박 신호 감지';
+  if(scores.s11?.isPreDump && score<-20)                   verdict='🚨 PRE-DUMP — 급락 임박 신호 감지';
+  if(scores.s9?.isAccumulating && Math.abs(score)<40)      verdict='💎 ACCUMULATING — 매집 구간 진행 중';
+
+  const allSigs=[
+    ...(scores.s15?.sigs||[]).map(s=>({...s,t:'[멀티수급] '+s.t})),
+    ...(scores.s10?.sigs||[]).filter(s=>s.type==='bull').map(s=>({...s,t:'[급등전] '+s.t})),
+    ...(scores.s11?.sigs||[]).filter(s=>s.type==='bear').map(s=>({...s,t:'[급락전] '+s.t})),
+    ...(scores.s9?.sigs||[]).map(s=>({...s,t:'[매집] '+s.t})),
+    ...(scores.s14?.sigs||[]).map(s=>({...s,t:'[멀티FR] '+s.t})),
+    ...(scores.s12?.sigs||[]).map(s=>({...s,t:'[섹터] '+s.t})),
+    ...(scores.s16?.sigs||[]).map(s=>({...s,t:'[BB스퀴즈] '+s.t})), 
+    ...(scores.s17?.sigs||[]).map(s=>({...s,t:'[오더북] '+s.t})),    
+    ...(scores.s18?.sigs||[]).map(s=>({...s,t:'[고래추적] '+s.t})),  
+    ...(scores.s1.sigs||[]).map(s=>({...s,t:'[활성도] '+s.t})),
+    ...(scores.s2.sigs||[]).map(s=>({...s,t:'[유동성] '+s.t})),
+    ...(scores.s3.sigs||[]).map(s=>({...s,t:'[체결] '+s.t})),
+    ...(scores.s4.sigs||[]).map(s=>({...s,t:'[모멘텀] '+s.t})),
+    ...(scores.s7?.sigs||[]).map(s=>({...s,t:'[DEX] '+s.t})),
+    ...(scores.s8?.sigs||[]).map(s=>({...s,t:'[홀더비율] '+s.t})),
+  ];
+  return {score,verdict,vClass,allSigs};
+}
+
+function S8_holderRatio(token) {
+  const holders=parseInt(token.holders)||0; const mc=parseFloat(token.marketCap)||1;
+  const circ=parseFloat(token.circulatingSupply)||0; const total=parseFloat(token.totalSupply)||1;
+  const cnt=parseInt(token.count24h)||0;
+  let score=0; const sigs=[];
+  const avgHold=mc/(holders||1);
+  if      (avgHold<50)   {score+=12;sigs.push({t:`홀더당 평균 $${avgHold.toFixed(1)} — 극도 분산 (리테일 주도) ★`,type:'bull'});}
+  else if (avgHold<500)  {score+= 8;sigs.push({t:`홀더당 평균 $${avgHold.toFixed(0)} — 건강한 분산`,type:'bull'});}
+  else if (avgHold<2000) {score+= 3;sigs.push({t:`홀더당 평균 $${avgHold.toFixed(0)} — 보통`,type:'neut'});}
+  else if (avgHold<10000){score-= 3;sigs.push({t:`홀더당 평균 $${fmtB(avgHold)} — 집중도 높음`,type:'warn'});}
+  else                   {score-=10;sigs.push({t:`홀더당 평균 $${fmtB(avgHold)} — 고래 지배 ⚠`,type:'bear'});}
+  if(circ>0&&total>0){
+    const cr=circ/total*100;
+    if      (cr>80){score+= 5;sigs.push({t:`유통율 ${cr.toFixed(0)}% — 잠긴 물량 거의 없음 (안전)`,type:'bull'});}
+    else if (cr<30){score-= 8;sigs.push({t:`유통율 ${cr.toFixed(0)}% — 락업 물량 ${(100-cr).toFixed(0)}% ⚠ 잠재 매도압력`,type:'bear'});}
+  }
+  if(holders>0&&cnt>0){
+    const txPH=cnt/holders;
+    if(txPH>20){score-=8;sigs.push({t:`홀더당 거래 ${txPH.toFixed(0)}회 ⚠ — 워시 트레이딩 의심`,type:'bear'});}
+    else if(txPH<1){score+=3;sigs.push({t:`홀더당 거래 ${txPH.toFixed(2)}회 — 자연스러운 분산`,type:'bull'});}
+  }
+  return { score:Math.max(-15,Math.min(15,Math.round(score))), sigs,avgHold, circRatio:circ>0?+(circ/total*100).toFixed(1):null, txPerHolder:holders>0&&cnt>0?+(cnt/holders).toFixed(2):null };
+}
+
+function S9_accumulation(token,s3,s4,s7) {
+  const pct24h=parseFloat(token.percentChange24h)||0;
+  const ph=parseFloat(token.priceHigh24h)||0; const pl=parseFloat(token.priceLow24h)||0;
+  const vol=parseFloat(token.volume24h)||0; const mc=parseFloat(token.marketCap)||1;
+  const holders=parseInt(token.holders)||0;
+  let score=0; const sigs=[],conditions=[];
+
+  if(vol<10000||holders<100||mc<5000){
+    return {score:-3,sigs:[{t:`매집 분석 불가 (거래량 $${fmtB(vol)} / 홀더 ${holders}명 — 최소 기준 미달)`,type:'neut'}], condCount:0,conditions:[],isAccumulating:false};
+  }
+  const isFlat=Math.abs(pct24h)<8;
+  const priceRange=ph>0&&pl>0?(ph-pl)/pl*100:100;
+  if(isFlat&&priceRange<20){
+    score+=10;conditions.push('가격 횡보');
+    sigs.push({t:`24H ${pct24h>=0?'+':''}${pct24h.toFixed(1)}% 횡보 + 레인지 ${priceRange.toFixed(0)}% ✓`,type:'bull'});
+  }
+  if(s3.buyPct>=58){score+=8;conditions.push('매수 우세');sigs.push({t:`체결 매수 ${s3.buyPct.toFixed(0)}% ✓`,type:'bull'});}
+  if(s7.hasDex&&s7.buyPct5m>=58&&s7.buyPct1h>=55){
+    score+=10;conditions.push('DEX 매수↑');
+    sigs.push({t:`DEX 5분 ${s7.buyPct5m}% + 1H ${s7.buyPct1h}% ✓`,type:'bull'});
+  } else if(s7.hasDex&&s7.buyPct5m>=58){score+=5;conditions.push('DEX 5분↑');}
+  if(s4.rsi>=28&&s4.rsi<=52){score+=6;conditions.push('RSI 회복');sigs.push({t:`RSI ${s4.rsi} 회복 구간 ✓`,type:'bull'});}
+  if(vol/mc>0.05){score+=4;conditions.push('거래 활성');}
+
+  const txPH=(parseInt(token.count24h)||0)/Math.max(holders,1);
+  if(txPH<0.05&&vol/mc<0.01){score-=8;conditions.length=0;sigs.push({t:'실질 거래 없음 — 방치된 코인으로 판단',type:'bear'});}
+
+  const cc=conditions.length;
+  if(cc>=4){score+=10;sigs.push({t:`★★★ 매집 ${cc}/5 조건 (${conditions.join('+')})`,type:'bull'});}
+  else if(cc>=3){score+=5;sigs.push({t:`★★ 매집 ${cc}/5 (${conditions.join('+')})`,type:'bull'});}
+  else if(cc===0&&pct24h<-10){score-=5;sigs.push({t:'매집 신호 없음',type:'bear'});}
+  return {score:Math.max(-10,Math.min(25,Math.round(score))),sigs,condCount:cc,conditions,isAccumulating:cc>=3};
+}
+
+function S10_prePump(token,s3,s4,s7,s9) {
+  const pct24h=parseFloat(token.percentChange24h)||0;
+  const ph=parseFloat(token.priceHigh24h)||0; const pl=parseFloat(token.priceLow24h)||0;
+  const price=parseFloat(token.price)||0;
+  let score=0; const sigs=[],triggers=[];
+
+  if(s7.hasDex&&s7.pm5>3&&Math.abs(s7.ph6)<8){
+    score+=12;triggers.push('5분 선행 돌파');
+    sigs.push({t:`🚀 5분 +${s7.pm5.toFixed(1)}% + 6H 보합 — 급등 초기 신호 최강`,type:'bull'});
+  }
+  if(s7.hasDex&&s7.vol5m>0&&s7.vol1h>0){
+    const vr=s7.vol5m/(s7.vol1h/12);
+    if(vr>5){score+=10;triggers.push('거래량 폭발');sigs.push({t:`🚀 DEX 5분 거래량 ${vr.toFixed(0)}배 폭발`,type:'bull'});}
+    else if(vr>3){score+=6;triggers.push('거래량 급증');sigs.push({t:`DEX 5분 거래량 ${vr.toFixed(1)}배 급증`,type:'bull'});}
+  }
+  if(s4.rsi>=28&&s4.rsi<=45&&s4.trend==='UP'){
+    score+=8;triggers.push('RSI 탈출');sigs.push({t:`RSI ${s4.rsi} 과매도 탈출+상승 — 반등 시작`,type:'bull'});
+  }
+  if(s4.bullDiv){score+=8;triggers.push('강세다이버전스');sigs.push({t:`RSI 강세 다이버전스 ★ — 가격↓RSI↑ 반전 선행`,type:'bull'});}
+  if(s7.hasDex&&s7.buyPct5m>=70){
+    score+=8;triggers.push('DEX 극단매수');sigs.push({t:`DEX 5분 매수 ${s7.buyPct5m}% 극단`,type:'bull'});
+  }
+  if(s9.condCount>=3&&pct24h>5){score+=6;triggers.push('매집→상승전환');sigs.push({t:'매집 완료 후 상승 전환 — 브레이크아웃 초기',type:'bull'});}
+  if(ph>0&&pl>0&&price>0){
+    const pos=(price-pl)/(ph-pl)*100;
+    if(pos<20&&s7.hasDex&&s7.buyPct5m>60){
+      score+=8;triggers.push('저점 스프링');
+      sigs.push({t:`24H 저점(${pos.toFixed(0)}%)에서 매수 우세 — 와이코프 Spring ★`,type:'bull'});
+    }
+  }
+  const tc=triggers.length;
+  if(tc>=4)sigs.unshift({t:`🚀 급등 전 ${tc}개 신호 동시 (${triggers.join(', ')})`,type:'bull'});
+  else if(tc>=2)sigs.unshift({t:`⚡ 급등 전 ${tc}개 신호`,type:'bull'});
+  return {score:Math.max(-5,Math.min(25,Math.round(score))),sigs,trigCount:tc,triggers,isPrePump:tc>=3};
+}
+
+function S11_preDump(token,s3,s4,s7) {
+  const pct24h=parseFloat(token.percentChange24h)||0;
+  const ph=parseFloat(token.priceHigh24h)||0; const pl=parseFloat(token.priceLow24h)||0;
+  const price=parseFloat(token.price)||0; const liq=parseFloat(token.liquidity)||0;
+  const mc=parseFloat(token.marketCap)||1;
+  let score=0; const sigs=[],warnings=[];
+
+  if(s7.hasDex&&s7.pm5<-3&&pct24h>0){
+    score-=12;warnings.push('5분 하락 선행');
+    sigs.push({t:`⚠ 5분 ${s7.pm5.toFixed(1)}% 하락 + 24H 아직 양봉 — 급락 초기 신호`,type:'bear'});
+  }
+  if(ph>0&&pl>0&&price>0){
+    const pos=(price-pl)/(ph-pl)*100;
+    if(pos>80&&s7.hasDex&&s7.buyPct5m<40){
+      score-=10;warnings.push('고점 매도');
+      sigs.push({t:`⚠ 24H 고점(${pos.toFixed(0)}%)에서 매도 우세 — 분산 패턴 ★`,type:'bear'});
+    }
+  }
+  if(s7.hasDex&&s7.buyPct5m<=30){
+    score-=10;warnings.push('DEX 극단매도');sigs.push({t:`⚠ DEX 5분 매도 ${100-s7.buyPct5m}% 극단`,type:'bear'});
+  }
+  if(s4.bearDiv){score-=8;warnings.push('약세다이버전스');sigs.push({t:`⚠ RSI 약세 다이버전스 ★ — 가격↑RSI↓ 하락 선행`,type:'bear'});}
+  if(s4.rsi>=78){score-=8;warnings.push('RSI 과매수');sigs.push({t:`⚠ RSI ${s4.rsi} 극단 과매수 — 조정 경보`,type:'bear'});}
+  const liqRatio=liq/mc;
+  if(liqRatio<0.03&&mc>50000){
+    score-=12;warnings.push('유동성 위험');sigs.push({t:`🚨 유동성/시총 ${(liqRatio*100).toFixed(1)}% 극저 — 러그풀 위험`,type:'bear'});
+  }
+  if(s7.hasDex&&s7.vol5m>0&&s7.vol1h>0){
+    const vr=s7.vol5m/(s7.vol1h/12);
+    if(vr>4&&s7.buyPct5m<40){score-=10;warnings.push('공황매도');sigs.push({t:`⚠ 거래량 ${vr.toFixed(0)}배 + 매도 우세 — 공황 매도`,type:'bear'});}
+  }
+  if(s3.buyPct<=35&&pct24h>5){score-=8;warnings.push('고점 분산');sigs.push({t:`⚠ 상승 중 체결 매도 ${s3.sellPct.toFixed(0)}% — 고점 분산`,type:'bear'});}
+  
+  const wc=warnings.length;
+  if(wc>=4)sigs.unshift({t:`🚨 급락 전 ${wc}개 신호 (${warnings.join(', ')})`,type:'bear'});
+  else if(wc>=2)sigs.unshift({t:`⚠ 급락 전 ${wc}개 신호`,type:'bear'});
+  return {score:Math.max(-25,Math.min(5,Math.round(score))),sigs,warnCount:wc,warnings,isPreDump:wc>=3};
+}
+
+function resolveConflict(s10,s11) {
+  if(s10.isPrePump && s11.isPreDump) {
+    return { isExtreme: true, verdict: '⚡ EXTREME VOLATILITY — 급등/급락 동시 신호 (방향 불명확, 큰 움직임 임박)', vClass: 'vv-warn' };
+  }
+  return {isExtreme:false};
+}
+
+function S9_quick(token) {
+  const vol=parseFloat(token.volume24h)||0; const mc=parseFloat(token.marketCap)||1;
+  const holders=parseInt(token.holders)||0; const pct24h=parseFloat(token.percentChange24h)||0;
+  if(vol<10000||holders<100) return {score:0,condCount:0,conditions:[],isAccumulating:false,sigs:[]};
+  let score=0; const conditions=[];
+  const isFlat=Math.abs(pct24h)<8;
+  const ph=parseFloat(token.priceHigh24h)||0; const pl=parseFloat(token.priceLow24h)||0;
+  const range=ph>0&&pl>0?(ph-pl)/pl*100:100;
+  if(isFlat&&range<20){score+=8;conditions.push('가격 횡보');}
+  if(vol/mc>0.1){score+=5;conditions.push('거래 활성');}
+  const cc=conditions.length;
+  return {score,condCount:cc,conditions,isAccumulating:cc>=2, sigs:cc>=2?[{t:`기본 매집 신호 ${cc}/2 (빠른 스캔)`,type:'bull'}]:[]};
+}
+
+function S12_sector(token, allResults) {
+  const sym = token.symbol.toUpperCase();
+  let sector = '기타';
+  for(const [sec, syms] of Object.entries(SECTOR_MAP)) {
+    if(syms.some(s=>sym.includes(s)||token.name?.toUpperCase().includes(s))) { sector=sec; break; }
+  }
+  const sectorResults = allResults.filter(r=>r.sector===sector&&r.alphaScore!==undefined);
+  const avgScore = sectorResults.length>0 ? sectorResults.reduce((s,r)=>s+r.alphaScore,0)/sectorResults.length : 0;
+  const sigs=[]; let sectorScore = 0;
+  if(avgScore>20&&sectorResults.length>=3){sectorScore=5;sigs.push({t:`섹터 [${sector}] 평균 +${avgScore.toFixed(0)}점 — 자금 유입 섹터`,type:'bull'});}
+  else if(avgScore<-20&&sectorResults.length>=3){sectorScore=-5;sigs.push({t:`섹터 [${sector}] 평균 ${avgScore.toFixed(0)}점 — 자금 이탈 섹터`,type:'bear'});}
+  else{sigs.push({t:`섹터 [${sector}]`,type:'neut'});}
+  return {score:sectorScore,sector,avgSectorScore:+avgScore.toFixed(1),sectorCount:sectorResults.length,sigs};
+}
+
+async function safeFetch(url, timeoutMs=2500) {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), mode: 'cors', headers: {'Accept':'application/json'} });
+    if(!r.ok) return null; return await r.json();
+  } catch(e) { return null; }
+}
+
+async function fetchExchangeVols(symbol) {
+  const base = symbol.toUpperCase();
+  const mexcSym = base + 'USDT'; const bitgetSym = base + 'USDT';
+  const [mData, bData] = await Promise.all([
+    safeFetch(`https://api.mexc.com/api/v3/ticker/24hr?symbol=${mexcSym}`, 2500),
+    safeFetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${bitgetSym}`, 2500),
+  ]);
+  const mexcVol  = mData ? parseFloat(mData.quoteVolume||0)||null : null;
+  const mexcPct  = mData ? parseFloat(mData.priceChangePercent||0) : null;
+  const bArr     = bData?.data; const bItem = Array.isArray(bArr) ? bArr[0] : null;
+  const bitgetVol= bItem ? parseFloat(bItem.usdtVol||bItem.quoteVolume||0)||null : null;
+  const bitgetPct= bItem ? parseFloat(bItem.change24h||0)*100 : null;
+  return {mexcVol, bitgetVol, mexcPct, bitgetPct};
+}
+
+function S15_volCompare(alphaVol, mexcVol, bitgetVol, mexcPct, bitgetPct, alphaPct) {
+  const sigs=[]; let score=0;
+  if(mexcVol===null && bitgetVol===null) return {score:0,sigs:[{t:'멀티 거래량 데이터 없음',type:'neut'}],mexcVol,bitgetVol,mexcRatio:null,bitgetRatio:null};
+  const alpha = alphaVol||1;
+  if(mexcVol!==null && mexcVol>0) {
+    const ratio = mexcVol / alpha;
+    if      (ratio > 5)  { score+=15; sigs.push({t:`MEXC 거래량 바이낸스의 ${ratio.toFixed(1)}배 ⚡ — MEXC 선행 수급 폭발`,type:'bull'}); }
+    else if (ratio > 2)  { score+= 8; sigs.push({t:`MEXC 거래량 바이낸스의 ${ratio.toFixed(1)}배 — MEXC 수급 우위`,type:'bull'}); }
+    else if (ratio > 0.8){ score+= 3; sigs.push({t:`MEXC/Binance 거래량 균형 (${ratio.toFixed(1)}배)`,type:'neut'}); }
+    else if (ratio < 0.2){ score-= 5; sigs.push({t:`MEXC 거래량 빈약 (${ratio.toFixed(2)}배) — 관심 집중 아님`,type:'bear'}); }
+  }
+  if(bitgetVol!==null && bitgetVol>0) {
+    const ratio = bitgetVol / alpha;
+    if      (ratio > 3)  { score+=10; sigs.push({t:`Bitget 거래량 바이낸스의 ${ratio.toFixed(1)}배 ⚡ — Bitget 선행 수급`,type:'bull'}); }
+    else if (ratio > 1.5){ score+= 5; sigs.push({t:`Bitget 거래량 바이낸스의 ${ratio.toFixed(1)}배 — Bitget 수급 있음`,type:'bull'}); }
+  }
+  if(mexcPct!==null && alphaPct!==null) {
+    const lead = mexcPct - alphaPct;
+    if      (lead > 10)  { score+=12; sigs.push({t:`MEXC +${mexcPct.toFixed(1)}% vs Alpha ${alphaPct.toFixed(1)}% — MEXC 선행 +${lead.toFixed(1)}%p ★ 따라오기 가능`,type:'bull'}); }
+    else if (lead > 4)   { score+= 6; sigs.push({t:`MEXC가 Alpha보다 ${lead.toFixed(1)}%p 선행 상승`,type:'bull'}); }
+    else if (lead < -10) { score-=10; sigs.push({t:`Alpha +${alphaPct.toFixed(1)}% vs MEXC ${mexcPct.toFixed(1)}% — Alpha 과열, 조정 가능`,type:'bear'}); }
+  }
+  if(bitgetPct!==null && alphaPct!==null) {
+    const lead = bitgetPct - alphaPct;
+    if(lead > 8)  { score+= 8; sigs.push({t:`Bitget +${bitgetPct.toFixed(1)}% 선행 — Binance 추격 가능성`,type:'bull'}); }
+    if(lead < -8) { score-= 5; sigs.push({t:`Alpha 과열 vs Bitget 하락 — 조정 경보`,type:'bear'}); }
+  }
+  const allRising = (mexcPct||0) > 5 && (bitgetPct||0) > 5 && (alphaPct||0) > 5;
+  const allFalling= (mexcPct||0) < -5 && (bitgetPct||0) < -5 && (alphaPct||0) < -5;
+  if(allRising)  { score+= 8; sigs.push({t:`전 거래소 동시 상승 — 강한 시장 수요 확인`,type:'bull'}); }
+  if(allFalling) { score-= 8; sigs.push({t:`전 거래소 동시 하락 — 전방위 매도`,type:'bear'}); }
+  return { score: Math.max(-15, Math.min(20, Math.round(score))), sigs, mexcVol, bitgetVol, mexcPct, bitgetPct, mexcRatio: mexcVol!==null ? +(mexcVol/alpha).toFixed(2) : null, bitgetRatio: bitgetVol!==null ? +(bitgetVol/alpha).toFixed(2) : null };
+}
+
+async function fetchMultiFR(symbol) {
+  const mexcSym = symbol.replace('USDT', '_USDT');
+  const [bData, mData, bgData] = await Promise.all([
+    safeFetch(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${symbol}`, 3000),
+    safeFetch(`${MEXC_FR}${mexcSym}`, 3000), safeFetch(`${BITGET_FR}${symbol}`, 3000),
+  ]);
+  const binanceFR = bData?.lastFundingRate != null ? parseFloat(bData.lastFundingRate) * 100 : null;
+  const mexcFR = mData?.data?.fundingRate != null ? parseFloat(mData.data.fundingRate) * 100 : null;
+  const bgItem = Array.isArray(bgData?.data) ? bgData.data[0] : bgData?.data;
+  const bitgetFR = bgItem?.fundingRate != null ? parseFloat(bgItem.fundingRate) * 100 : null;
+  return { binanceFR, mexcFR, bitgetFR };
+}
+
+function S14_multiFR(binanceFR, mexcFR, bitgetFR) {
+  const sigs = []; let score = 0; const rates = [binanceFR, mexcFR, bitgetFR].filter(r => r !== null);
+  if (rates.length === 0) return { score: 0, sigs: [{ t: 'FR 데이터 없음 (비선물 종목)', type: 'neut' }], binanceFR, mexcFR, bitgetFR, spread: null, avgFR: null };
+  const avgFR  = rates.reduce((s, r) => s + r, 0) / rates.length;
+  const spread = rates.length >= 2 ? Math.max(...rates) - Math.min(...rates) : null;
+
+  if      (avgFR < -0.05) { score += 10; sigs.push({ t: `평균 FR ${avgFR.toFixed(4)}% — 강한 숏 우세 ★ (롱 유리)`, type: 'bull' }); }
+  else if (avgFR < -0.02) { score +=  5; sigs.push({ t: `평균 FR ${avgFR.toFixed(4)}% — 숏 우세 (롱 유리)`,         type: 'bull' }); }
+  else if (avgFR >  0.05) { score -= 10; sigs.push({ t: `평균 FR ${avgFR.toFixed(4)}% — 강한 롱 과열 ⚠`,           type: 'bear' }); }
+  else if (avgFR >  0.02) { score -=  5; sigs.push({ t: `평균 FR ${avgFR.toFixed(4)}% — 롱 과열 주의`,             type: 'bear' }); }
+  else                    {              sigs.push({ t: `평균 FR ${avgFR.toFixed(4)}% — 중립`,                       type: 'neut' }); }
+
+  if (spread !== null && spread > 0.05) { score += 5; sigs.push({ t: `거래소간 FR 격차 ${spread.toFixed(4)}% — 거래소간 차익 기회`, type: 'warn' }); }
+  if (binanceFR !== null && binanceFR < -0.03) sigs.push({ t: `Binance FR ${binanceFR.toFixed(4)}% — 숏 우세`,      type: 'bull' });
+  if (binanceFR !== null && binanceFR >  0.05) sigs.push({ t: `Binance FR ${binanceFR.toFixed(4)}% — 롱 과열`,      type: 'bear' });
+  if (mexcFR    !== null && mexcFR    < -0.03) sigs.push({ t: `MEXC FR ${mexcFR.toFixed(4)}% — MEXC 숏 우세`,       type: 'bull' });
+  if (mexcFR    !== null && mexcFR    >  0.05) sigs.push({ t: `MEXC FR ${mexcFR.toFixed(4)}% — MEXC 롱 과열`,       type: 'bear' });
+  if (bitgetFR  !== null && bitgetFR  < -0.03) sigs.push({ t: `Bitget FR ${bitgetFR.toFixed(4)}% — Bitget 숏 우세`, type: 'bull' });
+  if (bitgetFR  !== null && bitgetFR  >  0.05) sigs.push({ t: `Bitget FR ${bitgetFR.toFixed(4)}% — Bitget 롱 과열`, type: 'bear' });
+
+  return { score: Math.max(-15, Math.min(15, Math.round(score))), sigs, binanceFR, mexcFR, bitgetFR, spread, avgFR };
+}
+
+function computeHuntScore(alpha, s10, s11, s9, s15) {
+  let hunt = alpha;
+  if(s10.isPrePump)      hunt += s10.trigCount * 5;
+  if(s11.isPreDump)      hunt -= s11.warnCount * 5;
+  if(s9.isAccumulating)  hunt += 10;
+  if(s15?.score > 10)    hunt += 8; 
+  if(s15?.score < -8)    hunt -= 8;
+  return Math.max(-100, Math.min(100, Math.round(hunt)));
+}
+
+// ═══════════════════════════════════════════════════════
+// MAIN SCAN ENGINE
+// ═══════════════════════════════════════════════════════
+function doStop(){stopFlag=true;document.getElementById('stopBtn').style.display='none';}
+
+async function doScan(){
+  if(running)return;
+  running=true;stopFlag=false;results=[];selectedSym=null;closeDd();
+  tgH('medium');
+  const btn=document.getElementById('scanBtn'),stop=document.getElementById('stopBtn');
+  btn.textContent='⟳ HUNTING…';btn.classList.add('run');stop.style.display='block';
+  if(tg){tg.MainButton.setText('■ HUNTING…');tg.MainButton.disable();}
+  document.getElementById('emptyState').style.display='block';
+  document.getElementById('tbl').style.display='none';
+
+  setProg(5,'Binance Alpha 토큰 목록 로딩…');
+  let tokens=[];
+  
+  try {
+    const resp = await fetch(ALPHA_LIST, {signal:AbortSignal.timeout(8000)});
+    if(!resp.ok) throw new Error('CORS block');
+    const data = await resp.json();
+    tokens = (data.data||[]).filter(t=>t.symbol&&!t.offline);
+  } catch(e) {
+    try {
+      const resp = await fetch(PROXY + encodeURIComponent(ALPHA_LIST), {signal:AbortSignal.timeout(10000)});
+      const pData = await resp.json();
+      const data = JSON.parse(pData.contents);
+      tokens = (data.data||[]).filter(t=>t.symbol&&!t.offline);
+    } catch(e2) {
+      const fallbacks = ['WLD','TIA','SEI','SUI','ORDI','PEPE','MEME','PENDLE','ARKM','FET','RNDR','BONK','WIF','FLOKI','STRK','MANTA','ALT','JUP','PYTH','ONDO','PIXEL','PORTAL','ENA','W','TNSR','OMNI','REZ','BB','NOT','IO','ZK','ZRO','BANANA','RENDER','TON','DOGS','NEIRO','TURBO'];
+      tokens = fallbacks.map(s => ({ symbol: s+'USDT', alphaId: s, name: s, chainName: 'Fallback', offline: false }));
+    }
+  }
+
+  if(!tokens.length){ setProg(0,'❌ 토큰 목록 로딩 실패');finish(btn,stop);return; }
+
+  setProg(10,'Spot / Futures / MEXC / Bitget 상장 목록 확인…');
+  try{
+    const [spotR,futR,mexcR,bitgetR]=await Promise.allSettled([
+      fetch(SPOT_INFO,{signal:AbortSignal.timeout(10000)}).then(r=>r.json()),
+      fetch(FUT_INFO, {signal:AbortSignal.timeout(10000)}).then(r=>r.json()),
+      fetch(MEXC_SPOT,{signal:AbortSignal.timeout(8000)}).then(r=>r.json()),
+      fetch(BITGET_SPOT,{signal:AbortSignal.timeout(8000)}).then(r=>r.json()),
+    ]);
+    if(spotR.status==='fulfilled'){ spotSet=new Set((spotR.value.symbols||[]).filter(s=>s.quoteAsset==='USDT'&&s.status==='TRADING').map(s=>s.baseAsset?.toUpperCase())); }
+    if(futR.status==='fulfilled'){ futSet=new Set((futR.value.symbols||[]).filter(s=>s.contractType==='PERPETUAL'&&s.status==='TRADING').map(s=>s.baseAsset?.toUpperCase())); }
+    if(mexcR.status==='fulfilled'){ mexcSet=new Set((mexcR.value.symbols||[]).filter(s=>s.quoteAsset==='USDT').map(s=>s.baseAsset?.toUpperCase())); }
+    if(bitgetR.status==='fulfilled'){ bitgetSet=new Set((bitgetR.value.data||[]).filter(s=>s.quoteCoin==='USDT'&&s.status==='online').map(s=>s.baseCoin?.toUpperCase())); }
+  }catch(e){}
+
+  const chainF=document.getElementById('chainFilter').value;
+  const stageF=document.getElementById('stageFilter').value;
+  let filtered=tokens.filter(t=>{
+    if(chainF!=='ALL'&&t.chainName!=='Fallback'&&t.chainName!==chainF)return false;
+    const sym=t.symbol.toUpperCase();
+    const isSpot=spotSet.has(sym)||t.listingCex;
+    const isFut =futSet.has(sym);
+    if(stageF==='PRE'&&(isSpot||isFut))return false;
+    if(stageF==='SPOT'&&(!isSpot||isFut))return false;
+    if(stageF==='FUTURES'&&!isFut)return false;
+    return true;
+  });
+
+  const allPre  =tokens.filter(t=>!spotSet.has(t.symbol.toUpperCase())&&!t.listingCex&&!futSet.has(t.symbol.toUpperCase()));
+  const allSpot =tokens.filter(t=>(spotSet.has(t.symbol.toUpperCase())||t.listingCex)&&!futSet.has(t.symbol.toUpperCase()));
+  const allFut  =tokens.filter(t=>futSet.has(t.symbol.toUpperCase()));
+  document.getElementById('mb-total').textContent=tokens.length;
+  document.getElementById('mb-pre').textContent=allPre.length;
+  document.getElementById('mb-spot').textContent=allSpot.length;
+  document.getElementById('mb-fut').textContent=allFut.length;
+
+  if(!filtered.length){ setProg(0,'필터 조건에 맞는 종목 없음');finish(btn,stop);return; }
+
+  setProg(15,'1차 스코어 계산 중 (전체 '+filtered.length+'개)…');
+  const quickScored=filtered.map(t=>{
+    const isSpot=spotSet.has(t.symbol.toUpperCase())||t.listingCex;
+    const isFut =futSet.has(t.symbol.toUpperCase());
+    const s1=S1_activity(t); const s2=S2_liquidity(t); const s5=S5_holders(t);
+    const s6=S6_stage(t,isSpot,isFut); const s8=S8_holderRatio(t); const s9q=S9_quick(t);
+    const quick=s1.score+s2.score+s5.score+s6.score+s8.score+s9q.score;
+    return {token:t,quick,isSpot,isFut,s1,s2,s5,s6,s8,s9q};
+  }).sort((a,b)=>Math.abs(b.quick)-Math.abs(a.quick));
+
+  const deepN=+document.getElementById('deepN').value;
+  const toDeep=quickScored.slice(0,deepN);
+
+  setProg(25,'상위 '+deepN+'개 정밀 분석 중 (안전 우회 로직 가동)…');
+
+  const BATCH=2; 
+  for(let i=0;i<toDeep.length&&!stopFlag;i+=BATCH){
+    const batch=toDeep.slice(i,i+BATCH);
+    await Promise.allSettled(batch.map(async item=>{
+      try {
+      const {token,isSpot,isFut,s1,s2,s5,s6,s8}=item;
+      if(!token?.alphaId) return; 
+      const alphaId=token.alphaId;
+      const sym=`${alphaId}USDT`;
+      const baseSym=(token.symbol||'').toUpperCase()||alphaId;
+      const mexcListed=mexcSet.has(baseSym)&&!isSpot;
+      const bitgetListed=bitgetSet.has(baseSym)&&!isSpot;
+
+      let klines=[],trades=[],dexPair=null,multiFR={binanceFR:null,mexcFR:null,bitgetFR:null}, depthData=null;
+      let exVols={mexcVol:null,bitgetVol:null,mexcPct:null,bitgetPct:null};
+
+      const spotBase = 'https://api.binance.com/api/v3';
+      const futBase  = 'https://fapi.binance.com/fapi/v1';
+      
+      const uKline = isSpot ? `${spotBase}/klines?symbol=${sym}&interval=1h&limit=48` : (isFut ? `${futBase}/klines?symbol=${sym}&interval=1h&limit=48` : null);
+      const uTrades = isSpot ? `${spotBase}/aggTrades?symbol=${sym}&limit=100` : (isFut ? `${futBase}/aggTrades?symbol=${sym}&limit=100` : null);
+      const uDepth = isSpot ? `${spotBase}/depth?symbol=${sym}&limit=100` : (isFut ? `${futBase}/depth?symbol=${sym}&limit=100` : null);
+
+      const [r0,r1,r2,r3, r4]=await Promise.allSettled([
+        uKline ? jFetch(uKline).catch(()=>null) : Promise.resolve(null),
+        uTrades ? jFetch(uTrades).catch(()=>null) : Promise.resolve(null),
+        token.contractAddress ? fetchDex(token.contractAddress,token.chainName).catch(()=>null) : Promise.resolve(null),
+        isFut ? fetchMultiFR(baseSym+'USDT').catch(()=>multiFR) : Promise.resolve(null),
+        uDepth ? jFetch(uDepth).catch(()=>null) : Promise.resolve(null)
+      ]);
+      
+      if(r0.status==='fulfilled'&&r0.value) klines=Array.isArray(r0.value) ? r0.value : (r0.value.data||[]);
+      if(r1.status==='fulfilled'&&r1.value) trades=Array.isArray(r1.value) ? r1.value : (r1.value.data||[]);
+      
+      if(r2.status==='fulfilled'&&r2.value) dexPair=r2.value;
+      if(isFut&&r3?.status==='fulfilled'&&r3.value) multiFR=r3.value;
+      if(r4?.status==='fulfilled'&&r4.value) depthData=r4.value;
+
+      try {
+        const ev=await Promise.race([ fetchExchangeVols(baseSym), new Promise(r=>setTimeout(()=>r(null),2500)) ]);
+        if(ev)exVols=ev;
+      }catch(e){}
+
+      const s3=S3_trades(trades);
+      const s4=S4_momentum(klines);
+      const s7=S7_dex(dexPair);
+      const s9=S9_accumulation(token,s3,s4,s7);
+      const s10=S10_prePump(token,s3,s4,s7,s9);
+      const s11=S11_preDump(token,s3,s4,s7);
+      const conflict=resolveConflict(s10,s11);
+      const s12=S12_sector(token,results);
+      const s14=S14_multiFR(multiFR.binanceFR, multiFR.mexcFR, multiFR.bitgetFR);
+      const s15=S15_volCompare(parseFloat(token.volume24h)||0,exVols.mexcVol,exVols.bitgetVol,exVols.mexcPct,exVols.bitgetPct,parseFloat(token.percentChange24h)||0);
+      
+      const s16=S16_bbSqueeze(klines);
+      const s17=S17_orderbook(depthData);
+      const s18=S18_whaleFlow(trades);
+      
+      const scores={s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s14,s15, s16,s17,s18};
+      const alpha=computeAlpha(scores);
+      const pct=parseFloat(token.percentChange24h)||0;
+      const huntScore=computeHuntScore(alpha.score,s10,s11,s9,s15);
+      const finalVerdict=conflict.isExtreme?conflict.verdict:alpha.verdict;
+      const finalVClass=conflict.isExtreme?conflict.vClass:alpha.vClass;
+
+      results.push({
+        symbol:token.symbol||alphaId, alphaId, name:token.name||alphaId,
+        chainName:token.chainName||'—', contractAddress:token.contractAddress||'',
+        price:parseFloat(token.price)||0, percentChange24h:pct,
+        volume24h:parseFloat(token.volume24h)||0, marketCap:parseFloat(token.marketCap)||0,
+        liquidity:parseFloat(token.liquidity)||0, holders:parseInt(token.holders)||0,
+        count24h:parseInt(token.count24h)||0, isSpot, isFut, mexcListed, bitgetListed,
+        stage:isFut?'FUTURES':isSpot?'SPOT':'PRE', sector:s12.sector,
+        alphaScore:alpha.score, huntScore,
+        verdict:finalVerdict, vClass:finalVClass, isExtreme:conflict.isExtreme,
+        allSigs:alpha.allSigs,
+        s1Score:s1.score, s2Score:s2.score, s3Score:s3.score, s4Score:s4.score,
+        s5Score:s5.score, s6Score:s6.score, s7Score:s7.score, s8Score:s8.score,
+        s9Score:s9.score, s10Score:s10.score, s11Score:s11.score,
+        s14Score:s14.score, s15Score:s15.score,
+        s16Score:s16.score, s17Score:s17.score, s18Score:s18.score, 
+        binanceFR:multiFR.binanceFR,
+        mexcVol:s15.mexcVol, bitgetVol:s15.bitgetVol,
+        mexcRatio:s15.mexcRatio, bitgetRatio:s15.bitgetRatio,
+        mexcPct:s15.mexcPct, bitgetPct:s15.bitgetPct,
+        rsi:s4.rsi, trend:s4.trend,
+        buyPct:s3.buyPct, sellPct:s3.sellPct,
+        bullDiv:s4.bullDiv, bearDiv:s4.bearDiv, liqRatio:s2.liqRatio,
+        isAcc:s9.isAccumulating, isPrePump:s10.isPrePump, isPreDump:s11.isPreDump,
+        isRisk:s2.liqRatio<0.05||parseInt(token.holders)<200||(s7.hasDex&&s7.liq<10000)||s11.warnCount>=3,
+        dex:s7, scores,
+      });
+      renderTable(); updateStats();
+      } catch(err) { console.warn('token skip:',item?.token?.symbol, err); }
+    }));
+    setProg(25+(i/toDeep.length)*65,`정밀분석 ${Math.min(i+BATCH,toDeep.length)}/${toDeep.length}`);
+  }
+
+  const remaining=quickScored.slice(deepN);
+  remaining.forEach(({token,isSpot,isFut,s1,s2,s5,s6,s8,s9q})=>{
+    if(stopFlag)return;
+    const baseSym=token.symbol.toUpperCase();
+    const mexcListed=mexcSet.has(baseSym)&&!isSpot;
+    const bitgetListed=bitgetSet.has(baseSym)&&!isSpot;
+    const s3={score:0,sigs:[{t:'빠른 스캔',type:'neut'}],buyPct:50,sellPct:50};
+    const s4={score:0,sigs:[],rsi:50,trend:'FLAT',bullDiv:false,bearDiv:false,volRising:false};
+    const s7={score:0,sigs:[],hasDex:false,buyPct5m:50,buyPct1h:50,buys5m:0,sells5m:0,pm5:0,ph1:0,ph6:0,liq:0,vol5m:0,vol1h:0};
+    const s9=s9q||{score:0,sigs:[],condCount:0,conditions:[],isAccumulating:false};
+    const s10={score:0,sigs:[],trigCount:0,triggers:[],isPrePump:false};
+    const s11={score:0,sigs:[],warnCount:0,warnings:[],isPreDump:false};
+    const s12=S12_sector(token,results);
+    const s14={score:0,sigs:[],binanceFR:null,mexcFR:null,bitgetFR:null,spread:null,avgFR:null};
+    const s15={score:0,sigs:[],mexcVol:null,bitgetVol:null,mexcRatio:null,bitgetRatio:null,mexcPct:null,bitgetPct:null};
+    const s16={score:0,sigs:[],bandwidth:null};
+    const s17={score:0,sigs:[],bidRatio:null};
+    const s18={score:0,sigs:[],whaleBuyPct:null,totalWhale:0};
+    const scores={s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s14,s15,s16,s17,s18};
+    const alpha=computeAlpha(scores);
+    const pct=parseFloat(token.percentChange24h)||0;
+    const huntScore=computeHuntScore(alpha.score,s10,s11,s9,s15);
+    results.push({
+      symbol:token.symbol, alphaId:token.alphaId, name:token.name,
+      chainName:token.chainName, contractAddress:token.contractAddress,
+      price:parseFloat(token.price)||0, percentChange24h:pct,
+      volume24h:parseFloat(token.volume24h)||0, marketCap:parseFloat(token.marketCap)||0,
+      liquidity:parseFloat(token.liquidity)||0, holders:parseInt(token.holders)||0,
+      count24h:parseInt(token.count24h)||0,
+      isSpot,isFut, mexcListed, bitgetListed,
+      stage:isFut?'FUTURES':isSpot?'SPOT':'PRE', sector:s12.sector,
+      alphaScore:alpha.score, huntScore,
+      verdict:alpha.verdict, vClass:alpha.vClass, isExtreme:false,
+      allSigs:alpha.allSigs,
+      s1Score:s1.score,s2Score:s2.score,s3Score:0,s4Score:0,
+      s5Score:s5.score,s6Score:s6.score,s7Score:0,s8Score:s8.score,
+      s9Score:s9.score,s10Score:0,s11Score:0,s14Score:0,s15Score:0,
+      s16Score:0, s17Score:0, s18Score:0,
+      binanceFR:null,
+      mexcVol:null,bitgetVol:null,mexcRatio:null,bitgetRatio:null,mexcPct:null,bitgetPct:null,
+      rsi:50,trend:'FLAT',buyPct:50,sellPct:50,
+      bullDiv:false,bearDiv:false,liqRatio:s2.liqRatio,
+      isAcc:s9.isAccumulating, isPrePump:false, isPreDump:false,
+      isRisk:s2.liqRatio<0.05||parseInt(token.holders)<200,
+      dex:s7, scores,
+    });
+  });
+
+  setProg(100,`✓ 완료 — ${results.length}개 알파 토큰 분석 완료 (정밀분석: ${toDeep.length}개)`);
+  prevSnapshot={};
+  results.forEach(r=>{prevSnapshot[r.symbol]={price:r.price,huntScore:r.huntScore,volume24h:r.volume24h};});
+  finish(btn,stop);renderTable();updateStats();tgH('success');
+}
+
+function finish(btn,stop){
+  running=false;stopFlag=false;
+  btn.textContent='▶ HUNT ALPHA';btn.classList.remove('run');stop.style.display='none';
+  if(tg){tg.MainButton.setText('▶ HUNT ALPHA');tg.MainButton.enable();}
+}
+
+function updateStats(){
+  document.getElementById('ss-sb').textContent =results.filter(r=>r.huntScore>=60).length;
+  document.getElementById('ss-b').textContent  =results.filter(r=>r.huntScore>=30&&r.huntScore<60).length;
+  document.getElementById('ss-n').textContent  =results.filter(r=>Math.abs(r.huntScore)<30).length;
+  document.getElementById('ss-be').textContent =results.filter(r=>r.huntScore<=-30&&r.huntScore>-60).length;
+  document.getElementById('ss-sbe').textContent=results.filter(r=>r.huntScore<=-60).length;
+  document.getElementById('ss-tot').textContent=results.length;
+  document.getElementById('ss-acc').textContent=results.filter(r=>r.isAcc).length;
+  document.getElementById('ss-risk').textContent=results.filter(r=>r.isRisk).length;
+  document.getElementById('mb-bull').textContent=results.filter(r=>r.isPrePump).length;
+  document.getElementById('mb-bear').textContent=results.filter(r=>r.isPreDump).length;
+}
+function setFilter(f){
+  activeFilter=f;
+  ['all','bull','bear','pump','dump','acc','risk','pre','lead'].forEach(k=>{
+    const el=document.getElementById('f-'+k);if(!el)return;
+    el.className='fbtn'+(f===k.toUpperCase()?' fa':'');
+  });
+  renderTable();
+}
+function sortBy(col){
+  sort.dir=sort.col===col?sort.dir*-1:-1;sort.col=col;
+  document.querySelectorAll('thead th').forEach(th=>th.classList.remove('sorted'));
+  renderTable();
+}
+function filterData(){
+  const q=document.getElementById('searchBox').value.toLowerCase().trim();
+  return results.filter(r=>{
+    if(q&&!r.symbol.toLowerCase().includes(q)&&!r.name.toLowerCase().includes(q)&&!(r.sector||'').toLowerCase().includes(q))return false;
+    if(activeFilter==='BULL'&&r.huntScore<30)return false;
+    if(activeFilter==='BEAR'&&r.huntScore>-30)return false;
+    if(activeFilter==='PUMP'&&!r.isPrePump)return false;
+    if(activeFilter==='DUMP'&&!r.isPreDump)return false;
+    if(activeFilter==='ACC'&&!r.isAcc)return false;
+    if(activeFilter==='RISK'&&!r.isRisk)return false;
+    if(activeFilter==='PRE'&&r.stage!=='PRE')return false;
+    if(activeFilter==='LEAD'&&!(r.mexcRatio>2&&(r.mexcPct||0)>r.percentChange24h+3))return false;
+    return true;
+  });
+}
+
+function renderTable(){
+  let data=filterData();
+  const col=sort.col,dir=sort.dir;
+  data.sort((a,b)=>{
+    let av=a[col]??0,bv=b[col]??0;
+    if(typeof av==='string'){av=av.toLowerCase();bv=bv.toLowerCase();}
+    return av<bv?dir:av>bv?-dir:0;
+  });
+
+  document.getElementById('rcount').textContent=data.length?`${data.length} tokens`:'';
+  const tbl=document.getElementById('tbl'),empty=document.getElementById('emptyState'),tbody=document.getElementById('tbody');
+
+  if(!data.length){
+    if(results.length>0){
+      tbody.innerHTML=`<tr><td colspan="18" style="text-align:center;padding:40px;color:var(--text3)">조건에 맞는 결과 없음</td></tr>`;
+      tbl.style.display='table';empty.style.display='none';
+    }else{tbl.style.display='none';empty.style.display='block';}
+    return;
+  }
+  tbl.style.display='table';empty.style.display='none';
+
+  tbody.innerHTML=data.map(r=>{
+    const ac=asColor(r.alphaScore),al=asLabel(r.alphaScore);
+    const isSel=selectedSym===r.symbol;
+    const scoreCell=`
+      <div class="as-wrap">
+        <div class="as-num" style="color:${ac}">${r.alphaScore>0?'+':''}${r.alphaScore}</div>
+        <div class="as-meta">
+          <div class="as-bar-bg"><div class="as-bar-f" style="width:${Math.abs(r.alphaScore)}%;background:${ac};box-shadow:0 0 5px ${ac}"></div></div>
+          <div class="as-lbl" style="color:${ac}">${al}</div>
+        </div>
+      </div>`;
+    const stageBadge=r.isFut?`<span class="stage st-fut">FUTURES</span>`: r.isSpot?`<span class="stage st-spot">SPOT</span>`: `<span class="stage st-pre">PRE</span>`;
+
+    const tags=[
+      r.isPrePump?'<span class="sig-tag sg-bull">🚀PUMP</span>':'',
+      r.isPreDump?'<span class="sig-tag sg-bear">🚨DUMP</span>':'',
+      r.isAcc?'<span class="sig-tag sg-bull">💎ACC</span>':'',
+      r.isRisk?'<span class="sig-tag sg-bear">⚠RISK</span>':'',
+      r.bullDiv?'<span class="sig-tag sg-bull">★DIV</span>':'',
+      (r.mexcRatio>2&&(r.mexcPct||0)>r.percentChange24h+3)?'<span class="sig-tag sg-warn">🔥MEXC↑</span>':'',
+      r.dex?.buyPct5m>=70?'<span class="sig-tag sg-bull">DEX↑</span>':'',
+      r.dex?.buyPct5m<=30?'<span class="sig-tag sg-bear">DEX↓</span>':'',
+      r.s16Score >= 5 ? '<span class="sig-tag sg-warn">⚠️SQZ</span>' : '',
+      r.s17Score >= 6 ? '<span class="sig-tag sg-bull">🧱BID</span>' : '',
+      r.s17Score <= -6 ? '<span class="sig-tag sg-bear">🧱ASK</span>' : '',
+      r.s18Score >= 8 ? '<span class="sig-tag sg-bull">🐳BUY</span>' : '',
+      r.s18Score <= -8 ? '<span class="sig-tag sg-bear">🐳SELL</span>' : '',
+    ].filter(Boolean).join('');
+
+    const pCol=r.percentChange24h>=0?'var(--bull)':'var(--bear)';
+    const hc=asColor(r.huntScore);
+    const ac2=asColor(r.alphaScore);
+    const sectCol=r.sector==='AI'?'var(--blue)':r.sector==='MEME'?'var(--warn)':r.sector==='DEFI'?'var(--violet)':r.sector==='GAMING'?'var(--bull)':'var(--text2)';
+
+    const noDataText = (!r.isSpot && !r.isFut) ? '<span style="color:var(--text3);font-size:8px">미상장</span>' : '—';
+
+    return `<tr class="${isSel?'sel':''}" onclick="openDd('${r.symbol}')">
+      <td>
+        <div class="sym-n">${r.symbol}</div>
+        <div style="font-size:7.5px;color:var(--text3)">${r.name} · ${r.chainName}</div>
+        <div class="tag-row">${tags}</div>
+      </td>
+      <td>
+        <div class="as-wrap">
+          <div class="as-num" style="color:${hc}">${r.huntScore>0?'+':''}${r.huntScore}</div>
+          <div class="as-meta">
+            <div class="as-bar-bg"><div class="as-bar-f" style="width:${Math.abs(r.huntScore)}%;background:${hc}"></div></div>
+            <div class="as-lbl" style="color:${hc}">HUNT</div>
+          </div>
+        </div>
+      </td>
+      <td style="font-size:9px;color:${ac2}">${r.alphaScore>0?'+':''}${r.alphaScore}</td>
+      <td>${stageBadge}</td>
+      <td style="font-size:8px;color:${sectCol}">${r.sector||'기타'}</td>
+      <td style="font-size:9px">
+        ${r.buyPct!==50?`<span style="color:${r.buyPct>50?'var(--bull)':'var(--bear)'}">${r.buyPct>50?'매수':'매도'} ${Math.max(r.buyPct,r.sellPct).toFixed(0)}%</span>`:'—'}
+      </td>
+      <td style="font-size:9px;color:${r.trend==='UP'?'var(--bull)':r.trend==='DOWN'?'var(--bear)':'var(--text2)'}">
+        ${r.trend==='UP'?'▲':r.trend==='DOWN'?'▼':'◆'} RSI${r.rsi}
+      </td>
+      <td>${r.dex?.hasDex
+        ?`<span class="sig-tag ${r.s7Score>=5?'sg-bull':r.s7Score<=-5?'sg-bear':'sg-neut'}">${r.s7Score>0?'+':''}${r.s7Score} ${r.dex.pm5>=0?'▲':'▼'}${Math.abs(r.dex.pm5).toFixed(1)}%</span>`
+        :'<span style="color:var(--text3);font-size:8px">—</span>'}
+      </td>
+      <td style="font-size:9px;color:${r.s9Score>5?'var(--bull)':r.s9Score<-3?'var(--bear)':'var(--text2)'}">${r.s9Score>0?'+':''}${r.s9Score}</td>
+      <td style="font-size:9px">${r.mexcRatio!=null
+        ?`<span style="color:${r.mexcRatio>2?'var(--gold)':r.mexcRatio>1?'var(--bull)':'var(--text2)'}">${r.mexcRatio}× ${r.mexcPct!=null?(r.mexcPct>=0?'▲':'▼')+Math.abs(r.mexcPct).toFixed(1)+'%':''}</span>`
+        :'<span style="color:var(--text3)">—</span>'}</td>
+      
+      <td style="font-size:9px;color:${r.s16Score>5?'var(--warn)':r.s16Score<-5?'var(--bear)':'var(--text2)'}">${r.scores?.s16?.bandwidth!=null?r.scores.s16.bandwidth.toFixed(1)+'%':noDataText}</td>
+      <td style="font-size:9px;color:${r.s17Score>5?'var(--bull)':r.s17Score<-5?'var(--bear)':'var(--text2)'}">${r.scores?.s17?.bidRatio!=null?r.scores.s17.bidRatio.toFixed(0)+'%':noDataText}</td>
+      <td style="font-size:9px;color:${r.s18Score>5?'var(--bull)':r.s18Score<-5?'var(--bear)':'var(--text2)'}">${r.scores?.s18?.whaleBuyPct!=null?r.scores.s18.whaleBuyPct.toFixed(0)+'%':noDataText}</td>
+
+      <td style="font-size:10px;color:${pCol}">${r.percentChange24h>=0?'+':''}${r.percentChange24h.toFixed(2)}%</td>
+      <td style="font-size:9px;color:var(--text2)">$${fmtB(r.volume24h)}</td>
+      <td style="font-size:9px;color:var(--text2)">$${fmtB(r.marketCap)}</td>
+      <td style="font-size:9px">${r.holders>0?r.holders.toLocaleString():'—'}</td>
+      <td style="font-size:9px">
+        <span style="color:var(--bull)">▲${r.allSigs.filter(s=>s.type==='bull').length}</span>
+        <span style="color:var(--text3)"> / </span>
+        <span style="color:var(--bear)">▼${r.allSigs.filter(s=>s.type==='bear').length}</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openDd(symbol){
+  selectedSym=symbol;
+  const r=results.find(x=>x.symbol===symbol);
+  if(!r)return;
+  tgH('light');
+  if(tg)tg.BackButton.show();
+  renderTable();
+
+  const ac=asColor(r.huntScore);
+  document.getElementById('ddp-sym').textContent=r.symbol;
+  document.getElementById('ddp-sub').innerHTML=
+    `Hunt: <span style="color:${ac};font-weight:700">${r.huntScore>0?'+':''}${r.huntScore}</span>`+
+    ` &nbsp;|&nbsp; Alpha: ${r.alphaScore>0?'+':''}${r.alphaScore}`+
+    ` &nbsp;|&nbsp; 섹터: ${r.sector||'기타'}`+
+    ` &nbsp;|&nbsp; $${fmtP(r.price)}`+
+    (r.mexcRatio>2?' &nbsp;|&nbsp; <span style="color:var(--gold)">🔥 MEXC 수급 우위</span>':'')+
+    (r.isExtreme?' &nbsp;|&nbsp; <span style="color:var(--warn)">⚡ EXTREME VOLATILITY</span>':'');
+
+  function sec(num,col,title,score,max,rows,sigs){
+    const c=score>0?'var(--bull)':score<0?'var(--bear)':'var(--blue)';
+    const pct=Math.min(100,Math.abs(score/max)*100);
+    const cls=score>=5?'sg-bull':score<=-5?'sg-bear':'sg-neut';
+    return `<div class="ddp-sec">
+      <div class="ddp-t">
+        <span style="color:${col}">S${num} ${title}</span>
+        <span class="sig-tag ${cls}">${score>0?'+':''}${score}</span>
+      </div>
+      ${rows.map(([k,v,vc])=>`<div class="kv"><span class="kv-k">${k}</span><span class="kv-v" style="color:${vc||'var(--white)'}">${v}</span></div>`).join('')}
+      <div class="lbar"><div class="lbar-f" style="width:${pct}%;background:${c}"></div></div>
+      ${(sigs||[]).slice(0,4).map(s=>`<div class="sig-line" style="color:${s.type==='bull'?'var(--bull)':s.type==='bear'?'var(--bear)':s.type==='warn'?'var(--warn)':'var(--text2)'}">▸ ${s.t.replace(/^\[.*?\] /,'')}</div>`).join('')}
+    </div>`;
+  }
+
+  const sc=r.scores;
+  document.getElementById('ddp-grid').innerHTML=
+    sec(1,'var(--gold)','거래량 활성도',sc.s1.score,20,[
+      ['24H 거래량','$'+fmtB(r.volume24h),'var(--white)'],
+      ['시총','$'+fmtB(r.marketCap),'var(--text2)'],
+      ['Vol/MCap비율',(sc.s1.ratio*100).toFixed(1)+'%',sc.s1.ratio>0.3?'var(--bull)':'var(--text2)'],
+      ['24H 체결 수',r.count24h.toLocaleString(),'var(--text2)'],
+      ['평균 체결액','$'+(sc.s1.avgTrade||0).toFixed(1),'var(--text2)'],
+    ],sc.s1.sigs)+
+    sec(2,'var(--warn)','유동성 품질',sc.s2.score,15,[
+      ['유동성','$'+fmtB(r.liquidity),'var(--white)'],
+      ['유동성/시총',(sc.s2.liqRatio*100).toFixed(1)+'%',sc.s2.liqRatio>0.2?'var(--bull)':sc.s2.liqRatio<0.05?'var(--bear)':'var(--text2)'],
+      ['러그풀 위험',sc.s2.liqRatio<0.05?'⚠ 높음':'낮음',sc.s2.liqRatio<0.05?'var(--bear)':'var(--bull)'],
+      ['체인',r.chainName,'var(--text2)'],
+    ],sc.s2.sigs)+
+    sec(3,'var(--blue)','체결 방향',sc.s3.score,20,[
+      ['매수 주도',r.buyPct.toFixed(1)+'%',r.buyPct>60?'var(--bull)':r.buyPct<40?'var(--bear)':'var(--text2)'],
+      ['매도 주도',r.sellPct.toFixed(1)+'%',r.sellPct>60?'var(--bear)':r.sellPct<40?'var(--bull)':'var(--text2)'],
+      ['매수 거래량','$'+fmtB(sc.s3.buyVol||0),'var(--bull)'],
+      ['매도 거래량','$'+fmtB(sc.s3.sellVol||0),'var(--bear)'],
+    ],sc.s3.sigs)+
+    sec(4,'var(--bull)','가격 모멘텀',sc.s4.score,20,[
+      ['RSI(14)',r.rsi,r.rsi<=30?'var(--bull)':r.rsi>=70?'var(--bear)':'var(--white)'],
+      ['추세',r.trend,r.trend==='UP'?'var(--bull)':r.trend==='DOWN'?'var(--bear)':'var(--text2)'],
+      ['강세 다이버전스',r.bullDiv?'✓ 감지':'—',r.bullDiv?'var(--bull)':'var(--text2)'],
+      ['약세 다이버전스',r.bearDiv?'✓ 감지':'—',r.bearDiv?'var(--bear)':'var(--text2)'],
+      ['거래량 상승',sc.s4.volRising?'✓':'—',sc.s4.volRising?'var(--bull)':'var(--text2)'],
+    ],sc.s4.sigs)+
+    sec(16,'var(--warn)','BB Squeeze (볼린저 폭발)',sc.s16?.score||0,15,[
+      ['밴드폭 (Bandwidth)',sc.s16?.bandwidth!=null?sc.s16.bandwidth.toFixed(2)+'%':'—',sc.s16?.bandwidth<3.5?'var(--warn)':'var(--white)'],
+    ],sc.s16?.sigs||[])+
+    sec(17,'var(--blue)','Orderbook (호가 뎁스)',sc.s17?.score||0,15,[
+      ['매수벽 비율',sc.s17?.bidRatio!=null?sc.s17.bidRatio.toFixed(1)+'%':'—',sc.s17?.bidRatio>60?'var(--bull)':sc.s17?.bidRatio<40?'var(--bear)':'var(--white)'],
+    ],sc.s17?.sigs||[])+
+    sec(18,'var(--bull)','Whale Flow (고래 체결)',sc.s18?.score||0,20,[
+      ['고래 매수 비율',sc.s18?.whaleBuyPct!=null?sc.s18.whaleBuyPct.toFixed(1)+'%':'—',sc.s18?.whaleBuyPct>60?'var(--bull)':sc.s18?.whaleBuyPct<40?'var(--bear)':'var(--white)'],
+      ['고래 체결액(>10k)',sc.s18?.totalWhale?'$'+fmtB(sc.s18.totalWhale):'—','var(--text2)'],
+    ],sc.s18?.sigs||[])+
+    sec(5,'var(--blue)','홀더 분석',sc.s5.score,12,[
+      ['홀더 수',r.holders.toLocaleString(),'var(--white)'],
+      ['홀더당 평균','$'+(r.holders>0?fmtB(r.marketCap/r.holders):'—'),'var(--text2)'],
+      ['계약 주소',r.contractAddress?r.contractAddress.slice(0,14)+'…':'—','var(--text3)'],
+    ],sc.s5.sigs)+
+    sec(6,'var(--pre)','상장 단계',sc.s6.score,15,[
+      ['현재 단계',r.isFut?'FUTURES':r.isSpot?'SPOT':'PRE-LISTING',r.isFut?'var(--fut)':r.isSpot?'var(--spot)':'var(--pre)'],
+      ['24H 변화',(r.percentChange24h>=0?'+':'')+r.percentChange24h.toFixed(2)+'%',r.percentChange24h>=0?'var(--bull)':'var(--bear)'],
+      ['Binance 현물',r.isSpot?'✓ 상장':'미상장',r.isSpot?'var(--spot)':'var(--text3)'],
+      ['Binance 선물',r.isFut?'✓ 상장':'미상장',r.isFut?'var(--fut)':'var(--text3)'],
+    ],sc.s6.sigs)+
+    sec(7,'var(--gold)','DexScreener',sc.s7?.score||0,20,
+      r.dex?.hasDex ? [
+        ['5분 매수비율',r.dex.buyPct5m+'%',r.dex.buyPct5m>=60?'var(--bull)':r.dex.buyPct5m<=40?'var(--bear)':'var(--white)'],
+        ['5분 거래 B/S',`${r.dex.buys5m} / ${r.dex.sells5m}`,'var(--text2)'],
+        ['1H 매수비율',r.dex.buyPct1h+'%',r.dex.buyPct1h>=60?'var(--bull)':r.dex.buyPct1h<=40?'var(--bear)':'var(--text2)'],
+        ['5분 가격',(r.dex.pm5>=0?'+':'')+r.dex.pm5.toFixed(2)+'%',r.dex.pm5>=0?'var(--bull)':'var(--bear)'],
+        ['1H 가격',(r.dex.ph1>=0?'+':'')+r.dex.ph1.toFixed(2)+'%',r.dex.ph1>=0?'var(--bull)':'var(--bear)'],
+        ['6H 가격',(r.dex.ph6>=0?'+':'')+r.dex.ph6.toFixed(2)+'%',r.dex.ph6>=0?'var(--bull)':'var(--bear)'],
+        ['DEX 유동성','$'+fmtB(r.dex.liq),r.dex.liq>100000?'var(--bull)':r.dex.liq<10000?'var(--bear)':'var(--text2)'],
+        ['5분 거래량','$'+fmtB(r.dex.vol5m),'var(--text2)'],
+        ['DEX',r.dex.dexName||'—','var(--text2)'],
+      ] : [['데이터','없음','var(--text3)']],
+      sc.s7?.sigs||[])+
+    sec(8,'var(--blue)','홀더 비율 분석',sc.s8?.score||0,15,[
+      ['홀더당 평균','$'+(sc.s8?.avgHold||0).toFixed(0),sc.s8?.avgHold<500?'var(--bull)':sc.s8?.avgHold>5000?'var(--bear)':'var(--white)'],
+      ['유통율',sc.s8?.circRatio!=null?sc.s8.circRatio+'%':'—',sc.s8?.circRatio>60?'var(--bull)':sc.s8?.circRatio<30?'var(--bear)':'var(--text2)'],
+      ['홀더당 거래수',sc.s8?.txPerHolder!=null?sc.s8.txPerHolder:'—',sc.s8?.txPerHolder>10?'var(--bear)':'var(--text2)'],
+    ],sc.s8?.sigs||[])+
+    sec(9,'var(--gold)','매집 신호',sc.s9?.score||0,25,[
+      ['매집 조건',`${sc.s9?.condCount||0}/5 충족`,sc.s9?.condCount>=4?'var(--bull)':sc.s9?.condCount>=2?'var(--warn)':'var(--text2)'],
+      ['매집 중',sc.s9?.isAccumulating?'✓ 매집 진행':'—',sc.s9?.isAccumulating?'var(--bull)':'var(--text2)'],
+      ['충족 조건',(sc.s9?.conditions||[]).join(', ')||'없음','var(--text2)'],
+    ],sc.s9?.sigs||[])+
+    sec(10,'var(--bull)','🚀 급등 전 신호',sc.s10?.score||0,25,[
+      ['신호 수',`${sc.s10?.trigCount||0}개`,sc.s10?.trigCount>=3?'var(--bull)':sc.s10?.trigCount>=2?'var(--warn)':'var(--text2)'],
+      ['급등 임박',sc.s10?.isPrePump?'🚀 임박!':'—',sc.s10?.isPrePump?'var(--bull)':'var(--text2)'],
+      ['감지 신호',(sc.s10?.triggers||[]).join(', ')||'없음','var(--text2)'],
+    ],sc.s10?.sigs||[])+
+    sec(11,'var(--bear)','🚨 급락 전 신호',sc.s11?.score||0,25,[
+      ['경보 수',`${sc.s11?.warnCount||0}개`,sc.s11?.warnCount>=3?'var(--bear)':sc.s11?.warnCount>=2?'var(--warn)':'var(--text2)'],
+      ['급락 임박',sc.s11?.isPreDump?'🚨 위험!':'—',sc.s11?.isPreDump?'var(--bear)':'var(--text2)'],
+      ['경보 내용',(sc.s11?.warnings||[]).join(', ')||'없음','var(--text2)'],
+      r.isExtreme?['⚡ 판정','EXTREME VOLATILITY','var(--warn)']:['충돌','없음','var(--text3)'],
+    ],sc.s11?.sigs||[])+
+    sec(12,'var(--warn)','🏷 섹터 분류',sc.s12?.score||0,10,[
+      ['섹터',sc.s12?.sector||r.sector||'기타','var(--gold)'],
+      ['섹터 평균점수',sc.s12?.avgSectorScore!=null?(sc.s12.avgSectorScore>=0?'+':'')+sc.s12.avgSectorScore.toFixed(0)+'점':'—',sc.s12?.avgSectorScore>10?'var(--bull)':sc.s12?.avgSectorScore<-10?'var(--bear)':'var(--text2)'],
+      ['동일 섹터 종목',sc.s12?.sectorCount!=null?sc.s12.sectorCount+'개':'—','var(--text2)'],
+    ],sc.s12?.sigs||[])+
+    sec(13,'var(--gold)','🔥 멀티 거래소 수급 비교',sc.s15?.score||0,20,[
+      ['MEXC 거래량',r.mexcVol!=null?'$'+fmtB(r.mexcVol):'—',r.mexcVol>500000?'var(--bull)':'var(--text2)'],
+      ['MEXC/Binance 비율',r.mexcRatio!=null?r.mexcRatio+'배':'—',r.mexcRatio>2?'var(--bull)':r.mexcRatio<0.3?'var(--bear)':'var(--text2)'],
+      ['MEXC 24H%',r.mexcPct!=null?(r.mexcPct>=0?'+':'')+r.mexcPct.toFixed(2)+'%':'—',r.mexcPct>0?'var(--bull)':'var(--bear)'],
+      ['Bitget 거래량',r.bitgetVol!=null?'$'+fmtB(r.bitgetVol):'—',r.bitgetVol>200000?'var(--bull)':'var(--text2)'],
+      ['Bitget/Binance 비율',r.bitgetRatio!=null?r.bitgetRatio+'배':'—',r.bitgetRatio>1.5?'var(--bull)':'var(--text2)'],
+      ['Bitget 24H%',r.bitgetPct!=null?(r.bitgetPct>=0?'+':'')+r.bitgetPct.toFixed(2)+'%':'—',r.bitgetPct>0?'var(--bull)':'var(--bear)'],
+      ['Alpha 24H%',(r.percentChange24h>=0?'+':'')+r.percentChange24h.toFixed(2)+'%',r.percentChange24h>0?'var(--bull)':'var(--bear)'],
+      ['MEXC 선행',r.mexcPct!=null&&r.mexcPct>r.percentChange24h+4?`+${(r.mexcPct-r.percentChange24h).toFixed(1)}%p 선행`:'—',r.mexcPct>r.percentChange24h+4?'var(--gold)':'var(--text3)'],
+    ],sc.s15?.sigs||[])+
+    sec(14,'var(--blue)','멀티 FR 비교',sc.s14?.score||0,15,[
+      ['Binance FR',sc.s14?.binanceFR!=null?(sc.s14.binanceFR>0?'+':'')+sc.s14.binanceFR.toFixed(5)+'%':'미조회',sc.s14?.binanceFR<-0.03?'var(--bull)':sc.s14?.binanceFR>0.03?'var(--bear)':'var(--text2)'],
+      ['MEXC FR',sc.s14?.mexcFR!=null?(sc.s14.mexcFR>0?'+':'')+sc.s14.mexcFR.toFixed(5)+'%':'미조회',sc.s14?.mexcFR<-0.03?'var(--bull)':sc.s14?.mexcFR>0.03?'var(--bear)':'var(--text2)'],
+      ['Bitget FR',sc.s14?.bitgetFR!=null?(sc.s14.bitgetFR>0?'+':'')+sc.s14.bitgetFR.toFixed(5)+'%':'미조회',sc.s14?.bitgetFR<-0.03?'var(--bull)':sc.s14?.bitgetFR>0.03?'var(--bear)':'var(--text2)'],
+      ['FR 격차',sc.s14?.spread!=null?sc.s14.spread.toFixed(5)+'%':'—',sc.s14?.spread>0.05?'var(--warn)':'var(--text2)'],
+      ['평균 FR',sc.s14?.avgFR!=null?(sc.s14.avgFR>0?'+':'')+sc.s14.avgFR.toFixed(5)+'%':'—','var(--text2)'],
+    ],sc.s14?.sigs||[]);
+
+  document.getElementById('ddPanel').classList.add('open');
+  document.getElementById('vb-t').textContent=`◈ ${r.symbol} (${r.name}) — Hunt Score ${r.huntScore>0?'+':''}${r.huntScore}`;
+  document.getElementById('vb-sigs').innerHTML=r.allSigs.slice(0,18).map(s=>`<div class="vsig vs-${s.type}">${s.t}</div>`).join('');
+  const vEl=document.getElementById('vverdict');
+  vEl.className='vverdict '+r.vClass;
+  vEl.textContent=r.verdict;
+  document.getElementById('vnote').textContent=
+    `섹터: ${r.sector||'기타'} · 상승신호 ${r.allSigs.filter(s=>s.type==='bull').length}개 · 하락신호 ${r.allSigs.filter(s=>s.type==='bear').length}개`+
+    (r.mexcRatio>2&&r.mexcPct>r.percentChange24h+3?' · 🔥 MEXC 선행 수급 감지':'')+
+    (r.isExtreme?' · ⚡ 극단 변동성 경보':'')+
+    ' — Alpha Terminal 와이코프 구조 교차 확인 권장';
+
+  document.getElementById('vbox').classList.add('open');
+  document.getElementById('ddPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function closeDd(){
+  selectedSym=null;
+  document.getElementById('ddPanel').classList.remove('open');
+  document.getElementById('vbox').classList.remove('open');
+  if(tg)tg.BackButton.hide();
+  if(results.length)renderTable();
+}
+if(tg)tg.BackButton.onClick(()=>{if(selectedSym)closeDd();});
+
+(function(){
+  const _c=[45208,54844,51088,32,47588,47588,32,50500,52852];
+  const _a=[65,76,80,72,65,32,72,85,78,84,69,82];
+  const _p=[67,114,101,97,116,101,100,32,98,121];
+  const cn=()=>String.fromCharCode(..._c);
+  const by=()=>String.fromCharCode(..._p);
+  let _b=false;
+  function _r(){
+    if(_b)return;_b=true;
+    try{
+      document.title=cn()+' | '+String.fromCharCode(..._a);
+      const wt=document.getElementById('_wmt');
+      if(wt&&wt.textContent!=='◈ '+cn())wt.textContent='◈ '+cn();
+      const hc=document.getElementById('_hcn');
+      if(hc&&hc.textContent!==cn())hc.textContent=cn();
+      const wm=document.getElementById('wm');
+      if(wm&&wm.style.display==='none')wm.style.display='block';
+      if(!document.getElementById('_hcn')){
+        const hdr=document.querySelector('header .h-right');
+        if(hdr){
+          const cr=document.createElement('div');
+          cr.className='creator';cr.style.cursor='pointer';
+          cr.onclick=()=>window.open('https://t.me/easychartgo','_blank');
+          cr.innerHTML=`<div class="c-lbl">${by()}</div><div class="c-name" id="_hcn">${cn()}</div>`;
+          hdr.insertBefore(cr,hdr.firstChild);
+        }
+      }
+    }finally{_b=false;}
+  }
+  _r();setInterval(_r,5000);
+})();
+</script>
+</body>
+</html>
