@@ -12,6 +12,7 @@ function base(overrides: Partial<ConfluenceInput> = {}): ConfluenceInput {
     ssr: null,
     fundingFlip: null,
     liqMagnet: null,
+    options: null,
     ...overrides,
   };
 }
@@ -126,6 +127,31 @@ describe('computeConfluence', () => {
       },
     }));
     expect(r.score).toBeLessThan(0);
+  });
+
+  it('high skew (fear premium) is contrarian bullish via options', () => {
+    const r = computeConfluence(base({
+      options: { putCallRatioOi: 1.0, putCallRatioVol: 1.0, skew25d: 12, atmIvNearTerm: 50 },
+    }));
+    expect(r.score).toBeGreaterThan(0);
+    expect(r.contributions[0].source).toBe('options');
+    expect(r.contributions[0].reason).toContain('fear premium');
+  });
+
+  it('negative skew (complacency) is contrarian bearish via options', () => {
+    const r = computeConfluence(base({
+      options: { putCallRatioOi: 1.0, putCallRatioVol: 1.0, skew25d: -4, atmIvNearTerm: 30 },
+    }));
+    expect(r.score).toBeLessThan(0);
+    expect(r.contributions[0].reason).toContain('complacent');
+  });
+
+  it('extreme high P/C ratio reinforces contrarian bullish', () => {
+    const r = computeConfluence(base({
+      options: { putCallRatioOi: 1.6, putCallRatioVol: 1.5, skew25d: 9, atmIvNearTerm: 50 },
+    }));
+    expect(r.score).toBeGreaterThan(0);
+    // Both skew and PCR push bullish — magnitude should exceed skew-only case.
   });
 
   it('sorts contributions by magnitude, top has at most 3', () => {

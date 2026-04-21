@@ -66,6 +66,20 @@ export interface FundingFlipPayload {
   consecutiveIntervals: number;
 }
 
+export interface OptionsSnapshotPayload {
+  currency: string;
+  at: number;
+  underlyingPrice: number;
+  totalOI: { call: number; put: number; total: number };
+  totalVolume24h: { call: number; put: number };
+  putCallRatioOi: number;
+  putCallRatioVol: number;
+  skew25d: number;
+  atmIvNearTerm: number;
+  counts: { callStrikes: number; putStrikes: number; nearTermInstruments: number };
+  expiries: Array<{ expiry: string; daysToExpiry: number; callOi: number; putOi: number; atmIv: number | null }>;
+}
+
 export interface AdapterInput {
   analyze: AnalyzeEnvelope | null;
   venueDivergence?: VenueDivergencePayload | null;
@@ -74,6 +88,7 @@ export interface AdapterInput {
   ssr?: SsrPayload | null;
   rvCone?: RvConePayload | null;
   fundingFlip?: FundingFlipPayload | null;
+  optionsSnapshot?: OptionsSnapshotPayload | null;
 }
 
 /**
@@ -192,6 +207,30 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
       current: regime,
       state: regime,
       at: f.at,
+    };
+  }
+
+  // ── Options snapshot (Pillar 2 — W-0122-C1) ──────────────────────────
+  if (input.optionsSnapshot) {
+    const o = input.optionsSnapshot;
+    // Put/Call ratio gauge — presented as percentage of historical distribution.
+    // Without full history we map |PCR - 1| to percentile band heuristically:
+    // PCR 1.0 → p50, 1.5 → p90 (put-heavy), 0.67 → p90 (call-heavy but same magnitude).
+    const pcrDelta = Math.abs(o.putCallRatioOi - 1);
+    const pcrPct = 50 + Math.sign(o.putCallRatioOi - 1) * Math.min(45, pcrDelta * 90);
+    out.put_call_ratio = {
+      current: o.putCallRatioOi,
+      percentile: { value: pcrPct, window: '30d' },
+      sparkline: [o.putCallRatioOi, o.putCallRatioVol],
+      at: o.at,
+    };
+    // 25d skew: IV points (put - call). Positive = fear premium on puts.
+    const skewPct = 50 + Math.max(-45, Math.min(45, o.skew25d * 4));
+    out.options_skew_25d = {
+      current: o.skew25d,
+      percentile: { value: skewPct, window: '30d' },
+      sparkline: [o.skew25d],
+      at: o.at,
     };
   }
 

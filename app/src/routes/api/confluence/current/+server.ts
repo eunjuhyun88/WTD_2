@@ -59,6 +59,19 @@ interface FlipPayload {
 }
 interface LiqCell { priceBucket: number; timeBucket: number; intensity: number; side?: string }
 interface LiqPayload { cells?: LiqCell[]; currentPrice?: number }
+interface OptionsPayload {
+  putCallRatioOi?: number;
+  putCallRatioVol?: number;
+  skew25d?: number;
+  atmIvNearTerm?: number;
+}
+
+/** Map non-BTCUSDT spot symbols onto Deribit's BTC/ETH option currencies. */
+function symbolToDeribitCurrency(sym: string): string | null {
+  if (sym.startsWith('BTC')) return 'BTC';
+  if (sym.startsWith('ETH')) return 'ETH';
+  return null;
+}
 
 /** Reduce liq heatmap cells into {aboveDistancePct, belowDistancePct, intensity} snapshot. */
 function summarizeLiq(
@@ -105,8 +118,10 @@ export const GET: RequestHandler = async ({ url, getClientAddress, fetch: _kitFe
 
   const origin = url.origin;
 
+  const deribitCurrency = symbolToDeribitCurrency(symbol);
+
   // Parallel aggregate — any failure → null, composition still works.
-  const [analyze, venueDiv, rvCone, ssr, flip, liq] = await Promise.all([
+  const [analyze, venueDiv, rvCone, ssr, flip, liq, options] = await Promise.all([
     // analyze is auth-protected; we're server-side so we use fetchSelf but it will 401 unless
     // we attach a cookie. For now: accept that pattern score may be missing when unauth'd — a
     // separate read-only public analyze endpoint will be added in W-0122-Confluence-P2.
@@ -117,6 +132,9 @@ export const GET: RequestHandler = async ({ url, getClientAddress, fetch: _kitFe
     fetchSelf<SsrPayload>(origin, `/api/market/stablecoin-ssr`),
     fetchSelf<FlipPayload>(origin, `/api/market/funding-flip?symbol=${symbol}`),
     fetchSelf<LiqPayload>(origin, `/api/market/liq-clusters?symbol=${symbol}&window=4h`),
+    deribitCurrency
+      ? fetchSelf<OptionsPayload>(origin, `/api/market/options-snapshot?currency=${deribitCurrency}`)
+      : Promise.resolve(null),
   ]);
 
   const input: ConfluenceInput = {
@@ -153,6 +171,14 @@ export const GET: RequestHandler = async ({ url, getClientAddress, fetch: _kitFe
         }
       : null,
     liqMagnet: liq?.currentPrice ? summarizeLiq(liq, liq.currentPrice) : null,
+    options: options && options.skew25d != null && options.putCallRatioOi != null
+      ? {
+          putCallRatioOi: options.putCallRatioOi,
+          putCallRatioVol: options.putCallRatioVol ?? options.putCallRatioOi,
+          skew25d: options.skew25d,
+          atmIvNearTerm: options.atmIvNearTerm ?? 0,
+        }
+      : null,
   };
 
   const result = computeConfluence(input);
