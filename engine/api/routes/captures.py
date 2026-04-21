@@ -313,37 +313,8 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
     }
 
 
-@router.get("/{capture_id}")
-async def get_capture(capture_id: str) -> dict:
-    capture = _capture_store.load(capture_id)
-    if capture is None:
-        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
-    return {"ok": True, "capture": capture.to_dict()}
-
-
-@router.get("")
-async def list_captures(
-    user_id: str | None = None,
-    pattern_slug: str | None = None,
-    symbol: str | None = None,
-    status: str | None = None,
-    limit: int = Query(default=100, ge=1, le=500),
-) -> dict:
-    captures = _capture_store.list(
-        user_id=user_id,
-        pattern_slug=pattern_slug,
-        symbol=symbol,
-        status=status,
-        limit=limit,
-    )
-    return {
-        "ok": True,
-        "captures": [capture.to_dict() for capture in captures],
-        "count": len(captures),
-    }
-
-
 # ── Chart annotations (TradingView overlay feed) ────────────────────────────
+# NOTE: must be registered BEFORE /{capture_id} to avoid path collision
 
 @router.get("/chart-annotations")
 async def get_chart_annotations(
@@ -410,6 +381,36 @@ async def get_chart_annotations(
         "timeframe": timeframe,
         "count": len(annotations),
         "annotations": annotations,
+    }
+
+
+@router.get("/{capture_id}")
+async def get_capture(capture_id: str) -> dict:
+    capture = _capture_store.load(capture_id)
+    if capture is None:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    return {"ok": True, "capture": capture.to_dict()}
+
+
+@router.get("")
+async def list_captures(
+    user_id: str | None = None,
+    pattern_slug: str | None = None,
+    symbol: str | None = None,
+    status: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+) -> dict:
+    captures = _capture_store.list(
+        user_id=user_id,
+        pattern_slug=pattern_slug,
+        symbol=symbol,
+        status=status,
+        limit=limit,
+    )
+    return {
+        "ok": True,
+        "captures": [capture.to_dict() for capture in captures],
+        "count": len(captures),
     }
 
 
