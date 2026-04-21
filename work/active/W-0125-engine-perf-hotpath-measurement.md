@@ -102,7 +102,7 @@
 - [x] App `/api/patterns/stats` now uses engine bulk stats endpoint
 - [x] Engine `get_stats_sync()` record scan count reduced from 3 to 1 per slug
 - [x] Refinement routes now share one cached stats snapshot per TTL window
-- [ ] Explicit route/function timing instrumentation still pending
+- [x] Explicit route/function timing instrumentation — engine middleware X-Process-Time-Ms header + slow-request WARNING; app /api/patterns/stats ingress timer log
 
 ## Exit Criteria
 
