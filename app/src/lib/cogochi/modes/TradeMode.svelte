@@ -1,6 +1,6 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import { fetchTerminalBundle } from '$lib/api/terminalBackend';
+  import { fetchAnalyzeAndChart } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
@@ -39,7 +39,7 @@
     const tf = timeframe;
     chartLoading = true;
     lastCandleTime = null;
-    fetchTerminalBundle({ symbol: sym, tf })
+    fetchAnalyzeAndChart({ symbol: sym, tf })
       .then(result => {
         chartPayload = result.chartPayload ?? null;
         analyzeData = result.analyze ?? null;
