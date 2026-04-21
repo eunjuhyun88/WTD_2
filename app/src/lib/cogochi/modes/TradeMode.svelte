@@ -162,13 +162,25 @@
   }
 
   // ── Confluence Engine (W-0122 master score) ──────────────────────────
+  interface ConfluenceHistoryEntry { at: number; score: number; confidence: number; regime: string; divergence: boolean }
+
   let confluence = $state<ConfluenceResult | null>(null);
+  let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
 
   async function refreshConfluence() {
     try {
       const res = await fetch(`/api/confluence/current?symbol=${symbol}&tf=${timeframe}`);
       if (!res.ok) return;
       confluence = (await res.json()) as ConfluenceResult;
+    } catch { /* tolerate */ }
+  }
+
+  async function refreshConfluenceHistory() {
+    try {
+      const res = await fetch(`/api/confluence/history?symbol=${symbol}&limit=96`);
+      if (!res.ok) return;
+      const body = (await res.json()) as { entries?: ConfluenceHistoryEntry[] };
+      confluenceHistory = body.entries ?? [];
     } catch { /* tolerate */ }
   }
 
@@ -185,6 +197,7 @@
     fundingFlip = null;
     optionsSnapshot = null;
     confluence = null;
+    confluenceHistory = [];
     void refreshVenueDivergence();
     void refreshLiqClusters();
     void refreshIndicatorContext();
@@ -193,10 +206,12 @@
     void refreshFundingFlip();
     void refreshOptionsSnapshot();
     void refreshConfluence();
+    void refreshConfluenceHistory();
     const fastIv = setInterval(() => {
       void refreshVenueDivergence();
       void refreshLiqClusters();
       void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
+      void refreshConfluenceHistory(); // pull updated sparkline entries
     }, 60_000);
     const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
     // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min, options is 5min.
@@ -609,7 +624,7 @@
             <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
           </div>
           {#if confluence}
-            <ConfluenceBanner value={confluence} compact />
+            <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
           {/if}
           <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE INDICATORS" layout="row" />
           <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" />
@@ -857,7 +872,7 @@
             {/if}
           </div>
           {#if confluence}
-            <ConfluenceBanner value={confluence} />
+            <ConfluenceBanner value={confluence} history={confluenceHistory} />
           {/if}
           <div class="evidence-grid" role="list" aria-label="Evidence items">
             {#each evidenceItems as item}

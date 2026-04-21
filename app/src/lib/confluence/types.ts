@@ -51,6 +51,14 @@ export interface ConfluenceResult {
   /** True when ≥2 contributions have opposite signs AND both have magnitude ≥ 0.3.
    *  Divergence moments are rare high-alpha windows. */
   divergence: boolean;
+
+  /** Phase 2 — how many consecutive readings have been in divergence. Populated by
+   *  the `/api/confluence/current` endpoint from the ring buffer, not by the
+   *  pure-function scorer. Safe to ignore / undefined in unit tests. */
+  divergenceStreak?: number;
+
+  /** Phase 2 — how many consecutive readings have been in the same regime bucket. */
+  sameRegimeStreak?: number;
 }
 
 /** Static weights used in Phase 1 before the Flywheel learns real weights.

@@ -16,6 +16,7 @@ import type { RequestHandler } from './$types';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { computeConfluence } from '$lib/confluence/score';
 import type { ConfluenceInput } from '$lib/confluence/score';
+import { pushConfluence, streakBack } from '$lib/server/confluenceHistory';
 
 const VALID_SYMBOL = /^[A-Z0-9]{3,12}USDT$/;
 const VALID_TF = /^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/;
@@ -64,6 +65,13 @@ interface OptionsPayload {
   putCallRatioVol?: number;
   skew25d?: number;
   atmIvNearTerm?: number;
+  gamma?: {
+    pinLevel?: number | null;
+    pinDistancePct?: number | null;
+    maxPain?: number | null;
+    maxPainDistancePct?: number | null;
+    pinDirection?: 'above' | 'below' | 'at' | null;
+  };
 }
 
 /** Map non-BTCUSDT spot symbols onto Deribit's BTC/ETH option currencies. */
@@ -177,11 +185,29 @@ export const GET: RequestHandler = async ({ url, getClientAddress, fetch: _kitFe
           putCallRatioVol: options.putCallRatioVol ?? options.putCallRatioOi,
           skew25d: options.skew25d,
           atmIvNearTerm: options.atmIvNearTerm ?? 0,
+          pinDistancePct: options.gamma?.pinDistancePct ?? null,
+          maxPainDistancePct: options.gamma?.maxPainDistancePct ?? null,
         }
       : null,
   };
 
   const result = computeConfluence(input);
-  cache.set(cacheKey, { at: Date.now(), payload: result });
-  return json(result, { headers: { 'X-Cache': 'MISS' } });
+
+  // Phase 2: push into in-memory ring buffer for history/streak queries.
+  pushConfluence(symbol, {
+    at: result.at,
+    score: result.score,
+    confidence: result.confidence,
+    regime: result.regime,
+    divergence: result.divergence,
+  });
+
+  // Attach derived streaks so the UI can flag persistent regimes without
+  // a second round-trip. Streaks are evaluated over the in-memory ring only.
+  const divergenceStreak = streakBack(symbol, e => e.divergence);
+  const sameRegimeStreak = streakBack(symbol, e => e.regime === result.regime);
+  const enriched = { ...result, divergenceStreak, sameRegimeStreak };
+
+  cache.set(cacheKey, { at: Date.now(), payload: enriched });
+  return json(enriched, { headers: { 'X-Cache': 'MISS' } });
 };
