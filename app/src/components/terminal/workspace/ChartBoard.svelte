@@ -23,6 +23,10 @@
   import { RangePrimitive } from '../chart/primitives/RangePrimitive';
   // ── Layer 2 overlay (W-0086) ────────────────────────────────────────────────
   import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
+  // ── Layer 3: Capture annotations (W-0120) ───────────────────────────────────
+  import CaptureAnnotationLayer from '../chart/CaptureAnnotationLayer.svelte';
+  import CaptureReviewDrawer    from '../chart/CaptureReviewDrawer.svelte';
+  import type { CaptureAnnotation } from '../chart/primitives/CaptureMarkerPrimitive';
   import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
   import type { Time } from 'lightweight-charts';
   import { DataFeed } from '$lib/chart/DataFeed';
@@ -316,6 +320,10 @@
   // ── Layer 1: Range primitive (W-0086 / W-0117) ────────────────────────────
   let rangePrimitive: RangePrimitive | null = null;
   let saveModeUnsubscribe: (() => void) | null = null;
+
+  // ── Layer 3: Capture annotations (W-0120) ────────────────────────────────
+  let candleSeriesForAnnotations = $state<ISeriesApi<'Candlestick'> | null>(null);
+  let selectedCapture = $state<CaptureAnnotation | null>(null);
 
   // Drag state — managed as plain variables (not reactive) to avoid cycles
   let _dragActive = false;
@@ -754,6 +762,7 @@
       );
       candleSeriesRef = candleSeries;
       priceSeries = candleSeries;
+      candleSeriesForAnnotations = candleSeries;  // Layer 3: capture overlay
       // Attach range primitive to candlestick series (Layer 1, W-0086)
       attachRangePrimitive();
     }
@@ -1717,6 +1726,19 @@
     showSaveModal = false;
   }}
   onSaved={handleModalSaved}
+/>
+
+<!-- Layer 3: Capture annotation overlay (W-0120) -->
+<CaptureAnnotationLayer
+  series={candleSeriesForAnnotations}
+  {symbol}
+  timeframe={tf}
+  onSelect={(ann) => { selectedCapture = ann; }}
+/>
+<CaptureReviewDrawer
+  annotation={selectedCapture}
+  onClose={() => { selectedCapture = null; }}
+  onVerdict={(id, verdict) => { selectedCapture = null; }}
 />
 
 <!-- Toast: saved confirmation -->
