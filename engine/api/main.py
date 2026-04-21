@@ -145,6 +145,16 @@ app.add_middleware(
 )
 
 
+import re as _re
+
+def _route_label(path: str) -> str:
+    """Normalise dynamic path segments so metric keys stay bounded."""
+    path = _re.sub(r'/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', '/{uuid}', path)
+    path = _re.sub(r'/[A-Z]{2,10}USDT?(?=/|$)', '/{symbol}', path)
+    path = _re.sub(r'/\d+(?=/|$)', '/{id}', path)
+    return path
+
+
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
     start = time.perf_counter()
@@ -152,7 +162,7 @@ async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
     increment("http.requests_total")
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000.0
-    observe_ms(f"http.route.{request.url.path}", duration_ms)
+    observe_ms(f"http.route.{_route_label(request.url.path)}", duration_ms)
     observe_ms("http.request_duration_ms", duration_ms)
     increment(f"http.status.{response.status_code}")
     response.headers["x-request-id"] = request_id

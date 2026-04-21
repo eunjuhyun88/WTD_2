@@ -83,4 +83,12 @@ def get_public_runtime_security_warnings() -> list[str]:
 
 
 def assert_public_runtime_security() -> None:
-    return None
+    errors = get_public_runtime_security_errors()
+    if errors:
+        raise RuntimeError(
+            "Engine runtime security check failed:\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
+    import logging
+    for warning in get_public_runtime_security_warnings():
+        logging.getLogger(__name__).warning("security_runtime: %s", warning)
