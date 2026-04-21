@@ -125,20 +125,11 @@ export const GET: RequestHandler = async ({ fetch, url, cookies, getClientAddres
   try {
     const pair = normalizePair(url.searchParams.get('pair'));
     const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
-    const authenticated = await isAuthenticated(cookies);
-    const requestedPersist = toPersistFlag(url.searchParams.get('persist'), true);
-    const persist = requestedPersist && authenticated;
-
-    if (!authenticated && !persist) {
-      const { payload, cacheStatus } = await publicMarketSnapshotCache.run(
-        buildPublicSnapshotCacheKey(pair, timeframe),
-        async () => buildSuccessPayload(await collectMarketSnapshot(fetch, { pair, timeframe, persist: false })),
-      );
-      return publicSuccessResponse(payload, cacheStatus);
-    }
-
-    const snapshot = await collectMarketSnapshot(fetch, { pair, timeframe, persist });
-    return privateSuccessResponse(snapshot);
+    const { payload, cacheStatus } = await publicMarketSnapshotCache.run(
+      buildPublicSnapshotCacheKey(pair, timeframe),
+      async () => buildSuccessPayload(await collectMarketSnapshot(fetch, { pair, timeframe, persist: false })),
+    );
+    return publicSuccessResponse(payload, cacheStatus);
   } catch (error: any) {
     return errorResponse(error, 'get');
   }

@@ -8,10 +8,18 @@ import { readRaw } from './providers';
 import { KnownRawId } from '$lib/contracts/ids';
 import {
   computeServerSignalSnapshot,
-  type ServerExtendedMarketData as ExtendedMarketData,
-  type ServerMarketContext as MarketContext,
   type ServerSignalSnapshot as SignalSnapshot,
 } from '$lib/server/cogochi/signalSnapshot';
+import type { ServerExtendedMarketData as ExtendedMarketData } from '$lib/server/cogochi/signalSnapshot';
+import {
+  getScanMarketMaxParallelSymbols,
+  mapWithConcurrencyLimit,
+} from '$lib/server/scan/concurrency';
+import {
+  buildBaseSignalSnapshotBundle,
+  mapForceOrders,
+  toDepthSnapshot,
+} from '$lib/server/scan/normalize';
 
 // --- Public types ---------------------------------------------------
 
@@ -182,76 +190,33 @@ async function scanSingleSymbol(
 
     if (!klines || klines.length === 0) return null;
 
-    const currentPrice = klines[klines.length - 1].close;
-    const change24h = ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0;
-    const volume24h = ticker ? parseFloat(ticker.quoteVolume) || 0 : 0;
-
-    // OI change percentage
-    let oiChangePct = 0;
-    if (oiHist.length >= 2) {
-      const latest = oiHist[oiHist.length - 1].sumOpenInterestValue;
-      const prev = oiHist[0].sumOpenInterestValue;
-      if (prev > 0) oiChangePct = ((latest - prev) / prev) * 100;
-    }
-
-    // Taker buy/sell ratio (most recent)
-    const latestTaker = takerData.length > 0 ? takerData[takerData.length - 1] : null;
-    const takerRatio = latestTaker ? latestTaker.buySellRatio : 1.0;
-
-    // Build MarketContext
-    const ctx: MarketContext = {
-      pair: symbol,
+    const bundle = buildBaseSignalSnapshotBundle({
+      symbol,
       timeframe: '4h',
       klines,
-      klines1h: klines1h.length > 0 ? klines1h : undefined,
-      klines1d: klines1d.length > 0 ? klines1d : undefined,
-      ticker: ticker
-        ? {
-            change24h,
-            volume24h,
-            high24h: parseFloat(ticker.highPrice) || 0,
-            low24h: parseFloat(ticker.lowPrice) || 0,
-          }
-        : undefined,
-      derivatives: {
-        oi: oiPoint,
-        funding,
-        lsRatio: lsTop,
-      },
-      sentiment: {
-        fearGreed,
-      },
-    };
+      klines1h,
+      klines1d,
+      ticker,
+      funding,
+      oiPoint,
+      lsTop,
+      fearGreed,
+      oiHistory: oiHist,
+      takerData,
+    });
 
-    // Build ExtendedMarketData
     const ext: ExtendedMarketData = {
-      currentPrice,
-      priceChangePct: change24h,
-      oiChangePct,
-      takerRatio,
-      depth: depth
-        ? { bidVolume: depth.bidVolume, askVolume: depth.askVolume, ratio: depth.ratio }
-        : undefined,
-      forceOrders: forceData.map((o) => ({
-        side: o.side,
-        price: o.price,
-        qty: o.origQty,
-        time: o.time,
-      })),
-      klines1dExt: klines1d.length > 0
-        ? klines1d.map((k) => ({
-            time: k.time,
-            open: k.open,
-            high: k.high,
-            low: k.low,
-            close: k.close,
-            volume: k.volume,
-          }))
-        : undefined,
+      currentPrice: bundle.currentPrice,
+      priceChangePct: bundle.change24h,
+      oiChangePct: bundle.oiChangePct,
+      takerRatio: bundle.takerRatio ?? 1.0,
+      depth: toDepthSnapshot(depth),
+      forceOrders: mapForceOrders(forceData),
+      klines1dExt: bundle.klines1dExt,
     };
 
     // Compute 17-layer signal snapshot
-    const snapshot = computeServerSignalSnapshot(ctx, symbol, '4h', ext);
+    const snapshot = computeServerSignalSnapshot(bundle.marketContext, symbol, '4h', ext);
 
     // Determine notable flags
     const hasWyckoff =
@@ -265,9 +230,9 @@ async function scanSingleSymbol(
 
     return {
       symbol,
-      price: currentPrice,
-      change24h,
-      volume24h,
+      price: bundle.currentPrice,
+      change24h: bundle.change24h,
+      volume24h: bundle.volume24h,
       alphaScore: snapshot.alphaScore,
       alphaLabel: snapshot.alphaLabel,
       verdict: snapshot.verdict,
@@ -314,9 +279,12 @@ export async function scanMarket(config: ScanConfig): Promise<ScanResult[]> {
   // Fetch Fear & Greed once (shared across all symbols)
   const fearGreed = await readRaw(KnownRawId.FEAR_GREED_VALUE, {}).catch(() => null);
 
-  // Scan all symbols in parallel (rate limiter handles concurrency)
-  const promises = symbols.map((symbol) => scanSingleSymbol(symbol, fearGreed));
-  const settled = await Promise.allSettled(promises);
+  // Bound multi-symbol fan-out so cold scans do not stampede upstream reads.
+  const settled = await mapWithConcurrencyLimit(
+    symbols,
+    getScanMarketMaxParallelSymbols(),
+    (symbol) => scanSingleSymbol(symbol, fearGreed),
+  );
 
   const results: ScanResult[] = [];
   for (const outcome of settled) {
