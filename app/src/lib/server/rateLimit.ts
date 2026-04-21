@@ -188,6 +188,9 @@ export const emergencyMeetingLimiter = createRateLimiter({ windowMs: 60_000, max
 /** Chart klines poll: 120 per minute per IP (15s interval × 4 tabs + burst headroom) */
 export const chartKlinesLimiter = createRateLimiter({ windowMs: 60_000, max: 120 });
 
+/** Unified chart feed (klines + OI + liq + funding in one call): same budget as klines */
+export const chartFeedLimiter = createRateLimiter({ windowMs: 60_000, max: 120 });
+
 /** Heavy engine paths (score, deep, backtest, train): 60 per minute per IP */
 export const engineProxyLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
 

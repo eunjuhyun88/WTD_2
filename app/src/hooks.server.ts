@@ -38,6 +38,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/derivatives',
   '/api/coingecko/',
   '/api/feargreed',
+  '/api/chart/',          // chart klines + feed — public market data, rate-limited
   '/api/cogochi/',
   '/api/coinalyze',
   '/api/macro/',

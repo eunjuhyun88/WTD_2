@@ -12,11 +12,18 @@ import {
   type MacdPoint, type TimePoint,
 } from './indicatorUtils';
 import { getSharedCache, setSharedCache } from '$lib/server/sharedCache';
+import { fetchLiquidationHistoryServer } from '$lib/server/providers/coinalyze';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface KlineBar {
   time: number; open: number; high: number; low: number; close: number; volume: number;
+}
+
+export interface LiqBar {
+  time: number;
+  longUsd: number;   // positive — long liquidations (red on chart)
+  shortUsd: number;  // positive — short liquidations (green on chart)
 }
 
 export interface ChartPayload {
@@ -25,6 +32,7 @@ export interface ChartPayload {
   klines: KlineBar[];
   oiBars:      Array<{ time: number; value: number; color: string }>;
   fundingBars: Array<{ time: number; value: number; color: string }>;
+  liqBars:     LiqBar[];
   indicators: {
     sma5:   TimePoint[];
     sma20:  TimePoint[];
@@ -222,11 +230,19 @@ export async function getChartSeries(args: {
     return { payload: shared, cacheStatus: 'hit' };
   }
 
-  // Parallel fetch: klines + funding (OI needs the period key resolved first)
-  const [klines, fundingBars] = await Promise.all([
+  // Parallel fetch: klines + funding + liquidations (OI needs period key)
+  const pair = symbol.replace('USDT', '/USDT').replace('BUSD', '/BUSD');
+  const [klines, fundingBars, liqRaw] = await Promise.all([
     fetchKlines(symbol, interval, limit, startTime, fetchImpl),
     fetchFunding(symbol, limit, fetchImpl),
+    fetchLiquidationHistoryServer(pair, tf, Math.min(limit, 168)).catch(() => []),
   ]);
+
+  const liqBars: LiqBar[] = liqRaw.map((pt) => ({
+    time: pt.time,
+    longUsd: pt.long,
+    shortUsd: pt.short,
+  }));
 
   const oiPeriod = OI_PERIOD_MAP[tf];
   const oiBars = oiPeriod ? await fetchOI(symbol, oiPeriod, limit, fetchImpl) : [];
@@ -242,7 +258,7 @@ export async function getChartSeries(args: {
 
   const indicators = computeIndicators(klines, htfKlines, emaTfOk ? emaTf : undefined);
 
-  const payload: ChartPayload = { symbol, tf, klines, oiBars, fundingBars, indicators };
+  const payload: ChartPayload = { symbol, tf, klines, oiBars, fundingBars, liqBars, indicators };
   chartCache.set(cacheKey, { expiresAt: now + CHART_CACHE_TTL_MS, payload });
   void setSharedCache('chart', cacheKey, payload, CHART_CACHE_TTL_MS);
 

@@ -3,10 +3,11 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "node_modules/.bin/vite dev --port $PORT --strictPort"],
       "cwd": "app",
-      "port": 5173
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }
