@@ -106,6 +106,7 @@
   import JudgePanel from '../../components/terminal/peek/JudgePanel.svelte';
   import CenterPanel from '../../components/terminal/peek/CenterPanel.svelte';
   import RightRailPanel from '../../components/terminal/peek/RightRailPanel.svelte';
+  import VerdictInboxPanel from '../../components/terminal/peek/VerdictInboxPanel.svelte';
 
   import type { TerminalAsset, TerminalVerdict, TerminalEvidence } from '$lib/types/terminal';
   import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
@@ -178,6 +179,7 @@
   let peekCaptures = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let peekSimilar = $state<Awaited<ReturnType<typeof fetchPatternCaptures>>>([]);
   let peekLoadingSimilar = $state(false);
+  let reviewInboxCount = $state(0);
 
   // ── Capture modal ──────────────────────────────────────────
   // On desktop the persistent left rail is always shown; drawer is for tablet/mobile only
@@ -777,6 +779,16 @@
     } catch {}
   }
 
+  async function loadReviewInboxCount() {
+    try {
+      const res = await fetch('/api/captures/outcomes?limit=100');
+      if (res.ok) {
+        const data = await res.json() as { count?: number };
+        reviewInboxCount = data.count ?? 0;
+      }
+    } catch {}
+  }
+
   // ── PEEK drawer loaders ────────────────────────────────────
   async function loadPeekCaptures() {
     try {
@@ -1141,6 +1153,7 @@
     loadTerminalPersistenceState();
     loadEvents();
     loadPeekCaptures();
+    loadReviewInboxCount();
     peekCapturesInterval = setInterval(() => runIfVisible(loadPeekCaptures), 120_000);
     for (const item of buildTerminalBootstrapTasks({
       loadTrending,
@@ -1558,6 +1571,7 @@
       analyzeCount={peekAnalyzeCount}
       scanCount={peekScanCount}
       judgeCount={peekJudgeCount}
+      reviewCount={reviewInboxCount}
       onCaptureSaved={handleCaptureSaved}
       onTfChange={(t) => setActiveTimeframe(normalizeTimeframe(t))}
       onDismissLabCta={() => showLabCta = false}
@@ -1649,6 +1663,13 @@
           onSaveJudgment={handlePeekSaveJudgment}
           onRejudge={handlePeekRejudge}
           onOpenCapture={handlePeekOpenCapture}
+        />
+      {/snippet}
+      {#snippet review()}
+        <VerdictInboxPanel
+          onVerdictSubmit={(id, verdict) => {
+            if (reviewInboxCount > 0) reviewInboxCount = reviewInboxCount - 1;
+          }}
         />
       {/snippet}
     </CenterPanel>
