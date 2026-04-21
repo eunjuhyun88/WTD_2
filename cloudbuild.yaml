@@ -26,8 +26,8 @@ steps:
       - --platform
       - managed
       - --allow-unauthenticated
-      - --set-env-vars
-      - APP_ORIGIN=${_APP_ORIGIN},ENGINE_PORT=8000,ENGINE_ENABLE_SCHEDULER=false
+      - --update-env-vars
+      - APP_ORIGIN=${_APP_ORIGIN},ENGINE_PORT=8000,ENGINE_ENABLE_SCHEDULER=false,ENGINE_ALLOWED_HOSTS=${_ALLOWED_HOSTS}
 
 images:
   - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
@@ -37,5 +37,6 @@ substitutions:
   _AR_REPOSITORY: cloud-run-source-deploy
   _IMAGE_NAME: wtd-engine-api
   _SERVICE_NAME: cogotchi
-  _SERVICE_REGION: us-east4
-  _APP_ORIGIN: https://example.vercel.app
+  _SERVICE_REGION: asia-southeast1
+  _APP_ORIGIN: https://app.cogotchi.dev
+  _ALLOWED_HOSTS: cogotchi-103912432221.asia-southeast1.run.app

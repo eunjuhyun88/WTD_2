@@ -14,10 +14,12 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
 from api.routes import patterns_thread
+from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.library import PATTERN_LIBRARY, get_pattern
+from patterns.registry import PATTERN_REGISTRY_STORE
 from patterns.scanner import run_pattern_scan
 from patterns.types import PatternObject, PhaseCondition
 from scoring.block_evaluator import _BLOCKS
@@ -63,12 +65,41 @@ class _PatternAlertPolicyBody(BaseModel):
     mode: str
 
 
+class _CaptureBody(BaseModel):
+    symbol: str
+    user_id: str | None = None
+    phase: str = ""
+    timeframe: str = "1h"
+    capture_kind: str = "pattern_candidate"
+    candidate_transition_id: str | None = None
+    scan_id: str | None = None
+    user_note: str | None = None
+    chart_context: dict = {}
+    feature_snapshot: dict | None = None
+    block_scores: dict = {}
+    outcome_id: str | None = None
+    verdict_id: str | None = None
+
+
 # ── Library & States ─────────────────────────────────────────────────────────
 
 @router.get("/library")
 async def list_patterns() -> dict:
     """List all patterns in the library."""
     return await asyncio.to_thread(patterns_thread.list_patterns_sync)
+
+
+@router.get("/registry")
+async def get_pattern_registry() -> dict:
+    """Return the JSON-backed pattern registry (versioned metadata per slug)."""
+    def _sync():
+        entries = PATTERN_REGISTRY_STORE.list_all()
+        return {
+            "ok": True,
+            "count": len(entries),
+            "entries": [e.to_dict() for e in entries],
+        }
+    return await asyncio.to_thread(_sync)
 
 
 @router.get("/states")
@@ -180,6 +211,46 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
     _ledger.save(outcome)
     LEDGER_RECORD_STORE.append_verdict_record(outcome)
     return {"ok": True, "outcome_id": outcome.id}
+
+
+# ── Capture Plane ────────────────────────────────────────────────────────────
+
+@router.post("/{slug}/capture")
+async def record_capture(slug: str, body: _CaptureBody) -> dict:
+    """Record a Save Setup capture event into the ledger capture plane.
+
+    Links the capture to a durable phase transition via candidate_transition_id
+    so the full chain capture_id → transition_id → outcome_id → verdict is traceable.
+    """
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
+
+    capture = CaptureRecord(
+        capture_kind=body.capture_kind,  # type: ignore[arg-type]
+        user_id=body.user_id,
+        symbol=body.symbol,
+        pattern_slug=slug,
+        phase=body.phase,
+        timeframe=body.timeframe,
+        candidate_transition_id=body.candidate_transition_id,
+        scan_id=body.scan_id,
+        user_note=body.user_note,
+        chart_context=body.chart_context,
+        feature_snapshot=body.feature_snapshot,
+        block_scores=body.block_scores,
+        outcome_id=body.outcome_id,
+        verdict_id=body.verdict_id,
+    )
+    LEDGER_RECORD_STORE.append_capture_record(capture)
+    return {
+        "ok": True,
+        "capture_id": capture.capture_id,
+        "pattern_slug": slug,
+        "symbol": body.symbol,
+        "status": capture.status,
+    }
 
 
 @router.post("/{slug}/evaluate")
