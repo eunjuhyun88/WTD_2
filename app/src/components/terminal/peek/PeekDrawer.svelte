@@ -11,17 +11,19 @@
   import { fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
 
-  type Tab = 'analyze' | 'scan' | 'judge';
+  type Tab = 'analyze' | 'scan' | 'judge' | 'review';
 
   interface Props {
     analyzeCount?: number;
     scanCount?: number;
     judgeCount?: number;
+    reviewCount?: number;
   }
   let {
     analyzeCount = 0,
     scanCount = 0,
     judgeCount = 0,
+    reviewCount = 0,
   }: Props = $props();
 
   // ── State ───────────────────────────────────────────────────────────────
@@ -43,7 +45,7 @@
       if (raw) {
         const saved = JSON.parse(raw);
         if (typeof saved.open === 'boolean') open = saved.open;
-        if (saved.tab === 'analyze' || saved.tab === 'scan' || saved.tab === 'judge') activeTab = saved.tab;
+        if (saved.tab === 'analyze' || saved.tab === 'scan' || saved.tab === 'judge' || saved.tab === 'review') activeTab = saved.tab;
         if (typeof saved.h === 'number' && saved.h >= 25 && saved.h <= 75) heightPct = saved.h;
       }
     } catch {}
@@ -57,6 +59,7 @@
       else if (e.key === '1') { activeTab = 'analyze'; open = true; persist(); }
       else if (e.key === '2') { activeTab = 'scan'; open = true; persist(); }
       else if (e.key === '3') { activeTab = 'judge'; open = true; persist(); }
+      else if (e.key === '4') { activeTab = 'review'; open = true; persist(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -101,12 +104,14 @@
     { id: 'analyze', label: 'ANALYZE', hint: '분석 · 가설 · 근거' },
     { id: 'scan',    label: 'SCAN',    hint: '유사 셋업 · 스캐너 알림' },
     { id: 'judge',   label: 'JUDGE',   hint: '판정 · 재판정' },
+    { id: 'review',  label: 'REVIEW',  hint: '결과 검토 · 플라이휠' },
   ];
 
   function count(t: Tab): number {
     if (t === 'analyze') return analyzeCount;
     if (t === 'scan') return scanCount;
-    return judgeCount;
+    if (t === 'judge') return judgeCount;
+    return reviewCount;
   }
 </script>
 
@@ -139,7 +144,7 @@
       {/each}
     </div>
     <div class="bar-right">
-      <span class="hint">SPACE toggle · 1 2 3 tabs</span>
+      <span class="hint">SPACE toggle · 1 2 3 4 tabs</span>
       <button class="chevron" onclick={toggle} aria-label={open ? 'Close' : 'Open'}>
         {open ? '▾' : '▴'}
       </button>
@@ -158,6 +163,8 @@
         <slot name="scan" />
       {:else if activeTab === 'judge'}
         <slot name="judge" />
+      {:else if activeTab === 'review'}
+        <slot name="review" />
       {/if}
     </div>
   {/if}

@@ -980,3 +980,166 @@ and costs nothing incremental on the free tier.
 annotation data changes every 15 minutes (Cloud Scheduler cadence), so a WebSocket
 connection would be open 99.8% of the time with no data flowing. HTTP polling has lower
 infrastructure complexity and sufficient freshness.
+
+---
+
+## Section 6: Vercel Environment Audit
+
+### 6A. Current State
+
+**Project:** `cogochi-2` (eunjuhyun88s-projects/cogochi-2)
+**Region:** `sin1` (Singapore) — correctly paired with GCP `asia-southeast1`
+
+**Production env (10 vars):**
+
+| Variable | Status | Notes |
+|----------|--------|-------|
+| ENGINE_URL | ✅ Set (1h ago) | Must point to cogotchi asia-southeast1 URL |
+| UPSTASH_REDIS_REST_URL | ✅ Set (3d ago) | Rate limiting + sharedCache live |
+| UPSTASH_REDIS_REST_TOKEN | ✅ Set (3d ago) | Rate limiting + sharedCache live |
+| NVIDIA_API_KEY | ✅ Set (7d ago) | LLM fallback |
+| CEREBRAS_API_KEY | ✅ Set (1h ago) | Primary LLM inference |
+| GROQ_API_KEY / GROQ_API_KEYS | ✅ Set (1h ago) | Fast inference |
+| DEEPSEEK_API_KEY | ✅ Set (1h ago) | LLM reasoning |
+| MISTRAL_API_KEY | ✅ Set (1h ago) | LLM fallback |
+| KIMI_API_KEY | ✅ Set (1h ago) | LLM fallback |
+| DATABASE_URL | ❌ Missing | **All Supabase DB writes will fail in production** |
+
+**Preview has 46 vars; Production has 10.** Everything below exists in Preview but not Production.
+
+---
+
+### 6B. Missing from Production — Priority Order
+
+#### P0 — Breaks core features immediately
+
+| Variable | Impact if missing |
+|----------|-----------------|
+| `DATABASE_URL` | Verdict writes, capture history, trajectory data all fail silently |
+| `DATABASE_URL__COGOCHI_2` | Same — app likely tries both |
+
+#### P1 — Breaks data panels and intel (market data)
+
+| Variable | Feature impact |
+|----------|--------------|
+| `COINGECKO_API_KEY` | Coin metadata, price charts, trending |
+| `COINALYZE_API_KEY` | Funding rate, OI, liquidation data (core intel panel) |
+| `CRYPTOQUANT_API_KEY` | On-chain flow data |
+| `ETHERSCAN_API_KEY` | Wallet intel, on-chain data |
+| `DUNE_API_KEY` | Advanced on-chain analytics |
+| `ALCHEMY_API_KEY` / `ALCHEMY_RPC_URL` | RPC for wallet analysis |
+| `LUNARCRUSH_API_KEY` | Social sentiment signals |
+| `FRED_API_KEY` | Macro indicators (DXY, rates) |
+
+#### P2 — Additional capabilities
+
+| Variable | Feature impact |
+|----------|--------------|
+| `TELEGRAM_BOT_TOKEN` | Alert notifications |
+| `GEMINI_API_KEY` | Multi-model comparison features |
+| `QWEN_API_KEY` | LLM fallback pool |
+| `OPENROUTER_API_KEY` | Model routing |
+| `SERPER_API_KEY` / `TAVILY_API_KEY` | Web search for research agent |
+| `CRYPTORANK_API_KEY` | Token rankings + narrative data |
+
+---
+
+### 6C. Supabase Connection — Critical Path
+
+The app uses `DATABASE_URL` (Postgres connection string from Supabase) for all data writes.
+Currently **zero** of these env vars are in Production:
+
+```
+DATABASE_URL
+DATABASE_URL__COGOCHI_2
+SUPABASE_URL            (if used directly via supabase-js client)
+SUPABASE_ANON_KEY       (if used directly via supabase-js client)
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+Check which style the app uses:
+
+```bash
+# From app/ dir — determine which client is used
+grep -r "DATABASE_URL\|SUPABASE_URL\|createClient" app/src/lib/server/ --include="*.ts" -l
+```
+
+Then copy the values from Preview to Production.
+
+---
+
+### 6D. ENGINE_URL Verification
+
+The `ENGINE_URL` was just set 1h ago in Production. Verify it is pointing at the correct service:
+
+```bash
+# Check what URL was set (redacted but you can see the domain)
+vercel env ls production | grep ENGINE_URL
+
+# Correct URL format:
+# https://cogotchi-<hash>-as.a.run.app  (asia-southeast1)
+# NOT:
+# https://cogotchi-<hash>-ue.a.run.app  (us-east4)  ← old/wrong
+# NOT:
+# https://wtd-2-<hash>-uk.a.run.app     (us-east4)  ← legacy, to be deleted
+```
+
+The domain suffix tells you the region:
+- `-as.a.run.app` = asia-southeast1 ✅
+- `-ue.a.run.app` = us-east4 ❌
+- `-uk.a.run.app` = us-east4 ❌
+
+---
+
+### 6E. Vercel → GCP Data Flow
+
+```
+Browser
+  │
+  ▼
+Vercel Edge (sin1, Singapore)
+  │  SvelteKit SSR / API routes
+  │  reads: UPSTASH_REDIS (edge cache)
+  │  reads: DATABASE_URL → Supabase (verdict display)
+  │  reads: COINGECKO/COINALYZE/etc (market data panels)
+  │
+  ├──POST /api/analyze → ENGINE_URL (cogotchi asia-southeast1)
+  ├──GET  /api/patterns/candidates → ENGINE_URL
+  ├──POST /api/captures/bulk_import → ENGINE_URL
+  │
+  ▼
+cogotchi (asia-southeast1, ~1-5ms)
+  │  FastAPI engine
+  │  reads: Binance REST (market data)
+  │  reads/writes: Supabase (captures, verdicts, trajectories)
+  │  reads/writes: Upstash Redis (kline cache, rate state)
+  │
+  ▼
+cogotchi-worker (asia-southeast1)  ← triggered by Cloud Scheduler
+  │  pattern scans, outcome resolution, ML training
+  │  writes: Supabase (scan results, outcome records)
+```
+
+---
+
+### 6F. Immediate Actions (to do alongside P0 infra cleanup)
+
+```bash
+# Step 1: Verify ENGINE_URL domain suffix (run from app/)
+cd app && vercel env pull .env.production.local --environment=production
+grep ENGINE_URL .env.production.local
+rm .env.production.local  # don't commit this
+
+# Step 2: Copy DATABASE_URL from Preview to Production
+vercel env add DATABASE_URL production
+# Paste the value from .env.local or from Supabase dashboard
+
+# Step 3: Add P1 data API keys to Production
+# (run vercel env add <KEY> production for each missing key)
+# Use .env.local as the source — it has all Preview values
+```
+
+The app is currently **read-only in production** — market data panels may work (if the
+API routes call the engine which has its own data keys), but any write path
+(verdicts, captures, user preferences, trajectory data) silently fails because
+`DATABASE_URL` is absent.

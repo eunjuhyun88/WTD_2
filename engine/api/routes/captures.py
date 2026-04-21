@@ -41,6 +41,8 @@ from capture.types import CaptureKind, CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from patterns.state_store import PatternStateStore
 
+log = logging.getLogger("engine.captures")
+
 router = APIRouter()
 _capture_store = CaptureStore()
 _state_store = PatternStateStore()
