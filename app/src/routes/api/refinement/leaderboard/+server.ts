@@ -6,10 +6,9 @@ export const config = {
   runtime: 'nodejs22.x',
   regions: ['iad1'],
   memory: 256,
-  maxDuration: 30,
+  maxDuration: 15,
   isr: {
-    // Scanner cadence is 15 min; 120s cache is sufficient and reduces GCP cold-start pressure
-    expiration: 120,
+    expiration: 300,
   },
 };
 
@@ -17,10 +16,10 @@ const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, ''
 
 export const GET: RequestHandler = async () => {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
+  const timeout = setTimeout(() => controller.abort(), 12_000);
 
   try {
-    const res = await fetch(`${ENGINE_URL}/live-signals`, {
+    const res = await fetch(`${ENGINE_URL}/refinement/leaderboard`, {
       method: 'GET',
       headers: { accept: 'application/json' },
       signal: controller.signal,
@@ -30,14 +29,14 @@ export const GET: RequestHandler = async () => {
       status: res.status,
       headers: {
         'content-type': res.headers.get('content-type') ?? 'application/json',
-        'cache-control': 's-maxage=120, stale-while-revalidate=600',
+        'cache-control': 's-maxage=300, stale-while-revalidate=600',
       },
     });
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
-      throw error(504, 'engine live-signals timeout');
+      throw error(504, 'engine refinement/leaderboard timeout');
     }
-    throw error(502, 'engine live-signals unavailable');
+    throw error(502, 'engine refinement/leaderboard unavailable');
   } finally {
     clearTimeout(timeout);
   }
