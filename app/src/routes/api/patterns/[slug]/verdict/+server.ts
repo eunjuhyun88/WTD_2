@@ -24,6 +24,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
 
     return json(await res.json());
   } catch (err) {
-    return json({ ok: false, error: String(err) }, { status: 503 });
+    console.error('[api/patterns/[slug]/verdict] engine error:', err);
+    return json({ ok: false, error: 'engine unavailable' }, { status: 503 });
   }
 };

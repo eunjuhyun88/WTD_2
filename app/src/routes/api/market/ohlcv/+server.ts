@@ -82,6 +82,7 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
       { headers: { 'Cache-Control': 'public, max-age=60' } }
     );
   } catch (err: any) {
-    return json({ error: err.message || 'Failed to fetch OHLCV' }, { status: 502 });
+    console.error('[api/market/ohlcv] upstream error:', err);
+    return json({ error: 'Failed to fetch OHLCV' }, { status: 502 });
   }
 };
