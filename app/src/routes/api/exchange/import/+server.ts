@@ -6,7 +6,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { query } from '$lib/server/db.js';
-import { fetchBinanceTrades, saveImportedTrades, decryptApiKey } from '$lib/server/exchange/binanceConnector.js';
+import {
+  decryptApiKey,
+  fetchBinanceTrades,
+  isExchangeEncryptionConfigured,
+  saveImportedTrades,
+} from '$lib/server/exchange/binanceConnector.js';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { runIpRateLimitGuard } from '$lib/server/authSecurity';
 import { exchangeImportLimiter } from '$lib/server/rateLimit';
@@ -46,6 +51,10 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
 
     if (!connectionId) {
       return json({ error: 'connectionId required' }, { status: 400 });
+    }
+
+    if (!isExchangeEncryptionConfigured()) {
+      return json({ error: 'Exchange import is unavailable' }, { status: 503 });
     }
 
     // Get connection details
