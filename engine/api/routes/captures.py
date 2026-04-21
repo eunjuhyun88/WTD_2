@@ -26,6 +26,9 @@ Verdict Inbox (W-0088 Phase C, flywheel axis 3):
 """
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -35,6 +38,8 @@ from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore
 from patterns.state_store import PatternStateStore
+
+log = logging.getLogger("engine.captures")
 
 router = APIRouter()
 _capture_store = CaptureStore()
@@ -334,3 +339,82 @@ async def list_captures(
         "captures": [capture.to_dict() for capture in captures],
         "count": len(captures),
     }
+
+
+# ── Auto-capture job (called by /jobs/auto_capture/run) ──────────────────────
+
+_PRIORITY_SLUGS = [
+    "funding-flip-reversal-v1",
+    "radar-golden-entry-v1",
+    "tradoor-oi-reversal-v1",
+    "wyckoff-spring-reversal-v1",
+    "liquidity-sweep-reversal-v1",
+    "whale-accumulation-reversal-v1",
+    "var-volume-absorption-reversal-v1",
+    "wsr-wyckoff-spring-reversal-v1",
+]
+_DEDUP_WINDOW_SECONDS = 86400  # 24h
+
+
+def _get_recent_keys() -> set[str]:
+    """Return symbol+slug keys captured in the last 24h."""
+    cutoff_ms = (int(time.time()) - _DEDUP_WINDOW_SECONDS) * 1000
+    captures = _capture_store.list(limit=500)
+    return {
+        f"{c.symbol}:{c.pattern_slug}"
+        for c in captures
+        if c.captured_at_ms >= cutoff_ms
+    }
+
+
+async def _auto_capture_job() -> None:
+    """Auto-capture current pattern candidates (for Cloud Scheduler)."""
+    from api.routes.patterns import router as _patterns_router  # noqa: F401
+    from patterns.thread import get_all_candidates_sync  # type: ignore[import]
+
+    candidates_data = await asyncio.to_thread(get_all_candidates_sync)
+    candidates: list[dict[str, Any]] = candidates_data.get("candidates", [])
+
+    if not candidates:
+        log.info("auto_capture: no candidates found")
+        return
+
+    # Sort by priority order
+    slug_rank = {slug: i for i, slug in enumerate(_PRIORITY_SLUGS)}
+    candidates.sort(key=lambda c: slug_rank.get(c.get("pattern_slug", ""), 999))
+
+    recent_keys = await asyncio.to_thread(_get_recent_keys)
+
+    stored = 0
+    skipped_dedup = 0
+    for cand in candidates[:20]:  # max 20 per run
+        symbol = cand.get("symbol", "")
+        slug = cand.get("pattern_slug", "")
+        key = f"{symbol}:{slug}"
+
+        if key in recent_keys:
+            skipped_dedup += 1
+            continue
+
+        record = CaptureRecord(
+            capture_kind="pattern_candidate",
+            user_id="auto",
+            symbol=symbol,
+            pattern_slug=slug,
+            pattern_version=cand.get("pattern_version", 1),
+            phase=cand.get("current_phase", ""),
+            timeframe=cand.get("timeframe", "1h"),
+            captured_at_ms=now_ms(),
+            chart_context={"auto_capture": True, "p_win": cand.get("p_win")},
+            block_scores=cand.get("block_scores", {}),
+            status="pending_outcome",
+        )
+        _capture_store.save(record)
+        LEDGER_RECORD_STORE.append_capture_record(record)
+        recent_keys.add(key)
+        stored += 1
+
+    log.info(
+        "auto_capture done: stored=%d skipped_dedup=%d total_candidates=%d",
+        stored, skipped_dedup, len(candidates),
+    )
