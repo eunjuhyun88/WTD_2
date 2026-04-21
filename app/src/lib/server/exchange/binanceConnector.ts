@@ -51,6 +51,7 @@ interface BinanceFuturesTrade {
 
 // ─── API Key encryption (simple AES-256-GCM) ──────────────────
 
+<<<<<<< HEAD
 const ENCRYPTION_SALT = 'cogochi-salt';
 
 export function isExchangeEncryptionConfigured(): boolean {
@@ -61,15 +62,35 @@ export function isExchangeEncryptionConfigured(): boolean {
 function getEncryptionKey(): string {
   const key = process.env.EXCHANGE_ENCRYPTION_KEY?.trim();
   if (!key) throw new Error('EXCHANGE_ENCRYPTION_KEY is required');
+||||||| ad4c56be
+const ENCRYPTION_KEY = (() => {
+  const key = process.env.EXCHANGE_ENCRYPTION_KEY;
+  if (!key) throw new Error('EXCHANGE_ENCRYPTION_KEY is required');
+=======
+function getEncryptionKey(): string {
+  const key = process.env.EXCHANGE_ENCRYPTION_KEY;
+  if (!key) throw new Error('EXCHANGE_ENCRYPTION_KEY is required for exchange operations');
+>>>>>>> 359ec10803d65440c745ee3a113d290d8477991b
   return key;
 }
+<<<<<<< HEAD
 
 function deriveEncryptionKey(): Buffer {
   return crypto.scryptSync(getEncryptionKey(), ENCRYPTION_SALT, 32);
 }
+||||||| ad4c56be
+})();
+=======
+>>>>>>> 359ec10803d65440c745ee3a113d290d8477991b
 
 export function encryptApiKey(plaintext: string): string {
+<<<<<<< HEAD
   const key = deriveEncryptionKey();
+||||||| ad4c56be
+  const key = crypto.scryptSync(ENCRYPTION_KEY, 'cogochi-salt', 32);
+=======
+  const key = crypto.scryptSync(getEncryptionKey(), 'cogochi-salt', 32);
+>>>>>>> 359ec10803d65440c745ee3a113d290d8477991b
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
@@ -80,7 +101,13 @@ export function encryptApiKey(plaintext: string): string {
 
 export function decryptApiKey(ciphertext: string): string {
   const [ivHex, authTagHex, encrypted] = ciphertext.split(':');
+<<<<<<< HEAD
   const key = deriveEncryptionKey();
+||||||| ad4c56be
+  const key = crypto.scryptSync(ENCRYPTION_KEY, 'cogochi-salt', 32);
+=======
+  const key = crypto.scryptSync(getEncryptionKey(), 'cogochi-salt', 32);
+>>>>>>> 359ec10803d65440c745ee3a113d290d8477991b
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
   decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
