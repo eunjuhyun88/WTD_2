@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from api.routes import patterns_thread
 from capture.types import CaptureRecord
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
 from patterns.library import PATTERN_LIBRARY, get_pattern
@@ -25,7 +25,7 @@ from patterns.types import PatternObject, PhaseCondition
 from scoring.block_evaluator import _BLOCKS
 
 router = APIRouter()
-_ledger = LedgerStore()
+_ledger = get_ledger_store()
 
 
 # ── Request models ───────────────────────────────────────────────────────────
@@ -123,18 +123,20 @@ async def trigger_pattern_scan(background_tasks: BackgroundTasks) -> dict:
     return {"status": "scan_started", "patterns": list(PATTERN_LIBRARY.keys())}
 
 
+# ── Bulk read (static paths before parameterised routes) ────────────────────
+
+@router.get("/stats/all")
+async def get_all_stats() -> dict:
+    """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
+    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
+
+
 # ── Per-pattern endpoints ────────────────────────────────────────────────────
 
 @router.get("/{slug}/candidates")
 async def get_candidates(slug: str) -> dict:
     """Entry candidates for a specific pattern."""
     return await asyncio.to_thread(patterns_thread.get_candidates_sync, slug)
-
-
-@router.get("/stats/all")
-async def get_all_stats() -> dict:
-    """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
-    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
 
 
 @router.get("/{slug}/stats")

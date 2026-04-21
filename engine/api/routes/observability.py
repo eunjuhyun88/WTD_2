@@ -21,7 +21,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from capture.store import CaptureStore
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE
 from ledger.types import PatternLedgerRecord
 from patterns.library import PATTERN_LIBRARY
 from patterns.model_registry import PatternModelRegistryStore
@@ -29,7 +29,6 @@ from patterns.model_registry import PatternModelRegistryStore
 router = APIRouter()
 
 _capture_store = CaptureStore()
-_ledger_store = LedgerStore()
 _model_registry = PatternModelRegistryStore()
 
 
@@ -54,16 +53,23 @@ def _count_within(records: list[PatternLedgerRecord], *, record_type: str, since
     )
 
 
+def _count_records(*, record_type: str, since: datetime | None = None) -> int:
+    counter = getattr(LEDGER_RECORD_STORE, "count_records", None)
+    if callable(counter):
+        return int(counter(record_type=record_type, since=since))
+    if since is None:
+        return sum(1 for r in _iter_all_records() if r.record_type == record_type)
+    return _count_within(_iter_all_records(), record_type=record_type, since=since)
+
+
 def compute_flywheel_health(*, now: datetime | None = None) -> dict[str, Any]:
     """Compute the 6 flywheel KPIs. Pure function for testability."""
     now = now or datetime.now()
     since_7d = now - timedelta(days=7)
     since_30d = now - timedelta(days=30)
 
-    records = _iter_all_records()
-
     # axis 1: captures per day (rolling 7d)
-    captures_7d = _count_within(records, record_type="capture", since=since_7d)
+    captures_7d = _count_records(record_type="capture", since=since_7d)
     captures_per_day_7d = captures_7d / 7.0
 
     # axis 1→2: share of captures that have been resolved by the outcome resolver.
@@ -75,15 +81,15 @@ def compute_flywheel_health(*, now: datetime | None = None) -> dict[str, Any]:
     )
 
     # axis 2→3: outcomes that received a user_verdict.
-    outcome_count = sum(1 for r in records if r.record_type == "outcome")
-    verdict_count = sum(1 for r in records if r.record_type == "verdict")
+    outcome_count = _count_records(record_type="outcome")
+    verdict_count = _count_records(record_type="verdict")
     outcomes_to_verdict_rate = (
         verdict_count / outcome_count if outcome_count else 0.0
     )
 
     # axis 3→4: refinement / training_run ledger counts in the last 7 days.
-    verdicts_to_refinement_count_7d = _count_within(
-        records, record_type="training_run", since=since_7d
+    verdicts_to_refinement_count_7d = _count_records(
+        record_type="training_run", since=since_7d
     )
 
     # axis 4: model registry non-empty?
@@ -94,8 +100,8 @@ def compute_flywheel_health(*, now: datetime | None = None) -> dict[str, Any]:
 
     # axis 4: promotion gate pass rate (derive from model records written in
     # the last 30 days vs training_run records in the same window).
-    training_30d = _count_within(records, record_type="training_run", since=since_30d)
-    model_30d = _count_within(records, record_type="model", since=since_30d)
+    training_30d = _count_records(record_type="training_run", since=since_30d)
+    model_30d = _count_records(record_type="model", since=since_30d)
     promotion_gate_pass_rate_30d = (
         model_30d / training_30d if training_30d else 0.0
     )

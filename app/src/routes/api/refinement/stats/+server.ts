@@ -1,6 +1,6 @@
-import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { engineFetch } from '$lib/server/engineTransport';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -12,14 +12,12 @@ export const config = {
   },
 };
 
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
-
 export const GET: RequestHandler = async () => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12_000);
 
   try {
-    const res = await fetch(`${ENGINE_URL}/refinement/stats`, {
+    const res = await engineFetch('/refinement/stats', {
       method: 'GET',
       headers: { accept: 'application/json' },
       signal: controller.signal,

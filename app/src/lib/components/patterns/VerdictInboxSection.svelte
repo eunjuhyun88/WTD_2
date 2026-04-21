@@ -5,8 +5,8 @@
    * Shows outcome_ready captures and lets the founder label each one
    * valid / missed / invalid so the ML refinement loop has ground truth.
    *
-   * Data: GET /api/engine/captures/outcomes?status=outcome_ready
-   * Mutate: POST /api/engine/captures/{id}/verdict  { verdict }
+   * Data: GET /api/captures/outcomes?status=outcome_ready
+   * Mutate: POST /api/captures/{id}/verdict  { verdict }
    */
   import { onMount } from 'svelte';
 
@@ -54,7 +54,7 @@
     loading = true;
     error = '';
     try {
-      const res = await fetch('/api/engine/captures/outcomes?status=outcome_ready&limit=100');
+      const res = await fetch('/api/captures/outcomes?status=outcome_ready&limit=100');
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       items = (data.items ?? []) as InboxItem[];
@@ -68,7 +68,7 @@
   async function submitVerdict(captureId: string, verdict: VerdictLabel) {
     submitting = new Set([...submitting, captureId]);
     try {
-      const res = await fetch(`/api/engine/captures/${captureId}/verdict`, {
+      const res = await fetch(`/api/captures/${captureId}/verdict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ verdict }),

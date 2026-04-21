@@ -2,12 +2,35 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Any
 
 from capture.types import CaptureRecord
+
+log = logging.getLogger("engine.capture")
+
+
+def _supabase_upsert_bg(record: CaptureRecord) -> None:
+    """Mirror a capture record to Supabase in a background thread.
+
+    Fire-and-forget: failures are logged but never raised to callers.
+    Skipped silently if SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are absent.
+    """
+    url = os.environ.get("SUPABASE_URL", "")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not url or not key:
+        return
+    try:
+        from supabase import create_client  # type: ignore[import]
+        sb = create_client(url, key)
+        sb.table("capture_records").upsert(record.to_supabase_dict()).execute()
+    except Exception as exc:
+        log.warning("Supabase upsert failed (non-fatal): %s", exc)
 
 STATE_DIR = Path(__file__).resolve().parent.parent / "state"
 DEFAULT_DB_PATH = STATE_DIR / "pattern_capture.sqlite"
@@ -135,6 +158,8 @@ class CaptureStore:
                     capture.status,
                 ),
             )
+        # Mirror to Supabase asynchronously (fire-and-forget)
+        threading.Thread(target=_supabase_upsert_bg, args=(capture,), daemon=True).start()
         return capture
 
     def load(self, capture_id: str) -> CaptureRecord | None:
@@ -229,7 +254,13 @@ class CaptureStore:
                 f"UPDATE capture_records SET {', '.join(sets)} WHERE capture_id = ?",
                 tuple(params),
             )
-            return cur.rowcount > 0
+            updated = cur.rowcount > 0
+        if updated:
+            # Mirror updated record to Supabase
+            record = self.load(capture_id)
+            if record:
+                threading.Thread(target=_supabase_upsert_bg, args=(record,), daemon=True).start()
+        return updated
 
     @staticmethod
     def _row_to_record(row: sqlite3.Row) -> CaptureRecord:

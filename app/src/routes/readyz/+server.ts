@@ -1,8 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+import { engineFetch } from '$lib/server/engineTransport';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -20,7 +19,7 @@ export const GET: RequestHandler = async () => {
   );
 
   try {
-    const res = await fetch(`${ENGINE_URL}/readyz`, {
+    const res = await engineFetch('/readyz', {
       method: 'GET',
       headers: { accept: 'application/json' }
     });
@@ -51,4 +50,3 @@ export const GET: RequestHandler = async () => {
     }
   );
 };
-

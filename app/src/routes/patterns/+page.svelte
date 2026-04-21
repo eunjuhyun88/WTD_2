@@ -25,9 +25,13 @@
   interface Candidate {
     symbol:     string;
     pattern_id: string;
+    pattern_slug: string;
+    pattern_version: number;
     phase:      number;
     phase_name: string;
+    timeframe: string;
     since:      string | null;
+    candidate_transition_id: string | null;
   }
   interface PatternStats {
     pattern_slug:    string;
@@ -71,6 +75,7 @@
   let lastScan     = $state<string | null>(null);
   let loading      = $state(true);
   let scanning     = $state(false);
+  let savingCandidateIds = $state(new Set<string>());
   let error        = $state<string | null>(null);
 
   // Phase display config
@@ -94,16 +99,25 @@
 
       if (candRes.status === 'fulfilled' && candRes.value.ok) {
         const d = await candRes.value.json();
-        const rawCandidates: Record<string, string[]> = d.entry_candidates ?? {};
-        candidates = Object.entries(rawCandidates).flatMap(([slug, symbols]) =>
-          (symbols as string[]).map((symbol) => ({
-            symbol,
-            pattern_id: slug,
-            phase: 3,
-            phase_name: 'ACCUMULATION',
-            since: null,
-          }))
-        );
+        const records = Array.isArray(d.candidate_records) ? d.candidate_records : [];
+        candidates = records
+          .filter((record: any) => record?.alert_visible !== false)
+          .map((record: any) => ({
+            symbol: String(record.symbol ?? ''),
+            pattern_id: String(record.pattern_slug ?? record.slug ?? ''),
+            pattern_slug: String(record.pattern_slug ?? record.slug ?? ''),
+            pattern_version: Number(record.pattern_version ?? 1),
+            phase: Number(record.phase ?? 3),
+            phase_name: String(record.phase_label ?? 'ACCUMULATION'),
+            timeframe: String(record.timeframe ?? '1h'),
+            since: typeof record.entered_at === 'string' ? record.entered_at : null,
+            candidate_transition_id:
+              typeof record.candidate_transition_id === 'string'
+                ? record.candidate_transition_id
+                : typeof record.transition_id === 'string'
+                  ? record.transition_id
+                  : null,
+          }));
         lastScan = null;
       }
       if (stateRes.status === 'fulfilled' && stateRes.value.ok) {
@@ -156,15 +170,33 @@
     }
   }
 
-  async function submitVerdict(symbol: string, patternId: string, verdict: 'valid' | 'invalid' | 'missed') {
+  async function saveCandidate(candidate: Candidate) {
+    const candidateKey = `${candidate.pattern_slug}:${candidate.symbol}`;
+    savingCandidateIds = new Set([...savingCandidateIds, candidateKey]);
+    error = null;
     try {
-      await fetch(`/api/patterns/${patternId}/verdict`, {
+      const res = await fetch('/api/captures', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol, verdict }),
+        body: JSON.stringify({
+          capture_kind: 'pattern_candidate',
+          symbol: candidate.symbol,
+          pattern_slug: candidate.pattern_slug,
+          pattern_version: candidate.pattern_version,
+          phase: candidate.phase_name,
+          timeframe: candidate.timeframe,
+          candidate_transition_id: candidate.candidate_transition_id,
+        }),
       });
-      await loadAll();
-    } catch {}
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { detail?: string; error?: string }).detail ?? (body as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+    } catch (e) {
+      error = `Save setup failed: ${e}`;
+    } finally {
+      savingCandidateIds = new Set([...savingCandidateIds].filter((id) => id !== candidateKey));
+    }
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -268,6 +300,7 @@
         {:else}
           <div class="candidate-grid">
             {#each candidates.filter((c) => c.phase_name === 'ACCUMULATION') as cand}
+              {@const candidateKey = `${cand.pattern_slug}:${cand.symbol}`}
               <div class="surface-card candidate-card">
                 <div class="cand-top">
                   <span class="cand-sym">{cand.symbol.replace('USDT','')}</span>
@@ -279,8 +312,13 @@
                 </div>
                 <div class="cand-actions">
                   <a class="surface-button-ghost compact-action" href="/cogochi?symbol={cand.symbol}">Open Chart</a>
-                  <button class="surface-button-secondary compact-action valid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'valid')}>Valid</button>
-                  <button class="surface-button-ghost compact-action invalid" onclick={() => submitVerdict(cand.symbol, cand.pattern_id, 'invalid')}>Skip</button>
+                  <button
+                    class="surface-button-secondary compact-action valid"
+                    onclick={() => saveCandidate(cand)}
+                    disabled={!cand.candidate_transition_id || savingCandidateIds.has(candidateKey)}
+                  >
+                    {savingCandidateIds.has(candidateKey) ? 'Saving…' : 'Save Setup'}
+                  </button>
                 </div>
               </div>
             {/each}
@@ -441,7 +479,6 @@
   .cand-actions { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
   .compact-action { min-height: 34px; padding: 0 12px; font-size: 0.8rem; }
   .compact-action.valid { color: #26a69a; border-color: rgba(38,166,154,0.28); }
-  .compact-action.invalid { color: #ef5350; border-color: rgba(239,83,80,0.2); }
 
   .states-shell {
     padding: 0;
