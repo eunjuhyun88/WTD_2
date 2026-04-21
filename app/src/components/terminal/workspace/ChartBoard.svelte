@@ -69,6 +69,8 @@
       label: string;
       color?: string;
     }>;
+    /** Fired when a candle closes (WS k.x=true). Parent can refresh analyze/verdict state. */
+    onCandleClose?: (bar: { time: number; open: number; high: number; low: number; close: number; volume: number }) => void;
   }
 
   let {
@@ -86,6 +88,7 @@
     onTfChange,
     contextMode = 'full',
     alphaMarkers = undefined,
+    onCandleClose,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -618,7 +621,7 @@
     _dataFeed = new DataFeed({ symbol: sym, tf: timeframe });
 
     // Live tick → update price series in real-time
-    _dataFeed.onBar = (bar, _isClosed) => {
+    _dataFeed.onBar = (bar, isClosed) => {
       (priceSeries as ISeriesApi<'Candlestick'> | null)?.update({
         time:  bar.time as UTCTimestamp,
         open:  bar.open,
@@ -627,6 +630,7 @@
         close: bar.close,
       });
       currentPrice = bar.close;
+      if (isClosed) onCandleClose?.(bar);
     };
 
     // Initial historical load → render liq sub-pane

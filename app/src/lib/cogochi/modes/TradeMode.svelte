@@ -26,23 +26,24 @@
   let showCVD = $state(true);
 
   // ── Live chart data ────────────────────────────────────────────────────────
+  // chartPayload is only for ChartBoard's initialData; ChartBoard owns live updates via DataFeed.
+  // analyzeData is refreshed on candle close via ChartBoard's onCandleClose callback.
   let chartPayload = $state<ChartSeriesPayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
   let chartLoading = $state(false);
-  let klineWs: WebSocket | null = null; // plain ref — not $state (reads+writes inside $effect would loop)
-  let lastCandleTime = $state<number | null>(null);
+  let lastCandleTime: number | null = null; // plain ref — guards against duplicate onCandleClose fires
 
-  // Fetch initial bundle
+  // Fetch initial bundle (one-shot per symbol/tf)
   $effect(() => {
     const sym = symbol;
     const tf = timeframe;
     chartLoading = true;
+    lastCandleTime = null;
     fetchTerminalBundle({ symbol: sym, tf })
       .then(result => {
         chartPayload = result.chartPayload ?? null;
         analyzeData = result.analyze ?? null;
         chartLoading = false;
-        // Track the last candle time from initial data
         if (result.chartPayload?.klines?.length) {
           lastCandleTime = result.chartPayload.klines[result.chartPayload.klines.length - 1].time;
         }
@@ -50,57 +51,17 @@
       .catch(() => { chartLoading = false; });
   });
 
-  // WebSocket connection for real-time candle updates + analyze refresh
-  $effect(() => {
-    if (typeof window === 'undefined') return;
-
-    const sym = symbol.toLowerCase();
-    const tf = timeframe;
-    const stream = `${sym}@kline_${tf}`;
-    const wsUrl = `wss://fstream.binance.com/ws/${stream}`;
-
+  // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
+  // On candle close, refresh analyze only — chart live updates are handled inside ChartBoard.
+  async function handleCandleClose(bar: { time: number }) {
+    if (lastCandleTime === bar.time) return; // dedup duplicate fires
+    lastCandleTime = bar.time;
     try {
-      klineWs?.close();
-      klineWs = new WebSocket(wsUrl);
-
-      klineWs.onmessage = (ev: MessageEvent) => {
-        try {
-          const msg = JSON.parse(ev.data as string) as {
-            k: { t: number; x: boolean; c: string; o: string; h: string; l: string; v: string };
-          };
-          const k = msg.k;
-          const candleTime = Math.floor(k.t / 1000);
-
-          // Detect candle closure (x=true) and refetch analyze + chart data
-          if (k.x && lastCandleTime !== candleTime) {
-            lastCandleTime = candleTime;
-            // Refetch analyze + chart data when new candle closes
-            fetchTerminalBundle({ symbol, tf })
-              .then(result => {
-                analyzeData = result.analyze ?? null;
-                // Update chart klines from new fetch
-                if (result.chartPayload) {
-                  chartPayload = result.chartPayload;
-                }
-              })
-              .catch(() => { /* retry on next candle */ });
-          }
-        } catch {
-          // Ignore malformed WS messages
-        }
-      };
-
-      klineWs.onerror = () => { klineWs?.close(); };
-      klineWs.onclose = () => { klineWs = null; };
-    } catch (err) {
-      console.error('WS connection failed:', err);
-    }
-
-    return () => {
-      klineWs?.close();
-      klineWs = null;
-    };
-  });
+      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}`);
+      if (!res.ok) return;
+      analyzeData = (await res.json()) as AnalyzeEnvelope;
+    } catch { /* retry on next candle */ }
+  }
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
     entry: analyzeData.entryPlan.entry,
@@ -444,6 +405,7 @@
         verdictLevels={verdictLevels}
         change24hPct={analyzeData?.change24h ?? null}
         contextMode="chart"
+        onCandleClose={handleCandleClose}
       />
       {#if mobileView !== 'chart'}
         <button class="chart-expand-btn" onclick={() => setMobileView?.('chart')} aria-label="차트 전체 보기">
@@ -695,6 +657,7 @@
             verdictLevels={verdictLevels}
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
+            onCandleClose={handleCandleClose}
           />
         </div>
       </div>
@@ -838,6 +801,7 @@
             verdictLevels={verdictLevels}
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
+            onCandleClose={handleCandleClose}
           />
         </div>
       </div>
@@ -1016,6 +980,7 @@
             verdictLevels={verdictLevels}
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
+            onCandleClose={handleCandleClose}
           />
         </div>
       </div>
@@ -1156,6 +1121,7 @@
           verdictLevels={verdictLevels}
           change24hPct={analyzeData?.change24h ?? null}
           contextMode="chart"
+          onCandleClose={handleCandleClose}
         />
       </div>
     </div>
