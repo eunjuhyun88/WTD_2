@@ -26,6 +26,8 @@ export interface DouniRuntimeConfig {
 }
 
 const STORAGE_KEY = 'douni_runtime';
+// API key uses sessionStorage (tab-scoped) to reduce XSS exfiltration window.
+// It is intentionally not persisted across sessions — users re-enter on each visit.
 const APIKEY_STORAGE = 'douni_api_key';
 const LEGACY_MIGRATION_KEY = 'douni_runtime_migrated_v2';
 
@@ -57,7 +59,7 @@ function loadFromStorage(): DouniRuntimeConfig {
   if (!browser) return { ...DEFAULT };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    const apiKey = localStorage.getItem(APIKEY_STORAGE) ?? '';
+    const apiKey = sessionStorage.getItem(APIKEY_STORAGE) ?? '';
     if (!raw) return { ...DEFAULT, apiKey };
 
     const parsed = JSON.parse(raw) as Partial<DouniRuntimeConfig>;
@@ -88,10 +90,11 @@ function persistToStorage(c: DouniRuntimeConfig): void {
   if (!browser) return;
   const { apiKey, ...rest } = c;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+  // API key stored in sessionStorage only — cleared on tab/browser close.
   if (apiKey) {
-    localStorage.setItem(APIKEY_STORAGE, apiKey);
+    sessionStorage.setItem(APIKEY_STORAGE, apiKey);
   } else {
-    localStorage.removeItem(APIKEY_STORAGE);
+    sessionStorage.removeItem(APIKEY_STORAGE);
   }
 }
 
