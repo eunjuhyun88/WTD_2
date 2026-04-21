@@ -3,7 +3,8 @@
 ## Status
 `SLICE 1 DONE` — PR #124 merged to main (2026-04-21)
 `SLICE 3 DONE` — raw WS in TradeMode replaced with ChartBoard `onCandleClose` callback (2026-04-21, worktree agitated-mcclintock). ChartBoard already owned resilient DataFeed (reconnect+backoff+gap-fill+heartbeat) — TradeMode now rides on that instead of running a duplicate WS. Net: -1 WS per user, -75% fetch on candle close (4→1 endpoint).
-Slice 2 pending — next execution target
+`SLICE 2 DONE` — evidence/proposal/α are all live-bound from analyze; added `fetchAnalyzeAndChart` to halve the per-mount fetch count (4→2).
+All slices done.
 
 ## Goal
 `/cogochi` TradeMode를 실시간 터미널급 차트로 업그레이드.
@@ -26,11 +27,11 @@ evidence/proposal/α를 analyze API 응답에 바인딩한다.
 - [x] `tradePlan` 하드코딩 제거, `verdictLevels`를 analyze entryPlan에서 파생
 - [x] `PhaseChart` 임포트 제거 (ChartBoard로 대체)
 
-### Slice 2 — Evidence/Proposal/α analyze 바인딩
-- [ ] `analyze.deep?.evidence` → `evidenceItems` (없으면 빈 배열)
-- [ ] `analyze.deep?.atr_levels` + `analyze.snapshot?.price` → `proposal`
-- [ ] `analyze.verdict?.confidence_score` → α badge
-- [ ] 필드가 없으면 `/api/cogochi/analyze` 응답 contract 확인 후 adapter 함수 추가
+### Slice 2 — Evidence/Proposal/α analyze 바인딩 (DONE)
+- [x] `evidenceItems` derived from `analyze.snapshot` + `flowSummary` (OI/Funding/CVD/regime/vol_ratio)
+- [x] `proposal` derived from `analyze.entryPlan` (entry/stop/target/R:R)
+- [x] α badge (`confidenceAlpha`) derived from `entryPlan.confidencePct` or `deep.total_score`
+- [x] Adapter: `fetchAnalyzeAndChart()` (2-endpoint lightweight version of fetchTerminalBundle) — used by TradeMode to skip unused snapshot/derivatives calls
 
 ### Slice 3 — Binance WS kline 실시간 (DONE)
 - [x] `btcusdt@kline_<tf>` WebSocket 구독 — ChartBoard.DataFeed 재사용
