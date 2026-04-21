@@ -13,8 +13,10 @@ export const GET: RequestHandler = async ({ getClientAddress }) => {
   if (!scanLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
+  const t0 = performance.now();
   try {
     const res = await engineFetch('/patterns/stats/all');
+    const engineMs = res.headers.get('x-process-time-ms');
     if (!res.ok) return json({ stats: [], ok: false });
 
     const body = await res.json() as {
@@ -25,9 +27,12 @@ export const GET: RequestHandler = async ({ getClientAddress }) => {
       .filter(([, raw]) => !('error' in raw))
       .map(([slug, raw]) => adaptEngineStats(raw, slug));
 
+    const totalMs = Math.round(performance.now() - t0);
+    console.info(`[api/patterns/stats] ${stats.length} patterns total=${totalMs}ms engine=${engineMs ?? '?'}ms`);
     return json({ stats, ok: true });
   } catch (err) {
-    console.error('[api/patterns/stats] engine error:', err);
+    const totalMs = Math.round(performance.now() - t0);
+    console.error(`[api/patterns/stats] engine error after ${totalMs}ms:`, err);
     return json({ stats: [], ok: false, error: 'engine unavailable' });
   }
 };
