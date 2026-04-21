@@ -120,9 +120,13 @@
   let _prevRange = false;
   $effect(() => {
     const active = !!tabState.rangeSelection;
-    if (active && !_prevRange) triggerScan();
-    else if (!active && _prevRange && scanState === 'scanning') cancelScan();
+    const prev = _prevRange;
     _prevRange = active;
+    const scanningNow = scanState;
+    Promise.resolve().then(() => {
+      if (active && !prev) triggerScan();
+      else if (!active && prev && scanningNow === 'scanning') cancelScan();
+    });
   });
 
   function triggerScan() {
@@ -234,21 +238,24 @@
     if (!outcome) return;
     const snap = analyzeData?.snapshot;
     if (!snap) return;
-    judgeSubmitting = true;
-    fetch('/api/cogochi/outcome', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        snapshot: { ...snap, user_verdict: judgeVerdict },
-        outcome: outcome === 'win' ? 1 : outcome === 'loss' ? 0 : -1,
-        symbol,
-        timeframe,
-      }),
-    })
-      .then(r => r.json())
-      .then(d => { judgeSubmitResult = d; })
-      .catch(() => {})
-      .finally(() => { judgeSubmitting = false; });
+    // Move state mutation out of sync effect body to avoid Svelte 5 unsafe-mutation warning
+    Promise.resolve().then(() => {
+      judgeSubmitting = true;
+      fetch('/api/cogochi/outcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          snapshot: { ...snap, user_verdict: judgeVerdict },
+          outcome: outcome === 'win' ? 1 : outcome === 'loss' ? 0 : -1,
+          symbol,
+          timeframe,
+        }),
+      })
+        .then(r => r.json())
+        .then(d => { judgeSubmitResult = d; })
+        .catch(() => {})
+        .finally(() => { judgeSubmitting = false; });
+    });
   });
 
   // Keyboard shortcuts for judge verdict (Y/N)
@@ -315,7 +322,7 @@
 
   $effect(() => {
     if (typeof window === 'undefined') return;
-    _loadAlphaWorldModel();
+    Promise.resolve().then(_loadAlphaWorldModel);
     const iv = setInterval(_loadAlphaWorldModel, 5 * 60 * 1000);
     return () => clearInterval(iv);
   });
@@ -2809,3 +2816,4 @@
     letter-spacing: 0.06em;
   }
 </style>
+
