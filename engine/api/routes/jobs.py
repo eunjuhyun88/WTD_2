@@ -182,7 +182,7 @@ async def run_pattern_scan(
     _: None = Depends(_require_scheduler),
 ) -> JSONResponse:
     """Cloud Scheduler → trigger pattern state machine scan."""
-    from engine.scanner.scheduler import _pattern_scan_job
+    from scanner.scheduler import _pattern_scan_job
     return await _run_with_guard("pattern_scan", _pattern_scan_job())
 
 
@@ -191,7 +191,7 @@ async def run_outcome_resolver(
     _: None = Depends(_require_scheduler),
 ) -> JSONResponse:
     """Cloud Scheduler → run outcome resolution for pending captures."""
-    from engine.scanner.scheduler import _outcome_resolver_job
+    from scanner.scheduler import _outcome_resolver_job
     return await _run_with_guard("outcome_resolver", _outcome_resolver_job())
 
 
@@ -200,7 +200,7 @@ async def run_auto_capture(
     _: None = Depends(_require_scheduler),
 ) -> JSONResponse:
     """Cloud Scheduler → capture current pattern candidates."""
-    from engine.api.routes.captures import _auto_capture_job
+    from api.routes.captures import _auto_capture_job
     return await _run_with_guard("auto_capture", _auto_capture_job())
 
 
