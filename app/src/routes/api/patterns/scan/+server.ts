@@ -15,6 +15,7 @@ export const POST: RequestHandler = async ({ getClientAddress }) => {
     const body = res.ok ? await res.json() : { status: 'error' };
     return json(body);
   } catch (err) {
-    return json({ error: String(err) }, { status: 503 });
+    console.error('[api/patterns/scan] engine error:', err);
+    return json({ error: 'engine unavailable' }, { status: 503 });
   }
 };

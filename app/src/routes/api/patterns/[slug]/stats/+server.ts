@@ -11,6 +11,7 @@ export const GET: RequestHandler = async ({ params }) => {
     if (!res.ok) return json({ error: `Engine ${res.status}` }, { status: res.status });
     return json(await res.json());
   } catch (err) {
-    return json({ error: String(err) }, { status: 503 });
+    console.error('[api/patterns/[slug]/stats] engine error:', err);
+    return json({ error: 'engine unavailable' }, { status: 503 });
   }
 };

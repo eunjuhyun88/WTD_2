@@ -59,6 +59,7 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
       { headers: { 'Cache-Control': 'public, max-age=60' } }
     );
   } catch (err: any) {
-    return json({ error: err.message || 'Failed to fetch OI history' }, { status: 502 });
+    console.error('[api/market/oi] upstream error:', err);
+    return json({ error: 'Failed to fetch OI history' }, { status: 502 });
   }
 };
