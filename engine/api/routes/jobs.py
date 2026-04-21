@@ -23,8 +23,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from cache.kline_cache import _pool as _redis_pool  # type: ignore[attr-defined]
-
 log = logging.getLogger("engine.jobs")
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
