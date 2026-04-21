@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from math import isnan
 
 from ledger.dataset import summarize_pattern_dataset
-from ledger.store import LedgerStore
+from ledger.store import LedgerStore, get_ledger_store
 from patterns.model_registry import MODEL_REGISTRY_STORE
 from research.state_store import ResearchStateStore
 from scoring.lightgbm_engine import MIN_TRAIN_RECORDS
@@ -34,7 +34,7 @@ def derive_pattern_research_objective(
     ledger_store: LedgerStore | None = None,
     state_store: ResearchStateStore | None = None,
 ) -> PatternResearchObjective:
-    ledger_store = ledger_store or LedgerStore()
+    ledger_store = ledger_store or get_ledger_store()
     state_store = state_store or ResearchStateStore()
     summary = summarize_pattern_dataset(ledger_store.list_all(pattern_slug))
     summary_dict = summary.to_dict()

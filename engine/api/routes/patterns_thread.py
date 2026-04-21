@@ -5,8 +5,10 @@ from typing import Any
 
 from fastapi import HTTPException
 
+import time
+
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore, _compute_stats_from_outcomes
 from ledger.types import PatternLedgerRecord
 from patterns.alert_policy import ALERT_POLICY_STORE
 from patterns.library import PATTERN_LIBRARY, get_pattern
@@ -150,10 +152,11 @@ def _summarize_record_family(
     )
 
 
-def get_stats_sync(slug: str, ledger: LedgerStore) -> dict:
+def get_stats_sync(slug: str, ledger: LedgerStore, outcomes: list | None = None) -> dict:
     _require_pattern(slug)
-    stats = ledger.compute_stats(slug)
-    outcomes = ledger.list_all(slug)
+    if outcomes is None:
+        outcomes = ledger.list_all(slug)
+    stats = _compute_stats_from_outcomes(slug, outcomes)
     record_family, latest_training_run_record, latest_model_record = _summarize_record_family(slug)
     registry_entries = MODEL_REGISTRY_STORE.list(slug)
     active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug)
@@ -233,13 +236,33 @@ def get_stats_sync(slug: str, ledger: LedgerStore) -> dict:
 
 
 def get_all_stats_sync(ledger: LedgerStore) -> dict:
-    """Return stats for all known patterns in a single call (avoids N+1 fan-out)."""
+    """Return stats for all known patterns — batch-prefetch outcomes when possible.
+
+    With SupabaseLedgerStore: 1 DB roundtrip (batch_list_all) vs 2N per-slug queries.
+    With FileLedgerStore: falls back to per-slug reads (local dev unchanged).
+    """
+    t0 = time.perf_counter()
+    prefetched: dict[str, list] | None = None
+    if hasattr(ledger, "batch_list_all"):
+        try:
+            prefetched = ledger.batch_list_all()
+        except Exception:
+            prefetched = None
+
     results: dict[str, dict] = {}
     for slug in PATTERN_LIBRARY:
         try:
-            results[slug] = get_stats_sync(slug, ledger)
+            outcomes = prefetched.get(slug, []) if prefetched is not None else None
+            results[slug] = get_stats_sync(slug, ledger, outcomes=outcomes)
         except Exception:
             results[slug] = {"pattern_slug": slug, "error": "unavailable"}
+
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    import logging
+    logging.getLogger("engine.patterns.stats").info(
+        "get_all_stats_sync: %d patterns in %dms (batch=%s)",
+        len(results), elapsed_ms, prefetched is not None,
+    )
     return {"patterns": results, "count": len(results)}
 
 

@@ -79,8 +79,12 @@ export function getRuntimeSecurityErrors(envLike: EnvLike): string[] {
   }
 
   const engineUrl = envLike.ENGINE_URL?.trim() || '';
+  const engineInternalSecret = envLike.ENGINE_INTERNAL_SECRET?.trim() || '';
   if (engineUrl && !isPlaceholderSecret(engineUrl) && !usesHttps(engineUrl) && !engineUrl.includes('localhost')) {
     errors.push('ENGINE_URL must use https in production unless it targets localhost.');
+  }
+  if (engineUrl && !engineUrl.includes('localhost') && !engineInternalSecret) {
+    errors.push('ENGINE_INTERNAL_SECRET is required in production when ENGINE_URL targets a non-local engine runtime.');
   }
 
   if (!(envLike.SECURITY_ALLOWED_HOSTS?.trim() || '')) {

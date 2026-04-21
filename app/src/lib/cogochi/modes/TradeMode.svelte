@@ -8,7 +8,10 @@
   import IndicatorPane from '$lib/components/indicators/IndicatorPane.svelte';
   import IndicatorRenderer from '$lib/components/indicators/IndicatorRenderer.svelte';
   import ConfluenceBanner from '$lib/components/confluence/ConfluenceBanner.svelte';
+  import ConfluencePeekChip from '$lib/components/confluence/ConfluencePeekChip.svelte';
+  import DivergenceAlertToast from '$lib/components/confluence/DivergenceAlertToast.svelte';
   import type { ConfluenceResult } from '$lib/confluence/types';
+  import type { GammaPinData } from '../../../components/terminal/chart/primitives/GammaPinPrimitive';
   import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
   import {
     buildIndicatorValues,
@@ -162,13 +165,25 @@
   }
 
   // ── Confluence Engine (W-0122 master score) ──────────────────────────
+  interface ConfluenceHistoryEntry { at: number; score: number; confidence: number; regime: string; divergence: boolean }
+
   let confluence = $state<ConfluenceResult | null>(null);
+  let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
 
   async function refreshConfluence() {
     try {
       const res = await fetch(`/api/confluence/current?symbol=${symbol}&tf=${timeframe}`);
       if (!res.ok) return;
       confluence = (await res.json()) as ConfluenceResult;
+    } catch { /* tolerate */ }
+  }
+
+  async function refreshConfluenceHistory() {
+    try {
+      const res = await fetch(`/api/confluence/history?symbol=${symbol}&limit=96`);
+      if (!res.ok) return;
+      const body = (await res.json()) as { entries?: ConfluenceHistoryEntry[] };
+      confluenceHistory = body.entries ?? [];
     } catch { /* tolerate */ }
   }
 
@@ -185,6 +200,7 @@
     fundingFlip = null;
     optionsSnapshot = null;
     confluence = null;
+    confluenceHistory = [];
     void refreshVenueDivergence();
     void refreshLiqClusters();
     void refreshIndicatorContext();
@@ -193,10 +209,12 @@
     void refreshFundingFlip();
     void refreshOptionsSnapshot();
     void refreshConfluence();
+    void refreshConfluenceHistory();
     const fastIv = setInterval(() => {
       void refreshVenueDivergence();
       void refreshLiqClusters();
       void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
+      void refreshConfluenceHistory(); // pull updated sparkline entries
     }, 60_000);
     const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
     // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min, options is 5min.
@@ -231,6 +249,30 @@
   const gaugePaneIds = ['oi_change_1h', 'funding_rate', 'volume_ratio'] as const;
   const venuePaneIds = ['oi_per_venue', 'funding_per_venue'] as const;
   const optionsPaneIds = ['put_call_ratio', 'options_skew_25d'] as const;
+
+  // ── Gamma pin derived from optionsSnapshot, passed to ChartBoard ─────
+  const gammaPin = $derived<GammaPinData | null>(
+    optionsSnapshot?.gamma?.pinLevel != null
+      ? {
+          pinLevel: optionsSnapshot.gamma.pinLevel,
+          direction: optionsSnapshot.gamma.pinDirection ?? null,
+          distancePctLabel: optionsSnapshot.gamma.pinDistancePct != null
+            ? `${optionsSnapshot.gamma.pinDistancePct >= 0 ? '+' : ''}${optionsSnapshot.gamma.pinDistancePct.toFixed(1)}%`
+            : null,
+        }
+      : null
+  );
+
+  // Helper: open analyze view (mobile or desktop drawer) when the user clicks the peek chip.
+  function openAnalyze() {
+    if (mobileView !== undefined && setMobileView) {
+      setMobileView('analyze');
+      return;
+    }
+    // Desktop: open peek + switch drawer tab to analyze.
+    updateTabState(s => ({ ...s, peekOpen: true, drawerTab: 'analyze' }));
+    bDrawerTab = 'analyze';
+  }
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
     entry: analyzeData.entryPlan.entry,
@@ -563,6 +605,9 @@
   })());
 </script>
 
+<!-- Side-effect: push toast on divergenceStreak rising edge (≥3). No visual output. -->
+<DivergenceAlertToast value={confluence} />
+
 <div bind:this={containerEl} class="trade-mode">
   {#if mobileView !== undefined}
     <!-- ── MOBILE: chart on top, tab strip, scrollable panel ── -->
@@ -575,6 +620,7 @@
         change24hPct={analyzeData?.change24h ?? null}
         contextMode="chart"
         onCandleClose={handleCandleClose}
+        {gammaPin}
       />
       {#if mobileView !== 'chart'}
         <button class="chart-expand-btn" onclick={() => setMobileView?.('chart')} aria-label="차트 전체 보기">
@@ -609,13 +655,13 @@
             <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
           </div>
           {#if confluence}
-            <ConfluenceBanner value={confluence} compact />
+            <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
           {/if}
           <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE INDICATORS" layout="row" />
-          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" />
           {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
             <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS (DERIBIT)" layout="row" />
           {/if}
+          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" />
           {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
             <div class="liq-pane-wrap">
               <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
@@ -646,6 +692,11 @@
           {/if}
         {/if}
       {:else if mobileView === 'scan'}
+        {#if confluence}
+          <div style="padding: 4px 0;">
+            <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
+          </div>
+        {/if}
         {#if scanLoading && scanCandidates.length === 0}
           <div class="scan-empty">스캔 중…</div>
         {:else if scanCandidates.length === 0}
@@ -665,6 +716,9 @@
           </button>
         {/each}
       {:else if mobileView === 'judge'}
+        {#if confluence}
+          <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
+        {/if}
         <div class="judge-ctx">
           <span class="jc-sym">{symbol.replace('USDT', '')}</span>
           <span class="jc-sep">/</span>
@@ -840,6 +894,7 @@
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
             onCandleClose={handleCandleClose}
+            {gammaPin}
           />
         </div>
       </div>
@@ -857,8 +912,13 @@
             {/if}
           </div>
           {#if confluence}
-            <ConfluenceBanner value={confluence} />
+            <ConfluenceBanner value={confluence} history={confluenceHistory} />
           {/if}
+          <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE INDICATORS" layout="row" compact />
+          {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+            <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+          {/if}
+          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" compact />
           <div class="evidence-grid" role="list" aria-label="Evidence items">
             {#each evidenceItems as item}
               <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
@@ -900,12 +960,20 @@
               <span class="sr-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span>
             </button>
           {/each}
+          {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+            <div class="la-liq-wrap" style="margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--g4);">
+              <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+            </div>
+          {/if}
         </div>
       </div>
       <div class="la-vsep"></div>
       <div class="la-col la-judge-col">
         <div class="la-col-header"><span class="la-step">04</span><span class="la-title">JUDGE</span><span class="la-desc">· 매매·판정</span></div>
         <div class="la-col-body">
+          {#if confluence}
+            <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
+          {/if}
           <div class="lvl-row" role="region" aria-label="Trade plan levels">
             {#each judgePlan as lvl}
               <div class="lvl-cell">
@@ -987,6 +1055,7 @@
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
             onCandleClose={handleCandleClose}
+            {gammaPin}
           />
         </div>
       </div>
@@ -1011,6 +1080,9 @@
           </button>
         {/each}
         <span class="spacer"></span>
+        {#if confluence}
+          <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
+        {/if}
         <div class="conf-inline small">
           <span class="conf-label">CONFIDENCE</span>
           <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
@@ -1028,6 +1100,13 @@
                   {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
                 {/if}
               </div>
+              {#if confluence}
+                <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
+              {/if}
+              <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+              {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+                <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+              {/if}
               <div class="evidence-grid" role="list" aria-label="Evidence items">
                 {#each evidenceItems as item}
                   <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
@@ -1041,6 +1120,12 @@
               </div>
             </div>
             <div class="analyze-right">
+              <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
+              {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+                <div style="margin: 6px 0;">
+                  <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                </div>
+              {/if}
               <div class="proposal-label" role="heading" aria-level="2">PROPOSAL</div>
               {#if !analyzeData?.entryPlan}
                 <div class="proposal-hint">
@@ -1063,6 +1148,11 @@
           </div>
         {:else if bDrawerTab === 'scan'}
           <div class="scan-panel" id="scan-panel" role="tabpanel" aria-labelledby="scan-tab">
+            {#if confluence}
+              <div style="padding: 4px 8px 0; display: flex; justify-content: flex-end;">
+                <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
+              </div>
+            {/if}
             <div class="scan-grid" role="list" aria-label="Scan candidates">
               {#each scanCandidates as x}
                 {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
@@ -1083,6 +1173,11 @@
           </div>
         {:else if bDrawerTab === 'judge'}
           <div class="act-panel" id="judge-panel" role="tabpanel" aria-labelledby="judge-tab">
+            {#if confluence}
+              <div style="padding: 4px 8px 0;">
+                <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
+              </div>
+            {/if}
             <div class="act-cols">
               <div class="act-col plan-col">
                 <div class="col-label" role="heading" aria-level="2">A · TRADE PLAN</div>
@@ -1166,6 +1261,7 @@
             change24hPct={analyzeData?.change24h ?? null}
             contextMode="chart"
             onCandleClose={handleCandleClose}
+            {gammaPin}
           />
         </div>
       </div>
@@ -1174,6 +1270,9 @@
       <div class="lcs-section">
         <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">02</span><span class="lcs-title">ANALYZE</span></div>
         <div class="lcs-body" role="region" aria-label="Analysis details">
+          {#if confluence}
+            <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
+          {/if}
           <div class="conf-inline small" style="margin-bottom: 6px;">
             <span class="conf-label">CONFIDENCE</span>
             <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
@@ -1186,6 +1285,14 @@
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
           </div>
+          <details class="lc-ind-details">
+            <summary>INDICATORS</summary>
+            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+            {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+              <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+            {/if}
+            <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
+          </details>
           <div style="margin-top: 6px;" role="list" aria-label="Evidence items">
             {#each evidenceItems as item}
               <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} style="margin-bottom: 3px;" role="listitem">
@@ -1307,6 +1414,7 @@
           change24hPct={analyzeData?.change24h ?? null}
           contextMode="chart"
           onCandleClose={handleCandleClose}
+          {gammaPin}
         />
       </div>
     </div>
@@ -1364,6 +1472,11 @@
           <span class="pb-chevron" aria-hidden="true">{(drawerTab === tab.id && peekOpen) ? '▾' : '▸'}</span>
         </button>
       {/each}
+      {#if confluence}
+        <div class="pb-confluence-slot" aria-hidden="false">
+          <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
+        </div>
+      {/if}
     </div>
 
     <!-- PEEK Drawer overlay -->
@@ -1423,8 +1536,16 @@
         <div class="drawer-content">
           {#if drawerTab === 'analyze'}
             <div class="analyze-body">
-              <!-- Left: narrative + evidence chips -->
+              <!-- Left: confluence + indicators + narrative + evidence chips -->
               <div class="analyze-left">
+                {#if confluence}
+                  <ConfluenceBanner value={confluence} history={confluenceHistory} />
+                {/if}
+                <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+                {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+                  <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+                {/if}
+                <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
                 <div class="narrative">
                   <span class="bull">{narrativeDir} 진입 권장 ·</span>
                   {' '}{narrativeBias ?? '분석 완료'}
@@ -1443,8 +1564,13 @@
                   {/each}
                 </div>
               </div>
-              <!-- Right: proposal -->
+              <!-- Right: liq heatmap + proposal -->
               <div class="analyze-right">
+                {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+                  <div style="margin-bottom: 8px;">
+                    <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                  </div>
+                {/if}
                 <div class="proposal-label">PROPOSAL</div>
                 {#each proposal as p}
                   <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
@@ -1460,6 +1586,11 @@
               <!-- Scan header: idle / scanning / done -->
               <div class="scan-header">
                 <span class="scan-step">03</span>
+                {#if confluence}
+                  <div style="margin-left: 8px;">
+                    <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
+                  </div>
+                {/if}
                 {#if scanState === 'scanning'}
                   <span class="scan-label scanning">SCANNING</span>
                   <span class="scan-title">{Math.round(scanProgress * 3)} / 300</span>
@@ -1560,6 +1691,11 @@
           {:else if drawerTab === 'judge'}
             <!-- trade_act.jsx ActPanel: A(Plan) + B(Judge Now) + C(After Result) -->
             <div class="act-panel">
+              {#if confluence}
+                <div style="padding: 6px 10px 0;">
+                  <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
+                </div>
+              {/if}
               <!-- Header -->
               <div class="act-header">
                 <span class="act-step">STEP 04 · ACT & JUDGE</span>
@@ -2027,6 +2163,42 @@
     flex-shrink: 0;
     background: var(--g0);
     border-top: 0.5px solid var(--g4);
+  }
+  /* W-0122-Phase3: small confluence chip appended to peek-bar */
+  .pb-confluence-slot {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    border-left: 0.5px solid var(--g4);
+  }
+  /* W-0122-Phase3: Layout C details accordion */
+  .lc-ind-details {
+    margin: 6px 0;
+    border: 0.5px solid var(--g4);
+    border-radius: 3px;
+    padding: 0;
+  }
+  .lc-ind-details summary {
+    cursor: pointer;
+    padding: 4px 6px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--g5, rgba(255, 255, 255, 0.5));
+    list-style: none;
+  }
+  .lc-ind-details summary::marker,
+  .lc-ind-details summary::-webkit-details-marker {
+    display: none;
+  }
+  .lc-ind-details summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 4px;
+    transition: transform 120ms;
+  }
+  .lc-ind-details[open] summary::before {
+    transform: rotate(90deg);
   }
   .pb-tab {
     flex: 1;

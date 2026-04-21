@@ -1,7 +1,7 @@
 /**
  * captureAnnotationsStore.ts
  *
- * Polls GET /api/engine/captures/chart-annotations for a given symbol+timeframe
+ * Polls GET /api/captures/chart-annotations for a given symbol+timeframe
  * and maintains the annotation list. Used by CaptureAnnotationLayer to drive
  * LWC primitives.
  *
@@ -46,7 +46,7 @@ export function createCaptureAnnotationsStore(
     if (_destroyed) return;
     update(s => ({ ...s, loading: true, error: null }));
     try {
-      const url = `/api/engine/captures/chart-annotations?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&limit=50`;
+      const url = `/api/captures/chart-annotations?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&limit=50`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

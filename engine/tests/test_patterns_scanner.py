@@ -81,6 +81,9 @@ def test_on_entry_signal_persists_shadow_ml_metadata(monkeypatch) -> None:
 def test_entry_candidate_records_include_transition_evidence(tmp_path, monkeypatch) -> None:
     store = PatternStateStore(tmp_path / "runtime.sqlite")
     monkeypatch.setattr(pattern_scanner, "STATE_STORE", store)
+    # Ensure LEDGER_STORE is a local file store so the test doesn't hit Supabase
+    from ledger.store import FileLedgerStore
+    monkeypatch.setattr(pattern_scanner, "LEDGER_STORE", FileLedgerStore(tmp_path / "ledger"))
     pattern_scanner._MACHINES.clear()
 
     transitioned_at = datetime(2026, 4, 15, 2, 0, tzinfo=timezone.utc)

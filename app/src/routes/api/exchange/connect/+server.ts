@@ -6,7 +6,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
-import { saveConnection } from '$lib/server/exchange/binanceConnector.js';
+import { isExchangeEncryptionConfigured, saveConnection } from '$lib/server/exchange/binanceConnector.js';
 import { query } from '$lib/server/db.js';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { runIpRateLimitGuard } from '$lib/server/authSecurity';
@@ -47,6 +47,10 @@ export const POST: RequestHandler = async ({ request, cookies, getClientAddress 
 
     if (!['binance', 'bybit', 'okx', 'bitget'].includes(exchange)) {
       return json({ error: 'Unsupported exchange' }, { status: 400 });
+    }
+
+    if (!isExchangeEncryptionConfigured()) {
+      return json({ error: 'Exchange connections are unavailable' }, { status: 503 });
     }
 
     const result = await saveConnection(user.id, exchange, apiKey, apiSecret, label);

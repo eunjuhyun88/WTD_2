@@ -28,7 +28,7 @@ from typing import Any
 
 from data_cache.loader import load_klines, load_perp
 from exceptions import CacheMiss
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, evaluate_alert_policy
 from patterns.entry_scorer import score_entry_feature_snapshot
@@ -44,7 +44,7 @@ from universe.config import DEFAULT_SCAN_UNIVERSE
 
 log = logging.getLogger("engine.patterns.scanner")
 
-LEDGER_STORE = LedgerStore()
+LEDGER_STORE = get_ledger_store()
 STATE_STORE = PatternStateStore()
 
 # ── Singleton state machines — one per pattern in library ──────────────────

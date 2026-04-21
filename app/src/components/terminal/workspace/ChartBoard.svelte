@@ -21,6 +21,7 @@
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
   import { RangePrimitive } from '../chart/primitives/RangePrimitive';
+  import { GammaPinPrimitive, type GammaPinData } from '../chart/primitives/GammaPinPrimitive';
   // ── Layer 2 overlay (W-0086) ────────────────────────────────────────────────
   import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
   // ── Layer 3: Capture annotations (W-0120) ───────────────────────────────────
@@ -75,6 +76,8 @@
     }>;
     /** Fired when a candle closes (WS k.x=true). Parent can refresh analyze/verdict state. */
     onCandleClose?: (bar: { time: number; open: number; high: number; low: number; close: number; volume: number }) => void;
+    /** Gamma pin overlay — pass from parent when options-snapshot data is live. null hides line. */
+    gammaPin?: GammaPinData | null;
   }
 
   let {
@@ -93,6 +96,7 @@
     contextMode = 'full',
     alphaMarkers = undefined,
     onCandleClose,
+    gammaPin = null,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -324,6 +328,9 @@
   let rangePrimitive: RangePrimitive | null = null;
   let saveModeUnsubscribe: (() => void) | null = null;
 
+  // ── Layer 4: Gamma pin primitive (W-0122-Phase3) ──────────────────────────
+  let gammaPinPrimitive: GammaPinPrimitive | null = null;
+
   // ── Layer 3: Capture annotations (W-0120) ────────────────────────────────
   let candleSeriesForAnnotations = $state<ISeriesApi<'Candlestick'> | null>(null);
   let selectedCapture = $state<CaptureAnnotation | null>(null);
@@ -346,6 +353,35 @@
     } catch { /* ignore */ }
     rangePrimitive = null;
   }
+
+  /** Attach/update/detach gamma pin line based on the `gammaPin` prop. */
+  function syncGammaPinPrimitive(data: GammaPinData | null) {
+    if (!priceSeries) return;
+    const hasPin = data && data.pinLevel != null;
+    if (hasPin) {
+      if (!gammaPinPrimitive) {
+        gammaPinPrimitive = new GammaPinPrimitive(data);
+        (priceSeries as ISeriesApi<SeriesType>).attachPrimitive(
+          gammaPinPrimitive as unknown as Parameters<ISeriesApi<SeriesType>['attachPrimitive']>[0]
+        );
+      } else {
+        gammaPinPrimitive.update(data);
+      }
+    } else if (gammaPinPrimitive) {
+      try {
+        (priceSeries as ISeriesApi<SeriesType>).detachPrimitive(
+          gammaPinPrimitive as unknown as Parameters<ISeriesApi<SeriesType>['detachPrimitive']>[0]
+        );
+      } catch { /* ignore */ }
+      gammaPinPrimitive = null;
+    }
+  }
+
+  // React to gamma prop changes — after priceSeries is created, keep primitive in sync.
+  $effect(() => {
+    void gammaPin;       // subscribe
+    syncGammaPinPrimitive(gammaPin);
+  });
 
   /** Convert clientX to chart time using mainEl bounding rect. */
   function clientXToChartTime(clientX: number): number | null {

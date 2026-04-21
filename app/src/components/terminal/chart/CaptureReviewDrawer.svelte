@@ -51,7 +51,7 @@
     if (!annotation || submitting) return;
     submitting = true;
     try {
-      const res = await fetch(`/api/engine/captures/${annotation.capture_id}/verdict`, {
+      const res = await fetch(`/api/captures/${annotation.capture_id}/verdict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ verdict, user_note: verdictNote || undefined }),

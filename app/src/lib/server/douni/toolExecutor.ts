@@ -10,10 +10,8 @@ import { VALID_TOOL_NAMES } from './tools';
 import { computeIndicatorSeries, detectSupportResistance } from '$lib/chart/analysisPrimitives';
 import {
   computeServerSignalSnapshot,
-  type ServerExtendedMarketData as ExtendedMarketData,
-  type ServerMarketContext as MarketContext,
-  type ServerSignalSnapshot as SignalSnapshot,
 } from '$lib/server/cogochi/signalSnapshot';
+import type { ServerExtendedMarketData as ExtendedMarketData } from '$lib/server/cogochi/signalSnapshot';
 import { scanMarket, type ScanConfig } from '$lib/server/scanner';
 import { readRaw, klinesRawIdForTimeframe } from '../providers';
 import { KnownRawId } from '$lib/contracts/ids';
@@ -27,14 +25,16 @@ import {
   getToolGuardrailMode,
 } from '$lib/guardrails/runtime/toolPolicyConfig';
 import { recordGuardrailAudit } from '$lib/guardrails/core/audit';
-function toFiniteNumber(value: number | string): number {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function normalizeForceOrderSide(side: string): 'BUY' | 'SELL' {
-  return side.toUpperCase() === 'SELL' ? 'SELL' : 'BUY';
-}
+import { ENGINE_URL, buildEngineHeaders } from '$lib/server/engineTransport';
+import {
+  buildBaseSignalSnapshotBundle,
+  mapExtendedKlines,
+  mapForceOrders,
+  mapOiHistory,
+  toBtcOnchainSnapshot,
+  toDepthSnapshot,
+  toMempoolSnapshot,
+} from '$lib/server/scan/normalize';
 // ─── Main Dispatcher ────────────────────────────────────────
 
 /**
@@ -263,41 +263,25 @@ async function executeAnalyzeMarket(
     throw new Error(`No kline data for ${symbol}`);
   }
 
-  const currentPrice = klines[klines.length - 1].close;
-
-  // Build MarketContext (base)
-  const marketCtx: MarketContext = {
-    pair: symbol,
+  const bundle = buildBaseSignalSnapshotBundle({
+    symbol,
     timeframe: tf,
     klines,
-    klines1h: klines1h.length > 0 ? klines1h : undefined,
-    klines1d: klines1d.length > 0 ? klines1d : undefined,
-    ticker: ticker ? {
-      change24h: parseFloat(ticker.priceChangePercent) || 0,
-      volume24h: parseFloat(ticker.quoteVolume) || 0,
-      high24h: parseFloat(ticker.highPrice) || 0,
-      low24h: parseFloat(ticker.lowPrice) || 0,
-    } : undefined,
-    derivatives: {
-      oi: oiPoint,
-      funding,
-      lsRatio: lsTop,
-    },
-    sentiment: { fearGreed },
-  };
-
-  // Compute OI change %
-  let oiChangePct = 0;
-  if (oiHistory.length >= 2) {
-    const firstOI = oiHistory[0].sumOpenInterestValue;
-    const lastOI = oiHistory[oiHistory.length - 1].sumOpenInterestValue;
-    oiChangePct = firstOI > 0 ? ((lastOI - firstOI) / firstOI) * 100 : 0;
-  }
+    klines1h,
+    klines1d,
+    ticker,
+    funding,
+    oiPoint,
+    lsTop,
+    fearGreed,
+    oiHistory,
+    takerData,
+  });
 
   // Compute kimchi premium
   let kimchiPremium = 0;
   const baseSymbol = symbol.replace('USDT', '');
-  const binanceKrw = currentPrice * usdKrw;
+  const binanceKrw = bundle.currentPrice * usdKrw;
   const prems: number[] = [];
   const upbitPrice = upbitPrices.get(baseSymbol);
   const bithumbPrice = bithumbPrices.get(baseSymbol);
@@ -307,36 +291,22 @@ async function executeAnalyzeMarket(
 
   // Build ExtendedMarketData
   const ext: ExtendedMarketData = {
-    currentPrice,
-    depth: depth ? { bidVolume: depth.bidVolume, askVolume: depth.askVolume, ratio: depth.ratio } : undefined,
-    // takerData is now the fixed 1h×6 window (§10 Q1). The latest point
-    // is the last element; previously this read [0] because limit=1.
-    takerRatio: takerData.length > 0 ? takerData[takerData.length - 1].buySellRatio : undefined,
-    oiChangePct,
-    priceChangePct: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
-    forceOrders: forceOrders.map((o: { side: string; price: number | string; origQty: number | string; time: number }) => ({
-      side: normalizeForceOrderSide(o.side),
-      price: toFiniteNumber(o.price),
-      qty: toFiniteNumber(o.origQty),
-      time: o.time,
-    })),
-    btcOnchain: btcOnchainData ? { nTx: btcOnchainData.nTx, avgTxValue: btcOnchainData.avgTxValue } : undefined,
-    mempool: mempoolData ? { pending: mempoolData.count, fastestFee: mempoolData.fastestFee } : undefined,
+    currentPrice: bundle.currentPrice,
+    depth: toDepthSnapshot(depth),
+    takerRatio: bundle.takerRatio,
+    oiChangePct: bundle.oiChangePct,
+    priceChangePct: bundle.change24h,
+    forceOrders: mapForceOrders(forceOrders),
+    btcOnchain: toBtcOnchainSnapshot(btcOnchainData),
+    mempool: toMempoolSnapshot(mempoolData),
     kimchiPremium,
-    klines5m: klines5m.length > 0 ? klines5m.map((k: any) => ({
-      time: k.time, open: k.open, high: k.high, low: k.low, close: k.close,
-      volume: k.volume, buyVolume: k.takerBuyBaseVol,
-    })) : undefined,
-    klines1dExt: klines1d.length > 0 ? klines1d.map((k: any) => ({
-      time: k.time, open: k.open, high: k.high, low: k.low, close: k.close, volume: k.volume,
-    })) : undefined,
-    oiHistory5m: oiHistory.length > 0 ? oiHistory.map((p: any) => ({
-      timestamp: p.timestamp, oi: p.sumOpenInterestValue,
-    })) : undefined,
+    klines5m: mapExtendedKlines(klines5m, (kline: any) => kline.takerBuyBaseVol),
+    klines1dExt: bundle.klines1dExt,
+    oiHistory5m: mapOiHistory(oiHistory),
   };
 
   // Compute snapshot with extended data
-  const snapshot = computeServerSignalSnapshot(marketCtx, symbol, tf, ext, { sign: true });
+  const snapshot = computeServerSignalSnapshot(bundle.marketContext, symbol, tf, ext, { sign: true });
 
   // Cache
   ctx.cachedSnapshot = snapshot;
@@ -372,7 +342,7 @@ async function executeAnalyzeMarket(
   }));
 
   // S/R + indicators
-  const annotations = detectSupportResistance(klines, currentPrice);
+  const annotations = detectSupportResistance(klines, bundle.currentPrice);
   const indicatorSeries = computeIndicatorSeries(klines);
   const asOf = new Date().toISOString();
   const researchBlocks = buildResearchBlocks({
@@ -435,8 +405,8 @@ async function executeAnalyzeMarket(
     l15: snapshot.l15,
     l18: snapshot.l18,
     l19: snapshot.l19,
-    price: currentPrice,
-    change24h: ticker ? parseFloat(ticker.priceChangePercent) || 0 : 0,
+    price: bundle.currentPrice,
+    change24h: bundle.change24h,
     chart: chartKlines,
     derivatives: {
       funding,
@@ -807,8 +777,8 @@ async function executeCheckPatternStatus(
   try {
     // Fetch entry candidates + all states in parallel
     const [candRes, stateRes] = await Promise.all([
-      fetch(`${getEngineUrl()}/patterns/candidates`),
-      fetch(`${getEngineUrl()}/patterns/states`),
+      fetchEngine('/patterns/candidates'),
+      fetchEngine('/patterns/states'),
     ]);
 
     const candidates: Record<string, string[]> = candRes.ok
@@ -841,7 +811,7 @@ async function executeCheckPatternStatus(
     if (includeStats) {
       try {
         // Single bulk endpoint — avoids N+1 per-slug fan-out (HOTSPOT-003).
-        const statsRes = await fetch(`${getEngineUrl()}/patterns/stats/all`);
+        const statsRes = await fetchEngine('/patterns/stats/all');
         if (statsRes.ok) {
           const bulk = await statsRes.json() as { patterns: Record<string, unknown> };
           stats = bulk.patterns ?? null;
@@ -878,8 +848,11 @@ async function executeCheckPatternStatus(
   }
 }
 
-function getEngineUrl(): string {
-  return (process.env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+function fetchEngine(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(`${ENGINE_URL}${path}`, {
+    ...init,
+    headers: buildEngineHeaders(init.headers),
+  });
 }
 
 // ─── get_alpha_world_model ────────────────────────────────────
@@ -892,7 +865,7 @@ async function executeGetAlphaWorldModel(
   events.push({ type: 'text_delta', text: 'Loading Alpha universe state...' });
 
   try {
-    const res = await fetch(`${getEngineUrl()}/alpha/world-model?grade=${grade}`);
+    const res = await fetchEngine(`/alpha/world-model?grade=${grade}`);
     if (!res.ok) throw new Error(`Engine returned ${res.status}`);
     const data = await res.json();
     return data;
@@ -913,7 +886,7 @@ async function executeGetAlphaTokenDetail(
   events.push({ type: 'text_delta', text: `Loading Alpha detail for ${symbol}...` });
 
   try {
-    const res = await fetch(`${getEngineUrl()}/alpha/token/${symbol}`);
+    const res = await fetchEngine(`/alpha/token/${symbol}`);
     if (!res.ok) throw new Error(`Engine returned ${res.status}`);
     return await res.json();
   } catch (err: any) {
@@ -934,7 +907,7 @@ async function executeFindTokens(
   events.push({ type: 'text_delta', text: `Scanning ${universe} universe for matching tokens...` });
 
   try {
-    const res = await fetch(`${getEngineUrl()}/alpha/find`, {
+    const res = await fetchEngine('/alpha/find', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conditions, universe, min_match: minMatch }),
@@ -964,7 +937,7 @@ async function executeSetAlphaWatch(
   events.push({ type: 'text_delta', text: `Setting watch on ${symbol} → ${targetPhase}...` });
 
   try {
-    const res = await fetch(`${getEngineUrl()}/alpha/watch`, {
+    const res = await fetchEngine('/alpha/watch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

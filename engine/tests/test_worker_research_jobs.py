@@ -40,7 +40,7 @@ def test_run_pattern_refinement_once_derives_objective_and_records_run(tmp_path,
         )
 
     monkeypatch.setattr("worker.research_jobs.derive_pattern_research_objective", _derive)
-    monkeypatch.setattr("research.pattern_refinement.LedgerStore", lambda: ledger)
+    monkeypatch.setattr("research.pattern_refinement.get_ledger_store", lambda: ledger)
     monkeypatch.setattr(
         "worker.research_jobs.write_refinement_report",
         lambda run, objective, store: tmp_path / f"{run.research_run_id}.md",

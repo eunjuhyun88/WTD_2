@@ -17,8 +17,10 @@
     title?: string;
     /** Layout: 'row' for gauge-heavy horizontal strip, 'stack' for venue/heatmap panes */
     layout?: 'row' | 'stack';
+    /** Compact mode — tighter padding + gap, for narrow containers (Layout B/C peek). */
+    compact?: boolean;
   }
-  let { ids, values, title, layout = 'row' }: Props = $props();
+  let { ids, values, title, layout = 'row', compact = false }: Props = $props();
 
   const rendered = $derived(
     ids
@@ -28,7 +30,12 @@
 </script>
 
 {#if rendered.length > 0}
-  <div class="ind-pane" class:layout-row={layout === 'row'} class:layout-stack={layout === 'stack'}>
+  <div
+    class="ind-pane"
+    class:layout-row={layout === 'row'}
+    class:layout-stack={layout === 'stack'}
+    class:compact
+  >
     {#if title}
       <div class="ind-pane-title">{title}</div>
     {/if}
@@ -48,6 +55,11 @@
     padding: 6px 0;
   }
 
+  .ind-pane.compact {
+    gap: 2px;
+    padding: 3px 0;
+  }
+
   .ind-pane-title {
     font-size: 9px;
     letter-spacing: 0.08em;
@@ -57,9 +69,19 @@
     font-family: var(--sc-font-mono, monospace);
   }
 
+  .ind-pane.compact .ind-pane-title {
+    font-size: 8px;
+    padding: 0 6px 1px;
+    letter-spacing: 0.06em;
+  }
+
   .ind-pane-items {
     display: flex;
     gap: 2px;
+  }
+
+  .ind-pane.compact .ind-pane-items {
+    gap: 1px;
   }
 
   .layout-row .ind-pane-items {

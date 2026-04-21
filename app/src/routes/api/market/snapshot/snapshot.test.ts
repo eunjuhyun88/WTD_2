@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { collectMarketSnapshot } from '$lib/server/marketSnapshotService';
 
 vi.mock('$lib/server/marketSnapshotService', () => ({
   collectMarketSnapshot: vi.fn(async () => ({
@@ -38,6 +40,28 @@ vi.mock('$lib/server/requestGuards', () => ({
 import { GET } from './+server';
 
 describe('/api/market/snapshot', () => {
+  it('forces non-persistent reads on GET even for authenticated callers', async () => {
+    vi.mocked(getAuthUserFromCookies).mockResolvedValueOnce({ id: 'user-1' } as any);
+    const req = new Request('http://localhost/api/market/snapshot?pair=BTCUSDT&timeframe=1h&persist=1');
+    const res = await GET({
+      fetch: globalThis.fetch,
+      url: new URL(req.url),
+      cookies: {},
+      getClientAddress: () => '127.0.0.1',
+      request: req,
+    } as any);
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(collectMarketSnapshot)).toHaveBeenCalledWith(
+      globalThis.fetch,
+      expect.objectContaining({
+        pair: 'BTCUSDT',
+        timeframe: '1h',
+        persist: false,
+      }),
+    );
+  });
+
   it('returns success payload for public GET', async () => {
     const req = new Request('http://localhost/api/market/snapshot?pair=BTCUSDT&timeframe=1h');
     const res = await GET({
@@ -54,4 +78,3 @@ describe('/api/market/snapshot', () => {
     expect(body.pair).toBe('BTCUSDT');
   });
 });
-

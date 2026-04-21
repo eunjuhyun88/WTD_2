@@ -1,0 +1,42 @@
+create table if not exists pattern_outcomes (
+    id                      text primary key,
+    pattern_slug            text not null,
+    symbol                  text not null,
+    user_id                 text,
+    phase2_at               timestamptz,
+    accumulation_at         timestamptz,
+    breakout_at             timestamptz,
+    invalidated_at          timestamptz,
+    phase2_price            double precision,
+    entry_price             double precision,
+    peak_price              double precision,
+    exit_price              double precision,
+    invalidation_price      double precision,
+    outcome                 text not null default 'pending',
+    max_gain_pct            double precision,
+    exit_return_pct         double precision,
+    duration_hours          double precision,
+    btc_trend_at_entry      text not null default 'unknown',
+    user_verdict            text,
+    user_note               text,
+    feature_snapshot        jsonb,
+    entry_transition_id     text,
+    entry_scan_id           text,
+    entry_block_scores      jsonb,
+    entry_block_coverage    double precision,
+    entry_p_win             double precision,
+    entry_ml_state          text,
+    entry_model_key         text,
+    entry_model_version     text,
+    entry_rollout_state     text,
+    entry_threshold         double precision,
+    entry_threshold_passed  boolean,
+    entry_ml_error          text,
+    evaluation_window_hours double precision not null default 72.0,
+    created_at              timestamptz not null default now(),
+    updated_at              timestamptz not null default now()
+);
+
+create index if not exists idx_pattern_outcomes_slug on pattern_outcomes(pattern_slug);
+create index if not exists idx_pattern_outcomes_slug_outcome on pattern_outcomes(pattern_slug, outcome);
+create index if not exists idx_pattern_outcomes_created on pattern_outcomes(pattern_slug, created_at desc);
