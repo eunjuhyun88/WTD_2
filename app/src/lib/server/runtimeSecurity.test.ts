@@ -56,6 +56,7 @@ describe('runtimeSecurity', () => {
         TURNSTILE_FAIL_OPEN: 'true',
         PGSSL_INSECURE_SKIP_VERIFY: 'true',
         ENGINE_URL: 'http://engine-api.internal',
+        ENGINE_INTERNAL_SECRET: '',
         SECURITY_ALLOWED_HOSTS: '',
       }),
     ).toEqual([
@@ -63,6 +64,7 @@ describe('runtimeSecurity', () => {
       'TURNSTILE_FAIL_OPEN must be false in production.',
       'PGSSL_INSECURE_SKIP_VERIFY must be false in production.',
       'ENGINE_URL must use https in production unless it targets localhost.',
+      'ENGINE_INTERNAL_SECRET is required in production when ENGINE_URL targets a non-local engine runtime.',
       'SECURITY_ALLOWED_HOSTS is required in production.',
     ]);
   });

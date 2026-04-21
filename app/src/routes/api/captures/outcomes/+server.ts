@@ -12,10 +12,10 @@
  *   limit        — max rows (default 100)
  */
 
-import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { engineFetch } from '$lib/server/engineTransport';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -23,8 +23,6 @@ export const config = {
   memory: 256,
   maxDuration: 15,
 };
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
   const user = await getAuthUserFromCookies(cookies);
@@ -47,7 +45,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const timeout = setTimeout(() => controller.abort(), 12_000);
 
   try {
-    const res = await fetch(`${ENGINE_URL}/captures/outcomes?${params}`, {
+    const res = await engineFetch(`/captures/outcomes?${params}`, {
       method: 'GET',
       headers: { accept: 'application/json' },
       signal: controller.signal,

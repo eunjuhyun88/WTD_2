@@ -5,10 +5,8 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
+import { engineFetch } from '$lib/server/engineTransport';
 import { terminalReadLimiter } from '$lib/server/rateLimit';
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 
 export const POST: RequestHandler = async ({ request, params, getClientAddress }) => {
   if (!terminalReadLimiter.check(getClientAddress())) {
@@ -17,7 +15,7 @@ export const POST: RequestHandler = async ({ request, params, getClientAddress }
 
   try {
     const body = await request.json();
-    const res = await fetch(`${ENGINE_URL}/patterns/${params.slug}/capture`, {
+    const res = await engineFetch(`/patterns/${params.slug}/capture`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

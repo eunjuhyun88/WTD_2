@@ -21,15 +21,19 @@ dist/
 
 # claude
 .claude/worktrees/
+.claude/plans/
+.claude/projects/
 
 # local agent/worktree artifacts
 .claire/
+app/docs/AGENT_WATCH_LOG.md
 app/memory/memory/
 engine/data_cache/cache/
 engine/state/*.sqlite*
 engine/ops/state/*.sqlite*
 engine/ops/state/*.json
 engine/pattern_registry/*.json
+tmp/telegram_refs/
 .vercel
 
 # runtime artifacts (test/eval outputs that regenerate on each run)

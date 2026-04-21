@@ -4,14 +4,12 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+import { engineFetch } from '$lib/server/engineTransport';
 
 export const POST: RequestHandler = async ({ request, params }) => {
   try {
     const body = await request.json();
-    const res = await fetch(`${ENGINE_URL}/patterns/${params.slug}/verdict`, {
+    const res = await engineFetch(`/patterns/${params.slug}/verdict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
