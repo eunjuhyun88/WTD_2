@@ -23,10 +23,14 @@
 
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
+  import type { ISeriesApi } from 'lightweight-charts';
   import CanvasHost from '../chart/CanvasHost.svelte';
   import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
   import RangeModeToast from '../chart/overlay/RangeModeToast.svelte';
   import MobileOnboardingOverlay from './MobileOnboardingOverlay.svelte';
+  import CaptureAnnotationLayer from '../chart/CaptureAnnotationLayer.svelte';
+  import CaptureReviewDrawer from '../chart/CaptureReviewDrawer.svelte';
+  import type { CaptureAnnotation } from '../chart/primitives/CaptureMarkerPrimitive';
   import { activePairState } from '$lib/stores/activePairStore';
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
 
@@ -34,8 +38,17 @@
   const symbol = $derived($activePairState.pair.replace('/', ''));
   const tf = $derived($activePairState.timeframe);
 
-  // CanvasHost ref for imperative setCandles() call
+  // CanvasHost ref for imperative setCandles() + getMainSeries() calls
   let canvasRef = $state<ReturnType<typeof CanvasHost> | null>(null);
+
+  // ── Layer 3: Capture annotations (mobile) ────────────────────────────────
+  let _candleSeries = $state<ISeriesApi<'Candlestick'> | null>(null);
+  let selectedCapture = $state<CaptureAnnotation | null>(null);
+
+  function _onChartReady() {
+    // getMainSeries() available once chart init completes
+    _candleSeries = canvasRef?.getMainSeries() as ISeriesApi<'Candlestick'> | null;
+  }
 
   // Fetch klines whenever symbol or tf changes and push to canvas
   $effect(() => {
@@ -92,7 +105,7 @@
 
 <div class="chart-mode">
   <div class="canvas-area">
-    <CanvasHost bind:this={canvasRef} {symbol} {tf} />
+    <CanvasHost bind:this={canvasRef} {symbol} {tf} onChartReady={_onChartReady} />
     <!-- Layer 2 overlay — pointer-events: none on container (W-0086) -->
     <div class="canvas-overlay">
       <div class="overlay-topright">
@@ -113,6 +126,22 @@
   </div>
 
 </div>
+
+<!-- Layer 3: Capture annotation overlay (mobile, headless) -->
+<CaptureAnnotationLayer
+  series={_candleSeries}
+  {symbol}
+  timeframe={tf}
+  onSelect={(ann) => { selectedCapture = ann; }}
+/>
+
+<!-- Bottom sheet review drawer (mobile variant) -->
+<CaptureReviewDrawer
+  annotation={selectedCapture}
+  variant="sheet"
+  onClose={() => { selectedCapture = null; }}
+  onVerdict={(_id, _v) => { selectedCapture = null; }}
+/>
 
 <style>
   .chart-mode {

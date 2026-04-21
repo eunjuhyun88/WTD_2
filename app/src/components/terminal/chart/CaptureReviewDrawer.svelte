@@ -18,8 +18,16 @@
     annotation: CaptureAnnotation | null;
     onClose?: () => void;
     onVerdict?: (captureId: string, verdict: 'valid' | 'invalid' | 'missed') => void;
+    /** 'drawer' = fixed right rail (desktop), 'sheet' = bottom sheet (mobile). Default: 'drawer'. */
+    variant?: 'drawer' | 'sheet';
   }
-  let { annotation, onClose, onVerdict }: Props = $props();
+  let { annotation, onClose, onVerdict, variant = 'drawer' }: Props = $props();
+
+  const flyProps = $derived(
+    variant === 'sheet'
+      ? { y: 600, duration: 280, easing: cubicOut }
+      : { x: 320, duration: 240, easing: cubicOut }
+  );
 
   let verdictNote = $state('');
   let submitting  = $state(false);
@@ -78,10 +86,11 @@
 
   <aside
     class="drawer"
+    class:drawer--sheet={variant === 'sheet'}
     role="dialog"
     aria-modal="true"
     aria-label="Capture Review"
-    transition:fly={{ x: 320, duration: 240, easing: cubicOut }}
+    transition:fly={flyProps}
   >
     <!-- Header -->
     <div class="drawer-header">
@@ -344,5 +353,31 @@
     color: var(--sc-text-3, #64748b);
     font-family: monospace;
     margin-top: auto;
+  }
+
+  /* ── Bottom sheet variant (mobile) ── */
+  .drawer--sheet {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 72vh;
+    border-left: none;
+    border-top: 1px solid var(--sc-border-1, rgba(255,255,255,0.08));
+    border-radius: 16px 16px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Drag handle pill at top of sheet */
+  .drawer--sheet::before {
+    content: '';
+    display: block;
+    width: 48px;
+    height: 4px;
+    background: var(--sc-text-3, rgba(255,255,255,0.2));
+    border-radius: 2px;
+    margin: 8px auto 0;
+    flex-shrink: 0;
   }
 </style>

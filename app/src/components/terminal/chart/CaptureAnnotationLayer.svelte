@@ -28,6 +28,8 @@
   export let symbol: string = '';
   export let timeframe: string = '1h';
   export let onSelect: ((ann: CaptureAnnotation) => void) | null = null;
+  /** Called whenever the annotation list changes — lets parent maintain a cache for click handlers. */
+  export let onAnnotationsChange: ((anns: CaptureAnnotation[]) => void) | null = null;
 
   // ── Primitive registry ──────────────────────────────────────────────────────
   // Map capture_id → { marker, window } primitives currently attached
@@ -89,6 +91,9 @@
         _attached.set(ann.capture_id, { marker, window });
       }
     }
+
+    // Notify parent so it can maintain a cache for click-to-open logic
+    onAnnotationsChange?.(annotations);
   }
 
   function _detachAll(): void {
