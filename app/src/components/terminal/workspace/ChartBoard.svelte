@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
+  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, createSeriesMarkers } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType, SeriesMarker } from 'lightweight-charts';
   import {
     chartIndicators,
@@ -738,6 +738,7 @@
     destroyCharts();
 
     let candleSeriesRef: ISeriesApi<'Candlestick'> | null = null;
+    let candleMarkerApi: { setMarkers: (markers: SeriesMarker<UTCTimestamp>[]) => void } | null = null;
 
     const rsiContainer = rsiEl;
     const macdContainer = macdEl;
@@ -819,6 +820,7 @@
         }))
       );
       candleSeriesRef = candleSeries;
+      candleMarkerApi = createSeriesMarkers(candleSeries, []);
       priceSeries = candleSeries;
       candleSeriesForAnnotations = candleSeries;  // Layer 3: capture overlay
       // Attach range primitive to candlestick series (Layer 1, W-0086)
@@ -960,8 +962,7 @@
           });
         }
       }
-      // Runtime API (v5 typings omit setMarkers on some ISeriesApi variants).
-      (candleSeriesRef as ISeriesApi<'Candlestick'> & { setMarkers: (m: SeriesMarker<UTCTimestamp>[]) => void }).setMarkers(markers);
+      candleMarkerApi?.setMarkers(markers);
     }
 
     mainChart.subscribeCrosshairMove((param) => {
@@ -1297,6 +1298,7 @@
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart, liqChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = liqChart = null;
     priceSeries = null;
+    candleSeriesForAnnotations = null;
     entryLine = targetLine = stopLine = null;
   }
 

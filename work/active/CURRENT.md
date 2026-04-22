@@ -11,13 +11,13 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0131** | `W-0131-tablet-peek-drawer.md` | 🔴 IN-PROGRESS | tablet PeekDrawer review slot 이식 + breakpoint 검증 |
+| **W-0131** | `W-0131-tablet-peek-drawer.md` | 🟡 PR-READY | commit/push 반영 + PR 생성 |
 
 ## 즉시 실행 순서
 
 1. `9467fab7` cherry-pick
 2. tablet/desktop/mobile 회귀 검증
-3. PR 생성
+3. W-0131 follow-up commit + PR 생성
 
 ## 브랜치 매핑
 
