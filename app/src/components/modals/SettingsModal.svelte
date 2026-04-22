@@ -29,12 +29,12 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:click={onClose}>
-  <div class="settings-panel" on:click|stopPropagation>
+<div class="modal-overlay" onclick={onClose}>
+  <div class="settings-panel" onclick={(e) => e.stopPropagation()}>
     <div class="st-header">
       <span class="st-icon">⚙</span>
       <span class="st-title">SETTINGS</span>
-      <div class="st-close" on:click={onClose}>✕</div>
+      <div class="st-close" onclick={onClose}>✕</div>
     </div>
 
     <div class="st-body">
@@ -43,7 +43,7 @@
         <div class="st-label">BATTLE SPEED</div>
         <div class="st-btns">
           {#each [1, 2, 3] as s}
-            <button class="spd-btn" class:active={speed === s} on:click={() => setSpeed(s)}>
+            <button class="spd-btn" class:active={speed === s} onclick={() => setSpeed(s)}>
               {s}x
             </button>
           {/each}
@@ -54,8 +54,8 @@
       <div class="st-section">
         <div class="st-label">SOUND EFFECTS</div>
         <div class="st-toggle">
-          <button class="tg-btn" class:active={audioOn} on:click={() => audioOn = true}>ON</button>
-          <button class="tg-btn" class:active={!audioOn} on:click={() => audioOn = false}>OFF</button>
+          <button class="tg-btn" class:active={audioOn} onclick={() => audioOn = true}>ON</button>
+          <button class="tg-btn" class:active={!audioOn} onclick={() => audioOn = false}>OFF</button>
         </div>
       </div>
 
@@ -74,7 +74,7 @@
         <div class="st-btns">
           {#each ['BTC/USDT', 'ETH/USDT', 'SOL/USDT'] as p}
             <button class="pair-btn" class:active={state.pair === p}
-              on:click={() => setActivePair(p)}>
+              onclick={() => setActivePair(p)}>
               {p.split('/')[0]}
             </button>
           {/each}
@@ -87,7 +87,7 @@
         <div class="st-btns">
           {#each CORE_TIMEFRAME_OPTIONS as tf}
             <button class="tf-btn" class:active={normalizeTimeframe(state.timeframe) === tf.value}
-              on:click={() => setActiveTimeframe(tf.value)}>
+              onclick={() => setActiveTimeframe(tf.value)}>
               {tf.label}
             </button>
           {/each}
@@ -110,7 +110,7 @@
       <!-- Danger Zone -->
       <div class="st-section danger">
         <div class="st-label">DANGER ZONE</div>
-        <button class="reset-btn" on:click={resetData}>
+        <button class="reset-btn" onclick={resetData}>
           🗑 RESET ALL DATA
         </button>
         <div class="reset-warn">This will clear all match history, agent data, and settings.</div>
