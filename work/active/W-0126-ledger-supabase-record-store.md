@@ -45,14 +45,15 @@ Engine logic change
 - `scripts/w0126-cutover-preflight.sh`
 - `cloudbuild.yaml`
 - `cloudbuild.worker.yaml`
+- `app/scripts/dev/deploy-cogochi-preview.mjs`
 
 ## Facts
 
 1. W-0126 code path 는 PR #186 으로 mainline 에 통합되었고, `patterns_thread` / `observability` / `outcome_resolver` 는 record-store boundary 를 사용한다.
 2. Supabase migration `018_pattern_ledger_records.sql` 은 운영 DB에 적용되었고 `pattern_ledger_records` table 및 `pattern_ledger_records_pkey`, `plr_slug_created_idx`, `plr_slug_type_created_idx` 가 검증되었다.
 3. Cloud Run 실제 상태는 `us-east4/cogotchi` 만 Ready 이고 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ENGINE_INTERNAL_SECRET` env 이름을 가진다. `asia-southeast1/cogotchi` 와 `us-east4/wtd-2` 는 container start 실패 상태다.
-4. `app.cogotchi.dev` 는 production deployment 가 아니라 `release` preview deployment alias 이다. preview env 에는 `ENGINE_URL` 은 있으나 `ENGINE_INTERNAL_SECRET` 이 없어 `/api/patterns/stats` 가 `{ ok: false }` 를 반환한다.
-5. 기존 `cloudbuild.worker.yaml` 은 HTTP listener 가 없는 `engine/worker/Dockerfile` 이미지를 Cloud Run Service 로 배포하려 해서 worker-control Service 구조와 맞지 않는다.
+4. `app.cogotchi.dev` 는 production deployment 가 아니라 `release` preview deployment alias 이다. branch-scoped preview env 는 `ENGINE_URL` / `SECURITY_ALLOWED_HOSTS` 는 pull 가능했지만 `ENGINE_INTERNAL_SECRET` 는 `vercel env pull` 로 실값을 복원할 수 없었고, 이 상태의 manual deploy 는 `/api/patterns/stats` 에서 runtime security 500 을 냈다.
+5. 기존 수동 Vercel deploy 는 root `.vercel=chatbattle` 와 `app/.vercel=cogochi-2` 가 공존해 CLI 경로가 흔들리고, repo root 직접 업로드는 body size 초과로 실패할 수 있다. 반면 `us-east4/cogotchi` Cloud Run describe 는 `status.url` 과 plain `ENGINE_INTERNAL_SECRET` env 값을 노출하므로 deterministic wrapper 의 canonical runtime source 로 사용할 수 있다. Cloud Run fallback 을 넣은 새 preview deployment (`cogochi-2-qdl6zb4pa...`) 이후 `app.cogotchi.dev/api/patterns/stats` 는 `200 {"stats":[],"ok":true}` 로 복구되었다.
 
 ## Assumptions
 
@@ -63,7 +64,6 @@ Engine logic change
 
 ## Open Questions
 
-- `app.cogotchi.dev` preview env 의 `ENGINE_INTERNAL_SECRET` 값은 production Vercel env 또는 Cloud Run env 와 동일한 값으로 복사할지 확인이 필요하다.
 - `asia-southeast1/cogotchi` 를 즉시 재배포해 canonical engine 으로 되돌릴지, 당장은 Ready 상태인 `us-east4/cogotchi` 를 유지할지 운영 결정이 필요하다.
 
 ## Decisions
@@ -77,12 +77,14 @@ Engine logic change
 - W-0126 ops follow-up 은 최신 `origin/main` 위 `codex/w-0126-cutover-ops` 에서 분리한다. W-0139 app changes 와 섞지 않는다.
 - `CRON_SECRET` 는 `ENGINE_INTERNAL_SECRET` 로 자동 대체하지 않는다. `CRON_SECRET` 로 direct engine stats 호출 시 403 이 확인되었다.
 - Cloud Run engine-api deploy 는 `ENGINE_RUNTIME_ROLE=api` 를 명시하고, worker-control Service 는 HTTP FastAPI entrypoint + `ENGINE_RUNTIME_ROLE=worker` 로 배포한다.
+- manual app redeploy 는 repo 내부 stage dir에서 `app/`만 패키징하는 deterministic wrapper 로 고정한다. root `.vercel` 교체나 전체 repo 업로드는 사용하지 않는다.
+- manual app redeploy 는 branch preview env pull 을 non-sensitive source 로만 사용한다. `ENGINE_INTERNAL_SECRET` 는 explicit shell env 또는 canonical Cloud Run service (`us-east4/cogotchi`) 에서 resolve 해서 deploy 시 runtime env 로 직접 주입한다.
 
 ## Next Steps
 
-1. Vercel preview 에 exact `ENGINE_INTERNAL_SECRET` 를 설정하고 release alias deployment 를 재배포한다.
-2. `app.cogotchi.dev/api/patterns/stats` 가 `{ ok: true }` 를 반환하는지 확인한다.
-3. Cloud Run `asia-southeast1/cogotchi` 재배포 또는 `us-east4/cogotchi` 유지 결정을 문서화한다.
+1. Cloud Run `asia-southeast1/cogotchi` 재배포 또는 `us-east4/cogotchi` 유지 결정을 문서화한다.
+2. 필요 시 manual preview deploy wrapper 를 `release` lane 운영 절차에 연결한다.
+3. (선택) 기존 JSON 레코드 → Supabase 백필 일정을 분리한다.
 
 운영 절차는 `docs/runbooks/pattern-ledger-record-cutover.md` 를 canonical checklist 로 사용한다.
 
@@ -107,8 +109,9 @@ Engine logic change
 - [x] Supabase 대시보드/DB에서 `018_pattern_ledger_records.sql` 실행
 - [x] DB table/index 검증 (`pattern_ledger_records`, required indexes 3개)
 - [x] GCP `us-east4/cogotchi` 에 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` + `ENGINE_INTERNAL_SECRET` env 이름 확인
-- [ ] Vercel preview 에 exact `ENGINE_INTERNAL_SECRET` 설정
-- [ ] `bash scripts/w0126-cutover-preflight.sh` 로 cutover preflight 통과
+- [x] Vercel preview branch env (`release`, `codex/w-0139-terminal-core-loop-capture`) 설정
+- [x] deterministic wrapper 로 `cogochi-2` preview redeploy
+- [x] `bash scripts/w0126-cutover-preflight.sh` 로 cutover preflight 통과
 - [ ] GCP 재배포 후 `GET /patterns/stats/all` 응답 시간 비교
 - [ ] (선택) `engine/scripts/backfill_ledger_records.py` 실행으로 기존 JSON → Supabase 백필
 
@@ -125,18 +128,22 @@ Runbook:
 - [x] `outcome_resolver` / `observability` 가 record store 주입 경계를 가진다
 - [x] focused engine tests 통과 (local dev = file mode, injected tests 유지)
 - [x] Supabase migration 실행 (배포 시점)
-- [ ] app release alias 에서 `/api/patterns/stats` 가 `{ ok: true }` 반환
+- [x] deterministic wrapper 로 preview deploy 성공
+- [x] app release alias 에서 `/api/patterns/stats` 가 `{ ok: true }` 반환
 - [ ] GCP canonical engine runtime 결정 및 재배포 후 stats 응답 개선 확인
 
 ## Handoff Checklist
 
 - branch: `codex/w-0126-cutover-ops`
 - 신규 파일: 없음
-- 수정 파일: `cloudbuild.yaml`, `cloudbuild.worker.yaml`, `scripts/w0126-cutover-preflight.sh`, W-0126 docs
+- 수정 파일: `cloudbuild.yaml`, `cloudbuild.worker.yaml`, `scripts/w0126-cutover-preflight.sh`, `app/scripts/dev/deploy-cogochi-preview.mjs`, W-0126 docs
 - verification:
   - `uv run --directory engine python -m pytest tests/test_ledger_store.py -q` ✅
   - `uv run --directory engine python -m pytest tests/test_outcome_resolver.py -q` ✅
   - `uv run --directory engine python -m pytest tests/test_observability_flywheel.py -q` ✅
   - `uv run --directory engine python -m pytest tests/test_pattern_candidate_routes.py -q` ✅
-  - `RUN_DB_VERIFY=1` preflight with Node `pg` fallback: pending
-- 다음 운영 필수 작업: Vercel preview `ENGINE_INTERNAL_SECRET` 설정 → release alias 재배포 → `/api/patterns/stats` 확인
+  - `RUN_DB_VERIFY=1` preflight with Node `pg` fallback: passed
+  - `node --check app/scripts/dev/deploy-cogochi-preview.mjs` ✅
+  - `node app/scripts/dev/deploy-cogochi-preview.mjs --repo-root /Users/ej/Projects/wtd-v2 --alias app.cogotchi.dev --force` ✅
+  - `curl https://app.cogotchi.dev/api/patterns/stats` → `200 {"stats":[],"ok":true}` ✅
+- 다음 운영 필수 작업: canonical engine region 결정 → (선택) release lane 문서화 / JSON backfill

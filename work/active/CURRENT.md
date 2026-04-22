@@ -25,7 +25,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 OPS-IN-PROGRESS | migration 018 적용 완료, Vercel preview env + Cloud Run deploy alignment 남음 |
+| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | migration 018 + live preview redeploy 검증 완료, canonical engine region 결정만 남음 |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / 추가 정리 |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
 | **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
@@ -34,8 +34,8 @@
 
 ## 즉시 실행 순서
 
-1. **W-0126** — Vercel preview `ENGINE_INTERNAL_SECRET` + Cloud Run deploy config 정렬
-2. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
+1. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
+2. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
 3. **W-0122 Phase 2** — engine scoring plane + worker-control learning plane 분리 착수
 
 ---
@@ -54,6 +54,7 @@
 ## 인프라 미완 (사람 직접 실행 필요)
 
 - [x] Supabase migration 018 실행 및 DB table/index 검증
-- [ ] Vercel preview `ENGINE_INTERNAL_SECRET` 설정 후 release alias 재배포
+- [x] Vercel preview branch env (`release`, `codex/w-0139-terminal-core-loop-capture`) 정렬
+- [x] deterministic wrapper로 `cogochi-2` preview 재배포 후 live alias/스모크 확인
 - [ ] Cloud Run `asia-southeast1/cogotchi` 재배포 또는 `us-east4/cogotchi` 유지 결정을 명시
 - [ ] Vercel EXCHANGE_ENCRYPTION_KEY 환경변수 설정 (프로덕션)
