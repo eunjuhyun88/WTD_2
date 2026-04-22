@@ -22,6 +22,7 @@ export interface AnalyzePanelLayoutItem {
 
 export interface AnalyzePanelLayoutState {
   items: AnalyzePanelLayoutItem[];
+  compareIds?: AnalyzePanelId[];
 }
 
 const PANEL_ID_SET = new Set<string>(ANALYZE_PANEL_IDS);
@@ -38,7 +39,27 @@ export const DEFAULT_ANALYZE_PANEL_LAYOUT: AnalyzePanelLayoutState = {
     { id: 'evidence-log', zone: 'main' },
     { id: 'execution-board', zone: 'side' },
   ],
+  compareIds: ['dex-market-structure', 'onchain-cycle-detail', 'execution-board'],
 };
+
+export function normalizeAnalyzeCompareIds(
+  layout?: Partial<AnalyzePanelLayoutState> | null,
+): AnalyzePanelId[] {
+  const incoming = Array.isArray(layout?.compareIds) ? layout.compareIds : [];
+  const normalized: AnalyzePanelId[] = [];
+  const seen = new Set<AnalyzePanelId>();
+
+  for (const id of incoming) {
+    if (!PANEL_ID_SET.has(id)) continue;
+    const panelId = id as AnalyzePanelId;
+    if (seen.has(panelId)) continue;
+    seen.add(panelId);
+    normalized.push(panelId);
+  }
+
+  if (normalized.length > 0) return normalized;
+  return [...(DEFAULT_ANALYZE_PANEL_LAYOUT.compareIds ?? [])];
+}
 
 export function normalizeAnalyzePanelLayout(
   layout?: Partial<AnalyzePanelLayoutState> | null,
@@ -65,7 +86,10 @@ export function normalizeAnalyzePanelLayout(
     normalized.push({ ...item });
   }
 
-  return { items: normalized };
+  return {
+    items: normalized,
+    compareIds: normalizeAnalyzeCompareIds(layout),
+  };
 }
 
 export function getAnalyzePanelsByZone(
@@ -96,7 +120,10 @@ export function moveAnalyzePanel(
   if (zoneIndex === -1 || targetZoneIndex < 0 || targetZoneIndex >= zoneIndices.length) return normalized;
   const swapIndex = zoneIndices[targetZoneIndex];
   [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
-  return { items };
+  return {
+    ...normalized,
+    items,
+  };
 }
 
 export function setAnalyzePanelZone(
@@ -121,7 +148,10 @@ export function setAnalyzePanelZone(
     if (sideStart === -1) items.push(next);
     else items.splice(sideStart, 0, next);
   }
-  return { items };
+  return {
+    ...normalized,
+    items,
+  };
 }
 
 export function toggleAnalyzePanelCollapsed(
@@ -130,6 +160,7 @@ export function toggleAnalyzePanelCollapsed(
 ): AnalyzePanelLayoutState {
   const normalized = normalizeAnalyzePanelLayout(layout);
   return {
+    ...normalized,
     items: normalized.items.map((item) =>
       item.id === id ? { ...item, collapsed: !item.collapsed } : item,
     ),
@@ -141,4 +172,43 @@ export function isAnalyzePanelCollapsed(
   id: AnalyzePanelId,
 ): boolean {
   return Boolean(normalizeAnalyzePanelLayout(layout).items.find((item) => item.id === id)?.collapsed);
+}
+
+export function toggleAnalyzeComparePanel(
+  layout: AnalyzePanelLayoutState,
+  id: AnalyzePanelId,
+): AnalyzePanelLayoutState {
+  const normalized = normalizeAnalyzePanelLayout(layout);
+  const compareIds = normalizeAnalyzeCompareIds(normalized);
+  return {
+    ...normalized,
+    compareIds: compareIds.includes(id)
+      ? compareIds.filter((panelId) => panelId !== id)
+      : [...compareIds, id],
+  };
+}
+
+export function moveAnalyzeComparePanel(
+  layout: AnalyzePanelLayoutState,
+  id: AnalyzePanelId,
+  direction: AnalyzePanelMoveDirection,
+): AnalyzePanelLayoutState {
+  const normalized = normalizeAnalyzePanelLayout(layout);
+  const compareIds = [...normalizeAnalyzeCompareIds(normalized)];
+  const index = compareIds.indexOf(id);
+  if (index === -1) return normalized;
+  const nextIndex = direction === 'backward' ? index - 1 : index + 1;
+  if (nextIndex < 0 || nextIndex >= compareIds.length) return normalized;
+  [compareIds[index], compareIds[nextIndex]] = [compareIds[nextIndex], compareIds[index]];
+  return {
+    ...normalized,
+    compareIds,
+  };
+}
+
+export function isAnalyzeComparePinned(
+  layout: AnalyzePanelLayoutState,
+  id: AnalyzePanelId,
+): boolean {
+  return normalizeAnalyzeCompareIds(layout).includes(id);
 }

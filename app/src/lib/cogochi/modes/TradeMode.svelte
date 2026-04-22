@@ -34,10 +34,14 @@
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
   import {
     getAnalyzePanelsByZone,
+    isAnalyzeComparePinned,
     isAnalyzePanelCollapsed,
+    moveAnalyzeComparePanel,
     moveAnalyzePanel as moveAnalyzePanelLayout,
+    normalizeAnalyzeCompareIds,
     normalizeAnalyzePanelLayout,
     setAnalyzePanelZone,
+    toggleAnalyzeComparePanel,
     toggleAnalyzePanelCollapsed,
     type AnalyzePanelId,
   } from '$lib/contracts/cogochiPanelLayout';
@@ -518,6 +522,22 @@
     getAnalyzePanelsByZone(analyzePanelLayout, 'side').filter((id) => analyzePanelVisible(id))
   );
 
+  const analyzeComparePanelIds = $derived(
+    normalizeAnalyzeCompareIds(analyzePanelLayout).filter((id) => analyzePanelVisible(id))
+  );
+
+  function toggleAnalyzeCompare(id: AnalyzePanelId) {
+    updateAnalyzePanelLayout((layout) => toggleAnalyzeComparePanel(layout, id));
+  }
+
+  function moveComparePanel(id: AnalyzePanelId, direction: 'backward' | 'forward') {
+    updateAnalyzePanelLayout((layout) => moveAnalyzeComparePanel(layout, id, direction));
+  }
+
+  function analyzePanelPinned(id: AnalyzePanelId): boolean {
+    return isAnalyzeComparePinned(analyzePanelLayout, id);
+  }
+
   // Ordered list of indicators to render — driven by ShellState.visibleIndicators.
   // Gauge row: archetypes A, D, E (scalar / divergence / regime cards).
   // Venue stack: archetype F (multi-venue strips).
@@ -592,6 +612,64 @@
 
     window.dispatchEvent(new CustomEvent('cogochi:cmd', {
       detail: { id: 'open_ai_detail', userText, assistantText },
+    }));
+  }
+
+  function collectPanelStudies(panelId: AnalyzePanelId) {
+    return ANALYZE_PANEL_STUDIES[panelId]
+      .map((id) => workspaceStudyMap[id])
+      .filter((study): study is NonNullable<typeof study> => Boolean(study));
+  }
+
+  const compareShelfPanels = $derived.by(() =>
+    analyzeComparePanelIds.map((panelId) => {
+      const studies = collectPanelStudies(panelId);
+      const summary = studies
+        .flatMap((study) =>
+          study.summary
+            .slice(0, 2)
+            .filter((row) => row.value != null && row.value !== '')
+            .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`),
+        )
+        .slice(0, 3);
+      return {
+        id: panelId,
+        kicker: ANALYZE_PANEL_META[panelId].kicker,
+        copy: ANALYZE_PANEL_META[panelId].copy,
+        studies,
+        summary,
+      };
+    }),
+  );
+
+  function openAnalyzeCompareDetail() {
+    const comparePanels = compareShelfPanels;
+    const compareStudies = comparePanels.flatMap((panel) => panel.studies);
+    const dedupedStudies = compareStudies.filter(
+      (study, index) => compareStudies.findIndex((candidate) => candidate.id === study.id) === index,
+    );
+    const assistantText = [
+      `**${symbol} · ${timeframe} ANALYZE COMPARE SHELF**`,
+      workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,
+      `- Pinned panels: ${comparePanels.map((panel) => panel.kicker).join(', ') || '—'}`,
+      ...(workspaceEnvelope.aiContext.warnings ?? []).map((warning) => `- Warning: ${warning}`),
+      '',
+      '**Panel Compare**',
+      ...comparePanels.flatMap((panel) => [
+        `- ${panel.kicker}: ${panel.summary.join(' / ') || '—'}`,
+        ...panel.studies.flatMap((study) => buildStudyAIDetailLines(study).map((line) => `  ${line}`)),
+      ]),
+    ]
+      .filter((line): line is string => Boolean(line))
+      .join('\n');
+
+    window.dispatchEvent(new CustomEvent('cogochi:cmd', {
+      detail: {
+        id: 'open_ai_detail',
+        userText: `${symbol} ${timeframe} pinned analyze panels 비교 설명해줘`,
+        assistantText,
+        compareStudyIds: dedupedStudies.map((study) => study.id),
+      },
     }));
   }
 
@@ -1313,6 +1391,48 @@
                   </div>
                 {/each}
               </div>
+              <div class="compare-shelf">
+                <div class="compare-shelf-head">
+                  <div class="compare-shelf-copy">
+                    <span class="compare-shelf-kicker">COMPARE SHELF</span>
+                    <span class="compare-shelf-sub">Claude-style pinned panels · 추가 fetch 없이 같은 workspace payload 재사용</span>
+                  </div>
+                  <div class="compare-shelf-actions">
+                    <button class="analyze-panel-btn" type="button" onclick={openAnalyzeCompareDetail} disabled={compareShelfPanels.length === 0}>
+                      AI COMPARE
+                    </button>
+                  </div>
+                </div>
+                <div class="compare-shelf-grid">
+                  {#if compareShelfPanels.length === 0}
+                    <div class="compare-shelf-empty">
+                      패널 헤더의 <code>PIN</code> 으로 비교 shelf 에 올릴 수 있습니다.
+                    </div>
+                  {:else}
+                    {#each compareShelfPanels as panel, compareIndex}
+                      <div class="compare-card">
+                        <div class="compare-card-head">
+                          <div>
+                            <div class="compare-card-title">{panel.kicker}</div>
+                            <div class="compare-card-copy">{panel.copy}</div>
+                          </div>
+                          <div class="compare-card-actions">
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveComparePanel(panel.id, 'backward')} disabled={compareIndex === 0}>↑</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveComparePanel(panel.id, 'forward')} disabled={compareIndex === compareShelfPanels.length - 1}>↓</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panel.id)}>AI</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panel.id)}>UNPIN</button>
+                          </div>
+                        </div>
+                        <div class="compare-card-lines">
+                          {#each panel.summary as line}
+                            <div class="compare-card-line">{line}</div>
+                          {/each}
+                        </div>
+                      </div>
+                    {/each}
+                  {/if}
+                </div>
+              </div>
               <div class="analyze-columns">
                 <!-- Left: detailed reading workspace -->
                 <div class="analyze-left">
@@ -1328,12 +1448,15 @@
                         </div>
                         <div class="analyze-panel-actions">
                           <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'backward')} disabled={panelIndex === 0}>↑</button>
-                          <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeMainPanelIds.length - 1}>↓</button>
-                          <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>DOCK</button>
-                          <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
-                          <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
-                            {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
-                          </button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeMainPanelIds.length - 1}>↓</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>DOCK</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panelId)}>
+                              {analyzePanelPinned(panelId) ? 'UNPIN' : 'PIN'}
+                            </button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
+                              {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
+                            </button>
                         </div>
                       </div>
                       {#if !analyzePanelIsCollapsed(panelId)}
@@ -1531,6 +1654,9 @@
                             <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'backward')} disabled={panelIndex === 0}>↑</button>
                             <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeSidePanelIds.length - 1}>↓</button>
                             <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>MAIN</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzeCompare(panelId)}>
+                              {analyzePanelPinned(panelId) ? 'UNPIN' : 'PIN'}
+                            </button>
                             <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
                             <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
                               {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
@@ -2620,6 +2746,109 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .compare-shelf {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.12));
+    flex-shrink: 0;
+  }
+  .compare-shelf-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .compare-shelf-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .compare-shelf-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--amb);
+    letter-spacing: 0.18em;
+    font-weight: 700;
+  }
+  .compare-shelf-sub {
+    font-size: 10px;
+    color: var(--g6);
+    line-height: 1.5;
+  }
+  .compare-shelf-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .compare-shelf-empty {
+    grid-column: 1 / -1;
+    padding: 12px;
+    border: 0.5px dashed var(--g4);
+    border-radius: 5px;
+    background: rgba(255,255,255,0.01);
+    color: var(--g5);
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .compare-shelf-empty code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g9);
+  }
+  .compare-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
+  }
+  .compare-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .compare-card-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g9);
+    letter-spacing: 0.08em;
+  }
+  .compare-card-copy {
+    margin-top: 2px;
+    font-size: 9px;
+    color: var(--g6);
+    line-height: 1.45;
+  }
+  .compare-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .compare-card-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .compare-card-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g7);
+    line-height: 1.45;
+  }
+  @media (max-width: 1180px) {
+    .compare-shelf-grid {
+      grid-template-columns: 1fr;
+    }
   }
   .analyze-columns {
     flex: 1;
