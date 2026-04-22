@@ -5,12 +5,20 @@ import type {
   FlowEnvelope,
   SnapshotEnvelope,
 } from '$lib/contracts/terminalBackend';
-import type { CogochiWorkspaceEnvelope } from '$lib/contracts/cogochiDataPlane';
+import type {
+  CogochiWorkspaceEnvelope,
+  DexOverviewPayload,
+  OnchainBackdropPayload,
+} from '$lib/contracts/cogochiDataPlane';
 import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
 import type { ConfluenceResult } from '$lib/confluence/types';
 import type {
+  FundingFlipPayload,
+  IndicatorContextPayload,
   LiqClusterPayload,
   OptionsSnapshotPayload,
+  RvConePayload,
+  SsrPayload,
   VenueDivergencePayload,
 } from '$lib/indicators/adapter';
 import {
@@ -42,6 +50,12 @@ export interface CogochiWorkspaceBundleResult {
   venueDivergence: VenueDivergencePayload | null;
   liqClusters: LiqClusterPayload | null;
   optionsSnapshot: OptionsSnapshotPayload | null;
+  indicatorContext: IndicatorContextPayload | null;
+  ssr: SsrPayload | null;
+  rvCone: RvConePayload | null;
+  fundingFlip: FundingFlipPayload | null;
+  onchainBackdrop: OnchainBackdropPayload | null;
+  dexOverview: DexOverviewPayload | null;
   workspaceEnvelope: CogochiWorkspaceEnvelope | null;
 }
 
@@ -167,6 +181,12 @@ export async function fetchCogochiWorkspaceBundle(args: {
       venueDivergence: null,
       liqClusters: null,
       optionsSnapshot: null,
+      indicatorContext: null,
+      ssr: null,
+      rvCone: null,
+      fundingFlip: null,
+      onchainBackdrop: null,
+      dexOverview: null,
       workspaceEnvelope: null,
     };
   }
@@ -178,6 +198,12 @@ export async function fetchCogochiWorkspaceBundle(args: {
     venueDivergence: null,
     liqClusters: null,
     optionsSnapshot: null,
+    indicatorContext: null,
+    ssr: null,
+    rvCone: null,
+    fundingFlip: null,
+    onchainBackdrop: null,
+    dexOverview: null,
     workspaceEnvelope: null,
   };
 }
