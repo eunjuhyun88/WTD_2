@@ -1,7 +1,8 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import { fetchAnalyzeAndChart } from '$lib/api/terminalBackend';
+  import { fetchCogochiWorkspaceBundle } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
+  import type { CogochiWorkspaceEnvelope } from '$lib/contracts/cogochiDataPlane';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
@@ -53,25 +54,36 @@
   // analyzeData is refreshed on candle close via ChartBoard's onCandleClose callback.
   let chartPayload = $state<ChartSeriesPayload | null>(null);
   let analyzeData = $state<AnalyzeEnvelope | null>(null);
+  let workspaceEnvelopeState = $state<CogochiWorkspaceEnvelope | null>(null);
   let chartLoading = $state(false);
   let lastCandleTime: number | null = null; // plain ref — guards against duplicate onCandleClose fires
 
-  // Fetch initial bundle (one-shot per symbol/tf)
+  async function refreshWorkspaceBundleFor(sym: string, tf: string, includeChart = false) {
+    const bundle = await fetchCogochiWorkspaceBundle({ symbol: sym, tf, includeChart });
+    if (symbol !== sym || timeframe !== tf) return;
+    analyzeData = bundle.analyze ?? null;
+    confluence = bundle.confluence ?? null;
+    venueDivergence = bundle.venueDivergence ?? null;
+    liqClusters = bundle.liqClusters ?? null;
+    optionsSnapshot = bundle.optionsSnapshot ?? null;
+    workspaceEnvelopeState = bundle.workspaceEnvelope ?? null;
+    if (includeChart) {
+      chartPayload = bundle.chartPayload ?? null;
+      if (bundle.chartPayload?.klines?.length) {
+        lastCandleTime = bundle.chartPayload.klines[bundle.chartPayload.klines.length - 1].time;
+      }
+    }
+  }
+
+  // Fetch initial workspace bundle (single route for analyze/chart/summary studies)
   $effect(() => {
     const sym = symbol;
     const tf = timeframe;
     chartLoading = true;
     lastCandleTime = null;
-    fetchAnalyzeAndChart({ symbol: sym, tf })
-      .then(result => {
-        chartPayload = result.chartPayload ?? null;
-        analyzeData = result.analyze ?? null;
-        chartLoading = false;
-        if (result.chartPayload?.klines?.length) {
-          lastCandleTime = result.chartPayload.klines[result.chartPayload.klines.length - 1].time;
-        }
-      })
-      .catch(() => { chartLoading = false; });
+    void refreshWorkspaceBundleFor(sym, tf, true).finally(() => {
+      if (symbol === sym && timeframe === tf) chartLoading = false;
+    });
   });
 
   // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
@@ -79,39 +91,14 @@
   async function handleCandleClose(bar: { time: number }) {
     if (lastCandleTime === bar.time) return; // dedup duplicate fires
     lastCandleTime = bar.time;
-    try {
-      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}`);
-      if (!res.ok) return;
-      analyzeData = (await res.json()) as AnalyzeEnvelope;
-    } catch { /* retry on next candle */ }
-    // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
-    // in lock-step with analyze on candle close.
-    void refreshVenueDivergence();
-    void refreshLiqClusters();
-    void refreshConfluence();
+    await refreshWorkspaceBundleFor(symbol, timeframe, false);
   }
 
   // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
   let venueDivergence = $state<VenueDivergencePayload | null>(null);
 
-  async function refreshVenueDivergence() {
-    try {
-      const res = await fetch(`/api/market/venue-divergence?symbol=${symbol}`);
-      if (!res.ok) return;
-      venueDivergence = (await res.json()) as VenueDivergencePayload;
-    } catch { /* tolerate: next refresh will retry */ }
-  }
-
   // ── Pillar 1: Liquidation Clusters (W-0122-B1) ───────────────────────
   let liqClusters = $state<LiqClusterPayload | null>(null);
-
-  async function refreshLiqClusters() {
-    try {
-      const res = await fetch(`/api/market/liq-clusters?symbol=${symbol}&window=4h`);
-      if (!res.ok) return;
-      liqClusters = (await res.json()) as LiqClusterPayload;
-    } catch { /* tolerate */ }
-  }
 
   // ── Rolling Percentile Context (W-0122 rolling percentile) ───────────
   // 30d distribution data: OI deltas + funding history → real percentiles.
@@ -190,30 +177,11 @@
   // ── Pillar 2: Options snapshot (W-0122-C1) ───────────────────────────
   let optionsSnapshot = $state<OptionsSnapshotPayload | null>(null);
 
-  async function refreshOptionsSnapshot() {
-    // Deribit supports BTC and ETH currencies.
-    const currency = symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : null;
-    if (!currency) { optionsSnapshot = null; return; }
-    try {
-      const res = await fetch(`/api/market/options-snapshot?currency=${currency}`);
-      if (!res.ok) return;
-      optionsSnapshot = (await res.json()) as OptionsSnapshotPayload;
-    } catch { /* tolerate */ }
-  }
-
   // ── Confluence Engine (W-0122 master score) ──────────────────────────
   interface ConfluenceHistoryEntry { at: number; score: number; confidence: number; regime: string; divergence: boolean }
 
   let confluence = $state<ConfluenceResult | null>(null);
   let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
-
-  async function refreshConfluence() {
-    try {
-      const res = await fetch(`/api/confluence/current?symbol=${symbol}&tf=${timeframe}`);
-      if (!res.ok) return;
-      confluence = (await res.json()) as ConfluenceResult;
-    } catch { /* tolerate */ }
-  }
 
   async function refreshConfluenceHistory() {
     try {
@@ -229,6 +197,7 @@
   // every 5m since its server cache TTL is 10m. SSR/RV/flip are slower still.
   $effect(() => {
     void symbol;
+    void timeframe;
     venueDivergence = null;
     liqClusters = null;
     indicatorContext = null;
@@ -239,36 +208,29 @@
     optionsSnapshot = null;
     confluence = null;
     confluenceHistory = [];
-    void refreshVenueDivergence();
-    void refreshLiqClusters();
+    workspaceEnvelopeState = null;
     void refreshIndicatorContext();
     void refreshSsr();
     void refreshRvCone();
     void refreshFundingFlip();
     void refreshFundingHistory();
-    void refreshOptionsSnapshot();
-    void refreshConfluence();
     void refreshConfluenceHistory();
     void refreshPastCaptures();
     const fastIv = setInterval(() => {
-      void refreshVenueDivergence();
-      void refreshLiqClusters();
-      void refreshConfluence(); // confluence tracks the venue/liq refresh cadence
+      void refreshWorkspaceBundleFor(symbol, timeframe, false);
       void refreshConfluenceHistory(); // pull updated sparkline entries
     }, 60_000);
     const slowIv = setInterval(() => void refreshIndicatorContext(), 5 * 60_000);
-    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min, options is 5min.
+    // SSR server cache is 30min, RV cone is 1h, funding-flip is 10min.
     const flipIv = setInterval(() => void refreshFundingFlip(), 5 * 60_000);
     const ssrIv = setInterval(() => void refreshSsr(), 10 * 60_000);
     const rvIv = setInterval(() => void refreshRvCone(), 30 * 60_000);
-    const optIv = setInterval(() => void refreshOptionsSnapshot(), 5 * 60_000);
     return () => {
       clearInterval(fastIv);
       clearInterval(slowIv);
       clearInterval(flipIv);
       clearInterval(ssrIv);
       clearInterval(rvIv);
-      clearInterval(optIv);
     };
   });
 
@@ -285,16 +247,18 @@
     optionsSnapshot,
   }));
 
-  const workspaceEnvelope = $derived(buildCogochiWorkspaceEnvelope({
-    symbol,
-    timeframe,
-    analyze: analyzeData,
-    chartPayload,
-    confluence,
-    venueDivergence,
-    liqClusters,
-    optionsSnapshot,
-  }));
+  const workspaceEnvelope = $derived(
+    workspaceEnvelopeState ?? buildCogochiWorkspaceEnvelope({
+      symbol,
+      timeframe,
+      analyze: analyzeData,
+      chartPayload,
+      confluence,
+      venueDivergence,
+      liqClusters,
+      optionsSnapshot,
+    })
+  );
 
   const workspaceStudyMap = $derived.by(() => buildStudyMap(workspaceEnvelope.studies));
   const workspaceSummaryCards = $derived.by(() => {

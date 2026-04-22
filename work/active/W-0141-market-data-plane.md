@@ -40,6 +40,7 @@ Contract change
 - `docs/domains/cogochi-market-data-plane.md`
 - `app/src/lib/contracts/terminalBackend.ts`
 - `app/src/lib/contracts/cogochiDataPlane.ts`
+- `app/src/routes/api/cogochi/workspace-bundle/+server.ts`
 - `app/src/lib/cogochi/workspaceDataPlane.ts`
 - `app/src/lib/api/terminalBackend.ts`
 - `app/src/components/terminal/workspace/ChartBoard.svelte`
@@ -71,12 +72,14 @@ Contract change
 - `ChartBoard` 는 live series owner 이고, `TradeMode` 는 study/workspace composition owner 여야 한다.
 - compare 는 탭 전환이 아니라 `pin / detach / compare` 모델로 간다.
 - 첫 구현은 신규 backend route 를 열지 않고 app-side pure producer 로 시작한다. 다만 producer 가 backend ownership 메타를 반드시 포함해야 이후 engine producer 로 대체 가능하다.
+- Phase 1.5 로 `/api/cogochi/workspace-bundle` route 를 추가해 `TradeMode` 초기 로드와 fast refresh 가 analyze/confluence/venue/liq/options 를 단일 bundle 로 받도록 한다.
 
 ## Next Steps
 
 1. `W-0141` 도메인 문서에 ingress/source/contract/layout 배치 원칙을 기록한다.
 2. `StudySnapshot / WorkspaceSection / AIContextPack` 타입 초안을 추가한다.
 3. `buildCogochiWorkspaceEnvelope()` producer 를 추가하고 `TradeMode` 의 summary/AI consumer 를 이 계약으로 전환한다.
+4. `/api/cogochi/workspace-bundle` producer route 와 client helper 를 추가해 surface fetch fan-out 을 줄인다.
 
 ## Exit Criteria
 
