@@ -130,10 +130,29 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     class FakeRecordStore:
         def __init__(self) -> None:
             self.list_calls = 0
+            self.summarize_calls = 0
 
         def list(self, slug, record_type=None, limit=None):
             self.list_calls += 1
             return record_list
+
+        def summarize_family(self, slug):
+            self.summarize_calls += 1
+            return (
+                {
+                    "entry_count": 10,
+                    "capture_count": 4,
+                    "score_count": 10,
+                    "outcome_count": 6,
+                    "verdict_count": 3,
+                    "training_run_count": 2,
+                    "model_count": 1,
+                    "capture_to_entry_rate": 0.4,
+                    "verdict_to_entry_rate": 0.3,
+                },
+                record_list[0],
+                record_list[1],
+            )
 
     fake_record_store = FakeRecordStore()
 
@@ -239,7 +258,8 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     assert payload["alert_policy"]["mode"] == "gated"
     assert payload["latest_training_run"]["record_type"] == "training_run"
     assert payload["latest_model"]["record_type"] == "model"
-    assert fake_record_store.list_calls == 1
+    assert fake_record_store.summarize_calls == 1
+    assert fake_record_store.list_calls == 0
 
 
 def test_set_user_verdict_appends_verdict_record(monkeypatch) -> None:

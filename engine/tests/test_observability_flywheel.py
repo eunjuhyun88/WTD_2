@@ -80,6 +80,34 @@ def test_empty_state_returns_zeros(wire) -> None:
     }
 
 
+def test_compute_flywheel_health_accepts_injected_dependencies(tmp_path) -> None:
+    capture_store = CaptureStore(tmp_path / "capture.sqlite")
+    record_store = LedgerRecordStore(base_dir=tmp_path / "ledger_records")
+    now = datetime(2026, 4, 18, 12, 0)
+
+    capture_store.save(_capture("cap-ready", status="outcome_ready"))
+    record_store.append(_record("capture", created_at=now))
+    record_store.append(_record("outcome", created_at=now))
+    record_store.append(_record("verdict", created_at=now))
+
+    class EmptyRegistry:
+        def get_active(self, slug):  # noqa: ARG002
+            return None
+
+    health = observability.compute_flywheel_health(
+        now=now,
+        capture_store=capture_store,
+        record_store=record_store,
+        model_registry=EmptyRegistry(),
+        pattern_library={"tradoor-oi-reversal-v1": None},
+    )
+
+    assert health["captures_per_day_7d"] == round(1 / 7.0, 4)
+    assert health["captures_to_outcome_rate"] == 1.0
+    assert health["outcomes_to_verdict_rate"] == 1.0
+    assert health["active_models_per_pattern"] == {"tradoor-oi-reversal-v1": 0}
+
+
 def test_captures_per_day_counts_last_7d_only(wire) -> None:
     _, record_store = wire
     now = datetime(2026, 4, 18, 12, 0)

@@ -503,6 +503,11 @@ class LedgerRecordStore:
         records.sort(key=lambda record: record.created_at, reverse=True)
         return records[:limit] if limit is not None else records
 
+    def list_pattern_slugs(self) -> list[str]:
+        if not self.base_dir.exists():
+            return []
+        return sorted(path.name for path in self.base_dir.iterdir() if path.is_dir())
+
     def summarize_family(
         self,
         pattern_slug: str,
