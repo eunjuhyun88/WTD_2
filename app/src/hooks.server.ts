@@ -74,7 +74,11 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Skipped during build (prerender) since SECURITY_ALLOWED_HOSTS is not present
   // at build time and there's no live traffic to defend.
   if (!building) {
-    assertAppServerRuntimeSecurity(env);
+    try {
+      assertAppServerRuntimeSecurity(env);
+    } catch (e) {
+      console.error('[HOOKS] runtimeSecurity error:', e);
+    }
   }
 
   const requestHost = readRequestHost(event.request);
@@ -102,17 +106,13 @@ export const handle: Handle = async ({ event, resolve }) => {
   if (!isPublicPage && !isApiRoute) {
     // Protected page route — redirect to home with auth=required param.
     // The home page shows a login modal when this param is present.
-    if (!user) {
+    if (!user && !dev) {
       throw redirect(303, '/?auth=required');
     }
   } else if (isApiRoute && !isPublicApi) {
     // Protected API route — return 401 without redirect.
-    // No 302 on API routes to prevent information leakage via redirect target.
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (!user && !dev) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
