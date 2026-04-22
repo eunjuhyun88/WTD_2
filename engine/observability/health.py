@@ -9,11 +9,12 @@ def health_payload(version: str) -> dict:
     return {"status": "ok", "version": version}
 
 
-def readiness_payload(version: str, *, scheduler_enabled: bool) -> dict:
+def readiness_payload(version: str, *, scheduler_enabled: bool, runtime_role: str) -> dict:
     engine = get_engine()
     return {
         "status": "ready",
         "version": version,
+        "runtime_role": runtime_role,
         "scheduler_enabled": scheduler_enabled,
         "scheduler_running": is_running(),
         "model_loaded": engine.is_trained,

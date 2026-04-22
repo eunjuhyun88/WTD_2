@@ -55,6 +55,20 @@ Typical optional provider keys:
 - `CRYPTOQUANT_API_KEY`
 - `ETHERSCAN_API_KEY`
 
+## Engine Runtime Role
+
+| Variable | Default | Used by | Purpose |
+|---|---|---|---|
+| `ENGINE_RUNTIME_ROLE` | `hybrid` | `engine-api`, `worker-control` | Runtime surface selection: `api`, `worker`, or transitional `hybrid` |
+| `ENGINE_ENABLE_SCHEDULER` | `true` | `engine-api`, `worker-control` | Enables scheduler bootstrap only when the runtime role serves worker-control |
+
+Notes:
+
+- set `ENGINE_RUNTIME_ROLE=api` for public `engine-api`
+- set `ENGINE_RUNTIME_ROLE=worker` for internal HTTP worker-control deployments
+- keep `hybrid` only for local development or transitional rollback
+- `ENGINE_RUNTIME_ROLE=api` forces scheduler disabled even if `ENGINE_ENABLE_SCHEDULER=true`
+
 ## Worker-Control Research
 
 | Variable | Default | Used by | Purpose |
