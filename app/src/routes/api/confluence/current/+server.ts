@@ -17,6 +17,7 @@ import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { computeConfluence } from '$lib/confluence/score';
 import type { ConfluenceInput } from '$lib/confluence/score';
 import { pushConfluence, streakBack } from '$lib/server/confluenceHistory';
+import { getRequestIp } from '$lib/server/requestIp';
 
 const VALID_SYMBOL = /^[A-Z0-9]{3,12}USDT$/;
 const VALID_TF = /^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/;
@@ -107,13 +108,13 @@ function summarizeLiq(
   return { aboveDistancePct, belowDistancePct, intensity };
 }
 
-export const GET: RequestHandler = async ({ url, getClientAddress, fetch: _kitFetch }) => {
+export const GET: RequestHandler = async ({ url, request, getClientAddress, fetch: _kitFetch }) => {
   const symbol = (url.searchParams.get('symbol') ?? 'BTCUSDT').toUpperCase();
   const tf = (url.searchParams.get('tf') ?? '4h').trim();
   if (!VALID_SYMBOL.test(symbol)) return json({ error: 'invalid symbol' }, { status: 400 });
   if (!VALID_TF.test(tf)) return json({ error: 'invalid tf' }, { status: 400 });
 
-  const ip = getClientAddress();
+  const ip = getRequestIp({ request, getClientAddress });
   if (!chartFeedLimiter.check(ip)) {
     return json({ error: 'rate limited' }, { status: 429, headers: { 'Retry-After': '30' } });
   }

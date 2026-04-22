@@ -27,6 +27,7 @@ export async function runIpRateLimitGuard(args: {
   max: number;
   tooManyMessage: string;
   windowMs?: number;
+  allowDistributedInfraFallback?: boolean;
 }): Promise<GuardPass | GuardBlocked> {
   const reputation = evaluateIpReputation(args.request, args.fallbackIp);
   if (!reputation.allowed) {
@@ -49,6 +50,7 @@ export async function runIpRateLimitGuard(args: {
     key: ip,
     windowMs: args.windowMs ?? 60_000,
     max: args.max,
+    allowInfraFallback: args.allowDistributedInfraFallback ?? false,
   });
   if (!distributedAllowed) {
     return {

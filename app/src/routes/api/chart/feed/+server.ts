@@ -17,12 +17,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getChartSeries } from '$lib/server/chart/chartSeriesService';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
+import { getRequestIp } from '$lib/server/requestIp';
 
 const VALID_SYMBOL = /^[A-Z0-9]{2,20}$/;
 const VALID_TF = new Set(['1m','3m','5m','15m','30m','1h','2h','4h','6h','12h','1d','1w']);
 
-export const GET: RequestHandler = async ({ url, fetch, getClientAddress }) => {
-  if (!chartFeedLimiter.check(getClientAddress())) {
+export const GET: RequestHandler = async ({ url, fetch, request, getClientAddress }) => {
+  const ip = getRequestIp({ request, getClientAddress });
+  if (!chartFeedLimiter.check(ip)) {
     return json({ error: 'Too many requests' }, {
       status: 429,
       headers: { 'Retry-After': '10' },

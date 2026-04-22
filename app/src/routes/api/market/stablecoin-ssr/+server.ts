@@ -18,6 +18,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
+import { getRequestIp } from '$lib/server/requestIp';
 
 export interface SsrPayload {
   at: number;
@@ -63,8 +64,8 @@ function percentileOf(value: number, series: number[]): number {
   return Math.max(0, Math.min(100, (lo / sorted.length) * 100));
 }
 
-export const GET: RequestHandler = async ({ getClientAddress }) => {
-  const ip = getClientAddress();
+export const GET: RequestHandler = async ({ request, getClientAddress }) => {
+  const ip = getRequestIp({ request, getClientAddress });
   if (!chartFeedLimiter.check(ip)) {
     return json({ error: 'rate limited' }, { status: 429, headers: { 'Retry-After': '60' } });
   }
