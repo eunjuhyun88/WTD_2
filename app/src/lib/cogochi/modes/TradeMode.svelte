@@ -2,7 +2,11 @@
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
   import { fetchCogochiWorkspaceBundle } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
-  import type { CogochiWorkspaceEnvelope } from '$lib/contracts/cogochiDataPlane';
+  import type {
+    CogochiWorkspaceEnvelope,
+    DexOverviewPayload,
+    OnchainBackdropPayload,
+  } from '$lib/contracts/cogochiDataPlane';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
@@ -66,6 +70,12 @@
     venueDivergence = bundle.venueDivergence ?? null;
     liqClusters = bundle.liqClusters ?? null;
     optionsSnapshot = bundle.optionsSnapshot ?? null;
+    if (bundle.indicatorContext) indicatorContext = bundle.indicatorContext;
+    if (bundle.ssr) ssr = bundle.ssr;
+    if (bundle.rvCone) rvCone = bundle.rvCone;
+    if (bundle.fundingFlip) fundingFlip = bundle.fundingFlip;
+    onchainBackdrop = bundle.onchainBackdrop ?? null;
+    dexOverview = bundle.dexOverview ?? null;
     workspaceEnvelopeState = bundle.workspaceEnvelope ?? null;
     if (includeChart) {
       chartPayload = bundle.chartPayload ?? null;
@@ -117,6 +127,8 @@
   let ssr = $state<SsrPayload | null>(null);
   let rvCone = $state<RvConePayload | null>(null);
   let fundingFlip = $state<FundingFlipPayload | null>(null);
+  let onchainBackdrop = $state<OnchainBackdropPayload | null>(null);
+  let dexOverview = $state<DexOverviewPayload | null>(null);
 
   async function refreshSsr() {
     try {
@@ -204,6 +216,8 @@
     ssr = null;
     rvCone = null;
     fundingFlip = null;
+    onchainBackdrop = null;
+    dexOverview = null;
     fundingHistory = null;
     optionsSnapshot = null;
     confluence = null;
@@ -257,6 +271,12 @@
       venueDivergence,
       liqClusters,
       optionsSnapshot,
+      indicatorContext,
+      ssr,
+      rvCone,
+      fundingFlip,
+      onchainBackdrop,
+      dexOverview,
     })
   );
 
@@ -266,6 +286,7 @@
     return summaryIds
       .map((id) => workspaceStudyMap[id])
       .filter((study): study is NonNullable<typeof study> => Boolean(study))
+      .sort((a, b) => a.displayPriority - b.displayPriority)
       .slice(0, 4)
       .map((study) => {
         const primary = study.summary[0];
@@ -282,6 +303,33 @@
         };
       });
   });
+
+  const workspaceBackdropStudies = $derived.by(() => {
+    const detailIds = workspaceEnvelope.sections.find((section) => section.id === 'detail-workspace')?.studyIds ?? [];
+    const target = new Set([
+      'stablecoin-liquidity',
+      'realized-volatility',
+      'funding-regime',
+      'onchain-cycle',
+      'dex-liquidity',
+      'dex-whale-flow',
+    ]);
+    return detailIds
+      .map((id) => workspaceStudyMap[id])
+      .filter((study): study is NonNullable<typeof study> => Boolean(study) && target.has(study.id))
+      .sort((a, b) => a.displayPriority - b.displayPriority);
+  });
+
+  function formatFreshness(ms: number | null | undefined): string {
+    if (ms == null || !Number.isFinite(ms)) return 'live';
+    if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+    if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+    return `${Math.round(ms / 3_600_000)}h`;
+  }
+
+  function formatSourceRefs(refs: Array<{ provider: string }>): string {
+    return refs.map((ref) => ref.provider.toUpperCase()).join(' · ');
+  }
 
   // Ordered list of indicators to render — driven by ShellState.visibleIndicators.
   // Gauge row: archetypes A, D, E (scalar / divergence / regime cards).
@@ -1112,6 +1160,43 @@
                     </div>
                     <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
                   </div>
+                  {#if workspaceBackdropStudies.length}
+                    <div class="analyze-section">
+                      <div class="analyze-section-head">
+                        <span class="analyze-kicker">ON-CHAIN / DEX / VOL</span>
+                        <span class="analyze-section-copy">실데이터 기반 backdrop 지표와 source/trust/methodology</span>
+                      </div>
+                      <div class="study-grid">
+                        {#each workspaceBackdropStudies as study}
+                          <div class="study-card">
+                            <div class="study-card-head">
+                              <div>
+                                <div class="study-card-title">{study.title}</div>
+                                <div class="study-card-sub">{formatSourceRefs(study.sourceRefs)} · {formatFreshness(study.freshnessMs)}</div>
+                              </div>
+                              <span class="study-card-trust" data-tier={study.trust.tier}>{study.trust.tier}</span>
+                            </div>
+                            <div class="study-card-metrics">
+                              {#each study.summary as row}
+                                <div class="study-metric">
+                                  <span class="study-metric-label">{row.label}</span>
+                                  <span class="study-metric-value" class:tone-bull={row.tone === 'bull'} class:tone-bear={row.tone === 'bear'} class:tone-warn={row.tone === 'warn'}>
+                                    {row.value ?? '—'}
+                                  </span>
+                                  {#if row.note}
+                                    <span class="study-metric-note">{row.note}</span>
+                                  {/if}
+                                </div>
+                              {/each}
+                            </div>
+                            {#if study.methodology}
+                              <div class="study-card-method">{study.methodology.label}</div>
+                            {/if}
+                          </div>
+                        {/each}
+                      </div>
+                    </div>
+                  {/if}
                   <div class="analyze-section">
                     <div class="analyze-section-head">
                       <span class="analyze-kicker">EVIDENCE LOG</span>
@@ -2213,6 +2298,97 @@
     border-radius: 2px;
     border: 0.5px solid var(--amb-d);
     font-size: 11px;
+  }
+  .study-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .study-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
+  }
+  .study-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .study-card-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g9);
+    letter-spacing: 0.08em;
+  }
+  .study-card-sub {
+    margin-top: 2px;
+    font-size: 9px;
+    color: var(--g6);
+    line-height: 1.4;
+  }
+  .study-card-trust {
+    flex-shrink: 0;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 0.5px solid var(--g4);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g7);
+    text-transform: uppercase;
+  }
+  .study-card-trust[data-tier='core'],
+  .study-card-trust[data-tier='verified'] {
+    border-color: color-mix(in srgb, var(--pos) 35%, var(--g4));
+    color: var(--pos);
+    background: color-mix(in srgb, var(--pos) 12%, transparent);
+  }
+  .study-card-trust[data-tier='experimental'] {
+    border-color: color-mix(in srgb, var(--amb) 35%, var(--g4));
+    color: var(--amb);
+    background: color-mix(in srgb, var(--amb) 12%, transparent);
+  }
+  .study-card-trust[data-tier='deferred'] {
+    color: var(--g5);
+    background: var(--g1);
+  }
+  .study-card-metrics {
+    display: grid;
+    gap: 6px;
+  }
+  .study-metric {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .study-metric-label {
+    min-width: 58px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--g6);
+  }
+  .study-metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--g9);
+    font-weight: 600;
+  }
+  .study-metric-value.tone-bull { color: var(--pos); }
+  .study-metric-value.tone-bear { color: var(--neg); }
+  .study-metric-value.tone-warn { color: var(--amb); }
+  .study-metric-note {
+    font-size: 9px;
+    color: var(--g6);
+  }
+  .study-card-method {
+    font-size: 9px;
+    color: var(--g5);
+    line-height: 1.4;
   }
   .evidence-grid {
     display: grid;

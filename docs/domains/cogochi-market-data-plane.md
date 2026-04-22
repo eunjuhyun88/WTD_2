@@ -146,6 +146,7 @@ AI 가 알아야 하는 것은:
 - LIVE STACK
 - OPTIONS
 - VENUE DIVERGENCE
+- ON-CHAIN / DEX / VOLATILITY BACKDROP
 - EVIDENCE TABLE
 - EXECUTION BOARD
 - pinned study panels
@@ -245,6 +246,82 @@ interface AIContextPack {
 
 - bottom tabs 를 compare canvas 로 축소/전환
 - `ANALYZE / SCAN / JUDGE` 는 panel presets 로 재정의
+
+## Indicator Rollout Tiers
+
+### Tier 0 — Core default render
+
+실시간 트레이딩 판단에 직접 붙는 지표. 기본적으로 렌더한다.
+
+- Price structure
+- Confluence
+- Funding
+- Open Interest
+- CVD
+- Liquidity clusters
+- Options snapshot
+- Execution
+
+### Tier 1 — Verified backdrop render
+
+무료 또는 현재 repo 안의 verified route 로 이미 계산 가능한 지표. 하단 ANALYZE에 카드로 보인다.
+
+- Stablecoin Supply Ratio (SSR)
+- Realized Volatility Cone
+- Funding Flip Clock
+- On-chain cycle proxy (`/api/onchain/cryptoquant` via CoinMetrics/CryptoQuant fallback)
+- DEX liquidity/volume backdrop (DexScreener exact/proxy mapping 기반)
+
+### Tier 2 — Experimental or deferred
+
+source coverage 또는 유료 의존이 강한 지표. 값이 있더라도 `experimental/deferred` trust 없이 기본 surface 에 올리지 않는다.
+
+- Exchange reserve / labeled exchange netflow
+- SOPR exact
+- MVRV Z-score exact
+- NUPL exact
+- Unique swappers
+- DEX fees / revenue
+- Token unlocks
+- Arkham netflow / whale transfers
+
+## Trust Tiers
+
+- `core`
+  - 차트 원천 데이터. 예: Binance klines.
+- `verified`
+  - 공식 formula 와 현재 repo route 로 재현 가능한 지표.
+  - 예: SSR, RV cone, funding flip, CoinMetrics MVRV proxy, DexScreener liquidity.
+- `experimental`
+  - symbol mapping ambiguity, partial pool coverage, or proxy formula 존재.
+  - 예: GeckoTerminal whale flow, Dex search aggregation.
+- `deferred`
+  - 실데이터 source 는 정의됐지만 현재 운영/비용/키가 없어 기본 surface 에 올리지 않는 지표.
+
+## Methodology Baselines
+
+아래 링크/공식은 implementation note 가 아니라 contract baseline 이다.
+
+- RSI: TradingView support formula baseline
+  - [RSI](https://www.tradingview.com/support/solutions/43000502338/)
+- Moving averages / EMA / SMA: TradingView support baseline
+  - [Moving Averages](https://www.tradingview.com/support/solutions/43000502589-moving-averages/)
+- MACD: TradingView support baseline
+  - [MACD](https://www.tradingview.com/support/solutions/43000502344-moving-average-convergence-divergence-macd-indicator/)
+- Bollinger Bands: TradingView support baseline
+  - [Bollinger Bands](https://www.tradingview.com/support/solutions/43000501840/)
+- Volume Profile / HVN / LVN: TradingView support baseline
+  - [Volume Profile](https://www.tradingview.com/support/solutions/43000502040-volume-profile/)
+- SSR: CryptoQuant user guide baseline
+  - [Stablecoin Supply Ratio](https://userguide.cryptoquant.com/cryptoquant-metrics/stablecoin/stablecoin-supply-ratio)
+- MVRV / NUPL / SOPR family: Glassnode docs baseline
+  - [MVRV Ratio](https://docs.glassnode.com/guides-and-tutorials/metric-guides/mvrv/mvrv-ratio)
+  - [STH-NUPL](https://docs.glassnode.com/guides-and-tutorials/metric-guides/unrealized-profit-loss/sth-nupl)
+  - [LTH-SOPR](https://docs.glassnode.com/guides-and-tutorials/metric-guides/sopr/lth-sopr)
+- DEX TVL / volume / fees: DefiLlama and Token Terminal baselines
+  - [DefiLlama methodology](https://docs.llama.fi/)
+  - [DefiLlama dimensions](https://docs.llama.fi/list-your-project/other-dashboards/dimensions)
+  - [Token Terminal metrics](https://docs.tokenterminal.com/docs/metrics-1)
 
 ## Explicit Gaps to Close
 

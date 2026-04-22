@@ -23,7 +23,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | chart/analyze/AI/backend source 를 하나의 canonical data plane 으로 재정의 |
+| **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | DEX/on-chain/volatility verified studies 를 canonical bundle + bottom workspace 로 정착 |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭을 sidebar HUD와 역할이 다른 상세 workspace로 재구성 |
 | **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 PR-READY | engine mainline integration 완료, 운영 migration 018만 남음 |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
@@ -33,8 +33,8 @@
 
 ## 즉시 실행 순서
 
-1. **W-0141** — market data plane 계약 문서 + producer/consumer migration plan 고정
-2. **W-0140** — analyze summary/detail 를 shared study contract 소비 구조로 전환
+1. **W-0141** — DEX pair aggregation + DefiLlama TVL backdrop + on-chain verified studies 를 producer/consumer 에 고정
+2. **W-0141** — backdrop study cards 를 reusable renderer / AI compare context 로 승격
 3. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
