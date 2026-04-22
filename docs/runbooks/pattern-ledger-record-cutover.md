@@ -23,6 +23,7 @@ The migration is additive. The rollback is operational, not schema-destructive.
 - [`docs/runbooks/cloud-run-engine-deploy.md`](/Users/ej/Projects/wtd-v2/docs/runbooks/cloud-run-engine-deploy.md)
 - [`docs/runbooks/env-vars.md`](/Users/ej/Projects/wtd-v2/docs/runbooks/env-vars.md)
 - [`work/active/W-0126-ledger-supabase-record-store.md`](/Users/ej/Projects/wtd-v2/work/active/W-0126-ledger-supabase-record-store.md)
+- [`scripts/w0126-cutover-preflight.sh`](/Users/ej/Projects/wtd-v2/scripts/w0126-cutover-preflight.sh)
 
 ## Preconditions
 
@@ -41,6 +42,33 @@ The migration is additive. The rollback is operational, not schema-destructive.
 - `app-web` must not receive `SUPABASE_SERVICE_ROLE_KEY`
 - `engine-api` and `worker-control` must receive the same `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
 - this is required because the shared ledger record store is read on engine request paths such as `/patterns/stats/all`, not only in background jobs
+
+## Step 0: Preflight
+
+Run the checked-in preflight before touching production:
+
+```bash
+SUPABASE_URL=https://<project>.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
+ENGINE_INTERNAL_SECRET=<engine-secret> \
+APP_ORIGIN=https://<app-host> \
+bash scripts/w0126-cutover-preflight.sh
+```
+
+To include live DB and HTTP verification:
+
+```bash
+SUPABASE_URL=https://<project>.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
+ENGINE_INTERNAL_SECRET=<engine-secret> \
+APP_ORIGIN=https://<app-host> \
+SUPABASE_POOLER_DSN='<pooler-dsn>' \
+ENGINE_URL=https://<engine-host> \
+APP_URL=https://<app-host> \
+RUN_DB_VERIFY=1 \
+RUN_HTTP_VERIFY=1 \
+bash scripts/w0126-cutover-preflight.sh
+```
 
 ## Step 1: Apply Migration 018
 
