@@ -430,8 +430,8 @@
   }
 
   // ── Layout mode ──────────────────────────────────────────────────────────
-  const layoutMode = $derived(tabState.layoutMode ?? 'D');
-  function setLayoutMode(m: 'A' | 'B' | 'C' | 'D') {
+  const layoutMode = $derived(tabState.layoutMode ?? 'C');
+  function setLayoutMode(m: 'A' | 'B' | 'C') {
     updateTabState(s => ({ ...s, layoutMode: m }));
   }
 
@@ -867,8 +867,7 @@
     {#each [
       { id: 'A', label: 'STACK',   desc: '세로 3단' },
       { id: 'B', label: 'DRAWER',  desc: '차트 + 하단 탭' },
-      { id: 'C', label: 'SIDEBAR', desc: '차트 + AI 통합' },
-      { id: 'D', label: 'PEEK',    desc: '접이식 peek', badge: 'new' },
+      { id: 'C', label: 'SIDEBAR', desc: '사이드 + peek', badge: 'new' },
     ] as lt}
       <button
         class="ls-tab"
@@ -1263,142 +1262,10 @@
     </div>
   </div>
 
-  {:else if layoutMode === 'C'}
-  <!-- ═══ LAYOUT C · Chart left + right sidebar ═══════════════════════════ -->
-  <div class="layout-c">
-    <div class="lc-chart">
-      <div class="chart-header">
-        <span class="symbol">{symbol}</span>
-        <span class="timeframe">{timeframe.toUpperCase()}</span>
-        <span class="pattern">Tradoor v2</span>
-        <span class="spacer"></span>
-        <div class="ind-toggles">
-          <span class="ind-label-hdr">INDICATORS</span>
-          {#each [
-            { id: 'oi',      label: 'OI',      get: () => showOI,      set: () => toggleIndicator('oi') },
-            { id: 'funding', label: 'Funding', get: () => showFunding, set: () => toggleIndicator('derivatives') },
-            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: () => toggleIndicator('cvd') },
-          ] as tog}
-            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set()}>{tog.label}</button>
-          {/each}
-        </div>
-      </div>
-      <div class="chart-body">
-        <div class="chart-live">
-          <ChartBoard
-            {symbol}
-            tf={timeframe}
-            initialData={chartPayload ?? undefined}
-            verdictLevels={verdictLevels}
-            change24hPct={analyzeData?.change24h ?? null}
-            contextMode="chart"
-            onCandleClose={handleCandleClose}
-            {gammaPin}
-          />
-        </div>
-      </div>
-    </div>
-    <div class="lc-sidebar" role="complementary" aria-label="Sidebar analysis">
-      <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">02</span><span class="lcs-title">ANALYZE</span></div>
-        <div class="lcs-body" role="region" aria-label="Analysis details">
-          {#if confluence}
-            <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
-          {/if}
-          <div class="conf-inline small" style="margin-bottom: 6px;">
-            <span class="conf-label">CONFIDENCE</span>
-            <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
-            <span class="conf-val">{fmtConf}</span>
-          </div>
-          <div class="narrative" style="font-size: 9px; line-height: 1.6;" role="region" aria-label="Trade bias">
-            <span class="bull">{narrativeDir} 권장 ·</span>
-            {' '}{narrativeBias ?? '분석 완료'}
-            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
-            {/if}
-          </div>
-          <details class="lc-ind-details">
-            <summary>INDICATORS</summary>
-            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
-            {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
-              <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-            {/if}
-            <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
-          </details>
-          <div style="margin-top: 6px;" role="list" aria-label="Evidence items">
-            {#each evidenceItems as item}
-              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} style="margin-bottom: 3px;" role="listitem">
-                <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
-                <span class="ev-key">{item.k}</span>
-                <span class="ev-val">{item.v}</span>
-                <span class="sr-only">{item.k}: {item.v}, {item.pos ? 'positive' : 'negative'} evidence</span>
-              </div>
-            {/each}
-          </div>
-        </div>
-      </div>
-      <div class="lcs-divider"></div>
-      <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">03</span><span class="lcs-title">SCAN</span><span class="lcs-meta">{scanCandidates.length} found</span></div>
-        <div class="lcs-body" role="list" aria-label="Scan candidates">
-          {#each scanCandidates as x}
-            {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-            <button
-              class="scan-row"
-              class:active={scanSelected === x.id}
-              onclick={() => scanSelected = x.id}
-              aria-label="{x.symbol}: α{x.alpha}, {Math.round(x.sim * 100)}% similarity"
-              aria-current={scanSelected === x.id ? 'true' : 'false'}
-            >
-              <span class="sr-sym">{x.symbol.replace('USDT','')}</span>
-              <span class="sr-tf">{x.tf}</span>
-              <div class="sr-bar" aria-hidden="true"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
-              <span class="sr-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-      <div class="lcs-divider"></div>
-      <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">04</span><span class="lcs-title">JUDGE</span></div>
-        <div class="lcs-body">
-          <div role="region" aria-label="Trade proposal">
-            {#each proposal as p}
-              <div class="prop-cell compact" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
-                <span class="prop-l">{p.label}</span>
-                <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
-              </div>
-            {/each}
-          </div>
-          <div class="judge-btns" style="margin-top: 8px; gap: 4px;" role="group" aria-label="Verdict options">
-            <button
-              class="judge-btn agree"
-              class:active={judgeVerdict === 'agree'}
-              onclick={() => judgeVerdict = 'agree'}
-              aria-pressed={judgeVerdict === 'agree'}
-              title="Press Y or click to agree (Y key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut Y">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
-            </button>
-            <button
-              class="judge-btn disagree"
-              class:active={judgeVerdict === 'disagree'}
-              onclick={() => judgeVerdict = 'disagree'}
-              aria-pressed={judgeVerdict === 'disagree'}
-              title="Press N or click to skip (N key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut N">N</span><div class="jb-text"><span class="jb-label">SKIP</span></div>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   {:else}
-  <!-- ═══ LAYOUT D · PEEK (default) ══════════════════════════════════════ -->
-  <div class="chart-section">
-    <!-- Compact info bar: symbol + live metrics in one row -->
+  <!-- ═══ LAYOUT C · Chart + peek bar + sidebar (merged C+D) ═══════════════ -->
+  <div class="layout-c">
+    <div class="chart-section lc-main">
     <div class="chart-header">
       <span class="symbol">{symbol}</span>
       <span class="timeframe">{timeframe.toUpperCase()}</span>
@@ -1415,6 +1282,7 @@
         <span class="hd-chip">L/S {fmtLS}</span>
       {/if}
       <div class="ind-toggles">
+          <span class="ind-label-hdr">INDICATORS</span>
         {#each [
           { id: 'oi',      label: 'OI',      get: () => showOI,      set: () => toggleIndicator('oi') },
           { id: 'funding', label: 'Fund',    get: () => showFunding, set: () => toggleIndicator('derivatives') },
@@ -1451,7 +1319,7 @@
       </div>
     </div>
 
-    <!-- PEEK bar — always visible at bottom of chart section -->
+    <!-- PEEK bar — at bottom of chart column -->
     <div class="peek-bar" role="tablist" aria-label="Analysis tabs">
       {#each [
         { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)',  badge: 'α82', badgeColor: 'var(--amb)' },
@@ -1511,7 +1379,7 @@
       {/if}
     </div>
 
-    <!-- PEEK Drawer overlay -->
+    <!-- PEEK overlay (scoped to chart area, sidebar stays visible) -->
     {#if peekOpen}
       <div class="peek-overlay" style:height="{peekHeight}%">
         <!-- Resize handle -->
@@ -1867,7 +1735,104 @@
         </div>
       </div>
     {/if}
+    </div>
+    <div class="lc-sidebar" role="complementary" aria-label="Sidebar analysis">
+      <div class="lcs-section">
+        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">02</span><span class="lcs-title">ANALYZE</span></div>
+        <div class="lcs-body" role="region" aria-label="Analysis details">
+          {#if confluence}
+            <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
+          {/if}
+          <div class="conf-inline small" style="margin-bottom: 6px;">
+            <span class="conf-label">CONFIDENCE</span>
+            <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
+            <span class="conf-val">{fmtConf}</span>
+          </div>
+          <div class="narrative" style="font-size: 9px; line-height: 1.6;" role="region" aria-label="Trade bias">
+            <span class="bull">{narrativeDir} 권장 ·</span>
+            {' '}{narrativeBias ?? '분석 완료'}
+            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+            {/if}
+          </div>
+          <details class="lc-ind-details">
+            <summary>INDICATORS</summary>
+            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+            {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+              <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+            {/if}
+            <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
+          </details>
+          <div style="margin-top: 6px;" role="list" aria-label="Evidence items">
+            {#each evidenceItems as item}
+              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} style="margin-bottom: 3px;" role="listitem">
+                <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
+                <span class="ev-key">{item.k}</span>
+                <span class="ev-val">{item.v}</span>
+                <span class="sr-only">{item.k}: {item.v}, {item.pos ? 'positive' : 'negative'} evidence</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+      <div class="lcs-divider"></div>
+      <div class="lcs-section">
+        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">03</span><span class="lcs-title">SCAN</span><span class="lcs-meta">{scanCandidates.length} found</span></div>
+        <div class="lcs-body" role="list" aria-label="Scan candidates">
+          {#each scanCandidates as x}
+            {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
+            <button
+              class="scan-row"
+              class:active={scanSelected === x.id}
+              onclick={() => scanSelected = x.id}
+              aria-label="{x.symbol}: α{x.alpha}, {Math.round(x.sim * 100)}% similarity"
+              aria-current={scanSelected === x.id ? 'true' : 'false'}
+            >
+              <span class="sr-sym">{x.symbol.replace('USDT','')}</span>
+              <span class="sr-tf">{x.tf}</span>
+              <div class="sr-bar" aria-hidden="true"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
+              <span class="sr-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+      <div class="lcs-divider"></div>
+      <div class="lcs-section">
+        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">04</span><span class="lcs-title">JUDGE</span></div>
+        <div class="lcs-body">
+          <div role="region" aria-label="Trade proposal">
+            {#each proposal as p}
+              <div class="prop-cell compact" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
+                <span class="prop-l">{p.label}</span>
+                <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
+              </div>
+            {/each}
+          </div>
+          <div class="judge-btns" style="margin-top: 8px; gap: 4px;" role="group" aria-label="Verdict options">
+            <button
+              class="judge-btn agree"
+              class:active={judgeVerdict === 'agree'}
+              onclick={() => judgeVerdict = 'agree'}
+              aria-pressed={judgeVerdict === 'agree'}
+              title="Press Y or click to agree (Y key)"
+            >
+              <span class="jb-key" aria-label="Keyboard shortcut Y">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
+            </button>
+            <button
+              class="judge-btn disagree"
+              class:active={judgeVerdict === 'disagree'}
+              onclick={() => judgeVerdict = 'disagree'}
+              aria-pressed={judgeVerdict === 'disagree'}
+              title="Press N or click to skip (N key)"
+            >
+              <span class="jb-key" aria-label="Keyboard shortcut N">N</span><div class="jb-text"><span class="jb-label">SKIP</span></div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+
   {/if}<!-- end layoutMode -->
 {/if}<!-- end mobileView -->
 </div>
@@ -2895,7 +2860,7 @@
     overflow: hidden;
   }
 
-  /* ── Layout C — chart left + right sidebar ──────────────────────────────── */
+  /* ── Layout C — chart + peek bar + sidebar (merged C+D) ─────────────────── */
   .layout-c {
     flex: 1;
     display: flex;
@@ -2910,14 +2875,32 @@
     flex-direction: column;
     overflow: hidden;
   }
+  /* merged layout: chart-section.lc-main = left pane (chart + peek) */
+  .layout-c .chart-section.lc-main {
+    margin: 6px 0 6px 6px;
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+  }
   .lc-sidebar {
     width: 260px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     background: var(--g1);
-    border-left: 0.5px solid var(--g4);
+    border: 0.5px solid var(--g4);
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    margin: 6px 6px 6px 0;
     overflow-y: auto;
+  }
+  /* Responsive: hide sidebar below 860px, chart-section goes full width */
+  @media (max-width: 860px) {
+    .layout-c .lc-sidebar { display: none; }
+    .layout-c .chart-section.lc-main {
+      margin: 6px;
+      border-right: 0.5px solid var(--g4);
+      border-radius: 6px;
+    }
   }
   .lcs-section {
     display: flex;
