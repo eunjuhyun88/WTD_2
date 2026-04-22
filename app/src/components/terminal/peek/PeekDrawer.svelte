@@ -18,13 +18,24 @@
     scanCount?: number;
     judgeCount?: number;
     reviewCount?: number;
+    /** Programmatically open to a specific tab (e.g. from capture annotation click on tablet). */
+    openTab?: Tab | null;
   }
   let {
     analyzeCount = 0,
     scanCount = 0,
     judgeCount = 0,
     reviewCount = 0,
+    openTab = null,
   }: Props = $props();
+
+  $effect(() => {
+    if (openTab) {
+      activeTab = openTab;
+      open = true;
+      persist();
+    }
+  });
 
   // ── State ───────────────────────────────────────────────────────────────
   let open = $state(true);
