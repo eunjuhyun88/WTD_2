@@ -24,6 +24,11 @@ dist/
 .claude/plans/
 .claude/projects/
 
+# codex local worktrees / browser artifacts
+.codex/
+.playwright-cli/*.log
+.playwright-cli/*.yml
+
 # local agent/worktree artifacts
 .claire/
 app/docs/AGENT_WATCH_LOG.md

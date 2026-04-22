@@ -41,6 +41,7 @@ contract
 - 현재 repo는 `work/active/CURRENT.md`를 live work item 단일 인덱스로 사용하지만, `AGENTS.md`와 `scripts/check-operating-baseline.sh`는 아직 이전 `W-0000-template`/전체 `W-*.md` 가정을 일부 남겨 두고 있다.
 - `main` 기준 tree 는 `work/active` 문서 173개 / `work/completed` 1개로 남아 있지만, 현재 작업트리는 `work/active` 10개 / `work/completed` 176개이며 `CURRENT.md` 는 그중 8개만 live 로 가리킨다.
 - archive sweep 대상 178개 문서는 삭제/추가 이름이 1:1 대응하며, live index 밖 checkpoint 메모(`W-0129`, `W-0130`)는 reference-only 로 유지할 수 있다.
+- mixed runtime diff는 dedicated lane `codex/w-0134-runtime-stabilization` 로 분리되어 PR #182 로 올라갔다.
 
 ## Assumptions
 
@@ -60,10 +61,11 @@ contract
 - repo baseline은 `CURRENT.md`에 올라온 live work item만 검증 대상으로 삼고, checkpoint/parking note는 reference-only 로 취급한다.
 - 운영 문서 정렬은 `main` 의 낡은 "모든 W 문서가 active" 가정이 아니라 현재 파일시스템 구조와 live index를 우선한다.
 - non-code cleanup 에서는 live baseline commit 과 archive sweep commit 을 분리하고, app/runtime 코드 변경은 이 lane 에 섞지 않는다.
+- `.codex/` worktree와 `.playwright-cli/*` 산출물은 로컬 artifact로 취급하고 non-code lane에서 추적하지 않는다.
 
 ## Next Steps
 
-1. `CURRENT.md` + `work/completed/` split 을 유지하고, reference-only checkpoint 메모는 live index에 올리지 않는다.
+1. `CURRENT.md` + `.gitignore` 를 최신 lane 구조에 맞게 유지하고, runtime/code diff는 W-0134 lane 밖에 두지 않는다.
 2. W-0126 선행: `pattern_ledger_records` migration 적용 여부를 정리하고 `LEDGER_RECORD_STORE`를 주입형으로 바꿔 테스트와 로컬 file store가 외부 Supabase 상태에 의존하지 않게 만든다.
 3. contract pack 기준으로 `/api/cogochi/*`, `/api/market/*`, `/api/patterns/*`, `/api/terminal/*`를 소유권별로 인벤토리화하고 engine 이관 대상 route를 확정한다.
 
@@ -76,6 +78,6 @@ contract
 ## Handoff Checklist
 
 - active work item: `work/active/W-0133-repo-stabilization-refactor.md`
-- branch/worktree state: current non-code cleanup branch `codex/w-0133-noncode-cleanup`; keep app/runtime code changes out of this merge unit
+- branch/worktree state: current non-code cleanup branch `codex/w-0133-noncode-cleanup`; runtime code changes are split to PR #182 and must stay out of this merge unit
 - verification status: `bash scripts/check-operating-baseline.sh`, `npm run check`, `uv run pytest -q` results should be recorded separately as each wave is refreshed
 - remaining blockers: W-0126 migration/test isolation and route ownership inventory remain the technical gates after the doc baseline is repaired
