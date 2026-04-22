@@ -1,5 +1,10 @@
 import { writable, derived } from 'svelte/store';
 import { defaultVisible } from '$lib/indicators/registry';
+import {
+  DEFAULT_ANALYZE_PANEL_LAYOUT,
+  normalizeAnalyzePanelLayout,
+  type AnalyzePanelLayoutState,
+} from '$lib/contracts/cogochiPanelLayout';
 
 export interface TabState {
   tradePrompt: string;
@@ -14,6 +19,7 @@ export interface TabState {
   peekHeight: number;
   drawerTab: 'analyze' | 'scan' | 'judge';
   layoutMode: 'C';
+  analyzeLayout: AnalyzePanelLayoutState;
 }
 
 export interface Tab {
@@ -59,6 +65,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   peekHeight: 56,
   drawerTab: 'analyze',
   layoutMode: 'C',
+  analyzeLayout: DEFAULT_ANALYZE_PANEL_LAYOUT,
 });
 
 const makeDefault = (): ShellState => ({
@@ -85,6 +92,7 @@ function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
     ...FRESH_TAB_STATE(),
     ...(tabState ?? {}),
     layoutMode: 'C',
+    analyzeLayout: normalizeAnalyzePanelLayout(tabState?.analyzeLayout),
   };
 }
 

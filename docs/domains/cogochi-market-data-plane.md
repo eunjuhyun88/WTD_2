@@ -105,6 +105,27 @@ AI 가 알아야 하는 것은:
 
 즉 AI 는 raw provider payload 가 아니라 `AIContextPack` 을 소비해야 한다.
 
+### 5. Panel Layout Plane
+
+Claude-style interaction 을 만들려면 data plane 위에 별도의 layout plane 이 필요하다.
+
+이 plane 이 결정하는 것은:
+
+- 어떤 panel 이 존재하는지
+- panel 이 어느 zone 에 있는지
+- panel 순서가 어떤지
+- panel 이 접혀 있는지
+- panel 이 AI / compare 로 보내질 수 있는지
+
+초기 zone 모델은 단순하게 유지한다.
+
+- `main`: 하단 ANALYZE 의 주 작업대
+- `side`: 하단 ANALYZE 의 보조 dock
+
+첫 구현에서는 자유형 grid drag/drop 전체를 하지 않는다.
+대신 `dock / undock / reorder / collapse` 를 persisted state 로 제공한다.
+이게 있어야 나중에 compare canvas 와 detached panel 도 같은 identity 모델 위에서 확장 가능하다.
+
 ## Surface Placement Rules
 
 ### Main Chart
@@ -212,6 +233,61 @@ interface AIContextPack {
 - BTC `Funding` pane + ETH `Funding` pane 를 나란히 비교
 - BTC `Options` + BTC `Venue Divergence` + BTC `Execution` 을 한 canvas 에 pin
 - 선택한 3개 study 를 AI 로 보내 “bull thesis vs bear thesis” 설명
+
+## Panel Layout Model
+
+### Fixed vs movable
+
+고정 영역:
+
+- main chart
+- right summary HUD
+- right AI input rail
+
+이동 가능한 영역:
+
+- bottom ANALYZE 의 detail panels
+
+즉, 사용자는 chart/hud 자체를 흔드는 것이 아니라 detail panel 을 workspace 안에서 재배치한다.
+
+### Panel identity
+
+초기 panel ids:
+
+- `thesis`
+- `live-stack`
+- `options`
+- `venue-divergence`
+- `verified-backdrop`
+- `dex-market-structure`
+- `onchain-cycle-detail`
+- `evidence-log`
+- `execution-board`
+
+### Actions
+
+- `move-left` / `move-right`
+- `dock-to-side`
+- `undock-to-main`
+- `collapse`
+- `send-to-ai`
+
+### Persistence
+
+panel layout 은 active tab state 에 저장한다.
+
+이유:
+
+- symbol/timeframe/session 맥락과 함께 움직인다.
+- compare canvas 전환 시 tab preset 과 panel arrangement 를 같이 보존할 수 있다.
+
+### Visual thesis
+
+`Claude`처럼 보이는 핵심은 패널이 많아지는 것이 아니라, **한 column 에 갇혀 있던 detail blocks 가 workspace object 로 승격되는 것**이다.
+
+- panel 은 카드가 아니라 얇은 rail + section body 로 보여야 한다.
+- chrome 은 최소화하고, 이동 affordance 는 header 의 작은 control 로 제한한다.
+- side dock 은 inspector 처럼 좁고 밀도 있게 유지한다.
 
 ## Producer Roadmap
 
