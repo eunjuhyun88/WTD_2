@@ -126,6 +126,14 @@ Claude-style interaction 을 만들려면 data plane 위에 별도의 layout pla
 대신 `dock / undock / reorder / collapse` 를 persisted state 로 제공한다.
 이게 있어야 나중에 compare canvas 와 detached panel 도 같은 identity 모델 위에서 확장 가능하다.
 
+또 하나 필요한 것은 `persisted compare shelf` 다.
+이건 full compare canvas 전의 0단계 모델이다.
+
+- 사용자가 고른 panel subset 을 유지한다.
+- 추가 fetch 없이 같은 workspace payload 를 재사용한다.
+- AI compare handoff 의 입력 집합이 된다.
+- tab state 와 함께 저장된다.
+
 ## Surface Placement Rules
 
 ### Main Chart
@@ -271,6 +279,7 @@ interface AIContextPack {
 - `undock-to-main`
 - `collapse`
 - `send-to-ai`
+- `pin-to-compare`
 
 ### Persistence
 
@@ -288,6 +297,15 @@ panel layout 은 active tab state 에 저장한다.
 - panel 은 카드가 아니라 얇은 rail + section body 로 보여야 한다.
 - chrome 은 최소화하고, 이동 affordance 는 header 의 작은 control 로 제한한다.
 - side dock 은 inspector 처럼 좁고 밀도 있게 유지한다.
+
+### Compare shelf
+
+compare shelf 는 bottom ANALYZE 상단에 위치하는 작은 panel strip 이다.
+
+- 저장 단위는 `AnalyzePanelId[]`
+- panel zone(`main`/`side`) 과는 독립적
+- panel 이 접혀도 pinned 상태는 유지
+- AI compare 는 shelf panel 집합을 그대로 소비
 
 ## Producer Roadmap
 
