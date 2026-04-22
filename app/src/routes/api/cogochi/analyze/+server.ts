@@ -13,17 +13,20 @@ import {
 import { logAnalyzeRouteEvent } from '$lib/server/analyze/telemetry';
 import { analyzeLimiter } from '$lib/server/rateLimit';
 import { AnalyzeRouteError, getAnalyzePayload } from '$lib/server/analyze/service';
+import { getRequestIp } from '$lib/server/requestIp';
 
 export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
   const { symbol, tf } = parseAnalyzeRequest(url);
   const requestId = request.headers.get('x-request-id') ?? randomUUID();
+  const fallbackIp = getRequestIp({ request, getClientAddress });
   const guard = await runIpRateLimitGuard({
     request,
-    fallbackIp: getClientAddress(),
+    fallbackIp,
     limiter: analyzeLimiter,
     scope: 'cogochi:analyze',
     max: 18,
     tooManyMessage: 'Too many analyze requests. Please retry shortly.',
+    allowDistributedInfraFallback: true,
   });
 
   if (!guard.ok) {

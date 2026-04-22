@@ -17,6 +17,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
+import { getRequestIp } from '$lib/server/requestIp';
 
 export interface VenueSeriesRowWire {
   venue: string;
@@ -175,14 +176,14 @@ async function buildPayload(symbol: string): Promise<VenueDivergencePayload> {
 }
 
 // ── Route handler ────────────────────────────────────────────────────────────
-export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
   const symbol = (url.searchParams.get('symbol') ?? 'BTCUSDT').toUpperCase();
   if (!VALID_SYMBOL.test(symbol)) {
     return json({ error: 'invalid symbol' }, { status: 400 });
   }
 
   // Rate limit
-  const ip = getClientAddress();
+  const ip = getRequestIp({ request, getClientAddress });
   if (!chartFeedLimiter.check(ip)) {
     return json({ error: 'rate limited' }, { status: 429, headers: { 'Retry-After': '30' } });
   }

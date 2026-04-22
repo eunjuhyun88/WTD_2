@@ -27,6 +27,12 @@ const IMMUTABLE_ASSET = /\/_app\/immutable\//;
 
 const PUBLIC_API_PREFIXES = [
   '/api/auth/',           // login, register, session check, nonce, etc.
+  '/api/agents/stats',         // local-first agent sync no-op endpoints
+  '/api/cogochi/analyze',       // read-only shell bootstrap
+  '/api/cogochi/alerts',        // read-only recent alert feed
+  '/api/cogochi/thermometer',   // read-only market pulse
+  '/api/cogochi/alpha/',        // read-only alpha world model
+  '/api/captures/chart-annotations', // optional chart overlay feed
   '/api/market/ohlcv',
   '/api/market/sparklines',
   '/api/market/funding',
@@ -72,7 +78,7 @@ function isPublicApiPath(pathname: string): boolean {
 }
 
 function isPublicPagePath(pathname: string): boolean {
-  return pathname === '/';
+  return pathname === '/' || pathname === '/cogochi';
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -80,11 +86,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Skipped during build (prerender) since SECURITY_ALLOWED_HOSTS is not present
   // at build time and there's no live traffic to defend.
   if (!building) {
-    try {
-      assertAppServerRuntimeSecurity(env);
-    } catch (e) {
-      console.error('[HOOKS] runtimeSecurity error:', e);
-    }
+    assertAppServerRuntimeSecurity(env);
   }
 
   const requestHost = readRequestHost(event.request);
@@ -112,13 +114,17 @@ export const handle: Handle = async ({ event, resolve }) => {
   if (!isPublicPage && !isApiRoute) {
     // Protected page route — redirect to home with auth=required param.
     // The home page shows a login modal when this param is present.
-    if (!user && !dev) {
+    if (!user) {
       throw redirect(303, '/?auth=required');
     }
   } else if (isApiRoute && !isPublicApi) {
     // Protected API route — return 401 without redirect.
-    if (!user && !dev) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    // No 302 on API routes to prevent information leakage via redirect target.
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
   }
 
@@ -135,15 +141,15 @@ export const handle: Handle = async ({ event, resolve }) => {
   response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
   // dev: allow inline scripts/eval for Vite HMR; prod: lock down to reduce XSS surface.
   const scriptSrc = dev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-    : "script-src 'self'";
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com"
+    : "script-src 'self' https://va.vercel-scripts.com";
   response.headers.set('Content-Security-Policy', [
     "default-src 'self'",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https:",
     "connect-src 'self' wss: https:",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     "worker-src 'self' blob:",
     "base-uri 'self'",
     "frame-ancestors 'self'",

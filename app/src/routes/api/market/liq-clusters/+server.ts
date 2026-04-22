@@ -20,6 +20,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
+import { getRequestIp } from '$lib/server/requestIp';
 
 export interface HeatmapCellWire {
   priceBucket: number;
@@ -48,14 +49,14 @@ interface FeedPayload {
   liqBars?: LiqBarWire[];
 }
 
-export const GET: RequestHandler = async ({ url, fetch: svelteFetch, getClientAddress }) => {
+export const GET: RequestHandler = async ({ url, fetch: svelteFetch, request, getClientAddress }) => {
   const symbol = (url.searchParams.get('symbol') ?? 'BTCUSDT').toUpperCase();
   if (!VALID_SYMBOL.test(symbol)) {
     return json({ error: 'invalid symbol' }, { status: 400 });
   }
   const windowParam = (url.searchParams.get('window') ?? '4h').toLowerCase();
 
-  const ip = getClientAddress();
+  const ip = getRequestIp({ request, getClientAddress });
   if (!chartFeedLimiter.check(ip)) {
     return json({ error: 'rate limited' }, { status: 429, headers: { 'Retry-After': '30' } });
   }

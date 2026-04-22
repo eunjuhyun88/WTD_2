@@ -13,15 +13,16 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { getConfluenceHistory, streakBack } from '$lib/server/confluenceHistory';
+import { getRequestIp } from '$lib/server/requestIp';
 
 const VALID_SYMBOL = /^[A-Z0-9]{3,12}USDT$/;
 const MAX_LIMIT = 288;
 
-export const GET: RequestHandler = async ({ url, getClientAddress }) => {
+export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
   const symbol = (url.searchParams.get('symbol') ?? 'BTCUSDT').toUpperCase();
   if (!VALID_SYMBOL.test(symbol)) return json({ error: 'invalid symbol' }, { status: 400 });
 
-  const ip = getClientAddress();
+  const ip = getRequestIp({ request, getClientAddress });
   if (!chartFeedLimiter.check(ip)) {
     return json({ error: 'rate limited' }, { status: 429, headers: { 'Retry-After': '30' } });
   }
