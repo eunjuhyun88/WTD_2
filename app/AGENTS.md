@@ -5,10 +5,11 @@ This file is a local router for `app/`. The repository-wide canonical rules live
 ## Read Order For App Work
 
 1. Root `../AGENTS.md`
-2. Relevant `../work/active/*.md`
-3. Relevant root `../docs/domains/*.md`
-4. Relevant root `../docs/product/*.md`
-5. This app folder's required code only
+2. Root `../work/active/CURRENT.md`
+3. Relevant `../work/active/*.md` listed in `CURRENT.md`
+4. Relevant root `../docs/domains/*.md`
+5. Relevant root `../docs/product/*.md`
+6. This app folder's required code only
 
 ## Boundary
 

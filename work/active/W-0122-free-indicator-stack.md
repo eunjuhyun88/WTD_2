@@ -38,7 +38,17 @@ Active contributions: venue_divergence, ssr, options  (3 of 7 material)
 
 ## Owner
 
-engine + app (cross-cutting)
+engine
+
+## Canonical Files
+
+- `work/active/W-0122-free-indicator-stack.md`
+- `work/active/CURRENT.md`
+- `docs/product/competitive-indicator-analysis-2026-04-21.md`
+- `docs/domains/indicator-registry.md`
+- `app/src/lib/indicators/adapter.ts`
+- `app/src/routes/api/confluence/current/+server.ts`
+- `engine/blocks/`
 
 ## Why
 
@@ -227,6 +237,18 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - Historical onchain tx 전수 ETL — 인프라 비용 큼, 비상목표.
 - Multi-asset (알트코인) 확장 — Phase 1 은 BTC/ETH 만. BTCUSDT/ETHUSDT perp + BTC/ETH options.
 
+## Facts
+
+- Phase 1 기준으로 Venue Divergence, Liq clusters approximation, Options snapshot, Confluence Engine Phase 1 이 이미 live 다.
+- `ConfluenceBanner` 와 6개 archetype renderer(A/B/C/D/E/F)는 현재 app surface에 연결되어 있다.
+- Pillar 4 Netflow 와 engine-side weight learning 은 아직 미완이며 CURRENT 는 이 문서를 `Confluence Phase 2` 대기 상태로 표시한다.
+- 이 work item은 app surface를 포함하지만, 미완 핵심은 scorer/weights/building blocks/ingestion 쪽 engine 책임이 더 크다.
+
+## Assumptions
+
+- Phase 2 의 주 작업은 UI 신규 설계보다 engine scorer 와 flywheel weight learning 이다.
+- Arkham key provision 전까지 Pillar 4 는 deferred 상태로 관리하는 편이 안전하다.
+
 ## Sequencing (6-week execution plan)
 
 | Slice | Week | Pillar | 이유 |
@@ -268,6 +290,12 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 3. **Deribit WS reconnect** — Binance DataFeed 와 동일 규율 적용 (ADR-008).
 4. **Confluence weights 초기값** — heuristic vs 랜덤 → flywheel 학습에 맡김. 초기 heuristic 정책 문서 필요.
 
+## Next Steps
+
+1. Confluence Phase 2 범위를 `engine scorer + flywheel weights + capture snapshot persistence` 로 좁혀 별도 구현 lane 을 연다.
+2. Arkham/API-key 의존성이 풀리기 전까지는 Pillar 4 를 backlog 로 유지하고 Phase 2 검증 입력을 scorer 측으로 집중한다.
+3. 남은 building blocks 와 options/liquidation real-time ingestion 을 다음 wave 기준으로 다시 쪼갠다.
+
 ## Related
 
 - `docs/product/competitive-indicator-analysis-2026-04-21.md` — 경쟁 분석 근거
@@ -294,6 +322,13 @@ Phase 2 (future cycle):
 - [ ] 15 신규 building blocks 엔진 + tests (currently 3 of 15 shipped)
 - [ ] Redis hit rate > 95%, P99 latency < 300ms
 - [ ] 경쟁사 대비 스크린샷 대조: Coinglass / Laevitas / CryptoQuant
+
+## Handoff Checklist
+
+- active work item: `work/active/W-0122-free-indicator-stack.md`
+- branch/worktree state: CURRENT 기준 `IN-PROGRESS`; follow-up branch는 Phase 2 slice 별로 별도 생성
+- verification status: shipped slices are recorded in `## Status` / `## PR Trail`; Phase 2 verification is still pending
+- remaining blockers: Arkham key, engine-side confluence scoring, flywheel weight learning
 
 ## PR Trail
 

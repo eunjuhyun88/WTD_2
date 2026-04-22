@@ -62,9 +62,13 @@ require_work_item_shape() {
 		"## Scope"
 		"## Non-Goals"
 		"## Canonical Files"
+		"## Facts"
+		"## Assumptions"
+		"## Open Questions"
 		"## Decisions"
 		"## Next Steps"
 		"## Exit Criteria"
+		"## Handoff Checklist"
 	)
 
 	for section in "${required_sections[@]}"; do
@@ -116,7 +120,8 @@ REQUIRED_FILES=(
 	"docs/domains/contracts.md"
 	"docs/decisions/ADR-000-operating-system-baseline.md"
 	"app/docs/COGOCHI.md"
-	"work/active/W-0000-template.md"
+	"work/active/CURRENT.md"
+	"app/CLAUDE.md"
 )
 
 for dir in "${REQUIRED_DIRS[@]}"; do
@@ -131,12 +136,18 @@ require_text "AGENTS.md" "## Default Read Scope" "default read scope"
 require_text "AGENTS.md" "## Default Exclude Scope" "default exclude scope"
 require_text "AGENTS.md" "## Work Item Discipline" "work item discipline"
 require_text "AGENTS.md" "## Verification Minimum" "verification minimum"
+require_text "AGENTS.md" "work/active/CURRENT.md" "CURRENT live index rule"
 
 require_text "README.md" "## Canonical Structure" "canonical structure"
 require_text "README.md" "## Read Order (Default)" "default read order"
+require_text "README.md" "work/active/CURRENT.md" "README CURRENT read order"
 require_text "docs/README.md" "## Read Order" "docs read order"
 require_text "docs/archive/README.md" "reference-only" "archive reference-only marker"
 require_text "CLAUDE.md" "## Canonical Read Order" "claude canonical read order"
+require_text "CLAUDE.md" "work/active/CURRENT.md" "claude CURRENT read order"
+require_text "app/AGENTS.md" "CURRENT.md" "app agents CURRENT read order"
+require_text "app/CLAUDE.md" "CURRENT.md" "app claude CURRENT read order"
+require_text "work/active/CURRENT.md" "## 활성 Work Items" "CURRENT active work items section"
 
 require_text "app/docs/COGOCHI.md" "legacy reference only" "legacy reference banner"
 require_text "app/docs/COGOCHI.md" "Do not rebuild a monolithic PRD here." "no monolith rule"
@@ -162,8 +173,20 @@ done
 
 ACTIVE_WORK_ITEMS=()
 while IFS= read -r work_item; do
-	ACTIVE_WORK_ITEMS+=("$work_item")
-done < <(find work/active -maxdepth 1 -type f -name 'W-*.md' | sort)
+	[ -n "$work_item" ] && ACTIVE_WORK_ITEMS+=("$work_item")
+done < <(
+	python3 -c '
+import re
+from pathlib import Path
+
+text = Path("work/active/CURRENT.md").read_text()
+match = re.search(r"^## 활성 Work Items.*?(?=^## |\Z)", text, re.S | re.M)
+if match:
+    items = sorted(set(re.findall(r"`(W-\d{4}-[^`]+\.md)`", match.group(0))))
+    for item in items:
+        print(f"work/active/{item}")
+'
+)
 
 if [ "${#ACTIVE_WORK_ITEMS[@]}" -eq 0 ]; then
 	fail "no active work items found in work/active"

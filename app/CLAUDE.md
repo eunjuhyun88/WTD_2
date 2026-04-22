@@ -5,10 +5,11 @@ Do not start active work from this file alone.
 ## Use This Order
 
 1. Root `../AGENTS.md`
-2. Relevant `../work/active/*.md`
-3. Relevant root `../docs/domains/*.md`
-4. Relevant root `../docs/product/*.md`
-5. Required `app/src/**` files only
+2. Root `../work/active/CURRENT.md`
+3. Relevant `../work/active/*.md` listed in `CURRENT.md`
+4. Relevant root `../docs/domains/*.md`
+5. Relevant root `../docs/product/*.md`
+6. Required `app/src/**` files only
 
 ## Canonical Authority
 
