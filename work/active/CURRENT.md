@@ -23,7 +23,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0137** | `W-0137-analyze-right-dock-collapse.md` | 🔴 IN-PROGRESS | C sidebar ANALYZE를 하단 collapse가 아니라 우측 dock collapse로 변경 |
+| **W-0137** | `W-0137-analyze-right-dock-collapse.md` | 🟡 PR-READY | 우측 dock collapse + sidebar summary HUD / 하단 detail panel 역할 분리 완료 |
 | **W-0136** | `W-0136-c-only-layout.md` | 🔴 IN-PROGRESS | A/B 레이아웃 제거 + C-only + sidebar ANALYZE collapse |
 | **W-0134** | `W-0134-cogochi-runtime-verification.md` | 🟡 PR-READY | PR #182 merge + root mixed runtime diff 폐기 |
 | **W-0133** | `W-0133-repo-stabilization-refactor.md` | 🔴 IN-PROGRESS | CURRENT/AGENTS/baseline alignment + non-code lane 정리 |
@@ -36,8 +36,8 @@
 
 ## 즉시 실행 순서
 
-1. **W-0134** — PR #182 review/merge 후 root mixed runtime diff 완전 제거
-2. **W-0133** — docs/non-code lane만 남기고 repo baseline 정리
+1. **W-0137** — branch push + PR 생성
+2. **W-0126** — mainline integration lane push + PR 생성
 3. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
