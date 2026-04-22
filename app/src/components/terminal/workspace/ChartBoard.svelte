@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
+  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, createSeriesMarkers } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType, SeriesMarker } from 'lightweight-charts';
   import {
     chartIndicators,
@@ -78,6 +78,11 @@
     onCandleClose?: (bar: { time: number; open: number; high: number; low: number; close: number; volume: number }) => void;
     /** Gamma pin overlay — pass from parent when options-snapshot data is live. null hides line. */
     gammaPin?: GammaPinData | null;
+    /**
+     * Tablet routing: when provided, capture annotation clicks call this instead of
+     * opening the internal fixed drawer. CenterPanel uses this to show in PeekDrawer.
+     */
+    onCaptureSelect?: (ann: CaptureAnnotation) => void;
   }
 
   let {
@@ -97,6 +102,7 @@
     alphaMarkers = undefined,
     onCandleClose,
     gammaPin = null,
+    onCaptureSelect = undefined,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -732,6 +738,7 @@
     destroyCharts();
 
     let candleSeriesRef: ISeriesApi<'Candlestick'> | null = null;
+    let candleMarkerApi: { setMarkers: (markers: SeriesMarker<UTCTimestamp>[]) => void } | null = null;
 
     const rsiContainer = rsiEl;
     const macdContainer = macdEl;
@@ -813,6 +820,7 @@
         }))
       );
       candleSeriesRef = candleSeries;
+      candleMarkerApi = createSeriesMarkers(candleSeries, []);
       priceSeries = candleSeries;
       candleSeriesForAnnotations = candleSeries;  // Layer 3: capture overlay
       // Attach range primitive to candlestick series (Layer 1, W-0086)
@@ -954,8 +962,7 @@
           });
         }
       }
-      // Runtime API (v5 typings omit setMarkers on some ISeriesApi variants).
-      (candleSeriesRef as ISeriesApi<'Candlestick'> & { setMarkers: (m: SeriesMarker<UTCTimestamp>[]) => void }).setMarkers(markers);
+      candleMarkerApi?.setMarkers(markers);
     }
 
     mainChart.subscribeCrosshairMove((param) => {
@@ -1291,6 +1298,7 @@
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart, liqChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = liqChart = null;
     priceSeries = null;
+    candleSeriesForAnnotations = null;
     entryLine = targetLine = stopLine = null;
   }
 
@@ -1803,14 +1811,16 @@
   series={candleSeriesForAnnotations}
   {symbol}
   timeframe={tf}
-  onSelect={(ann) => { selectedCapture = ann; }}
+  onSelect={(ann) => { onCaptureSelect ? onCaptureSelect(ann) : (selectedCapture = ann); }}
   onAnnotationsChange={(anns) => { _annotationsCache = anns; }}
 />
-<CaptureReviewDrawer
-  annotation={selectedCapture}
-  onClose={() => { selectedCapture = null; }}
-  onVerdict={(id, verdict) => { selectedCapture = null; }}
-/>
+{#if !onCaptureSelect}
+  <CaptureReviewDrawer
+    annotation={selectedCapture}
+    onClose={() => { selectedCapture = null; }}
+    onVerdict={(id, verdict) => { selectedCapture = null; }}
+  />
+{/if}
 
 <!-- Toast: saved confirmation -->
 {#if savedCaptureId}

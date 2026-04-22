@@ -18,14 +18,16 @@
     annotation: CaptureAnnotation | null;
     onClose?: () => void;
     onVerdict?: (captureId: string, verdict: 'valid' | 'invalid' | 'missed') => void;
-    /** 'drawer' = fixed right rail (desktop), 'sheet' = bottom sheet (mobile). Default: 'drawer'. */
-    variant?: 'drawer' | 'sheet';
+    /** 'drawer' = fixed right rail (desktop), 'sheet' = bottom sheet (mobile), 'inline' = flow inside parent (tablet PeekDrawer). Default: 'drawer'. */
+    variant?: 'drawer' | 'sheet' | 'inline';
   }
   let { annotation, onClose, onVerdict, variant = 'drawer' }: Props = $props();
 
   const flyProps = $derived(
     variant === 'sheet'
       ? { y: 600, duration: 280, easing: cubicOut }
+      : variant === 'inline'
+      ? { y: 16, duration: 200, easing: cubicOut }
       : { x: 320, duration: 240, easing: cubicOut }
   );
 
@@ -76,17 +78,20 @@
 </script>
 
 {#if annotation}
-  <!-- Backdrop -->
-  <button
-    class="backdrop"
-    onclick={() => onClose?.()}
-    aria-label="Close capture review"
-    tabindex="0"
-  />
+  <!-- Backdrop — not rendered for inline variant -->
+  {#if variant !== 'inline'}
+    <button
+      class="backdrop"
+      onclick={() => onClose?.()}
+      aria-label="Close capture review"
+      tabindex="0"
+    />
+  {/if}
 
   <aside
     class="drawer"
     class:drawer--sheet={variant === 'sheet'}
+    class:drawer--inline={variant === 'inline'}
     role="dialog"
     aria-modal="true"
     aria-label="Capture Review"
@@ -354,6 +359,16 @@
     font-family: monospace;
     margin-top: auto;
   }
+  /* ── Inline variant (tablet PeekDrawer) ── */
+  .drawer--inline {
+    position: relative;
+    top: auto; right: auto; bottom: auto;
+    width: 100%;
+    height: 100%;
+    border-left: none;
+    border-radius: 0;
+  }
+
   /* ── Bottom sheet variant (mobile) ── */
   .drawer--sheet {
     top: auto;

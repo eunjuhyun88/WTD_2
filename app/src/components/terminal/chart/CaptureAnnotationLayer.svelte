@@ -15,6 +15,7 @@
    * whenever annotations change.
    */
   import { onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import type { ISeriesApi, Time } from 'lightweight-charts';
   import {
     createCaptureAnnotationsStore,
@@ -54,10 +55,7 @@
     // Series changed — re-attach all existing primitives
     _detachAll();
     if (_store) {
-      const unsub = _store.subscribe(state => {
-        _syncPrimitives(state.annotations);
-        unsub();
-      });
+      _syncPrimitives(get(_store).annotations);
     }
   }
 
