@@ -54,6 +54,8 @@ Engine logic change
 3. Cloud Run 실제 상태는 `us-east4/cogotchi` 만 Ready 이고 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ENGINE_INTERNAL_SECRET` env 이름을 가진다. `asia-southeast1/cogotchi` 와 `us-east4/wtd-2` 는 container start 실패 상태다.
 4. `app.cogotchi.dev` 는 production deployment 가 아니라 `release` preview deployment alias 이다. branch-scoped preview env 는 `ENGINE_URL` / `SECURITY_ALLOWED_HOSTS` 는 pull 가능했지만 `ENGINE_INTERNAL_SECRET` 는 `vercel env pull` 로 실값을 복원할 수 없었고, 이 상태의 manual deploy 는 `/api/patterns/stats` 에서 runtime security 500 을 냈다.
 5. 기존 수동 Vercel deploy 는 root `.vercel=chatbattle` 와 `app/.vercel=cogochi-2` 가 공존해 CLI 경로가 흔들리고, repo root 직접 업로드는 body size 초과로 실패할 수 있다. 반면 `us-east4/cogotchi` Cloud Run describe 는 `status.url` 과 plain `ENGINE_INTERNAL_SECRET` env 값을 노출하므로 deterministic wrapper 의 canonical runtime source 로 사용할 수 있다. Cloud Run fallback 을 넣은 새 preview deployment (`cogochi-2-qdl6zb4pa...`) 이후 `app.cogotchi.dev/api/patterns/stats` 는 `200 {"stats":[],"ok":true}` 로 복구되었다.
+6. Migration 이후 production `cogotchi` runtime 에서 `/patterns/{slug}/stats` 는 `TypeError: 'PatternLedgerFamilyStats' object is not subscriptable` 로 500 을 냈다. `patterns_thread.get_stats_sync()` 가 Supabase path 의 typed `PatternLedgerFamilyStats` 를 dict처럼 접근한 것이 직접 원인이다.
+7. Hotfix branch `codex/w-0126-stats-cutover-fix` 에서 `record_family` payload normalization 을 추가했고, `us-east4/cogotchi` revision `cogotchi-00207-vk8` 배포 후 `/readyz`, `/patterns/alpha-presurge-v1/stats`, `/patterns/stats/all` 이 live 에서 `200` 으로 복구됐다.
 
 ## Assumptions
 
@@ -82,9 +84,9 @@ Engine logic change
 
 ## Next Steps
 
-1. Cloud Run `asia-southeast1/cogotchi` 재배포 또는 `us-east4/cogotchi` 유지 결정을 문서화한다.
-2. 필요 시 manual preview deploy wrapper 를 `release` lane 운영 절차에 연결한다.
-3. (선택) 기존 JSON 레코드 → Supabase 백필 일정을 분리한다.
+1. Cloud Run `asia-southeast1/cogotchi` 재배포 또는 `us-east4/cogotchi` 유지 중 canonical engine region 결정을 문서화한다.
+2. `GET /patterns/stats/all` 응답 시간과 region latency 를 비교해 canonical runtime 결정 근거를 남긴다.
+3. 필요 시 `engine/scripts/backfill_ledger_records.py` 로 기존 JSON → Supabase 백필 계획을 잡는다.
 
 운영 절차는 `docs/runbooks/pattern-ledger-record-cutover.md` 를 canonical checklist 로 사용한다.
 
@@ -112,7 +114,9 @@ Engine logic change
 - [x] Vercel preview branch env (`release`, `codex/w-0139-terminal-core-loop-capture`) 설정
 - [x] deterministic wrapper 로 `cogochi-2` preview redeploy
 - [x] `bash scripts/w0126-cutover-preflight.sh` 로 cutover preflight 통과
-- [ ] GCP 재배포 후 `GET /patterns/stats/all` 응답 시간 비교
+- [x] post-cutover stats hotfix 를 `us-east4/cogotchi` 에 surgical redeploy
+- [x] live smoke check: `/readyz`, `/patterns/{slug}/stats`, `/patterns/stats/all`
+- [ ] GCP canonical runtime 결정용 `GET /patterns/stats/all` 응답 시간 비교
 - [ ] (선택) `engine/scripts/backfill_ledger_records.py` 실행으로 기존 JSON → Supabase 백필
 
 Runbook:
@@ -130,20 +134,18 @@ Runbook:
 - [x] Supabase migration 실행 (배포 시점)
 - [x] deterministic wrapper 로 preview deploy 성공
 - [x] app release alias 에서 `/api/patterns/stats` 가 `{ ok: true }` 반환
+- [x] post-cutover stats runtime bug hotfix 배포
 - [ ] GCP canonical engine runtime 결정 및 재배포 후 stats 응답 개선 확인
 
 ## Handoff Checklist
 
-- branch: `codex/w-0126-cutover-ops`
+- branch: `codex/w-0126-stats-cutover-fix`
 - 신규 파일: 없음
-- 수정 파일: `cloudbuild.yaml`, `cloudbuild.worker.yaml`, `scripts/w0126-cutover-preflight.sh`, `app/scripts/dev/deploy-cogochi-preview.mjs`, W-0126 docs
+- 수정 파일: `engine/api/routes/patterns_thread.py`, `engine/tests/test_pattern_candidate_routes.py`, `work/active/W-0126-ledger-supabase-record-store.md`
 - verification:
-  - `uv run --directory engine python -m pytest tests/test_ledger_store.py -q` ✅
-  - `uv run --directory engine python -m pytest tests/test_outcome_resolver.py -q` ✅
-  - `uv run --directory engine python -m pytest tests/test_observability_flywheel.py -q` ✅
-  - `uv run --directory engine python -m pytest tests/test_pattern_candidate_routes.py -q` ✅
-  - `RUN_DB_VERIFY=1` preflight with Node `pg` fallback: passed
-  - `node --check app/scripts/dev/deploy-cogochi-preview.mjs` ✅
-  - `node app/scripts/dev/deploy-cogochi-preview.mjs --repo-root /Users/ej/Projects/wtd-v2 --alias app.cogotchi.dev --force` ✅
-  - `curl https://app.cogotchi.dev/api/patterns/stats` → `200 {"stats":[],"ok":true}` ✅
-- 다음 운영 필수 작업: canonical engine region 결정 → (선택) release lane 문서화 / JSON backfill
+  - `/Users/ej/Projects/wtd-v2/engine/.venv/bin/python -m pytest tests/test_pattern_candidate_routes.py -q` ✅ (`9 passed`)
+  - `curl https://cogotchi-103912432221.us-east4.run.app/readyz` ✅
+  - `curl -H x-engine-internal-secret:<redacted> https://cogotchi-103912432221.us-east4.run.app/patterns/alpha-presurge-v1/stats` → `200` ✅
+  - `curl -H x-engine-internal-secret:<redacted> https://cogotchi-103912432221.us-east4.run.app/patterns/stats/all` → `200` ✅
+  - `gcloud run deploy cogotchi --source /tmp/wtd-v2-w0126-stats-cutover-fix/engine --region us-east4 --quiet` ✅
+- 다음 운영 필수 작업: canonical engine region 결정, bulk stats latency 비교, 필요 시 JSON backfill

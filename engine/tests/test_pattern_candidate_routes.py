@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from api.routes import patterns as pattern_routes
 from api.routes import patterns_thread as ptr
-from ledger.types import PatternLedgerRecord, PatternOutcome, PatternStats
+from ledger.types import PatternLedgerFamilyStats, PatternLedgerRecord, PatternOutcome, PatternStats
 
 
 class _RegistryEntry:
@@ -139,17 +139,19 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
         def summarize_family(self, slug):
             self.summarize_calls += 1
             return (
-                {
-                    "entry_count": 10,
-                    "capture_count": 4,
-                    "score_count": 10,
-                    "outcome_count": 6,
-                    "verdict_count": 3,
-                    "training_run_count": 2,
-                    "model_count": 1,
-                    "capture_to_entry_rate": 0.4,
-                    "verdict_to_entry_rate": 0.3,
-                },
+                PatternLedgerFamilyStats(
+                    pattern_slug=slug,
+                    entry_count=10,
+                    capture_count=4,
+                    score_count=10,
+                    outcome_count=6,
+                    verdict_count=3,
+                    phase_attempt_count=0,
+                    training_run_count=2,
+                    model_count=1,
+                    capture_to_entry_rate=0.4,
+                    verdict_to_entry_rate=0.3,
+                ),
                 record_list[0],
                 record_list[1],
             )
