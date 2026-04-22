@@ -97,6 +97,11 @@ export interface OptionsSnapshotPayload {
   };
 }
 
+export interface FundingHistoryPayload {
+  symbol: string;
+  bars: { t: number; delta: number }[];
+}
+
 export interface AdapterInput {
   analyze: AnalyzeEnvelope | null;
   venueDivergence?: VenueDivergencePayload | null;
@@ -106,6 +111,8 @@ export interface AdapterInput {
   rvCone?: RvConePayload | null;
   fundingFlip?: FundingFlipPayload | null;
   optionsSnapshot?: OptionsSnapshotPayload | null;
+  /** Real funding rate history — 8h bars from Binance. Used for term-structure curve (G). */
+  fundingHistory?: FundingHistoryPayload | null;
 }
 
 /**
@@ -247,16 +254,33 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
     };
   }
 
-  // ── G: Funding term-structure curve (synthetic tenors — Phase 2: funding_by_horizon) ─
+  // ── G: Funding term-structure curve ──────────────────────────────────────
+  // Uses real multi-period averages when fundingHistory is available.
+  // Falls back to the current spot rate when history is missing.
   if (snap?.funding_rate != null) {
-    const base = snap.funding_rate;
+    const bars = input.fundingHistory?.bars ?? [];
+    const avgLast = (n: number) => {
+      const slice = bars.slice(-n);
+      if (slice.length === 0) return null;
+      return slice.reduce((s, b) => s + b.delta, 0) / slice.length;
+    };
+    const spot = snap.funding_rate;
     const tenors: CurvePoint[] = [
-      { tenor: '8h',  value: base },
-      { tenor: '1d',  value: base * 0.95 },
-      { tenor: '7d',  value: base * 0.75 },
-      { tenor: '30d', value: base * 0.50 },
-      { tenor: '90d', value: base * 0.30 },
+      { tenor: '8h',  value: spot },
+      { tenor: '1d',  value: avgLast(3)   ?? spot },
+      { tenor: '7d',  value: avgLast(21)  ?? spot },
+      { tenor: '30d', value: avgLast(90)  ?? spot },
+      { tenor: '90d', value: avgLast(270) ?? spot },
     ];
+    // prevWeek: average of bars[n-42 .. n-21] (the week before last 7d)
+    const prevWeekAvg = (() => {
+      if (bars.length < 42) return null;
+      const slice = bars.slice(-42, -21);
+      return slice.reduce((s, b) => s + b.delta, 0) / slice.length;
+    })();
+    if (prevWeekAvg !== null) {
+      tenors[2].prevWeek = prevWeekAvg;
+    }
     out.funding_term_structure = { current: tenors, at: now };
   }
 

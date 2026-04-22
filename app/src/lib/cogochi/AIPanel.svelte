@@ -8,6 +8,16 @@
    * with indicator info and dispatches cogochi:cmd { id: 'focus_indicator', def }.
    */
   import { findIndicatorByQuery } from '$lib/indicators/search';
+  import { onMount } from 'svelte';
+
+  // Live scan candidate count — populated on mount from world model.
+  let _liveMatchCount = $state(0);
+  onMount(() => {
+    fetch('/api/cogochi/alpha/world-model')
+      .then(r => r.json())
+      .then((d: { phases?: unknown[] }) => { _liveMatchCount = (d.phases ?? []).length; })
+      .catch(() => {});
+  });
 
   interface SetupToken {
     kind: 'asset' | 'trigger' | 'filter';
@@ -128,17 +138,23 @@
       tokens.push({ kind: 'trigger', label: 'tradoor_v2' });
     }
 
+    // Filter matches: if a specific asset is queried, count is a fraction of the universe.
+    const hasAsset = tokens.some(t => t.kind === 'asset' && t.label !== '@any');
+    const matchCount = _liveMatchCount > 0
+      ? (hasAsset ? Math.max(1, Math.round(_liveMatchCount * 0.12)) : _liveMatchCount)
+      : 0;
     return {
       tokens,
-      matches: Math.floor(Math.random() * 8) + 4,
-      past: Math.floor(Math.random() * 8) + 8,
+      matches: matchCount,
+      past: 0, // real history available from /api/captures — no random stub
       text,
     };
   }
 
   function generateAIReply(text: string, setup: SetupResult): string {
     const triggers = setup.tokens.filter(t => t.kind === 'trigger' || t.kind === 'filter').map(t => t.label);
-    return `"${text}" 를 **${triggers.join(' + ') || 'tradoor_v2'}** 셋업으로 해석했습니다. 현재 ${setup.matches}개 종목이 같은 모양이고, 과거 유사 케이스 ${setup.past}건 확인 가능합니다.`;
+    const matchStr = setup.matches > 0 ? `현재 **${setup.matches}개** 종목이 같은 모양입니다.` : '스캔 결과를 불러오는 중입니다.';
+    return `"${text}" 를 **${triggers.join(' + ') || 'tradoor_v2'}** 셋업으로 해석했습니다. ${matchStr}`;
   }
 
   $effect(() => {

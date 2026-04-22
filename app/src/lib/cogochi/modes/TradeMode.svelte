@@ -22,6 +22,7 @@
     type RvConePayload,
     type FundingFlipPayload,
     type OptionsSnapshotPayload,
+    type FundingHistoryPayload,
   } from '$lib/indicators/adapter';
   import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
 
@@ -152,6 +153,38 @@
     } catch { /* tolerate */ }
   }
 
+  // ── Funding history (270 bars = ~90d of 8h intervals) → real G curve ──
+  let fundingHistory = $state<FundingHistoryPayload | null>(null);
+
+  async function refreshFundingHistory() {
+    try {
+      const res = await fetch(`/api/market/funding?symbol=${symbol}&limit=270`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { symbol: string; bars: { t: number; delta: number }[] };
+      fundingHistory = data;
+    } catch { /* tolerate */ }
+  }
+
+  // ── Past captures (real historical setups for PAST strip) ─────────────
+  interface PastCapture {
+    capture_id: string;
+    symbol: string;
+    pattern_slug: string;
+    timeframe: string;
+    captured_at_ms: number;
+    status: string;
+  }
+  let pastCaptures = $state<PastCapture[]>([]);
+
+  async function refreshPastCaptures() {
+    try {
+      const res = await fetch(`/api/captures?limit=8`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; captures?: PastCapture[]; count?: number };
+      if (data.ok && data.captures) pastCaptures = data.captures;
+    } catch { /* tolerate */ }
+  }
+
   // ── Pillar 2: Options snapshot (W-0122-C1) ───────────────────────────
   let optionsSnapshot = $state<OptionsSnapshotPayload | null>(null);
 
@@ -200,6 +233,7 @@
     ssr = null;
     rvCone = null;
     fundingFlip = null;
+    fundingHistory = null;
     optionsSnapshot = null;
     confluence = null;
     confluenceHistory = [];
@@ -209,9 +243,11 @@
     void refreshSsr();
     void refreshRvCone();
     void refreshFundingFlip();
+    void refreshFundingHistory();
     void refreshOptionsSnapshot();
     void refreshConfluence();
     void refreshConfluenceHistory();
+    void refreshPastCaptures();
     const fastIv = setInterval(() => {
       void refreshVenueDivergence();
       void refreshLiqClusters();
@@ -243,6 +279,7 @@
     ssr,
     rvCone,
     fundingFlip,
+    fundingHistory,
     optionsSnapshot,
   }));
 
@@ -1661,31 +1698,25 @@
               </div>
               <div class="past-strip">
                 <div class="past-header">
-                  <span class="past-title">★ PAST · 14 similar</span>
-                  <span class="past-sep">│</span>
-                  <span class="past-win">11W</span>
-                  <span class="past-loss">3L</span>
-                  <span class="past-avg">avg win +3.4%</span>
+                  <span class="past-title">★ SAVED · {pastCaptures.length}</span>
                   <span class="spacer"></span>
-                  <span class="past-hint">클릭 → 차트로 보기</span>
+                  <span class="past-hint">저장된 셋업</span>
                 </div>
                 <div class="past-cards">
-                  {#each [
-                    { sym:'TRADOOR', when:'2024-11-12', sim:94, pnl:+6.2 },
-                    { sym:'PTB',     when:'2025-01-03', sim:91, pnl:+2.1 },
-                    { sym:'JUP',     when:'2025-02-18', sim:88, pnl:-1.4 },
-                    { sym:'ARB',     when:'2025-03-11', sim:86, pnl:+4.7 },
-                    { sym:'AVAX',    when:'2025-04-02', sim:83, pnl:+1.8 },
-                    { sym:'SUI',     when:'2025-05-19', sim:80, pnl:+3.3 },
-                    { sym:'ONDO',    when:'2025-06-24', sim:78, pnl:-0.6 },
-                    { sym:'WIF',     when:'2025-07-08', sim:76, pnl:+2.9 },
-                  ] as s}
-                    <button class="past-card">
-                      <span class="past-sym">{s.sym}</span>
-                      <span class="past-pnl" style:color={s.pnl>=0 ? 'var(--pos)' : 'var(--neg)'}>{s.pnl>=0?'+':''}{s.pnl.toFixed(1)}%</span>
-                      <span class="past-sim">{s.sim}%</span>
-                    </button>
-                  {/each}
+                  {#if pastCaptures.length === 0}
+                    <span class="past-empty">저장된 셋업 없음 — 차트에서 Save Setup으로 추가</span>
+                  {:else}
+                    {#each pastCaptures as s (s.capture_id)}
+                      {@const sym = s.symbol.replace('USDT','').replace('PERP','')}
+                      {@const dateStr = new Date(s.captured_at_ms).toISOString().slice(0,10)}
+                      {@const slug = s.pattern_slug.replace(/-v\d+$/, '').replace(/-/g, ' ')}
+                      <button class="past-card" title="{s.pattern_slug} · {s.timeframe}">
+                        <span class="past-sym">{sym}</span>
+                        <span class="past-pnl" style:color="var(--g6)">{dateStr}</span>
+                        <span class="past-sim">{s.status === 'outcome_ready' ? '⚡' : s.status === 'verdict_ready' ? '✓' : '…'}</span>
+                      </button>
+                    {/each}
+                  {/if}
                 </div>
               </div>
             </div>

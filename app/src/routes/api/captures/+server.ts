@@ -1,14 +1,34 @@
 /**
- * POST /api/captures
+ * GET  /api/captures?limit=N            — list recent captures for the current user
+ * POST /api/captures                    — create a new capture
  *
- * Canonical app capture create route.
- * Proxies to engine POST /captures while deriving user_id from session.
+ * Proxies to engine /captures while deriving user_id from session.
  */
 
-import { error } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { engineFetch } from '$lib/server/engineTransport';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
+
+export const GET: RequestHandler = async ({ url, cookies }) => {
+  const user = await getAuthUserFromCookies(cookies);
+  if (!user) return json({ ok: false, captures: [], count: 0 });
+
+  const limit = Math.min(Number(url.searchParams.get('limit') || '20'), 100);
+  const symbol = url.searchParams.get('symbol') ?? '';
+  const params = new URLSearchParams({ user_id: user.id, limit: String(limit) });
+  if (symbol) params.set('symbol', symbol);
+
+  try {
+    const res = await engineFetch(`/captures?${params}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return json({ ok: false, captures: [], count: 0 });
+    return json(await res.json());
+  } catch {
+    return json({ ok: false, captures: [], count: 0 });
+  }
+};
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
   const user = await getAuthUserFromCookies(cookies);
