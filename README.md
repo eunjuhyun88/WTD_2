@@ -34,10 +34,11 @@ research/                  # Thesis, experiments, evals, datasets, notes
 ## Read Order (Default)
 
 1. `AGENTS.md`
-2. Relevant `work/active/*.md`
-3. Relevant `docs/domains/*.md`
-4. Relevant `docs/product/*.md`
-5. Only then open required code files
+2. `work/active/CURRENT.md`
+3. Relevant `work/active/*.md` listed there
+4. Relevant `docs/domains/*.md`
+5. Relevant `docs/product/*.md`
+6. Only then open required code files
 
 ## Quick Start
 

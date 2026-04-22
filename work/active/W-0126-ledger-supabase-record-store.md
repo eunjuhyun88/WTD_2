@@ -44,6 +44,10 @@ engine
 2. 기존 파일 기반 레코드와 Supabase 레코드가 일시적으로 분기될 수 있음 (백필 전).
    통계 차이는 허용됨 — 새 레코드부터 Supabase에 누적.
 
+## Open Questions
+
+- none
+
 ## Decisions
 
 - `LEDGER_RECORD_STORE = get_ledger_record_store()` — 환경 감지 자동 라우팅.
@@ -51,6 +55,12 @@ engine
 - `SupabaseLedgerRecordStore.compute_family_stats()` — `SELECT record_type` 만 가져와 Python dict으로 집계.
   PostgREST GROUP BY RPC 대신 클라이언트 집계: 구현 단순성 우선, 레코드 수 증가 시 RPC로 교체 가능.
 - 백필 스크립트는 별도 `engine/scripts/backfill_ledger_records.py`로 구현 (이 슬라이스 범위 아님).
+
+## Next Steps
+
+- Supabase migration 018 을 실제 환경에 적용한다.
+- GCP 엔진 런타임 env 를 확인하고 재배포 후 `GET /patterns/stats/all` 개선 여부를 비교한다.
+- 필요 시 백필 스크립트를 별도 lane 으로 열어 기존 파일 레코드를 Supabase 로 이관한다.
 
 ## Performance Impact
 

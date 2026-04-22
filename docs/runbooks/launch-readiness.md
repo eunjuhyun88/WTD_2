@@ -13,9 +13,9 @@ Current status:
 
 Use this together with:
 
-- `work/active/W-0006-full-architecture-refactor-design.md`
-- `work/active/W-0012-runtime-split-and-state-plane.md`
-- `work/active/W-0013-launch-readiness-program.md`
+- `work/completed/W-0006-full-architecture-refactor-design.md`
+- `work/completed/W-0012-runtime-split-and-state-plane.md`
+- `work/completed/W-0013-launch-readiness-program.md`
 - `app/docs/references/active/API_ROUTE_TIER_INVENTORY_2026-04-12.md`
 
 ## What Is Already In Place
