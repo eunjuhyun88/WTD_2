@@ -331,6 +331,82 @@
     return refs.map((ref) => ref.provider.toUpperCase()).join(' · ');
   }
 
+  function formatUsdCompact(v: number | null | undefined): string {
+    if (v == null || !Number.isFinite(v)) return '—';
+    const abs = Math.abs(v);
+    if (abs >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
+    if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
+    return `$${v.toFixed(0)}`;
+  }
+
+  function formatPctCompact(v: number | null | undefined, digits = 1): string {
+    if (v == null || !Number.isFinite(v)) return '—';
+    return `${v >= 0 ? '+' : ''}${v.toFixed(digits)}%`;
+  }
+
+  function formatCountCompact(v: number | null | undefined): string {
+    if (v == null || !Number.isFinite(v)) return '—';
+    return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : String(Math.round(v));
+  }
+
+  function isDexOverviewPayload(payload: unknown): payload is DexOverviewPayload {
+    return Boolean(
+      payload &&
+      typeof payload === 'object' &&
+      'pairCount' in payload &&
+      'topPairs' in payload &&
+      Array.isArray((payload as DexOverviewPayload).topPairs)
+    );
+  }
+
+  function isOnchainBackdropPayload(payload: unknown): payload is OnchainBackdropPayload {
+    return Boolean(
+      payload &&
+      typeof payload === 'object' &&
+      'asset' in payload &&
+      'source' in payload &&
+      'metrics' in payload
+    );
+  }
+
+  const dexDetailPayload = $derived.by(() => {
+    const payload = workspaceStudyMap['dex-liquidity']?.payload;
+    return isDexOverviewPayload(payload) ? payload : null;
+  });
+
+  const onchainDetailPayload = $derived.by(() => {
+    const payload = workspaceStudyMap['onchain-cycle']?.payload;
+    return isOnchainBackdropPayload(payload) ? payload : null;
+  });
+
+  function buildStudyAIDetailLines(study: NonNullable<(typeof workspaceBackdropStudies)[number]>): string[] {
+    const summary = study.summary
+      .filter((row) => row.value != null && row.value !== '')
+      .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`);
+    const lines = [`- ${study.title}: ${summary.join(' / ') || '—'}`];
+
+    if (study.id === 'dex-liquidity' && isDexOverviewPayload(study.payload)) {
+      const dex = study.payload;
+      if (dex.chainBreakdown.length) {
+        lines.push(`  - Chains: ${dex.chainBreakdown.slice(0, 3).map((chain) => `${chain.chainLabel} liq ${formatUsdCompact(chain.liquidityUsd)} / TVL ${formatUsdCompact(chain.chainTvlUsd)} / vol share ${formatPctCompact(chain.volumeSharePct)}`).join(' | ')}`);
+      }
+      if (dex.topPairs.length) {
+        lines.push(`  - Top pairs: ${dex.topPairs.slice(0, 3).map((pair) => `${pair.label} on ${pair.dexId} (${pair.chainId}) vol ${formatUsdCompact(pair.volume24hUsd)} liq ${formatUsdCompact(pair.liquidityUsd)}`).join(' | ')}`);
+      }
+    }
+
+    if (study.id === 'onchain-cycle' && isOnchainBackdropPayload(study.payload)) {
+      const onchain = study.payload;
+      lines.push(
+        `  - Cycle detail: MVRV ${onchain.metrics?.mvrv?.toFixed(2) ?? '—'} / NUPL ${onchain.metrics?.nupl?.toFixed(3) ?? '—'} / SOPR ${onchain.metrics?.sopr?.toFixed(3) ?? '—'} / netflow ${formatUsdCompact(onchain.exchangeReserve?.netflow24h)}`,
+      );
+    }
+
+    lines.push(`  - Trust: ${study.trust.tier} · Sources: ${formatSourceRefs(study.sourceRefs)}${study.methodology ? ` · ${study.methodology.label}` : ''}`);
+    return lines;
+  }
+
   // Ordered list of indicators to render — driven by ShellState.visibleIndicators.
   // Gauge row: archetypes A, D, E (scalar / divergence / regime cards).
   // Venue stack: archetype F (multi-venue strips).
@@ -384,13 +460,7 @@
       ...(workspaceEnvelope.aiContext.warnings ?? []).map((warning) => `- Warning: ${warning}`),
       '',
       '**Study Summary**',
-      ...selectedStudies.map((study) => {
-        const parts = study.summary
-          .filter((row) => row.value != null && row.value !== '')
-          .slice(0, 3)
-          .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`);
-        return `- ${study.title}: ${parts.join(' / ') || '—'}`;
-      }),
+      ...selectedStudies.flatMap((study) => buildStudyAIDetailLines(study)),
     ]
       .filter((line): line is string => Boolean(line))
       .join('\n');
@@ -1194,6 +1264,121 @@
                             {/if}
                           </div>
                         {/each}
+                      </div>
+                    </div>
+                  {/if}
+                  {#if dexDetailPayload}
+                    <div class="analyze-section">
+                      <div class="analyze-section-head">
+                        <span class="analyze-kicker">DEX MARKET STRUCTURE</span>
+                        <span class="analyze-section-copy">실제 top pairs, 체인 집중도, TVL backdrop 을 같은 payload로 본다</span>
+                      </div>
+                      <div class="dex-strip">
+                        <div class="dex-strip-item">
+                          <span class="dex-strip-label">TOTAL DEFI TVL</span>
+                          <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.totalDefiTvlUsd)}</span>
+                          <span class="dex-strip-note">{formatPctCompact(dexDetailPayload.totalDefiTvlChange24hPct)}</span>
+                        </div>
+                        <div class="dex-strip-item">
+                          <span class="dex-strip-label">DEX SHARE</span>
+                          <span class="dex-strip-value">{formatPctCompact(dexDetailPayload.topDexSharePct)}</span>
+                          <span class="dex-strip-note">{dexDetailPayload.coverage.mode} coverage</span>
+                        </div>
+                        <div class="dex-strip-item">
+                          <span class="dex-strip-label">AVG TRADE</span>
+                          <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.avgTradeSizeUsd)}</span>
+                          <span class="dex-strip-note">{formatCountCompact(dexDetailPayload.txns24h)} txns / 24h</span>
+                        </div>
+                      </div>
+                      {#if dexDetailPayload.chainBreakdown.length}
+                        <div class="dex-chain-grid">
+                          {#each dexDetailPayload.chainBreakdown as chain}
+                            <div class="dex-chain-card">
+                              <div class="dex-chain-head">
+                                <span class="dex-chain-name">{chain.chainLabel}</span>
+                                <span class="dex-chain-share">{formatPctCompact(chain.liquiditySharePct)}</span>
+                              </div>
+                              <div class="dex-chain-meta">
+                                <span>TVL {formatUsdCompact(chain.chainTvlUsd)}</span>
+                                <span>{formatPctCompact(chain.chainTvlChange1dPct)}</span>
+                              </div>
+                              <div class="dex-chain-meta">
+                                <span>Vol {formatUsdCompact(chain.volume24hUsd)}</span>
+                                <span>Liq {formatUsdCompact(chain.liquidityUsd)}</span>
+                              </div>
+                            </div>
+                          {/each}
+                        </div>
+                      {/if}
+                      <div class="dex-table-wrap">
+                        <table class="dex-table">
+                          <thead>
+                            <tr>
+                              <th>Pair</th>
+                              <th>DEX</th>
+                              <th>Chain</th>
+                              <th>24H Vol</th>
+                              <th>Liq</th>
+                              <th>Txns</th>
+                              <th>Δ24H</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {#each dexDetailPayload.topPairs.slice(0, 6) as pair}
+                              <tr>
+                                <td>{pair.label}</td>
+                                <td>{pair.dexId}</td>
+                                <td>{pair.chainId}</td>
+                                <td>{formatUsdCompact(pair.volume24hUsd)}</td>
+                                <td>{formatUsdCompact(pair.liquidityUsd)}</td>
+                                <td>{formatCountCompact(pair.txns24h)}</td>
+                                <td class:tone-bull={(pair.priceChange24hPct ?? 0) >= 0} class:tone-bear={(pair.priceChange24hPct ?? 0) < 0}>
+                                  {formatPctCompact(pair.priceChange24hPct)}
+                                </td>
+                              </tr>
+                            {/each}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  {/if}
+                  {#if onchainDetailPayload}
+                    <div class="analyze-section">
+                      <div class="analyze-section-head">
+                        <span class="analyze-kicker">ON-CHAIN CYCLE DETAIL</span>
+                        <span class="analyze-section-copy">cycle proxy 의 raw metrics 를 직접 확인한다</span>
+                      </div>
+                      <div class="dex-chain-grid onchain-metric-grid">
+                        <div class="dex-chain-card">
+                          <div class="dex-chain-head">
+                            <span class="dex-chain-name">NETFLOW 24H</span>
+                            <span class:tone-bull={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) < 0} class:tone-bear={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) > 0}>
+                              {formatUsdCompact(onchainDetailPayload.exchangeReserve?.netflow24h)}
+                            </span>
+                          </div>
+                          <div class="dex-chain-meta"><span>7D change</span><span>{formatPctCompact(onchainDetailPayload.exchangeReserve?.change7dPct)}</span></div>
+                        </div>
+                        <div class="dex-chain-card">
+                          <div class="dex-chain-head">
+                            <span class="dex-chain-name">MVRV</span>
+                            <span>{onchainDetailPayload.metrics?.mvrv != null ? onchainDetailPayload.metrics.mvrv.toFixed(2) : '—'}</span>
+                          </div>
+                          <div class="dex-chain-meta"><span>NUPL</span><span>{onchainDetailPayload.metrics?.nupl != null ? onchainDetailPayload.metrics.nupl.toFixed(3) : '—'}</span></div>
+                        </div>
+                        <div class="dex-chain-card">
+                          <div class="dex-chain-head">
+                            <span class="dex-chain-name">SOPR</span>
+                            <span>{onchainDetailPayload.metrics?.sopr != null ? onchainDetailPayload.metrics.sopr.toFixed(3) : '—'}</span>
+                          </div>
+                          <div class="dex-chain-meta"><span>Puell</span><span>{onchainDetailPayload.metrics?.puellMultiple != null ? onchainDetailPayload.metrics.puellMultiple.toFixed(2) : '—'}</span></div>
+                        </div>
+                        <div class="dex-chain-card">
+                          <div class="dex-chain-head">
+                            <span class="dex-chain-name">WHALE</span>
+                            <span>{formatCountCompact(onchainDetailPayload.whale?.whaleCount)}</span>
+                          </div>
+                          <div class="dex-chain-meta"><span>ratio</span><span>{onchainDetailPayload.whale?.exchangeWhaleRatio != null ? formatPctCompact(onchainDetailPayload.whale.exchangeWhaleRatio * 100) : '—'}</span></div>
+                        </div>
                       </div>
                     </div>
                   {/if}
@@ -2389,6 +2574,107 @@
     font-size: 9px;
     color: var(--g5);
     line-height: 1.4;
+  }
+  .dex-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .dex-strip-item,
+  .dex-chain-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding: 10px;
+    border-radius: 5px;
+    border: 0.5px solid var(--g4);
+    background: var(--g1);
+  }
+  .dex-strip-label,
+  .dex-chain-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--g5);
+    letter-spacing: 0.12em;
+  }
+  .dex-strip-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--g9);
+  }
+  .dex-strip-note,
+  .dex-chain-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 9px;
+    color: var(--g6);
+  }
+  .dex-chain-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .onchain-metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .dex-chain-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--g9);
+  }
+  .dex-chain-share {
+    color: var(--amb);
+    font-size: 10px;
+  }
+  .dex-table-wrap {
+    border: 0.5px solid var(--g4);
+    border-radius: 5px;
+    overflow: auto;
+    background: var(--bg);
+  }
+  .dex-table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .dex-table th,
+  .dex-table td {
+    padding: 8px 9px;
+    border-bottom: 0.5px solid var(--g3);
+    text-align: left;
+    white-space: nowrap;
+  }
+  .dex-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--g1);
+    color: var(--g5);
+    font-size: 8px;
+    letter-spacing: 0.14em;
+  }
+  .dex-table td {
+    color: var(--g8);
+  }
+  .dex-table tbody tr:hover td {
+    background: rgba(255,255,255,0.02);
+  }
+  @media (max-width: 1100px) {
+    .dex-strip,
+    .dex-chain-grid,
+    .onchain-metric-grid {
+      grid-template-columns: 1fr;
+    }
   }
   .evidence-grid {
     display: grid;
