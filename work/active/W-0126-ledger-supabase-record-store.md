@@ -68,6 +68,7 @@ Engine logic change
 - record append 가 필요한 write path 는 전역 singleton 직접 참조보다 주입 가능한 인자를 우선한다.
 - 기존 파일 기반 코드는 local dev fallback 으로 유지한다.
 - 백필 스크립트와 Supabase 운영 migration 실행은 별도 execution step 으로 둔다.
+- `codex/w-0126-core-ledger-boundaries` 는 dirty execution lane으로 유지하지 않고, 최신 `origin/main` 위 clean branch `codex/w-0126-mainline` 에 cherry-pick 해서 이어간다.
 
 ## Next Steps
 
@@ -117,7 +118,7 @@ Runbook:
 
 ## Handoff Checklist
 
-- branch: `codex/w-0126-core-ledger-boundaries`
+- branch: `codex/w-0126-mainline`
 - 신규 파일: 없음
 - 수정 파일: `engine/ledger/store.py`, `engine/ledger/supabase_record_store.py`, consumer/test files
 - verification:
