@@ -39,6 +39,8 @@ Contract change
 - `docs/domains/pattern-ml.md`
 - `docs/runbooks/pattern-ledger-record-cutover.md`
 - `scripts/w0126-cutover-preflight.sh`
+- `engine/worker/cli.py`
+- `engine/tests/test_worker_cli.py`
 
 ## Facts
 
@@ -47,6 +49,7 @@ Contract change
 3. W-0124 는 non-meta engine route 에 대한 `ENGINE_INTERNAL_SECRET` 경계를 이미 코드로 가졌고, 실제 배포 env 적용만 남은 상태다.
 4. `docs/domains/refinement-methodology.md` 와 `docs/domains/pattern-ml.md` 는 exploratory search / training / promotion 을 `worker-control` plane 에 둬야 한다고 명시한다.
 5. W-0122 Confluence Phase 2 의 핵심은 UI 확장이 아니라 engine-side scoring, flywheel weight learning, capture snapshot persistence 다.
+6. 기존 methodology primitives 는 `engine/research/*` 와 `worker/research_jobs.py` 에 이미 있지만, worker-control 소유의 canonical CLI entrypoint 는 없었다.
 
 ## Assumptions
 
@@ -68,19 +71,21 @@ Contract change
 ## Next Steps
 
 1. W-0126 cutover 를 operator 가 바로 점검할 수 있도록 `scripts/w0126-cutover-preflight.sh` 를 canonical preflight 로 둔다.
-2. cutover 완료 후 `jobs`, scheduler, refinement, train 경로를 `worker-control` 우선순위로 inventory 한다.
+2. `engine/worker/cli.py` 를 canonical one-shot entrypoint 로 두고, objective/refinement/search-refinement 실행을 public runtime 밖에서 시작하게 만든다.
 3. 그 다음 W-0122 Phase 2 를 `engine scoring plane + worker-control learning plane` 으로 분리해 착수한다.
 
 ## Verification Target
 
 - `bash -n scripts/w0126-cutover-preflight.sh`
 - `SUPABASE_URL=https://example.supabase.co SUPABASE_SERVICE_ROLE_KEY=test-key ENGINE_INTERNAL_SECRET=test-secret APP_ORIGIN=https://app.example.com bash scripts/w0126-cutover-preflight.sh`
+- `uv run --directory engine python -m pytest tests/test_worker_cli.py tests/test_worker_research_jobs.py tests/test_research_worker_control.py -q`
 
 ## Exit Criteria
 
 - W-0126 cutover 가 다음 파동의 explicit gate 로 문서화된다.
 - next-wave order 가 `cutover -> runtime role split -> research lane` 으로 고정된다.
 - operator preflight 절차가 문서가 아니라 실행 가능한 스크립트로 제공된다.
+- worker-control 소유의 one-shot research entrypoint 가 존재한다.
 
 ## Handoff Checklist
 
@@ -89,4 +94,5 @@ Contract change
 - verification:
   - `bash -n scripts/w0126-cutover-preflight.sh`
   - dummy env 기반 preflight 실행
+  - worker CLI + research jobs focused pytest
 - remaining blockers: 실제 migration 018 실행, Cloud Run env 반영, runtime role split implementation
