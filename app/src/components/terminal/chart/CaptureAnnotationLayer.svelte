@@ -15,6 +15,7 @@
    * whenever annotations change.
    */
   import { onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import type { ISeriesApi, Time } from 'lightweight-charts';
   import {
     createCaptureAnnotationsStore,
@@ -28,6 +29,8 @@
   export let symbol: string = '';
   export let timeframe: string = '1h';
   export let onSelect: ((ann: CaptureAnnotation) => void) | null = null;
+  /** Called whenever the annotation list changes — lets parent maintain a cache for click handlers. */
+  export let onAnnotationsChange: ((anns: CaptureAnnotation[]) => void) | null = null;
 
   // ── Primitive registry ──────────────────────────────────────────────────────
   // Map capture_id → { marker, window } primitives currently attached
@@ -52,10 +55,7 @@
     // Series changed — re-attach all existing primitives
     _detachAll();
     if (_store) {
-      const unsub = _store.subscribe(state => {
-        _syncPrimitives(state.annotations);
-        unsub();
-      });
+      _syncPrimitives(get(_store).annotations);
     }
   }
 
@@ -89,6 +89,9 @@
         _attached.set(ann.capture_id, { marker, window });
       }
     }
+
+    // Notify parent so it can maintain a cache for click-to-open logic
+    onAnnotationsChange?.(annotations);
   }
 
   function _detachAll(): void {

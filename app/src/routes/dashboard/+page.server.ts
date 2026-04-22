@@ -1,7 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { env } from '$env/dynamic/private';
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+import { engineFetch } from '$lib/server/engineTransport';
 
 export interface CaptureRow {
   capture_id: string;
@@ -25,12 +23,20 @@ export interface FlywheelHealth {
   promotion_gate_pass_rate_30d: number;
 }
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+  const userId = locals.user?.id;
   const [verdictResp, flywheelResp] = await Promise.allSettled([
-    fetch(`${ENGINE_URL}/captures?status=outcome_ready&limit=50`, {
-      signal: AbortSignal.timeout(5000),
-    }),
-    fetch(`${ENGINE_URL}/observability/flywheel/health`, {
+    userId
+      ? engineFetch(`/captures?user_id=${encodeURIComponent(userId)}&status=outcome_ready&limit=50`, {
+          signal: AbortSignal.timeout(5000),
+        })
+      : Promise.resolve(
+          new Response(JSON.stringify({ captures: [] }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+    engineFetch('/observability/flywheel/health', {
       signal: AbortSignal.timeout(4000),
     }),
   ]);

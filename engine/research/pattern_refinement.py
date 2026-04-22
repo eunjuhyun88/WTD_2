@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
-from ledger.store import LedgerStore
+from ledger.store import LedgerStore, get_ledger_store
 from patterns.library import get_pattern
 from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE
@@ -50,7 +50,7 @@ def run_pattern_bounded_eval(
     pattern = get_pattern(config.pattern_slug)
     controller = controller or ResearchWorkerController()
     state_store = controller.store
-    ledger_store = ledger_store or LedgerStore()
+    ledger_store = ledger_store or get_ledger_store()
     objective = objective or (
         derive_pattern_research_objective(config.pattern_slug, ledger_store=ledger_store)
         if config.objective_id is None

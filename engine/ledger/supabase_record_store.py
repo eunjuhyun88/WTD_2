@@ -1,0 +1,339 @@
+"""Supabase-backed LedgerRecordStore — drop-in replacement for file-based LedgerRecordStore.
+
+Persists PatternLedgerRecord events to the `pattern_ledger_records` table so that:
+- compute_family_stats() becomes a single SQL query instead of O(N files)
+- multi-instance GCP deployments share state via Postgres instead of per-instance file caches
+
+Used automatically when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set.
+Falls back to file-based LedgerRecordStore in local dev.
+
+W-0126 — LedgerStore Supabase migration.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from ledger.store import _build_record_family_summary
+from ledger.types import (
+    LedgerRecordType,
+    PatternLedgerFamilyStats,
+    PatternLedgerRecord,
+)
+
+if TYPE_CHECKING:
+    from capture.types import CaptureRecord
+    from ledger.types import PatternOutcome
+    from patterns.types import PhaseAttemptRecord
+
+log = logging.getLogger("engine.ledger.supabase_records")
+
+
+def _sb():
+    from supabase import create_client  # type: ignore
+    url = os.environ.get("SUPABASE_URL", "")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    if not url or not key:
+        raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+    return create_client(url, key)
+
+
+def _row_to_record(row: dict) -> PatternLedgerRecord:
+    d = dict(row)
+    v = d.get("created_at")
+    if v:
+        try:
+            d["created_at"] = datetime.fromisoformat(v)
+        except (ValueError, TypeError):
+            d["created_at"] = datetime.now()
+    else:
+        d["created_at"] = datetime.now()
+    d.setdefault("symbol", None)
+    d.setdefault("user_id", None)
+    d.setdefault("outcome_id", None)
+    d.setdefault("capture_id", None)
+    d.setdefault("transition_id", None)
+    d.setdefault("scan_id", None)
+    d.setdefault("payload", {})
+    return PatternLedgerRecord(**d)
+
+
+class SupabaseLedgerRecordStore:
+    """Supabase-backed record store — same public interface as LedgerRecordStore.
+
+    Hot-path improvement:
+      compute_family_stats() = single indexed DB query (O(1)) vs file scan (O(N)).
+      list(..., limit=1) for latest training_run/model = indexed single-row fetch.
+    """
+
+    # ── Core CRUD ────────────────────────────────────────────────────────────
+
+    def append(self, record: PatternLedgerRecord) -> None:
+        """Upsert a PatternLedgerRecord to Supabase."""
+        row = record.to_dict()
+        _sb().table("pattern_ledger_records").upsert(row).execute()
+
+    def load(self, pattern_slug: str, record_id: str) -> PatternLedgerRecord | None:
+        result = (
+            _sb()
+            .table("pattern_ledger_records")
+            .select("*")
+            .eq("id", record_id)
+            .eq("pattern_slug", pattern_slug)
+            .maybe_single()
+            .execute()
+        )
+        if result.data is None:
+            return None
+        return _row_to_record(result.data)
+
+    def list(
+        self,
+        pattern_slug: str,
+        *,
+        record_type: "LedgerRecordType | None" = None,
+        symbol: str | None = None,
+        outcome_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[PatternLedgerRecord]:
+        q = (
+            _sb()
+            .table("pattern_ledger_records")
+            .select("*")
+            .eq("pattern_slug", pattern_slug)
+            .order("created_at", desc=True)
+        )
+        if record_type:
+            q = q.eq("record_type", record_type)
+        if symbol:
+            q = q.eq("symbol", symbol)
+        if outcome_id:
+            q = q.eq("outcome_id", outcome_id)
+        if limit is not None:
+            q = q.limit(limit)
+        result = q.execute()
+        return [_row_to_record(r) for r in (result.data or [])]
+
+    def list_pattern_slugs(self) -> list[str]:
+        result = (
+            _sb()
+            .table("pattern_ledger_records")
+            .select("pattern_slug")
+            .execute()
+        )
+        slugs = {
+            row.get("pattern_slug")
+            for row in (result.data or [])
+            if row.get("pattern_slug")
+        }
+        return sorted(slugs)
+
+    # ── Stats — O(1) query instead of O(N file scans) ───────────────────────
+
+    def summarize_family(
+        self,
+        pattern_slug: str,
+    ) -> tuple[PatternLedgerFamilyStats, PatternLedgerRecord | None, PatternLedgerRecord | None]:
+        stats = self.compute_family_stats(pattern_slug)
+        latest_training_run = next(
+            iter(self.list(pattern_slug, record_type="training_run", limit=1)),
+            None,
+        )
+        latest_model = next(
+            iter(self.list(pattern_slug, record_type="model", limit=1)),
+            None,
+        )
+        return stats, latest_training_run, latest_model
+
+    def compute_family_stats(self, pattern_slug: str) -> PatternLedgerFamilyStats:
+        """Aggregate family counts via a single indexed query (O(1) vs O(N files)."""
+        result = (
+            _sb()
+            .table("pattern_ledger_records")
+            .select("record_type")
+            .eq("pattern_slug", pattern_slug)
+            .execute()
+        )
+        rows = result.data or []
+        stats, _, _ = _build_record_family_summary(
+            pattern_slug,
+            [
+                PatternLedgerRecord(
+                    record_type=row.get("record_type", "entry"),
+                    pattern_slug=pattern_slug,
+                )
+                for row in rows
+            ],
+        )
+        return stats
+
+    def count_records(
+        self,
+        *,
+        record_type: LedgerRecordType,
+        since: datetime | None = None,
+        pattern_slug: str | None = None,
+    ) -> int:
+        query = _sb().table("pattern_ledger_records").select("id", count="exact", head=True)
+        if pattern_slug:
+            query = query.eq("pattern_slug", pattern_slug)
+        query = query.eq("record_type", record_type)
+        if since is not None:
+            query = query.gte("created_at", since.isoformat())
+        result = query.execute()
+        return int(result.count or 0)
+
+    # ── append_* helpers — mirror LedgerRecordStore interface ───────────────
+
+    def append_entry_record(self, outcome: "PatternOutcome") -> None:
+        self.append(PatternLedgerRecord(
+            record_type="entry",
+            pattern_slug=outcome.pattern_slug,
+            symbol=outcome.symbol,
+            user_id=outcome.user_id,
+            outcome_id=outcome.id,
+            transition_id=outcome.entry_transition_id,
+            scan_id=outcome.entry_scan_id,
+            payload={
+                "accumulation_at": outcome.accumulation_at.isoformat() if outcome.accumulation_at else None,
+                "entry_price": outcome.entry_price,
+                "btc_trend_at_entry": outcome.btc_trend_at_entry,
+                "entry_block_coverage": outcome.entry_block_coverage,
+            },
+        ))
+
+    def append_score_record(self, outcome: "PatternOutcome") -> None:
+        self.append(PatternLedgerRecord(
+            record_type="score",
+            pattern_slug=outcome.pattern_slug,
+            symbol=outcome.symbol,
+            user_id=outcome.user_id,
+            outcome_id=outcome.id,
+            transition_id=outcome.entry_transition_id,
+            scan_id=outcome.entry_scan_id,
+            payload={
+                "entry_p_win": outcome.entry_p_win,
+                "entry_ml_state": outcome.entry_ml_state,
+                "entry_model_key": outcome.entry_model_key,
+                "entry_model_version": outcome.entry_model_version,
+                "entry_rollout_state": outcome.entry_rollout_state,
+                "entry_threshold": outcome.entry_threshold,
+                "entry_threshold_passed": outcome.entry_threshold_passed,
+                "entry_ml_error": outcome.entry_ml_error,
+            },
+        ))
+
+    def append_capture_record(self, capture: "CaptureRecord") -> None:
+        self.append(PatternLedgerRecord(
+            record_type="capture",
+            pattern_slug=capture.pattern_slug,
+            symbol=capture.symbol,
+            user_id=capture.user_id,
+            capture_id=capture.capture_id,
+            transition_id=capture.candidate_transition_id,
+            scan_id=capture.scan_id,
+            payload={
+                "capture_kind": capture.capture_kind,
+                "pattern_version": capture.pattern_version,
+                "phase": capture.phase,
+                "timeframe": capture.timeframe,
+                "status": capture.status,
+                "user_note": capture.user_note,
+                "outcome_id": capture.outcome_id,
+                "verdict_id": capture.verdict_id,
+            },
+        ))
+
+    def append_outcome_record(
+        self,
+        outcome: "PatternOutcome",
+        previous_outcome: "str | None" = None,
+    ) -> None:
+        self.append(PatternLedgerRecord(
+            record_type="outcome",
+            pattern_slug=outcome.pattern_slug,
+            symbol=outcome.symbol,
+            user_id=outcome.user_id,
+            outcome_id=outcome.id,
+            transition_id=outcome.entry_transition_id,
+            scan_id=outcome.entry_scan_id,
+            payload={
+                "previous_outcome": previous_outcome,
+                "outcome": outcome.outcome,
+                "breakout_at": outcome.breakout_at.isoformat() if outcome.breakout_at else None,
+                "invalidated_at": outcome.invalidated_at.isoformat() if outcome.invalidated_at else None,
+                "peak_price": outcome.peak_price,
+                "exit_price": outcome.exit_price,
+                "max_gain_pct": outcome.max_gain_pct,
+                "exit_return_pct": outcome.exit_return_pct,
+                "duration_hours": outcome.duration_hours,
+            },
+        ))
+
+    def append_verdict_record(self, outcome: "PatternOutcome") -> None:
+        self.append(PatternLedgerRecord(
+            record_type="verdict",
+            pattern_slug=outcome.pattern_slug,
+            symbol=outcome.symbol,
+            user_id=outcome.user_id,
+            outcome_id=outcome.id,
+            transition_id=outcome.entry_transition_id,
+            scan_id=outcome.entry_scan_id,
+            payload={
+                "user_verdict": outcome.user_verdict,
+                "user_note": outcome.user_note,
+            },
+        ))
+
+    def append_phase_attempt_record(self, attempt: "PhaseAttemptRecord") -> None:
+        self.append(PatternLedgerRecord(
+            record_type="phase_attempt",
+            pattern_slug=attempt.pattern_slug,
+            symbol=attempt.symbol,
+            transition_id=attempt.anchor_transition_id,
+            scan_id=attempt.scan_id,
+            payload={
+                "timeframe": attempt.timeframe,
+                "from_phase": attempt.from_phase,
+                "attempted_phase": attempt.attempted_phase,
+                "attempted_at": attempt.attempted_at.isoformat() if attempt.attempted_at else None,
+                "phase_score": attempt.phase_score,
+                "missing_blocks": attempt.missing_blocks,
+                "failed_reason": attempt.failed_reason,
+                "anchor_transition_id": attempt.anchor_transition_id,
+                "blocks_triggered": attempt.blocks_triggered,
+                "feature_snapshot": attempt.feature_snapshot,
+            },
+        ))
+
+    def append_model_record(
+        self,
+        *,
+        pattern_slug: str,
+        model_version: str,
+        user_id: str | None = None,
+        payload: dict | None = None,
+    ) -> None:
+        self.append(PatternLedgerRecord(
+            record_type="model",
+            pattern_slug=pattern_slug,
+            user_id=user_id,
+            payload={"model_version": model_version, **(payload or {})},
+        ))
+
+    def append_training_run_record(
+        self,
+        *,
+        pattern_slug: str,
+        model_key: str,
+        user_id: str | None = None,
+        payload: dict | None = None,
+    ) -> None:
+        self.append(PatternLedgerRecord(
+            record_type="training_run",
+            pattern_slug=pattern_slug,
+            user_id=user_id,
+            payload={"model_key": model_key, **(payload or {})},
+        ))

@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import hmac
 import os
+from typing import Literal, cast
 from urllib.parse import urlparse
+
+RuntimeRole = Literal["hybrid", "api", "worker"]
+_RUNTIME_ROLES: set[str] = {"hybrid", "api", "worker"}
 
 
 def _csv(name: str) -> list[str]:
@@ -56,20 +61,74 @@ def build_docs_urls() -> tuple[str | None, str | None]:
     return None, None
 
 
+def get_runtime_role() -> RuntimeRole:
+    raw = os.getenv("ENGINE_RUNTIME_ROLE", "hybrid").strip().lower()
+    if raw in _RUNTIME_ROLES:
+        return cast(RuntimeRole, raw)
+    return "hybrid"
+
+
+def runtime_serves_public_api(role: RuntimeRole | None = None) -> bool:
+    active_role = role or get_runtime_role()
+    return active_role in {"hybrid", "api"}
+
+
+def runtime_serves_worker_control(role: RuntimeRole | None = None) -> bool:
+    active_role = role or get_runtime_role()
+    return active_role in {"hybrid", "worker"}
+
+
+def get_internal_secret() -> str:
+    return os.getenv("ENGINE_INTERNAL_SECRET", "").strip()
+
+
+_SCHEDULER_JOB_RUN_PATHS = {
+    "/jobs/pattern_scan/run",
+    "/jobs/outcome_resolver/run",
+    "/jobs/auto_capture/run",
+    "/jobs/db_cleanup/run",
+}
+
+
+def is_internal_auth_exempt_path(path: str) -> bool:
+    return path in {"/healthz", "/readyz"} or path in _SCHEDULER_JOB_RUN_PATHS
+
+
+def validate_internal_request(path: str, provided_secret: str) -> tuple[int, str] | None:
+    if is_internal_auth_exempt_path(path):
+        return None
+    configured = get_internal_secret()
+    if not configured:
+        return 503, "engine internal secret not configured"
+    if not provided_secret:
+        return 401, "missing engine internal secret"
+    if not hmac.compare_digest(provided_secret, configured):
+        return 403, "invalid engine internal secret"
+    return None
+
+
 def get_public_runtime_security_errors() -> list[str]:
     errors: list[str] = []
     if not _is_production():
         return errors
+    role = get_runtime_role()
     app_origin = os.getenv("APP_ORIGIN", "").strip()
-    if not app_origin.startswith("https://"):
+    if runtime_serves_public_api(role) and not app_origin.startswith("https://"):
         errors.append("APP_ORIGIN must be a valid https origin in production.")
     if not os.getenv("ENGINE_ALLOWED_HOSTS", "").strip():
         errors.append("ENGINE_ALLOWED_HOSTS is required in production.")
+    if runtime_serves_public_api(role) and not get_internal_secret():
+        errors.append("ENGINE_INTERNAL_SECRET is required in production.")
     return errors
 
 
 def get_public_runtime_security_warnings() -> list[str]:
     warnings: list[str] = []
+    explicit_role = os.getenv("ENGINE_RUNTIME_ROLE", "").strip().lower()
+    if get_runtime_role() == "hybrid" and (_is_production() or explicit_role == "hybrid"):
+        warnings.append(
+            "ENGINE_RUNTIME_ROLE=hybrid serves public API and worker-control in the same runtime."
+        )
     if os.getenv("ENGINE_EXPOSE_DOCS", "false").strip().lower() in {
         "1",
         "true",

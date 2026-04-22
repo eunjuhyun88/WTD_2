@@ -1,9 +1,14 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Snippet } from 'svelte';
   import ChartBoard from '../workspace/ChartBoard.svelte';
   import SaveStrip from '../workspace/SaveStrip.svelte';
   import PeekDrawer from './PeekDrawer.svelte';
+  import CaptureReviewDrawer from '../chart/CaptureReviewDrawer.svelte';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
+  import type { CaptureAnnotation } from '../chart/primitives/CaptureMarkerPrimitive';
+
+  type PeekTab = 'analyze' | 'scan' | 'judge' | 'review';
 
   interface Props {
     symbol: string;
@@ -58,6 +63,34 @@
     judge,
     review,
   }: Props = $props();
+
+  // ── Tablet capture routing (768–1023px) ────────────────────────────────────
+  let isTablet = $state(false);
+  let selectedCapture = $state<CaptureAnnotation | null>(null);
+  let peekOpenTab = $state<PeekTab | null>(null);
+
+  onMount(() => {
+    const mq = window.matchMedia('(min-width: 768px) and (max-width: 1023px)');
+    isTablet = mq.matches;
+    const onChange = (e: MediaQueryListEvent) => { isTablet = e.matches; };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  });
+
+  function handleCaptureSelect(ann: CaptureAnnotation) {
+    selectedCapture = ann;
+    peekOpenTab = 'review';
+  }
+
+  function clearCapture() {
+    selectedCapture = null;
+    peekOpenTab = null;
+  }
+
+  // Effective reviewCount: bump by 1 when a capture is selected on tablet
+  const effectiveReviewCount = $derived(
+    reviewCount + (isTablet && selectedCapture ? 1 : 0)
+  );
 </script>
 
 <main class="center-panel">
@@ -76,6 +109,7 @@
       {alphaMarkers}
       {onCaptureSaved}
       {onTfChange}
+      onCaptureSelect={isTablet ? handleCaptureSelect : undefined}
     />
     <SaveStrip
       {symbol}
@@ -96,11 +130,28 @@
     {/if}
   </div>
 
-  <PeekDrawer {analyzeCount} {scanCount} {judgeCount} {reviewCount}>
+  <PeekDrawer
+    {analyzeCount}
+    {scanCount}
+    {judgeCount}
+    reviewCount={effectiveReviewCount}
+    openTab={peekOpenTab}
+  >
     <svelte:fragment slot="analyze">{@render analyze?.()}</svelte:fragment>
     <svelte:fragment slot="scan">{@render scan?.()}</svelte:fragment>
     <svelte:fragment slot="judge">{@render judge?.()}</svelte:fragment>
-    <svelte:fragment slot="review">{@render review?.()}</svelte:fragment>
+    <svelte:fragment slot="review">
+      {#if isTablet && selectedCapture}
+        <CaptureReviewDrawer
+          annotation={selectedCapture}
+          variant="inline"
+          onClose={clearCapture}
+          onVerdict={() => clearCapture()}
+        />
+      {:else}
+        {@render review?.()}
+      {/if}
+    </svelte:fragment>
   </PeekDrawer>
 </main>
 

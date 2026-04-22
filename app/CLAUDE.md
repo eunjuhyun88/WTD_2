@@ -5,10 +5,11 @@ Do not start active work from this file alone.
 ## Use This Order
 
 1. Root `../AGENTS.md`
-2. Relevant `../work/active/*.md`
-3. Relevant root `../docs/domains/*.md`
-4. Relevant root `../docs/product/*.md`
-5. Required `app/src/**` files only
+2. Root `../work/active/CURRENT.md`
+3. Relevant `../work/active/*.md` listed in `CURRENT.md`
+4. Relevant root `../docs/domains/*.md`
+5. Relevant root `../docs/product/*.md`
+6. Required `app/src/**` files only
 
 ## Canonical Authority
 
@@ -17,6 +18,12 @@ Do not start active work from this file alone.
 - Domain maps: root `../docs/domains/*.md`
 - Decisions: root `../docs/decisions/*.md`
 - Legacy product reference only: `docs/COGOCHI.md`
+
+## App Deploy Guardrail
+
+- For the app Vercel project, agent/default branches are non-deploy lanes.
+- Use `release` as the production branch if Git auto-deploy is enabled again.
+- If that branch model is not explicitly confirmed, treat manual deploy as the default.
 
 ## Default Excludes
 

@@ -3,13 +3,11 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+import { engineFetch } from '$lib/server/engineTransport';
 
 export const GET: RequestHandler = async () => {
   try {
-    const res = await fetch(`${ENGINE_URL}/observability/flywheel/health`, {
+    const res = await engineFetch('/observability/flywheel/health', {
       signal: AbortSignal.timeout(4000),
     });
     if (!res.ok) return json({ ok: false }, { status: 200 });

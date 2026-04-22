@@ -5,8 +5,11 @@ from typing import Any
 
 from fastapi import HTTPException
 
+import time
+
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LEDGER_RECORD_STORE, LedgerStore, _compute_stats_from_outcomes
+from ledger.types import PatternLedgerRecord
 from patterns.alert_policy import ALERT_POLICY_STORE
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.model_registry import MODEL_REGISTRY_STORE
@@ -104,19 +107,76 @@ def get_candidates_sync(slug: str) -> dict:
     }
 
 
-def get_stats_sync(slug: str, ledger: LedgerStore) -> dict:
+def _summarize_record_family(
+    slug: str,
+    *,
+    record_store=None,
+) -> tuple[dict[str, int | float | None], PatternLedgerRecord | None, PatternLedgerRecord | None]:
+    store = record_store or LEDGER_RECORD_STORE
+    summarize_family = getattr(store, "summarize_family", None)
+    if callable(summarize_family):
+        return summarize_family(slug)
+
+    records = store.list(slug)
+    counts = {
+        "entry": 0,
+        "capture": 0,
+        "score": 0,
+        "outcome": 0,
+        "verdict": 0,
+        "training_run": 0,
+        "model": 0,
+    }
+    latest_training_run_record: PatternLedgerRecord | None = None
+    latest_model_record: PatternLedgerRecord | None = None
+
+    for record in records:
+        record_type = record.record_type
+        if record_type in counts:
+            counts[record_type] += 1
+        if latest_training_run_record is None and record_type == "training_run":
+            latest_training_run_record = record
+        if latest_model_record is None and record_type == "model":
+            latest_model_record = record
+
+    entry_count = counts["entry"]
+    capture_count = counts["capture"]
+    verdict_count = counts["verdict"]
+    return (
+        {
+            "entry_count": entry_count,
+            "capture_count": capture_count,
+            "score_count": counts["score"],
+            "outcome_count": counts["outcome"],
+            "verdict_count": verdict_count,
+            "training_run_count": counts["training_run"],
+            "model_count": counts["model"],
+            "capture_to_entry_rate": capture_count / entry_count if entry_count > 0 else None,
+            "verdict_to_entry_rate": verdict_count / entry_count if entry_count > 0 else None,
+        },
+        latest_training_run_record,
+        latest_model_record,
+    )
+
+
+def get_stats_sync(
+    slug: str,
+    ledger: LedgerStore,
+    outcomes: list | None = None,
+    *,
+    record_store=None,
+) -> dict:
     _require_pattern(slug)
-    stats = ledger.compute_stats(slug)
-    outcomes = ledger.list_all(slug)
-    record_family = LEDGER_RECORD_STORE.compute_family_stats(slug)
+    if outcomes is None:
+        outcomes = ledger.list_all(slug)
+    stats = _compute_stats_from_outcomes(slug, outcomes)
+    record_family, latest_training_run_record, latest_model_record = _summarize_record_family(
+        slug,
+        record_store=record_store,
+    )
     registry_entries = MODEL_REGISTRY_STORE.list(slug)
     active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug)
     preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
-    latest_training_run_record = next(
-        iter(LEDGER_RECORD_STORE.list(slug, record_type="training_run", limit=1)),
-        None,
-    )
-    latest_model_record = next(iter(LEDGER_RECORD_STORE.list(slug, record_type="model", limit=1)), None)
     ml_shadow = summarize_pattern_dataset(outcomes)
     alert_policy = ALERT_POLICY_STORE.load(slug)
     return {
@@ -141,18 +201,18 @@ def get_stats_sync(slug: str, ledger: LedgerStore) -> dict:
         },
         "decay_direction": stats.decay_direction,
         "record_family": {
-            "entry_count": record_family.entry_count,
-            "capture_count": record_family.capture_count,
-            "score_count": record_family.score_count,
-            "outcome_count": record_family.outcome_count,
-            "verdict_count": record_family.verdict_count,
-            "training_run_count": record_family.training_run_count,
-            "model_count": record_family.model_count,
-            "capture_to_entry_rate": round(record_family.capture_to_entry_rate, 3)
-            if record_family.capture_to_entry_rate is not None
+            "entry_count": record_family["entry_count"],
+            "capture_count": record_family["capture_count"],
+            "score_count": record_family["score_count"],
+            "outcome_count": record_family["outcome_count"],
+            "verdict_count": record_family["verdict_count"],
+            "training_run_count": record_family["training_run_count"],
+            "model_count": record_family["model_count"],
+            "capture_to_entry_rate": round(record_family["capture_to_entry_rate"], 3)
+            if record_family["capture_to_entry_rate"] is not None
             else None,
-            "verdict_to_entry_rate": round(record_family.verdict_to_entry_rate, 3)
-            if record_family.verdict_to_entry_rate is not None
+            "verdict_to_entry_rate": round(record_family["verdict_to_entry_rate"], 3)
+            if record_family["verdict_to_entry_rate"] is not None
             else None,
         },
         "model_registry": {
@@ -192,13 +252,33 @@ def get_stats_sync(slug: str, ledger: LedgerStore) -> dict:
 
 
 def get_all_stats_sync(ledger: LedgerStore) -> dict:
-    """Return stats for all known patterns in a single call (avoids N+1 fan-out)."""
+    """Return stats for all known patterns — batch-prefetch outcomes when possible.
+
+    With SupabaseLedgerStore: 1 DB roundtrip (batch_list_all) vs 2N per-slug queries.
+    With FileLedgerStore: falls back to per-slug reads (local dev unchanged).
+    """
+    t0 = time.perf_counter()
+    prefetched: dict[str, list] | None = None
+    if hasattr(ledger, "batch_list_all"):
+        try:
+            prefetched = ledger.batch_list_all()
+        except Exception:
+            prefetched = None
+
     results: dict[str, dict] = {}
     for slug in PATTERN_LIBRARY:
         try:
-            results[slug] = get_stats_sync(slug, ledger)
+            outcomes = prefetched.get(slug, []) if prefetched is not None else None
+            results[slug] = get_stats_sync(slug, ledger, outcomes=outcomes)
         except Exception:
             results[slug] = {"pattern_slug": slug, "error": "unavailable"}
+
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    import logging
+    logging.getLogger("engine.patterns.stats").info(
+        "get_all_stats_sync: %d patterns in %dms (batch=%s)",
+        len(results), elapsed_ms, prefetched is not None,
+    )
     return {"patterns": results, "count": len(results)}
 
 

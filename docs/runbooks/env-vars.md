@@ -31,15 +31,16 @@ Canonical env contract for local/prod runtime.
 |---|---|
 | `PUBLIC_SUPABASE_URL` | app |
 | `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | app |
-| `SUPABASE_URL` | worker-control |
-| `SUPABASE_SERVICE_ROLE_KEY` | worker-control only |
+| `SUPABASE_URL` | trusted engine runtimes (`engine-api`, `worker-control`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | trusted engine runtimes (`engine-api`, `worker-control`) only |
 | `SECRETS_ENCRYPTION_KEY` | app/server |
 
 Notes:
 
 - `PUBLIC_SUPABASE_PUBLISHABLE_KEY` is safe for browser/runtime use.
 - `SUPABASE_SERVICE_ROLE_KEY` must never be present in `app-web`; the app runtime now fails fast if it is set.
-- `SUPABASE_SERVICE_ROLE_KEY` belongs to `worker-control` background jobs only because it bypasses RLS.
+- `SUPABASE_SERVICE_ROLE_KEY` belongs only to trusted engine runtimes because it bypasses RLS.
+- W-0126 is an explicit engine-side case where `engine-api` also needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to serve shared ledger-backed reads such as `/patterns/stats/all`.
 - `DATABASE_URL` should use a least-privilege app role; avoid shipping a `postgres*` superuser DSN to production app-web.
 - Set `SECURITY_ALLOWED_HOSTS` and `ENGINE_ALLOWED_HOSTS` in production to reject unexpected `Host` headers at the app and engine boundaries.
 - Leave `ENGINE_EXPOSE_DOCS=false` on public deployments unless the engine is behind auth or a private network boundary.
@@ -53,6 +54,20 @@ Typical optional provider keys:
 - `COINMARKETCAP_API_KEY`
 - `CRYPTOQUANT_API_KEY`
 - `ETHERSCAN_API_KEY`
+
+## Engine Runtime Role
+
+| Variable | Default | Used by | Purpose |
+|---|---|---|---|
+| `ENGINE_RUNTIME_ROLE` | `hybrid` | `engine-api`, `worker-control` | Runtime surface selection: `api`, `worker`, or transitional `hybrid` |
+| `ENGINE_ENABLE_SCHEDULER` | `true` | `engine-api`, `worker-control` | Enables scheduler bootstrap only when the runtime role serves worker-control |
+
+Notes:
+
+- set `ENGINE_RUNTIME_ROLE=api` for public `engine-api`
+- set `ENGINE_RUNTIME_ROLE=worker` for internal HTTP worker-control deployments
+- keep `hybrid` only for local development or transitional rollback
+- `ENGINE_RUNTIME_ROLE=api` forces scheduler disabled even if `ENGINE_ENABLE_SCHEDULER=true`
 
 ## Worker-Control Research
 

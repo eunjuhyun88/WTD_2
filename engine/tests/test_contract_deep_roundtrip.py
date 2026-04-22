@@ -23,7 +23,8 @@ def _bars(n: int = 180) -> list[dict]:
     ]
 
 
-def test_deep_roundtrip_contract() -> None:
+def test_deep_roundtrip_contract(monkeypatch) -> None:
+    monkeypatch.setenv("ENGINE_INTERNAL_SECRET", "test-secret")
     client = TestClient(app, base_url="http://localhost")
     payload = {
         "symbol": "BTCUSDT",
@@ -36,10 +37,13 @@ def test_deep_roundtrip_contract() -> None:
             "price_pct": 0.0,
         },
     }
-    r = client.post("/deep", json=payload)
+    r = client.post(
+        "/deep",
+        json=payload,
+        headers={"x-engine-internal-secret": "test-secret"},
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     assert "symbol" in body
     assert "layers" in body
     assert "verdict" in body
-

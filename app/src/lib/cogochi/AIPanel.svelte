@@ -2,7 +2,22 @@
   /**
    * AIPanel — right side AI setup assist panel.
    * Natural language → setup tokens → scan trigger.
+   *
+   * Indicator intent detection runs BEFORE the setup-token parser.
+   * If the query matches an indicator (via search.ts), the AI responds
+   * with indicator info and dispatches cogochi:cmd { id: 'focus_indicator', def }.
    */
+  import { findIndicatorByQuery } from '$lib/indicators/search';
+  import { onMount } from 'svelte';
+
+  // Live scan candidate count — populated on mount from world model.
+  let _liveMatchCount = $state(0);
+  onMount(() => {
+    fetch('/api/cogochi/alpha/world-model')
+      .then(r => r.json())
+      .then((d: { phases?: unknown[] }) => { _liveMatchCount = (d.phases ?? []).length; })
+      .catch(() => {});
+  });
 
   interface SetupToken {
     kind: 'asset' | 'trigger' | 'filter';
@@ -36,14 +51,15 @@
     onClose,
   }: Props = $props();
 
-  // Local copy — keeps AI replies even while store updates
-  let localMessages = $state<Message[]>(messages);
+  // Local copy — keeps optimistic AI replies visible until parent sync lands.
+  let localMessages = $state<Message[]>([]);
   $effect(() => {
-    if (messages.length !== localMessages.length) localMessages = messages;
+    localMessages = [...messages];
   });
 
   let inputValue = $state('');
   let scrollEl: HTMLDivElement | undefined = $state();
+  const canSend = $derived(inputValue.trim().length > 0);
 
   const quicks = [
     'OI 급증 후 번지대 3시간 accumulation',
@@ -55,6 +71,32 @@
   function send() {
     const t = inputValue.trim();
     if (!t) return;
+
+    // ── Indicator intent detection (runs before setup-token parser) ──────────
+    const indicatorDef = findIndicatorByQuery(t);
+    if (indicatorDef) {
+      const isShowIntent = /보여|show|확인|뭐야|어때|what|check/i.test(t);
+      const aiText = isShowIntent
+        ? `**${indicatorDef.label ?? indicatorDef.id}** 지표를 찾았습니다 — ${indicatorDef.description ?? ''}. 아래 분석 패널에서 강조 표시합니다.`
+        : `**${indicatorDef.label ?? indicatorDef.id}** (${indicatorDef.family}) — ${indicatorDef.description ?? '해당 지표입니다.'} 패널로 이동합니다.`;
+
+      // Dispatch focus command so TradeMode can scroll/highlight the pane
+      window.dispatchEvent(new CustomEvent('cogochi:cmd', {
+        detail: { id: 'focus_indicator', indicatorId: indicatorDef.id, def: indicatorDef },
+      }));
+
+      const newMessages: Message[] = [
+        ...localMessages,
+        { role: 'user', text: t },
+        { role: 'assistant', text: aiText },
+      ];
+      localMessages = newMessages;
+      onSend?.(t, newMessages);
+      inputValue = '';
+      return;
+    }
+
+    // ── Fallthrough: setup-token parser ─────────────────────────────────────
     const setup = convertPromptToSetup(t);
     const aiText = generateAIReply(t, setup);
     const newMessages: Message[] = [
@@ -69,6 +111,11 @@
 
   function quickPick(q: string) {
     inputValue = q;
+    send();
+  }
+
+  function handleInput(event: Event) {
+    inputValue = (event.currentTarget as HTMLTextAreaElement).value;
   }
 
   function convertPromptToSetup(text: string): SetupResult {
@@ -96,17 +143,23 @@
       tokens.push({ kind: 'trigger', label: 'tradoor_v2' });
     }
 
+    // Filter matches: if a specific asset is queried, count is a fraction of the universe.
+    const hasAsset = tokens.some(t => t.kind === 'asset' && t.label !== '@any');
+    const matchCount = _liveMatchCount > 0
+      ? (hasAsset ? Math.max(1, Math.round(_liveMatchCount * 0.12)) : _liveMatchCount)
+      : 0;
     return {
       tokens,
-      matches: Math.floor(Math.random() * 8) + 4,
-      past: Math.floor(Math.random() * 8) + 8,
+      matches: matchCount,
+      past: 0, // real history available from /api/captures — no random stub
       text,
     };
   }
 
   function generateAIReply(text: string, setup: SetupResult): string {
     const triggers = setup.tokens.filter(t => t.kind === 'trigger' || t.kind === 'filter').map(t => t.label);
-    return `"${text}" 를 **${triggers.join(' + ') || 'tradoor_v2'}** 셋업으로 해석했습니다. 현재 ${setup.matches}개 종목이 같은 모양이고, 과거 유사 케이스 ${setup.past}건 확인 가능합니다.`;
+    const matchStr = setup.matches > 0 ? `현재 **${setup.matches}개** 종목이 같은 모양입니다.` : '스캔 결과를 불러오는 중입니다.';
+    return `"${text}" 를 **${triggers.join(' + ') || 'tradoor_v2'}** 셋업으로 해석했습니다. ${matchStr}`;
   }
 
   $effect(() => {
@@ -133,7 +186,7 @@
 
   <!-- Messages / welcome -->
   <div class="messages" bind:this={scrollEl}>
-    {#if messages.length === 0}
+    {#if localMessages.length === 0}
       <!-- Welcome -->
       <div class="welcome">
         <div class="wl-section">AI · HOW TO</div>
@@ -153,7 +206,7 @@
         </div>
       </div>
     {:else}
-      {#each messages as msg}
+      {#each localMessages as msg}
         {#if msg.role === 'user'}
           <div class="msg-user">
             <div class="msg-from">YOU</div>
@@ -196,9 +249,10 @@
   <div class="input-area">
     <div class="input-box">
       <textarea
-        bind:value={inputValue}
+        value={inputValue}
         placeholder="셋업을 말로 — 'OI 급증 후 번지대 3시간' ↵"
         rows={2}
+        oninput={handleInput}
         onkeydown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -210,7 +264,7 @@
         <span class="context-hint">@btc @4h</span>
         <span class="spacer"></span>
         <span class="enter-hint">↵ send</span>
-        <button class="send-btn" class:active={!!inputValue.trim()} onclick={send} disabled={!inputValue.trim()}>
+        <button class="send-btn" class:active={canSend} onclick={send} disabled={!canSend}>
           SEND
         </button>
       </div>

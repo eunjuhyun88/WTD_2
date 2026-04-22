@@ -18,8 +18,18 @@
     annotation: CaptureAnnotation | null;
     onClose?: () => void;
     onVerdict?: (captureId: string, verdict: 'valid' | 'invalid' | 'missed') => void;
+    /** 'drawer' = fixed right rail (desktop), 'sheet' = bottom sheet (mobile), 'inline' = flow inside parent (tablet PeekDrawer). Default: 'drawer'. */
+    variant?: 'drawer' | 'sheet' | 'inline';
   }
-  let { annotation, onClose, onVerdict }: Props = $props();
+  let { annotation, onClose, onVerdict, variant = 'drawer' }: Props = $props();
+
+  const flyProps = $derived(
+    variant === 'sheet'
+      ? { y: 600, duration: 280, easing: cubicOut }
+      : variant === 'inline'
+      ? { y: 16, duration: 200, easing: cubicOut }
+      : { x: 320, duration: 240, easing: cubicOut }
+  );
 
   let verdictNote = $state('');
   let submitting  = $state(false);
@@ -51,7 +61,7 @@
     if (!annotation || submitting) return;
     submitting = true;
     try {
-      const res = await fetch(`/api/engine/captures/${annotation.capture_id}/verdict`, {
+      const res = await fetch(`/api/captures/${annotation.capture_id}/verdict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ verdict, user_note: verdictNote || undefined }),
@@ -68,20 +78,24 @@
 </script>
 
 {#if annotation}
-  <!-- Backdrop -->
-  <button
-    class="backdrop"
-    onclick={() => onClose?.()}
-    aria-label="Close capture review"
-    tabindex="0"
-  />
+  <!-- Backdrop — not rendered for inline variant -->
+  {#if variant !== 'inline'}
+    <button
+      class="backdrop"
+      onclick={() => onClose?.()}
+      aria-label="Close capture review"
+      tabindex="0"
+    />
+  {/if}
 
   <aside
     class="drawer"
+    class:drawer--sheet={variant === 'sheet'}
+    class:drawer--inline={variant === 'inline'}
     role="dialog"
     aria-modal="true"
     aria-label="Capture Review"
-    transition:fly={{ x: 320, duration: 240, easing: cubicOut }}
+    transition:fly={flyProps}
   >
     <!-- Header -->
     <div class="drawer-header">
@@ -344,5 +358,40 @@
     color: var(--sc-text-3, #64748b);
     font-family: monospace;
     margin-top: auto;
+  }
+  /* ── Inline variant (tablet PeekDrawer) ── */
+  .drawer--inline {
+    position: relative;
+    top: auto; right: auto; bottom: auto;
+    width: 100%;
+    height: 100%;
+    border-left: none;
+    border-radius: 0;
+  }
+
+  /* ── Bottom sheet variant (mobile) ── */
+  .drawer--sheet {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 72vh;
+    border-left: none;
+    border-top: 1px solid var(--sc-border-1, rgba(255,255,255,0.08));
+    border-radius: 16px 16px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Drag handle pill at top of sheet */
+  .drawer--sheet::before {
+    content: '';
+    display: block;
+    width: 48px;
+    height: 4px;
+    background: var(--sc-text-3, rgba(255,255,255,0.2));
+    border-radius: 2px;
+    margin: 8px auto 0;
+    flex-shrink: 0;
   }
 </style>

@@ -5,6 +5,7 @@ import { createRateLimiter } from './rateLimit';
 
 let _infraReady = false;
 let _redisWarned = false;
+let _localFallbackWarned = false;
 
 type LocalLimiterKey = `${string}:${number}:${number}`;
 const _localFallback = new Map<LocalLimiterKey, ReturnType<typeof createRateLimiter>>();
@@ -135,6 +136,7 @@ export async function checkDistributedRateLimit(args: {
   key: string;
   windowMs: number;
   max: number;
+  allowInfraFallback?: boolean;
 }): Promise<boolean> {
   const scope = args.scope.trim() || 'global';
   const key = args.key.trim() || 'unknown';
@@ -185,9 +187,19 @@ export async function checkDistributedRateLimit(args: {
     const hitCount = Number(result.rows[0]?.hit_count ?? 0);
     return hitCount <= max;
   } catch (err: any) {
+    if (args.allowInfraFallback) {
+      if (!_localFallbackWarned) {
+        _localFallbackWarned = true;
+        console.error(
+          '[distributedRateLimit] infrastructure failure, falling back to local limiter:',
+          err?.message || err,
+        );
+      }
+      return getLocalFallback(scope, windowMs, max).check(key);
+    }
+
     // Both Redis and DB are unavailable.
-    // Fail-closed: deny the request rather than silently bypassing the rate limit.
-    // A per-instance fallback still allows N*max across N workers — unsafe for auth paths.
+    // Fail-closed remains the default for auth/write paths.
     console.error('[distributedRateLimit] infrastructure failure, denying request (fail-closed):', err?.message || err);
     return false;
   }

@@ -9,9 +9,10 @@
     toggleAI: () => void;
     paletteOpen: boolean;
     setPaletteOpen: (open: boolean) => void;
+    onIndicators?: () => void;
   }
 
-  const { sessionName, onRangeSelect, hasRange, aiVisible, toggleAI, paletteOpen, setPaletteOpen }: Props = $props();
+  const { sessionName, onRangeSelect, hasRange, aiVisible, toggleAI, paletteOpen, setPaletteOpen, onIndicators }: Props = $props();
   let q = $state('');
 
   $effect(() => {
@@ -46,6 +47,17 @@
   </button>
 
   <span class="divider" />
+
+  {#if onIndicators}
+    <button
+      class="ind-btn"
+      onclick={onIndicators}
+      title="Manage indicators"
+    >
+      ⚙ INDICATORS
+    </button>
+    <span class="divider" />
+  {/if}
 
   <button
     class="ai-btn"
@@ -176,6 +188,25 @@
     color: var(--amb);
     background: var(--amb-dd);
     border-color: var(--amb-d);
+  }
+
+  .ind-btn {
+    height: 22px;
+    padding: 0 8px;
+    background: transparent;
+    color: var(--g6);
+    border: 0.5px solid var(--g4);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ind-btn:hover {
+    background: var(--g2);
+    color: var(--g8);
+    border-color: var(--g5);
   }
 
   .ai-btn {

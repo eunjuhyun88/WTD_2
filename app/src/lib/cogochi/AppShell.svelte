@@ -9,6 +9,7 @@
   import TradeMode from './modes/TradeMode.svelte';
   import TrainMode from './modes/TrainMode.svelte';
   import RadialTopology from './modes/RadialTopology.svelte';
+  import { get } from 'svelte/store';
   import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta } from './shell.store';
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
@@ -16,6 +17,7 @@
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import SymbolPickerSheet from './SymbolPickerSheet.svelte';
   import ModeSheet from './ModeSheet.svelte';
+  import IndicatorSettingsSheet from './IndicatorSettingsSheet.svelte';
 
   interface Props {
     canvasComponent?: any;
@@ -24,11 +26,11 @@
   const { canvasComponent = TradeMode }: Props = $props();
 
   let paletteOpen = $state(false);
-  let shellState = $state<any>(null);
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
   let symbolPickerOpen = $state(false);
   let modeSheetOpen = $state(false);
+  let indicatorSettingsOpen = $state(false);
 
   // AI sheet swipe-down dismiss
   let aiSwipeTouchStartY = $state(0);
@@ -39,13 +41,9 @@
   }
 
   $effect(() => {
-    shellStore.subscribe(s => (shellState = s))();
-  });
-
-  $effect(() => {
     if ($viewportTier.tier === 'MOBILE') {
       shellStore.update(s => ({ ...s, sidebarVisible: false, aiVisible: false }));
-      shellStore.updateTabState(s => ({ ...s, layoutMode: 'D' }));
+      shellStore.updateTabState(s => ({ ...s, layoutMode: 'C' }));
     }
   });
 
@@ -68,9 +66,12 @@
         e.preventDefault();
         shellStore.openTab({ kind: 'trade', title: 'new session' });
       }
-      if (mod && e.key.toLowerCase() === 'w' && shellState?.tabs?.length > 1) {
-        e.preventDefault();
-        shellStore.closeTab(shellState.activeTabId);
+      if (mod && e.key.toLowerCase() === 'w') {
+        const st = get(shellStore);
+        if (st.tabs.length > 1) {
+          e.preventDefault();
+          shellStore.closeTab(st.activeTabId);
+        }
       }
     };
 
@@ -83,6 +84,9 @@
       else if (c.id === 'mode_train') shellStore.switchMode('train');
       else if (c.id === 'mode_fly') shellStore.switchMode('flywheel');
       else if (c.id === 'new_trade') shellStore.openTab({ kind: 'trade', title: 'new session' });
+      else if (c.id === 'open_indicator_settings') {
+        indicatorSettingsOpen = true;
+      }
       else if (c.id === 'reset') {
         shellStore.reset();
         window.location.reload();
@@ -177,6 +181,7 @@
       toggleAI={() => shellStore.toggleAI()}
       {paletteOpen}
       setPaletteOpen={(open) => (paletteOpen = open)}
+      onIndicators={() => (indicatorSettingsOpen = true)}
     />
 
     <TabBar
@@ -248,6 +253,10 @@
       onSwitchMode={(m) => shellStore.switchMode(m)}
       sidebarVisible={$shellStore.sidebarVisible}
     />
+  {/if}
+
+  {#if indicatorSettingsOpen}
+    <IndicatorSettingsSheet onClose={() => (indicatorSettingsOpen = false)} />
   {/if}
 </div>
 

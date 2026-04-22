@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 import tempfile
 import time as _time
 from datetime import datetime, timedelta, timezone
@@ -38,9 +40,187 @@ LEDGER_RECORDS_DIR = Path(__file__).parent.parent / "ledger_records"
 # In-process cache for list_all() — bounded per slug, 30s TTL, invalidated on write.
 _list_all_cache: dict[str, tuple[float, list]] = {}
 _LIST_ALL_TTL = 30.0
+_SAFE_PATTERN_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
-class LedgerStore:
+def validate_pattern_slug(pattern_slug: str, *, allow_empty: bool = False) -> str:
+    value = pattern_slug.strip()
+    if not value:
+        if allow_empty:
+            return ""
+        raise ValueError("pattern_slug is required")
+    if value != pattern_slug:
+        raise ValueError("pattern_slug must not include leading or trailing whitespace")
+    if "/" in value or "\\" in value or ".." in value:
+        raise ValueError("pattern_slug contains invalid path characters")
+    if any(ch.isspace() for ch in value):
+        raise ValueError("pattern_slug must not contain whitespace")
+    if not _SAFE_PATTERN_SLUG_RE.fullmatch(value):
+        raise ValueError("pattern_slug contains unsupported characters")
+    return value
+
+
+def _safe_pattern_dir(base_dir: Path, pattern_slug: str, *, allow_empty: bool = False) -> Path:
+    slug = validate_pattern_slug(pattern_slug, allow_empty=allow_empty)
+    base = base_dir.resolve()
+    candidate = (base_dir / slug).resolve() if slug else base
+    if candidate != base and candidate.parent != base:
+        raise ValueError("pattern_slug escapes ledger base directory")
+    candidate.mkdir(parents=True, exist_ok=True)
+    return candidate
+
+
+def _compute_stats_from_outcomes(pattern_slug: str, outcomes: list) -> "PatternStats":
+    """Pure-Python stats computation shared by FileLedgerStore and SupabaseLedgerStore."""
+    if not outcomes:
+        return PatternStats(
+            pattern_slug=pattern_slug,
+            total_instances=0, pending_count=0,
+            success_count=0, failure_count=0,
+            success_rate=0.0, avg_gain_pct=None, avg_loss_pct=None,
+            expected_value=None, avg_duration_hours=None,
+            recent_30d_count=0, recent_30d_success_rate=None,
+            btc_bullish_rate=None, btc_bearish_rate=None,
+            btc_sideways_rate=None, decay_direction=None,
+        )
+
+    pending = [o for o in outcomes if o.outcome == "pending"]
+    success = [o for o in outcomes if o.outcome == "success"]
+    failure = [o for o in outcomes if o.outcome in ("failure", "timeout")]
+
+    decided = len(success) + len(failure)
+    success_rate = len(success) / decided if decided > 0 else 0.0
+
+    gains = [o.max_gain_pct for o in success if o.max_gain_pct is not None]
+    avg_gain = sum(gains) / len(gains) if gains else None
+
+    losses = [o.exit_return_pct for o in failure if o.exit_return_pct is not None]
+    avg_loss = sum(losses) / len(losses) if losses else None
+
+    ev = None
+    if avg_gain is not None and avg_loss is not None and decided > 0:
+        failure_rate = 1.0 - success_rate
+        ev = success_rate * avg_gain + failure_rate * avg_loss
+
+    durations = [o.duration_hours for o in success if o.duration_hours is not None]
+    avg_dur = sum(durations) / len(durations) if durations else None
+
+    cutoff = datetime.now() - timedelta(days=30)
+    recent = [o for o in outcomes if o.created_at and o.created_at > cutoff]
+    recent_success = [o for o in recent if o.outcome == "success"]
+    recent_failure = [o for o in recent if o.outcome in ("failure", "timeout")]
+    recent_decided = len(recent_success) + len(recent_failure)
+    recent_rate = len(recent_success) / recent_decided if recent_decided > 0 else None
+
+    def _conditional_rate(trend: str) -> float | None:
+        s = [o for o in success if o.btc_trend_at_entry == trend]
+        f = [o for o in failure if o.btc_trend_at_entry == trend]
+        d = len(s) + len(f)
+        return len(s) / d if d >= 3 else None
+
+    btc_bull = _conditional_rate("bullish")
+    btc_bear = _conditional_rate("bearish")
+    btc_side = _conditional_rate("sideways")
+
+    decay = None
+    decided_outcomes = [o for o in outcomes if o.outcome != "pending"]
+    decided_outcomes.sort(key=lambda o: o.created_at or datetime.min)
+    if len(decided_outcomes) >= 10:
+        mid = len(decided_outcomes) // 2
+        first_half = decided_outcomes[:mid]
+        second_half = decided_outcomes[mid:]
+        rate_first = sum(1 for o in first_half if o.outcome == "success") / len(first_half)
+        rate_second = sum(1 for o in second_half if o.outcome == "success") / len(second_half)
+        diff = rate_second - rate_first
+        if diff > 0.05:
+            decay = "improving"
+        elif diff < -0.05:
+            decay = "decaying"
+        else:
+            decay = "stable"
+
+    return PatternStats(
+        pattern_slug=pattern_slug,
+        total_instances=len(outcomes),
+        pending_count=len(pending),
+        success_count=len(success),
+        failure_count=len(failure),
+        success_rate=success_rate,
+        avg_gain_pct=avg_gain,
+        avg_loss_pct=avg_loss,
+        expected_value=ev,
+        avg_duration_hours=avg_dur,
+        recent_30d_count=len(recent),
+        recent_30d_success_rate=recent_rate,
+        btc_bullish_rate=btc_bull,
+        btc_bearish_rate=btc_bear,
+        btc_sideways_rate=btc_side,
+        decay_direction=decay,
+    )
+
+
+def _build_record_family_summary(
+    pattern_slug: str,
+    records: list[PatternLedgerRecord],
+) -> tuple[PatternLedgerFamilyStats, PatternLedgerRecord | None, PatternLedgerRecord | None]:
+    counts = {
+        "entry": 0,
+        "capture": 0,
+        "score": 0,
+        "outcome": 0,
+        "verdict": 0,
+        "phase_attempt": 0,
+        "training_run": 0,
+        "model": 0,
+    }
+    latest_training_run_record: PatternLedgerRecord | None = None
+    latest_model_record: PatternLedgerRecord | None = None
+
+    for record in records:
+        record_type = record.record_type
+        if record_type in counts:
+            counts[record_type] += 1
+        if latest_training_run_record is None and record_type == "training_run":
+            latest_training_run_record = record
+        if latest_model_record is None and record_type == "model":
+            latest_model_record = record
+
+    entry_count = counts["entry"]
+    capture_count = counts["capture"]
+    verdict_count = counts["verdict"]
+    return (
+        PatternLedgerFamilyStats(
+            pattern_slug=pattern_slug,
+            entry_count=entry_count,
+            capture_count=capture_count,
+            score_count=counts["score"],
+            outcome_count=counts["outcome"],
+            verdict_count=verdict_count,
+            phase_attempt_count=counts["phase_attempt"],
+            training_run_count=counts["training_run"],
+            model_count=counts["model"],
+            capture_to_entry_rate=capture_count / entry_count if entry_count > 0 else None,
+            verdict_to_entry_rate=verdict_count / entry_count if entry_count > 0 else None,
+        ),
+        latest_training_run_record,
+        latest_model_record,
+    )
+
+
+def _normalize_record_since(
+    created_at: datetime | None,
+    since: datetime | None,
+) -> datetime | None:
+    if since is None or created_at is None:
+        return since
+    if created_at.tzinfo is not None and since.tzinfo is None:
+        return since.replace(tzinfo=timezone.utc)
+    if created_at.tzinfo is None and since.tzinfo is not None:
+        return since.astimezone(timezone.utc).replace(tzinfo=None)
+    return since
+
+
+class FileLedgerStore:
     """Append-only JSON ledger for PatternOutcome records."""
 
     def __init__(self, base_dir: Path = LEDGER_DIR):
@@ -48,9 +228,7 @@ class LedgerStore:
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
     def _dir(self, pattern_slug: str) -> Path:
-        d = self.base_dir / pattern_slug
-        d.mkdir(parents=True, exist_ok=True)
-        return d
+        return _safe_pattern_dir(self.base_dir, pattern_slug, allow_empty=False)
 
     def _path(self, pattern_slug: str, outcome_id: str) -> Path:
         return self._dir(pattern_slug) / f"{outcome_id}.json"
@@ -263,95 +441,7 @@ class LedgerStore:
         v2: includes expected value, BTC-conditional rates, decay analysis.
         """
         outcomes = self.list_all(pattern_slug)
-        if not outcomes:
-            return PatternStats(
-                pattern_slug=pattern_slug,
-                total_instances=0, pending_count=0,
-                success_count=0, failure_count=0,
-                success_rate=0.0, avg_gain_pct=None, avg_loss_pct=None,
-                expected_value=None, avg_duration_hours=None,
-                recent_30d_count=0, recent_30d_success_rate=None,
-                btc_bullish_rate=None, btc_bearish_rate=None,
-                btc_sideways_rate=None, decay_direction=None,
-            )
-
-        pending = [o for o in outcomes if o.outcome == "pending"]
-        success = [o for o in outcomes if o.outcome == "success"]
-        failure = [o for o in outcomes if o.outcome in ("failure", "timeout")]
-
-        decided = len(success) + len(failure)
-        success_rate = len(success) / decided if decided > 0 else 0.0
-
-        gains = [o.max_gain_pct for o in success if o.max_gain_pct is not None]
-        avg_gain = sum(gains) / len(gains) if gains else None
-
-        losses = [o.exit_return_pct for o in failure if o.exit_return_pct is not None]
-        avg_loss = sum(losses) / len(losses) if losses else None
-
-        # v2: Expected value
-        ev = None
-        if avg_gain is not None and avg_loss is not None and decided > 0:
-            failure_rate = 1.0 - success_rate
-            ev = success_rate * avg_gain + failure_rate * avg_loss
-
-        durations = [o.duration_hours for o in success if o.duration_hours is not None]
-        avg_dur = sum(durations) / len(durations) if durations else None
-
-        # Recent 30d
-        cutoff = datetime.now() - timedelta(days=30)
-        recent = [o for o in outcomes if o.created_at and o.created_at > cutoff]
-        recent_success = [o for o in recent if o.outcome == "success"]
-        recent_failure = [o for o in recent if o.outcome in ("failure", "timeout")]
-        recent_decided = len(recent_success) + len(recent_failure)
-        recent_rate = len(recent_success) / recent_decided if recent_decided > 0 else None
-
-        # v2: BTC-conditional hit rates
-        def _conditional_rate(trend: str) -> float | None:
-            s = [o for o in success if o.btc_trend_at_entry == trend]
-            f = [o for o in failure if o.btc_trend_at_entry == trend]
-            d = len(s) + len(f)
-            return len(s) / d if d >= 3 else None  # min 3 samples
-
-        btc_bull = _conditional_rate("bullish")
-        btc_bear = _conditional_rate("bearish")
-        btc_side = _conditional_rate("sideways")
-
-        # v2: Decay analysis — compare first half vs second half of decided outcomes
-        decay = None
-        decided_outcomes = [o for o in outcomes if o.outcome != "pending"]
-        decided_outcomes.sort(key=lambda o: o.created_at or datetime.min)
-        if len(decided_outcomes) >= 10:
-            mid = len(decided_outcomes) // 2
-            first_half = decided_outcomes[:mid]
-            second_half = decided_outcomes[mid:]
-            rate_first = sum(1 for o in first_half if o.outcome == "success") / len(first_half)
-            rate_second = sum(1 for o in second_half if o.outcome == "success") / len(second_half)
-            diff = rate_second - rate_first
-            if diff > 0.05:
-                decay = "improving"
-            elif diff < -0.05:
-                decay = "decaying"
-            else:
-                decay = "stable"
-
-        return PatternStats(
-            pattern_slug=pattern_slug,
-            total_instances=len(outcomes),
-            pending_count=len(pending),
-            success_count=len(success),
-            failure_count=len(failure),
-            success_rate=success_rate,
-            avg_gain_pct=avg_gain,
-            avg_loss_pct=avg_loss,
-            expected_value=ev,
-            avg_duration_hours=avg_dur,
-            recent_30d_count=len(recent),
-            recent_30d_success_rate=recent_rate,
-            btc_bullish_rate=btc_bull,
-            btc_bearish_rate=btc_bear,
-            btc_sideways_rate=btc_side,
-            decay_direction=decay,
-        )
+        return _compute_stats_from_outcomes(pattern_slug, outcomes)
 
 
 class LedgerRecordStore:
@@ -362,9 +452,7 @@ class LedgerRecordStore:
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
     def _dir(self, pattern_slug: str) -> Path:
-        d = self.base_dir / pattern_slug
-        d.mkdir(parents=True, exist_ok=True)
-        return d
+        return _safe_pattern_dir(self.base_dir, pattern_slug, allow_empty=True)
 
     def _path(self, pattern_slug: str, record_id: str) -> Path:
         return self._dir(pattern_slug) / f"{record_id}.json"
@@ -415,35 +503,47 @@ class LedgerRecordStore:
         records.sort(key=lambda record: record.created_at, reverse=True)
         return records[:limit] if limit is not None else records
 
-    def compute_family_stats(self, pattern_slug: str) -> PatternLedgerFamilyStats:
+    def list_pattern_slugs(self) -> list[str]:
+        if not self.base_dir.exists():
+            return []
+        return sorted(path.name for path in self.base_dir.iterdir() if path.is_dir())
+
+    def summarize_family(
+        self,
+        pattern_slug: str,
+    ) -> tuple[PatternLedgerFamilyStats, PatternLedgerRecord | None, PatternLedgerRecord | None]:
         records = self.list(pattern_slug)
+        return _build_record_family_summary(pattern_slug, records)
 
-        def _count(kind: LedgerRecordType) -> int:
-            return sum(1 for record in records if record.record_type == kind)
+    def compute_family_stats(self, pattern_slug: str) -> PatternLedgerFamilyStats:
+        stats, _, _ = self.summarize_family(pattern_slug)
+        return stats
 
-        entry_count = _count("entry")
-        capture_count = _count("capture")
-        score_count = _count("score")
-        outcome_count = _count("outcome")
-        verdict_count = _count("verdict")
-        phase_attempt_count = _count("phase_attempt")
-        training_run_count = _count("training_run")
-        model_count = _count("model")
-        capture_rate = capture_count / entry_count if entry_count > 0 else None
-        verdict_rate = verdict_count / entry_count if entry_count > 0 else None
-        return PatternLedgerFamilyStats(
-            pattern_slug=pattern_slug,
-            entry_count=entry_count,
-            capture_count=capture_count,
-            score_count=score_count,
-            outcome_count=outcome_count,
-            verdict_count=verdict_count,
-            phase_attempt_count=phase_attempt_count,
-            training_run_count=training_run_count,
-            model_count=model_count,
-            capture_to_entry_rate=capture_rate,
-            verdict_to_entry_rate=verdict_rate,
-        )
+    def count_records(
+        self,
+        *,
+        record_type: LedgerRecordType,
+        since: datetime | None = None,
+        pattern_slug: str | None = None,
+    ) -> int:
+        if pattern_slug is not None:
+            slug_dirs = [self._dir(pattern_slug)]
+        elif not self.base_dir.exists():
+            return 0
+        else:
+            slug_dirs = [path for path in self.base_dir.iterdir() if path.is_dir()]
+
+        count = 0
+        for slug_dir in slug_dirs:
+            for path in slug_dir.glob("*.json"):
+                record = self.load(slug_dir.name, path.stem)
+                if record is None or record.record_type != record_type:
+                    continue
+                normalized_since = _normalize_record_since(record.created_at, since)
+                if normalized_since is not None and record.created_at and record.created_at < normalized_since:
+                    continue
+                count += 1
+        return count
 
     def append_entry_record(self, outcome: PatternOutcome) -> Path:
         return self.append(
@@ -615,4 +715,28 @@ class LedgerRecordStore:
         )
 
 
-LEDGER_RECORD_STORE = LedgerRecordStore()
+# Backwards-compat alias — existing imports like `from ledger.store import LedgerStore` still work.
+LedgerStore = FileLedgerStore
+
+
+def get_ledger_store():
+    """Return SupabaseLedgerStore if env configured, else FileLedgerStore (local dev)."""
+    if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+        from ledger.supabase_store import SupabaseLedgerStore
+        return SupabaseLedgerStore()
+    return FileLedgerStore()
+
+
+def get_ledger_record_store():
+    """Return SupabaseLedgerRecordStore if env configured, else LedgerRecordStore (local dev).
+
+    W-0126: Supabase-backed store enables O(1) compute_family_stats() via indexed DB query
+    instead of O(N files) scan. Multi-instance GCP deployments share state via Postgres.
+    """
+    if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+        from ledger.supabase_record_store import SupabaseLedgerRecordStore
+        return SupabaseLedgerRecordStore()
+    return LedgerRecordStore()
+
+
+LEDGER_RECORD_STORE = get_ledger_record_store()

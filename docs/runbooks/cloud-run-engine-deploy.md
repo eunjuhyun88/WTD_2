@@ -90,6 +90,7 @@ Recommended starting flags for `engine-api`:
 
 `cloudbuild.yaml` deploys `engine-api` with:
 
+- `ENGINE_RUNTIME_ROLE=api`
 - `ENGINE_ENABLE_SCHEDULER=false`
 - `APP_ORIGIN=https://YOUR_VERCEL_DOMAIN`
 - `ENGINE_PORT=8000`
@@ -106,6 +107,7 @@ Recommended starting flags for `worker-control`:
 - maximum instances `1`
 - CPU `1`
 - memory `512MiB`
+- `ENGINE_RUNTIME_ROLE=worker`
 - `ENGINE_ENABLE_SCHEDULER=true`
 
 ## Required Environment Variables

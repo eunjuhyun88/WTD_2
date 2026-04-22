@@ -7,10 +7,10 @@
  * Body: { verdict: 'valid' | 'invalid' | 'missed', user_note?: string }
  */
 
-import { env } from '$env/dynamic/private';
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { engineFetch } from '$lib/server/engineTransport';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -19,25 +19,32 @@ export const config = {
   maxDuration: 10,
 };
 
-const ENGINE_URL = (env.ENGINE_URL ?? 'http://localhost:8000').replace(/\/$/, '');
-
 export const POST: RequestHandler = async ({ params, request, cookies }) => {
   const user = await getAuthUserFromCookies(cookies);
   if (!user) throw error(401, 'Authentication required');
 
   const { id } = params;
-  const body = await request.text();
+  let payload: Record<string, unknown>;
+  try {
+    payload = await request.json();
+  } catch {
+    throw error(400, 'Invalid JSON body');
+  }
+  const normalized = {
+    verdict: payload.verdict ?? payload.user_verdict,
+    user_note: payload.user_note ?? null,
+  };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8_000);
 
   try {
-    const res = await fetch(`${ENGINE_URL}/captures/${id}/verdict`, {
+    const res = await engineFetch(`/captures/${id}/verdict`, {
       method: 'POST',
       headers: {
         'content-type': request.headers.get('content-type') ?? 'application/json',
         accept: 'application/json',
       },
-      body,
+      body: JSON.stringify(normalized),
       signal: controller.signal,
     });
     const text = await res.text();

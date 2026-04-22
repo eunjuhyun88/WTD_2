@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler  # type: ignore[import]
 from slowapi.errors import RateLimitExceeded  # type: ignore[import]
@@ -34,7 +35,11 @@ from security_runtime import (
     build_allowed_hosts,
     build_allowed_origins,
     build_docs_urls,
+    get_runtime_role,
     get_public_runtime_security_warnings,
+    runtime_serves_public_api,
+    runtime_serves_worker_control,
+    validate_internal_request,
 )
 from universe.config import DEFAULT_SCAN_UNIVERSE
 from observability.health import health_payload, readiness_payload
@@ -50,6 +55,8 @@ for runtime_warning in get_public_runtime_security_warnings():
 
 
 def scheduler_enabled() -> bool:
+    if not runtime_serves_worker_control():
+        return False
     return os.getenv("ENGINE_ENABLE_SCHEDULER", "true").strip().lower() not in {
         "0",
         "false",
@@ -160,41 +167,69 @@ async def request_id_middleware(request: Request, call_next):  # noqa: ANN001
     start = time.perf_counter()
     request_id = request.headers.get("x-request-id") or str(uuid4())
     increment("http.requests_total")
+    auth_error = validate_internal_request(
+        request.url.path,
+        request.headers.get("x-engine-internal-secret", "").strip(),
+    )
+    if auth_error is not None:
+        status, detail = auth_error
+        response = JSONResponse({"detail": detail}, status_code=status)
+        response.headers["x-request-id"] = request_id
+        increment(f"http.status.{status}")
+        return response
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000.0
     observe_ms(f"http.route.{_route_label(request.url.path)}", duration_ms)
     observe_ms("http.request_duration_ms", duration_ms)
     increment(f"http.status.{response.status_code}")
     response.headers["x-request-id"] = request_id
-    log.info("%s %s status=%s request_id=%s", request.method, request.url.path, response.status_code, request_id)
+    response.headers["x-process-time-ms"] = f"{duration_ms:.1f}"
+    _level = logging.WARNING if duration_ms > 500 else logging.INFO
+    log.log(_level, "%s %s status=%s dur=%.0fms request_id=%s",
+            request.method, request.url.path, response.status_code, duration_ms, request_id)
     return response
+
+def _include_public_engine_routes(target: FastAPI) -> None:
+    target.include_router(chart.router, prefix="/chart", tags=["chart"])
+    target.include_router(score.router, prefix="/score", tags=["scoring"])
+    target.include_router(deep.router, prefix="/deep", tags=["deep"])
+    target.include_router(ctx.router, prefix="/ctx", tags=["context"])
+    target.include_router(universe.router, prefix="/universe", tags=["universe"])
+    target.include_router(opportunity.router, prefix="/opportunity", tags=["opportunity"])
+    target.include_router(backtest.router, prefix="/backtest", tags=["backtest"])
+    target.include_router(challenge.router, prefix="/challenge", tags=["challenge"])
+    target.include_router(train.router, prefix="/train", tags=["training"])
+    target.include_router(verdict.router, prefix="/verdict", tags=["verdict"])
+    target.include_router(scanner.router, prefix="/scanner", tags=["scanner"])
+    target.include_router(patterns.router, prefix="/patterns", tags=["patterns"])
+    target.include_router(captures.router, prefix="/captures", tags=["captures"])
+    target.include_router(memory.router, prefix="/memory", tags=["memory"])
+    target.include_router(screener.router, prefix="/screener", tags=["screener"])
+    target.include_router(rag.router, prefix="/rag", tags=["rag"])
+    target.include_router(live_signals.router, prefix="/live-signals", tags=["live-signals"])
+    target.include_router(observability.router, prefix="/observability", tags=["observability"])
+    target.include_router(dalkkak.router, prefix="/dalkkak", tags=["dalkkak"])
+    target.include_router(alpha.router, tags=["alpha"])
+    target.include_router(refinement.router, prefix="/refinement", tags=["refinement"])
+
+
+def _include_worker_control_routes(target: FastAPI) -> None:
+    target.include_router(jobs.router, tags=["jobs"])
+
+
+def include_engine_routes(target: FastAPI, *, runtime_role: str | None = None) -> None:
+    role = runtime_role or get_runtime_role()
+    if runtime_serves_public_api(role):
+        _include_public_engine_routes(target)
+    if runtime_serves_worker_control(role):
+        _include_worker_control_routes(target)
+
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
-app.include_router(chart.router,    prefix="/chart",    tags=["chart"])
-app.include_router(score.router,    prefix="/score",    tags=["scoring"])
-app.include_router(deep.router,     prefix="/deep",     tags=["deep"])
-app.include_router(ctx.router,      prefix="/ctx",      tags=["context"])
-app.include_router(universe.router, prefix="/universe", tags=["universe"])
-app.include_router(opportunity.router, prefix="/opportunity", tags=["opportunity"])
-app.include_router(backtest.router, prefix="/backtest", tags=["backtest"])
-app.include_router(challenge.router, prefix="/challenge", tags=["challenge"])
-app.include_router(train.router, prefix="/train", tags=["training"])
-app.include_router(verdict.router, prefix="/verdict", tags=["verdict"])
-app.include_router(scanner.router, prefix="/scanner", tags=["scanner"])
-app.include_router(patterns.router, prefix="/patterns", tags=["patterns"])
-app.include_router(captures.router, prefix="/captures", tags=["captures"])
-app.include_router(memory.router, prefix="/memory", tags=["memory"])
-app.include_router(screener.router, prefix="/screener", tags=["screener"])
-app.include_router(rag.router, prefix="/rag", tags=["rag"])
-app.include_router(live_signals.router, prefix="/live-signals", tags=["live-signals"])
-app.include_router(observability.router, prefix="/observability", tags=["observability"])
-app.include_router(dalkkak.router,     prefix="/dalkkak",     tags=["dalkkak"])
-app.include_router(alpha.router,       tags=["alpha"])
-app.include_router(jobs.router,        tags=["jobs"])
-app.include_router(refinement.router,  prefix="/refinement",  tags=["refinement"])
+include_engine_routes(app)
 
 
 @app.get("/healthz", tags=["meta"])
@@ -204,7 +239,11 @@ def healthz() -> dict:
 
 @app.get("/readyz", tags=["meta"])
 def readyz() -> dict:
-    return readiness_payload(app.version, scheduler_enabled=scheduler_enabled())
+    return readiness_payload(
+        app.version,
+        scheduler_enabled=scheduler_enabled(),
+        runtime_role=get_runtime_role(),
+    )
 
 
 @app.get("/metrics", tags=["meta"])

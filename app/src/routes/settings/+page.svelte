@@ -206,7 +206,7 @@
           <div class="sr-label">Default Timeframe</div>
           <div class="sr-desc">Set default chart timeframe</div>
         </div>
-        <select class="sr-select" bind:value={settings.defaultTF} on:change={() => updateSetting('defaultTF', settings.defaultTF)}>
+        <select class="sr-select" bind:value={settings.defaultTF} onchange={() => updateSetting('defaultTF', settings.defaultTF)}>
           {#each CORE_TIMEFRAME_OPTIONS as option}
             <option value={option.value}>{formatTimeframeLabel(option.value)}</option>
           {/each}
@@ -218,7 +218,7 @@
           <div class="sr-label">Data Source</div>
           <div class="sr-desc">Real-time market data provider</div>
         </div>
-        <select class="sr-select" bind:value={settings.dataSource} on:change={() => updateSetting('dataSource', settings.dataSource)}>
+        <select class="sr-select" bind:value={settings.dataSource} onchange={() => updateSetting('dataSource', settings.dataSource)}>
           <option value="binance">Binance Futures</option>
           <option value="simulation">Simulation</option>
         </select>
@@ -234,7 +234,7 @@
             <button
               class="speed-btn"
               class:active={settings.speed === s}
-              on:click={() => updateSetting('speed', s)}
+              onclick={() => updateSetting('speed', s)}
             >{s}x</button>
           {/each}
         </div>
@@ -252,7 +252,7 @@
           <div class="sr-label">Chart Theme</div>
           <div class="sr-desc">Chart color scheme</div>
         </div>
-        <select class="sr-select" bind:value={settings.chartTheme} on:change={() => updateSetting('chartTheme', settings.chartTheme)}>
+        <select class="sr-select" bind:value={settings.chartTheme} onchange={() => updateSetting('chartTheme', settings.chartTheme)}>
           <option value="dark">Dark</option>
           <option value="light">Light</option>
         </select>
@@ -263,7 +263,7 @@
           <div class="sr-label">Language</div>
           <div class="sr-desc">Interface language</div>
         </div>
-        <select class="sr-select" bind:value={settings.language} on:change={() => updateSetting('language', settings.language)}>
+        <select class="sr-select" bind:value={settings.language} onchange={() => updateSetting('language', settings.language)}>
           <option value="kr">한국어</option>
           <option value="en">English</option>
         </select>
@@ -283,7 +283,7 @@
         </div>
         <div class="mode-btns">
           {#each ['TERMINAL', 'HEURISTIC', 'OLLAMA', 'API'] as m}
-            <button class="mode-btn" class:active={aiMode === m} on:click={() => setAiMode(m as DouniMode)}>
+            <button class="mode-btn" class:active={aiMode === m} onclick={() => setAiMode(m as DouniMode)}>
               {m}
             </button>
           {/each}
@@ -308,7 +308,7 @@
             <div class="sr-label">Provider</div>
             <div class="sr-desc">Groq 무료 · 빠름 (추천)</div>
           </div>
-          <select class="sr-select" bind:value={aiProvider} on:change={saveAiConfig}>
+          <select class="sr-select" bind:value={aiProvider} onchange={saveAiConfig}>
             <option value="groq">Groq (무료)</option>
             <option value="cerebras">Cerebras</option>
             <option value="mistral">Mistral</option>
@@ -327,7 +327,7 @@
             class="sr-input"
             placeholder="gsk_..."
             bind:value={aiApiKey}
-            on:change={saveAiConfig}
+            onchange={saveAiConfig}
           />
         </div>
       {/if}
@@ -343,7 +343,7 @@
             class="sr-input"
             placeholder="http://localhost:11434"
             bind:value={aiOllamaEndpoint}
-            on:change={saveAiConfig}
+            onchange={saveAiConfig}
           />
         </div>
 
@@ -357,7 +357,7 @@
             class="sr-input"
             placeholder="mistral:7b"
             bind:value={aiOllamaModel}
-            on:change={saveAiConfig}
+            onchange={saveAiConfig}
           />
         </div>
       {/if}
@@ -368,7 +368,7 @@
             <div class="sr-label">테스트</div>
             <div class="sr-desc">DOUNI에게 인사 메시지 전송</div>
           </div>
-          <button class="test-btn" on:click={testAi} disabled={testLoading}>
+          <button class="test-btn" onclick={testAi} disabled={testLoading}>
             {testLoading ? '...' : '테스트'}
           </button>
         </div>
@@ -393,7 +393,7 @@
           class="toggle-btn"
           class:on={settings.signals}
           aria-label="Toggle signal alerts"
-          on:click={() => { settings.signals = !settings.signals; updateSetting('signals', settings.signals); }}
+          onclick={() => { settings.signals = !settings.signals; updateSetting('signals', settings.signals); }}
         >
           <div class="toggle-dot"></div>
         </button>
@@ -408,7 +408,7 @@
           class="toggle-btn"
           class:on={settings.sfx}
           aria-label="Toggle sound effects"
-          on:click={() => { settings.sfx = !settings.sfx; updateSetting('sfx', settings.sfx); }}
+          onclick={() => { settings.sfx = !settings.sfx; updateSetting('sfx', settings.sfx); }}
         >
           <div class="toggle-dot"></div>
         </button>
@@ -425,7 +425,7 @@
           <div class="sr-label">Reset All Data</div>
           <div class="sr-desc">Delete all saved progress and start fresh</div>
         </div>
-        <button class="reset-btn" on:click={resetAllData}>RESET</button>
+        <button class="reset-btn" onclick={resetAllData}>RESET</button>
       </div>
     </section>
   </div>

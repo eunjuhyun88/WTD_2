@@ -177,8 +177,16 @@ async function buildAnalyzePayload({
         timer.flush({ request_id: requestId, symbol, tf, fallback_used: true, engine_partial: false });
         throw deepError;
       }
-      timer.flush({ request_id: requestId, symbol, tf, fallback_used: false, engine_partial: false });
-      throw new AnalyzeRouteError(500, 'Both /deep and /score failed');
+      const fallbackPayload = await buildFallbackAnalyzePayload(symbol, tf);
+      timer.flush({
+        request_id: requestId,
+        symbol,
+        tf,
+        fallback_used: true,
+        engine_partial: false,
+        error_code: 'engine_empty',
+      });
+      return fallbackPayload;
     }
 
     const payload = mapAnalyzeResponse(

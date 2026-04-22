@@ -14,10 +14,11 @@ Execution rules for humans and coding agents.
 Read in this order:
 
 1. `AGENTS.md`
-2. Relevant `work/active/*.md`
-3. Relevant `docs/domains/*.md`
-4. Relevant `docs/product/*.md`
-5. Minimal required code files
+2. `work/active/CURRENT.md`
+3. Relevant `work/active/*.md` listed in `CURRENT.md`
+4. Relevant `docs/domains/*.md`
+5. Relevant `docs/product/*.md`
+6. Minimal required code files
 
 ## Context Routing
 
@@ -52,7 +53,9 @@ Do not read these unless explicitly required:
 Every non-trivial task must have one active work item:
 
 - Path: `work/active/W-xxxx-<slug>.md`
-- Required sections: Goal, Scope, Non-Goals, Canonical Files, Facts, Assumptions, Open Questions, Decisions, Next Steps, Exit Criteria, Handoff Checklist
+- `work/active/CURRENT.md` is the live index. Baseline validation applies to the work items listed under `## 활성 Work Items`.
+- Work items not listed in `CURRENT.md` may remain in `work/active/` as checkpoint or parking notes, but they are reference-only until promoted into `CURRENT.md`.
+- Required sections: Goal, Owner, Scope, Non-Goals, Canonical Files, Facts, Assumptions, Open Questions, Decisions, Next Steps, Exit Criteria, Handoff Checklist
 - Keep one owner per work item: `engine`, `app`, `contract`, or `research`
 - Budget:
   - Facts `3-5`
@@ -65,7 +68,7 @@ Every non-trivial task must have one active work item:
 1. Reconstruct context from canonical files before acting.
 2. Write or refresh the intended design in the active work item before non-trivial edits.
 3. Separate facts, assumptions, decisions, and open questions.
-4. Confirm owner, primary change type, canonical files, and verification target before acting.
+4. Confirm owner, change type, canonical files, and verification plan before acting.
 5. Prefer small reversible changes and one primary change type per PR.
 6. If scope, blockers, hypotheses, or branch intent change, update the work item first.
 
@@ -82,6 +85,13 @@ Every non-trivial task must have one active work item:
 - Merge via PR only after user approval; no direct push-to-main flow.
 - Before merge, pass the minimum gate: clean `git status`, scoped tests/checks, and conflict review.
 - If unexpected file changes appear, stop and confirm scope before committing.
+
+## Vercel Deploy Rules
+
+- `main`, `master`, and agent branches such as `claude/*` or `codex/*` must not be used as Vercel auto-deploy branches.
+- If Git-based Vercel deploys are enabled for `app/`, use a dedicated `release` branch as the only production branch.
+- Reconnect Vercel Git auto-deploy only after repo-level branch guardrails are present in `app/vercel.json`.
+- Until that guardrail and branch split are in place, prefer manual app deploys from `app/` via Vercel CLI.
 
 ## Multi-Agent Handoff
 

@@ -14,11 +14,18 @@ export async function getAuthUserFromCookies(cookies: Cookies): Promise<AuthUser
   if (!parsed) return null;
 
   const cacheKey = `session:${parsed.token}:${parsed.userId}`;
-  const user = await getHotCached<AuthUserRow | null>(
-    cacheKey,
-    SESSION_CACHE_TTL_MS,
-    () => getAuthenticatedUser(parsed.token, parsed.userId),
-  );
+  let user: AuthUserRow | null;
+  try {
+    user = await getHotCached<AuthUserRow | null>(
+      cacheKey,
+      SESSION_CACHE_TTL_MS,
+      () => getAuthenticatedUser(parsed.token, parsed.userId),
+    );
+  } catch (error) {
+    console.error('[authGuard] session hydrate failed:', error);
+    cookies.delete(SESSION_COOKIE_NAME, { path: '/' });
+    return null;
+  }
 
   if (!user) {
     cookies.delete(SESSION_COOKIE_NAME, { path: '/' });

@@ -455,15 +455,15 @@
 {#if state.showWalletModal}
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:click={handleClose}>
-  <div class="wallet-panel" on:click|stopPropagation>
+<div class="modal-overlay" onclick={handleClose}>
+  <div class="wallet-panel" onclick={(e) => e.stopPropagation()}>
     <div class="wh">
       <div class="wh-left">
         <span class="wh-tag">//WALLET AUTH</span>
         <span class="wht">{headerTitle}</span>
       </div>
 
-      <button class="whc" type="button" aria-label="Close wallet modal" on:click={handleClose}>✕</button>
+      <button class="whc" type="button" aria-label="Close wallet modal" onclick={handleClose}>✕</button>
     </div>
 
     {#if actionError}
@@ -484,7 +484,7 @@
         </div>
 
         <div class="wallet-list">
-          <button class="wopt" type="button" on:click={() => handleConnect('metamask')}>
+          <button class="wopt" type="button" onclick={() => handleConnect('metamask')}>
             <span class="wo-icon">🦊</span>
             <span class="wo-name">MetaMask</span>
             <span class="wo-chain">EVM</span>
@@ -492,7 +492,7 @@
           <button
             class="wopt"
             type="button"
-            on:click={() => handleConnect('walletconnect')}
+            onclick={() => handleConnect('walletconnect')}
             disabled={!walletConnectReady}
             title={!walletConnectReady ? 'Set PUBLIC_WALLETCONNECT_PROJECT_ID in env first.' : undefined}
           >
@@ -500,12 +500,12 @@
             <span class="wo-name">WalletConnect</span>
             <span class="wo-chain">{walletConnectReady ? 'EVM' : 'SETUP REQUIRED'}</span>
           </button>
-          <button class="wopt" type="button" on:click={() => handleConnect('coinbase')}>
+          <button class="wopt" type="button" onclick={() => handleConnect('coinbase')}>
             <span class="wo-icon">🔷</span>
             <span class="wo-name">Coinbase Wallet</span>
             <span class="wo-chain">EVM</span>
           </button>
-          <button class="wopt" type="button" on:click={() => handleConnect('phantom')}>
+          <button class="wopt" type="button" onclick={() => handleConnect('phantom')}>
             <span class="wo-icon">👻</span>
             <span class="wo-name">Phantom</span>
             <span class="wo-chain">EVM</span>
@@ -545,10 +545,10 @@
           </div>
         </div>
 
-        <button class="btn-primary" type="button" on:click={handleSignMessage} disabled={signingMessage}>
+        <button class="btn-primary" type="button" onclick={handleSignMessage} disabled={signingMessage}>
           {#if signingMessage}SIGNING...{:else}SIGN MESSAGE{/if}
         </button>
-        <button class="btn-ghost" type="button" on:click={() => setWalletModalStep('wallet-select')}>
+        <button class="btn-ghost" type="button" onclick={() => setWalletModalStep('wallet-select')}>
           USE DIFFERENT WALLET
         </button>
       </div>
@@ -573,16 +573,16 @@
         </div>
 
         {#if hasWalletProof()}
-          <button class="btn-primary" type="button" on:click={() => setWalletModalStep(authMode)}>
+          <button class="btn-primary" type="button" onclick={() => setWalletModalStep(authMode)}>
             CONTINUE TO {authMode === 'login' ? 'LOG IN' : 'SIGN UP'}
           </button>
         {:else}
-          <button class="btn-primary" type="button" on:click={() => setWalletModalStep('sign-message')}>
+          <button class="btn-primary" type="button" onclick={() => setWalletModalStep('sign-message')}>
             SIGN TO CONTINUE
           </button>
         {/if}
 
-        <button class="btn-ghost" type="button" on:click={handleDisconnect}>DISCONNECT WALLET</button>
+        <button class="btn-ghost" type="button" onclick={handleDisconnect}>DISCONNECT WALLET</button>
       </div>
 
     {:else if step === 'signup'}
@@ -607,10 +607,10 @@
           <div class="form-error">{emailError}</div>
         {/if}
 
-        <button class="btn-primary" type="button" on:click={handleSignupSubmit} disabled={authSubmitting}>
+        <button class="btn-primary" type="button" onclick={handleSignupSubmit} disabled={authSubmitting}>
           {#if authSubmitting}CREATING...{:else}CREATE ACCOUNT{/if}
         </button>
-        <button class="btn-ghost" type="button" on:click={() => setWalletModalStep('sign-message')}>BACK TO SIGN</button>
+        <button class="btn-ghost" type="button" onclick={() => setWalletModalStep('sign-message')}>BACK TO SIGN</button>
       </div>
 
     {:else if step === 'login'}
@@ -635,10 +635,10 @@
           <div class="form-error">{emailError}</div>
         {/if}
 
-        <button class="btn-primary" type="button" on:click={handleLoginSubmit} disabled={authSubmitting}>
+        <button class="btn-primary" type="button" onclick={handleLoginSubmit} disabled={authSubmitting}>
           {#if authSubmitting}LOGGING IN...{:else}LOG IN{/if}
         </button>
-        <button class="btn-ghost" type="button" on:click={() => setWalletModalStep('sign-message')}>BACK TO SIGN</button>
+        <button class="btn-ghost" type="button" onclick={() => setWalletModalStep('sign-message')}>BACK TO SIGN</button>
       </div>
 
     {:else}
@@ -673,11 +673,11 @@
         </div>
 
         {#if state.connected}
-          <a class="btn-primary passport-link" href="/passport" on:click={handleClose}>VIEW PASSPORT</a>
-          <button class="btn-ghost" type="button" on:click={handleDisconnect}>LOG OUT & DISCONNECT</button>
+          <a class="btn-primary passport-link" href="/passport" onclick={handleClose}>VIEW PASSPORT</a>
+          <button class="btn-ghost" type="button" onclick={handleDisconnect}>LOG OUT & DISCONNECT</button>
         {:else}
-          <button class="btn-primary" type="button" on:click={() => setWalletModalStep('wallet-select')}>CONNECT WALLET</button>
-          <a class="btn-ghost passport-link" href="/passport" on:click={handleClose}>OPEN PASSPORT</a>
+          <button class="btn-primary" type="button" onclick={() => setWalletModalStep('wallet-select')}>CONNECT WALLET</button>
+          <a class="btn-ghost passport-link" href="/passport" onclick={handleClose}>OPEN PASSPORT</a>
         {/if}
       </div>
     {/if}

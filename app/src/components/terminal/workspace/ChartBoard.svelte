@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
+  import { createChart, CandlestickSeries, LineSeries, HistogramSeries, createSeriesMarkers } from 'lightweight-charts';
   import type { UTCTimestamp, IChartApi, ISeriesApi, SeriesType, SeriesMarker } from 'lightweight-charts';
   import {
     chartIndicators,
@@ -21,6 +21,7 @@
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import { terminalState } from '$lib/stores/terminalState';
   import { RangePrimitive } from '../chart/primitives/RangePrimitive';
+  import { GammaPinPrimitive, type GammaPinData } from '../chart/primitives/GammaPinPrimitive';
   // ── Layer 2 overlay (W-0086) ────────────────────────────────────────────────
   import PhaseBadge from '../chart/overlay/PhaseBadge.svelte';
   // ── Layer 3: Capture annotations (W-0120) ───────────────────────────────────
@@ -75,6 +76,13 @@
     }>;
     /** Fired when a candle closes (WS k.x=true). Parent can refresh analyze/verdict state. */
     onCandleClose?: (bar: { time: number; open: number; high: number; low: number; close: number; volume: number }) => void;
+    /** Gamma pin overlay — pass from parent when options-snapshot data is live. null hides line. */
+    gammaPin?: GammaPinData | null;
+    /**
+     * Tablet routing: when provided, capture annotation clicks call this instead of
+     * opening the internal fixed drawer. CenterPanel uses this to show in PeekDrawer.
+     */
+    onCaptureSelect?: (ann: CaptureAnnotation) => void;
   }
 
   let {
@@ -93,6 +101,8 @@
     contextMode = 'full',
     alphaMarkers = undefined,
     onCandleClose,
+    gammaPin = null,
+    onCaptureSelect = undefined,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -184,7 +194,8 @@
   let showATRBands = $derived($chartIndicators.atr_bands);
   let showCVD = $derived($chartIndicators.cvd);
   let showMACD = $derived($chartIndicators.macd);   // replaces RSI pane when active
-  let derivativesOnMain = $derived($chartIndicators.derivatives);
+  // derivativesOverlay = opt-in overlay on main chart; false = sub-pane (default/standard)
+  let derivativesOnMain = $derived($chartIndicators.derivativesOverlay);
 
   let chartMode = $state<'candle' | 'line'>('candle');
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
@@ -324,9 +335,24 @@
   let rangePrimitive: RangePrimitive | null = null;
   let saveModeUnsubscribe: (() => void) | null = null;
 
+  // ── Layer 4: Gamma pin primitive (W-0122-Phase3) ──────────────────────────
+  let gammaPinPrimitive: GammaPinPrimitive | null = null;
+
   // ── Layer 3: Capture annotations (W-0120) ────────────────────────────────
   let candleSeriesForAnnotations = $state<ISeriesApi<'Candlestick'> | null>(null);
+  let candleMarkerApi: { setMarkers: (markers: SeriesMarker<UTCTimestamp>[]) => void } | null = null;
   let selectedCapture = $state<CaptureAnnotation | null>(null);
+  let _annotationsCache = $state<CaptureAnnotation[]>([]);
+
+  /** Convert tf string to seconds for ±2-bar click threshold (W-0124). */
+  function _tfToSec(t: string): number {
+    const map: Record<string, number> = {
+      '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
+      '1h': 3600, '2h': 7200, '4h': 14400, '6h': 21600, '12h': 43200,
+      '1d': 86400, '3d': 259200, '1w': 604800,
+    };
+    return map[t] ?? 3600;
+  }
 
   // Drag state — managed as plain variables (not reactive) to avoid cycles
   let _dragActive = false;
@@ -346,6 +372,35 @@
     } catch { /* ignore */ }
     rangePrimitive = null;
   }
+
+  /** Attach/update/detach gamma pin line based on the `gammaPin` prop. */
+  function syncGammaPinPrimitive(data: GammaPinData | null) {
+    if (!priceSeries) return;
+    const hasPin = data && data.pinLevel != null;
+    if (hasPin) {
+      if (!gammaPinPrimitive) {
+        gammaPinPrimitive = new GammaPinPrimitive(data);
+        (priceSeries as ISeriesApi<SeriesType>).attachPrimitive(
+          gammaPinPrimitive as unknown as Parameters<ISeriesApi<SeriesType>['attachPrimitive']>[0]
+        );
+      } else {
+        gammaPinPrimitive.update(data);
+      }
+    } else if (gammaPinPrimitive) {
+      try {
+        (priceSeries as ISeriesApi<SeriesType>).detachPrimitive(
+          gammaPinPrimitive as unknown as Parameters<ISeriesApi<SeriesType>['detachPrimitive']>[0]
+        );
+      } catch { /* ignore */ }
+      gammaPinPrimitive = null;
+    }
+  }
+
+  // React to gamma prop changes — after priceSeries is created, keep primitive in sync.
+  $effect(() => {
+    void gammaPin;       // subscribe
+    syncGammaPinPrimitive(gammaPin);
+  });
 
   /** Convert clientX to chart time using mainEl bounding rect. */
   function clientXToChartTime(clientX: number): number | null {
@@ -746,6 +801,8 @@
       });
       lineSeries.setData(klines.map((k) => ({ time: k.time as UTCTimestamp, value: k.close })));
       priceSeries = lineSeries;
+      candleSeriesForAnnotations = null;
+      candleMarkerApi = null;
     } else {
       const candleSeries = mainChart.addSeries(CandlestickSeries, {
         upColor:        '#26a69a',
@@ -765,6 +822,7 @@
         }))
       );
       candleSeriesRef = candleSeries;
+      candleMarkerApi = createSeriesMarkers(candleSeries, []);
       priceSeries = candleSeries;
       candleSeriesForAnnotations = candleSeries;  // Layer 3: capture overlay
       // Attach range primitive to candlestick series (Layer 1, W-0086)
@@ -906,8 +964,7 @@
           });
         }
       }
-      // Runtime API (v5 typings omit setMarkers on some ISeriesApi variants).
-      (candleSeriesRef as ISeriesApi<'Candlestick'> & { setMarkers: (m: SeriesMarker<UTCTimestamp>[]) => void }).setMarkers(markers);
+      candleMarkerApi?.setMarkers(markers);
     }
 
     mainChart.subscribeCrosshairMove((param) => {
@@ -919,6 +976,24 @@
           if (d?.close != null) currentPrice = d.close;
           else if (d?.value != null) currentPrice = d.value;
         }
+      }
+    });
+
+    // Capture annotation click: open drawer for nearest marker within ±2 bars (W-0124)
+    mainChart.subscribeClick((param) => {
+      if (!param.time || !_annotationsCache.length || selectedCapture) return;
+      const ts = typeof param.time === 'number'
+        ? param.time
+        : Math.floor(new Date(param.time as string).getTime() / 1000);
+      const threshold = _tfToSec(tf) * 2;
+      let nearest: CaptureAnnotation | null = null;
+      let nearestDist = Infinity;
+      for (const ann of _annotationsCache) {
+        const d = Math.abs(ann.captured_at_s - ts);
+        if (d < nearestDist) { nearestDist = d; nearest = ann; }
+      }
+      if (nearest && nearestDist <= threshold) {
+        selectedCapture = nearest;
       }
     });
 
@@ -1225,6 +1300,8 @@
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart, liqChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = liqChart = null;
     priceSeries = null;
+    candleMarkerApi = null;
+    candleSeriesForAnnotations = null;
     entryLine = targetLine = stopLine = null;
   }
 
@@ -1309,7 +1386,7 @@
     atr: 'atr_bands',
     macd: 'macd',
     cvd: 'cvd',
-    overlay: 'derivatives',
+    overlay: 'derivativesOverlay',
   };
 
   function toggleStudy(id: StudyId) {
@@ -1584,7 +1661,7 @@
       <button onclick={loadData}>Retry</button>
     </div>
   {:else}
-    <div class="chart-stack" class:range-mode={$chartSaveMode.active} bind:this={chartStackEl}>
+    <div class="chart-stack" class:range-mode={$chartSaveMode.active} class:drawer-open={selectedCapture !== null} bind:this={chartStackEl}>
     <!-- Layer 2 overlay container — pointer-events: none; only chips/buttons inside use auto (W-0086) -->
     <div class="chart-layer2-overlay">
       <div class="layer2-topright">
@@ -1737,13 +1814,16 @@
   series={candleSeriesForAnnotations}
   {symbol}
   timeframe={tf}
-  onSelect={(ann) => { selectedCapture = ann; }}
+  onSelect={(ann) => { onCaptureSelect ? onCaptureSelect(ann) : (selectedCapture = ann); }}
+  onAnnotationsChange={(anns) => { _annotationsCache = anns; }}
 />
-<CaptureReviewDrawer
-  annotation={selectedCapture}
-  onClose={() => { selectedCapture = null; }}
-  onVerdict={(id, verdict) => { selectedCapture = null; }}
-/>
+{#if !onCaptureSelect}
+  <CaptureReviewDrawer
+    annotation={selectedCapture}
+    onClose={() => { selectedCapture = null; }}
+    onVerdict={(id, verdict) => { selectedCapture = null; }}
+  />
+{/if}
 
 <!-- Toast: saved confirmation -->
 {#if savedCaptureId}
@@ -2442,6 +2522,13 @@
     overflow: hidden;
     /* Layer 2 overlay anchors to this container */
     position: relative;
+  }
+  /* Shift chart right when capture review drawer is open (desktop only) */
+  @media (min-width: 768px) {
+    .chart-stack.drawer-open {
+      padding-right: 304px;
+      transition: padding-right 240ms ease-out;
+    }
   }
   .chart-stack.range-mode,
   .chart-stack.range-mode * {

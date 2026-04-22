@@ -72,7 +72,7 @@
         <span class="toast-title">{toast.title}</span>
         <span class="toast-score">SCORE: {toast.score}</span>
       </div>
-      <button class="toast-dismiss" on:click={() => dismiss(toast.id)}>✕</button>
+      <button class="toast-dismiss" onclick={() => dismiss(toast.id)}>✕</button>
       <div class="toast-timer-bar"></div>
     </div>
   {/each}

@@ -2,7 +2,35 @@
 
 ## Status
 
-`DESIGN` — 2026-04-21
+`IN-FLIGHT — Phase 1 shipped, 6 of 7 confluence contributions live` — 2026-04-22
+
+### Shipped (main)
+
+| Slice | PR | What | Live data |
+|---|---|---|---|
+| Registry + Archetypes + Pillar 3 + Liq Phase-1 | #148 | Indicator Registry (types/registry/adapter) + 6 archetype renderers + venue-divergence endpoint + liq-clusters endpoint approximation + 3 engine blocks | Venue divergence live; liq clusters derived from chart feed |
+| Archetype B+D + venue tests | #154 | Stratified + Divergence renderers + block_evaluator wire + 9 pytest cases pass | — |
+| Real 30-day rolling percentile | #156 | `/api/market/indicator-context` backed by Binance public OI/funding history; signed percentile; replaced the adapter magnitude-pinned estimate for OI+funding gauges | OI 1h/4h, funding percentile live |
+| W-0122-F Free Wins | #157 | SSR (`/api/market/stablecoin-ssr`), RV Cone (`/api/market/rv-cone`), Funding Flip (`/api/market/funding-flip`). First data producer for Archetype E. | All 3 live |
+| W-0122-Confluence Phase 1 | #159 | Pure-function scorer + 6-contribution composer + `/api/confluence/current` aggregator + `ConfluenceBanner` UI. 11 unit tests. | Live banner in TradeMode |
+| W-0122-C1 Options Phase 1 | #161 | `/api/market/options-snapshot` (Deribit REST, ~870 instruments/call). P/C ratio + 25d skew + ATM IV. Wired into registry + adapter + Confluence scorer (+3 tests → 14 total). | Live Pillar 2 |
+
+### Confluence readings at commit time (BTC 4h)
+
+```
+Before  Slice-F + Confluence + Options:  score was evidence-row only
+After  Slice-F:                          no composite score
+After  Confluence P1:                    +15.5  BULL  conf 50%  div=true
+After  Options:                          +18.8  BULL  conf 67%  div=true
+Active contributions: venue_divergence, ssr, options  (3 of 7 material)
+```
+
+### Still open (future slices)
+
+- [ ] Pillar 1 real forceOrder WS ingestion (multi-venue) — current Phase 1 is chart-feed approximation
+- [ ] Pillar 2 WS streaming + real Greeks (BSM) + GEX + gamma flip overlay
+- [ ] Pillar 4 Exchange Netflow (Arkham — blocked on API key provision)
+- [ ] Confluence Phase 2: engine-side scoring + Flywheel weight learning + capture snapshot persistence
 
 ## Goal
 
@@ -10,7 +38,17 @@
 
 ## Owner
 
-engine + app (cross-cutting)
+engine
+
+## Canonical Files
+
+- `work/active/W-0122-free-indicator-stack.md`
+- `work/active/CURRENT.md`
+- `docs/product/competitive-indicator-analysis-2026-04-21.md`
+- `docs/domains/indicator-registry.md`
+- `app/src/lib/indicators/adapter.ts`
+- `app/src/routes/api/confluence/current/+server.ts`
+- `engine/blocks/`
 
 ## Why
 
@@ -199,6 +237,18 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - Historical onchain tx 전수 ETL — 인프라 비용 큼, 비상목표.
 - Multi-asset (알트코인) 확장 — Phase 1 은 BTC/ETH 만. BTCUSDT/ETHUSDT perp + BTC/ETH options.
 
+## Facts
+
+- Phase 1 기준으로 Venue Divergence, Liq clusters approximation, Options snapshot, Confluence Engine Phase 1 이 이미 live 다.
+- `ConfluenceBanner` 와 6개 archetype renderer(A/B/C/D/E/F)는 현재 app surface에 연결되어 있다.
+- Pillar 4 Netflow 와 engine-side weight learning 은 아직 미완이며 CURRENT 는 이 문서를 `Confluence Phase 2` 대기 상태로 표시한다.
+- 이 work item은 app surface를 포함하지만, 미완 핵심은 scorer/weights/building blocks/ingestion 쪽 engine 책임이 더 크다.
+
+## Assumptions
+
+- Phase 2 의 주 작업은 UI 신규 설계보다 engine scorer 와 flywheel weight learning 이다.
+- Arkham key provision 전까지 Pillar 4 는 deferred 상태로 관리하는 편이 안전하다.
+
 ## Sequencing (6-week execution plan)
 
 | Slice | Week | Pillar | 이유 |
@@ -240,6 +290,12 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 3. **Deribit WS reconnect** — Binance DataFeed 와 동일 규율 적용 (ADR-008).
 4. **Confluence weights 초기값** — heuristic vs 랜덤 → flywheel 학습에 맡김. 초기 heuristic 정책 문서 필요.
 
+## Next Steps
+
+1. Confluence Phase 2 범위를 `engine scorer + flywheel weights + capture snapshot persistence` 로 좁혀 별도 구현 lane 을 연다.
+2. Arkham/API-key 의존성이 풀리기 전까지는 Pillar 4 를 backlog 로 유지하고 Phase 2 검증 입력을 scorer 측으로 집중한다.
+3. 남은 building blocks 와 options/liquidation real-time ingestion 을 다음 wave 기준으로 다시 쪼갠다.
+
 ## Related
 
 - `docs/product/competitive-indicator-analysis-2026-04-21.md` — 경쟁 분석 근거
@@ -249,9 +305,36 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 
 ## Exit Criteria
 
-- [ ] 4 pillar 모두 production 라이브 (ingestion + API + UI pane)
-- [ ] 15 신규 building blocks 엔진 + tests
-- [ ] Confluence Engine 구현 + Verdict Inbox 연결
-- [ ] analyze envelope 에 `confluence` 필드 추가
-- [ ] 대시보드 성능: Redis hit rate > 95%, P99 latency < 300ms
-- [ ] 경쟁사 대비 검증: Coinglass liq heatmap, Laevitas skew, CryptoQuant netflow 가 우리 UI 에서 **동등 이상** 표현되는지 스크린샷 대조
+Phase 1 (this cycle — **3 of 4 pillars shipped**):
+- [x] Pillar 3 Venue Divergence — API + UI + 3 blocks live
+- [x] Pillar 1 Liq clusters — Phase-1 chart-feed approximation live
+- [x] Pillar 2 Options — REST snapshot live (P/C, skew, ATM IV)
+- [ ] Pillar 4 Netflow — deferred (Arkham API key)
+- [x] Confluence Engine Phase 1 — scorer + aggregator + banner live, 14 tests pass
+- [x] 6 archetype renderers (A/B/C/D/E/F) all wired
+- [ ] analyze envelope に `confluence` 필드 추가 (Phase 2)
+- [ ] engine-side scoring + Flywheel weight learning (Phase 2)
+
+Phase 2 (future cycle):
+- [ ] Pillar 1 real WS ingestion (Binance + Bybit + OKX forceOrder)
+- [ ] Pillar 2 WS streaming + Greeks + GEX + gamma-flip overlay
+- [ ] Pillar 4 Arkham Exchange Netflow
+- [ ] 15 신규 building blocks 엔진 + tests (currently 3 of 15 shipped)
+- [ ] Redis hit rate > 95%, P99 latency < 300ms
+- [ ] 경쟁사 대비 스크린샷 대조: Coinglass / Laevitas / CryptoQuant
+
+## Handoff Checklist
+
+- active work item: `work/active/W-0122-free-indicator-stack.md`
+- branch/worktree state: CURRENT 기준 `IN-PROGRESS`; follow-up branch는 Phase 2 slice 별로 별도 생성
+- verification status: shipped slices are recorded in `## Status` / `## PR Trail`; Phase 2 verification is still pending
+- remaining blockers: Arkham key, engine-side confluence scoring, flywheel weight learning
+
+## PR Trail
+
+- #148 (Registry + Archetypes + Pillar 3 + Liq P1)
+- #154 (Archetype B/D + venue tests)
+- #156 (Real 30d rolling percentile)
+- #157 (Slice F — SSR + RV Cone + Funding Flip)
+- #159 (Confluence Engine Phase 1)
+- #161 (Pillar 2 Options Phase 1)

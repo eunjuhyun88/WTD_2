@@ -106,6 +106,56 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
         model_version="20260416_120000",
         rollout_state="active",
     )
+    record_list = (
+        [
+            PatternLedgerRecord(
+                record_type="training_run",
+                pattern_slug="tradoor-oi-reversal-v1",
+                payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
+            ),
+            PatternLedgerRecord(
+                record_type="model",
+                pattern_slug="tradoor-oi-reversal-v1",
+                payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
+            ),
+        ]
+        + [PatternLedgerRecord(record_type="entry", pattern_slug="tradoor-oi-reversal-v1") for _ in range(10)]
+        + [PatternLedgerRecord(record_type="capture", pattern_slug="tradoor-oi-reversal-v1") for _ in range(4)]
+        + [PatternLedgerRecord(record_type="score", pattern_slug="tradoor-oi-reversal-v1") for _ in range(10)]
+        + [PatternLedgerRecord(record_type="outcome", pattern_slug="tradoor-oi-reversal-v1") for _ in range(6)]
+        + [PatternLedgerRecord(record_type="verdict", pattern_slug="tradoor-oi-reversal-v1") for _ in range(3)]
+        + [PatternLedgerRecord(record_type="training_run", pattern_slug="tradoor-oi-reversal-v1") for _ in range(1)]
+    )
+
+    class FakeRecordStore:
+        def __init__(self) -> None:
+            self.list_calls = 0
+            self.summarize_calls = 0
+
+        def list(self, slug, record_type=None, limit=None):
+            self.list_calls += 1
+            return record_list
+
+        def summarize_family(self, slug):
+            self.summarize_calls += 1
+            return (
+                {
+                    "entry_count": 10,
+                    "capture_count": 4,
+                    "score_count": 10,
+                    "outcome_count": 6,
+                    "verdict_count": 3,
+                    "training_run_count": 2,
+                    "model_count": 1,
+                    "capture_to_entry_rate": 0.4,
+                    "verdict_to_entry_rate": 0.3,
+                },
+                record_list[0],
+                record_list[1],
+            )
+
+    fake_record_store = FakeRecordStore()
+
     monkeypatch.setattr(
         pattern_routes,
         "_ledger",
@@ -162,46 +212,7 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     monkeypatch.setattr(
         ptr,
         "LEDGER_RECORD_STORE",
-        type(
-            "FakeRecordStore",
-            (),
-            {
-                "compute_family_stats": lambda self, slug: type(
-                    "Stats",
-                    (),
-                    {
-                        "entry_count": 10,
-                        "capture_count": 4,
-                        "score_count": 10,
-                        "outcome_count": 6,
-                        "verdict_count": 3,
-                        "training_run_count": 2,
-                        "model_count": 0,
-                        "capture_to_entry_rate": 0.4,
-                        "verdict_to_entry_rate": 0.3,
-                    },
-                )(),
-                "list": lambda self, slug, record_type=None, limit=None: (
-                    [
-                        PatternLedgerRecord(
-                            record_type="training_run",
-                            pattern_slug=slug,
-                            payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
-                        )
-                    ]
-                    if record_type == "training_run"
-                    else [
-                        PatternLedgerRecord(
-                            record_type="model",
-                            pattern_slug=slug,
-                            payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
-                        )
-                    ]
-                    if record_type == "model"
-                    else []
-                ),
-            },
-        )(),
+        fake_record_store,
     )
     monkeypatch.setattr(
         ptr,
@@ -247,6 +258,8 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     assert payload["alert_policy"]["mode"] == "gated"
     assert payload["latest_training_run"]["record_type"] == "training_run"
     assert payload["latest_model"]["record_type"] == "model"
+    assert fake_record_store.summarize_calls == 1
+    assert fake_record_store.list_calls == 0
 
 
 def test_set_user_verdict_appends_verdict_record(monkeypatch) -> None:

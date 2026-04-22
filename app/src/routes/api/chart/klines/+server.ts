@@ -2,9 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getChartSeries } from '$lib/server/chart/chartSeriesService';
 import { chartKlinesLimiter } from '$lib/server/rateLimit';
+import { getRequestIp } from '$lib/server/requestIp';
 
-export const GET: RequestHandler = async ({ url, fetch, getClientAddress }) => {
-  if (!chartKlinesLimiter.check(getClientAddress())) {
+export const GET: RequestHandler = async ({ url, fetch, request, getClientAddress }) => {
+  const ip = getRequestIp({ request, getClientAddress });
+  if (!chartKlinesLimiter.check(ip)) {
     return json({ error: 'Too many requests' }, { status: 429 });
   }
   const symbol    = url.searchParams.get('symbol') ?? 'BTCUSDT';

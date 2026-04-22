@@ -27,6 +27,12 @@ const IMMUTABLE_ASSET = /\/_app\/immutable\//;
 
 const PUBLIC_API_PREFIXES = [
   '/api/auth/',           // login, register, session check, nonce, etc.
+  '/api/agents/stats',         // local-first agent sync no-op endpoints
+  '/api/cogochi/analyze',       // read-only shell bootstrap
+  '/api/cogochi/alerts',        // read-only recent alert feed
+  '/api/cogochi/thermometer',   // read-only market pulse
+  '/api/cogochi/alpha/',        // read-only alpha world model
+  '/api/captures/chart-annotations', // optional chart overlay feed
   '/api/market/ohlcv',
   '/api/market/sparklines',
   '/api/market/funding',
@@ -38,6 +44,12 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/derivatives',
   '/api/market/venue-divergence',  // W-0122-A: public read-only, 30s cached, rate limited
   '/api/market/liq-clusters',      // W-0122-B1: public read-only, derived from chart feed
+  '/api/market/indicator-context', // W-0122 rolling percentile provider (30d distribution)
+  '/api/market/stablecoin-ssr',    // W-0122-F: derived SSR (DefiLlama + CoinGecko), 30m cache
+  '/api/market/rv-cone',           // W-0122-F: realized vol cone (Binance klines), 1h cache
+  '/api/market/funding-flip',      // W-0122-F: funding flip clock (Binance history), 10m cache
+  '/api/confluence/',              // W-0122-Confluence: score aggregator (read-only)
+  '/api/market/options-snapshot',  // W-0122-C1: Deribit options snapshot (public), 5m cache
   '/api/coingecko/',
   '/api/feargreed',
   '/api/chart/',          // chart klines + feed — public market data, rate-limited
@@ -66,7 +78,7 @@ function isPublicApiPath(pathname: string): boolean {
 }
 
 function isPublicPagePath(pathname: string): boolean {
-  return pathname === '/';
+  return pathname === '/' || pathname === '/cogochi';
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -129,15 +141,15 @@ export const handle: Handle = async ({ event, resolve }) => {
   response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
   // dev: allow inline scripts/eval for Vite HMR; prod: lock down to reduce XSS surface.
   const scriptSrc = dev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-    : "script-src 'self'";
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com"
+    : "script-src 'self' https://va.vercel-scripts.com";
   response.headers.set('Content-Security-Policy', [
     "default-src 'self'",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https:",
     "connect-src 'self' wss: https:",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     "worker-src 'self' blob:",
     "base-uri 'self'",
     "frame-ancestors 'self'",
