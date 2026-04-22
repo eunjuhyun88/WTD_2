@@ -42,6 +42,7 @@ Engine logic change
 - `engine/tests/test_observability_flywheel.py`
 - `engine/tests/test_outcome_resolver.py`
 - `docs/runbooks/pattern-ledger-record-cutover.md`
+- `scripts/w0126-cutover-preflight.sh`
 
 ## Facts
 
@@ -97,6 +98,7 @@ Engine logic change
 
 - [ ] Supabase 대시보드에서 `018_pattern_ledger_records.sql` 실행
 - [ ] GCP 엔진 Cloud Run에 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` env 확인
+- [ ] `bash scripts/w0126-cutover-preflight.sh` 로 cutover preflight 통과
 - [ ] GCP 재배포 후 `GET /patterns/stats/all` 응답 시간 비교
 - [ ] (선택) `engine/scripts/backfill_ledger_records.py` 실행으로 기존 JSON → Supabase 백필
 
