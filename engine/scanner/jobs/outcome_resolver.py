@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureRecord
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
+from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.outcome_policy import (
     DEFAULT_EVAL_WINDOW_HOURS,
@@ -109,6 +109,7 @@ def resolve_outcomes(
     limit: int = 500,
     capture_store: CaptureStore | None = None,
     ledger_store: LedgerStore | None = None,
+    record_store: LedgerRecordStore | None = None,
     klines_loader=None,
 ) -> list[PatternOutcome]:
     """Resolve every due pending capture. Returns new PatternOutcomes.
@@ -120,6 +121,7 @@ def resolve_outcomes(
 
     captures_store = capture_store or CaptureStore()
     outcomes_store = ledger_store or get_ledger_store()
+    records_store = record_store or LEDGER_RECORD_STORE
     loader = klines_loader or default_loader
     ts_now = now_ms_val if now_ms_val is not None else now_ms()
 
@@ -183,7 +185,7 @@ def resolve_outcomes(
             window_hours=policy.evaluation_window_hours,
         )
         outcomes_store.save(outcome)
-        LEDGER_RECORD_STORE.append_outcome_record(outcome)
+        records_store.append_outcome_record(outcome)
         captures_store.update_status(
             capture.capture_id,
             "outcome_ready",

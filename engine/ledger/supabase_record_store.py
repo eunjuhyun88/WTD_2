@@ -116,6 +116,20 @@ class SupabaseLedgerRecordStore:
         result = q.execute()
         return [_row_to_record(r) for r in (result.data or [])]
 
+    def list_pattern_slugs(self) -> list[str]:
+        result = (
+            _sb()
+            .table("pattern_ledger_records")
+            .select("pattern_slug")
+            .execute()
+        )
+        slugs = {
+            row.get("pattern_slug")
+            for row in (result.data or [])
+            if row.get("pattern_slug")
+        }
+        return sorted(slugs)
+
     # ── Stats — O(1) query instead of O(N file scans) ───────────────────────
 
     def summarize_family(
