@@ -179,6 +179,21 @@ def get_stats_sync(
     preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
     ml_shadow = summarize_pattern_dataset(outcomes)
     alert_policy = ALERT_POLICY_STORE.load(slug)
+    record_family_payload = (
+        record_family
+        if isinstance(record_family, dict)
+        else {
+            "entry_count": record_family.entry_count,
+            "capture_count": record_family.capture_count,
+            "score_count": record_family.score_count,
+            "outcome_count": record_family.outcome_count,
+            "verdict_count": record_family.verdict_count,
+            "training_run_count": record_family.training_run_count,
+            "model_count": record_family.model_count,
+            "capture_to_entry_rate": record_family.capture_to_entry_rate,
+            "verdict_to_entry_rate": record_family.verdict_to_entry_rate,
+        }
+    )
     return {
         "pattern_slug": stats.pattern_slug,
         "total": stats.total_instances,
@@ -201,18 +216,18 @@ def get_stats_sync(
         },
         "decay_direction": stats.decay_direction,
         "record_family": {
-            "entry_count": record_family["entry_count"],
-            "capture_count": record_family["capture_count"],
-            "score_count": record_family["score_count"],
-            "outcome_count": record_family["outcome_count"],
-            "verdict_count": record_family["verdict_count"],
-            "training_run_count": record_family["training_run_count"],
-            "model_count": record_family["model_count"],
-            "capture_to_entry_rate": round(record_family["capture_to_entry_rate"], 3)
-            if record_family["capture_to_entry_rate"] is not None
+            "entry_count": record_family_payload["entry_count"],
+            "capture_count": record_family_payload["capture_count"],
+            "score_count": record_family_payload["score_count"],
+            "outcome_count": record_family_payload["outcome_count"],
+            "verdict_count": record_family_payload["verdict_count"],
+            "training_run_count": record_family_payload["training_run_count"],
+            "model_count": record_family_payload["model_count"],
+            "capture_to_entry_rate": round(record_family_payload["capture_to_entry_rate"], 3)
+            if record_family_payload["capture_to_entry_rate"] is not None
             else None,
-            "verdict_to_entry_rate": round(record_family["verdict_to_entry_rate"], 3)
-            if record_family["verdict_to_entry_rate"] is not None
+            "verdict_to_entry_rate": round(record_family_payload["verdict_to_entry_rate"], 3)
+            if record_family_payload["verdict_to_entry_rate"] is not None
             else None,
         },
         "model_registry": {
