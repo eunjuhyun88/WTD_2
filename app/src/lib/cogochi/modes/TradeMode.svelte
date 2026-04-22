@@ -32,6 +32,15 @@
   } from '$lib/indicators/adapter';
   import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
   import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
+  import {
+    getAnalyzePanelsByZone,
+    isAnalyzePanelCollapsed,
+    moveAnalyzePanel as moveAnalyzePanelLayout,
+    normalizeAnalyzePanelLayout,
+    setAnalyzePanelZone,
+    toggleAnalyzePanelCollapsed,
+    type AnalyzePanelId,
+  } from '$lib/contracts/cogochiPanelLayout';
 
   interface Props {
     mode: 'trade' | 'train' | 'flywheel';
@@ -383,6 +392,108 @@
     return lines;
   }
 
+  const ANALYZE_PANEL_META: Record<AnalyzePanelId, { kicker: string; copy: string }> = {
+    thesis: {
+      kicker: 'THESIS',
+      copy: '오른쪽 HUD가 아니라 실제 해석 근거를 읽는 상세 패널',
+    },
+    'live-stack': {
+      kicker: 'LIVE STACK',
+      copy: '펀딩·OI·볼륨의 현재값과 스택 해석',
+    },
+    options: {
+      kicker: 'OPTIONS',
+      copy: 'Deribit 스냅샷 기반 감마/스큐 컨텍스트',
+    },
+    'venue-divergence': {
+      kicker: 'VENUE DIVERGENCE',
+      copy: '거래소 간 흐름 차이와 포지션 비대칭',
+    },
+    'verified-backdrop': {
+      kicker: 'ON-CHAIN / DEX / VOL',
+      copy: '실데이터 기반 backdrop 지표와 source/trust/methodology',
+    },
+    'dex-market-structure': {
+      kicker: 'DEX MARKET STRUCTURE',
+      copy: '실제 top pairs, 체인 집중도, TVL backdrop 을 같은 payload로 본다',
+    },
+    'onchain-cycle-detail': {
+      kicker: 'ON-CHAIN CYCLE DETAIL',
+      copy: 'cycle proxy 의 raw metrics 를 직접 확인한다',
+    },
+    'evidence-log': {
+      kicker: 'EVIDENCE LOG',
+      copy: '판단에 사용한 근거 항목을 빠르게 확인',
+    },
+    'execution-board': {
+      kicker: 'EXECUTION BOARD',
+      copy: '청산 밀도와 주문 계획을 같이 본다',
+    },
+  };
+
+  const ANALYZE_PANEL_STUDIES: Record<AnalyzePanelId, string[]> = {
+    thesis: ['confluence', 'price-structure'],
+    'live-stack': ['funding', 'open-interest', 'cvd'],
+    options: ['options'],
+    'venue-divergence': ['venue-divergence'],
+    'verified-backdrop': ['stablecoin-liquidity', 'realized-volatility', 'funding-regime', 'onchain-cycle', 'dex-liquidity', 'dex-whale-flow'],
+    'dex-market-structure': ['dex-liquidity', 'dex-whale-flow'],
+    'onchain-cycle-detail': ['onchain-cycle'],
+    'evidence-log': ['confluence', 'funding', 'open-interest', 'onchain-cycle', 'dex-liquidity', 'venue-divergence'],
+    'execution-board': ['execution', 'liquidity'],
+  };
+
+  const analyzePanelLayout = $derived(normalizeAnalyzePanelLayout(tabState.analyzeLayout));
+
+  function updateAnalyzePanelLayout(
+    updater: (layout: ReturnType<typeof normalizeAnalyzePanelLayout>) => ReturnType<typeof normalizeAnalyzePanelLayout>,
+  ) {
+    updateTabState((state) => ({
+      ...state,
+      analyzeLayout: updater(normalizeAnalyzePanelLayout(state.analyzeLayout)),
+    }));
+  }
+
+  function moveAnalyzePanel(id: AnalyzePanelId, direction: 'backward' | 'forward') {
+    updateAnalyzePanelLayout((layout) => moveAnalyzePanelLayout(layout, id, direction));
+  }
+
+  function toggleAnalyzePanelDock(id: AnalyzePanelId) {
+    const currentZone = analyzePanelLayout.items.find((item) => item.id === id)?.zone ?? 'main';
+    updateAnalyzePanelLayout((layout) => setAnalyzePanelZone(layout, id, currentZone === 'main' ? 'side' : 'main'));
+  }
+
+  function toggleAnalyzePanelSection(id: AnalyzePanelId) {
+    updateAnalyzePanelLayout((layout) => toggleAnalyzePanelCollapsed(layout, id));
+  }
+
+  function analyzePanelIsCollapsed(id: AnalyzePanelId): boolean {
+    return isAnalyzePanelCollapsed(analyzePanelLayout, id);
+  }
+
+  function analyzePanelVisible(id: AnalyzePanelId): boolean {
+    switch (id) {
+      case 'options':
+        return Boolean(indicatorValues.put_call_ratio || indicatorValues.options_skew_25d);
+      case 'verified-backdrop':
+        return workspaceBackdropStudies.length > 0;
+      case 'dex-market-structure':
+        return Boolean(dexDetailPayload);
+      case 'onchain-cycle-detail':
+        return Boolean(onchainDetailPayload);
+      default:
+        return true;
+    }
+  }
+
+  const analyzeMainPanelIds = $derived(
+    getAnalyzePanelsByZone(analyzePanelLayout, 'main').filter((id) => analyzePanelVisible(id))
+  );
+
+  const analyzeSidePanelIds = $derived(
+    getAnalyzePanelsByZone(analyzePanelLayout, 'side').filter((id) => analyzePanelVisible(id))
+  );
+
   // Ordered list of indicators to render — driven by ShellState.visibleIndicators.
   // Gauge row: archetypes A, D, E (scalar / divergence / regime cards).
   // Venue stack: archetype F (multi-venue strips).
@@ -423,20 +534,34 @@
     updateTabState(s => ({ ...s, peekOpen: true, drawerTab: 'analyze' }));
   }
 
-  function openAnalyzeAIDetail() {
-    const selectedStudies = workspaceEnvelope.aiContext.selectedStudyIds
+  function openAnalyzeAIDetail(panelId?: AnalyzePanelId) {
+    const selectedIds = panelId
+      ? ANALYZE_PANEL_STUDIES[panelId].filter((id) => workspaceStudyMap[id])
+      : workspaceEnvelope.aiContext.selectedStudyIds;
+
+    const selectedStudies = selectedIds
       .map((id) => workspaceStudyMap[id])
       .filter((study): study is NonNullable<typeof study> => Boolean(study));
 
-    const userText = `${symbol} ${timeframe} analyze detail 설명해줘`;
+    const panelMeta = panelId ? ANALYZE_PANEL_META[panelId] : null;
+    const userText = panelMeta
+      ? `${symbol} ${timeframe} ${panelMeta.kicker} detail 설명해줘`
+      : `${symbol} ${timeframe} analyze detail 설명해줘`;
+    const extraLines =
+      panelId === 'evidence-log'
+        ? evidenceItems.map((item) => `- Evidence: ${item.k} ${item.v}${item.note ? ` · ${item.note}` : ''}`)
+        : panelId === 'execution-board'
+          ? proposal.map((item) => `- ${item.label}: ${item.val}${item.hint ? ` · ${item.hint}` : ''}`)
+          : [];
     const assistantText = [
-      `**${symbol} · ${timeframe} ANALYZE DETAIL**`,
+      `**${symbol} · ${timeframe} ${panelMeta?.kicker ?? 'ANALYZE DETAIL'}**`,
       workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,
       `- Selected studies: ${selectedStudies.map((study) => study.title).join(', ') || '—'}`,
       ...(workspaceEnvelope.aiContext.warnings ?? []).map((warning) => `- Warning: ${warning}`),
       '',
       '**Study Summary**',
       ...selectedStudies.flatMap((study) => buildStudyAIDetailLines(study)),
+      ...extraLines,
     ]
       .filter((line): line is string => Boolean(line))
       .join('\n');
@@ -1134,233 +1259,310 @@
                   {#if confluence}
                     <ConfluenceBanner value={confluence} history={confluenceHistory} />
                   {/if}
-                  <div class="analyze-section">
-                    <div class="analyze-section-head">
-                      <span class="analyze-kicker">THESIS</span>
-                      <span class="analyze-section-copy">오른쪽 HUD가 아니라 실제 해석 근거를 읽는 상세 패널</span>
-                    </div>
-                    <div class="narrative">
-                      <span class="bull">{analyzeDetailDirection} 진입 권장 ·</span>
-                      {' '}{analyzeDetailThesis}
-                      {#if analyzeDetailWarnings.length > 0}
-                        <div class="analyze-warning-list">
-                          {#each analyzeDetailWarnings as warning}
-                            <span class="warn">{warning}</span>
-                          {/each}
+                  {#each analyzeMainPanelIds as panelId, panelIndex}
+                    <div class="analyze-section">
+                      <div class="analyze-section-head">
+                        <div class="analyze-head-copy">
+                          <span class="analyze-kicker">{ANALYZE_PANEL_META[panelId].kicker}</span>
+                          <span class="analyze-section-copy">{ANALYZE_PANEL_META[panelId].copy}</span>
                         </div>
-                      {/if}
-                    </div>
-                  </div>
-                  <div class="analyze-section">
-                    <div class="analyze-section-head">
-                      <span class="analyze-kicker">LIVE STACK</span>
-                      <span class="analyze-section-copy">펀딩·OI·볼륨의 현재값과 스택 해석</span>
-                    </div>
-                    <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
-                  </div>
-                  {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
-                    <div class="analyze-section">
-                      <div class="analyze-section-head">
-                        <span class="analyze-kicker">OPTIONS</span>
-                        <span class="analyze-section-copy">Deribit 스냅샷 기반 감마/스큐 컨텍스트</span>
+                        <div class="analyze-panel-actions">
+                          <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'backward')} disabled={panelIndex === 0}>↑</button>
+                          <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeMainPanelIds.length - 1}>↓</button>
+                          <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>DOCK</button>
+                          <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
+                          <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
+                            {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
+                          </button>
+                        </div>
                       </div>
-                      <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-                    </div>
-                  {/if}
-                  <div class="analyze-section">
-                    <div class="analyze-section-head">
-                      <span class="analyze-kicker">VENUE DIVERGENCE</span>
-                      <span class="analyze-section-copy">거래소 간 흐름 차이와 포지션 비대칭</span>
-                    </div>
-                    <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
-                  </div>
-                  {#if workspaceBackdropStudies.length}
-                    <div class="analyze-section">
-                      <div class="analyze-section-head">
-                        <span class="analyze-kicker">ON-CHAIN / DEX / VOL</span>
-                        <span class="analyze-section-copy">실데이터 기반 backdrop 지표와 source/trust/methodology</span>
-                      </div>
-                      <div class="study-grid">
-                        {#each workspaceBackdropStudies as study}
-                          <div class="study-card">
-                            <div class="study-card-head">
-                              <div>
-                                <div class="study-card-title">{study.title}</div>
-                                <div class="study-card-sub">{formatSourceRefs(study.sourceRefs)} · {formatFreshness(study.freshnessMs)}</div>
+                      {#if !analyzePanelIsCollapsed(panelId)}
+                        {#if panelId === 'thesis'}
+                          <div class="narrative">
+                            <span class="bull">{narrativeDir} 진입 권장 ·</span>
+                            {' '}{narrativeBias ?? '분석 완료'}
+                            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+                              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+                            {/if}
+                          </div>
+                        {:else if panelId === 'live-stack'}
+                          <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+                        {:else if panelId === 'options'}
+                          <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+                        {:else if panelId === 'venue-divergence'}
+                          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
+                        {:else if panelId === 'verified-backdrop'}
+                          <div class="study-grid">
+                            {#each workspaceBackdropStudies as study}
+                              <div class="study-card">
+                                <div class="study-card-head">
+                                  <div>
+                                    <div class="study-card-title">{study.title}</div>
+                                    <div class="study-card-sub">{formatSourceRefs(study.sourceRefs)} · {formatFreshness(study.freshnessMs)}</div>
+                                  </div>
+                                  <span class="study-card-trust" data-tier={study.trust.tier}>{study.trust.tier}</span>
+                                </div>
+                                <div class="study-card-metrics">
+                                  {#each study.summary as row}
+                                    <div class="study-metric">
+                                      <span class="study-metric-label">{row.label}</span>
+                                      <span class="study-metric-value" class:tone-bull={row.tone === 'bull'} class:tone-bear={row.tone === 'bear'} class:tone-warn={row.tone === 'warn'}>
+                                        {row.value ?? '—'}
+                                      </span>
+                                      {#if row.note}
+                                        <span class="study-metric-note">{row.note}</span>
+                                      {/if}
+                                    </div>
+                                  {/each}
+                                </div>
+                                {#if study.methodology}
+                                  <div class="study-card-method">{study.methodology.label}</div>
+                                {/if}
                               </div>
-                              <span class="study-card-trust" data-tier={study.trust.tier}>{study.trust.tier}</span>
+                            {/each}
+                          </div>
+                        {:else if panelId === 'dex-market-structure' && dexDetailPayload}
+                          <div class="dex-strip">
+                            <div class="dex-strip-item">
+                              <span class="dex-strip-label">TOTAL DEFI TVL</span>
+                              <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.totalDefiTvlUsd)}</span>
+                              <span class="dex-strip-note">{formatPctCompact(dexDetailPayload.totalDefiTvlChange24hPct)}</span>
                             </div>
-                            <div class="study-card-metrics">
-                              {#each study.summary as row}
-                                <div class="study-metric">
-                                  <span class="study-metric-label">{row.label}</span>
-                                  <span class="study-metric-value" class:tone-bull={row.tone === 'bull'} class:tone-bear={row.tone === 'bear'} class:tone-warn={row.tone === 'warn'}>
-                                    {row.value ?? '—'}
-                                  </span>
-                                  {#if row.note}
-                                    <span class="study-metric-note">{row.note}</span>
-                                  {/if}
+                            <div class="dex-strip-item">
+                              <span class="dex-strip-label">DEX SHARE</span>
+                              <span class="dex-strip-value">{formatPctCompact(dexDetailPayload.topDexSharePct)}</span>
+                              <span class="dex-strip-note">{dexDetailPayload.coverage.mode} coverage</span>
+                            </div>
+                            <div class="dex-strip-item">
+                              <span class="dex-strip-label">AVG TRADE</span>
+                              <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.avgTradeSizeUsd)}</span>
+                              <span class="dex-strip-note">{formatCountCompact(dexDetailPayload.txns24h)} txns / 24h</span>
+                            </div>
+                          </div>
+                          {#if dexDetailPayload.chainBreakdown.length}
+                            <div class="dex-chain-grid">
+                              {#each dexDetailPayload.chainBreakdown as chain}
+                                <div class="dex-chain-card">
+                                  <div class="dex-chain-head">
+                                    <span class="dex-chain-name">{chain.chainLabel}</span>
+                                    <span class="dex-chain-share">{formatPctCompact(chain.liquiditySharePct)}</span>
+                                  </div>
+                                  <div class="dex-chain-meta">
+                                    <span>TVL {formatUsdCompact(chain.chainTvlUsd)}</span>
+                                    <span>{formatPctCompact(chain.chainTvlChange1dPct)}</span>
+                                  </div>
+                                  <div class="dex-chain-meta">
+                                    <span>Vol {formatUsdCompact(chain.volume24hUsd)}</span>
+                                    <span>Liq {formatUsdCompact(chain.liquidityUsd)}</span>
+                                  </div>
                                 </div>
                               {/each}
                             </div>
-                            {#if study.methodology}
-                              <div class="study-card-method">{study.methodology.label}</div>
-                            {/if}
+                          {/if}
+                          <div class="dex-table-wrap">
+                            <table class="dex-table">
+                              <thead>
+                                <tr>
+                                  <th>Pair</th>
+                                  <th>DEX</th>
+                                  <th>Chain</th>
+                                  <th>24H Vol</th>
+                                  <th>Liq</th>
+                                  <th>Txns</th>
+                                  <th>Δ24H</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {#each dexDetailPayload.topPairs.slice(0, 6) as pair}
+                                  <tr>
+                                    <td>{pair.label}</td>
+                                    <td>{pair.dexId}</td>
+                                    <td>{pair.chainId}</td>
+                                    <td>{formatUsdCompact(pair.volume24hUsd)}</td>
+                                    <td>{formatUsdCompact(pair.liquidityUsd)}</td>
+                                    <td>{formatCountCompact(pair.txns24h)}</td>
+                                    <td class:tone-bull={(pair.priceChange24hPct ?? 0) >= 0} class:tone-bear={(pair.priceChange24hPct ?? 0) < 0}>
+                                      {formatPctCompact(pair.priceChange24hPct)}
+                                    </td>
+                                  </tr>
+                                {/each}
+                              </tbody>
+                            </table>
                           </div>
-                        {/each}
-                      </div>
-                    </div>
-                  {/if}
-                  {#if dexDetailPayload}
-                    <div class="analyze-section">
-                      <div class="analyze-section-head">
-                        <span class="analyze-kicker">DEX MARKET STRUCTURE</span>
-                        <span class="analyze-section-copy">실제 top pairs, 체인 집중도, TVL backdrop 을 같은 payload로 본다</span>
-                      </div>
-                      <div class="dex-strip">
-                        <div class="dex-strip-item">
-                          <span class="dex-strip-label">TOTAL DEFI TVL</span>
-                          <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.totalDefiTvlUsd)}</span>
-                          <span class="dex-strip-note">{formatPctCompact(dexDetailPayload.totalDefiTvlChange24hPct)}</span>
-                        </div>
-                        <div class="dex-strip-item">
-                          <span class="dex-strip-label">DEX SHARE</span>
-                          <span class="dex-strip-value">{formatPctCompact(dexDetailPayload.topDexSharePct)}</span>
-                          <span class="dex-strip-note">{dexDetailPayload.coverage.mode} coverage</span>
-                        </div>
-                        <div class="dex-strip-item">
-                          <span class="dex-strip-label">AVG TRADE</span>
-                          <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.avgTradeSizeUsd)}</span>
-                          <span class="dex-strip-note">{formatCountCompact(dexDetailPayload.txns24h)} txns / 24h</span>
-                        </div>
-                      </div>
-                      {#if dexDetailPayload.chainBreakdown.length}
-                        <div class="dex-chain-grid">
-                          {#each dexDetailPayload.chainBreakdown as chain}
+                        {:else if panelId === 'onchain-cycle-detail' && onchainDetailPayload}
+                          <div class="dex-chain-grid onchain-metric-grid">
                             <div class="dex-chain-card">
                               <div class="dex-chain-head">
-                                <span class="dex-chain-name">{chain.chainLabel}</span>
-                                <span class="dex-chain-share">{formatPctCompact(chain.liquiditySharePct)}</span>
+                                <span class="dex-chain-name">NETFLOW 24H</span>
+                                <span class:tone-bull={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) < 0} class:tone-bear={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) > 0}>
+                                  {formatUsdCompact(onchainDetailPayload.exchangeReserve?.netflow24h)}
+                                </span>
                               </div>
-                              <div class="dex-chain-meta">
-                                <span>TVL {formatUsdCompact(chain.chainTvlUsd)}</span>
-                                <span>{formatPctCompact(chain.chainTvlChange1dPct)}</span>
+                              <div class="dex-chain-meta"><span>7D change</span><span>{formatPctCompact(onchainDetailPayload.exchangeReserve?.change7dPct)}</span></div>
+                            </div>
+                            <div class="dex-chain-card">
+                              <div class="dex-chain-head">
+                                <span class="dex-chain-name">MVRV</span>
+                                <span>{onchainDetailPayload.metrics?.mvrv != null ? onchainDetailPayload.metrics.mvrv.toFixed(2) : '—'}</span>
                               </div>
-                              <div class="dex-chain-meta">
-                                <span>Vol {formatUsdCompact(chain.volume24hUsd)}</span>
-                                <span>Liq {formatUsdCompact(chain.liquidityUsd)}</span>
+                              <div class="dex-chain-meta"><span>NUPL</span><span>{onchainDetailPayload.metrics?.nupl != null ? onchainDetailPayload.metrics.nupl.toFixed(3) : '—'}</span></div>
+                            </div>
+                            <div class="dex-chain-card">
+                              <div class="dex-chain-head">
+                                <span class="dex-chain-name">SOPR</span>
+                                <span>{onchainDetailPayload.metrics?.sopr != null ? onchainDetailPayload.metrics.sopr.toFixed(3) : '—'}</span>
                               </div>
+                              <div class="dex-chain-meta"><span>Puell</span><span>{onchainDetailPayload.metrics?.puellMultiple != null ? onchainDetailPayload.metrics.puellMultiple.toFixed(2) : '—'}</span></div>
+                            </div>
+                            <div class="dex-chain-card">
+                              <div class="dex-chain-head">
+                                <span class="dex-chain-name">WHALE</span>
+                                <span>{formatCountCompact(onchainDetailPayload.whale?.whaleCount)}</span>
+                              </div>
+                              <div class="dex-chain-meta"><span>ratio</span><span>{onchainDetailPayload.whale?.exchangeWhaleRatio != null ? formatPctCompact(onchainDetailPayload.whale.exchangeWhaleRatio * 100) : '—'}</span></div>
+                            </div>
+                          </div>
+                        {:else if panelId === 'evidence-log'}
+                          <div class="evidence-grid">
+                            {#each evidenceItems as item}
+                              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                                <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                                <span class="ev-key">{item.k}</span>
+                                <span class="ev-val">{item.v}</span>
+                                <span class="ev-note">{item.note}</span>
+                              </div>
+                            {/each}
+                          </div>
+                        {:else if panelId === 'execution-board'}
+                          {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+                            <div style="margin-bottom: 8px;">
+                              <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                            </div>
+                          {/if}
+                          <div class="proposal-label">PROPOSAL</div>
+                          {#each proposal as p}
+                            <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                              <span class="prop-l">{p.label}</span>
+                              <span class="prop-v">{p.val}</span>
+                              <span class="prop-h">{p.hint}</span>
                             </div>
                           {/each}
-                        </div>
+                        {/if}
                       {/if}
-                      <div class="dex-table-wrap">
-                        <table class="dex-table">
-                          <thead>
-                            <tr>
-                              <th>Pair</th>
-                              <th>DEX</th>
-                              <th>Chain</th>
-                              <th>24H Vol</th>
-                              <th>Liq</th>
-                              <th>Txns</th>
-                              <th>Δ24H</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {#each dexDetailPayload.topPairs.slice(0, 6) as pair}
-                              <tr>
-                                <td>{pair.label}</td>
-                                <td>{pair.dexId}</td>
-                                <td>{pair.chainId}</td>
-                                <td>{formatUsdCompact(pair.volume24hUsd)}</td>
-                                <td>{formatUsdCompact(pair.liquidityUsd)}</td>
-                                <td>{formatCountCompact(pair.txns24h)}</td>
-                                <td class:tone-bull={(pair.priceChange24hPct ?? 0) >= 0} class:tone-bear={(pair.priceChange24hPct ?? 0) < 0}>
-                                  {formatPctCompact(pair.priceChange24hPct)}
-                                </td>
-                              </tr>
-                            {/each}
-                          </tbody>
-                        </table>
-                      </div>
                     </div>
-                  {/if}
-                  {#if onchainDetailPayload}
-                    <div class="analyze-section">
-                      <div class="analyze-section-head">
-                        <span class="analyze-kicker">ON-CHAIN CYCLE DETAIL</span>
-                        <span class="analyze-section-copy">cycle proxy 의 raw metrics 를 직접 확인한다</span>
-                      </div>
-                      <div class="dex-chain-grid onchain-metric-grid">
-                        <div class="dex-chain-card">
-                          <div class="dex-chain-head">
-                            <span class="dex-chain-name">NETFLOW 24H</span>
-                            <span class:tone-bull={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) < 0} class:tone-bear={(onchainDetailPayload.exchangeReserve?.netflow24h ?? 0) > 0}>
-                              {formatUsdCompact(onchainDetailPayload.exchangeReserve?.netflow24h)}
-                            </span>
-                          </div>
-                          <div class="dex-chain-meta"><span>7D change</span><span>{formatPctCompact(onchainDetailPayload.exchangeReserve?.change7dPct)}</span></div>
-                        </div>
-                        <div class="dex-chain-card">
-                          <div class="dex-chain-head">
-                            <span class="dex-chain-name">MVRV</span>
-                            <span>{onchainDetailPayload.metrics?.mvrv != null ? onchainDetailPayload.metrics.mvrv.toFixed(2) : '—'}</span>
-                          </div>
-                          <div class="dex-chain-meta"><span>NUPL</span><span>{onchainDetailPayload.metrics?.nupl != null ? onchainDetailPayload.metrics.nupl.toFixed(3) : '—'}</span></div>
-                        </div>
-                        <div class="dex-chain-card">
-                          <div class="dex-chain-head">
-                            <span class="dex-chain-name">SOPR</span>
-                            <span>{onchainDetailPayload.metrics?.sopr != null ? onchainDetailPayload.metrics.sopr.toFixed(3) : '—'}</span>
-                          </div>
-                          <div class="dex-chain-meta"><span>Puell</span><span>{onchainDetailPayload.metrics?.puellMultiple != null ? onchainDetailPayload.metrics.puellMultiple.toFixed(2) : '—'}</span></div>
-                        </div>
-                        <div class="dex-chain-card">
-                          <div class="dex-chain-head">
-                            <span class="dex-chain-name">WHALE</span>
-                            <span>{formatCountCompact(onchainDetailPayload.whale?.whaleCount)}</span>
-                          </div>
-                          <div class="dex-chain-meta"><span>ratio</span><span>{onchainDetailPayload.whale?.exchangeWhaleRatio != null ? formatPctCompact(onchainDetailPayload.whale.exchangeWhaleRatio * 100) : '—'}</span></div>
-                        </div>
-                      </div>
-                    </div>
-                  {/if}
-                  <div class="analyze-section">
-                    <div class="analyze-section-head">
-                      <span class="analyze-kicker">EVIDENCE LOG</span>
-                      <span class="analyze-section-copy">판단에 사용한 근거 항목을 빠르게 확인</span>
-                    </div>
-                    <div class="evidence-grid">
-                      {#each analyzeEvidenceItems as item}
-                        <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
-                          <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
-                          <span class="ev-key">{item.k}</span>
-                          <span class="ev-val">{item.v}</span>
-                          <span class="ev-note">{item.note}</span>
-                        </div>
-                      {/each}
-                    </div>
-                  </div>
+                  {/each}
                 </div>
                 <!-- Right: execution board -->
                 <div class="analyze-right">
-                  <div class="analyze-sidebox">
-                    <div class="analyze-section-head compact">
-                      <span class="analyze-kicker">EXECUTION BOARD</span>
-                      <span class="analyze-section-copy">청산 밀도와 주문 계획을 같이 본다</span>
-                    </div>
-                    {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
-                      <div style="margin-bottom: 8px;">
-                        <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                  <div class="analyze-side-stack">
+                    {#if analyzeSidePanelIds.length === 0}
+                      <div class="analyze-side-empty">
+                        상세 패널을 `DOCK` 하면 이 inspector rail 에 배치됩니다.
                       </div>
                     {/if}
-                    <div class="proposal-label">PROPOSAL</div>
-                    {#each analyzeExecutionProposal as p}
-                      <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-                        <span class="prop-l">{p.label}</span>
-                        <span class="prop-v">{p.val}</span>
-                        <span class="prop-h">{p.hint}</span>
+                    {#each analyzeSidePanelIds as panelId, panelIndex}
+                      <div class="analyze-sidebox">
+                        <div class="analyze-section-head compact">
+                          <div class="analyze-head-copy">
+                            <span class="analyze-kicker">{ANALYZE_PANEL_META[panelId].kicker}</span>
+                            <span class="analyze-section-copy">{ANALYZE_PANEL_META[panelId].copy}</span>
+                          </div>
+                          <div class="analyze-panel-actions">
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'backward')} disabled={panelIndex === 0}>↑</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => moveAnalyzePanel(panelId, 'forward')} disabled={panelIndex === analyzeSidePanelIds.length - 1}>↓</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelDock(panelId)}>MAIN</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => openAnalyzeAIDetail(panelId)}>AI</button>
+                            <button class="analyze-panel-btn" type="button" onclick={() => toggleAnalyzePanelSection(panelId)}>
+                              {analyzePanelIsCollapsed(panelId) ? 'OPEN' : 'FOLD'}
+                            </button>
+                          </div>
+                        </div>
+                        {#if !analyzePanelIsCollapsed(panelId)}
+                          {#if panelId === 'execution-board'}
+                            {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+                              <div style="margin-bottom: 8px;">
+                                <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                              </div>
+                            {/if}
+                            <div class="proposal-label">PROPOSAL</div>
+                            {#each proposal as p}
+                              <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                                <span class="prop-l">{p.label}</span>
+                                <span class="prop-v">{p.val}</span>
+                                <span class="prop-h">{p.hint}</span>
+                              </div>
+                            {/each}
+                          {:else if panelId === 'verified-backdrop'}
+                            <div class="study-grid side-grid">
+                              {#each workspaceBackdropStudies as study}
+                                <div class="study-card">
+                                  <div class="study-card-head">
+                                    <div>
+                                      <div class="study-card-title">{study.title}</div>
+                                      <div class="study-card-sub">{formatSourceRefs(study.sourceRefs)} · {formatFreshness(study.freshnessMs)}</div>
+                                    </div>
+                                    <span class="study-card-trust" data-tier={study.trust.tier}>{study.trust.tier}</span>
+                                  </div>
+                                  <div class="study-card-metrics">
+                                    {#each study.summary.slice(0, 2) as row}
+                                      <div class="study-metric">
+                                        <span class="study-metric-label">{row.label}</span>
+                                        <span class="study-metric-value" class:tone-bull={row.tone === 'bull'} class:tone-bear={row.tone === 'bear'} class:tone-warn={row.tone === 'warn'}>
+                                          {row.value ?? '—'}
+                                        </span>
+                                      </div>
+                                    {/each}
+                                  </div>
+                                </div>
+                              {/each}
+                            </div>
+                          {:else if panelId === 'live-stack'}
+                            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+                          {:else if panelId === 'options'}
+                            <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+                          {:else if panelId === 'venue-divergence'}
+                            <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
+                          {:else if panelId === 'thesis'}
+                            <div class="narrative compact">
+                              <span class="bull">{narrativeDir} ·</span>
+                              {' '}{narrativeBias ?? '분석 완료'}
+                            </div>
+                          {:else if panelId === 'evidence-log'}
+                            <div class="evidence-grid compact-grid">
+                              {#each evidenceItems.slice(0, 4) as item}
+                                <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                                  <span class="ev-key">{item.k}</span>
+                                  <span class="ev-val">{item.v}</span>
+                                </div>
+                              {/each}
+                            </div>
+                          {:else if panelId === 'dex-market-structure' && dexDetailPayload}
+                            <div class="dex-strip compact-strip">
+                              <div class="dex-strip-item">
+                                <span class="dex-strip-label">24H Vol</span>
+                                <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.volume24hUsd)}</span>
+                              </div>
+                              <div class="dex-strip-item">
+                                <span class="dex-strip-label">Liq</span>
+                                <span class="dex-strip-value">{formatUsdCompact(dexDetailPayload.liquidityUsd)}</span>
+                              </div>
+                            </div>
+                            {#if dexDetailPayload.topPairs[0]}
+                              <div class="dex-side-pair">{dexDetailPayload.topPairs[0].label} · {dexDetailPayload.topPairs[0].dexId} · {formatUsdCompact(dexDetailPayload.topPairs[0].volume24hUsd)}</div>
+                            {/if}
+                          {:else if panelId === 'onchain-cycle-detail' && onchainDetailPayload}
+                            <div class="dex-strip compact-strip">
+                              <div class="dex-strip-item">
+                                <span class="dex-strip-label">MVRV</span>
+                                <span class="dex-strip-value">{onchainDetailPayload.metrics?.mvrv != null ? onchainDetailPayload.metrics.mvrv.toFixed(2) : '—'}</span>
+                              </div>
+                              <div class="dex-strip-item">
+                                <span class="dex-strip-label">NUPL</span>
+                                <span class="dex-strip-value">{onchainDetailPayload.metrics?.nupl != null ? onchainDetailPayload.metrics.nupl.toFixed(3) : '—'}</span>
+                              </div>
+                            </div>
+                          {/if}
+                        {/if}
                       </div>
                     {/each}
                   </div>
@@ -2211,8 +2413,42 @@
     gap: 10px;
     flex-wrap: wrap;
   }
+  .analyze-head-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
   .analyze-section-head.compact {
     margin-bottom: 6px;
+  }
+  .analyze-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .analyze-panel-btn {
+    padding: 4px 6px;
+    border-radius: 3px;
+    border: 0.5px solid var(--g4);
+    background: var(--g1);
+    color: var(--g6);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+  }
+  .analyze-panel-btn:hover:not(:disabled) {
+    border-color: var(--tc);
+    color: var(--g9);
+    background: color-mix(in srgb, var(--tc) 6%, var(--g1));
+  }
+  .analyze-panel-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
   .analyze-kicker {
     font-family: 'JetBrains Mono', monospace;
@@ -2252,6 +2488,9 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+  .study-grid.side-grid {
+    grid-template-columns: 1fr;
   }
   .study-card {
     display: flex;
@@ -2344,6 +2583,9 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
+  .dex-strip.compact-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .dex-strip-item,
   .dex-chain-card {
     display: flex;
@@ -2433,6 +2675,12 @@
   .dex-table tbody tr:hover td {
     background: rgba(255,255,255,0.02);
   }
+  .dex-side-pair {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--g7);
+    line-height: 1.5;
+  }
   @media (max-width: 1100px) {
     .dex-strip,
     .dex-chain-grid,
@@ -2461,6 +2709,9 @@
   .ev-key { font-size: 10px; color: var(--g7); width: 80px; }
   .ev-val { font-size: 11px; color: var(--g9); font-weight: 600; }
   .ev-note { font-size: 10px; color: var(--g6); margin-left: auto; font-family: 'Geist', sans-serif; }
+  .evidence-grid.compact-grid {
+    grid-template-columns: 1fr;
+  }
 
   .analyze-right {
     width: 240px;
@@ -2470,6 +2721,20 @@
     gap: 10px;
     padding: 12px 14px;
     overflow: auto;
+  }
+  .analyze-side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .analyze-side-empty {
+    padding: 12px;
+    border: 0.5px dashed var(--g4);
+    border-radius: 4px;
+    color: var(--g5);
+    font-size: 10px;
+    line-height: 1.6;
+    background: rgba(255,255,255,0.01);
   }
   .analyze-sidebox {
     display: flex;

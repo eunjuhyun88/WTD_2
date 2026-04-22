@@ -19,6 +19,7 @@ Contract change
 - backend ingress source, freshness, ownership, fallback 규칙 정의
 - `ChartBoard -> StudySnapshot[] -> Bottom Workspace / AI` 공통 계약 정의
 - compare canvas 전환을 위한 `pin / detach / compare` 데이터 모델 정의
+- Claude-like panel layout 을 위한 `dock / reorder / collapse / AI handoff` 레이아웃 계약 정의
 - app contract scaffold 추가 (`StudySnapshot`, `WorkspaceSection`, `AIContextPack`)
 - Phase 1 producer 구현: 기존 `analyze/chart/pillar fetches` 를 `CogochiWorkspaceEnvelope` 로 묶는 pure adapter 추가
 - Phase 1 consumer 구현: `TradeMode` 의 sidebar summary / AI detail handoff 가 `CogochiWorkspaceEnvelope` 를 소비하도록 연결
@@ -43,11 +44,13 @@ Contract change
 - `docs/domains/cogochi-market-data-plane.md`
 - `app/src/lib/contracts/terminalBackend.ts`
 - `app/src/lib/contracts/cogochiDataPlane.ts`
+- `app/src/lib/contracts/cogochiPanelLayout.ts`
 - `app/src/routes/api/cogochi/workspace-bundle/+server.ts`
 - `app/src/lib/cogochi/workspaceDataPlane.ts`
 - `app/src/lib/api/terminalBackend.ts`
 - `app/src/components/terminal/workspace/ChartBoard.svelte`
 - `app/src/lib/cogochi/modes/TradeMode.svelte`
+- `app/src/lib/cogochi/shell.store.ts`
 
 ## Facts
 
@@ -58,6 +61,7 @@ Contract change
 5. 현재 backend source 는 engine route, app route, provider shim 이 섞여 있어 source-of-truth 경계가 사용자에게도, 코드에도 충분히 명확하지 않다.
 6. repo 안에는 이미 `/api/onchain/cryptoquant`, `/api/market/stablecoin-ssr`, `/api/market/rv-cone`, `/api/market/funding-flip`, `DexScreener` route 들이 있어 실데이터 기반 study 승격이 가능하다.
 7. `DefiLlama` client 도 이미 repo 안에 있어 DEX pair-level liquidity 를 `chain TVL / total DeFi TVL` backdrop 과 함께 보여줄 수 있다.
+8. 현재 하단 ANALYZE detail surface 는 고정 순서의 markup 로 렌더되고 있어, 패널 이동/도킹/비교 같은 Claude-style workspace interaction 을 지원하지 못한다.
 
 ## Assumptions
 
@@ -85,11 +89,14 @@ Contract change
 - DEX 중심 지표는 `search/symbol mapping ambiguity` 가 있으므로 trust tier 와 coverage note 를 반드시 노출한다.
 - DEX 카드의 canonical 최소 메트릭은 `24H Volume / Liquidity / Volume-to-Liquidity / Avg Trade Size / Chain TVL backdrop` 으로 둔다.
 - 하단 ANALYZE 는 backdrop card 에서 멈추지 않고 `DEX MARKET STRUCTURE / ON-CHAIN CYCLE DETAIL` detail surface 를 같은 payload로 렌더한다.
+- Claude-like panel UX 의 첫 구현은 자유형 drag/drop 전체가 아니라 `analyze panel identity + dock zone(main/side) + persistent order + collapse` 부터 넣는다.
+- Right HUD 는 의사결정 summary 전용으로 유지하고, panel 이동의 1차 대상은 하단 ANALYZE 내부의 `main column <-> side dock` 으로 한정한다.
+- 패널 이동은 `compare canvas` 의 선행 계약이며, 패널이 이동해도 데이터 source 는 동일한 `StudySnapshot` / workspace payload 를 재사용해야 한다.
 
 ## Next Steps
 
-1. backdrop study cards + DEX/on-chain detail surface 를 reusable renderer 로 분리한다.
-2. AI detail handoff 에 selected study payload 의 chain/pair/on-chain detail 을 구조적으로 포함한다.
+1. panel layout contract(`dock / reorder / collapse / AI handoff`)를 추가하고, active tab state 에 persisted layout 으로 연결한다.
+2. 하단 ANALYZE 를 fixed markup 에서 panel array render 로 전환하고, `main column <-> side dock` 이동을 실제로 붙인다.
 3. Tier 2 DEX 지표(`fees / unique swappers / DEX-vs-CEX ratio`)를 source availability 기준으로 순차 승격한다.
 
 ## Exit Criteria
