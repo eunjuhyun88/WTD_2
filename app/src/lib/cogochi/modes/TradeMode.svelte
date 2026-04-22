@@ -1059,49 +1059,106 @@
         <div class="drawer-content">
           {#if drawerTab === 'analyze'}
             <div class="analyze-body">
-              <!-- Left: confluence + indicators + narrative + evidence chips -->
-              <div class="analyze-left">
-                {#if confluence}
-                  <ConfluenceBanner value={confluence} history={confluenceHistory} />
-                {/if}
-                <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
-                {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
-                  <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-                {/if}
-                <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
-                <div class="narrative">
-                  <span class="bull">{narrativeDir} 진입 권장 ·</span>
-                  {' '}{narrativeBias ?? '분석 완료'}
-                  {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-                    {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
-                  {/if}
-                </div>
-                <div class="evidence-grid">
-                  {#each evidenceItems as item}
-                    <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
-                      <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
-                      <span class="ev-key">{item.k}</span>
-                      <span class="ev-val">{item.v}</span>
-                      <span class="ev-note">{item.note}</span>
-                    </div>
-                  {/each}
-                </div>
-              </div>
-              <!-- Right: liq heatmap + proposal -->
-              <div class="analyze-right">
-                {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
-                  <div style="margin-bottom: 8px;">
-                    <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
-                  </div>
-                {/if}
-                <div class="proposal-label">PROPOSAL</div>
-                {#each proposal as p}
-                  <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
-                    <span class="prop-l">{p.label}</span>
-                    <span class="prop-v">{p.val}</span>
-                    <span class="prop-h">{p.hint}</span>
+              <div class="analyze-overview">
+                {#each sidebarIntel as item}
+                  <div class="analyze-overview-card" class:tone-pos={item.tone === 'pos'} class:tone-neg={item.tone === 'neg'}>
+                    <span class="analyze-overview-label">{item.label}</span>
+                    <span class="analyze-overview-value">{item.value}</span>
+                    <span class="analyze-overview-note">{item.note}</span>
                   </div>
                 {/each}
+              </div>
+              <div class="analyze-columns">
+                <!-- Left: detailed reading workspace -->
+                <div class="analyze-left">
+                  {#if confluence}
+                    <ConfluenceBanner value={confluence} history={confluenceHistory} />
+                  {/if}
+                  <div class="analyze-section">
+                    <div class="analyze-section-head">
+                      <span class="analyze-kicker">THESIS</span>
+                      <span class="analyze-section-copy">오른쪽 HUD가 아니라 실제 해석 근거를 읽는 상세 패널</span>
+                    </div>
+                    <div class="narrative">
+                      <span class="bull">{narrativeDir} 진입 권장 ·</span>
+                      {' '}{narrativeBias ?? '분석 완료'}
+                      {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
+                        {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+                      {/if}
+                    </div>
+                  </div>
+                  <div class="analyze-section">
+                    <div class="analyze-section-head">
+                      <span class="analyze-kicker">LIVE STACK</span>
+                      <span class="analyze-section-copy">펀딩·OI·볼륨의 현재값과 스택 해석</span>
+                    </div>
+                    <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
+                  </div>
+                  {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+                    <div class="analyze-section">
+                      <div class="analyze-section-head">
+                        <span class="analyze-kicker">OPTIONS</span>
+                        <span class="analyze-section-copy">Deribit 스냅샷 기반 감마/스큐 컨텍스트</span>
+                      </div>
+                      <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+                    </div>
+                  {/if}
+                  <div class="analyze-section">
+                    <div class="analyze-section-head">
+                      <span class="analyze-kicker">VENUE DIVERGENCE</span>
+                      <span class="analyze-section-copy">거래소 간 흐름 차이와 포지션 비대칭</span>
+                    </div>
+                    <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
+                  </div>
+                  <div class="analyze-section">
+                    <div class="analyze-section-head">
+                      <span class="analyze-kicker">EVIDENCE LOG</span>
+                      <span class="analyze-section-copy">판단에 사용한 근거 항목을 빠르게 확인</span>
+                    </div>
+                    <div class="evidence-grid">
+                      {#each evidenceItems as item}
+                        <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
+                          <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
+                          <span class="ev-key">{item.k}</span>
+                          <span class="ev-val">{item.v}</span>
+                          <span class="ev-note">{item.note}</span>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                </div>
+                <!-- Right: execution board -->
+                <div class="analyze-right">
+                  <div class="analyze-sidebox">
+                    <div class="analyze-section-head compact">
+                      <span class="analyze-kicker">EXECUTION BOARD</span>
+                      <span class="analyze-section-copy">청산 밀도와 주문 계획을 같이 본다</span>
+                    </div>
+                    {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
+                      <div style="margin-bottom: 8px;">
+                        <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
+                      </div>
+                    {/if}
+                    <div class="proposal-label">PROPOSAL</div>
+                    {#each proposal as p}
+                      <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
+                        <span class="prop-l">{p.label}</span>
+                        <span class="prop-v">{p.val}</span>
+                        <span class="prop-h">{p.hint}</span>
+                      </div>
+                    {/each}
+                  </div>
+                  <div class="analyze-actions">
+                    <button class="analyze-action-btn" type="button" onclick={() => setDrawerTab('judge')}>
+                      <span class="analyze-action-k">04</span>
+                      <span class="analyze-action-t">JUDGE로 이동</span>
+                    </button>
+                    <button class="analyze-action-btn" type="button" onclick={() => setDrawerTab('scan')}>
+                      <span class="analyze-action-k">03</span>
+                      <span class="analyze-action-t">SCAN 비교 보기</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           {:else if drawerTab === 'scan'}
@@ -2018,9 +2075,65 @@
   .analyze-body {
     flex: 1;
     display: flex;
+    flex-direction: column;
     gap: 0;
     overflow: hidden;
     min-height: 0;
+  }
+  .analyze-overview {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px 14px 10px;
+    border-bottom: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.1));
+    flex-shrink: 0;
+  }
+  .analyze-overview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 0.5px solid var(--g4);
+    background: var(--g1);
+  }
+  .analyze-overview-card.tone-pos {
+    border-color: color-mix(in srgb, var(--pos) 45%, var(--g4));
+    background: color-mix(in srgb, var(--pos) 10%, var(--g1));
+  }
+  .analyze-overview-card.tone-neg {
+    border-color: color-mix(in srgb, var(--neg) 45%, var(--g4));
+    background: color-mix(in srgb, var(--neg) 10%, var(--g1));
+  }
+  .analyze-overview-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    letter-spacing: 0.16em;
+    color: var(--g5);
+  }
+  .analyze-overview-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--g9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .analyze-overview-note {
+    font-size: 9px;
+    color: var(--g6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .analyze-columns {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
   }
   .analyze-left {
     flex: 1.3;
@@ -2031,6 +2144,35 @@
     overflow: auto;
     min-width: 0;
     border-right: 0.5px solid var(--g4);
+  }
+  .analyze-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+  .analyze-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .analyze-section-head.compact {
+    margin-bottom: 6px;
+  }
+  .analyze-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--brand);
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .analyze-section-copy {
+    font-size: 10px;
+    color: var(--g6);
+    line-height: 1.4;
   }
   .narrative {
     font-family: 'Geist', sans-serif;
@@ -2083,9 +2225,50 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 10px;
     padding: 12px 14px;
-    overflow: hidden;
+    overflow: auto;
+  }
+  .analyze-sidebox {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 4px;
+    border: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, var(--g1), rgba(0,0,0,0.12));
+  }
+  .analyze-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .analyze-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 4px;
+    border: 0.5px solid var(--g4);
+    background: var(--g1);
+    color: var(--g8);
+    cursor: pointer;
+  }
+  .analyze-action-btn:hover {
+    border-color: var(--g5);
+    background: var(--g2);
+    color: var(--g9);
+  }
+  .analyze-action-k {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    color: var(--brand);
+    flex-shrink: 0;
+  }
+  .analyze-action-t {
+    font-size: 10px;
+    font-weight: 600;
   }
   .proposal-label {
     font-family: 'JetBrains Mono', monospace;

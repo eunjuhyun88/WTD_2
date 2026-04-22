@@ -14,6 +14,7 @@
 | PR | 내용 |
 |---|---|
 | #185 (W-0137) | C sidebar ANALYZE를 right-dock collapse + summary/detail 구조로 재분리 |
+| #186 (W-0126) | ledger record store boundary refactor를 최신 mainline에 통합 |
 
 ---
 
@@ -21,6 +22,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭을 sidebar HUD와 역할이 다른 상세 workspace로 재구성 |
 | **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 PR-READY | engine mainline integration 완료, 운영 migration 018만 남음 |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
 | **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
@@ -29,7 +31,7 @@
 
 ## 즉시 실행 순서
 
-1. **W-0126** — rebase resolve 후 push / PR merge
+1. **W-0140** — bottom ANALYZE tab 상세 workspace 재구성
 2. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 3. **GCP 엔진 재배포 + stats latency 확인**
 
@@ -39,8 +41,8 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | 최신 (`abaf4adf`) |
-| codex/w-0126-mainline | W-0126 | ACTIVE |
+| main | — | 최신 (`298dd4bd`) |
+| codex/w-0140-analyze-tab-consolidation | W-0140 | ACTIVE |
 
 ---
 
