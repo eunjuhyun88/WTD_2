@@ -79,7 +79,7 @@
                 <button
                   class="verdict-btn verdict-{v}"
                   disabled={!!pending[key]}
-                  on:click={() => submitVerdict(signal, v as Verdict)}
+                  onclick={() => submitVerdict(signal, v as Verdict)}
                 >
                   {label}
                 </button>
