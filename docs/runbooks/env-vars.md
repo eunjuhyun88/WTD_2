@@ -31,15 +31,16 @@ Canonical env contract for local/prod runtime.
 |---|---|
 | `PUBLIC_SUPABASE_URL` | app |
 | `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | app |
-| `SUPABASE_URL` | worker-control |
-| `SUPABASE_SERVICE_ROLE_KEY` | worker-control only |
+| `SUPABASE_URL` | trusted engine runtimes (`engine-api`, `worker-control`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | trusted engine runtimes (`engine-api`, `worker-control`) only |
 | `SECRETS_ENCRYPTION_KEY` | app/server |
 
 Notes:
 
 - `PUBLIC_SUPABASE_PUBLISHABLE_KEY` is safe for browser/runtime use.
 - `SUPABASE_SERVICE_ROLE_KEY` must never be present in `app-web`; the app runtime now fails fast if it is set.
-- `SUPABASE_SERVICE_ROLE_KEY` belongs to `worker-control` background jobs only because it bypasses RLS.
+- `SUPABASE_SERVICE_ROLE_KEY` belongs only to trusted engine runtimes because it bypasses RLS.
+- W-0126 is an explicit engine-side case where `engine-api` also needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to serve shared ledger-backed reads such as `/patterns/stats/all`.
 - `DATABASE_URL` should use a least-privilege app role; avoid shipping a `postgres*` superuser DSN to production app-web.
 - Set `SECURITY_ALLOWED_HOSTS` and `ENGINE_ALLOWED_HOSTS` in production to reject unexpected `Host` headers at the app and engine boundaries.
 - Leave `ENGINE_EXPOSE_DOCS=false` on public deployments unless the engine is behind auth or a private network boundary.

@@ -32,16 +32,23 @@ _capture_store = CaptureStore()
 _model_registry = PatternModelRegistryStore()
 
 
-def _iter_all_records() -> list[PatternLedgerRecord]:
-    """Iterate LEDGER records across every pattern slug with on-disk data."""
+def _iter_all_records(*, record_store=None) -> list[PatternLedgerRecord]:
+    """Iterate LEDGER records across every known pattern slug."""
+    store = record_store or LEDGER_RECORD_STORE
     records: list[PatternLedgerRecord] = []
-    base = LEDGER_RECORD_STORE.base_dir
-    if not base.exists():
+    slug_lister = getattr(store, "list_pattern_slugs", None)
+    if callable(slug_lister):
+        slugs = slug_lister()
+    else:
+        base = getattr(store, "base_dir", None)
+        if base is None or not base.exists():
+            return records
+        slugs = [slug_dir.name for slug_dir in base.iterdir() if slug_dir.is_dir()]
+
+    if not slugs:
         return records
-    for slug_dir in base.iterdir():
-        if not slug_dir.is_dir():
-            continue
-        records.extend(LEDGER_RECORD_STORE.list(slug_dir.name))
+    for slug in slugs:
+        records.extend(store.list(slug))
     return records
 
 
@@ -53,27 +60,43 @@ def _count_within(records: list[PatternLedgerRecord], *, record_type: str, since
     )
 
 
-def _count_records(*, record_type: str, since: datetime | None = None) -> int:
-    counter = getattr(LEDGER_RECORD_STORE, "count_records", None)
+def _count_records(*, record_type: str, since: datetime | None = None, record_store=None) -> int:
+    store = record_store or LEDGER_RECORD_STORE
+    counter = getattr(store, "count_records", None)
     if callable(counter):
         return int(counter(record_type=record_type, since=since))
     if since is None:
-        return sum(1 for r in _iter_all_records() if r.record_type == record_type)
-    return _count_within(_iter_all_records(), record_type=record_type, since=since)
+        return sum(1 for r in _iter_all_records(record_store=store) if r.record_type == record_type)
+    return _count_within(
+        _iter_all_records(record_store=store),
+        record_type=record_type,
+        since=since,
+    )
 
 
-def compute_flywheel_health(*, now: datetime | None = None) -> dict[str, Any]:
+def compute_flywheel_health(
+    *,
+    now: datetime | None = None,
+    capture_store: CaptureStore | None = None,
+    record_store=None,
+    model_registry: PatternModelRegistryStore | None = None,
+    pattern_library=None,
+) -> dict[str, Any]:
     """Compute the 6 flywheel KPIs. Pure function for testability."""
     now = now or datetime.now()
     since_7d = now - timedelta(days=7)
     since_30d = now - timedelta(days=30)
+    capture_store = capture_store or _capture_store
+    record_store = record_store or LEDGER_RECORD_STORE
+    model_registry = model_registry or _model_registry
+    pattern_library = pattern_library or PATTERN_LIBRARY
 
     # axis 1: captures per day (rolling 7d)
-    captures_7d = _count_records(record_type="capture", since=since_7d)
+    captures_7d = _count_records(record_type="capture", since=since_7d, record_store=record_store)
     captures_per_day_7d = captures_7d / 7.0
 
     # axis 1→2: share of captures that have been resolved by the outcome resolver.
-    status_counts = _capture_store.count_by_status()
+    status_counts = capture_store.count_by_status()
     resolved_count = status_counts.get("outcome_ready", 0) + status_counts.get("verdict_ready", 0)
     total_captures = sum(status_counts.values())
     captures_to_outcome_rate = (
@@ -81,27 +104,37 @@ def compute_flywheel_health(*, now: datetime | None = None) -> dict[str, Any]:
     )
 
     # axis 2→3: outcomes that received a user_verdict.
-    outcome_count = _count_records(record_type="outcome")
-    verdict_count = _count_records(record_type="verdict")
+    outcome_count = _count_records(record_type="outcome", record_store=record_store)
+    verdict_count = _count_records(record_type="verdict", record_store=record_store)
     outcomes_to_verdict_rate = (
         verdict_count / outcome_count if outcome_count else 0.0
     )
 
     # axis 3→4: refinement / training_run ledger counts in the last 7 days.
     verdicts_to_refinement_count_7d = _count_records(
-        record_type="training_run", since=since_7d
+        record_type="training_run",
+        since=since_7d,
+        record_store=record_store,
     )
 
     # axis 4: model registry non-empty?
     active_models_per_pattern: dict[str, int] = {}
-    for slug in PATTERN_LIBRARY:
-        active = _model_registry.get_active(slug)
+    for slug in pattern_library:
+        active = model_registry.get_active(slug)
         active_models_per_pattern[slug] = 1 if active is not None else 0
 
     # axis 4: promotion gate pass rate (derive from model records written in
     # the last 30 days vs training_run records in the same window).
-    training_30d = _count_records(record_type="training_run", since=since_30d)
-    model_30d = _count_records(record_type="model", since=since_30d)
+    training_30d = _count_records(
+        record_type="training_run",
+        since=since_30d,
+        record_store=record_store,
+    )
+    model_30d = _count_records(
+        record_type="model",
+        since=since_30d,
+        record_store=record_store,
+    )
     promotion_gate_pass_rate_30d = (
         model_30d / training_30d if training_30d else 0.0
     )

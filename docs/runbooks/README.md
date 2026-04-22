@@ -7,6 +7,7 @@ Current key runbooks:
 - `local-dev.md`
 - `app-dev.md`
 - `engine-tests.md`
+- `pattern-ledger-record-cutover.md`
 - `release-checklist.md`
 - `launch-readiness.md`
 - `multi-agent-collaboration.md`

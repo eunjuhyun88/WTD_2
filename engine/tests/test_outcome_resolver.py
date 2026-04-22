@@ -16,7 +16,7 @@ import pandas as pd
 
 from capture.store import CaptureStore
 from capture.types import CaptureRecord
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore
+from ledger.store import LedgerRecordStore, LedgerStore
 from scanner.jobs.outcome_resolver import resolve_outcomes
 
 
@@ -63,6 +63,7 @@ def _make_capture(
 def test_resolver_promotes_success_capture(tmp_path) -> None:
     captures = CaptureStore(tmp_path / "capture.sqlite")
     ledger = LedgerStore(base_dir=tmp_path / "ledger_data")
+    record_store = LedgerRecordStore(base_dir=tmp_path / "ledger_records")
 
     captured_at = datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc)
     capture = _make_capture(
@@ -81,6 +82,7 @@ def test_resolver_promotes_success_capture(tmp_path) -> None:
         now_ms_val=now_ms_val,
         capture_store=captures,
         ledger_store=ledger,
+        record_store=record_store,
         klines_loader=lambda symbol, tf, *, offline=True: klines,
     )
 
@@ -97,7 +99,7 @@ def test_resolver_promotes_success_capture(tmp_path) -> None:
     assert reloaded.outcome_id == outcome.id
 
     # LEDGER:outcome record appended
-    outcome_records = LEDGER_RECORD_STORE.list(
+    outcome_records = record_store.list(
         capture.pattern_slug, record_type="outcome", symbol="BTCUSDT"
     )
     assert any(r.outcome_id == outcome.id for r in outcome_records)
@@ -106,6 +108,7 @@ def test_resolver_promotes_success_capture(tmp_path) -> None:
 def test_resolver_skips_captures_inside_window(tmp_path) -> None:
     captures = CaptureStore(tmp_path / "capture.sqlite")
     ledger = LedgerStore(base_dir=tmp_path / "ledger_data")
+    record_store = LedgerRecordStore(base_dir=tmp_path / "ledger_records")
 
     captured_at = datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc)
     capture = _make_capture(
@@ -121,6 +124,7 @@ def test_resolver_skips_captures_inside_window(tmp_path) -> None:
         now_ms_val=now_ms_val,
         capture_store=captures,
         ledger_store=ledger,
+        record_store=record_store,
         klines_loader=lambda *a, **k: pd.DataFrame(),
     )
 
@@ -133,6 +137,7 @@ def test_resolver_skips_captures_inside_window(tmp_path) -> None:
 def test_resolver_marks_failure_when_exit_below_miss(tmp_path) -> None:
     captures = CaptureStore(tmp_path / "capture.sqlite")
     ledger = LedgerStore(base_dir=tmp_path / "ledger_data")
+    record_store = LedgerRecordStore(base_dir=tmp_path / "ledger_records")
 
     captured_at = datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc)
     capture = _make_capture(
@@ -151,6 +156,7 @@ def test_resolver_marks_failure_when_exit_below_miss(tmp_path) -> None:
         now_ms_val=now_ms_val,
         capture_store=captures,
         ledger_store=ledger,
+        record_store=record_store,
         klines_loader=lambda *a, **k: klines,
     )
 
@@ -164,6 +170,7 @@ def test_resolver_marks_failure_when_exit_below_miss(tmp_path) -> None:
 def test_resolver_leaves_pending_when_no_forward_data(tmp_path) -> None:
     captures = CaptureStore(tmp_path / "capture.sqlite")
     ledger = LedgerStore(base_dir=tmp_path / "ledger_data")
+    record_store = LedgerRecordStore(base_dir=tmp_path / "ledger_records")
 
     captured_at = datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc)
     capture = _make_capture(
@@ -182,6 +189,7 @@ def test_resolver_leaves_pending_when_no_forward_data(tmp_path) -> None:
         now_ms_val=now_ms_val,
         capture_store=captures,
         ledger_store=ledger,
+        record_store=record_store,
         klines_loader=_empty_loader,
     )
 
@@ -194,6 +202,7 @@ def test_resolver_leaves_pending_when_no_forward_data(tmp_path) -> None:
 def test_resolver_idempotent_on_second_run(tmp_path) -> None:
     captures = CaptureStore(tmp_path / "capture.sqlite")
     ledger = LedgerStore(base_dir=tmp_path / "ledger_data")
+    record_store = LedgerRecordStore(base_dir=tmp_path / "ledger_records")
 
     captured_at = datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc)
     capture = _make_capture(
@@ -212,12 +221,14 @@ def test_resolver_idempotent_on_second_run(tmp_path) -> None:
         now_ms_val=now_ms_val,
         capture_store=captures,
         ledger_store=ledger,
+        record_store=record_store,
         klines_loader=loader,
     )
     second = resolve_outcomes(
         now_ms_val=now_ms_val,
         capture_store=captures,
         ledger_store=ledger,
+        record_store=record_store,
         klines_loader=loader,
     )
 

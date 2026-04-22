@@ -109,8 +109,15 @@ def get_candidates_sync(slug: str) -> dict:
 
 def _summarize_record_family(
     slug: str,
+    *,
+    record_store=None,
 ) -> tuple[dict[str, int | float | None], PatternLedgerRecord | None, PatternLedgerRecord | None]:
-    records = LEDGER_RECORD_STORE.list(slug)
+    store = record_store or LEDGER_RECORD_STORE
+    summarize_family = getattr(store, "summarize_family", None)
+    if callable(summarize_family):
+        return summarize_family(slug)
+
+    records = store.list(slug)
     counts = {
         "entry": 0,
         "capture": 0,
@@ -152,12 +159,21 @@ def _summarize_record_family(
     )
 
 
-def get_stats_sync(slug: str, ledger: LedgerStore, outcomes: list | None = None) -> dict:
+def get_stats_sync(
+    slug: str,
+    ledger: LedgerStore,
+    outcomes: list | None = None,
+    *,
+    record_store=None,
+) -> dict:
     _require_pattern(slug)
     if outcomes is None:
         outcomes = ledger.list_all(slug)
     stats = _compute_stats_from_outcomes(slug, outcomes)
-    record_family, latest_training_run_record, latest_model_record = _summarize_record_family(slug)
+    record_family, latest_training_run_record, latest_model_record = _summarize_record_family(
+        slug,
+        record_store=record_store,
+    )
     registry_entries = MODEL_REGISTRY_STORE.list(slug)
     active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug)
     preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)

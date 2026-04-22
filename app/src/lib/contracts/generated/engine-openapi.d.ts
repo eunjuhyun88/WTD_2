@@ -408,26 +408,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/patterns/{slug}/candidates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Candidates
-         * @description Entry candidates for a specific pattern.
-         */
-        get: operations["get_candidates_patterns__slug__candidates_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/patterns/stats/all": {
         parameters: {
             query?: never;
@@ -440,6 +420,26 @@ export interface paths {
          * @description Bulk ledger stats for all patterns — avoids N+1 fan-out from callers.
          */
         get: operations["get_all_stats_patterns_stats_all_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/patterns/{slug}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Candidates
+         * @description Entry candidates for a specific pattern.
+         */
+        get: operations["get_candidates_patterns__slug__candidates_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3509,6 +3509,28 @@ export interface operations {
             };
         };
     };
+    get_all_stats_patterns_stats_all_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_candidates_patterns__slug__candidates_get: {
         parameters: {
             query?: never;
@@ -3538,28 +3560,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_all_stats_patterns_stats_all_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };
@@ -4168,6 +4168,7 @@ export interface operations {
     get_chart_annotations_captures_chart_annotations_get: {
         parameters: {
             query: {
+                user_id?: string | null;
                 /** @description e.g. BTCUSDT */
                 symbol: string;
                 timeframe?: string;
