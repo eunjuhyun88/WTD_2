@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`00572e1d` — PR #189 (`codex/w-0140-analyze-tab-consolidation`) 포함 최신 `origin/main`
+`9bbc10ba` — PR #190 (`codex/w-0138-engine-runtime-role-split`) 포함 최신 `origin/main`
 
 ## 완료 (이번 세션)
 
@@ -17,6 +17,7 @@
 | #186 (W-0126) | ledger record store boundary refactor를 최신 mainline에 통합 |
 | #188 (W-0136) | worker-control research CLI + W-0126 cutover preflight 보강 |
 | #189 (W-0140) | bottom ANALYZE tab 상세 workspace 재구성 |
+| #190 (W-0138) | `ENGINE_RUNTIME_ROLE` 기반 engine-api / worker-control split |
 
 ---
 
@@ -24,7 +25,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0138** | `W-0138-engine-runtime-role-split.md` | 🔴 IN-PROGRESS | `ENGINE_RUNTIME_ROLE` 기반 engine-api / worker-control route + scheduler gating |
+| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🔴 IN-PROGRESS | backend engine audit + pattern context producer 연결 |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / 추가 정리 |
 | **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 OPS-BLOCKED | engine mainline integration 완료, 운영 migration 018만 남음 |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
@@ -34,7 +35,7 @@
 
 ## 즉시 실행 순서
 
-1. **W-0138** — `engine-api` / `worker-control` runtime role split 구현
+1. **W-0139** — `/terminal` capture -> pattern engine automation backend audit
 2. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 3. **W-0122 Phase 2** — engine scoring plane + worker-control learning plane 분리 착수
 
@@ -44,9 +45,10 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | 최신 (`00572e1d`) |
-| codex/w-0138-engine-runtime-role-split | W-0138 | ACTIVE |
-| codex/w-0140-analyze-tab-consolidation | W-0140 | MERGED |
+| main | — | 최신 (`9bbc10ba`) |
+| codex/w-0139-terminal-core-loop-capture | W-0139 | ACTIVE |
+| codex/w-0138-engine-runtime-role-split | W-0138 | MERGED (#190) |
+| codex/w-0140-analyze-tab-consolidation | W-0140 | MERGED (#189) |
 
 ---
 
