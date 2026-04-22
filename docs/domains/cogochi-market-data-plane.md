@@ -285,6 +285,48 @@ source coverage 또는 유료 의존이 강한 지표. 값이 있더라도 `expe
 - Token unlocks
 - Arkham netflow / whale transfers
 
+## Surface Placement Matrix
+
+### Right Summary HUD
+
+2초 안에 결론을 내려야 하는 요약만 둔다.
+
+- Confluence score / confidence / regime
+- Funding state
+- On-chain cycle summary (`MVRV / NUPL / netflow` 압축값)
+- DEX liquidity summary (`24H vol / liquidity / avg trade size`)
+- Execution next action
+
+### Bottom Workspace
+
+실제 비교, 검증, 실행 준비를 위한 canonical detail surface.
+
+- LIVE STACK
+- OPTIONS
+- VENUE DIVERGENCE
+- ON-CHAIN / DEX / VOL cards
+- DEX MARKET STRUCTURE
+  - Top pairs
+  - Chain concentration
+  - Chain TVL backdrop
+  - Coverage / trust / freshness
+- ON-CHAIN CYCLE DETAIL
+  - Netflow 24h / 7d
+  - MVRV / NUPL / SOPR / Puell
+  - Whale ratio
+- EVIDENCE LOG
+- EXECUTION BOARD
+
+### AI Detail
+
+AI는 별도 데이터 저장소가 아니라 동일 study payload의 natural-language interpreter 다.
+
+- selected studies 의 summary
+- trust / source / methodology
+- DEX top pairs / chain breakdown
+- on-chain cycle raw detail
+- thesis / warnings / counter-case
+
 ## Trust Tiers
 
 - `core`

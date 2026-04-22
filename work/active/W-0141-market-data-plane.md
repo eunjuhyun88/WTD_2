@@ -84,11 +84,12 @@ Contract change
 - `Tier 2 experimental/deferred` = labeled exchange reserve/netflow, SOPR exact, NUPL exact, DEX fees/unique swappers, Arkham netflow/whales.
 - DEX 중심 지표는 `search/symbol mapping ambiguity` 가 있으므로 trust tier 와 coverage note 를 반드시 노출한다.
 - DEX 카드의 canonical 최소 메트릭은 `24H Volume / Liquidity / Volume-to-Liquidity / Avg Trade Size / Chain TVL backdrop` 으로 둔다.
+- 하단 ANALYZE 는 backdrop card 에서 멈추지 않고 `DEX MARKET STRUCTURE / ON-CHAIN CYCLE DETAIL` detail surface 를 같은 payload로 렌더한다.
 
 ## Next Steps
 
-1. `workspace-bundle` producer 가 DEX pair aggregation + DefiLlama TVL backdrop 을 함께 반환하도록 고정한다.
-2. 하단 ANALYZE 에서 backdrop study cards 를 canonical renderer 로 분리하고 AI compare context 와 공유한다.
+1. backdrop study cards + DEX/on-chain detail surface 를 reusable renderer 로 분리한다.
+2. AI detail handoff 에 selected study payload 의 chain/pair/on-chain detail 을 구조적으로 포함한다.
 3. Tier 2 DEX 지표(`fees / unique swappers / DEX-vs-CEX ratio`)를 source availability 기준으로 순차 승격한다.
 
 ## Exit Criteria
