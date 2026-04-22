@@ -333,7 +333,8 @@
   const peekOpen = $derived(tabState.peekOpen);
   const drawerTab = $derived(tabState.drawerTab);
   const peekHeight = $derived(tabState.peekHeight);
-  let sidebarAnalyzeOpen = $state(true);
+  const analyzeDetailOpen = $derived(peekOpen && drawerTab === 'analyze');
+  let sidebarAnalyzeDockCollapsed = $state(false);
 
   // ── Scan core loop state ────────────────────────────────────────────────
   let scanState = $state<'idle' | 'scanning' | 'done'>('idle');
@@ -645,6 +646,32 @@
   );
   const evidencePos = $derived(evidenceItems.filter(e => e.pos).length);
   const evidenceNeg = $derived(evidenceItems.filter(e => !e.pos).length);
+  const sidebarIntel = $derived([
+    {
+      label: 'EVIDENCE',
+      value: `+${evidencePos} / -${evidenceNeg}`,
+      note: evidencePos >= evidenceNeg ? 'bias aligned' : 'bias mixed',
+      tone: evidencePos > evidenceNeg ? 'pos' : evidenceNeg > evidencePos ? 'neg' : '',
+    },
+    {
+      label: 'R:R',
+      value: proposal[3]?.val ?? '—',
+      note: proposal[2]?.hint || 'target spread',
+      tone: (analyzeData?.entryPlan?.riskReward ?? 0) >= 2 ? 'pos' : '',
+    },
+    {
+      label: 'REGIME',
+      value: analyzeData?.snapshot?.regime ?? '—',
+      note: analyzeData?.riskPlan?.bias ?? 'market context',
+      tone: analyzeData?.snapshot?.regime === 'BULL' ? 'pos' : analyzeData?.snapshot?.regime === 'BEAR' ? 'neg' : '',
+    },
+    {
+      label: 'ENTRY',
+      value: proposal[0]?.val ?? '—',
+      note: proposal[1]?.hint || 'risk anchor',
+      tone: '',
+    },
+  ]);
 
   // ── RR bar widths ─────────────────────────────────────────────────────
   const rrLossPct = $derived((() => {
@@ -1049,12 +1076,6 @@
                     {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
                   {/if}
                 </div>
-                {#if gaugePaneIds.length > 0}
-                  <IndicatorPane ids={gaugePaneIds} values={indicatorValues} layout="row" />
-                {/if}
-                {#if venuePaneIds.length > 0}
-                  <IndicatorPane ids={venuePaneIds} values={indicatorValues} layout="stack" />
-                {/if}
                 <div class="evidence-grid">
                   {#each evidenceItems as item}
                     <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
@@ -1332,7 +1353,35 @@
       </div>
     {/if}
     </div>
-    <div class="lc-sidebar" role="complementary" aria-label="Sidebar analysis">
+    <div
+      class="lc-sidebar"
+      class:collapsed={sidebarAnalyzeDockCollapsed}
+      role="complementary"
+      aria-label={sidebarAnalyzeDockCollapsed ? 'Collapsed analyze sidebar' : 'Sidebar analysis'}
+    >
+      {#if sidebarAnalyzeDockCollapsed}
+        <div class="lc-sidebar-rail" role="region" aria-label="Analyze dock rail">
+          <button
+            class="lc-rail-chip"
+            type="button"
+            onclick={() => (sidebarAnalyzeDockCollapsed = false)}
+            aria-label="Expand analyze sidebar"
+            title="ANALYZE 펼치기"
+          >
+            <span class="lc-rail-accent" aria-hidden="true"></span>
+            <span class="lc-rail-step">02</span>
+          </button>
+          <button
+            class="lc-rail-handle"
+            type="button"
+            onclick={() => (sidebarAnalyzeDockCollapsed = false)}
+            aria-label="Expand analyze sidebar"
+            title="ANALYZE 펼치기"
+          >
+            <span aria-hidden="true">◂</span>
+          </button>
+        </div>
+      {:else}
       <div class="lcs-section">
         <div class="lcs-header">
           <div class="lcs-headline" role="heading" aria-level="2">
@@ -1343,15 +1392,14 @@
           <button
             class="lcs-toggle"
             type="button"
-            onclick={() => (sidebarAnalyzeOpen = !sidebarAnalyzeOpen)}
-            aria-expanded={sidebarAnalyzeOpen}
+            onclick={() => (sidebarAnalyzeDockCollapsed = true)}
+            aria-expanded={!sidebarAnalyzeDockCollapsed}
             aria-controls="sidebar-analyze-body"
-            title={sidebarAnalyzeOpen ? 'ANALYZE 접기' : 'ANALYZE 펼치기'}
+            title="ANALYZE를 오른쪽으로 접기"
           >
-            <span aria-hidden="true">{sidebarAnalyzeOpen ? '▾' : '▸'}</span>
+            <span aria-hidden="true">▾</span>
           </button>
         </div>
-        {#if sidebarAnalyzeOpen}
         <div class="lcs-body" id="sidebar-analyze-body" role="region" aria-label="Analysis details">
           {#if confluence}
             <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
@@ -1368,30 +1416,40 @@
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
           </div>
-          <!-- W-0136: single C sidebar keeps live indicators here -->
-          {#if gaugePaneIds.length > 0}
-            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE · drag to reorder" layout="row" compact reorderable />
-          {/if}
-          {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
-            <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-          {/if}
-          <!-- Venue / Liq — toggleable via ⚙ INDICATORS sheet (defaultVisible=true) -->
-          <details class="lc-ind-details" open>
-            <summary>VENUE · LIQ</summary>
-            <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
-          </details>
-          <div style="margin-top: 6px;" role="list" aria-label="Evidence items">
-            {#each evidenceItems as item}
-              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} style="margin-bottom: 3px;" role="listitem">
-                <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
-                <span class="ev-key">{item.k}</span>
-                <span class="ev-val">{item.v}</span>
-                <span class="sr-only">{item.k}: {item.v}, {item.pos ? 'positive' : 'negative'} evidence</span>
+          <div class="lcs-summary-grid" role="list" aria-label="Analyze summary">
+            {#each sidebarIntel as item}
+              <div class="lcs-summary-card" class:tone-pos={item.tone === 'pos'} class:tone-neg={item.tone === 'neg'} role="listitem">
+                <span class="lcs-summary-label">{item.label}</span>
+                <span class="lcs-summary-value">{item.value}</span>
+                <span class="lcs-summary-note">{item.note}</span>
               </div>
             {/each}
           </div>
+          <div class="lcs-mini-evidence" role="list" aria-label="Top evidence preview">
+            {#each evidenceItems.slice(0, 3) as item}
+              <div class="ev-chip compact" class:pos={item.pos} class:neg={!item.pos} role="listitem">
+                <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
+                <span class="ev-key">{item.k}</span>
+                <span class="ev-val">{item.v}</span>
+              </div>
+            {/each}
+          </div>
+          <div class="lcs-bridge">
+            <button
+              class="lcs-open-detail"
+              class:active={analyzeDetailOpen}
+              type="button"
+              onclick={openAnalyze}
+              aria-pressed={analyzeDetailOpen}
+            >
+              <span class="lcs-open-label">DETAIL PANEL</span>
+              <span class="lcs-open-state">{analyzeDetailOpen ? 'OPEN' : 'OPEN ↗'}</span>
+            </button>
+            <div class="lcs-bridge-copy">
+              LIVE · OPTIONS · VENUE · LIQ · PROPOSAL은 하단 ANALYZE에 통합
+            </div>
+          </div>
         </div>
-        {/if}
       </div>
       <div class="lcs-divider"></div>
       <div class="lcs-section">
@@ -1448,6 +1506,7 @@
           </div>
         </div>
       </div>
+      {/if}
     </div>
   </div>
 
@@ -2413,6 +2472,66 @@
     border-radius: 0 6px 6px 0;
     margin: 6px 6px 6px 0;
     overflow-y: auto;
+    transition: width 0.16s ease, margin 0.16s ease;
+  }
+  .lc-sidebar.collapsed {
+    width: 56px;
+    overflow: hidden;
+    align-items: center;
+  }
+  .lc-sidebar-rail {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12));
+  }
+  .lc-rail-chip,
+  .lc-rail-handle {
+    width: 42px;
+    border: 0.5px solid var(--g4);
+    background: var(--g0);
+    color: var(--g7);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+  }
+  .lc-rail-chip:hover,
+  .lc-rail-handle:hover {
+    border-color: var(--g5);
+    color: var(--g9);
+    background: var(--g1);
+  }
+  .lc-rail-chip {
+    height: 42px;
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .lc-rail-accent {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 2px;
+    height: 100%;
+    background: var(--brand);
+    opacity: 0.9;
+  }
+  .lc-rail-step {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--g8);
+    transform: translateX(2px);
+  }
+  .lc-rail-handle {
+    height: 42px;
+    border-radius: 4px;
+    font-size: 13px;
   }
   /* Responsive: hide sidebar below 860px, chart-section goes full width */
   @media (max-width: 860px) {
@@ -2477,6 +2596,97 @@
   .lcs-divider { height: 0.5px; background: var(--g3); flex-shrink: 0; }
   .prop-cell.compact { padding: 3px 0; }
   .la-meta { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); letter-spacing: 0.04em; }
+  .lcs-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .lcs-summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 7px 8px;
+    border-radius: 4px;
+    border: 0.5px solid var(--g4);
+    background: var(--g2);
+  }
+  .lcs-summary-card.tone-pos {
+    border-color: color-mix(in srgb, var(--pos) 40%, var(--g4));
+    background: color-mix(in srgb, var(--pos) 10%, var(--g2));
+  }
+  .lcs-summary-card.tone-neg {
+    border-color: color-mix(in srgb, var(--neg) 40%, var(--g4));
+    background: color-mix(in srgb, var(--neg) 10%, var(--g2));
+  }
+  .lcs-summary-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    letter-spacing: 0.16em;
+    color: var(--g5);
+  }
+  .lcs-summary-value {
+    font-size: 11px;
+    color: var(--g9);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lcs-summary-note {
+    font-size: 8px;
+    color: var(--g6);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lcs-mini-evidence {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .lcs-bridge {
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 0.5px solid var(--g4);
+    background: linear-gradient(180deg, var(--g2), rgba(0,0,0,0.16));
+  }
+  .lcs-open-detail {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 0.5px solid var(--g4);
+    background: var(--g0);
+    color: var(--g8);
+    cursor: pointer;
+  }
+  .lcs-open-detail:hover,
+  .lcs-open-detail.active {
+    border-color: color-mix(in srgb, var(--brand) 48%, var(--g4));
+    color: var(--g9);
+  }
+  .lcs-open-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.14em;
+  }
+  .lcs-open-state {
+    font-size: 9px;
+    color: var(--brand);
+  }
+  .lcs-bridge-copy {
+    margin-top: 6px;
+    font-size: 8px;
+    line-height: 1.5;
+    color: var(--g6);
+  }
 
   /* ── Mobile layout ── */
   .mobile-chart-section {
