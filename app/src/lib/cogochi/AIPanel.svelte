@@ -51,14 +51,15 @@
     onClose,
   }: Props = $props();
 
-  // Local copy — keeps AI replies even while store updates
-  let localMessages = $state<Message[]>(messages);
+  // Local copy — keeps optimistic AI replies visible until parent sync lands.
+  let localMessages = $state<Message[]>([]);
   $effect(() => {
-    if (messages.length !== localMessages.length) localMessages = messages;
+    localMessages = [...messages];
   });
 
   let inputValue = $state('');
   let scrollEl: HTMLDivElement | undefined = $state();
+  const canSend = $derived(inputValue.trim().length > 0);
 
   const quicks = [
     'OI 급증 후 번지대 3시간 accumulation',
@@ -111,6 +112,10 @@
   function quickPick(q: string) {
     inputValue = q;
     send();
+  }
+
+  function handleInput(event: Event) {
+    inputValue = (event.currentTarget as HTMLTextAreaElement).value;
   }
 
   function convertPromptToSetup(text: string): SetupResult {
@@ -181,7 +186,7 @@
 
   <!-- Messages / welcome -->
   <div class="messages" bind:this={scrollEl}>
-    {#if messages.length === 0}
+    {#if localMessages.length === 0}
       <!-- Welcome -->
       <div class="welcome">
         <div class="wl-section">AI · HOW TO</div>
@@ -201,7 +206,7 @@
         </div>
       </div>
     {:else}
-      {#each messages as msg}
+      {#each localMessages as msg}
         {#if msg.role === 'user'}
           <div class="msg-user">
             <div class="msg-from">YOU</div>
@@ -244,9 +249,10 @@
   <div class="input-area">
     <div class="input-box">
       <textarea
-        bind:value={inputValue}
+        value={inputValue}
         placeholder="셋업을 말로 — 'OI 급증 후 번지대 3시간' ↵"
         rows={2}
+        oninput={handleInput}
         onkeydown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -258,7 +264,7 @@
         <span class="context-hint">@btc @4h</span>
         <span class="spacer"></span>
         <span class="enter-hint">↵ send</span>
-        <button class="send-btn" class:active={!!inputValue.trim()} onclick={send} disabled={!inputValue.trim()}>
+        <button class="send-btn" class:active={canSend} onclick={send} disabled={!canSend}>
           SEND
         </button>
       </div>

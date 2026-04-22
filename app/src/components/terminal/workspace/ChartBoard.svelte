@@ -340,6 +340,7 @@
 
   // ── Layer 3: Capture annotations (W-0120) ────────────────────────────────
   let candleSeriesForAnnotations = $state<ISeriesApi<'Candlestick'> | null>(null);
+  let candleMarkerApi: { setMarkers: (markers: SeriesMarker<UTCTimestamp>[]) => void } | null = null;
   let selectedCapture = $state<CaptureAnnotation | null>(null);
   let _annotationsCache = $state<CaptureAnnotation[]>([]);
 
@@ -738,7 +739,6 @@
     destroyCharts();
 
     let candleSeriesRef: ISeriesApi<'Candlestick'> | null = null;
-    let candleMarkerApi: { setMarkers: (markers: SeriesMarker<UTCTimestamp>[]) => void } | null = null;
 
     const rsiContainer = rsiEl;
     const macdContainer = macdEl;
@@ -801,6 +801,8 @@
       });
       lineSeries.setData(klines.map((k) => ({ time: k.time as UTCTimestamp, value: k.close })));
       priceSeries = lineSeries;
+      candleSeriesForAnnotations = null;
+      candleMarkerApi = null;
     } else {
       const candleSeries = mainChart.addSeries(CandlestickSeries, {
         upColor:        '#26a69a',
@@ -1298,6 +1300,7 @@
     [mainChart, volChart, rsiChart, macdChart, oiChart, cvdChart, liqChart].forEach(c => c?.remove());
     mainChart = volChart = rsiChart = macdChart = oiChart = cvdChart = liqChart = null;
     priceSeries = null;
+    candleMarkerApi = null;
     candleSeriesForAnnotations = null;
     entryLine = targetLine = stopLine = null;
   }

@@ -9,7 +9,7 @@
 
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { goto } from '$app/navigation';
+import { goto, replaceState } from '$app/navigation';
 
 export type MobileMode = 'chart' | 'detail' | 'scan' | 'judge';
 
@@ -64,9 +64,7 @@ export const mobileMode = {
     }));
 
     if (browser) {
-      // Use history.replaceState so mode switches don't create back-stack entries.
-      const url = buildUrl(mode);
-      history.replaceState(history.state, '', url);
+      replaceState(buildUrl(mode), history.state ?? {});
     }
   },
 
