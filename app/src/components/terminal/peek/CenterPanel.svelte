@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import type { Snippet } from 'svelte';
   import ChartBoard from '../workspace/ChartBoard.svelte';
-  import SaveStrip from '../workspace/SaveStrip.svelte';
   import PeekDrawer from './PeekDrawer.svelte';
   import CaptureReviewDrawer from '../chart/CaptureReviewDrawer.svelte';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
@@ -20,7 +19,6 @@
     quantRegime?: any;
     cvdDivergence?: any;
     change24hPct?: number | null;
-    ohlcvBars: any[];
     showLabCta: boolean;
     labCtaSlug: string | null;
     analyzeCount: number;
@@ -47,7 +45,6 @@
     quantRegime = null,
     cvdDivergence = null,
     change24hPct = null,
-    ohlcvBars,
     showLabCta,
     labCtaSlug,
     analyzeCount,
@@ -110,12 +107,6 @@
       {onCaptureSaved}
       {onTfChange}
       onCaptureSelect={isTablet ? handleCaptureSelect : undefined}
-    />
-    <SaveStrip
-      {symbol}
-      {tf}
-      {ohlcvBars}
-      onSaved={onCaptureSaved}
     />
     {#if showLabCta}
       <div class="lab-cta-banner">

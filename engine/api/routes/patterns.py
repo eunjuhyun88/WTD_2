@@ -139,6 +139,12 @@ async def get_candidates(slug: str) -> dict:
     return await asyncio.to_thread(patterns_thread.get_candidates_sync, slug)
 
 
+@router.get("/stats/all")
+async def get_all_stats() -> dict:
+    """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
+    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
+
+
 @router.get("/{slug}/stats")
 async def get_stats(slug: str) -> dict:
     """Ledger statistics for a pattern. v3: includes ML shadow readiness."""

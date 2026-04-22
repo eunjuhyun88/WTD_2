@@ -2,36 +2,12 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { errorContains } from '$lib/utils/errorUtils';
-import { engineFetch } from '$lib/server/engineTransport';
 import {
   PatternCaptureCreateRequestSchema,
   PatternCaptureQuerySchema,
   TerminalPersistenceSchemaVersion,
-  type PatternCaptureCreateRequest,
 } from '$lib/contracts/terminalPersistence';
 import { createPatternCapture, listPatternCaptures } from '$lib/server/terminalPersistence';
-
-// Phase A dual-write: replicate Save Setup to the engine CaptureStore so the
-// flywheel outcome resolver and refinement trigger have data to work with.
-// Non-blocking — engine failures must never break the user's Save Setup UX.
-function syncCaptureToEngine(userId: string, body: PatternCaptureCreateRequest): void {
-  engineFetch('/captures', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      capture_kind: 'manual_hypothesis',
-      user_id: userId,
-      symbol: body.symbol,
-      timeframe: body.timeframe,
-      pattern_slug: body.patternSlug ?? '',
-      user_note: body.note ?? null,
-      captured_at_ms: Date.now(),
-    }),
-    signal: AbortSignal.timeout(5000),
-  }).catch((err: unknown) => {
-    console.warn('[pattern-captures] engine dual-write failed (non-fatal):', err);
-  });
-}
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
   try {
@@ -69,7 +45,6 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
       return json({ error: 'Reviewed range viewport is required for Save Setup' }, { status: 400 });
     }
     const record = await createPatternCapture(user.id, body);
-    syncCaptureToEngine(user.id, body); // fire-and-forget; does not affect response
     return json({
       ok: true,
       schemaVersion: TerminalPersistenceSchemaVersion,

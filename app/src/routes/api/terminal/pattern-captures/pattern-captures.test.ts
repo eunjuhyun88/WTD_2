@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('$lib/server/authGuard', () => ({
   getAuthUserFromCookies: vi.fn(),
 }));
+vi.mock('$lib/server/engineTransport', () => ({
+  engineFetch: vi.fn(),
+}));
 vi.mock('$lib/server/terminalPersistence', () => ({
   createPatternCapture: vi.fn(async (_userId: string, body: Record<string, unknown>) => ({
     id: 'cap-1',
@@ -25,6 +28,8 @@ vi.mock('$lib/server/terminalPersistence', () => ({
 
 import { POST } from './+server';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
+import { engineFetch } from '$lib/server/engineTransport';
+import { createPatternCapture } from '$lib/server/terminalPersistence';
 
 describe('/api/terminal/pattern-captures', () => {
   beforeEach(() => {
@@ -82,5 +87,7 @@ describe('/api/terminal/pattern-captures', () => {
     const res = await POST({ cookies: {}, request: req } as any);
 
     expect(res.status).toBe(200);
+    expect(createPatternCapture).toHaveBeenCalledTimes(1);
+    expect(engineFetch).not.toHaveBeenCalled();
   });
 });
