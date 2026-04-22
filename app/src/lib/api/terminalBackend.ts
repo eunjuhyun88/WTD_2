@@ -5,17 +5,12 @@ import type {
   FlowEnvelope,
   SnapshotEnvelope,
 } from '$lib/contracts/terminalBackend';
-import type { ConfluenceResult } from '$lib/confluence/types';
+import type { CogochiWorkspaceEnvelope } from '$lib/contracts/cogochiDataPlane';
 import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
-import type { CaptureRecord, RuntimeCaptureListResponse } from '$lib/contracts/runtime/captures';
+import type { ConfluenceResult } from '$lib/confluence/types';
 import type {
-  FundingFlipPayload,
-  FundingHistoryPayload,
-  IndicatorContextPayload,
   LiqClusterPayload,
   OptionsSnapshotPayload,
-  RvConePayload,
-  SsrPayload,
   VenueDivergencePayload,
 } from '$lib/indicators/adapter';
 import {
@@ -40,34 +35,14 @@ export interface TerminalBundleResult {
   derivatives: DerivativesEnvelope | null;
 }
 
-export type RecentCaptureSummary = Pick<
-  CaptureRecord,
-  'capture_id' | 'symbol' | 'pattern_slug' | 'timeframe' | 'captured_at_ms' | 'status'
->;
-
-export interface ConfluenceHistoryEntry {
-  at: number;
-  score: number;
-  confidence: number;
-  regime: string;
-  divergence: boolean;
-}
-
-export interface TradeOutcomeResult {
-  saved: boolean;
-  count: number;
-  training_triggered: boolean;
-}
-
-export interface AlphaWorldModelPhase {
-  symbol: string;
-  grade: string;
-  phase: string;
-  entered_at: string | null;
-}
-
-export interface AlphaWorldModelResponse {
-  phases?: AlphaWorldModelPhase[];
+export interface CogochiWorkspaceBundleResult {
+  analyze: AnalyzeEnvelope | null;
+  chartPayload: ChartSeriesPayload | null;
+  confluence: ConfluenceResult | null;
+  venueDivergence: VenueDivergencePayload | null;
+  liqClusters: LiqClusterPayload | null;
+  optionsSnapshot: OptionsSnapshotPayload | null;
+  workspaceEnvelope: CogochiWorkspaceEnvelope | null;
 }
 
 export interface ChartSeriesPayload {
@@ -170,6 +145,41 @@ export async function fetchAnalyzeAndChart(args: {
       ? await readJson<ChartSeriesPayload>(chartRes.value)
       : null;
   return { analyze, chartPayload };
+}
+
+export async function fetchCogochiWorkspaceBundle(args: {
+  symbol: string;
+  tf: string;
+  includeChart?: boolean;
+}): Promise<CogochiWorkspaceBundleResult> {
+  const { symbol, tf, includeChart = true } = args;
+  const qs = new URLSearchParams({
+    symbol,
+    tf,
+    includeChart: includeChart ? '1' : '0',
+  });
+  const res = await fetch(`/api/cogochi/workspace-bundle?${qs.toString()}`);
+  if (!res.ok) {
+    return {
+      analyze: null,
+      chartPayload: null,
+      confluence: null,
+      venueDivergence: null,
+      liqClusters: null,
+      optionsSnapshot: null,
+      workspaceEnvelope: null,
+    };
+  }
+  const payload = await readJson<CogochiWorkspaceBundleResult>(res);
+  return payload ?? {
+    analyze: null,
+    chartPayload: null,
+    confluence: null,
+    venueDivergence: null,
+    liqClusters: null,
+    optionsSnapshot: null,
+    workspaceEnvelope: null,
+  };
 }
 
 export async function fetchFlowBias(pair: string, tf: string): Promise<'LONG' | 'SHORT' | 'NEUTRAL'> {
