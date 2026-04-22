@@ -26,6 +26,7 @@
     type FundingHistoryPayload,
   } from '$lib/indicators/adapter';
   import { chartIndicators, toggleIndicator } from '$lib/stores/chartIndicators';
+  import { buildCogochiWorkspaceEnvelope, buildStudyMap } from '$lib/cogochi/workspaceDataPlane';
 
   interface Props {
     mode: 'trade' | 'train' | 'flywheel';
@@ -284,6 +285,40 @@
     optionsSnapshot,
   }));
 
+  const workspaceEnvelope = $derived(buildCogochiWorkspaceEnvelope({
+    symbol,
+    timeframe,
+    analyze: analyzeData,
+    chartPayload,
+    confluence,
+    venueDivergence,
+    liqClusters,
+    optionsSnapshot,
+  }));
+
+  const workspaceStudyMap = $derived.by(() => buildStudyMap(workspaceEnvelope.studies));
+  const workspaceSummaryCards = $derived.by(() => {
+    const summaryIds = workspaceEnvelope.sections.find((section) => section.id === 'summary-hud')?.studyIds ?? [];
+    return summaryIds
+      .map((id) => workspaceStudyMap[id])
+      .filter((study): study is NonNullable<typeof study> => Boolean(study))
+      .slice(0, 4)
+      .map((study) => {
+        const primary = study.summary[0];
+        const secondary = study.summary[1];
+        return {
+          label: primary?.label ?? study.title,
+          value: primary?.value ?? '—',
+          note:
+            primary?.note ??
+            (secondary
+              ? `${secondary.label}${secondary.value != null ? ` ${secondary.value}` : ''}`
+              : ''),
+          tone: primary?.tone === 'bull' ? 'pos' : primary?.tone === 'bear' ? 'neg' : '',
+        };
+      });
+  });
+
   // Ordered list of indicators to render — driven by ShellState.visibleIndicators.
   // Gauge row: archetypes A, D, E (scalar / divergence / regime cards).
   // Venue stack: archetype F (multi-venue strips).
@@ -322,6 +357,35 @@
     }
     // Desktop: open peek + switch drawer tab to analyze.
     updateTabState(s => ({ ...s, peekOpen: true, drawerTab: 'analyze' }));
+  }
+
+  function openAnalyzeAIDetail() {
+    const selectedStudies = workspaceEnvelope.aiContext.selectedStudyIds
+      .map((id) => workspaceStudyMap[id])
+      .filter((study): study is NonNullable<typeof study> => Boolean(study));
+
+    const userText = `${symbol} ${timeframe} analyze detail 설명해줘`;
+    const assistantText = [
+      `**${symbol} · ${timeframe} ANALYZE DETAIL**`,
+      workspaceEnvelope.aiContext.thesis ? `- Thesis: ${workspaceEnvelope.aiContext.thesis}` : null,
+      `- Selected studies: ${selectedStudies.map((study) => study.title).join(', ') || '—'}`,
+      ...(workspaceEnvelope.aiContext.warnings ?? []).map((warning) => `- Warning: ${warning}`),
+      '',
+      '**Study Summary**',
+      ...selectedStudies.map((study) => {
+        const parts = study.summary
+          .filter((row) => row.value != null && row.value !== '')
+          .slice(0, 3)
+          .map((row) => `${row.label} ${row.value}${row.note ? ` · ${row.note}` : ''}`);
+        return `- ${study.title}: ${parts.join(' / ') || '—'}`;
+      }),
+    ]
+      .filter((line): line is string => Boolean(line))
+      .join('\n');
+
+    window.dispatchEvent(new CustomEvent('cogochi:cmd', {
+      detail: { id: 'open_ai_detail', userText, assistantText },
+    }));
   }
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
@@ -646,32 +710,6 @@
   );
   const evidencePos = $derived(evidenceItems.filter(e => e.pos).length);
   const evidenceNeg = $derived(evidenceItems.filter(e => !e.pos).length);
-  const sidebarIntel = $derived([
-    {
-      label: 'EVIDENCE',
-      value: `+${evidencePos} / -${evidenceNeg}`,
-      note: evidencePos >= evidenceNeg ? 'bias aligned' : 'bias mixed',
-      tone: evidencePos > evidenceNeg ? 'pos' : evidenceNeg > evidencePos ? 'neg' : '',
-    },
-    {
-      label: 'R:R',
-      value: proposal[3]?.val ?? '—',
-      note: proposal[2]?.hint || 'target spread',
-      tone: (analyzeData?.entryPlan?.riskReward ?? 0) >= 2 ? 'pos' : '',
-    },
-    {
-      label: 'REGIME',
-      value: analyzeData?.snapshot?.regime ?? '—',
-      note: analyzeData?.riskPlan?.bias ?? 'market context',
-      tone: analyzeData?.snapshot?.regime === 'BULL' ? 'pos' : analyzeData?.snapshot?.regime === 'BEAR' ? 'neg' : '',
-    },
-    {
-      label: 'ENTRY',
-      value: proposal[0]?.val ?? '—',
-      note: proposal[1]?.hint || 'risk anchor',
-      tone: '',
-    },
-  ]);
 
   // ── RR bar widths ─────────────────────────────────────────────────────
   const rrLossPct = $derived((() => {
@@ -1060,7 +1098,7 @@
           {#if drawerTab === 'analyze'}
             <div class="analyze-body">
               <div class="analyze-overview">
-                {#each sidebarIntel as item}
+                {#each workspaceSummaryCards as item}
                   <div class="analyze-overview-card" class:tone-pos={item.tone === 'pos'} class:tone-neg={item.tone === 'neg'}>
                     <span class="analyze-overview-label">{item.label}</span>
                     <span class="analyze-overview-value">{item.value}</span>
@@ -1149,6 +1187,10 @@
                     {/each}
                   </div>
                   <div class="analyze-actions">
+                    <button class="analyze-action-btn ai" type="button" onclick={openAnalyzeAIDetail}>
+                      <span class="analyze-action-k">AI</span>
+                      <span class="analyze-action-t">AI로 상세 해설 보기</span>
+                    </button>
                     <button class="analyze-action-btn" type="button" onclick={() => setDrawerTab('judge')}>
                       <span class="analyze-action-k">04</span>
                       <span class="analyze-action-t">JUDGE로 이동</span>
@@ -1474,7 +1516,7 @@
             {/if}
           </div>
           <div class="lcs-summary-grid" role="list" aria-label="Analyze summary">
-            {#each sidebarIntel as item}
+            {#each workspaceSummaryCards as item}
               <div class="lcs-summary-card" class:tone-pos={item.tone === 'pos'} class:tone-neg={item.tone === 'neg'} role="listitem">
                 <span class="lcs-summary-label">{item.label}</span>
                 <span class="lcs-summary-value">{item.value}</span>
@@ -1492,16 +1534,26 @@
             {/each}
           </div>
           <div class="lcs-bridge">
-            <button
-              class="lcs-open-detail"
-              class:active={analyzeDetailOpen}
-              type="button"
-              onclick={openAnalyze}
-              aria-pressed={analyzeDetailOpen}
-            >
-              <span class="lcs-open-label">DETAIL PANEL</span>
-              <span class="lcs-open-state">{analyzeDetailOpen ? 'OPEN' : 'OPEN ↗'}</span>
-            </button>
+            <div class="lcs-bridge-actions">
+              <button
+                class="lcs-open-detail"
+                class:active={analyzeDetailOpen}
+                type="button"
+                onclick={openAnalyze}
+                aria-pressed={analyzeDetailOpen}
+              >
+                <span class="lcs-open-label">DETAIL PANEL</span>
+                <span class="lcs-open-state">{analyzeDetailOpen ? 'OPEN' : 'OPEN ↗'}</span>
+              </button>
+              <button
+                class="lcs-open-detail ai"
+                type="button"
+                onclick={openAnalyzeAIDetail}
+              >
+                <span class="lcs-open-label">AI DETAIL</span>
+                <span class="lcs-open-state">OPEN ↗</span>
+              </button>
+            </div>
             <div class="lcs-bridge-copy">
               LIVE · OPTIONS · VENUE · LIQ · PROPOSAL은 하단 ANALYZE에 통합
             </div>
@@ -2254,10 +2306,18 @@
     color: var(--g8);
     cursor: pointer;
   }
+  .analyze-action-btn.ai {
+    border-color: color-mix(in srgb, var(--amb) 34%, var(--g4));
+    background: color-mix(in srgb, var(--amb) 10%, var(--g1));
+  }
   .analyze-action-btn:hover {
     border-color: var(--g5);
     background: var(--g2);
     color: var(--g9);
+  }
+  .analyze-action-btn.ai:hover {
+    border-color: color-mix(in srgb, var(--amb) 52%, var(--g4));
+    background: color-mix(in srgb, var(--amb) 14%, var(--g2));
   }
   .analyze-action-k {
     font-family: 'JetBrains Mono', monospace;
@@ -2837,6 +2897,11 @@
     border: 0.5px solid var(--g4);
     background: linear-gradient(180deg, var(--g2), rgba(0,0,0,0.16));
   }
+  .lcs-bridge-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
   .lcs-open-detail {
     width: 100%;
     display: flex;
@@ -2850,10 +2915,17 @@
     color: var(--g8);
     cursor: pointer;
   }
+  .lcs-open-detail.ai {
+    border-color: color-mix(in srgb, var(--amb) 28%, var(--g4));
+    background: color-mix(in srgb, var(--amb) 8%, var(--g0));
+  }
   .lcs-open-detail:hover,
   .lcs-open-detail.active {
     border-color: color-mix(in srgb, var(--brand) 48%, var(--g4));
     color: var(--g9);
+  }
+  .lcs-open-detail.ai:hover {
+    border-color: color-mix(in srgb, var(--amb) 48%, var(--g4));
   }
   .lcs-open-label {
     font-family: 'JetBrains Mono', monospace;

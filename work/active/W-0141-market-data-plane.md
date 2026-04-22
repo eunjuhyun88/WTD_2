@@ -20,6 +20,8 @@ Contract change
 - `ChartBoard -> StudySnapshot[] -> Bottom Workspace / AI` 공통 계약 정의
 - compare canvas 전환을 위한 `pin / detach / compare` 데이터 모델 정의
 - app contract scaffold 추가 (`StudySnapshot`, `WorkspaceSection`, `AIContextPack`)
+- Phase 1 producer 구현: 기존 `analyze/chart/pillar fetches` 를 `CogochiWorkspaceEnvelope` 로 묶는 pure adapter 추가
+- Phase 1 consumer 구현: `TradeMode` 의 sidebar summary / AI detail handoff 가 `CogochiWorkspaceEnvelope` 를 소비하도록 연결
 
 ## Non-Goals
 
@@ -38,6 +40,7 @@ Contract change
 - `docs/domains/cogochi-market-data-plane.md`
 - `app/src/lib/contracts/terminalBackend.ts`
 - `app/src/lib/contracts/cogochiDataPlane.ts`
+- `app/src/lib/cogochi/workspaceDataPlane.ts`
 - `app/src/lib/api/terminalBackend.ts`
 - `app/src/components/terminal/workspace/ChartBoard.svelte`
 - `app/src/lib/cogochi/modes/TradeMode.svelte`
@@ -67,12 +70,13 @@ Contract change
 - chart 와 analyze 는 서로 다른 값을 다시 계산하면 안 되고, 같은 `StudySnapshot` 을 다른 surface 에서 재사용해야 한다.
 - `ChartBoard` 는 live series owner 이고, `TradeMode` 는 study/workspace composition owner 여야 한다.
 - compare 는 탭 전환이 아니라 `pin / detach / compare` 모델로 간다.
+- 첫 구현은 신규 backend route 를 열지 않고 app-side pure producer 로 시작한다. 다만 producer 가 backend ownership 메타를 반드시 포함해야 이후 engine producer 로 대체 가능하다.
 
 ## Next Steps
 
 1. `W-0141` 도메인 문서에 ingress/source/contract/layout 배치 원칙을 기록한다.
 2. `StudySnapshot / WorkspaceSection / AIContextPack` 타입 초안을 추가한다.
-3. 이후 lane 에서 `fetchTerminalBundle` 또는 신규 workspace bundle 이 이 계약을 반환하도록 producer scope 를 연다.
+3. `buildCogochiWorkspaceEnvelope()` producer 를 추가하고 `TradeMode` 의 summary/AI consumer 를 이 계약으로 전환한다.
 
 ## Exit Criteria
 

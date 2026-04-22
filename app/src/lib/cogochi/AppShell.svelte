@@ -32,6 +32,31 @@
   let modeSheetOpen = $state(false);
   let indicatorSettingsOpen = $state(false);
 
+  function appendAIDetail(userText: string, assistantText: string) {
+    shellStore.update((s) => ({ ...s, aiVisible: true }));
+    shellStore.updateTabState((s) => {
+      const chat = s.chat || [];
+      const prevUser = chat.at(-2);
+      const prevAssistant = chat.at(-1);
+      if (
+        prevUser?.role === 'user' &&
+        prevAssistant?.role === 'assistant' &&
+        prevUser.text === userText &&
+        prevAssistant.text === assistantText
+      ) {
+        return s;
+      }
+      return {
+        ...s,
+        chat: [
+          ...chat,
+          { role: 'user', text: userText },
+          { role: 'assistant', text: assistantText },
+        ],
+      };
+    });
+  }
+
   // AI sheet swipe-down dismiss
   let aiSwipeTouchStartY = $state(0);
   function onAITouchStart(e: TouchEvent) { aiSwipeTouchStartY = e.touches[0].clientY; }
@@ -86,6 +111,9 @@
       else if (c.id === 'new_trade') shellStore.openTab({ kind: 'trade', title: 'new session' });
       else if (c.id === 'open_indicator_settings') {
         indicatorSettingsOpen = true;
+      }
+      else if (c.id === 'open_ai_detail') {
+        appendAIDetail(c.userText ?? '현재 analyze detail 설명해줘', c.assistantText ?? '');
       }
       else if (c.id === 'reset') {
         shellStore.reset();
