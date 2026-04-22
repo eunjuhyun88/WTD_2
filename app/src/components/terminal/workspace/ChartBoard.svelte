@@ -78,6 +78,11 @@
     onCandleClose?: (bar: { time: number; open: number; high: number; low: number; close: number; volume: number }) => void;
     /** Gamma pin overlay — pass from parent when options-snapshot data is live. null hides line. */
     gammaPin?: GammaPinData | null;
+    /**
+     * Tablet routing: when provided, capture annotation clicks call this instead of
+     * opening the internal fixed drawer. CenterPanel uses this to show in PeekDrawer.
+     */
+    onCaptureSelect?: (ann: CaptureAnnotation) => void;
   }
 
   let {
@@ -97,6 +102,7 @@
     alphaMarkers = undefined,
     onCandleClose,
     gammaPin = null,
+    onCaptureSelect = undefined,
   }: Props = $props();
 
   // ── Internal TF state — syncs with externalTf if provided ─────────────────
@@ -1803,14 +1809,16 @@
   series={candleSeriesForAnnotations}
   {symbol}
   timeframe={tf}
-  onSelect={(ann) => { selectedCapture = ann; }}
+  onSelect={(ann) => { onCaptureSelect ? onCaptureSelect(ann) : (selectedCapture = ann); }}
   onAnnotationsChange={(anns) => { _annotationsCache = anns; }}
 />
-<CaptureReviewDrawer
-  annotation={selectedCapture}
-  onClose={() => { selectedCapture = null; }}
-  onVerdict={(id, verdict) => { selectedCapture = null; }}
-/>
+{#if !onCaptureSelect}
+  <CaptureReviewDrawer
+    annotation={selectedCapture}
+    onClose={() => { selectedCapture = null; }}
+    onVerdict={(id, verdict) => { selectedCapture = null; }}
+  />
+{/if}
 
 <!-- Toast: saved confirmation -->
 {#if savedCaptureId}
