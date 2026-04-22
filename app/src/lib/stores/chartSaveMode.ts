@@ -9,9 +9,9 @@
 
 import { writable } from 'svelte/store';
 import { createPatternCapture } from '$lib/api/terminalPersistence';
-import type { PatternCaptureCreateRequest } from '$lib/contracts/terminalPersistence';
 import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
-import { slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
+import type { CaptureSelectionPhase, RangeSelectionBar } from '$lib/terminal/rangeSelectionCapture';
+import { buildPatternCaptureRequestFromSelection } from '$lib/terminal/rangeSelectionCapture';
 
 export interface ChartSaveModeState {
   active: boolean;
@@ -114,7 +114,9 @@ function createChartSaveModeStore() {
   async function save(opts: {
     symbol: string;
     tf: string;
-    ohlcvBars?: Array<{ time: number; open: number; high: number; low: number; close: number; volume?: number }>;
+    phase?: CaptureSelectionPhase;
+    note?: string;
+    ohlcvBars?: RangeSelectionBar[];
   }): Promise<CaptureId | null> {
     let state: ChartSaveModeState = DEFAULT_STATE;
     const unsub = subscribe((s) => { state = s; });
@@ -122,56 +124,26 @@ function createChartSaveModeStore() {
 
     if (!state.active || state.anchorA === null || state.anchorB === null) return null;
 
-    const anchorStart = Math.min(state.anchorA, state.anchorB);
-    const anchorEnd   = Math.max(state.anchorA, state.anchorB);
-
-    // Slice klines to selected range
-    const klines = (opts.ohlcvBars ?? []).filter(
-      (b) => b.time >= anchorStart && b.time <= anchorEnd
-    );
-
-    // Slice indicators from stored payload (W-0117 Slice B)
-    let viewport = state.payload
-      ? slicePayloadToViewport(state.payload, anchorStart, anchorEnd, anchorStart)
-      : null;
-
     update((s) => ({ ...s, submitting: true }));
 
-    const capturePayload: PatternCaptureCreateRequest = {
-      symbol: opts.symbol,
-      timeframe: opts.tf,
-      contextKind: 'symbol',
-      triggerOrigin: 'manual',
-      reason: 'GENERAL',
-      note: state.noteDraft,
-      snapshot: {
-        price: klines.length > 0 ? klines[klines.length - 1].close : null,
-        change24h: null,
-        funding: null,
-        oiDelta: null,
-        freshness: 'recent',
-        viewport: viewport ?? {
-          timeFrom: anchorStart,
-          timeTo: anchorEnd,
-          tf: opts.tf,
-          barCount: klines.length,
-          anchorTime: anchorStart,
-          klines: klines.map((b) => ({
-            time: b.time,
-            open: b.open,
-            high: b.high,
-            low: b.low,
-            close: b.close,
-            volume: b.volume ?? 0,
-          })),
-          indicators: {},
-        },
-      },
-      decision: {},
-      sourceFreshness: { source: 'range_mode_save' },
-    };
-
     try {
+      const capturePayload = buildPatternCaptureRequestFromSelection({
+        symbol: opts.symbol,
+        timeframe: opts.tf,
+        payload: state.payload,
+        anchorA: state.anchorA,
+        anchorB: state.anchorB,
+        ohlcvBars: opts.ohlcvBars,
+        note: opts.note ?? state.noteDraft,
+        phase: opts.phase ?? 'GENERAL',
+        sourceFreshness: { source: 'range_mode_save' },
+      });
+
+      if (!capturePayload) {
+        update((s) => ({ ...s, submitting: false }));
+        return null;
+      }
+
       const record = await createPatternCapture(capturePayload);
       if (!record) {
         update((s) => ({ ...s, submitting: false }));
