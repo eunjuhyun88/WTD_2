@@ -58,7 +58,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   peekOpen: false,
   peekHeight: 56,
   drawerTab: 'analyze',
-  layoutMode: 'B',
+  layoutMode: 'D',
 });
 
 const makeDefault = (): ShellState => ({

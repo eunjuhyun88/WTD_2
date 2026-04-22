@@ -188,7 +188,8 @@
   let showATRBands = $derived($chartIndicators.atr_bands);
   let showCVD = $derived($chartIndicators.cvd);
   let showMACD = $derived($chartIndicators.macd);   // replaces RSI pane when active
-  let derivativesOnMain = $derived($chartIndicators.derivatives);
+  // derivativesOverlay = opt-in overlay on main chart; false = sub-pane (default/standard)
+  let derivativesOnMain = $derived($chartIndicators.derivativesOverlay);
 
   let chartMode = $state<'candle' | 'line'>('candle');
   /** Collapsible book / liq / quant strip (TradingView-style: chart first). */
@@ -1374,7 +1375,7 @@
     atr: 'atr_bands',
     macd: 'macd',
     cvd: 'cvd',
-    overlay: 'derivatives',
+    overlay: 'derivativesOverlay',
   };
 
   function toggleStudy(id: StudyId) {

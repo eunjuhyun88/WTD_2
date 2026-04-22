@@ -24,6 +24,9 @@ export type IndicatorKey =
   | 'vwap'
   | 'atr_bands'
   | 'derivatives'
+  // display-mode flag: opt-in to render funding+CVD ON the main chart (overlay)
+  // rather than the default sub-pane. false = sub-pane (TradingView standard).
+  | 'derivativesOverlay'
   // sub-pane indicators (compete for the 5 reserved slots)
   | 'cvd'
   | 'macd'
@@ -47,6 +50,7 @@ const DEFAULT_STATE: ChartIndicatorState = {
   vwap: false,
   atr_bands: false,
   derivatives: true,
+  derivativesOverlay: false,  // sub-pane by default (TradingView standard)
   cvd: true,
   macd: false,
   rsi: false,

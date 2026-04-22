@@ -275,17 +275,16 @@ export function buildIndicatorValues(input: AdapterInput): Record<string, Indica
   if (input.liqClusters?.cells?.length) {
     const cells = input.liqClusters.cells;
     const bucketMap = new Map<number, number>();
-    let currentPrice = 0;
+    const currentPrice = input.analyze?.price ?? 0;
     for (const cell of cells) {
       const rounded = Math.round(cell.priceBucket / 100) * 100;
       bucketMap.set(rounded, (bucketMap.get(rounded) ?? 0) + cell.intensity);
-      if (cell.highlight) currentPrice = rounded;
     }
     const sorted = [...bucketMap.entries()].sort((a, b) => a[0] - b[0]);
     const histBuckets: HistogramBucket[] = sorted.map(([bucket, value]) => ({
       bucket: (bucket / 1000).toFixed(0) + 'k',
       value,
-      highlight: Math.abs(bucket - currentPrice) < 200,
+      highlight: currentPrice > 0 && Math.abs(bucket - currentPrice) < 200,
     }));
     out.liq_by_level = { current: histBuckets, at: input.liqClusters.at || now };
   }
