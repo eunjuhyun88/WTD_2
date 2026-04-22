@@ -13,7 +13,7 @@ export interface TabState {
   peekOpen: boolean;
   peekHeight: number;
   drawerTab: 'analyze' | 'scan' | 'judge';
-  layoutMode: 'A' | 'B' | 'C';
+  layoutMode: 'C';
 }
 
 export interface Tab {
@@ -80,6 +80,14 @@ const makeDefault = (): ShellState => ({
   indicatorSettings: {},
 });
 
+function normalizeTabState(tabState?: Partial<TabState> | null): TabState {
+  return {
+    ...FRESH_TAB_STATE(),
+    ...(tabState ?? {}),
+    layoutMode: 'C',
+  };
+}
+
 /** Migrate v5 → v6: preserve all existing fields, fill new ones with defaults. */
 function migrateV5(raw: Record<string, unknown>): ShellState {
   const base = makeDefault();
@@ -93,7 +101,7 @@ function migrateV5(raw: Record<string, unknown>): ShellState {
     // Re-map tabs to ensure tabState is always present
     tabs: ((raw.tabs as Tab[] | undefined) ?? base.tabs).map(t => ({
       ...t,
-      tabState: t.tabState || FRESH_TAB_STATE(),
+      tabState: normalizeTabState(t.tabState),
     })),
   };
 }
@@ -108,7 +116,7 @@ function createShellStore() {
     const rawV6 = typeof window !== 'undefined' ? localStorage.getItem(SHELL_KEY) : null;
     if (rawV6) {
       initial = JSON.parse(rawV6) as ShellState;
-      initial.tabs = initial.tabs.map(t => ({ ...t, tabState: t.tabState || FRESH_TAB_STATE() }));
+      initial.tabs = initial.tabs.map(t => ({ ...t, tabState: normalizeTabState(t.tabState) }));
       // Back-fill new fields if loading an older v6 (safe no-op if fields exist)
       if (!initial.visibleIndicators) initial.visibleIndicators = makeDefault().visibleIndicators;
       if (!initial.archetypePrefs)   initial.archetypePrefs = {};

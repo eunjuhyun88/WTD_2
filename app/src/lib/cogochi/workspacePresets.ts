@@ -2,7 +2,7 @@
  * Workspace Presets (W-0125)
  *
  * A preset = snapshot of the TradeMode workspace state:
- *   • layoutMode ('A'|'B'|'C')
+ *   • layoutMode ('C')
  *   • visibleIndicators[] (ordered)
  *   • archetypePrefs (per-indicator archetype override)
  *
@@ -56,6 +56,10 @@ export const BUILTIN_PRESETS: WorkspacePreset[] = [
   },
 ];
 
+function normalizePreset(preset: WorkspacePreset): WorkspacePreset {
+  return { ...preset, layoutMode: 'C' };
+}
+
 // ── Storage ──────────────────────────────────────────────────────────────────
 function loadUserPresets(): WorkspacePreset[] {
   if (typeof window === 'undefined') return [];
@@ -63,7 +67,9 @@ function loadUserPresets(): WorkspacePreset[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as WorkspacePreset[];
-    return Array.isArray(parsed) ? parsed.filter(p => !p.builtin) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter(p => !p.builtin).map(normalizePreset)
+      : [];
   } catch {
     return [];
   }
@@ -101,7 +107,7 @@ export function saveCurrentAs(name: string): WorkspacePreset {
 
   const preset: WorkspacePreset = {
     name: trimmed,
-    layoutMode: ts.layoutMode,
+    layoutMode: 'C',
     visibleIndicators: [...st.visibleIndicators],
     archetypePrefs: { ...st.archetypePrefs },
     createdAt: Date.now(),
@@ -132,7 +138,7 @@ export function apply(name: string): boolean {
     visibleIndicators: [...p.visibleIndicators],
     archetypePrefs: { ...p.archetypePrefs },
   }));
-  shellStore.updateTabState(s => ({ ...s, layoutMode: p.layoutMode }));
+  shellStore.updateTabState(s => ({ ...s, layoutMode: 'C' }));
   activePresetName.set(name);
   return true;
 }

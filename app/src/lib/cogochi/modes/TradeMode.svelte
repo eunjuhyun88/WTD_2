@@ -322,7 +322,6 @@
     }
     // Desktop: open peek + switch drawer tab to analyze.
     updateTabState(s => ({ ...s, peekOpen: true, drawerTab: 'analyze' }));
-    bDrawerTab = 'analyze';
   }
 
   const verdictLevels = $derived(analyzeData?.entryPlan ? {
@@ -334,6 +333,7 @@
   const peekOpen = $derived(tabState.peekOpen);
   const drawerTab = $derived(tabState.drawerTab);
   const peekHeight = $derived(tabState.peekHeight);
+  let sidebarAnalyzeOpen = $state(true);
 
   // ── Scan core loop state ────────────────────────────────────────────────
   let scanState = $state<'idle' | 'scanning' | 'done'>('idle');
@@ -429,21 +429,6 @@
     document.body.style.cursor = 'ns-resize';
     document.body.style.userSelect = 'none';
   }
-
-  // ── Layout mode ──────────────────────────────────────────────────────────
-  const layoutMode = $derived(tabState.layoutMode ?? 'C');
-  function setLayoutMode(m: 'A' | 'B' | 'C') {
-    updateTabState(s => ({ ...s, layoutMode: m }));
-  }
-
-  // Layout B drawer tab state
-  let bDrawerTab = $state<'analyze' | 'scan' | 'judge'>('analyze');
-
-  const DRAWER_TABS = [
-    { id: 'analyze', n: '02', label: 'ANALYZE', color: 'var(--brand)', desc: '가설·근거' },
-    { id: 'scan',    n: '03', label: 'SCAN',    color: '#7aa2e0',    desc: '유사 셋업' },
-    { id: 'judge',   n: '04', label: 'JUDGE',   color: 'var(--amb)', desc: '매매·판정' },
-  ] as const;
 
   // ── JUDGE state (trade_act.jsx ActPanel) ────────────────────────────────
   let judgeVerdict = $state<'agree' | 'disagree' | null>(null);
@@ -862,409 +847,18 @@
     </div>
     {/if}
   {:else}
-  <!-- Layout tabs -->
-  <nav class="layout-strip" aria-label="Layout modes">
-    <span class="ls-label" id="layout-group-label">LAYOUT</span>
-    {#each [
-      { id: 'A', label: 'STACK',   desc: '세로 3단' },
-      { id: 'B', label: 'DRAWER',  desc: '차트 + 하단 탭' },
-      { id: 'C', label: 'SIDEBAR', desc: '사이드 + peek', badge: 'new' },
-    ] as lt}
-      <button
-        class="ls-tab"
-        class:active={layoutMode === lt.id}
-        onclick={() => setLayoutMode(lt.id as any)}
-        aria-pressed={layoutMode === lt.id}
-        title="Switch to {lt.label} layout: {lt.desc}"
-      >
-        <span class="ls-id">{lt.id}</span>
-        <span class="ls-name">{lt.label}</span>
-        <span class="ls-desc">· {lt.desc}</span>
-        {#if lt.badge}
-          <span class="ls-badge" aria-label="new feature">{lt.badge}</span>
-        {/if}
-      </button>
-    {/each}
+  <nav class="layout-strip" aria-label="Workspace controls">
+    <span class="ls-label" id="layout-group-label">WORKSPACE</span>
+    <div class="ls-static" aria-live="polite">
+      <span class="ls-id">C</span>
+      <span class="ls-name">SIDEBAR</span>
+      <span class="ls-desc">· 단일 레이아웃</span>
+    </div>
     <span class="spacer"></span>
     <WorkspacePresetPicker />
-    <span class="ls-hint" role="status" aria-live="polite">탭 전환해서 비교</span>
+    <span class="ls-hint" role="status" aria-live="polite">ANALYZE 접기 가능</span>
   </nav>
 
-  {#if layoutMode === 'A'}
-  <!-- ═══ LAYOUT A · Chart + always-open 3-col bottom panel ═══════════════ -->
-  <div class="layout-ab">
-    <div class="chart-section no-peek">
-      <div class="chart-header">
-        <span class="symbol">{symbol}</span>
-        <span class="timeframe">{timeframe.toUpperCase()}</span>
-        <span class="pattern">Tradoor v2</span>
-        <span class="spacer"></span>
-        <div class="ind-toggles">
-          <span class="ind-label-hdr">INDICATORS</span>
-          {#each [
-            { id: 'oi',      label: 'OI',      get: () => showOI,      set: () => toggleIndicator('oi') },
-            { id: 'funding', label: 'Funding', get: () => showFunding, set: () => toggleIndicator('derivatives') },
-            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: () => toggleIndicator('cvd') },
-          ] as tog}
-            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set()}>{tog.label}</button>
-          {/each}
-        </div>
-        <div class="conf-inline">
-          <span class="conf-label">CONFIDENCE</span>
-          <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
-          <span class="conf-val">{fmtConf}</span>
-        </div>
-      </div>
-      <div class="chart-body">
-        <div class="chart-live">
-          <ChartBoard
-            {symbol}
-            tf={timeframe}
-            initialData={chartPayload ?? undefined}
-            verdictLevels={verdictLevels}
-            change24hPct={analyzeData?.change24h ?? null}
-            contextMode="chart"
-            onCandleClose={handleCandleClose}
-            {gammaPin}
-          />
-        </div>
-      </div>
-    </div>
-    <!-- 3-col bottom: ANALYZE | SCAN | JUDGE all open at once -->
-    <div class="la-bottom">
-      <div class="la-col la-analyze-col">
-        <div class="la-col-header"><span class="la-step">02</span><span class="la-title">ANALYZE</span><span class="la-desc">· 가설·근거</span></div>
-        <div class="la-col-body">
-          <div class="narrative">
-            <span class="bull">{narrativeDir} 진입 권장 ·</span>
-            {' '}{narrativeBias ?? '분석 완료'}
-            {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-              {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
-            {/if}
-          </div>
-          {#if confluence}
-            <ConfluenceBanner value={confluence} history={confluenceHistory} />
-          {/if}
-          <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE INDICATORS" layout="row" compact />
-          {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
-            <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-          {/if}
-          <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE DIVERGENCE" layout="stack" compact />
-          <div class="evidence-grid" role="list" aria-label="Evidence items">
-            {#each evidenceItems as item}
-              <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
-                <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
-                <span class="ev-key">{item.k}</span>
-                <span class="ev-val">{item.v}</span>
-                <span class="sr-only">{item.k}: {item.v}, {item.note}, {item.pos ? 'positive' : 'negative'} evidence</span>
-              </div>
-            {/each}
-          </div>
-          <div class="proposal-label" style="margin-top: 8px;" role="heading" aria-level="3">PROPOSAL</div>
-          <div role="region" aria-label="Trade proposal details">
-            {#each proposal as p}
-              <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
-                <span class="prop-l">{p.label}</span>
-                <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
-                <span class="prop-h">{p.hint}</span>
-              </div>
-            {/each}
-          </div>
-        </div>
-      </div>
-      <div class="la-vsep"></div>
-      <div class="la-col la-scan-col">
-        <div class="la-col-header"><span class="la-step">03</span><span class="la-title">SCAN</span><span class="la-desc">· {scanCandidates.length} candidates</span></div>
-        <div class="la-col-body" role="list" aria-label="Scan candidates">
-          {#each scanCandidates as x}
-            {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-            <button
-              class="scan-row"
-              class:active={scanSelected === x.id}
-              onclick={() => scanSelected = x.id}
-              aria-label="{x.symbol}: {x.pattern}, α{x.alpha}, {Math.round(x.sim * 100)}% similarity"
-              aria-current={scanSelected === x.id ? 'true' : 'false'}
-            >
-              <span class="sr-sym">{x.symbol.replace('USDT','')}</span>
-              <span class="sr-tf">{x.tf}</span>
-              <div class="sr-bar" aria-hidden="true"><div class="sr-fill" style:width="{x.sim*100}%" style:background={sc}></div></div>
-              <span class="sr-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span>
-            </button>
-          {/each}
-          {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
-            <div class="la-liq-wrap" style="margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--g4);">
-              <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
-            </div>
-          {/if}
-        </div>
-      </div>
-      <div class="la-vsep"></div>
-      <div class="la-col la-judge-col">
-        <div class="la-col-header"><span class="la-step">04</span><span class="la-title">JUDGE</span><span class="la-desc">· 매매·판정</span></div>
-        <div class="la-col-body">
-          {#if confluence}
-            <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
-          {/if}
-          <div class="lvl-row" role="region" aria-label="Trade plan levels">
-            {#each judgePlan as lvl}
-              <div class="lvl-cell">
-                <div class="lvl-label">{lvl.label}</div>
-                <div class="lvl-val" style:color={lvl.color} aria-label="{lvl.label}: {lvl.val}">{lvl.val}</div>
-              </div>
-            {/each}
-          </div>
-          <div class="judge-btns" style="margin-top: 10px;" role="group" aria-label="Verdict options">
-            <button
-              class="judge-btn agree"
-              class:active={judgeVerdict === 'agree'}
-              onclick={() => judgeVerdict = 'agree'}
-              aria-pressed={judgeVerdict === 'agree'}
-              title="Press Y or click to agree (Y key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut Y">Y</span><div class="jb-text"><span class="jb-label">AGREE</span></div>
-            </button>
-            <button
-              class="judge-btn disagree"
-              class:active={judgeVerdict === 'disagree'}
-              onclick={() => judgeVerdict = 'disagree'}
-              aria-pressed={judgeVerdict === 'disagree'}
-              title="Press N or click to disagree (N key)"
-            >
-              <span class="jb-key" aria-label="Keyboard shortcut N">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span></div>
-            </button>
-          </div>
-          <div class="outcome-row" style="margin-top: 8px;" role="group" aria-label="Trade outcome options">
-            {#each [{ k: 'win', l: 'WIN', c: 'var(--pos)', bg: 'var(--pos-dd)' }, { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' }, { k: 'flat', l: 'FLAT', c: 'var(--g7)', bg: 'var(--g2)' }] as o}
-              <button
-                class="outcome-btn"
-                class:active={judgeOutcome === o.k}
-                style:--oc={o.c}
-                style:--obg={o.bg}
-                onclick={() => { judgeOutcome = o.k as any; }}
-                aria-pressed={judgeOutcome === o.k}
-                title="Mark trade outcome as {o.l}"
-              >{o.l}</button>
-            {/each}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {:else if layoutMode === 'B'}
-  <!-- ═══ LAYOUT B · Chart + always-open tabbed bottom panel ══════════════ -->
-  <div class="layout-ab">
-    <div class="chart-section no-peek">
-      <div class="chart-header">
-        <span class="symbol">{symbol}</span>
-        <span class="timeframe">{timeframe.toUpperCase()}</span>
-        <span class="pattern">Tradoor v2</span>
-        <span class="spacer"></span>
-        <div class="ind-toggles">
-          <span class="ind-label-hdr">INDICATORS</span>
-          {#each [
-            { id: 'oi',      label: 'OI',      get: () => showOI,      set: () => toggleIndicator('oi') },
-            { id: 'funding', label: 'Funding', get: () => showFunding, set: () => toggleIndicator('derivatives') },
-            { id: 'cvd',     label: 'CVD',     get: () => showCVD,     set: () => toggleIndicator('cvd') },
-          ] as tog}
-            <button class="ind-tog" class:active={tog.get()} onclick={() => tog.set()}>{tog.label}</button>
-          {/each}
-        </div>
-        <div class="conf-inline">
-          <span class="conf-label">CONFIDENCE</span>
-          <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
-          <span class="conf-val">{fmtConf}</span>
-        </div>
-      </div>
-      <div class="chart-body">
-        <div class="chart-live">
-          <ChartBoard
-            {symbol}
-            tf={timeframe}
-            initialData={chartPayload ?? undefined}
-            verdictLevels={verdictLevels}
-            change24hPct={analyzeData?.change24h ?? null}
-            contextMode="chart"
-            onCandleClose={handleCandleClose}
-            {gammaPin}
-          />
-        </div>
-      </div>
-    </div>
-    <!-- Tabbed bottom panel, always open -->
-    <div class="lb-panel">
-      <div class="drawer-header" role="tablist" aria-label="Analysis tabs">
-        {#each DRAWER_TABS as tab}
-          <button
-            class="dh-tab"
-            class:active={bDrawerTab === tab.id}
-            style:--tc={tab.color}
-            onclick={() => bDrawerTab = tab.id as any}
-            role="tab"
-            aria-selected={bDrawerTab === tab.id}
-            aria-controls="{tab.id}-panel"
-            tabindex={bDrawerTab === tab.id ? 0 : -1}
-          >
-            <span class="dh-n">{tab.n}</span>
-            <span class="dh-label">{tab.label}</span>
-            <span class="dh-desc">· {tab.desc}</span>
-          </button>
-        {/each}
-        <span class="spacer"></span>
-        {#if confluence}
-          <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
-        {/if}
-        <div class="conf-inline small">
-          <span class="conf-label">CONFIDENCE</span>
-          <div class="conf-bar"><div class="conf-fill" style:width={confidencePct}></div></div>
-          <span class="conf-val">{fmtConf}</span>
-        </div>
-      </div>
-      <div class="drawer-content">
-        {#if bDrawerTab === 'analyze'}
-          <div class="analyze-body" id="analyze-panel" role="tabpanel" aria-labelledby="analyze-tab">
-            <div class="analyze-left">
-              <div class="narrative" role="region" aria-label="Trade bias and direction">
-                <span class="bull">{narrativeDir} 진입 권장 ·</span>
-                {' '}{narrativeBias ?? '분석 완료'}
-                {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-                  {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
-                {/if}
-              </div>
-              {#if confluence}
-                <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
-              {/if}
-              {#if gaugePaneIds.length > 0}
-                <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
-              {/if}
-              {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
-                <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-              {/if}
-              <div class="evidence-grid" role="list" aria-label="Evidence items">
-                {#each evidenceItems as item}
-                  <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
-                    <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
-                    <span class="ev-key">{item.k}</span>
-                    <span class="ev-val">{item.v}</span>
-                    <span class="ev-note">{item.note}</span>
-                    <span class="sr-only">{item.k}: {item.v}, {item.note}, {item.pos ? 'positive' : 'negative'} evidence</span>
-                  </div>
-                {/each}
-              </div>
-            </div>
-            <div class="analyze-right">
-              <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
-              {#if indicatorValues.liq_heatmap && INDICATOR_REGISTRY.liq_heatmap}
-                <div style="margin: 6px 0;">
-                  <IndicatorRenderer def={INDICATOR_REGISTRY.liq_heatmap} value={indicatorValues.liq_heatmap} />
-                </div>
-              {/if}
-              <div class="proposal-label" role="heading" aria-level="2">PROPOSAL</div>
-              {#if !analyzeData?.entryPlan}
-                <div class="proposal-hint">
-                  <span class="ph-icon">◆</span>
-                  <span>AI 패널에 셋업 설명 후 RUN</span>
-                  <span class="ph-arrow">→</span>
-                </div>
-              {:else}
-                <div role="region" aria-label="Trade proposal details">
-                  {#each proposal as p}
-                    <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
-                      <span class="prop-l">{p.label}</span>
-                      <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
-                      <span class="prop-h">{p.hint}</span>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
-        {:else if bDrawerTab === 'scan'}
-          <div class="scan-panel" id="scan-panel" role="tabpanel" aria-labelledby="scan-tab">
-            {#if confluence}
-              <div style="padding: 4px 8px 0; display: flex; justify-content: flex-end;">
-                <ConfluencePeekChip value={confluence} onOpen={openAnalyze} />
-              </div>
-            {/if}
-            <div class="scan-grid" role="list" aria-label="Scan candidates">
-              {#each scanCandidates as x}
-                {@const sc = x.alpha >= 75 ? 'var(--pos)' : x.alpha >= 60 ? 'var(--amb)' : 'var(--g7)'}
-                <button
-                  class="scan-card"
-                  class:active={scanSelected === x.id}
-                  style:--sc={sc}
-                  onclick={() => scanSelected = x.id}
-                  aria-label="{x.symbol}: {x.pattern}, α{x.alpha}, {Math.round(x.sim * 100)}% similarity"
-                  aria-current={scanSelected === x.id ? 'true' : 'false'}
-                >
-                  <div class="sc-top"><span class="sc-sym">{x.symbol.replace('USDT','')}</span><span class="sc-tf">{x.tf}</span><span class="spacer"></span><span class="sc-alpha" style:color={sc} aria-hidden="true">α{x.alpha}</span></div>
-                  <div class="sc-sim-row"><div class="sc-sim-bar" aria-hidden="true"><div class="sc-sim-fill" style:width="{x.sim*100}%" style:background={sc}></div></div><span class="sc-sim-pct">{Math.round(x.sim*100)}%</span></div>
-                  <div class="sc-pattern">{x.pattern}</div>
-                </button>
-              {/each}
-            </div>
-          </div>
-        {:else if bDrawerTab === 'judge'}
-          <div class="act-panel" id="judge-panel" role="tabpanel" aria-labelledby="judge-tab">
-            {#if confluence}
-              <div style="padding: 4px 8px 0;">
-                <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
-              </div>
-            {/if}
-            <div class="act-cols">
-              <div class="act-col plan-col">
-                <div class="col-label" role="heading" aria-level="2">A · TRADE PLAN</div>
-                <div class="lvl-row" role="region" aria-label="Trade plan levels">
-                  {#each judgePlan as lvl}
-                    <div class="lvl-cell"><div class="lvl-label">{lvl.label}</div><div class="lvl-val" style:color={lvl.color} aria-label="{lvl.label}: {lvl.val}">{lvl.val}</div></div>
-                  {/each}
-                </div>
-              </div>
-              <div class="act-divider"></div>
-              <div class="act-col judge-col">
-                <div class="col-label" role="heading" aria-level="2">B · JUDGE NOW</div>
-                <div class="judge-btns" role="group" aria-label="Verdict options">
-                  <button
-                    class="judge-btn agree"
-                    class:active={judgeVerdict === 'agree'}
-                    onclick={() => judgeVerdict = 'agree'}
-                    aria-pressed={judgeVerdict === 'agree'}
-                    title="Press Y or click to agree (Y key)"
-                  ><span class="jb-key" aria-label="Keyboard shortcut Y">Y</span><div class="jb-text"><span class="jb-label">AGREE</span><span class="jb-sub">진입</span></div></button>
-                  <button
-                    class="judge-btn disagree"
-                    class:active={judgeVerdict === 'disagree'}
-                    onclick={() => judgeVerdict = 'disagree'}
-                    aria-pressed={judgeVerdict === 'disagree'}
-                    title="Press N or click to disagree (N key)"
-                  ><span class="jb-key" aria-label="Keyboard shortcut N">N</span><div class="jb-text"><span class="jb-label">DISAGREE</span><span class="jb-sub">패스</span></div></button>
-                </div>
-              </div>
-              <div class="act-divider"></div>
-              <div class="act-col after-col">
-                <div class="col-label" role="heading" aria-level="2">C · AFTER RESULT</div>
-                <div class="outcome-row" role="group" aria-label="Trade outcome options">
-                  {#each [{ k: 'win', l: 'WIN', c: 'var(--pos)', bg: 'var(--pos-dd)' }, { k: 'loss', l: 'LOSS', c: 'var(--neg)', bg: 'var(--neg-dd)' }, { k: 'flat', l: 'FLAT', c: 'var(--g7)', bg: 'var(--g2)' }] as o}
-                    <button
-                      class="outcome-btn"
-                      class:active={judgeOutcome === o.k}
-                      style:--oc={o.c}
-                      style:--obg={o.bg}
-                      onclick={() => { judgeOutcome = o.k as any; }}
-                      aria-pressed={judgeOutcome === o.k}
-                      title="Mark trade outcome as {o.l}"
-                    >{o.l}</button>
-                  {/each}
-                </div>
-              </div>
-            </div>
-          </div>
-        {/if}
-      </div>
-    </div>
-  </div>
-
-  {:else}
   <!-- ═══ LAYOUT C · Chart + peek bar + sidebar (merged C+D) ═══════════════ -->
   <div class="layout-c">
     <div class="chart-section lc-main">
@@ -1740,8 +1334,25 @@
     </div>
     <div class="lc-sidebar" role="complementary" aria-label="Sidebar analysis">
       <div class="lcs-section">
-        <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">02</span><span class="lcs-title">ANALYZE</span></div>
-        <div class="lcs-body" role="region" aria-label="Analysis details">
+        <div class="lcs-header">
+          <div class="lcs-headline" role="heading" aria-level="2">
+            <span class="lcs-step">02</span>
+            <span class="lcs-title">ANALYZE</span>
+            <span class="lcs-meta">{confidenceAlpha}</span>
+          </div>
+          <button
+            class="lcs-toggle"
+            type="button"
+            onclick={() => (sidebarAnalyzeOpen = !sidebarAnalyzeOpen)}
+            aria-expanded={sidebarAnalyzeOpen}
+            aria-controls="sidebar-analyze-body"
+            title={sidebarAnalyzeOpen ? 'ANALYZE 접기' : 'ANALYZE 펼치기'}
+          >
+            <span aria-hidden="true">{sidebarAnalyzeOpen ? '▾' : '▸'}</span>
+          </button>
+        </div>
+        {#if sidebarAnalyzeOpen}
+        <div class="lcs-body" id="sidebar-analyze-body" role="region" aria-label="Analysis details">
           {#if confluence}
             <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
           {/if}
@@ -1757,7 +1368,7 @@
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
           </div>
-          <!-- W-0124: Gauge row always visible in C SIDEBAR (drag-to-reorder enabled) -->
+          <!-- W-0136: single C sidebar keeps live indicators here -->
           {#if gaugePaneIds.length > 0}
             <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE · drag to reorder" layout="row" compact reorderable />
           {/if}
@@ -1780,6 +1391,7 @@
             {/each}
           </div>
         </div>
+        {/if}
       </div>
       <div class="lcs-divider"></div>
       <div class="lcs-section">
@@ -1839,7 +1451,6 @@
     </div>
   </div>
 
-  {/if}<!-- end layoutMode -->
 {/if}<!-- end mobileView -->
 </div>
 
@@ -2710,48 +2321,31 @@
     margin-right: 10px;
     white-space: nowrap;
   }
-  .ls-tab {
-    padding: 0 12px;
-    height: 100%;
-    background: transparent;
-    border: none;
-    border-right: 0.5px solid var(--g3);
+  .ls-static {
     display: flex;
     align-items: center;
     gap: 6px;
-    cursor: pointer;
-    transition: background 0.1s;
+    padding-right: 10px;
+    margin-right: 10px;
+    border-right: 0.5px solid var(--g3);
     white-space: nowrap;
   }
-  .ls-tab.active { background: var(--g1); }
   .ls-id {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     font-weight: 700;
-    color: var(--g6);
+    color: var(--amb);
     letter-spacing: 0.1em;
   }
-  .ls-tab.active .ls-id { color: var(--amb); }
   .ls-name {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: var(--g6);
+    color: var(--g9);
     letter-spacing: 0.06em;
     font-weight: 500;
     white-space: nowrap;
   }
-  .ls-tab.active .ls-name { color: var(--g9); }
-  .ls-desc { display: none; }
-  .ls-badge {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
-    padding: 1px 5px;
-    background: var(--amb);
-    color: var(--g0);
-    border-radius: 2px;
-    letter-spacing: 0.1em;
-    font-weight: 700;
-  }
+  .ls-desc { color: var(--g5); font-size: 8px; }
   .ls-hint {
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
@@ -2760,75 +2354,7 @@
     white-space: nowrap;
   }
 
-  /* ── Shared: chart-section without peek ────────────────────────────────── */
-  .chart-section.no-peek {
-    flex: 1;
-    min-height: 0;
-    position: relative;
-  }
-
-  /* ── Layout A/B shared wrapper ──────────────────────────────────────────── */
-  .layout-ab {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-  }
-
-  /* ── Layout A — 3-col bottom panel ─────────────────────────────────────── */
-  .la-bottom {
-    flex-shrink: 0;
-    height: 260px;
-    display: flex;
-    flex-direction: row;
-    background: var(--g1);
-    border-top: 0.5px solid var(--g4);
-    overflow: hidden;
-  }
-  .la-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    overflow: hidden;
-  }
-  .la-col-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 12px;
-    border-bottom: 0.5px solid var(--g3);
-    background: var(--g0);
-    flex-shrink: 0;
-  }
-  .la-step {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    color: var(--g5);
-    letter-spacing: 0.18em;
-    font-weight: 600;
-  }
-  .la-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--g9);
-    letter-spacing: 0.1em;
-  }
-  .la-desc { font-size: 9px; color: var(--g5); }
-  .la-col-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 12px;
-  }
-  .la-vsep {
-    width: 0.5px;
-    background: var(--g3);
-    flex-shrink: 0;
-  }
-
-  /* scan-row: compact horizontal scan item for A/C layouts */
+  /* scan-row: compact horizontal scan item for C sidebar */
   .scan-empty { padding: 12px 0; font-size: 11px; color: var(--g6); text-align: center; }
   .scan-row {
     display: flex;
@@ -2854,17 +2380,6 @@
   .sr-bar { flex: 1; height: 3px; background: var(--g3); border-radius: 2px; overflow: hidden; }
   .sr-fill { height: 100%; border-radius: 2px; }
   .sr-alpha { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; width: 30px; text-align: right; flex-shrink: 0; }
-
-  /* ── Layout B — tabbed bottom panel ────────────────────────────────────── */
-  .lb-panel {
-    flex-shrink: 0;
-    height: 240px;
-    display: flex;
-    flex-direction: column;
-    background: var(--g1);
-    border-top: 0.5px solid var(--g4);
-    overflow: hidden;
-  }
 
   /* ── Layout C — chart + peek bar + sidebar (merged C+D) ─────────────────── */
   .layout-c {
@@ -2916,11 +2431,18 @@
   .lcs-header {
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: space-between;
+    gap: 8px;
     padding: 8px 12px;
     background: var(--g0);
     border-bottom: 0.5px solid var(--g3);
     flex-shrink: 0;
+  }
+  .lcs-headline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
   }
   .lcs-step {
     font-family: 'JetBrains Mono', monospace;
@@ -2937,6 +2459,20 @@
     letter-spacing: 0.1em;
   }
   .lcs-meta { font-size: 8px; color: var(--g5); }
+  .lcs-toggle {
+    width: 20px;
+    height: 20px;
+    border: 0.5px solid var(--g4);
+    border-radius: 4px;
+    background: var(--g1);
+    color: var(--g7);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .lcs-toggle:hover { color: var(--g9); border-color: var(--g5); }
   .lcs-body { padding: 8px 12px; }
   .lcs-divider { height: 0.5px; background: var(--g3); flex-shrink: 0; }
   .prop-cell.compact { padding: 3px 0; }
@@ -3160,4 +2696,3 @@
     letter-spacing: 0.06em;
   }
 </style>
-

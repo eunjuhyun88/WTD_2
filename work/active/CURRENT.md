@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`6fa020b0` — PR #180 (`codex/w-0131-tablet-peek-drawer`) 포함 최신 `origin/main`
+`2b726233` — PR #183 (`codex/w-0133-noncode-cleanup`) 포함 최신 `origin/main`
 
 ## 완료 (이번 세션)
 
@@ -23,6 +23,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0136** | `W-0136-c-only-layout.md` | 🔴 IN-PROGRESS | A/B 레이아웃 제거 + C-only + sidebar ANALYZE collapse |
 | **W-0134** | `W-0134-cogochi-runtime-verification.md` | 🟡 PR-READY | PR #182 merge + root mixed runtime diff 폐기 |
 | **W-0133** | `W-0133-repo-stabilization-refactor.md` | 🔴 IN-PROGRESS | CURRENT/AGENTS/baseline alignment + non-code lane 정리 |
 | **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🔴 BLOCKING | Supabase migration 018 (`pattern_ledger_records`) 미실행 |
@@ -58,7 +59,8 @@ cat work/active/W-0133-repo-stabilization-refactor.md
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | 최신 (`6fa020b0`) |
+| main | — | 최신 (`2b726233`) |
+| codex/w-0136-c-only-layout | W-0136 | ACTIVE |
 | codex/w-0134-runtime-stabilization | W-0134 | PR #182 OPEN |
 | codex/w-0133-noncode-cleanup | W-0133 | ACTIVE |
 
