@@ -2,9 +2,12 @@ from security_runtime import (
     build_allowed_hosts,
     build_allowed_origins,
     build_docs_urls,
+    get_runtime_role,
     get_public_runtime_security_errors,
     get_public_runtime_security_warnings,
     is_internal_auth_exempt_path,
+    runtime_serves_public_api,
+    runtime_serves_worker_control,
     validate_internal_request,
 )
 
@@ -78,8 +81,47 @@ def test_production_warns_when_docs_are_exposed(monkeypatch) -> None:
     monkeypatch.setenv("ENGINE_EXPOSE_DOCS", "true")
 
     assert get_public_runtime_security_warnings() == [
+        "ENGINE_RUNTIME_ROLE=hybrid serves public API and worker-control in the same runtime.",
         "ENGINE_EXPOSE_DOCS=true exposes FastAPI docs on the public engine runtime.",
     ]
+
+
+def test_runtime_role_defaults_to_hybrid(monkeypatch) -> None:
+    monkeypatch.delenv("ENGINE_RUNTIME_ROLE", raising=False)
+    assert get_runtime_role() == "hybrid"
+    assert runtime_serves_public_api() is True
+    assert runtime_serves_worker_control() is True
+
+
+def test_runtime_role_api_disables_worker_control(monkeypatch) -> None:
+    monkeypatch.setenv("ENGINE_RUNTIME_ROLE", "api")
+    assert get_runtime_role() == "api"
+    assert runtime_serves_public_api() is True
+    assert runtime_serves_worker_control() is False
+
+
+def test_runtime_role_worker_disables_public_api(monkeypatch) -> None:
+    monkeypatch.setenv("ENGINE_RUNTIME_ROLE", "worker")
+    assert get_runtime_role() == "worker"
+    assert runtime_serves_public_api() is False
+    assert runtime_serves_worker_control() is True
+
+
+def test_invalid_runtime_role_falls_back_to_hybrid(monkeypatch) -> None:
+    monkeypatch.setenv("ENGINE_RUNTIME_ROLE", "bogus")
+    assert get_runtime_role() == "hybrid"
+    assert runtime_serves_public_api() is True
+    assert runtime_serves_worker_control() is True
+
+
+def test_production_worker_role_does_not_require_public_origin_or_internal_secret(monkeypatch) -> None:
+    monkeypatch.setenv("K_SERVICE", "worker-control")
+    monkeypatch.setenv("ENGINE_RUNTIME_ROLE", "worker")
+    monkeypatch.setenv("ENGINE_ALLOWED_HOSTS", "worker-control-xxxx-uc.a.run.app")
+    monkeypatch.delenv("APP_ORIGIN", raising=False)
+    monkeypatch.delenv("ENGINE_INTERNAL_SECRET", raising=False)
+
+    assert get_public_runtime_security_errors() == []
 
 
 def test_internal_auth_exempts_health_ready_and_jobs() -> None:
