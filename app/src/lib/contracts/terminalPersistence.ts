@@ -297,6 +297,39 @@ export const PatternCaptureSimilarResponseSchema = z.object({
 });
 export type PatternCaptureSimilarResponse = z.infer<typeof PatternCaptureSimilarResponseSchema>;
 
+export const PatternCaptureProjectionRequestSchema = z.object({
+  scan: z.boolean().default(true),
+  limit: z.number().int().min(1).max(20).default(8),
+});
+export type PatternCaptureProjectionRequest = z.infer<typeof PatternCaptureProjectionRequestSchema>;
+
+export const PatternCaptureProjectionSnapSchema = z.object({
+  symbol: z.string().min(1),
+  timestamp: z.string().datetime({ offset: true }),
+  label: z.string().default(''),
+});
+export type PatternCaptureProjectionSnap = z.infer<typeof PatternCaptureProjectionSnapSchema>;
+
+export const PatternCaptureProjectionMatchSchema = z.object({
+  symbol: z.string().min(1),
+  timestamp: z.string(),
+  similarity: z.number(),
+  pWin: z.number().nullable(),
+  price: z.number(),
+});
+export type PatternCaptureProjectionMatch = z.infer<typeof PatternCaptureProjectionMatchSchema>;
+
+export const PatternCaptureProjectionResponseSchema = z.object({
+  ok: z.boolean(),
+  schemaVersion: z.literal(TerminalPersistenceSchemaVersion),
+  captureId: z.string().min(1),
+  challengeSlug: z.string().nullable(),
+  snap: PatternCaptureProjectionSnapSchema,
+  matches: z.array(PatternCaptureProjectionMatchSchema),
+  updatedAt: z.string().datetime({ offset: true }),
+});
+export type PatternCaptureProjectionResponse = z.infer<typeof PatternCaptureProjectionResponseSchema>;
+
 export const PatternCaptureResponseSchema = z.object({
   ok: z.boolean(),
   schemaVersion: z.literal(TerminalPersistenceSchemaVersion),
@@ -335,4 +368,8 @@ export function parsePatternCaptureResponse(input: unknown): PatternCaptureRespo
 
 export function parsePatternCaptureSimilarResponse(input: unknown): PatternCaptureSimilarResponse {
   return PatternCaptureSimilarResponseSchema.parse(input);
+}
+
+export function parsePatternCaptureProjectionResponse(input: unknown): PatternCaptureProjectionResponse {
+  return PatternCaptureProjectionResponseSchema.parse(input);
 }

@@ -1,5 +1,6 @@
 import {
   parseMacroCalendarResponse,
+  parsePatternCaptureProjectionResponse,
   parsePatternCaptureResponse,
   parsePatternCaptureSimilarResponse,
   parseTerminalAlertsResponse,
@@ -8,6 +9,8 @@ import {
   parseTerminalWatchlistResponse,
   type MacroCalendarItem,
   type PatternCaptureCreateRequest,
+  type PatternCaptureProjectionRequest,
+  type PatternCaptureProjectionResponse,
   type PatternCaptureQuery,
   type PatternCaptureRecord,
   type PatternCaptureSimilarityDraft,
@@ -148,6 +151,19 @@ export async function createPatternCapture(input: PatternCaptureCreateRequest): 
   if (!res.ok) return null;
   const payload = parsePatternCaptureResponse(await readJson(res));
   return payload.records[0] ?? null;
+}
+
+export async function projectPatternCapture(
+  id: string,
+  input: Partial<PatternCaptureProjectionRequest> = {},
+): Promise<PatternCaptureProjectionResponse | null> {
+  const res = await fetch(`/api/terminal/pattern-captures/${encodeURIComponent(id)}/project`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) return null;
+  return parsePatternCaptureProjectionResponse(await readJson(res));
 }
 
 export async function fetchSimilarPatternCaptures(

@@ -25,7 +25,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🔴 IN-PROGRESS | backend engine audit + pattern context producer 연결 |
+| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 QA-BLOCKED | manual browser QA + lab autorun/watch activation rule |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / 추가 정리 |
 | **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 OPS-BLOCKED | engine mainline integration 완료, 운영 migration 018만 남음 |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
@@ -35,7 +35,7 @@
 
 ## 즉시 실행 순서
 
-1. **W-0139** — `/terminal` capture -> pattern engine automation backend audit
+1. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
 2. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 3. **W-0122 Phase 2** — engine scoring plane + worker-control learning plane 분리 착수
 
