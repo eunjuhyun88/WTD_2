@@ -28,7 +28,7 @@
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 QA-BLOCKED | manual browser QA + lab autorun/watch activation rule |
 | **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | chart/analyze/AI/backend source 를 하나의 canonical data plane 으로 재정의 |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / shared study contract 추가 정리 |
-| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 OPS-BLOCKED | engine mainline integration 완료, 운영 migration 018만 남음 |
+| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | migration 018 + live preview redeploy 검증 완료, canonical engine region 결정만 남음 |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
 | **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
 
@@ -38,7 +38,7 @@
 
 1. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
 2. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
-3. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+3. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
 
 ---
 
@@ -56,6 +56,8 @@
 
 ## 인프라 미완 (사람 직접 실행 필요)
 
-- [ ] Supabase migration 018 실행 (psql pooler)
-- [ ] GCP cogotchi 재배포 필요 시: `gcloud run services update cogotchi-...`
+- [x] Supabase migration 018 실행 및 DB table/index 검증
+- [x] Vercel preview branch env (`release`, `codex/w-0139-terminal-core-loop-capture`) 정렬
+- [x] deterministic wrapper로 `cogochi-2` preview 재배포 후 live alias/스모크 확인
+- [ ] Cloud Run `asia-southeast1/cogotchi` 재배포 또는 `us-east4/cogotchi` 유지 결정을 명시
 - [ ] Vercel EXCHANGE_ENCRYPTION_KEY 환경변수 설정 (프로덕션)

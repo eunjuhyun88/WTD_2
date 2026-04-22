@@ -3,7 +3,7 @@ steps:
     args:
       - build
       - -f
-      - engine/worker/Dockerfile
+      - engine/Dockerfile
       - -t
       - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
       - engine
@@ -26,8 +26,8 @@ steps:
       - --platform
       - managed
       - --no-allow-unauthenticated
-      - --set-env-vars
-      - ENGINE_ENABLE_SCHEDULER=true
+      - --update-env-vars
+      - ENGINE_RUNTIME_ROLE=worker,ENGINE_ENABLE_SCHEDULER=true,ENGINE_ALLOWED_HOSTS=${_ALLOWED_HOSTS}
 
 images:
   - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
@@ -37,4 +37,5 @@ substitutions:
   _AR_REPOSITORY: cloud-run-source-deploy
   _IMAGE_NAME: wtd-worker-control
   _SERVICE_NAME: cogotchi-worker
-  _SERVICE_REGION: us-east4
+  _SERVICE_REGION: asia-southeast1
+  _ALLOWED_HOSTS: cogotchi-worker-103912432221.asia-southeast1.run.app
