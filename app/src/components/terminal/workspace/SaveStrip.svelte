@@ -7,7 +7,7 @@
    * preview similar captures, and persist the reviewed segment.
    */
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
-  import { fetchSimilarPatternCaptures } from '$lib/api/terminalPersistence';
+  import { fetchSimilarPatternCaptures, projectPatternCapture } from '$lib/api/terminalPersistence';
   import type { PatternCaptureSimilarityMatch } from '$lib/contracts/terminalPersistence';
   import { PHASE_META, PHASE_ORDER, type Phase } from '$lib/terminal/phaseInfo';
   import {
@@ -75,6 +75,7 @@
 
   let selectedPhase = $state<CaptureSelectionPhase>('GENERAL');
   let saveError = $state<string | null>(null);
+  let projecting = $state(false);
   let similarMatches = $state<PatternCaptureSimilarityMatch[]>([]);
   let similarLoading = $state(false);
   let similarRunId = 0;
@@ -135,6 +136,7 @@
     if (!visible) {
       similarRunId += 1;
       saveError = null;
+      projecting = false;
       similarMatches = [];
       similarLoading = false;
       selectedPhase = 'GENERAL';
@@ -238,7 +240,12 @@
       return;
     }
     onSaved?.(id);
-    window.location.href = `/lab?captureId=${encodeURIComponent(id)}`;
+    projecting = true;
+    const projection = await projectPatternCapture(id, { scan: true, limit: 8 }).catch(() => null);
+    projecting = false;
+    const params = new URLSearchParams({ captureId: id });
+    if (projection?.challengeSlug) params.set('challengeSlug', projection.challengeSlug);
+    window.location.href = `/lab?${params.toString()}`;
   }
 </script>
 
@@ -317,15 +324,15 @@
           class="save-strip__action save-strip__action--secondary"
           type="button"
           onclick={handleSaveAndOpenLab}
-          disabled={!canSave || saveState.submitting}
+          disabled={!canSave || saveState.submitting || projecting}
         >
-          {saveState.submitting ? '저장 중…' : 'Save & Open Lab'}
+          {saveState.submitting ? '저장 중…' : projecting ? 'Projecting…' : 'Save & Open Lab'}
         </button>
         <button
           class="save-strip__action save-strip__action--primary"
           type="button"
           onclick={handleSave}
-          disabled={!canSave || saveState.submitting}
+          disabled={!canSave || saveState.submitting || projecting}
         >
           {saveState.submitting ? '저장 중…' : 'Save Setup'}
         </button>
