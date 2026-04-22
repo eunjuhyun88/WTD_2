@@ -6,6 +6,7 @@
   import type { TabState } from '$lib/cogochi/shell.store';
   import { shellStore } from '$lib/cogochi/shell.store';
   import IndicatorPane from '$lib/components/indicators/IndicatorPane.svelte';
+  import WorkspacePresetPicker from '$lib/cogochi/WorkspacePresetPicker.svelte';
   import IndicatorRenderer from '$lib/components/indicators/IndicatorRenderer.svelte';
   import ConfluenceBanner from '$lib/components/confluence/ConfluenceBanner.svelte';
   import ConfluencePeekChip from '$lib/components/confluence/ConfluencePeekChip.svelte';
@@ -885,6 +886,7 @@
       </button>
     {/each}
     <span class="spacer"></span>
+    <WorkspacePresetPicker />
     <span class="ls-hint" role="status" aria-live="polite">탭 전환해서 비교</span>
   </nav>
 
@@ -1755,12 +1757,16 @@
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
           </div>
-          <details class="lc-ind-details">
-            <summary>INDICATORS</summary>
-            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE" layout="row" compact />
-            {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
-              <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
-            {/if}
+          <!-- W-0124: Gauge row always visible in C SIDEBAR (drag-to-reorder enabled) -->
+          {#if gaugePaneIds.length > 0}
+            <IndicatorPane ids={gaugePaneIds} values={indicatorValues} title="LIVE · drag to reorder" layout="row" compact reorderable />
+          {/if}
+          {#if indicatorValues.put_call_ratio || indicatorValues.options_skew_25d}
+            <IndicatorPane ids={optionsPaneIds} values={indicatorValues} title="OPTIONS" layout="row" compact />
+          {/if}
+          <!-- Venue / Liq — toggleable via ⚙ INDICATORS sheet (defaultVisible=true) -->
+          <details class="lc-ind-details" open>
+            <summary>VENUE · LIQ</summary>
             <IndicatorPane ids={venuePaneIds} values={indicatorValues} title="VENUE" layout="stack" compact />
           </details>
           <div style="margin-top: 6px;" role="list" aria-label="Evidence items">
