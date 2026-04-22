@@ -41,6 +41,7 @@ Engine logic change
 - `engine/tests/test_pattern_candidate_routes.py`
 - `engine/tests/test_observability_flywheel.py`
 - `engine/tests/test_outcome_resolver.py`
+- `docs/runbooks/pattern-ledger-record-cutover.md`
 
 ## Facts
 
@@ -74,6 +75,8 @@ Engine logic change
 2. GCP 엔진 런타임 env 확인 후 재배포하고 `/patterns/stats/all` latency 를 비교한다.
 3. 실제 row growth 가 커지면 `compute_family_stats()` SQL aggregate / RPC 최적화 lane 을 별도로 연다.
 
+운영 절차는 `docs/runbooks/pattern-ledger-record-cutover.md` 를 canonical checklist 로 사용한다.
+
 ## Verification Target
 
 - `uv run --directory engine python -m pytest tests/test_ledger_store.py -q`
@@ -96,6 +99,10 @@ Engine logic change
 - [ ] GCP 엔진 Cloud Run에 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` env 확인
 - [ ] GCP 재배포 후 `GET /patterns/stats/all` 응답 시간 비교
 - [ ] (선택) `engine/scripts/backfill_ledger_records.py` 실행으로 기존 JSON → Supabase 백필
+
+Runbook:
+
+- `docs/runbooks/pattern-ledger-record-cutover.md`
 
 ## Exit Criteria
 
