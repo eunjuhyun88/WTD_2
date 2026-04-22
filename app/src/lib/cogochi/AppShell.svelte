@@ -43,7 +43,7 @@
   $effect(() => {
     if ($viewportTier.tier === 'MOBILE') {
       shellStore.update(s => ({ ...s, sidebarVisible: false, aiVisible: false }));
-      shellStore.updateTabState(s => ({ ...s, layoutMode: 'D' }));
+      shellStore.updateTabState(s => ({ ...s, layoutMode: 'C' }));
     }
   });
 

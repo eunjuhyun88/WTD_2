@@ -13,7 +13,7 @@ export interface TabState {
   peekOpen: boolean;
   peekHeight: number;
   drawerTab: 'analyze' | 'scan' | 'judge';
-  layoutMode: 'A' | 'B' | 'C' | 'D';
+  layoutMode: 'A' | 'B' | 'C';
 }
 
 export interface Tab {
@@ -58,7 +58,7 @@ const FRESH_TAB_STATE = (): TabState => ({
   peekOpen: false,
   peekHeight: 56,
   drawerTab: 'analyze',
-  layoutMode: 'D',
+  layoutMode: 'C',
 });
 
 const makeDefault = (): ShellState => ({
