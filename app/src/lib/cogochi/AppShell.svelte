@@ -9,6 +9,7 @@
   import TradeMode from './modes/TradeMode.svelte';
   import TrainMode from './modes/TrainMode.svelte';
   import RadialTopology from './modes/RadialTopology.svelte';
+  import { get } from 'svelte/store';
   import { shellStore, activeMode, activeTab, activeTabState, verdictCount, modelDelta } from './shell.store';
   import { viewportTier } from '$lib/stores/viewportTier';
   import { mobileMode } from '$lib/stores/mobileMode';
@@ -24,7 +25,6 @@
   const { canvasComponent = TradeMode }: Props = $props();
 
   let paletteOpen = $state(false);
-  let shellState = $state<any>(null);
   let mobileTF = $state('4h');
   let mobileSymbol = $state('BTCUSDT');
   let symbolPickerOpen = $state(false);
@@ -37,10 +37,6 @@
     const dy = e.changedTouches[0].clientY - aiSwipeTouchStartY;
     if (dy > 60) shellStore.update(s => ({ ...s, aiVisible: false }));
   }
-
-  $effect(() => {
-    shellStore.subscribe(s => (shellState = s))();
-  });
 
   $effect(() => {
     if ($viewportTier.tier === 'MOBILE') {
@@ -68,9 +64,12 @@
         e.preventDefault();
         shellStore.openTab({ kind: 'trade', title: 'new session' });
       }
-      if (mod && e.key.toLowerCase() === 'w' && shellState?.tabs?.length > 1) {
-        e.preventDefault();
-        shellStore.closeTab(shellState.activeTabId);
+      if (mod && e.key.toLowerCase() === 'w') {
+        const st = get(shellStore);
+        if (st.tabs.length > 1) {
+          e.preventDefault();
+          shellStore.closeTab(st.activeTabId);
+        }
       }
     };
 

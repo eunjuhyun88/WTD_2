@@ -55,56 +55,49 @@
       .catch(() => { chartLoading = false; });
   });
 
-  // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
-  // On candle close, refresh analyze only — chart live updates are handled inside ChartBoard.
-  async function handleCandleClose(bar: { time: number }) {
-    if (lastCandleTime === bar.time) return; // dedup duplicate fires
-    lastCandleTime = bar.time;
-    try {
-      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}`);
-      if (!res.ok) return;
-      analyzeData = (await res.json()) as AnalyzeEnvelope;
-    } catch { /* retry on next candle */ }
-    // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
-    // in lock-step with analyze on candle close.
-    void refreshVenueDivergence();
-    void refreshLiqClusters();
-  }
-
-  // ── Pillar 3: Venue Divergence (W-0122-A) ────────────────────────────
+  // ── Pillar data: Venue Divergence (W-0122-A) + Liq Clusters (W-0122-B1) ─
   let venueDivergence = $state<VenueDivergencePayload | null>(null);
-
-  async function refreshVenueDivergence() {
-    try {
-      const res = await fetch(`/api/market/venue-divergence?symbol=${symbol}`);
-      if (!res.ok) return;
-      venueDivergence = (await res.json()) as VenueDivergencePayload;
-    } catch { /* tolerate: next refresh will retry */ }
-  }
-
-  // ── Pillar 1: Liquidation Clusters (W-0122-B1) ───────────────────────
   let liqClusters = $state<LiqClusterPayload | null>(null);
 
-  async function refreshLiqClusters() {
+  // Single in-flight guard prevents race between candle-close and 60s poll.
+  // All three fetches run in parallel — they are fully independent.
+  let _refreshing = false;
+  async function refreshAll(sym: string, tf: string) {
+    if (_refreshing) return;
+    _refreshing = true;
     try {
-      const res = await fetch(`/api/market/liq-clusters?symbol=${symbol}&window=4h`);
-      if (!res.ok) return;
-      liqClusters = (await res.json()) as LiqClusterPayload;
-    } catch { /* tolerate */ }
+      const [analyzeRes, venueRes, liqRes] = await Promise.allSettled([
+        fetch(`/api/cogochi/analyze?symbol=${sym}&tf=${tf}`),
+        fetch(`/api/market/venue-divergence?symbol=${sym}`),
+        fetch(`/api/market/liq-clusters?symbol=${sym}&window=4h`),
+      ]);
+      if (analyzeRes.status === 'fulfilled' && analyzeRes.value.ok)
+        analyzeData = (await analyzeRes.value.json()) as AnalyzeEnvelope;
+      if (venueRes.status === 'fulfilled' && venueRes.value.ok)
+        venueDivergence = (await venueRes.value.json()) as VenueDivergencePayload;
+      if (liqRes.status === 'fulfilled' && liqRes.value.ok)
+        liqClusters = (await liqRes.value.json()) as LiqClusterPayload;
+    } finally {
+      _refreshing = false;
+    }
   }
 
-  // Trigger on symbol change + initial mount. Polling every 60s as a safety net
-  // (candle close also triggers refresh above).
+  // ChartBoard owns the resilient WS (DataFeed: reconnect+backoff+gap-fill+heartbeat).
+  // On candle close, refresh analyze + pillars in parallel.
+  function handleCandleClose(bar: { time: number }) {
+    if (lastCandleTime === bar.time) return; // dedup duplicate fires
+    lastCandleTime = bar.time;
+    void refreshAll(symbol, timeframe);
+  }
+
+  // Trigger on symbol/tf change + 60s safety-net poll.
   $effect(() => {
-    void symbol;
+    const sym = symbol;
+    const tf = timeframe;
     venueDivergence = null;
     liqClusters = null;
-    void refreshVenueDivergence();
-    void refreshLiqClusters();
-    const iv = setInterval(() => {
-      void refreshVenueDivergence();
-      void refreshLiqClusters();
-    }, 60_000);
+    void refreshAll(sym, tf);
+    const iv = setInterval(() => void refreshAll(sym, tf), 60_000);
     return () => clearInterval(iv);
   });
 

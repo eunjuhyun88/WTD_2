@@ -84,11 +84,14 @@ function createShellStore() {
 
   const { subscribe, set, update } = writable<ShellState>(initial);
 
-  // Persist to localStorage
+  // Persist to localStorage — debounced to avoid sync write on every store update.
+  let _persistTimer: ReturnType<typeof setTimeout> | null = null;
   subscribe(state => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+    if (_persistTimer) clearTimeout(_persistTimer);
+    _persistTimer = setTimeout(() => {
       localStorage.setItem('cogochi_shell_v5', JSON.stringify(state));
-    }
+    }, 300);
   });
 
   return {
@@ -223,7 +226,11 @@ export const allVerdicts = derived(shellStore, $st =>
   Object.assign({}, ...$st.tabs.map(t => t.tabState?.verdicts || {}))
 );
 export const verdictCount = derived(allVerdicts, $v => Object.keys($v).length);
-export const modelDelta = derived(allVerdicts, $v =>
-  Object.values($v).filter((v: any) => v === 'agree').length * 0.03 -
-  Object.values($v).filter((v: any) => v === 'disagree').length * 0.01
-);
+export const modelDelta = derived(allVerdicts, $v => {
+  let agree = 0, disagree = 0;
+  for (const v of Object.values($v)) {
+    if (v === 'agree') agree++;
+    else if (v === 'disagree') disagree++;
+  }
+  return agree * 0.03 - disagree * 0.01;
+});
