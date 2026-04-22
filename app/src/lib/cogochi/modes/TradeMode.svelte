@@ -392,9 +392,6 @@
     document.body.style.userSelect = 'none';
   }
 
-  // ── analyzed: shows chart+PEEK only after setup is applied ──────────────
-  const analyzed = $derived(!!(tabState.tradePrompt || tabState.rangeSelection));
-
   // ── Layout mode ──────────────────────────────────────────────────────────
   const layoutMode = $derived(tabState.layoutMode ?? 'D');
   function setLayoutMode(m: 'A' | 'B' | 'C' | 'D') {
@@ -826,42 +823,6 @@
       {/if}
     </div>
     {/if}
-  {:else}
-  {#if !analyzed}
-    <!-- Empty canvas — shown until AI panel "RUN →" or SELECT RANGE -->
-    <div class="empty-canvas" role="status" aria-live="polite" aria-label="Trade mode setup required">
-      <div class="ec-inner">
-        <div class="ec-logo mono">COGOTCHI</div>
-        <div class="ec-tagline">Core Loop · 트레이딩 사고의 운영체제</div>
-        <div class="ec-divider"></div>
-        <div class="ec-cta-group">
-          <div class="ec-label mono">셋업을 시작하세요</div>
-          <div class="ec-options">
-            <div class="ec-opt">
-              <span class="ec-opt-key">AI ›</span>
-              <span class="ec-opt-txt">오른쪽 패널에 셋업을 말로 설명 → RUN</span>
-            </div>
-            <div class="ec-opt">
-              <span class="ec-opt-key">SELECT RANGE</span>
-              <span class="ec-opt-txt">상단 커맨드바에서 차트 구간 선택</span>
-            </div>
-          </div>
-        </div>
-        <div class="ec-quick-grid">
-          {#each [
-            { label: 'OI 급증 + 번지대', sub: 'accumulation' },
-            { label: 'VWAP reclaim', sub: 'CVD 양전환' },
-            { label: 'Funding flip', sub: 'higher-lows' },
-            { label: 'BB squeeze 해제', sub: '15m breakout' },
-          ] as q}
-            <button class="ec-quick" onclick={() => updateTabState(s => ({ ...s, tradePrompt: q.label }))}>
-              <span class="eq-label">{q.label}</span>
-              <span class="eq-sub">{q.sub}</span>
-            </button>
-          {/each}
-        </div>
-      </div>
-    </div>
   {:else}
   <!-- Layout tabs -->
   <nav class="layout-strip" aria-label="Layout modes">
@@ -1877,7 +1838,6 @@
     {/if}
   </div>
   {/if}<!-- end layoutMode -->
-  {/if}<!-- end !analyzed -->
 {/if}<!-- end mobileView -->
 </div>
 

@@ -100,6 +100,7 @@
 
   function quickPick(q: string) {
     inputValue = q;
+    send();
   }
 
   function convertPromptToSetup(text: string): SetupResult {
