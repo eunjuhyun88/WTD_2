@@ -2,7 +2,12 @@
   /**
    * AIPanel — right side AI setup assist panel.
    * Natural language → setup tokens → scan trigger.
+   *
+   * Indicator intent detection runs BEFORE the setup-token parser.
+   * If the query matches an indicator (via search.ts), the AI responds
+   * with indicator info and dispatches cogochi:cmd { id: 'focus_indicator', def }.
    */
+  import { findIndicatorByQuery } from '$lib/indicators/search';
 
   interface SetupToken {
     kind: 'asset' | 'trigger' | 'filter';
@@ -55,6 +60,32 @@
   function send() {
     const t = inputValue.trim();
     if (!t) return;
+
+    // ── Indicator intent detection (runs before setup-token parser) ──────────
+    const indicatorDef = findIndicatorByQuery(t);
+    if (indicatorDef) {
+      const isShowIntent = /보여|show|확인|뭐야|어때|what|check/i.test(t);
+      const aiText = isShowIntent
+        ? `**${indicatorDef.label ?? indicatorDef.id}** 지표를 찾았습니다 — ${indicatorDef.description ?? ''}. 아래 분석 패널에서 강조 표시합니다.`
+        : `**${indicatorDef.label ?? indicatorDef.id}** (${indicatorDef.family}) — ${indicatorDef.description ?? '해당 지표입니다.'} 패널로 이동합니다.`;
+
+      // Dispatch focus command so TradeMode can scroll/highlight the pane
+      window.dispatchEvent(new CustomEvent('cogochi:cmd', {
+        detail: { id: 'focus_indicator', indicatorId: indicatorDef.id, def: indicatorDef },
+      }));
+
+      const newMessages: Message[] = [
+        ...localMessages,
+        { role: 'user', text: t },
+        { role: 'assistant', text: aiText },
+      ];
+      localMessages = newMessages;
+      onSend?.(t, newMessages);
+      inputValue = '';
+      return;
+    }
+
+    // ── Fallthrough: setup-token parser ─────────────────────────────────────
     const setup = convertPromptToSetup(t);
     const aiText = generateAIReply(t, setup);
     const newMessages: Message[] = [

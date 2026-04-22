@@ -16,6 +16,7 @@
   import { chartSaveMode } from '$lib/stores/chartSaveMode';
   import SymbolPickerSheet from './SymbolPickerSheet.svelte';
   import ModeSheet from './ModeSheet.svelte';
+  import IndicatorSettingsSheet from './IndicatorSettingsSheet.svelte';
 
   interface Props {
     canvasComponent?: any;
@@ -29,6 +30,7 @@
   let mobileSymbol = $state('BTCUSDT');
   let symbolPickerOpen = $state(false);
   let modeSheetOpen = $state(false);
+  let indicatorSettingsOpen = $state(false);
 
   // AI sheet swipe-down dismiss
   let aiSwipeTouchStartY = $state(0);
@@ -83,6 +85,9 @@
       else if (c.id === 'mode_train') shellStore.switchMode('train');
       else if (c.id === 'mode_fly') shellStore.switchMode('flywheel');
       else if (c.id === 'new_trade') shellStore.openTab({ kind: 'trade', title: 'new session' });
+      else if (c.id === 'open_indicator_settings') {
+        indicatorSettingsOpen = true;
+      }
       else if (c.id === 'reset') {
         shellStore.reset();
         window.location.reload();
@@ -177,6 +182,7 @@
       toggleAI={() => shellStore.toggleAI()}
       {paletteOpen}
       setPaletteOpen={(open) => (paletteOpen = open)}
+      onIndicators={() => (indicatorSettingsOpen = true)}
     />
 
     <TabBar
@@ -248,6 +254,10 @@
       onSwitchMode={(m) => shellStore.switchMode(m)}
       sidebarVisible={$shellStore.sidebarVisible}
     />
+  {/if}
+
+  {#if indicatorSettingsOpen}
+    <IndicatorSettingsSheet onClose={() => (indicatorSettingsOpen = false)} />
   {/if}
 </div>
 

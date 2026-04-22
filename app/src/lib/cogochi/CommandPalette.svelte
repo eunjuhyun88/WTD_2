@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { INDICATOR_REGISTRY } from '$lib/indicators/registry';
+  import { shellStore } from '$lib/cogochi/shell.store';
+
   interface Command {
     id: string;
     label: string;
@@ -14,7 +17,8 @@
 
   const { q, onClose, onChange }: Props = $props();
 
-  const commands: Command[] = [
+  const baseCommands: Command[] = [
+    { id: 'open_indicator_settings', label: '⚙ Manage indicators', hint: '', section: 'indicators' },
     { id: 'new_tab', label: 'New tab', hint: '⌘T', section: 'view' },
     { id: 'toggle_side', label: 'Toggle sidebar', hint: '⌘B', section: 'view' },
     { id: 'toggle_ai', label: 'Toggle AI panel', hint: '⌘L', section: 'view' },
@@ -25,11 +29,27 @@
     { id: 'reset', label: 'Reset all state', hint: '', section: 'system' },
   ];
 
+  // Auto-generate toggle commands from the registry
+  const indicatorCommands: Command[] = Object.values(INDICATOR_REGISTRY).map(def => ({
+    id: `toggle_indicator:${def.id}`,
+    label: `Toggle ${def.label ?? def.id}`,
+    hint: def.family,
+    section: 'indicators',
+  }));
+
+  const commands = [...baseCommands, ...indicatorCommands];
+
   const filtered = $derived(
     q ? commands.filter(c => c.label.toLowerCase().includes(q.toLowerCase())) : commands
   );
 
   function onRun(c: Command) {
+    if (c.id.startsWith('toggle_indicator:')) {
+      const indicatorId = c.id.slice('toggle_indicator:'.length);
+      shellStore.toggleIndicatorVisible(indicatorId);
+      onClose();
+      return;
+    }
     window.dispatchEvent(new CustomEvent('cogochi:cmd', { detail: c }));
     onClose();
   }

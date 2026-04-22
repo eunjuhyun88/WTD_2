@@ -1,4 +1,5 @@
 import { writable, derived } from 'svelte/store';
+import { defaultVisible } from '$lib/indicators/registry';
 
 export interface TabState {
   tradePrompt: string;
@@ -37,6 +38,12 @@ export interface ShellState {
   canvasSplitX: number; // % width of center pane
   flywheelTurns: number;
   feedback: number;
+  /** Ordered list of indicator IDs shown in the gauge/card rail. */
+  visibleIndicators: string[];
+  /** Per-indicator archetype override: id → archetype key (e.g. 'A1' | 'F' | ...). */
+  archetypePrefs: Record<string, string>;
+  /** Per-indicator user settings (thresholds, colors, etc.). */
+  indicatorSettings: Record<string, Record<string, unknown>>;
 }
 
 const FRESH_TAB_STATE = (): TabState => ({
@@ -68,26 +75,59 @@ const makeDefault = (): ShellState => ({
   canvasSplitX: 58,
   flywheelTurns: 0,
   feedback: 17,
+  visibleIndicators: defaultVisible().map(d => d.id),
+  archetypePrefs: {},
+  indicatorSettings: {},
 });
 
+/** Migrate v5 → v6: preserve all existing fields, fill new ones with defaults. */
+function migrateV5(raw: Record<string, unknown>): ShellState {
+  const base = makeDefault();
+  return {
+    ...base,
+    ...(raw as Partial<ShellState>),
+    // Always ensure new fields exist even if absent in v5
+    visibleIndicators: (raw.visibleIndicators as string[] | undefined) ?? base.visibleIndicators,
+    archetypePrefs: (raw.archetypePrefs as Record<string, string> | undefined) ?? {},
+    indicatorSettings: (raw.indicatorSettings as Record<string, Record<string, unknown>> | undefined) ?? {},
+    // Re-map tabs to ensure tabState is always present
+    tabs: ((raw.tabs as Tab[] | undefined) ?? base.tabs).map(t => ({
+      ...t,
+      tabState: t.tabState || FRESH_TAB_STATE(),
+    })),
+  };
+}
+
+const SHELL_KEY = 'cogochi_shell_v6';
+
 function createShellStore() {
-  const stored = typeof window !== 'undefined' ? localStorage.getItem('cogochi_shell_v5') : null;
   let initial: ShellState;
 
   try {
-    initial = stored ? JSON.parse(stored) : makeDefault();
-    // Ensure all tabs have tabState
-    initial.tabs = initial.tabs.map(t => ({ ...t, tabState: t.tabState || FRESH_TAB_STATE() }));
+    // Try v6 first, then attempt v5 migration
+    const rawV6 = typeof window !== 'undefined' ? localStorage.getItem(SHELL_KEY) : null;
+    if (rawV6) {
+      initial = JSON.parse(rawV6) as ShellState;
+      initial.tabs = initial.tabs.map(t => ({ ...t, tabState: t.tabState || FRESH_TAB_STATE() }));
+      // Back-fill new fields if loading an older v6 (safe no-op if fields exist)
+      if (!initial.visibleIndicators) initial.visibleIndicators = makeDefault().visibleIndicators;
+      if (!initial.archetypePrefs)   initial.archetypePrefs = {};
+      if (!initial.indicatorSettings) initial.indicatorSettings = {};
+    } else {
+      // Try migrating from v5
+      const rawV5 = typeof window !== 'undefined' ? localStorage.getItem('cogochi_shell_v5') : null;
+      initial = rawV5 ? migrateV5(JSON.parse(rawV5) as Record<string, unknown>) : makeDefault();
+    }
   } catch {
     initial = makeDefault();
   }
 
   const { subscribe, set, update } = writable<ShellState>(initial);
 
-  // Persist to localStorage
+  // Persist to localStorage (v6 key only)
   subscribe(state => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cogochi_shell_v5', JSON.stringify(state));
+      localStorage.setItem(SHELL_KEY, JSON.stringify(state));
     }
   });
 
@@ -204,9 +244,37 @@ function createShellStore() {
       }));
     },
 
+    // ── Indicator visibility ────────────────────────────────────────────────
+
+    toggleIndicatorVisible: (id: string) => {
+      update(st => {
+        const vis = st.visibleIndicators;
+        const next = vis.includes(id) ? vis.filter(x => x !== id) : [...vis, id];
+        return { ...st, visibleIndicators: next };
+      });
+    },
+
+    setIndicatorVisible: (id: string, visible: boolean) => {
+      update(st => {
+        const vis = st.visibleIndicators;
+        const hasIt = vis.includes(id);
+        if (visible === hasIt) return st;
+        const next = visible ? [...vis, id] : vis.filter(x => x !== id);
+        return { ...st, visibleIndicators: next };
+      });
+    },
+
+    setArchetypePref: (id: string, archetype: string) => {
+      update(st => ({
+        ...st,
+        archetypePrefs: { ...st.archetypePrefs, [id]: archetype },
+      }));
+    },
+
     reset: () => {
       set(makeDefault());
       if (typeof window !== 'undefined') {
+        localStorage.removeItem(SHELL_KEY);
         localStorage.removeItem('cogochi_shell_v5');
       }
     },

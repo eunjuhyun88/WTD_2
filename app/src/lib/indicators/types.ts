@@ -33,14 +33,18 @@ export type IndicatorFamily =
 // ── Archetype (UI rendering strategy) ────────────────────────────────────────
 
 /**
- * A — Percentile Gauge + Sparkline (1D value + trajectory)
- * B — Actor-Stratified Multi-Line (value × actor)
- * C — Price × Time Heatmap (intensity on 2D grid)
- * D — Divergence Indicator (correlation between two series)
- * E — Regime Badge + Flip Clock (state + timing)
- * F — Venue Divergence Strip (mini multi-line per venue)
+ * A  — Percentile Gauge + Sparkline (1D value + trajectory)  [unipolar/bipolar]
+ * B  — Actor-Stratified Multi-Line (value × actor)
+ * C  — Price × Time Heatmap (intensity on 2D grid)
+ * D  — Divergence Indicator (correlation between two series)
+ * E  — Regime Badge + Flip Clock (state + timing)
+ * F  — Venue Divergence Strip (mini multi-line per venue)
+ * G  — Term-Structure Curve (value vs tenor/strike)
+ * H  — Flow Sankey / Net-Arrow (source→sink with magnitude)
+ * I  — Distribution Histogram (bucket distribution with marker)
+ * J  — Event Timeline (discrete timestamped events)
  */
-export type IndicatorArchetype = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+export type IndicatorArchetype = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J';
 
 // ── Natural dimensions a given indicator can be sliced on ────────────────────
 
@@ -114,6 +118,62 @@ export interface IndicatorDef {
 
   /** Unit suffix for the displayed value. */
   unit?: '%' | 'x' | 'USD' | 'σ' | '' | string;
+
+  // ── AI search / discovery ─────────────────────────────────────────────────
+
+  /**
+   * Synonyms for fuzzy search. Include common abbreviations, Korean terms,
+   * and alternative names users might say (e.g. "펀딩", "funding rate", "fr").
+   */
+  aiSynonyms?: string[];
+
+  /**
+   * Example natural-language queries that should surface this indicator.
+   * Used by AIPanel.convertPromptToSetup() for intent matching.
+   */
+  aiExampleQueries?: string[];
+
+  /**
+   * Primary visual archetype (replaces bare `archetype` — backward-compat alias kept).
+   * Determines the default rendering component.
+   */
+  primaryArchetype?: IndicatorArchetype;
+
+  /**
+   * Alternative archetypes the user can switch to via IndicatorSettingsSheet.
+   */
+  alternateArchetypes?: IndicatorArchetype[];
+}
+
+// ── New archetype data shapes (G / H / I / J) ────────────────────────────────
+
+/** Term-structure point (Archetype G) */
+export interface CurvePoint {
+  tenor: string;     // e.g. '1d', '7d', '30d', '90d', '180d'
+  value: number;
+  prevWeek?: number; // optional second series for comparison overlay
+}
+
+/** Sankey edge (Archetype H) */
+export interface SankeyEdge {
+  source: string;
+  sink: string;
+  value: number;   // USD or normalised magnitude
+  direction: 'in' | 'out';
+}
+
+/** Histogram bucket (Archetype I) */
+export interface HistogramBucket {
+  bucket: string | number;   // label or price level
+  value: number;
+  highlight?: boolean;       // true = current-price band
+}
+
+/** Timeline event (Archetype J) */
+export interface TimelineEvent {
+  ts: number;     // Unix ms
+  label: string;
+  impact: number; // 0-1; drives dot radius
 }
 
 // ── IndicatorValue — live data from engine ───────────────────────────────────
@@ -168,6 +228,10 @@ export interface IndicatorValue {
     | HeatmapCell[]                       // C
     | DivergenceState                     // D
     | RegimeState                         // E (state part)
+    | CurvePoint[]                        // G
+    | SankeyEdge[]                        // H
+    | HistogramBucket[]                   // I
+    | TimelineEvent[]                     // J
     | Record<string, number>;             // general
 
   /** Archetype A, D — percentile band position */
