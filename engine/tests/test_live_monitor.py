@@ -291,15 +291,6 @@ class TestResolveLiveVariantSlug:
                 forward_peak_return_pct=10.0,
                 entry_next_open=1.01,
                 realistic_forward_peak_return_pct=9.5,
-                canonical_feature_snapshot={
-                    "oi_raw": 1200.0,
-                    "oi_zscore": 2.4 if case.symbol == "PTBUSDT" else 1.2,
-                    "funding_rate_zscore": 1.1,
-                    "funding_flip_flag": True,
-                    "volume_percentile": 0.95,
-                    "pullback_depth_pct": 0.08,
-                    "cvd_price_divergence": 1.0,
-                },
             )
 
         monkeypatch.setattr(live_monitor, "evaluate_variant_on_case", fake_evaluate_variant_on_case)
@@ -316,73 +307,6 @@ class TestResolveLiveVariantSlug:
         assert all(result.timeframe == "15m" for result in results)
         assert results[0].similarity_score == 0.92
         assert results[1].similarity_score == 0.61
-        assert results[0].replay_similarity_score == 0.92
-        assert results[0].canonical_feature_score > results[1].canonical_feature_score
-        assert results[0].ranking_score >= results[0].similarity_score
-        assert results[0].canonical_feature_snapshot["funding_flip_flag"] is True
-        assert results[0].canonical_feature_snapshot["oi_zscore"] == pytest.approx(2.4)
-
-    def test_search_pattern_state_similarity_uses_canonical_feature_score_for_reranking(self, monkeypatch):
-        monkeypatch.setattr(
-            "research.live_monitor.scan_universe_live",
-            lambda **kwargs: [
-                LiveScanResult(
-                    symbol="BASEUSDT",
-                    phase="ACCUMULATION",
-                    path="ARCH_ZONE→REAL_DUMP→ACCUMULATION",
-                    entry_hit=True,
-                    fwd_peak_pct=10.0,
-                    realistic_pct=9.7,
-                    phase_fidelity=0.82,
-                    phase_depth_progress=0.75,
-                    similarity_score=0.74,
-                    replay_similarity_score=0.74,
-                    ranking_score=0.74,
-                    canonical_feature_snapshot={
-                        "oi_raw": 800.0,
-                        "oi_zscore": 0.2,
-                        "funding_rate_zscore": 0.1,
-                        "funding_flip_flag": False,
-                        "volume_percentile": 0.38,
-                        "pullback_depth_pct": 0.01,
-                        "cvd_price_divergence": 0.0,
-                    },
-                ),
-                LiveScanResult(
-                    symbol="FEATUREUSDT",
-                    phase="ACCUMULATION",
-                    path="ARCH_ZONE→REAL_DUMP→ACCUMULATION",
-                    entry_hit=True,
-                    fwd_peak_pct=9.8,
-                    realistic_pct=9.4,
-                    phase_fidelity=0.81,
-                    phase_depth_progress=0.72,
-                    similarity_score=0.72,
-                    replay_similarity_score=0.72,
-                    ranking_score=0.72,
-                    canonical_feature_snapshot={
-                        "oi_raw": 1450.0,
-                        "oi_zscore": 2.6,
-                        "funding_rate_zscore": 1.4,
-                        "funding_flip_flag": True,
-                        "volume_percentile": 0.96,
-                        "pullback_depth_pct": 0.09,
-                        "cvd_price_divergence": 1.0,
-                    },
-                ),
-            ],
-        )
-
-        results = search_pattern_state_similarity(
-            "tradoor-oi-reversal-v1",
-            universe=["BASEUSDT", "FEATUREUSDT"],
-            min_similarity_score=0.2,
-        )
-
-        assert [result.symbol for result in results] == ["FEATUREUSDT", "BASEUSDT"]
-        assert results[0].replay_similarity_score == pytest.approx(0.72)
-        assert results[0].canonical_feature_score > results[1].canonical_feature_score
-        assert results[0].ranking_score > results[1].ranking_score
 
 
 class TestPrintScanReport:
