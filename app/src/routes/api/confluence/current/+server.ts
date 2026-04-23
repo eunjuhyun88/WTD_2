@@ -16,17 +16,21 @@ import type { RequestHandler } from './$types';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { computeConfluence } from '$lib/confluence/score';
 import type { ConfluenceInput } from '$lib/confluence/score';
+import type { ConfluenceContribution, ConfluenceResult } from '$lib/confluence/types';
+import { regimeFromScore } from '$lib/confluence/types';
 import { pushConfluence, streakBack } from '$lib/server/confluenceHistory';
+import { buildPlaneAppPath } from '$lib/server/enginePlaneProxy';
 import { getRequestIp } from '$lib/server/requestIp';
 
 const VALID_SYMBOL = /^[A-Z0-9]{3,12}USDT$/;
 const VALID_TF = /^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/;
 const CACHE_TTL_MS = 30_000;
+const ENGINE_FACT_CONFLUENCE_MAX_SCORE = 6;
 const cache = new Map<string, { at: number; payload: unknown }>();
 
-async function fetchSelf<T>(origin: string, path: string): Promise<T | null> {
+async function fetchSelf<T>(fetchFn: typeof fetch, origin: string, path: string): Promise<T | null> {
   try {
-    const res = await fetch(`${origin}${path}`, {
+    const res = await fetchFn(`${origin}${path}`, {
       signal: AbortSignal.timeout(8_000),
       headers: { 'User-Agent': 'cogochi-terminal/confluence' },
     });
@@ -73,6 +77,112 @@ interface OptionsPayload {
     maxPainDistancePct?: number | null;
     pinDirection?: 'above' | 'below' | 'at' | null;
   };
+}
+
+interface EngineFactConfluencePayload {
+  ok?: boolean;
+  generated_at?: string;
+  symbol?: string;
+  timeframe?: string;
+  summary?: {
+    bias?: string;
+    score?: number;
+    evidenceCount?: number;
+    confidencePct?: number;
+  };
+  evidence?: Array<{
+    metric?: string;
+    bias?: string;
+    value?: unknown;
+  }>;
+}
+
+async function fetchEngineFactConfluence(
+  fetchFn: typeof fetch,
+  symbol: string,
+  timeframe: string,
+): Promise<EngineFactConfluencePayload | null> {
+  try {
+    const res = await fetchFn(
+      `${buildPlaneAppPath('facts', 'confluence')}?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`,
+      {
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    if (!res.ok) return null;
+    const payload = (await res.json()) as EngineFactConfluencePayload;
+    return payload?.ok ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function labelFromMetric(metric: string | undefined): string {
+  const raw = metric?.trim() || 'fact';
+  return raw
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function adaptEngineContribution(
+  row: NonNullable<EngineFactConfluencePayload['evidence']>[number],
+  weight: number,
+): ConfluenceContribution {
+  const direction = row.bias === 'bullish' ? 1 : row.bias === 'bearish' ? -1 : 0;
+  const metric = row.metric?.trim() || 'fact';
+  const value = row.value == null ? '' : ` = ${String(row.value)}`;
+  return {
+    source: metric,
+    label: labelFromMetric(metric),
+    score: direction,
+    weight,
+    weighted: direction * weight,
+    magnitude: Math.abs(direction),
+    reason: `${row.bias ?? 'neutral'}${value}`,
+  };
+}
+
+export function adaptEngineFactConfluence(payload: EngineFactConfluencePayload): ConfluenceResult {
+  const rawScore = Number(payload.summary?.score ?? 0);
+  const confidence = Math.max(0, Math.min(1, Number(payload.summary?.confidencePct ?? 0) / 100));
+  const score = Math.max(
+    -100,
+    Math.min(100, Math.round((rawScore / ENGINE_FACT_CONFLUENCE_MAX_SCORE) * 100)),
+  );
+  const evidence = payload.evidence ?? [];
+  const weight = evidence.length > 0 ? 1 / evidence.length : 0;
+  const contributions = evidence.map((row) => adaptEngineContribution(row, weight));
+  const top = contributions.slice(0, 3);
+  const hasBull = contributions.some((row) => row.score > 0);
+  const hasBear = contributions.some((row) => row.score < 0);
+  const at = Date.parse(payload.generated_at ?? '');
+
+  return {
+    at: Number.isFinite(at) ? at : Date.now(),
+    symbol: payload.symbol ?? 'BTCUSDT',
+    score,
+    confidence,
+    regime: regimeFromScore(score, confidence),
+    contributions,
+    top,
+    divergence: hasBull && hasBear,
+  };
+}
+
+function enrichConfluenceResult(symbol: string, result: ConfluenceResult): ConfluenceResult {
+  pushConfluence(symbol, {
+    at: result.at,
+    score: result.score,
+    confidence: result.confidence,
+    regime: result.regime,
+    divergence: result.divergence,
+  });
+
+  const divergenceStreak = streakBack(symbol, (entry) => entry.divergence);
+  const sameRegimeStreak = streakBack(symbol, (entry) => entry.regime === result.regime);
+  return { ...result, divergenceStreak, sameRegimeStreak };
 }
 
 /** Map non-BTCUSDT spot symbols onto Deribit's BTC/ETH option currencies. */
@@ -122,10 +232,30 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
   const cacheKey = `${symbol}|${tf}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return json(cached.payload, { headers: { 'X-Cache': 'HIT' } });
+    return json(cached.payload, {
+      headers: {
+        'X-Cache': 'HIT',
+        'X-WTD-Plane': 'fact',
+        'X-WTD-Upstream': 'cache',
+        'X-WTD-State': 'adapter',
+      },
+    });
   }
 
   const origin = url.origin;
+  const engineConfluence = await fetchEngineFactConfluence(_kitFetch, symbol, tf);
+  if (engineConfluence) {
+    const enriched = enrichConfluenceResult(symbol, adaptEngineFactConfluence(engineConfluence));
+    cache.set(cacheKey, { at: Date.now(), payload: enriched });
+    return json(enriched, {
+      headers: {
+        'X-Cache': 'MISS',
+        'X-WTD-Plane': 'fact',
+        'X-WTD-Upstream': 'facts/confluence',
+        'X-WTD-State': 'adapter',
+      },
+    });
+  }
 
   const deribitCurrency = symbolToDeribitCurrency(symbol);
 
@@ -135,14 +265,14 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
     // we attach a cookie. For now: accept that pattern score may be missing when unauth'd — a
     // separate read-only public analyze endpoint will be added in W-0122-Confluence-P2.
     // This is explicitly documented so reviewers see the intentional limit.
-    fetchSelf<AnalyzeMini>(origin, `/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
-    fetchSelf<VenuePayload>(origin, `/api/market/venue-divergence?symbol=${symbol}`),
-    fetchSelf<RvPayload>(origin, `/api/market/rv-cone?symbol=${symbol}`),
-    fetchSelf<SsrPayload>(origin, `/api/market/stablecoin-ssr`),
-    fetchSelf<FlipPayload>(origin, `/api/market/funding-flip?symbol=${symbol}`),
-    fetchSelf<LiqPayload>(origin, `/api/market/liq-clusters?symbol=${symbol}&window=4h`),
+    fetchSelf<AnalyzeMini>(_kitFetch, origin, `/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
+    fetchSelf<VenuePayload>(_kitFetch, origin, `/api/market/venue-divergence?symbol=${symbol}`),
+    fetchSelf<RvPayload>(_kitFetch, origin, `/api/market/rv-cone?symbol=${symbol}`),
+    fetchSelf<SsrPayload>(_kitFetch, origin, `/api/market/stablecoin-ssr`),
+    fetchSelf<FlipPayload>(_kitFetch, origin, `/api/market/funding-flip?symbol=${symbol}`),
+    fetchSelf<LiqPayload>(_kitFetch, origin, `/api/market/liq-clusters?symbol=${symbol}&window=4h`),
     deribitCurrency
-      ? fetchSelf<OptionsPayload>(origin, `/api/market/options-snapshot?currency=${deribitCurrency}`)
+      ? fetchSelf<OptionsPayload>(_kitFetch, origin, `/api/market/options-snapshot?currency=${deribitCurrency}`)
       : Promise.resolve(null),
   ]);
 
@@ -192,23 +322,15 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
       : null,
   };
 
-  const result = computeConfluence(input);
-
-  // Phase 2: push into in-memory ring buffer for history/streak queries.
-  pushConfluence(symbol, {
-    at: result.at,
-    score: result.score,
-    confidence: result.confidence,
-    regime: result.regime,
-    divergence: result.divergence,
-  });
-
-  // Attach derived streaks so the UI can flag persistent regimes without
-  // a second round-trip. Streaks are evaluated over the in-memory ring only.
-  const divergenceStreak = streakBack(symbol, e => e.divergence);
-  const sameRegimeStreak = streakBack(symbol, e => e.regime === result.regime);
-  const enriched = { ...result, divergenceStreak, sameRegimeStreak };
+  const enriched = enrichConfluenceResult(symbol, computeConfluence(input));
 
   cache.set(cacheKey, { at: Date.now(), payload: enriched });
-  return json(enriched, { headers: { 'X-Cache': 'MISS' } });
+  return json(enriched, {
+    headers: {
+      'X-Cache': 'MISS',
+      'X-WTD-Plane': 'fact',
+      'X-WTD-Upstream': 'legacy-compute',
+      'X-WTD-State': 'fallback',
+    },
+  });
 };

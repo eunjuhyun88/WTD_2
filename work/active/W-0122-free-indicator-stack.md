@@ -113,7 +113,13 @@ For `W-0122`, the immediate job is narrower:
   - `partial` = proxy/approx/app-only/heuristic 또는 canonical engine cutover 미완
   - `blocked` = API key / paid tier / provider restriction 때문에 현재 운영 기본값으로 닫힘
   - `missing` = 코드/route/fetch lane 자체가 아직 없음
+- Karpathy promotion loop for this inventory:
+  - `cataloged` = metric row exists and status truth is explicit
+  - `readable` = bounded engine contract can describe it or partially serve it
+  - `operational` = bridge/live route exists with degraded-state contract
+  - `promoted` = engine-owned canonical lane is fit for app/search/agent cutover
 - execution rule: 앞으로 새 지표 추가/편입 논의는 먼저 이 catalog row 를 갱신한 뒤 ingestion/read-model work 로 내려간다.
+- execution rule 2: `status` 와 `promotion_stage` 는 다른 질문이다. CTO queue 는 `partial -> live` 와 `cataloged/readable -> operational/promoted` 를 따로 관리한다.
 - non-goal for this slice: 100개 전부를 당장 live ingestion 으로 완성하지 않는다. 이번 컷은 canonical inventory + status truth + engine read path 를 먼저 만든다.
 
 ### First Commit Scope
@@ -129,6 +135,12 @@ For `W-0122`, the immediate job is narrower:
 - do not move `terminalParity.ts` yet
 - do not rework `workspaceDataPlane.ts` yet
 - do not reopen `W-0139` surface work while fact ownership is still shifting
+
+### Next Compatibility Cut
+
+1. keep `/api/confluence/current` public payload stable
+2. make `/api/confluence/current` prefer engine `/api/facts/confluence`
+3. preserve current app-side heuristic aggregation only as fallback
 
 ## Goal
 
