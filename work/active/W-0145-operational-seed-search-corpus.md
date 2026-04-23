@@ -33,13 +33,17 @@ Engine logic change
 - `work/active/W-0145-operational-seed-search-corpus.md`
 - `docs/domains/query-by-example-pattern-search.md`
 - `docs/domains/multi-timeframe-autoresearch-search.md`
-- `engine/research/seed_search.py`
+- `engine/search/*.py`
+- `engine/scanner/jobs/search_corpus.py`
 - `engine/scanner/scheduler.py`
 - `engine/api/routes/jobs.py`
+- `engine/tests/test_search_corpus.py`
+- `engine/tests/test_scheduler.py`
+- `engine/tests/test_jobs_routes.py`
 
 ## Facts
 
-1. current `seed_search` retrieval scans cached `1h/4h` market history on demand, so there is no always-on accumulated search corpus.
+1. current checkout has no `engine/research/seed_search.py`; active search code lives in replay benchmark/search modules, while product seed-search still lacks a canonical engine search package.
 2. `worker-control` runtime and scheduler lane already exist, so continuous background collection can be added without reopening public `engine-api`.
 3. Alpha observer jobs already prove a `cold/warm` background observation pattern, but that path is pattern-specific and not reusable as canonical seed-search corpus storage.
 4. the user requirement is operational: data must keep accumulating and be immediately searchable during live usage, not only fetched ad hoc per request.
@@ -57,15 +61,17 @@ Engine logic change
 ## Decisions
 
 - first slice stores compact window signatures in an engine-local durable store and reuses cached raw market frames for replay.
+- first W-0145 commit creates `engine/search` as the canonical package boundary; `engine/research/pattern_search.py` remains a legacy replay/benchmark adapter until later search route cuts.
+- first W-0145 commit persists only compact corpus windows and initializes the future `search_seed_*` / `search_scan_*` tables; public app integration waits for canonical `/search/*` routes.
 - corpus refresh runs only in `worker-control` / scheduler lanes.
 - seed-search uses corpus-first retrieval with fallback to the existing cached-frame scan so rollout stays reversible.
 - corpus is the search-plane boundary: terminal AI / app surfaces consume ranked results and compact context, not the raw historical scan itself.
 
 ## Next Steps
 
-1. add corpus store + signature helpers.
-2. add scheduled refresh job and guarded job endpoint.
-3. wire seed-search retrieval to corpus-first reads and verify with targeted tests.
+1. add canonical `/search/catalog` route over the corpus inventory.
+2. add seed/scan route skeleton and run persistence.
+3. wire seed-search retrieval to corpus-first reads with fallback to replay/cache scan.
 
 ## Exit Criteria
 
@@ -77,6 +83,7 @@ Engine logic change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0145-operational-seed-search-corpus.md`
-- branch: `codex/w-0139-terminal-core-loop-capture`
-- verification: targeted engine tests for corpus store/job/seed-search fallback
+- branch: `codex/w-0145-corpus-plane`
+- worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
+- verification: engine targeted `pytest tests/test_search_corpus.py tests/test_scheduler.py tests/test_jobs_routes.py -q` = `13 passed`; `npm --prefix app run contract:check:engine-types` = passed; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`
 - remaining blockers: shared-state migration, richer onchain/event lanes, and sub-hour replay breadth remain future slices

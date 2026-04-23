@@ -1667,6 +1667,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs/search_corpus/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Search Corpus
+         * @description Cloud Scheduler → refresh compact search corpus from local cache.
+         */
+        post: operations["run_search_corpus_jobs_search_corpus_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/db_cleanup/run": {
         parameters: {
             query?: never;
@@ -5834,6 +5854,26 @@ export interface operations {
         };
     };
     run_auto_capture_jobs_auto_capture_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_search_corpus_jobs_search_corpus_run_post: {
         parameters: {
             query?: never;
             header?: never;
