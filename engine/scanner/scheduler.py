@@ -369,7 +369,7 @@ def start_scheduler() -> None:
 
     _scheduler.start()
     log.info(
-        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s search_index=%ds refinement=%s search_corpus=%s feature_mat=%s universe=%s",
+        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s search_index=%ds refinement=%s universe=%s",
         SCAN_INTERVAL,
         SCAN_INTERVAL,
         MARKET_SEARCH_INDEX_REFRESH_INTERVAL,

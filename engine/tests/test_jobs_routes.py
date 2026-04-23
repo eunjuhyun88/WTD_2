@@ -43,26 +43,6 @@ def test_jobs_reject_invalid_scheduler_secret(monkeypatch) -> None:
     assert response.json() == {"detail": "invalid scheduler secret"}
 
 
-def test_jobs_search_corpus_endpoint_runs_guarded_job(monkeypatch) -> None:
-    import scanner.scheduler as scheduler
-
-    calls: list[str] = []
-
-    async def fake_search_corpus_refresh_job() -> None:
-        calls.append("ran")
-
-    monkeypatch.setattr(jobs, "SCHEDULER_SECRET", "top-secret")
-    monkeypatch.setattr(scheduler, "_search_corpus_refresh_job", fake_search_corpus_refresh_job)
-
-    response = _client().post(
-        "/jobs/search_corpus/run",
-        headers={"Authorization": "Bearer top-secret"},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-    assert calls == ["ran"]
-
 def test_market_search_index_refresh_dispatches(monkeypatch) -> None:
     monkeypatch.setattr(jobs, "SCHEDULER_SECRET", "top-secret")
     seen: list[str] = []
@@ -89,37 +69,3 @@ def test_market_search_index_refresh_dispatches(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
     assert seen == ["job"]
-
-
-def test_feature_materialization_endpoint_dispatches(monkeypatch) -> None:
-    monkeypatch.setattr(jobs, "SCHEDULER_SECRET", "top-secret")
-    seen: list[str] = []
-
-    async def fake_job() -> None:
-        seen.append("mat")
-
-    async def fake_guard(job_name: str, coro) -> JSONResponse:  # noqa: ANN001
-        assert job_name == "feature_materialization"
-        await coro
-        return JSONResponse({"status": "ok"})
-
-    monkeypatch.setattr(jobs, "_run_with_guard", fake_guard)
-
-    import scanner.scheduler as scheduler
-    monkeypatch.setattr(scheduler, "_feature_materialization_refresh_job", fake_job)
-
-    response = _client().post(
-        "/jobs/feature_materialization/run",
-        headers={"Authorization": "Bearer top-secret"},
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
-    assert seen == ["mat"]
-
-
-def test_raw_ingest_endpoint_requires_auth(monkeypatch) -> None:
-    monkeypatch.setattr(jobs, "SCHEDULER_SECRET", "top-secret")
-
-    response = _client().post("/jobs/raw_ingest/run")
-    assert response.status_code == 401

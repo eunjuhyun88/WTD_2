@@ -57,7 +57,7 @@
 | **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
 | **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
 | **W-0156** | `W-0156-canonical-feature-plane-foundation.md` | 🔴 IN-PROGRESS | perp/orderflow canonical feature plane 첫 슬라이스: raw metrics contract + reusable derived features + targeted engine cut |
-| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | Binance raw ingress + contract/coin query resolver를 canonical raw plane on-demand ingest로 연결 |
+| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | canonical raw ingress + persisted market search index + query hot-cache + scheduler refresh + universe query cutover |
 | **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
 | **W-0158** | `W-0158-promotion-feature-diagnostics.md` | 🔴 IN-PROGRESS | canonical feature score/snapshot truth를 promotion report와 refinement report diagnostics에 재사용 |
 | **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
@@ -134,7 +134,7 @@
 - `W-0157` landed clean at `a3a8f2c0` on `codex/w-0157-similar-live-feature-ranking`
 - `W-0158` landed clean at `e51ab067` on `codex/w-0158-promotion-feature-diagnostics`
 - active execution lane is `codex/w-0159-canonical-raw-plane-ingestion`
-- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, and a persisted local market search index for contract/coin lookup
+- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, persisted local market search index, bounded index refresh job, process-local query memoization, and `/universe?q=` local-search read path
 
 ---
 
