@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`c7925b23` — current local `origin/main` ref after PR #203
+`98b41af0` — current local `origin/main` ref after PR #205
 
 ## 완료 (이번 세션)
 
@@ -21,6 +21,7 @@
 | #201 (W-0122) | consumer fact routes attach to engine facts (`reference-stack`, `chain-intel`) |
 | #202 (W-0145) | search corpus store + worker-control corpus refresh + `/search/catalog` |
 | #203 (W-0145) | corpus-only `/search/seed` and `/search/scan` routes + persisted run candidates |
+| #205 (W-0145) | app search contracts aligned with canonical engine search payloads |
 
 ---
 
@@ -92,9 +93,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0145-search-proxy-client`
+- active on `codex/w-0142-runtime-routes`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: app search contract alignment; make `/api/search/*` clients match canonical engine catalog/seed/scan payloads
+- current slice: Runtime State Plane canonical route skeleton; expose captures, workspace pins, setups, research contexts, and ledger projections behind `/runtime/*`
 
 ---
 
@@ -118,7 +119,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `c7925b23` |
+| origin/main | — | local remote-tracking ref = `98b41af0` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -133,8 +134,9 @@
 |---|---|---|
 | codex/w-0145-corpus-plane | W-0145 | merged via PR #202 |
 | codex/w-0145-search-routes | W-0145 | merged via PR #203 |
-| codex/w-0145-search-proxy-client | W-0145 | active app search contract/proxy client alignment |
-| codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
+| codex/w-0145-search-proxy-client | W-0145 | merged via PR #205 |
+| codex/w-0142-runtime-routes | W-0142 | active runtime route skeleton |
+| codex/w-0142-runtime-state-plane | W-0142 | planned follow-up runtime bridge migration |
 | codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
 | codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
