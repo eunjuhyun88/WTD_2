@@ -126,12 +126,24 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
             PatternLedgerRecord(
                 record_type="training_run",
                 pattern_slug="tradoor-oi-reversal-v1",
-                payload={"model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1"},
+                payload={
+                    "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
+                    "definition_ref": {
+                        "definition_id": "tradoor-oi-reversal-v1:v1",
+                        "pattern_slug": "tradoor-oi-reversal-v1",
+                    },
+                },
             ),
             PatternLedgerRecord(
                 record_type="model",
                 pattern_slug="tradoor-oi-reversal-v1",
-                payload={"model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1"},
+                payload={
+                    "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
+                    "definition_ref": {
+                        "definition_id": "tradoor-oi-reversal-v1:v1",
+                        "pattern_slug": "tradoor-oi-reversal-v1",
+                    },
+                },
             ),
         ]
         + [PatternLedgerRecord(record_type="entry", pattern_slug="tradoor-oi-reversal-v1") for _ in range(10)]
@@ -147,9 +159,18 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
             self.list_calls = 0
             self.summarize_calls = 0
 
-        def list(self, slug, record_type=None, limit=None):
+        def list(self, slug, record_type=None, definition_id=None, limit=None):
             self.list_calls += 1
-            return record_list
+            records = record_list
+            if record_type is not None:
+                records = [record for record in records if record.record_type == record_type]
+            if definition_id is not None:
+                records = [
+                    record
+                    for record in records
+                    if record.payload.get("definition_ref", {}).get("definition_id") == definition_id
+                ]
+            return records[:limit] if limit is not None else records
 
         def summarize_family(self, slug):
             self.summarize_calls += 1
@@ -209,9 +230,9 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
             "FakeRegistryStore",
             (),
             {
-                "list": lambda self, slug: [active_entry],
-                "get_active": lambda self, slug: active_entry,
-                "get_preferred_scoring_model": lambda self, slug: active_entry,
+                "list": lambda self, slug, definition_id=None: [active_entry],
+                "get_active": lambda self, slug, definition_id=None: active_entry,
+                "get_preferred_scoring_model": lambda self, slug, definition_id=None: active_entry,
             },
         )(),
     )
@@ -266,6 +287,9 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["scope"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
+    assert payload["scope"]["outcome_metrics"] == "pattern_slug"
+    assert payload["scope"]["model_artifacts"] == "definition_id"
     assert payload["record_family"]["entry_count"] == 10
     assert payload["record_family"]["capture_count"] == 4
     assert payload["record_family"]["training_run_count"] == 2
@@ -275,8 +299,206 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     assert payload["alert_policy"]["mode"] == "gated"
     assert payload["latest_training_run"]["record_type"] == "training_run"
     assert payload["latest_model"]["record_type"] == "model"
+    assert payload["definition_artifacts"]["training_run_count"] == 1
+    assert payload["definition_artifacts"]["model_count"] == 1
     assert fake_record_store.summarize_calls == 1
-    assert fake_record_store.list_calls == 0
+    assert fake_record_store.list_calls == 2
+
+
+def test_stats_definition_scope_filters_model_artifacts(monkeypatch) -> None:
+    v1_entry = _RegistryEntry(
+        pattern_slug="tradoor-oi-reversal-v1",
+        model_key="tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
+        model_version="20260416_120000",
+        rollout_state="active",
+    )
+    v2_entry = _RegistryEntry(
+        pattern_slug="tradoor-oi-reversal-v1",
+        model_key="tradoor-oi-reversal-v1:v2:1h:breakout:fs1:lp1",
+        model_version="20260417_120000",
+        rollout_state="candidate",
+        definition_ref={
+            "definition_id": "tradoor-oi-reversal-v1:v2",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+        },
+    )
+    record_list = [
+        PatternLedgerRecord(
+            record_type="training_run",
+            pattern_slug="tradoor-oi-reversal-v1",
+            payload={
+                "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
+                "definition_ref": {"definition_id": "tradoor-oi-reversal-v1:v1", "pattern_slug": "tradoor-oi-reversal-v1"},
+            },
+        ),
+        PatternLedgerRecord(
+            record_type="model",
+            pattern_slug="tradoor-oi-reversal-v1",
+            payload={
+                "model_version": "20260416_120000",
+                "definition_ref": {"definition_id": "tradoor-oi-reversal-v1:v1", "pattern_slug": "tradoor-oi-reversal-v1"},
+            },
+        ),
+        PatternLedgerRecord(
+            record_type="training_run",
+            pattern_slug="tradoor-oi-reversal-v1",
+            payload={
+                "model_key": "tradoor-oi-reversal-v1:v2:1h:breakout:fs1:lp1",
+                "definition_ref": {"definition_id": "tradoor-oi-reversal-v1:v2", "pattern_slug": "tradoor-oi-reversal-v1"},
+            },
+        ),
+        PatternLedgerRecord(
+            record_type="model",
+            pattern_slug="tradoor-oi-reversal-v1",
+            payload={
+                "model_version": "20260417_120000",
+                "definition_ref": {"definition_id": "tradoor-oi-reversal-v1:v2", "pattern_slug": "tradoor-oi-reversal-v1"},
+            },
+        ),
+    ]
+
+    class FakeRecordStore:
+        def list(self, slug, record_type=None, definition_id=None, limit=None):
+            records = record_list
+            if record_type is not None:
+                records = [record for record in records if record.record_type == record_type]
+            if definition_id is not None:
+                records = [
+                    record
+                    for record in records
+                    if record.payload.get("definition_ref", {}).get("definition_id") == definition_id
+                ]
+            return records[:limit] if limit is not None else records
+
+        def summarize_family(self, slug):
+            return (
+                PatternLedgerFamilyStats(
+                    pattern_slug=slug,
+                    entry_count=10,
+                    capture_count=4,
+                    score_count=10,
+                    outcome_count=6,
+                    verdict_count=3,
+                    phase_attempt_count=0,
+                    training_run_count=2,
+                    model_count=2,
+                    capture_to_entry_rate=0.4,
+                    verdict_to_entry_rate=0.3,
+                ),
+                record_list[0],
+                record_list[1],
+            )
+
+    monkeypatch.setattr(
+        pattern_routes,
+        "_ledger",
+        type(
+            "FakeLedger",
+            (),
+            {
+                "compute_stats": lambda self, slug: PatternStats(
+                    pattern_slug=slug,
+                    total_instances=3,
+                    pending_count=1,
+                    success_count=1,
+                    failure_count=1,
+                    success_rate=0.5,
+                    avg_gain_pct=0.2,
+                    avg_loss_pct=-0.1,
+                    expected_value=0.05,
+                    avg_duration_hours=12.0,
+                    recent_30d_count=3,
+                    recent_30d_success_rate=0.5,
+                    btc_bullish_rate=None,
+                    btc_bearish_rate=None,
+                    btc_sideways_rate=None,
+                    decay_direction="stable",
+                ),
+                "list_all": lambda self, slug: [],
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        ptr,
+        "MODEL_REGISTRY_STORE",
+        type(
+            "FakeRegistryStore",
+            (),
+            {
+                "list": lambda self, slug, definition_id=None: [entry for entry in [v1_entry, v2_entry] if definition_id is None or entry.definition_id == definition_id],
+                "get_active": lambda self, slug, definition_id=None: next((entry for entry in [v1_entry, v2_entry] if entry.rollout_state == "active" and (definition_id is None or entry.definition_id == definition_id)), None),
+                "get_preferred_scoring_model": lambda self, slug, definition_id=None: next((entry for entry in [v1_entry, v2_entry] if definition_id is None or entry.definition_id == definition_id), None),
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        ptr,
+        "ALERT_POLICY_STORE",
+        type("FakePolicyStore", (), {"load": lambda self, slug: _Policy("gated")})(),
+    )
+    monkeypatch.setattr(ptr, "LEDGER_RECORD_STORE", FakeRecordStore())
+    monkeypatch.setattr(
+        ptr,
+        "summarize_pattern_dataset",
+        lambda outcomes: type(
+            "Summary",
+            (),
+            {
+                "total_entries": 0,
+                "decided_entries": 0,
+                "state_counts": {},
+                "scored_entries": 0,
+                "scored_decided_entries": 0,
+                "score_coverage": None,
+                "avg_p_win": None,
+                "threshold_pass_count": 0,
+                "threshold_pass_rate": None,
+                "above_threshold_success_rate": None,
+                "below_threshold_success_rate": None,
+                "training_usable_count": 0,
+                "training_win_count": 0,
+                "training_loss_count": 0,
+                "ready_to_train": False,
+                "readiness_reason": "n/a",
+                "last_model_version": None,
+            },
+        )(),
+    )
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.get("/patterns/tradoor-oi-reversal-v1/stats?definition_id=tradoor-oi-reversal-v1:v2")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["scope"]["definition_id"] == "tradoor-oi-reversal-v1:v2"
+    assert payload["scope"]["outcome_metrics"] == "pattern_slug"
+    assert payload["record_family"]["training_run_count"] == 2
+    assert payload["model_registry"]["entry_count"] == 1
+    assert payload["model_registry"]["active_model"] is None
+    assert payload["model_registry"]["preferred_scoring_model"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v2"
+    assert payload["latest_training_run"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v2"
+    assert payload["latest_model"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v2"
+    assert payload["definition_artifacts"]["training_run_count"] == 1
+    assert payload["definition_artifacts"]["model_count"] == 1
+    assert payload["definition_artifacts"]["pattern_latest_training_run"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
+
+
+def test_stats_rejects_invalid_definition_id(monkeypatch) -> None:
+    monkeypatch.setattr(
+        pattern_routes,
+        "_ledger",
+        type("FakeLedger", (), {"compute_stats": lambda self, slug: None, "list_all": lambda self, slug: []})(),
+    )
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.get("/patterns/tradoor-oi-reversal-v1/stats?definition_id=bad-definition")
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "pattern_definition_id_invalid"
 
 
 def test_set_user_verdict_appends_verdict_record(monkeypatch) -> None:

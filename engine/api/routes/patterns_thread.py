@@ -165,10 +165,20 @@ def get_stats_sync(
     ledger: LedgerStore,
     outcomes: list | None = None,
     *,
+    definition_id: str | None = None,
     record_store=None,
 ) -> dict:
     _require_pattern(slug)
-    definition_ref = _resolve_definition_ref(slug)
+    definition_ref = (
+        _resolve_definition_ref_or_http(slug, definition_id=definition_id)
+        if definition_id is not None
+        else _resolve_definition_ref(slug)
+    )
+    resolved_definition_id = (
+        definition_ref.get("definition_id")
+        if isinstance(definition_ref, dict)
+        else None
+    )
     if outcomes is None:
         outcomes = ledger.list_all(slug)
     stats = _compute_stats_from_outcomes(slug, outcomes)
@@ -176,9 +186,17 @@ def get_stats_sync(
         slug,
         record_store=record_store,
     )
-    registry_entries = MODEL_REGISTRY_STORE.list(slug)
-    active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug)
-    preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
+    registry_entries = MODEL_REGISTRY_STORE.list(slug, definition_id=resolved_definition_id)
+    active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug, definition_id=resolved_definition_id)
+    preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+        slug,
+        definition_id=resolved_definition_id,
+    )
+    definition_artifacts = _definition_artifact_summary(
+        slug,
+        definition_id=resolved_definition_id,
+        record_store=record_store,
+    )
     ml_shadow = summarize_pattern_dataset(outcomes)
     alert_policy = ALERT_POLICY_STORE.load(slug)
     record_family_payload = (
@@ -199,6 +217,13 @@ def get_stats_sync(
     return {
         "pattern_slug": stats.pattern_slug,
         "definition_ref": definition_ref,
+        "scope": {
+            "pattern_slug": slug,
+            "definition_id": resolved_definition_id,
+            "outcome_metrics": "pattern_slug",
+            "record_family": "pattern_slug",
+            "model_artifacts": "definition_id" if resolved_definition_id is not None else "pattern_slug",
+        },
         "total": stats.total_instances,
         "pending": stats.pending_count,
         "success": stats.success_count,
@@ -239,8 +264,19 @@ def get_stats_sync(
             "preferred_scoring_model": _registry_entry_payload(preferred_registry_entry) if preferred_registry_entry else None,
         },
         "alert_policy": alert_policy.to_dict(),
-        "latest_training_run": _record_payload(latest_training_run_record, slug) if latest_training_run_record else None,
-        "latest_model": _record_payload(latest_model_record, slug) if latest_model_record else None,
+        "latest_training_run": definition_artifacts["latest_training_run"],
+        "latest_model": definition_artifacts["latest_model"],
+        "definition_artifacts": {
+            "definition_id": resolved_definition_id,
+            "training_run_count": definition_artifacts["training_run_count"],
+            "model_count": definition_artifacts["model_count"],
+            "latest_training_run": definition_artifacts["latest_training_run"],
+            "latest_model": definition_artifacts["latest_model"],
+            "pattern_latest_training_run": _record_payload(latest_training_run_record, slug)
+            if latest_training_run_record
+            else None,
+            "pattern_latest_model": _record_payload(latest_model_record, slug) if latest_model_record else None,
+        },
         "ml_shadow": {
             "total_entries": ml_shadow.total_entries,
             "decided_entries": ml_shadow.decided_entries,
@@ -266,6 +302,25 @@ def get_stats_sync(
             "readiness_reason": ml_shadow.readiness_reason,
             "last_model_version": ml_shadow.last_model_version,
         },
+    }
+
+
+def _definition_artifact_summary(
+    slug: str,
+    *,
+    definition_id: str | None,
+    record_store=None,
+) -> dict[str, Any]:
+    store = record_store or LEDGER_RECORD_STORE
+    training_runs = store.list(slug, record_type="training_run", definition_id=definition_id)
+    model_records = store.list(slug, record_type="model", definition_id=definition_id)
+    latest_training_run = training_runs[0] if training_runs else None
+    latest_model = model_records[0] if model_records else None
+    return {
+        "training_run_count": len(training_runs),
+        "model_count": len(model_records),
+        "latest_training_run": _record_payload(latest_training_run, slug) if latest_training_run else None,
+        "latest_model": _record_payload(latest_model, slug) if latest_model else None,
     }
 
 

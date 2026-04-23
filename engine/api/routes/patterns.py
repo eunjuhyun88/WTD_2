@@ -148,9 +148,14 @@ async def get_all_stats() -> dict:
 
 
 @router.get("/{slug}/stats")
-async def get_stats(slug: str) -> dict:
+async def get_stats(slug: str, definition_id: str | None = None) -> dict:
     """Ledger statistics for a pattern. v3: includes ML shadow readiness."""
-    return await asyncio.to_thread(patterns_thread.get_stats_sync, slug, _ledger)
+    return await asyncio.to_thread(
+        patterns_thread.get_stats_sync,
+        slug,
+        _ledger,
+        definition_id=definition_id,
+    )
 
 
 @router.get("/{slug}/training-records")
