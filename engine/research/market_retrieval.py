@@ -1,9 +1,13 @@
 """Cheap market retrieval over the cached corpus, followed by replay rerank."""
 from __future__ import annotations
 
+import json
+import tempfile
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from math import isnan
+from pathlib import Path
 
 import pandas as pd
 
@@ -23,6 +27,8 @@ _DEFAULT_HISTORY_BARS = 24 * 30
 _DEFAULT_STRIDE_BARS = 6
 _DEFAULT_TOP_K = 20
 _DEFAULT_REPLAY_TOP_K = 8
+SEARCH_DIR = Path(__file__).resolve().parent / "pattern_search"
+MARKET_INDEX_DIR = SEARCH_DIR / "market_indices"
 
 _SIGNATURE_FLOORS: dict[str, float] = {
     "price_return_pct": 5.0,
@@ -144,6 +150,238 @@ def _signature_distance(reference: dict[str, float], candidate: dict[str, float]
 
 
 @dataclass(frozen=True)
+class MarketWindowSignatureEntry:
+    symbol: str
+    timeframe: str
+    start_at: datetime
+    end_at: datetime
+    window_bars: int
+    signature: dict[str, float]
+
+    def to_dict(self) -> dict:
+        return {
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "start_at": self.start_at.isoformat(),
+            "end_at": self.end_at.isoformat(),
+            "window_bars": self.window_bars,
+            "signature": dict(self.signature),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict) -> "MarketWindowSignatureEntry":
+        return cls(
+            symbol=str(payload["symbol"]),
+            timeframe=str(payload["timeframe"]),
+            start_at=datetime.fromisoformat(payload["start_at"]),
+            end_at=datetime.fromisoformat(payload["end_at"]),
+            window_bars=int(payload["window_bars"]),
+            signature={str(key): _safe_float(value) for key, value in dict(payload.get("signature", {})).items()},
+        )
+
+
+@dataclass(frozen=True)
+class MarketRetrievalIndexArtifact:
+    index_id: str
+    timeframe: str
+    history_bars: int
+    stride_bars: int
+    window_bars: int
+    universe_symbols: list[str]
+    entries: list[MarketWindowSignatureEntry]
+    created_at: datetime = field(default_factory=_utcnow)
+
+    def to_dict(self) -> dict:
+        return {
+            "index_id": self.index_id,
+            "timeframe": self.timeframe,
+            "history_bars": self.history_bars,
+            "stride_bars": self.stride_bars,
+            "window_bars": self.window_bars,
+            "universe_symbols": list(self.universe_symbols),
+            "entry_count": len(self.entries),
+            "created_at": self.created_at.isoformat(),
+            "entries": [entry.to_dict() for entry in self.entries],
+        }
+
+    def to_summary_dict(self) -> dict:
+        return {
+            "index_id": self.index_id,
+            "timeframe": self.timeframe,
+            "history_bars": self.history_bars,
+            "stride_bars": self.stride_bars,
+            "window_bars": self.window_bars,
+            "universe_size": len(self.universe_symbols),
+            "entry_count": len(self.entries),
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict) -> "MarketRetrievalIndexArtifact":
+        return cls(
+            index_id=str(payload["index_id"]),
+            timeframe=str(payload["timeframe"]),
+            history_bars=int(payload["history_bars"]),
+            stride_bars=int(payload["stride_bars"]),
+            window_bars=int(payload["window_bars"]),
+            universe_symbols=[str(symbol) for symbol in payload.get("universe_symbols", [])],
+            entries=[MarketWindowSignatureEntry.from_dict(entry) for entry in payload.get("entries", [])],
+            created_at=datetime.fromisoformat(payload["created_at"]),
+        )
+
+
+class MarketRetrievalIndexStore:
+    def __init__(self, base_dir: Path = MARKET_INDEX_DIR):
+        self.base_dir = base_dir
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+
+    def _path(self, index_id: str) -> Path:
+        return self.base_dir / f"{index_id}.json"
+
+    def save(self, artifact: MarketRetrievalIndexArtifact) -> Path:
+        path = self._path(artifact.index_id)
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False) as handle:
+            json.dump(artifact.to_dict(), handle, indent=2)
+            temp_path = Path(handle.name)
+        temp_path.replace(path)
+        return path
+
+    def load(self, index_id: str) -> MarketRetrievalIndexArtifact | None:
+        path = self._path(index_id)
+        if not path.exists():
+            return None
+        return MarketRetrievalIndexArtifact.from_dict(json.loads(path.read_text()))
+
+    def list(
+        self,
+        *,
+        timeframe: str | None = None,
+        history_bars: int | None = None,
+        stride_bars: int | None = None,
+        window_bars: int | None = None,
+        limit: int | None = None,
+    ) -> list[MarketRetrievalIndexArtifact]:
+        entries: list[MarketRetrievalIndexArtifact] = []
+        for path in self.base_dir.glob("*.json"):
+            payload = MarketRetrievalIndexArtifact.from_dict(json.loads(path.read_text()))
+            if timeframe is not None and payload.timeframe != timeframe:
+                continue
+            if history_bars is not None and payload.history_bars != history_bars:
+                continue
+            if stride_bars is not None and payload.stride_bars != stride_bars:
+                continue
+            if window_bars is not None and payload.window_bars != window_bars:
+                continue
+            entries.append(payload)
+        entries.sort(key=lambda item: item.created_at, reverse=True)
+        return entries[:limit] if limit is not None else entries
+
+    def find_latest(
+        self,
+        *,
+        timeframe: str,
+        history_bars: int,
+        stride_bars: int,
+        window_bars: int,
+    ) -> MarketRetrievalIndexArtifact | None:
+        matches = self.list(
+            timeframe=timeframe,
+            history_bars=history_bars,
+            stride_bars=stride_bars,
+            window_bars=window_bars,
+            limit=1,
+        )
+        return matches[0] if matches else None
+
+
+def _iter_recent_window_entries(
+    symbol: str,
+    timeframe: str,
+    klines: pd.DataFrame,
+    features: pd.DataFrame,
+    *,
+    history_bars: int,
+    stride_bars: int,
+    window_bars: int,
+) -> list[MarketWindowSignatureEntry]:
+    entries: list[MarketWindowSignatureEntry] = []
+    end_start = max(window_bars - 1, len(klines) - history_bars)
+    for end_pos in range(end_start, len(klines), max(1, stride_bars)):
+        start_pos = end_pos - window_bars + 1
+        if start_pos < 0:
+            continue
+        k_window = klines.iloc[start_pos : end_pos + 1]
+        f_window = features.iloc[start_pos : end_pos + 1]
+        if len(k_window) != window_bars or len(f_window) != window_bars:
+            continue
+        entries.append(
+            MarketWindowSignatureEntry(
+                symbol=symbol,
+                timeframe=timeframe,
+                start_at=pd.Timestamp(k_window.index[0]).to_pydatetime(),
+                end_at=pd.Timestamp(k_window.index[-1]).to_pydatetime(),
+                window_bars=window_bars,
+                signature=_build_window_signature(k_window, f_window),
+            )
+        )
+    return entries
+
+
+def build_market_retrieval_index(
+    *,
+    timeframe: str = "1h",
+    history_bars: int = _DEFAULT_HISTORY_BARS,
+    stride_bars: int = _DEFAULT_STRIDE_BARS,
+    window_bars: int,
+    universe: list[str] | None = None,
+    warmup_bars: int = 240,
+    index_store: MarketRetrievalIndexStore | None = None,
+) -> MarketRetrievalIndexArtifact:
+    if timeframe != "1h":
+        raise ValueError("W-0153 retrieval index currently supports timeframe='1h' only")
+    if window_bars <= 1:
+        raise ValueError("window_bars must be greater than 1")
+
+    if universe is None:
+        universe = list_cached_symbols(require_perp=False)
+    index_store = index_store or MarketRetrievalIndexStore()
+    feature_pad_bars = max(warmup_bars, MIN_HISTORY_BARS)
+    candidate_max_bars = history_bars + window_bars + feature_pad_bars
+
+    entries: list[MarketWindowSignatureEntry] = []
+    for symbol in universe:
+        try:
+            klines, features = _load_symbol_frames(symbol, timeframe, max_bars=candidate_max_bars)
+        except Exception:
+            continue
+        if len(klines) < window_bars:
+            continue
+        entries.extend(
+            _iter_recent_window_entries(
+                symbol,
+                timeframe,
+                klines,
+                features,
+                history_bars=history_bars,
+                stride_bars=stride_bars,
+                window_bars=window_bars,
+            )
+        )
+
+    artifact = MarketRetrievalIndexArtifact(
+        index_id=str(uuid.uuid4()),
+        timeframe=timeframe,
+        history_bars=history_bars,
+        stride_bars=stride_bars,
+        window_bars=window_bars,
+        universe_symbols=list(universe),
+        entries=entries,
+    )
+    index_store.save(artifact)
+    return artifact
+
+
+@dataclass(frozen=True)
 class MarketSearchCandidate:
     symbol: str
     timeframe: str
@@ -182,6 +420,8 @@ class MarketSearchResult:
     pattern_slug: str
     variant_slug: str
     timeframe: str
+    retrieval_source: str
+    retrieval_index_id: str | None
     reference_symbol: str
     reference_start_at: datetime
     reference_end_at: datetime
@@ -199,6 +439,8 @@ class MarketSearchResult:
             "pattern_slug": self.pattern_slug,
             "variant_slug": self.variant_slug,
             "timeframe": self.timeframe,
+            "retrieval_source": self.retrieval_source,
+            "retrieval_index_id": self.retrieval_index_id,
             "reference_symbol": self.reference_symbol,
             "reference_start_at": self.reference_start_at.isoformat(),
             "reference_end_at": self.reference_end_at.isoformat(),
@@ -225,6 +467,7 @@ def run_pattern_market_search(
     replay_top_k: int = _DEFAULT_REPLAY_TOP_K,
     universe: list[str] | None = None,
     warmup_bars: int = 240,
+    index_store: MarketRetrievalIndexStore | None = None,
 ) -> MarketSearchResult:
     if timeframe != "1h":
         raise ValueError("W-0152 market retrieval currently supports timeframe='1h' only")
@@ -249,47 +492,80 @@ def run_pattern_market_search(
     if universe is None:
         universe = list_cached_symbols(require_perp=False)
 
-    raw_candidates: list[MarketSearchCandidate] = []
-    for symbol in universe:
-        if symbol == reference_case.symbol:
-            continue
-        try:
-            klines, features = _load_symbol_frames(symbol, timeframe)
-        except Exception:
-            continue
-        if len(klines) < reference_window_bars:
-            continue
+    index_store = index_store or MarketRetrievalIndexStore()
+    retrieval_source = "live_scan"
+    retrieval_index_id: str | None = None
 
-        end_start = max(reference_window_bars - 1, len(klines) - history_bars)
-        best_candidate: MarketSearchCandidate | None = None
-        for end_pos in range(end_start, len(klines), max(1, stride_bars)):
-            start_pos = end_pos - reference_window_bars + 1
-            if start_pos < 0:
+    candidate_by_symbol: dict[str, MarketSearchCandidate] = {}
+    index_artifact = index_store.find_latest(
+        timeframe=timeframe,
+        history_bars=history_bars,
+        stride_bars=stride_bars,
+        window_bars=reference_window_bars,
+    )
+    universe_filter = set(universe)
+    if index_artifact is not None:
+        retrieval_source = "index"
+        retrieval_index_id = index_artifact.index_id
+        for entry in index_artifact.entries:
+            if entry.symbol == reference_case.symbol or entry.symbol not in universe_filter:
                 continue
-            k_window = klines.iloc[start_pos : end_pos + 1]
-            f_window = features.iloc[start_pos : end_pos + 1]
-            if len(k_window) != reference_window_bars or len(f_window) != reference_window_bars:
-                continue
-
-            candidate_signature = _build_window_signature(k_window, f_window)
-            distance = _signature_distance(reference_signature, candidate_signature)
+            distance = _signature_distance(reference_signature, entry.signature)
             if distance == float("inf"):
                 continue
             score = 1.0 / (1.0 + distance)
             candidate = MarketSearchCandidate(
-                symbol=symbol,
-                timeframe=timeframe,
-                start_at=pd.Timestamp(k_window.index[0]).to_pydatetime(),
-                end_at=pd.Timestamp(k_window.index[-1]).to_pydatetime(),
-                window_bars=reference_window_bars,
+                symbol=entry.symbol,
+                timeframe=entry.timeframe,
+                start_at=entry.start_at,
+                end_at=entry.end_at,
+                window_bars=entry.window_bars,
                 retrieval_score=round(score, 6),
                 retrieval_distance=round(distance, 6),
             )
+            best_candidate = candidate_by_symbol.get(entry.symbol)
             if best_candidate is None or candidate.retrieval_score > best_candidate.retrieval_score:
-                best_candidate = candidate
+                candidate_by_symbol[entry.symbol] = candidate
+        raw_candidates = list(candidate_by_symbol.values())
+    else:
+        raw_candidates = []
+        for symbol in universe:
+            if symbol == reference_case.symbol:
+                continue
+            try:
+                klines, features = _load_symbol_frames(symbol, timeframe, max_bars=candidate_max_bars)
+            except Exception:
+                continue
+            if len(klines) < reference_window_bars:
+                continue
 
-        if best_candidate is not None:
-            raw_candidates.append(best_candidate)
+            best_candidate: MarketSearchCandidate | None = None
+            for entry in _iter_recent_window_entries(
+                symbol,
+                timeframe,
+                klines,
+                features,
+                history_bars=history_bars,
+                stride_bars=stride_bars,
+                window_bars=reference_window_bars,
+            ):
+                distance = _signature_distance(reference_signature, entry.signature)
+                if distance == float("inf"):
+                    continue
+                score = 1.0 / (1.0 + distance)
+                candidate = MarketSearchCandidate(
+                    symbol=entry.symbol,
+                    timeframe=entry.timeframe,
+                    start_at=entry.start_at,
+                    end_at=entry.end_at,
+                    window_bars=entry.window_bars,
+                    retrieval_score=round(score, 6),
+                    retrieval_distance=round(distance, 6),
+                )
+                if best_candidate is None or candidate.retrieval_score > best_candidate.retrieval_score:
+                    best_candidate = candidate
+            if best_candidate is not None:
+                raw_candidates.append(best_candidate)
 
     raw_candidates.sort(key=lambda candidate: candidate.retrieval_score, reverse=True)
     ranked_candidates = [
@@ -353,6 +629,8 @@ def run_pattern_market_search(
         pattern_slug=pattern_slug,
         variant_slug=variant_slug,
         timeframe=timeframe,
+        retrieval_source=retrieval_source,
+        retrieval_index_id=retrieval_index_id,
         reference_symbol=reference_case.symbol,
         reference_start_at=reference_case.start_at,
         reference_end_at=reference_case.end_at,
@@ -373,6 +651,10 @@ def print_market_search_report(result: MarketSearchResult) -> None:
     print(
         f"pattern={result.pattern_slug} variant={result.variant_slug} timeframe={result.timeframe} "
         f"reference={result.reference_symbol} [{result.reference_start_at.isoformat()} → {result.reference_end_at.isoformat()}]"
+    )
+    print(
+        f"source={result.retrieval_source}"
+        + (f" index={result.retrieval_index_id}" if result.retrieval_index_id else "")
     )
     print(
         f"universe={result.universe_size} history_bars={result.history_bars} stride_bars={result.stride_bars} "
