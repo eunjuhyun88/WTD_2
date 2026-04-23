@@ -220,6 +220,18 @@ def _normalize_record_since(
     return since
 
 
+def _record_definition_id(record: PatternLedgerRecord) -> str | None:
+    payload = record.payload if isinstance(record.payload, dict) else {}
+    value = payload.get("definition_id")
+    if isinstance(value, str) and value:
+        return value
+    definition_ref = payload.get("definition_ref")
+    if not isinstance(definition_ref, dict):
+        return None
+    nested = definition_ref.get("definition_id")
+    return nested if isinstance(nested, str) and nested else None
+
+
 class FileLedgerStore:
     """Append-only JSON ledger for PatternOutcome records."""
 
@@ -486,6 +498,7 @@ class LedgerRecordStore:
         record_type: LedgerRecordType | None = None,
         symbol: str | None = None,
         outcome_id: str | None = None,
+        definition_id: str | None = None,
         limit: int | None = None,
     ) -> list[PatternLedgerRecord]:
         records: list[PatternLedgerRecord] = []
@@ -498,6 +511,8 @@ class LedgerRecordStore:
             if symbol and record.symbol != symbol:
                 continue
             if outcome_id and record.outcome_id != outcome_id:
+                continue
+            if definition_id and _record_definition_id(record) != definition_id:
                 continue
             records.append(record)
         records.sort(key=lambda record: record.created_at, reverse=True)
@@ -680,6 +695,7 @@ class LedgerRecordStore:
         pattern_slug: str,
         model_version: str,
         user_id: str | None = None,
+        definition_ref: dict | None = None,
         payload: dict | None = None,
     ) -> Path:
         return self.append(
@@ -689,6 +705,7 @@ class LedgerRecordStore:
                 user_id=user_id,
                 payload={
                     "model_version": model_version,
+                    "definition_ref": dict(definition_ref or {}),
                     **(payload or {}),
                 },
             )
@@ -700,6 +717,7 @@ class LedgerRecordStore:
         pattern_slug: str,
         model_key: str,
         user_id: str | None = None,
+        definition_ref: dict | None = None,
         payload: dict | None = None,
     ) -> Path:
         return self.append(
@@ -709,6 +727,7 @@ class LedgerRecordStore:
                 user_id=user_id,
                 payload={
                     "model_key": model_key,
+                    "definition_ref": dict(definition_ref or {}),
                     **(payload or {}),
                 },
             )

@@ -30,6 +30,13 @@ def _json_loads_dict(value: str | None) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
+def _definition_id_from_ref(definition_ref: dict[str, Any] | None) -> str | None:
+    if not isinstance(definition_ref, dict):
+        return None
+    value = definition_ref.get("definition_id")
+    return value if isinstance(value, str) and value else None
+
+
 class RuntimeStateStore:
     """Durable fallback-local store for workflow state not owned by facts/search."""
 
@@ -93,12 +100,22 @@ class RuntimeStateStore:
                   subject_id TEXT,
                   kind TEXT NOT NULL,
                   summary TEXT,
+                  definition_id TEXT,
                   definition_ref_json TEXT NOT NULL DEFAULT '{}',
                   payload_json TEXT NOT NULL,
                   created_at TEXT NOT NULL,
                   updated_at TEXT NOT NULL
                 );
+
+                CREATE INDEX IF NOT EXISTS idx_runtime_ledger_entries_definition
+                  ON runtime_ledger_entries(definition_id, updated_at DESC);
                 """
+            )
+            self._ensure_column(
+                conn,
+                "runtime_ledger_entries",
+                "definition_id",
+                "TEXT",
             )
             self._ensure_column(
                 conn,
@@ -106,6 +123,7 @@ class RuntimeStateStore:
                 "definition_ref_json",
                 "TEXT NOT NULL DEFAULT '{}'",
             )
+            self._backfill_runtime_ledger_definition_ids(conn)
 
     @staticmethod
     def _ensure_column(
@@ -123,6 +141,24 @@ class RuntimeStateStore:
         conn.execute(
             f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
         )
+
+    @staticmethod
+    def _backfill_runtime_ledger_definition_ids(conn: sqlite3.Connection) -> None:
+        rows = conn.execute(
+            """
+            SELECT ledger_id, definition_ref_json
+            FROM runtime_ledger_entries
+            WHERE COALESCE(definition_id, '') = ''
+            """
+        ).fetchall()
+        for row in rows:
+            definition_id = _definition_id_from_ref(_json_loads_dict(row["definition_ref_json"]))
+            if not definition_id:
+                continue
+            conn.execute(
+                "UPDATE runtime_ledger_entries SET definition_id = ? WHERE ledger_id = ?",
+                (definition_id, row["ledger_id"]),
+            )
 
     def save_workspace_pin(
         self,
@@ -321,16 +357,19 @@ class RuntimeStateStore:
         payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         now = utcnow_iso()
+        resolved_definition_ref = dict(definition_ref or {})
+        definition_id = _definition_id_from_ref(resolved_definition_ref)
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO runtime_ledger_entries (
-                  ledger_id, subject_id, kind, summary, definition_ref_json, payload_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                  ledger_id, subject_id, kind, summary, definition_id, definition_ref_json, payload_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(ledger_id) DO UPDATE SET
                   subject_id=excluded.subject_id,
                   kind=excluded.kind,
                   summary=excluded.summary,
+                  definition_id=excluded.definition_id,
                   definition_ref_json=excluded.definition_ref_json,
                   payload_json=excluded.payload_json,
                   updated_at=excluded.updated_at
@@ -340,7 +379,8 @@ class RuntimeStateStore:
                     subject_id,
                     kind,
                     summary,
-                    _json_dumps(definition_ref or {}),
+                    definition_id,
+                    _json_dumps(resolved_definition_ref),
                     _json_dumps(payload or {}),
                     now,
                     now,
@@ -358,11 +398,41 @@ class RuntimeStateStore:
             ).fetchone()
         if row is None:
             return None
+        return self._row_to_ledger_entry(row)
+
+    def list_ledger_entries(
+        self,
+        *,
+        definition_id: str | None = None,
+        kind: str | None = None,
+        subject_id: str | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        query = ["SELECT * FROM runtime_ledger_entries WHERE 1=1"]
+        params: list[Any] = []
+        if definition_id:
+            query.append("AND definition_id = ?")
+            params.append(definition_id)
+        if kind:
+            query.append("AND kind = ?")
+            params.append(kind)
+        if subject_id:
+            query.append("AND subject_id = ?")
+            params.append(subject_id)
+        query.append("ORDER BY updated_at DESC")
+        query.append("LIMIT ?")
+        params.append(max(1, min(limit, 500)))
+        with self._connect() as conn:
+            rows = conn.execute(" ".join(query), tuple(params)).fetchall()
+        return [self._row_to_ledger_entry(row) for row in rows]
+
+    def _row_to_ledger_entry(self, row: sqlite3.Row) -> dict[str, Any]:
         payload = _json_loads_dict(row["payload_json"])
         return {
             "id": row["ledger_id"],
             "kind": row["kind"],
             "subject_id": row["subject_id"],
+            "definition_id": row["definition_id"],
             "definition_ref": _json_loads_dict(row["definition_ref_json"]),
             "verdict": payload.get("verdict"),
             "outcome": payload.get("outcome"),

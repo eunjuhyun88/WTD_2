@@ -152,9 +152,19 @@ async def get_stats(slug: str) -> dict:
 
 
 @router.get("/{slug}/training-records")
-async def get_training_records(slug: str, limit: int = Query(default=25, ge=1, le=200)) -> dict:
+async def get_training_records(
+    slug: str,
+    limit: int = Query(default=25, ge=1, le=200),
+    definition_id: str | None = None,
+) -> dict:
     """Preview canonical training rows derived from the ledger."""
-    return await asyncio.to_thread(patterns_thread.get_training_records_sync, slug, limit, _ledger)
+    return await asyncio.to_thread(
+        patterns_thread.get_training_records_sync,
+        slug,
+        limit,
+        _ledger,
+        definition_id=definition_id,
+    )
 
 
 @router.get("/{slug}/alert-policy")
@@ -182,9 +192,30 @@ async def set_alert_policy(slug: str, body: _PatternAlertPolicyBody) -> dict:
 
 
 @router.get("/{slug}/model-registry")
-async def get_model_registry(slug: str) -> dict:
+async def get_model_registry(slug: str, definition_id: str | None = None) -> dict:
     """Return the current registry snapshot for a pattern."""
-    return await asyncio.to_thread(patterns_thread.get_model_registry_sync, slug)
+    return await asyncio.to_thread(
+        patterns_thread.get_model_registry_sync,
+        slug,
+        definition_id=definition_id,
+    )
+
+
+@router.get("/{slug}/model-history")
+async def get_model_history(
+    slug: str,
+    limit: int = Query(default=25, ge=1, le=200),
+    definition_id: str | None = None,
+    record_type: str | None = None,
+) -> dict:
+    """Return training/model ledger history for a pattern."""
+    return await asyncio.to_thread(
+        patterns_thread.get_model_history_sync,
+        slug,
+        limit=limit,
+        definition_id=definition_id,
+        record_type=record_type,
+    )
 
 
 @router.get("/{slug}/library")

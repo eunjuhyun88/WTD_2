@@ -300,13 +300,20 @@ def get_all_stats_sync(ledger: LedgerStore) -> dict:
     return {"patterns": results, "count": len(results)}
 
 
-def get_training_records_sync(slug: str, limit: int, ledger: LedgerStore) -> dict:
-    _require_pattern(slug)
+def get_training_records_sync(
+    slug: str,
+    limit: int,
+    ledger: LedgerStore,
+    *,
+    definition_id: str | None = None,
+) -> dict:
+    definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
     outcomes = ledger.list_all(slug)
     records = build_pattern_training_records(outcomes)
     summary = summarize_pattern_dataset(outcomes)
     return {
         "pattern_slug": slug,
+        "definition_ref": definition_ref,
         "total_records": len(records),
         "ready_to_train": summary.ready_to_train,
         "readiness_reason": summary.readiness_reason,
@@ -323,17 +330,51 @@ def get_alert_policy_sync(slug: str) -> dict:
     }
 
 
-def get_model_registry_sync(slug: str) -> dict:
-    _require_pattern(slug)
-    entries = MODEL_REGISTRY_STORE.list(slug)
-    active_entry = MODEL_REGISTRY_STORE.get_active(slug)
-    preferred_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
+def get_model_registry_sync(slug: str, *, definition_id: str | None = None) -> dict:
+    definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
+    entries = MODEL_REGISTRY_STORE.list(slug, definition_id=definition_id)
+    active_entry = MODEL_REGISTRY_STORE.get_active(slug, definition_id=definition_id)
+    preferred_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+        slug,
+        definition_id=definition_id,
+    )
     return {
         "pattern_slug": slug,
-        "definition_ref": _resolve_definition_ref(slug),
+        "definition_ref": definition_ref,
         "entries": [_registry_entry_payload(entry) for entry in entries],
         "active_model": _registry_entry_payload(active_entry) if active_entry else None,
         "preferred_scoring_model": _registry_entry_payload(preferred_entry) if preferred_entry else None,
+    }
+
+
+def get_model_history_sync(
+    slug: str,
+    *,
+    limit: int,
+    definition_id: str | None = None,
+    record_type: str | None = None,
+    record_store=None,
+) -> dict:
+    definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
+    store = record_store or LEDGER_RECORD_STORE
+    if record_type is not None and record_type not in {"training_run", "model"}:
+        raise HTTPException(status_code=400, detail="record_type must be one of training_run|model")
+    if record_type is not None:
+        records = store.list(slug, record_type=record_type, definition_id=definition_id, limit=limit)
+    else:
+        records = store.list(slug, record_type="training_run", definition_id=definition_id, limit=limit) + store.list(
+            slug,
+            record_type="model",
+            definition_id=definition_id,
+            limit=limit,
+        )
+        records.sort(key=lambda record: record.created_at, reverse=True)
+        records = records[:limit]
+    return {
+        "pattern_slug": slug,
+        "definition_ref": definition_ref,
+        "count": len(records),
+        "records": [_record_payload(record, slug) for record in records],
     }
 
 
@@ -419,6 +460,7 @@ def promote_pattern_model_sync(
     LEDGER_RECORD_STORE.append_model_record(
         pattern_slug=slug,
         model_version=active_entry.model_version,
+        definition_ref=definition_ref,
         payload={
             "definition_ref": definition_ref,
             "model_key": active_entry.model_key,
@@ -454,9 +496,38 @@ def _resolve_definition_ref(slug: str, *, definition_id: str | None = None) -> d
     return service.get_definition_ref(pattern_slug=slug) or {"pattern_slug": slug}
 
 
+def _resolve_definition_ref_or_http(slug: str, *, definition_id: str | None = None) -> dict[str, Any]:
+    _require_pattern(slug)
+    try:
+        definition_ref = _resolve_definition_ref(slug, definition_id=definition_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "pattern_definition_id_invalid", "definition_id": definition_id},
+        ) from exc
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "pattern_definition_not_found", "definition_id": definition_id},
+        ) from exc
+    if definition_ref.get("pattern_slug") != slug:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "pattern_definition_slug_mismatch",
+                "definition_id": definition_id,
+                "pattern_slug": slug,
+            },
+        )
+    return definition_ref
+
+
 def _registry_entry_payload(entry) -> dict[str, Any]:
     payload = entry.to_dict()
-    payload["definition_ref"] = _resolve_definition_ref(entry.pattern_slug)
+    definition_ref = getattr(entry, "definition_ref", None)
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        definition_ref = _resolve_definition_ref(entry.pattern_slug)
+    payload["definition_ref"] = definition_ref
     return payload
 
 

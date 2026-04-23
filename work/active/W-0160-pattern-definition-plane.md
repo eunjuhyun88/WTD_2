@@ -22,6 +22,7 @@ Contract change
 - bounded refinement runs, train handoff payload, and training-ledger artifacts 가 같은 `definition_ref`를 유지하도록 contract 정렬
 - direct `/patterns/*` train/promote model paths 와 `/runtime/ledger/*` projection 이 같은 `definition_ref`를 읽고 노출하도록 contract 정렬
 - runtime ledger store 와 pattern stats/model-registry read model 이 `definition_ref`를 first-class metadata 로 저장/노출하도록 정렬
+- runtime ledger history 와 pattern model history / registry views 가 `definition_id` 기준 query/list 를 지원하도록 contract 정렬
 - targeted engine tests 추가
 
 ## Non-Goals
@@ -58,6 +59,8 @@ Contract change
 9. current local cut also threads the same `definition_ref` through bounded refinement runs, train handoff payloads, and training-service ledger payloads so search winners keep a canonical definition key as they enter judgment/training lanes.
 10. current local cut also adds `definition_ref` to direct model-train/model-promote ledger records and exposes it on `/runtime/ledger/{ledger_id}` via canonical projection/fallback resolution.
 11. current local cut now persists `definition_ref` as first-class metadata in the runtime ledger store and exposes top-level `definition_ref` on pattern stats/model-registry read models instead of requiring payload-only inspection.
+12. current local cut also opens `definition_id` query surfaces over runtime ledger history and pattern model-history / model-registry views, so the canonical key is now discoverable without id-only fetches or payload inspection.
+13. current local cut now persists `definition_ref` on model-registry entries and makes both model-history and model-registry routes actually filter by `definition_id`, so those surfaces no longer use the key only for validation.
 
 ## Assumptions
 
@@ -76,12 +79,14 @@ Contract change
 - runtime capture consumers resolve `definition_ref` at read time; capture persistence remains `pattern_slug`/`pattern_version` based until a later write-path lane exists.
 - the first search-plane cut is metadata-only: `definition_id` and `definition_ref` may flow through seed/scan requests and candidates, but they do not yet change corpus ranking semantics.
 - research runtime persistence stays backward-compatible: `pattern_slug` remains the legacy join key, while `definition_ref` is added as an optional canonical key on runs, benchmark artifacts, and handoff payloads.
+- history/list surfaces resolve definitions defensively: list routes prefer stored `definition_id` / `definition_ref`, but still keep read-time fallback until all writers are upgraded.
+- model registry/training producers now store canonical definition metadata at write time; route-level `definition_id` filters must prefer persisted metadata before any slug-only fallback.
 
 ## Next Steps
 
 1. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
 2. split capture-linked evidence from captures into a dedicated definition store only after the read contract proves stable.
-3. add `definition_id`/`definition_ref` filters to history/list surfaces (runtime ledger history, model history, registry views) so the key is queryable without id-only fetches.
+3. decide whether model identity itself must become definition-version aware (`definition_id` in model key / promotion inputs) before multiple live pattern revisions coexist under one slug.
 
 ## Exit Criteria
 
@@ -91,6 +96,8 @@ Contract change
 - bounded refinement runs, train handoff payloads, and training ledger payloads preserve the same `definition_ref`.
 - direct train/promote model ledger records and `/runtime/ledger/*` projection preserve or expose the same `definition_ref`.
 - runtime ledger storage and pattern stats/model-registry read models expose `definition_ref` as first-class metadata.
+- runtime ledger history plus pattern model-history/registry list surfaces accept `definition_id` and preserve canonical `definition_ref`.
+- model-history and model-registry routes use persisted definition metadata as the first filter, not slug-only reconstruction.
 - targeted engine tests pass.
 
 ## Handoff Checklist
@@ -99,4 +106,5 @@ Contract change
 - branch: `codex/w-0160-pattern-definition-plane`
 - verification:
   - `uv run --directory engine python -m pytest tests/test_pattern_candidate_routes.py tests/test_search_routes.py tests/test_runtime_routes.py tests/test_pattern_search.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_refinement.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_refinement_reporting.py -q`
-- remaining blockers: definition write path, durable definition store, list/filter query surfaces for `definition_id`, and UI consumption remain future slices
+  - `npm --prefix app run check` currently blocked in this worktree (`svelte-kit: command not found`)
+- remaining blockers: definition write path, durable definition store, full writer adoption of stored `definition_id`, and UI consumption remain future slices

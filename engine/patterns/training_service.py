@@ -80,6 +80,7 @@ def train_pattern_model_from_ledger(
         pattern_slug=pattern_slug,
         model_key=model_key,
         user_id=user_id,
+        definition_ref=definition_ref,
         payload=payload,
     )
 
@@ -94,11 +95,13 @@ def train_pattern_model_from_ledger(
             label_policy_version=label_policy_version,
             threshold_policy_version=threshold_policy_version,
             requested_by_user_id=user_id,
+            definition_ref=definition_ref,
         )
         record_store.append_model_record(
             pattern_slug=pattern_slug,
             model_version=model_version,
             user_id=user_id,
+            definition_ref=definition_ref,
             payload={
                 **payload,
                 "rollout_state": registry_entry.rollout_state,

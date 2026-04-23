@@ -60,6 +60,18 @@ def _row_to_record(row: dict) -> PatternLedgerRecord:
     return PatternLedgerRecord(**d)
 
 
+def _record_definition_id(record: PatternLedgerRecord) -> str | None:
+    payload = record.payload if isinstance(record.payload, dict) else {}
+    value = payload.get("definition_id")
+    if isinstance(value, str) and value:
+        return value
+    definition_ref = payload.get("definition_ref")
+    if not isinstance(definition_ref, dict):
+        return None
+    nested = definition_ref.get("definition_id")
+    return nested if isinstance(nested, str) and nested else None
+
+
 class SupabaseLedgerRecordStore:
     """Supabase-backed record store — same public interface as LedgerRecordStore.
 
@@ -96,6 +108,7 @@ class SupabaseLedgerRecordStore:
         record_type: "LedgerRecordType | None" = None,
         symbol: str | None = None,
         outcome_id: str | None = None,
+        definition_id: str | None = None,
         limit: int | None = None,
     ) -> list[PatternLedgerRecord]:
         q = (
@@ -111,10 +124,15 @@ class SupabaseLedgerRecordStore:
             q = q.eq("symbol", symbol)
         if outcome_id:
             q = q.eq("outcome_id", outcome_id)
+        if definition_id:
+            q = q.contains("payload", {"definition_ref": {"definition_id": definition_id}})
         if limit is not None:
             q = q.limit(limit)
         result = q.execute()
-        return [_row_to_record(r) for r in (result.data or [])]
+        records = [_row_to_record(r) for r in (result.data or [])]
+        if definition_id:
+            records = [record for record in records if _record_definition_id(record) == definition_id]
+        return records
 
     def list_pattern_slugs(self) -> list[str]:
         result = (
@@ -314,13 +332,18 @@ class SupabaseLedgerRecordStore:
         pattern_slug: str,
         model_version: str,
         user_id: str | None = None,
+        definition_ref: dict | None = None,
         payload: dict | None = None,
     ) -> None:
         self.append(PatternLedgerRecord(
             record_type="model",
             pattern_slug=pattern_slug,
             user_id=user_id,
-            payload={"model_version": model_version, **(payload or {})},
+            payload={
+                "model_version": model_version,
+                "definition_ref": dict(definition_ref or {}),
+                **(payload or {}),
+            },
         ))
 
     def append_training_run_record(
@@ -329,11 +352,16 @@ class SupabaseLedgerRecordStore:
         pattern_slug: str,
         model_key: str,
         user_id: str | None = None,
+        definition_ref: dict | None = None,
         payload: dict | None = None,
     ) -> None:
         self.append(PatternLedgerRecord(
             record_type="training_run",
             pattern_slug=pattern_slug,
             user_id=user_id,
-            payload={"model_key": model_key, **(payload or {})},
+            payload={
+                "model_key": model_key,
+                "definition_ref": dict(definition_ref or {}),
+                **(payload or {}),
+            },
         ))

@@ -11,7 +11,15 @@ from ledger.types import PatternLedgerFamilyStats, PatternLedgerRecord, PatternO
 
 
 class _RegistryEntry:
-    def __init__(self, *, pattern_slug: str, model_key: str, model_version: str, rollout_state: str) -> None:
+    def __init__(
+        self,
+        *,
+        pattern_slug: str,
+        model_key: str,
+        model_version: str,
+        rollout_state: str,
+        definition_ref: dict | None = None,
+    ) -> None:
         self.pattern_slug = pattern_slug
         self.model_key = model_key
         self.model_version = model_version
@@ -22,6 +30,11 @@ class _RegistryEntry:
         self.threshold_policy_version = 1
         self.rollout_state = rollout_state
         self.requested_by_user_id = None
+        self.definition_ref = definition_ref or {
+            "definition_id": f"{pattern_slug}:v1",
+            "pattern_slug": pattern_slug,
+        }
+        self.definition_id = self.definition_ref["definition_id"]
         self.trained_at = datetime(2026, 4, 16, 12, 0, tzinfo=timezone.utc)
         self.promoted_at = None
         self.updated_at = self.trained_at
@@ -38,6 +51,8 @@ class _RegistryEntry:
             "threshold_policy_version": self.threshold_policy_version,
             "rollout_state": self.rollout_state,
             "requested_by_user_id": self.requested_by_user_id,
+            "definition_id": self.definition_id,
+            "definition_ref": self.definition_ref,
             "trained_at": self.trained_at.isoformat(),
             "promoted_at": self.promoted_at.isoformat() if self.promoted_at else None,
             "updated_at": self.updated_at.isoformat(),
@@ -330,23 +345,41 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
             return outcomes
 
     class FakeRecordStore:
-        def append_training_run_record(self, *, pattern_slug, model_key, user_id=None, payload=None):
+        def append_training_run_record(
+            self,
+            *,
+            pattern_slug,
+            model_key,
+            user_id=None,
+            definition_ref=None,
+            payload=None,
+        ):
             training_runs.append(
                 {
                     "pattern_slug": pattern_slug,
                     "model_key": model_key,
                     "user_id": user_id,
+                    "definition_ref": definition_ref or {},
                     "payload": payload or {},
                 }
             )
             return None
 
-        def append_model_record(self, *, pattern_slug, model_version, user_id=None, payload=None):
+        def append_model_record(
+            self,
+            *,
+            pattern_slug,
+            model_version,
+            user_id=None,
+            definition_ref=None,
+            payload=None,
+        ):
             model_records.append(
                 {
                     "pattern_slug": pattern_slug,
                     "model_version": model_version,
                     "user_id": user_id,
+                    "definition_ref": definition_ref or {},
                     "payload": payload or {},
                 }
             )
@@ -402,13 +435,16 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
     assert len(training_runs) == 1
     assert len(registry_candidates) == 1
     assert registry_candidates[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert registry_candidates[0]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert training_runs[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert training_runs[0]["model_key"] == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
+    assert training_runs[0]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert training_runs[0]["payload"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert training_runs[0]["payload"]["n_records"] == 24
     assert training_runs[0]["payload"]["rollout_state"] == "candidate"
     assert len(model_records) == 1
     assert model_records[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert model_records[0]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert model_records[0]["payload"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert model_records[0]["payload"]["n_records"] == 24
     assert model_records[0]["payload"]["rollout_state"] == "candidate"
@@ -442,12 +478,21 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
             return outcomes
 
     class FakeRecordStore:
-        def append_training_run_record(self, *, pattern_slug, model_key, user_id=None, payload=None):
+        def append_training_run_record(
+            self,
+            *,
+            pattern_slug,
+            model_key,
+            user_id=None,
+            definition_ref=None,
+            payload=None,
+        ):
             training_runs.append(
                 {
                     "pattern_slug": pattern_slug,
                     "model_key": model_key,
                     "user_id": user_id,
+                    "definition_ref": definition_ref or {},
                     "payload": payload or {},
                 }
             )
@@ -510,6 +555,7 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
     assert payload["model_version"] == "not_replaced"
     assert payload["replaced"] is False
     assert len(training_runs) == 1
+    assert training_runs[0]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert training_runs[0]["payload"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert training_runs[0]["payload"]["rollout_state"] == "shadow"
     assert len(registry_candidates) == 0
@@ -523,6 +569,16 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
         model_version="20260416_120000",
         rollout_state="candidate",
     )
+    alternate_entry = _RegistryEntry(
+        pattern_slug="tradoor-oi-reversal-v1",
+        model_key="tradoor-oi-reversal-v1:1h:breakout_48h:fs1:lp1",
+        model_version="20260416_130000",
+        rollout_state="candidate",
+        definition_ref={
+            "definition_id": "tradoor-oi-reversal-v1:v2",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+        },
+    )
     active_entry = _RegistryEntry(
         pattern_slug="tradoor-oi-reversal-v1",
         model_key="tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
@@ -532,13 +588,20 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     model_records = []
 
     class FakeRegistryStore:
-        def list(self, slug):
-            return [candidate_entry]
+        def list(self, slug, definition_id=None):
+            entries = [candidate_entry, alternate_entry]
+            if definition_id is not None:
+                entries = [entry for entry in entries if entry.definition_id == definition_id]
+            return entries
 
-        def get_active(self, slug):
+        def get_active(self, slug, definition_id=None):
+            if definition_id == candidate_entry.definition_id:
+                return None
             return None
 
-        def get_preferred_scoring_model(self, slug):
+        def get_preferred_scoring_model(self, slug, definition_id=None):
+            if definition_id == alternate_entry.definition_id:
+                return alternate_entry
             return candidate_entry
 
         def promote(self, *, pattern_slug, model_key, model_version, threshold_policy_version=None):
@@ -550,11 +613,20 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
             return active_entry
 
     class FakeRecordStore:
-        def append_model_record(self, *, pattern_slug, model_version, user_id=None, payload=None):
+        def append_model_record(
+            self,
+            *,
+            pattern_slug,
+            model_version,
+            user_id=None,
+            definition_ref=None,
+            payload=None,
+        ):
             model_records.append(
                 {
                     "pattern_slug": pattern_slug,
                     "model_version": model_version,
+                    "definition_ref": definition_ref or {},
                     "payload": payload or {},
                 }
             )
@@ -566,13 +638,23 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     app.include_router(pattern_routes.router, prefix="/patterns")
     client = TestClient(app)
 
-    registry_response = client.get("/patterns/tradoor-oi-reversal-v1/model-registry")
+    registry_response = client.get(
+        "/patterns/tradoor-oi-reversal-v1/model-registry?definition_id=tradoor-oi-reversal-v1:v1"
+    )
     assert registry_response.status_code == 200
     registry_payload = registry_response.json()
+    assert registry_payload["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
+    assert len(registry_payload["entries"]) == 1
     assert registry_payload["entries"][0]["rollout_state"] == "candidate"
     assert registry_payload["entries"][0]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert registry_payload["preferred_scoring_model"]["rollout_state"] == "candidate"
     assert registry_payload["preferred_scoring_model"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
+
+    mismatch = client.get(
+        "/patterns/funding-flip-reversal-v1/model-registry?definition_id=tradoor-oi-reversal-v1:v1"
+    )
+    assert mismatch.status_code == 400
+    assert mismatch.json()["detail"]["code"] == "pattern_definition_slug_mismatch"
 
     promote_response = client.post(
         "/patterns/tradoor-oi-reversal-v1/promote-model",
@@ -588,8 +670,74 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     assert promote_payload["active_model"]["rollout_state"] == "active"
     assert promote_payload["active_model"]["threshold_policy_version"] == 3
     assert len(model_records) == 1
+    assert model_records[0]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert model_records[0]["payload"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert model_records[0]["payload"]["promotion_event"] == "promote_to_active"
+
+
+def test_get_model_history_filters_by_definition_id_and_record_type(monkeypatch) -> None:
+    training_record = PatternLedgerRecord(
+        record_type="training_run",
+        pattern_slug="tradoor-oi-reversal-v1",
+        payload={
+            "model_key": "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
+            "definition_ref": {
+                "definition_id": "tradoor-oi-reversal-v1:v1",
+                "pattern_slug": "tradoor-oi-reversal-v1",
+            },
+        },
+    )
+    model_record = PatternLedgerRecord(
+        record_type="model",
+        pattern_slug="tradoor-oi-reversal-v1",
+        payload={
+            "model_version": "20260416_120000",
+            "definition_ref": {
+                "definition_id": "tradoor-oi-reversal-v1:v1",
+                "pattern_slug": "tradoor-oi-reversal-v1",
+            },
+        },
+    )
+    alternate_model_record = PatternLedgerRecord(
+        record_type="model",
+        pattern_slug="tradoor-oi-reversal-v1",
+        payload={
+            "model_version": "20260416_130000",
+            "definition_ref": {
+                "definition_id": "tradoor-oi-reversal-v1:v2",
+                "pattern_slug": "tradoor-oi-reversal-v1",
+            },
+        },
+    )
+
+    class FakeRecordStore:
+        def list(self, slug, record_type=None, definition_id=None, limit=None):
+            records = [training_record, model_record, alternate_model_record]
+            if record_type is not None:
+                records = [record for record in records if record.record_type == record_type]
+            if definition_id is not None:
+                records = [
+                    record
+                    for record in records
+                    if record.payload.get("definition_ref", {}).get("definition_id") == definition_id
+                ]
+            return records[:limit] if limit is not None else records
+
+    monkeypatch.setattr(ptr, "LEDGER_RECORD_STORE", FakeRecordStore())
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.get(
+        "/patterns/tradoor-oi-reversal-v1/model-history"
+        "?definition_id=tradoor-oi-reversal-v1:v1&record_type=model&limit=10"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
+    assert payload["count"] == 1
+    assert payload["records"][0]["record_type"] == "model"
+    assert payload["records"][0]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
 
 
 def test_get_and_set_alert_policy(monkeypatch) -> None:

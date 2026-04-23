@@ -10,6 +10,7 @@ from api.schemas_runtime import (
     RuntimeCaptureResponse,
     RuntimeCaptureListResponse,
     RuntimeLedgerResponse,
+    RuntimeLedgerListResponse,
     RuntimePatternDefinitionListResponse,
     RuntimePatternDefinitionResponse,
     RuntimeResearchContextCreate,
@@ -301,3 +302,37 @@ async def get_ledger(ledger_id: str) -> RuntimeLedgerResponse:
     if entry is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_ledger_not_found", "ledger_id": ledger_id})
     return RuntimeLedgerResponse(generated_at=_generated_at(), ledger=_serialize_ledger_entry(entry))
+
+
+@router.get("/ledger", response_model=RuntimeLedgerListResponse)
+async def list_ledger(
+    definition_id: str | None = None,
+    kind: str | None = None,
+    subject_id: str | None = None,
+    limit: int = 50,
+) -> RuntimeLedgerListResponse:
+    if definition_id is not None:
+        try:
+            get_definition_service().parse_definition_id(definition_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "runtime_definition_id_invalid", "definition_id": definition_id},
+            ) from exc
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "runtime_definition_not_found", "definition_id": definition_id},
+            ) from exc
+    entries = get_runtime_store().list_ledger_entries(
+        definition_id=definition_id,
+        kind=kind,
+        subject_id=subject_id,
+        limit=limit,
+    )
+    rows = [_serialize_ledger_entry(entry) for entry in entries]
+    return RuntimeLedgerListResponse(
+        generated_at=_generated_at(),
+        ledgers=rows,
+        count=len(rows),
+    )

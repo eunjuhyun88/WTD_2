@@ -77,3 +77,8 @@ class RuntimeResearchContextResponse(RuntimeEnvelope):
 
 class RuntimeLedgerResponse(RuntimeEnvelope):
     ledger: dict[str, Any]
+
+
+class RuntimeLedgerListResponse(RuntimeEnvelope):
+    ledgers: list[dict[str, Any]]
+    count: int

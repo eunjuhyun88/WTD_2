@@ -10,6 +10,10 @@ SLUG = "tradoor-oi-reversal-v1"
 
 def test_upsert_candidate_and_preferred_lookup(tmp_path: Path) -> None:
     store = PatternModelRegistryStore(base_dir=tmp_path / "model-registry")
+    definition_ref = {
+        "definition_id": f"{SLUG}:v1",
+        "pattern_slug": SLUG,
+    }
 
     candidate = store.upsert_candidate(
         pattern_slug=SLUG,
@@ -20,13 +24,16 @@ def test_upsert_candidate_and_preferred_lookup(tmp_path: Path) -> None:
         feature_schema_version=1,
         label_policy_version=1,
         threshold_policy_version=1,
+        definition_ref=definition_ref,
     )
 
     entries = store.list(SLUG)
-    preferred = store.get_preferred_scoring_model(SLUG)
+    preferred = store.get_preferred_scoring_model(SLUG, definition_id=f"{SLUG}:v1")
 
     assert len(entries) == 1
     assert candidate.rollout_state == "candidate"
+    assert candidate.definition_id == f"{SLUG}:v1"
+    assert candidate.definition_ref == definition_ref
     assert preferred is not None
     assert preferred.model_version == "20260416_120000"
     assert preferred.rollout_state == "candidate"
@@ -43,6 +50,7 @@ def test_promote_sets_single_active_model(tmp_path: Path) -> None:
         feature_schema_version=1,
         label_policy_version=1,
         threshold_policy_version=1,
+        definition_ref={"definition_id": f"{SLUG}:v1", "pattern_slug": SLUG},
     )
     second = store.upsert_candidate(
         pattern_slug=SLUG,
@@ -53,6 +61,7 @@ def test_promote_sets_single_active_model(tmp_path: Path) -> None:
         feature_schema_version=1,
         label_policy_version=1,
         threshold_policy_version=1,
+        definition_ref={"definition_id": f"{SLUG}:v2", "pattern_slug": SLUG},
     )
 
     active_first = store.promote(
@@ -79,3 +88,37 @@ def test_promote_sets_single_active_model(tmp_path: Path) -> None:
     assert paused_first.rollout_state == "paused"
     assert current_active is not None
     assert current_active.model_version == "20260416_130000"
+
+
+def test_definition_filtered_registry_lookup(tmp_path: Path) -> None:
+    store = PatternModelRegistryStore(base_dir=tmp_path / "model-registry")
+    store.upsert_candidate(
+        pattern_slug=SLUG,
+        model_key=f"{SLUG}:1h:breakout_24h:fs1:lp1",
+        model_version="20260416_120000",
+        timeframe="1h",
+        target_name="breakout_24h",
+        feature_schema_version=1,
+        label_policy_version=1,
+        threshold_policy_version=1,
+        definition_ref={"definition_id": f"{SLUG}:v1", "pattern_slug": SLUG},
+    )
+    store.upsert_candidate(
+        pattern_slug=SLUG,
+        model_key=f"{SLUG}:1h:breakout_48h:fs1:lp1",
+        model_version="20260416_130000",
+        timeframe="1h",
+        target_name="breakout_48h",
+        feature_schema_version=1,
+        label_policy_version=1,
+        threshold_policy_version=1,
+        definition_ref={"definition_id": f"{SLUG}:v2", "pattern_slug": SLUG},
+    )
+
+    filtered = store.list(SLUG, definition_id=f"{SLUG}:v2")
+    preferred = store.get_preferred_scoring_model(SLUG, definition_id=f"{SLUG}:v2")
+
+    assert len(filtered) == 1
+    assert filtered[0].definition_id == f"{SLUG}:v2"
+    assert preferred is not None
+    assert preferred.definition_id == f"{SLUG}:v2"

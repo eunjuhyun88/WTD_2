@@ -20,3 +20,13 @@ export interface RuntimeLedgerResponse {
 	generated_at: string;
 	ledger: LedgerRecord;
 }
+
+export interface RuntimeLedgerListResponse {
+	ok: boolean;
+	owner: 'engine';
+	plane: 'runtime';
+	status: RuntimePlaneState;
+	generated_at: string;
+	ledgers: LedgerRecord[];
+	count: number;
+}

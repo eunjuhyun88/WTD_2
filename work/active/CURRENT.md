@@ -107,7 +107,7 @@
 
 - active on `codex/w-0160-pattern-definition-plane`
 - worktree: `/tmp/wtd-v2-w0160-pattern-definition`
-- current slice: `/runtime/definitions/*` is open, runtime captures/search/research/refinement/training all preserve `definition_ref`, direct model train/promote routes plus `/runtime/ledger/*` projection expose it, and runtime ledger store + pattern stats/model-registry read models now carry it as first-class metadata without changing ranking or training semantics
+- current slice: `/runtime/definitions/*` is open, runtime captures/search/research/refinement/training all preserve `definition_ref`, direct model train/promote routes plus `/runtime/ledger/*` projection expose it, runtime ledger store + pattern stats/model-registry read models carry it as first-class metadata, runtime ledger history / pattern model-history accept canonical `definition_id` queries, and model-registry/model-history now filter on persisted definition metadata instead of validation-only slug routing
 
 ---
 

@@ -279,6 +279,23 @@ def test_runtime_ledger_projection_route(tmp_path, monkeypatch) -> None:
     assert followup.status_code == 200
     assert followup.json()["ledger"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
 
+    listing = client.get("/runtime/ledger?definition_id=tradoor-oi-reversal-v1:v1&kind=verdict")
+    assert listing.status_code == 200
+    assert listing.json()["count"] == 1
+    assert listing.json()["ledgers"][0]["id"] == "ledger_1"
+
+
+def test_runtime_ledger_list_rejects_invalid_definition_filters(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    invalid = client.get("/runtime/ledger?definition_id=bad-definition")
+    assert invalid.status_code == 400
+    assert invalid.json()["detail"]["code"] == "runtime_definition_id_invalid"
+
+    missing = client.get("/runtime/ledger?definition_id=missing-pattern:v1")
+    assert missing.status_code == 404
+    assert missing.json()["detail"]["code"] == "runtime_definition_not_found"
+
 
 def test_runtime_routes_return_404_for_missing_records(tmp_path, monkeypatch) -> None:
     client = _client(tmp_path, monkeypatch)
