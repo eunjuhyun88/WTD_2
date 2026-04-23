@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`fd0f4731` — current local `origin/main` ref after PR #216
+`bf34e913` — current local `origin/main` ref after PR #217
 
 ## 완료 (이번 세션)
 
@@ -33,6 +33,7 @@
 | #214 (W-0139) | `TradeMode` candle-close analyze refresh moved behind terminal client helper |
 | #215 (W-0139) | `TradeMode` outcome submit and alpha world-model reads moved behind terminal client helpers |
 | #216 (W-0139) | terminal page review inbox count moved behind terminal client helper; terminal surface direct-fetch audit clean |
+| #217 (W-0140) | bottom ANALYZE thesis/evidence/execution board aligned to `workspaceEnvelope` contract |
 
 ---
 
@@ -46,7 +47,7 @@
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
 | **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟢 COMPLETE | `AgentContextPack` loader + DOUNI + intel-policy migrations merged |
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟢 COMPLETE | terminal surface reads now route through fact/search/runtime/surface clients; direct-fetch audit clean |
-| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | bottom ANALYZE workspace must consume workspace envelope instead of duplicated local derivations |
+| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟢 COMPLETE | bottom ANALYZE thesis/evidence/execution board now consume workspace envelope contracts |
 
 ## Reference / Assist Work Items
 
@@ -104,9 +105,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0140-bottom-analyze-slimming`
-- worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: bottom ANALYZE uses `workspaceEnvelope` / section studies for thesis, evidence, and execution board instead of duplicated local derivations
+- active on `codex/w-0122-consumer-fact-cut-v3`
+- worktree: `/private/tmp/wtd-v2-w0122-consumer-clean`
+- current slice: engine-preferred consumer fact cut for `events`, `intel-policy`, `reference-stack`, and `chain-intel`
 
 ---
 
@@ -130,10 +131,10 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `fd0f4731` |
+| origin/main | — | local remote-tracking ref = `bf34e913` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
-| codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
+| codex/w-0122-consumer-fact-cut-v3 | W-0122 | active clean Lane A slice; engine-preferred consumer fact cut |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
@@ -158,7 +159,7 @@
 | codex/w-0139-trademode-analyze-client | W-0139 | merged via PR #214 |
 | codex/w-0139-trademode-action-clients | W-0139 | merged via PR #215 |
 | codex/w-0139-surface-closeout-audit | W-0139 | merged via PR #216 |
-| codex/w-0140-bottom-analyze-slimming | W-0140 | active bottom analyze workspace slimming lane |
+| codex/w-0140-bottom-analyze-slimming | W-0140 | merged via PR #217 |
 
 ---
 

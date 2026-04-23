@@ -44,10 +44,10 @@ function numericOrNull(value: unknown): number | null {
 function symbolFromPair(pair: string): string {
   return pair.replace('/', '').toUpperCase();
 }
-
 async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: string) {
   const token = pair.split('/')[0] ?? 'BTC';
 
+  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes, agentContext] = await Promise.all([
   const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes, agentContext] = await Promise.all([
     fetchJsonSafe(
       fetchFn,
