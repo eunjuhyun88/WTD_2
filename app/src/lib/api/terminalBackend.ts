@@ -53,6 +53,23 @@ export interface ConfluenceHistoryEntry {
   divergence: boolean;
 }
 
+export interface TradeOutcomeResult {
+  saved: boolean;
+  count: number;
+  training_triggered: boolean;
+}
+
+export interface AlphaWorldModelPhase {
+  symbol: string;
+  grade: string;
+  phase: string;
+  entered_at: string | null;
+}
+
+export interface AlphaWorldModelResponse {
+  phases?: AlphaWorldModelPhase[];
+}
+
 export interface ChartSeriesPayload {
   symbol: string;
   tf: string;
@@ -235,6 +252,27 @@ export async function fetchOptionsSnapshot(currency: string): Promise<OptionsSna
   const res = await fetch(`/api/market/options-snapshot?currency=${encodeURIComponent(currency)}`);
   if (!res.ok) return null;
   return await readJson<OptionsSnapshotPayload>(res);
+}
+
+export async function submitTradeOutcome(args: {
+  snapshot: unknown;
+  outcome: 1 | 0 | -1;
+  symbol: string;
+  timeframe: string;
+}): Promise<TradeOutcomeResult | null> {
+  const res = await fetch('/api/cogochi/outcome', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) return null;
+  return await readJson<TradeOutcomeResult>(res);
+}
+
+export async function fetchAlphaWorldModel(): Promise<AlphaWorldModelResponse> {
+  const res = await fetch('/api/cogochi/alpha/world-model');
+  if (!res.ok) return {};
+  return (await readJson<AlphaWorldModelResponse>(res)) ?? {};
 }
 
 export type MemoryRerankRecord = MemoryQueryResponse['records'][number];

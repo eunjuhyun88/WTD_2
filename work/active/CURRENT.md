@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`0a08e404` — current local `origin/main` ref after PR #213
+`c5f24b36` — current local `origin/main` ref after PR #214
 
 ## 완료 (이번 세션)
 
@@ -30,6 +30,7 @@
 | #211 (W-0139) | `TradeMode` recent saved captures read through runtime plane client |
 | #212 (W-0139) | `TradeMode` confluence current/history reads moved behind terminal client helpers |
 | #213 (W-0139) | `TradeMode` indicator side-fetch `/api/market/*` reads moved behind terminal client helpers |
+| #214 (W-0139) | `TradeMode` candle-close analyze refresh moved behind terminal client helper |
 
 ---
 
@@ -101,9 +102,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0139-trademode-analyze-client`
+- active on `codex/w-0139-trademode-action-clients`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: `TradeMode` candle-close analyze refresh moves behind `terminalBackend.fetchAnalyze()`
+- current slice: `TradeMode` outcome submit and alpha world-model reads move behind `terminalBackend` helpers
 
 ---
 
@@ -127,7 +128,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `0a08e404` |
+| origin/main | — | local remote-tracking ref = `c5f24b36` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -152,7 +153,8 @@
 | codex/w-0139-surface-closeout | W-0139 | merged via PR #211 |
 | codex/w-0139-trademode-market-clients | W-0139 | merged via PR #212 |
 | codex/w-0139-trademode-indicator-clients | W-0139 | merged via PR #213 |
-| codex/w-0139-trademode-analyze-client | W-0139 | active analyze refresh client slimming lane |
+| codex/w-0139-trademode-analyze-client | W-0139 | merged via PR #214 |
+| codex/w-0139-trademode-action-clients | W-0139 | active action/world-model client slimming lane |
 
 ---
 

@@ -12,6 +12,8 @@ import {
   fetchRvCone,
   fetchSsr,
   fetchVenueDivergence,
+  fetchAlphaWorldModel,
+  submitTradeOutcome,
 } from './terminalBackend';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -173,5 +175,44 @@ describe('terminalBackend surface clients', () => {
       '/api/market/funding?symbol=BTCUSDT&limit=270',
       '/api/market/options-snapshot?currency=BTC',
     ]);
+  });
+
+  it('submits trade outcome through a surface action helper', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      jsonResponse({
+        saved: true,
+        count: 12,
+        training_triggered: false,
+      }),
+    );
+
+    const result = await submitTradeOutcome({
+      snapshot: { last_close: 100, user_verdict: 'agree' },
+      outcome: 1,
+      symbol: 'BTCUSDT',
+      timeframe: '4h',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/cogochi/outcome',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    expect(result?.saved).toBe(true);
+  });
+
+  it('loads alpha world model through a surface client helper', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      jsonResponse({
+        phases: [{ symbol: 'BTCUSDT', grade: 'A', phase: 'HOT', entered_at: null }],
+      }),
+    );
+
+    const worldModel = await fetchAlphaWorldModel();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/cogochi/alpha/world-model');
+    expect(worldModel.phases?.[0]?.phase).toBe('HOT');
   });
 });

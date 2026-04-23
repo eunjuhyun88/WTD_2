@@ -3,6 +3,7 @@
   import {
     fetchAnalyze,
     fetchAnalyzeAndChart,
+    fetchAlphaWorldModel,
     fetchConfluenceCurrent,
     fetchConfluenceHistory,
     fetchFundingFlip,
@@ -14,8 +15,10 @@
     fetchRvCone,
     fetchSsr,
     fetchVenueDivergence,
+    submitTradeOutcome,
     type ConfluenceHistoryEntry,
     type RecentCaptureSummary,
+    type TradeOutcomeResult,
   } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
@@ -480,7 +483,7 @@
   let judgeOutcome = $state<'win' | 'loss' | 'flat' | null>(null);
   let judgeRejudged = $state<'right' | 'wrong' | null>(null);
   let judgeSubmitting = $state(false);
-  let judgeSubmitResult = $state<{ saved: boolean; count: number; training_triggered: boolean } | null>(null);
+  let judgeSubmitResult = $state<TradeOutcomeResult | null>(null);
 
   // Auto-save outcome to flywheel when user selects WIN/LOSS/FLAT
   $effect(() => {
@@ -491,17 +494,12 @@
     // Move state mutation out of sync effect body to avoid Svelte 5 unsafe-mutation warning
     Promise.resolve().then(() => {
       judgeSubmitting = true;
-      fetch('/api/cogochi/outcome', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          snapshot: { ...snap, user_verdict: judgeVerdict },
-          outcome: outcome === 'win' ? 1 : outcome === 'loss' ? 0 : -1,
-          symbol,
-          timeframe,
-        }),
+      submitTradeOutcome({
+        snapshot: { ...snap, user_verdict: judgeVerdict },
+        outcome: outcome === 'win' ? 1 : outcome === 'loss' ? 0 : -1,
+        symbol,
+        timeframe,
       })
-        .then(r => r.json())
         .then(d => { judgeSubmitResult = d; })
         .catch(() => {})
         .finally(() => { judgeSubmitting = false; });
@@ -565,9 +563,8 @@
 
   function _loadAlphaWorldModel() {
     scanLoading = true;
-    fetch('/api/cogochi/alpha/world-model')
-      .then(r => r.json())
-      .then((data: { phases?: { symbol: string; grade: string; phase: string; entered_at: string | null }[] }) => {
+    fetchAlphaWorldModel()
+      .then((data) => {
         const items = (data.phases ?? [])
           .filter(p => p.phase !== 'IDLE')
           .sort((a, b) => (_PHASE_ORDER[a.phase] ?? 9) - (_PHASE_ORDER[b.phase] ?? 9))
