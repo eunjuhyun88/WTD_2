@@ -13,6 +13,10 @@
  *   POST /api/engine/challenge/create → POST http://engine:8000/challenge/create
  *   GET  /api/engine/challenge/foo/scan → GET http://engine:8000/challenge/foo/scan
  *   GET  /api/engine/healthz        → GET http://engine:8000/healthz
+ *
+ * Legacy note:
+ *   New fact/search/runtime traffic must use `/api/facts/*`, `/api/search/*`,
+ *   or `/api/runtime/*`. Keep this route frozen as a compatibility bridge.
  */
 
 import { error, json } from '@sveltejs/kit';

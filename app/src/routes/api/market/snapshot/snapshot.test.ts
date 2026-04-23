@@ -82,6 +82,9 @@ describe('/api/market/snapshot', () => {
     } as any);
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('x-wtd-plane')).toBe('fact');
+    expect(res.headers.get('x-wtd-upstream')).toBe('compatibility-bridge');
+    expect(res.headers.get('x-wtd-state')).toBe('adapter');
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.pair).toBe('BTCUSDT');

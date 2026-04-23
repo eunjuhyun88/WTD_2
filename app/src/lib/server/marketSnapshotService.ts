@@ -2,6 +2,7 @@
 // Market Snapshot + Context Assembler (B-05)
 // ═══════════════════════════════════════════════════════════════
 
+import type { FactSnapshot } from '$lib/contracts/facts/factSnapshot';
 import type { MarketContext } from '$lib/contracts/marketContext';
 import {
   analyzeTrend,
@@ -26,6 +27,7 @@ import { fetchTopicSocial } from '$lib/server/lunarcrush';
 import { fetchSantimentSocial } from '$lib/server/santiment';
 import { fetchCoinMetricsData } from '$lib/server/coinmetrics';
 import { withTransaction } from '$lib/server/db';
+import { buildPlaneAppPath } from '$lib/server/enginePlaneProxy';
 import { getCached, setCache } from '$lib/server/providers/cache';
 
 const SNAPSHOT_UNAVAILABLE_CODES = new Set(['42P01', '42703', '23503']);
@@ -123,19 +125,6 @@ export type PublicMarketSnapshotResult = {
   sources: Record<string, boolean>;
 };
 
-type EngineFactSourceState = {
-  status?: string;
-};
-
-type EngineFactPayload = {
-  ok?: boolean;
-  generated_at?: string;
-  symbol?: string;
-  timeframe?: string;
-  status?: string;
-  sources?: Record<string, EngineFactSourceState>;
-};
-
 function isFiniteNumber(value: number): boolean {
   return Number.isFinite(value);
 }
@@ -155,13 +144,14 @@ function buildPublicSnapshotFromLegacy(snapshot: MarketSnapshotResult): PublicMa
 function buildPublicSnapshotFromEngineFact(
   pair: string,
   timeframe: string,
-  payload: EngineFactPayload,
+  payload: FactSnapshot,
 ): PublicMarketSnapshotResult {
+  const sourceStates = payload.sources ?? payload.provider_state ?? {};
   const sources = Object.fromEntries(
-    Object.entries(payload.sources ?? {}).map(([key, value]) => [key, value?.status === 'ok']),
+    Object.entries(sourceStates).map(([key, value]) => [key, value?.status === 'ok' || value?.status === 'live']),
   );
-  const updated = Object.entries(payload.sources ?? {})
-    .filter(([, value]) => value?.status === 'ok')
+  const updated = Object.entries(sourceStates)
+    .filter(([, value]) => value?.status === 'ok' || value?.status === 'live')
     .map(([key]) => key);
   const at = Date.parse(payload.generated_at ?? '');
 
@@ -180,17 +170,17 @@ async function fetchEngineFactPayload(
   eventFetch: typeof fetch,
   pair: string,
   timeframe: string,
-): Promise<EngineFactPayload | null> {
+): Promise<FactSnapshot | null> {
   const symbol = pairToSymbol(pair);
   try {
     const res = await eventFetch(
-      `/api/engine/ctx/fact?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`,
+      `${buildPlaneAppPath('facts', 'ctx/fact')}?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`,
       {
         signal: AbortSignal.timeout(8_000),
       },
     );
     if (!res.ok) return null;
-    const payload = (await res.json()) as EngineFactPayload;
+    const payload = (await res.json()) as FactSnapshot;
     return payload?.ok ? payload : null;
   } catch {
     return null;

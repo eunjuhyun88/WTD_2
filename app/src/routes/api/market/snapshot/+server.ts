@@ -15,6 +15,11 @@ type PublicSnapshotResult = PublicMarketSnapshotResult;
 type MarketSnapshotSuccessPayload = ReturnType<typeof buildSuccessPayload>;
 
 const PUBLIC_CACHE_TTL_MS = 30_000;
+const FACT_COMPAT_HEADERS = {
+  'X-WTD-Plane': 'fact',
+  'X-WTD-Upstream': 'compatibility-bridge',
+  'X-WTD-State': 'adapter',
+} as const;
 
 const publicMarketSnapshotCache = createSharedPublicRouteCache<MarketSnapshotSuccessPayload>({
   scope: 'market:snapshot',
@@ -70,12 +75,14 @@ function buildPublicSnapshotCacheKey(pair: string, timeframe: string): string {
 function noStoreHeaders(): Record<string, string> {
   return {
     'Cache-Control': 'no-store',
+    ...FACT_COMPAT_HEADERS,
   };
 }
 
 function publicSuccessResponse(payload: MarketSnapshotSuccessPayload, cacheStatus: PublicRouteCacheStatus) {
   return json(payload, {
     headers: {
+      ...FACT_COMPAT_HEADERS,
       ...buildPublicCacheHeaders({
         browserMaxAge: 15,
         sharedMaxAge: 30,
