@@ -70,6 +70,7 @@ PHASE_ORDER = {
     # alpha-confluence-v1 phases (W-0107)
     "LAYER_SETUP": 0, "CVD_SIGNAL": 1, "ALPHA_ENTRY": 2,
 }
+_FEATURE_RANKING_BLEND_WEIGHT = 0.15
 
 # Seed/fallback defaults kept for backward compatibility with older tests and
 # for first-run bootstrap before the durable registry is populated.
@@ -127,6 +128,9 @@ class LiveScanResult:
     observed_phase_path: list[str] = field(default_factory=list)
     phase_depth_progress: float = 0.0
     similarity_score: float = 0.0
+    replay_similarity_score: float = 0.0
+    canonical_feature_score: float = 0.5
+    ranking_score: float = 0.0
     target_hit: bool = False
     pattern_slug: str = "tradoor-oi-reversal-v1"
     variant_slug: str = "tradoor-oi-reversal-v1__canonical"
@@ -161,6 +165,73 @@ def _resolve_active_pattern_entry(pattern_slug: str) -> ActivePatternVariantEntr
         if candidate.pattern_slug == pattern_slug:
             return candidate
     return None
+
+
+def _clip01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def _coerce_float(value: float | bool | None) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    return float(value)
+
+
+def _pullback_shape_score(value: float | None) -> float | None:
+    if value is None:
+        return None
+    center = 0.08
+    radius = 0.16
+    return _clip01(1.0 - (abs(value - center) / radius))
+
+
+def score_canonical_feature_snapshot(snapshot: dict[str, float | bool | None]) -> float:
+    """Return a compact 0..1 alignment score from the canonical feature subset.
+
+    This is intentionally a light-weight ranking heuristic, not a replacement
+    for replay/state-machine truth. Missing snapshots return a neutral score.
+    """
+    if not snapshot:
+        return 0.5
+
+    weighted_total = 0.0
+    weights = 0.0
+
+    oi_zscore = _coerce_float(snapshot.get("oi_zscore"))
+    if oi_zscore is not None:
+        weighted_total += 0.30 * _clip01(abs(oi_zscore) / 3.0)
+        weights += 0.30
+
+    funding_score: float | None = None
+    funding_zscore = _coerce_float(snapshot.get("funding_rate_zscore"))
+    funding_flip = snapshot.get("funding_flip_flag")
+    if funding_zscore is not None:
+        funding_score = _clip01(abs(funding_zscore) / 2.5)
+    if funding_flip is not None:
+        funding_score = max(funding_score or 0.0, 1.0 if bool(funding_flip) else 0.0)
+    if funding_score is not None:
+        weighted_total += 0.20 * funding_score
+        weights += 0.20
+
+    volume_percentile = _coerce_float(snapshot.get("volume_percentile"))
+    if volume_percentile is not None:
+        weighted_total += 0.20 * _clip01(volume_percentile)
+        weights += 0.20
+
+    pullback_depth = _coerce_float(snapshot.get("pullback_depth_pct"))
+    pullback_score = _pullback_shape_score(pullback_depth)
+    if pullback_score is not None:
+        weighted_total += 0.15 * pullback_score
+        weights += 0.15
+
+    cvd_divergence = _coerce_float(snapshot.get("cvd_price_divergence"))
+    if cvd_divergence is not None:
+        weighted_total += 0.15 * _clip01(abs(cvd_divergence))
+        weights += 0.15
+
+    if weights == 0.0:
+        return 0.5
+    return round(weighted_total / weights, 6)
 
 
 def scan_universe_live(
@@ -248,6 +319,8 @@ def scan_universe_live(
             observed_phase_path=list(r.observed_phase_path),
             phase_depth_progress=r.phase_depth_progress or 0.0,
             similarity_score=r.score or 0.0,
+            replay_similarity_score=r.score or 0.0,
+            ranking_score=r.score or 0.0,
             target_hit=bool(r.target_hit),
             pattern_slug=pattern_slug,
             variant_slug=variant_slug,
@@ -338,9 +411,23 @@ def search_pattern_state_similarity(
         for result in results
         if result.similarity_score >= min_similarity_score
     ]
+    for result in filtered:
+        result.replay_similarity_score = result.similarity_score
+        result.canonical_feature_score = score_canonical_feature_snapshot(
+            result.canonical_feature_snapshot
+        )
+        result.ranking_score = round(
+            _clip01(
+                result.replay_similarity_score
+                + _FEATURE_RANKING_BLEND_WEIGHT * (result.canonical_feature_score - 0.5)
+            ),
+            6,
+        )
     filtered.sort(
         key=lambda result: (
-            -result.similarity_score,
+            -result.ranking_score,
+            -result.replay_similarity_score,
+            -result.canonical_feature_score,
             -result.phase_depth_progress,
             -result.phase_fidelity,
             PHASE_ORDER.get(result.phase, 9),
