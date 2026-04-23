@@ -83,11 +83,21 @@ def fetch_futures_klines_max(symbol: str, timeframe: str = "1h") -> pd.DataFrame
             "taker_buy_base_volume", "taker_buy_quote_volume", "ignore",
         ],
     )
-    numeric = ["open", "high", "low", "close", "volume", "taker_buy_base_volume"]
+    numeric = [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "quote_volume",
+        "taker_buy_base_volume",
+        "taker_buy_quote_volume",
+    ]
     for col in numeric:
         df[col] = df[col].astype(float)
+    df["trade_count"] = df["trades"].astype(int)
     df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
-    df = df[["timestamp"] + numeric].set_index("timestamp")
+    df = df[["timestamp"] + numeric + ["trade_count"]].set_index("timestamp")
     return df[~df.index.duplicated(keep="last")].sort_index()
 
 
@@ -111,7 +121,7 @@ def fetch_oi_hist(symbol: str, period: str = "1h", limit: int = 500) -> pd.DataF
     """Fetch open interest history.
 
     Returns a DataFrame indexed by UTC timestamp with:
-        oi              — raw sumOpenInterest (base units)
+        oi_raw          — raw sumOpenInterest (base units)
         oi_change_1h    — fractional change vs 1 bar ago
         oi_change_24h   — fractional change vs 24 bars ago
     """
@@ -123,10 +133,10 @@ def fetch_oi_hist(symbol: str, period: str = "1h", limit: int = 500) -> pd.DataF
         raise RuntimeError(f"no OI hist rows for {symbol}")
     df = pd.DataFrame(rows)
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
-    df["oi"] = df["sumOpenInterest"].astype(float)
-    df = df[["timestamp", "oi"]].set_index("timestamp").sort_index()
-    df["oi_change_1h"] = df["oi"].pct_change(1).fillna(0.0)
-    df["oi_change_24h"] = df["oi"].pct_change(24).fillna(0.0)
+    df["oi_raw"] = df["sumOpenInterest"].astype(float)
+    df = df[["timestamp", "oi_raw"]].set_index("timestamp").sort_index()
+    df["oi_change_1h"] = df["oi_raw"].pct_change(1).fillna(0.0)
+    df["oi_change_24h"] = df["oi_raw"].pct_change(24).fillna(0.0)
     return df
 
 
@@ -147,6 +157,26 @@ def fetch_ls_ratio(symbol: str, period: str = "1h", limit: int = 500) -> pd.Data
     return df[["timestamp", "long_short_ratio"]].set_index("timestamp").sort_index()
 
 
+def fetch_perp_raw(symbol: str) -> pd.DataFrame:
+    """Fetch all three perp series and merge them without synthetic fills.
+
+    Funding prints remain sparse on their native 8h timestamps. OI and long/short
+    stay on their native hourly timestamps. Missing values remain null so the
+    canonical raw plane can store only observed provider truth.
+    """
+    funding = fetch_funding_rate(symbol)
+    time.sleep(_SLEEP_BETWEEN)
+    oi = fetch_oi_hist(symbol)
+    time.sleep(_SLEEP_BETWEEN)
+    ls = fetch_ls_ratio(symbol)
+
+    merged = oi[["oi_raw", "oi_change_1h", "oi_change_24h"]].join(
+        ls[["long_short_ratio"]], how="outer"
+    )
+    merged = merged.join(funding[["funding_rate"]], how="outer")
+    return merged.sort_index()
+
+
 def fetch_perp_max(symbol: str) -> pd.DataFrame:
     """Fetch all three perp series and merge onto a 1h UTC index.
 
@@ -155,28 +185,20 @@ def fetch_perp_max(symbol: str) -> pd.DataFrame:
     event "sticks" for 8 bars. OI and LS are not ffilled — they arrive on
     hourly cadence from Binance and any missing bar stays NaN.
 
-    Final fillna: funding=0, oi_change_*=0, long_short_ratio=1.
+    Final fillna: funding=0, oi_raw=0, oi_change_*=0, long_short_ratio=1.
 
     Returns columns:
-        funding_rate, oi_change_1h, oi_change_24h, long_short_ratio
+        funding_rate, oi_raw, oi_change_1h, oi_change_24h, long_short_ratio
     """
-    funding = fetch_funding_rate(symbol)
-    time.sleep(_SLEEP_BETWEEN)
-    oi = fetch_oi_hist(symbol)
-    time.sleep(_SLEEP_BETWEEN)
-    ls = fetch_ls_ratio(symbol)
-
-    merged = oi[["oi_change_1h", "oi_change_24h"]].join(
-        ls[["long_short_ratio"]], how="outer"
-    )
-    merged = merged.join(funding[["funding_rate"]], how="outer")
+    merged = fetch_perp_raw(symbol)
     # Carry the last funding print across the hourly OI grid for up to one
     # funding interval so recent bars do not collapse to zero.
     merged["funding_rate"] = merged["funding_rate"].sort_index().ffill(limit=8).fillna(0.0)
+    merged["oi_raw"] = merged["oi_raw"].fillna(0.0)
     merged["oi_change_1h"] = merged["oi_change_1h"].fillna(0.0)
     merged["oi_change_24h"] = merged["oi_change_24h"].fillna(0.0)
     merged["long_short_ratio"] = merged["long_short_ratio"].fillna(1.0)
 
     return merged[
-        ["funding_rate", "oi_change_1h", "oi_change_24h", "long_short_ratio"]
+        ["funding_rate", "oi_raw", "oi_change_1h", "oi_change_24h", "long_short_ratio"]
     ]

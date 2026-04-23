@@ -88,6 +88,11 @@ Engine logic change
 - merge / split / park 판단은 branch 이름이 아니라 `fact`, `search`, `surface`, `docs-only` plane purity 로 내린다.
 - canonical target 은 `engine-owned ingress + fact plane + search plane + runtime state`, `app-owned surface plane` 이다.
 - target topology 는 `raw provider -> fact plane -> search plane -> agent context -> surface` 로 고정한다.
+- raw retention policy is `store enough to replay, audit, and recompute`, not `store every provider byte forever`.
+- canonical raw plane stores normalized, queryable market facts with provenance/freshness/quality metadata; provider-native blobs stay in short-lived cache/object storage only.
+- data worth durable canonical storage is limited to reusable low-level truth: market bars, perp snapshots, orderflow bars, liquidation events or aggregates, on-chain/fundamental/macro snapshots, and human research inputs.
+- derived reusable math (`zscore`, `percentile`, `slope`, `divergence`, `duration`, `regime`) belongs to the canonical feature plane and must be computed once per bar/window, not inside pattern families.
+- surface, AI, and pattern/search lanes do not read provider blobs directly; they consume fact read models, feature windows, signatures, and runtime state only.
 - `runtime state / workflow state` 는 위 topology 와 별도로 존재하는 engine-owned state plane 으로 분리한다.
 - `WorkspaceBundle` 은 UI-neutral read model 인 경우에만 fact/read-model 로 인정하고, panel placement / pin / compare / presentation field 가 섞이면 `surface adapter` 로 본다.
 - `app` 의 ingress/fact/search adapter 들은 최종 ownership 이 아니라 migration bridge 로만 유지한다.
@@ -245,8 +250,8 @@ Engine logic change
 ## Next Steps
 
 1. `PR0.2` remaining cutover is to move the next app consumers off inline engine calls and onto `enginePlanes/*`, starting with `marketSnapshotService.ts`.
-2. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, and `SECURITY_ALLOWED_HOSTS`.
-3. the current Svelte warning/backpressure set should be handled as a separate app hardening lane after `PR0.2`, not mixed into the architecture PR.
+2. W-0156/W-0122 implementation lanes should codify the raw retention split explicitly: canonical normalized tables for replay-critical data, TTL cache for provider-native blobs, and materialized `feature_windows` as the cross-pattern contract.
+3. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, and `SECURITY_ALLOWED_HOSTS`.
 
 ## Exit Criteria
 
