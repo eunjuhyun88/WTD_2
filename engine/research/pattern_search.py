@@ -34,7 +34,6 @@ from patterns.types import PatternObject, PhaseAttemptRecord
 from scanner.feature_calc import (
     MIN_HISTORY_BARS,
     compute_features_table,
-    extract_canonical_pattern_feature_snapshot,
 )
 
 from .state_store import ResearchRun
@@ -3262,6 +3261,7 @@ def run_pattern_benchmark_search(
                     "active_registry_watch_phases": (
                         list(active_registry_entry.watch_phases) if active_registry_entry is not None else None
                     ),
+                    **_promotion_feature_payload(promotion_report),
                 },
                 selection_decision=SelectionDecisionInput(
                     decision_kind="advance",

@@ -44,12 +44,11 @@ Engine logic change
 
 ## Facts
 
-1. `W-0149` → `W-0152` lane already closes `manual_hypothesis -> benchmark search -> promotion -> active registry -> similar-live`, but the score path still leans on the existing generic feature table and block semantics.
-2. current commercialization baseline is saved at branch `codex/w-0151-active-variant-runtime-registry` commit `f5dec6c1`.
-3. earlier analysis identified the next bottleneck as canonicalizing derived features such as OI/funding/volume/structure into reusable engine truth, not adding more route surface.
-4. parked branches already consumed `W-0154` and `W-0155` numbering, so this lane opens as `W-0156` to avoid identifier reuse and branch confusion.
-5. first slice now adds a narrow canonical feature subset on top of `compute_features_table()`: `oi_raw`, `oi_zscore`, `funding_rate_zscore`, `funding_flip_flag`, `volume_percentile`, `pullback_depth_pct`, `cvd_price_divergence`.
-6. live state-similarity results now carry `canonical_feature_snapshot`, so runtime/search consumers can read the new feature plane without touching app surface code first.
+1. the commercialization baseline already closes `manual_hypothesis -> benchmark search -> promotion -> active registry -> similar-live`, so this lane can stay engine-only and avoid new app surface work.
+2. the first canonical subset on top of `compute_features_table()` is `oi_raw`, `oi_zscore`, `funding_rate_zscore`, `funding_flip_flag`, `volume_percentile`, `pullback_depth_pct`, and `cvd_price_divergence`.
+3. live/search/promotion consumers already carry `canonical_feature_snapshot`, so they can adopt the feature-plane owner without changing their higher-level contracts.
+4. the current local cut moves canonical subset materialization/extraction/scoring to `engine/features/canonical_pattern.py` and keeps `scanner.feature_calc` as the row materializer plus compatibility bridge.
+5. targeted engine verification passes for the ownership split on `test_feature_calc.py`, `test_live_monitor.py`, `test_pattern_search.py`, and `test_refinement_reporting.py`.
 
 ## Assumptions
 
@@ -58,7 +57,6 @@ Engine logic change
 
 ## Open Questions
 
-- whether the first canonical feature export should live inside `feature_calc.py` only or be split immediately into a dedicated `engine/features/*` module.
 - which runtime consumer should be first to require the new features directly: similarity ranking or promotion/report diagnostics.
 
 ## Decisions
@@ -68,17 +66,19 @@ Engine logic change
 - keep the first slice narrow: canonicalize a handful of perp/orderflow/structure features before widening into DB schema or operator tooling.
 - extend the existing perp cache contract with `oi_raw` instead of creating a new raw-perp store in the first cut.
 - prove adoption by threading the canonical feature subset into `VariantCaseResult` / `LiveScanResult` rather than redesigning replay scoring immediately.
+- canonical feature-plane ownership now moves to a dedicated `engine/features/*` module; `scanner.feature_calc` may materialize rows but must delegate canonical subset math and helper exports to that owner.
 
 ## Next Steps
 
-1. decide whether the next consumer should be similarity ranking itself or promotion/search diagnostics, now that the snapshot is available in runtime results.
+1. decide when `canonical_feature_version` should be threaded into runtime/search artifacts as a stable cross-plane reference instead of an internal module constant only.
 2. widen the raw contract beyond perp into liquidation/orderflow inputs only if the next consumer demonstrably needs them.
-3. keep the slice narrow and land the current branch cleanly before opening shared-DB or operator workflow follow-ups.
+3. keep the slice narrow and land shared-DB or operator workflow follow-ups as separate lanes after the ownership split.
 
 ## Exit Criteria
 
 - [x] a named canonical feature subset exists in engine code and tests.
 - [x] at least one runtime/search path reads the new canonical features directly.
+- [x] canonical feature subset ownership lives under `engine/features/*`, not duplicated inside downstream consumers.
 - [x] targeted engine tests pass on the first slice.
 
 ## Handoff Checklist
