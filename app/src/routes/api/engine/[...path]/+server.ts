@@ -31,6 +31,7 @@ type EngineProxyRule = {
 
 const ENGINE_PROXY_RULES: EngineProxyRule[] = [
   { pattern: /^healthz$/, methods: new Set(['GET']) },
+  { pattern: /^ctx\/fact$/, methods: new Set(['GET']) },
   { pattern: /^patterns\/candidates$/, methods: new Set(['GET']) },
   { pattern: /^scanner\/status$/, methods: new Set(['GET']) },
   { pattern: /^universe$/, methods: new Set(['GET']) },

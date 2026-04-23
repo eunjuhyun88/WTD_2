@@ -113,8 +113,88 @@ export type MarketSnapshotResult = {
   };
 };
 
+export type PublicMarketSnapshotResult = {
+  pair: string;
+  timeframe: string;
+  at: number;
+  updated: string[];
+  persisted: boolean;
+  warning?: string;
+  sources: Record<string, boolean>;
+};
+
+type EngineFactSourceState = {
+  status?: string;
+};
+
+type EngineFactPayload = {
+  ok?: boolean;
+  generated_at?: string;
+  symbol?: string;
+  timeframe?: string;
+  status?: string;
+  sources?: Record<string, EngineFactSourceState>;
+};
+
 function isFiniteNumber(value: number): boolean {
   return Number.isFinite(value);
+}
+
+function buildPublicSnapshotFromLegacy(snapshot: MarketSnapshotResult): PublicMarketSnapshotResult {
+  return {
+    pair: snapshot.pair,
+    timeframe: snapshot.timeframe,
+    at: snapshot.at,
+    updated: snapshot.updated,
+    persisted: snapshot.persisted,
+    warning: snapshot.warning,
+    sources: snapshot.sources,
+  };
+}
+
+function buildPublicSnapshotFromEngineFact(
+  pair: string,
+  timeframe: string,
+  payload: EngineFactPayload,
+): PublicMarketSnapshotResult {
+  const sources = Object.fromEntries(
+    Object.entries(payload.sources ?? {}).map(([key, value]) => [key, value?.status === 'ok']),
+  );
+  const updated = Object.entries(payload.sources ?? {})
+    .filter(([, value]) => value?.status === 'ok')
+    .map(([key]) => key);
+  const at = Date.parse(payload.generated_at ?? '');
+
+  return {
+    pair,
+    timeframe,
+    at: Number.isFinite(at) ? at : Date.now(),
+    updated,
+    persisted: false,
+    warning: payload.status === 'transitional' ? 'engine fact bridge active; legacy snapshot persistence bypassed' : undefined,
+    sources,
+  };
+}
+
+async function fetchEngineFactPayload(
+  eventFetch: typeof fetch,
+  pair: string,
+  timeframe: string,
+): Promise<EngineFactPayload | null> {
+  const symbol = pairToSymbol(pair);
+  try {
+    const res = await eventFetch(
+      `/api/engine/ctx/fact?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`,
+      {
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    if (!res.ok) return null;
+    const payload = (await res.json()) as EngineFactPayload;
+    return payload?.ok ? payload : null;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeSeries(
@@ -323,6 +403,23 @@ export async function collectMarketSnapshot(
   } finally {
     _inflightSnapshots.delete(snapKey);
   }
+}
+
+export async function collectPublicMarketSnapshot(
+  eventFetch: typeof fetch,
+  input: { pair?: unknown; timeframe?: unknown } = {},
+): Promise<PublicMarketSnapshotResult> {
+  const pair = normalizePair(input.pair);
+  const timeframe = normalizeTimeframe(input.timeframe);
+
+  const engineFact = await fetchEngineFactPayload(eventFetch, pair, timeframe);
+  if (engineFact) {
+    return buildPublicSnapshotFromEngineFact(pair, timeframe, engineFact);
+  }
+
+  return buildPublicSnapshotFromLegacy(
+    await collectMarketSnapshot(eventFetch, { pair, timeframe, persist: false }),
+  );
 }
 
 async function _collectInternal(
