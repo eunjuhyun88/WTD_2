@@ -36,46 +36,21 @@ function cacheKey(pair: string, timeframe: string): string {
 function symbolFromPair(pair: string): string {
   return pair.replace('/', '').toUpperCase();
 }
-
-async function loadMacroOverview(fetchFn: typeof fetch) {
-  const engineSnapshot = await fetchFactMarketCapProxy(fetchFn, { offline: true }).catch(() => null);
-  const engineOverview = adaptEngineMarketCapSnapshot(engineSnapshot);
-  const overview = engineOverview ?? (await fetchMarketCapOverview().catch(() => null));
-
-  if (!overview) return null;
-  const hasMacroSignal =
-    overview.btcDominance !== null ||
-    overview.marketCapChange24hPct !== null ||
-    overview.stablecoinMcapChange24hPct !== null;
-
-  if (!hasMacroSignal) return null;
-
-  return {
-    btcDominance: overview.btcDominance,
-    dominanceChange24h: overview.dominanceChange24h,
-    marketCapChange24hPct: overview.marketCapChange24hPct,
-    stablecoinMcapChange24hPct: overview.stablecoinMcapChange24hPct,
-    confidence: overview.confidence,
-  };
-}
-
 async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: string) {
   const token = pair.split('/')[0] ?? 'BTC';
   const perpBridgePromise = loadPerpContextBridge(fetchFn, { pair, timeframe });
 
-  const [newsData, trendingData, picksData, agentContext, flowResult, eventsResult, macroOverview] = await Promise.all([
-    loadMarketNews({
-      limit: 40,
-      offset: 0,
-      token: token.toUpperCase(),
-      interval: '1m',
-      sortBy: 'importance',
-    }),
-    loadMarketTrending({
-      limit: 20,
-      section: 'all',
-    }),
-    getOrRunOpportunityScan(15),
+  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes, agentContext] = await Promise.all([
+  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes, agentContext] = await Promise.all([
+    fetchJsonSafe(
+      fetchFn,
+      `/api/market/news?limit=40&offset=0&token=${encodeURIComponent(token)}&sort=importance&interval=1m`,
+    ),
+    fetchJsonSafe(fetchFn, `/api/market/events?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
+    fetchJsonSafe(fetchFn, `/api/market/flow?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
+    fetchJsonSafe(fetchFn, '/api/market/macro-overview'),
+    fetchJsonSafe(fetchFn, '/api/market/trending?section=all&limit=20'),
+    fetchJsonSafe(fetchFn, '/api/terminal/opportunity-scan?limit=15'),
     loadAgentContextPack({
       fetchFn,
       symbol: symbolFromPair(pair),
