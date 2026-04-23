@@ -127,12 +127,9 @@
 
 ## 즉시 실행 순서 (사람)
 
-- current doc lane `codex/w-0153-protocol-doc-recovery` was split and pushed clean at `44431562`
-- engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
-- `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
-- `W-0157` landed clean at `a3a8f2c0` on `codex/w-0157-similar-live-feature-ranking`
-- active execution lane is `codex/w-0158-promotion-feature-diagnostics`
-- `W-0158` local cut reuses the same canonical feature score family in promotion/search diagnostics, reports reference/holdout breakdown + aggregate summary, and passed targeted `pattern_search` / `live_monitor` / reporting tests
+- active on `codex/w-0122-market-cap-fact-cut`
+- worktree clean after `e5f80a6a` (`terminal intel macro fact cut`)
+- next slice requires contract choice: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` is curated-reference oriented; do not proxy one into the other without an explicit adapter decision
 
 ---
 
@@ -160,11 +157,6 @@
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
-| codex/w-0151-active-variant-runtime-registry | W-0149 / W-0150 / W-0151 / W-0152 | active stacked engine commercialization lane |
-| codex/w-0153-protocol-doc-recovery | W-0153 | protocol doc recovery reference lane; pushed clean |
-| codex/w-0156-feature-plane-foundation | W-0156 | active engine lane for canonical perp/orderflow/structure feature foundation |
-| codex/w-0157-similar-live-feature-ranking | W-0157 | active engine lane for canonical feature consumption in similar-live ranking |
-| codex/w-0158-promotion-feature-diagnostics | W-0158 | active engine lane for canonical feature diagnostics in promotion/report artifacts |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
