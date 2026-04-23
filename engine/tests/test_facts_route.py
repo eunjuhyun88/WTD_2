@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from api.routes import facts
 from market_engine.fact_plane import FactContextBuildError
 from market_engine.fact_read_models import (
+    build_chain_intel_context,
     build_confluence_context,
     build_market_cap_context,
     build_price_context,
@@ -107,6 +108,27 @@ def test_build_reference_stack_includes_catalog_coverage(monkeypatch) -> None:
     assert "klines" in ids
 
 
+def test_build_chain_intel_context_reports_engine_source_state(monkeypatch) -> None:
+    fake = _fake_fact_context()
+    fake["sources"]["chain"] = {
+        "status": "ok",
+        "rows": 12,
+        "end_at": "2026-01-25T00:00:00+00:00",
+    }
+    monkeypatch.setattr(
+        "market_engine.fact_read_models.build_fact_context",
+        lambda symbol, timeframe="1h", offline=True: fake,
+    )
+
+    payload = build_chain_intel_context(symbol="BTCUSDT", chain="solana")
+
+    assert payload["kind"] == "chain_intel"
+    assert payload["owner"] == "engine"
+    assert payload["family"] == "solana"
+    assert payload["provider_state"]["chain_bundle"]["status"] == "live"
+    assert payload["source"]["rows"] == 12
+
+
 def test_build_market_cap_context_uses_macro_bundle(monkeypatch) -> None:
     index = pd.to_datetime(["2026-04-23T00:00:00Z"])
     frame = pd.DataFrame(
@@ -182,6 +204,33 @@ def test_facts_market_cap_route_returns_payload(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "kind": "market_cap", "btc_dominance": 60.5}
+
+
+def test_facts_chain_intel_route_returns_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "api.routes.facts.build_chain_intel_context",
+        lambda symbol, chain="ethereum", family=None, timeframe="1h", offline=True: {
+            "ok": True,
+            "kind": "chain_intel",
+            "symbol": symbol,
+            "chain": chain,
+            "family": family or "evm",
+        },
+    )
+
+    response = _client().get(
+        "/facts/chain-intel",
+        params={"symbol": "ETHUSDT", "chain": "base", "family": "evm", "timeframe": "4h"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "kind": "chain_intel",
+        "symbol": "ETHUSDT",
+        "chain": "base",
+        "family": "evm",
+    }
 
 
 def test_facts_indicator_catalog_route_returns_canonical_inventory(monkeypatch) -> None:
