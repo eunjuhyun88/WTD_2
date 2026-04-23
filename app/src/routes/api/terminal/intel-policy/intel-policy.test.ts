@@ -64,6 +64,28 @@ describe('/api/terminal/intel-policy', () => {
 			if (url.startsWith('/api/terminal/opportunity-scan')) {
 				return jsonResponse({ data: { coins: [] } });
 			}
+			if (url.startsWith('/api/facts/ctx/fact')) {
+				return jsonResponse({
+					ok: true,
+					owner: 'engine',
+					plane: 'fact',
+					status: 'live',
+					generated_at: '2026-04-23T00:00:00Z',
+					symbol: 'ETHUSDT',
+					timeframe: '4h',
+				});
+			}
+			if (url.startsWith('/api/runtime/captures')) {
+				return jsonResponse({
+					ok: true,
+					owner: 'engine',
+					plane: 'runtime',
+					status: 'fallback_local',
+					generated_at: '2026-04-23T00:00:00Z',
+					captures: [],
+					count: 0,
+				});
+			}
 			return jsonResponse({ error: 'unexpected upstream' }, 404);
 		});
 
@@ -76,6 +98,8 @@ describe('/api/terminal/intel-policy', () => {
 
 		expect(res.status).toBe(200);
 		expect(seenUrls.some((url) => url.startsWith('/api/market/macro-overview'))).toBe(true);
+		expect(seenUrls).toContain('/api/facts/ctx/fact?symbol=ETHUSDT&timeframe=4h&offline=true');
+		expect(seenUrls).toContain('/api/runtime/captures?symbol=ETHUSDT&limit=3');
 
 		const body = await res.json();
 		expect(body.ok).toBe(true);
@@ -86,5 +110,13 @@ describe('/api/terminal/intel-policy', () => {
 		expect(macroCard.bias).toBe('short');
 		expect(macroCard.what).toContain('BTC.D 63.4%');
 		expect(body.data.summary.domainsUsed).toContain('flow');
+		expect(body.data.summary.agentContext).toEqual({
+			factStatus: 'live',
+			runtimeStatus: 'fallback_local',
+			evidenceCount: 2,
+			captures: 0,
+			scanCandidates: 0,
+			seedSearchCandidates: 0,
+		});
 	});
 });

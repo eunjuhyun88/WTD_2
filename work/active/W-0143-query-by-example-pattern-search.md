@@ -42,7 +42,7 @@ Contract change
 2. Search routes now expose canonical `/search/catalog`, `/search/scan`, and `/search/seed` payloads through app plane proxies.
 3. Runtime routes now expose captures and other workflow projections through app plane proxies.
 4. PR #208 added the canonical app-side `AgentContextPack` loader and tests.
-5. DOUNI terminal message now has the first route-level integration point for the bounded pack.
+5. PR #209 migrated DOUNI terminal message context assembly to consume the bounded pack.
 
 ## Assumptions
 
@@ -51,7 +51,7 @@ Contract change
 
 ## Open Questions
 
-- Whether `intel-policy` should consume the full `AgentContextPack` or only the fact/runtime evidence section.
+- None for the current slice.
 
 ## Decisions
 
@@ -60,12 +60,13 @@ Contract change
 - Runtime state inside `AgentContextPack` is a compact summary, not authoritative workflow storage.
 - Search inputs are optional by id; the loader may return `scan` or `seed_search` as `null` when no run id is supplied.
 - DOUNI message SSE is the first agent route migration because it already owns prompt context assembly and can keep its public stream shape unchanged.
+- `intel-policy` consumes the pack as an optional summary input first; policy scoring remains unchanged until a dedicated evidence-calibration slice.
 
 ## Next Steps
 
-1. Finish and merge the DOUNI message route migration.
-2. Decide the `intel-policy` migration shape from the bounded pack evidence.
-3. After W-0143 route migration, unblock W-0139/W-0140 surface slimming.
+1. Finish and merge the `intel-policy` summary migration.
+2. Mark W-0143 ready for surface unblock after PR verification.
+3. Start W-0139/W-0140 surface slimming from updated `main`.
 
 ## Exit Criteria
 
@@ -77,8 +78,8 @@ Contract change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0143-query-by-example-pattern-search.md`
-- branch: `codex/w-0143-agent-route-migration`
+- branch: `codex/w-0143-intel-policy-context`
 - verification:
-  - `npm --prefix app run test -- src/lib/server/agentContextPack.test.ts src/lib/server/douni/contextBuilder.test.ts`
+  - `npm --prefix app run test -- src/routes/api/terminal/intel-policy/intel-policy.test.ts src/lib/server/agentContextPack.test.ts src/lib/server/douni/contextBuilder.test.ts`
   - `npm --prefix app run check`
-- remaining blockers: `intel-policy` still uses legacy route-by-route policy inputs; surface slimming remains blocked until agent lane closes.
+- remaining blockers: surface slimming remains blocked until the `intel-policy` summary migration is merged.
