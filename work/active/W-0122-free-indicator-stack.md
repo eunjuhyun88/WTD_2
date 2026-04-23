@@ -466,9 +466,10 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 ## Next Steps
 
 1. terminal AI / scan 이 `marketCapPlane + reference-stack + chain-intel + influencer metrics` 를 bounded context pack 으로 읽게 정렬한다.
-2. opportunity/search surface 용 canonical scan envelope (`opportunity + alerts + scanner status + pattern candidates`) 를 분리해 route fan-out 을 줄인다.
-3. EVM token lane 에 CoinGecko Onchain DEX plane(top pools + recent trades + liquidity/volume)를 붙이고, provider state 를 `etherscan + coingecko_onchain` 으로 분리한다.
-4. terminal/intel surface 가 `/api/market/reference-stack` 를 직접 소비하게 해 curated reference plane 을 운영자 화면과 public API 둘 다에서 재사용한다.
+2. `query-presets` / `anomalies` 를 parity 합성에서 explicit scan contract 소비 구조로 내린다.
+3. opportunity/search surface 용 canonical scan envelope (`opportunity + alerts + scanner status + pattern candidates`) 를 분리해 route fan-out 을 줄인다.
+4. EVM token lane 에 CoinGecko Onchain DEX plane(top pools + recent trades + liquidity/volume)를 붙이고, provider state 를 `etherscan + coingecko_onchain` 으로 분리한다.
+5. terminal/intel surface 가 `/api/market/reference-stack` 를 직접 소비하게 해 curated reference plane 을 운영자 화면과 public API 둘 다에서 재사용한다.
 
 ## Related
 

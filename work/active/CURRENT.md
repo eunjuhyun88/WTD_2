@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`41bd62ac` — current local `origin/main` ref
+`41a72eef` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -44,7 +44,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 OPS-BLOCKED | engine mainline integration 완료, 운영 migration 018만 남음 |
+| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | migration 018 + live preview redeploy + post-cutover stats hotfix 완료, canonical engine region 결정만 남음 |
 | **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
 
 ---
@@ -114,7 +114,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `41bd62ac` |
+| origin/main | — | local remote-tracking ref = `41a72eef` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
@@ -135,6 +135,8 @@
 
 ## 인프라 미완 (사람 직접 실행 필요)
 
-- [ ] Supabase migration 018 실행 (psql pooler)
-- [ ] GCP cogotchi 재배포 필요 시: `gcloud run services update cogotchi-...`
+- [x] Supabase migration 018 실행 및 DB table/index 검증
+- [x] Vercel preview branch env (`release`, `codex/w-0139-terminal-core-loop-capture`) 정렬
+- [x] deterministic wrapper로 `cogochi-2` preview 재배포 후 live alias/스모크 확인
+- [ ] Cloud Run `asia-southeast1/cogotchi` 재배포 또는 `us-east4/cogotchi` 유지 결정을 명시
 - [ ] Vercel EXCHANGE_ENCRYPTION_KEY 환경변수 설정 (프로덕션)

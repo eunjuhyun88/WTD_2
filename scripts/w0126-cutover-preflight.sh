@@ -14,6 +14,7 @@ ENGINE_URL="${ENGINE_URL:-}"
 APP_URL="${APP_URL:-}"
 RUN_DB_VERIFY="${RUN_DB_VERIFY:-0}"
 RUN_HTTP_VERIFY="${RUN_HTTP_VERIFY:-0}"
+PG_NODE_MODULE_DIR="${PG_NODE_MODULE_DIR:-${ROOT_DIR}/app/node_modules}"
 
 failures=0
 warnings=0
@@ -53,6 +54,53 @@ check_http() {
   fi
 }
 
+verify_db_with_node_pg() {
+  (
+    cd "${ROOT_DIR}/app"
+    SUPABASE_POOLER_DSN="${SUPABASE_POOLER_DSN}" PG_NODE_MODULE_DIR="${PG_NODE_MODULE_DIR}" node --input-type=module <<'NODE'
+import { createRequire } from 'node:module';
+
+const require = createRequire(`${process.env.PG_NODE_MODULE_DIR}/package.json`);
+const pg = require('pg');
+
+const dsn = process.env.SUPABASE_POOLER_DSN;
+if (!dsn) throw new Error('SUPABASE_POOLER_DSN is missing');
+
+const client = new pg.Client({
+  connectionString: dsn,
+  ssl: { rejectUnauthorized: false },
+});
+
+await client.connect();
+try {
+  const table = await client.query("select to_regclass('public.pattern_ledger_records') as table_name");
+  const tableName = table.rows[0]?.table_name ?? null;
+  if (tableName !== 'pattern_ledger_records') {
+    throw new Error('database table missing: public.pattern_ledger_records');
+  }
+
+  const indexes = await client.query(`
+    select count(*)::int as index_count
+    from pg_indexes
+    where schemaname = 'public'
+      and tablename = 'pattern_ledger_records'
+      and indexname in (
+        'pattern_ledger_records_pkey',
+        'plr_slug_created_idx',
+        'plr_slug_type_created_idx'
+      )
+  `);
+  const indexCount = Number(indexes.rows[0]?.index_count ?? 0);
+  if (indexCount !== 3) {
+    throw new Error(`expected 3 required indexes for pattern_ledger_records, found ${indexCount}`);
+  }
+} finally {
+  await client.end();
+}
+NODE
+  )
+}
+
 echo "W-0126 cutover preflight"
 echo "root: ${ROOT_DIR}"
 
@@ -76,9 +124,7 @@ fi
 if [[ "${RUN_DB_VERIFY}" == "1" ]]; then
   if [[ -z "${SUPABASE_POOLER_DSN}" ]]; then
     fail "RUN_DB_VERIFY=1 but SUPABASE_POOLER_DSN is missing"
-  elif ! command -v psql >/dev/null 2>&1; then
-    fail "RUN_DB_VERIFY=1 but psql is not installed"
-  else
+  elif command -v psql >/dev/null 2>&1; then
     table_name="$(
       psql "${SUPABASE_POOLER_DSN}" -At -v ON_ERROR_STOP=1 \
         -c "select to_regclass('public.pattern_ledger_records');"
@@ -107,6 +153,15 @@ SQL
     else
       fail "expected 3 required indexes for pattern_ledger_records, found ${index_count}"
     fi
+  elif command -v node >/dev/null 2>&1 && [[ -d "${PG_NODE_MODULE_DIR}/pg" ]]; then
+    if verify_db_with_node_pg; then
+      ok "database table exists: public.pattern_ledger_records"
+      ok "required pattern_ledger_records indexes exist"
+    else
+      fail "database verification failed via node pg fallback"
+    fi
+  else
+    fail "RUN_DB_VERIFY=1 but neither psql nor app/node_modules/pg is available"
   fi
 else
   warn "database verification skipped (set RUN_DB_VERIFY=1 and SUPABASE_POOLER_DSN to enable)"
