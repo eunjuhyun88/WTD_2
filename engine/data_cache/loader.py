@@ -12,6 +12,7 @@ To add a new source, edit registry.py only — no changes needed here.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -38,9 +39,67 @@ _SUPPORTED_TIMEFRAMES = SUPPORTED_TF_STRINGS
 _CANONICAL_HOURLY_TIMEFRAME = "1h"
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _resolve_git_worktree_shared_cache_dir() -> Path | None:
+    git_meta = _repo_root() / ".git"
+    if not git_meta.is_file():
+        return None
+    try:
+        payload = git_meta.read_text().strip()
+    except OSError:
+        return None
+    prefix = "gitdir:"
+    if not payload.startswith(prefix):
+        return None
+    gitdir = Path(payload[len(prefix):].strip())
+    if not gitdir.is_absolute():
+        gitdir = (_repo_root() / gitdir).resolve()
+    if gitdir.parent.name != "worktrees":
+        return None
+    common_git_dir = gitdir.parent.parent
+    main_root = common_git_dir.parent
+    shared_cache_dir = main_root / "engine" / "data_cache" / "cache"
+    if shared_cache_dir == CACHE_DIR:
+        return None
+    return shared_cache_dir
+
+
+def _configured_shared_cache_dir() -> Path | None:
+    override = os.getenv("WTD_SHARED_CACHE_DIR")
+    if override:
+        return Path(override).expanduser()
+    if CACHE_DIR != Path(__file__).parent / "cache":
+        return None
+    return _resolve_git_worktree_shared_cache_dir()
+
+
+def _primary_cache_dir() -> Path:
+    return _configured_shared_cache_dir() or CACHE_DIR
+
+
+def _cache_search_dirs() -> list[Path]:
+    candidates = [_primary_cache_dir(), CACHE_DIR]
+    unique: list[Path] = []
+    for path in candidates:
+        if path not in unique:
+            unique.append(path)
+    return unique
+
+
+def _find_existing_cache_path(filename: str) -> Path | None:
+    for base_dir in _cache_search_dirs():
+        path = base_dir / filename
+        if path.exists():
+            return path
+    return None
+
+
 def cache_path(symbol: str, timeframe: str) -> Path:
     """Return the CSV path for (symbol, timeframe) — does NOT check existence."""
-    return CACHE_DIR / f"{symbol}_{timeframe}.csv"
+    return _primary_cache_dir() / f"{symbol}_{timeframe}.csv"
 
 
 def list_cached_symbols(*, require_perp: bool = False) -> list[str]:
@@ -63,12 +122,16 @@ def list_cached_symbols(*, require_perp: bool = False) -> list[str]:
 
 def perp_cache_path(symbol: str) -> Path:
     """Return the CSV path for a symbol's merged perp series."""
-    return CACHE_DIR / f"{symbol}_perp.csv"
+    return _primary_cache_dir() / f"{symbol}_perp.csv"
 
 
 def _src_cache_path(cache_file: str, symbol: str = "") -> Path:
     """Resolve a DataSource.cache_file pattern to a Path."""
-    return CACHE_DIR / cache_file.format(symbol=symbol)
+    return _primary_cache_dir() / cache_file.format(symbol=symbol)
+
+
+def _find_existing_src_cache_path(cache_file: str, symbol: str = "") -> Path | None:
+    return _find_existing_cache_path(cache_file.format(symbol=symbol))
 
 
 def _read_csv_tz(path: Path) -> pd.DataFrame:
@@ -128,15 +191,29 @@ def load_klines(
     # Validate the timeframe string early; unknown values raise ValueError.
     tf_min = tf_string_to_minutes(timeframe)
 
-    if timeframe == _CANONICAL_HOURLY_TIMEFRAME:
-        path = cache_path(symbol, _CANONICAL_HOURLY_TIMEFRAME)
-        if path.exists():
-            return _read_klines_cache(path)
+    if timeframe == "1h":
+        path = _find_existing_cache_path(f"{symbol}_1h.csv")
+        if path is not None:
+            df = pd.read_csv(path, index_col="timestamp", parse_dates=True)
+            if df.index.tz is None:
+                df.index = df.index.tz_localize("UTC")
+            return df
         if offline:
+            expected = cache_path(symbol, "1h")
             raise CacheMiss(
-                f"{symbol}_{_CANONICAL_HOURLY_TIMEFRAME} not cached at {path} and offline=True"
+                f"{symbol}_1h not cached under {_cache_search_dirs()} and offline=True (primary {expected})"
             )
-        return _fetch_and_cache_klines(symbol, _CANONICAL_HOURLY_TIMEFRAME, path)
+        write_path = cache_path(symbol, "1h")
+        write_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            df = fetch_klines_max(symbol, "1h")
+        except RuntimeError as exc:
+            spot_error = str(exc)
+            if "Invalid symbol" not in spot_error and "no klines returned" not in spot_error:
+                raise
+            df = fetch_futures_klines_max(symbol, "1h")
+        df.to_csv(write_path)
+        return df
 
     if tf_min < tf_string_to_minutes(_CANONICAL_HOURLY_TIMEFRAME):
         path = cache_path(symbol, timeframe)
@@ -165,13 +242,15 @@ def load_perp(
     Returns None on cache miss with offline=True or on network failure.
     """
     path = perp_cache_path(symbol)
-    if path.exists():
+    existing = _find_existing_cache_path(f"{symbol}_perp.csv")
+    if existing is not None:
+        path = existing
         df = pd.read_csv(path, index_col=0, parse_dates=[0])
         df.index = pd.to_datetime(df.index, utc=True, format="mixed")
         return df
     if offline:
         return None
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     try:
         df = fetch_perp_max(symbol)
     except Exception:
@@ -202,18 +281,18 @@ def load_macro_bundle(
       - offline=True          → return None if not cached
     """
     # Use a single merged-bundle cache file
-    path = CACHE_DIR / "macro_bundle.csv"
+    path = _find_existing_cache_path("macro_bundle.csv") or (cache_path("macro_bundle", "").parent / "macro_bundle.csv")
 
     if path.exists() and not refresh:
         return _read_csv_tz(path)
     if offline:
         return None
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     frames: list[pd.DataFrame] = []
 
     for src in MACRO_SOURCES:
-        src_path = _src_cache_path(src.cache_file)
+        src_path = _find_existing_src_cache_path(src.cache_file) or _src_cache_path(src.cache_file)
         if src_path.exists() and not refresh:
             print(f"  [macro] {src.name}: loading from cache")
             frames.append(_read_csv_tz(src_path))
@@ -255,18 +334,18 @@ def load_onchain_bundle(
 
     To add a new on-chain source: edit data_cache/registry.py only.
     """
-    path = CACHE_DIR / f"{symbol}_onchain_bundle.csv"
+    path = _find_existing_cache_path(f"{symbol}_onchain_bundle.csv") or (cache_path(symbol, "onchain_bundle").parent / f"{symbol}_onchain_bundle.csv")
 
     if path.exists() and not refresh:
         return _read_csv_tz(path)
     if offline:
         return None
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     frames: list[pd.DataFrame] = []
 
     for src in ONCHAIN_SOURCES:
-        src_path = _src_cache_path(src.cache_file, symbol=symbol)
+        src_path = _find_existing_src_cache_path(src.cache_file, symbol=symbol) or _src_cache_path(src.cache_file, symbol=symbol)
         if src_path.exists() and not refresh:
             print(f"  [onchain] {src.name} ({symbol}): loading from cache")
             frames.append(_read_csv_tz(src_path))
@@ -312,18 +391,18 @@ def load_dex_bundle(
     Returns:
         Daily DataFrame with dex_* columns, or None if all sources fail.
     """
-    path = CACHE_DIR / f"{symbol}_dex_bundle.csv"
+    path = _find_existing_cache_path(f"{symbol}_dex_bundle.csv") or (cache_path(symbol, "dex_bundle").parent / f"{symbol}_dex_bundle.csv")
 
     if path.exists() and not refresh:
         return _read_csv_tz(path)
     if offline:
         return None
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     frames: list[pd.DataFrame] = []
 
     for src in DEX_SOURCES:
-        src_path = _src_cache_path(src.cache_file, symbol=symbol)
+        src_path = _find_existing_src_cache_path(src.cache_file, symbol=symbol) or _src_cache_path(src.cache_file, symbol=symbol)
         if src_path.exists() and not refresh:
             print(f"  [dex] {src.name} ({symbol}): loading from cache")
             frames.append(_read_csv_tz(src_path))
@@ -365,18 +444,18 @@ def load_chain_bundle(
 
     To add a new chain source: edit data_cache/registry.py CHAIN_SOURCES only.
     """
-    path = CACHE_DIR / f"{symbol}_chain_bundle.csv"
+    path = _find_existing_cache_path(f"{symbol}_chain_bundle.csv") or (cache_path(symbol, "chain_bundle").parent / f"{symbol}_chain_bundle.csv")
 
     if path.exists() and not refresh:
         return _read_csv_tz(path)
     if offline:
         return None
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     frames: list[pd.DataFrame] = []
 
     for src in CHAIN_SOURCES:
-        src_path = _src_cache_path(src.cache_file, symbol=symbol)
+        src_path = _find_existing_src_cache_path(src.cache_file, symbol=symbol) or _src_cache_path(src.cache_file, symbol=symbol)
         if src_path.exists() and not refresh:
             print(f"  [chain] {src.name} ({symbol}): loading from cache")
             frames.append(_read_csv_tz(src_path))
