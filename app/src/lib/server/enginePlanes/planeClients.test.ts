@@ -67,6 +67,7 @@ describe('engine plane clients', () => {
 				});
 			}
 			if (url.startsWith('/api/facts/chain-intel')) {
+			if (url.startsWith('/api/facts/chain-intel')) {
 				return Response.json({
 					ok: true,
 					owner: 'engine',
@@ -143,6 +144,7 @@ describe('engine plane clients', () => {
 			timeframe: '4h',
 		});
 		const chainIntel = await fetchFactChainIntelProxy(fetchMock as typeof fetch, {
+		const chainIntel = await fetchFactChainIntelProxy(fetchMock as typeof fetch, {
 			symbol: 'ETHUSDT',
 			chain: 'base',
 			family: 'evm',
@@ -172,6 +174,7 @@ describe('engine plane clients', () => {
 		const fifthUrl = String(fetchMock.mock.calls[4]?.[0]);
 		const fifthInit = fetchMock.mock.calls[4]?.[1] as RequestInit | undefined;
 		const sixthUrl = String(fetchMock.mock.calls[5]?.[0]);
+		const sixthUrl = String(fetchMock.mock.calls[5]?.[0]);
 		const sixthInit = fetchMock.mock.calls[5]?.[1] as RequestInit | undefined;
 		expect(secondUrl).toBe('/api/facts/reference-stack?symbol=ETHUSDT&timeframe=4h&offline=true');
 		expect(thirdUrl).toBe('/api/facts/chain-intel?symbol=ETHUSDT&chain=base&family=evm&timeframe=4h&offline=true');
@@ -192,6 +195,7 @@ describe('engine plane clients', () => {
 		expect(fifthInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
+		expect(sixthInit).toEqual(
 		expect(sixthInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);

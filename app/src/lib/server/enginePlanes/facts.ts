@@ -102,7 +102,6 @@ export async function fetchFactChainIntelProxy(
 		timeoutMs: 8_000,
 	});
 }
-
 export async function fetchPerpContextProxy(
 	fetchFn: ServerFetch,
 	args: { symbol: string; timeframe: string; offline?: boolean },
