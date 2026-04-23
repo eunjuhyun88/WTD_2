@@ -441,6 +441,8 @@ export type {
 export type {
 	AgentContextEvidence,
 	AgentContextCompareItem,
+	AgentContextRuntimeCaptureSummary,
+	AgentContextRuntimeSummary,
 	AgentContextPack
 } from './agent/agentContext';
 export type {

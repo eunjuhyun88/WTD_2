@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`98b41af0` — current local `origin/main` ref after PR #205
+`202efb9d` — current local `origin/main` ref after PR #207
 
 ## 완료 (이번 세션)
 
@@ -22,6 +22,8 @@
 | #202 (W-0145) | search corpus store + worker-control corpus refresh + `/search/catalog` |
 | #203 (W-0145) | corpus-only `/search/seed` and `/search/scan` routes + persisted run candidates |
 | #205 (W-0145) | app search contracts aligned with canonical engine search payloads |
+| #206 (W-0142) | runtime state route skeleton for captures, workspace pins, setups, research contexts, and ledger |
+| #207 (W-0142) | app pattern captures routed through the runtime plane with degraded fallback |
 
 ---
 
@@ -33,7 +35,7 @@
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
-| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
+| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🔴 IN-PROGRESS | `AgentContextPack` loader + AI route migration after fact/search/runtime lanes merge |
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-UPSTREAM | bottom ANALYZE slimming after surface contract cutover |
 
@@ -93,9 +95,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0142-runtime-routes`
+- active on `codex/w-0143-agent-context-pack`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: Runtime State Plane canonical route skeleton; expose captures, workspace pins, setups, research contexts, and ledger projections behind `/runtime/*`
+- current slice: Agent Context Pack loader; bounded `facts + search + runtime` summary for AI-facing routes
 
 ---
 
@@ -119,7 +121,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `98b41af0` |
+| origin/main | — | local remote-tracking ref = `202efb9d` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -135,9 +137,10 @@
 | codex/w-0145-corpus-plane | W-0145 | merged via PR #202 |
 | codex/w-0145-search-routes | W-0145 | merged via PR #203 |
 | codex/w-0145-search-proxy-client | W-0145 | merged via PR #205 |
-| codex/w-0142-runtime-routes | W-0142 | active runtime route skeleton |
-| codex/w-0142-runtime-state-plane | W-0142 | planned follow-up runtime bridge migration |
-| codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
+| codex/w-0142-runtime-routes | W-0142 | merged via PR #206 |
+| codex/w-0142-runtime-contracts | W-0142 | merged via PR #207 |
+| codex/w-0143-agent-context-pack | W-0143 | active AgentContextPack loader slice |
+| codex/w-0143-agent-search-integration | W-0143 | planned route migration follow-up |
 | codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
 ---
