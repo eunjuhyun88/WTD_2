@@ -669,22 +669,13 @@
   })());
 
   // ── Narrative ─────────────────────────────────────────────────────────
-  const narrativeDir = $derived(
-    analyzeData?.ensemble?.direction?.toLowerCase().includes('short') ||
-    analyzeData?.riskPlan?.bias?.includes('bear') ? '숏' : '롱'
-  );
-  const narrativeBias = $derived(
-    workspaceEnvelope.aiContext.thesis ?? null
-  );
   const analyzeDetailDirection = $derived.by(() => {
     const thesis = workspaceEnvelope.aiContext.thesis?.toLowerCase() ?? '';
     const direction = analyzeData?.ensemble?.direction?.toLowerCase() ?? '';
     return direction.includes('short') || thesis.includes('short') || thesis.includes('bear') ? '숏' : '롱';
   });
   const analyzeDetailThesis = $derived(
-    workspaceEnvelope.aiContext.thesis ??
-      narrativeBias ??
-      '분석 완료'
+    workspaceEnvelope.aiContext.thesis ?? '분석 완료'
   );
   const analyzeDetailWarnings = $derived(workspaceEnvelope.aiContext.warnings ?? []);
   const analyzeEvidenceItems = $derived.by(() => {
