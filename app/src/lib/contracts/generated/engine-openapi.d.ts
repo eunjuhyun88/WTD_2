@@ -102,6 +102,165 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ctx/fact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ctx Fact
+         * @description Return a bounded engine-owned fact context for one symbol/timeframe.
+         */
+        get: operations["ctx_fact_ctx_fact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ctx/indicator-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ctx Indicator Catalog
+         * @description Return the canonical engine-owned 100-metric indicator inventory.
+         */
+        get: operations["ctx_indicator_catalog_ctx_indicator_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/price-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Price Context */
+        get: operations["facts_price_context_facts_price_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/perp-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Perp Context */
+        get: operations["facts_perp_context_facts_perp_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/reference-stack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Reference Stack */
+        get: operations["facts_reference_stack_facts_reference_stack_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/chain-intel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Chain Intel */
+        get: operations["facts_chain_intel_facts_chain_intel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/market-cap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Market Cap */
+        get: operations["facts_market_cap_facts_market_cap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/confluence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Confluence */
+        get: operations["facts_confluence_facts_confluence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/indicator-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Indicator Catalog */
+        get: operations["facts_indicator_catalog_facts_indicator_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe": {
         parameters: {
             query?: never;
@@ -1729,6 +1888,7 @@ export interface components {
             phase: string;
             /** User Note */
             user_note?: string | null;
+            research_context?: components["schemas"]["ResearchContextBody"] | null;
             /**
              * Entry Price
              * @description Optional hint. Resolver derives entry_price from OHLCV regardless.
@@ -1816,6 +1976,7 @@ export interface components {
             chart_context?: {
                 [key: string]: unknown;
             };
+            research_context?: components["schemas"]["ResearchContextBody"] | null;
             /** Feature Snapshot */
             feature_snapshot?: {
                 [key: string]: unknown;
@@ -2496,6 +2657,77 @@ export interface components {
             /** Embedding */
             embedding: number[];
         };
+        /** ResearchContextBody */
+        ResearchContextBody: {
+            source?: components["schemas"]["ResearchSourceBody"] | null;
+            /** Pattern Family */
+            pattern_family: string;
+            /** Thesis */
+            thesis?: string[];
+            /** Phase Annotations */
+            phase_annotations?: components["schemas"]["ResearchPhaseAnnotationBody"][];
+            entry_spec?: components["schemas"]["ResearchEntrySpecBody"] | null;
+            outcome_spec?: components["schemas"]["ResearchOutcomeSpecBody"] | null;
+            /** Research Tags */
+            research_tags?: string[];
+        };
+        /** ResearchEntrySpecBody */
+        ResearchEntrySpecBody: {
+            /** Entry Phase Id */
+            entry_phase_id: string;
+            /** Entry Trigger */
+            entry_trigger?: string | null;
+            /** Stop Rule */
+            stop_rule?: string | null;
+            /** Target Rule */
+            target_rule?: string | null;
+        };
+        /** ResearchOutcomeSpecBody */
+        ResearchOutcomeSpecBody: {
+            /** Confirm Breakout Within Bars */
+            confirm_breakout_within_bars?: number | null;
+            /** Min Forward Return Pct */
+            min_forward_return_pct?: number | null;
+            /** Stretch Return Pct */
+            stretch_return_pct?: number | null;
+        };
+        /** ResearchPhaseAnnotationBody */
+        ResearchPhaseAnnotationBody: {
+            /** Phase Id */
+            phase_id: string;
+            /** Label */
+            label: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Start Ts */
+            start_ts?: number | null;
+            /** End Ts */
+            end_ts?: number | null;
+            /** Signals Required */
+            signals_required?: string[];
+            /** Signals Preferred */
+            signals_preferred?: string[];
+            /** Signals Forbidden */
+            signals_forbidden?: string[];
+            /** Note */
+            note?: string | null;
+        };
+        /** ResearchSourceBody */
+        ResearchSourceBody: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "telegram_post" | "chart_image" | "manual_note" | "terminal_capture";
+            /** Author */
+            author?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Text */
+            text?: string | null;
+            /** Image Refs */
+            image_refs?: string[];
+        };
         /** ScanMatch */
         ScanMatch: {
             /** Symbol */
@@ -3073,6 +3305,323 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    ctx_fact_ctx_fact_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ctx_indicator_catalog_ctx_indicator_catalog_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                family?: string | null;
+                stage?: string | null;
+                query?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_price_context_facts_price_context_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_perp_context_facts_perp_context_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_reference_stack_facts_reference_stack_get: {
+        parameters: {
+            query?: {
+                symbol?: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_chain_intel_facts_chain_intel_get: {
+        parameters: {
+            query?: {
+                symbol?: string;
+                chain?: string;
+                family?: string | null;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_market_cap_facts_market_cap_get: {
+        parameters: {
+            query?: {
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_confluence_facts_confluence_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_indicator_catalog_facts_indicator_catalog_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                family?: string | null;
+                stage?: string | null;
+                query?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
