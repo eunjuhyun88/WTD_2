@@ -426,13 +426,18 @@ export type {
 	IndicatorCatalogEntry,
 	IndicatorCatalogResponse
 } from './facts/indicatorCatalog';
-export type { SearchPlaneState, ScanRequest, ScanHighlight, ScanResult } from './search/scan';
+export type { SearchPlaneState, SearchCandidate, ScanRequest, ScanResult } from './search/scan';
 export type {
 	SeedSearchRequest,
 	SeedSearchCandidate,
 	SeedSearchResult
 } from './search/seedSearch';
-export type { PatternCatalogEntry, PatternCatalogResponse } from './search/catalog';
+export type {
+	SearchCorpusWindowSummary,
+	SearchCorpusCatalogResponse,
+	PatternCatalogEntry,
+	PatternCatalogResponse
+} from './search/catalog';
 export type {
 	AgentContextEvidence,
 	AgentContextCompareItem,
