@@ -34,6 +34,7 @@ from patterns.types import PatternObject, PhaseAttemptRecord
 from scanner.feature_calc import (
     MIN_HISTORY_BARS,
     compute_features_table,
+    extract_canonical_pattern_feature_snapshot,
 )
 
 from .state_store import ResearchRun
