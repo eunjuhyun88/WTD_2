@@ -55,7 +55,9 @@ from building_blocks.confirmations.oi_change import oi_change
 from building_blocks.confirmations.oi_expansion_confirm import oi_expansion_confirm
 from building_blocks.confirmations.oi_hold_after_spike import oi_hold_after_spike
 from building_blocks.confirmations.oi_spike_with_dump import oi_spike_with_dump
+from building_blocks.confirmations.oi_contraction_confirm import oi_contraction_confirm
 from building_blocks.confirmations.positive_funding_bias import positive_funding_bias
+from building_blocks.confirmations.negative_funding_bias import negative_funding_bias
 from building_blocks.confirmations.post_dump_compression import post_dump_compression
 from building_blocks.confirmations.reclaim_after_dump import reclaim_after_dump
 from building_blocks.confirmations.sideways_compression import sideways_compression
@@ -75,6 +77,10 @@ from building_blocks.confirmations.relative_velocity_bull import relative_veloci
 from building_blocks.confirmations.cvd_price_divergence import cvd_price_divergence
 from building_blocks.confirmations.orderbook_imbalance_ratio import orderbook_imbalance_ratio
 from building_blocks.confirmations.oi_price_lag_detect import oi_price_lag_detect
+from building_blocks.confirmations.atr_ultra_low import atr_ultra_low
+from building_blocks.confirmations.liq_zone_squeeze_setup import liq_zone_squeeze_setup
+from building_blocks.confirmations.volume_surge_bull import volume_surge_bull
+from building_blocks.confirmations.volume_surge_bear import volume_surge_bear
 from social.blocks import (
     social_sentiment_spike,
     kol_signal,
@@ -140,7 +146,9 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("oi_expansion_confirm", oi_expansion_confirm),
     ("oi_hold_after_spike", oi_hold_after_spike),
     ("oi_spike_with_dump", oi_spike_with_dump),
+    ("oi_contraction_confirm", oi_contraction_confirm),
     ("positive_funding_bias", positive_funding_bias),
+    ("negative_funding_bias", negative_funding_bias),
     ("post_dump_compression", post_dump_compression),
     ("reclaim_after_dump", reclaim_after_dump),
     ("sideways_compression", sideways_compression),
@@ -172,6 +180,10 @@ _BLOCKS: list[tuple[str, callable]] = [
     ("relative_velocity_bull",     relative_velocity_bull),
     ("cvd_price_divergence",       cvd_price_divergence),
     ("orderbook_imbalance_ratio",  orderbook_imbalance_ratio),
+    ("atr_ultra_low",              atr_ultra_low),
+    ("liq_zone_squeeze_setup",     liq_zone_squeeze_setup),
+    ("volume_surge_bull",          volume_surge_bull),
+    ("volume_surge_bear",          volume_surge_bear),
     # 딸깍 전략 blocks (W-0114)
     ("oi_price_lag_detect",        oi_price_lag_detect),
     ("oi_price_lag_detect_strong", lambda ctx: oi_price_lag_detect(ctx, oi_threshold=0.15, price_threshold=0.015)),
