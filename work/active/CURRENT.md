@@ -90,8 +90,8 @@
 ## Current Dirty Tree Snapshot
 
 - active on `codex/w-0122-consumer-fact-cut`
-- current slice: W-0122 consumer fact cut (`/api/market/events` prefers `facts/perp-context`; `/api/terminal/intel-policy` consumes `/api/market/macro-overview`, which is engine-preferred via `GET /facts/market-cap`)
-- scoped files: `app/src/routes/api/market/events/+server.ts`, `app/src/routes/api/market/events/events.test.ts`, `app/src/routes/api/terminal/intel-policy/+server.ts`, `app/src/lib/server/intelPolicyRuntime.ts`, `app/src/routes/api/terminal/intel-policy/intel-policy.test.ts`, `app/src/routes/api/coingecko/global/+server.ts`, `work/active/W-0122-free-indicator-stack.md`
+- current slice: reference-stack fact coverage adapter
+- decision: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` is curated-reference oriented; keep public `entries` stable and attach engine coverage only as additive `factCoverage`
 
 ---
 

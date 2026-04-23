@@ -4,6 +4,7 @@ import type {
 	IndicatorCatalogResponse as IndicatorCatalogPayload
 } from '$lib/contracts/facts/indicatorCatalog';
 import type { MarketCapSnapshot } from '$lib/contracts/facts/marketCap';
+import type { ReferenceStackSnapshot } from '$lib/contracts/facts/referenceStack';
 import type { EngineFactConfluencePayload } from '$lib/server/confluence/engineFactAdapter';
 import { fetchEnginePlaneJson } from './shared';
 
@@ -63,6 +64,21 @@ export async function fetchFactConfluenceProxy(
 		query: {
 			symbol: args.symbol,
 			timeframe: args.timeframe,
+			offline: args.offline ?? true,
+		},
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchFactReferenceStackProxy(
+	fetchFn: ServerFetch,
+	args: { symbol: string; timeframe?: string; offline?: boolean },
+): Promise<ReferenceStackSnapshot | null> {
+	return fetchEnginePlaneJson<ReferenceStackSnapshot>(fetchFn, 'facts', {
+		path: 'reference-stack',
+		query: {
+			symbol: args.symbol,
+			timeframe: args.timeframe ?? '1h',
 			offline: args.offline ?? true,
 		},
 		timeoutMs: 8_000,
