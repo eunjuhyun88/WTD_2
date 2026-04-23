@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from api.routes import ctx
 from exceptions import CacheMiss
+from market_engine.indicator_catalog import CATALOG
 
 
 def _client() -> TestClient:
@@ -71,3 +72,65 @@ def test_ctx_fact_surfaces_cache_miss_as_service_unavailable(monkeypatch) -> Non
             "message": "BTCUSDT_1h not cached",
         }
     }
+
+
+def test_ctx_indicator_catalog_returns_exactly_100_metrics() -> None:
+    assert len(CATALOG) == 100
+
+    response = _client().get("/ctx/indicator-catalog")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["owner"] == "engine"
+    assert payload["plane"] == "fact"
+    assert payload["kind"] == "indicator_catalog"
+    assert payload["status"] == "transitional"
+    assert isinstance(payload["generated_at"], str)
+    assert payload["total"] == 100
+    assert payload["matched"] == 100
+    assert payload["coverage"]["usable_now"] == payload["coverage"]["live"] + payload["coverage"]["partial"]
+    assert payload["counts"]["family"]["technical"] == 10
+    assert payload["counts"]["family"]["derivatives"] == 18
+    assert payload["counts"]["family"]["onchain"] == 24
+    assert payload["counts"]["family"]["defi_dex"] == 18
+    assert payload["counts"]["family"]["options"] == 10
+    assert payload["counts"]["family"]["macro"] == 9
+    assert payload["counts"]["family"]["social_tokenomics"] == 11
+
+
+def test_ctx_indicator_catalog_supports_filters() -> None:
+    response = _client().get(
+        "/ctx/indicator-catalog",
+        params={"status": "live", "family": "derivatives", "query": "funding"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["filters"] == {
+        "status": "live",
+        "family": "derivatives",
+        "stage": None,
+        "query": "funding",
+    }
+    metric_ids = {metric["id"] for metric in payload["metrics"]}
+    assert "funding_rate" in metric_ids
+    assert "funding_rate_percentile" in metric_ids
+    assert "funding_flip" in metric_ids
+    assert all(metric["status"] == "live" for metric in payload["metrics"])
+    assert all(metric["family"] == "derivatives" for metric in payload["metrics"])
+    assert all(metric["current_owner"] in {"engine", "app_bridge", "none"} for metric in payload["metrics"])
+
+
+def test_ctx_indicator_catalog_rejects_invalid_filter_values() -> None:
+    status_response = _client().get("/ctx/indicator-catalog", params={"status": "wrong"})
+    assert status_response.status_code == 400
+    assert status_response.json()["detail"]["code"] == "invalid_status"
+
+    family_response = _client().get("/ctx/indicator-catalog", params={"family": "wrong"})
+    assert family_response.status_code == 400
+    assert family_response.json()["detail"]["code"] == "invalid_family"
+
+    stage_response = _client().get("/ctx/indicator-catalog", params={"stage": "wrong"})
+    assert stage_response.status_code == 400
+    assert stage_response.json()["detail"]["code"] == "invalid_stage"

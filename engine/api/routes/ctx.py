@@ -18,6 +18,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Query
 
 from market_engine.fact_plane import FactContextBuildError, build_fact_context
+from market_engine.indicator_catalog import build_indicator_catalog, normalize_indicator_catalog_filters
 from market_engine.ctx_cache import cache_summary, refresh_global_ctx
 
 log = logging.getLogger("engine.ctx")
@@ -53,3 +54,42 @@ async def ctx_fact(
         return build_fact_context(symbol=symbol, timeframe=timeframe, offline=offline)
     except FactContextBuildError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.to_detail()) from exc
+
+
+@router.get("/indicator-catalog")
+async def ctx_indicator_catalog(
+    status: str | None = Query(None),
+    family: str | None = Query(None),
+    stage: str | None = Query(None),
+    query: str | None = Query(None),
+) -> dict:
+    """Return the canonical engine-owned 100-metric indicator inventory."""
+    try:
+        filters = normalize_indicator_catalog_filters(
+            status=status,
+            family=family,
+            stage=stage,
+            query=query,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        code = "invalid_filter"
+        if message.startswith("status must be one of"):
+            code = "invalid_status"
+        elif message.startswith("family must be one of"):
+            code = "invalid_family"
+        elif message.startswith("stage must be one of"):
+            code = "invalid_stage"
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": code,
+                "message": message,
+            },
+        ) from exc
+    return build_indicator_catalog(
+        status=filters["status"],
+        family=filters["family"],
+        stage=filters["stage"],
+        query=filters["query"],
+    )
