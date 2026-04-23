@@ -39,6 +39,14 @@ def oi_contraction_confirm(
             f"min_decline_pct must be in (0, 1), got {min_decline_pct}"
         )
 
+    feature_col = f"oi_change_{lookback_bars}h"
+    if feature_col in ctx.features.columns:
+        contracting = ctx.features[feature_col].astype(float) <= -min_decline_pct
+        return contracting.reindex(ctx.features.index, fill_value=False).astype(bool)
+
+    if "open_interest" not in ctx.klines.columns:
+        return pd.Series(False, index=ctx.features.index, dtype=bool)
+
     oi = ctx.klines["open_interest"].astype(float)
 
     # Prior OI (lookback_bars ago)
