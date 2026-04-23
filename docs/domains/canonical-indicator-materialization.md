@@ -25,6 +25,49 @@ slices, `W-0142` runtime references, and future AI context builders must share.
 4. Search stores compact signatures, not full raw replay payloads.
 5. AI consumes compact summaries and source ids, never raw provider payloads.
 
+## Ownership Boundary
+
+This domain exists to prevent common feature math from leaking into pattern
+logic.
+
+### Data Engine owns
+
+- raw collection
+- normalization
+- time-series alignment
+- derived feature computation
+- windowed feature materialization
+- freshness, quality, degraded state, and fallback handling
+
+Examples:
+
+- `oi_zscore`
+- `funding_flip_flag`
+- `volume_percentile`
+- `cvd_divergence_price`
+- `liq_imbalance`
+- `pullback_depth_pct`
+- `timeframe_alignment_score`
+
+These are shared materials used by many pattern families, so they must be
+computed once in the canonical feature plane and reused everywhere else.
+
+### Pattern Engine owns
+
+- which features compose a phase
+- phase transition rules
+- pattern family definitions
+- replay, similarity, search, rerank, promotion
+
+Examples:
+
+- `real_dump = price_dump_pct + volume_spike_flag + oi_spike_flag`
+- `accumulation_15m = higher_low_count + oi_hold_flag + shallow pullback`
+- `breakout_oi_reexpand = breakout_flag + oi_reexpansion_flag + funding_positive_flag`
+
+This layer interprets canonical features. It does not recompute generic zscore,
+slope, percentile, divergence, or regime features inside each pattern family.
+
 ## Canonical Layers
 
 ### 1. Raw Stores
@@ -139,6 +182,25 @@ Required promoted window features:
   - `trend_regime`
   - `volatility_regime`
   - `timeframe_alignment_score`
+
+### 4. Pattern Layer Inputs
+
+Pattern logic reads from the canonical feature plane and may persist its own
+outputs, but it does not own generic feature definitions.
+
+Canonical target stores:
+
+- `pattern_phase_windows(symbol, venue, timeframe, window_start_ts, window_end_ts, pattern_family, phase_id, score, evidence_json)`
+- `pattern_search_results(run_id, pattern_family, candidate_id, similarity_score, phase_path_json, evidence_json)`
+
+Pattern-owned outputs:
+
+- phase labels such as `fake_dump`, `arch_zone`, `real_dump`,
+  `accumulation_15m`, `breakout_oi_reexpand`
+- replay scores
+- state similarity scores
+- benchmark pack match results
+- promotion decisions
 
 ## Core Indicator Dictionary
 
@@ -367,4 +429,3 @@ Rules:
 - define UI archetypes or rendering behavior
 - promise immediate provider coverage for every field listed here
 - force one physical database engine in this document
-

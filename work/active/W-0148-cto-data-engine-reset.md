@@ -73,6 +73,7 @@ Engine logic change
 8. this branch now adds an `app-web` dual-target build (`vercel` default, `cloud-run` via `@sveltejs/adapter-node`), `cloudbuild.app.yaml`, and a Cloud Run app deploy runbook, so the three-runtime topology is executable from repository artifacts.
 9. Cloud Run smoke exposed two real server blockers on the app surface: `/api/confluence/current` had route-local helper leakage that broke Node builds, and `/healthz` / `/readyz` were incorrectly behind the auth redirect path.
 10. `origin/main` is now at `cf657e39` after PR #241 and PR #242, so this lane's remaining work is queue hygiene only; the next real execution lanes stay `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`.
+11. common feature math and pattern-family interpretation are still too easy to conflate; the reset must explicitly separate `data engine feature production` from `pattern engine phase/replay logic`.
 
 ## Assumptions
 
@@ -100,6 +101,7 @@ Engine logic change
 - `app` 의 ingress/fact/search adapter 들은 최종 ownership 이 아니라 migration bridge 로만 유지한다.
 - execution spec 은 `docs/domains/terminal-ai-scan-architecture.md` 의 plane contract table, owner routes, storage rules, cutover plan 을 canonical implementation guide 로 삼는다.
 - calculation-ready indicator definitions, materialized feature stores, and corpus signatures are fixed in `docs/domains/canonical-indicator-materialization.md`.
+- common feature production belongs to the data engine; pattern engines may only consume canonical features and define phase/family/replay rules on top.
 - 데이터 종류별 canonical `table / cache / route / job` 분해는 같은 문서의 `Data Domain Split` 표를 구현 기준으로 삼는다.
 - 새 데이터/패턴 lane 은 같은 문서의 `Canonical Lane Design Pattern` 과 `Lane Checklist` 를 먼저 채운 뒤 구현한다.
 - 첫 code slice 는 app-side raw provider fan-out 을 당장 다 없애는 대신, engine 에 bounded fact-context route 를 열어 이후 migration 의 landing zone 을 만든다.
@@ -258,7 +260,8 @@ Engine logic change
 
 1. keep `CURRENT.md` aligned with merged mainline so the canonical order remains `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`, and reject new branch-extraction work that bypasses that queue.
 2. W-0156/W-0122 implementation lanes should codify the raw retention split explicitly: canonical normalized tables for replay-critical data, TTL cache for provider-native blobs, and materialized `feature_windows` as the cross-pattern contract.
-3. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
+3. freeze the data-engine vs pattern-engine ownership boundary so `W-0122` computes canonical features once and `W-0145` consumes them without duplicating math inside replay/search logic.
+4. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
 
 ## Exit Criteria
 

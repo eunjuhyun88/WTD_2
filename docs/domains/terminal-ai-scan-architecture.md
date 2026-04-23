@@ -4,7 +4,7 @@
 
 터미널 제품의 핵심 수직 경로를 아래 하나의 구조로 정렬한다.
 
-`raw data -> fact plane -> search plane -> agent context -> surface`
+`raw data -> canonical feature plane -> pattern/search plane -> agent context -> surface`
 
 그리고 이 흐름과 별도로, workflow truth 를 담당하는 engine-owned
 `runtime state / workflow state` plane 을 둔다.
@@ -12,7 +12,7 @@
 이 구조의 목표는 세 가지다.
 
 1. AI 가 raw provider fan-out 없이도 일관된 사실을 읽게 한다.
-2. scan/search 가 UI 와 분리된 canonical runtime 을 갖게 한다.
+2. pattern/search 가 common feature 재계산 없이 canonical feature plane 위에서 동작하게 한다.
 3. surface 는 비교/저장/실행 UX 만 담당하게 한다.
 
 ## Current Diagnosis
@@ -36,6 +36,7 @@
 5. degraded provider state (`live / blocked / reference_only`) 는 first-class contract 다.
 6. refactor 는 plane 단위 strangler 방식으로 하고, big-bang rewrite 는 금지한다.
 7. raw retention 은 `replay 가능한 truth` 중심으로만 durable 하게 저장하고, provider blob 전체 보관은 금지한다.
+8. shared feature math belongs to the data engine; pattern engines only interpret those features.
 
 ## Raw Storage Policy
 
@@ -197,10 +198,33 @@ Parallel rule:
 - `live / blocked / reference_only` state 를 반드시 포함한다.
 - UI/AI 는 provider 개별 응답을 몰라도 된다.
 
-### 3. Search Plane
+### 3. Canonical Feature Plane
 
 역할:
 
+- normalized market series에서 reusable feature를 계산
+- 공통 zscore / slope / divergence / percentile / duration / regime 계열을 한 번만 계산
+- fact, pattern, AI, runtime 이 같은 feature vocabulary 를 재사용하게 함
+
+대표 object / store:
+
+- `feature_bar_snapshots`
+- `feature_windows`
+- compact feature projections inside bounded fact contracts
+
+규칙:
+
+- `oi_zscore`, `funding_flip_flag`, `volume_percentile`,
+  `cvd_divergence_price`, `liq_imbalance`, `pullback_depth_pct`,
+  `timeframe_alignment_score` 같은 공통 재료는 여기서만 계산한다.
+- pattern family 마다 같은 feature 를 다시 계산하지 않는다.
+- 자세한 지표 정의는 `docs/domains/canonical-indicator-materialization.md` 를 canonical spec 으로 따른다.
+
+### 4. Pattern / Search Plane
+
+역할:
+
+- canonical feature plane 위에서 phase / family / replay / similarity 를 정의
 - 유사 패턴 탐색
 - market-wide retrieval
 - replay / rerank / promotion
@@ -226,11 +250,13 @@ Parallel rule:
 
 규칙:
 
+- pattern/search 는 feature producer 가 아니라 feature interpreter 다.
+- phase rule, transition, family definition, replay score 는 이 plane 소유다.
 - on-demand live scan 과 historical retrieval 을 분리한다.
 - historical retrieval 은 corpus-first 로만 간다.
 - search plane 은 explanation 과 score 를 같이 반환한다.
 
-### 4. Agent Context Layer
+### 5. Agent Context Layer
 
 역할:
 
@@ -255,7 +281,7 @@ Parallel rule:
 - token budget 우선
 - LLM 이 다시 broad retrieval 을 트리거하지 않아도 되게 구성
 
-### 5. Runtime State Plane
+### 6. Runtime State Plane
 
 역할:
 
@@ -272,7 +298,7 @@ Parallel rule:
 - user workflow truth 는 fact/search cache 와 분리되어야 한다.
 - local SQLite/file 은 fallback only 이다.
 
-### 6. Surface Plane
+### 7. Surface Plane
 
 역할:
 
@@ -299,8 +325,8 @@ Parallel rule:
 ### A. User asks AI about a symbol
 
 1. surface selects current symbol/timeframe
-2. fact plane returns canonical snapshots
-3. search plane returns latest scan or relevant catalog/search results
+2. fact plane and canonical feature plane return bounded snapshots
+3. pattern/search plane returns latest scan or relevant catalog/search results
 4. agent context builder compresses them into `AgentContextPack`
 5. runtime state is consulted only for saved workflow context
 6. AI route consumes only `AgentContextPack`
@@ -308,7 +334,7 @@ Parallel rule:
 ### B. User runs pattern scan
 
 1. surface emits `ScanRequest`
-2. search plane executes live scan
+2. pattern/search plane executes live scan on canonical features
 3. search plane returns `ScanResult`
 4. result metadata may be persisted into runtime state
 5. result is optionally used by AI
