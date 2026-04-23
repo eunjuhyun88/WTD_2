@@ -148,17 +148,16 @@ For `W-0122`, the immediate job is narrower:
 2. make `/api/market/flow` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
 3. keep ticker / CMC / liquidation details on legacy ingress only until engine fact routes expose them canonically
 
-### Current Lane Slice — Consumer Fact Cut
+### Current Lane Slice — Reference Stack Consumer Cut
 
-This slice groups the next product-facing fact consumers under one W-0122 merge unit so the app keeps moving toward engine-owned truth without spawning a second branch for the same lane.
+This slice keeps the public `/api/market/reference-stack` route stable while making engine fact coverage first-class and visible to product consumers.
 
-1. keep `/api/market/events` public payload stable
-2. make `/api/market/events` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
-3. keep DexScreener event feed and liquidation enrichment on existing ingress bridges until engine fact routes expose a canonical event bundle
-4. keep `/api/terminal/intel-policy` public payload stable
-5. make `/api/terminal/intel-policy` consume `/api/market/macro-overview`, which is already engine-preferred via `GET /facts/market-cap`
-6. keep existing news / events / flow / trending / picks joins in place; only add the macro regime card on top of the flow panel
-7. lock the cut with targeted `market/events` + `terminal/intel-policy` route tests
+1. keep `/api/market/reference-stack` curated public payload stable
+2. read engine `/api/facts/reference-stack` through the app fact-plane proxy
+3. attach engine payload only as additive `factCoverage`
+4. do not replace curated `entries` with engine `sources`
+5. do not move stack-building ownership out of `loadMarketReferenceStack()` in this cut
+6. lock the cut with targeted `reference-stack` route tests and plane-client coverage
 
 ## Goal
 

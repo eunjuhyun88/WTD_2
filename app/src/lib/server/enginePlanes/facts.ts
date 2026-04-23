@@ -39,6 +39,35 @@ export interface PerpContextPayload {
 	notes: string[];
 }
 
+export interface FactReferenceStackSource {
+	id: string;
+	state: 'live' | 'reference_only' | 'blocked' | 'stale';
+	rows: number;
+	summary: string;
+}
+
+export interface FactReferenceStackPayload {
+	ok: boolean;
+	owner: 'engine';
+	plane: 'fact';
+	kind: 'reference_stack';
+	status: string;
+	generated_at: string;
+	symbol: string;
+	timeframe: string;
+	sources: FactReferenceStackSource[];
+	coverage: {
+		live: number;
+		partial: number;
+		blocked: number;
+		missing: number;
+		usable_now: number;
+		coverage_pct: number;
+	};
+	catalogCounts: Record<string, number>;
+	notes: string[];
+}
+
 export async function fetchFactContextProxy(
 	fetchFn: ServerFetch,
 	args: { symbol: string; timeframe: string; offline?: boolean },
@@ -78,6 +107,21 @@ export async function fetchPerpContextProxy(
 		query: {
 			symbol: args.symbol,
 			timeframe: args.timeframe,
+			offline: args.offline ?? true,
+		},
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchFactReferenceStackProxy(
+	fetchFn: ServerFetch,
+	args: { symbol: string; timeframe?: string; offline?: boolean },
+): Promise<FactReferenceStackPayload | null> {
+	return fetchEnginePlaneJson<FactReferenceStackPayload>(fetchFn, 'facts', {
+		path: 'reference-stack',
+		query: {
+			symbol: args.symbol,
+			timeframe: args.timeframe ?? '1h',
 			offline: args.offline ?? true,
 		},
 		timeoutMs: 8_000,

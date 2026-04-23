@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`41a72eef` — current local `origin/main` ref
+`0d2423ad` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -89,9 +89,10 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0122-consumer-fact-cut`
-- current slice: W-0122 consumer fact cut (`/api/market/events` prefers `facts/perp-context`; `/api/terminal/intel-policy` consumes `/api/market/macro-overview`, which is engine-preferred via `GET /facts/market-cap`)
-- scoped files: `app/src/routes/api/market/events/+server.ts`, `app/src/routes/api/market/events/events.test.ts`, `app/src/routes/api/terminal/intel-policy/+server.ts`, `app/src/lib/server/intelPolicyRuntime.ts`, `app/src/routes/api/terminal/intel-policy/intel-policy.test.ts`, `app/src/routes/api/coingecko/global/+server.ts`, `work/active/W-0122-free-indicator-stack.md`
+- active on `codex/w-0122-reference-stack-cut`
+- worktree clean at branch start from merged `origin/main`
+- current slice: W-0122 reference-stack consumer cut (`/api/market/reference-stack` keeps curated public payload stable while attaching additive engine fact coverage from `GET /facts/reference-stack`)
+- scoped files: `app/src/lib/server/enginePlanes/facts.ts`, `app/src/lib/server/enginePlanes/planeClients.test.ts`, `app/src/routes/api/market/reference-stack/+server.ts`, `app/src/routes/api/market/reference-stack/reference-stack.test.ts`, `work/active/W-0122-free-indicator-stack.md`
 
 ---
 
@@ -115,10 +116,11 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `41a72eef` |
+| origin/main | — | local remote-tracking ref = `0d2423ad` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
+| codex/w-0122-reference-stack-cut | W-0122 | active Lane A slice after PR #200; additive engine reference-stack coverage cut |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
