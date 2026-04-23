@@ -76,13 +76,11 @@
     />
   </div>
   <div class="list">
-    {#each filtered as c, i (c.id)}
+    {#each filtered as c (c.id)}
       <button
         type="button"
         class="item"
         onclick={() => onRun(c)}
-        onmouseenter={(e) => e.currentTarget.style.background = 'var(--g2)'}
-        onmouseleave={(e) => e.currentTarget.style.background = 'transparent'}
       >
         <span class="section">{c.section}</span>
         <span class="label">{c.label}</span>
@@ -156,6 +154,10 @@
 
   .item:last-child {
     border-bottom: none;
+  }
+
+  .item:hover {
+    background: var(--g2);
   }
 
   .section {
