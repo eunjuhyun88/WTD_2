@@ -141,12 +141,12 @@ function buildPublicSnapshotFromLegacy(snapshot: MarketSnapshotResult): PublicMa
   };
 }
 
-function buildPublicSnapshotFromEngineFact(
+export function buildPublicSnapshotFromEngineFact(
   pair: string,
   timeframe: string,
   payload: FactSnapshot,
 ): PublicMarketSnapshotResult {
-  const sourceStates = payload.sources ?? payload.provider_state ?? {};
+  const sourceStates = payload.provider_state ?? payload.sources ?? {};
   const sources = Object.fromEntries(
     Object.entries(sourceStates).map(([key, value]) => [key, value?.status === 'ok' || value?.status === 'live']),
   );
