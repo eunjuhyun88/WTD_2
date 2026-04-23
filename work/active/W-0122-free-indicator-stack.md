@@ -496,6 +496,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — `codex/w-0122-market-cap-fact-cut` history 에 unrelated `W-0148` commit 이 섞였기 때문에, 현재 PR candidate 는 clean execution branch/worktree `codex/w-0122-consumer-fact-cut` 에서 이어간다.
 - **`ctx/fact` should satisfy the contract it already advertises** — `FactSnapshot` already exposes optional `fact_id`, `provider_state`, `confluence`, and `reference_health`, and app adapters probe for those fields today. The engine landing zone should populate them before more transitional app logic grows around missing values.
 - **legacy `/api/engine/ctx/fact` bridge is dead and should be removed** — fact-plane callers already use `/api/facts/ctx/fact`; keeping the same path allowlisted on the frozen legacy engine proxy only preserves duplicate ingress without any consumer.
+- **snapshot adapter should prefer `provider_state` over transitional `sources`** — once `ctx/fact` fills canonical provider summaries, app compatibility routes should read that normalized plane contract first and only fall back to raw transitional source maps when older engine payloads are encountered.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
