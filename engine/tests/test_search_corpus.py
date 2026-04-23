@@ -80,6 +80,32 @@ def test_search_corpus_store_upserts_windows_and_initializes_search_tables(tmp_p
     }.issubset(tables)
 
 
+def test_search_corpus_store_persists_seed_and_scan_runs(tmp_path) -> None:
+    store = SearchCorpusStore(tmp_path / "search.sqlite")
+    windows = build_corpus_windows("ETHUSDT", "1h", _klines(), window_bars=4, stride_bars=2)
+    store.upsert_windows(windows)
+    candidate = {
+        "window_id": windows[0].window_id,
+        "symbol": "ETHUSDT",
+        "timeframe": "1h",
+        "score": 0.75,
+        "payload": {"window_id": windows[0].window_id, "symbol": "ETHUSDT", "timeframe": "1h"},
+    }
+
+    seed = store.create_seed_run(request={"symbol": "ETHUSDT"}, candidates=[candidate])
+    scan = store.create_scan_run(request={"symbol": "ETHUSDT"}, candidates=[candidate])
+
+    loaded_seed = store.get_seed_run(seed["run_id"])
+    loaded_scan = store.get_scan_run(scan["scan_id"])
+
+    assert loaded_seed is not None
+    assert loaded_seed["status"] == "completed"
+    assert loaded_seed["candidates"][0]["window_id"] == windows[0].window_id
+    assert loaded_scan is not None
+    assert loaded_scan["candidates"][0]["symbol"] == "ETHUSDT"
+    assert loaded_scan["candidates"][0]["payload"]["window_id"] == windows[0].window_id
+
+
 def test_search_corpus_refresh_job_uses_offline_cache_and_persists_windows(tmp_path) -> None:
     store = SearchCorpusStore(tmp_path / "search.sqlite")
     calls: list[tuple[str, str, bool]] = []

@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -221,6 +222,152 @@ class SearchCorpusStore:
             row = conn.execute("SELECT COUNT(*) AS count FROM search_corpus_windows").fetchone()
         return int(row["count"]) if row else 0
 
+    def create_seed_run(
+        self,
+        *,
+        request: dict[str, Any],
+        candidates: list[dict[str, Any]],
+        status: str = "completed",
+    ) -> dict[str, Any]:
+        run_id = str(uuid.uuid4())
+        now = _utcnow_iso()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO search_seed_runs (
+                  run_id, request_json, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (run_id, _json_dumps(request), status, now, now),
+            )
+            conn.executemany(
+                """
+                INSERT INTO search_seed_candidates (
+                  candidate_id, run_id, window_id, score, payload_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        _candidate_id(run_id, candidate.get("window_id"), index),
+                        run_id,
+                        candidate.get("window_id"),
+                        float(candidate.get("score", 0.0)),
+                        _json_dumps(candidate.get("payload", {})),
+                        now,
+                    )
+                    for index, candidate in enumerate(candidates)
+                ],
+            )
+        return self.get_seed_run(run_id) or {}
+
+    def get_seed_run(self, run_id: str) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            run = conn.execute(
+                "SELECT * FROM search_seed_runs WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+            if run is None:
+                return None
+            candidates = conn.execute(
+                """
+                SELECT * FROM search_seed_candidates
+                WHERE run_id = ?
+                ORDER BY score DESC, created_at DESC
+                """,
+                (run_id,),
+            ).fetchall()
+        return {
+            "run_id": run["run_id"],
+            "request": _json_loads_dict(run["request_json"]),
+            "status": run["status"],
+            "created_at": run["created_at"],
+            "updated_at": run["updated_at"],
+            "candidates": [
+                {
+                    "candidate_id": row["candidate_id"],
+                    "window_id": row["window_id"],
+                    "score": float(row["score"]),
+                    "payload": _json_loads_dict(row["payload_json"]),
+                    "created_at": row["created_at"],
+                }
+                for row in candidates
+            ],
+        }
+
+    def create_scan_run(
+        self,
+        *,
+        request: dict[str, Any],
+        candidates: list[dict[str, Any]],
+        status: str = "completed",
+    ) -> dict[str, Any]:
+        scan_id = str(uuid.uuid4())
+        now = _utcnow_iso()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO search_scan_runs (
+                  scan_id, request_json, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (scan_id, _json_dumps(request), status, now, now),
+            )
+            conn.executemany(
+                """
+                INSERT INTO search_scan_candidates (
+                  candidate_id, scan_id, symbol, timeframe, score, payload_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        _candidate_id(scan_id, candidate.get("window_id"), index),
+                        scan_id,
+                        str(candidate.get("symbol", "")),
+                        str(candidate.get("timeframe", "")),
+                        float(candidate.get("score", 0.0)),
+                        _json_dumps(candidate.get("payload", {})),
+                        now,
+                    )
+                    for index, candidate in enumerate(candidates)
+                ],
+            )
+        return self.get_scan_run(scan_id) or {}
+
+    def get_scan_run(self, scan_id: str) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            run = conn.execute(
+                "SELECT * FROM search_scan_runs WHERE scan_id = ?",
+                (scan_id,),
+            ).fetchone()
+            if run is None:
+                return None
+            candidates = conn.execute(
+                """
+                SELECT * FROM search_scan_candidates
+                WHERE scan_id = ?
+                ORDER BY score DESC, created_at DESC
+                """,
+                (scan_id,),
+            ).fetchall()
+        return {
+            "scan_id": run["scan_id"],
+            "request": _json_loads_dict(run["request_json"]),
+            "status": run["status"],
+            "created_at": run["created_at"],
+            "updated_at": run["updated_at"],
+            "candidates": [
+                {
+                    "candidate_id": row["candidate_id"],
+                    "symbol": row["symbol"],
+                    "timeframe": row["timeframe"],
+                    "score": float(row["score"]),
+                    "payload": _json_loads_dict(row["payload_json"]),
+                    "created_at": row["created_at"],
+                }
+                for row in candidates
+            ],
+        }
+
     @staticmethod
     def _row_to_window(row: sqlite3.Row) -> CorpusWindow:
         return CorpusWindow(
@@ -235,6 +382,11 @@ class SearchCorpusStore:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
+
+
+def _candidate_id(run_id: str, window_id: Any, index: int) -> str:
+    raw = f"{run_id}|{window_id or ''}|{index}".encode("utf-8")
+    return hashlib.sha1(raw).hexdigest()[:24]
 
 
 def build_corpus_windows(

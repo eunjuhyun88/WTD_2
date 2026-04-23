@@ -278,6 +278,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Seed */
+        post: operations["search_seed_search_seed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/seed/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Seed Result */
+        get: operations["search_seed_result_search_seed__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Scan */
+        post: operations["search_scan_search_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/scan/{scan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Scan Result */
+        get: operations["search_scan_result_search_scan__scan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe": {
         parameters: {
             query?: never;
@@ -2781,33 +2849,6 @@ export interface components {
             /** Price */
             price: number;
         };
-        /** ScanRequest */
-        ScanRequest: {
-            /** Symbols */
-            symbols?: string[] | null;
-            /**
-             * Send Alerts
-             * @default true
-             */
-            send_alerts: boolean;
-        };
-        /** ScanResponse */
-        ScanResponse: {
-            /** Scanned At */
-            scanned_at: string;
-            /** N Symbols */
-            n_symbols: number;
-            /** N Signals */
-            n_signals: number;
-            /** Signals */
-            signals: {
-                [key: string]: unknown;
-            }[];
-            /** Errors */
-            errors: string[];
-            /** Duration Sec */
-            duration_sec: number;
-        };
         /** ScoreRequest */
         ScoreRequest: {
             /** Symbol */
@@ -2832,6 +2873,23 @@ export interface components {
              * @default false
              */
             ensemble_triggered: boolean;
+        };
+        /** SearchCandidate */
+        SearchCandidate: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Window Id */
+            window_id?: string | null;
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Score */
+            score: number;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
         };
         /** SearchCatalogResponse */
         SearchCatalogResponse: {
@@ -2881,6 +2939,54 @@ export interface components {
             signature?: {
                 [key: string]: unknown;
             };
+        };
+        /** SeedSearchRequest */
+        SeedSearchRequest: {
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Signature */
+            signature?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+        };
+        /** SeedSearchResponse */
+        SeedSearchResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /** Status */
+            status: string;
+            /** Generated At */
+            generated_at: string;
+            /** Run Id */
+            run_id: string;
+            /** Request */
+            request?: {
+                [key: string]: unknown;
+            };
+            /** Candidates */
+            candidates?: components["schemas"]["SearchCandidate"][];
         };
         /** SnapInput */
         SnapInput: {
@@ -3237,6 +3343,77 @@ export interface components {
             symbol: string;
             /** Verdict */
             verdict: string;
+        };
+        /** ScanRequest */
+        api__routes__scanner__ScanRequest: {
+            /** Symbols */
+            symbols?: string[] | null;
+            /**
+             * Send Alerts
+             * @default true
+             */
+            send_alerts: boolean;
+        };
+        /** ScanResponse */
+        api__routes__scanner__ScanResponse: {
+            /** Scanned At */
+            scanned_at: string;
+            /** N Symbols */
+            n_symbols: number;
+            /** N Signals */
+            n_signals: number;
+            /** Signals */
+            signals: {
+                [key: string]: unknown;
+            }[];
+            /** Errors */
+            errors: string[];
+            /** Duration Sec */
+            duration_sec: number;
+        };
+        /** ScanRequest */
+        api__schemas_search__ScanRequest: {
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /**
+             * Limit
+             * @default 20
+             */
+            limit: number;
+        };
+        /** ScanResponse */
+        api__schemas_search__ScanResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /** Status */
+            status: string;
+            /** Generated At */
+            generated_at: string;
+            /** Scan Id */
+            scan_id: string;
+            /** Request */
+            request?: {
+                [key: string]: unknown;
+            };
+            /** Candidates */
+            candidates?: components["schemas"]["SearchCandidate"][];
         };
     };
     responses: never;
@@ -3745,6 +3922,134 @@ export interface operations {
             };
         };
     };
+    search_seed_search_seed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeedSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeedSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_seed_result_search_seed__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeedSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_scan_search_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["api__schemas_search__ScanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_scan_result_search_scan__scan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     universe_universe_get: {
         parameters: {
             query?: {
@@ -4043,7 +4348,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["ScanRequest"];
+                "application/json": components["schemas"]["api__routes__scanner__ScanRequest"];
             };
         };
         responses: {
@@ -4053,7 +4358,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScanResponse"];
+                    "application/json": components["schemas"]["api__routes__scanner__ScanResponse"];
                 };
             };
             /** @description Validation Error */
