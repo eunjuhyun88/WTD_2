@@ -89,8 +89,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- clean on `codex/w-0148-data-engine-reset` after the `PR0.2` boundary commits (`contracts/proxies`, `plane clients`, `app-web Cloud Run lane`)
-- execution note: next work should branch as clean lane slices from updated `main`; do not resume mixed-stack surface/search work from this worktree
+- active on `codex/w-0122-market-cap-fact-cut`
+- current slice: engine `GET /facts/market-cap` + app macro consumers (`/api/market/macro-overview`, `/api/coingecko/global`) engine-preferred fallback cut
+- local note: `cloudbuild.app.yaml` has unrelated pre-existing edits in this worktree; do not mix it into W-0122 commits
 
 ---
 
@@ -117,6 +118,7 @@
 | origin/main | — | local remote-tracking ref = `41a72eef` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
+| codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |

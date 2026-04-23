@@ -1,4 +1,5 @@
 import { fetchAsset, fetchHistory } from '$lib/api/coincap';
+import type { MarketCapSnapshot } from '$lib/contracts/facts/marketCap';
 import type {
   MarketCapHistoryPoint,
   MarketCapOverview,
@@ -100,6 +101,77 @@ function deriveConfidence(args: {
   }
 
   return Number(clamp01(score).toFixed(2));
+}
+
+export function adaptEngineMarketCapSnapshot(snapshot: MarketCapSnapshot | null): MarketCapOverview | null {
+  if (!snapshot?.ok) return null;
+
+  const btcDominance =
+    isFiniteNumber(snapshot.btc_dominance) ? snapshot.btc_dominance : null;
+  const totalMarketCapUsd =
+    isFiniteNumber(snapshot.total_market_cap) ? snapshot.total_market_cap : null;
+  const stablecoinMcapUsd =
+    isFiniteNumber(snapshot.stablecoin_market_cap) ? snapshot.stablecoin_market_cap : null;
+
+  if (btcDominance === null && totalMarketCapUsd === null && stablecoinMcapUsd === null) {
+    return null;
+  }
+
+  const macroSource = snapshot.sources?.macro;
+  const at = Number.isFinite(Date.parse(snapshot.generated_at))
+    ? Date.parse(snapshot.generated_at)
+    : Date.now();
+  const macroStatus: MarketCapProviderState['status'] =
+    macroSource?.status === 'live' || macroSource?.status === 'ok'
+      ? 'live'
+      : macroSource?.status === 'degraded' || macroSource?.status === 'transitional'
+        ? 'partial'
+        : 'blocked';
+  const stableStatus: MarketCapProviderState['status'] = stablecoinMcapUsd !== null ? 'partial' : 'blocked';
+  const confidence = clamp01(
+    (btcDominance !== null ? 0.35 : 0) +
+      (totalMarketCapUsd !== null ? 0.35 : 0) +
+      (stablecoinMcapUsd !== null ? 0.15 : 0) +
+      (macroStatus === 'live' ? 0.1 : macroStatus === 'partial' ? 0.05 : 0),
+  );
+
+  return {
+    at,
+    totalMarketCapUsd,
+    marketCapChange24hPct: null,
+    btcMarketCapUsd: null,
+    ethMarketCapUsd: null,
+    btcDominance,
+    ethDominance: null,
+    dominanceChange24h: null,
+    stablecoinMcapUsd,
+    stablecoinMcapChange24hPct: null,
+    stablecoinMcapChange7dPct: null,
+    sourceSpreadPct: null,
+    confidence: Number(confidence.toFixed(2)),
+    providers: {
+      global: toProviderState(
+        'engine_fact_market_cap',
+        totalMarketCapUsd !== null ? 'partial' : macroStatus,
+        snapshot.summary ?? macroSource?.summary ?? 'Engine fact market-cap route.',
+        at,
+      ),
+      assets: toProviderState(
+        'engine_fact_market_cap',
+        'blocked',
+        'Asset market-cap detail is still served by the legacy app marketCapPlane.',
+        at,
+      ),
+      stablecoins: toProviderState(
+        'engine_fact_market_cap',
+        stableStatus,
+        stablecoinMcapUsd !== null
+          ? 'Stablecoin market-cap is present in the engine fact payload.'
+          : 'Stablecoin market-cap is still served by the legacy app marketCapPlane.',
+        at,
+      ),
+    },
+  };
 }
 
 export async function fetchMarketCapOverview(): Promise<MarketCapOverview> {

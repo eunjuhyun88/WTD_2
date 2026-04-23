@@ -142,6 +142,19 @@ For `W-0122`, the immediate job is narrower:
 2. make `/api/confluence/current` prefer engine `/api/facts/confluence`
 3. preserve current app-side heuristic aggregation only as fallback
 
+### Next Compatibility Cut — Flow
+
+1. keep `/api/market/flow` public payload stable
+2. make `/api/market/flow` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
+3. keep ticker / CMC / liquidation details on legacy ingress only until engine fact routes expose them canonically
+
+### Current Lane Slice — Market Cap Fact Cut
+
+1. add `GET /facts/market-cap` as an engine-owned bounded read model
+2. source this slice from existing engine macro cache first (`btc_dominance`) and expose partial/degraded truth explicitly
+3. make `/api/market/macro-overview` and `/api/coingecko/global` prefer the engine fact route, but fall back to the existing app `marketCapPlane` until engine coverage is sufficient
+4. lock the cut with one engine route test and one app compatibility test family
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
@@ -382,6 +395,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - Pillar 4 Netflow 와 engine-side weight learning 은 아직 미완이며 CURRENT 는 이 문서를 `Confluence Phase 2` 대기 상태로 표시한다.
 - 이 work item은 app surface를 포함하지만, 미완 핵심은 scorer/weights/building blocks/ingestion 쪽 engine 책임이 더 크다.
 - repo 안에는 이미 CoinMetrics, Fear & Greed, LunarCrush, Dune, DeFiLlama free clients 와 app-side `marketCapPlane` 가 존재하지만, 이번 slice 전까지 Solana/TRON/EVM user-key sources 를 하나의 canonical multichain route 로 정규화한 레이어는 없었다.
+- app 쪽 `marketCapPlane` 는 존재하지만, engine fact plane 에는 아직 대응하는 `market-cap` bounded read model 이 없어 macro consumers 가 app producer 에 계속 묶여 있다.
 - `/api/market/chain-intel` 는 이제 `solana`, `tron`, `evm(+chainid)` 를 canonical payload 로 내리며, TRON token lane 과 Ethereum account lane 은 live smoke 로 확인했다.
 - live smoke 기준 provider coverage 는 mixed 다: TRONSCAN token lane 은 live, Etherscan V2 Ethereum account lane 은 live, Base account lane 은 free-tier blocked, Solscan lane 은 현재 사용자 key 로 401 blocked 다.
 - Etherscan V2 는 공식 `chainlist` endpoint 로 supported chain registry 를 제공하므로, 수동 alias map 대신 runtime registry + static fallback 으로 chain resolution/search 를 통일할 수 있다.
@@ -455,6 +469,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **W-0122 commit/merge 는 scoped branch 로 split 한다** — 현재 `codex/w-0139-terminal-core-loop-capture` worktree 에 unrelated W-0139/W-0143 changes 가 섞여 있으므로, W-0122 관련 파일만 dedicated branch/worktree 로 복사해 PR/merge 한다.
 - **W-0122 는 terminal AI 의 fact-plane owner 다** — AI agent 와 scan/search 는 직접 CoinGecko/Dune/Etherscan/Solscan/TRONSCAN 을 부르지 않고, `/api/market/reference-stack`, `/api/market/chain-intel`, `/api/market/influencer-metrics`, `marketCapPlane` 같은 bounded read models 만 읽는다.
 - **`engine/market_engine/indicator_catalog.py` 는 W-0122 소유다** — 이 파일은 `W-0148` architecture lane 이 아니라 fact-plane mainline 에서 inventory route 와 함께 가져간다.
+- **market-cap cut 은 engine-preferred + app-fallback 으로 시작한다** — 현재 engine macro cache 는 `btc_dominance` 까지만 안정적으로 보장하므로, 첫 `GET /facts/market-cap` 는 partial truth 를 정직하게 내리고 `/api/market/macro-overview` 와 `/api/coingecko/global` 은 엔진 payload 가 충분하지 않을 때만 기존 app `marketCapPlane` 으로 떨어진다.
 
 ## Open Questions
 
@@ -470,6 +485,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 3. opportunity/search surface 용 canonical scan envelope (`opportunity + alerts + scanner status + pattern candidates`) 를 분리해 route fan-out 을 줄인다.
 4. EVM token lane 에 CoinGecko Onchain DEX plane(top pools + recent trades + liquidity/volume)를 붙이고, provider state 를 `etherscan + coingecko_onchain` 으로 분리한다.
 5. terminal/intel surface 가 `/api/market/reference-stack` 를 직접 소비하게 해 curated reference plane 을 운영자 화면과 public API 둘 다에서 재사용한다.
+6. `market-cap` fact route 가 app macro consumers 를 충분히 커버하면 `marketCapPlane` 을 app-owned producer 에서 ingress fallback 으로 강등한다.
 
 ## Related
 
@@ -502,7 +518,7 @@ Phase 2 (future cycle):
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
 - branch/worktree state: CURRENT 기준 `IN-PROGRESS`; current slice 는 app-side market-cap plane replacement
-- verification status: `vitest` targeted market-data tests pass (`marketReferenceStack`, `/api/market/reference-stack`, `chainIntel`, `/api/market/chain-intel` = 13 tests). `npm run check` now passes with `0 errors`; only pre-existing Svelte warnings remain.
+- verification status: engine `pytest tests/test_facts_route.py -q` = `9 passed`; app targeted `vitest` (`planeClients`, `macro-overview`, `coingecko/global`) = `7 passed`; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
 
 ## PR Trail

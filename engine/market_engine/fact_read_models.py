@@ -7,9 +7,13 @@ are complete.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
-from market_engine.fact_plane import build_fact_context
+import pandas as pd
+
+from data_cache.loader import load_macro_bundle
+from market_engine.fact_plane import FactContextBuildError, build_fact_context
 from market_engine.indicator_catalog import build_indicator_catalog
 
 
@@ -41,6 +45,29 @@ def _source_contract(source_id: str, state: dict[str, Any]) -> dict[str, Any]:
         "state": contract_state,
         "rows": rows,
         "summary": summary,
+    }
+
+
+def _iso_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, pd.Timestamp):
+        ts = value.tz_convert("UTC") if value.tzinfo is not None else value.tz_localize("UTC")
+        return ts.isoformat()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _fact_source_state(state: str, summary: str, updated_at: str | None) -> dict[str, Any]:
+    return {
+        "status": state,
+        "summary": summary,
+        "updated_at": updated_at,
     }
 
 
@@ -169,6 +196,50 @@ def build_reference_stack(
         "notes": [
             "reference stack is engine-owned truth for provider/metric coverage status",
             "current source states are derived from fact-context loaders and metric catalog coverage",
+        ],
+    }
+
+
+def build_market_cap_context(
+    *,
+    offline: bool = True,
+) -> dict[str, Any]:
+    macro_df = load_macro_bundle(offline=offline)
+    if macro_df is None or macro_df.empty:
+        raise FactContextBuildError(503, "macro_unavailable", "macro bundle unavailable")
+
+    last_row = macro_df.iloc[-1]
+    updated_at = _iso_or_none(macro_df.index[-1])
+    btc_dominance = _as_float(last_row.get("btc_dominance"), None)
+    has_btc_dom = isinstance(btc_dominance, (int, float))
+
+    summary = "engine macro bundle currently covers BTC dominance first"
+    status = "transitional"
+    if not has_btc_dom:
+        summary = "macro bundle loaded but BTC dominance is missing"
+        status = "degraded"
+
+    return {
+        "ok": True,
+        "owner": "engine",
+        "plane": "fact",
+        "kind": "market_cap",
+        "status": status,
+        "generated_at": _now_iso(),
+        "total_market_cap": None,
+        "btc_dominance": btc_dominance if has_btc_dom else None,
+        "stablecoin_market_cap": None,
+        "summary": summary,
+        "sources": {
+            "macro": _fact_source_state(
+                "live" if has_btc_dom else "degraded",
+                f"{len(macro_df)} rows; latest={updated_at}" if updated_at else f"{len(macro_df)} rows",
+                updated_at,
+            ),
+        },
+        "notes": [
+            "engine-owned bounded market-cap read model",
+            "total and stablecoin market cap still fall back to app marketCapPlane until engine coverage expands",
         ],
     }
 

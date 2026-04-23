@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pandas as pd
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -7,6 +8,7 @@ from api.routes import facts
 from market_engine.fact_plane import FactContextBuildError
 from market_engine.fact_read_models import (
     build_confluence_context,
+    build_market_cap_context,
     build_price_context,
     build_reference_stack,
 )
@@ -105,6 +107,25 @@ def test_build_reference_stack_includes_catalog_coverage(monkeypatch) -> None:
     assert "klines" in ids
 
 
+def test_build_market_cap_context_uses_macro_bundle(monkeypatch) -> None:
+    index = pd.to_datetime(["2026-04-23T00:00:00Z"])
+    frame = pd.DataFrame(
+        {
+            "btc_dominance": [61.4],
+            "fear_greed": [44.0],
+        },
+        index=index,
+    )
+    monkeypatch.setattr("market_engine.fact_read_models.load_macro_bundle", lambda offline=True: frame)
+
+    payload = build_market_cap_context()
+
+    assert payload["kind"] == "market_cap"
+    assert payload["btc_dominance"] == 61.4
+    assert payload["status"] == "transitional"
+    assert payload["sources"]["macro"]["status"] == "live"
+
+
 def test_build_confluence_context_produces_bullish_summary(monkeypatch) -> None:
     monkeypatch.setattr(
         "market_engine.fact_read_models.build_fact_context",
@@ -149,6 +170,18 @@ def test_facts_confluence_route_surfaces_fact_errors(monkeypatch) -> None:
             "message": "BTCUSDT_1h not cached",
         }
     }
+
+
+def test_facts_market_cap_route_returns_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "api.routes.facts.build_market_cap_context",
+        lambda offline=True: {"ok": True, "kind": "market_cap", "btc_dominance": 60.5},
+    )
+
+    response = _client().get("/facts/market-cap")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "kind": "market_cap", "btc_dominance": 60.5}
 
 
 def test_facts_indicator_catalog_route_returns_canonical_inventory(monkeypatch) -> None:

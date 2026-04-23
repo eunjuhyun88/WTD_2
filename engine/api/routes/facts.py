@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from market_engine.fact_plane import FactContextBuildError
 from market_engine.fact_read_models import (
     build_confluence_context,
+    build_market_cap_context,
     build_perp_context,
     build_price_context,
     build_reference_stack,
@@ -62,6 +63,16 @@ async def facts_reference_stack(
 ) -> dict:
     try:
         return build_reference_stack(symbol=symbol, timeframe=timeframe, offline=offline)
+    except FactContextBuildError as exc:
+        _raise_fact_http_error(exc)
+
+
+@router.get("/market-cap")
+async def facts_market_cap(
+    offline: bool = Query(True),
+) -> dict:
+    try:
+        return build_market_cap_context(offline=offline)
     except FactContextBuildError as exc:
         _raise_fact_http_error(exc)
 
