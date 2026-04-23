@@ -161,7 +161,9 @@ This slice groups the next product-facing fact consumers under one W-0122 merge 
 7. keep `/api/market/reference-stack` curated public payload stable
 8. consume engine `/api/facts/reference-stack` only as additive `factCoverage`
 9. do not replace curated `entries` with engine coverage `sources`
-10. lock the cut with targeted `market/events`, `terminal/intel-policy`, `reference-stack`, and plane-client tests
+10. add missing engine `/facts/chain-intel` landing route because the plane proxy already allows this path
+11. expose app plane-client helper for `/api/facts/chain-intel`, but do not migrate `/api/market/chain-intel` in the same cut
+12. lock the cut with targeted `market/events`, `terminal/intel-policy`, `reference-stack`, `chain-intel`, and plane-client tests
 
 ## Goal
 
@@ -479,6 +481,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **`engine/market_engine/indicator_catalog.py` 는 W-0122 소유다** — 이 파일은 `W-0148` architecture lane 이 아니라 fact-plane mainline 에서 inventory route 와 함께 가져간다.
 - **market-cap cut 은 engine-preferred + app-fallback 으로 시작한다** — 현재 engine macro cache 는 `btc_dominance` 까지만 안정적으로 보장하므로, 첫 `GET /facts/market-cap` 는 partial truth 를 정직하게 내리고 `/api/market/macro-overview` 와 `/api/coingecko/global` 은 엔진 payload 가 충분하지 않을 때만 기존 app `marketCapPlane` 으로 떨어진다.
 - **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. public cutover 는 대체가 아니라 additive `factCoverage` adapter 로 시작한다.
+- **`/facts/chain-intel` 은 먼저 bounded engine landing zone 으로 연다** — app `/api/market/chain-intel` 의 live Solscan/TRONSCAN/Etherscan payload 를 즉시 대체하지 않고, engine cache/source state 를 읽는 compact fact route 를 먼저 닫는다.
 - **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — 현재 `codex/w-0122-market-cap-fact-cut` history 에는 unrelated `W-0148` commit 이 섞여 있으므로, PR 전에는 W-0122 commits 만 clean execution branch/worktree 로 추출한다.
 ## Open Questions
 
