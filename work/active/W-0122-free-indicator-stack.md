@@ -96,6 +96,24 @@ For `W-0122`, the immediate job is narrower:
   - `app/src/routes/api/market/macro-overview/+server.ts`
 - those lanes must be treated as extraction or reimplementation follow-ups, not assumed present in this slice.
 
+### Influencer Metrics 100 — 2026-04-23
+
+- scope extension: trader / CT / X 에서 반복적으로 조회되는 지표 100개를 canonical indicator inventory 로 고정한다.
+- source basis: X posts + official platform surfaces from CryptoQuant, Glassnode, DefiLlama, Dune, CoinGlass, Deribit, LunarCrush.
+- canonical owner: `engine`
+- first implementation shape:
+  - engine catalog file with exactly 100 metrics
+  - per-metric status = `live | partial | blocked | missing`
+  - per-metric family + primary sources + current local owner (`engine | app_bridge | none`)
+  - engine read route exposing filtered catalog + coverage summary
+- interpretation rules:
+  - `live` = current checkout 에서 실사용 가능한 route/fetch/feature path 가 있음
+  - `partial` = proxy/approx/app-only/heuristic 또는 canonical engine cutover 미완
+  - `blocked` = API key / paid tier / provider restriction 때문에 현재 운영 기본값으로 닫힘
+  - `missing` = 코드/route/fetch lane 자체가 아직 없음
+- execution rule: 앞으로 새 지표 추가/편입 논의는 먼저 이 catalog row 를 갱신한 뒤 ingestion/read-model work 로 내려간다.
+- non-goal for this slice: 100개 전부를 당장 live ingestion 으로 완성하지 않는다. 이번 컷은 canonical inventory + status truth + engine read path 를 먼저 만든다.
+
 ### First Commit Scope
 
 1. preserve `GET /ctx/fact` as the canonical engine fact entrypoint
