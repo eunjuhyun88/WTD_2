@@ -3,11 +3,41 @@ import type {
 	IndicatorCatalogFilters as IndicatorCatalogFilterInput,
 	IndicatorCatalogResponse as IndicatorCatalogPayload
 } from '$lib/contracts/facts/indicatorCatalog';
+import type { MarketCapSnapshot } from '$lib/contracts/facts/marketCap';
 import type { EngineFactConfluencePayload } from '$lib/server/confluence/engineFactAdapter';
 import { fetchEnginePlaneJson } from './shared';
 
 type ServerFetch = typeof fetch;
 export type { EngineFactConfluencePayload };
+
+export interface PerpContextPayload {
+	ok: boolean;
+	owner: 'engine';
+	plane: 'fact';
+	kind: 'perp_context';
+	status: string;
+	generated_at: string;
+	symbol: string;
+	timeframe: string;
+	source: {
+		id: string;
+		state: 'live' | 'reference_only' | 'blocked' | 'stale';
+		rows: number;
+		summary: string;
+	};
+	metrics: {
+		funding_rate: number;
+		oi_change_1h: number;
+		oi_change_24h: number;
+		long_short_ratio: number;
+		taker_buy_ratio_1h: number;
+	};
+	regime: {
+		crowding: string;
+		cvd_state: string | null;
+	};
+	notes: string[];
+}
 
 export async function fetchFactContextProxy(
 	fetchFn: ServerFetch,
@@ -33,6 +63,34 @@ export async function fetchFactConfluenceProxy(
 		query: {
 			symbol: args.symbol,
 			timeframe: args.timeframe,
+			offline: args.offline ?? true,
+		},
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchPerpContextProxy(
+	fetchFn: ServerFetch,
+	args: { symbol: string; timeframe: string; offline?: boolean },
+): Promise<PerpContextPayload | null> {
+	return fetchEnginePlaneJson<PerpContextPayload>(fetchFn, 'facts', {
+		path: 'perp-context',
+		query: {
+			symbol: args.symbol,
+			timeframe: args.timeframe,
+			offline: args.offline ?? true,
+		},
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchFactMarketCapProxy(
+	fetchFn: ServerFetch,
+	args: { offline?: boolean } = {},
+): Promise<MarketCapSnapshot | null> {
+	return fetchEnginePlaneJson<MarketCapSnapshot>(fetchFn, 'facts', {
+		path: 'market-cap',
+		query: {
 			offline: args.offline ?? true,
 		},
 		timeoutMs: 8_000,

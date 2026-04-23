@@ -1,19 +1,22 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchMarketCapOverview } from '$lib/server/marketCapPlane';
+import { fetchFactMarketCapProxy } from '$lib/server/enginePlanes/facts';
+import { adaptEngineMarketCapSnapshot, fetchMarketCapOverview } from '$lib/server/marketCapPlane';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { getRequestIp } from '$lib/server/requestIp';
 
 const BTC_DOM_RISK_ON_THRESHOLD = 58;
 const BTC_DOM_RISK_OFF_THRESHOLD = 62;
 
-export const GET: RequestHandler = async ({ request, getClientAddress }) => {
+export const GET: RequestHandler = async ({ request, getClientAddress, fetch }) => {
   const ip = getRequestIp({ request, getClientAddress });
   if (!chartFeedLimiter.check(ip)) {
     return json({ error: 'rate limited' }, { status: 429, headers: { 'Retry-After': '60' } });
   }
 
-  const overview = await fetchMarketCapOverview();
+  const engineSnapshot = await fetchFactMarketCapProxy(fetch, { offline: true });
+  const engineOverview = adaptEngineMarketCapSnapshot(engineSnapshot);
+  const overview = engineOverview ?? (await fetchMarketCapOverview());
   const hasMacroSignal =
     overview.btcDominance !== null ||
     overview.totalMarketCapUsd !== null ||
@@ -65,6 +68,9 @@ export const GET: RequestHandler = async ({ request, getClientAddress }) => {
     {
       headers: {
         'Cache-Control': 'public, max-age=60',
+        'X-WTD-Plane': 'fact',
+        'X-WTD-Upstream': engineOverview ? 'facts/market-cap' : 'legacy-marketCapPlane',
+        'X-WTD-State': engineOverview ? 'adapter' : 'fallback',
       },
     },
   );

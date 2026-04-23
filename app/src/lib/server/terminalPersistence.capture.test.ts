@@ -109,6 +109,8 @@ describe('createPatternCapture', () => {
             label: 'second dump',
             timeframe: '15m',
             signalsRequired: ['price_dump', 'oi_spike_with_dump'],
+            signalsPreferred: [],
+            signalsForbidden: [],
           },
         ],
         researchTags: ['second_dump', 'oi_reexpand'],
