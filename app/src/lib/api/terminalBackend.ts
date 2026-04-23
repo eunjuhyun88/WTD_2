@@ -5,6 +5,7 @@ import type {
   FlowEnvelope,
   SnapshotEnvelope,
 } from '$lib/contracts/terminalBackend';
+import type { ConfluenceResult } from '$lib/confluence/types';
 import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
 import type { CaptureRecord, RuntimeCaptureListResponse } from '$lib/contracts/runtime/captures';
 import {
@@ -33,6 +34,14 @@ export type RecentCaptureSummary = Pick<
   CaptureRecord,
   'capture_id' | 'symbol' | 'pattern_slug' | 'timeframe' | 'captured_at_ms' | 'status'
 >;
+
+export interface ConfluenceHistoryEntry {
+  at: number;
+  score: number;
+  confidence: number;
+  regime: string;
+  divergence: boolean;
+}
 
 export interface ChartSeriesPayload {
   symbol: string;
@@ -149,6 +158,19 @@ export async function fetchRecentCaptures(limit = 8): Promise<RecentCaptureSumma
   if (!res.ok) return [];
   const payload = await readJson<RuntimeCaptureListResponse>(res);
   return payload?.ok && Array.isArray(payload.captures) ? payload.captures : [];
+}
+
+export async function fetchConfluenceCurrent(symbol: string, tf: string): Promise<ConfluenceResult | null> {
+  const res = await fetch(`/api/confluence/current?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`);
+  if (!res.ok) return null;
+  return await readJson<ConfluenceResult>(res);
+}
+
+export async function fetchConfluenceHistory(symbol: string, limit = 96): Promise<ConfluenceHistoryEntry[]> {
+  const res = await fetch(`/api/confluence/history?symbol=${encodeURIComponent(symbol)}&limit=${limit}`);
+  if (!res.ok) return [];
+  const payload = await readJson<{ entries?: ConfluenceHistoryEntry[] }>(res);
+  return Array.isArray(payload?.entries) ? payload.entries : [];
 }
 
 export type MemoryRerankRecord = MemoryQueryResponse['records'][number];

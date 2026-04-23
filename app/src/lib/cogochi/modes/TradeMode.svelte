@@ -1,6 +1,13 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import { fetchAnalyzeAndChart, fetchRecentCaptures, type RecentCaptureSummary } from '$lib/api/terminalBackend';
+  import {
+    fetchAnalyzeAndChart,
+    fetchConfluenceCurrent,
+    fetchConfluenceHistory,
+    fetchRecentCaptures,
+    type ConfluenceHistoryEntry,
+    type RecentCaptureSummary,
+  } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
@@ -191,25 +198,18 @@
   }
 
   // ── Confluence Engine (W-0122 master score) ──────────────────────────
-  interface ConfluenceHistoryEntry { at: number; score: number; confidence: number; regime: string; divergence: boolean }
-
   let confluence = $state<ConfluenceResult | null>(null);
   let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
 
   async function refreshConfluence() {
     try {
-      const res = await fetch(`/api/confluence/current?symbol=${symbol}&tf=${timeframe}`);
-      if (!res.ok) return;
-      confluence = (await res.json()) as ConfluenceResult;
+      confluence = await fetchConfluenceCurrent(symbol, timeframe);
     } catch { /* tolerate */ }
   }
 
   async function refreshConfluenceHistory() {
     try {
-      const res = await fetch(`/api/confluence/history?symbol=${symbol}&limit=96`);
-      if (!res.ok) return;
-      const body = (await res.json()) as { entries?: ConfluenceHistoryEntry[] };
-      confluenceHistory = body.entries ?? [];
+      confluenceHistory = await fetchConfluenceHistory(symbol, 96);
     } catch { /* tolerate */ }
   }
 

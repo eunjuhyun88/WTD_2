@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchRecentCaptures } from './terminalBackend';
+import { fetchConfluenceCurrent, fetchConfluenceHistory, fetchRecentCaptures } from './terminalBackend';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -49,5 +49,43 @@ describe('terminalBackend surface clients', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonResponse({ error: 'unavailable' }, 500));
 
     await expect(fetchRecentCaptures(8)).resolves.toEqual([]);
+  });
+
+  it('loads confluence current and history through surface client helpers', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        jsonResponse({
+          at: 1_776_566_400_000,
+          symbol: 'BTCUSDT',
+          score: 42,
+          confidence: 0.7,
+          regime: 'bull',
+          contributions: [],
+          top: [],
+          divergence: false,
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          entries: [
+            {
+              at: 1_776_566_400_000,
+              score: 42,
+              confidence: 0.7,
+              regime: 'bull',
+              divergence: false,
+            },
+          ],
+        }),
+      );
+
+    const current = await fetchConfluenceCurrent('BTCUSDT', '4h');
+    const history = await fetchConfluenceHistory('BTCUSDT', 96);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/confluence/current?symbol=BTCUSDT&tf=4h');
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/confluence/history?symbol=BTCUSDT&limit=96');
+    expect(current?.score).toBe(42);
+    expect(history[0]?.regime).toBe('bull');
   });
 });
