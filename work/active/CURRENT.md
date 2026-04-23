@@ -110,8 +110,8 @@
 ## 즉시 실행 순서 (사람)
 
 - active on `codex/w-0122-market-cap-fact-cut`
-- current slice: reference-stack fact coverage adapter
-- decision: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` is curated-reference oriented; keep public `entries` stable and attach engine coverage only as additive `factCoverage`
+- current slice: engine `/facts/chain-intel` landing route
+- decision: add bounded engine chain-intel source-state route because the plane proxy already allows `chain-intel`; do not migrate app `/api/market/chain-intel` live provider payload in this same cut
 
 ---
 
