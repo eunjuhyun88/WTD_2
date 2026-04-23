@@ -104,9 +104,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0140-bottom-analyze-slimming`
-- worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: bottom ANALYZE uses `workspaceEnvelope` / section studies for thesis, evidence, and execution board instead of duplicated local derivations
+- active on `codex/w-0140-analyze-surface-align`
+- worktree: `/private/tmp/wtd-v2-w0140-analyze-surface-align`
+- current slice: align analyze-adjacent surfaces (mobile / peek / compact summary / judge preview) to reuse `analyzeDetail*` and workspace study outputs
 
 ---
 
