@@ -166,6 +166,16 @@ This slice groups the next product-facing fact consumers under one W-0122 merge 
 12. keep `/api/market/chain-intel` live provider payload stable and attach engine chain-intel source state only as additive `factCoverage`
 13. lock the cut with targeted `market/events`, `terminal/intel-policy`, `reference-stack`, `chain-intel`, and plane-client tests
 
+### Current Lane Slice — `ctx/fact` Contract Fill-In
+
+This slice keeps `GET /ctx/fact` as the bounded landing zone but makes it satisfy the `FactSnapshot` contract that app adapters and agent loaders already read.
+
+1. keep `GET /ctx/fact` stable for current engine/app consumers
+2. fill `fact_id`, `provider_state`, compact `confluence`, and `reference_health` on the engine payload
+3. keep detailed transitional fields (`bars`, `market`, `snapshot`, `feature_row`) in place until downstream consumers no longer depend on them
+4. avoid any new app-side fact composition; only align the engine payload and current adapter expectations
+5. lock the cut with targeted engine `ctx` tests plus app fact-proxy / snapshot adapter tests
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
@@ -484,6 +494,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. public cutover 는 대체가 아니라 additive `factCoverage` adapter 로 시작한다.
 - **`/facts/chain-intel` 은 먼저 bounded engine landing zone 으로 연다** — app `/api/market/chain-intel` 의 live Solscan/TRONSCAN/Etherscan payload 를 즉시 대체하지 않고, engine cache/source state 를 읽는 compact fact route 를 `factCoverage` 로 붙인다.
 - **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — `codex/w-0122-market-cap-fact-cut` history 에 unrelated `W-0148` commit 이 섞였기 때문에, 현재 PR candidate 는 clean execution branch/worktree `codex/w-0122-consumer-fact-cut` 에서 이어간다.
+- **`ctx/fact` should satisfy the contract it already advertises** — `FactSnapshot` already exposes optional `fact_id`, `provider_state`, `confluence`, and `reference_health`, and app adapters probe for those fields today. The engine landing zone should populate them before more transitional app logic grows around missing values.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
@@ -530,8 +541,8 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-consumer-fact-cut`, PR candidate extracted into `/private/tmp/wtd-v2-w0122-consumer-cut`
-- verification status: engine `pytest tests/test_facts_route.py -q` = `11 passed`; app targeted `vitest` (`planeClients`, `reference-stack`, `chain-intel`, `intel-policy`, `events`, `flow`, `macro-overview`, `coingecko/global`) = `18 passed`; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
+- branch/worktree state: `codex/w-0122-ctx-fact-fillin`, clean worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-ctx-fact-fillin`
+- verification status: pending for this slice; target engine `pytest tests/test_ctx_fact_route.py -q` plus app targeted fact-proxy / snapshot adapter coverage
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
 
 ## PR Trail
