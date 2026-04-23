@@ -690,6 +690,37 @@
       '분석 완료'
   );
   const analyzeDetailWarnings = $derived(workspaceEnvelope.aiContext.warnings ?? []);
+  const analyzeEvidenceItems = $derived.by(() => {
+    const evidenceIds = workspaceEnvelope.sections.find((section) => section.id === 'evidence-log')?.studyIds ?? [];
+    const items = evidenceIds
+      .map((id) => workspaceStudyMap[id])
+      .filter((study): study is NonNullable<typeof study> => Boolean(study))
+      .map((study) => {
+        const primary = study.summary[0];
+        const secondary = study.summary[1];
+        return {
+          k: primary?.label ?? study.title,
+          v: primary?.value == null || primary.value === '' ? '—' : String(primary.value),
+          note:
+            primary?.note ??
+            (secondary
+              ? `${secondary.label}${secondary.value != null && secondary.value !== '' ? ` ${secondary.value}` : ''}`
+              : study.title),
+          pos: primary?.tone !== 'bear' && primary?.tone !== 'warn',
+        };
+      });
+    return items.length > 0 ? items : evidenceItems;
+  });
+  const analyzeExecutionProposal = $derived.by(() => {
+    const study = workspaceStudyMap.execution;
+    if (!study || study.summary.length === 0) return proposal;
+    return study.summary.map((row) => ({
+      label: row.label.toUpperCase(),
+      val: row.value == null || row.value === '' ? '—' : String(row.value),
+      hint: row.note ?? '',
+      tone: (row.tone === 'bull' ? 'pos' : row.tone === 'bear' ? 'neg' : '') as '' | 'neg' | 'pos',
+    }));
+  });
 
   // ── RR bar widths ─────────────────────────────────────────────────────
   const rrLossPct = $derived((() => {
