@@ -40,6 +40,7 @@ class CaptureRecord:
     scan_id: str | None = None
     user_note: str | None = None
     chart_context: dict[str, Any] = field(default_factory=dict)
+    research_context: dict[str, Any] | None = None
     feature_snapshot: dict[str, Any] | None = None
     block_scores: dict[str, Any] = field(default_factory=dict)
     verdict_id: str | None = None
@@ -66,6 +67,7 @@ class CaptureRecord:
             "scan_id": self.scan_id,
             "user_note": self.user_note,
             "chart_context_json": self.chart_context or {},
+            "research_context_json": self.research_context,
             "feature_snapshot_json": self.feature_snapshot,
             "block_scores_json": self.block_scores or {},
             "verdict_id": self.verdict_id,

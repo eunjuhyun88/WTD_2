@@ -158,6 +158,40 @@ def test_manual_hypothesis_capture_is_pending_outcome(tmp_path, monkeypatch) -> 
     assert capture["status"] == "pending_outcome"
 
 
+def test_manual_hypothesis_capture_persists_research_context(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "TRADOORUSDT",
+            "timeframe": "15m",
+            "user_note": "telegram seed",
+            "research_context": {
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "research_tags": ["second_dump", "oi_reexpand"],
+                "phase_annotations": [
+                    {
+                        "phase_id": "real_dump",
+                        "label": "second dump",
+                        "timeframe": "15m",
+                        "signals_required": ["price_dump", "oi_spike_with_dump"],
+                    }
+                ],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    capture = response.json()["capture"]
+    assert capture["research_context"]["pattern_family"] == "tradoor_ptb_oi_reversal"
+    stored = client.capture_store.load(capture["capture_id"])  # type: ignore[attr-defined]
+    assert stored is not None
+    assert stored.research_context["research_tags"] == ["second_dump", "oi_reexpand"]
+
+
 def test_chart_bookmark_capture_is_closed(tmp_path, monkeypatch) -> None:
     """chart_bookmark captures have no outcome to compute — terminal on write."""
     client = _client(tmp_path, monkeypatch)
@@ -198,6 +232,10 @@ def test_bulk_import_creates_pending_outcome_manual_hypotheses(tmp_path, monkeyp
                     "timeframe": "1h",
                     "captured_at_ms": 1770003600000,
                     "user_note": "H2",
+                    "research_context": {
+                        "pattern_family": "tradoor_ptb_oi_reversal",
+                        "thesis": ["second dump is the real event"],
+                    },
                 },
             ],
         },
@@ -216,6 +254,8 @@ def test_bulk_import_creates_pending_outcome_manual_hypotheses(tmp_path, monkeyp
     assert all(r.capture_kind == "manual_hypothesis" for r in rows)
     btc = next(r for r in rows if r.symbol == "BTCUSDT")
     assert btc.chart_context["hypothetical_entry_price"] == 60000.0
+    eth = next(r for r in rows if r.symbol == "ETHUSDT")
+    assert eth.research_context["thesis"] == ["second dump is the real event"]
 
 
 def test_bulk_import_rejects_empty_rows(tmp_path, monkeypatch) -> None:

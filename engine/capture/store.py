@@ -44,6 +44,12 @@ def _json_dumps(value: Any) -> str:
     return json.dumps(value if value is not None else {}, sort_keys=True, separators=(",", ":"))
 
 
+def _json_dumps_optional(value: Any) -> str | None:
+    if value is None:
+        return None
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
 def _json_loads(value: str | None, default: Any) -> Any:
     if not value:
         return default
@@ -87,6 +93,7 @@ class CaptureStore:
                   scan_id TEXT,
                   user_note TEXT,
                   chart_context_json TEXT NOT NULL,
+                  research_context_json TEXT,
                   feature_snapshot_json TEXT,
                   block_scores_json TEXT NOT NULL,
                   verdict_id TEXT,
@@ -104,6 +111,24 @@ class CaptureStore:
                   ON capture_records(pattern_slug, symbol, timeframe);
                 """
             )
+            self._ensure_column(conn, "capture_records", "research_context_json", "TEXT")
+
+    @staticmethod
+    def _ensure_column(
+        conn: sqlite3.Connection,
+        table_name: str,
+        column_name: str,
+        column_definition: str,
+    ) -> None:
+        columns = {
+            str(row["name"])
+            for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        }
+        if column_name in columns:
+            return
+        conn.execute(
+            f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+        )
 
     def save(self, capture: CaptureRecord) -> CaptureRecord:
         with self._connect() as conn:
@@ -113,9 +138,9 @@ class CaptureStore:
                   capture_id, capture_kind, user_id, symbol, pattern_slug,
                   pattern_version, phase, timeframe, captured_at_ms,
                   candidate_transition_id, candidate_id, scan_id, user_note,
-                  chart_context_json, feature_snapshot_json, block_scores_json,
+                  chart_context_json, research_context_json, feature_snapshot_json, block_scores_json,
                   verdict_id, outcome_id, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(capture_id) DO UPDATE SET
                   capture_kind=excluded.capture_kind,
                   user_id=excluded.user_id,
@@ -130,6 +155,7 @@ class CaptureStore:
                   scan_id=excluded.scan_id,
                   user_note=excluded.user_note,
                   chart_context_json=excluded.chart_context_json,
+                  research_context_json=excluded.research_context_json,
                   feature_snapshot_json=excluded.feature_snapshot_json,
                   block_scores_json=excluded.block_scores_json,
                   verdict_id=excluded.verdict_id,
@@ -151,6 +177,7 @@ class CaptureStore:
                     capture.scan_id,
                     capture.user_note,
                     _json_dumps(capture.chart_context),
+                    _json_dumps_optional(capture.research_context),
                     _json_dumps(capture.feature_snapshot),
                     _json_dumps(capture.block_scores),
                     capture.verdict_id,
@@ -279,6 +306,7 @@ class CaptureStore:
             scan_id=row["scan_id"],
             user_note=row["user_note"],
             chart_context=_json_loads(row["chart_context_json"], {}),
+            research_context=_json_loads(row["research_context_json"], None),
             feature_snapshot=_json_loads(row["feature_snapshot_json"], None),
             block_scores=_json_loads(row["block_scores_json"], {}),
             verdict_id=row["verdict_id"],
