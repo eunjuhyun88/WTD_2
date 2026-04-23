@@ -85,23 +85,6 @@ export async function fetchFactReferenceStackProxy(
 	});
 }
 
-export async function fetchFactChainIntelProxy(
-	fetchFn: ServerFetch,
-	args: { symbol: string; chain?: string; family?: string | null; timeframe?: string; offline?: boolean },
-): Promise<ChainIntelSnapshot | null> {
-	return fetchEnginePlaneJson<ChainIntelSnapshot>(fetchFn, 'facts', {
-		path: 'chain-intel',
-		query: {
-			symbol: args.symbol,
-			chain: args.chain ?? 'ethereum',
-			family: args.family,
-			timeframe: args.timeframe ?? '1h',
-			offline: args.offline ?? true,
-		},
-		timeoutMs: 8_000,
-	});
-}
-
 export async function fetchPerpContextProxy(
 	fetchFn: ServerFetch,
 	args: { symbol: string; timeframe: string; offline?: boolean },
