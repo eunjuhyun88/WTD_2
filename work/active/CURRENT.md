@@ -83,17 +83,87 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | 최신 (`7397cbb5`) |
-| codex/w-0153-persistent-retrieval-index | W-0153 | ACTIVE |
-| codex/w-0152-market-retrieval-index | W-0152 | ACTIVE |
-| codex/w-0151-cached-universe-live-scan | W-0151 | ACTIVE |
-| codex/w-0150-shared-cache-corpus | W-0150 | ACTIVE |
-| codex/w-0149-pattern-search-engine | W-0149 | ACTIVE |
-| codex/w-0147-html-pattern-engine | W-0147 | ACTIVE |
-| codex/w-0139-terminal-core-loop-capture | W-0139 | ACTIVE |
-| codex/w-0141-market-data-plane | W-0141 | MERGED INTO `main` |
-| codex/w-0138-engine-runtime-role-split | W-0138 | MERGED (#190) |
-| codex/w-0140-analyze-tab-consolidation | W-0140 | MERGED (#189) |
+| W-0162 | 🟢 PARTIAL — Layer A 업그레이드 완료 | search corpus → FeatureWindowStore 완전 전환 (W-0162 남은 slice) |
+| W-0160 | 🟡 DEFERRED | runtime capture/ledger scope policy, legacy backfill policy |
+| W-0148 | 🟡 DEFERRED | broader plane contract/governance owner 작업 |
+| W-0122 | 🟡 DEFERRED | fact-plane canonical routes |
+| W-0145 | 🟡 DEFERRED | corpus/search store |
+| W-0150 | 🟡 DEFERRED | breakout production lane |
+| W-0151 | 🟡 DEFERRED | active variant registry |
+| W-0152 | 🟡 DEFERRED | state/phase similarity search |
+| W-0156 | 🟡 DEFERRED | feature plane foundation |
+| W-0157 | 🟡 DEFERRED | similar-live feature ranking (core endpoints landed in PR #252) |
+| W-0158 | 🟡 DEFERRED | promotion feature diagnostics |
+| W-0159 | 🟡 DEFERRED | next raw family 우선순위 결정 |
+| W-0149 | 🟡 DEFERRED | W-0200에 흡수 완료 |
+| W-0142 | 🟡 DEFERRED | runtime state API 확장 |
+| W-0140 | 🟡 DEFERRED | bottom ANALYZE slimming |
+
+## Reference / Assist
+
+| ID | 파일 | 상태 | 역할 |
+|---|---|---|---|
+| W-0126 | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | Cloud Run region 결정만 남음 |
+| W-0143 | `W-0143-query-by-example-pattern-search.md` | 🟢 COMPLETE | `AgentContextPack` 완료 |
+| W-0139 | `W-0139-terminal-core-loop-capture.md` | 🟢 COMPLETE | terminal surface reads 완료 |
+| W-0146 | `W-0146-lane-cleanup-and-merge-governance.md` | 🟡 REFERENCE | governance reference only |
+| W-0141 | `W-0141-market-data-plane.md` | 🟡 ASSIST | workspace/data contract assist |
+| W-0124 | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | infra 변경, 별도 세션 |
+
+---
+
+## 현재 브랜치 상태
+
+- `claude/strange-proskuriakova`: architecture improvements (이번 세션 작업, PR 대기)
+- main: e2fba18b (모든 PR 머지 완료)
+
+---
+
+## 즉시 실행 순서 (사람)
+
+- active on `codex/w-0122-market-cap-fact-cut`
+- worktree clean after `e5f80a6a` (`terminal intel macro fact cut`)
+- next slice requires contract choice: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` is curated-reference oriented; do not proxy one into the other without an explicit adapter decision
+
+---
+
+## 즉시 실행 순서
+
+1. **W-0148 / PR0.1** — docs/governance normalize
+2. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
+3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
+4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
+5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
+6. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
+7. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+
+---
+
+## 브랜치 매핑
+
+### Active / Existing
+
+| 브랜치 | Work Item | 상태 |
+|---|---|---|
+| main | — | local `main` = `27952d95` |
+| origin/main | — | local remote-tracking ref = `41a72eef` |
+| codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
+| codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
+| codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
+| codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
+| codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
+| codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
+| codex/w-0139-terminal-core-loop-capture-mainline | W-0139 | prior clean lane |
+
+### Planned After `PR0.2`
+
+| 브랜치 | Work Item | 상태 |
+|---|---|---|
+| codex/w-0145-corpus-plane | W-0145 | planned parallel search lane |
+| codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
+| codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
+| codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
 ---
 
