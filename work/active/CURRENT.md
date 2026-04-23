@@ -108,6 +108,7 @@
 - active on `codex/w-0122-consumer-fact-cut-v3`
 - worktree: `/private/tmp/wtd-v2-w0122-consumer-clean`
 - current slice: engine-preferred consumer fact cut for `events`, `intel-policy`, `reference-stack`, and `chain-intel`
+- adapter rule: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` remains curated-reference oriented; only attach additive `factCoverage`
 
 ---
 
