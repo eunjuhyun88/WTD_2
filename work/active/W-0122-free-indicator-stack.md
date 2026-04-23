@@ -155,6 +155,7 @@ For `W-0122`, the immediate job is narrower:
 3. keep ticker / CMC reads in app until a dedicated engine price-summary route exists
 4. preserve current app-side derivatives composition only as fallback
 5. mirror the same `perp-context` bridge pattern in `/api/market/events` without moving DexScreener enrichment yet
+6. make `/api/market/derivatives/[pair]` prefer engine `/api/facts/perp-context` while preserving the route payload shape
 
 ## Goal
 
