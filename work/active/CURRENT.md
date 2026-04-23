@@ -107,7 +107,7 @@
 
 - active on `codex/w-0160-pattern-definition-plane`
 - worktree: `/tmp/wtd-v2-w0160-pattern-definition`
-- current slice: open `/runtime/definitions/*`, wire runtime captures to expose `definition_ref`, and thread `definition_id` / `definition_ref` through the first search-plane consumers (`/search/seed`, `/search/scan`) without changing search ranking semantics yet
+- current slice: `/runtime/definitions/*` is open, runtime captures and first search-plane consumers already preserve `definition_ref`, and the active follow-up slice persists `definition_ref` through benchmark-search research runs, artifacts, and handoff payloads without changing ranking semantics yet
 
 ---
 

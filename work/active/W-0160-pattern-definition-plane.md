@@ -18,6 +18,7 @@ Contract change
 - pattern library + registry metadata를 합친 canonical definition read model 추가
 - `manual_hypothesis` capture `research_context`에서 thesis / tags / source / phase annotation evidence를 linked evidence로 노출
 - runtime captures 와 첫 search-plane consumer 가 `definition_id` / `definition_ref`를 읽도록 contract 정렬
+- research runs / benchmark search artifacts / handoff payload 가 `definition_ref`를 저장하도록 contract 정렬
 - targeted engine tests 추가
 
 ## Non-Goals
@@ -50,6 +51,7 @@ Contract change
 5. current local cut adds `PatternDefinitionService` plus `/runtime/definitions` list/detail routes that compose pattern library, registry metadata, and capture-linked research evidence without adding a new write store.
 6. current local cut also adds runtime capture-side `definition_ref` enrichment and `definition_id` filtering, so the first runtime consumer can read pattern definitions without depending on raw `pattern_slug` only.
 7. current local cut also threads `definition_id` / `definition_ref` through corpus `seed` / `scan` route requests and candidate payloads without changing corpus ranking semantics.
+8. current local cut now persists `definition_ref` on research runs and benchmark search artifacts, and includes it in benchmark-search handoff payload / selection metrics so the loop no longer terminates at search request metadata only.
 
 ## Assumptions
 
@@ -67,23 +69,25 @@ Contract change
 - capture `research_context` remains the evidence source for now; this slice does not migrate it out of captures yet.
 - runtime capture consumers resolve `definition_ref` at read time; capture persistence remains `pattern_slug`/`pattern_version` based until a later write-path lane exists.
 - the first search-plane cut is metadata-only: `definition_id` and `definition_ref` may flow through seed/scan requests and candidates, but they do not yet change corpus ranking semantics.
+- research runtime persistence stays backward-compatible: `pattern_slug` remains the legacy join key, while `definition_ref` is added as an optional canonical key on runs, benchmark artifacts, and handoff payloads.
 
 ## Next Steps
 
 1. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
 2. split capture-linked evidence from captures into a dedicated definition store only after the read contract proves stable.
-3. wire deeper research artifacts such as benchmark search runs and promotion records to `definition_id` once this contract proves stable.
+3. extend `definition_ref` from benchmark-search artifacts into downstream promotion / judgment records so `definition -> search -> ledger` is traceable end-to-end.
 
 ## Exit Criteria
 
 - runtime plane exposes canonical pattern definition list/detail routes.
 - detail responses include phase template plus linked research evidence from captures when available.
-- targeted runtime route tests pass.
+- runtime captures, first search-plane consumers, and benchmark-search research artifacts all preserve canonical `definition_ref`.
+- targeted engine tests pass.
 
 ## Handoff Checklist
 
 - active work item: `work/active/W-0160-pattern-definition-plane.md`
 - branch: `codex/w-0160-pattern-definition-plane`
 - verification:
-  - `uv run --directory engine python -m pytest tests/test_search_routes.py tests/test_runtime_routes.py -q`
-- remaining blockers: definition write path, durable definition store, and downstream UI consumption remain future slices
+  - `uv run --directory engine python -m pytest tests/test_search_routes.py tests/test_runtime_routes.py tests/test_refinement_reporting.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_search.py -q`
+- remaining blockers: definition write path, durable definition store, downstream promotion/judgment records, and UI consumption remain future slices

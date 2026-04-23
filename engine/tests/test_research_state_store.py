@@ -14,9 +14,11 @@ def test_research_run_lifecycle_persists(tmp_path) -> None:
         search_policy={"mode": "reset-search", "max_variants": 24},
         evaluation_protocol={"seed_starts": [0, 500, 1000, 2000], "min_seeds": 4},
         created_at="2026-04-16T10:00:00+00:00",
+        definition_ref={"definition_id": "tradoor-oi-reversal-v1:v1", "pattern_slug": "tradoor-oi-reversal-v1"},
     )
     assert run.status == "pending"
     assert run.handoff_payload == {}
+    assert run.definition_ref["definition_id"] == "tradoor-oi-reversal-v1:v1"
 
     started = store.start_run(run.research_run_id, started_at="2026-04-16T10:05:00+00:00")
     assert started.status == "running"
@@ -41,6 +43,7 @@ def test_research_run_lifecycle_persists(tmp_path) -> None:
     fetched = reloaded.get_run(run.research_run_id)
     assert fetched is not None
     assert fetched.status == "completed"
+    assert fetched.definition_ref["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert fetched.search_policy["mode"] == "reset-search"
     assert fetched.evaluation_protocol["min_seeds"] == 4
 

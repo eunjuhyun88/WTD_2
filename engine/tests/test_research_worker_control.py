@@ -21,6 +21,7 @@ def test_worker_controller_records_successful_bounded_job(tmp_path) -> None:
         baseline_ref="baseline:candidate-v3",
         search_policy={"mode": "reset-search", "max_variants": 12},
         evaluation_protocol={"seed_starts": [0, 500, 1000, 2000], "min_seeds": 4},
+        definition_ref={"definition_id": "tradoor-oi-reversal-v1:v1", "pattern_slug": "tradoor-oi-reversal-v1"},
     )
 
     timestamps = iter(
@@ -63,6 +64,7 @@ def test_worker_controller_records_successful_bounded_job(tmp_path) -> None:
     assert completed.status == "completed"
     assert completed.completion_disposition == "train_candidate"
     assert completed.winner_variant_ref == "variant-44"
+    assert completed.definition_ref["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert completed.handoff_payload["model_key"].endswith(":fs1:lp1")
 
     runs = store.list_runs(pattern_slug="tradoor-oi-reversal-v1")
