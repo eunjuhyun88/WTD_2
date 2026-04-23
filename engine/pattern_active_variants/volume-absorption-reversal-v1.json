@@ -1,0 +1,15 @@
+{
+  "pattern_slug": "volume-absorption-reversal-v1",
+  "variant_slug": "volume-absorption-reversal-v1__canonical",
+  "timeframe": "1h",
+  "watch_phases": [
+    "SELLING_CLIMAX",
+    "ABSORPTION"
+  ],
+  "source_kind": "seed",
+  "source_ref": null,
+  "research_run_id": null,
+  "promotion_report_id": null,
+  "created_at": "2026-04-23T14:02:43.122806+00:00",
+  "updated_at": "2026-04-23T14:02:44.981052+00:00"
+}
