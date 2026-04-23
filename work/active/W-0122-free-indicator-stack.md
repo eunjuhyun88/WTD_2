@@ -149,7 +149,6 @@ For `W-0122`, the immediate job is narrower:
 3. keep ticker / CMC / liquidation details on legacy ingress only until engine fact routes expose them canonically
 
 ### Current Lane Slice — Consumer Fact Cut
-
 This slice groups the next product-facing fact consumers under one W-0122 merge unit so the app keeps moving toward engine-owned truth without spawning a second branch for the same lane.
 
 1. keep `/api/market/events` public payload stable
@@ -481,9 +480,14 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **W-0122 는 terminal AI 의 fact-plane owner 다** — AI agent 와 scan/search 는 직접 CoinGecko/Dune/Etherscan/Solscan/TRONSCAN 을 부르지 않고, `/api/market/reference-stack`, `/api/market/chain-intel`, `/api/market/influencer-metrics`, `marketCapPlane` 같은 bounded read models 만 읽는다.
 - **`engine/market_engine/indicator_catalog.py` 는 W-0122 소유다** — 이 파일은 `W-0148` architecture lane 이 아니라 fact-plane mainline 에서 inventory route 와 함께 가져간다.
 - **market-cap cut 은 engine-preferred + app-fallback 으로 시작한다** — 현재 engine macro cache 는 `btc_dominance` 까지만 안정적으로 보장하므로, 첫 `GET /facts/market-cap` 는 partial truth 를 정직하게 내리고 `/api/market/macro-overview` 와 `/api/coingecko/global` 은 엔진 payload 가 충분하지 않을 때만 기존 app `marketCapPlane` 으로 떨어진다.
+<<<<<<< HEAD
 - **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. public cutover 는 대체가 아니라 additive `factCoverage` adapter 로 시작한다.
 - **`/facts/chain-intel` 은 먼저 bounded engine landing zone 으로 연다** — app `/api/market/chain-intel` 의 live Solscan/TRONSCAN/Etherscan payload 를 즉시 대체하지 않고, engine cache/source state 를 읽는 compact fact route 를 `factCoverage` 로 붙인다.
 - **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — `codex/w-0122-market-cap-fact-cut` history 에 unrelated `W-0148` commit 이 섞였기 때문에, 현재 PR candidate 는 clean execution branch/worktree `codex/w-0122-consumer-fact-cut` 에서 이어간다.
+||||||| parent of c675ac74 (refactor(W-0122): prefer engine perp facts in events route)
+
+=======
+>>>>>>> c675ac74 (refactor(W-0122): prefer engine perp facts in events route)
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
