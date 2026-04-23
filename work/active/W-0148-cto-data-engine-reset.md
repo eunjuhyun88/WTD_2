@@ -37,6 +37,7 @@ Engine logic change
 - `work/active/W-0122-free-indicator-stack.md`
 - `work/active/W-0145-operational-seed-search-corpus.md`
 - `docs/domains/terminal-ai-scan-architecture.md`
+- `docs/domains/canonical-indicator-materialization.md`
 - `docs/decisions/0003-infra-chart-architecture-2026-04-21.md`
 - `engine/api/main.py`
 - `engine/api/routes/ctx.py`
@@ -98,6 +99,7 @@ Engine logic change
 - `WorkspaceBundle` 은 UI-neutral read model 인 경우에만 fact/read-model 로 인정하고, panel placement / pin / compare / presentation field 가 섞이면 `surface adapter` 로 본다.
 - `app` 의 ingress/fact/search adapter 들은 최종 ownership 이 아니라 migration bridge 로만 유지한다.
 - execution spec 은 `docs/domains/terminal-ai-scan-architecture.md` 의 plane contract table, owner routes, storage rules, cutover plan 을 canonical implementation guide 로 삼는다.
+- calculation-ready indicator definitions, materialized feature stores, and corpus signatures are fixed in `docs/domains/canonical-indicator-materialization.md`.
 - 데이터 종류별 canonical `table / cache / route / job` 분해는 같은 문서의 `Data Domain Split` 표를 구현 기준으로 삼는다.
 - 새 데이터/패턴 lane 은 같은 문서의 `Canonical Lane Design Pattern` 과 `Lane Checklist` 를 먼저 채운 뒤 구현한다.
 - 첫 code slice 는 app-side raw provider fan-out 을 당장 다 없애는 대신, engine 에 bounded fact-context route 를 열어 이후 migration 의 landing zone 을 만든다.

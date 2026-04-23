@@ -966,6 +966,10 @@ The reset only works if each data kind has one canonical write path and one cano
 
 The table names below are target canonical names, not a claim that every table already exists.
 
+For calculation-ready indicator names, raw fields, derived features, and
+search signature vocabulary, use
+`docs/domains/canonical-indicator-materialization.md` as the companion spec.
+
 | Data kind | Ingress sources | Canonical store | Hot cache | Owner routes | Background jobs | Primary plane |
 |---|---|---|---|---|---|---|
 | `ohlcv bars` | Binance, Coinbase, OKX, Bybit | `market_ohlcv_bars` | redis key by `symbol:timeframe` | `GET /facts/price-context`, `GET /ctx/fact` | kline prefetch/warm job | Fact |
