@@ -123,7 +123,7 @@
 - `W-0158` landed clean at `e51ab067` on `codex/w-0158-promotion-feature-diagnostics`
 - `W-0159` owning branch now also carries optional user-data liquidation ingress, liquidation windows, and credential diagnostics; extraction branch is porting that delta onto current main
 - active execution lane is `codex/w-0159-canonical-raw-plane-ingestion`
-- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, persisted local market search index, bounded index refresh job, L1/L2 query caching, `/universe?q=` local-search read path, and optional user-data liquidation ingress/windows
+- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, persisted local market search index, process-local + shared Redis query caching, bounded index refresh job, `/universe?q=` local-search read path, and optional user-data liquidation ingress/windows
 
 ---
 
@@ -134,9 +134,10 @@
 3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
 4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
 5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
-6. **W-0139 / Lane E.1** — terminal surface runtime/fact/search client slimming
-7. **W-0140 / Lane E.2** — bottom ANALYZE slimming after terminal surface has no data ownership
-8. **Cloud Run region decision** — `asia-southeast1/cogotchi` redeploy vs `us-east4/cogotchi` 유지 명시
+6. **W-0160 / Contract lane** — `PatternDraft` / `SearchQuerySpec` + parser/transformer boundary for live agent/search turns
+7. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
+8. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+9. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
