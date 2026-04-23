@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import pytest
 
+from features.canonical_pattern import score_canonical_feature_snapshot
 from patterns.active_variant_registry import ActivePatternVariantStore
 from research.pattern_search import (
     DEFAULT_FAMILY_SELECTION_POLICY,
@@ -2285,6 +2286,14 @@ def test_run_pattern_benchmark_search_syncs_gate_cleared_winner_to_active_regist
     pack_store.save(pack)
 
     def _winner_case(case_id: str, role: str, symbol: str, score: float) -> VariantCaseResult:
+        snapshot = {
+            "oi_zscore": 2.1 if role == "reference" else 1.6,
+            "funding_rate_zscore": -1.4 if role == "reference" else -0.9,
+            "funding_flip_flag": role == "reference",
+            "volume_percentile": 0.88 if role == "reference" else 0.73,
+            "pullback_depth_pct": 0.08 if role == "reference" else 0.1,
+            "cvd_price_divergence": -0.21 if role == "reference" else 0.12,
+        }
         return VariantCaseResult(
             case_id=case_id,
             symbol=symbol,
@@ -2301,6 +2310,7 @@ def test_run_pattern_benchmark_search_syncs_gate_cleared_winner_to_active_regist
             forward_peak_return_pct=18.0,
             entry_next_open=1.001,
             realistic_forward_peak_return_pct=17.5,
+            canonical_feature_snapshot=snapshot,
         )
 
     def _fake_eval(_pack, variant, *, warmup_bars=240):
@@ -2368,14 +2378,23 @@ def test_run_pattern_benchmark_search_syncs_gate_cleared_winner_to_active_regist
     )
 
     active = active_variant_store.get("tradoor-oi-reversal-v1")
+    artifact = artifact_store.load(run.research_run_id)
 
     assert run.winner_variant_ref == "tradoor-oi-reversal-v1__winner"
     assert run.handoff_payload["active_registry_variant_slug"] == "tradoor-oi-reversal-v1__winner"
+    assert run.handoff_payload["canonical_feature_score"] is not None
+    assert run.handoff_payload["reference_canonical_feature_score"] is not None
+    assert run.handoff_payload["holdout_canonical_feature_score"] is not None
+    assert run.handoff_payload["canonical_feature_scored_case_count"] == 2
+    assert run.handoff_payload["canonical_feature_summary"]["funding_flip_rate"] == pytest.approx(0.5)
     assert active is not None
     assert active.variant_slug == "tradoor-oi-reversal-v1__winner"
     assert active.timeframe == "1h"
     assert active.watch_phases == ["ACCUMULATION", "REAL_DUMP"]
     assert active.source_kind == "benchmark_search"
+    assert artifact is not None
+    assert artifact["promotion_report"]["canonical_feature_scored_case_count"] == 2
+    assert artifact["promotion_report"]["canonical_feature_summary"]["funding_flip_rate"] == pytest.approx(0.5)
 
 
 def test_run_pattern_benchmark_search_promotes_reset_family_when_tied_with_manual(tmp_path, monkeypatch) -> None:
