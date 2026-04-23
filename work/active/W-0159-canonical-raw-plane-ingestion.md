@@ -22,6 +22,7 @@ Engine logic change
 - resolve 결과를 기존 raw ingress 로 연결하는 on-demand ingestion helper 추가
 - high-QPS search를 위한 persisted local market search index 추가
 - repeated query hot path를 위한 process-local search result memoization 추가
+- multi-instance hot path를 위한 shared Redis search cache 추가
 - bounded scheduler/job 기반 index refresh 추가
 - actual user-facing universe read route를 local search index path로 cutover
 - search query path에서 cold full-universe build를 피하는 bounded enrichment path 추가
@@ -46,6 +47,7 @@ Engine logic change
 - `engine/data_cache/fetch_binance_perp.py`
 - `engine/data_cache/fetch_dexscreener.py`
 - `engine/data_cache/loader.py`
+- `engine/cache/market_search_cache.py`
 - `engine/data_cache/market_search.py`
 - `engine/data_cache/raw_store.py`
 - `engine/data_cache/raw_ingest.py`
@@ -78,6 +80,10 @@ Engine logic change
 14. the current local cut adds scheduler/job refresh plumbing plus `/universe?q=...` search handling, and SymbolPicker now sends `q` to the same engine route instead of loading the full universe and filtering contract queries only on the client.
 15. repeated symbol/contract queries can still waste work on SQLite lookups and candidate mapping even after the local index exists, so a bounded process-local memoization layer is useful on the read hot path.
 16. `GET /universe?q=` currently does not need a cold full-universe rebuild to answer a local-index hit; enrichment can stay cache-only unless the caller explicitly requests refresh.
+17. engine lifespan already warms a shared Redis pool for other cache paths, so market search can reuse the same runtime dependency for cross-instance query caching.
+18. once query traffic spans multiple engine instances, process-local memoization alone is insufficient; the next performance tier is a shared cache layer that sits above the SQLite index and below route handlers.
+19. the current local cut adds a Redis-backed shared search cache with TTL-bounded query payloads and generation-based invalidation on full index refresh.
+20. even with shared cache, hot misses can still stampede into repeated SQLite/live work unless the build path is coalesced per query in a later slice.
 
 ## Assumptions
 
@@ -100,12 +106,16 @@ Engine logic change
 - cutover should preserve the existing `/universe` response contract so current clients can opt into server-side search without a separate payload shape.
 - search hot-path memoization must stay bounded and disposable; SQLite index remains the durable source of truth.
 - query-driven universe search should enrich from cached universe data only, unless the caller explicitly opts into a forced refresh.
+- the search read path should be `L1 process cache -> L2 shared Redis cache -> L3 SQLite index -> L4 live fallback`.
+- index-wide refresh should invalidate shared cache by version/generation, not by destructive key scan.
+- targeted live fallback warmups may populate shared cache for the queried key, but should not invalidate the whole shared cache namespace.
+- single-flight miss coalescing and cache telemetry remain follow-up work, not blockers for this slice.
 
 ## Next Steps
 
-1. add scheduler/job-backed `market_search_index` refresh on a bounded cadence.
-2. cut the user-facing universe search read path over to the local index while preserving the existing response contract.
-3. widen query resolution beyond Binance/DexScreener only when a concrete search gap appears.
+1. widen query resolution beyond Binance/DexScreener only when a concrete search gap appears.
+2. choose the next canonical raw family after this slice: liquidation or on-chain/fundamental snapshots.
+3. decide whether market search metrics should also be surfaced in a dedicated route or stay inside observability snapshot only.
 
 ## Exit Criteria
 
@@ -117,6 +127,7 @@ Engine logic change
 - [x] repeated market queries can be served from a persisted local index without live provider fan-out.
 - [x] bounded scheduler/job hooks can refresh the local market search index without shell-only intervention.
 - [x] `/universe?q=` can answer token/contract search from the local index while preserving `UniverseResponse`.
+- [x] repeated market queries can be shared across engine instances through a bounded Redis cache without making Redis the source of truth.
 
 ## Handoff Checklist
 

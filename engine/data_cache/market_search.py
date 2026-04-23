@@ -7,8 +7,16 @@ import re
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from threading import Lock
+from threading import Event, Lock
 
+from cache.market_search_cache import (
+    acquire_shared_query_build_lock,
+    bump_shared_search_generation,
+    read_shared_search_results,
+    release_shared_query_build_lock,
+    wait_for_shared_search_results,
+    write_shared_search_results,
+)
 from data_cache.fetch_alpha_universe import ALPHA_WATCHLIST, fetch_futures_symbols
 from data_cache.fetch_dexscreener import (
     TOKEN_ADDRESS_MAP,
@@ -32,6 +40,7 @@ _QUOTE_SUFFIXES = ("USDT", "USDC", "BUSD", "PERP")
 _GRADE_RANK = {"A": 0, "B": 1, None: 2}
 _SEARCH_CACHE_TTL_SECONDS = 15.0
 _SEARCH_CACHE_MAX_ENTRIES = 256
+_SEARCH_BUILD_WAIT_SECONDS = 0.6
 _search_result_cache: dict[
     tuple[str, str, int, bool],
     tuple[float, tuple[MarketSearchCandidate, ...]],
@@ -61,6 +70,12 @@ def _normalize_base_symbol(query: str) -> str:
 
 def _is_contract_query(query: str) -> bool:
     return bool(_ADDRESS_RE.fullmatch(_clean_query(query)))
+
+
+def _normalize_cache_query(query: str) -> str:
+    if _is_contract_query(query):
+        return _clean_query(query).lower()
+    return _normalize_base_symbol(query)
 
 
 def _chain_rank(chain: str) -> int:
@@ -138,6 +153,17 @@ class MarketQueryIngestionResult:
         return asdict(self)
 
 
+@dataclass
+class _SearchBuildState:
+    event: Event
+    result: list[MarketSearchCandidate] | None = None
+    error: Exception | None = None
+
+
+_inflight_search_builds: dict[tuple[str, str, int, bool], _SearchBuildState] = {}
+_inflight_search_builds_lock = Lock()
+
+
 def _search_cache_key(
     query: str,
     *,
@@ -145,8 +171,22 @@ def _search_cache_key(
     allow_live_fallback: bool,
     store: CanonicalRawStore,
 ) -> tuple[str, str, int, bool]:
-    normalized_query = _clean_query(query).lower() if _is_contract_query(query) else _normalize_base_symbol(query)
-    return (str(store.db_path), normalized_query, limit, allow_live_fallback)
+    return (str(store.db_path), _normalize_cache_query(query), limit, allow_live_fallback)
+
+
+def _increment_metric(name: str, value: int = 1) -> None:
+    from observability.metrics import increment
+
+    increment(name, value)
+
+
+def _observe_search_path(path: str, *, started_at: float) -> None:
+    from observability.metrics import observe_ms
+
+    elapsed_ms = (time.perf_counter() - started_at) * 1000.0
+    _increment_metric(f"search.market.path.{path}")
+    observe_ms("search.market.total_ms", elapsed_ms)
+    observe_ms(f"search.market.path.{path}_ms", elapsed_ms)
 
 
 def _get_cached_search_results(
@@ -184,6 +224,39 @@ def _clear_search_result_cache(*, db_path: str | None = None) -> None:
         stale_keys = [key for key in _search_result_cache if key[0] == db_path]
         for key in stale_keys:
             _search_result_cache.pop(key, None)
+
+
+def _begin_local_search_build(
+    cache_key: tuple[str, str, int, bool],
+) -> tuple[bool, _SearchBuildState]:
+    with _inflight_search_builds_lock:
+        state = _inflight_search_builds.get(cache_key)
+        if state is not None:
+            return False, state
+        state = _SearchBuildState(event=Event())
+        _inflight_search_builds[cache_key] = state
+        return True, state
+
+
+def _finish_local_search_build(
+    cache_key: tuple[str, str, int, bool],
+    state: _SearchBuildState,
+    *,
+    result: list[MarketSearchCandidate] | None,
+    error: Exception | None,
+) -> None:
+    state.result = list(result) if result is not None else None
+    state.error = error
+    state.event.set()
+    with _inflight_search_builds_lock:
+        if _inflight_search_builds.get(cache_key) is state:
+            _inflight_search_builds.pop(cache_key, None)
+
+
+def _candidate_from_payload(payload: dict[str, object], *, query: str) -> MarketSearchCandidate:
+    data = dict(payload)
+    data["query"] = query
+    return MarketSearchCandidate(**data)
 
 
 def _direct_candidate(query: str, futures_symbols: set[str]) -> MarketSearchCandidate | None:
@@ -476,6 +549,8 @@ def refresh_market_search_index(
     records = build_market_search_index_records()
     store.replace_market_search_index(records)
     _clear_search_result_cache(db_path=str(store.db_path))
+    if bump_shared_search_generation(db_path=str(store.db_path)) is not None:
+        _increment_metric("search.market.shared_generation_bump")
     _, refreshed_at = store.market_search_index_status()
     return MarketSearchIndexRefreshResult(
         row_count=len(records),
@@ -505,8 +580,10 @@ def search_market_candidates(
     allow_live_fallback: bool = True,
     warm_index_on_fallback: bool = True,
 ) -> list[MarketSearchCandidate]:
+    started_at = time.perf_counter()
     query = _clean_query(query)
     if not query:
+        _observe_search_path("empty_query", started_at=started_at)
         return []
 
     store = store or CanonicalRawStore()
@@ -516,31 +593,153 @@ def search_market_candidates(
         allow_live_fallback=allow_live_fallback,
         store=store,
     )
+    normalized_cache_query = cache_key[1]
     cached = _get_cached_search_results(cache_key)
     if cached is not None:
+        _observe_search_path("l1", started_at=started_at)
         return cached
 
-    indexed = _search_market_candidates_from_index(query, limit=limit, store=store)
-    if indexed:
-        _put_cached_search_results(cache_key, indexed)
-        return indexed
-    if not allow_live_fallback:
-        _put_cached_search_results(cache_key, [])
-        return []
+    shared_generation, shared_payload = read_shared_search_results(
+        db_path=str(store.db_path),
+        normalized_query=normalized_cache_query,
+        limit=limit,
+        allow_live_fallback=allow_live_fallback,
+    )
+    if shared_payload is not None:
+        shared_results = [
+            _candidate_from_payload(payload, query=query)
+            for payload in shared_payload
+        ]
+        _put_cached_search_results(cache_key, shared_results)
+        _observe_search_path("l2", started_at=started_at)
+        return shared_results
 
-    futures_symbols = fetch_futures_symbols()
-    live = _live_search_market_candidates(query, limit=limit, futures_symbols=futures_symbols)
-    if live and warm_index_on_fallback:
-        refreshed_at = _utcnow()
-        store.upsert_market_search_index(
-            [
-                _candidate_to_index_record(candidate, refreshed_at=refreshed_at)
-                for candidate in live
-            ]
+    is_build_leader, build_state = _begin_local_search_build(cache_key)
+    if not is_build_leader:
+        _increment_metric("search.market.local_wait")
+        waited = build_state.event.wait(_SEARCH_BUILD_WAIT_SECONDS)
+        if waited and build_state.result is not None:
+            follower_results = list(build_state.result)
+            _put_cached_search_results(cache_key, follower_results)
+            _observe_search_path("local_coalesced", started_at=started_at)
+            return follower_results
+        if not waited:
+            _increment_metric("search.market.local_wait_timeout")
+
+    build_error: Exception | None = None
+    result_to_publish: list[MarketSearchCandidate] | None = None
+    shared_lock_generation = shared_generation
+    shared_lock_token: str | None = None
+    try:
+        if is_build_leader:
+            shared_lock_generation, shared_lock_token = acquire_shared_query_build_lock(
+                db_path=str(store.db_path),
+                normalized_query=normalized_cache_query,
+                limit=limit,
+                allow_live_fallback=allow_live_fallback,
+                generation=shared_generation,
+            )
+            if shared_lock_token is not None:
+                _increment_metric("search.market.shared_lock_acquired")
+            elif shared_lock_generation is not None:
+                _increment_metric("search.market.shared_lock_contended")
+                waited_generation, waited_payload = wait_for_shared_search_results(
+                    db_path=str(store.db_path),
+                    normalized_query=normalized_cache_query,
+                    limit=limit,
+                    allow_live_fallback=allow_live_fallback,
+                )
+                if waited_payload is not None:
+                    waited_results = [
+                        _candidate_from_payload(payload, query=query)
+                        for payload in waited_payload
+                    ]
+                    _put_cached_search_results(cache_key, waited_results)
+                    result_to_publish = waited_results
+                    write_shared_search_results(
+                        db_path=str(store.db_path),
+                        normalized_query=normalized_cache_query,
+                        limit=limit,
+                        allow_live_fallback=allow_live_fallback,
+                        results=[candidate.to_dict() for candidate in waited_results],
+                        generation=waited_generation,
+                    )
+                    _observe_search_path("shared_wait", started_at=started_at)
+                    return waited_results
+                _increment_metric("search.market.shared_wait_timeout")
+
+        indexed = _search_market_candidates_from_index(query, limit=limit, store=store)
+        if indexed:
+            _put_cached_search_results(cache_key, indexed)
+            write_shared_search_results(
+                db_path=str(store.db_path),
+                normalized_query=normalized_cache_query,
+                limit=limit,
+                allow_live_fallback=allow_live_fallback,
+                results=[candidate.to_dict() for candidate in indexed],
+                generation=shared_lock_generation,
+            )
+            result_to_publish = indexed
+            _observe_search_path("l3", started_at=started_at)
+            return indexed
+        if not allow_live_fallback:
+            _put_cached_search_results(cache_key, [])
+            write_shared_search_results(
+                db_path=str(store.db_path),
+                normalized_query=normalized_cache_query,
+                limit=limit,
+                allow_live_fallback=allow_live_fallback,
+                results=[],
+                generation=shared_lock_generation,
+            )
+            result_to_publish = []
+            _observe_search_path("empty_index", started_at=started_at)
+            return []
+
+        futures_symbols = fetch_futures_symbols()
+        live = _live_search_market_candidates(query, limit=limit, futures_symbols=futures_symbols)
+        if live and warm_index_on_fallback:
+            refreshed_at = _utcnow()
+            store.upsert_market_search_index(
+                [
+                    _candidate_to_index_record(candidate, refreshed_at=refreshed_at)
+                    for candidate in live
+                ]
+            )
+            _clear_search_result_cache(db_path=str(store.db_path))
+        _put_cached_search_results(cache_key, live)
+        write_shared_search_results(
+            db_path=str(store.db_path),
+            normalized_query=normalized_cache_query,
+            limit=limit,
+            allow_live_fallback=allow_live_fallback,
+            results=[candidate.to_dict() for candidate in live],
+            generation=shared_lock_generation,
         )
-        _clear_search_result_cache(db_path=str(store.db_path))
-    _put_cached_search_results(cache_key, live)
-    return live
+        result_to_publish = live
+        _observe_search_path("l4_live" if live else "l4_empty", started_at=started_at)
+        return live
+    except Exception as exc:
+        build_error = exc
+        _observe_search_path("error", started_at=started_at)
+        raise
+    finally:
+        if shared_lock_token is not None and shared_lock_generation is not None:
+            release_shared_query_build_lock(
+                db_path=str(store.db_path),
+                normalized_query=normalized_cache_query,
+                limit=limit,
+                allow_live_fallback=allow_live_fallback,
+                generation=shared_lock_generation,
+                token=shared_lock_token,
+            )
+        if is_build_leader:
+            _finish_local_search_build(
+                cache_key,
+                build_state,
+                result=result_to_publish,
+                error=build_error,
+            )
 
 
 def ingest_market_query_raw(
