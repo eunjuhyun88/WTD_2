@@ -13,3 +13,9 @@ export {
 	fromInlinePriceBlock,
 	fromResearchBlock,
 } from './adapters/fromResearchBlock';
+export {
+	buildIntentDrivenChartConfig,
+	classifyVisualizationIntent,
+	planVisualizationHighlights,
+	selectVisualizationTemplate,
+} from './intent';
