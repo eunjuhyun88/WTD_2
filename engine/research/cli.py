@@ -203,6 +203,37 @@ def _run_market_index_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_benchmark_pack_from_capture(args: argparse.Namespace) -> int:
+    from research.capture_benchmark import build_benchmark_pack_from_capture
+
+    candidate_timeframes = args.candidate_timeframes or None
+    draft = build_benchmark_pack_from_capture(
+        capture_id=args.capture_id,
+        pattern_slug=args.pattern_slug,
+        candidate_timeframes=candidate_timeframes,
+        max_holdouts=args.max_holdouts,
+    )
+    print(json.dumps(draft.to_dict(), indent=2, default=str))
+    return 0
+
+
+def _run_benchmark_search_from_capture(args: argparse.Namespace) -> int:
+    from research.capture_benchmark import build_and_run_benchmark_search_from_capture
+
+    candidate_timeframes = args.candidate_timeframes or None
+    result = build_and_run_benchmark_search_from_capture(
+        capture_id=args.capture_id,
+        pattern_slug=args.pattern_slug,
+        candidate_timeframes=candidate_timeframes,
+        max_holdouts=args.max_holdouts,
+        warmup_bars=args.warmup_bars,
+        min_reference_score=args.min_reference_score,
+        min_holdout_score=args.min_holdout_score,
+    )
+    print(json.dumps(result.to_dict(), indent=2, default=str))
+    return 0
+
+
 def _run_backtest(args: argparse.Namespace) -> int:
     from datetime import timedelta
 
@@ -341,6 +372,26 @@ def build_parser() -> argparse.ArgumentParser:
     market_index_p.add_argument("--warmup-bars", type=int, default=240)
     market_index_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
     market_index_p.set_defaults(func=_run_market_index_build)
+
+    capture_pack_p = sub.add_parser("pattern-benchmark-pack-from-capture", help="Build and persist a benchmark-pack draft from one capture")
+    capture_pack_p.add_argument("--capture-id", required=True)
+    capture_pack_p.add_argument("--pattern-slug", default=None)
+    capture_pack_p.add_argument("--candidate-timeframes", nargs="*", default=None, metavar="TF")
+    capture_pack_p.add_argument("--max-holdouts", type=int, default=4)
+    capture_pack_p.set_defaults(func=_run_benchmark_pack_from_capture)
+
+    capture_search_p = sub.add_parser(
+        "pattern-benchmark-search-from-capture",
+        help="Build a benchmark-pack draft from one capture and run benchmark-search immediately",
+    )
+    capture_search_p.add_argument("--capture-id", required=True)
+    capture_search_p.add_argument("--pattern-slug", default=None)
+    capture_search_p.add_argument("--candidate-timeframes", nargs="*", default=None, metavar="TF")
+    capture_search_p.add_argument("--max-holdouts", type=int, default=4)
+    capture_search_p.add_argument("--warmup-bars", type=int, default=240)
+    capture_search_p.add_argument("--min-reference-score", type=float, default=0.55)
+    capture_search_p.add_argument("--min-holdout-score", type=float, default=0.35)
+    capture_search_p.set_defaults(func=_run_benchmark_search_from_capture)
 
     benchmark_p = sub.add_parser("pattern-benchmark-search", help="Run replay benchmark-pack search for pattern variants")
     benchmark_p.add_argument("--slug", required=True, help="Pattern slug")
