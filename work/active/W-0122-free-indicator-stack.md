@@ -157,6 +157,12 @@ For `W-0122`, the immediate job is narrower:
 5. mirror the same `perp-context` bridge pattern in `/api/market/events` without moving DexScreener enrichment yet
 6. make `/api/market/derivatives/[pair]` prefer engine `/api/facts/perp-context` while preserving the route payload shape
 
+### Next Engine Landing Cut
+
+1. keep `GET /ctx/fact` as the single fact landing zone
+2. add `fact_id`, compact `provider_state`, compact `reference_health`, and compact `confluence`
+3. do not widen storage or add new engine route families in this cut
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
