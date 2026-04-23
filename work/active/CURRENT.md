@@ -90,8 +90,8 @@
 ## Current Dirty Tree Snapshot
 
 - active on `codex/w-0122-market-cap-fact-cut`
-- current slice: engine `GET /facts/market-cap` + app macro consumers (`/api/market/macro-overview`, `/api/coingecko/global`) engine-preferred fallback cut
-- local note: `cloudbuild.app.yaml` has unrelated pre-existing edits in this worktree; do not mix it into W-0122 commits
+- current slice: terminal intel macro fact cut (`/api/terminal/intel-policy` consumes `/api/market/macro-overview`, which is engine-preferred via `GET /facts/market-cap`)
+- scoped files: `app/src/routes/api/terminal/intel-policy/+server.ts`, `app/src/lib/server/intelPolicyRuntime.ts`, `app/src/routes/api/terminal/intel-policy/intel-policy.test.ts`, `work/active/W-0122-free-indicator-stack.md`
 
 ---
 
