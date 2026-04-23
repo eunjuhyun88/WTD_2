@@ -185,6 +185,15 @@ This slice removes a stale duplicate engine entrypoint now that fact-plane consu
 3. move route coverage from `ctx` tests onto the canonical `facts` route tests
 4. refresh generated engine OpenAPI types so app contracts stop advertising the dead alias
 
+### Current Lane Slice — Market-Cap Bridge Consolidation
+
+This slice keeps `market-cap` engine-preferred behavior intact, but moves the readiness choice into one bounded bridge so app fallback logic stops duplicating owner-selection rules.
+
+1. add one app-side `market-cap` bridge loader with explicit `macro` vs `global` readiness modes
+2. keep `marketCapPlane` as the legacy fallback producer only when engine facts are not ready enough
+3. make `/api/market/macro-overview` and `/api/coingecko/global` consume the shared bridge result instead of open-coding engine-first selection
+4. preserve existing public payloads and `X-WTD-*` headers
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
@@ -553,8 +562,8 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-ctx-fact-fillin`, active worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-ctx-fact-fillin`
-- verification status: `refactor(W-0122): fill ctx fact contract summaries` passed engine `pytest tests/test_ctx_fact_route.py -q` plus app targeted `planeClients` and `market/snapshot` route coverage; follow-up dead-code cut should re-run legacy engine proxy coverage
+- branch/worktree state: `codex/w-0122-confluence-fact-cut`, active worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-confluence-fact-cut`
+- verification status: `refactor(W-0122): remove indicator catalog ctx alias` passed engine `pytest engine/tests/test_ctx_fact_route.py engine/tests/test_facts_route.py -q`, `npm --prefix app run contract:check:engine-types`, and `npm --prefix app run check`; `refactor(W-0122): consolidate market-cap bridge selection` passed targeted app vitest (`marketCapOverviewBridge`, `macro-overview`, `coingecko/global`) plus `npm --prefix app run check`
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
 
 ## PR Trail
@@ -565,3 +574,5 @@ Phase 2 (future cycle):
 - #157 (Slice F — SSR + RV Cone + Funding Flip)
 - #159 (Confluence Engine Phase 1)
 - #161 (Pillar 2 Options Phase 1)
+- #225 (`ctx/fact` contract fill-in)
+- #227 (indicator catalog alias cleanup + market-cap bridge consolidation)
