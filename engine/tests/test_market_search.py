@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+import time
 from datetime import datetime, timezone
 
 from data_cache.market_search import (
@@ -83,11 +85,119 @@ def test_search_market_candidates_uses_local_index_before_live(monkeypatch, tmp_
     def _should_not_run(*args, **kwargs):
         raise AssertionError("live provider should not be called when index hits")
 
+    shared_writes: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        "data_cache.market_search.read_shared_search_results",
+        lambda **kwargs: (None, None),
+    )
+    monkeypatch.setattr(
+        "data_cache.market_search.write_shared_search_results",
+        lambda **kwargs: shared_writes.append(kwargs),
+    )
     monkeypatch.setattr("data_cache.market_search.fetch_futures_symbols", _should_not_run)
     monkeypatch.setattr("data_cache.market_search.fetch_dex_search_pairs", _should_not_run)
     monkeypatch.setattr("data_cache.market_search.fetch_dex_token_batch", _should_not_run)
 
     results = search_market_candidates("AERO", limit=5, store=store)
+
+    assert len(results) == 1
+    assert results[0].canonical_symbol == "AEROUSDT"
+    assert results[0].provider == "binance"
+    assert len(shared_writes) == 1
+    assert shared_writes[0]["normalized_query"] == "AERO"
+
+
+def test_search_market_candidates_uses_shared_cache_before_sqlite(monkeypatch, tmp_path) -> None:
+    _clear_search_result_cache()
+    store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
+
+    def _should_not_run(*args, **kwargs):
+        raise AssertionError("SQLite index should not be read when shared cache hits")
+
+    store.search_market_index = _should_not_run  # type: ignore[method-assign]
+
+    monkeypatch.setattr(
+        "data_cache.market_search.read_shared_search_results",
+        lambda **kwargs: (
+            "g-1",
+            [
+                {
+                    "query": "AERO",
+                    "provider": "binance",
+                    "source": "direct",
+                    "chain": "",
+                    "base_symbol": "AERO",
+                    "base_name": "Aerodrome",
+                    "quote_symbol": "USDT",
+                    "canonical_symbol": "AEROUSDT",
+                    "token_address": "",
+                    "pair_address": "",
+                    "liquidity_usd": 0.0,
+                    "volume_h24": 0.0,
+                    "price_change_h24": 0.0,
+                    "futures_listed": True,
+                    "watchlist_grade": None,
+                    "note": "",
+                }
+            ],
+        ),
+    )
+
+    results = search_market_candidates("AERO", limit=5, store=store, allow_live_fallback=False)
+
+    assert len(results) == 1
+    assert results[0].canonical_symbol == "AEROUSDT"
+    assert results[0].provider == "binance"
+
+
+def test_search_market_candidates_uses_shared_wait_before_sqlite(monkeypatch, tmp_path) -> None:
+    _clear_search_result_cache()
+    store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
+
+    def _should_not_run(*args, **kwargs):
+        raise AssertionError("SQLite index should not be read when shared wait returns a result")
+
+    store.search_market_index = _should_not_run  # type: ignore[method-assign]
+
+    monkeypatch.setattr(
+        "data_cache.market_search.read_shared_search_results",
+        lambda **kwargs: ("g-1", None),
+    )
+    monkeypatch.setattr(
+        "data_cache.market_search.acquire_shared_query_build_lock",
+        lambda **kwargs: ("g-1", None),
+    )
+    monkeypatch.setattr(
+        "data_cache.market_search.wait_for_shared_search_results",
+        lambda **kwargs: (
+            "g-1",
+            [
+                {
+                    "query": "AERO",
+                    "provider": "binance",
+                    "source": "direct",
+                    "chain": "",
+                    "base_symbol": "AERO",
+                    "base_name": "Aerodrome",
+                    "quote_symbol": "USDT",
+                    "canonical_symbol": "AEROUSDT",
+                    "token_address": "",
+                    "pair_address": "",
+                    "liquidity_usd": 0.0,
+                    "volume_h24": 0.0,
+                    "price_change_h24": 0.0,
+                    "futures_listed": True,
+                    "watchlist_grade": None,
+                    "note": "",
+                }
+            ],
+        ),
+    )
+    monkeypatch.setattr("data_cache.market_search.write_shared_search_results", lambda **kwargs: None)
+    monkeypatch.setattr("data_cache.market_search.release_shared_query_build_lock", lambda **kwargs: None)
+
+    results = search_market_candidates("AERO", limit=5, store=store, allow_live_fallback=False)
 
     assert len(results) == 1
     assert results[0].canonical_symbol == "AEROUSDT"
@@ -145,6 +255,80 @@ def test_search_market_candidates_reuses_process_cache_for_index_hits(tmp_path) 
 
     assert len(first) == 1
     assert len(second) == 1
+    assert call_count == 1
+
+
+def test_search_market_candidates_coalesces_local_hot_miss(monkeypatch, tmp_path) -> None:
+    _clear_search_result_cache()
+    store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
+    refreshed_at = datetime(2026, 4, 24, 0, 0, tzinfo=timezone.utc)
+    store.replace_market_search_index(
+        [
+            MarketSearchIndexRecord(
+                provider="binance",
+                source="direct",
+                chain="",
+                chain_rank=3,
+                source_rank=0,
+                stable_quote_rank=0,
+                watchlist_rank=2,
+                base_symbol="AERO",
+                base_name="AERODROME",
+                quote_symbol="USDT",
+                canonical_symbol="AEROUSDT",
+                token_address="",
+                pair_address="",
+                futures_listed=True,
+                watchlist_grade=None,
+                note="",
+                liquidity_usd=0.0,
+                volume_h24=0.0,
+                price_change_h24=0.0,
+                refreshed_at=refreshed_at,
+            )
+        ]
+    )
+
+    call_count = 0
+    original_search = store.search_market_index
+    start_barrier = threading.Barrier(3)
+    results: list[list[MarketSearchCandidate]] = []
+    errors: list[Exception] = []
+
+    def _slow_search(*, normalized_query: str, canonical_query: str, contract_query: str | None, limit: int):
+        nonlocal call_count
+        call_count += 1
+        time.sleep(0.1)
+        return original_search(
+            normalized_query=normalized_query,
+            canonical_query=canonical_query,
+            contract_query=contract_query,
+            limit=limit,
+        )
+
+    def _worker() -> None:
+        try:
+            start_barrier.wait()
+            results.append(search_market_candidates("AERO", limit=5, store=store, allow_live_fallback=False))
+        except Exception as exc:  # pragma: no cover - debugging safety
+            errors.append(exc)
+
+    store.search_market_index = _slow_search  # type: ignore[method-assign]
+    monkeypatch.setattr("data_cache.market_search.read_shared_search_results", lambda **kwargs: (None, None))
+    monkeypatch.setattr("data_cache.market_search.acquire_shared_query_build_lock", lambda **kwargs: (None, None))
+    monkeypatch.setattr("data_cache.market_search.write_shared_search_results", lambda **kwargs: None)
+
+    first = threading.Thread(target=_worker)
+    second = threading.Thread(target=_worker)
+    first.start()
+    second.start()
+    start_barrier.wait()
+    first.join()
+    second.join()
+
+    assert errors == []
+    assert len(results) == 2
+    assert all(len(batch) == 1 for batch in results)
     assert call_count == 1
 
 
@@ -257,6 +441,7 @@ def test_ingest_market_query_raw_skips_failed_candidate(monkeypatch) -> None:
 
 def test_refresh_market_search_index_replaces_index(monkeypatch, tmp_path) -> None:
     store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
+    bumped: list[str] = []
 
     monkeypatch.setattr("data_cache.market_search.fetch_futures_symbols", lambda: {"AEROUSDT"})
     monkeypatch.setattr(
@@ -281,6 +466,10 @@ def test_refresh_market_search_index_replaces_index(monkeypatch, tmp_path) -> No
         if chain == "base"
         else [],
     )
+    monkeypatch.setattr(
+        "data_cache.market_search.bump_shared_search_generation",
+        lambda db_path: bumped.append(db_path) or "gen-1",
+    )
 
     result = refresh_market_search_index(store=store)
     rows = search_market_candidates("AERO", limit=5, store=store, allow_live_fallback=False)
@@ -289,3 +478,4 @@ def test_refresh_market_search_index_replaces_index(monkeypatch, tmp_path) -> No
     assert rows[0].canonical_symbol == "AEROUSDT"
     assert rows[0].provider == "binance"
     assert any(candidate.provider == "dexscreener" for candidate in rows)
+    assert bumped == [str(store.db_path)]
