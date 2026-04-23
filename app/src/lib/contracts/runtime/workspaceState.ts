@@ -4,6 +4,10 @@ export interface WorkspacePin {
 	id: string;
 	kind: string;
 	summary?: string | null;
+	symbol?: string | null;
+	timeframe?: string | null;
+	payload: Record<string, unknown>;
+	updated_at: string;
 }
 
 export interface WorkspaceStateRecord {

@@ -353,7 +353,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Runtime Captures */
+        get: operations["list_runtime_captures_runtime_captures_get"];
         put?: never;
         /**
          * Create Runtime Capture
@@ -2992,6 +2993,40 @@ export interface components {
             /** Image Refs */
             image_refs?: string[];
         };
+        /** RuntimeCaptureListResponse */
+        RuntimeCaptureListResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Captures */
+            captures: {
+                [key: string]: unknown;
+            }[];
+            /** Count */
+            count: number;
+        };
         /** RuntimeCaptureResponse */
         RuntimeCaptureResponse: {
             /**
@@ -4416,6 +4451,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_captures_runtime_captures_get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+                pattern_slug?: string | null;
+                symbol?: string | null;
+                status?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeCaptureListResponse"];
                 };
             };
             /** @description Validation Error */

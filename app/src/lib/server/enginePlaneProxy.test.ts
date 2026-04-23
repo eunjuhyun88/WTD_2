@@ -23,6 +23,7 @@ describe('enginePlaneProxy', () => {
 		expect(isAllowedPlaneProxyPath('search', 'seed', 'POST')).toBe(true);
 		expect(isAllowedPlaneProxyPath('search', 'seed/run_1', 'GET')).toBe(true);
 		expect(isAllowedPlaneProxyPath('runtime', 'captures', 'POST')).toBe(true);
+		expect(isAllowedPlaneProxyPath('runtime', 'captures', 'GET')).toBe(true);
 		expect(isAllowedPlaneProxyPath('runtime', 'ctx/fact', 'GET')).toBe(false);
 	});
 

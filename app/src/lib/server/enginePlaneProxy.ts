@@ -67,7 +67,7 @@ const SEARCH_RULES: PlaneRule[] = [
 const RUNTIME_RULES: PlaneRule[] = [
 	{
 		pattern: /^captures$/,
-		methods: new Set(['POST']),
+		methods: new Set(['GET', 'POST']),
 		toUpstream: (path) => `runtime/${path}`,
 		timeoutMs: 15_000,
 	},

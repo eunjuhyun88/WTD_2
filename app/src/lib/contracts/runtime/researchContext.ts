@@ -6,6 +6,7 @@ export interface ResearchContextRecord {
 	summary?: string | null;
 	fact_refs?: string[];
 	search_refs?: string[];
+	payload?: Record<string, unknown>;
 	updated_at: string;
 }
 
