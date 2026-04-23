@@ -72,6 +72,6 @@ Product surface change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0140-analyze-tab-consolidation.md`
-- branch: `codex/w-0140-analyze-surface-align`
+- branch: `codex/w-0140-analyze-surface-align-v2`
 - verification: `npm --prefix app run check`
 - blockers: remaining raw fallback builders in `TradeMode.svelte`
