@@ -5,12 +5,18 @@ from fastapi.testclient import TestClient
 
 from api.routes import runtime
 from capture.store import CaptureStore
+from capture.types import CaptureRecord
+from patterns.definitions import PatternDefinitionService
+from patterns.library import PATTERN_LIBRARY
+from patterns.registry import PatternRegistryStore
 from runtime.store import RuntimeStateStore
 
 
 def _client(tmp_path, monkeypatch) -> TestClient:
     runtime_store = RuntimeStateStore(tmp_path / "runtime.sqlite")
     capture_store = CaptureStore(tmp_path / "capture.sqlite")
+    registry_store = PatternRegistryStore(tmp_path / "pattern_registry")
+    registry_store.seed_from_library(PATTERN_LIBRARY)
     appended = []
 
     class FakeRecordStore:
@@ -19,6 +25,14 @@ def _client(tmp_path, monkeypatch) -> TestClient:
 
     monkeypatch.setattr(runtime, "_runtime_store", runtime_store)
     monkeypatch.setattr(runtime, "_capture_store", capture_store)
+    monkeypatch.setattr(
+        runtime,
+        "_definition_service",
+        PatternDefinitionService(
+            capture_store=capture_store,
+            registry_store=registry_store,
+        ),
+    )
     monkeypatch.setattr(runtime.capture_routes, "LEDGER_RECORD_STORE", FakeRecordStore())
 
     app = FastAPI()
@@ -121,6 +135,55 @@ def test_runtime_workspace_pins_survive_store_restart(tmp_path, monkeypatch) -> 
     assert followup.json()["workspace"]["pins"][0]["payload"]["search_ref"] == "scan_1"
 
 
+def test_runtime_definition_routes_list_and_detail_include_linked_capture_evidence(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    client.capture_store.save(  # type: ignore[attr-defined]
+        CaptureRecord(
+            capture_kind="manual_hypothesis",
+            user_id="founder",
+            symbol="TRADOORUSDT",
+            pattern_slug="tradoor-oi-reversal-v1",
+            timeframe="15m",
+            phase="ACCUMULATION",
+            captured_at_ms=1770000000000,
+            user_note="second dump seed",
+            research_context={
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "thesis": ["second dump is the real event"],
+                "research_tags": ["second_dump", "oi_reexpand"],
+                "source": {"kind": "telegram_post", "title": "TRADOOR case"},
+                "phase_annotations": [
+                    {
+                        "phase_id": "REAL_DUMP",
+                        "label": "second dump",
+                        "timeframe": "15m",
+                    }
+                ],
+            },
+        )
+    )
+
+    response = client.get("/runtime/definitions?limit=50")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["plane"] == "runtime"
+    assert payload["count"] >= 1
+    tradoor = next(item for item in payload["definitions"] if item["pattern_slug"] == "tradoor-oi-reversal-v1")
+    assert tradoor["evidence_count"] == 1
+    assert tradoor["thesis"] == ["second dump is the real event"]
+
+    detail = client.get("/runtime/definitions/tradoor-oi-reversal-v1")
+    assert detail.status_code == 200
+    definition = detail.json()["definition"]
+    assert definition["definition_id"] == "tradoor-oi-reversal-v1:v1"
+    assert definition["pattern_family"] == "tradoor_ptb_oi_reversal"
+    assert definition["registry"]["slug"] == "tradoor-oi-reversal-v1"
+    assert definition["phase_template"][0]["phase_id"] == "FAKE_DUMP"
+    assert definition["linked_evidence"][0]["capture_id"]
+    assert definition["linked_evidence"][0]["research_tags"] == ["second_dump", "oi_reexpand"]
+
+
 def test_runtime_setup_and_research_context_routes(tmp_path, monkeypatch) -> None:
     client = _client(tmp_path, monkeypatch)
 
@@ -178,6 +241,7 @@ def test_runtime_routes_return_404_for_missing_records(tmp_path, monkeypatch) ->
     client = _client(tmp_path, monkeypatch)
 
     assert client.get("/runtime/captures/missing").status_code == 404
+    assert client.get("/runtime/definitions/missing").status_code == 404
     assert client.get("/runtime/setups/missing").status_code == 404
     assert client.get("/runtime/research-contexts/missing").status_code == 404
     assert client.get("/runtime/ledger/missing").status_code == 404

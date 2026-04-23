@@ -24,6 +24,15 @@ class RuntimeCaptureListResponse(RuntimeEnvelope):
     count: int
 
 
+class RuntimePatternDefinitionResponse(RuntimeEnvelope):
+    definition: dict[str, Any]
+
+
+class RuntimePatternDefinitionListResponse(RuntimeEnvelope):
+    definitions: list[dict[str, Any]]
+    count: int
+
+
 class RuntimeWorkspacePinCreate(BaseModel):
     symbol: str
     timeframe: str | None = None

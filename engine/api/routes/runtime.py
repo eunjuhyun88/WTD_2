@@ -10,6 +10,8 @@ from api.schemas_runtime import (
     RuntimeCaptureResponse,
     RuntimeCaptureListResponse,
     RuntimeLedgerResponse,
+    RuntimePatternDefinitionListResponse,
+    RuntimePatternDefinitionResponse,
     RuntimeResearchContextCreate,
     RuntimeResearchContextResponse,
     RuntimeSetupCreate,
@@ -19,12 +21,14 @@ from api.schemas_runtime import (
 )
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureRecord
+from patterns.definitions import PatternDefinitionService
 from runtime.store import RuntimeStateStore
 
 router = APIRouter()
 
 _capture_store: CaptureStore | None = None
 _runtime_store: RuntimeStateStore | None = None
+_definition_service: PatternDefinitionService | None = None
 
 
 def get_capture_store() -> CaptureStore:
@@ -39,6 +43,13 @@ def get_runtime_store() -> RuntimeStateStore:
     if _runtime_store is None:
         _runtime_store = RuntimeStateStore()
     return _runtime_store
+
+
+def get_definition_service() -> PatternDefinitionService:
+    global _definition_service
+    if _definition_service is None:
+        _definition_service = PatternDefinitionService(capture_store=get_capture_store())
+    return _definition_service
 
 
 def _generated_at() -> str:
@@ -111,6 +122,28 @@ async def get_runtime_capture(capture_id: str) -> RuntimeCaptureResponse:
     if capture is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_capture_not_found", "capture_id": capture_id})
     return RuntimeCaptureResponse(generated_at=_generated_at(), capture=capture.to_dict())
+
+
+@router.get("/definitions", response_model=RuntimePatternDefinitionListResponse)
+async def list_runtime_definitions(limit: int = 100) -> RuntimePatternDefinitionListResponse:
+    definitions = get_definition_service().list_definitions(limit=max(1, min(limit, 200)))
+    return RuntimePatternDefinitionListResponse(
+        generated_at=_generated_at(),
+        definitions=definitions,
+        count=len(definitions),
+    )
+
+
+@router.get("/definitions/{pattern_slug}", response_model=RuntimePatternDefinitionResponse)
+async def get_runtime_definition(pattern_slug: str) -> RuntimePatternDefinitionResponse:
+    try:
+        definition = get_definition_service().get_definition(pattern_slug)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "runtime_definition_not_found", "pattern_slug": pattern_slug},
+        ) from exc
+    return RuntimePatternDefinitionResponse(generated_at=_generated_at(), definition=definition)
 
 
 @router.post("/workspace/pins", response_model=RuntimeWorkspaceResponse)
