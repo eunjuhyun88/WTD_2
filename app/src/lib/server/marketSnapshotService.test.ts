@@ -15,8 +15,8 @@ describe('buildPublicSnapshotFromEngineFact', () => {
 				perp: { status: 'blocked', summary: 'no rows', updated_at: null },
 			},
 			sources: {
-				klines: { status: 'missing', summary: 'stale transitional source', updated_at: null },
-				perp: { status: 'ok', summary: 'stale transitional source', updated_at: '2026-04-24T00:00:00Z' },
+				klines: { status: 'blocked', summary: 'stale transitional source', updated_at: null },
+				perp: { status: 'live', summary: 'stale transitional source', updated_at: '2026-04-24T00:00:00Z' },
 			},
 		} as const;
 
@@ -37,8 +37,8 @@ describe('buildPublicSnapshotFromEngineFact', () => {
 			status: 'transitional',
 			generated_at: '2026-04-24T00:00:00Z',
 			sources: {
-				klines: { status: 'ok', summary: '600 rows', updated_at: '2026-04-24T00:00:00Z' },
-				perp: { status: 'missing', summary: 'no rows', updated_at: null },
+				klines: { status: 'live', summary: '600 rows', updated_at: '2026-04-24T00:00:00Z' },
+				perp: { status: 'blocked', summary: 'no rows', updated_at: null },
 			},
 		} as const;
 
