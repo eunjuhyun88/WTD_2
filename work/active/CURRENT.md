@@ -110,8 +110,8 @@
 ## 즉시 실행 순서 (사람)
 
 - active on `codex/w-0122-market-cap-fact-cut`
-- current slice: engine `/facts/chain-intel` landing route
-- decision: add bounded engine chain-intel source-state route because the plane proxy already allows `chain-intel`; do not migrate app `/api/market/chain-intel` live provider payload in this same cut
+- current slice: chain-intel public fact coverage adapter
+- decision: keep `/api/market/chain-intel` live Solscan/TRONSCAN/Etherscan payload stable and attach engine `/api/facts/chain-intel` only as additive `factCoverage`
 
 ---
 
