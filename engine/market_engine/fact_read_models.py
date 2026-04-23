@@ -200,6 +200,58 @@ def build_reference_stack(
     }
 
 
+def _chain_family(chain: str, explicit_family: str | None = None) -> str:
+    if explicit_family:
+        return explicit_family.strip().lower()
+    normalized = chain.strip().lower()
+    if normalized == "solana":
+        return "solana"
+    if normalized == "tron":
+        return "tron"
+    return "evm"
+
+
+def build_chain_intel_context(
+    *,
+    symbol: str = "BTCUSDT",
+    chain: str = "ethereum",
+    family: str | None = None,
+    timeframe: str = "1h",
+    offline: bool = True,
+) -> dict[str, Any]:
+    ctx = build_fact_context(symbol=symbol, timeframe=timeframe, offline=offline)
+    source = _source_contract("chain_bundle", ctx["sources"].get("chain", {}))
+    provider_state = {
+        "chain_bundle": _fact_source_state(
+            source["state"],
+            source["summary"],
+            None,
+        )
+    }
+    normalized_chain = chain.strip().lower() or "ethereum"
+    normalized_family = _chain_family(normalized_chain, family)
+
+    return {
+        "ok": True,
+        "owner": "engine",
+        "plane": "fact",
+        "kind": "chain_intel",
+        "status": "transitional",
+        "generated_at": ctx["generated_at"],
+        "symbol": ctx["symbol"],
+        "timeframe": ctx["timeframe"],
+        "chain": normalized_chain,
+        "family": normalized_family,
+        "provider_state": provider_state,
+        "source": source,
+        "summary": f"{normalized_chain} chain bundle: {source['summary']}",
+        "notes": [
+            "bounded chain-intel landing zone",
+            "does not replace app live Solscan/TRONSCAN/Etherscan payload yet",
+        ],
+    }
+
+
 def build_market_cap_context(
     *,
     offline: bool = True,

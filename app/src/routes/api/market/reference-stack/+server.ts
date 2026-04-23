@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import type { ReferenceStackSnapshot } from '$lib/contracts/facts/referenceStack';
 import { toBoundedInt } from '$lib/server/apiValidation';
 import { runIpRateLimitGuard } from '$lib/server/authSecurity';
+import { fetchFactReferenceStackProxy } from '$lib/server/enginePlanes/facts';
 import { loadMarketReferenceStack } from '$lib/server/marketReferenceStack';
 import { buildPublicCacheHeaders } from '$lib/server/publicCacheHeaders';
 import { terminalReadLimiter } from '$lib/server/rateLimit';
@@ -15,7 +17,30 @@ const VALID_CHAIN_ID = /^\d{1,10}$/;
 const VALID_EXCHANGE = /^[A-Za-z0-9_-]{2,24}$/;
 const VALID_ROOTDATA_QUERY = /^[A-Za-z0-9 ._@+-]{1,80}$/;
 
-export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
+function toEngineFactSymbol(symbol: string | null): string {
+	const raw = (symbol ?? 'BTCUSDT').trim().toUpperCase();
+	for (const quote of ['USDT', 'USDC', 'USD', 'BTC', 'ETH']) {
+		if (raw.endsWith(quote) && raw.length > quote.length) return raw;
+	}
+	return `${raw}USDT`;
+}
+
+function adaptFactCoverage(snapshot: ReferenceStackSnapshot | null) {
+	if (!snapshot?.ok) return null;
+	return {
+		owner: snapshot.owner,
+		plane: snapshot.plane,
+		kind: snapshot.kind,
+		status: snapshot.status,
+		generatedAt: snapshot.generated_at,
+		symbol: snapshot.symbol ?? null,
+		timeframe: snapshot.timeframe ?? null,
+		coverage: snapshot.coverage ?? null,
+		sources: snapshot.sources,
+	};
+}
+
+export const GET: RequestHandler = async ({ url, request, getClientAddress, fetch }) => {
 	const guard = await runIpRateLimitGuard({
 		request,
 		fallbackIp: getClientAddress(),
@@ -62,23 +87,36 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress }) =>
 	}
 
 	try {
-		const payload = await loadMarketReferenceStack({
-			symbol,
-			coinId,
-			exchange,
-			chain,
-			entity: entity as 'token' | 'account' | null,
-			address,
-			chainId,
-			rootDataQuery,
-			unlockWindowDays,
-		});
+		const [payload, factCoverage] = await Promise.all([
+			loadMarketReferenceStack({
+				symbol,
+				coinId,
+				exchange,
+				chain,
+				entity: entity as 'token' | 'account' | null,
+				address,
+				chainId,
+				rootDataQuery,
+				unlockWindowDays,
+			}),
+			fetchFactReferenceStackProxy(fetch, {
+				symbol: toEngineFactSymbol(symbol),
+				timeframe: '1h',
+				offline: true,
+			}),
+		]);
+		const adaptedFactCoverage = adaptFactCoverage(factCoverage);
 
-		return json(payload, {
+		return json(adaptedFactCoverage ? { ...payload, factCoverage: adaptedFactCoverage } : payload, {
 			headers: buildPublicCacheHeaders({
 				browserMaxAge: 30,
 				sharedMaxAge: 60,
 				staleWhileRevalidate: 120,
+				headers: {
+					'X-WTD-Plane': 'fact',
+					'X-WTD-Upstream': adaptedFactCoverage ? 'facts/reference-stack+curated-reference' : 'curated-reference',
+					'X-WTD-State': adaptedFactCoverage ? 'adapter' : 'fallback',
+				},
 			}),
 		});
 	} catch (error) {

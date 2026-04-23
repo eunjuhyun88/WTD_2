@@ -90,8 +90,8 @@
 ## Current Dirty Tree Snapshot
 
 - active on `codex/w-0122-consumer-fact-cut`
-- current slice: W-0122 consumer fact cut (`/api/market/events` prefers `facts/perp-context`; `/api/terminal/intel-policy` consumes `/api/market/macro-overview`, which is engine-preferred via `GET /facts/market-cap`)
-- scoped files: `app/src/routes/api/market/events/+server.ts`, `app/src/routes/api/market/events/events.test.ts`, `app/src/routes/api/terminal/intel-policy/+server.ts`, `app/src/lib/server/intelPolicyRuntime.ts`, `app/src/routes/api/terminal/intel-policy/intel-policy.test.ts`, `app/src/routes/api/coingecko/global/+server.ts`, `work/active/W-0122-free-indicator-stack.md`
+- PR candidate extracted into clean worktree `/private/tmp/wtd-v2-w0122-consumer-cut`
+- W-0122 consumer fact cut is PR-ready by extraction: snapshot / confluence / flow / events / macro / intel-policy / reference-stack / chain-intel now prefer or attach engine fact routes while keeping public payloads stable
 
 ---
 

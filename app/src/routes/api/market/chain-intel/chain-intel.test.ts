@@ -4,6 +4,11 @@ vi.mock('$lib/server/chainIntel', () => ({
   fetchChainIntel: vi.fn(),
 }));
 
+vi.mock('$lib/server/enginePlanes/facts', () => ({
+  fetchFactChainIntelProxy: vi.fn(),
+}));
+
+import { fetchFactChainIntelProxy } from '$lib/server/enginePlanes/facts';
 import { fetchChainIntel } from '$lib/server/chainIntel';
 import { GET } from './+server';
 
@@ -13,6 +18,22 @@ describe('/api/market/chain-intel', () => {
   });
 
   it('returns a canonical Solana token payload', async () => {
+    vi.mocked(fetchFactChainIntelProxy).mockResolvedValue({
+      ok: true,
+      owner: 'engine',
+      plane: 'fact',
+      kind: 'chain_intel',
+      status: 'transitional',
+      generated_at: '2026-04-23T00:00:00Z',
+      symbol: 'SOLUSDT',
+      timeframe: '1h',
+      chain: 'solana',
+      family: 'solana',
+      provider_state: {
+        chain_bundle: { status: 'blocked', summary: 'no rows', updated_at: null },
+      },
+      summary: 'solana chain bundle: no rows',
+    });
     vi.mocked(fetchChainIntel).mockResolvedValue({
       family: 'solana',
       chain: 'solana',
@@ -61,6 +82,7 @@ describe('/api/market/chain-intel', () => {
       url: new URL(request.url),
       request,
       getClientAddress: () => '127.0.0.1',
+      fetch: globalThis.fetch,
     } as any);
 
     expect(res.status).toBe(200);
@@ -71,11 +93,21 @@ describe('/api/market/chain-intel', () => {
       address: null,
       chainId: null,
     });
+    expect(fetchFactChainIntelProxy).toHaveBeenCalledWith(globalThis.fetch, {
+      symbol: 'SOLUSDT',
+      chain: 'solana',
+      timeframe: '1h',
+      offline: true,
+    });
+    expect(res.headers.get('x-wtd-upstream')).toBe('facts/chain-intel+live-chain-intel');
     expect(body.chain).toBe('solana');
     expect(body.summary.title).toContain('SOL');
+    expect(body.factCoverage.kind).toBe('chain_intel');
+    expect(body.factCoverage.providerState.chain_bundle.status).toBe('blocked');
   });
 
   it('forwards tron token requests to the canonical loader', async () => {
+    vi.mocked(fetchFactChainIntelProxy).mockResolvedValue(null);
     vi.mocked(fetchChainIntel).mockResolvedValue({
       family: 'tron',
       chain: 'tron',
@@ -119,6 +151,7 @@ describe('/api/market/chain-intel', () => {
       url: new URL(request.url),
       request,
       getClientAddress: () => '127.0.0.1',
+      fetch: globalThis.fetch,
     } as any);
 
     expect(res.status).toBe(200);
@@ -128,9 +161,19 @@ describe('/api/market/chain-intel', () => {
       address: null,
       chainId: null,
     });
+    expect(fetchFactChainIntelProxy).toHaveBeenCalledWith(globalThis.fetch, {
+      symbol: 'TRXUSDT',
+      chain: 'tron',
+      timeframe: '1h',
+      offline: true,
+    });
+    expect(res.headers.get('x-wtd-upstream')).toBe('live-chain-intel');
+    const body = await res.json();
+    expect(body.factCoverage).toBeUndefined();
   });
 
   it('passes chainid for evm requests', async () => {
+    vi.mocked(fetchFactChainIntelProxy).mockResolvedValue(null);
     vi.mocked(fetchChainIntel).mockResolvedValue({
       family: 'evm',
       chain: 'base',
@@ -169,6 +212,7 @@ describe('/api/market/chain-intel', () => {
       url: new URL(request.url),
       request,
       getClientAddress: () => '127.0.0.1',
+      fetch: globalThis.fetch,
     } as any);
 
     expect(res.status).toBe(200);

@@ -417,7 +417,7 @@ export type {
 	ReferenceHealthSummary,
 	FactSnapshot
 } from './facts/factSnapshot';
-export type { ReferenceStackEntry, ReferenceStackSnapshot } from './facts/referenceStack';
+export type { ReferenceStackSnapshot, ReferenceStackSource } from './facts/referenceStack';
 export type { ChainIntelSnapshot } from './facts/chainIntel';
 export type { MarketCapSnapshot } from './facts/marketCap';
 export type { ConfluenceContribution, ConfluenceResult } from './facts/confluence';

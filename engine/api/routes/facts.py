@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from market_engine.fact_plane import FactContextBuildError
 from market_engine.fact_read_models import (
+    build_chain_intel_context,
     build_confluence_context,
     build_market_cap_context,
     build_perp_context,
@@ -63,6 +64,26 @@ async def facts_reference_stack(
 ) -> dict:
     try:
         return build_reference_stack(symbol=symbol, timeframe=timeframe, offline=offline)
+    except FactContextBuildError as exc:
+        _raise_fact_http_error(exc)
+
+
+@router.get("/chain-intel")
+async def facts_chain_intel(
+    symbol: str = Query("BTCUSDT", min_length=3),
+    chain: str = Query("ethereum", min_length=2),
+    family: str | None = Query(None),
+    timeframe: str = Query("1h"),
+    offline: bool = Query(True),
+) -> dict:
+    try:
+        return build_chain_intel_context(
+            symbol=symbol,
+            chain=chain,
+            family=family,
+            timeframe=timeframe,
+            offline=offline,
+        )
     except FactContextBuildError as exc:
         _raise_fact_http_error(exc)
 
