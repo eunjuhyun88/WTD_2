@@ -17,7 +17,7 @@ from research.pattern_search import (
     build_variant_pattern,
     evaluate_variant_on_case,
 )
-from scanner.feature_calc import compute_features_table
+from scanner.feature_calc import MIN_HISTORY_BARS, compute_features_table
 
 _DEFAULT_HISTORY_BARS = 24 * 30
 _DEFAULT_STRIDE_BARS = 6
