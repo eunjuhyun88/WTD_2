@@ -36,6 +36,36 @@
 5. degraded provider state (`live / blocked / reference_only`) 는 first-class contract 다.
 6. refactor 는 plane 단위 strangler 방식으로 하고, big-bang rewrite 는 금지한다.
 
+## Execution Ownership
+
+이 문서는 architecture truth 다. 실제 execution owner 는 아래로 고정한다.
+
+- `W-0148`: Phase 0 architecture owner only
+  - `PR0.1` docs/governance normalize
+  - `PR0.2` contract skeleton + plane-specific app proxies
+- `W-0122`: Fact Plane owner
+  - `GET /ctx/fact`
+  - canonical `/facts/*`
+  - `engine/market_engine/indicator_catalog.py`
+- `W-0145`: Search Plane owner
+  - corpus accumulation
+  - canonical `/search/*`
+- `W-0142`: Runtime State owner
+  - captures / pins / setups / research context / ledger
+  - canonical `/runtime/*`
+- `W-0143`: Agent/Search integration owner
+  - `AgentContextPack`
+  - agent route unification after fact/search/runtime lanes merge
+- `W-0139` + `W-0140`: Surface owner
+  - terminal page, compare/pin, analyze workspace slimming
+- `W-0141`: assist/doc lane only
+- `W-0146`: governance/reference lane only
+
+Parallel rule:
+
+- `Dedicated contract PR first` 가 blocking step 이다.
+- `W-0122`, `W-0145`, `W-0142` parallel lanes 는 `PR0.2` merge 후 updated `main` 에서만 시작한다.
+
 ## Target Topology
 
 ### 1. Raw Provider Layer
@@ -510,6 +540,215 @@ Rules:
 - runtime state does not own market truth
 - surface persistence may exist temporarily, but canonical workflow state should converge on engine ownership
 
+## Canonical Lane Design Pattern
+
+새 데이터 기능, 새 지표 묶음, 새 패턴 연구 lane 은 아래 순서대로 설계한다.
+
+이 섹션의 목적은 “좋은 구조를 아는 것”이 아니라, 새 작업이 들어올 때마다
+같은 질문과 같은 산출물을 강제해 architecture drift 를 막는 것이다.
+
+### Step 1. Name the lane precisely
+
+먼저 이 lane 이 무엇인지 한 문장으로 고정한다.
+
+예시:
+
+- `BTC/ETH perp crowding fact lane`
+- `multichain chain-intel fact lane`
+- `TRADOOR/PTB seed-search corpus lane`
+- `founder hypothesis runtime-state lane`
+
+금지:
+
+- `market improvements`
+- `intel cleanup`
+- `AI better answers`
+
+이름이 추상적이면 plane 이 섞인다.
+
+### Step 2. Decide the plane first
+
+새 기능은 먼저 어느 plane 인지 결정한다.
+
+| 질문 | 배치 |
+|---|---|
+| external source 를 읽고 market truth 를 정규화하는가? | `Ingress` 또는 `Fact` |
+| live/historical retrieval, ranking, replay 인가? | `Search` |
+| user/engine workflow artifact 인가? | `Runtime State` |
+| LLM 입력용 압축물인가? | `Agent Context` |
+| 화면 배치/상호작용/저장 UI 인가? | `Surface` |
+
+하나의 change set 이 여러 plane 을 건드리면, 기본값은 split 이다.
+
+### Step 3. Fill the split template
+
+새 lane 은 최소 아래 8개를 먼저 채운다.
+
+| Field | Meaning |
+|---|---|
+| `owner` | `engine` / `app` / `contract` / `research` |
+| `plane` | ingress / fact / search / runtime_state / agent_context / surface |
+| `source_of_truth` | cache / durable DB / corpus store / workflow store |
+| `hot_path` | request-time read / interactive path |
+| `background_path` | scheduler / worker-control / warmup |
+| `canonical_route` | 최종 route 또는 contract |
+| `degraded_states` | live / partial / blocked / stale / corpus_only 등 |
+| `forbidden_dependencies` | 이 lane 이 의존하면 안 되는 것 |
+
+이 템플릿을 채우지 못하면 구현을 시작하지 않는다.
+
+### Step 4. Separate rebuildable truth from authoritative truth
+
+가장 자주 꼬이는 지점이다.
+
+- rebuildable:
+  - fact snapshots
+  - reference stack read models
+  - confluence snapshots
+  - market context aggregations
+- authoritative:
+  - captures
+  - pins
+  - saved setups
+  - research_context
+  - ledger/outcome
+  - corpus signatures / search runs
+
+규칙:
+
+- rebuildable object 를 workflow truth 로 저장하지 않는다.
+- authoritative object 에 raw fact payload 전체를 복제하지 않는다.
+- authoritative object 는 fact/search output 을 `id + compact summary` 로 참조한다.
+
+### Step 5. Split hot path and background path
+
+같은 provider 라도 호출 방식은 둘로 나눈다.
+
+- hot path
+  - request-time fallback
+  - bounded read model refresh
+  - AI/user interaction 에 필요한 최소 fetch
+- background path
+  - scheduler warmup
+  - corpus accumulation
+  - periodic aggregation
+  - provider health refresh
+
+규칙:
+
+- `worker-control` 이 background owner 다.
+- engine route 내부 request-time fallback 은 허용된다.
+- `app` 의 direct upstream fan-out 은 금지다.
+
+### Step 6. Define route shape before UI shape
+
+새 기능은 화면보다 먼저 route contract 를 정한다.
+
+좋은 순서:
+
+1. source capability/state 정의
+2. canonical payload 정의
+3. degraded payload 정의
+4. engine route 정의
+5. app adapter 정의
+6. UI 연결
+
+나쁜 순서:
+
+1. 화면 먼저 만듦
+2. route 는 화면 맞추느라 ad hoc join
+3. provider semantics 가 surface 로 샘
+
+### Step 7. Force degraded states into the contract
+
+새 lane 은 “정상일 때 payload”만 설계하면 안 된다.
+
+반드시 같이 적는다.
+
+- source missing
+- key missing
+- rate limited
+- stale cache
+- corpus only
+- fallback_local
+- read_only
+
+운영에서 진짜 중요한 건 success path 보다 degraded path 다.
+
+### Step 8. Define promotion gates
+
+새 lane 은 아래 4단계를 거친다.
+
+1. `cataloged`
+   - 존재/부재/status truth 가 문서 또는 catalog 에 등록됨
+2. `readable`
+   - bounded route 로 읽을 수 있음
+3. `operational`
+   - scheduler/warmup/caching/health 가 있음
+4. `promoted`
+   - AI/surface/search 가 canonical consumer 로 사용
+
+모든 lane 을 한 번에 promoted 로 만들려고 하면 다시 꼬인다.
+
+## Lane Checklist
+
+새 lane 추가 전, 아래 checklist 를 work item 에 포함한다.
+
+### Minimal checklist
+
+- lane name 이 한 문장으로 고정되었는가
+- plane 이 하나로 고정되었는가
+- owner 가 한 팀으로 고정되었는가
+- `table / cache / route / job` split 이 적혔는가
+- hot path / background path 가 분리되었는가
+- degraded states 가 적혔는가
+- canonical consumer 가 적혔는가
+- forbidden dependency 가 적혔는가
+- verification 최소 경로가 적혔는가
+
+### Promotion checklist
+
+- `cataloged` 상태인가
+- route payload 가 stable 한가
+- app 가 direct provider fan-out 없이 소비 가능한가
+- runtime state 와 fact payload ownership 이 섞이지 않는가
+- search 가 fact truth 를 다시 쓰지 않는가
+
+## Examples
+
+### Example A — Influencer metrics 100 catalog
+
+- plane: `Fact`
+- owner: `engine`
+- source_of_truth: catalog file + bounded read route
+- hot_path: `GET /ctx/indicator-catalog`
+- background_path: none in phase 1
+- canonical_route: engine catalog route
+- degraded_states: `live / partial / blocked / missing`
+- forbidden_dependencies: surface-specific layout fields, AI prompt text
+
+### Example B — Seed-search corpus accumulation
+
+- plane: `Search`
+- owner: `engine`
+- source_of_truth: durable corpus store
+- hot_path: run lookup / retrieval
+- background_path: scheduler accumulation
+- canonical_route: `POST /search/seed`, corpus-backed retrieval routes
+- degraded_states: `live / corpus_only / degraded`
+- forbidden_dependencies: direct app provider fan-out, layout state
+
+### Example C — Founder research_context capture
+
+- plane: `Runtime State`
+- owner: `engine`
+- source_of_truth: durable workflow store
+- hot_path: capture write/read
+- background_path: optional sync/backfill only
+- canonical_route: capture workflow APIs
+- degraded_states: `durable / fallback_local / read_only`
+- forbidden_dependencies: market fact ownership, search ranking logic
+
 ## Hot Path vs Background Path
 
 ### Hot Path
@@ -972,6 +1211,7 @@ Success condition:
 | `engine/data_cache/loader.py` | shared raw/cache loader | Ingress | keep, narrow public surface | `W-0122` |
 | `engine/market_engine/fact_plane.py` | bounded fact read-model seed | Fact | expand, keep engine-owned | `W-0122` |
 | `engine/api/routes/ctx.py` | engine fact route entry | Fact | keep, grow as canonical read route | `W-0148` then `W-0122` |
+| `engine/market_engine/indicator_catalog.py` | canonical indicator inventory | Fact | keep in fact lane; expose through `/facts/indicator-catalog` | `W-0122` |
 | `engine/market_engine/types.py` | fact/runtime typing | Fact | keep, split if needed | `W-0122` |
 | `engine/research/pattern_search.py` | replay/search benchmark monolith | Search | split into search runtime + corpus concerns | `W-0145` / `W-0143` |
 | `engine/scanner/scheduler.py` | job scheduling | Search | extend for corpus accumulation | `W-0145` |

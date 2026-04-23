@@ -18,7 +18,8 @@ Engine logic change
 - 문서상 target plane 과 실제 코드 간 불일치 정리
 - merge / split / park 기준을 CTO queue 로 재정렬
 - target architecture 문서화
-- 첫 bounded fact-plane refactor slice 구현
+- Phase 0 blocking setup (`PR0.1` docs normalize, `PR0.2` contract/proxy split) 구현
+- 첫 bounded fact-plane refactor slice 의 landing zone 만 연다
 
 ## Non-Goals
 
@@ -39,7 +40,9 @@ Engine logic change
 - `docs/decisions/0003-infra-chart-architecture-2026-04-21.md`
 - `engine/api/main.py`
 - `engine/api/routes/ctx.py`
+- `engine/api/routes/facts.py`
 - `engine/scanner/scheduler.py`
+- `engine/market_engine/fact_read_models.py`
 - `engine/data_cache/loader.py`
 - `engine/capture/store.py`
 - `engine/patterns/state_store.py`
@@ -79,8 +82,15 @@ Engine logic change
 - `app` 의 ingress/fact/search adapter 들은 최종 ownership 이 아니라 migration bridge 로만 유지한다.
 - execution spec 은 `docs/domains/terminal-ai-scan-architecture.md` 의 plane contract table, owner routes, storage rules, cutover plan 을 canonical implementation guide 로 삼는다.
 - 데이터 종류별 canonical `table / cache / route / job` 분해는 같은 문서의 `Data Domain Split` 표를 구현 기준으로 삼는다.
+- 새 데이터/패턴 lane 은 같은 문서의 `Canonical Lane Design Pattern` 과 `Lane Checklist` 를 먼저 채운 뒤 구현한다.
 - 첫 code slice 는 app-side raw provider fan-out 을 당장 다 없애는 대신, engine 에 bounded fact-context route 를 열어 이후 migration 의 landing zone 을 만든다.
+- current executable slice after `/ctx/fact` is the first fact batch route extraction: `GET /facts/price-context`, `GET /facts/perp-context`, `GET /facts/reference-stack`, `GET /facts/confluence`.
 - `codex/parking-20260423-mixed-lanes` 에 있는 `W-0142`, `W-0143`, `W-0144` commits 는 direct merge 금지이며 clean main-based extraction 대상이다.
+- `W-0148` 는 architecture owner only 다. lane-specific product code 는 `PR0.2` 이후 각 work item lane 으로 넘긴다.
+- `W-0146` 는 governance/reference lane 이며 execution lane 으로 간주하지 않는다.
+- `W-0141` 는 workspace/data-contract assist lane 이며 상위 architecture owner 가 아니다.
+- `engine/market_engine/indicator_catalog.py` 는 `W-0122` 소유 fact-plane inventory 파일이며 `W-0148` 범위로 흡수하지 않는다.
+- parallel lanes (`W-0122`, `W-0145`, `W-0142`) 는 `PR0.2` contract/proxy split 이 merge 되기 전에는 열지 않는다.
 
 ## Current Layer Map
 
@@ -189,34 +199,37 @@ Engine logic change
 
 ## Execution Queue
 
-1. `W-0122`: finish engine-owned fact-plane slices and cut app consumers to `GET /ctx/fact` or follow-up fact routes
-2. `W-0145`: extract scheduler-built corpus so historical retrieval stops depending on broad live fan-out
-3. `W-0143`: extract seed-search / pattern-catalog / app integration on top of the fact/corpus base
-4. `W-0142`: place `research_context` under runtime-state/agent contract after fact/search boundaries are stable
-5. `W-0139`: keep as surface closeout only after upstream contracts are frozen
-6. `W-0141`: reduce to workspace/data-contract assist lane, not top-level architecture owner
+1. `PR0.1`: normalize work-item ownership / execution order / branch plan
+2. `PR0.2`: add plane contract skeleton plus plane-specific app proxies
+3. `W-0122`: finish engine-owned fact-plane slices and cut app consumers to `GET /ctx/fact` or follow-up fact routes
+4. `W-0145`: extract scheduler-built corpus so historical retrieval stops depending on broad live fan-out
+5. `W-0142`: expose authoritative runtime-state APIs before agent/surface coupling
+6. `W-0143`: add `AgentContextPack` loader and unify agent/search integration after A/B/C
+7. `W-0139`: keep as surface closeout only after upstream contracts are frozen
+8. `W-0141`: reduce to workspace/data-contract assist lane, not top-level architecture owner
 
 ## Branch Plan
 
 - `codex/w-0148-data-engine-reset`
-  - docs + engine fact landing zone only
+  - docs + blocking contract split only
 - `codex/w-0122-fact-plane-mainline`
   - fact-plane only
 - `codex/w-0145-corpus-plane`
   - fresh branch from `main` for corpus extraction only
-- `codex/w-0143-seed-search-plane`
-  - fresh branch from `main` for seed-search/catalog/app integration only
-- `codex/w-0142-agent-context-contract`
-  - fresh branch from `main` for research-context/agent contract only
+- `codex/w-0142-runtime-state-plane`
+  - fresh branch from `main` for runtime-state repositories and APIs only
+- `codex/w-0143-agent-search-integration`
+  - fresh branch from `main` for `AgentContextPack` and agent route unification only
 - `codex/w-0139-surface-closeout`
   - only if surface follow-up is reopened after upstream cutover
 
 ## Next Steps
 
-1. `W-0122` 후속에서 `scanEngine`, `terminalParity`, `/api/market/*` 의 fact-assembly 책임을 engine read model 로 이전한다.
-2. `W-0145` 를 clean branch 로 extraction 해 corpus accumulation 을 scheduler-owned search plane 으로 고정한다.
-3. `terminal/message` 와 `douni/contextBuilder` 입력을 `AgentContextPack` 기준으로 좁히고, runtime-state inputs 는 별도 workflow contract 로 분리한다.
-4. 각 plane 에 대해 owner route, durable store, degraded state, verification 항목을 구현 체크리스트로 내린다.
+1. `PR0.1` 에서 `CURRENT.md`, `W-0148`, `W-0122`, architecture doc 의 실행 ownership 을 정규화한다.
+2. `PR0.2` 에서 `facts/search/agent/runtime/surface` contract skeleton 과 plane-specific app proxies 를 추가한다.
+3. 그 다음 `W-0122`, `W-0145`, `W-0142` lane 을 updated `main` 에서 parallel 로 연다.
+4. `terminal/message` 와 `douni/contextBuilder` 입력은 `W-0143` 에서 `AgentContextPack` 기준으로 좁힌다.
+5. 각 lane 은 시작 전에 lane checklist 와 first commit scope 를 work item 안에서 먼저 채운다.
 
 ## Exit Criteria
 

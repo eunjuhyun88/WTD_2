@@ -45,6 +45,7 @@ For `W-0122`, the immediate job is narrower:
 - move app-owned fact assembly toward engine-owned read models
 - keep app fetchers as temporary ingress bridges only
 - avoid touching search/agent/surface code unless required for compatibility
+- start only after `W-0148 / PR0.2` contract/proxy split lands on updated `main`
 
 ### First Fact-Plane Impact Cone
 
@@ -101,6 +102,7 @@ For `W-0122`, the immediate job is narrower:
 - scope extension: trader / CT / X 에서 반복적으로 조회되는 지표 100개를 canonical indicator inventory 로 고정한다.
 - source basis: X posts + official platform surfaces from CryptoQuant, Glassnode, DefiLlama, Dune, CoinGlass, Deribit, LunarCrush.
 - canonical owner: `engine`
+- owning file for Phase 1 inventory: `engine/market_engine/indicator_catalog.py`
 - first implementation shape:
   - engine catalog file with exactly 100 metrics
   - per-metric status = `live | partial | blocked | missing`
@@ -171,6 +173,8 @@ engine
 - `app/src/routes/api/coingecko/global/+server.ts`
 - `app/src/routes/api/market/reference-stack/+server.ts`
 - `engine/blocks/`
+- `engine/api/routes/ctx.py`
+- `engine/market_engine/indicator_catalog.py`
 
 ## Why
 
@@ -438,6 +442,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **opportunity scan macro backdrop 은 이제 crypto-native breadth 를 포함한다** — `/api/terminal/opportunity-scan` 의 `macroBackdrop` 는 FRED-only 가 아니라 `marketCapPlane` 의 `marketCapChange24h / BTC.D change / stablecoin liquidity / confidence` 를 함께 내리고, `BTC/ETH` 온체인 스코어는 symbol별 CQ payload 를 분리해 읽는다.
 - **W-0122 commit/merge 는 scoped branch 로 split 한다** — 현재 `codex/w-0139-terminal-core-loop-capture` worktree 에 unrelated W-0139/W-0143 changes 가 섞여 있으므로, W-0122 관련 파일만 dedicated branch/worktree 로 복사해 PR/merge 한다.
 - **W-0122 는 terminal AI 의 fact-plane owner 다** — AI agent 와 scan/search 는 직접 CoinGecko/Dune/Etherscan/Solscan/TRONSCAN 을 부르지 않고, `/api/market/reference-stack`, `/api/market/chain-intel`, `/api/market/influencer-metrics`, `marketCapPlane` 같은 bounded read models 만 읽는다.
+- **`engine/market_engine/indicator_catalog.py` 는 W-0122 소유다** — 이 파일은 `W-0148` architecture lane 이 아니라 fact-plane mainline 에서 inventory route 와 함께 가져간다.
 
 ## Open Questions
 

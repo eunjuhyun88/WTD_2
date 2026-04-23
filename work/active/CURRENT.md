@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`9bbc10ba` — PR #190 (`codex/w-0138-engine-runtime-role-split`) 포함 최신 `origin/main`
+`41bd62ac` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -25,35 +25,55 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | CTO inventory + merge queue + canonical data-engine reset + first fact-plane refactor slice |
-| **W-0146** | `W-0146-lane-cleanup-and-merge-governance.md` | 🔴 IN-PROGRESS | branch/function audit + merge-now / split-next / park-only queue |
-| **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact-plane cleanup: reference stack + chain intel + influencer metrics + marketCapPlane |
-| **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | scheduler-driven corpus accumulation + seed-search corpus-first retrieval |
-| **W-0144** | `W-0144-memkraft-shadow-memory-lane.md` | 🔴 IN-PROGRESS | commit split plan + MemKraft shadow sync/backfill + seed-search evidence recall |
-| **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | engine research_context contract commit split + app DB fallback persistence decision |
-| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🔴 IN-PROGRESS | terminal seed-search wiring landed; compare/pin workspace persistence + richer retrieval remain |
-| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟢 VERIFIED | 사용자 승인 후 scoped commit/PR 정리만 남음 |
-| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / 추가 정리 |
-| **W-0141** | `W-0141-cogochi-protocol-whitepaper-refresh.md` | 🔴 IN-PROGRESS | investor-facing protocol whitepaper repositioning + canonical doc authoring |
+| **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
+| **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
+| **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
+| **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
+| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
+| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
+| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-UPSTREAM | bottom ANALYZE slimming after surface contract cutover |
+
+## Reference / Assist Work Items
+
+| ID | 파일 | 상태 | 역할 |
+|---|---|---|---|
+| **W-0146** | `W-0146-lane-cleanup-and-merge-governance.md` | 🟡 REFERENCE | merge governance / queue audit reference, not an execution lane |
+| **W-0141** | `W-0141-market-data-plane.md` | 🟡 ASSIST | workspace/data contract assist lane, not top-level architecture owner |
+
+## Deferred / Blocked
+
+| ID | 파일 | 상태 | 핵심 미완 |
+|---|---|---|---|
 | **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 OPS-BLOCKED | engine mainline integration 완료, 운영 migration 018만 남음 |
-| **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
 | **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
 
 ---
 
 ## Canonical Lane Order — Terminal AI / Scan
 
-이 축은 아래 3-plane 으로 고정한다. 순서를 어기면 surface 와 provider fan-out 이 다시 섞인다.
+이 축은 아래 `5 planes + runtime state plane` 으로 고정한다. 순서를 어기면 surface 와 provider fan-out 이 다시 섞인다.
 
-1. **Fact Plane (`W-0122`)**
-   - market reference stack, chain intel, influencer metrics, market-cap plane
-   - 목적: API-key 부재(CMC/Santiment/Arkham) 상황에서도 AI 와 scan 이 읽을 canonical fact layer 구축
-2. **Search Plane (`W-0145` + `W-0143`)**
-   - operational corpus, pattern family / seed-search / pattern catalog / pattern-aware scan
-   - 목적: live chat 마다 raw provider 를 다시 긁지 않고, corpus + cached facts 로 즉시 검색
-3. **Surface Plane (`W-0140` + `W-0139`)**
-   - compare/pin workspace, range capture/save, analyze handoff
-   - 목적: 위 두 plane 결과만 소비해 trader workflow 를 닫음
+1. **Ingress**
+   - raw provider fetch, cache, capability/freshness state
+   - 규칙: product semantics 금지, `engine` 가 최종 owner
+2. **Fact Plane (`W-0122`)**
+   - `FactSnapshot`, reference stack, chain intel, market-cap, confluence, indicator catalog
+   - 목적: AI 와 search 가 읽을 canonical market truth 구축
+3. **Search Plane (`W-0145`)**
+   - corpus accumulation, scan runtime, seed-search, catalog, candidate reports
+   - 목적: live fan-out 없이 fact/corpus 기반 retrieval 확보
+4. **Agent Context (`W-0143`)**
+   - `AgentContextPack`, bounded AI inputs, route-by-route ad hoc joins 제거
+   - 목적: AI 가 fact/search/runtime summary 만 읽도록 고정
+5. **Surface Plane (`W-0139` + `W-0140`)**
+   - terminal page, compare/pin, analyze workspace, save/setup UX
+   - 목적: 위 plane 들의 결과만 소비해 trader workflow 를 닫음
+
+별도 plane:
+
+- **Runtime State (`W-0142`)**
+  - capture, pins, saved setups, research context, ledger, outcomes
+  - 규칙: workflow truth 는 fact/search cache 와 분리된 engine-owned authoritative store
 
 규칙:
 
@@ -61,48 +81,56 @@
 - AI agent 는 bounded `agentContext` 와 read-model route 만 소비한다.
 - historical / market-wide search 는 `worker-control` / scheduler corpus 에서만 확장한다.
 - 새 provider 는 먼저 fact plane 에서 `live / blocked / reference_only` state 를 가져야 한다.
-- branch cleanup reason: current local stack mixes `W-0139`, `W-0142`, `W-0143`, `W-0144`, `W-0122`, and protocol/doc lanes in one worktree; preserve first on parking branches, then resume next work from a clean main-based branch/worktree.
+- `W-0148` 는 architecture owner only 이며, lane-specific product code 를 흡수하지 않는다.
+- `W-0148` 의 blocking step 은 `PR0.2` contract/proxy split 이고, parallel lanes 는 그 뒤 `updated main` 에서 시작한다.
+- `engine/market_engine/indicator_catalog.py` 는 `W-0122` fact-plane owner 파일이며 `W-0148` 로 흡수하지 않는다.
 
 ---
 
-## Dirty Tree Split Snapshot
+## Current Dirty Tree Snapshot
 
-- `W-0145/W-0142/W-0143`: `engine/api/routes/{jobs,seed_search}.py`, `engine/research/{seed_search,market_corpus}.py`, `engine/scanner/{scheduler.py,jobs/seed_search_corpus.py}`, `app/src/lib/api/seedSearch.ts`, 관련 work item 문서
-- `W-0139`: terminal save/range/lab-handoff surface files, `chartSaveMode`, terminal persistence/tests, `/terminal` route, 관련 work item 문서
-- `W-0122`: market/intel/reference-stack files, indicator registry updates, `/api/market/*` 확장 routes/tests, 관련 work item 문서
-- `W-0141`: protocol whitepaper/architecture docs + `pattern_families` engine lane
-- staging 제외 noise: `.playwright-cli/*.png`
-- hunk-level staging required: `app/src/hooks.server.ts`, `app/src/routes/api/terminal/intel-policy/+server.ts`, `app/src/lib/api/terminalBackend.ts`, `work/active/CURRENT.md`
+- `W-0148`: `docs/domains/terminal-ai-scan-architecture.md`, `work/active/W-0148-cto-data-engine-reset.md`
+- `W-0122`: `engine/api/routes/ctx.py`, `engine/tests/test_ctx_fact_route.py`, untracked `engine/market_engine/indicator_catalog.py`, `work/active/W-0122-free-indicator-stack.md`
+- execution note: no mixed-stack surface/search dirty tree should be resumed from this worktree; parallel lane work starts only after `PR0.2` merges
 
 ---
 
 ## 즉시 실행 순서
 
-1. **W-0148 / C0** — CTO reset: inventory current planes, define merge queue, open canonical engine fact-context route
-2. **W-0146 / C1** — lane cleanup / merge governance audit
-3. **W-0122 / C2** — fact-plane cleanup: reference stack + chain-intel + influencer metrics + market-cap canonical routes
-4. **W-0145 / C3** — scheduler-driven operational seed-search corpus store + retrieval bridge
-5. **W-0142 / C4** — engine `research_context` capture contract commit split
-6. **W-0143 / C5** — seed-search/catalog/replay follow-up + compare/pin persistence planning
-7. **W-0144 / C6** — remaining commit/merge order governance + test isolation follow-up
-8. **W-0139 / C7** — terminal surface scoped commit/PR 정리
-9. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+1. **W-0148 / PR0.1** — docs/governance normalize
+2. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
+3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
+4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
+5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
+6. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
+7. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
 ## 브랜치 매핑
 
+### Active / Existing
+
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | 최신 (`9bbc10ba`) |
-| codex/w-0148-data-engine-reset | W-0148 | active CTO reset lane; bounded engine fact-context route + merge queue |
+| main | — | local `main` = `27952d95` |
+| origin/main | — | local remote-tracking ref = `41bd62ac` |
+| codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
-| codex/parking-20260423-mixed-lanes | parking | mixed dirty snapshot preserved (`8e394414`, `b11c7bd4`) |
-| codex/stack-20260423-mixed-terminal-stack | parking | stacked local commit history before cleanup split |
+| codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
+| codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
 | codex/w-0139-terminal-core-loop-capture-mainline | W-0139 | prior clean lane |
-| codex/w-0138-engine-runtime-role-split | W-0138 | MERGED (#190) |
-| codex/w-0140-analyze-tab-consolidation | W-0140 | MERGED (#189) |
+
+### Planned After `PR0.2`
+
+| 브랜치 | Work Item | 상태 |
+|---|---|---|
+| codex/w-0145-corpus-plane | W-0145 | planned parallel search lane |
+| codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
+| codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
+| codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
 ---
 
