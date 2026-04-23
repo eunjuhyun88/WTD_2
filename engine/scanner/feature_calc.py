@@ -349,6 +349,47 @@ def _vol_zscore(volume: pd.Series, period: int = 20) -> pd.Series:
     return ((volume - mean) / std.replace(0, np.nan)).fillna(0.0).clip(-4.0, 4.0)
 
 
+def _rolling_zscore(series: pd.Series, period: int, *, clip: float | None = None) -> pd.Series:
+    mean = series.rolling(period, min_periods=period).mean()
+    std = series.rolling(period, min_periods=period).std(ddof=1)
+    zscore = ((series - mean) / std.replace(0, np.nan)).fillna(0.0)
+    if clip is not None:
+        zscore = zscore.clip(-clip, clip)
+    return zscore
+
+
+def _rolling_percentile(series: pd.Series, period: int) -> pd.Series:
+    if period < 2:
+        raise ValueError(f"period must be >= 2, got {period}")
+    percentile = series.rolling(period, min_periods=period).apply(
+        lambda window: float(np.sum(window <= window[-1]) / len(window)),
+        raw=True,
+    )
+    return percentile.fillna(0.5).clip(0.0, 1.0)
+
+
+def _funding_flip_flag(funding_rate: pd.Series) -> pd.Series:
+    previous = funding_rate.shift(1).fillna(0.0)
+    return ((previous <= 0.0) & (funding_rate > 0.0)).astype(float)
+
+
+def _pullback_depth_pct(close: pd.Series, high: pd.Series, period: int) -> pd.Series:
+    rolling_high = high.rolling(period, min_periods=1).max()
+    return ((rolling_high - close) / rolling_high.replace(0, np.nan)).fillna(0.0).clip(0.0, 1.0)
+
+
+def _cvd_price_divergence(close: pd.Series, cvd_cumulative: pd.Series, period: int) -> pd.Series:
+    price_change = close.pct_change(period).fillna(0.0)
+    cvd_change = cvd_cumulative.diff(period).fillna(0.0)
+    bullish = (price_change < 0.0) & (cvd_change > 0.0)
+    bearish = (price_change > 0.0) & (cvd_change < 0.0)
+    return pd.Series(
+        np.where(bullish, 1.0, np.where(bearish, -1.0, 0.0)),
+        index=close.index,
+        dtype=float,
+    )
+
+
 def _price_accel(close: pd.Series, period: int = 5) -> pd.Series:
     """Price acceleration: 2nd derivative of price (diff of period-bar ROC)."""
     roc = close.pct_change(period).fillna(0.0)
@@ -1126,6 +1167,14 @@ _CORE_FEATURE_COLUMNS: tuple[str, ...] = (
     "cvd_state",
     "taker_buy_ratio_1h",
     "cvd_cumulative",
+    # G2. Canonical pattern feature plane
+    "oi_raw",
+    "oi_zscore",
+    "funding_rate_zscore",
+    "funding_flip_flag",
+    "volume_percentile",
+    "pullback_depth_pct",
+    "cvd_price_divergence",
     # H. Price changes
     "price_change_1h",
     "price_change_4h",
@@ -1226,6 +1275,31 @@ _REGISTRY_COLUMNS: tuple[str, ...] = tuple(
 
 # Public API: full feature column list used by Context, blocks, and models.
 FEATURE_COLUMNS: tuple[str, ...] = _CORE_FEATURE_COLUMNS + _REGISTRY_COLUMNS
+
+CANONICAL_PATTERN_FEATURE_COLUMNS: tuple[str, ...] = (
+    "oi_raw",
+    "oi_zscore",
+    "funding_rate_zscore",
+    "funding_flip_flag",
+    "volume_percentile",
+    "pullback_depth_pct",
+    "cvd_price_divergence",
+)
+
+
+def extract_canonical_pattern_feature_snapshot(feature_row: pd.Series | dict) -> dict[str, float | bool | None]:
+    values = feature_row if isinstance(feature_row, dict) else feature_row.to_dict()
+    snapshot: dict[str, float | bool | None] = {}
+    for column in CANONICAL_PATTERN_FEATURE_COLUMNS:
+        raw_value = values.get(column)
+        if raw_value is None or pd.isna(raw_value):
+            snapshot[column] = None
+            continue
+        if column == "funding_flip_flag":
+            snapshot[column] = bool(raw_value)
+            continue
+        snapshot[column] = float(raw_value)
+    return snapshot
 
 
 def compute_features_table(
@@ -1366,6 +1440,11 @@ def compute_features_table(
         funding_rate = (
             perp_aligned["funding_rate"].fillna(0.0).to_numpy(dtype=np.float64)
         )
+        oi_raw = (
+            perp_aligned["oi_raw"].fillna(0.0).to_numpy(dtype=np.float64)
+            if "oi_raw" in perp_aligned.columns
+            else np.zeros(len(index), dtype=np.float64)
+        )
         oi_change_1h = (
             perp_aligned["oi_change_1h"].fillna(0.0).to_numpy(dtype=np.float64)
         )
@@ -1377,6 +1456,7 @@ def compute_features_table(
         )
     else:
         funding_rate = np.zeros(len(index), dtype=np.float64)
+        oi_raw = np.zeros(len(index), dtype=np.float64)
         oi_change_1h = np.zeros(len(index), dtype=np.float64)
         oi_change_24h = np.zeros(len(index), dtype=np.float64)
         long_short_ratio = np.ones(len(index), dtype=np.float64)
@@ -1391,6 +1471,18 @@ def compute_features_table(
     # cvd_cumulative: running net buy volume (taker_buy - taker_sell = 2*tbv - vol)
     cvd_net_per_bar = (2.0 * taker_buy - volume).fillna(0.0)
     cvd_cumulative = cvd_net_per_bar.cumsum()
+    oi_raw_s = pd.Series(oi_raw, index=index, dtype=float)
+    funding_rate_s = pd.Series(funding_rate, index=index, dtype=float)
+    oi_zscore_s = _rolling_zscore(oi_raw_s, max(8, _b24h), clip=4.0)
+    funding_rate_zscore_s = _rolling_zscore(funding_rate_s, max(8, _b7d), clip=4.0)
+    funding_flip_flag_s = _funding_flip_flag(funding_rate_s)
+    volume_percentile_s = _rolling_percentile(volume, max(8, _b7d))
+    pullback_depth_pct_s = _pullback_depth_pct(close, high, max(4, _b24h))
+    cvd_price_divergence_s = _cvd_price_divergence(
+        close,
+        cvd_cumulative,
+        max(4, max(1, _b24h // 2)),
+    )
 
     # --- H. Price changes — tf-scaled bar counts ---
     price_change_1h  = close.pct_change(_b1h).fillna(0.0)
@@ -1633,12 +1725,19 @@ def compute_features_table(
             "dist_from_20d_low": dist_from_20d_low.to_numpy(),
             "swing_pivot_distance": swing_pivot_distance,
             "funding_rate": funding_rate,
+            "oi_raw": oi_raw,
             "oi_change_1h": oi_change_1h,
             "oi_change_24h": oi_change_24h,
             "long_short_ratio": long_short_ratio,
             "cvd_state": cvd_state,
             "taker_buy_ratio_1h": taker_buy_ratio_1h.to_numpy(),
             "cvd_cumulative": cvd_cumulative.to_numpy(),
+            "oi_zscore": oi_zscore_s.to_numpy(),
+            "funding_rate_zscore": funding_rate_zscore_s.to_numpy(),
+            "funding_flip_flag": funding_flip_flag_s.to_numpy(),
+            "volume_percentile": volume_percentile_s.to_numpy(),
+            "pullback_depth_pct": pullback_depth_pct_s.to_numpy(),
+            "cvd_price_divergence": cvd_price_divergence_s.to_numpy(),
             # H. Price changes
             "price_change_1h": price_change_1h.to_numpy(),
             "price_change_4h": price_change_4h.to_numpy(),
