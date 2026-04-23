@@ -122,6 +122,8 @@
 - `W-0157` landed clean at `a3a8f2c0` on `codex/w-0157-similar-live-feature-ranking`
 - `W-0158` landed clean at `e51ab067` on `codex/w-0158-promotion-feature-diagnostics`
 - `W-0159` owning branch now also carries optional user-data liquidation ingress, liquidation windows, and credential diagnostics; extraction branch is porting that delta onto current main
+- active execution lane is `codex/w-0159-canonical-raw-plane-ingestion`
+- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, persisted local market search index, bounded index refresh job, L1/L2 query caching, `/universe?q=` local-search read path, and optional user-data liquidation ingress/windows
 
 ---
 

@@ -201,3 +201,21 @@ def test_validate_scheduler_secrets_rejects_placeholder_values(monkeypatch) -> N
 
     with pytest.raises(RuntimeError, match="placeholder"):
         scheduler.validate_scheduler_secrets()
+
+
+def test_market_search_index_refresh_job_runs_refresh(monkeypatch) -> None:
+    seen: list[tuple[int, str]] = []
+
+    class _Result:
+        row_count = 123
+        refreshed_at = "2026-04-24T00:00:00+00:00"
+
+    def fake_refresh():
+        seen.append((_Result.row_count, _Result.refreshed_at))
+        return _Result()
+
+    monkeypatch.setattr(scheduler, "refresh_market_search_index", fake_refresh)
+
+    asyncio.run(scheduler._market_search_index_refresh_job())
+
+    assert seen == [(123, "2026-04-24T00:00:00+00:00")]
