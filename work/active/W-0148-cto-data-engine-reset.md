@@ -35,6 +35,7 @@ Engine logic change
 - `work/active/W-0141-market-data-plane.md`
 - `work/active/W-0122-free-indicator-stack.md`
 - `work/active/W-0145-operational-seed-search-corpus.md`
+- `docs/domains/terminal-ai-scan-architecture.md`
 - `docs/decisions/0003-infra-chart-architecture-2026-04-21.md`
 - `engine/api/main.py`
 - `engine/api/routes/ctx.py`
@@ -71,15 +72,151 @@ Engine logic change
 
 - 이번 lane 은 기존 `W-0141` UI/workspace data plane 보다 상위의 CTO reset lane 으로 다룬다.
 - merge / split / park 판단은 branch 이름이 아니라 `fact`, `search`, `surface`, `docs-only` plane purity 로 내린다.
-- canonical target 은 `engine-owned fact plane + search plane + runtime state`, `app-owned surface plane` 이다.
+- canonical target 은 `engine-owned ingress + fact plane + search plane + runtime state`, `app-owned surface plane` 이다.
+- target topology 는 `raw provider -> fact plane -> search plane -> agent context -> surface` 로 고정한다.
+- `runtime state / workflow state` 는 위 topology 와 별도로 존재하는 engine-owned state plane 으로 분리한다.
+- `WorkspaceBundle` 은 UI-neutral read model 인 경우에만 fact/read-model 로 인정하고, panel placement / pin / compare / presentation field 가 섞이면 `surface adapter` 로 본다.
+- `app` 의 ingress/fact/search adapter 들은 최종 ownership 이 아니라 migration bridge 로만 유지한다.
+- execution spec 은 `docs/domains/terminal-ai-scan-architecture.md` 의 plane contract table, owner routes, storage rules, cutover plan 을 canonical implementation guide 로 삼는다.
+- 데이터 종류별 canonical `table / cache / route / job` 분해는 같은 문서의 `Data Domain Split` 표를 구현 기준으로 삼는다.
 - 첫 code slice 는 app-side raw provider fan-out 을 당장 다 없애는 대신, engine 에 bounded fact-context route 를 열어 이후 migration 의 landing zone 을 만든다.
 - `codex/parking-20260423-mixed-lanes` 에 있는 `W-0142`, `W-0143`, `W-0144` commits 는 direct merge 금지이며 clean main-based extraction 대상이다.
 
+## Current Layer Map
+
+| Layer | Current owners / files | Current reality | CTO judgment |
+|---|---|---|---|
+| Raw provider ingress | `app/src/lib/server/marketDataService.ts`, app provider adapters, engine loaders/cache | raw fetch bag is still mostly app-owned | keep only as temporary adapter/proxy surface |
+| Fact plane | `engine/api/routes/ctx.py`, engine `market_engine.fact_plane`, `app/src/routes/api/market/*`, `marketSnapshotService.ts`, `terminalParity.ts` | same market truth is assembled in both app and engine | most urgent refactor target |
+| Search plane | `engine/research/pattern_search.py`, scheduler/worker-control, parked `seed_search` / `market_corpus` lanes | replay/search runtime exists, but retrieval/corpus lane is not yet cleanly extracted | second priority after fact-plane |
+| Runtime state | `engine/capture/*`, `engine/patterns/state_store.py`, `engine/research/state_store.py`, ledger/runtime stores | capture, ledger, pattern state, research state live outside fact/search and must stay engine-owned | separate state plane, not a fact/search subtype |
+| Agent context | `app/src/routes/api/cogochi/terminal/message/+server.ts`, `app/src/lib/server/douni/contextBuilder.ts`, `app/src/lib/server/intelPolicyRuntime.ts` | AI context is assembled in app from mixed facts and surface state | keep app shell, narrow inputs to bounded contracts |
+| Surface plane | `app/src/routes/terminal/+page.svelte`, `app/src/lib/cogochi/workspaceDataPlane.ts`, `TradeMode.svelte`, `terminalBackend.ts` | UI still carries orchestration and some derived semantics | acceptable only after upstream planes are frozen |
+
+## Target Architecture
+
+### 1. Ingress
+
+- owner: `engine`
+- role: provider auth, timeout, retry, quota, freshness, degraded state
+- allowed output: provider-shaped payload or normalized low-level adapter object
+- forbidden: scan score, AI explanation, UI-ready summary
+
+### 2. Fact Plane
+
+- owner: `engine`
+- role: canonical market/read models for one symbol/timeframe or market-wide context
+- primary objects:
+  - `FactSnapshot`
+  - `ReferenceStackSnapshot`
+  - `ChainIntelSnapshot`
+  - `MarketCapSnapshot`
+  - `ConfluenceResult`
+- canonical entrypoint now: `GET /ctx/fact`
+
+### 3. Search Plane
+
+- owner: `engine` + `worker-control`
+- role: live scan, seed-search, catalog, corpus retrieval, replay/rerank
+- primary objects:
+  - `ScanResult`
+  - `PatternCatalogEntry`
+  - `SeedSearchRequest`
+  - `SeedSearchResult`
+  - `CorpusWindowSignature`
+- rule: search reads facts/corpus; facts never depend on search
+
+### 4. Agent Context
+
+- owner: `engine` contract, `app` shell
+- role: compress `fact + search + workspace selection` into `AgentContextPack`
+- rule: AI does not call raw providers directly
+- rule: prompt builder may stay in app, but context truth must come from bounded engine/search contracts
+
+### 5. Runtime State
+
+- owner: `engine`
+- role: persist workflow state that is neither market fact nor search result
+- primary objects:
+  - `CaptureRecord`
+  - `PinnedWorkspaceState`
+  - `SavedSetup`
+  - `PatternRuntimeState`
+  - `ResearchContext`
+  - `LedgerRecord`
+  - `OutcomeRecord`
+- rule: runtime state may reference facts/search outputs, but it is its own plane
+- rule: `capture`, `pins`, `saved setup`, `pattern state`, `ledger`, `research_context`, `outcome` do not belong in fact/search contracts
+
+### 6. Surface
+
+- owner: `app`
+- role: chart, analyze, compare/pin, save setup, AI shell
+- rule: surface consumes contracts only
+- forbidden: direct provider fan-out and ad hoc market-truth recomposition
+
+## File Ownership Map
+
+| File | Keep / move | Target layer | Action |
+|---|---|---|---|
+| `app/src/lib/server/marketDataService.ts` | keep temporarily | ingress adapter | freeze as raw fetch bag only; stop adding product semantics |
+| `app/src/lib/server/scanEngine.ts` | shrink then retire | split across fact/search | stop extending in app; move scoring/fact shaping behind engine read models |
+| `app/src/lib/server/terminalParity.ts` | keep temporarily | surface adapter | make it consume engine facts/search only; no new provider joins |
+| `app/src/lib/cogochi/workspaceDataPlane.ts` | keep and narrow | surface composition | if bundle fields are UI-neutral keep them as fact/read-model inputs; if they encode compare/pin/layout semantics keep them here |
+| `app/src/routes/api/cogochi/terminal/message/+server.ts` | keep | AI shell | SSE/tool loop only; no fact/search assembly beyond loading `AgentContextPack` |
+| `app/src/lib/server/douni/contextBuilder.ts` | keep | agent prompt shell | token/history compression only; input contract becomes `AgentContextPack` |
+| `app/src/lib/server/intelPolicyRuntime.ts` | split | fact/agent boundary | preserve scoring logic, but feed it canonical fact/evidence contracts instead of mixed app payloads |
+| `app/src/lib/contracts/terminalBackend.ts` | split | contracts | break into `facts`, `search`, `agent`, `surface` contracts; current file is too broad |
+| `engine/api/routes/ctx.py` | expand | fact gateway | keep growing as bounded engine fact landing zone |
+| `engine/research/pattern_search.py` | split | search runtime | separate replay eval, catalog, selection, persistence before adding more features |
+| `engine/capture/*` | keep | runtime state | canonical owner for user capture/setup workflow state |
+| `engine/patterns/state_store.py` | keep | runtime state | canonical owner for pattern runtime state |
+| `engine/research/state_store.py` | keep | runtime state | canonical owner for research/search workflow state |
+
+## Dependency Rules
+
+- `ingress -> fact` is allowed
+- `fact -> search` is read-only and one-way
+- `fact/search -> runtime state` is allowed
+- `fact/search -> agent context` is allowed
+- `runtime state -> agent context` is allowed as workflow context only
+- `surface -> fact/search/agent` is allowed
+- `surface -> runtime state` is allowed through engine-owned workflow APIs only
+- `surface -> ingress` is forbidden
+- `agent -> ingress` is forbidden
+- `search -> surface` is forbidden
+- `runtime state -> fact` is forbidden except for identifiers and cached references
+
+## Execution Queue
+
+1. `W-0122`: finish engine-owned fact-plane slices and cut app consumers to `GET /ctx/fact` or follow-up fact routes
+2. `W-0145`: extract scheduler-built corpus so historical retrieval stops depending on broad live fan-out
+3. `W-0143`: extract seed-search / pattern-catalog / app integration on top of the fact/corpus base
+4. `W-0142`: place `research_context` under runtime-state/agent contract after fact/search boundaries are stable
+5. `W-0139`: keep as surface closeout only after upstream contracts are frozen
+6. `W-0141`: reduce to workspace/data-contract assist lane, not top-level architecture owner
+
+## Branch Plan
+
+- `codex/w-0148-data-engine-reset`
+  - docs + engine fact landing zone only
+- `codex/w-0122-fact-plane-mainline`
+  - fact-plane only
+- `codex/w-0145-corpus-plane`
+  - fresh branch from `main` for corpus extraction only
+- `codex/w-0143-seed-search-plane`
+  - fresh branch from `main` for seed-search/catalog/app integration only
+- `codex/w-0142-agent-context-contract`
+  - fresh branch from `main` for research-context/agent contract only
+- `codex/w-0139-surface-closeout`
+  - only if surface follow-up is reopened after upstream cutover
+
 ## Next Steps
 
-1. `W-0122` 후속에서 app market read paths 를 `GET /ctx/fact` 또는 후속 engine fact read models 로 수렴시킨다.
-2. `W-0145` 를 clean branch 로 extraction 해 scheduler-driven corpus accumulation 을 shared search plane 으로 올린다.
-3. engine local SQLite/file state 의 shared-state migration order를 별도 storage cutover lane 으로 연다.
+1. `W-0122` 후속에서 `scanEngine`, `terminalParity`, `/api/market/*` 의 fact-assembly 책임을 engine read model 로 이전한다.
+2. `W-0145` 를 clean branch 로 extraction 해 corpus accumulation 을 scheduler-owned search plane 으로 고정한다.
+3. `terminal/message` 와 `douni/contextBuilder` 입력을 `AgentContextPack` 기준으로 좁히고, runtime-state inputs 는 별도 workflow contract 로 분리한다.
+4. 각 plane 에 대해 owner route, durable store, degraded state, verification 항목을 구현 체크리스트로 내린다.
 
 ## Exit Criteria
 

@@ -32,6 +32,84 @@ Active contributions: venue_divergence, ssr, options  (3 of 7 material)
 - [ ] Pillar 4 Exchange Netflow (Arkham — blocked on API key provision)
 - [ ] Confluence Phase 2: engine-side scoring + Flywheel weight learning + capture snapshot persistence
 
+## Reset Slice — 2026-04-23
+
+`W-0148` reset decision fixes the architecture order as:
+
+`Ingress -> Fact -> Search -> Agent Context -> Surface`
+
+with a separate engine-owned `Runtime State / Workflow State` plane.
+
+For `W-0122`, the immediate job is narrower:
+
+- move app-owned fact assembly toward engine-owned read models
+- keep app fetchers as temporary ingress bridges only
+- avoid touching search/agent/surface code unless required for compatibility
+
+### First Fact-Plane Impact Cone
+
+| File | Current responsibility | Target layer | Decision | First commit |
+|---|---|---|---|---|
+| `engine/market_engine/fact_plane.py` | bounded engine fact builder on top of cache/loaders | fact | keep and expand | yes |
+| `engine/api/routes/ctx.py` | engine fact gateway (`GET /ctx/fact`) | fact | keep and expand | yes |
+| `engine/market_engine/types.py` | legacy market-engine shared types | fact/runtime support | keep; no broad rewrite in this slice | no |
+| `app/src/lib/server/marketSnapshotService.ts` | monolithic app fact assembler + persistence fan-out | fact bridge | split; shrink toward engine fact adapter | yes |
+| `app/src/routes/api/market/snapshot/+server.ts` | public compatibility route for snapshot consumers | fact adapter | keep route, rewire internals toward engine fact | yes |
+| `app/src/routes/api/market/snapshot/snapshot.test.ts` | snapshot route contract coverage | fact adapter test | update with cutover | yes |
+| `app/src/lib/server/providers/registry.ts` | wraps `collectMarketSnapshot()` into provider registry context | fact bridge | keep, but point at cut-down snapshot path | maybe |
+| `app/src/lib/server/marketFeedService.ts` | derivatives/news/raw normalization helpers | ingress bridge | freeze; do not add product semantics | no |
+| `app/src/lib/server/marketDataService.ts` | raw fetch bag for market upstreams | ingress bridge | freeze; eventual engine ownership | no |
+| `app/src/routes/api/market/indicator-context/+server.ts` | standalone percentile fact producer | fact | keep temporarily; later fold into engine | no |
+| `app/src/routes/api/market/flow/+server.ts` | app-side fact composition for terminal flow panel | fact consumer | defer until snapshot cut settles | no |
+| `app/src/routes/api/market/events/+server.ts` | app-side event/fact composition | fact consumer | defer | no |
+| `app/src/routes/api/market/derivatives/[pair]/+server.ts` | derivatives snapshot bridge | ingress/fact bridge | defer | no |
+| `app/src/routes/api/confluence/current/+server.ts` | app-side confluence composition across fact routes | fact consumer/composer | defer until fact route shape stabilizes | no |
+| `app/src/lib/server/terminalParity.ts` | terminal surface adapter over multiple fact/search routes | surface adapter | defer; consume canonical facts later | no |
+| `app/src/lib/cogochi/workspaceDataPlane.ts` | workspace bundle / study presentation assembly | surface adapter | keep narrow; no fact ownership | no |
+| `app/src/lib/api/terminalBackend.ts` | surface fetch bundle for terminal | surface | consumer only; no changes in first cut | no |
+
+### Route Family Classification
+
+- first-cut fact routes:
+  - `app/src/routes/api/market/snapshot/+server.ts`
+  - `engine/api/routes/ctx.py`
+- fact producers but not first-cut:
+  - `app/src/routes/api/market/indicator-context/+server.ts`
+  - `app/src/routes/api/market/options-snapshot/+server.ts`
+  - `app/src/routes/api/market/venue-divergence/+server.ts`
+  - `app/src/routes/api/market/liq-clusters/+server.ts`
+  - `app/src/routes/api/market/stablecoin-ssr/+server.ts`
+  - `app/src/routes/api/market/rv-cone/+server.ts`
+  - `app/src/routes/api/market/funding-flip/+server.ts`
+- fact consumers:
+  - `app/src/routes/api/market/flow/+server.ts`
+  - `app/src/routes/api/market/events/+server.ts`
+  - `app/src/routes/api/confluence/current/+server.ts`
+
+### Drift Notes
+
+- the current checkout does not contain several older `W-0122` canonical files listed below as active fact-plane targets:
+  - `app/src/lib/server/marketReferenceStack.ts`
+  - `app/src/lib/server/marketCapPlane.ts`
+  - `app/src/routes/api/market/reference-stack/+server.ts`
+  - `app/src/routes/api/market/influencer-metrics/+server.ts`
+  - `app/src/routes/api/market/macro-overview/+server.ts`
+- those lanes must be treated as extraction or reimplementation follow-ups, not assumed present in this slice.
+
+### First Commit Scope
+
+1. preserve `GET /ctx/fact` as the canonical engine fact entrypoint
+2. add an app-side compatibility adapter in `marketSnapshotService.ts` that can read engine fact payloads
+3. rewire `/api/market/snapshot` to prefer engine-owned fact data while preserving the existing public response shape
+4. update snapshot route tests to lock the compatibility contract
+
+### Explicit Defers
+
+- do not split `scanEngine.ts` in this slice
+- do not move `terminalParity.ts` yet
+- do not rework `workspaceDataPlane.ts` yet
+- do not reopen `W-0139` surface work while fact ownership is still shifting
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
