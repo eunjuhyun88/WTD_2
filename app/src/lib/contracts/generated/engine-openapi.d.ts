@@ -346,6 +346,165 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/runtime/captures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Runtime Capture
+         * @description Create a canonical runtime capture.
+         *
+         *     This route reuses the existing CaptureRecord schema while moving new
+         *     runtime consumers to the `/runtime` plane.
+         */
+        post: operations["create_runtime_capture_runtime_captures_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/captures/{capture_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Runtime Capture */
+        get: operations["get_runtime_capture_runtime_captures__capture_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/workspace/pins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Workspace Pin */
+        post: operations["create_workspace_pin_runtime_workspace_pins_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/workspace/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Workspace */
+        get: operations["get_workspace_runtime_workspace__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/setups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Setup */
+        post: operations["create_setup_runtime_setups_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/setups/{setup_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Setup */
+        get: operations["get_setup_runtime_setups__setup_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/research-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Research Context */
+        post: operations["create_research_context_runtime_research_contexts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/research-contexts/{context_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Context */
+        get: operations["get_research_context_runtime_research_contexts__context_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/ledger/{ledger_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ledger */
+        get: operations["get_ledger_runtime_ledger__ledger_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe": {
         parameters: {
             query?: never;
@@ -2833,6 +2992,226 @@ export interface components {
             /** Image Refs */
             image_refs?: string[];
         };
+        /** RuntimeCaptureResponse */
+        RuntimeCaptureResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Capture */
+            capture: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeLedgerResponse */
+        RuntimeLedgerResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Ledger */
+            ledger: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeResearchContextCreate */
+        RuntimeResearchContextCreate: {
+            /** Symbol */
+            symbol?: string | null;
+            /** Pattern Slug */
+            pattern_slug?: string | null;
+            /** User Id */
+            user_id?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Fact Refs */
+            fact_refs?: string[];
+            /** Search Refs */
+            search_refs?: string[];
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeResearchContextResponse */
+        RuntimeResearchContextResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Research Context */
+            research_context: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeSetupCreate */
+        RuntimeSetupCreate: {
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** User Id */
+            user_id?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeSetupResponse */
+        RuntimeSetupResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Setup */
+            setup: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeWorkspacePinCreate */
+        RuntimeWorkspacePinCreate: {
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** User Id */
+            user_id?: string | null;
+            /**
+             * Kind
+             * @default pin
+             */
+            kind: string;
+            /** Summary */
+            summary?: string | null;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Pin Id */
+            pin_id?: string | null;
+        };
+        /** RuntimeWorkspaceResponse */
+        RuntimeWorkspaceResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Workspace */
+            workspace: {
+                [key: string]: unknown;
+            };
+        };
         /** ScanMatch */
         ScanMatch: {
             /** Symbol */
@@ -4037,6 +4416,295 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_runtime_capture_runtime_captures_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureCreateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeCaptureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_runtime_capture_runtime_captures__capture_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeCaptureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_workspace_pin_runtime_workspace_pins_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeWorkspacePinCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeWorkspaceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_workspace_runtime_workspace__symbol__get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeWorkspaceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_setup_runtime_setups_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeSetupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeSetupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_setup_runtime_setups__setup_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                setup_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeSetupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_research_context_runtime_research_contexts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeResearchContextCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeResearchContextResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_context_runtime_research_contexts__context_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                context_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeResearchContextResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ledger_runtime_ledger__ledger_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeLedgerResponse"];
                 };
             };
             /** @description Validation Error */
