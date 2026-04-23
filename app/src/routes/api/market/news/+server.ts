@@ -9,6 +9,7 @@ import type { RequestHandler } from './$types';
 import { toBoundedInt } from '$lib/server/apiValidation';
 import { terminalReadLimiter } from '$lib/server/rateLimit';
 import { fetchNews, type NewsRecord } from '$lib/server/marketFeedService';
+import { getMarketReferenceSources } from '$lib/server/marketReferenceSources';
 import { fetchTopicPosts, hasLunarCrushKey, type LunarCrushPost } from '$lib/server/lunarcrush';
 
 // Token → LunarCrush topic mapping
@@ -140,6 +141,7 @@ export const GET: RequestHandler = async ({ url, getClientAddress }) => {
             rss: rss.length,
             social: social.length,
           },
+          referenceSources: getMarketReferenceSources(),
         },
       },
       { headers: { 'Cache-Control': 'public, max-age=60' } }
