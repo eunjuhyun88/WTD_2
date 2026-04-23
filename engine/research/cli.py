@@ -158,6 +158,32 @@ def _run_live_monitor(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_market_search(args: argparse.Namespace) -> int:
+    from research.market_retrieval import print_market_search_report, run_pattern_market_search
+
+    universe = None
+    if args.universe and args.universe != "cached":
+        universe = args.universe.split(",")
+
+    variant_slug = None if args.variant_slug == "auto" else args.variant_slug
+    result = run_pattern_market_search(
+        pattern_slug=args.pattern_slug,
+        variant_slug=variant_slug,
+        benchmark_pack_id=args.benchmark_pack_id,
+        timeframe=args.timeframe,
+        history_bars=args.history_bars,
+        stride_bars=args.stride_bars,
+        top_k=args.top_k,
+        replay_top_k=args.replay_top_k,
+        universe=universe,
+        warmup_bars=args.warmup_bars,
+    )
+    print_market_search_report(result)
+    print()
+    print(json.dumps(result.to_dict(), indent=2, default=str))
+    return 0
+
+
 def _run_backtest(args: argparse.Namespace) -> int:
     from datetime import timedelta
 
@@ -274,6 +300,19 @@ def build_parser() -> argparse.ArgumentParser:
     live_p.add_argument("--warmup-bars", type=int, default=240)
     live_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
     live_p.set_defaults(func=_run_live_monitor)
+
+    market_p = sub.add_parser("pattern-market-search", help="Cheap cached-corpus retrieval followed by replay rerank")
+    market_p.add_argument("--pattern-slug", default="tradoor-oi-reversal-v1")
+    market_p.add_argument("--variant-slug", default="auto", help="'auto' or explicit variant slug")
+    market_p.add_argument("--benchmark-pack-id")
+    market_p.add_argument("--timeframe", default="1h")
+    market_p.add_argument("--history-bars", type=int, default=24 * 30)
+    market_p.add_argument("--stride-bars", type=int, default=6)
+    market_p.add_argument("--top-k", type=int, default=20)
+    market_p.add_argument("--replay-top-k", type=int, default=8)
+    market_p.add_argument("--warmup-bars", type=int, default=240)
+    market_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
+    market_p.set_defaults(func=_run_market_search)
 
     benchmark_p = sub.add_parser("pattern-benchmark-search", help="Run replay benchmark-pack search for pattern variants")
     benchmark_p.add_argument("--slug", required=True, help="Pattern slug")
