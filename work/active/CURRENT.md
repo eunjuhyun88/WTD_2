@@ -115,6 +115,47 @@
 
 - active: `codex/w-0148-current-plan-refresh-20260424` (문서 정리 + `captures` benchmark-search route truth 복구 완료, merge 대기)
 - 다음 브랜치: `codex/w-0200-core-loop-proof` (새로 생성)
+- docs refinement on `codex/w-0148-data-engine-reset` makes the `Pattern Research Operating System` framing explicit: sequence-first pattern runtime, contract-family split (`definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, `promotion`), and surface chart planners as downstream consumers only
+- execution note: next work should branch as clean lane slices from updated `main`; do not resume mixed-stack surface/search work from this worktree
+
+---
+
+## 즉시 실행 순서
+
+1. **W-0148 / PR0.1** — docs/governance normalize
+2. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
+3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
+4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
+5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
+6. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
+7. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+
+---
+
+## 브랜치 매핑
+
+### Active / Existing
+
+| 브랜치 | Work Item | 상태 |
+|---|---|---|
+| main | — | local `main` = `27952d95` |
+| origin/main | — | local remote-tracking ref = `41a72eef` |
+| codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
+| codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
+| codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
+| codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
+| codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
+| codex/w-0139-terminal-core-loop-capture-mainline | W-0139 | prior clean lane |
+
+### Planned After `PR0.2`
+
+| 브랜치 | Work Item | 상태 |
+|---|---|---|
+| codex/w-0145-corpus-plane | W-0145 | planned parallel search lane |
+| codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
+| codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
+| codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
 ---
 

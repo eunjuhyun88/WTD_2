@@ -1024,6 +1024,102 @@ mega-module. In the current repo, the important question is not “what tables
 should exist eventually?” but “which existing primitives already exist, which
 plane owns them, and which contract family is still missing?”
 
+### Operating-System Framing
+
+This engine should be framed as a `Pattern Research Operating System`, not as
+one of the following:
+
+- a market scanner with more indicators
+- a backtest-only evaluation box
+- a one-shot ML classifier or ranking model
+
+The canonical loop is:
+
+`observation -> feature -> pattern definition -> sequence/runtime -> research search -> ledger -> refinement/promotion`
+
+That distinction matters because TRADOOR/PTB-style patterns are not owned by a
+single score. They are owned by:
+
+- pattern language: thesis, phases, evidence vocabulary, failure modes
+- sequence truth: `fake_dump -> arch_zone -> real_dump -> accumulation -> breakout`
+- judgment loop: valid / invalid / too early / too late / wrong threshold
+- promotion loop: research-only -> paper-watch -> live-active
+
+Surface-side query intent or chart templating is a consumer of this engine, not
+the engine itself. Chart planners may decide how to show evidence, but they do
+not define the evidence contracts.
+
+### Seven-Layer Runtime Model
+
+| Layer | Purpose | Canonical plane / route family | Notes |
+|---|---|---|---|
+| `Observation Engine` | collect reusable low-level market truth | ingress + `/facts/*` | price, OI, funding, volume, liquidation, macro, on-chain, reference health |
+| `Feature Engine` | compute canonical reusable math once | fact/feature plane | zscore, percentile, divergence, duration, slopes; no family-specific semantics |
+| `Pattern Definition Engine` | store trader intuition as a durable object | `/runtime/definitions/*` | thesis, phase template, evidence refs, outcome spec, failure notes |
+| `Sequence / State Engine` | track live phase truth and transition order | `/runtime/states/*`, `/search/*` | current phase, phase path, transition events, sequence match |
+| `Research Engine` | search, replay, near-miss clustering, benchmarking | `/search/*` | candidate search, replay, similarity, variant suggestions |
+| `Ledger Engine` | record what happened after the candidate | `/runtime/ledger/*`, `/runtime/judgments/*` | breakout, invalidation, expectancy, regime-conditioned outcomes |
+| `Refinement / Promotion Engine` | convert judgments into rollout decisions | `/runtime/promotions/*` | threshold adjustments, active rollout stage, evidence-backed promotion |
+
+The minimum system claim is therefore not “we store more data” but “we can
+compile trader intuition into machine-searchable, machine-verifiable, and later
+machine-promotable pattern objects.”
+
+### Sequence-First Rules
+
+1. `feature -> phase -> transition -> outcome` is the required ownership order.
+2. Vector similarity and ranking may filter candidates, but they do not own
+   canonical phase truth.
+3. `RuntimePatternState` is the authoritative answer to “where in the sequence
+   is this symbol now?”
+4. `OutcomeRecord` plus `JudgmentRecord` is the authoritative answer to “did
+   this sequence actually work?”
+5. `PromotionRecord` is the authoritative answer to “is this family/variant
+   allowed to affect live flows?”
+
+### Minimal Pattern Object Shape
+
+At the contract level, a TRADOOR/PTB-style family should be representable as a
+durable object with linked evidence rather than as loose notes on captures or a
+single model score.
+
+```json
+{
+  "pattern_family": "tradoor_ptb_oi_reversal",
+  "definition_id": "patdef_tradoor_v1",
+  "thesis": [
+    "first dump is warning, second dump plus OI expansion is decisive",
+    "15m higher lows mark accumulation",
+    "breakout requires OI re-expansion"
+  ],
+  "phase_template": [
+    "fake_dump",
+    "arch_zone",
+    "real_dump",
+    "accumulation",
+    "breakout"
+  ],
+  "evidence_refs": [
+    "capture:tradoor-2026-04-xx",
+    "image:tradoor-reference-chart",
+    "benchmark_pack:oi-reversal-v1"
+  ],
+  "outcome_policy": {
+    "breakout_rule": "range_high_close_plus_oi_expansion",
+    "invalidation_rule": "accumulation_low_loss"
+  }
+}
+```
+
+The important boundary is that:
+
+- `PatternDefinition` owns thesis and phase template
+- `CanonicalFeatureSnapshot` owns the reusable numeric truth
+- `RuntimePatternState` owns current sequence truth
+- `OutcomeRecord` owns realized result
+- `JudgmentRecord` owns human verdict
+- `PromotionRecord` owns rollout state
+
 ### Current Primitive Map
 
 | Concern | Current primitive | Current file(s) | Current reality | Canonical target |

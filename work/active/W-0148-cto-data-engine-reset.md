@@ -76,6 +76,7 @@ Engine logic change
 11. common feature math and pattern-family interpretation are still too easy to conflate; the reset must explicitly separate `data engine feature production` from `pattern engine phase/replay logic`.
 12. the repo already has substantial pattern-runtime primitives in place: `PatternObject` / pattern registry, capture + research_context writes, durable pattern state, outcome ledger, verdict inbox, and refinement stats are implemented, but they are not yet normalized into one canonical runtime contract family.
 13. for the TRADOOR/PTB “Pattern Research OS” direction, the biggest missing layer is not a brand-new model or giant table family; it is a contract-first split between `pattern definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, and `promotion` planes.
+14. query-intent visualization and chart template selection are valid downstream consumers, but they are surface orchestration only; they must not redefine pattern truth, phase truth, or runtime ownership.
 
 ## Assumptions
 
@@ -126,6 +127,9 @@ Engine logic change
 - branch split reason for this refresh: local `codex/w-0148-current-plan-refresh-20260424` carries unrelated engine WIP in another checkout, so post-merge plan updates must land as clean docs-only merge units from updated `main`.
 - pattern runtime decomposition is `contract-first`, not `DB-first`: first normalize read/write route families and ownership around existing primitives, then decide which durable stores to merge, rename, or replace.
 - pattern research OS follow-ups must treat `pattern definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, and `promotion` as separate merge units; reopening them as one giant runtime rewrite is forbidden.
+- the target engine is not “a scanner with more indicators”, “a backtest box”, or “one ML ranker”; the canonical framing is a human-in-the-loop pattern research operating system with the loop `observation -> feature -> pattern definition -> sequence/runtime -> research search -> ledger -> refinement/promotion`.
+- sequence truth beats point-in-time score truth: canonical features may rank and filter, but phase order, transitions, and judgment-backed outcome records own promotion decisions.
+- query-driven visualization is downstream of this engine: surface planners may choose templates/highlights, but they must consume `definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, and `promotion` contracts instead of inventing parallel semantics.
 
 ## Current Layer Map
 
@@ -267,6 +271,7 @@ Engine logic change
 3. freeze the data-engine vs pattern-engine ownership boundary so `W-0122` computes canonical features once and `W-0145` consumes them without duplicating math inside replay/search logic.
 4. use the pattern-runtime decomposition note in `docs/domains/terminal-ai-scan-architecture.md` as the canonical checklist before opening the next runtime/search/promotion lanes.
 5. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
+6. when reopening the TRADOOR/PTB architecture discussion, cut follow-up lanes by contract family (`definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, `promotion`) rather than by chart surface or ad hoc table creation.
 
 ## Exit Criteria
 
