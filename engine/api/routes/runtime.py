@@ -71,7 +71,9 @@ def _serialize_capture(capture: CaptureRecord) -> dict[str, Any]:
 def _serialize_ledger_entry(entry: dict[str, Any]) -> dict[str, Any]:
     payload = entry.get("payload")
     payload = payload if isinstance(payload, dict) else {}
-    definition_ref = payload.get("definition_ref")
+    definition_ref = entry.get("definition_ref")
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        definition_ref = payload.get("definition_ref")
     if not isinstance(definition_ref, dict) or not definition_ref:
         training_result = payload.get("training_result")
         if isinstance(training_result, dict):

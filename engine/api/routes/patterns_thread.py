@@ -168,6 +168,7 @@ def get_stats_sync(
     record_store=None,
 ) -> dict:
     _require_pattern(slug)
+    definition_ref = _resolve_definition_ref(slug)
     if outcomes is None:
         outcomes = ledger.list_all(slug)
     stats = _compute_stats_from_outcomes(slug, outcomes)
@@ -197,6 +198,7 @@ def get_stats_sync(
     )
     return {
         "pattern_slug": stats.pattern_slug,
+        "definition_ref": definition_ref,
         "total": stats.total_instances,
         "pending": stats.pending_count,
         "success": stats.success_count,
@@ -233,12 +235,12 @@ def get_stats_sync(
         },
         "model_registry": {
             "entry_count": len(registry_entries),
-            "active_model": active_registry_entry.to_dict() if active_registry_entry else None,
-            "preferred_scoring_model": preferred_registry_entry.to_dict() if preferred_registry_entry else None,
+            "active_model": _registry_entry_payload(active_registry_entry) if active_registry_entry else None,
+            "preferred_scoring_model": _registry_entry_payload(preferred_registry_entry) if preferred_registry_entry else None,
         },
         "alert_policy": alert_policy.to_dict(),
-        "latest_training_run": latest_training_run_record.to_dict() if latest_training_run_record else None,
-        "latest_model": latest_model_record.to_dict() if latest_model_record else None,
+        "latest_training_run": _record_payload(latest_training_run_record, slug) if latest_training_run_record else None,
+        "latest_model": _record_payload(latest_model_record, slug) if latest_model_record else None,
         "ml_shadow": {
             "total_entries": ml_shadow.total_entries,
             "decided_entries": ml_shadow.decided_entries,
@@ -328,9 +330,10 @@ def get_model_registry_sync(slug: str) -> dict:
     preferred_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
     return {
         "pattern_slug": slug,
-        "entries": [entry.to_dict() for entry in entries],
-        "active_model": active_entry.to_dict() if active_entry else None,
-        "preferred_scoring_model": preferred_entry.to_dict() if preferred_entry else None,
+        "definition_ref": _resolve_definition_ref(slug),
+        "entries": [_registry_entry_payload(entry) for entry in entries],
+        "active_model": _registry_entry_payload(active_entry) if active_entry else None,
+        "preferred_scoring_model": _registry_entry_payload(preferred_entry) if preferred_entry else None,
     }
 
 
@@ -449,3 +452,20 @@ def _resolve_definition_ref(slug: str, *, definition_id: str | None = None) -> d
             or parsed
         )
     return service.get_definition_ref(pattern_slug=slug) or {"pattern_slug": slug}
+
+
+def _registry_entry_payload(entry) -> dict[str, Any]:
+    payload = entry.to_dict()
+    payload["definition_ref"] = _resolve_definition_ref(entry.pattern_slug)
+    return payload
+
+
+def _record_payload(record: PatternLedgerRecord, slug: str) -> dict[str, Any]:
+    payload = record.to_dict()
+    record_payload = payload.get("payload")
+    record_payload = record_payload if isinstance(record_payload, dict) else {}
+    definition_ref = record_payload.get("definition_ref")
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        definition_ref = _resolve_definition_ref(slug)
+    payload["definition_ref"] = definition_ref
+    return payload

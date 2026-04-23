@@ -21,6 +21,7 @@ Contract change
 - research runs / benchmark search artifacts / handoff payload 가 `definition_ref`를 저장하도록 contract 정렬
 - bounded refinement runs, train handoff payload, and training-ledger artifacts 가 같은 `definition_ref`를 유지하도록 contract 정렬
 - direct `/patterns/*` train/promote model paths 와 `/runtime/ledger/*` projection 이 같은 `definition_ref`를 읽고 노출하도록 contract 정렬
+- runtime ledger store 와 pattern stats/model-registry read model 이 `definition_ref`를 first-class metadata 로 저장/노출하도록 정렬
 - targeted engine tests 추가
 
 ## Non-Goals
@@ -56,6 +57,7 @@ Contract change
 8. current local cut now persists `definition_ref` on research runs and benchmark search artifacts, and includes it in benchmark-search handoff payload / selection metrics so the loop no longer terminates at search request metadata only.
 9. current local cut also threads the same `definition_ref` through bounded refinement runs, train handoff payloads, and training-service ledger payloads so search winners keep a canonical definition key as they enter judgment/training lanes.
 10. current local cut also adds `definition_ref` to direct model-train/model-promote ledger records and exposes it on `/runtime/ledger/{ledger_id}` via canonical projection/fallback resolution.
+11. current local cut now persists `definition_ref` as first-class metadata in the runtime ledger store and exposes top-level `definition_ref` on pattern stats/model-registry read models instead of requiring payload-only inspection.
 
 ## Assumptions
 
@@ -79,7 +81,7 @@ Contract change
 
 1. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
 2. split capture-linked evidence from captures into a dedicated definition store only after the read contract proves stable.
-3. normalize runtime-ledger writers and model-registry/readback routes so `definition_ref` becomes first-class storage/query metadata instead of a read-time projection fallback.
+3. add `definition_id`/`definition_ref` filters to history/list surfaces (runtime ledger history, model history, registry views) so the key is queryable without id-only fetches.
 
 ## Exit Criteria
 
@@ -88,6 +90,7 @@ Contract change
 - runtime captures, first search-plane consumers, and benchmark-search research artifacts all preserve canonical `definition_ref`.
 - bounded refinement runs, train handoff payloads, and training ledger payloads preserve the same `definition_ref`.
 - direct train/promote model ledger records and `/runtime/ledger/*` projection preserve or expose the same `definition_ref`.
+- runtime ledger storage and pattern stats/model-registry read models expose `definition_ref` as first-class metadata.
 - targeted engine tests pass.
 
 ## Handoff Checklist
@@ -96,4 +99,4 @@ Contract change
 - branch: `codex/w-0160-pattern-definition-plane`
 - verification:
   - `uv run --directory engine python -m pytest tests/test_pattern_candidate_routes.py tests/test_search_routes.py tests/test_runtime_routes.py tests/test_pattern_search.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_refinement.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_refinement_reporting.py -q`
-- remaining blockers: definition write path, durable definition store, first-class runtime-ledger/model-registry query metadata, and UI consumption remain future slices
+- remaining blockers: definition write path, durable definition store, list/filter query surfaces for `definition_id`, and UI consumption remain future slices

@@ -93,12 +93,36 @@ class RuntimeStateStore:
                   subject_id TEXT,
                   kind TEXT NOT NULL,
                   summary TEXT,
+                  definition_ref_json TEXT NOT NULL DEFAULT '{}',
                   payload_json TEXT NOT NULL,
                   created_at TEXT NOT NULL,
                   updated_at TEXT NOT NULL
                 );
                 """
             )
+            self._ensure_column(
+                conn,
+                "runtime_ledger_entries",
+                "definition_ref_json",
+                "TEXT NOT NULL DEFAULT '{}'",
+            )
+
+    @staticmethod
+    def _ensure_column(
+        conn: sqlite3.Connection,
+        table_name: str,
+        column_name: str,
+        column_definition: str,
+    ) -> None:
+        columns = {
+            str(row["name"])
+            for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        }
+        if column_name in columns:
+            return
+        conn.execute(
+            f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+        )
 
     def save_workspace_pin(
         self,
@@ -293,6 +317,7 @@ class RuntimeStateStore:
         kind: str,
         subject_id: str | None = None,
         summary: str | None = None,
+        definition_ref: dict[str, Any] | None = None,
         payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         now = utcnow_iso()
@@ -300,16 +325,26 @@ class RuntimeStateStore:
             conn.execute(
                 """
                 INSERT INTO runtime_ledger_entries (
-                  ledger_id, subject_id, kind, summary, payload_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                  ledger_id, subject_id, kind, summary, definition_ref_json, payload_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(ledger_id) DO UPDATE SET
                   subject_id=excluded.subject_id,
                   kind=excluded.kind,
                   summary=excluded.summary,
+                  definition_ref_json=excluded.definition_ref_json,
                   payload_json=excluded.payload_json,
                   updated_at=excluded.updated_at
                 """,
-                (ledger_id, subject_id, kind, summary, _json_dumps(payload or {}), now, now),
+                (
+                    ledger_id,
+                    subject_id,
+                    kind,
+                    summary,
+                    _json_dumps(definition_ref or {}),
+                    _json_dumps(payload or {}),
+                    now,
+                    now,
+                ),
             )
         entry = self.get_ledger_entry(ledger_id)
         assert entry is not None
@@ -328,6 +363,7 @@ class RuntimeStateStore:
             "id": row["ledger_id"],
             "kind": row["kind"],
             "subject_id": row["subject_id"],
+            "definition_ref": _json_loads_dict(row["definition_ref_json"]),
             "verdict": payload.get("verdict"),
             "outcome": payload.get("outcome"),
             "summary": row["summary"],

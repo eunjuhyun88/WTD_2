@@ -570,7 +570,9 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     assert registry_response.status_code == 200
     registry_payload = registry_response.json()
     assert registry_payload["entries"][0]["rollout_state"] == "candidate"
+    assert registry_payload["entries"][0]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert registry_payload["preferred_scoring_model"]["rollout_state"] == "candidate"
+    assert registry_payload["preferred_scoring_model"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
 
     promote_response = client.post(
         "/patterns/tradoor-oi-reversal-v1/promote-model",

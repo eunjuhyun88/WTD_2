@@ -255,10 +255,13 @@ def test_runtime_ledger_projection_route(tmp_path, monkeypatch) -> None:
         kind="verdict",
         subject_id="cap_1",
         summary="valid setup",
+        definition_ref={
+            "definition_id": "tradoor-oi-reversal-v1:v1",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+        },
         payload={
             "verdict": "valid",
             "outcome": "win",
-            "pattern_slug": "tradoor-oi-reversal-v1",
         },
     )
 
@@ -269,6 +272,12 @@ def test_runtime_ledger_projection_route(tmp_path, monkeypatch) -> None:
     assert payload["ledger"]["verdict"] == "valid"
     assert payload["ledger"]["outcome"] == "win"
     assert payload["ledger"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
+
+    restarted = RuntimeStateStore(tmp_path / "runtime.sqlite")
+    monkeypatch.setattr(runtime, "_runtime_store", restarted)
+    followup = client.get("/runtime/ledger/ledger_1")
+    assert followup.status_code == 200
+    assert followup.json()["ledger"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
 
 
 def test_runtime_routes_return_404_for_missing_records(tmp_path, monkeypatch) -> None:
