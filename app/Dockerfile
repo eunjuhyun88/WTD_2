@@ -1,8 +1,12 @@
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
 WORKDIR /app/app
 
 RUN apk add --no-cache curl
+
+ARG APP_BUILD_TARGET=cloud-run
+ENV APP_BUILD_TARGET=${APP_BUILD_TARGET}
+ENV NODE_ENV=production
 
 COPY app/package*.json ./
 RUN npm ci
@@ -11,7 +15,21 @@ COPY app/ ./
 
 RUN npm run build
 
-EXPOSE 3000
+FROM node:20-alpine AS runtime
 
-CMD ["npm", "run", "start", "--", "--host", "0.0.0.0", "--port", "3000"]
+WORKDIR /app/app
 
+RUN apk add --no-cache curl
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=8080
+
+COPY app/package*.json ./
+RUN npm ci --omit=dev
+
+COPY --from=build /app/app/build ./build
+
+EXPOSE 8080
+
+CMD ["npm", "run", "start"]
