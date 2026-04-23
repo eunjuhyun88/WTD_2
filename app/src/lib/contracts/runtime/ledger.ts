@@ -4,6 +4,7 @@ export interface LedgerRecord {
 	id: string;
 	kind?: string | null;
 	subject_id?: string | null;
+	definition_ref?: Record<string, unknown>;
 	verdict?: string | null;
 	outcome?: string | null;
 	summary?: string | null;

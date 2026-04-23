@@ -107,7 +107,7 @@
 
 - active on `codex/w-0160-pattern-definition-plane`
 - worktree: `/tmp/wtd-v2-w0160-pattern-definition`
-- current slice: `/runtime/definitions/*` is open, runtime captures and first search-plane consumers already preserve `definition_ref`, benchmark-search research runs/artifacts keep it, and refinement/train-handoff paths now carry the same key into training-ledger payloads without changing search or training semantics
+- current slice: `/runtime/definitions/*` is open, runtime captures/search/research/refinement/training all preserve `definition_ref`, and the active follow-up slice makes direct model train/promote routes plus `/runtime/ledger/*` projection expose the same canonical key without changing ranking or training semantics
 
 ---
 

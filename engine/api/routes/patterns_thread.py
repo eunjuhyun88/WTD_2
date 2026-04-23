@@ -11,6 +11,7 @@ from ledger.dataset import build_pattern_training_records, summarize_pattern_dat
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, _compute_stats_from_outcomes
 from ledger.types import PatternLedgerRecord
 from patterns.alert_policy import ALERT_POLICY_STORE
+from patterns.definitions import PatternDefinitionService
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.model_registry import MODEL_REGISTRY_STORE
 from patterns.training_service import train_pattern_model_from_ledger
@@ -377,9 +378,11 @@ def auto_evaluate_sync(slug: str, ledger: LedgerStore) -> dict:
 
 def train_pattern_model_sync(slug: str, body: dict[str, Any], ledger: LedgerStore) -> dict:
     _require_pattern(slug)
+    definition_ref = _resolve_definition_ref(slug, definition_id=body.get("definition_id"))
     return train_pattern_model_from_ledger(
         slug,
         user_id=body.get("user_id"),
+        definition_ref=definition_ref,
         target_name=body.get("target_name", "breakout"),
         feature_schema_version=body.get("feature_schema_version", 1),
         label_policy_version=body.get("label_policy_version", 1),
@@ -399,6 +402,7 @@ def promote_pattern_model_sync(
     threshold_policy_version: int,
 ) -> dict:
     _require_pattern(slug)
+    definition_ref = _resolve_definition_ref(slug)
     try:
         active_entry = MODEL_REGISTRY_STORE.promote(
             pattern_slug=slug,
@@ -413,6 +417,7 @@ def promote_pattern_model_sync(
         pattern_slug=slug,
         model_version=active_entry.model_version,
         payload={
+            "definition_ref": definition_ref,
             "model_key": active_entry.model_key,
             "timeframe": active_entry.timeframe,
             "target_name": active_entry.target_name,
@@ -427,5 +432,20 @@ def promote_pattern_model_sync(
     return {
         "ok": True,
         "pattern_slug": slug,
+        "definition_ref": definition_ref,
         "active_model": active_entry.to_dict(),
     }
+
+
+def _resolve_definition_ref(slug: str, *, definition_id: str | None = None) -> dict[str, Any]:
+    service = PatternDefinitionService()
+    if definition_id:
+        parsed = service.parse_definition_id(definition_id)
+        return (
+            service.get_definition_ref(
+                pattern_slug=parsed["pattern_slug"],
+                pattern_version=parsed["pattern_version"],
+            )
+            or parsed
+        )
+    return service.get_definition_ref(pattern_slug=slug) or {"pattern_slug": slug}

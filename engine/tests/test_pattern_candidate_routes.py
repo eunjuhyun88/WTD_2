@@ -404,10 +404,12 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
     assert registry_candidates[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert training_runs[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert training_runs[0]["model_key"] == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
+    assert training_runs[0]["payload"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert training_runs[0]["payload"]["n_records"] == 24
     assert training_runs[0]["payload"]["rollout_state"] == "candidate"
     assert len(model_records) == 1
     assert model_records[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert model_records[0]["payload"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert model_records[0]["payload"]["n_records"] == 24
     assert model_records[0]["payload"]["rollout_state"] == "candidate"
 
@@ -508,6 +510,7 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
     assert payload["model_version"] == "not_replaced"
     assert payload["replaced"] is False
     assert len(training_runs) == 1
+    assert training_runs[0]["payload"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert training_runs[0]["payload"]["rollout_state"] == "shadow"
     assert len(registry_candidates) == 0
     assert len(model_records) == 0
@@ -579,9 +582,11 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     )
     assert promote_response.status_code == 200
     promote_payload = promote_response.json()
+    assert promote_payload["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert promote_payload["active_model"]["rollout_state"] == "active"
     assert promote_payload["active_model"]["threshold_policy_version"] == 3
     assert len(model_records) == 1
+    assert model_records[0]["payload"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert model_records[0]["payload"]["promotion_event"] == "promote_to_active"
 
 

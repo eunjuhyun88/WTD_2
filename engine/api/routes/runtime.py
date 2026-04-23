@@ -68,6 +68,46 @@ def _serialize_capture(capture: CaptureRecord) -> dict[str, Any]:
     return payload
 
 
+def _serialize_ledger_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    payload = entry.get("payload")
+    payload = payload if isinstance(payload, dict) else {}
+    definition_ref = payload.get("definition_ref")
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        training_result = payload.get("training_result")
+        if isinstance(training_result, dict):
+            nested_ref = training_result.get("definition_ref")
+            if isinstance(nested_ref, dict) and nested_ref:
+                definition_ref = nested_ref
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        definition_id = payload.get("definition_id")
+        if isinstance(definition_id, str) and definition_id:
+            try:
+                parsed = get_definition_service().parse_definition_id(definition_id)
+            except (ValueError, KeyError):
+                parsed = None
+            if parsed is not None:
+                definition_ref = (
+                    get_definition_service().get_definition_ref(
+                        pattern_slug=parsed["pattern_slug"],
+                        pattern_version=parsed["pattern_version"],
+                    )
+                    or parsed
+                )
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        pattern_slug = payload.get("pattern_slug")
+        pattern_version = payload.get("pattern_version")
+        if isinstance(pattern_slug, str) and pattern_slug:
+            version = pattern_version if isinstance(pattern_version, int) else None
+            definition_ref = get_definition_service().get_definition_ref(
+                pattern_slug=pattern_slug,
+                pattern_version=version,
+            )
+    serialized = dict(entry)
+    if isinstance(definition_ref, dict) and definition_ref:
+        serialized["definition_ref"] = definition_ref
+    return serialized
+
+
 @router.post("/captures", response_model=RuntimeCaptureResponse)
 async def create_runtime_capture(body: capture_routes.CaptureCreateBody) -> RuntimeCaptureResponse:
     """Create a canonical runtime capture.
@@ -258,4 +298,4 @@ async def get_ledger(ledger_id: str) -> RuntimeLedgerResponse:
     entry = get_runtime_store().get_ledger_entry(ledger_id)
     if entry is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_ledger_not_found", "ledger_id": ledger_id})
-    return RuntimeLedgerResponse(generated_at=_generated_at(), ledger=entry)
+    return RuntimeLedgerResponse(generated_at=_generated_at(), ledger=_serialize_ledger_entry(entry))
