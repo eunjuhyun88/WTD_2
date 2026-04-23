@@ -27,7 +27,7 @@ import { fetchTopicSocial } from '$lib/server/lunarcrush';
 import { fetchSantimentSocial } from '$lib/server/santiment';
 import { fetchCoinMetricsData } from '$lib/server/coinmetrics';
 import { withTransaction } from '$lib/server/db';
-import { buildPlaneAppPath } from '$lib/server/enginePlaneProxy';
+import { fetchFactContextProxy } from '$lib/server/enginePlanes/facts';
 import { getCached, setCache } from '$lib/server/providers/cache';
 
 const SNAPSHOT_UNAVAILABLE_CODES = new Set(['42P01', '42703', '23503']);
@@ -171,20 +171,11 @@ async function fetchEngineFactPayload(
   pair: string,
   timeframe: string,
 ): Promise<FactSnapshot | null> {
-  const symbol = pairToSymbol(pair);
-  try {
-    const res = await eventFetch(
-      `${buildPlaneAppPath('facts', 'ctx/fact')}?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`,
-      {
-        signal: AbortSignal.timeout(8_000),
-      },
-    );
-    if (!res.ok) return null;
-    const payload = (await res.json()) as FactSnapshot;
-    return payload?.ok ? payload : null;
-  } catch {
-    return null;
-  }
+  return fetchFactContextProxy(eventFetch, {
+    symbol: pairToSymbol(pair),
+    timeframe,
+    offline: true,
+  });
 }
 
 function normalizeSeries(

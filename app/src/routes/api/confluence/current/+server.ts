@@ -16,16 +16,15 @@ import type { RequestHandler } from './$types';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { computeConfluence } from '$lib/confluence/score';
 import type { ConfluenceInput } from '$lib/confluence/score';
-import type { ConfluenceContribution, ConfluenceResult } from '$lib/confluence/types';
-import { regimeFromScore } from '$lib/confluence/types';
+import type { ConfluenceResult } from '$lib/confluence/types';
 import { pushConfluence, streakBack } from '$lib/server/confluenceHistory';
-import { buildPlaneAppPath } from '$lib/server/enginePlaneProxy';
+import { adaptEngineFactConfluence } from '$lib/server/confluence/engineFactAdapter';
+import { fetchFactConfluenceProxy } from '$lib/server/enginePlanes/facts';
 import { getRequestIp } from '$lib/server/requestIp';
 
 const VALID_SYMBOL = /^[A-Z0-9]{3,12}USDT$/;
 const VALID_TF = /^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/;
 const CACHE_TTL_MS = 30_000;
-const ENGINE_FACT_CONFLUENCE_MAX_SCORE = 6;
 const cache = new Map<string, { at: number; payload: unknown }>();
 
 async function fetchSelf<T>(fetchFn: typeof fetch, origin: string, path: string): Promise<T | null> {
@@ -76,98 +75,6 @@ interface OptionsPayload {
     maxPain?: number | null;
     maxPainDistancePct?: number | null;
     pinDirection?: 'above' | 'below' | 'at' | null;
-  };
-}
-
-interface EngineFactConfluencePayload {
-  ok?: boolean;
-  generated_at?: string;
-  symbol?: string;
-  timeframe?: string;
-  summary?: {
-    bias?: string;
-    score?: number;
-    evidenceCount?: number;
-    confidencePct?: number;
-  };
-  evidence?: Array<{
-    metric?: string;
-    bias?: string;
-    value?: unknown;
-  }>;
-}
-
-async function fetchEngineFactConfluence(
-  fetchFn: typeof fetch,
-  symbol: string,
-  timeframe: string,
-): Promise<EngineFactConfluencePayload | null> {
-  try {
-    const res = await fetchFn(
-      `${buildPlaneAppPath('facts', 'confluence')}?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`,
-      {
-        signal: AbortSignal.timeout(8_000),
-      },
-    );
-    if (!res.ok) return null;
-    const payload = (await res.json()) as EngineFactConfluencePayload;
-    return payload?.ok ? payload : null;
-  } catch {
-    return null;
-  }
-}
-
-function labelFromMetric(metric: string | undefined): string {
-  const raw = metric?.trim() || 'fact';
-  return raw
-    .split('_')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function adaptEngineContribution(
-  row: NonNullable<EngineFactConfluencePayload['evidence']>[number],
-  weight: number,
-): ConfluenceContribution {
-  const direction = row.bias === 'bullish' ? 1 : row.bias === 'bearish' ? -1 : 0;
-  const metric = row.metric?.trim() || 'fact';
-  const value = row.value == null ? '' : ` = ${String(row.value)}`;
-  return {
-    source: metric,
-    label: labelFromMetric(metric),
-    score: direction,
-    weight,
-    weighted: direction * weight,
-    magnitude: Math.abs(direction),
-    reason: `${row.bias ?? 'neutral'}${value}`,
-  };
-}
-
-export function adaptEngineFactConfluence(payload: EngineFactConfluencePayload): ConfluenceResult {
-  const rawScore = Number(payload.summary?.score ?? 0);
-  const confidence = Math.max(0, Math.min(1, Number(payload.summary?.confidencePct ?? 0) / 100));
-  const score = Math.max(
-    -100,
-    Math.min(100, Math.round((rawScore / ENGINE_FACT_CONFLUENCE_MAX_SCORE) * 100)),
-  );
-  const evidence = payload.evidence ?? [];
-  const weight = evidence.length > 0 ? 1 / evidence.length : 0;
-  const contributions = evidence.map((row) => adaptEngineContribution(row, weight));
-  const top = contributions.slice(0, 3);
-  const hasBull = contributions.some((row) => row.score > 0);
-  const hasBear = contributions.some((row) => row.score < 0);
-  const at = Date.parse(payload.generated_at ?? '');
-
-  return {
-    at: Number.isFinite(at) ? at : Date.now(),
-    symbol: payload.symbol ?? 'BTCUSDT',
-    score,
-    confidence,
-    regime: regimeFromScore(score, confidence),
-    contributions,
-    top,
-    divergence: hasBull && hasBear,
   };
 }
 
@@ -243,7 +150,11 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
   }
 
   const origin = url.origin;
-  const engineConfluence = await fetchEngineFactConfluence(_kitFetch, symbol, tf);
+  const engineConfluence = await fetchFactConfluenceProxy(_kitFetch, {
+    symbol,
+    timeframe: tf,
+    offline: true,
+  });
   if (engineConfluence) {
     const enriched = enrichConfluenceResult(symbol, adaptEngineFactConfluence(engineConfluence));
     cache.set(cacheKey, { at: Date.now(), payload: enriched });
