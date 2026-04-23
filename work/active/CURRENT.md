@@ -50,6 +50,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0149** | `W-0149-pattern-search-engine-quality.md` | 🟢 VERIFIED | anchored breakout + scoped replay + 15m benchmark axis done; shared cache/corpus follow-up remains separate |
 | **W-0147** | `W-0147-html-reference-pattern-engine.md` | 🟢 VERIFIED | 42 HTML-reference slugs registered; benchmark/search validation remains separate research/eval work |
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 QA-BLOCKED | manual browser QA + lab autorun/watch activation rule |
 | **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | chart/analyze/AI/backend source 를 하나의 canonical data plane 으로 재정의 |
@@ -62,10 +63,11 @@
 
 ## Deferred (루프 완성 이후 재개)
 
-1. **W-0147** — HTML-derived pattern runtime block coverage + targeted engine tests
-2. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
-3. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
-4. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
+1. **W-0149** — TRADOOR/PTB anchored breakout + pattern-scoped replay + 15m benchmark axis
+2. **W-0147** — HTML-derived pattern runtime block coverage + targeted engine tests
+3. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
+4. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
+5. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
 
 ---
 
@@ -74,6 +76,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | 최신 (`7397cbb5`) |
+| codex/w-0149-pattern-search-engine | W-0149 | ACTIVE |
 | codex/w-0147-html-pattern-engine | W-0147 | ACTIVE |
 | codex/w-0139-terminal-core-loop-capture | W-0139 | ACTIVE |
 | codex/w-0141-market-data-plane | W-0141 | MERGED INTO `main` |
