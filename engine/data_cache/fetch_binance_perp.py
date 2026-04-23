@@ -158,7 +158,7 @@ def fetch_perp_max(symbol: str) -> pd.DataFrame:
     Final fillna: funding=0, oi_change_*=0, long_short_ratio=1.
 
     Returns columns:
-        funding_rate, oi_change_1h, oi_change_24h, long_short_ratio
+        oi, funding_rate, oi_change_1h, oi_change_24h, long_short_ratio
     """
     funding = fetch_funding_rate(symbol)
     time.sleep(_SLEEP_BETWEEN)
@@ -166,17 +166,18 @@ def fetch_perp_max(symbol: str) -> pd.DataFrame:
     time.sleep(_SLEEP_BETWEEN)
     ls = fetch_ls_ratio(symbol)
 
-    merged = oi[["oi_change_1h", "oi_change_24h"]].join(
+    merged = oi[["oi", "oi_change_1h", "oi_change_24h"]].join(
         ls[["long_short_ratio"]], how="outer"
     )
     merged = merged.join(funding[["funding_rate"]], how="outer")
     # Carry the last funding print across the hourly OI grid for up to one
     # funding interval so recent bars do not collapse to zero.
     merged["funding_rate"] = merged["funding_rate"].sort_index().ffill(limit=8).fillna(0.0)
+    merged["oi"] = merged["oi"].ffill()
     merged["oi_change_1h"] = merged["oi_change_1h"].fillna(0.0)
     merged["oi_change_24h"] = merged["oi_change_24h"].fillna(0.0)
     merged["long_short_ratio"] = merged["long_short_ratio"].fillna(1.0)
 
     return merged[
-        ["funding_rate", "oi_change_1h", "oi_change_24h", "long_short_ratio"]
+        ["oi", "funding_rate", "oi_change_1h", "oi_change_24h", "long_short_ratio"]
     ]

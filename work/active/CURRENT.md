@@ -25,6 +25,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0156** | `W-0156-feature-materialization-plane.md` | 🔴 IN-PROGRESS | raw/perp/orderflow storage + `feature_windows` materialization + `pattern_events` / `search_corpus_signatures` first executable slice |
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 QA-BLOCKED | manual browser QA + lab autorun/watch activation rule |
 | **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | chart/analyze/AI/backend source 를 하나의 canonical data plane 으로 재정의 |
 | **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / shared study contract 추가 정리 |
@@ -36,9 +37,10 @@
 
 ## 즉시 실행 순서
 
-1. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
-2. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
-3. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+1. **W-0156** — canonical feature materialization first slice: schema/store + materializer + corpus signature writer
+2. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
+3. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
+4. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
@@ -47,6 +49,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | 최신 (`7397cbb5`) |
+| codex/w-0156-feature-materialization-plane | W-0156 | ACTIVE |
 | codex/w-0139-terminal-core-loop-capture | W-0139 | ACTIVE |
 | codex/w-0141-market-data-plane | W-0141 | MERGED INTO `main` |
 | codex/w-0138-engine-runtime-role-split | W-0138 | MERGED (#190) |
