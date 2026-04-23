@@ -193,6 +193,13 @@ export async function fetchRecentCaptures(limit = 8): Promise<RecentCaptureSumma
   return payload?.ok && Array.isArray(payload.captures) ? payload.captures : [];
 }
 
+export async function fetchReviewInboxCount(limit = 100): Promise<number> {
+  const res = await fetch(`/api/captures/outcomes?limit=${limit}`);
+  if (!res.ok) return 0;
+  const payload = await readJson<{ count?: number }>(res);
+  return payload?.count ?? 0;
+}
+
 export async function fetchConfluenceCurrent(symbol: string, tf: string): Promise<ConfluenceResult | null> {
   const res = await fetch(`/api/confluence/current?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`);
   if (!res.ok) return null;
