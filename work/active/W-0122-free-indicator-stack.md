@@ -148,12 +148,12 @@ For `W-0122`, the immediate job is narrower:
 2. make `/api/market/flow` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
 3. keep ticker / CMC / liquidation details on legacy ingress only until engine fact routes expose them canonically
 
-### Current Lane Slice — Market Cap Fact Cut
+### Current Lane Slice — Events Fact Cut
 
-1. add `GET /facts/market-cap` as an engine-owned bounded read model
-2. source this slice from existing engine macro cache first (`btc_dominance`) and expose partial/degraded truth explicitly
-3. make `/api/market/macro-overview` and `/api/coingecko/global` prefer the engine fact route, but fall back to the existing app `marketCapPlane` until engine coverage is sufficient
-4. lock the cut with one engine route test and one app compatibility test family
+1. keep `/api/market/events` public payload stable
+2. make `/api/market/events` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
+3. keep DexScreener event feed and liquidation enrichment on existing ingress bridges until engine fact routes expose a canonical event bundle
+4. lock the cut with a targeted `market/events` route test family
 
 ## Goal
 
@@ -470,7 +470,6 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **W-0122 는 terminal AI 의 fact-plane owner 다** — AI agent 와 scan/search 는 직접 CoinGecko/Dune/Etherscan/Solscan/TRONSCAN 을 부르지 않고, `/api/market/reference-stack`, `/api/market/chain-intel`, `/api/market/influencer-metrics`, `marketCapPlane` 같은 bounded read models 만 읽는다.
 - **`engine/market_engine/indicator_catalog.py` 는 W-0122 소유다** — 이 파일은 `W-0148` architecture lane 이 아니라 fact-plane mainline 에서 inventory route 와 함께 가져간다.
 - **market-cap cut 은 engine-preferred + app-fallback 으로 시작한다** — 현재 engine macro cache 는 `btc_dominance` 까지만 안정적으로 보장하므로, 첫 `GET /facts/market-cap` 는 partial truth 를 정직하게 내리고 `/api/market/macro-overview` 와 `/api/coingecko/global` 은 엔진 payload 가 충분하지 않을 때만 기존 app `marketCapPlane` 으로 떨어진다.
-
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
