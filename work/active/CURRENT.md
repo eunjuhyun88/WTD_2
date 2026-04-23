@@ -25,6 +25,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0146** | `W-0146-lane-cleanup-and-merge-governance.md` | 🔴 IN-PROGRESS | branch/function audit + merge-now / split-next / park-only queue |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact-plane cleanup: reference stack + chain intel + influencer metrics + marketCapPlane |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | scheduler-driven corpus accumulation + seed-search corpus-first retrieval |
 | **W-0144** | `W-0144-memkraft-shadow-memory-lane.md` | 🔴 IN-PROGRESS | commit split plan + MemKraft shadow sync/backfill + seed-search evidence recall |
@@ -76,13 +77,14 @@
 
 ## 즉시 실행 순서
 
-1. **W-0122 / C1** — fact-plane cleanup: reference stack + chain-intel + influencer metrics + market-cap canonical routes
-2. **W-0145 / C2** — scheduler-driven operational seed-search corpus store + retrieval bridge
-3. **W-0142 / C3** — engine `research_context` capture contract commit split
-4. **W-0143 / C4** — seed-search/catalog/replay follow-up + compare/pin persistence planning
-5. **W-0144 / C5** — remaining commit/merge order governance + test isolation follow-up
-6. **W-0139 / C6** — terminal surface scoped commit/PR 정리
-7. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+1. **W-0146 / C0** — lane cleanup / merge governance audit
+2. **W-0122 / C1** — fact-plane cleanup: reference stack + chain-intel + influencer metrics + market-cap canonical routes
+3. **W-0145 / C2** — scheduler-driven operational seed-search corpus store + retrieval bridge
+4. **W-0142 / C3** — engine `research_context` capture contract commit split
+5. **W-0143 / C4** — seed-search/catalog/replay follow-up + compare/pin persistence planning
+6. **W-0144 / C5** — remaining commit/merge order governance + test isolation follow-up
+7. **W-0139 / C6** — terminal surface scoped commit/PR 정리
+8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
