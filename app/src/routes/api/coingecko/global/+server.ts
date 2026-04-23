@@ -1,42 +1,41 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchCoinGeckoGlobal, fetchStablecoinMcap } from '$lib/server/providers/coingecko';
-import { fetchDefiLlamaStableMcap } from '$lib/server/defillama';
+import { fetchMarketCapOverview } from '$lib/server/marketCapPlane';
 
 export const GET: RequestHandler = async () => {
   try {
-    const [global, cgStable, llamaStable] = await Promise.all([
-      fetchCoinGeckoGlobal(),
-      fetchStablecoinMcap(),
-      fetchDefiLlamaStableMcap(),
-    ]);
+    const overview = await fetchMarketCapOverview();
 
-    if (!global) {
-      return json({ error: 'CoinGecko global source unavailable' }, { status: 502 });
+    if (overview.totalMarketCapUsd === null || overview.btcDominance === null) {
+      return json({ error: 'Market cap overview unavailable' }, { status: 502 });
     }
 
     const payload = {
-      global,
-      stablecoin: llamaStable
-        ? {
-            source: 'defillama',
-            totalMcapUsd: llamaStable.totalMcapUsd,
-            change24hPct: llamaStable.change24hPct,
-            change7dPct: llamaStable.change7dPct,
-            updatedAt: llamaStable.updatedAt,
-          }
-        : cgStable
+      global: {
+        totalMarketCapUsd: overview.totalMarketCapUsd,
+        totalVolumeUsd: 0,
+        btcDominance: overview.btcDominance,
+        ethDominance: overview.ethDominance ?? 0,
+        marketCapChange24hPct: overview.marketCapChange24hPct ?? 0,
+        activeCryptocurrencies: 0,
+        updatedAt: overview.at,
+      },
+      stablecoin:
+        overview.stablecoinMcapUsd !== null
           ? {
-              source: 'coingecko',
-              totalMcapUsd: cgStable.totalMcapUsd,
-              change24hPct: cgStable.change24hPct,
-              updatedAt: cgStable.updatedAt,
-              top: cgStable.top,
+              source: overview.providers.stablecoins.provider,
+              totalMcapUsd: overview.stablecoinMcapUsd,
+              change24hPct: overview.stablecoinMcapChange24hPct ?? 0,
+              change7dPct: overview.stablecoinMcapChange7dPct ?? 0,
+              updatedAt: overview.providers.stablecoins.updatedAt ?? overview.at,
             }
           : null,
-      btcDominance: global.btcDominance,
-      totalMarketCap: global.totalMarketCapUsd,
-      marketCapChange24hPct: global.marketCapChange24hPct,
+      providers: overview.providers,
+      sourceSpreadPct: overview.sourceSpreadPct,
+      confidence: overview.confidence,
+      btcDominance: overview.btcDominance,
+      totalMarketCap: overview.totalMarketCapUsd,
+      marketCapChange24hPct: overview.marketCapChange24hPct ?? 0,
     };
 
     return json(
@@ -50,9 +49,9 @@ export const GET: RequestHandler = async () => {
       },
       {
         headers: {
-          'Cache-Control': 'public, max-age=120',
+          'Cache-Control': 'public, max-age=60',
         },
-      }
+      },
     );
   } catch (error) {
     console.error('[coingecko/global/get] unexpected error:', error);
