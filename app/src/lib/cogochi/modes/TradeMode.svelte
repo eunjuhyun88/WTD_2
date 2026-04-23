@@ -1,6 +1,6 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import { fetchAnalyzeAndChart } from '$lib/api/terminalBackend';
+  import { fetchAnalyzeAndChart, fetchRecentCaptures, type RecentCaptureSummary } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
@@ -168,22 +168,11 @@
   }
 
   // ── Past captures (real historical setups for PAST strip) ─────────────
-  interface PastCapture {
-    capture_id: string;
-    symbol: string;
-    pattern_slug: string;
-    timeframe: string;
-    captured_at_ms: number;
-    status: string;
-  }
-  let pastCaptures = $state<PastCapture[]>([]);
+  let pastCaptures = $state<RecentCaptureSummary[]>([]);
 
   async function refreshPastCaptures() {
     try {
-      const res = await fetch(`/api/captures?limit=8`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { ok: boolean; captures?: PastCapture[]; count?: number };
-      if (data.ok && data.captures) pastCaptures = data.captures;
+      pastCaptures = await fetchRecentCaptures(8);
     } catch { /* tolerate */ }
   }
 
@@ -1293,8 +1282,8 @@
                     {#each pastCaptures as s (s.capture_id)}
                       {@const sym = s.symbol.replace('USDT','').replace('PERP','')}
                       {@const dateStr = new Date(s.captured_at_ms).toISOString().slice(0,10)}
-                      {@const slug = s.pattern_slug.replace(/-v\d+$/, '').replace(/-/g, ' ')}
-                      <button class="past-card" title="{s.pattern_slug} · {s.timeframe}">
+                      {@const patternSlug = s.pattern_slug ?? 'saved-setup'}
+                      <button class="past-card" title="{patternSlug} · {s.timeframe}">
                         <span class="past-sym">{sym}</span>
                         <span class="past-pnl" style:color="var(--g6)">{dateStr}</span>
                         <span class="past-sim">{s.status === 'outcome_ready' ? '⚡' : s.status === 'verdict_ready' ? '✓' : '…'}</span>
