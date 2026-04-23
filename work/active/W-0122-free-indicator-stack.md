@@ -530,8 +530,8 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-market-cap-fact-cut`, clean after `e5f80a6a`
-- verification status: app targeted `vitest` (`events`, `intel-policy`, `reference-stack`, `flow`, `macro-overview`, `coingecko/global`, `planeClients`) passed across the last slices; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
+- branch/worktree state: `codex/w-0122-consumer-fact-cut`, PR candidate extracted into `/private/tmp/wtd-v2-w0122-consumer-cut`
+- verification status: engine `pytest tests/test_facts_route.py -q` = `11 passed`; app targeted `vitest` (`planeClients`, `reference-stack`, `chain-intel`, `intel-policy`, `events`, `flow`, `macro-overview`, `coingecko/global`) = `18 passed`; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
 
 ## PR Trail
