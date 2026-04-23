@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-23)
+# CURRENT — 단일 진실 (2026-04-24)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`a59dd947` — current local `origin/main` ref after PR #215
+`fd0f4731` — current local `origin/main` ref after PR #216
 
 ## 완료 (이번 세션)
 
@@ -32,6 +32,7 @@
 | #213 (W-0139) | `TradeMode` indicator side-fetch `/api/market/*` reads moved behind terminal client helpers |
 | #214 (W-0139) | `TradeMode` candle-close analyze refresh moved behind terminal client helper |
 | #215 (W-0139) | `TradeMode` outcome submit and alpha world-model reads moved behind terminal client helpers |
+| #216 (W-0139) | terminal page review inbox count moved behind terminal client helper; terminal surface direct-fetch audit clean |
 
 ---
 
@@ -44,8 +45,8 @@
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
 | **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟢 COMPLETE | `AgentContextPack` loader + DOUNI + intel-policy migrations merged |
-| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🔴 IN-PROGRESS | surface closeout: terminal surface reads must move behind fact/search/runtime clients |
-| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-W0139 | bottom ANALYZE slimming after surface contract cutover |
+| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟢 COMPLETE | terminal surface reads now route through fact/search/runtime/surface clients; direct-fetch audit clean |
+| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | bottom ANALYZE workspace must consume workspace envelope instead of duplicated local derivations |
 
 ## Reference / Assist Work Items
 
@@ -103,9 +104,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0139-surface-closeout-audit`
+- active on `codex/w-0140-bottom-analyze-slimming`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: terminal page review inbox count moved behind `terminalBackend`; local terminal surface direct-fetch audit is clean
+- current slice: bottom ANALYZE uses `workspaceEnvelope` / section studies for thesis, evidence, and execution board instead of duplicated local derivations
 
 ---
 
@@ -129,7 +130,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `a59dd947` |
+| origin/main | — | local remote-tracking ref = `fd0f4731` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -156,7 +157,8 @@
 | codex/w-0139-trademode-indicator-clients | W-0139 | merged via PR #213 |
 | codex/w-0139-trademode-analyze-client | W-0139 | merged via PR #214 |
 | codex/w-0139-trademode-action-clients | W-0139 | merged via PR #215 |
-| codex/w-0139-surface-closeout-audit | W-0139 | active terminal surface direct-fetch audit lane |
+| codex/w-0139-surface-closeout-audit | W-0139 | merged via PR #216 |
+| codex/w-0140-bottom-analyze-slimming | W-0140 | active bottom analyze workspace slimming lane |
 
 ---
 

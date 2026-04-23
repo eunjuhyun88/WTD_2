@@ -2,7 +2,7 @@
 
 ## Goal
 
-하단 `ANALYZE` 탭을 오른쪽 sidebar summary HUD와 역할이 명확히 다르게 보이도록, `상세 workspace` 구조로 재구성한다.
+하단 `ANALYZE` 탭을 오른쪽 sidebar summary HUD와 역할이 명확히 다르게 유지하되, 실제 렌더링도 `workspaceEnvelope` 기반으로 정렬해서 surface 안의 중복 data shaping 을 줄인다. 현재 slice 는 thesis / evidence / execution board 를 `workspaceDataPlane` 계약에서 읽도록 전환한다.
 
 ## Owner
 
@@ -14,58 +14,64 @@ Product surface change
 
 ## Scope
 
-- `TradeMode.svelte` 의 bottom `ANALYZE` tab layout 재구성
-- `summary vs detail` 정보 구조를 시각적으로 명확히 분리
-- `LIVE / OPTIONS / VENUE / EVIDENCE / EXECUTION` 섹션화
+- `TradeMode.svelte` bottom `ANALYZE` 에서 local raw derivation 대신 `workspaceEnvelope` / `workspaceStudyMap` 우선 소비
+- thesis / evidence / execution board 를 workspace studies 로 재배선
+- 관련 work item 문서와 app check 갱신
 
 ## Non-Goals
 
 - indicator 데이터/API 추가
 - mobile analyze panel 재설계
 - scan/judge 정보 구조 변경
+- `workspaceDataPlane.ts` 전체 재설계 또는 generic component 대규모 도입
 
 ## Canonical Files
 
 - `AGENTS.md`
 - `work/active/CURRENT.md`
 - `work/active/W-0140-analyze-tab-consolidation.md`
+- `docs/domains/terminal-ai-scan-architecture.md`
 - `app/src/lib/cogochi/modes/TradeMode.svelte`
+- `app/src/lib/cogochi/workspaceDataPlane.ts`
 
 ## Facts
 
-- `W-0137`은 오른쪽 sidebar를 summary HUD로 줄였지만, 하단 `ANALYZE` 탭 자체의 시각 구조는 크게 바뀌지 않았다.
-- 현재 하단 `ANALYZE`는 정보는 상세하지만, 사용자가 한눈에 `상세 workspace`로 인식할 만큼 section hierarchy가 강하지 않다.
-- 오른쪽 sidebar와 하단 tab의 차이는 역할로만 존재하고, 레이아웃 언어로는 아직 충분히 드러나지 않는다.
+- `workspaceDataPlane.ts` 는 이미 `summary-hud`, `detail-workspace`, `evidence-log`, `execution-board` section 과 study summaries 를 만든다.
+- `TradeMode.svelte` 의 하단 `ANALYZE`는 `workspaceSummaryCards` 외에는 여전히 `proposal`, `evidenceItems`, `narrativeBias`, `narrativeDir` 같은 local derivation 을 다시 만든다.
+- `W-0139`는 #216까지 merge 되었고 terminal surface direct `fetch(` audit 은 clean 하다.
+- 현재 bottom `ANALYZE`의 남은 구조 문제는 fetch 가 아니라 contract duplication 이다.
 
 ## Assumptions
 
-- 하단 `ANALYZE`에는 summary 재복제보다 sectioned detail workspace가 더 적합하다.
+1. 하단 `ANALYZE`에는 summary 재복제보다 sectioned detail workspace가 더 적합하다.
+2. 이번 slice 는 generic renderer 도입보다 기존 markup 을 유지한 채 data source 만 `workspaceEnvelope`로 바꾸는 편이 리스크가 낮다.
 
 ## Open Questions
 
-- 없음.
+- execution board 전체를 generic study renderer 로 바꿀지는 후속 slice 로 미룬다.
 
 ## Decisions
 
 - 하단 `ANALYZE`는 `detail workspace`로 명시한다.
-- 섹션 헤더와 overview rail을 추가해 상세 패널의 역할을 명확히 드러낸다.
+- thesis / evidence / execution board 는 먼저 `workspaceEnvelope` / `workspaceStudyMap` 에서 읽는다.
+- 기존 markup 은 유지하고 raw local derivation 만 줄이는 strangler 방식으로 간다.
 - execution 관련 CTA는 하단 panel에서 `SCAN`/`JUDGE`로 점프 가능하게 둔다.
 
 ## Next Steps
 
-1. 하단 `ANALYZE` 탭에 overview rail과 sectioned workspace 구조를 추가한다.
-2. CSS를 업데이트해 sidebar HUD와 다른 시각 언어를 만든다.
-3. `npm run check` 후 최신 서버로 확인한다.
+1. `TradeMode` 의 thesis / evidence / execution board 를 workspace study 기반으로 바꾼다.
+2. duplicated raw derivation 제거 후 `npm --prefix app run check` 로 검증한다.
+3. 남은 bottom ANALYZE 중복 shaping 이 있으면 다음 slice 를 정의한다.
 
 ## Exit Criteria
 
-- 사용자가 하단 `ANALYZE`를 오른쪽 sidebar와 다른 `상세 패널`로 인식할 수 있다.
-- `LIVE / OPTIONS / VENUE / EVIDENCE / EXECUTION` 구조가 명확하다.
-- `npm run check`가 0 error로 통과한다.
+- 하단 `ANALYZE`의 thesis / evidence / execution board 가 `workspaceEnvelope` 계약을 소비한다.
+- `TradeMode` 안의 duplicated raw derivation 이 줄어든다.
+- `npm --prefix app run check`가 0 error로 통과한다.
 
 ## Handoff Checklist
 
 - active work item: `work/active/W-0140-analyze-tab-consolidation.md`
-- branch: `codex/w-0140-analyze-tab-consolidation`
-- verification: `npm run check`
-- blockers: 없음
+- branch: `codex/w-0140-bottom-analyze-slimming`
+- verification: `npm --prefix app run check`
+- blockers: bottom ANALYZE remaining local view-model duplication
