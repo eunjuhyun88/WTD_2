@@ -9,6 +9,7 @@ import {
   fetchLiqClusters,
   fetchOptionsSnapshot,
   fetchRecentCaptures,
+  fetchReviewInboxCount,
   fetchRvCone,
   fetchSsr,
   fetchVenueDivergence,
@@ -64,6 +65,14 @@ describe('terminalBackend surface clients', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonResponse({ error: 'unavailable' }, 500));
 
     await expect(fetchRecentCaptures(8)).resolves.toEqual([]);
+  });
+
+  it('loads review inbox count through a surface client helper', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonResponse({ count: 17 }));
+
+    await expect(fetchReviewInboxCount(100)).resolves.toBe(17);
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/captures/outcomes?limit=100');
   });
 
   it('loads confluence current and history through surface client helpers', async () => {
