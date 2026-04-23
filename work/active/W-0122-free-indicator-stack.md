@@ -148,12 +148,12 @@ For `W-0122`, the immediate job is narrower:
 2. make `/api/market/flow` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
 3. keep ticker / CMC / liquidation details on legacy ingress only until engine fact routes expose them canonically
 
-### Current Lane Slice — Events Fact Cut
+### Current Lane Slice — Terminal Intel Macro Fact Cut
 
-1. keep `/api/market/events` public payload stable
-2. make `/api/market/events` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
-3. keep DexScreener event feed and liquidation enrichment on existing ingress bridges until engine fact routes expose a canonical event bundle
-4. lock the cut with a targeted `market/events` route test family
+1. keep `/api/terminal/intel-policy` public payload stable
+2. make `/api/terminal/intel-policy` consume `/api/market/macro-overview`, which is already engine-preferred via `GET /facts/market-cap`
+3. keep existing news / events / flow / trending / picks joins in place; only add the macro regime card on top of the flow panel
+4. lock the cut with a targeted `terminal/intel-policy` route test
 
 ## Goal
 
