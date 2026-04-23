@@ -74,6 +74,8 @@ Engine logic change
 9. Cloud Run smoke exposed two real server blockers on the app surface: `/api/confluence/current` had route-local helper leakage that broke Node builds, and `/healthz` / `/readyz` were incorrectly behind the auth redirect path.
 10. `origin/main` is now at `cf657e39` after PR #241 and PR #242, so this lane's remaining work is queue hygiene only; the next real execution lanes stay `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`.
 11. common feature math and pattern-family interpretation are still too easy to conflate; the reset must explicitly separate `data engine feature production` from `pattern engine phase/replay logic`.
+12. the repo already has substantial pattern-runtime primitives in place: `PatternObject` / pattern registry, capture + research_context writes, durable pattern state, outcome ledger, verdict inbox, and refinement stats are implemented, but they are not yet normalized into one canonical runtime contract family.
+13. for the TRADOOR/PTB “Pattern Research OS” direction, the biggest missing layer is not a brand-new model or giant table family; it is a contract-first split between `pattern definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, and `promotion` planes.
 
 ## Assumptions
 
@@ -122,6 +124,8 @@ Engine logic change
 - server health/readiness endpoints (`/healthz`, `/readyz`) are public operational surfaces and must remain outside page-auth redirects.
 - after PR #241 / #242 layered onto PR #236 / #238 / #239 and earlier PR #230 / #231 / #232, the post-merge execution queue is still `W-0122 facts -> W-0145 search -> W-0142 runtime -> W-0160 contract follow-up -> W-0159 public liquidation source`, not another branch-extraction wave.
 - branch split reason for this refresh: local `codex/w-0148-current-plan-refresh-20260424` carries unrelated engine WIP in another checkout, so post-merge plan updates must land as clean docs-only merge units from updated `main`.
+- pattern runtime decomposition is `contract-first`, not `DB-first`: first normalize read/write route families and ownership around existing primitives, then decide which durable stores to merge, rename, or replace.
+- pattern research OS follow-ups must treat `pattern definition`, `feature snapshot`, `runtime state`, `outcome/judgment`, and `promotion` as separate merge units; reopening them as one giant runtime rewrite is forbidden.
 
 ## Current Layer Map
 
@@ -261,7 +265,8 @@ Engine logic change
 1. keep `CURRENT.md` aligned with merged mainline so the canonical order remains `W-0122 -> W-0145 -> W-0142 -> W-0160 -> W-0159`, and reject new branch-extraction work that bypasses that queue.
 2. W-0156/W-0122 implementation lanes should codify the raw retention split explicitly: canonical normalized tables for replay-critical data, TTL cache for provider-native blobs, and materialized `feature_windows` as the cross-pattern contract.
 3. freeze the data-engine vs pattern-engine ownership boundary so `W-0122` computes canonical features once and `W-0145` consumes them without duplicating math inside replay/search logic.
-4. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
+4. use the pattern-runtime decomposition note in `docs/domains/terminal-ai-scan-architecture.md` as the canonical checklist before opening the next runtime/search/promotion lanes.
+5. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service plus a final region decision: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, `SECURITY_ALLOWED_HOSTS`, and `asia-southeast1` vs `us-east4`.
 
 ## Exit Criteria
 
