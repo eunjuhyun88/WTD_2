@@ -1,4 +1,4 @@
-# CURRENT — 단일 진실 (2026-04-23)
+# CURRENT — 단일 진실 (2026-04-24)
 
 > 이 파일 = 지금 무엇이 진행 중인지의 유일한 source of truth.
 > 세션 시작 시 반드시 먼저 읽는다. 세션 종료 시 반드시 업데이트.
@@ -32,6 +32,7 @@
 | **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
 | **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
 | **W-0156** | `W-0156-canonical-feature-plane-foundation.md` | 🔴 IN-PROGRESS | perp/orderflow canonical feature plane 첫 슬라이스: raw metrics contract + reusable derived features + targeted engine cut |
+| **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
 | **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
 | **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
@@ -97,8 +98,9 @@
 
 - current doc lane `codex/w-0153-protocol-doc-recovery` was split and pushed clean at `44431562`
 - engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
-- active execution lane is `codex/w-0156-feature-plane-foundation`
-- `W-0156` first slice is in progress: canonical feature subset + live snapshot threading landed locally with targeted engine tests passing
+- `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
+- active execution lane is `codex/w-0157-similar-live-feature-ranking`
+- `W-0157` local cut now applies `canonical_feature_snapshot` to `similar-live` ranking and passed targeted `live_monitor` / route tests on `codex/w-0157-similar-live-feature-ranking`
 
 ---
 
@@ -129,6 +131,7 @@
 | codex/w-0151-active-variant-runtime-registry | W-0149 / W-0150 / W-0151 / W-0152 | active stacked engine commercialization lane |
 | codex/w-0153-protocol-doc-recovery | W-0153 | protocol doc recovery reference lane; pushed clean |
 | codex/w-0156-feature-plane-foundation | W-0156 | active engine lane for canonical perp/orderflow/structure feature foundation |
+| codex/w-0157-similar-live-feature-ranking | W-0157 | active engine lane for canonical feature consumption in similar-live ranking |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |

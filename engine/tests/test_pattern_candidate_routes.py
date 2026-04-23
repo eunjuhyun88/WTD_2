@@ -117,6 +117,9 @@ def test_similar_live_route_returns_ranked_state_matches(monkeypatch) -> None:
                         "path": "ARCH_ZONE→REAL_DUMP→ACCUMULATION",
                         "observed_phase_path": ["ARCH_ZONE", "REAL_DUMP", "ACCUMULATION"],
                         "similarity_score": 0.88,
+                        "replay_similarity_score": 0.88,
+                        "canonical_feature_score": 0.93,
+                        "ranking_score": 0.9445,
                         "phase_depth_progress": 0.72,
                         "phase_fidelity": 0.8,
                         "variant_slug": "tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m",
@@ -170,6 +173,9 @@ def test_similar_live_route_returns_ranked_state_matches(monkeypatch) -> None:
     assert payload["count"] == 1
     assert payload["results"][0]["symbol"] == "PTBUSDT"
     assert payload["results"][0]["similarity_score"] == 0.88
+    assert payload["results"][0]["replay_similarity_score"] == 0.88
+    assert payload["results"][0]["canonical_feature_score"] == 0.93
+    assert payload["results"][0]["ranking_score"] == 0.9445
     assert payload["results"][0]["canonical_feature_snapshot"]["funding_flip_flag"] is True
 
 
