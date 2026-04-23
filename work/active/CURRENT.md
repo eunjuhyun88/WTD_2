@@ -25,6 +25,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0152** | `W-0152-market-retrieval-index.md` | 🟢 VERIFIED | cached corpus cheap retrieval + top-N replay rerank over recent history |
 | **W-0151** | `W-0151-cached-universe-live-scan.md` | 🟢 VERIFIED | cached symbol inventory + live monitor CLI over canonical shared cache |
 | **W-0150** | `W-0150-shared-cache-corpus.md` | 🟢 VERIFIED | shared cache root discovery lets benchmark/search read canonical offline corpus across worktrees |
 | **W-0149** | `W-0149-pattern-search-engine-quality.md` | 🟢 VERIFIED | anchored breakout + scoped replay + 15m benchmark axis done; shared cache/corpus follow-up remains separate |
@@ -40,13 +41,14 @@
 
 ## 즉시 실행 순서
 
-1. **W-0151** — cached symbol inventory + live monitor CLI over canonical shared cache
-2. **W-0150** — shared cache root discovery for benchmark/search/scanner lanes
-3. **W-0149** — TRADOOR/PTB anchored breakout + pattern-scoped replay + 15m benchmark axis
-4. **W-0147** — HTML-derived pattern runtime block coverage + targeted engine tests
-5. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
-6. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
-7. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
+1. **W-0152** — cached corpus cheap retrieval + top-N replay rerank over recent history
+2. **W-0151** — cached symbol inventory + live monitor CLI over canonical shared cache
+3. **W-0150** — shared cache root discovery for benchmark/search/scanner lanes
+4. **W-0149** — TRADOOR/PTB anchored breakout + pattern-scoped replay + 15m benchmark axis
+5. **W-0147** — HTML-derived pattern runtime block coverage + targeted engine tests
+6. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
+7. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
+8. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
 
 ---
 
@@ -55,6 +57,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | 최신 (`7397cbb5`) |
+| codex/w-0152-market-retrieval-index | W-0152 | ACTIVE |
 | codex/w-0151-cached-universe-live-scan | W-0151 | ACTIVE |
 | codex/w-0150-shared-cache-corpus | W-0150 | ACTIVE |
 | codex/w-0149-pattern-search-engine | W-0149 | ACTIVE |
