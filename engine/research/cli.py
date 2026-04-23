@@ -184,6 +184,25 @@ def _run_market_search(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_market_index_build(args: argparse.Namespace) -> int:
+    from research.market_retrieval import build_market_retrieval_index
+
+    universe = None
+    if args.universe and args.universe != "cached":
+        universe = args.universe.split(",")
+
+    artifact = build_market_retrieval_index(
+        timeframe=args.timeframe,
+        history_bars=args.history_bars,
+        stride_bars=args.stride_bars,
+        window_bars=args.window_bars,
+        universe=universe,
+        warmup_bars=args.warmup_bars,
+    )
+    print(json.dumps(artifact.to_summary_dict(), indent=2, default=str))
+    return 0
+
+
 def _run_backtest(args: argparse.Namespace) -> int:
     from datetime import timedelta
 
@@ -313,6 +332,15 @@ def build_parser() -> argparse.ArgumentParser:
     market_p.add_argument("--warmup-bars", type=int, default=240)
     market_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
     market_p.set_defaults(func=_run_market_search)
+
+    market_index_p = sub.add_parser("pattern-market-index-build", help="Build a persisted cached-window retrieval index")
+    market_index_p.add_argument("--timeframe", default="1h")
+    market_index_p.add_argument("--history-bars", type=int, default=24 * 30)
+    market_index_p.add_argument("--stride-bars", type=int, default=6)
+    market_index_p.add_argument("--window-bars", type=int, required=True)
+    market_index_p.add_argument("--warmup-bars", type=int, default=240)
+    market_index_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
+    market_index_p.set_defaults(func=_run_market_index_build)
 
     benchmark_p = sub.add_parser("pattern-benchmark-search", help="Run replay benchmark-pack search for pattern variants")
     benchmark_p.add_argument("--slug", required=True, help="Pattern slug")
