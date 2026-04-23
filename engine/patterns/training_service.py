@@ -17,6 +17,7 @@ def train_pattern_model_from_ledger(
     pattern_slug: str,
     *,
     user_id: str | None = None,
+    definition_ref: dict | None = None,
     target_name: str = "breakout",
     feature_schema_version: int = 1,
     label_policy_version: int = 1,
@@ -60,6 +61,7 @@ def train_pattern_model_from_ledger(
     )
     payload = {
         "model_key": model_key,
+        "definition_ref": dict(definition_ref or {}),
         "timeframe": pattern.timeframe,
         "target_name": target_name,
         "feature_schema_version": feature_schema_version,
@@ -106,6 +108,7 @@ def train_pattern_model_from_ledger(
     return {
         "ok": True,
         "pattern_slug": pattern_slug,
+        "definition_ref": dict(definition_ref or {}),
         "model_key": model_key,
         "model_version": model_version,
         "rollout_state": payload["rollout_state"],

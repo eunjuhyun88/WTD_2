@@ -72,6 +72,7 @@ def run_pattern_search_refinement_once(
         PatternBoundedEvalConfig(
             pattern_slug=pattern_slug,
             objective_id=objective.objective_id,
+            definition_ref=search_run.definition_ref,
             search_mode=str(objective.recommended_search_policy.get("mode", "bounded-walk-forward-eval")),
             n_splits=int(objective.recommended_evaluation_protocol.get("n_splits", 5)),
             min_mean_auc=float(objective.recommended_evaluation_protocol.get("min_mean_auc", 0.55)),
@@ -90,8 +91,10 @@ def run_pattern_search_refinement_once(
     refinement_run = state_store.update_handoff_payload(
         refinement_run.research_run_id,
         payload={
+            "definition_ref": refinement_run.definition_ref,
             "baseline_family_ref": baseline_family_ref,
             "upstream_search_run_id": search_run.research_run_id,
+            "upstream_search_definition_ref": search_run.definition_ref,
             "upstream_search_winner_variant_ref": search_run.winner_variant_ref,
             "upstream_search_active_family_key": search_run.handoff_payload.get("active_family_key"),
             "upstream_search_baseline_family_ref": baseline_family_ref,

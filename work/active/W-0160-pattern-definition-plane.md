@@ -19,6 +19,7 @@ Contract change
 - `manual_hypothesis` capture `research_context`에서 thesis / tags / source / phase annotation evidence를 linked evidence로 노출
 - runtime captures 와 첫 search-plane consumer 가 `definition_id` / `definition_ref`를 읽도록 contract 정렬
 - research runs / benchmark search artifacts / handoff payload 가 `definition_ref`를 저장하도록 contract 정렬
+- bounded refinement runs, train handoff payload, and training-ledger artifacts 가 같은 `definition_ref`를 유지하도록 contract 정렬
 - targeted engine tests 추가
 
 ## Non-Goals
@@ -52,6 +53,7 @@ Contract change
 6. current local cut also adds runtime capture-side `definition_ref` enrichment and `definition_id` filtering, so the first runtime consumer can read pattern definitions without depending on raw `pattern_slug` only.
 7. current local cut also threads `definition_id` / `definition_ref` through corpus `seed` / `scan` route requests and candidate payloads without changing corpus ranking semantics.
 8. current local cut now persists `definition_ref` on research runs and benchmark search artifacts, and includes it in benchmark-search handoff payload / selection metrics so the loop no longer terminates at search request metadata only.
+9. current local cut also threads the same `definition_ref` through bounded refinement runs, train handoff payloads, and training-service ledger payloads so search winners keep a canonical definition key as they enter judgment/training lanes.
 
 ## Assumptions
 
@@ -75,13 +77,14 @@ Contract change
 
 1. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
 2. split capture-linked evidence from captures into a dedicated definition store only after the read contract proves stable.
-3. extend `definition_ref` from benchmark-search artifacts into downstream promotion / judgment records so `definition -> search -> ledger` is traceable end-to-end.
+3. extend `definition_ref` into direct model-promotion records and runtime ledger projections so `definition -> search -> training -> promotion` is queryable end-to-end.
 
 ## Exit Criteria
 
 - runtime plane exposes canonical pattern definition list/detail routes.
 - detail responses include phase template plus linked research evidence from captures when available.
 - runtime captures, first search-plane consumers, and benchmark-search research artifacts all preserve canonical `definition_ref`.
+- bounded refinement runs, train handoff payloads, and training ledger payloads preserve the same `definition_ref`.
 - targeted engine tests pass.
 
 ## Handoff Checklist
@@ -89,5 +92,5 @@ Contract change
 - active work item: `work/active/W-0160-pattern-definition-plane.md`
 - branch: `codex/w-0160-pattern-definition-plane`
 - verification:
-  - `uv run --directory engine python -m pytest tests/test_search_routes.py tests/test_runtime_routes.py tests/test_refinement_reporting.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_search.py -q`
-- remaining blockers: definition write path, durable definition store, downstream promotion/judgment records, and UI consumption remain future slices
+  - `uv run --directory engine python -m pytest tests/test_search_routes.py tests/test_runtime_routes.py tests/test_pattern_search.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_refinement.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_refinement_reporting.py -q`
+- remaining blockers: definition write path, durable definition store, direct model-promotion/runtime-ledger projection alignment, and UI consumption remain future slices
