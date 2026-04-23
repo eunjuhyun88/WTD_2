@@ -97,6 +97,39 @@ class PatternDefinitionService:
             "latest_capture_at_ms": evidence[0]["captured_at_ms"] if evidence else None,
         }
 
+    def get_definition_ref(
+        self,
+        *,
+        pattern_slug: str,
+        pattern_version: int | None = None,
+    ) -> dict[str, Any] | None:
+        pattern = self.pattern_library.get(pattern_slug)
+        if pattern is None:
+            return None
+        version = pattern_version or pattern.version
+        evidence = self._load_capture_evidence(pattern_slug, limit=10)
+        return {
+            "definition_id": f"{pattern.slug}:v{version}",
+            "pattern_slug": pattern.slug,
+            "pattern_version": version,
+            "pattern_family": self._pattern_family(pattern, evidence),
+            "timeframe": pattern.timeframe,
+            "direction": pattern.direction,
+        }
+
+    def parse_definition_id(self, definition_id: str) -> dict[str, Any]:
+        slug, separator, version_token = definition_id.partition(":v")
+        if not slug or separator != ":v" or not version_token.isdigit():
+            raise ValueError(definition_id)
+        pattern = self.pattern_library.get(slug)
+        if pattern is None:
+            raise KeyError(slug)
+        return {
+            "definition_id": definition_id,
+            "pattern_slug": slug,
+            "pattern_version": int(version_token),
+        }
+
     def _registry_entry(self, pattern: PatternObject) -> PatternRegistryEntry:
         return self.registry_store.get(pattern.slug) or PatternRegistryEntry.from_pattern(pattern)
 

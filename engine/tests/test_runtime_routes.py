@@ -53,6 +53,8 @@ def test_runtime_capture_routes_create_and_read_engine_owned_capture(tmp_path, m
             "capture_kind": "manual_hypothesis",
             "user_id": "founder",
             "symbol": "SOLUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "phase": "ACCUMULATION",
             "timeframe": "1h",
             "user_note": "runtime route seed",
         },
@@ -65,12 +67,14 @@ def test_runtime_capture_routes_create_and_read_engine_owned_capture(tmp_path, m
     assert payload["plane"] == "runtime"
     assert payload["status"] == "fallback_local"
     assert payload["capture"]["status"] == "pending_outcome"
+    assert payload["capture"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert len(client.appended_records) == 1  # type: ignore[attr-defined]
 
     capture_id = payload["capture"]["capture_id"]
     followup = client.get(f"/runtime/captures/{capture_id}")
     assert followup.status_code == 200
     assert followup.json()["capture"]["capture_id"] == capture_id
+    assert followup.json()["capture"]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
 
 
 def test_runtime_capture_list_route_filters_engine_owned_records(tmp_path, monkeypatch) -> None:
@@ -82,6 +86,8 @@ def test_runtime_capture_list_route_filters_engine_owned_records(tmp_path, monke
             "capture_kind": "manual_hypothesis",
             "user_id": "founder",
             "symbol": "BTCUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "phase": "ACCUMULATION",
             "timeframe": "1h",
             "user_note": "btc seed",
         },
@@ -92,12 +98,16 @@ def test_runtime_capture_list_route_filters_engine_owned_records(tmp_path, monke
             "capture_kind": "manual_hypothesis",
             "user_id": "founder",
             "symbol": "ETHUSDT",
+            "pattern_slug": "funding-flip-reversal-v1",
+            "phase": "ENTRY_ZONE",
             "timeframe": "4h",
             "user_note": "eth seed",
         },
     )
 
-    response = client.get("/runtime/captures?user_id=founder&symbol=BTCUSDT&limit=10")
+    response = client.get(
+        "/runtime/captures?user_id=founder&definition_id=tradoor-oi-reversal-v1:v1&limit=10"
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -107,6 +117,25 @@ def test_runtime_capture_list_route_filters_engine_owned_records(tmp_path, monke
     assert payload["status"] == "fallback_local"
     assert payload["count"] == 1
     assert payload["captures"][0]["symbol"] == "BTCUSDT"
+    assert payload["captures"][0]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
+
+
+def test_runtime_capture_list_rejects_invalid_or_mismatched_definition_filters(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    invalid = client.get("/runtime/captures?definition_id=bad-definition")
+    assert invalid.status_code == 400
+    assert invalid.json()["detail"]["code"] == "runtime_definition_id_invalid"
+
+    missing = client.get("/runtime/captures?definition_id=missing-pattern:v1")
+    assert missing.status_code == 404
+    assert missing.json()["detail"]["code"] == "runtime_definition_not_found"
+
+    mismatch = client.get(
+        "/runtime/captures?definition_id=tradoor-oi-reversal-v1:v1&pattern_slug=funding-flip-reversal-v1"
+    )
+    assert mismatch.status_code == 400
+    assert mismatch.json()["detail"]["code"] == "runtime_definition_slug_mismatch"
 
 
 def test_runtime_workspace_pins_survive_store_restart(tmp_path, monkeypatch) -> None:

@@ -107,7 +107,7 @@
 
 - active on `codex/w-0160-pattern-definition-plane`
 - worktree: `/tmp/wtd-v2-w0160-pattern-definition`
-- current slice: open `/runtime/definitions/*` as the first pattern-definition plane read family over pattern library, registry metadata, and capture-linked research evidence
+- current slice: open `/runtime/definitions/*` as the first pattern-definition plane read family, then wire runtime captures to expose `definition_ref` and accept `definition_id` filters without changing capture persistence yet
 
 ---
 

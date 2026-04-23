@@ -56,6 +56,18 @@ def _generated_at() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _serialize_capture(capture: CaptureRecord) -> dict[str, Any]:
+    payload = capture.to_dict()
+    if capture.pattern_slug:
+        definition_ref = get_definition_service().get_definition_ref(
+            pattern_slug=capture.pattern_slug,
+            pattern_version=capture.pattern_version,
+        )
+        if definition_ref is not None:
+            payload["definition_ref"] = definition_ref
+    return payload
+
+
 @router.post("/captures", response_model=RuntimeCaptureResponse)
 async def create_runtime_capture(body: capture_routes.CaptureCreateBody) -> RuntimeCaptureResponse:
     """Create a canonical runtime capture.
@@ -90,17 +102,42 @@ async def create_runtime_capture(body: capture_routes.CaptureCreateBody) -> Runt
     )
     get_capture_store().save(record)
     capture_routes.LEDGER_RECORD_STORE.append_capture_record(record)
-    return RuntimeCaptureResponse(generated_at=_generated_at(), capture=record.to_dict())
+    return RuntimeCaptureResponse(generated_at=_generated_at(), capture=_serialize_capture(record))
 
 
 @router.get("/captures", response_model=RuntimeCaptureListResponse)
 async def list_runtime_captures(
     user_id: str | None = None,
+    definition_id: str | None = None,
     pattern_slug: str | None = None,
     symbol: str | None = None,
     status: str | None = None,
     limit: int = 100,
 ) -> RuntimeCaptureListResponse:
+    definition_ref: dict[str, Any] | None = None
+    if definition_id is not None:
+        try:
+            definition_ref = get_definition_service().parse_definition_id(definition_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "runtime_definition_id_invalid", "definition_id": definition_id},
+            ) from exc
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "runtime_definition_not_found", "definition_id": definition_id},
+            ) from exc
+        if pattern_slug is not None and pattern_slug != definition_ref["pattern_slug"]:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "runtime_definition_slug_mismatch",
+                    "definition_id": definition_id,
+                    "pattern_slug": pattern_slug,
+                },
+            )
+        pattern_slug = definition_ref["pattern_slug"]
     captures = get_capture_store().list(
         user_id=user_id,
         pattern_slug=pattern_slug,
@@ -108,7 +145,11 @@ async def list_runtime_captures(
         status=status,
         limit=max(1, min(limit, 500)),
     )
-    rows = [capture.to_dict() for capture in captures]
+    if definition_ref is not None:
+        captures = [
+            capture for capture in captures if capture.pattern_version == definition_ref["pattern_version"]
+        ]
+    rows = [_serialize_capture(capture) for capture in captures]
     return RuntimeCaptureListResponse(
         generated_at=_generated_at(),
         captures=rows,
@@ -121,7 +162,7 @@ async def get_runtime_capture(capture_id: str) -> RuntimeCaptureResponse:
     capture = get_capture_store().load(capture_id)
     if capture is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_capture_not_found", "capture_id": capture_id})
-    return RuntimeCaptureResponse(generated_at=_generated_at(), capture=capture.to_dict())
+    return RuntimeCaptureResponse(generated_at=_generated_at(), capture=_serialize_capture(capture))
 
 
 @router.get("/definitions", response_model=RuntimePatternDefinitionListResponse)

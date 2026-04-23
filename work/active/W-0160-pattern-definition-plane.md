@@ -47,6 +47,7 @@ Contract change
 3. founder/manual hypothesis notes already land in canonical capture storage via `research_context`, including thesis, phase annotations, and research tags.
 4. existing `/patterns/{slug}` read is pattern-engine oriented and does not present a runtime-plane definition object with linked research evidence.
 5. current local cut adds `PatternDefinitionService` plus `/runtime/definitions` list/detail routes that compose pattern library, registry metadata, and capture-linked research evidence without adding a new write store.
+6. current local cut also adds runtime capture-side `definition_ref` enrichment and `definition_id` filtering, so the first runtime consumer can read pattern definitions without depending on raw `pattern_slug` only.
 
 ## Assumptions
 
@@ -62,12 +63,13 @@ Contract change
 - first slice is read-only: `list` + `detail` under `/runtime/definitions/*`.
 - canonical detail shape will expose thesis, phase template, registry metadata, and linked evidence separately.
 - capture `research_context` remains the evidence source for now; this slice does not migrate it out of captures yet.
+- runtime capture consumers resolve `definition_ref` at read time; capture persistence remains `pattern_slug`/`pattern_version` based until a later write-path lane exists.
 
 ## Next Steps
 
 1. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
 2. split capture-linked evidence from captures into a dedicated definition store only after the read contract proves stable.
-3. wire first search/runtime consumers to `definition_id` instead of raw `pattern_slug` when the follow-up lane opens.
+3. wire search/runtime consumers beyond captures to `definition_id` once this runtime contract proves stable.
 
 ## Exit Criteria
 
