@@ -2,7 +2,7 @@
 
 ## Goal
 
-`/terminal` surface 를 fact/search/runtime/agent plane 의 소비자로 얇게 만든다. 현재 slice 는 `TradeMode` 의 confluence current/history reads 를 `terminalBackend` client helpers 로 이동한다.
+`/terminal` surface 를 fact/search/runtime/agent plane 의 소비자로 얇게 만든다. 현재 slice 는 `TradeMode` 의 indicator side-fetch `/api/market/*` reads 를 `terminalBackend` client helpers 로 이동한다.
 
 ## Owner
 
@@ -15,7 +15,7 @@ Product surface change
 ## Scope
 
 - `TradeMode` surface 에 남은 direct data reads 를 단계적으로 `terminalBackend` / plane clients 로 이동
-- confluence current/history reads 를 surface client helper 로 연결
+- indicator side-fetch reads 를 surface client helper 로 연결
 - `terminalBackend.ts` 를 compatibility surface client shim 으로 유지
 - 관련 app tests/check 및 active work item 문서 갱신
 
@@ -44,37 +44,37 @@ Product surface change
 
 1. Fact, Search, Runtime, AgentContext 핵심 route/client slices 는 #201-#210 으로 main 에 병합되었다.
 2. #211 로 `TradeMode` saved captures strip 은 `/api/runtime/captures` client 로 이동했다.
-3. `TradeMode` 에는 아직 confluence current/history 와 여러 `/api/market/*` direct reads 가 남아 있다.
-4. `terminalBackend.ts` 는 surface compatibility shim 으로 남아 있고, 이번 slice 에서 confluence client helpers 를 추가한다.
-5. legacy confluence routes 는 삭제하지 않고 compatibility route 로 유지한다.
+3. #212 로 `TradeMode` confluence current/history reads 는 `terminalBackend` helpers 로 이동했다.
+4. `TradeMode` 에는 아직 indicator side-fetch `/api/market/*` direct reads 가 남아 있다.
+5. `terminalBackend.ts` 는 surface compatibility shim 으로 남아 있고, 이번 slice 에서 endpoint별 indicator client helpers 를 추가한다.
 
 ## Assumptions
 
-1. 이번 PR 은 confluence current/history reads 만 자르고, 나머지 `/api/market/*` reads 는 다음 slice 로 남긴다.
-2. confluence routes 의 response shape 는 기존 `ConfluenceResult` 와 `{ entries }` history payload 를 따른다.
+1. 이번 PR 은 indicator side-fetch reads 만 자르고, analyze/outcome/world-model reads 는 다음 slice 로 남긴다.
+2. indicator routes 의 response shape 는 기존 `indicators/adapter.ts` payload 타입을 따른다.
 
 ## Open Questions
 
-- 다음 slice 에서 `TradeMode` 의 direct `/api/market/*` reads 중 indicator side-fetch 묶음을 먼저 자를지 결정 필요.
+- 다음 slice 에서 candle-close analyze refresh 를 `terminalBackend` helper 로 자를지 결정 필요.
 - W-0140 bottom ANALYZE slimming 시작 시점을 W-0139 terminal page data ownership 제거 이후로 둘지 결정 필요.
 
 ## Decisions
 
-- confluence current/history 는 `terminalBackend.fetchConfluenceCurrent()` / `fetchConfluenceHistory()` 로 읽는다.
-- `TradeMode` 는 confluence history response shape 를 직접 만들지 않고 `ConfluenceHistoryEntry` 타입만 소비한다.
+- indicator side-fetches 는 endpoint별 `terminalBackend.fetch*()` helpers 로 읽는다.
+- `TradeMode` 는 indicator route response shape 를 직접 만들지 않고 기존 adapter payload 타입만 소비한다.
 - `terminalBackend.ts` 는 final cleanup 전까지 compatibility surface client shim 으로 유지한다.
-- legacy confluence routes 는 삭제하지 않는다.
-- branch split reason: post-agent surface slimming 은 최신 `origin/main` 기준 `codex/w-0139-trademode-market-clients` 에서만 진행한다.
+- legacy indicator routes 는 삭제하지 않는다.
+- branch split reason: post-agent surface slimming 은 최신 `origin/main` 기준 `codex/w-0139-trademode-indicator-clients` 에서만 진행한다.
 
 ## Next Steps
 
-1. confluence client helper slice 를 테스트/check 후 PR 로 병합한다.
-2. `TradeMode` 의 direct `/api/market/*` indicator side-fetch 묶음을 다음 surface client slice 로 연다.
+1. indicator side-fetch helper slice 를 테스트/check 후 PR 로 병합한다.
+2. `TradeMode` 의 candle-close analyze refresh 를 다음 surface client slice 로 연다.
 3. terminal page data ownership 이 제거되면 W-0140 bottom ANALYZE slimming 으로 넘어간다.
 
 ## Exit Criteria
 
-- confluence current/history 는 `terminalBackend` helpers 를 통해 읽고 `TradeMode` 안에서 direct fetch 하지 않는다.
+- indicator side-fetches 는 `terminalBackend` helpers 를 통해 읽고 `TradeMode` 안에서 direct `/api/market/*` fetch 하지 않는다.
 - `TradeMode` 는 fact/search/runtime 결과만 소비하고 provider/fact composition 을 직접 소유하지 않는다.
 - `terminalBackend.ts` 는 surface-facing client shim 으로 남고 route-level product logic 을 추가하지 않는다.
 - 관련 app tests/check 가 통과한다.
@@ -82,7 +82,7 @@ Product surface change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0139-terminal-core-loop-capture.md`
-- branch: `codex/w-0139-trademode-market-clients`
+- branch: `codex/w-0139-trademode-indicator-clients`
 - verification:
   - `npm --prefix app run test -- src/lib/api/terminalBackend.test.ts`
   - `npm --prefix app run check`

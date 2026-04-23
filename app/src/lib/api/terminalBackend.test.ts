@@ -1,5 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchConfluenceCurrent, fetchConfluenceHistory, fetchRecentCaptures } from './terminalBackend';
+import {
+  fetchConfluenceCurrent,
+  fetchConfluenceHistory,
+  fetchFundingFlip,
+  fetchFundingHistory,
+  fetchIndicatorContext,
+  fetchLiqClusters,
+  fetchOptionsSnapshot,
+  fetchRecentCaptures,
+  fetchRvCone,
+  fetchSsr,
+  fetchVenueDivergence,
+} from './terminalBackend';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -87,5 +99,63 @@ describe('terminalBackend surface clients', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/confluence/history?symbol=BTCUSDT&limit=96');
     expect(current?.score).toBe(42);
     expect(history[0]?.regime).toBe('bull');
+  });
+
+  it('loads indicator side-fetch payloads through surface client helpers', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse({ symbol: 'BTCUSDT', at: 1, oi: [], funding: [] }))
+      .mockResolvedValueOnce(jsonResponse({ symbol: 'BTCUSDT', at: 1, window: '4h', cells: [] }))
+      .mockResolvedValueOnce(jsonResponse({ symbol: 'BTCUSDT', at: 1, context: {} }))
+      .mockResolvedValueOnce(jsonResponse({ at: 1, current: 10, percentile: 50, sparkline: [], regime: 'neutral' }))
+      .mockResolvedValueOnce(jsonResponse({ symbol: 'BTCUSDT', at: 1, windows: [], current: {}, cone: {}, percentile: {} }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          symbol: 'BTCUSDT',
+          at: 1,
+          currentRate: 0.001,
+          previousRate: -0.001,
+          flippedAt: 1,
+          persistedHours: 8,
+          direction: 'neg_to_pos',
+          consecutiveIntervals: 1,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ symbol: 'BTCUSDT', bars: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          currency: 'BTC',
+          at: 1,
+          underlyingPrice: 100,
+          totalOI: { call: 1, put: 1, total: 2 },
+          totalVolume24h: { call: 1, put: 1 },
+          putCallRatioOi: 1,
+          putCallRatioVol: 1,
+          skew25d: 0,
+          atmIvNearTerm: 0.5,
+          counts: { callStrikes: 1, putStrikes: 1, nearTermInstruments: 1 },
+          expiries: [],
+        }),
+      );
+
+    await expect(fetchVenueDivergence('BTCUSDT')).resolves.toMatchObject({ symbol: 'BTCUSDT' });
+    await expect(fetchLiqClusters('BTCUSDT', '4h')).resolves.toMatchObject({ window: '4h' });
+    await expect(fetchIndicatorContext('BTCUSDT')).resolves.toMatchObject({ symbol: 'BTCUSDT' });
+    await expect(fetchSsr()).resolves.toMatchObject({ regime: 'neutral' });
+    await expect(fetchRvCone('BTCUSDT')).resolves.toMatchObject({ symbol: 'BTCUSDT' });
+    await expect(fetchFundingFlip('BTCUSDT')).resolves.toMatchObject({ direction: 'neg_to_pos' });
+    await expect(fetchFundingHistory('BTCUSDT', 270)).resolves.toMatchObject({ symbol: 'BTCUSDT' });
+    await expect(fetchOptionsSnapshot('BTC')).resolves.toMatchObject({ currency: 'BTC' });
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/api/market/venue-divergence?symbol=BTCUSDT',
+      '/api/market/liq-clusters?symbol=BTCUSDT&window=4h',
+      '/api/market/indicator-context?symbol=BTCUSDT',
+      '/api/market/stablecoin-ssr',
+      '/api/market/rv-cone?symbol=BTCUSDT',
+      '/api/market/funding-flip?symbol=BTCUSDT',
+      '/api/market/funding?symbol=BTCUSDT&limit=270',
+      '/api/market/options-snapshot?currency=BTC',
+    ]);
   });
 });
