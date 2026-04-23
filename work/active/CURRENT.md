@@ -110,8 +110,8 @@
 ## 즉시 실행 순서 (사람)
 
 - active on `codex/w-0122-market-cap-fact-cut`
-- current slice: chain-intel public fact coverage adapter
-- decision: keep `/api/market/chain-intel` live Solscan/TRONSCAN/Etherscan payload stable and attach engine `/api/facts/chain-intel` only as additive `factCoverage`
+- worktree clean after `2c105c10`
+- W-0122 consumer fact cut is PR-ready by extraction: snapshot / confluence / flow / events / macro / intel-policy / reference-stack / chain-intel now prefer or attach engine fact routes while keeping public payloads stable
 
 ---
 
