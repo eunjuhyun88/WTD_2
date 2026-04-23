@@ -13,6 +13,10 @@ function apiKey(): string {
   return env.DUNE_API_KEY ?? '';
 }
 
+export function hasDuneKey(): boolean {
+  return apiKey().trim().length > 0;
+}
+
 interface DuneQueryResult {
   execution_id: string;
   state: string;
@@ -155,4 +159,27 @@ export async function fetchActiveAddresses(): Promise<number | null> {
   return typeof row.active_addresses === 'number'
     ? row.active_addresses
     : (Number(row.active_addresses) || null);
+}
+
+function firstNumeric(row: Record<string, unknown>, keys: string[]): number | null {
+  for (const key of keys) {
+    const raw = row[key];
+    const value = typeof raw === 'number' ? raw : Number(raw);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+export async function fetchDexVolume24hUsd(): Promise<number | null> {
+  const result = await getLatestResults(QUERIES.DEX_VOLUME_24H);
+  if (!result?.result?.rows?.[0]) return null;
+  const row = result.result.rows[0];
+  return firstNumeric(row, [
+    'volume_24h',
+    'dex_volume_24h',
+    'volume_usd',
+    'usd_volume',
+    'volume',
+    'daily_volume',
+  ]);
 }

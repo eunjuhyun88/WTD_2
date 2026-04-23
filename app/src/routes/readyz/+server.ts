@@ -32,7 +32,7 @@ export const GET: RequestHandler = async () => {
   return json(
     {
       ok: engineReady,
-      service: 'wtd-app',
+      service: 'app-web',
       status: engineReady ? 'ready' : 'degraded',
       engine: {
         ready: engineReady,

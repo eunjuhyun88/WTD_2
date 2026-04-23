@@ -43,6 +43,7 @@ from scanner.jobs.refinement_trigger import refinement_trigger_job
 from scanner.jobs.alpha_observer import scan_alpha_observer_job
 from scanner.jobs.alpha_warm import scan_alpha_warm_job
 from scanner.jobs.pattern_scan import pattern_scan_job
+from scanner.jobs.search_corpus import search_corpus_refresh_job
 from scanner.jobs.universe_scan import (
     push_alert,
     scan_universe_job,
@@ -70,6 +71,10 @@ PATTERN_REFINEMENT_INTERVAL = int(os.environ.get("PATTERN_REFINEMENT_INTERVAL_SE
 PATTERN_REFINEMENT_AUTO_TRAIN = os.environ.get("PATTERN_REFINEMENT_AUTO_TRAIN", "false").strip().lower() in {
     "1", "true", "yes", "on",
 }
+SEARCH_CORPUS_ENABLED = os.environ.get("ENABLE_SEARCH_CORPUS_JOB", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
+SEARCH_CORPUS_INTERVAL = int(os.environ.get("SEARCH_CORPUS_INTERVAL_SECONDS", "3600"))
 SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().lower() not in {
     "0", "false", "no", "off",
 }
@@ -155,6 +160,10 @@ async def _pattern_refinement_job() -> None:
 
 async def _refinement_trigger_job() -> None:
     await refinement_trigger_job()
+
+
+async def _search_corpus_refresh_job() -> None:
+    await search_corpus_refresh_job(universe_name=UNIVERSE_NAME)
 
 
 async def _fetch_okx_signals_job() -> None:
@@ -273,6 +282,18 @@ def start_scheduler() -> None:
             misfire_grace_time=300,
         )
 
+    if SEARCH_CORPUS_ENABLED:
+        _scheduler.add_job(
+            _search_corpus_refresh_job,
+            trigger="interval",
+            seconds=SEARCH_CORPUS_INTERVAL,
+            id="search_corpus_refresh",
+            name="Search corpus window accumulator",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
+
     # Job: Alpha Universe COLD scanner — every 4 hours
     _scheduler.add_job(
         scan_alpha_observer_job,
@@ -299,10 +320,11 @@ def start_scheduler() -> None:
 
     _scheduler.start()
     log.info(
-        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s refinement=%s universe=%s",
+        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s refinement=%s search_corpus=%s universe=%s",
         SCAN_INTERVAL,
         SCAN_INTERVAL,
         f"{PATTERN_REFINEMENT_INTERVAL}s" if PATTERN_REFINEMENT_ENABLED else "off",
+        f"{SEARCH_CORPUS_INTERVAL}s" if SEARCH_CORPUS_ENABLED else "off",
         UNIVERSE_NAME,
     )
 

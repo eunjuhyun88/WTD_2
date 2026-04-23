@@ -13,6 +13,10 @@
  *   POST /api/engine/challenge/create → POST http://engine:8000/challenge/create
  *   GET  /api/engine/challenge/foo/scan → GET http://engine:8000/challenge/foo/scan
  *   GET  /api/engine/healthz        → GET http://engine:8000/healthz
+ *
+ * Legacy note:
+ *   New fact/search/runtime traffic must use `/api/facts/*`, `/api/search/*`,
+ *   or `/api/runtime/*`. Keep this route frozen as a compatibility bridge.
  */
 
 import { error, json } from '@sveltejs/kit';
@@ -31,6 +35,7 @@ type EngineProxyRule = {
 
 const ENGINE_PROXY_RULES: EngineProxyRule[] = [
   { pattern: /^healthz$/, methods: new Set(['GET']) },
+  { pattern: /^ctx\/fact$/, methods: new Set(['GET']) },
   { pattern: /^patterns\/candidates$/, methods: new Set(['GET']) },
   { pattern: /^scanner\/status$/, methods: new Set(['GET']) },
   { pattern: /^universe$/, methods: new Set(['GET']) },

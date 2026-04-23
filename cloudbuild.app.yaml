@@ -1,0 +1,50 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - app/Dockerfile
+      - --build-arg
+      - APP_BUILD_TARGET=cloud-run
+      - -t
+      - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image
+      - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
+      - --region
+      - ${_SERVICE_REGION}
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --cpu
+      - '1'
+      - --memory
+      - 1Gi
+      - --min-instances
+      - '0'
+      - --max-instances
+      - '3'
+      - --port
+      - '8080'
+
+images:
+  - ${_AR_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
+
+substitutions:
+  _AR_REGION: us-east4
+  _AR_REPOSITORY: wtd
+  _IMAGE_NAME: app-web
+  _SERVICE_NAME: app-web
+  _SERVICE_REGION: us-east4

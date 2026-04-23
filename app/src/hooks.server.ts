@@ -48,8 +48,13 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/stablecoin-ssr',    // W-0122-F: derived SSR (DefiLlama + CoinGecko), 30m cache
   '/api/market/rv-cone',           // W-0122-F: realized vol cone (Binance klines), 1h cache
   '/api/market/funding-flip',      // W-0122-F: funding flip clock (Binance history), 10m cache
+  '/api/market/chain-intel',       // W-0122 extension: Solscan/TRONSCAN/Etherscan V2 canonical chain snapshots
+  '/api/market/influencer-metrics', // W-0122 extension: influencer metric pack (public read-only)
+  '/api/market/reference-stack',   // W-0122 extension: curated reference stack with live/blocked capability states
   '/api/confluence/',              // W-0122-Confluence: score aggregator (read-only)
   '/api/market/options-snapshot',  // W-0122-C1: Deribit options snapshot (public), 5m cache
+  '/api/market/chains/',           // W-0122 extension: supported chain search/catalog (public read-only)
+  '/api/terminal/intel-policy',    // terminal read-only policy synthesis for public terminal shell
   '/api/coingecko/',
   '/api/feargreed',
   '/api/chart/',          // chart klines + feed — public market data, rate-limited
@@ -78,7 +83,7 @@ function isPublicApiPath(pathname: string): boolean {
 }
 
 function isPublicPagePath(pathname: string): boolean {
-  return pathname === '/' || pathname === '/cogochi';
+  return pathname === '/' || pathname === '/cogochi' || pathname === '/healthz' || pathname === '/readyz';
 }
 
 export const handle: Handle = async ({ event, resolve }) => {

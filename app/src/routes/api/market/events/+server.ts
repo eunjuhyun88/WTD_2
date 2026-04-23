@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { terminalReadLimiter } from '$lib/server/rateLimit';
 import { fetchDerivatives, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
+import { fetchPerpContextProxy } from '$lib/server/enginePlanes/facts';
 import {
   fetchDexAdsLatest,
   fetchDexCommunityTakeoversLatest,
@@ -25,6 +26,15 @@ type DexPairLike = {
 type DexTokenMeta = {
   symbol: string | null;
   name: string | null;
+};
+
+type EventDerivativesView = {
+  funding: number | null;
+  lsRatio: number | null;
+  liqLong24h: number;
+  liqShort24h: number;
+  updatedAt: number;
+  crowding: string | null;
 };
 
 function normalizeAddress(value: string): string {
@@ -99,12 +109,25 @@ export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
   try {
     const pair = normalizePair(url.searchParams.get('pair'));
     const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
-    const [deriv, takeovers, boosts, ads] = await Promise.all([
+    const symbol = pair.replace('/', '');
+    const [enginePerp, legacyDeriv, takeovers, boosts, ads] = await Promise.all([
+      fetchPerpContextProxy(fetch, { symbol, timeframe, offline: true }).catch(() => null),
       fetchDerivatives(fetch, pair, timeframe).catch(() => null),
       fetchDexCommunityTakeoversLatest(4).catch(() => []),
       fetchDexTokenBoostsLatest(4).catch(() => []),
       fetchDexAdsLatest(4).catch(() => []),
     ]);
+    const deriv: EventDerivativesView | null =
+      enginePerp || legacyDeriv
+        ? {
+            funding: enginePerp?.metrics.funding_rate ?? legacyDeriv?.funding ?? null,
+            lsRatio: enginePerp?.metrics.long_short_ratio ?? legacyDeriv?.lsRatio ?? null,
+            liqLong24h: legacyDeriv?.liqLong24h ?? 0,
+            liqShort24h: legacyDeriv?.liqShort24h ?? 0,
+            updatedAt: legacyDeriv?.updatedAt ?? Date.now(),
+            crowding: enginePerp?.regime.crowding ?? null,
+          }
+        : null;
 
     const dynamic = deriv
       ? [
@@ -115,7 +138,8 @@ export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
             text:
               `Funding ${deriv.funding == null ? 'n/a' : (deriv.funding * 100).toFixed(4) + '%'} · ` +
               `L/S ${deriv.lsRatio == null ? 'n/a' : deriv.lsRatio.toFixed(2)} · ` +
-              `Liq L/S ${Math.round(deriv.liqLong24h).toLocaleString()}/${Math.round(deriv.liqShort24h).toLocaleString()}`,
+              `Liq L/S ${Math.round(deriv.liqLong24h).toLocaleString()}/${Math.round(deriv.liqShort24h).toLocaleString()}` +
+              `${deriv.crowding ? ` · ${deriv.crowding}` : ''}`,
             source: 'COINALYZE',
             createdAt: deriv.updatedAt,
           },
@@ -169,6 +193,13 @@ export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
       {
         headers: {
           'Cache-Control': 'public, max-age=30',
+          'X-WTD-Plane': 'fact',
+          'X-WTD-Upstream': enginePerp
+            ? legacyDeriv
+              ? 'facts/perp-context+legacy-enrichment'
+              : 'facts/perp-context'
+            : 'legacy-compute',
+          'X-WTD-State': enginePerp ? 'adapter' : 'fallback',
         },
       }
     );
