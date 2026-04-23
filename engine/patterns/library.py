@@ -125,17 +125,18 @@ TRADOOR_OI_REVERSAL = PatternObject(
         PhaseCondition(
             phase_id="BREAKOUT",
             label="브레이크아웃",
-            # Phase-anchored + OI-committed breakout confirmation, with
-            # volume relegated to an optional boost (see each block's
-            # module docstring for the full literature trail):
-            #   - breakout_from_pullback_range: Wyckoff Sign-of-Strength,
-            #     close breaks the rally high since the most recent
-            #     pullback low. Anchors breakout reference to the phase
-            #     structure rather than a fixed calendar window (Wyckoff
-            #     1911; Pruden 2007; Weis & Wyckoff 2013). Replaces
-            #     breakout_above_high as the primary breakout trigger
-            #     because rolling-window breakouts catch the pre-dump
-            #     final rally, not the post-accumulation SOS.
+            # Production lane (W-0150): TRADOOR/PTB's failure mode is
+            # not "no breakout trigger exists" but "the generic rolling-
+            # low breakout fires on the wrong regime". The target move
+            # is specifically:
+            #   real dump -> OI hold -> accumulation structure -> local
+            #   range breakout with renewed OI expansion.
+            #
+            # `breakout_after_accumulation` approximates that phase
+            # anchor with recent dump + hold + higher-lows/reclaim/
+            # compression evidence before the breakout bar. Keep the
+            # older Wyckoff-style breakout trigger as an optional boost
+            # for cross-pattern compatibility and diagnostics.
             #   - oi_expansion_confirm: 5% OI rise over 24h
             #     (Bessembinder & Seguin 1993; Wang & Yau 2000) — a real
             #     breakout should carry directional positioning, not just
@@ -149,10 +150,10 @@ TRADOOR_OI_REVERSAL = PatternObject(
             #     here structurally excludes real crypto breakouts.
             #     Kept as an optional score boost rather than a hard gate.
             required_blocks=[
-                "breakout_from_pullback_range",
+                "breakout_after_accumulation",
                 "oi_expansion_confirm",
             ],
-            optional_blocks=["breakout_volume_confirm"],
+            optional_blocks=["breakout_from_pullback_range", "breakout_volume_confirm"],
             disqualifier_blocks=[],
             min_bars=1, max_bars=12,
             timeframe="1h",

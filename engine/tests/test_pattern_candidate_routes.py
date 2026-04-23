@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from api.routes import patterns as pattern_routes
 from api.routes import patterns_thread as ptr
 from ledger.types import PatternLedgerFamilyStats, PatternLedgerRecord, PatternOutcome, PatternStats
+from patterns.active_variant_registry import ActivePatternVariantEntry
 
 
 class _RegistryEntry:
@@ -112,6 +113,69 @@ def test_all_candidates_exposes_legacy_and_rich_records(monkeypatch) -> None:
         ]
         == "transition-1"
     )
+
+
+def test_similar_live_route_returns_ranked_state_matches(monkeypatch) -> None:
+    monkeypatch.setattr(
+        pattern_routes,
+        "search_pattern_state_similarity",
+        lambda *args, **kwargs: [
+            type(
+                "FakeResult",
+                (),
+                {
+                    "variant_slug": "tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m",
+                    "timeframe": "15m",
+                    "to_dict": lambda self: {
+                        "symbol": "PTBUSDT",
+                        "phase": "ACCUMULATION",
+                        "path": "ARCH_ZONE→REAL_DUMP→ACCUMULATION",
+                        "observed_phase_path": ["ARCH_ZONE", "REAL_DUMP", "ACCUMULATION"],
+                        "similarity_score": 0.88,
+                        "phase_depth_progress": 0.72,
+                        "phase_fidelity": 0.8,
+                        "variant_slug": "tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m",
+                        "timeframe": "15m",
+                    },
+                },
+            )()
+        ],
+    )
+    monkeypatch.setattr(
+        pattern_routes,
+        "ACTIVE_PATTERN_VARIANT_STORE",
+        type(
+            "FakeStore",
+            (),
+            {
+                "get": lambda self, slug: ActivePatternVariantEntry(
+                    pattern_slug=slug,
+                    variant_slug="tradoor-oi-reversal-v1__canonical",
+                    timeframe="1h",
+                    watch_phases=["ACCUMULATION", "REAL_DUMP"],
+                )
+            },
+        )(),
+    )
+
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.get(
+        "/patterns/tradoor-oi-reversal-v1/similar-live",
+        params={"top_k": 5, "min_similarity_score": 0.3},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert payload["variant_slug"] == "tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m"
+    assert payload["timeframe"] == "15m"
+    assert payload["count"] == 1
+    assert payload["results"][0]["symbol"] == "PTBUSDT"
+    assert payload["results"][0]["similarity_score"] == 0.88
 
 
 def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
@@ -1331,3 +1395,38 @@ def test_record_capture_returns_404_for_unknown_pattern(monkeypatch) -> None:
         json={"symbol": "BTCUSDT"},
     )
     assert response.status_code == 404
+
+
+def test_active_variants_route_returns_registry_entries(monkeypatch) -> None:
+    monkeypatch.setattr(
+        pattern_routes,
+        "ACTIVE_PATTERN_VARIANT_STORE",
+        type(
+            "FakeActiveVariantStore",
+            (),
+            {
+                "list_effective": lambda self: [
+                    ActivePatternVariantEntry(
+                        pattern_slug="tradoor-oi-reversal-v1",
+                        variant_slug="tradoor-oi-reversal-v1__canonical",
+                        timeframe="1h",
+                        watch_phases=["ACCUMULATION", "REAL_DUMP"],
+                        source_kind="seed",
+                    )
+                ],
+            },
+        )(),
+    )
+
+    app = FastAPI()
+    app.include_router(pattern_routes.router, prefix="/patterns")
+    client = TestClient(app)
+
+    response = client.get("/patterns/active-variants")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["count"] == 1
+    assert payload["entries"][0]["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert payload["entries"][0]["variant_slug"] == "tradoor-oi-reversal-v1__canonical"

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import pytest
 
+from patterns.active_variant_registry import ActivePatternVariantStore
 from research.pattern_search import (
     DEFAULT_FAMILY_SELECTION_POLICY,
     BenchmarkCase,
@@ -50,6 +51,7 @@ from research.pattern_search import (
     select_mutation_anchor_from_history,
     select_mutation_anchor_variant_slug,
     should_use_reset_lane,
+    _filter_candidate_timeframes_for_pack,
 )
 from ledger.types import PatternLedgerRecord
 from research.state_store import ResearchStateStore
@@ -153,10 +155,11 @@ def test_seed_variants_cover_early_and_late_phase_hypotheses() -> None:
     variants = build_seed_variants("tradoor-oi-reversal-v1")
     slugs = {variant.variant_slug for variant in variants}
 
-    assert len(variants) >= 6
+    assert len(variants) >= 7
     assert "tradoor-oi-reversal-v1__arch-soft-real-loose" in slugs
     assert "tradoor-oi-reversal-v1__real-patience-accum-early" in slugs
     assert "tradoor-oi-reversal-v1__holdout-recovery-bias" in slugs
+    assert "tradoor-oi-reversal-v1__intraday-dump-cluster" in slugs
 
 
 def test_expand_variants_across_timeframes_adds_higher_timeframe_family() -> None:
@@ -177,7 +180,7 @@ def test_expand_variants_across_timeframes_adds_higher_timeframe_family() -> Non
     assert by_slug["tradoor-oi-reversal-v1__canonical__tf-4h"].timeframe == "4h"
 
 
-def test_expand_variants_across_timeframes_skips_subhour_targets_from_1h_base() -> None:
+def test_expand_variants_across_timeframes_keeps_subhour_targets_from_1h_base() -> None:
     variants = expand_variants_across_timeframes(
         [
             PatternVariantSpec(
@@ -191,8 +194,37 @@ def test_expand_variants_across_timeframes_skips_subhour_targets_from_1h_base() 
     slugs = {variant.variant_slug for variant in variants}
 
     assert "tradoor-oi-reversal-v1__canonical" in slugs
+    assert "tradoor-oi-reversal-v1__canonical__tf-15m" in slugs
     assert "tradoor-oi-reversal-v1__canonical__tf-4h" in slugs
-    assert "tradoor-oi-reversal-v1__canonical__tf-15m" not in slugs
+
+
+def test_filter_candidate_timeframes_for_pack_drops_unsupported_subhour_data(monkeypatch) -> None:
+    pack = ReplayBenchmarkPack(
+        benchmark_pack_id="pack-1",
+        pattern_slug="tradoor-oi-reversal-v1",
+        candidate_timeframes=["15m", "1h", "4h"],
+        cases=[
+            BenchmarkCase(
+                symbol="PTBUSDT",
+                timeframe="1h",
+                start_at=_dt("2026-04-13T00:00:00+00:00"),
+                end_at=_dt("2026-04-14T00:00:00+00:00"),
+                expected_phase_path=["FAKE_DUMP", "ACCUMULATION", "BREAKOUT"],
+            )
+        ],
+    )
+
+    def fake_load_klines(symbol: str, timeframe: str, offline: bool = False):
+        if timeframe == "15m":
+            raise FileNotFoundError("missing native 15m cache")
+        index = pd.date_range("2026-04-13T00:00:00Z", periods=4, freq="1h", tz="UTC")
+        return pd.DataFrame({"close": [1.0, 1.0, 1.0, 1.0]}, index=index)
+
+    monkeypatch.setattr("research.pattern_search.load_klines", fake_load_klines)
+
+    supported = _filter_candidate_timeframes_for_pack(pack, base_timeframe="1h")
+
+    assert supported == ["1h", "4h"]
 
 
 def test_evaluate_variant_on_case_scales_warmup_and_normalizes_lead_time(monkeypatch) -> None:
@@ -2217,6 +2249,133 @@ def test_run_pattern_benchmark_search_records_run_and_artifact(tmp_path, monkeyp
     assert decision.metrics["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__winner"
     assert decision.metrics["family_policy_id"] == "family-selection-v1"
     assert negative_memory_store.list("tradoor-oi-reversal-v1") == []
+
+
+def test_run_pattern_benchmark_search_syncs_gate_cleared_winner_to_active_registry(
+    tmp_path, monkeypatch
+) -> None:
+    pack_store = BenchmarkPackStore(tmp_path / "packs")
+    artifact_store = PatternSearchArtifactStore(tmp_path / "artifacts")
+    negative_memory_store = NegativeSearchMemoryStore(tmp_path / "negative")
+    active_variant_store = ActivePatternVariantStore(tmp_path / "active-variants")
+    controller = ResearchWorkerController(ResearchStateStore(tmp_path / "research.sqlite"))
+    pack = ReplayBenchmarkPack(
+        benchmark_pack_id="pack-active",
+        pattern_slug="tradoor-oi-reversal-v1",
+        candidate_timeframes=["1h"],
+        cases=[
+            BenchmarkCase(
+                symbol="PTBUSDT",
+                timeframe="1h",
+                start_at=_dt("2026-04-13T00:00:00+00:00"),
+                end_at=_dt("2026-04-15T12:00:00+00:00"),
+                expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+                role="reference",
+            ),
+            BenchmarkCase(
+                symbol="TRADOORUSDT",
+                timeframe="1h",
+                start_at=_dt("2026-04-11T00:00:00+00:00"),
+                end_at=_dt("2026-04-14T18:00:00+00:00"),
+                expected_phase_path=["FAKE_DUMP", "ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+                role="holdout",
+            ),
+        ],
+    )
+    pack_store.save(pack)
+
+    def _winner_case(case_id: str, role: str, symbol: str, score: float) -> VariantCaseResult:
+        return VariantCaseResult(
+            case_id=case_id,
+            symbol=symbol,
+            role=role,
+            observed_phase_path=["ARCH_ZONE", "REAL_DUMP", "ACCUMULATION", "BREAKOUT"],
+            current_phase="BREAKOUT",
+            phase_fidelity=1.0,
+            phase_depth_progress=1.0,
+            entry_hit=True,
+            target_hit=True,
+            lead_bars=2,
+            score=score,
+            entry_close=1.0,
+            forward_peak_return_pct=18.0,
+            entry_next_open=1.001,
+            realistic_forward_peak_return_pct=17.5,
+        )
+
+    def _fake_eval(_pack, variant, *, warmup_bars=240):
+        if variant.variant_slug.endswith("__winner"):
+            return VariantSearchResult(
+                variant_id=variant.variant_id,
+                variant_slug=variant.variant_slug,
+                reference_score=0.95,
+                holdout_score=0.91,
+                overall_score=0.938,
+                case_results=[
+                    _winner_case("case-ref", "reference", "PTBUSDT", 0.95),
+                    _winner_case("case-holdout", "holdout", "TRADOORUSDT", 0.91),
+                ],
+            )
+        return VariantSearchResult(
+            variant_id=variant.variant_id,
+            variant_slug=variant.variant_slug,
+            reference_score=0.42,
+            holdout_score=0.22,
+            overall_score=0.36,
+            case_results=[
+                VariantCaseResult(
+                    case_id="case-ref",
+                    symbol="PTBUSDT",
+                    role="reference",
+                    observed_phase_path=["ARCH_ZONE"],
+                    current_phase="ARCH_ZONE",
+                    phase_fidelity=0.2,
+                    phase_depth_progress=0.2,
+                    entry_hit=False,
+                    target_hit=False,
+                    lead_bars=None,
+                    score=0.36,
+                )
+            ],
+        )
+
+    monkeypatch.setattr("research.pattern_search.evaluate_variant_against_pack", _fake_eval)
+
+    run = run_pattern_benchmark_search(
+        PatternBenchmarkSearchConfig(
+            pattern_slug="tradoor-oi-reversal-v1",
+            benchmark_pack_id="pack-active",
+            min_reference_score=0.6,
+            min_holdout_score=0.3,
+            variants=[
+                PatternVariantSpec(
+                    pattern_slug="tradoor-oi-reversal-v1",
+                    variant_slug="tradoor-oi-reversal-v1__baseline",
+                    timeframe="1h",
+                ),
+                PatternVariantSpec(
+                    pattern_slug="tradoor-oi-reversal-v1",
+                    variant_slug="tradoor-oi-reversal-v1__winner",
+                    timeframe="1h",
+                ),
+            ],
+        ),
+        controller=controller,
+        pack_store=pack_store,
+        artifact_store=artifact_store,
+        negative_memory_store=negative_memory_store,
+        active_variant_store=active_variant_store,
+    )
+
+    active = active_variant_store.get("tradoor-oi-reversal-v1")
+
+    assert run.winner_variant_ref == "tradoor-oi-reversal-v1__winner"
+    assert run.handoff_payload["active_registry_variant_slug"] == "tradoor-oi-reversal-v1__winner"
+    assert active is not None
+    assert active.variant_slug == "tradoor-oi-reversal-v1__winner"
+    assert active.timeframe == "1h"
+    assert active.watch_phases == ["ACCUMULATION", "REAL_DUMP"]
+    assert active.source_kind == "benchmark_search"
 
 
 def test_run_pattern_benchmark_search_promotes_reset_family_when_tied_with_manual(tmp_path, monkeypatch) -> None:

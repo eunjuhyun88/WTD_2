@@ -26,6 +26,18 @@ def _row_snapshot(row: pd.Series) -> dict:
     return snapshot
 
 
+def _pattern_block_names(machine: PatternStateMachine) -> set[str]:
+    names: set[str] = set()
+    for phase in machine.pattern.phases:
+        names.update(phase.required_blocks)
+        names.update(phase.optional_blocks)
+        names.update(phase.soft_blocks)
+        names.update(phase.disqualifier_blocks)
+        for group in phase.required_any_groups:
+            names.update(group)
+    return names
+
+
 def replay_pattern_frames(
     machine: PatternStateMachine,
     symbol: str,
@@ -48,7 +60,12 @@ def replay_pattern_frames(
             phase_history=[],
         )
 
-    masks = evaluate_block_masks(features_df, klines_df, symbol)
+    masks = evaluate_block_masks(
+        features_df,
+        klines_df,
+        symbol,
+        block_names=_pattern_block_names(machine),
+    )
     end_idx = len(features_df)
     if timestamp_limit is not None:
         matching = features_df.index[features_df.index < timestamp_limit]
