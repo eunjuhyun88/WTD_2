@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`3a81957c` — current local `origin/main` ref after PR #208
+`90ee8b3c` — current local `origin/main` ref after PR #209
 
 ## 완료 (이번 세션)
 
@@ -25,6 +25,7 @@
 | #206 (W-0142) | runtime state route skeleton for captures, workspace pins, setups, research contexts, and ledger |
 | #207 (W-0142) | app pattern captures routed through the runtime plane with degraded fallback |
 | #208 (W-0143) | canonical app-side `AgentContextPack` loader over fact/search/runtime plane clients |
+| #209 (W-0143) | DOUNI terminal message consumes bounded `AgentContextPack` through contextBuilder |
 
 ---
 
@@ -96,9 +97,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0143-agent-route-migration`
+- active on `codex/w-0143-intel-policy-context`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: DOUNI terminal message consumes bounded `AgentContextPack` through contextBuilder without changing SSE output shape
+- current slice: `intel-policy` consumes bounded `AgentContextPack` summary without changing policy scoring
 
 ---
 
@@ -122,7 +123,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `3a81957c` |
+| origin/main | — | local remote-tracking ref = `90ee8b3c` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -141,8 +142,9 @@
 | codex/w-0142-runtime-routes | W-0142 | merged via PR #206 |
 | codex/w-0142-runtime-contracts | W-0142 | merged via PR #207 |
 | codex/w-0143-agent-context-pack | W-0143 | merged via PR #208 |
-| codex/w-0143-agent-route-migration | W-0143 | active DOUNI message route migration |
-| codex/w-0143-agent-search-integration | W-0143 | planned `intel-policy` migration follow-up |
+| codex/w-0143-agent-route-migration | W-0143 | merged via PR #209 |
+| codex/w-0143-intel-policy-context | W-0143 | active `intel-policy` summary migration |
+| codex/w-0143-agent-search-integration | W-0143 | parked name; do not reuse unless a larger agent/search integration slice is needed |
 | codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
 ---

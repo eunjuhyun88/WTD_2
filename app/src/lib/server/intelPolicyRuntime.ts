@@ -1,6 +1,7 @@
 import { computeDecision, type EngineEvidence } from '$lib/intel/decisionEngine';
 import { evaluateQualityGateFromFeatures } from '$lib/intel/qualityGate';
 import { getIntelThresholds } from '$lib/intel/thresholds';
+import type { AgentContextPack } from '$lib/contracts/agent/agentContext';
 import type { DecisionBias, IntelDecisionOutput, ManipulationRiskLevel, QualityGateResult, QualityGateScores } from '$lib/intel/types';
 
 export type IntelPanelKey = 'headlines' | 'events' | 'flow' | 'trending' | 'picks';
@@ -103,6 +104,16 @@ export interface IntelPolicyInput {
   macroOverview: MacroOverview | null;
   trendingCoins: TrendingCoin[];
   pickCoins: PickCoin[];
+  agentContext?: AgentContextPack | null;
+}
+
+export interface IntelPolicyAgentContextSummary {
+  factStatus: string | null;
+  runtimeStatus: string | null;
+  evidenceCount: number;
+  captures: number;
+  scanCandidates: number;
+  seedSearchCandidates: number;
 }
 
 export interface IntelPolicyOutput {
@@ -114,6 +125,7 @@ export interface IntelPolicyOutput {
     timeframe: string;
     domainsUsed: string[];
     avgHelpfulness: number;
+    agentContext?: IntelPolicyAgentContextSummary;
   };
 }
 
@@ -1187,6 +1199,18 @@ function domainCoverage(domains: EngineEvidence['domain'][]): string[] {
   return Array.from(new Set(domains));
 }
 
+function summarizeAgentContext(pack: AgentContextPack | null | undefined): IntelPolicyAgentContextSummary | undefined {
+  if (!pack) return undefined;
+  return {
+    factStatus: pack.facts?.status ?? null,
+    runtimeStatus: pack.runtime?.status ?? null,
+    evidenceCount: pack.evidence?.length ?? 0,
+    captures: pack.runtime?.captures.length ?? 0,
+    scanCandidates: pack.scan?.candidates.length ?? 0,
+    seedSearchCandidates: pack.seed_search?.candidates.length ?? 0,
+  };
+}
+
 export function buildIntelPolicyOutput(input: IntelPolicyInput): IntelPolicyOutput {
   const thresholds = getIntelThresholds();
   const maxCards = thresholds.panelRules.maxCardsPerPanel;
@@ -1239,6 +1263,7 @@ export function buildIntelPolicyOutput(input: IntelPolicyInput): IntelPolicyOutp
       timeframe: input.timeframe,
       domainsUsed: domainCoverage(evidence.map((item) => item.domain)),
       avgHelpfulness: Number(avgHelp.toFixed(2)),
+      agentContext: summarizeAgentContext(input.agentContext),
     },
   };
 }

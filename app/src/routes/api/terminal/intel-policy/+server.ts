@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
+import { loadAgentContextPack } from '$lib/server/agentContextPack';
 import { buildIntelPolicyOutput, emptyPanels } from '$lib/server/intelPolicyRuntime';
 
 export const config = {
@@ -40,10 +41,14 @@ function numericOrNull(value: unknown): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
+function symbolFromPair(pair: string): string {
+  return pair.replace('/', '').toUpperCase();
+}
+
 async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: string) {
   const token = pair.split('/')[0] ?? 'BTC';
 
-  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes] = await Promise.all([
+  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes, agentContext] = await Promise.all([
     fetchJsonSafe(
       fetchFn,
       `/api/market/news?limit=40&offset=0&token=${encodeURIComponent(token)}&sort=importance&interval=1m`,
@@ -53,6 +58,12 @@ async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: st
     fetchJsonSafe(fetchFn, '/api/market/macro-overview'),
     fetchJsonSafe(fetchFn, '/api/market/trending?section=all&limit=20'),
     fetchJsonSafe(fetchFn, '/api/terminal/opportunity-scan?limit=15'),
+    loadAgentContextPack({
+      fetchFn,
+      symbol: symbolFromPair(pair),
+      timeframe,
+      captureLimit: 3,
+    }),
   ]);
 
   const newsRecords = Array.isArray(newsRes?.data?.records) ? newsRes.data.records : [];
@@ -88,6 +99,7 @@ async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: st
     macroOverview,
     trendingCoins,
     pickCoins,
+    agentContext,
   });
 }
 
