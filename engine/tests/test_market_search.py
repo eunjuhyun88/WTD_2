@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from data_cache.market_search import (
     MarketSearchCandidate,
+    _clear_search_result_cache,
     refresh_market_search_index,
     ingest_market_query_raw,
     search_market_candidates,
@@ -49,6 +50,7 @@ def test_search_market_candidates_includes_direct_and_dex_candidates(monkeypatch
 
 
 def test_search_market_candidates_uses_local_index_before_live(monkeypatch, tmp_path) -> None:
+    _clear_search_result_cache()
     store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
     refreshed_at = datetime(2026, 4, 24, 0, 0, tzinfo=timezone.utc)
     store.replace_market_search_index(
@@ -90,6 +92,60 @@ def test_search_market_candidates_uses_local_index_before_live(monkeypatch, tmp_
     assert len(results) == 1
     assert results[0].canonical_symbol == "AEROUSDT"
     assert results[0].provider == "binance"
+
+
+def test_search_market_candidates_reuses_process_cache_for_index_hits(tmp_path) -> None:
+    _clear_search_result_cache()
+    store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
+    refreshed_at = datetime(2026, 4, 24, 0, 0, tzinfo=timezone.utc)
+    store.replace_market_search_index(
+        [
+            MarketSearchIndexRecord(
+                provider="binance",
+                source="direct",
+                chain="",
+                chain_rank=3,
+                source_rank=0,
+                stable_quote_rank=0,
+                watchlist_rank=2,
+                base_symbol="AERO",
+                base_name="AERODROME",
+                quote_symbol="USDT",
+                canonical_symbol="AEROUSDT",
+                token_address="",
+                pair_address="",
+                futures_listed=True,
+                watchlist_grade=None,
+                note="",
+                liquidity_usd=0.0,
+                volume_h24=0.0,
+                price_change_h24=0.0,
+                refreshed_at=refreshed_at,
+            )
+        ]
+    )
+
+    call_count = 0
+    original_search = store.search_market_index
+
+    def _counted_search(*, normalized_query: str, canonical_query: str, contract_query: str | None, limit: int):
+        nonlocal call_count
+        call_count += 1
+        return original_search(
+            normalized_query=normalized_query,
+            canonical_query=canonical_query,
+            contract_query=contract_query,
+            limit=limit,
+        )
+
+    store.search_market_index = _counted_search  # type: ignore[method-assign]
+
+    first = search_market_candidates("AERO", limit=5, store=store, allow_live_fallback=False)
+    second = search_market_candidates("AERO", limit=5, store=store, allow_live_fallback=False)
+
+    assert len(first) == 1
+    assert len(second) == 1
+    assert call_count == 1
 
 
 def test_search_market_candidates_contract_query_uses_token_batch(monkeypatch, tmp_path) -> None:
