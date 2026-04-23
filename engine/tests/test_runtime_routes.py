@@ -59,6 +59,42 @@ def test_runtime_capture_routes_create_and_read_engine_owned_capture(tmp_path, m
     assert followup.json()["capture"]["capture_id"] == capture_id
 
 
+def test_runtime_capture_list_route_filters_engine_owned_records(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    client.post(
+        "/runtime/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "BTCUSDT",
+            "timeframe": "1h",
+            "user_note": "btc seed",
+        },
+    )
+    client.post(
+        "/runtime/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "ETHUSDT",
+            "timeframe": "4h",
+            "user_note": "eth seed",
+        },
+    )
+
+    response = client.get("/runtime/captures?user_id=founder&symbol=BTCUSDT&limit=10")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["owner"] == "engine"
+    assert payload["plane"] == "runtime"
+    assert payload["status"] == "fallback_local"
+    assert payload["count"] == 1
+    assert payload["captures"][0]["symbol"] == "BTCUSDT"
+
+
 def test_runtime_workspace_pins_survive_store_restart(tmp_path, monkeypatch) -> None:
     client = _client(tmp_path, monkeypatch)
 

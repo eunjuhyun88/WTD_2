@@ -443,7 +443,12 @@ export type {
 	AgentContextCompareItem,
 	AgentContextPack
 } from './agent/agentContext';
-export type { RuntimePlaneState, CaptureRecord, RuntimeCaptureResponse } from './runtime/captures';
+export type {
+	RuntimePlaneState,
+	CaptureRecord,
+	RuntimeCaptureResponse,
+	RuntimeCaptureListResponse
+} from './runtime/captures';
 export type {
 	WorkspacePin,
 	WorkspaceStateRecord,

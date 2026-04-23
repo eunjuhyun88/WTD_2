@@ -476,10 +476,11 @@ export async function createPatternCapture(
   input: PatternCaptureCreateRequest
 ): Promise<PatternCaptureRecord> {
   try {
-    // Engine is the canonical capture store (W-0088 Phase A dual-write).
+    // Runtime plane is the canonical workflow store. The app DB is only a
+    // degraded fallback so capture truth does not fork across planes.
     // In local/degraded environments, auth or reachability failures fall back
     // to the app DB so the capture-first loop remains usable.
-    await engine.createCapture({
+    const engineResult = await engine.createRuntimeCapture({
       capture_kind: 'manual_hypothesis',
       user_id: userId,
       symbol: input.symbol,
@@ -498,9 +499,10 @@ export async function createPatternCapture(
         sourceFreshness: input.sourceFreshness,
       },
     });
+    return mapEngineCaptureRow(engineResult.capture);
   } catch (error) {
     if (!shouldFallbackPatternCaptureWrite(error)) throw error;
-    console.warn('[terminal/pattern-captures/create] engine write degraded, falling back to app DB:', error);
+    console.warn('[terminal/pattern-captures/create] runtime write degraded, falling back to app DB:', error);
   }
 
   const id = `pcap-${randomUUID()}`;
@@ -564,9 +566,9 @@ export async function listPatternCaptures(
   userId: string,
   queryInput: PatternCaptureQuery
 ): Promise<PatternCaptureRecord[]> {
-  // Engine read-through (W-0088 Phase A). Falls back to app DB if engine is unavailable.
+  // Runtime read-through. Falls back to app DB if engine is unavailable.
   try {
-    const engineResult = await engine.listCaptures({
+    const engineResult = await engine.listRuntimeCaptures({
       user_id: userId,
       symbol: queryInput.symbol,
       pattern_slug: queryInput.id ? undefined : undefined,

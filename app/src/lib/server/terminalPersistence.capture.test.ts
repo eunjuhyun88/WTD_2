@@ -25,6 +25,8 @@ vi.mock('$lib/server/engineClient', () => ({
   engine: {
     createCapture: vi.fn(),
     listCaptures: vi.fn(),
+    createRuntimeCapture: vi.fn(),
+    listRuntimeCaptures: vi.fn(),
   },
 }));
 
@@ -79,23 +81,50 @@ describe('createPatternCapture', () => {
     (query as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: [mockInsertedRow()] });
   });
 
-  it('writes through to app DB after a successful engine capture', async () => {
-    (engine.createCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+  it('returns the runtime capture without writing duplicate app DB rows', async () => {
+    (engine.createRuntimeCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      capture: { capture_id: 'cap-1' },
+      capture: {
+        capture_id: 'cap-1',
+        symbol: 'BTCUSDT',
+        timeframe: '4h',
+        captured_at_ms: 1_776_566_400_000,
+        chart_context: {
+          contextKind: 'symbol',
+          triggerOrigin: 'manual',
+          snapshot: baseInput.snapshot,
+          decision: baseInput.decision,
+          sourceFreshness: baseInput.sourceFreshness,
+        },
+        block_scores: {},
+      },
     });
 
     const record = await createPatternCapture('user-1', baseInput);
 
-    expect(engine.createCapture).toHaveBeenCalledTimes(1);
-    expect(query).toHaveBeenCalledTimes(1);
+    expect(engine.createRuntimeCapture).toHaveBeenCalledTimes(1);
+    expect(query).not.toHaveBeenCalled();
+    expect(record.id).toBe('cap-1');
     expect(record.symbol).toBe('BTCUSDT');
   });
 
   it('translates researchContext into the engine capture payload', async () => {
-    (engine.createCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (engine.createRuntimeCapture as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      capture: { capture_id: 'cap-1' },
+      capture: {
+        capture_id: 'cap-1',
+        symbol: 'BTCUSDT',
+        timeframe: '4h',
+        captured_at_ms: 1_776_566_400_000,
+        chart_context: {},
+        research_context: {
+          pattern_family: 'tradoor_ptb_oi_reversal',
+          thesis: ['second dump + oi spike'],
+          phase_annotations: [],
+          research_tags: ['second_dump', 'oi_reexpand'],
+        },
+        block_scores: {},
+      },
     });
 
     const input: PatternCaptureCreateRequest = {
@@ -119,7 +148,7 @@ describe('createPatternCapture', () => {
 
     const record = await createPatternCapture('user-1', input);
 
-    expect(engine.createCapture).toHaveBeenCalledWith(
+    expect(engine.createRuntimeCapture).toHaveBeenCalledWith(
       expect.objectContaining({
         research_context: expect.objectContaining({
           pattern_family: 'tradoor_ptb_oi_reversal',
@@ -132,20 +161,20 @@ describe('createPatternCapture', () => {
   });
 
   it('falls back to the app DB when engine capture is forbidden', async () => {
-    (engine.createCapture as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new MockEngineError(403, 'Engine /captures failed: Forbidden'),
+    (engine.createRuntimeCapture as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new MockEngineError(403, 'Engine /runtime/captures failed: Forbidden'),
     );
 
     const record = await createPatternCapture('user-1', baseInput);
 
-    expect(engine.createCapture).toHaveBeenCalledTimes(1);
+    expect(engine.createRuntimeCapture).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenCalledTimes(1);
     expect(record.timeframe).toBe('4h');
   });
 
   it('does not swallow non-degraded engine failures', async () => {
-    (engine.createCapture as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new MockEngineError(500, 'Engine /captures failed: Internal Server Error'),
+    (engine.createRuntimeCapture as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new MockEngineError(500, 'Engine /runtime/captures failed: Internal Server Error'),
     );
 
     await expect(createPatternCapture('user-1', baseInput)).rejects.toThrow('Internal Server Error');

@@ -14,7 +14,7 @@ import {
 	postSearchScanProxy,
 	postSeedSearchProxy,
 } from './search';
-import { fetchRuntimeCaptureProxy } from './runtime';
+import { fetchRuntimeCaptureListProxy, fetchRuntimeCaptureProxy } from './runtime';
 
 describe('engine plane clients', () => {
 	it('routes fact context through the canonical facts proxy', async () => {
@@ -262,9 +262,37 @@ describe('engine plane clients', () => {
 					status: 'durable',
 					generated_at: '2026-04-23T00:00:00Z',
 					capture: {
-						id: 'cap_1',
-						created_at: '2026-04-23T00:00:00Z',
+						capture_id: 'cap_1',
+						capture_kind: 'manual_hypothesis',
+						symbol: 'BTCUSDT',
+						timeframe: '1h',
+						captured_at_ms: 1_776_566_400_000,
+						chart_context: {},
+						block_scores: {},
+						status: 'pending_outcome',
 					},
+				}),
+			)
+			.mockResolvedValueOnce(
+				Response.json({
+					ok: true,
+					owner: 'engine',
+					plane: 'runtime',
+					status: 'fallback_local',
+					generated_at: '2026-04-23T00:00:00Z',
+					captures: [
+						{
+							capture_id: 'cap_1',
+							capture_kind: 'manual_hypothesis',
+							symbol: 'BTCUSDT',
+							timeframe: '1h',
+							captured_at_ms: 1_776_566_400_000,
+							chart_context: {},
+							block_scores: {},
+							status: 'pending_outcome',
+						},
+					],
+					count: 1,
 				}),
 			);
 
@@ -280,6 +308,11 @@ describe('engine plane clients', () => {
 		});
 		const savedSeed = await fetchSeedSearchRunProxy(fetchMock as typeof fetch, 'run_1');
 		const capture = await fetchRuntimeCaptureProxy(fetchMock as typeof fetch, 'cap_1');
+		const captures = await fetchRuntimeCaptureListProxy(fetchMock as typeof fetch, {
+			userId: 'user-1',
+			symbol: 'BTCUSDT',
+			limit: 20,
+		});
 
 		expect(fetchMock).toHaveBeenNthCalledWith(
 			1,
@@ -316,10 +349,16 @@ describe('engine plane clients', () => {
 			'/api/runtime/captures/cap_1',
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			6,
+			'/api/runtime/captures?user_id=user-1&symbol=BTCUSDT&limit=20',
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
 		expect(scan?.scan_id).toBe('scan_1');
 		expect(savedScan?.scan_id).toBe('scan_1');
 		expect(seed?.run_id).toBe('run_1');
 		expect(savedSeed?.run_id).toBe('run_1');
-		expect(capture?.capture.id).toBe('cap_1');
+		expect(capture?.capture.capture_id).toBe('cap_1');
+		expect(captures?.count).toBe(1);
 	});
 });

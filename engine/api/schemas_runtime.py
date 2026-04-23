@@ -19,6 +19,11 @@ class RuntimeCaptureResponse(RuntimeEnvelope):
     capture: dict[str, Any]
 
 
+class RuntimeCaptureListResponse(RuntimeEnvelope):
+    captures: list[dict[str, Any]]
+    count: int
+
+
 class RuntimeWorkspacePinCreate(BaseModel):
     symbol: str
     timeframe: str | None = None

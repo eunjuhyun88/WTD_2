@@ -1,4 +1,4 @@
-import type { RuntimeCaptureResponse } from '$lib/contracts/runtime/captures';
+import type { RuntimeCaptureListResponse, RuntimeCaptureResponse } from '$lib/contracts/runtime/captures';
 import type { RuntimeLedgerResponse } from '$lib/contracts/runtime/ledger';
 import type { RuntimeResearchContextResponse } from '$lib/contracts/runtime/researchContext';
 import type { RuntimeWorkspaceStateResponse } from '$lib/contracts/runtime/workspaceState';
@@ -23,6 +23,29 @@ export async function fetchRuntimeCaptureProxy(
 ): Promise<RuntimeCaptureResponse | null> {
 	return fetchEnginePlaneJson<RuntimeCaptureResponse>(fetchFn, 'runtime', {
 		path: `captures/${captureId}`,
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchRuntimeCaptureListProxy(
+	fetchFn: ServerFetch,
+	query: {
+		userId?: string;
+		symbol?: string;
+		patternSlug?: string;
+		status?: string;
+		limit?: number;
+	},
+): Promise<RuntimeCaptureListResponse | null> {
+	return fetchEnginePlaneJson<RuntimeCaptureListResponse>(fetchFn, 'runtime', {
+		path: 'captures',
+		query: {
+			user_id: query.userId,
+			symbol: query.symbol,
+			pattern_slug: query.patternSlug,
+			status: query.status,
+			limit: query.limit,
+		},
 		timeoutMs: 8_000,
 	});
 }

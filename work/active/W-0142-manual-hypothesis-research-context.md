@@ -17,6 +17,8 @@ Engine logic change
 - add `engine/runtime` repository boundary for runtime workflow state
 - add canonical `engine/api/routes/runtime.py`
 - expose `/runtime/captures`, `/runtime/workspace/*`, `/runtime/setups/*`, `/runtime/research-contexts/*`, and `/runtime/ledger/*`
+- add runtime capture list/read/write contracts so app persistence can use `/runtime/captures` as the canonical product path
+- cut `terminalPersistence` capture create/list over to runtime plane while preserving degraded local fallback
 - keep local SQLite/file stores as fallback adapters behind engine APIs
 - add targeted engine route/store tests
 
@@ -39,11 +41,14 @@ Engine logic change
 - `engine/capture/store.py`
 - `engine/api/main.py`
 - `engine/tests/test_runtime_routes.py`
+- `app/src/lib/server/enginePlanes/runtime.ts`
+- `app/src/lib/server/terminalPersistence.ts`
+- `app/src/lib/server/terminalPersistence.capture.test.ts`
 
 ## Facts
 
 1. `capture`, `patterns.state_store`, and `research.state_store` already persist workflow state in engine-local stores.
-2. app plane proxy already allows `/api/runtime/captures`, `/api/runtime/workspace/*`, `/api/runtime/setups/*`, `/api/runtime/research-contexts/*`, and `/api/runtime/ledger/*`.
+2. app plane proxy already allows `/api/runtime/captures`, `/api/runtime/workspace/*`, `/api/runtime/setups/*`, `/api/runtime/research-contexts/*`, and `/api/runtime/ledger/*`, but product capture create/list still rely on legacy `/captures`.
 3. runtime state is authoritative workflow truth and must not be folded into fact or search payload ownership.
 4. legacy `/captures` remains live and must be treated as a compatibility surface until app consumers migrate.
 
@@ -62,17 +67,19 @@ Engine logic change
 - `/runtime/captures` reuses `CaptureStore` and mirrors the current capture schema instead of creating a second capture truth.
 - Workspace pins, saved setups, research contexts, and runtime ledger projections start in a small SQLite-backed `RuntimeStateStore`.
 - Legacy `/captures` stays in place; new app/runtime traffic should prefer `/runtime/*`.
+- Product capture save/list flows should read and write through `/runtime/captures` first, with app DB fallback reserved for degraded engine conditions.
 
 ## Next Steps
 
-1. land canonical runtime route skeleton and repository tests.
-2. move legacy persistence bridges behind runtime APIs.
-3. connect app save/restore flows to runtime plane after route shape is stable.
+1. land runtime capture list/read/write contract updates and repository tests.
+2. move terminal capture persistence behind `/runtime/captures`.
+3. keep pins/setups/research-context app cutover as the next runtime slice once capture path is stable.
 
 ## Exit Criteria
 
 - canonical `/runtime/*` routes exist and return runtime plane metadata.
 - captures and workspace/research/setup records survive process restart through engine repositories.
+- app capture save/list flows use runtime plane as the primary engine path.
 - targeted runtime tests pass.
 
 ## Handoff Checklist
@@ -80,5 +87,5 @@ Engine logic change
 - active work item: `work/active/W-0142-manual-hypothesis-research-context.md`
 - branch: `codex/w-0142-runtime-routes`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- verification: `uv run --directory engine python -m pytest tests/test_runtime_routes.py -q` = `5 passed`; `uv run --directory engine python -m pytest tests/test_runtime_routes.py tests/test_capture_routes.py tests/test_engine_runtime_roles.py -q` = `23 passed`; `npm --prefix app run contract:check:engine-types` = passed; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`
+- verification: `uv run --directory engine python -m pytest tests/test_runtime_routes.py -q` = `6 passed`; `npm --prefix app run test -- src/lib/server/enginePlanes/planeClients.test.ts src/lib/server/enginePlaneProxy.test.ts src/lib/server/terminalPersistence.capture.test.ts` = `12 passed`; `npm --prefix app run contract:check:engine-types` = passed; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`
 - remaining blockers: shared storage cutover and app surface migration are future slices

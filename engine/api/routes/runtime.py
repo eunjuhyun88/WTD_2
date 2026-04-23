@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from api.routes import captures as capture_routes
 from api.schemas_runtime import (
     RuntimeCaptureResponse,
+    RuntimeCaptureListResponse,
     RuntimeLedgerResponse,
     RuntimeResearchContextCreate,
     RuntimeResearchContextResponse,
@@ -22,8 +23,22 @@ from runtime.store import RuntimeStateStore
 
 router = APIRouter()
 
-_capture_store = CaptureStore()
-_runtime_store = RuntimeStateStore()
+_capture_store: CaptureStore | None = None
+_runtime_store: RuntimeStateStore | None = None
+
+
+def get_capture_store() -> CaptureStore:
+    global _capture_store
+    if _capture_store is None:
+        _capture_store = CaptureStore()
+    return _capture_store
+
+
+def get_runtime_store() -> RuntimeStateStore:
+    global _runtime_store
+    if _runtime_store is None:
+        _runtime_store = RuntimeStateStore()
+    return _runtime_store
 
 
 def _generated_at() -> str:
@@ -62,14 +77,37 @@ async def create_runtime_capture(body: capture_routes.CaptureCreateBody) -> Runt
         block_scores=body.block_scores or transition_defaults.get("block_scores", {}),
         status=capture_routes._status_for_kind(body.capture_kind),
     )
-    _capture_store.save(record)
+    get_capture_store().save(record)
     capture_routes.LEDGER_RECORD_STORE.append_capture_record(record)
     return RuntimeCaptureResponse(generated_at=_generated_at(), capture=record.to_dict())
 
 
+@router.get("/captures", response_model=RuntimeCaptureListResponse)
+async def list_runtime_captures(
+    user_id: str | None = None,
+    pattern_slug: str | None = None,
+    symbol: str | None = None,
+    status: str | None = None,
+    limit: int = 100,
+) -> RuntimeCaptureListResponse:
+    captures = get_capture_store().list(
+        user_id=user_id,
+        pattern_slug=pattern_slug,
+        symbol=symbol,
+        status=status,
+        limit=max(1, min(limit, 500)),
+    )
+    rows = [capture.to_dict() for capture in captures]
+    return RuntimeCaptureListResponse(
+        generated_at=_generated_at(),
+        captures=rows,
+        count=len(rows),
+    )
+
+
 @router.get("/captures/{capture_id}", response_model=RuntimeCaptureResponse)
 async def get_runtime_capture(capture_id: str) -> RuntimeCaptureResponse:
-    capture = _capture_store.load(capture_id)
+    capture = get_capture_store().load(capture_id)
     if capture is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_capture_not_found", "capture_id": capture_id})
     return RuntimeCaptureResponse(generated_at=_generated_at(), capture=capture.to_dict())
@@ -77,7 +115,7 @@ async def get_runtime_capture(capture_id: str) -> RuntimeCaptureResponse:
 
 @router.post("/workspace/pins", response_model=RuntimeWorkspaceResponse)
 async def create_workspace_pin(body: RuntimeWorkspacePinCreate) -> RuntimeWorkspaceResponse:
-    workspace = _runtime_store.save_workspace_pin(
+    workspace = get_runtime_store().save_workspace_pin(
         symbol=body.symbol,
         timeframe=body.timeframe,
         user_id=body.user_id,
@@ -91,7 +129,7 @@ async def create_workspace_pin(body: RuntimeWorkspacePinCreate) -> RuntimeWorksp
 
 @router.get("/workspace/{symbol}", response_model=RuntimeWorkspaceResponse)
 async def get_workspace(symbol: str, user_id: str | None = None) -> RuntimeWorkspaceResponse:
-    workspace = _runtime_store.get_workspace(symbol, user_id=user_id)
+    workspace = get_runtime_store().get_workspace(symbol, user_id=user_id)
     return RuntimeWorkspaceResponse(generated_at=_generated_at(), workspace=workspace)
 
 
@@ -105,13 +143,13 @@ async def create_setup(body: RuntimeSetupCreate) -> RuntimeSetupResponse:
         "title": body.title,
         "summary": body.summary,
     }
-    setup = _runtime_store.create_setup(payload)
+    setup = get_runtime_store().create_setup(payload)
     return RuntimeSetupResponse(generated_at=_generated_at(), setup=setup)
 
 
 @router.get("/setups/{setup_id}", response_model=RuntimeSetupResponse)
 async def get_setup(setup_id: str) -> RuntimeSetupResponse:
-    setup = _runtime_store.get_setup(setup_id)
+    setup = get_runtime_store().get_setup(setup_id)
     if setup is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_setup_not_found", "setup_id": setup_id})
     return RuntimeSetupResponse(generated_at=_generated_at(), setup=setup)
@@ -129,13 +167,13 @@ async def create_research_context(body: RuntimeResearchContextCreate) -> Runtime
         "fact_refs": body.fact_refs,
         "search_refs": body.search_refs,
     }
-    context = _runtime_store.create_research_context(payload)
+    context = get_runtime_store().create_research_context(payload)
     return RuntimeResearchContextResponse(generated_at=_generated_at(), research_context=context)
 
 
 @router.get("/research-contexts/{context_id}", response_model=RuntimeResearchContextResponse)
 async def get_research_context(context_id: str) -> RuntimeResearchContextResponse:
-    context = _runtime_store.get_research_context(context_id)
+    context = get_runtime_store().get_research_context(context_id)
     if context is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_research_context_not_found", "context_id": context_id})
     return RuntimeResearchContextResponse(generated_at=_generated_at(), research_context=context)
@@ -143,7 +181,7 @@ async def get_research_context(context_id: str) -> RuntimeResearchContextRespons
 
 @router.get("/ledger/{ledger_id}", response_model=RuntimeLedgerResponse)
 async def get_ledger(ledger_id: str) -> RuntimeLedgerResponse:
-    entry = _runtime_store.get_ledger_entry(ledger_id)
+    entry = get_runtime_store().get_ledger_entry(ledger_id)
     if entry is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_ledger_not_found", "ledger_id": ledger_id})
     return RuntimeLedgerResponse(generated_at=_generated_at(), ledger=entry)

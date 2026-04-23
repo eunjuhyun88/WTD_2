@@ -2,9 +2,12 @@ import type { RuntimePlaneState } from './captures';
 
 export interface LedgerRecord {
 	id: string;
+	kind?: string | null;
+	subject_id?: string | null;
 	verdict?: string | null;
 	outcome?: string | null;
 	summary?: string | null;
+	payload?: Record<string, unknown>;
 	updated_at: string;
 }
 
