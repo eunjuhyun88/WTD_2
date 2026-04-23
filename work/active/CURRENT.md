@@ -119,9 +119,9 @@
 
 ## 즉시 실행 순서 (사람)
 
-- active on `codex/w-0151-active-variant-runtime-registry`
-- stacked engine/research lane for `W-0149` → `W-0152`: capture-derived benchmark packs, honest intraday breakout replay, durable active-variant registry, and live state-similarity search
-- targeted engine verification for the stacked lane is passing; next step after commit is to resume data-engine / feature-plane work on top of this saved baseline
+- active on `codex/w-0122-market-cap-fact-cut`
+- worktree clean after `e5f80a6a` (`terminal intel macro fact cut`)
+- next slice requires contract choice: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` is curated-reference oriented; do not proxy one into the other without an explicit adapter decision
 
 ---
 
@@ -149,7 +149,6 @@
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
-| codex/w-0151-active-variant-runtime-registry | W-0149 / W-0150 / W-0151 / W-0152 | active stacked engine commercialization lane |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
