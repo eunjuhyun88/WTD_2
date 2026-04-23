@@ -133,6 +133,31 @@ def _run_pattern_search_refinement_once(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_live_monitor(args: argparse.Namespace) -> int:
+    from research.live_monitor import print_scan_report, scan_universe_live
+
+    universe = None
+    if args.universe and args.universe != "cached":
+        universe = args.universe.split(",")
+
+    variant_slug = None if args.variant_slug == "auto" else args.variant_slug
+
+    results = scan_universe_live(
+        universe=universe,
+        variant_slug=variant_slug,
+        pattern_slug=args.pattern_slug,
+        timeframe=args.timeframe,
+        window_bars=args.window_bars,
+        staleness_hours=args.staleness_hours,
+        warmup_bars=args.warmup_bars,
+        log_to_experiment=False,
+    )
+    print_scan_report(results)
+    print()
+    print(json.dumps([result.to_dict() for result in results], indent=2, default=str))
+    return 0
+
+
 def _run_backtest(args: argparse.Namespace) -> int:
     from datetime import timedelta
 
@@ -239,6 +264,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     search_refine_p.add_argument("--slug", required=True, help="Pattern slug")
     search_refine_p.set_defaults(func=_run_pattern_search_refinement_once)
+
+    live_p = sub.add_parser("pattern-live-monitor", help="Scan promoted/current variant over cached universe or explicit symbols")
+    live_p.add_argument("--pattern-slug", default="tradoor-oi-reversal-v1")
+    live_p.add_argument("--variant-slug", default="auto", help="'auto' or explicit variant slug")
+    live_p.add_argument("--timeframe", default="1h")
+    live_p.add_argument("--window-bars", type=int, default=120)
+    live_p.add_argument("--staleness-hours", type=int, default=48)
+    live_p.add_argument("--warmup-bars", type=int, default=240)
+    live_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
+    live_p.set_defaults(func=_run_live_monitor)
 
     benchmark_p = sub.add_parser("pattern-benchmark-search", help="Run replay benchmark-pack search for pattern variants")
     benchmark_p.add_argument("--slug", required=True, help="Pattern slug")
