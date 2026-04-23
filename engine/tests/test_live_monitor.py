@@ -34,6 +34,7 @@ def _make_result(
         fwd_peak_pct=fwd,
         realistic_pct=real,
         phase_fidelity=0.7,
+        canonical_feature_snapshot={},
     )
 
 
@@ -290,6 +291,15 @@ class TestResolveLiveVariantSlug:
                 forward_peak_return_pct=10.0,
                 entry_next_open=1.01,
                 realistic_forward_peak_return_pct=9.5,
+                canonical_feature_snapshot={
+                    "oi_raw": 1200.0,
+                    "oi_zscore": 2.4 if case.symbol == "PTBUSDT" else 1.2,
+                    "funding_rate_zscore": 1.1,
+                    "funding_flip_flag": True,
+                    "volume_percentile": 0.95,
+                    "pullback_depth_pct": 0.08,
+                    "cvd_price_divergence": 1.0,
+                },
             )
 
         monkeypatch.setattr(live_monitor, "evaluate_variant_on_case", fake_evaluate_variant_on_case)
@@ -306,6 +316,8 @@ class TestResolveLiveVariantSlug:
         assert all(result.timeframe == "15m" for result in results)
         assert results[0].similarity_score == 0.92
         assert results[1].similarity_score == 0.61
+        assert results[0].canonical_feature_snapshot["funding_flip_flag"] is True
+        assert results[0].canonical_feature_snapshot["oi_zscore"] == pytest.approx(2.4)
 
 
 class TestPrintScanReport:

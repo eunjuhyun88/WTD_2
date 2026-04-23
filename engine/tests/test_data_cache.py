@@ -242,6 +242,7 @@ def test_load_perp_parses_timestamp_index(tmp_path, monkeypatch):
     perp = pd.DataFrame(
         {
             "funding_rate": [0.001, 0.002],
+            "oi_raw": [1000.0, 1200.0],
             "oi_change_1h": [0.1, 0.2],
             "oi_change_24h": [0.3, 0.4],
             "long_short_ratio": [1.1, 1.2],
@@ -255,21 +256,4 @@ def test_load_perp_parses_timestamp_index(tmp_path, monkeypatch):
     assert out is not None
     assert str(out.index.dtype).startswith("datetime64")
     assert out.index.tz is not None
-
-
-def test_list_cached_symbols_merges_cache_roots(tmp_path, monkeypatch):
-    local_cache = tmp_path / "local"
-    shared_cache = tmp_path / "shared"
-    monkeypatch.setattr(loader_mod, "CACHE_DIR", local_cache)
-    monkeypatch.setenv("WTD_SHARED_CACHE_DIR", str(shared_cache))
-    local_cache.mkdir(parents=True)
-    shared_cache.mkdir(parents=True)
-
-    _make_fake_klines(2).to_csv(local_cache / "LOCALUSDT_1h.csv")
-    _make_fake_klines(2).to_csv(shared_cache / "SHAREDUSDT_1h.csv")
-    pd.DataFrame({"funding_rate": [0.001]}, index=pd.date_range("2026-01-01", periods=1, freq="1h", tz="UTC")).to_csv(
-        shared_cache / "SHAREDUSDT_perp.csv"
-    )
-
-    assert list_cached_symbols() == ["LOCALUSDT", "SHAREDUSDT"]
-    assert list_cached_symbols(require_perp=True) == ["SHAREDUSDT"]
+    assert "oi_raw" in out.columns

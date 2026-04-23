@@ -28,7 +28,11 @@ from patterns.library import get_pattern
 from patterns.replay import replay_pattern_frames
 from patterns.state_machine import PatternStateMachine
 from patterns.types import PatternObject, PhaseAttemptRecord
-from scanner.feature_calc import MIN_HISTORY_BARS, compute_features_table
+from scanner.feature_calc import (
+    MIN_HISTORY_BARS,
+    compute_features_table,
+    extract_canonical_pattern_feature_snapshot,
+)
 
 from .state_store import ResearchRun
 from .worker_control import (
@@ -240,6 +244,7 @@ class VariantCaseResult:
     # delta; informational only (gate still uses forward_peak_return_pct).
     entry_next_open: float | None = None
     realistic_forward_peak_return_pct: float | None = None
+    canonical_feature_snapshot: dict[str, float | bool | None] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -2871,6 +2876,7 @@ def evaluate_variant_on_case(
         forward_peak_return_pct=forward_peak_return_pct,
         entry_next_open=entry_next_open,
         realistic_forward_peak_return_pct=realistic_forward_peak_return_pct,
+        canonical_feature_snapshot=extract_canonical_pattern_feature_snapshot(features.iloc[-1]),
     )
 
 
