@@ -130,8 +130,8 @@
 ## 즉시 실행 순서 (사람)
 
 - active on `codex/w-0122-market-cap-fact-cut`
-- worktree clean after `e5f80a6a` (`terminal intel macro fact cut`)
-- next slice requires contract choice: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` is curated-reference oriented; do not proxy one into the other without an explicit adapter decision
+- current slice: reference-stack fact coverage adapter
+- decision: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` is curated-reference oriented; keep public `entries` stable and attach engine coverage only as additive `factCoverage`
 
 ---
 
