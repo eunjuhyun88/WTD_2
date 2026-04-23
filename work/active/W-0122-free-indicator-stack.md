@@ -495,6 +495,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **`/facts/chain-intel` 은 먼저 bounded engine landing zone 으로 연다** — app `/api/market/chain-intel` 의 live Solscan/TRONSCAN/Etherscan payload 를 즉시 대체하지 않고, engine cache/source state 를 읽는 compact fact route 를 `factCoverage` 로 붙인다.
 - **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — `codex/w-0122-market-cap-fact-cut` history 에 unrelated `W-0148` commit 이 섞였기 때문에, 현재 PR candidate 는 clean execution branch/worktree `codex/w-0122-consumer-fact-cut` 에서 이어간다.
 - **`ctx/fact` should satisfy the contract it already advertises** — `FactSnapshot` already exposes optional `fact_id`, `provider_state`, `confluence`, and `reference_health`, and app adapters probe for those fields today. The engine landing zone should populate them before more transitional app logic grows around missing values.
+- **legacy `/api/engine/ctx/fact` bridge is dead and should be removed** — fact-plane callers already use `/api/facts/ctx/fact`; keeping the same path allowlisted on the frozen legacy engine proxy only preserves duplicate ingress without any consumer.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
@@ -541,8 +542,8 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-ctx-fact-fillin`, clean worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-ctx-fact-fillin`
-- verification status: pending for this slice; target engine `pytest tests/test_ctx_fact_route.py -q` plus app targeted fact-proxy / snapshot adapter coverage
+- branch/worktree state: `codex/w-0122-ctx-fact-fillin`, active worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-ctx-fact-fillin`
+- verification status: `refactor(W-0122): fill ctx fact contract summaries` passed engine `pytest tests/test_ctx_fact_route.py -q` plus app targeted `planeClients` and `market/snapshot` route coverage; follow-up dead-code cut should re-run legacy engine proxy coverage
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
 
 ## PR Trail
