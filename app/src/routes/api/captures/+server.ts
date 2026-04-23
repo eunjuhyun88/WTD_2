@@ -2,7 +2,8 @@
  * GET  /api/captures?limit=N            — list recent captures for the current user
  * POST /api/captures                    — create a new capture
  *
- * Proxies to engine /captures while deriving user_id from session.
+ * Compatibility surface that now proxies to engine /runtime/captures while
+ * deriving user_id from session.
  */
 
 import { error, json } from '@sveltejs/kit';
@@ -20,7 +21,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   if (symbol) params.set('symbol', symbol);
 
   try {
-    const res = await engineFetch(`/captures?${params}`, {
+    const res = await engineFetch(`/runtime/captures?${params}`, {
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return json({ ok: false, captures: [], count: 0 });
@@ -50,7 +51,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const res = await engineFetch('/captures', {
+    const res = await engineFetch('/runtime/captures', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
