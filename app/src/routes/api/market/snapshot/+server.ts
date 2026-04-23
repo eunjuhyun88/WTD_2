@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { Cookies } from '@sveltejs/kit';
-import { collectMarketSnapshot } from '$lib/server/marketSnapshotService';
+import { collectMarketSnapshot, collectPublicMarketSnapshot, type PublicMarketSnapshotResult } from '$lib/server/marketSnapshotService';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { marketSnapshotLimiter } from '$lib/server/rateLimit';
@@ -11,9 +11,15 @@ import { createSharedPublicRouteCache, type PublicRouteCacheStatus } from '$lib/
 import { isRequestBodyTooLargeError, readJsonBody } from '$lib/server/requestGuards';
 
 type MarketSnapshotResult = Awaited<ReturnType<typeof collectMarketSnapshot>>;
+type PublicSnapshotResult = PublicMarketSnapshotResult;
 type MarketSnapshotSuccessPayload = ReturnType<typeof buildSuccessPayload>;
 
 const PUBLIC_CACHE_TTL_MS = 30_000;
+const FACT_COMPAT_HEADERS = {
+  'X-WTD-Plane': 'fact',
+  'X-WTD-Upstream': 'compatibility-bridge',
+  'X-WTD-State': 'adapter',
+} as const;
 
 const publicMarketSnapshotCache = createSharedPublicRouteCache<MarketSnapshotSuccessPayload>({
   scope: 'market:snapshot',
@@ -38,7 +44,7 @@ function toPersistFlag(value: unknown, fallback = true): boolean {
   return fallback;
 }
 
-function buildSuccessPayload(snapshot: MarketSnapshotResult) {
+function buildSuccessPayload(snapshot: MarketSnapshotResult | PublicSnapshotResult) {
   const atIso = new Date(snapshot.at).toISOString();
   return {
     success: true as const,
@@ -69,12 +75,14 @@ function buildPublicSnapshotCacheKey(pair: string, timeframe: string): string {
 function noStoreHeaders(): Record<string, string> {
   return {
     'Cache-Control': 'no-store',
+    ...FACT_COMPAT_HEADERS,
   };
 }
 
 function publicSuccessResponse(payload: MarketSnapshotSuccessPayload, cacheStatus: PublicRouteCacheStatus) {
   return json(payload, {
     headers: {
+      ...FACT_COMPAT_HEADERS,
       ...buildPublicCacheHeaders({
         browserMaxAge: 15,
         sharedMaxAge: 30,
@@ -127,7 +135,7 @@ export const GET: RequestHandler = async ({ fetch, url, cookies, getClientAddres
     const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
     const { payload, cacheStatus } = await publicMarketSnapshotCache.run(
       buildPublicSnapshotCacheKey(pair, timeframe),
-      async () => buildSuccessPayload(await collectMarketSnapshot(fetch, { pair, timeframe, persist: false })),
+      async () => buildSuccessPayload(await collectPublicMarketSnapshot(fetch, { pair, timeframe })),
     );
     return publicSuccessResponse(payload, cacheStatus);
   } catch (error: any) {

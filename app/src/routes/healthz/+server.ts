@@ -12,7 +12,7 @@ export const GET: RequestHandler = async () => {
   return json(
     {
       ok: true,
-      service: 'chatbattle-web',
+      service: 'app-web',
       status: 'healthy',
       at: new Date().toISOString(),
     },

@@ -30,6 +30,24 @@ describe('/api/engine/[...path]', () => {
     expect(new Headers(init?.headers).get('x-engine-internal-secret')).toBe('test-engine-secret');
   });
 
+  it('allowlists ctx/fact for fact-plane migration reads', async () => {
+    const upstream = new Response(JSON.stringify({ ok: true, plane: 'fact' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(upstream as any);
+
+    const req = new Request('http://localhost/api/engine/ctx/fact?symbol=BTCUSDT&timeframe=1h', { method: 'GET' });
+    const res = await GET({ request: req, params: { path: 'ctx/fact' } } as any);
+    expect(res.status).toBe(200);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:8000/ctx/fact?symbol=BTCUSDT&timeframe=1h',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    );
+  });
+
   it('rejects non-allowlisted paths', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const req = new Request('http://localhost/api/engine/patterns/states', { method: 'GET' });

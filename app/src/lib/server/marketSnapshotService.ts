@@ -2,6 +2,7 @@
 // Market Snapshot + Context Assembler (B-05)
 // ═══════════════════════════════════════════════════════════════
 
+import type { FactSnapshot } from '$lib/contracts/facts/factSnapshot';
 import type { MarketContext } from '$lib/contracts/marketContext';
 import {
   analyzeTrend,
@@ -26,6 +27,7 @@ import { fetchTopicSocial } from '$lib/server/lunarcrush';
 import { fetchSantimentSocial } from '$lib/server/santiment';
 import { fetchCoinMetricsData } from '$lib/server/coinmetrics';
 import { withTransaction } from '$lib/server/db';
+import { fetchFactContextProxy } from '$lib/server/enginePlanes/facts';
 import { getCached, setCache } from '$lib/server/providers/cache';
 
 const SNAPSHOT_UNAVAILABLE_CODES = new Set(['42P01', '42703', '23503']);
@@ -113,8 +115,67 @@ export type MarketSnapshotResult = {
   };
 };
 
+export type PublicMarketSnapshotResult = {
+  pair: string;
+  timeframe: string;
+  at: number;
+  updated: string[];
+  persisted: boolean;
+  warning?: string;
+  sources: Record<string, boolean>;
+};
+
 function isFiniteNumber(value: number): boolean {
   return Number.isFinite(value);
+}
+
+function buildPublicSnapshotFromLegacy(snapshot: MarketSnapshotResult): PublicMarketSnapshotResult {
+  return {
+    pair: snapshot.pair,
+    timeframe: snapshot.timeframe,
+    at: snapshot.at,
+    updated: snapshot.updated,
+    persisted: snapshot.persisted,
+    warning: snapshot.warning,
+    sources: snapshot.sources,
+  };
+}
+
+function buildPublicSnapshotFromEngineFact(
+  pair: string,
+  timeframe: string,
+  payload: FactSnapshot,
+): PublicMarketSnapshotResult {
+  const sourceStates = payload.sources ?? payload.provider_state ?? {};
+  const sources = Object.fromEntries(
+    Object.entries(sourceStates).map(([key, value]) => [key, value?.status === 'ok' || value?.status === 'live']),
+  );
+  const updated = Object.entries(sourceStates)
+    .filter(([, value]) => value?.status === 'ok' || value?.status === 'live')
+    .map(([key]) => key);
+  const at = Date.parse(payload.generated_at ?? '');
+
+  return {
+    pair,
+    timeframe,
+    at: Number.isFinite(at) ? at : Date.now(),
+    updated,
+    persisted: false,
+    warning: payload.status === 'transitional' ? 'engine fact bridge active; legacy snapshot persistence bypassed' : undefined,
+    sources,
+  };
+}
+
+async function fetchEngineFactPayload(
+  eventFetch: typeof fetch,
+  pair: string,
+  timeframe: string,
+): Promise<FactSnapshot | null> {
+  return fetchFactContextProxy(eventFetch, {
+    symbol: pairToSymbol(pair),
+    timeframe,
+    offline: true,
+  });
 }
 
 function normalizeSeries(
@@ -323,6 +384,23 @@ export async function collectMarketSnapshot(
   } finally {
     _inflightSnapshots.delete(snapKey);
   }
+}
+
+export async function collectPublicMarketSnapshot(
+  eventFetch: typeof fetch,
+  input: { pair?: unknown; timeframe?: unknown } = {},
+): Promise<PublicMarketSnapshotResult> {
+  const pair = normalizePair(input.pair);
+  const timeframe = normalizeTimeframe(input.timeframe);
+
+  const engineFact = await fetchEngineFactPayload(eventFetch, pair, timeframe);
+  if (engineFact) {
+    return buildPublicSnapshotFromEngineFact(pair, timeframe, engineFact);
+  }
+
+  return buildPublicSnapshotFromLegacy(
+    await collectMarketSnapshot(eventFetch, { pair, timeframe, persist: false }),
+  );
 }
 
 async function _collectInternal(

@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`7397cbb5` — local `main` baseline; W-0139 merge 반영, PR #189 / #190 포함
+`41a72eef` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -25,32 +25,111 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 QA-BLOCKED | manual browser QA + lab autorun/watch activation rule |
-| **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | chart/analyze/AI/backend source 를 하나의 canonical data plane 으로 재정의 |
-| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / shared study contract 추가 정리 |
+| **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
+| **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
+| **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
+| **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
+| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
+| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
+| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-UPSTREAM | bottom ANALYZE slimming after surface contract cutover |
+
+## Reference / Assist Work Items
+
+| ID | 파일 | 상태 | 역할 |
+|---|---|---|---|
+| **W-0146** | `W-0146-lane-cleanup-and-merge-governance.md` | 🟡 REFERENCE | merge governance / queue audit reference, not an execution lane |
+| **W-0141** | `W-0141-market-data-plane.md` | 🟡 ASSIST | workspace/data contract assist lane, not top-level architecture owner |
+
+## Deferred / Blocked
+
+| ID | 파일 | 상태 | 핵심 미완 |
+|---|---|---|---|
 | **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | migration 018 + live preview redeploy + post-cutover stats hotfix 완료, canonical engine region 결정만 남음 |
-| **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
 | **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
+
+---
+
+## Canonical Lane Order — Terminal AI / Scan
+
+이 축은 아래 `5 planes + runtime state plane` 으로 고정한다. 순서를 어기면 surface 와 provider fan-out 이 다시 섞인다.
+
+1. **Ingress**
+   - raw provider fetch, cache, capability/freshness state
+   - 규칙: product semantics 금지, `engine` 가 최종 owner
+2. **Fact Plane (`W-0122`)**
+   - `FactSnapshot`, reference stack, chain intel, market-cap, confluence, indicator catalog
+   - 목적: AI 와 search 가 읽을 canonical market truth 구축
+3. **Search Plane (`W-0145`)**
+   - corpus accumulation, scan runtime, seed-search, catalog, candidate reports
+   - 목적: live fan-out 없이 fact/corpus 기반 retrieval 확보
+4. **Agent Context (`W-0143`)**
+   - `AgentContextPack`, bounded AI inputs, route-by-route ad hoc joins 제거
+   - 목적: AI 가 fact/search/runtime summary 만 읽도록 고정
+5. **Surface Plane (`W-0139` + `W-0140`)**
+   - terminal page, compare/pin, analyze workspace, save/setup UX
+   - 목적: 위 plane 들의 결과만 소비해 trader workflow 를 닫음
+
+별도 plane:
+
+- **Runtime State (`W-0142`)**
+  - capture, pins, saved setups, research context, ledger, outcomes
+  - 규칙: workflow truth 는 fact/search cache 와 분리된 engine-owned authoritative store
+
+규칙:
+
+- UI 는 raw provider 를 직접 fan-out 하지 않는다.
+- AI agent 는 bounded `agentContext` 와 read-model route 만 소비한다.
+- historical / market-wide search 는 `worker-control` / scheduler corpus 에서만 확장한다.
+- 새 provider 는 먼저 fact plane 에서 `live / blocked / reference_only` state 를 가져야 한다.
+- `W-0148` 는 architecture owner only 이며, lane-specific product code 를 흡수하지 않는다.
+- `W-0148` 의 blocking step 은 `PR0.2` contract/proxy split 이고, parallel lanes 는 그 뒤 `updated main` 에서 시작한다.
+- `engine/market_engine/indicator_catalog.py` 는 `W-0122` fact-plane owner 파일이며 `W-0148` 로 흡수하지 않는다.
+
+---
+
+## Current Dirty Tree Snapshot
+
+- clean on `codex/w-0148-data-engine-reset` after the `PR0.2` boundary commits (`contracts/proxies`, `plane clients`, `app-web Cloud Run lane`)
+- execution note: next work should branch as clean lane slices from updated `main`; do not resume mixed-stack surface/search work from this worktree
 
 ---
 
 ## 즉시 실행 순서
 
-1. **W-0139** — `/terminal` Save & Open Lab manual QA + lab autorun/watch activation rule
-2. **W-0141** — app-side pure producer 다음 단계로 backend workspace bundle producer 착수
-3. **W-0126** — canonical engine region (`asia-southeast1` 복구 vs `us-east4` 유지) 결정만 정리
+1. **W-0148 / PR0.1** — docs/governance normalize
+2. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
+3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
+4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
+5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
+6. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
+7. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
 ## 브랜치 매핑
 
+### Active / Existing
+
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | 최신 (`7397cbb5`) |
-| codex/w-0139-terminal-core-loop-capture | W-0139 | ACTIVE |
-| codex/w-0141-market-data-plane | W-0141 | MERGED INTO `main` |
-| codex/w-0138-engine-runtime-role-split | W-0138 | MERGED (#190) |
-| codex/w-0140-analyze-tab-consolidation | W-0140 | MERGED (#189) |
+| main | — | local `main` = `27952d95` |
+| origin/main | — | local remote-tracking ref = `41a72eef` |
+| codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
+| codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
+| codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
+| codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
+| codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
+| codex/w-0139-terminal-core-loop-capture-mainline | W-0139 | prior clean lane |
+
+### Planned After `PR0.2`
+
+| 브랜치 | Work Item | 상태 |
+|---|---|---|
+| codex/w-0145-corpus-plane | W-0145 | planned parallel search lane |
+| codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
+| codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
+| codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
 ---
 

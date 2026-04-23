@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
-import { collectMarketSnapshot } from '$lib/server/marketSnapshotService';
+import { collectMarketSnapshot, collectPublicMarketSnapshot } from '$lib/server/marketSnapshotService';
 
 vi.mock('$lib/server/marketSnapshotService', () => ({
   collectMarketSnapshot: vi.fn(async () => ({
@@ -11,6 +11,15 @@ vi.mock('$lib/server/marketSnapshotService', () => ({
     persisted: false,
     warning: null,
     sources: { kline: 'ok' },
+  })),
+  collectPublicMarketSnapshot: vi.fn(async () => ({
+    updated: ['klines'],
+    pair: 'BTCUSDT',
+    timeframe: '1h',
+    at: Date.now(),
+    persisted: false,
+    warning: null,
+    sources: { klines: true },
   })),
 }));
 vi.mock('$lib/server/authGuard', () => ({
@@ -52,14 +61,14 @@ describe('/api/market/snapshot', () => {
     } as any);
 
     expect(res.status).toBe(200);
-    expect(vi.mocked(collectMarketSnapshot)).toHaveBeenCalledWith(
+    expect(vi.mocked(collectPublicMarketSnapshot)).toHaveBeenCalledWith(
       globalThis.fetch,
       expect.objectContaining({
         pair: 'BTCUSDT',
         timeframe: '1h',
-        persist: false,
       }),
     );
+    expect(vi.mocked(collectMarketSnapshot)).not.toHaveBeenCalled();
   });
 
   it('returns success payload for public GET', async () => {
@@ -73,6 +82,9 @@ describe('/api/market/snapshot', () => {
     } as any);
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('x-wtd-plane')).toBe('fact');
+    expect(res.headers.get('x-wtd-upstream')).toBe('compatibility-bridge');
+    expect(res.headers.get('x-wtd-state')).toBe('adapter');
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.pair).toBe('BTCUSDT');
