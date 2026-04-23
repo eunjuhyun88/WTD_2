@@ -63,6 +63,48 @@ def _status_for_kind(kind: CaptureKind) -> str:
         return "pending_outcome"
     return "closed"
 
+class ResearchSourceBody(BaseModel):
+    kind: Literal["telegram_post", "chart_image", "manual_note", "terminal_capture"]
+    author: str | None = None
+    title: str | None = None
+    text: str | None = None
+    image_refs: list[str] = Field(default_factory=list, max_length=12)
+
+
+class ResearchPhaseAnnotationBody(BaseModel):
+    phase_id: str
+    label: str
+    timeframe: str
+    start_ts: int | None = None
+    end_ts: int | None = None
+    signals_required: list[str] = Field(default_factory=list, max_length=24)
+    signals_preferred: list[str] = Field(default_factory=list, max_length=24)
+    signals_forbidden: list[str] = Field(default_factory=list, max_length=24)
+    note: str | None = None
+
+
+class ResearchEntrySpecBody(BaseModel):
+    entry_phase_id: str
+    entry_trigger: str | None = None
+    stop_rule: str | None = None
+    target_rule: str | None = None
+
+
+class ResearchOutcomeSpecBody(BaseModel):
+    confirm_breakout_within_bars: int | None = None
+    min_forward_return_pct: float | None = None
+    stretch_return_pct: float | None = None
+
+
+class ResearchContextBody(BaseModel):
+    source: ResearchSourceBody | None = None
+    pattern_family: str
+    thesis: list[str] = Field(default_factory=list, max_length=12)
+    phase_annotations: list[ResearchPhaseAnnotationBody] = Field(default_factory=list, max_length=12)
+    entry_spec: ResearchEntrySpecBody | None = None
+    outcome_spec: ResearchOutcomeSpecBody | None = None
+    research_tags: list[str] = Field(default_factory=list, max_length=24)
+
 
 class CaptureCreateBody(BaseModel):
     capture_kind: CaptureKind = "pattern_candidate"
@@ -77,6 +119,7 @@ class CaptureCreateBody(BaseModel):
     scan_id: str | None = None
     user_note: str | None = None
     chart_context: dict[str, Any] = Field(default_factory=dict)
+    research_context: ResearchContextBody | None = None
     feature_snapshot: dict[str, Any] | None = None
     block_scores: dict[str, Any] = Field(default_factory=dict)
 
@@ -154,6 +197,7 @@ async def create_capture(body: CaptureCreateBody) -> dict:
         scan_id=body.scan_id or transition_defaults.get("scan_id"),
         user_note=body.user_note,
         chart_context=body.chart_context,
+        research_context=body.research_context.model_dump(mode="python") if body.research_context is not None else None,
         feature_snapshot=body.feature_snapshot if body.feature_snapshot is not None else transition_snapshot,
         block_scores=body.block_scores or transition_defaults.get("block_scores", {}),
         status=_status_for_kind(body.capture_kind),
@@ -177,6 +221,7 @@ class BulkImportRow(BaseModel):
     pattern_slug: str = ""
     phase: str = ""
     user_note: str | None = None
+    research_context: ResearchContextBody | None = None
     entry_price: float | None = Field(
         default=None,
         description="Optional hint. Resolver derives entry_price from OHLCV regardless.",
@@ -216,6 +261,7 @@ async def bulk_import_captures(body: BulkImportBody) -> dict:
             captured_at_ms=row.captured_at_ms,
             user_note=row.user_note,
             chart_context=chart_context,
+            research_context=row.research_context.model_dump(mode="python") if row.research_context is not None else None,
             status="pending_outcome",
         )
         _capture_store.save(record)

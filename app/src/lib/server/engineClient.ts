@@ -487,6 +487,7 @@ export const engine = {
     timeframe: string;
     user_note?: string;
     chart_context?: Record<string, unknown>;
+    research_context?: Record<string, unknown>;
   }): Promise<{ ok: boolean; capture: Record<string, unknown> }> {
     return call('POST', '/captures', body);
   },
