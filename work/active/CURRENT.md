@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`740c3be5` — current local `origin/main` ref after PR #210
+`27467919` — current local `origin/main` ref after PR #211
 
 ## 완료 (이번 세션)
 
@@ -27,6 +27,7 @@
 | #208 (W-0143) | canonical app-side `AgentContextPack` loader over fact/search/runtime plane clients |
 | #209 (W-0143) | DOUNI terminal message consumes bounded `AgentContextPack` through contextBuilder |
 | #210 (W-0143) | `intel-policy` consumes bounded `AgentContextPack` summary without changing scoring |
+| #211 (W-0139) | `TradeMode` recent saved captures read through runtime plane client |
 
 ---
 
@@ -98,9 +99,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0139-surface-closeout`
+- active on `codex/w-0139-trademode-market-clients`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: `TradeMode` recent saved captures read through `terminalBackend.fetchRecentCaptures()` backed by `/api/runtime/captures`
+- current slice: `TradeMode` confluence current/history reads move behind `terminalBackend` client helpers
 
 ---
 
@@ -124,7 +125,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `740c3be5` |
+| origin/main | — | local remote-tracking ref = `27467919` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -146,7 +147,8 @@
 | codex/w-0143-agent-route-migration | W-0143 | merged via PR #209 |
 | codex/w-0143-intel-policy-context | W-0143 | merged via PR #210 |
 | codex/w-0143-agent-search-integration | W-0143 | parked name; do not reuse unless a larger agent/search integration slice is needed |
-| codex/w-0139-surface-closeout | W-0139 | active surface slimming lane |
+| codex/w-0139-surface-closeout | W-0139 | merged via PR #211 |
+| codex/w-0139-trademode-market-clients | W-0139 | active surface market/confluence client slimming lane |
 
 ---
 
