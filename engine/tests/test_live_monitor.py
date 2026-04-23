@@ -14,6 +14,7 @@ from research.live_monitor import (
     scan_universe_live,
     scan_all_patterns_live,
     print_scan_report,
+    resolve_live_variant_slug,
     WATCH_PHASES,
 )
 
@@ -115,6 +116,81 @@ class TestScanUniverseLive:
         assert r.entry_hit is True
         assert r.fwd_peak_pct == 12.5
         assert r.is_entry_candidate is True
+
+    def test_defaults_to_cached_universe_when_universe_is_none(self, monkeypatch):
+        klines = self._make_klines()
+
+        from research import live_monitor
+        monkeypatch.setattr(live_monitor, "list_cached_symbols", lambda require_perp=False: ["AAAUSDT", "BBBUSDT"])
+        monkeypatch.setattr(live_monitor, "load_klines", lambda *a, **kw: klines)
+
+        from research.pattern_search import VariantCaseResult
+        dummy_result = VariantCaseResult(
+            case_id="x", symbol="AAAUSDT", role="holdout",
+            current_phase="REAL_DUMP",
+            observed_phase_path=["ARCH_ZONE", "REAL_DUMP"],
+            phase_fidelity=0.6, phase_depth_progress=0.4,
+            entry_hit=False, target_hit=False,
+            lead_bars=None, score=0.4,
+        )
+        monkeypatch.setattr(live_monitor, "evaluate_variant_on_case", lambda *a, **kw: dummy_result)
+
+        results = scan_universe_live(universe=None, log_to_experiment=False)
+
+        assert [result.symbol for result in results] == ["AAAUSDT", "BBBUSDT"]
+
+    def test_uses_latest_benchmark_search_winner_when_variant_is_auto(self, monkeypatch):
+        klines = self._make_klines()
+
+        from research import live_monitor
+        monkeypatch.setattr(live_monitor, "list_cached_symbols", lambda require_perp=False: ["AAAUSDT"])
+        monkeypatch.setattr(live_monitor, "load_klines", lambda *a, **kw: klines)
+
+        from research.pattern_search import VariantCaseResult
+        observed_variants: list[str] = []
+
+        class DummyArtifactStore:
+            def list(self, pattern_slug=None, limit=None):
+                return [{"winner_variant_slug": "tradoor-oi-reversal-v1__breakout-range-soft"}]
+
+        monkeypatch.setattr(live_monitor, "PatternSearchArtifactStore", lambda: DummyArtifactStore())
+        monkeypatch.setattr(live_monitor, "build_variant_pattern", lambda pattern_slug, variant: observed_variants.append(variant.variant_slug) or type("Pattern", (), {"phases": [], "entry_phase": "ACCUMULATION"})())
+        monkeypatch.setattr(
+            live_monitor,
+            "evaluate_variant_on_case",
+            lambda *a, **kw: VariantCaseResult(
+                case_id="x",
+                symbol="AAAUSDT",
+                role="holdout",
+                current_phase="ARCH_ZONE",
+                observed_phase_path=["ARCH_ZONE"],
+                phase_fidelity=0.2,
+                phase_depth_progress=0.2,
+                entry_hit=False,
+                target_hit=False,
+                lead_bars=None,
+                score=0.2,
+            ),
+        )
+
+        scan_universe_live(universe=None, variant_slug=None, log_to_experiment=False)
+
+        assert observed_variants == ["tradoor-oi-reversal-v1__breakout-range-soft"]
+
+
+class TestResolveLiveVariantSlug:
+    def test_prefers_requested_variant_over_artifacts(self):
+        assert resolve_live_variant_slug("tradoor-oi-reversal-v1", "explicit-variant") == "explicit-variant"
+
+    def test_falls_back_to_registry_when_no_artifacts_exist(self, monkeypatch):
+        from research import live_monitor
+
+        class EmptyArtifactStore:
+            def list(self, pattern_slug=None, limit=None):
+                return []
+
+        monkeypatch.setattr(live_monitor, "PatternSearchArtifactStore", lambda: EmptyArtifactStore())
+        assert resolve_live_variant_slug("tradoor-oi-reversal-v1") == "tradoor-oi-reversal-v1__canonical"
 
     def test_results_sorted_accumulation_first(self):
         results = [

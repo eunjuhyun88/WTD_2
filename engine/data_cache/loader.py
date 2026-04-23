@@ -97,6 +97,35 @@ def _find_existing_cache_path(filename: str) -> Path | None:
     return None
 
 
+def list_cached_symbols(*, require_perp: bool = False, timeframe: str = "1h") -> list[str]:
+    """Return symbols that already have cached market data.
+
+    Discovers symbols from the canonical cache search dirs. For now we only
+    inventory the 1h base cache because higher timeframes are derived from it.
+    """
+    tf_string_to_minutes(timeframe)
+    if timeframe != "1h":
+        raise ValueError("list_cached_symbols currently supports timeframe='1h' only")
+
+    symbols: set[str] = set()
+    perp_symbols: set[str] = set()
+    for base_dir in _cache_search_dirs():
+        if not base_dir.exists():
+            continue
+        for path in base_dir.glob("*_1h.csv"):
+            symbol = path.name.removesuffix("_1h.csv")
+            if symbol:
+                symbols.add(symbol)
+        for path in base_dir.glob("*_perp.csv"):
+            symbol = path.name.removesuffix("_perp.csv")
+            if symbol:
+                perp_symbols.add(symbol)
+    ordered = sorted(symbols)
+    if require_perp:
+        ordered = [symbol for symbol in ordered if symbol in perp_symbols]
+    return ordered
+
+
 def cache_path(symbol: str, timeframe: str) -> Path:
     """Return the CSV path for (symbol, timeframe) — does NOT check existence."""
     return _primary_cache_dir() / f"{symbol}_{timeframe}.csv"
