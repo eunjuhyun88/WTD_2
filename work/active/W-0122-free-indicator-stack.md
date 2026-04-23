@@ -480,22 +480,10 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **W-0122 는 terminal AI 의 fact-plane owner 다** — AI agent 와 scan/search 는 직접 CoinGecko/Dune/Etherscan/Solscan/TRONSCAN 을 부르지 않고, `/api/market/reference-stack`, `/api/market/chain-intel`, `/api/market/influencer-metrics`, `marketCapPlane` 같은 bounded read models 만 읽는다.
 - **`engine/market_engine/indicator_catalog.py` 는 W-0122 소유다** — 이 파일은 `W-0148` architecture lane 이 아니라 fact-plane mainline 에서 inventory route 와 함께 가져간다.
 - **market-cap cut 은 engine-preferred + app-fallback 으로 시작한다** — 현재 engine macro cache 는 `btc_dominance` 까지만 안정적으로 보장하므로, 첫 `GET /facts/market-cap` 는 partial truth 를 정직하게 내리고 `/api/market/macro-overview` 와 `/api/coingecko/global` 은 엔진 payload 가 충분하지 않을 때만 기존 app `marketCapPlane` 으로 떨어진다.
-<<<<<<< HEAD
-<<<<<<< HEAD
 - **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. public cutover 는 대체가 아니라 additive `factCoverage` adapter 로 시작한다.
 - **`/facts/chain-intel` 은 먼저 bounded engine landing zone 으로 연다** — app `/api/market/chain-intel` 의 live Solscan/TRONSCAN/Etherscan payload 를 즉시 대체하지 않고, engine cache/source state 를 읽는 compact fact route 를 `factCoverage` 로 붙인다.
-- **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — `codex/w-0122-market-cap-fact-cut` history 에 unrelated `W-0148` commit 이 섞였기 때문에, 현재 PR candidate 는 clean execution branch/worktree `codex/w-0122-consumer-fact-cut` 에서 이어간다.
-||||||| parent of c675ac74 (refactor(W-0122): prefer engine perp facts in events route)
+- **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — `codex/w-0122-market-cap-fact-cut` history 에 unrelated `W-0148` commit 이 섞였기 때문에, 현재 PR candidate 는 clean execution branch/worktree `codex/w-0122-consumer-fact-cut-v3` 에서 이어간다.
 
-=======
->>>>>>> c675ac74 (refactor(W-0122): prefer engine perp facts in events route)
-||||||| parent of 20a3de03 (refactor(W-0122): attach engine coverage to reference stack)
-- **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. 두 payload 는 의미가 달라서, explicit adapter 설계 전에는 단순 proxy cutover 를 금지한다.
-- **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — 현재 `codex/w-0122-market-cap-fact-cut` history 에는 unrelated `W-0148` commit 이 섞여 있으므로, PR 전에는 W-0122 commits 만 clean execution branch/worktree 로 추출한다.
-=======
-- **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. public cutover 는 대체가 아니라 additive `factCoverage` adapter 로 시작한다.
-- **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — 현재 `codex/w-0122-market-cap-fact-cut` history 에는 unrelated `W-0148` commit 이 섞여 있으므로, PR 전에는 W-0122 commits 만 clean execution branch/worktree 로 추출한다.
->>>>>>> 20a3de03 (refactor(W-0122): attach engine coverage to reference stack)
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
@@ -542,17 +530,8 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-<<<<<<< HEAD
-- branch/worktree state: `codex/w-0122-consumer-fact-cut`, PR candidate extracted into `/private/tmp/wtd-v2-w0122-consumer-cut`
-- verification status: engine `pytest tests/test_facts_route.py -q` = `11 passed`; app targeted `vitest` (`planeClients`, `reference-stack`, `chain-intel`, `intel-policy`, `events`, `flow`, `macro-overview`, `coingecko/global`) = `18 passed`; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
-||||||| parent of 20a3de03 (refactor(W-0122): attach engine coverage to reference stack)
-- branch/worktree state: `codex/w-0122-market-cap-fact-cut`, clean after `e5f80a6a`
-- verification status: app targeted `vitest` (`events`, `intel-policy`, `flow`, `macro-overview`, `coingecko/global`, `planeClients`) passed across the last slices; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
-- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, `reference-stack` contract mismatch
-=======
-- branch/worktree state: `codex/w-0122-market-cap-fact-cut`, clean after `e5f80a6a`
-- verification status: app targeted `vitest` (`events`, `intel-policy`, `reference-stack`, `flow`, `macro-overview`, `coingecko/global`, `planeClients`) passed across the last slices; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
->>>>>>> 20a3de03 (refactor(W-0122): attach engine coverage to reference stack)
+- branch/worktree state: `codex/w-0122-consumer-fact-cut-v3`, clean execution branch at `/private/tmp/wtd-v2-w0122-consumer-clean`
+- verification status: targeted `vitest` (`planeClients`, `intel-policy`) passed in the clean worktree; `svelte-check` passed with `0 errors` and pre-existing warnings only
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
 
 ## PR Trail
