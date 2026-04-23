@@ -598,12 +598,6 @@
     if (v == null || v === 0) return '—';
     return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v.toFixed(4);
   }
-  function _pctDiff(a: number | undefined, b: number | undefined): string {
-    if (a == null || b == null || a === 0) return '';
-    const d = ((b - a) / a) * 100;
-    return `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`;
-  }
-
   // ── Confidence ───────────────────────────────────────────────────────────
   const confidence = $derived(
     analyzeData?.entryPlan?.confidencePct ??
@@ -613,55 +607,55 @@
   const fmtConf        = $derived(confidence != null ? `${Math.round(confidence)}` : '—');
   const confidenceAlpha = $derived(confidence != null ? `α${Math.round(confidence)}` : 'α—');
 
-  // ── Evidence items — derived from live analyze data ───────────────────
-  const evidenceItems = $derived((() => {
-    const snap = analyzeData?.snapshot;
-    const flow = analyzeData?.flowSummary;
-    if (!snap && !flow) return [
-      { k: 'OI 4H',       v: '+18.2%',         note: 'real_dump 확증', pos: true  },
-      { k: 'Funding',     v: '+0.018 → −0.004', note: '플립 완료',     pos: true  },
-      { k: 'CVD 15m',     v: '양전환',           note: '기관 매집',     pos: true  },
-      { k: '번지대',       v: '3h 12m',          note: '기준 만족',     pos: true  },
-      { k: 'Higher-lows', v: '5/5 bars',         note: 'accum 무결',   pos: true  },
-      { k: 'BTC regime',  v: 'RANGE',            note: 'ADX 낮음',     pos: false },
-    ];
-    const items: { k: string; v: string; note: string; pos: boolean }[] = [];
-    if (snap?.oi_change_1h != null) {
-      const oi = snap.oi_change_1h;
-      items.push({ k: 'OI 1h', v: `${oi >= 0 ? '+' : ''}${(oi * 100).toFixed(1)}%`, note: flow?.oi ?? '', pos: oi > 0.02 });
-    }
-    if (snap?.funding_rate != null) {
-      const fr = snap.funding_rate;
-      items.push({ k: 'Funding', v: `${fr >= 0 ? '+' : ''}${(fr * 100).toFixed(4)}%`, note: flow?.funding ?? '', pos: fr < 0 });
-    }
-    if (snap?.cvd_state) {
-      items.push({ k: 'CVD', v: snap.cvd_state, note: flow?.cvd ?? '', pos: /positive|양|bull/i.test(snap.cvd_state) });
-    }
-    if (snap?.regime) {
-      items.push({ k: 'BTC 레짐', v: snap.regime, note: '', pos: snap.regime === 'BULL' });
-    }
-    if (snap?.vol_ratio_3 != null) {
-      items.push({ k: 'Vol 3x', v: `${snap.vol_ratio_3.toFixed(2)}x`, note: '', pos: snap.vol_ratio_3 > 1.5 });
-    }
-    return items.length > 0 ? items : [{ k: '분석 중', v: '...', note: '', pos: true }];
-  })());
+  const evidenceStudyIds = $derived(
+    workspaceEnvelope.sections.find((section) => section.id === 'evidence-log')?.studyIds ?? []
+  );
+  const executionStudy = $derived(workspaceStudyMap.execution ?? null);
 
-  // ── Proposal — derived from entryPlan ────────────────────────────────
-  const proposal = $derived((() => {
-    const ep = analyzeData?.entryPlan;
-    if (!ep) return [
-      { label: 'ENTRY',  val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
-      { label: 'STOP',   val: '—', hint: '', tone: 'neg' as '' | 'neg' | 'pos' },
-      { label: 'TARGET', val: '—', hint: '', tone: 'pos' as '' | 'neg' | 'pos' },
-      { label: 'R:R',    val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
-    ];
-    return [
-      { label: 'ENTRY',  val: _fmtNum(ep.entry),                               hint: 'ATR level',                              tone: '' as '' | 'neg' | 'pos' },
-      { label: 'STOP',   val: _fmtNum(ep.stop),                                hint: _pctDiff(ep.entry, ep.stop),              tone: 'neg' as '' | 'neg' | 'pos' },
-      { label: 'TARGET', val: _fmtNum(ep.targets?.[0]?.price),                 hint: _pctDiff(ep.entry, ep.targets?.[0]?.price), tone: 'pos' as '' | 'neg' | 'pos' },
-      { label: 'R:R',    val: ep.riskReward != null ? `${ep.riskReward.toFixed(1)}x` : '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
-    ];
-  })());
+  // ── Evidence items — workspace study summaries for the evidence section ──
+  const evidenceItems = $derived.by(() => {
+    const items = evidenceStudyIds
+      .flatMap((id) => {
+        const study = workspaceStudyMap[id];
+        if (!study) return [];
+        return study.summary
+          .filter((row) => row.value != null && row.value !== '')
+          .slice(0, 2)
+          .map((row) => ({
+            k: row.label,
+            v: String(row.value ?? '—'),
+            note: row.note ?? study.title,
+            pos: row.tone !== 'bear' && row.tone !== 'warn',
+          }));
+      })
+      .slice(0, 6);
+
+    return items.length > 0 ? items : [{ k: '분석 중', v: '...', note: '', pos: true }];
+  });
+
+  // ── Proposal — execution study summary for the execution board ─────────
+  const proposal = $derived.by(() => {
+    if (!executionStudy) {
+      return [
+        { label: 'ENTRY',  val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+        { label: 'STOP',   val: '—', hint: '', tone: 'neg' as '' | 'neg' | 'pos' },
+        { label: 'TARGET', val: '—', hint: '', tone: 'pos' as '' | 'neg' | 'pos' },
+        { label: 'R:R',    val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+      ];
+    }
+
+    return executionStudy.summary.map((row) => ({
+      label: row.label.toUpperCase(),
+      val: String(row.value ?? '—'),
+      hint: row.note ?? '',
+      tone:
+        row.tone === 'bull'
+          ? ('pos' as const)
+          : row.tone === 'bear'
+            ? ('neg' as const)
+            : ('' as const),
+    }));
+  });
 
   // ── Judge plan (for inline judge sections across all layouts) ─────────
   const judgePlan = $derived((() => {
@@ -680,13 +674,22 @@
     analyzeData?.riskPlan?.bias?.includes('bear') ? '숏' : '롱'
   );
   const narrativeBias = $derived(
-    analyzeData?.riskPlan?.bias ??
-    analyzeData?.ensemble?.reason ??
-    analyzeData?.deep?.verdict ??
-    null
+    workspaceEnvelope.aiContext.thesis ?? null
   );
   const evidencePos = $derived(evidenceItems.filter(e => e.pos).length);
   const evidenceNeg = $derived(evidenceItems.filter(e => !e.pos).length);
+
+  const analyzeDetailDirection = $derived.by(() => {
+    const thesis = workspaceEnvelope.aiContext.thesis?.toLowerCase() ?? '';
+    const direction = analyzeData?.ensemble?.direction?.toLowerCase() ?? '';
+    return direction.includes('short') || thesis.includes('short') || thesis.includes('bear') ? '숏' : '롱';
+  });
+  const analyzeDetailThesis = $derived(
+    workspaceEnvelope.aiContext.thesis ??
+      narrativeBias ??
+      '분석 완료'
+  );
+  const analyzeDetailWarnings = $derived(workspaceEnvelope.aiContext.warnings ?? []);
 
   // ── RR bar widths ─────────────────────────────────────────────────────
   const rrLossPct = $derived((() => {
@@ -1095,10 +1098,14 @@
                       <span class="analyze-section-copy">오른쪽 HUD가 아니라 실제 해석 근거를 읽는 상세 패널</span>
                     </div>
                     <div class="narrative">
-                      <span class="bull">{narrativeDir} 진입 권장 ·</span>
-                      {' '}{narrativeBias ?? '분석 완료'}
-                      {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-                        {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+                      <span class="bull">{analyzeDetailDirection} 진입 권장 ·</span>
+                      {' '}{analyzeDetailThesis}
+                      {#if analyzeDetailWarnings.length > 0}
+                        <div class="analyze-warning-list">
+                          {#each analyzeDetailWarnings as warning}
+                            <span class="warn">{warning}</span>
+                          {/each}
+                        </div>
                       {/if}
                     </div>
                   </div>
@@ -1131,7 +1138,7 @@
                       <span class="analyze-section-copy">판단에 사용한 근거 항목을 빠르게 확인</span>
                     </div>
                     <div class="evidence-grid">
-                      {#each evidenceItems as item}
+                      {#each analyzeEvidenceItems as item}
                         <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
                           <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
                           <span class="ev-key">{item.k}</span>
@@ -1155,7 +1162,7 @@
                       </div>
                     {/if}
                     <div class="proposal-label">PROPOSAL</div>
-                    {#each proposal as p}
+                    {#each analyzeExecutionProposal as p}
                       <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
                         <span class="prop-l">{p.label}</span>
                         <span class="prop-v">{p.val}</span>
@@ -2219,6 +2226,12 @@
     border-radius: 2px;
   }
   .narrative strong { color: var(--g9); }
+  .analyze-warning-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
   .narrative .warn {
     color: var(--amb);
     background: var(--amb-dd);
