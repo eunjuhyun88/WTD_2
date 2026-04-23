@@ -50,6 +50,39 @@ describe('engine plane clients', () => {
 					timeframe: '4h',
 				});
 			}
+			if (url.startsWith('/api/facts/reference-stack')) {
+				return Response.json({
+					ok: true,
+					owner: 'engine',
+					plane: 'fact',
+					kind: 'reference_stack',
+					status: 'transitional',
+					generated_at: '2026-04-23T00:00:00Z',
+					symbol: 'ETHUSDT',
+					timeframe: '4h',
+					sources: [{ id: 'klines', state: 'live', rows: 600, summary: '600 rows' }],
+					coverage: { usable_now: 68, coverage_pct: 68 },
+				});
+			}
+			if (url.startsWith('/api/facts/chain-intel')) {
+			if (url.startsWith('/api/facts/chain-intel')) {
+				return Response.json({
+					ok: true,
+					owner: 'engine',
+					plane: 'fact',
+					kind: 'chain_intel',
+					status: 'transitional',
+					generated_at: '2026-04-23T00:00:00Z',
+					symbol: 'ETHUSDT',
+					timeframe: '4h',
+					chain: 'base',
+					family: 'evm',
+					provider_state: {
+						chain_bundle: { status: 'blocked', summary: 'no rows', updated_at: null },
+					},
+					summary: 'base chain bundle: no rows',
+				});
+			}
 			if (url.startsWith('/api/facts/perp-context')) {
 				return Response.json({
 					ok: true,
@@ -86,6 +119,18 @@ describe('engine plane clients', () => {
 			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
+		const chainIntel = await fetchFactChainIntelProxy(fetchMock as typeof fetch, {
+		const chainIntel = await fetchFactChainIntelProxy(fetchMock as typeof fetch, {
+			symbol: 'ETHUSDT',
+			chain: 'base',
+			family: 'evm',
+			timeframe: '4h',
+		});
+		const perp = await fetchPerpContextProxy(fetchMock as typeof fetch, {
+			symbol: 'ETHUSDT',
+			timeframe: '4h',
+		});
+		const marketCap = await fetchFactMarketCapProxy(fetchMock as typeof fetch);
 		const catalog = await fetchIndicatorCatalogProxy(fetchMock as typeof fetch, {
 			stage: 'promoted',
 			family: 'technical',
@@ -103,10 +148,21 @@ describe('engine plane clients', () => {
 		);
 		const thirdUrl = String(fetchMock.mock.calls[2]?.[0]);
 		const thirdInit = fetchMock.mock.calls[2]?.[1] as RequestInit | undefined;
-		expect(thirdUrl.startsWith('/api/facts/indicator-catalog?')).toBe(true);
-		expect(thirdUrl).toContain('family=technical');
-		expect(thirdUrl).toContain('stage=promoted');
-		expect(thirdInit).toEqual(
+		const fourthUrl = String(fetchMock.mock.calls[3]?.[0]);
+		const fourthInit = fetchMock.mock.calls[3]?.[1] as RequestInit | undefined;
+		const fifthUrl = String(fetchMock.mock.calls[4]?.[0]);
+		const fifthInit = fetchMock.mock.calls[4]?.[1] as RequestInit | undefined;
+		const sixthUrl = String(fetchMock.mock.calls[5]?.[0]);
+		const sixthUrl = String(fetchMock.mock.calls[5]?.[0]);
+		const sixthInit = fetchMock.mock.calls[5]?.[1] as RequestInit | undefined;
+		expect(secondUrl).toBe('/api/facts/reference-stack?symbol=ETHUSDT&timeframe=4h&offline=true');
+		expect(thirdUrl).toBe('/api/facts/chain-intel?symbol=ETHUSDT&chain=base&family=evm&timeframe=4h&offline=true');
+		expect(fourthUrl).toBe('/api/facts/perp-context?symbol=ETHUSDT&timeframe=4h&offline=true');
+		expect(fifthUrl).toBe('/api/facts/market-cap?offline=true');
+		expect(sixthUrl.startsWith('/api/facts/indicator-catalog?')).toBe(true);
+		expect(sixthUrl).toContain('family=technical');
+		expect(sixthUrl).toContain('stage=promoted');
+		expect(secondInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
 		expect(thirdInit).toEqual(
@@ -118,6 +174,7 @@ describe('engine plane clients', () => {
 		expect(fifthInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
+		expect(sixthInit).toEqual(
 		expect(sixthInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
