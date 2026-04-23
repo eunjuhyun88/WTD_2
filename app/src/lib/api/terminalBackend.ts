@@ -8,6 +8,16 @@ import type {
 import type { ConfluenceResult } from '$lib/confluence/types';
 import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
 import type { CaptureRecord, RuntimeCaptureListResponse } from '$lib/contracts/runtime/captures';
+import type {
+  FundingFlipPayload,
+  FundingHistoryPayload,
+  IndicatorContextPayload,
+  LiqClusterPayload,
+  OptionsSnapshotPayload,
+  RvConePayload,
+  SsrPayload,
+  VenueDivergencePayload,
+} from '$lib/indicators/adapter';
 import {
   fromEngineMemoryQueryWire,
   toEngineMemoryDebugSessionWire,
@@ -171,6 +181,54 @@ export async function fetchConfluenceHistory(symbol: string, limit = 96): Promis
   if (!res.ok) return [];
   const payload = await readJson<{ entries?: ConfluenceHistoryEntry[] }>(res);
   return Array.isArray(payload?.entries) ? payload.entries : [];
+}
+
+export async function fetchVenueDivergence(symbol: string): Promise<VenueDivergencePayload | null> {
+  const res = await fetch(`/api/market/venue-divergence?symbol=${encodeURIComponent(symbol)}`);
+  if (!res.ok) return null;
+  return await readJson<VenueDivergencePayload>(res);
+}
+
+export async function fetchLiqClusters(symbol: string, window = '4h'): Promise<LiqClusterPayload | null> {
+  const res = await fetch(`/api/market/liq-clusters?symbol=${encodeURIComponent(symbol)}&window=${encodeURIComponent(window)}`);
+  if (!res.ok) return null;
+  return await readJson<LiqClusterPayload>(res);
+}
+
+export async function fetchIndicatorContext(symbol: string): Promise<IndicatorContextPayload | null> {
+  const res = await fetch(`/api/market/indicator-context?symbol=${encodeURIComponent(symbol)}`);
+  if (!res.ok) return null;
+  return await readJson<IndicatorContextPayload>(res);
+}
+
+export async function fetchSsr(): Promise<SsrPayload | null> {
+  const res = await fetch('/api/market/stablecoin-ssr');
+  if (!res.ok) return null;
+  return await readJson<SsrPayload>(res);
+}
+
+export async function fetchRvCone(symbol: string): Promise<RvConePayload | null> {
+  const res = await fetch(`/api/market/rv-cone?symbol=${encodeURIComponent(symbol)}`);
+  if (!res.ok) return null;
+  return await readJson<RvConePayload>(res);
+}
+
+export async function fetchFundingFlip(symbol: string): Promise<FundingFlipPayload | null> {
+  const res = await fetch(`/api/market/funding-flip?symbol=${encodeURIComponent(symbol)}`);
+  if (!res.ok) return null;
+  return await readJson<FundingFlipPayload>(res);
+}
+
+export async function fetchFundingHistory(symbol: string, limit = 270): Promise<FundingHistoryPayload | null> {
+  const res = await fetch(`/api/market/funding?symbol=${encodeURIComponent(symbol)}&limit=${limit}`);
+  if (!res.ok) return null;
+  return await readJson<FundingHistoryPayload>(res);
+}
+
+export async function fetchOptionsSnapshot(currency: string): Promise<OptionsSnapshotPayload | null> {
+  const res = await fetch(`/api/market/options-snapshot?currency=${encodeURIComponent(currency)}`);
+  if (!res.ok) return null;
+  return await readJson<OptionsSnapshotPayload>(res);
 }
 
 export type MemoryRerankRecord = MemoryQueryResponse['records'][number];

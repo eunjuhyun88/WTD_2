@@ -4,7 +4,15 @@
     fetchAnalyzeAndChart,
     fetchConfluenceCurrent,
     fetchConfluenceHistory,
+    fetchFundingFlip,
+    fetchFundingHistory,
+    fetchIndicatorContext,
+    fetchLiqClusters,
+    fetchOptionsSnapshot,
     fetchRecentCaptures,
+    fetchRvCone,
+    fetchSsr,
+    fetchVenueDivergence,
     type ConfluenceHistoryEntry,
     type RecentCaptureSummary,
   } from '$lib/api/terminalBackend';
@@ -103,9 +111,7 @@
 
   async function refreshVenueDivergence() {
     try {
-      const res = await fetch(`/api/market/venue-divergence?symbol=${symbol}`);
-      if (!res.ok) return;
-      venueDivergence = (await res.json()) as VenueDivergencePayload;
+      venueDivergence = await fetchVenueDivergence(symbol);
     } catch { /* tolerate: next refresh will retry */ }
   }
 
@@ -114,9 +120,7 @@
 
   async function refreshLiqClusters() {
     try {
-      const res = await fetch(`/api/market/liq-clusters?symbol=${symbol}&window=4h`);
-      if (!res.ok) return;
-      liqClusters = (await res.json()) as LiqClusterPayload;
+      liqClusters = await fetchLiqClusters(symbol, '4h');
     } catch { /* tolerate */ }
   }
 
@@ -127,9 +131,7 @@
 
   async function refreshIndicatorContext() {
     try {
-      const res = await fetch(`/api/market/indicator-context?symbol=${symbol}`);
-      if (!res.ok) return;
-      indicatorContext = (await res.json()) as IndicatorContextPayload;
+      indicatorContext = await fetchIndicatorContext(symbol);
     } catch { /* tolerate */ }
   }
 
@@ -140,25 +142,19 @@
 
   async function refreshSsr() {
     try {
-      const res = await fetch(`/api/market/stablecoin-ssr`);
-      if (!res.ok) return;
-      ssr = (await res.json()) as SsrPayload;
+      ssr = await fetchSsr();
     } catch { /* tolerate */ }
   }
 
   async function refreshRvCone() {
     try {
-      const res = await fetch(`/api/market/rv-cone?symbol=${symbol}`);
-      if (!res.ok) return;
-      rvCone = (await res.json()) as RvConePayload;
+      rvCone = await fetchRvCone(symbol);
     } catch { /* tolerate */ }
   }
 
   async function refreshFundingFlip() {
     try {
-      const res = await fetch(`/api/market/funding-flip?symbol=${symbol}`);
-      if (!res.ok) return;
-      fundingFlip = (await res.json()) as FundingFlipPayload;
+      fundingFlip = await fetchFundingFlip(symbol);
     } catch { /* tolerate */ }
   }
 
@@ -167,10 +163,7 @@
 
   async function refreshFundingHistory() {
     try {
-      const res = await fetch(`/api/market/funding?symbol=${symbol}&limit=270`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { symbol: string; bars: { t: number; delta: number }[] };
-      fundingHistory = data;
+      fundingHistory = await fetchFundingHistory(symbol, 270);
     } catch { /* tolerate */ }
   }
 
@@ -191,9 +184,7 @@
     const currency = symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : null;
     if (!currency) { optionsSnapshot = null; return; }
     try {
-      const res = await fetch(`/api/market/options-snapshot?currency=${currency}`);
-      if (!res.ok) return;
-      optionsSnapshot = (await res.json()) as OptionsSnapshotPayload;
+      optionsSnapshot = await fetchOptionsSnapshot(currency);
     } catch { /* tolerate */ }
   }
 
