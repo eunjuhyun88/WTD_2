@@ -6,6 +6,7 @@ import { readRaw } from '$lib/server/providers/rawSources';
 import { KnownRawId } from '$lib/contracts/ids';
 import { fetchDerivatives, normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { fetchCoinMarketCapQuote, hasCoinMarketCapApiKey } from '$lib/server/coinmarketcap';
+import { fetchPerpContextProxy } from '$lib/server/enginePlanes/facts';
 
 function pickBias(funding: number | null, lsRatio: number | null, liqLong: number, liqShort: number): 'LONG' | 'SHORT' | 'NEUTRAL' {
   let score = 0;
@@ -17,6 +18,15 @@ function pickBias(funding: number | null, lsRatio: number | null, liqLong: numbe
   return 'NEUTRAL';
 }
 
+type FlowDerivativesView = {
+  funding: number | null;
+  lsRatio: number | null;
+  oi: number | null;
+  liqLong24h: number;
+  liqShort24h: number;
+  updatedAt: number;
+};
+
 export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
   if (!terminalReadLimiter.check(getClientAddress())) {
     return json({ error: 'Too many requests' }, { status: 429 });
@@ -26,15 +36,28 @@ export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
     const timeframe = normalizeTimeframe(url.searchParams.get('timeframe'));
     const token = pair.split('/')[0];
 
-    const [tickerRes, derivRes, cmcRes] = await Promise.allSettled([
+    const [tickerRes, enginePerpRes, derivRes, cmcRes] = await Promise.allSettled([
       readRaw(KnownRawId.TICKER_24HR, { symbol: pairToSymbol(pair) }),
+      fetchPerpContextProxy(fetch, { symbol: pairToSymbol(pair), timeframe, offline: true }),
       fetchDerivatives(fetch, pair, timeframe),
       fetchCoinMarketCapQuote(token),
     ]);
 
     const ticker = tickerRes.status === 'fulfilled' ? tickerRes.value : null;
-    const deriv = derivRes.status === 'fulfilled' ? derivRes.value : null;
+    const enginePerp = enginePerpRes.status === 'fulfilled' ? enginePerpRes.value : null;
+    const legacyDeriv = derivRes.status === 'fulfilled' ? derivRes.value : null;
     const cmc = cmcRes.status === 'fulfilled' ? cmcRes.value : null;
+    const deriv: FlowDerivativesView | null =
+      enginePerp || legacyDeriv
+        ? {
+            funding: enginePerp?.metrics.funding_rate ?? legacyDeriv?.funding ?? null,
+            lsRatio: enginePerp?.metrics.long_short_ratio ?? legacyDeriv?.lsRatio ?? null,
+            oi: legacyDeriv?.oi ?? null,
+            liqLong24h: legacyDeriv?.liqLong24h ?? 0,
+            liqShort24h: legacyDeriv?.liqShort24h ?? 0,
+            updatedAt: legacyDeriv?.updatedAt ?? Date.now(),
+          }
+        : null;
 
     const bias = pickBias(
       deriv?.funding ?? null,
@@ -76,7 +99,7 @@ export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
           snapshot: {
             source: {
               binance: Boolean(ticker),
-              coinalyze: Boolean(deriv),
+              coinalyze: Boolean(enginePerp ?? legacyDeriv),
               coinmarketcap: Boolean(cmc),
             },
             priceChangePct: ticker ? Number(ticker.priceChangePercent) : null,
@@ -98,6 +121,13 @@ export const GET: RequestHandler = async ({ fetch, url, getClientAddress }) => {
       {
         headers: {
           'Cache-Control': 'public, max-age=15',
+          'X-WTD-Plane': 'fact',
+          'X-WTD-Upstream': enginePerp
+            ? legacyDeriv
+              ? 'facts/perp-context+legacy-enrichment'
+              : 'facts/perp-context'
+            : 'legacy-compute',
+          'X-WTD-State': enginePerp ? 'adapter' : 'fallback',
         },
       }
     );
