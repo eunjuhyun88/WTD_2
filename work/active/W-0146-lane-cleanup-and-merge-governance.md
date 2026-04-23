@@ -58,6 +58,42 @@ Research or eval change
 - priority is determined by architecture leverage and fan-out reduction, not by which branch already exists.
 - `codex/w-0122-fact-plane-mainline` is the only branch that should receive new work immediately.
 - no direct merge to `main` is authorized from the parking or mixed-stack branches.
+- do **not** start with a repo-wide refactor. Start with a bounded architecture audit of the terminal AI / scan vertical slice, freeze contracts, then extract modules one plane at a time.
+
+## Architecture Diagnosis
+
+1. current surface ownership is too fat: `/terminal/+page.svelte` is a large orchestration component that mixes UI state, fetch scheduling, SSE AI flow, persistence, and scan actions.
+2. current app-side server layer is also too fat: `scanEngine.ts` mixes provider fetch, cache, scoring, summarization, and response shaping in one module.
+3. `marketDataService.ts` is acceptable as a raw adapter bag, but only if all product logic moves out of it and callers stop composing business truth ad hoc.
+4. `terminalParity.ts` is a good direction for read-model composition, but it still derives product semantics in the app layer instead of consuming a stricter fact/search contract.
+5. parked `seed_search.py` is powerful but too broad; it combines persistence, retrieval, ranking, and promotion logic in one runtime path, so it needs search-plane extraction rather than more feature accretion.
+
+## Refactor Posture
+
+- first: architecture map and contract freeze
+- second: strangler extraction by plane
+- third: delete/retire old call paths only after new paths are verified
+
+This means:
+
+- no blind rename/move cleanup
+- no whole-repo “clean code” pass
+- no new surface feature work until fact/search boundaries stop leaking
+
+## Immediate Architecture Audit Scope
+
+Audit only these verticals:
+
+1. raw data ingress
+   - providers, quotas, degraded states
+2. fact composition
+   - market/reference/intel/macro read models
+3. search composition
+   - seed-search, pattern catalog, corpus, scan results
+4. AI context assembly
+   - what facts/search results become `agentContext`
+5. surface consumption
+   - terminal page, save/setup, compare/pin
 
 ## Lane Assessment
 

@@ -25,6 +25,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | CTO inventory + merge queue + canonical data-engine reset + first fact-plane refactor slice |
 | **W-0146** | `W-0146-lane-cleanup-and-merge-governance.md` | 🔴 IN-PROGRESS | branch/function audit + merge-now / split-next / park-only queue |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact-plane cleanup: reference stack + chain intel + influencer metrics + marketCapPlane |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | scheduler-driven corpus accumulation + seed-search corpus-first retrieval |
@@ -77,14 +78,15 @@
 
 ## 즉시 실행 순서
 
-1. **W-0146 / C0** — lane cleanup / merge governance audit
-2. **W-0122 / C1** — fact-plane cleanup: reference stack + chain-intel + influencer metrics + market-cap canonical routes
-3. **W-0145 / C2** — scheduler-driven operational seed-search corpus store + retrieval bridge
-4. **W-0142 / C3** — engine `research_context` capture contract commit split
-5. **W-0143 / C4** — seed-search/catalog/replay follow-up + compare/pin persistence planning
-6. **W-0144 / C5** — remaining commit/merge order governance + test isolation follow-up
-7. **W-0139 / C6** — terminal surface scoped commit/PR 정리
-8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+1. **W-0148 / C0** — CTO reset: inventory current planes, define merge queue, open canonical engine fact-context route
+2. **W-0146 / C1** — lane cleanup / merge governance audit
+3. **W-0122 / C2** — fact-plane cleanup: reference stack + chain-intel + influencer metrics + market-cap canonical routes
+4. **W-0145 / C3** — scheduler-driven operational seed-search corpus store + retrieval bridge
+5. **W-0142 / C4** — engine `research_context` capture contract commit split
+6. **W-0143 / C5** — seed-search/catalog/replay follow-up + compare/pin persistence planning
+7. **W-0144 / C6** — remaining commit/merge order governance + test isolation follow-up
+8. **W-0139 / C7** — terminal surface scoped commit/PR 정리
+9. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
@@ -93,6 +95,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | 최신 (`9bbc10ba`) |
+| codex/w-0148-data-engine-reset | W-0148 | active CTO reset lane; bounded engine fact-context route + merge queue |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/parking-20260423-mixed-lanes | parking | mixed dirty snapshot preserved (`8e394414`, `b11c7bd4`) |
 | codex/stack-20260423-mixed-terminal-stack | parking | stacked local commit history before cleanup split |
