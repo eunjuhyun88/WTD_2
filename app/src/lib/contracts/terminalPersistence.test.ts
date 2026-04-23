@@ -123,6 +123,19 @@ describe('terminalPersistence contract', () => {
           patternSlug: 'tradoor-v1',
           snapshot: { price: 102100.4, change24h: 1.2, funding: 0.01, oiDelta: 4.2 },
           decision: { verdict: 'bullish', action: 'wait pullback', confidence: 0.67 },
+          researchContext: {
+            patternFamily: 'tradoor_ptb_oi_reversal',
+            thesis: ['second dump + oi spike', '15m rising lows'],
+            phaseAnnotations: [
+              {
+                phaseId: 'real_dump',
+                label: 'second dump',
+                timeframe: '15m',
+                signalsRequired: ['price_dump', 'oi_spike_with_dump'],
+              },
+            ],
+            researchTags: ['second_dump', 'oi_reexpand'],
+          },
           sourceFreshness: { market: 'recent' },
           createdAt: '2026-04-15T10:00:00+00:00',
           updatedAt: '2026-04-15T10:00:00+00:00',
@@ -131,5 +144,6 @@ describe('terminalPersistence contract', () => {
       updatedAt: '2026-04-15T10:00:00+00:00',
     });
     expect(parsed.records[0]?.triggerOrigin).toBe('manual');
+    expect(parsed.records[0]?.researchContext?.patternFamily).toBe('tradoor_ptb_oi_reversal');
   });
 });
