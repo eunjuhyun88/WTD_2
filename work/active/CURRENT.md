@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`202efb9d` — current local `origin/main` ref after PR #207
+`3a81957c` — current local `origin/main` ref after PR #208
 
 ## 완료 (이번 세션)
 
@@ -24,6 +24,7 @@
 | #205 (W-0145) | app search contracts aligned with canonical engine search payloads |
 | #206 (W-0142) | runtime state route skeleton for captures, workspace pins, setups, research contexts, and ledger |
 | #207 (W-0142) | app pattern captures routed through the runtime plane with degraded fallback |
+| #208 (W-0143) | canonical app-side `AgentContextPack` loader over fact/search/runtime plane clients |
 
 ---
 
@@ -95,9 +96,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0143-agent-context-pack`
+- active on `codex/w-0143-agent-route-migration`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: Agent Context Pack loader; bounded `facts + search + runtime` summary for AI-facing routes
+- current slice: DOUNI terminal message consumes bounded `AgentContextPack` through contextBuilder without changing SSE output shape
 
 ---
 
@@ -121,7 +122,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `202efb9d` |
+| origin/main | — | local remote-tracking ref = `3a81957c` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -139,8 +140,9 @@
 | codex/w-0145-search-proxy-client | W-0145 | merged via PR #205 |
 | codex/w-0142-runtime-routes | W-0142 | merged via PR #206 |
 | codex/w-0142-runtime-contracts | W-0142 | merged via PR #207 |
-| codex/w-0143-agent-context-pack | W-0143 | active AgentContextPack loader slice |
-| codex/w-0143-agent-search-integration | W-0143 | planned route migration follow-up |
+| codex/w-0143-agent-context-pack | W-0143 | merged via PR #208 |
+| codex/w-0143-agent-route-migration | W-0143 | active DOUNI message route migration |
+| codex/w-0143-agent-search-integration | W-0143 | planned `intel-policy` migration follow-up |
 | codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
 ---

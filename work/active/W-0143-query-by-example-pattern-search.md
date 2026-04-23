@@ -14,13 +14,12 @@ Contract change
 
 ## Scope
 
-- Define the app-side `AgentContextPack` loader and compact runtime summary.
-- Keep the loader behind existing plane proxy clients for facts, search, and runtime.
-- Prepare terminal AI and intel routes for migration without changing the public SSE/API shapes in the first slice.
+- Maintain the app-side `AgentContextPack` loader and compact runtime summary.
+- Keep agent routes behind existing plane proxy clients for facts, search, and runtime.
+- Migrate AI-facing routes without changing public SSE/API shapes.
 
 ## Non-Goals
 
-- Rewrite the DOUNI terminal SSE route in the first slice.
 - Add new engine routes.
 - Move surface compare/pin UX.
 - Add broad retrieval or new provider integrations.
@@ -42,18 +41,17 @@ Contract change
 1. Fact routes now expose canonical `/ctx/fact` and `/facts/*` payloads through app plane proxies.
 2. Search routes now expose canonical `/search/catalog`, `/search/scan`, and `/search/seed` payloads through app plane proxies.
 3. Runtime routes now expose captures and other workflow projections through app plane proxies.
-4. `AgentContextPack` exists as a contract skeleton but has no canonical server loader yet.
-5. Terminal AI routes still assemble context route-by-route and can drift back into surface-owned joins.
+4. PR #208 added the canonical app-side `AgentContextPack` loader and tests.
+5. DOUNI terminal message now has the first route-level integration point for the bounded pack.
 
 ## Assumptions
 
-1. The first implementation slice should be loader-only plus tests, then route migration in a follow-up commit.
-2. Runtime summaries should include compact identifiers and notes, not raw chart context or full OHLCV.
-3. Existing terminal route response shapes must remain stable until the surface closeout lane.
+1. Runtime summaries should include compact identifiers and notes, not raw chart context or full OHLCV.
+2. Existing terminal route response shapes must remain stable until the surface closeout lane.
 
 ## Open Questions
 
-- Which terminal route should migrate first after the loader lands: DOUNI message SSE or `intel-policy`?
+- Whether `intel-policy` should consume the full `AgentContextPack` or only the fact/runtime evidence section.
 
 ## Decisions
 
@@ -61,12 +59,13 @@ Contract change
 - The Agent layer must consume plane clients only: no direct provider fetch and no raw engine transport in agent route code.
 - Runtime state inside `AgentContextPack` is a compact summary, not authoritative workflow storage.
 - Search inputs are optional by id; the loader may return `scan` or `seed_search` as `null` when no run id is supplied.
+- DOUNI message SSE is the first agent route migration because it already owns prompt context assembly and can keep its public stream shape unchanged.
 
 ## Next Steps
 
-1. Add `agentContextPack.ts` with a bounded facts/search/runtime loader and unit tests.
-2. Migrate one AI-facing route to call the loader without changing public output shape.
-3. Extend the DOUNI context builder to accept the pack after the route migration is verified.
+1. Finish and merge the DOUNI message route migration.
+2. Decide the `intel-policy` migration shape from the bounded pack evidence.
+3. After W-0143 route migration, unblock W-0139/W-0140 surface slimming.
 
 ## Exit Criteria
 
@@ -78,8 +77,8 @@ Contract change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0143-query-by-example-pattern-search.md`
-- branch: `codex/w-0143-agent-context-pack`
+- branch: `codex/w-0143-agent-route-migration`
 - verification:
-  - `npm --prefix app run test -- src/lib/server/agentContextPack.test.ts`
+  - `npm --prefix app run test -- src/lib/server/agentContextPack.test.ts src/lib/server/douni/contextBuilder.test.ts`
   - `npm --prefix app run check`
-- remaining blockers: route migration and DOUNI context builder integration remain after the loader slice.
+- remaining blockers: `intel-policy` still uses legacy route-by-route policy inputs; surface slimming remains blocked until agent lane closes.
