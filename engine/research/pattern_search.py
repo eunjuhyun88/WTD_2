@@ -573,7 +573,7 @@ class BenchmarkPackStore:
         default_id = f"{pattern_slug}__ptb-tradoor-v1"
         existing = self.load(default_id)
         if existing is not None:
-            desired_timeframes = ["15m", "1h", "4h"]
+            desired_timeframes = ["15m", "30m", "1h", "4h"]
             if existing.candidate_timeframes != desired_timeframes:
                 existing = ReplayBenchmarkPack(
                     benchmark_pack_id=existing.benchmark_pack_id,
@@ -587,7 +587,7 @@ class BenchmarkPackStore:
         pack = ReplayBenchmarkPack(
             benchmark_pack_id=default_id,
             pattern_slug=pattern_slug,
-            candidate_timeframes=["15m", "1h", "4h"],
+            candidate_timeframes=["15m", "30m", "1h", "4h"],
             cases=[
                 BenchmarkCase(
                     symbol="PTBUSDT",
@@ -905,7 +905,6 @@ def build_seed_variants(pattern_slug: str) -> list[PatternVariantSpec]:
 def _supported_candidate_timeframes(candidate_timeframes: list[str], *, base_timeframe: str) -> list[str]:
     supported: list[str] = []
     for timeframe in candidate_timeframes:
-        tf_string_to_minutes(timeframe)
         if timeframe not in supported:
             supported.append(timeframe)
     if base_timeframe not in supported:

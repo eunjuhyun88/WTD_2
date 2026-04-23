@@ -1,88 +1,89 @@
 {
-    "benchmark_pack_id": "tradoor-oi-reversal-v1__ptb-tradoor-v1",
-    "pattern_slug": "tradoor-oi-reversal-v1",
-    "candidate_timeframes": [
-        "15m",
-        "1h",
-        "4h"
-    ],
-    "cases": [
-        {
-            "symbol": "PTBUSDT",
-            "timeframe": "1h",
-            "start_at": "2026-04-13T00:00:00+00:00",
-            "end_at": "2026-04-15T12:00:00+00:00",
-            "expected_phase_path": [
-                "FAKE_DUMP",
-                "ARCH_ZONE",
-                "REAL_DUMP",
-                "ACCUMULATION",
-                "BREAKOUT"
-            ],
-            "role": "reference",
-            "notes": [
-                "reference PTB reversal window"
-            ],
-            "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405"
-        },
-        {
-            "symbol": "TRADOORUSDT",
-            "timeframe": "1h",
-            "start_at": "2026-04-11T00:00:00+00:00",
-            "end_at": "2026-04-14T18:00:00+00:00",
-            "expected_phase_path": [
-                "FAKE_DUMP",
-                "ARCH_ZONE",
-                "REAL_DUMP",
-                "ACCUMULATION",
-                "BREAKOUT"
-            ],
-            "role": "holdout",
-            "notes": [
-                "holdout TRADOOR replay window"
-            ],
-            "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd"
-        },
-        {
-            "symbol": "KOMAUSDT",
-            "timeframe": "1h",
-            "start_at": "2026-04-03T13:00:00+00:00",
-            "end_at": "2026-04-08T13:00:00+00:00",
-            "expected_phase_path": [
-                "FAKE_DUMP",
-                "ARCH_ZONE",
-                "REAL_DUMP",
-                "ACCUMULATION",
-                "BREAKOUT"
-            ],
-            "role": "holdout",
-            "notes": [
-                "H6: dump -20.6% @ 2026-04-05 13:00, OI +160.1%, recovery +32.1%.",
-                "Reaches ACCUMULATION (entry_hit=True), not BREAKOUT (slow recovery).",
-                "Promotes via trading_edge path: fwd_peak_48h=+15.39%."
-            ],
-            "case_id": "43c4cee9-e772-491b-9f9a-259588e8b6f4"
-        },
-        {
-            "symbol": "DYMUSDT",
-            "timeframe": "1h",
-            "start_at": "2026-04-07T08:00:00+00:00",
-            "end_at": "2026-04-12T08:00:00+00:00",
-            "expected_phase_path": [
-                "FAKE_DUMP",
-                "ARCH_ZONE",
-                "REAL_DUMP",
-                "ACCUMULATION",
-                "BREAKOUT"
-            ],
-            "role": "holdout",
-            "notes": [
-                "H6: dump -6.2% @ 2026-04-09 08:00, OI +30.8%, recovery +15.6%.",
-                "Reaches ACCUMULATION (entry_hit=True), not BREAKOUT (slow recovery).",
-                "Promotes via trading_edge path: fwd_peak_48h=+5.21%."
-            ],
-            "case_id": "1b4f1f75-5d9b-438e-8e53-8671f44a9437"
-        }
-    ],
-    "created_at": "2026-04-16T18:32:22.407004+00:00"
+  "benchmark_pack_id": "tradoor-oi-reversal-v1__ptb-tradoor-v1",
+  "pattern_slug": "tradoor-oi-reversal-v1",
+  "candidate_timeframes": [
+    "15m",
+    "30m",
+    "1h",
+    "4h"
+  ],
+  "cases": [
+    {
+      "symbol": "PTBUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-13T00:00:00+00:00",
+      "end_at": "2026-04-15T12:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "reference",
+      "notes": [
+        "reference PTB reversal window"
+      ],
+      "case_id": "81e12c7c-c9f9-45a5-be23-09206313d405"
+    },
+    {
+      "symbol": "TRADOORUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-11T00:00:00+00:00",
+      "end_at": "2026-04-14T18:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "holdout",
+      "notes": [
+        "holdout TRADOOR replay window"
+      ],
+      "case_id": "073ef9b2-224f-48fb-8358-55f5aeb7b5cd"
+    },
+    {
+      "symbol": "KOMAUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-03T13:00:00+00:00",
+      "end_at": "2026-04-08T13:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "holdout",
+      "notes": [
+        "H6: dump -20.6% @ 2026-04-05 13:00, OI +160.1%, recovery +32.1%.",
+        "Reaches ACCUMULATION (entry_hit=True), not BREAKOUT (slow recovery).",
+        "Promotes via trading_edge path: fwd_peak_48h=+15.39%."
+      ],
+      "case_id": "43c4cee9-e772-491b-9f9a-259588e8b6f4"
+    },
+    {
+      "symbol": "DYMUSDT",
+      "timeframe": "1h",
+      "start_at": "2026-04-07T08:00:00+00:00",
+      "end_at": "2026-04-12T08:00:00+00:00",
+      "expected_phase_path": [
+        "FAKE_DUMP",
+        "ARCH_ZONE",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT"
+      ],
+      "role": "holdout",
+      "notes": [
+        "H6: dump -6.2% @ 2026-04-09 08:00, OI +30.8%, recovery +15.6%.",
+        "Reaches ACCUMULATION (entry_hit=True), not BREAKOUT (slow recovery).",
+        "Promotes via trading_edge path: fwd_peak_48h=+5.21%."
+      ],
+      "case_id": "1b4f1f75-5d9b-438e-8e53-8671f44a9437"
+    }
+  ],
+  "created_at": "2026-04-16T18:32:22.407004+00:00"
 }

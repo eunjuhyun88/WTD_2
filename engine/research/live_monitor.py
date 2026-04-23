@@ -17,7 +17,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from data_cache.loader import list_cached_symbols, load_klines
+from data_cache.loader import load_klines
+from patterns.active_variant_registry import (
+    ACTIVE_PATTERN_VARIANT_STORE,
+    DEFAULT_ACTIVE_PATTERN_VARIANTS,
+    ActivePatternVariantEntry,
+)
 from research.pattern_search import (
     BenchmarkCase,
     PatternVariantSpec,
@@ -362,9 +367,9 @@ def scan_all_patterns_live(
     for entry in list_active_pattern_entries():
         results = scan_universe_live(
             universe=universe,
-            variant_slug="auto",
-            pattern_slug=pat_slug,
-            timeframe=timeframe,
+            variant_slug=entry.variant_slug,
+            pattern_slug=entry.pattern_slug,
+            timeframe=timeframe or entry.timeframe,
             window_bars=window_bars,
             staleness_hours=staleness_hours,
             warmup_bars=warmup_bars,

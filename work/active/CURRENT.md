@@ -50,18 +50,17 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0153** | `W-0153-persistent-retrieval-index.md` | 🟢 VERIFIED | persistent cached-window retrieval index + query-time reuse for market search |
-| **W-0152** | `W-0152-market-retrieval-index.md` | 🟢 VERIFIED | cached corpus cheap retrieval + top-N replay rerank over recent history |
-| **W-0151** | `W-0151-cached-universe-live-scan.md` | 🟢 VERIFIED | cached symbol inventory + live monitor CLI over canonical shared cache |
-| **W-0150** | `W-0150-shared-cache-corpus.md` | 🟢 VERIFIED | shared cache root discovery lets benchmark/search read canonical offline corpus across worktrees |
-| **W-0149** | `W-0149-pattern-search-engine-quality.md` | 🟢 VERIFIED | anchored breakout + scoped replay + 15m benchmark axis done; shared cache/corpus follow-up remains separate |
-| **W-0147** | `W-0147-html-reference-pattern-engine.md` | 🟢 VERIFIED | 42 HTML-reference slugs registered; benchmark/search validation remains separate research/eval work |
-| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 QA-BLOCKED | manual browser QA + lab autorun/watch activation rule |
-| **W-0141** | `W-0141-market-data-plane.md` | 🔴 IN-PROGRESS | chart/analyze/AI/backend source 를 하나의 canonical data plane 으로 재정의 |
-| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🔴 IN-PROGRESS | 하단 ANALYZE 탭 follow-up QA / shared study contract 추가 정리 |
-| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | migration 018 + live preview redeploy + post-cutover stats hotfix 완료, canonical engine region 결정만 남음 |
-| **W-0122** | `W-0122-free-indicator-stack.md` | 🟡 IN-PROGRESS | Confluence Phase 2 (engine scorer + flywheel weights) |
-| **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
+| **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
+| **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
+| **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
+| **W-0150** | `W-0150-breakout-production-lane.md` | 🔴 IN-PROGRESS | TRADOOR/PTB final-phase miss correction: breakout redesign + benchmark replay validation |
+| **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
+| **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
+| **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
+| **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
+| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
+| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
+| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-UPSTREAM | bottom ANALYZE slimming after surface contract cutover |
 
 ---
 
@@ -103,12 +102,16 @@
 
 | ID | 파일 | 상태 | 역할 |
 |---|---|---|---|
-| W-0126 | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | Cloud Run region 결정만 남음 |
-| W-0143 | `W-0143-query-by-example-pattern-search.md` | 🟢 COMPLETE | `AgentContextPack` 완료 |
-| W-0139 | `W-0139-terminal-core-loop-capture.md` | 🟢 COMPLETE | terminal surface reads 완료 |
-| W-0146 | `W-0146-lane-cleanup-and-merge-governance.md` | 🟡 REFERENCE | governance reference only |
-| W-0141 | `W-0141-market-data-plane.md` | 🟡 ASSIST | workspace/data contract assist |
-| W-0124 | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | infra 변경, 별도 세션 |
+| **W-0146** | `W-0146-lane-cleanup-and-merge-governance.md` | 🟡 REFERENCE | merge governance / queue audit reference, not an execution lane |
+| **W-0141** | `W-0141-market-data-plane.md` | 🟡 ASSIST | workspace/data contract assist lane, not top-level architecture owner |
+| **W-0153** | `W-0153-protocol-doc-recovery.md` | 🟡 ASSIST | recovered protocol doc set for future protocol lane, not active execution |
+
+## Deferred / Blocked
+
+| ID | 파일 | 상태 | 핵심 미완 |
+|---|---|---|---|
+| **W-0126** | `W-0126-ledger-supabase-record-store.md` | 🟡 FOLLOW-UP | migration 018 + live preview redeploy + post-cutover stats hotfix 완료, canonical engine region 결정만 남음 |
+| **W-0124** | `W-0124-engine-ingress-auth-hardening.md` | 🟠 DEFERRED | GCP ingress 인증 — infra 변경, 별도 세션 |
 
 ---
 
@@ -121,9 +124,9 @@
 
 ## 즉시 실행 순서 (사람)
 
-- active on `codex/w-0122-market-cap-fact-cut`
-- worktree clean after `2c105c10`
-- W-0122 consumer fact cut is PR-ready by extraction: snapshot / confluence / flow / events / macro / intel-policy / reference-stack / chain-intel now prefer or attach engine fact routes while keeping public payloads stable
+- active on `codex/w-0151-active-variant-runtime-registry`
+- stacked engine/research lane for `W-0149` → `W-0152`: capture-derived benchmark packs, honest intraday breakout replay, durable active-variant registry, and live state-similarity search
+- targeted engine verification for the stacked lane is passing; next step after commit is to resume data-engine / feature-plane work on top of this saved baseline
 
 ---
 
@@ -151,6 +154,7 @@
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
+| codex/w-0151-active-variant-runtime-registry | W-0149 / W-0150 / W-0151 / W-0152 | active stacked engine commercialization lane |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |

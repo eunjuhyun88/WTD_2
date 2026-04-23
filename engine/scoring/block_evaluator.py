@@ -252,14 +252,15 @@ def evaluate_block_masks(
     features_df: pd.DataFrame,
     klines_df: pd.DataFrame,
     symbol: str,
-    requested_blocks: set[str] | None = None,
+    *,
+    block_names: set[str] | None = None,
 ) -> dict[str, pd.Series]:
     """Return boolean Series masks for requested blocks over the full features frame."""
     ctx = Context(klines=klines_df, features=features_df, symbol=symbol)
     masks: dict[str, pd.Series] = {}
 
     for name, fn in _BLOCKS:
-        if requested_blocks is not None and name not in requested_blocks:
+        if block_names is not None and name not in block_names:
             continue
         try:
             result = fn(ctx)
