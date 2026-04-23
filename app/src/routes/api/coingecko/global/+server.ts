@@ -8,7 +8,7 @@ export const GET: RequestHandler = async ({ fetch }) => {
     const engineSnapshot = await fetchFactMarketCapProxy(fetch, { offline: true });
     const engineOverview = adaptEngineMarketCapSnapshot(engineSnapshot);
     const prefersEngine =
-      Boolean(engineOverview) &&
+      engineOverview !== null &&
       engineOverview.totalMarketCapUsd !== null &&
       engineOverview.btcDominance !== null;
     const maybeOverview =
