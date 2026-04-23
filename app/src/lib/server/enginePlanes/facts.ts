@@ -12,33 +12,32 @@ import { fetchEnginePlaneJson } from './shared';
 type ServerFetch = typeof fetch;
 export type { EngineFactConfluencePayload };
 
-export interface PerpContextPayload {
-	ok: boolean;
-	owner: 'engine';
-	plane: 'fact';
-	kind: 'perp_context';
-	status: string;
-	generated_at: string;
-	symbol: string;
-	timeframe: string;
-	source: {
-		id: string;
-		state: 'live' | 'reference_only' | 'blocked' | 'stale';
-		rows: number;
-		summary: string;
+export interface EngineFactPerpContextPayload {
+	ok?: boolean;
+	owner?: 'engine';
+	plane?: 'fact';
+	kind?: 'perp_context';
+	status?: string;
+	generated_at?: string;
+	symbol?: string;
+	timeframe?: string;
+	source?: {
+		id?: string;
+		state?: string;
+		rows?: number;
+		summary?: string;
 	};
-	metrics: {
-		funding_rate: number;
-		oi_change_1h: number;
-		oi_change_24h: number;
-		long_short_ratio: number;
-		taker_buy_ratio_1h: number;
+	metrics?: {
+		funding_rate?: number;
+		oi_change_1h?: number;
+		oi_change_24h?: number;
+		long_short_ratio?: number;
+		taker_buy_ratio_1h?: number;
 	};
-	regime: {
-		crowding: string;
-		cvd_state: string | null;
+	regime?: {
+		crowding?: string;
+		cvd_state?: string;
 	};
-	notes: string[];
 }
 
 export async function fetchFactContextProxy(
@@ -71,60 +70,15 @@ export async function fetchFactConfluenceProxy(
 	});
 }
 
-export async function fetchFactReferenceStackProxy(
-	fetchFn: ServerFetch,
-	args: { symbol: string; timeframe?: string; offline?: boolean },
-): Promise<ReferenceStackSnapshot | null> {
-	return fetchEnginePlaneJson<ReferenceStackSnapshot>(fetchFn, 'facts', {
-		path: 'reference-stack',
-		query: {
-			symbol: args.symbol,
-			timeframe: args.timeframe ?? '1h',
-			offline: args.offline ?? true,
-		},
-		timeoutMs: 8_000,
-	});
-}
-
-export async function fetchFactChainIntelProxy(
-	fetchFn: ServerFetch,
-	args: { symbol: string; chain?: string; family?: string | null; timeframe?: string; offline?: boolean },
-): Promise<ChainIntelSnapshot | null> {
-	return fetchEnginePlaneJson<ChainIntelSnapshot>(fetchFn, 'facts', {
-		path: 'chain-intel',
-		query: {
-			symbol: args.symbol,
-			chain: args.chain ?? 'ethereum',
-			family: args.family,
-			timeframe: args.timeframe ?? '1h',
-			offline: args.offline ?? true,
-		},
-		timeoutMs: 8_000,
-	});
-}
-
-export async function fetchPerpContextProxy(
+export async function fetchFactPerpContextProxy(
 	fetchFn: ServerFetch,
 	args: { symbol: string; timeframe: string; offline?: boolean },
-): Promise<PerpContextPayload | null> {
-	return fetchEnginePlaneJson<PerpContextPayload>(fetchFn, 'facts', {
+): Promise<EngineFactPerpContextPayload | null> {
+	return fetchEnginePlaneJson<EngineFactPerpContextPayload>(fetchFn, 'facts', {
 		path: 'perp-context',
 		query: {
 			symbol: args.symbol,
 			timeframe: args.timeframe,
-			offline: args.offline ?? true,
-		},
-		timeoutMs: 8_000,
-	});
-}
-
-export async function fetchFactMarketCapProxy(
-	fetchFn: ServerFetch,
-	args: { offline?: boolean } = {},
-): Promise<MarketCapSnapshot | null> {
-	return fetchEnginePlaneJson<MarketCapSnapshot>(fetchFn, 'facts', {
-		path: 'market-cap',
-		query: {
 			offline: args.offline ?? true,
 		},
 		timeoutMs: 8_000,
