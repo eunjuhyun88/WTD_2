@@ -61,6 +61,8 @@ Contract change
 11. current local cut now persists `definition_ref` as first-class metadata in the runtime ledger store and exposes top-level `definition_ref` on pattern stats/model-registry read models instead of requiring payload-only inspection.
 12. current local cut also opens `definition_id` query surfaces over runtime ledger history and pattern model-history / model-registry views, so the canonical key is now discoverable without id-only fetches or payload inspection.
 13. current local cut now persists `definition_ref` on model-registry entries and makes both model-history and model-registry routes actually filter by `definition_id`, so those surfaces no longer use the key only for validation.
+14. the remaining architectural gap is model identity scope: training/research/runtime still derive `model_key` primarily from `pattern_slug`, so multiple live definition revisions under one slug could still collide in promotion and preferred-model selection.
+15. current local cut now makes model identity definition-version aware by including `definition_id` in canonical model keys, scoping registry promotion/preferred lookups by definition when available, and falling back to legacy slug-only records only when needed.
 
 ## Assumptions
 
@@ -81,12 +83,14 @@ Contract change
 - research runtime persistence stays backward-compatible: `pattern_slug` remains the legacy join key, while `definition_ref` is added as an optional canonical key on runs, benchmark artifacts, and handoff payloads.
 - history/list surfaces resolve definitions defensively: list routes prefer stored `definition_id` / `definition_ref`, but still keep read-time fallback until all writers are upgraded.
 - model registry/training producers now store canonical definition metadata at write time; route-level `definition_id` filters must prefer persisted metadata before any slug-only fallback.
+- the next slice should make model identity and active-selection scope definition-version aware, but remain backward-compatible for older slug-only records while the registry/history migrate forward.
+- preferred-model consumers should resolve the current definition scope first and only fall back to slug-only registry rows for legacy artifacts that predate definition-aware model keys.
 
 ## Next Steps
 
 1. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
 2. split capture-linked evidence from captures into a dedicated definition store only after the read contract proves stable.
-3. decide whether model identity itself must become definition-version aware (`definition_id` in model key / promotion inputs) before multiple live pattern revisions coexist under one slug.
+3. decide whether stats/read-model surfaces that are still slug-scoped should expose definition-scoped views by default now that promotion and preferred-model lookup are version-aware.
 
 ## Exit Criteria
 
@@ -98,6 +102,7 @@ Contract change
 - runtime ledger storage and pattern stats/model-registry read models expose `definition_ref` as first-class metadata.
 - runtime ledger history plus pattern model-history/registry list surfaces accept `definition_id` and preserve canonical `definition_ref`.
 - model-history and model-registry routes use persisted definition metadata as the first filter, not slug-only reconstruction.
+- model training, promotion, and preferred-model lookup are definition-version aware so sibling definition revisions under one slug do not collide.
 - targeted engine tests pass.
 
 ## Handoff Checklist
@@ -105,6 +110,6 @@ Contract change
 - active work item: `work/active/W-0160-pattern-definition-plane.md`
 - branch: `codex/w-0160-pattern-definition-plane`
 - verification:
-  - `uv run --directory engine python -m pytest tests/test_pattern_candidate_routes.py tests/test_search_routes.py tests/test_runtime_routes.py tests/test_pattern_search.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_refinement.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_refinement_reporting.py -q`
+  - `uv run --directory engine python -m pytest tests/test_pattern_candidate_routes.py tests/test_search_routes.py tests/test_runtime_routes.py tests/test_pattern_search.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_refinement.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_refinement_reporting.py tests/test_model_registry.py tests/test_pattern_entry_scorer.py tests/test_patterns_scanner.py -q`
   - `npm --prefix app run check` currently blocked in this worktree (`svelte-kit: command not found`)
 - remaining blockers: definition write path, durable definition store, full writer adoption of stored `definition_id`, and UI consumption remain future slices

@@ -441,18 +441,20 @@ def train_pattern_model_sync(slug: str, body: dict[str, Any], ledger: LedgerStor
 
 def promote_pattern_model_sync(
     slug: str,
+    definition_id: str | None,
     model_key: str,
     model_version: str,
     threshold_policy_version: int,
 ) -> dict:
     _require_pattern(slug)
-    definition_ref = _resolve_definition_ref(slug)
+    definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
     try:
         active_entry = MODEL_REGISTRY_STORE.promote(
             pattern_slug=slug,
             model_key=model_key,
             model_version=model_version,
             threshold_policy_version=threshold_policy_version,
+            definition_id=definition_ref.get("definition_id"),
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

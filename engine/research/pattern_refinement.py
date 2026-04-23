@@ -8,7 +8,7 @@ import pandas as pd
 
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
 from ledger.store import LedgerStore, get_ledger_store
-from patterns.definitions import PatternDefinitionService
+from patterns.definitions import PatternDefinitionService, current_definition_id
 from patterns.library import get_pattern
 from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE
@@ -157,6 +157,7 @@ def run_pattern_bounded_eval(
             config.target_name,
             config.feature_schema_version,
             config.label_policy_version,
+            definition_ref=run.definition_ref,
         )
         variant_ref = f"pattern-model:{model_key}"
 
@@ -274,7 +275,13 @@ def _derive_baseline_ref(pattern_slug: str, *, state_store: ResearchStateStore |
             baseline_family_ref = run.handoff_payload.get("baseline_family_ref")
             if baseline_family_ref:
                 return str(baseline_family_ref)
-    preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
+    definition_id = current_definition_id(pattern_slug)
+    preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+        pattern_slug,
+        definition_id=definition_id,
+    )
+    if preferred is None and definition_id is not None:
+        preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
     if preferred is None:
         return "pattern-shadow:rule-first"
     return f"model:{preferred.model_key}:{preferred.model_version}:{preferred.rollout_state}"

@@ -14,6 +14,13 @@ def _definition_id(pattern: PatternObject) -> str:
     return f"{pattern.slug}:v{pattern.version}"
 
 
+def current_definition_id(pattern_slug: str) -> str | None:
+    pattern = PATTERN_LIBRARY.get(pattern_slug)
+    if pattern is None:
+        return None
+    return _definition_id(pattern)
+
+
 def _dedupe_strings(values: list[str]) -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []

@@ -30,7 +30,7 @@ def test_research_run_lifecycle_persists(tmp_path) -> None:
         disposition="train_candidate",
         winner_variant_ref="variant-17",
         handoff_payload={
-            "model_key": "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
+            "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1",
             "threshold_policy_version": 1,
         },
     )

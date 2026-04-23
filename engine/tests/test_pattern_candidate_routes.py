@@ -117,7 +117,7 @@ def test_all_candidates_exposes_legacy_and_rich_records(monkeypatch) -> None:
 def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
     active_entry = _RegistryEntry(
         pattern_slug="tradoor-oi-reversal-v1",
-        model_key="tradoor-oi-reversal-v1:1h:breakout:fs1:lp1",
+        model_key="tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
         model_version="20260416_120000",
         rollout_state="active",
     )
@@ -126,12 +126,12 @@ def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
             PatternLedgerRecord(
                 record_type="training_run",
                 pattern_slug="tradoor-oi-reversal-v1",
-                payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
+                payload={"model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1"},
             ),
             PatternLedgerRecord(
                 record_type="model",
                 pattern_slug="tradoor-oi-reversal-v1",
-                payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1"},
+                payload={"model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1"},
             ),
         ]
         + [PatternLedgerRecord(record_type="entry", pattern_slug="tradoor-oi-reversal-v1") for _ in range(10)]
@@ -427,7 +427,7 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["ok"] is True
-    assert payload["model_key"] == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
+    assert payload["model_key"] == "tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1"
     assert payload["training_run_recorded"] is True
     assert payload["model_recorded"] is True
     assert payload["model_version"] == "20260416_120000"
@@ -437,7 +437,7 @@ def test_train_pattern_model_appends_model_record(monkeypatch) -> None:
     assert registry_candidates[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert registry_candidates[0]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert training_runs[0]["pattern_slug"] == "tradoor-oi-reversal-v1"
-    assert training_runs[0]["model_key"] == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
+    assert training_runs[0]["model_key"] == "tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1"
     assert training_runs[0]["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert training_runs[0]["payload"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert training_runs[0]["payload"]["n_records"] == 24
@@ -565,13 +565,13 @@ def test_train_pattern_model_skips_model_record_when_not_replaced(monkeypatch) -
 def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     candidate_entry = _RegistryEntry(
         pattern_slug="tradoor-oi-reversal-v1",
-        model_key="tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
+        model_key="tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1",
         model_version="20260416_120000",
         rollout_state="candidate",
     )
     alternate_entry = _RegistryEntry(
         pattern_slug="tradoor-oi-reversal-v1",
-        model_key="tradoor-oi-reversal-v1:1h:breakout_48h:fs1:lp1",
+        model_key="tradoor-oi-reversal-v1:v2:1h:breakout_48h:fs1:lp1",
         model_version="20260416_130000",
         rollout_state="candidate",
         definition_ref={
@@ -581,7 +581,7 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     )
     active_entry = _RegistryEntry(
         pattern_slug="tradoor-oi-reversal-v1",
-        model_key="tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
+        model_key="tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1",
         model_version="20260416_120000",
         rollout_state="active",
     )
@@ -604,11 +604,12 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
                 return alternate_entry
             return candidate_entry
 
-        def promote(self, *, pattern_slug, model_key, model_version, threshold_policy_version=None):
+        def promote(self, *, pattern_slug, model_key, model_version, threshold_policy_version=None, definition_id=None):
             assert pattern_slug == "tradoor-oi-reversal-v1"
             assert model_key == candidate_entry.model_key
             assert model_version == candidate_entry.model_version
             assert threshold_policy_version == 3
+            assert definition_id == "tradoor-oi-reversal-v1:v1"
             active_entry.threshold_policy_version = threshold_policy_version or 1
             return active_entry
 
@@ -659,6 +660,7 @@ def test_get_model_registry_and_promote_model(monkeypatch) -> None:
     promote_response = client.post(
         "/patterns/tradoor-oi-reversal-v1/promote-model",
         json={
+            "definition_id": "tradoor-oi-reversal-v1:v1",
             "model_key": candidate_entry.model_key,
             "model_version": candidate_entry.model_version,
             "threshold_policy_version": 3,
@@ -680,7 +682,7 @@ def test_get_model_history_filters_by_definition_id_and_record_type(monkeypatch)
         record_type="training_run",
         pattern_slug="tradoor-oi-reversal-v1",
         payload={
-            "model_key": "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
+            "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1",
             "definition_ref": {
                 "definition_id": "tradoor-oi-reversal-v1:v1",
                 "pattern_slug": "tradoor-oi-reversal-v1",

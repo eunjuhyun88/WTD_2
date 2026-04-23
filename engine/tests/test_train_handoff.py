@@ -20,7 +20,7 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
         run.research_run_id,
         completed_at="2026-04-16T14:05:00+00:00",
         disposition="train_candidate",
-        winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:1h:breakout:fs1:lp1",
+        winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
         handoff_payload={
             "baseline_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
             "baseline_family_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
@@ -37,7 +37,7 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
             "ok": True,
             "pattern_slug": slug,
             "definition_ref": kwargs["definition_ref"],
-            "model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1",
+            "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
             "model_version": "20260416_140500",
             "rollout_state": "candidate",
             "replaced": True,

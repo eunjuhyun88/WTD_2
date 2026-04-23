@@ -68,7 +68,7 @@ def test_pattern_bounded_eval_returns_train_candidate_when_gate_clears(tmp_path,
     assert run.completion_disposition == "train_candidate"
     assert run.definition_ref["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert run.handoff_payload["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
-    assert run.handoff_payload["model_key"].startswith("tradoor-oi-reversal-v1:1h:breakout")
+    assert run.handoff_payload["model_key"].startswith("tradoor-oi-reversal-v1:v1:1h:breakout")
     assert run.handoff_payload["mean_auc"] == pytest.approx(0.68)
     decision = state_store.get_selection_decision(run.research_run_id)
     assert decision is not None

@@ -41,7 +41,7 @@ def test_worker_controller_records_successful_bounded_job(tmp_path) -> None:
         return ResearchJobResult(
             disposition="train_candidate",
             winner_variant_ref="variant-44",
-            handoff_payload={"model_key": "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"},
+            handoff_payload={"model_key": "tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1"},
             selection_decision=SelectionDecisionInput(
                 decision_kind="train_candidate",
                 rationale="Winner beat baseline on all seed starts.",

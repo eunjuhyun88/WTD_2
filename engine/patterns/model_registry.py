@@ -188,20 +188,27 @@ class PatternModelRegistryStore:
         model_key: str,
         model_version: str,
         threshold_policy_version: int | None = None,
+        definition_id: str | None = None,
     ) -> PatternModelRegistryEntry:
         now = _utcnow()
         entries = self.list(pattern_slug)
         target: PatternModelRegistryEntry | None = None
 
         for entry in entries:
-            if entry.rollout_state == "active":
-                entry.rollout_state = "paused"
-                entry.updated_at = now
             if entry.model_key == model_key and entry.model_version == model_version:
                 target = entry
 
         if target is None:
             raise KeyError(f"Model not found: {pattern_slug} {model_key} {model_version}")
+
+        active_scope = definition_id or target.definition_id
+        for entry in entries:
+            if entry.rollout_state != "active":
+                continue
+            if active_scope is not None and entry.definition_id != active_scope:
+                continue
+            entry.rollout_state = "paused"
+            entry.updated_at = now
 
         target.rollout_state = "active"
         target.promoted_at = now

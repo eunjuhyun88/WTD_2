@@ -50,6 +50,7 @@ def train_pattern_model_from_ledger(
         target_name,
         feature_schema_version,
         label_policy_version,
+        definition_ref=definition_ref,
     )
     engine = get_engine_fn(model_key)
     result = engine.train(X, y)

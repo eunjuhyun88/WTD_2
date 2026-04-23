@@ -38,7 +38,7 @@ def test_on_entry_signal_persists_shadow_ml_metadata(monkeypatch) -> None:
         lambda snapshot, pattern_slug=None: PatternEntryScore(
             state="scored",
             p_win=0.73,
-            model_key="tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1",
+            model_key="tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1",
             model_version="20260414_010203",
             rollout_state="candidate",
             threshold=0.55,
@@ -68,7 +68,7 @@ def test_on_entry_signal_persists_shadow_ml_metadata(monkeypatch) -> None:
     assert outcome.entry_transition_id == transition.transition_id
     assert outcome.entry_p_win == 0.73
     assert outcome.entry_ml_state == "scored"
-    assert outcome.entry_model_key == "tradoor-oi-reversal-v1:1h:breakout_24h:fs1:lp1"
+    assert outcome.entry_model_key == "tradoor-oi-reversal-v1:v1:1h:breakout_24h:fs1:lp1"
     assert outcome.entry_model_version == "20260414_010203"
     assert outcome.entry_rollout_state == "candidate"
     assert outcome.entry_threshold == 0.55

@@ -48,6 +48,7 @@ class _RegisterPatternBody(BaseModel):
 
 class _PatternTrainBody(BaseModel):
     user_id: str | None = None
+    definition_id: str | None = None
     target_name: str = "breakout"
     feature_schema_version: int = 1
     label_policy_version: int = 1
@@ -56,6 +57,7 @@ class _PatternTrainBody(BaseModel):
 
 
 class _PromotePatternModelBody(BaseModel):
+    definition_id: str | None = None
     model_key: str
     model_version: str
     threshold_policy_version: int = 1
@@ -324,6 +326,7 @@ async def promote_pattern_model(slug: str, body: _PromotePatternModelBody) -> di
     return await asyncio.to_thread(
         patterns_thread.promote_pattern_model_sync,
         slug,
+        body.definition_id,
         body.model_key,
         body.model_version,
         body.threshold_policy_version,

@@ -122,7 +122,7 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
             run.research_run_id,
             completed_at="2026-04-17T00:07:00+00:00",
             disposition="train_candidate",
-            winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:1h:breakout",
+            winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:v1:1h:breakout",
             handoff_payload={
                 "baseline_ref": config.baseline_ref,
                 "baseline_family_ref": config.baseline_ref,
@@ -137,7 +137,7 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
             research_run_id,
             payload={
                 "training_result": {
-                    "model_key": "tradoor-oi-reversal-v1:1h:breakout",
+                    "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout",
                     "model_version": "2026-04-17T00-08-00Z",
                     "rollout_state": "shadow",
                     "auc": 0.67,
@@ -150,7 +150,7 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
             updated_at="2026-04-17T00:08:00+00:00",
         )
         return updated, {
-            "model_key": "tradoor-oi-reversal-v1:1h:breakout",
+            "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout",
             "model_version": "2026-04-17T00-08-00Z",
             "rollout_state": "shadow",
             "auc": 0.67,
@@ -179,5 +179,5 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
     assert payload["refinement"]["research_run"]["handoff_payload"]["upstream_search_winner_variant_ref"] == "tradoor-oi-reversal-v1__arch-soft-real-loose"
     assert payload["refinement"]["research_run"]["handoff_payload"]["training_result"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert payload["refinement"]["research_run"]["handoff_payload"]["training_result"]["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
-    assert payload["training_handoff"]["model_key"] == "tradoor-oi-reversal-v1:1h:breakout"
+    assert payload["training_handoff"]["model_key"] == "tradoor-oi-reversal-v1:v1:1h:breakout"
     assert payload["report_path"].endswith(".md")
