@@ -57,6 +57,7 @@
 | **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
 | **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
 | **W-0156** | `W-0156-canonical-feature-plane-foundation.md` | 🔴 IN-PROGRESS | perp/orderflow canonical feature plane 첫 슬라이스: raw metrics contract + reusable derived features + targeted engine cut |
+| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | Binance raw ingress + contract/coin query resolver를 canonical raw plane on-demand ingest로 연결 |
 | **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
 | **W-0158** | `W-0158-promotion-feature-diagnostics.md` | 🔴 IN-PROGRESS | canonical feature score/snapshot truth를 promotion report와 refinement report diagnostics에 재사용 |
 | **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
@@ -131,8 +132,9 @@
 - engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
 - `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
 - `W-0157` landed clean at `a3a8f2c0` on `codex/w-0157-similar-live-feature-ranking`
-- active execution lane is `codex/w-0158-promotion-feature-diagnostics`
-- `W-0158` local cut reuses the same canonical feature score family in promotion/search diagnostics, reports reference/holdout breakdown + aggregate summary, and passed targeted `pattern_search` / `live_monitor` / reporting tests
+- `W-0158` landed clean at `e51ab067` on `codex/w-0158-promotion-feature-diagnostics`
+- active execution lane is `codex/w-0159-canonical-raw-plane-ingestion`
+- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, and a persisted local market search index for contract/coin lookup
 
 ---
 
@@ -165,6 +167,7 @@
 | codex/w-0156-feature-plane-foundation | W-0156 | active engine lane for canonical perp/orderflow/structure feature foundation |
 | codex/w-0157-similar-live-feature-ranking | W-0157 | active engine lane for canonical feature consumption in similar-live ranking |
 | codex/w-0158-promotion-feature-diagnostics | W-0158 | active engine lane for canonical feature diagnostics in promotion/report artifacts |
+| codex/w-0159-canonical-raw-plane-ingestion | W-0159 | active engine lane for canonical raw plane ingestion and query-driven symbol resolution |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |

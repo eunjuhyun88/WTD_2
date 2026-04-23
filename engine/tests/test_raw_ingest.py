@@ -48,52 +48,17 @@ def _perp_df() -> pd.DataFrame:
     )
 
 
-def _liquidation_df() -> pd.DataFrame:
-    index = pd.to_datetime(
-        [
-            "2026-04-24T00:15:00Z",
-            "2026-04-24T00:45:00Z",
-        ],
-        utc=True,
-    )
-    return pd.DataFrame(
-        {
-            "event_id": ["liq-a", "liq-b"],
-            "side": ["BUY", "SELL"],
-            "order_price": [100.5, 99.0],
-            "average_price": [100.4, 98.9],
-            "quantity": [5.0, 8.0],
-            "executed_quantity": [5.0, 8.0],
-            "quote_quantity": [502.0, 791.2],
-            "notional_usd": [502.0, 791.2],
-            "order_type": ["LIMIT", "MARKET"],
-            "time_in_force": ["IOC", "IOC"],
-            "status": ["FILLED", "FILLED"],
-        },
-        index=index,
-    )
-
-
 def test_ingest_binance_symbol_raw_writes_market_orderflow_and_perp(monkeypatch, tmp_path) -> None:
     store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
 
-    monkeypatch.setattr(
-        "data_cache.raw_ingest.resolve_binance_api_key",
-        lambda: type("R", (), {"state": "configured", "env_var": "BINANCE_API_KEY"})(),
-    )
     monkeypatch.setattr("data_cache.raw_ingest.fetch_klines_max", lambda symbol, timeframe: _market_df())
     monkeypatch.setattr("data_cache.raw_ingest.fetch_perp_raw", lambda symbol: _perp_df())
-    monkeypatch.setattr(
-        "data_cache.raw_ingest.fetch_force_orders_range",
-        lambda symbol, lookback_hours: _liquidation_df(),
-    )
 
     result = ingest_binance_symbol_raw(
         "BTCUSDT",
         timeframe="1h",
         store=store,
         refresh_cache=False,
-        include_liquidations=True,
     )
 
     assert result.venue == "binance_spot"
@@ -101,11 +66,6 @@ def test_ingest_binance_symbol_raw_writes_market_orderflow_and_perp(monkeypatch,
     assert result.market_bars_written == 2
     assert result.orderflow_metrics_written == 2
     assert result.perp_metrics_written == 2
-    assert result.liquidation_status == "ok"
-    assert result.liquidation_credential_state == "configured"
-    assert result.liquidation_credential_env == "BINANCE_API_KEY"
-    assert result.liquidation_events_written == 2
-    assert result.liquidation_windows_written == 2
 
     conn = sqlite3.connect(store.db_path)
     conn.row_factory = sqlite3.Row
@@ -130,28 +90,6 @@ def test_ingest_binance_symbol_raw_writes_market_orderflow_and_perp(monkeypatch,
         assert perp["quality_state"] == "partial"
         assert perp["long_short_ratio"] is None
         assert perp["funding_rate"] == 0.002
-
-        liq = conn.execute(
-            "SELECT event_id, side, notional_usd, status "
-            "FROM raw_liquidation_events WHERE symbol = ? ORDER BY ts ASC",
-            ("BTCUSDT",),
-        ).fetchone()
-        assert liq is not None
-        assert liq["event_id"] == "liq-a"
-        assert liq["side"] == "BUY"
-        assert liq["notional_usd"] == 502.0
-        assert liq["status"] == "FILLED"
-
-        liq_window = conn.execute(
-            "SELECT timeframe, event_count, short_liq_usd, long_liq_usd, dominant_side "
-            "FROM market_liquidation_windows WHERE symbol = ? AND timeframe = ?",
-            ("BTCUSDT", "1h"),
-        ).fetchone()
-        assert liq_window is not None
-        assert liq_window["event_count"] == 2
-        assert liq_window["short_liq_usd"] == 502.0
-        assert liq_window["long_liq_usd"] == 791.2
-        assert liq_window["dominant_side"] == "long_liq"
     finally:
         conn.close()
 
@@ -162,24 +100,15 @@ def test_ingest_binance_symbol_raw_falls_back_to_futures(monkeypatch, tmp_path) 
     def _raise_invalid(symbol: str, timeframe: str) -> pd.DataFrame:
         raise RuntimeError('HTTP 400 for PTBUSDT: {"code":-1121,"msg":"Invalid symbol."}')
 
-    monkeypatch.setattr(
-        "data_cache.raw_ingest.resolve_binance_api_key",
-        lambda: type("R", (), {"state": "configured", "env_var": "BINANCE_API_KEY"})(),
-    )
     monkeypatch.setattr("data_cache.raw_ingest.fetch_klines_max", _raise_invalid)
     monkeypatch.setattr("data_cache.raw_ingest.fetch_futures_klines_max", lambda symbol, timeframe: _market_df())
     monkeypatch.setattr("data_cache.raw_ingest.fetch_perp_raw", lambda symbol: _perp_df())
-    monkeypatch.setattr(
-        "data_cache.raw_ingest.fetch_force_orders_range",
-        lambda symbol, lookback_hours: _liquidation_df(),
-    )
 
     result = ingest_binance_symbol_raw(
         "PTBUSDT",
         timeframe="1h",
         store=store,
         refresh_cache=False,
-        include_liquidations=True,
     )
 
     assert result.venue == "binance_futures"
@@ -195,69 +124,15 @@ def test_ingest_binance_symbol_raw_replaces_existing_symbol_slice(monkeypatch, t
     second_market.loc[:, "close"] = 103.0
     second_perp = _perp_df().iloc[-1:].copy()
 
-    monkeypatch.setattr(
-        "data_cache.raw_ingest.resolve_binance_api_key",
-        lambda: type("R", (), {"state": "configured", "env_var": "BINANCE_API_KEY"})(),
-    )
     monkeypatch.setattr("data_cache.raw_ingest.fetch_klines_max", lambda symbol, timeframe: first_market)
     monkeypatch.setattr("data_cache.raw_ingest.fetch_perp_raw", lambda symbol: _perp_df())
-    monkeypatch.setattr(
-        "data_cache.raw_ingest.fetch_force_orders_range",
-        lambda symbol, lookback_hours: _liquidation_df(),
-    )
-    ingest_binance_symbol_raw(
-        "BTCUSDT",
-        timeframe="1h",
-        store=store,
-        refresh_cache=False,
-        include_liquidations=True,
-    )
+    ingest_binance_symbol_raw("BTCUSDT", timeframe="1h", store=store, refresh_cache=False)
 
     monkeypatch.setattr("data_cache.raw_ingest.fetch_klines_max", lambda symbol, timeframe: second_market)
     monkeypatch.setattr("data_cache.raw_ingest.fetch_perp_raw", lambda symbol: second_perp)
-    result = ingest_binance_symbol_raw(
-        "BTCUSDT",
-        timeframe="1h",
-        store=store,
-        refresh_cache=False,
-        include_liquidations=True,
-    )
+    result = ingest_binance_symbol_raw("BTCUSDT", timeframe="1h", store=store, refresh_cache=False)
 
     assert result.market_bars_written == 1
     assert result.perp_metrics_written == 1
     assert store.count_rows("raw_market_bars", symbol="BTCUSDT", timeframe="1h") == 1
     assert store.count_rows("raw_perp_metrics", symbol="BTCUSDT", timeframe="1h") == 1
-    assert store.count_rows("raw_liquidation_events", symbol="BTCUSDT") == 2
-    assert store.count_rows("market_liquidation_windows", symbol="BTCUSDT", timeframe="1h") == 1
-
-
-def test_ingest_binance_symbol_raw_soft_handles_unavailable_liquidations(monkeypatch, tmp_path) -> None:
-    store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
-
-    monkeypatch.setattr(
-        "data_cache.raw_ingest.resolve_binance_api_key",
-        lambda: type("R", (), {"state": "missing", "env_var": None})(),
-    )
-    monkeypatch.setattr("data_cache.raw_ingest.fetch_klines_max", lambda symbol, timeframe: _market_df())
-    monkeypatch.setattr("data_cache.raw_ingest.fetch_perp_raw", lambda symbol: _perp_df())
-
-    def _raise_invalid(symbol: str, lookback_hours: int) -> pd.DataFrame:
-        raise RuntimeError('HTTP 401 for /fapi/v1/forceOrders?symbol=TEST: {"code":-2014,"msg":"API-key format invalid."}')
-
-    monkeypatch.setattr("data_cache.raw_ingest.fetch_force_orders_range", _raise_invalid)
-
-    result = ingest_binance_symbol_raw(
-        "TESTUSDT",
-        timeframe="1h",
-        store=store,
-        refresh_cache=False,
-        include_liquidations=True,
-    )
-
-    assert result.liquidation_status == "unavailable"
-    assert result.liquidation_credential_state == "missing"
-    assert result.liquidation_credential_env is None
-    assert result.liquidation_events_written == 0
-    assert result.liquidation_windows_written == 0
-    assert store.count_rows("raw_liquidation_events", symbol="TESTUSDT") == 0
-    assert store.count_rows("market_liquidation_windows", symbol="TESTUSDT", timeframe="1h") == 0
