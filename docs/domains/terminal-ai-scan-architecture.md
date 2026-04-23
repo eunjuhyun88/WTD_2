@@ -36,7 +36,6 @@
 5. degraded provider state (`live / blocked / reference_only`) 는 first-class contract 다.
 6. refactor 는 plane 단위 strangler 방식으로 하고, big-bang rewrite 는 금지한다.
 7. raw retention 은 `replay 가능한 truth` 중심으로만 durable 하게 저장하고, provider blob 전체 보관은 금지한다.
-8. shared feature math belongs to the data engine; pattern engines only interpret those features.
 
 ## Raw Storage Policy
 
