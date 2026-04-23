@@ -1,6 +1,7 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
   import {
+    fetchAnalyze,
     fetchAnalyzeAndChart,
     fetchConfluenceCurrent,
     fetchConfluenceHistory,
@@ -95,9 +96,8 @@
     if (lastCandleTime === bar.time) return; // dedup duplicate fires
     lastCandleTime = bar.time;
     try {
-      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}`);
-      if (!res.ok) return;
-      analyzeData = (await res.json()) as AnalyzeEnvelope;
+      const nextAnalyze = await fetchAnalyze(symbol, timeframe);
+      if (nextAnalyze) analyzeData = nextAnalyze;
     } catch { /* retry on next candle */ }
     // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
     // in lock-step with analyze on candle close.

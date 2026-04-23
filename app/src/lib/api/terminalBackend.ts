@@ -124,6 +124,12 @@ export async function fetchTerminalBundle(args: {
   };
 }
 
+export async function fetchAnalyze(symbol: string, tf: string): Promise<AnalyzeEnvelope | null> {
+  const res = await fetch(`/api/cogochi/analyze?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`);
+  if (!res.ok) return null;
+  return await readJson<AnalyzeEnvelope>(res);
+}
+
 /**
  * Lightweight version for callers (e.g. cogochi TradeMode) that only need
  * analyze + chart klines — skips the 2 extra market/* fetches the terminal
@@ -135,12 +141,12 @@ export async function fetchAnalyzeAndChart(args: {
 }): Promise<{ analyze: AnalyzeEnvelope | null; chartPayload: ChartSeriesPayload | null }> {
   const { symbol, tf } = args;
   const [analyzeRes, chartRes] = await Promise.allSettled([
-    fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
+    fetchAnalyze(symbol, tf),
     fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500`),
   ]);
   const analyze =
-    analyzeRes.status === 'fulfilled' && analyzeRes.value.ok
-      ? await readJson<AnalyzeEnvelope>(analyzeRes.value)
+    analyzeRes.status === 'fulfilled'
+      ? analyzeRes.value
       : null;
   const chartPayload =
     chartRes.status === 'fulfilled' && chartRes.value.ok
