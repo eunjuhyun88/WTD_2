@@ -18,10 +18,12 @@ from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
+from patterns.active_variant_registry import ACTIVE_PATTERN_VARIANT_STORE
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.registry import PATTERN_REGISTRY_STORE
 from patterns.scanner import run_pattern_scan
 from patterns.types import PatternObject, PhaseCondition
+from research.live_monitor import search_pattern_state_similarity
 from scoring.block_evaluator import _BLOCKS
 
 router = APIRouter()
@@ -102,6 +104,21 @@ async def get_pattern_registry() -> dict:
     return await asyncio.to_thread(_sync)
 
 
+@router.get("/active-variants")
+async def get_active_variants() -> dict:
+    """Return the effective active pattern variants used by live runtime."""
+
+    def _sync():
+        entries = ACTIVE_PATTERN_VARIANT_STORE.list_effective()
+        return {
+            "ok": True,
+            "count": len(entries),
+            "entries": [entry.to_dict() for entry in entries],
+        }
+
+    return await asyncio.to_thread(_sync)
+
+
 @router.get("/states")
 async def get_all_states() -> dict:
     """Current phase (rich) for all tracked symbols across all patterns."""
@@ -139,10 +156,59 @@ async def get_candidates(slug: str) -> dict:
     return await asyncio.to_thread(patterns_thread.get_candidates_sync, slug)
 
 
-@router.get("/stats/all")
-async def get_all_stats() -> dict:
-    """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
-    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
+@router.get("/{slug}/similar-live")
+async def get_similar_live(
+    slug: str,
+    variant_slug: str | None = Query(default=None),
+    timeframe: str | None = Query(default=None),
+    top_k: int = Query(default=20, ge=1, le=100),
+    min_similarity_score: float = Query(default=0.2, ge=0.0, le=1.0),
+    window_bars: int = Query(default=120, ge=24, le=720),
+    staleness_hours: int = Query(default=48, ge=1, le=168),
+    warmup_bars: int = Query(default=240, ge=24, le=2000),
+) -> dict:
+    """Return current symbols ranked by pattern-state similarity for one family."""
+    try:
+        get_pattern(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
+
+    def _sync() -> dict:
+        results = search_pattern_state_similarity(
+            slug,
+            variant_slug=variant_slug,
+            timeframe=timeframe,
+            top_k=top_k,
+            min_similarity_score=min_similarity_score,
+            window_bars=window_bars,
+            staleness_hours=staleness_hours,
+            warmup_bars=warmup_bars,
+        )
+        active_entry = ACTIVE_PATTERN_VARIANT_STORE.get(slug)
+        resolved_variant_slug = (
+            results[0].variant_slug
+            if results
+            else variant_slug
+            or (active_entry.variant_slug if active_entry is not None else f"{slug}__canonical")
+        )
+        resolved_timeframe = (
+            results[0].timeframe
+            if results
+            else timeframe
+            or (active_entry.timeframe if active_entry is not None else get_pattern(slug).timeframe)
+        )
+        return {
+            "ok": True,
+            "pattern_slug": slug,
+            "variant_slug": resolved_variant_slug,
+            "timeframe": resolved_timeframe,
+            "count": len(results),
+            "top_k": top_k,
+            "min_similarity_score": min_similarity_score,
+            "results": [result.to_dict() for result in results],
+        }
+
+    return await asyncio.to_thread(_sync)
 
 
 @router.get("/{slug}/stats")

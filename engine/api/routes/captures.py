@@ -27,6 +27,7 @@ Verdict Inbox (W-0088 Phase C, flywheel axis 3):
 from __future__ import annotations
 
 import asyncio
+from dataclasses import asdict, replace
 import logging
 import time
 from typing import Any, Literal
@@ -40,6 +41,16 @@ from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store, validate_pattern_slug
 from patterns.state_store import PatternStateStore
+from research.manual_hypothesis_pack_builder import (
+    ManualHypothesisBenchmarkPackError,
+    build_manual_hypothesis_benchmark_pack_draft,
+)
+from research.pattern_search import (
+    BenchmarkPackStore,
+    PatternBenchmarkSearchConfig,
+    PatternSearchArtifactStore,
+    run_pattern_benchmark_search,
+)
 
 log = logging.getLogger("engine.captures")
 
@@ -47,6 +58,8 @@ router = APIRouter()
 _capture_store = CaptureStore()
 _state_store = PatternStateStore()
 _ledger_store = get_ledger_store()
+_benchmark_pack_store = BenchmarkPackStore()
+_pattern_search_artifact_store = PatternSearchArtifactStore()
 
 # Literal alias documents the accepted values and lets pydantic validate.
 VerdictLabel = Literal["valid", "invalid", "missed"]
@@ -374,6 +387,101 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
 
 # ── Chart annotations (TradingView overlay feed) ────────────────────────────
 # NOTE: must be registered BEFORE /{capture_id} to avoid route collision.
+
+
+class CaptureBenchmarkSearchBody(BaseModel):
+    candidate_timeframes: list[str] | None = Field(default=None, max_length=6)
+    warmup_bars: int = Field(default=240, ge=24, le=5000)
+    min_reference_score: float = Field(default=0.55, ge=0.0, le=1.0)
+    min_holdout_score: float = Field(default=0.35, ge=0.0, le=1.0)
+
+
+def _dedupe_timeframes(values: list[str] | None) -> list[str] | None:
+    if values is None:
+        return None
+    deduped: list[str] = []
+    for value in values:
+        if value and value not in deduped:
+            deduped.append(value)
+    return deduped or None
+
+
+def _build_and_save_capture_benchmark_pack(
+    capture: CaptureRecord,
+    *,
+    candidate_timeframes: list[str] | None = None,
+):
+    pack = build_manual_hypothesis_benchmark_pack_draft(capture)
+    normalized_timeframes = _dedupe_timeframes(candidate_timeframes)
+    if normalized_timeframes is not None:
+        pack = replace(pack, candidate_timeframes=normalized_timeframes)
+    saved_path = _benchmark_pack_store.save(pack)
+    return pack, saved_path
+
+@router.post("/{capture_id}/benchmark_pack_draft")
+async def create_capture_benchmark_pack_draft(
+    capture_id: str,
+    body: CaptureBenchmarkSearchBody | None = None,
+) -> dict:
+    capture = _capture_store.load(capture_id)
+    if capture is None:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    try:
+        pack, saved_path = await asyncio.to_thread(
+            _build_and_save_capture_benchmark_pack,
+            capture,
+            candidate_timeframes=body.candidate_timeframes if body is not None else None,
+        )
+    except ManualHypothesisBenchmarkPackError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {
+        "ok": True,
+        "source_capture_id": capture_id,
+        "benchmark_pack": pack.to_dict(),
+        "saved_path": str(saved_path),
+    }
+
+
+@router.post("/{capture_id}/benchmark_search")
+async def create_capture_benchmark_search(
+    capture_id: str,
+    body: CaptureBenchmarkSearchBody | None = None,
+) -> dict:
+    capture = _capture_store.load(capture_id)
+    if capture is None:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    try:
+        pack, saved_path = await asyncio.to_thread(
+            _build_and_save_capture_benchmark_pack,
+            capture,
+            candidate_timeframes=body.candidate_timeframes if body is not None else None,
+        )
+    except ManualHypothesisBenchmarkPackError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    config = PatternBenchmarkSearchConfig(
+        pattern_slug=pack.pattern_slug,
+        benchmark_pack_id=pack.benchmark_pack_id,
+        warmup_bars=body.warmup_bars if body is not None else 240,
+        min_reference_score=body.min_reference_score if body is not None else 0.55,
+        min_holdout_score=body.min_holdout_score if body is not None else 0.35,
+    )
+    run = await asyncio.to_thread(
+        run_pattern_benchmark_search,
+        config,
+        pack_store=_benchmark_pack_store,
+        artifact_store=_pattern_search_artifact_store,
+    )
+    artifact = await asyncio.to_thread(_pattern_search_artifact_store.load, run.research_run_id)
+    return {
+        "ok": True,
+        "source_capture_id": capture_id,
+        "benchmark_pack": pack.to_dict(),
+        "saved_path": str(saved_path),
+        "research_run": asdict(run),
+        "artifact": artifact,
+    }
 
 @router.get("/chart-annotations")
 async def get_chart_annotations(

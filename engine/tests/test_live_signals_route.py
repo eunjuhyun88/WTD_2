@@ -49,7 +49,7 @@ def reset_cache():
 
 def test_get_live_signals_returns_correct_shape():
     mock_results = [_make_result("KOMAUSDT"), _make_result("TIAUSDT", "REAL_DUMP")]
-    with patch.object(live_signals_mod, "scan_universe_live", return_value=mock_results):
+    with patch.object(live_signals_mod, "scan_all_patterns_live", return_value=mock_results):
         resp = _make_client().get("/live-signals")
     assert resp.status_code == 200
     data = resp.json()
@@ -65,7 +65,7 @@ def test_get_live_signals_returns_correct_shape():
 def test_get_live_signals_cache_hit():
     mock_results = [_make_result("KOMAUSDT")]
     client = _make_client()
-    with patch.object(live_signals_mod, "scan_universe_live", return_value=mock_results) as mock_scan:
+    with patch.object(live_signals_mod, "scan_all_patterns_live", return_value=mock_results) as mock_scan:
         client.get("/live-signals")           # populates cache
         resp = client.get("/live-signals")    # should hit cache
     assert resp.status_code == 200
@@ -76,7 +76,7 @@ def test_get_live_signals_cache_hit():
 def test_get_live_signals_cache_expired():
     mock_results = [_make_result("KOMAUSDT")]
     client = _make_client()
-    with patch.object(live_signals_mod, "scan_universe_live", return_value=mock_results) as mock_scan:
+    with patch.object(live_signals_mod, "scan_all_patterns_live", return_value=mock_results) as mock_scan:
         client.get("/live-signals")
         live_signals_mod._cache_ts = time.monotonic() - live_signals_mod._CACHE_TTL - 1
         resp = client.get("/live-signals")

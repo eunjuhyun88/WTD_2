@@ -1,7 +1,6 @@
 """OHLCV kline resampling utilities.
 
-Given a 1-hour klines DataFrame (the canonical raw format stored in the cache),
-these helpers produce higher-timeframe DataFrames using standard OHLCV
+Given a cached klines DataFrame, these helpers produce higher-timeframe DataFrames using standard OHLCV
 aggregation rules:
 
     open   → first bar in the window
@@ -11,10 +10,9 @@ aggregation rules:
     volume → sum of all bar volumes
     taker_buy_base_volume → sum
 
-This design means Binance is only ever queried for 1-hour data, and every
-higher timeframe (4h, 8h, daily, …) is derived deterministically from the
-same source — guaranteeing consistency across TFs and eliminating the need
-to manage separate per-TF caches.
+Higher timeframes (4h, 8h, daily, …) can be derived deterministically from
+finer cached bars. Sub-hour targets must never be synthesized from coarser
+source data because that creates fake intraday history.
 
 Public API
 ----------
@@ -71,6 +69,18 @@ def _minutes_to_pandas_freq(target_minutes: int) -> str:
     return f"{target_minutes}min"
 
 
+def _infer_source_minutes(df: pd.DataFrame) -> int | None:
+    if len(df.index) < 2:
+        return None
+    deltas = df.index.to_series().diff().dropna()
+    if deltas.empty:
+        return None
+    minutes = deltas.dt.total_seconds().median() / 60.0
+    if minutes <= 0:
+        return None
+    return int(round(minutes))
+
+
 def resample_klines(df: pd.DataFrame, target_minutes: int) -> pd.DataFrame:
     """Resample an OHLCV klines DataFrame to a higher timeframe.
 
@@ -100,6 +110,13 @@ def resample_klines(df: pd.DataFrame, target_minutes: int) -> pd.DataFrame:
     if target_minutes <= 0:
         raise ValueError(f"target_minutes must be positive, got {target_minutes}")
     if df.empty:
+        return df.copy()
+    source_minutes = _infer_source_minutes(df)
+    if source_minutes is not None and target_minutes < source_minutes:
+        raise ValueError(
+            f"Cannot resample {source_minutes}m source data down to {target_minutes}m"
+        )
+    if source_minutes is not None and target_minutes == source_minutes:
         return df.copy()
 
     freq = _minutes_to_pandas_freq(target_minutes)

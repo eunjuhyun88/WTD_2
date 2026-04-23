@@ -12,11 +12,15 @@ from ledger.store import LedgerStore
 from ledger.types import PatternOutcome
 from patterns.state_store import PatternStateStore
 from patterns.types import PhaseTransition
+from research.pattern_search import BenchmarkPackStore, PatternSearchArtifactStore
+from research.state_store import ResearchRun
 
 
 def _client(tmp_path, monkeypatch) -> TestClient:
     capture_store = CaptureStore(tmp_path / "capture.sqlite")
     state_store = PatternStateStore(tmp_path / "runtime.sqlite")
+    benchmark_pack_store = BenchmarkPackStore(tmp_path / "benchmark_packs")
+    pattern_search_artifact_store = PatternSearchArtifactStore(tmp_path / "search_runs")
     appended = []
 
     class FakeRecordStore:
@@ -26,12 +30,16 @@ def _client(tmp_path, monkeypatch) -> TestClient:
 
     monkeypatch.setattr(captures, "_capture_store", capture_store)
     monkeypatch.setattr(captures, "_state_store", state_store)
+    monkeypatch.setattr(captures, "_benchmark_pack_store", benchmark_pack_store)
+    monkeypatch.setattr(captures, "_pattern_search_artifact_store", pattern_search_artifact_store)
     monkeypatch.setattr(captures, "LEDGER_RECORD_STORE", FakeRecordStore())
     app = FastAPI()
     app.include_router(captures.router, prefix="/captures")
     client = TestClient(app)
     client.capture_store = capture_store  # type: ignore[attr-defined]
     client.state_store = state_store  # type: ignore[attr-defined]
+    client.benchmark_pack_store = benchmark_pack_store  # type: ignore[attr-defined]
+    client.pattern_search_artifact_store = pattern_search_artifact_store  # type: ignore[attr-defined]
     client.appended_records = appended  # type: ignore[attr-defined]
     return client
 
@@ -190,6 +198,227 @@ def test_manual_hypothesis_capture_persists_research_context(tmp_path, monkeypat
     stored = client.capture_store.load(capture["capture_id"])  # type: ignore[attr-defined]
     assert stored is not None
     assert stored.research_context["research_tags"] == ["second_dump", "oi_reexpand"]
+
+
+def test_manual_hypothesis_capture_generates_benchmark_pack_draft(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    start_ts = int(datetime(2026, 4, 13, 0, 0, tzinfo=timezone.utc).timestamp() * 1000)
+    dump_ts = int(datetime(2026, 4, 14, 6, 0, tzinfo=timezone.utc).timestamp() * 1000)
+    breakout_ts = int(datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc).timestamp() * 1000)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "TRADOORUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "15m",
+            "user_note": "telegram seed",
+            "research_context": {
+                "source": {"kind": "telegram_post", "author": "founder"},
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "thesis": ["second dump is the real event"],
+                "research_tags": ["second_dump", "oi_reexpand"],
+                "phase_annotations": [
+                    {
+                        "phase_id": "fake_dump",
+                        "label": "warning dump",
+                        "timeframe": "15m",
+                        "start_ts": start_ts,
+                        "end_ts": dump_ts,
+                        "signals_required": ["recent_decline"],
+                    },
+                    {
+                        "phase_id": "real_dump",
+                        "label": "real dump",
+                        "timeframe": "15m",
+                        "start_ts": dump_ts,
+                        "end_ts": dump_ts + 900000,
+                        "signals_required": ["oi_spike_with_dump", "volume_spike"],
+                    },
+                    {
+                        "phase_id": "accumulation_15m",
+                        "label": "rising lows",
+                        "timeframe": "15m",
+                        "start_ts": dump_ts + 900000,
+                        "end_ts": breakout_ts - 900000,
+                        "signals_required": ["higher_lows_sequence"],
+                    },
+                    {
+                        "phase_id": "breakout_oi_reexpand",
+                        "label": "breakout",
+                        "timeframe": "15m",
+                        "start_ts": breakout_ts - 900000,
+                        "end_ts": breakout_ts,
+                        "signals_required": ["range_high_break", "oi_reexpansion"],
+                    },
+                ],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    capture_id = response.json()["capture"]["capture_id"]
+
+    draft_response = client.post(f"/captures/{capture_id}/benchmark_pack_draft")
+
+    assert draft_response.status_code == 200
+    payload = draft_response.json()
+    assert payload["source_capture_id"] == capture_id
+    pack = payload["benchmark_pack"]
+    assert pack["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert pack["candidate_timeframes"] == ["15m", "30m", "1h", "4h"]
+    assert len(pack["cases"]) == 1
+    case = pack["cases"][0]
+    assert case["symbol"] == "TRADOORUSDT"
+    assert case["timeframe"] == "15m"
+    assert case["expected_phase_path"] == [
+        "FAKE_DUMP",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT",
+    ]
+    stored = client.benchmark_pack_store.load(pack["benchmark_pack_id"])  # type: ignore[attr-defined]
+    assert stored is not None
+    assert stored.cases[0].case_id == capture_id
+
+
+def test_manual_hypothesis_capture_launches_benchmark_search(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    seen: dict[str, object] = {}
+
+    def fake_run_pattern_benchmark_search(config, *, pack_store=None, artifact_store=None, **_kwargs):
+        assert pack_store is not None
+        pack = pack_store.load(config.benchmark_pack_id)
+        assert pack is not None
+        seen["benchmark_pack_id"] = config.benchmark_pack_id
+        seen["candidate_timeframes"] = pack.candidate_timeframes
+        seen["warmup_bars"] = config.warmup_bars
+        seen["min_reference_score"] = config.min_reference_score
+        return ResearchRun(
+            research_run_id="run-1",
+            pattern_slug=config.pattern_slug,
+            objective_id="benchmark-search:test",
+            baseline_ref=f"benchmark-pack:{config.benchmark_pack_id}",
+            search_policy={"mode": "benchmark-pack-search"},
+            evaluation_protocol={"candidate_timeframes": pack.candidate_timeframes},
+            status="completed",
+            completion_disposition="no_op",
+            winner_variant_ref=f"{config.pattern_slug}__canonical__tf-15m",
+            handoff_payload={"artifact_ref": "pattern-search:run-1"},
+            created_at="2026-04-23T00:00:00+00:00",
+            updated_at="2026-04-23T00:00:01+00:00",
+            started_at="2026-04-23T00:00:00+00:00",
+            completed_at="2026-04-23T00:00:01+00:00",
+        )
+
+    monkeypatch.setattr(captures, "run_pattern_benchmark_search", fake_run_pattern_benchmark_search)
+
+    create = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "TRADOORUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "15m",
+            "research_context": {
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "phase_annotations": [
+                    {
+                        "phase_id": "real_dump",
+                        "label": "real dump",
+                        "timeframe": "15m",
+                        "start_ts": 1776031200000,
+                        "end_ts": 1776032100000,
+                    },
+                    {
+                        "phase_id": "accumulation_15m",
+                        "label": "acc",
+                        "timeframe": "15m",
+                        "start_ts": 1776032100000,
+                        "end_ts": 1776116700000,
+                    },
+                    {
+                        "phase_id": "breakout_oi_reexpand",
+                        "label": "breakout",
+                        "timeframe": "15m",
+                        "start_ts": 1776116700000,
+                        "end_ts": 1776117600000,
+                    },
+                ],
+            },
+        },
+    )
+    assert create.status_code == 200
+    capture_id = create.json()["capture"]["capture_id"]
+
+    search_response = client.post(
+        f"/captures/{capture_id}/benchmark_search",
+        json={
+            "candidate_timeframes": ["15m", "30m", "1h", "4h"],
+            "warmup_bars": 180,
+            "min_reference_score": 0.42,
+        },
+    )
+
+    assert search_response.status_code == 200
+    payload = search_response.json()
+    assert payload["source_capture_id"] == capture_id
+    assert payload["benchmark_pack"]["candidate_timeframes"] == ["15m", "30m", "1h", "4h"]
+    assert payload["research_run"]["research_run_id"] == "run-1"
+    assert payload["research_run"]["winner_variant_ref"] == "tradoor-oi-reversal-v1__canonical__tf-15m"
+    assert seen["benchmark_pack_id"] == payload["benchmark_pack"]["benchmark_pack_id"]
+    assert seen["candidate_timeframes"] == ["15m", "30m", "1h", "4h"]
+    assert seen["warmup_bars"] == 180
+    assert seen["min_reference_score"] == 0.42
+
+
+def test_benchmark_pack_draft_rejects_capture_without_research_context(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "SOLUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "1h",
+        },
+    )
+
+    assert response.status_code == 200
+    capture_id = response.json()["capture"]["capture_id"]
+
+    draft_response = client.post(f"/captures/{capture_id}/benchmark_pack_draft")
+
+    assert draft_response.status_code == 400
+    assert "research_context" in draft_response.json()["detail"]
+
+
+def test_benchmark_search_rejects_capture_without_research_context(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "SOLUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "1h",
+        },
+    )
+
+    assert response.status_code == 200
+    capture_id = response.json()["capture"]["capture_id"]
+
+    search_response = client.post(f"/captures/{capture_id}/benchmark_search")
+
+    assert search_response.status_code == 400
+    assert "research_context" in search_response.json()["detail"]
 
 
 def test_chart_bookmark_capture_is_closed(tmp_path, monkeypatch) -> None:
