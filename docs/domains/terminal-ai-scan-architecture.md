@@ -758,7 +758,7 @@ Andrej Karpathy 식으로 적용하면, architecture 는 “한 번에 완성”
 - plane: `Fact`
 - owner: `engine`
 - source_of_truth: catalog file + bounded read route
-- hot_path: `GET /ctx/indicator-catalog`
+- hot_path: `GET /facts/indicator-catalog`
 - background_path: none in phase 1
 - canonical_route: engine catalog route
 - degraded_states: `live / partial / blocked / missing`

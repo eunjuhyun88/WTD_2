@@ -176,6 +176,15 @@ This slice keeps `GET /ctx/fact` as the bounded landing zone but makes it satisf
 4. avoid any new app-side fact composition; only align the engine payload and current adapter expectations
 5. lock the cut with targeted engine `ctx` tests plus app fact-proxy / snapshot adapter tests
 
+### Current Lane Slice — Indicator Catalog Alias Cleanup
+
+This slice removes a stale duplicate engine entrypoint now that fact-plane consumers use the canonical `/facts/*` family.
+
+1. remove legacy `GET /ctx/indicator-catalog`
+2. keep `GET /facts/indicator-catalog` as the sole canonical indicator inventory route
+3. move route coverage from `ctx` tests onto the canonical `facts` route tests
+4. refresh generated engine OpenAPI types so app contracts stop advertising the dead alias
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
@@ -497,6 +506,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **`ctx/fact` should satisfy the contract it already advertises** — `FactSnapshot` already exposes optional `fact_id`, `provider_state`, `confluence`, and `reference_health`, and app adapters probe for those fields today. The engine landing zone should populate them before more transitional app logic grows around missing values.
 - **legacy `/api/engine/ctx/fact` bridge is dead and should be removed** — fact-plane callers already use `/api/facts/ctx/fact`; keeping the same path allowlisted on the frozen legacy engine proxy only preserves duplicate ingress without any consumer.
 - **snapshot adapter should prefer `provider_state` over transitional `sources`** — once `ctx/fact` fills canonical provider summaries, app compatibility routes should read that normalized plane contract first and only fall back to raw transitional source maps when older engine payloads are encountered.
+- **indicator catalog should not keep a duplicate `ctx` alias once plane proxies are live** — app fact consumers and plane clients already use `/facts/indicator-catalog`; keeping `/ctx/indicator-catalog` only preserves a second fact owner path and stale contract surface.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
