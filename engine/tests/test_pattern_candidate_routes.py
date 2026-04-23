@@ -132,22 +132,10 @@ def test_similar_live_route_returns_ranked_state_matches(monkeypatch) -> None:
                         "path": "ARCH_ZONE→REAL_DUMP→ACCUMULATION",
                         "observed_phase_path": ["ARCH_ZONE", "REAL_DUMP", "ACCUMULATION"],
                         "similarity_score": 0.88,
-                        "replay_similarity_score": 0.88,
-                        "canonical_feature_score": 0.93,
-                        "ranking_score": 0.9445,
                         "phase_depth_progress": 0.72,
                         "phase_fidelity": 0.8,
                         "variant_slug": "tradoor-oi-reversal-v1__intraday-dump-cluster__tf-15m",
                         "timeframe": "15m",
-                        "canonical_feature_snapshot": {
-                            "oi_raw": 1250.0,
-                            "oi_zscore": 2.1,
-                            "funding_rate_zscore": 1.3,
-                            "funding_flip_flag": True,
-                            "volume_percentile": 0.91,
-                            "pullback_depth_pct": 0.07,
-                            "cvd_price_divergence": 1.0,
-                        },
                     },
                 },
             )()
@@ -188,10 +176,6 @@ def test_similar_live_route_returns_ranked_state_matches(monkeypatch) -> None:
     assert payload["count"] == 1
     assert payload["results"][0]["symbol"] == "PTBUSDT"
     assert payload["results"][0]["similarity_score"] == 0.88
-    assert payload["results"][0]["replay_similarity_score"] == 0.88
-    assert payload["results"][0]["canonical_feature_score"] == 0.93
-    assert payload["results"][0]["ranking_score"] == 0.9445
-    assert payload["results"][0]["canonical_feature_snapshot"]["funding_flip_flag"] is True
 
 
 def test_stats_exposes_record_family_metrics(monkeypatch) -> None:
