@@ -97,6 +97,12 @@ def test_ctx_indicator_catalog_returns_exactly_100_metrics() -> None:
     assert payload["counts"]["family"]["options"] == 10
     assert payload["counts"]["family"]["macro"] == 9
     assert payload["counts"]["family"]["social_tokenomics"] == 11
+    assert payload["counts"]["stage"]["cataloged"] >= 1
+    assert payload["counts"]["stage"]["readable"] >= 1
+    assert payload["counts"]["stage"]["operational"] >= 1
+    assert payload["counts"]["stage"]["promoted"] >= 1
+    assert sum(payload["counts"]["stage"].values()) == 100
+    assert any("Karpathy-style execution loop" in note for note in payload["notes"])
 
 
 def test_ctx_indicator_catalog_supports_filters() -> None:
@@ -120,6 +126,66 @@ def test_ctx_indicator_catalog_supports_filters() -> None:
     assert all(metric["status"] == "live" for metric in payload["metrics"])
     assert all(metric["family"] == "derivatives" for metric in payload["metrics"])
     assert all(metric["current_owner"] in {"engine", "app_bridge", "none"} for metric in payload["metrics"])
+
+
+def test_ctx_indicator_catalog_supports_stage_filters_and_next_gates() -> None:
+    promoted_response = _client().get(
+        "/ctx/indicator-catalog",
+        params={"stage": "promoted", "family": "technical"},
+    )
+
+    assert promoted_response.status_code == 200
+    promoted_payload = promoted_response.json()
+    assert promoted_payload["filters"] == {
+        "status": None,
+        "family": "technical",
+        "stage": "promoted",
+        "query": None,
+    }
+    assert promoted_payload["matched"] == 9
+    assert all(metric["promotion_stage"] == "promoted" for metric in promoted_payload["metrics"])
+    assert all(metric["current_owner"] == "engine" for metric in promoted_payload["metrics"])
+    assert all(
+        metric["next_gate"] == "keep contract stable and widen canonical consumers"
+        for metric in promoted_payload["metrics"]
+    )
+
+    readable_response = _client().get(
+        "/ctx/indicator-catalog",
+        params={"stage": "readable", "query": "predicted funding"},
+    )
+
+    assert readable_response.status_code == 200
+    readable_payload = readable_response.json()
+    assert readable_payload["matched"] == 1
+    metric = readable_payload["metrics"][0]
+    assert metric["id"] == "predicted_funding_rate"
+    assert metric["promotion_stage"] == "readable"
+    assert metric["next_gate"] == "add bounded route, tests, and degraded-state contract"
+
+
+def test_ctx_indicator_catalog_maps_operational_and_cataloged_metrics() -> None:
+    operational_response = _client().get(
+        "/ctx/indicator-catalog",
+        params={"query": "funding rate percentile"},
+    )
+
+    assert operational_response.status_code == 200
+    operational_metric = operational_response.json()["metrics"][0]
+    assert operational_metric["id"] == "funding_rate_percentile"
+    assert operational_metric["promotion_stage"] == "operational"
+    assert operational_metric["next_gate"] == "cut app/search/agent consumers over to the canonical engine contract"
+
+    cataloged_response = _client().get(
+        "/ctx/indicator-catalog",
+        params={"query": "top trader long/short ratio"},
+    )
+
+    assert cataloged_response.status_code == 200
+    cataloged_metric = cataloged_response.json()["metrics"][0]
+    assert cataloged_metric["id"] == "top_trader_long_short_ratio"
+    assert cataloged_metric["promotion_stage"] == "cataloged"
+    assert cataloged_metric["next_gate"] == "implement local ingress/read path or unblock provider access"
 
 
 def test_ctx_indicator_catalog_rejects_invalid_filter_values() -> None:

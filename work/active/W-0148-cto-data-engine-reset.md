@@ -48,9 +48,17 @@ Engine logic change
 - `engine/patterns/state_store.py`
 - `engine/research/state_store.py`
 - `app/src/lib/server/marketSnapshotService.ts`
+- `app/src/lib/server/enginePlanes/facts.ts`
+- `app/src/lib/server/enginePlanes/search.ts`
+- `app/src/lib/server/enginePlanes/runtime.ts`
 - `app/src/lib/server/marketDataService.ts`
 - `app/src/lib/server/marketFeedService.ts`
 - `app/src/routes/api/market`
+- `app/svelte.config.js`
+- `app/package.json`
+- `app/Dockerfile`
+- `cloudbuild.app.yaml`
+- `docs/runbooks/cloud-run-app-deploy.md`
 
 ## Facts
 
@@ -60,6 +68,9 @@ Engine logic change
 4. `worker-control` / scheduler 는 이미 존재하지만, 현재 job set 은 scan/alert/outcome 중심이며 always-on corpus accumulation 과 normalized fact refresh 중심으로 재편되지 않았다.
 5. local branch landscape 에는 clean lane 과 parking lane 이 공존하고 있어, merge 는 기능보다 plane purity 기준으로 다시 분류해야 한다.
 6. first refactor slice now exists as `docs/decisions/0004-cto-data-engine-reset-2026-04-23.md` plus engine `GET /ctx/fact`, which opens an engine-owned bounded fact landing zone without widening app fan-out further.
+7. current repository has canonical Cloud Run deploy paths for `engine-api` and `worker-control`, but `app-web` is still configured around `@sveltejs/adapter-vercel`, so the full three-runtime topology is not yet executable from the repo as one server-operable system.
+8. this branch now adds an `app-web` dual-target build (`vercel` default, `cloud-run` via `@sveltejs/adapter-node`), `cloudbuild.app.yaml`, and a Cloud Run app deploy runbook, so the three-runtime topology is executable from repository artifacts.
+9. Cloud Run smoke exposed two real server blockers on the app surface: `/api/confluence/current` had route-local helper leakage that broke Node builds, and `/healthz` / `/readyz` were incorrectly behind the auth redirect path.
 
 ## Assumptions
 
@@ -91,6 +102,14 @@ Engine logic change
 - `W-0141` 는 workspace/data-contract assist lane 이며 상위 architecture owner 가 아니다.
 - `engine/market_engine/indicator_catalog.py` 는 `W-0122` 소유 fact-plane inventory 파일이며 `W-0148` 범위로 흡수하지 않는다.
 - parallel lanes (`W-0122`, `W-0145`, `W-0142`) 는 `PR0.2` contract/proxy split 이 merge 되기 전에는 열지 않는다.
+- CTO execution method follows a Karpathy-style auto-research loop: `seed -> hypothesis -> bounded contract -> eval -> promotion -> failure memory`.
+- no lane is considered complete because it exists in code alone; completion requires durable artifacts plus promotion through `cataloged -> readable -> operational -> promoted`.
+- every new lane must name its evaluation artifact before claiming promotion. Route tests are the minimum gate; replay packs / benchmark cases are required once the lane touches search or pattern logic.
+- `PR0.2` app proxy rule: app server handlers must not assemble plane URLs inline once a plane client exists; they must call `app/src/lib/server/enginePlanes/{facts,search,runtime}.ts`.
+- `PR0.2` client rule: new app consumers must read canonical engine planes through `/api/facts/*`, `/api/search/*`, `/api/runtime/*`; `/api/engine/*` remains compatibility-only.
+- production topology for this reset is `app-web`, `engine-api`, and `worker-control` on separate runtimes; `app-web` must support both current Vercel compatibility and a canonical Cloud Run node build so the repo can run as an all-server deployment without re-architecting the app later.
+- `app-web` on Cloud Run remains surface/orchestration only: it may proxy canonical `facts/search/runtime` contracts and own public auth/session/readiness, but it must not absorb engine compute or privileged worker secrets.
+- server health/readiness endpoints (`/healthz`, `/readyz`) are public operational surfaces and must remain outside page-auth redirects.
 
 ## Current Layer Map
 
@@ -225,11 +244,9 @@ Engine logic change
 
 ## Next Steps
 
-1. `PR0.1` 에서 `CURRENT.md`, `W-0148`, `W-0122`, architecture doc 의 실행 ownership 을 정규화한다.
-2. `PR0.2` 에서 `facts/search/agent/runtime/surface` contract skeleton 과 plane-specific app proxies 를 추가한다.
-3. 그 다음 `W-0122`, `W-0145`, `W-0142` lane 을 updated `main` 에서 parallel 로 연다.
-4. `terminal/message` 와 `douni/contextBuilder` 입력은 `W-0143` 에서 `AgentContextPack` 기준으로 좁힌다.
-5. 각 lane 은 시작 전에 lane checklist 와 first commit scope 를 work item 안에서 먼저 채운다.
+1. `PR0.2` remaining cutover is to move the next app consumers off inline engine calls and onto `enginePlanes/*`, starting with `marketSnapshotService.ts`.
+2. app-web Cloud Run bootstrap still needs operator env/secret wiring on the real service: least-privilege `DATABASE_URL`, `ENGINE_URL`, `ENGINE_INTERNAL_SECRET`, `PUBLIC_SITE_URL`, and `SECURITY_ALLOWED_HOSTS`.
+3. the current Svelte warning/backpressure set should be handled as a separate app hardening lane after `PR0.2`, not mixed into the architecture PR.
 
 ## Exit Criteria
 
@@ -245,4 +262,8 @@ Engine logic change
 - verification:
   - `uv run --directory engine python -m pytest tests/test_ctx_fact_route.py -q`
   - `uv run --directory engine python -m pytest tests/test_engine_runtime_roles.py -q`
+- verification completed on this branch:
+  - `cd app && APP_BUILD_TARGET=cloud-run npm run build`
+  - `cd app && npm run test -- src/routes/api/confluence/current/confluence-current.test.ts 'src/routes/api/engine/[...path]/engine-proxy.test.ts'`
+  - built `app-web` node server smoke: `GET /healthz -> 200`, `GET /readyz -> 503 degraded` with unreachable engine
 - remaining blockers: shared-state migrations, legacy app market route cutover, and search-plane corpus implementation remain follow-up slices

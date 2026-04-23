@@ -89,9 +89,8 @@
 
 ## Current Dirty Tree Snapshot
 
-- `W-0148`: `docs/domains/terminal-ai-scan-architecture.md`, `work/active/W-0148-cto-data-engine-reset.md`
-- `W-0122`: `engine/api/routes/ctx.py`, `engine/tests/test_ctx_fact_route.py`, untracked `engine/market_engine/indicator_catalog.py`, `work/active/W-0122-free-indicator-stack.md`
-- execution note: no mixed-stack surface/search dirty tree should be resumed from this worktree; parallel lane work starts only after `PR0.2` merges
+- clean on `codex/w-0148-data-engine-reset` after the `PR0.2` boundary commits (`contracts/proxies`, `plane clients`, `app-web Cloud Run lane`)
+- execution note: next work should branch as clean lane slices from updated `main`; do not resume mixed-stack surface/search work from this worktree
 
 ---
 

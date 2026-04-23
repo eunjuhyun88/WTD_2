@@ -690,6 +690,42 @@ Rules:
 
 모든 lane 을 한 번에 promoted 로 만들려고 하면 다시 꼬인다.
 
+## Karpathy Auto-Research Loop
+
+Andrej Karpathy 식으로 적용하면, architecture 는 “한 번에 완성”이 아니라
+작은 가설을 빠르게 externalize 하고 eval 로 승격 여부를 결정하는 구조여야 한다.
+
+이 시스템에서 auto-research loop 는 아래처럼 고정한다.
+
+1. `seed`
+   - founder note, chart, Telegram/X post, replay finding, live anomaly 를 runtime state 에 seed 로 남긴다.
+   - seed 는 chat 이 아니라 durable artifact 여야 한다.
+2. `hypothesis`
+   - seed 를 한 문장 hypothesis 와 한 lane name 으로 압축한다.
+   - 무엇을 설명하려는지 불명확하면 구현을 시작하지 않는다.
+3. `bounded contract`
+   - hypothesis 를 가장 작은 `catalog row`, `fact route`, `runtime record`, `search request` 중 하나로 externalize 한다.
+   - 첫 구현은 항상 bounded contract 여야지, UI 나 broad framework 가 아니어야 한다.
+4. `eval`
+   - positive / near-miss / negative case 또는 최소 route contract test 를 만든다.
+   - “대충 맞아 보임”은 promotion 근거가 아니다.
+5. `promotion`
+   - eval 통과 범위에 맞춰 `cataloged -> readable -> operational -> promoted` 로만 올린다.
+   - stage 를 건너뛰는 직접 승격은 금지한다.
+6. `failure memory`
+   - 실패한 source, 틀린 가정, blocked provider, bad proxy 는 work item / catalog / runtime artifact 에 남긴다.
+   - 같은 실패를 chat 에서만 반복하지 않는다.
+
+이 loop 의 목적은 “더 똑똑한 추측”이 아니라 아래를 강제하는 데 있다.
+
+- hypothesis 가 route/store/job 으로 외부화될 것
+- success 뿐 아니라 degraded / failure path 도 계약에 포함될 것
+- promotion 이 느낌이 아니라 eval 결과에 의해 결정될 것
+- research memory 와 runtime workflow state 가 durable artifact 로 남을 것
+
+즉 CTO 기준 completion 은 “모든 기능을 한 번에 만드는 것”이 아니라,
+새 데이터/패턴 lane 이 모두 이 loop 안에서 반복 가능하게 되는 것이다.
+
 ## Lane Checklist
 
 새 lane 추가 전, 아래 checklist 를 work item 에 포함한다.
@@ -710,6 +746,7 @@ Rules:
 
 - `cataloged` 상태인가
 - route payload 가 stable 한가
+- 최소 eval artifact 가 존재하는가
 - app 가 direct provider fan-out 없이 소비 가능한가
 - runtime state 와 fact payload ownership 이 섞이지 않는가
 - search 가 fact truth 를 다시 쓰지 않는가
