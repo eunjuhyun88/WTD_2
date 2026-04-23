@@ -34,6 +34,8 @@ Engine logic change
 - `docs/domains/query-by-example-pattern-search.md`
 - `docs/domains/multi-timeframe-autoresearch-search.md`
 - `engine/search/*.py`
+- `engine/api/routes/search.py`
+- `engine/api/schemas_search.py`
 - `engine/scanner/jobs/search_corpus.py`
 - `engine/scanner/scheduler.py`
 - `engine/api/routes/jobs.py`
@@ -69,9 +71,9 @@ Engine logic change
 
 ## Next Steps
 
-1. add canonical `/search/catalog` route over the corpus inventory.
-2. add seed/scan route skeleton and run persistence.
-3. wire seed-search retrieval to corpus-first reads with fallback to replay/cache scan.
+1. add seed/scan route skeleton and run persistence.
+2. wire seed-search retrieval to corpus-first reads with fallback to replay/cache scan.
+3. add app `/api/search/*` consumer only after engine seed/scan payloads are stable.
 
 ## Exit Criteria
 
@@ -85,5 +87,5 @@ Engine logic change
 - active work item: `work/active/W-0145-operational-seed-search-corpus.md`
 - branch: `codex/w-0145-corpus-plane`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- verification: engine targeted `pytest tests/test_search_corpus.py tests/test_scheduler.py tests/test_jobs_routes.py -q` = `13 passed`; `npm --prefix app run contract:check:engine-types` = passed; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`
+- verification: engine targeted `pytest tests/test_search_routes.py tests/test_search_corpus.py tests/test_scheduler.py tests/test_jobs_routes.py -q` = `15 passed`; `npm --prefix app run contract:check:engine-types` = passed; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`
 - remaining blockers: shared-state migration, richer onchain/event lanes, and sub-hour replay breadth remain future slices

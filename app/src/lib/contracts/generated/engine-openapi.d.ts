@@ -261,6 +261,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Catalog */
+        get: operations["search_catalog_search_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe": {
         parameters: {
             query?: never;
@@ -2816,6 +2833,55 @@ export interface components {
              */
             ensemble_triggered: boolean;
         };
+        /** SearchCatalogResponse */
+        SearchCatalogResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /** Status */
+            status: string;
+            /** Generated At */
+            generated_at: string;
+            /** Total Windows */
+            total_windows: number;
+            /** Windows */
+            windows?: components["schemas"]["SearchCorpusWindowSummary"][];
+        };
+        /** SearchCorpusWindowSummary */
+        SearchCorpusWindowSummary: {
+            /** Window Id */
+            window_id: string;
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Start Ts */
+            start_ts: string;
+            /** End Ts */
+            end_ts: string;
+            /** Bars */
+            bars: number;
+            /** Source */
+            source: string;
+            /** Signature */
+            signature?: {
+                [key: string]: unknown;
+            };
+        };
         /** SnapInput */
         SnapInput: {
             /** Symbol */
@@ -3633,6 +3699,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_catalog_search_catalog_get: {
+        parameters: {
+            query?: {
+                symbol?: string | null;
+                timeframe?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchCatalogResponse"];
                 };
             };
             /** @description Validation Error */
