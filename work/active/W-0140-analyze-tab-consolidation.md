@@ -37,9 +37,9 @@ Product surface change
 ## Facts
 
 - `workspaceDataPlane.ts` 는 이미 `summary-hud`, `detail-workspace`, `evidence-log`, `execution-board` section 과 study summaries 를 만든다.
-- `TradeMode.svelte` 의 하단 `ANALYZE`는 `workspaceSummaryCards` 외에는 여전히 `proposal`, `evidenceItems`, `narrativeBias`, `narrativeDir` 같은 local derivation 을 다시 만든다.
+- `TradeMode.svelte` 의 하단 `ANALYZE` 본체는 `workspaceSummaryCards`, `analyzeDetail*`, `analyzeEvidenceItems`, `analyzeExecutionProposal` 를 이미 쓰지만, analyze-adjacent surfaces 는 아직 `proposal`, `evidenceItems`, `narrativeBias`, `narrativeDir` 같은 local derivation 을 직접 읽는다.
 - `W-0139`는 #216까지 merge 되었고 terminal surface direct `fetch(` audit 은 clean 하다.
-- 현재 bottom `ANALYZE`의 남은 구조 문제는 fetch 가 아니라 contract duplication 이다.
+- 현재 남은 구조 문제는 fetch 가 아니라 analyze-adjacent surface 들의 contract duplication 이다.
 
 ## Assumptions
 
@@ -59,19 +59,19 @@ Product surface change
 
 ## Next Steps
 
-1. `TradeMode` 의 thesis / evidence / execution board 를 workspace study 기반으로 바꾼다.
-2. duplicated raw derivation 제거 후 `npm --prefix app run check` 로 검증한다.
-3. 남은 bottom ANALYZE 중복 shaping 이 있으면 다음 slice 를 정의한다.
+1. analyze-adjacent surfaces 를 `analyzeDetail*` / workspace study outputs 로 정렬한다.
+2. `npm --prefix app run check` 로 검증한다.
+3. 남은 raw fallback builder 제거 여부를 다음 slice 로 결정한다.
 
 ## Exit Criteria
 
-- 하단 `ANALYZE`의 thesis / evidence / execution board 가 `workspaceEnvelope` 계약을 소비한다.
-- `TradeMode` 안의 duplicated raw derivation 이 줄어든다.
+- mobile ANALYZE, peek bar, compact summary, judge preview 가 `analyzeDetail*` / workspace-derived proposal/evidence 를 재사용한다.
+- `TradeMode` 안의 analyze-adjacent duplicated raw derivation 소비가 줄어든다.
 - `npm --prefix app run check`가 0 error로 통과한다.
 
 ## Handoff Checklist
 
 - active work item: `work/active/W-0140-analyze-tab-consolidation.md`
-- branch: `codex/w-0140-bottom-analyze-slimming`
+- branch: `codex/w-0140-analyze-surface-align`
 - verification: `npm --prefix app run check`
-- blockers: bottom ANALYZE remaining local view-model duplication
+- blockers: remaining raw fallback builders in `TradeMode.svelte`

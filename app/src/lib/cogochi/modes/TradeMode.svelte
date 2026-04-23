@@ -676,9 +676,6 @@
   const narrativeBias = $derived(
     workspaceEnvelope.aiContext.thesis ?? null
   );
-  const evidencePos = $derived(evidenceItems.filter(e => e.pos).length);
-  const evidenceNeg = $derived(evidenceItems.filter(e => !e.pos).length);
-
   const analyzeDetailDirection = $derived.by(() => {
     const thesis = workspaceEnvelope.aiContext.thesis?.toLowerCase() ?? '';
     const direction = analyzeData?.ensemble?.direction?.toLowerCase() ?? '';
@@ -721,6 +718,8 @@
       tone: (row.tone === 'bull' ? 'pos' : row.tone === 'bear' ? 'neg' : '') as '' | 'neg' | 'pos',
     }));
   });
+  const evidencePos = $derived(analyzeEvidenceItems.filter(e => e.pos).length);
+  const evidenceNeg = $derived(analyzeEvidenceItems.filter(e => !e.pos).length);
 
   // ── RR bar widths ─────────────────────────────────────────────────────
   const rrLossPct = $derived((() => {
@@ -780,7 +779,7 @@
           </div>
         {:else}
           <div class="narrative" role="region" aria-label="Trade bias and direction">
-            <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
+            <span class="bull" aria-label="Recommendation">{analyzeDetailDirection} 진입 권장 ·</span> {analyzeDetailThesis}
           </div>
           {#if confluence}
             <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
@@ -796,7 +795,7 @@
             </div>
           {/if}
           <div class="evidence-grid" role="list" aria-label="Evidence items">
-            {#each evidenceItems as item}
+            {#each analyzeEvidenceItems as item}
               <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
                 <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
                 <span class="ev-key">{item.k}</span>
@@ -812,7 +811,7 @@
               <span class="pcta-text">AI 진입 플랜 실행 →</span>
             </button>
           {:else}
-            {#each proposal as p}
+            {#each analyzeExecutionProposal as p}
               <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
                 <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
               </div>
@@ -852,8 +851,8 @@
           <span class="jc-sep">/</span>
           <span class="jc-tf">{timeframe.toUpperCase()}</span>
           <span class="jc-spacer"></span>
-          {#if narrativeBias}
-            <span class="jc-bias">{narrativeDir} 편향</span>
+          {#if analyzeDetailThesis}
+            <span class="jc-bias">{analyzeDetailDirection} 편향</span>
           {/if}
         </div>
         <div class="mp-section">
@@ -1018,7 +1017,7 @@
           {#if tab.id === 'analyze'}
             <span class="pb-val pos">{confidenceAlpha}</span>
             <span class="pb-sep" aria-hidden="true">·</span>
-            <span class="pb-txt">{narrativeDir} 진입 권장</span>
+            <span class="pb-txt">{analyzeDetailDirection} 진입 권장</span>
             {#if analyzeData?.flowSummary?.oi && analyzeData.flowSummary.oi !== 'n/a'}
               <span class="pb-sep" aria-hidden="true">·</span>
               <span class="pb-dim">OI {analyzeData.flowSummary.oi}</span>
@@ -1524,8 +1523,8 @@
             <span class="conf-val">{fmtConf}</span>
           </div>
           <div class="narrative" style="font-size: 9px; line-height: 1.6;" role="region" aria-label="Trade bias">
-            <span class="bull">{narrativeDir} 권장 ·</span>
-            {' '}{narrativeBias ?? '분석 완료'}
+            <span class="bull">{analyzeDetailDirection} 권장 ·</span>
+            {' '}{analyzeDetailThesis}
             {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
@@ -1540,7 +1539,7 @@
             {/each}
           </div>
           <div class="lcs-mini-evidence" role="list" aria-label="Top evidence preview">
-            {#each evidenceItems.slice(0, 3) as item}
+            {#each analyzeEvidenceItems.slice(0, 3) as item}
               <div class="ev-chip compact" class:pos={item.pos} class:neg={!item.pos} role="listitem">
                 <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
                 <span class="ev-key">{item.k}</span>
@@ -1601,7 +1600,7 @@
         <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">04</span><span class="lcs-title">JUDGE</span></div>
         <div class="lcs-body">
           <div role="region" aria-label="Trade proposal">
-            {#each proposal as p}
+            {#each analyzeExecutionProposal as p}
               <div class="prop-cell compact" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
                 <span class="prop-l">{p.label}</span>
                 <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
