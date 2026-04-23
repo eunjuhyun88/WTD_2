@@ -58,6 +58,33 @@ def test_offline_reads_existing_cache(tmp_path, monkeypatch):
     assert out["taker_buy_base_volume"].iloc[0] == pytest.approx(50.0)
 
 
+def test_offline_reads_from_shared_cache_override(tmp_path, monkeypatch):
+    local_cache = tmp_path / "local"
+    shared_cache = tmp_path / "shared"
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", local_cache)
+    monkeypatch.setenv("WTD_SHARED_CACHE_DIR", str(shared_cache))
+
+    df = _make_fake_klines(5)
+    shared_cache.mkdir(parents=True)
+    df.to_csv(shared_cache / "SHAREDUSDT_1h.csv")
+
+    out = load_klines("SHAREDUSDT", "1h", offline=True)
+
+    assert len(out) == 5
+    assert out["close"].iloc[-1] == pytest.approx(df["close"].iloc[-1])
+
+
+def test_cache_path_prefers_shared_cache_override(tmp_path, monkeypatch):
+    local_cache = tmp_path / "local"
+    shared_cache = tmp_path / "shared"
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", local_cache)
+    monkeypatch.setenv("WTD_SHARED_CACHE_DIR", str(shared_cache))
+
+    p = cache_path("BTCUSDT", "1h")
+
+    assert p.parent == shared_cache
+
+
 def test_online_fetch_uses_spot_when_available(tmp_path, monkeypatch):
     monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
     df = _make_fake_klines(6)
@@ -80,6 +107,27 @@ def test_online_fetch_uses_spot_when_available(tmp_path, monkeypatch):
     assert len(out) == 6
     assert calls == [("spot", "BTCUSDT")]
     assert (tmp_path / "BTCUSDT_1h.csv").exists()
+
+
+def test_online_fetch_writes_to_shared_cache_override(tmp_path, monkeypatch):
+    local_cache = tmp_path / "local"
+    shared_cache = tmp_path / "shared"
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", local_cache)
+    monkeypatch.setenv("WTD_SHARED_CACHE_DIR", str(shared_cache))
+    df = _make_fake_klines(4)
+
+    monkeypatch.setattr(loader_mod, "fetch_klines_max", lambda symbol, timeframe: df)
+    monkeypatch.setattr(
+        loader_mod,
+        "fetch_futures_klines_max",
+        lambda symbol, timeframe: (_ for _ in ()).throw(AssertionError("futures fallback should not run")),
+    )
+
+    out = load_klines("WRITEUSDT", "1h", offline=False)
+
+    assert len(out) == 4
+    assert (shared_cache / "WRITEUSDT_1h.csv").exists()
+    assert not (local_cache / "WRITEUSDT_1h.csv").exists()
 
 
 def test_online_fetch_falls_back_to_futures_for_invalid_spot_symbol(tmp_path, monkeypatch):
