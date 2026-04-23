@@ -149,7 +149,7 @@ TRADOOR_OI_REVERSAL = PatternObject(
             #     here structurally excludes real crypto breakouts.
             #     Kept as an optional score boost rather than a hard gate.
             required_blocks=[
-                "breakout_from_pullback_range",
+                "post_accumulation_range_breakout",
                 "oi_expansion_confirm",
             ],
             optional_blocks=["breakout_volume_confirm"],
