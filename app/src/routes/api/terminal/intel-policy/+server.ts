@@ -35,16 +35,22 @@ async function fetchJsonSafe(fetchFn: typeof fetch, path: string): Promise<any |
   }
 }
 
+function numericOrNull(value: unknown): number | null {
+  const num = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+  return Number.isFinite(num) ? num : null;
+}
+
 async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: string) {
   const token = pair.split('/')[0] ?? 'BTC';
 
-  const [newsRes, eventsRes, flowRes, trendingRes, picksRes] = await Promise.all([
+  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes] = await Promise.all([
     fetchJsonSafe(
       fetchFn,
       `/api/market/news?limit=40&offset=0&token=${encodeURIComponent(token)}&sort=importance&interval=1m`,
     ),
     fetchJsonSafe(fetchFn, `/api/market/events?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
     fetchJsonSafe(fetchFn, `/api/market/flow?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
+    fetchJsonSafe(fetchFn, '/api/market/macro-overview'),
     fetchJsonSafe(fetchFn, '/api/market/trending?section=all&limit=20'),
     fetchJsonSafe(fetchFn, '/api/terminal/opportunity-scan?limit=15'),
   ]);
@@ -53,6 +59,22 @@ async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: st
   const eventRecords = Array.isArray(eventsRes?.data?.records) ? eventsRes.data.records : [];
   const flowSnapshot = flowRes?.data?.snapshot ?? null;
   const flowRecords = Array.isArray(flowRes?.data?.records) ? flowRes.data.records : [];
+  const macroOverview =
+    macroRes && (
+      numericOrNull(macroRes.btcDominance ?? macroRes.data?.btcDominance) !== null ||
+      numericOrNull(macroRes.marketCapChange24hPct ?? macroRes.data?.marketCapChange24hPct) !== null ||
+      numericOrNull(macroRes.stablecoinMcapChange24hPct ?? macroRes.data?.stablecoinMcapChange24hPct) !== null
+    )
+      ? {
+          btcDominance: numericOrNull(macroRes.btcDominance ?? macroRes.data?.btcDominance),
+          dominanceChange24h: numericOrNull(macroRes.dominanceChange24h ?? macroRes.data?.dominanceChange24h),
+          marketCapChange24hPct: numericOrNull(macroRes.marketCapChange24hPct ?? macroRes.data?.marketCapChange24hPct),
+          stablecoinMcapChange24hPct: numericOrNull(
+            macroRes.stablecoinMcapChange24hPct ?? macroRes.data?.stablecoinMcapChange24hPct,
+          ),
+          confidence: numericOrNull(macroRes.confidence ?? macroRes.data?.confidence),
+        }
+      : null;
   const trendingCoins = Array.isArray(trendingRes?.data?.trending) ? trendingRes.data.trending : [];
   const pickCoins = Array.isArray(picksRes?.data?.coins) ? picksRes.data.coins : [];
 
@@ -63,6 +85,7 @@ async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: st
     eventRecords,
     flowSnapshot,
     flowRecords,
+    macroOverview,
     trendingCoins,
     pickCoins,
   });

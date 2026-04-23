@@ -148,12 +148,17 @@ For `W-0122`, the immediate job is narrower:
 2. make `/api/market/flow` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
 3. keep ticker / CMC / liquidation details on legacy ingress only until engine fact routes expose them canonically
 
-### Current Lane Slice — Market Cap Fact Cut
+### Current Lane Slice — Consumer Fact Cut
 
-1. add `GET /facts/market-cap` as an engine-owned bounded read model
-2. source this slice from existing engine macro cache first (`btc_dominance`) and expose partial/degraded truth explicitly
-3. make `/api/market/macro-overview` and `/api/coingecko/global` prefer the engine fact route, but fall back to the existing app `marketCapPlane` until engine coverage is sufficient
-4. lock the cut with one engine route test and one app compatibility test family
+This slice groups the next product-facing fact consumers under one W-0122 merge unit so the app keeps moving toward engine-owned truth without spawning a second branch for the same lane.
+
+1. keep `/api/market/events` public payload stable
+2. make `/api/market/events` prefer engine `/api/facts/perp-context` for funding / long-short / crowding
+3. keep DexScreener event feed and liquidation enrichment on existing ingress bridges until engine fact routes expose a canonical event bundle
+4. keep `/api/terminal/intel-policy` public payload stable
+5. make `/api/terminal/intel-policy` consume `/api/market/macro-overview`, which is already engine-preferred via `GET /facts/market-cap`
+6. keep existing news / events / flow / trending / picks joins in place; only add the macro regime card on top of the flow panel
+7. lock the cut with targeted `market/events` + `terminal/intel-policy` route tests
 
 ## Goal
 
@@ -470,7 +475,8 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **W-0122 는 terminal AI 의 fact-plane owner 다** — AI agent 와 scan/search 는 직접 CoinGecko/Dune/Etherscan/Solscan/TRONSCAN 을 부르지 않고, `/api/market/reference-stack`, `/api/market/chain-intel`, `/api/market/influencer-metrics`, `marketCapPlane` 같은 bounded read models 만 읽는다.
 - **`engine/market_engine/indicator_catalog.py` 는 W-0122 소유다** — 이 파일은 `W-0148` architecture lane 이 아니라 fact-plane mainline 에서 inventory route 와 함께 가져간다.
 - **market-cap cut 은 engine-preferred + app-fallback 으로 시작한다** — 현재 engine macro cache 는 `btc_dominance` 까지만 안정적으로 보장하므로, 첫 `GET /facts/market-cap` 는 partial truth 를 정직하게 내리고 `/api/market/macro-overview` 와 `/api/coingecko/global` 은 엔진 payload 가 충분하지 않을 때만 기존 app `marketCapPlane` 으로 떨어진다.
-
+- **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. 두 payload 는 의미가 달라서, explicit adapter 설계 전에는 단순 proxy cutover 를 금지한다.
+- **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — `codex/w-0122-market-cap-fact-cut` history 에 unrelated `W-0148` commit 이 섞였기 때문에, 현재 PR candidate 는 clean execution branch/worktree `codex/w-0122-consumer-fact-cut` 에서 이어간다.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
@@ -484,7 +490,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 2. `query-presets` / `anomalies` 를 parity 합성에서 explicit scan contract 소비 구조로 내린다.
 3. opportunity/search surface 용 canonical scan envelope (`opportunity + alerts + scanner status + pattern candidates`) 를 분리해 route fan-out 을 줄인다.
 4. EVM token lane 에 CoinGecko Onchain DEX plane(top pools + recent trades + liquidity/volume)를 붙이고, provider state 를 `etherscan + coingecko_onchain` 으로 분리한다.
-5. terminal/intel surface 가 `/api/market/reference-stack` 를 직접 소비하게 해 curated reference plane 을 운영자 화면과 public API 둘 다에서 재사용한다.
+5. `reference-stack` 는 먼저 계약을 분리한다: curated reference catalog 를 유지할지, engine coverage read model adapter 를 새로 둘지 결정한 뒤에만 cutover 한다.
 6. `market-cap` fact route 가 app macro consumers 를 충분히 커버하면 `marketCapPlane` 을 app-owned producer 에서 ingress fallback 으로 강등한다.
 
 ## Related
@@ -517,9 +523,9 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: CURRENT 기준 `IN-PROGRESS`; current slice 는 app-side market-cap plane replacement
-- verification status: engine `pytest tests/test_facts_route.py -q` = `9 passed`; app targeted `vitest` (`planeClients`, `macro-overview`, `coingecko/global`) = `7 passed`; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
-- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
+- branch/worktree state: `codex/w-0122-market-cap-fact-cut`, clean after `e5f80a6a`
+- verification status: app targeted `vitest` (`events`, `intel-policy`, `flow`, `macro-overview`, `coingecko/global`, `planeClients`) passed across the last slices; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
+- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, `reference-stack` contract mismatch
 
 ## PR Trail
 
