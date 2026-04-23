@@ -37,9 +37,9 @@ Product surface change
 ## Facts
 
 - `workspaceDataPlane.ts` 는 이미 `summary-hud`, `detail-workspace`, `evidence-log`, `execution-board` section 과 study summaries 를 만든다.
-- `TradeMode.svelte` 의 analyze-adjacent surfaces 는 이제 `analyzeDetail*`, `analyzeEvidenceItems`, `analyzeExecutionProposal` 를 재사용하고, 남은 fallback 은 `evidenceItems` / `proposal` 두 개다.
+- `TradeMode.svelte` 의 analyze-adjacent surfaces 는 이제 `analyzeDetail*`, `analyzeEvidenceItems`, `analyzeExecutionProposal` 를 재사용하고, degrade fallback 도 최종 consumer 안으로 inline 됐다.
 - `W-0139`는 #216까지 merge 되었고 terminal surface direct `fetch(` audit 은 clean 하다.
-- 현재 남은 구조 문제는 fetch 가 아니라 analyze-adjacent surface 들의 contract duplication 이고, dead narrative fallback 정리는 바로 진행 가능하다.
+- 현재 남은 구조 문제는 fetch 가 아니라 analyze-adjacent surface 들의 contract duplication 이었고, 이 slice 기준으로 `TradeMode` 내부의 별도 raw analyze builder 는 제거됐다.
 
 ## Assumptions
 
@@ -59,14 +59,15 @@ Product surface change
 
 ## Next Steps
 
-1. `evidenceItems` / `proposal` fallback 을 inline 가능한지 다음 slice 로 결정한다.
-2. degrade path 를 유지한 채 남은 raw fallback builder 를 더 줄인다.
-3. 다음 slice 후 `npm --prefix app run check` 로 다시 검증한다.
+1. `W-0140` closeout branch 를 PR 단위로 정리한다.
+2. merge 후 `CURRENT.md`에서 `W-0140`를 complete lane 으로 내린다.
+3. 다음 execution lane 은 `W-0122` 또는 `W-0148`로 재집중한다.
 
 ## Exit Criteria
 
 - mobile ANALYZE, peek bar, compact summary, judge preview 가 `analyzeDetail*` / workspace-derived proposal/evidence 를 재사용한다.
 - `TradeMode` 안의 analyze-adjacent duplicated raw derivation 소비가 줄어든다.
+- `TradeMode` 안의 별도 analyze fallback builders 가 최종 consumer 내부 degrade path 로 접힌다.
 - `npm --prefix app run check`가 0 error로 통과한다.
 
 ## Handoff Checklist
@@ -74,4 +75,4 @@ Product surface change
 - active work item: `work/active/W-0140-analyze-tab-consolidation.md`
 - branch: `codex/w-0140-analyze-surface-align-v2`
 - verification: `npm --prefix app run check`
-- blockers: `evidenceItems` / `proposal` fallback 이 아직 `TradeMode.svelte` degrade path 에 남아 있음
+- blockers: none for code; branch review/merge only

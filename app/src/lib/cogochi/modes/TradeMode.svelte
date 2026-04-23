@@ -607,56 +607,6 @@
   const fmtConf        = $derived(confidence != null ? `${Math.round(confidence)}` : '—');
   const confidenceAlpha = $derived(confidence != null ? `α${Math.round(confidence)}` : 'α—');
 
-  const evidenceStudyIds = $derived(
-    workspaceEnvelope.sections.find((section) => section.id === 'evidence-log')?.studyIds ?? []
-  );
-  const executionStudy = $derived(workspaceStudyMap.execution ?? null);
-
-  // ── Evidence items — workspace study summaries for the evidence section ──
-  const evidenceItems = $derived.by(() => {
-    const items = evidenceStudyIds
-      .flatMap((id) => {
-        const study = workspaceStudyMap[id];
-        if (!study) return [];
-        return study.summary
-          .filter((row) => row.value != null && row.value !== '')
-          .slice(0, 2)
-          .map((row) => ({
-            k: row.label,
-            v: String(row.value ?? '—'),
-            note: row.note ?? study.title,
-            pos: row.tone !== 'bear' && row.tone !== 'warn',
-          }));
-      })
-      .slice(0, 6);
-
-    return items.length > 0 ? items : [{ k: '분석 중', v: '...', note: '', pos: true }];
-  });
-
-  // ── Proposal — execution study summary for the execution board ─────────
-  const proposal = $derived.by(() => {
-    if (!executionStudy) {
-      return [
-        { label: 'ENTRY',  val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
-        { label: 'STOP',   val: '—', hint: '', tone: 'neg' as '' | 'neg' | 'pos' },
-        { label: 'TARGET', val: '—', hint: '', tone: 'pos' as '' | 'neg' | 'pos' },
-        { label: 'R:R',    val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
-      ];
-    }
-
-    return executionStudy.summary.map((row) => ({
-      label: row.label.toUpperCase(),
-      val: String(row.value ?? '—'),
-      hint: row.note ?? '',
-      tone:
-        row.tone === 'bull'
-          ? ('pos' as const)
-          : row.tone === 'bear'
-            ? ('neg' as const)
-            : ('' as const),
-    }));
-  });
-
   // ── Judge plan (for inline judge sections across all layouts) ─────────
   const judgePlan = $derived((() => {
     const ep = analyzeData?.entryPlan;
@@ -697,11 +647,40 @@
           pos: primary?.tone !== 'bear' && primary?.tone !== 'warn',
         };
       });
-    return items.length > 0 ? items : evidenceItems;
+
+    if (items.length > 0) return items;
+
+    const fallbackItems = evidenceIds
+      .flatMap((id) => {
+        const study = workspaceStudyMap[id];
+        if (!study) return [];
+        return study.summary
+          .filter((row) => row.value != null && row.value !== '')
+          .slice(0, 2)
+          .map((row) => ({
+            k: row.label,
+            v: String(row.value ?? '—'),
+            note: row.note ?? study.title,
+            pos: row.tone !== 'bear' && row.tone !== 'warn',
+          }));
+      })
+      .slice(0, 6);
+
+    return fallbackItems.length > 0 ? fallbackItems : [{ k: '분석 중', v: '...', note: '', pos: true }];
   });
   const analyzeExecutionProposal = $derived.by(() => {
     const study = workspaceStudyMap.execution;
-    if (!study || study.summary.length === 0) return proposal;
+    if (!study) {
+      return [
+        { label: 'ENTRY',  val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+        { label: 'STOP',   val: '—', hint: '', tone: 'neg' as '' | 'neg' | 'pos' },
+        { label: 'TARGET', val: '—', hint: '', tone: 'pos' as '' | 'neg' | 'pos' },
+        { label: 'R:R',    val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+      ];
+    }
+
+    if (study.summary.length === 0) return [];
+
     return study.summary.map((row) => ({
       label: row.label.toUpperCase(),
       val: row.value == null || row.value === '' ? '—' : String(row.value),
