@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`90ee8b3c` — current local `origin/main` ref after PR #209
+`740c3be5` — current local `origin/main` ref after PR #210
 
 ## 완료 (이번 세션)
 
@@ -26,6 +26,7 @@
 | #207 (W-0142) | app pattern captures routed through the runtime plane with degraded fallback |
 | #208 (W-0143) | canonical app-side `AgentContextPack` loader over fact/search/runtime plane clients |
 | #209 (W-0143) | DOUNI terminal message consumes bounded `AgentContextPack` through contextBuilder |
+| #210 (W-0143) | `intel-policy` consumes bounded `AgentContextPack` summary without changing scoring |
 
 ---
 
@@ -37,9 +38,9 @@
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
-| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🔴 IN-PROGRESS | `AgentContextPack` loader + AI route migration after fact/search/runtime lanes merge |
-| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
-| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-UPSTREAM | bottom ANALYZE slimming after surface contract cutover |
+| **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟢 COMPLETE | `AgentContextPack` loader + DOUNI + intel-policy migrations merged |
+| **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🔴 IN-PROGRESS | surface closeout: terminal surface reads must move behind fact/search/runtime clients |
+| **W-0140** | `W-0140-analyze-tab-consolidation.md` | 🟡 BLOCKED-ON-W0139 | bottom ANALYZE slimming after surface contract cutover |
 
 ## Reference / Assist Work Items
 
@@ -97,9 +98,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0143-intel-policy-context`
+- active on `codex/w-0139-surface-closeout`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: `intel-policy` consumes bounded `AgentContextPack` summary without changing policy scoring
+- current slice: `TradeMode` recent saved captures read through `terminalBackend.fetchRecentCaptures()` backed by `/api/runtime/captures`
 
 ---
 
@@ -110,9 +111,9 @@
 3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
 4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
 5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
-6. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
-7. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
-8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+6. **W-0139 / Lane E.1** — terminal surface runtime/fact/search client slimming
+7. **W-0140 / Lane E.2** — bottom ANALYZE slimming after terminal surface has no data ownership
+8. **Cloud Run region decision** — `asia-southeast1/cogotchi` redeploy vs `us-east4/cogotchi` 유지 명시
 
 ---
 
@@ -123,7 +124,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `90ee8b3c` |
+| origin/main | — | local remote-tracking ref = `740c3be5` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -143,9 +144,9 @@
 | codex/w-0142-runtime-contracts | W-0142 | merged via PR #207 |
 | codex/w-0143-agent-context-pack | W-0143 | merged via PR #208 |
 | codex/w-0143-agent-route-migration | W-0143 | merged via PR #209 |
-| codex/w-0143-intel-policy-context | W-0143 | active `intel-policy` summary migration |
+| codex/w-0143-intel-policy-context | W-0143 | merged via PR #210 |
 | codex/w-0143-agent-search-integration | W-0143 | parked name; do not reuse unless a larger agent/search integration slice is needed |
-| codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
+| codex/w-0139-surface-closeout | W-0139 | active surface slimming lane |
 
 ---
 

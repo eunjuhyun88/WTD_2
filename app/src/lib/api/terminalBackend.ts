@@ -6,6 +6,7 @@ import type {
   SnapshotEnvelope,
 } from '$lib/contracts/terminalBackend';
 import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
+import type { CaptureRecord, RuntimeCaptureListResponse } from '$lib/contracts/runtime/captures';
 import {
   fromEngineMemoryQueryWire,
   toEngineMemoryDebugSessionWire,
@@ -27,6 +28,11 @@ export interface TerminalBundleResult {
   snapshot: SnapshotEnvelope | null;
   derivatives: DerivativesEnvelope | null;
 }
+
+export type RecentCaptureSummary = Pick<
+  CaptureRecord,
+  'capture_id' | 'symbol' | 'pattern_slug' | 'timeframe' | 'captured_at_ms' | 'status'
+>;
 
 export interface ChartSeriesPayload {
   symbol: string;
@@ -136,6 +142,13 @@ export async function fetchMarketEvents(pair: string, tf: string): Promise<Array
   if (!res.ok) return [];
   const payload = await readJson<EventsEnvelope>(res);
   return payload?.data?.records ?? [];
+}
+
+export async function fetchRecentCaptures(limit = 8): Promise<RecentCaptureSummary[]> {
+  const res = await fetch(`/api/runtime/captures?limit=${limit}`);
+  if (!res.ok) return [];
+  const payload = await readJson<RuntimeCaptureListResponse>(res);
+  return payload?.ok && Array.isArray(payload.captures) ? payload.captures : [];
 }
 
 export type MemoryRerankRecord = MemoryQueryResponse['records'][number];
