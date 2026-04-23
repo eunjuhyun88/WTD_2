@@ -109,10 +109,9 @@
 
 ## 즉시 실행 순서 (사람)
 
-- active on `codex/w-0122-consumer-fact-cut-v3`
-- worktree: `/private/tmp/wtd-v2-w0122-consumer-clean`
-- current slice: engine-preferred consumer fact cut for `events`, `intel-policy`, `reference-stack`, and `chain-intel`
-- adapter rule: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` remains curated-reference oriented; only attach additive `factCoverage`
+- active on `codex/w-0122-market-cap-fact-cut`
+- worktree clean after `e5f80a6a` (`terminal intel macro fact cut`)
+- next slice requires contract choice: engine `/facts/reference-stack` is coverage-oriented, while app `/api/market/reference-stack` is curated-reference oriented; do not proxy one into the other without an explicit adapter decision
 
 ---
 
@@ -123,9 +122,9 @@
 3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
 4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
 5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
-6. **W-0139 / Lane E.1** — terminal surface runtime/fact/search client slimming
-7. **W-0140 / Lane E.2** — bottom ANALYZE slimming after terminal surface has no data ownership
-8. **Cloud Run region decision** — `asia-southeast1/cogotchi` redeploy vs `us-east4/cogotchi` 유지 명시
+6. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
+7. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+8. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
 
@@ -136,10 +135,10 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `bf34e913` |
+| origin/main | — | local remote-tracking ref = `41a72eef` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
-| codex/w-0122-consumer-fact-cut-v3 | W-0122 | active clean Lane A slice; engine-preferred consumer fact cut |
+| codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
@@ -149,22 +148,10 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| codex/w-0145-corpus-plane | W-0145 | merged via PR #202 |
-| codex/w-0145-search-routes | W-0145 | merged via PR #203 |
-| codex/w-0145-search-proxy-client | W-0145 | merged via PR #205 |
-| codex/w-0142-runtime-routes | W-0142 | merged via PR #206 |
-| codex/w-0142-runtime-contracts | W-0142 | merged via PR #207 |
-| codex/w-0143-agent-context-pack | W-0143 | merged via PR #208 |
-| codex/w-0143-agent-route-migration | W-0143 | merged via PR #209 |
-| codex/w-0143-intel-policy-context | W-0143 | merged via PR #210 |
-| codex/w-0143-agent-search-integration | W-0143 | parked name; do not reuse unless a larger agent/search integration slice is needed |
-| codex/w-0139-surface-closeout | W-0139 | merged via PR #211 |
-| codex/w-0139-trademode-market-clients | W-0139 | merged via PR #212 |
-| codex/w-0139-trademode-indicator-clients | W-0139 | merged via PR #213 |
-| codex/w-0139-trademode-analyze-client | W-0139 | merged via PR #214 |
-| codex/w-0139-trademode-action-clients | W-0139 | merged via PR #215 |
-| codex/w-0139-surface-closeout-audit | W-0139 | merged via PR #216 |
-| codex/w-0140-bottom-analyze-slimming | W-0140 | merged via PR #217 |
+| codex/w-0145-corpus-plane | W-0145 | planned parallel search lane |
+| codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
+| codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
+| codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
 
 ---
 
