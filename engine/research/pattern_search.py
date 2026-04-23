@@ -3262,7 +3262,6 @@ def run_pattern_benchmark_search(
                     "active_registry_watch_phases": (
                         list(active_registry_entry.watch_phases) if active_registry_entry is not None else None
                     ),
-                    **_promotion_feature_payload(promotion_report),
                 },
                 selection_decision=SelectionDecisionInput(
                     decision_kind="advance",

@@ -18,7 +18,6 @@ from pathlib import Path
 import pandas as pd
 
 from data_cache.loader import load_klines
-from features.canonical_pattern import score_canonical_feature_snapshot
 from patterns.active_variant_registry import (
     ACTIVE_PATTERN_VARIANT_STORE,
     DEFAULT_ACTIVE_PATTERN_VARIANTS,
@@ -129,14 +128,10 @@ class LiveScanResult:
     observed_phase_path: list[str] = field(default_factory=list)
     phase_depth_progress: float = 0.0
     similarity_score: float = 0.0
-    replay_similarity_score: float = 0.0
-    canonical_feature_score: float = 0.5
-    ranking_score: float = 0.0
     target_hit: bool = False
     pattern_slug: str = "tradoor-oi-reversal-v1"
     variant_slug: str = "tradoor-oi-reversal-v1__canonical"
     timeframe: str = "1h"
-    canonical_feature_snapshot: dict[str, float | bool | None] = field(default_factory=dict)
     scanned_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
@@ -166,10 +161,6 @@ def _resolve_active_pattern_entry(pattern_slug: str) -> ActivePatternVariantEntr
         if candidate.pattern_slug == pattern_slug:
             return candidate
     return None
-
-
-def _clip01(value: float) -> float:
-    return max(0.0, min(1.0, value))
 
 
 def scan_universe_live(
@@ -257,13 +248,10 @@ def scan_universe_live(
             observed_phase_path=list(r.observed_phase_path),
             phase_depth_progress=r.phase_depth_progress or 0.0,
             similarity_score=r.score or 0.0,
-            replay_similarity_score=r.score or 0.0,
-            ranking_score=r.score or 0.0,
             target_hit=bool(r.target_hit),
             pattern_slug=pattern_slug,
             variant_slug=variant_slug,
             timeframe=timeframe,
-            canonical_feature_snapshot=dict(r.canonical_feature_snapshot),
             scanned_at=now,
         ))
 
@@ -349,23 +337,9 @@ def search_pattern_state_similarity(
         for result in results
         if result.similarity_score >= min_similarity_score
     ]
-    for result in filtered:
-        result.replay_similarity_score = result.similarity_score
-        result.canonical_feature_score = score_canonical_feature_snapshot(
-            result.canonical_feature_snapshot
-        )
-        result.ranking_score = round(
-            _clip01(
-                result.replay_similarity_score
-                + _FEATURE_RANKING_BLEND_WEIGHT * (result.canonical_feature_score - 0.5)
-            ),
-            6,
-        )
     filtered.sort(
         key=lambda result: (
-            -result.ranking_score,
-            -result.replay_similarity_score,
-            -result.canonical_feature_score,
+            -result.similarity_score,
             -result.phase_depth_progress,
             -result.phase_fidelity,
             PHASE_ORDER.get(result.phase, 9),
