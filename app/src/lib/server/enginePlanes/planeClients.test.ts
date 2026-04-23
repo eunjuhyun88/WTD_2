@@ -4,6 +4,7 @@ import {
 	fetchFactContextProxy,
 	fetchIndicatorCatalogProxy,
 	fetchFactMarketCapProxy,
+	fetchFactReferenceStackProxy,
 	fetchPerpContextProxy,
 } from './facts';
 import { postSearchScanProxy } from './search';
@@ -35,7 +36,7 @@ describe('engine plane clients', () => {
 		expect(payload?.symbol).toBe('BTCUSDT');
 	});
 
-	it('routes fact confluence, perp context, market-cap, and indicator catalog through plane-owned URLs', async () => {
+	it('routes fact confluence, reference-stack, perp context, market-cap, and indicator catalog through plane-owned URLs', async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
 			const url = String(input);
 			if (url.startsWith('/api/facts/confluence')) {
@@ -43,6 +44,20 @@ describe('engine plane clients', () => {
 					ok: true,
 					symbol: 'ETHUSDT',
 					timeframe: '4h',
+				});
+			}
+			if (url.startsWith('/api/facts/reference-stack')) {
+				return Response.json({
+					ok: true,
+					owner: 'engine',
+					plane: 'fact',
+					kind: 'reference_stack',
+					status: 'transitional',
+					generated_at: '2026-04-23T00:00:00Z',
+					symbol: 'ETHUSDT',
+					timeframe: '4h',
+					sources: [{ id: 'klines', state: 'live', rows: 600, summary: '600 rows' }],
+					coverage: { usable_now: 68, coverage_pct: 68 },
 				});
 			}
 			if (url.startsWith('/api/facts/perp-context')) {
@@ -99,6 +114,10 @@ describe('engine plane clients', () => {
 			symbol: 'ETHUSDT',
 			timeframe: '4h',
 		});
+		const referenceStack = await fetchFactReferenceStackProxy(fetchMock as typeof fetch, {
+			symbol: 'ETHUSDT',
+			timeframe: '4h',
+		});
 		const perp = await fetchPerpContextProxy(fetchMock as typeof fetch, {
 			symbol: 'ETHUSDT',
 			timeframe: '4h',
@@ -120,11 +139,14 @@ describe('engine plane clients', () => {
 		const thirdInit = fetchMock.mock.calls[2]?.[1] as RequestInit | undefined;
 		const fourthUrl = String(fetchMock.mock.calls[3]?.[0]);
 		const fourthInit = fetchMock.mock.calls[3]?.[1] as RequestInit | undefined;
-		expect(secondUrl).toBe('/api/facts/perp-context?symbol=ETHUSDT&timeframe=4h&offline=true');
-		expect(thirdUrl).toBe('/api/facts/market-cap?offline=true');
-		expect(fourthUrl.startsWith('/api/facts/indicator-catalog?')).toBe(true);
-		expect(fourthUrl).toContain('family=technical');
-		expect(fourthUrl).toContain('stage=promoted');
+		const fifthUrl = String(fetchMock.mock.calls[4]?.[0]);
+		const fifthInit = fetchMock.mock.calls[4]?.[1] as RequestInit | undefined;
+		expect(secondUrl).toBe('/api/facts/reference-stack?symbol=ETHUSDT&timeframe=4h&offline=true');
+		expect(thirdUrl).toBe('/api/facts/perp-context?symbol=ETHUSDT&timeframe=4h&offline=true');
+		expect(fourthUrl).toBe('/api/facts/market-cap?offline=true');
+		expect(fifthUrl.startsWith('/api/facts/indicator-catalog?')).toBe(true);
+		expect(fifthUrl).toContain('family=technical');
+		expect(fifthUrl).toContain('stage=promoted');
 		expect(secondInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
@@ -134,7 +156,11 @@ describe('engine plane clients', () => {
 		expect(fourthInit).toEqual(
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
+		expect(fifthInit).toEqual(
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
 		expect(confluence?.symbol).toBe('ETHUSDT');
+		expect(referenceStack?.kind).toBe('reference_stack');
 		expect(perp?.kind).toBe('perp_context');
 		expect(marketCap?.kind).toBe('market_cap');
 		expect(catalog?.kind).toBe('indicator_catalog');

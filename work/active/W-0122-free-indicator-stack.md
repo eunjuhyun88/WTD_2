@@ -158,7 +158,10 @@ This slice groups the next product-facing fact consumers under one W-0122 merge 
 4. keep `/api/terminal/intel-policy` public payload stable
 5. make `/api/terminal/intel-policy` consume `/api/market/macro-overview`, which is already engine-preferred via `GET /facts/market-cap`
 6. keep existing news / events / flow / trending / picks joins in place; only add the macro regime card on top of the flow panel
-7. lock the cut with targeted `market/events` + `terminal/intel-policy` route tests
+7. keep `/api/market/reference-stack` curated public payload stable
+8. consume engine `/api/facts/reference-stack` only as additive `factCoverage`
+9. do not replace curated `entries` with engine coverage `sources`
+10. lock the cut with targeted `market/events`, `terminal/intel-policy`, `reference-stack`, and plane-client tests
 
 ## Goal
 
@@ -475,7 +478,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **W-0122 는 terminal AI 의 fact-plane owner 다** — AI agent 와 scan/search 는 직접 CoinGecko/Dune/Etherscan/Solscan/TRONSCAN 을 부르지 않고, `/api/market/reference-stack`, `/api/market/chain-intel`, `/api/market/influencer-metrics`, `marketCapPlane` 같은 bounded read models 만 읽는다.
 - **`engine/market_engine/indicator_catalog.py` 는 W-0122 소유다** — 이 파일은 `W-0148` architecture lane 이 아니라 fact-plane mainline 에서 inventory route 와 함께 가져간다.
 - **market-cap cut 은 engine-preferred + app-fallback 으로 시작한다** — 현재 engine macro cache 는 `btc_dominance` 까지만 안정적으로 보장하므로, 첫 `GET /facts/market-cap` 는 partial truth 를 정직하게 내리고 `/api/market/macro-overview` 와 `/api/coingecko/global` 은 엔진 payload 가 충분하지 않을 때만 기존 app `marketCapPlane` 으로 떨어진다.
-- **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. 두 payload 는 의미가 달라서, explicit adapter 설계 전에는 단순 proxy cutover 를 금지한다.
+- **`/facts/reference-stack` 와 `/api/market/reference-stack` 는 아직 같은 계약이 아니다** — engine route 는 fact/provider coverage truth 이고, app public route 는 curated operator reference catalog 이다. public cutover 는 대체가 아니라 additive `factCoverage` adapter 로 시작한다.
 - **consumer fact cuts stay mergeable by extraction if the working branch picks up unrelated commits** — 현재 `codex/w-0122-market-cap-fact-cut` history 에는 unrelated `W-0148` commit 이 섞여 있으므로, PR 전에는 W-0122 commits 만 clean execution branch/worktree 로 추출한다.
 ## Open Questions
 
@@ -524,8 +527,8 @@ Phase 2 (future cycle):
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
 - branch/worktree state: `codex/w-0122-market-cap-fact-cut`, clean after `e5f80a6a`
-- verification status: app targeted `vitest` (`events`, `intel-policy`, `flow`, `macro-overview`, `coingecko/global`, `planeClients`) passed across the last slices; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
-- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, `reference-stack` contract mismatch
+- verification status: app targeted `vitest` (`events`, `intel-policy`, `reference-stack`, `flow`, `macro-overview`, `coingecko/global`, `planeClients`) passed across the last slices; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`.
+- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
 
 ## PR Trail
 
