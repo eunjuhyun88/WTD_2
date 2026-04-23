@@ -13,6 +13,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from features.canonical_pattern import (
+    CANONICAL_PATTERN_FEATURE_COLUMNS,
+    extract_canonical_pattern_feature_snapshot,
+)
 from models.signal import (
     EMAAlignment,
     Operator,
@@ -21,12 +25,10 @@ from models.signal import (
     SignalSnapshot,
 )
 from scanner.feature_calc import (
-    CANONICAL_PATTERN_FEATURE_COLUMNS,
     FEATURE_COLUMNS,
     MIN_HISTORY_BARS,
     compute_features_table,
     compute_snapshot,
-    extract_canonical_pattern_feature_snapshot,
 )
 
 
