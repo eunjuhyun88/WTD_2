@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  fetchAnalyze,
   fetchConfluenceCurrent,
   fetchConfluenceHistory,
   fetchFundingFlip,
@@ -99,6 +100,21 @@ describe('terminalBackend surface clients', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/confluence/history?symbol=BTCUSDT&limit=96');
     expect(current?.score).toBe(42);
     expect(history[0]?.regime).toBe('bull');
+  });
+
+  it('loads analyze through a surface client helper', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      jsonResponse({
+        symbol: 'BTCUSDT',
+        tf: '4h',
+        price: 100,
+      }),
+    );
+
+    const analyze = await fetchAnalyze('BTCUSDT', '4h');
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/cogochi/analyze?symbol=BTCUSDT&tf=4h');
+    expect(analyze?.price).toBe(100);
   });
 
   it('loads indicator side-fetch payloads through surface client helpers', async () => {
