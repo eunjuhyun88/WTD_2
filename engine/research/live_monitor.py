@@ -94,6 +94,7 @@ class LiveScanResult:
     pattern_slug: str = "tradoor-oi-reversal-v1"
     variant_slug: str = "tradoor-oi-reversal-v1__canonical"
     timeframe: str = "1h"
+    canonical_feature_snapshot: dict[str, float | bool | None] = field(default_factory=dict)
     scanned_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
@@ -211,6 +212,7 @@ def scan_universe_live(
             pattern_slug=pattern_slug,
             variant_slug=variant_slug,
             timeframe=timeframe,
+            canonical_feature_snapshot=dict(r.canonical_feature_snapshot),
             scanned_at=now,
         ))
 

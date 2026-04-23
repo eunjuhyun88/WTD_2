@@ -194,6 +194,7 @@ def test_load_perp_parses_timestamp_index(tmp_path, monkeypatch):
     perp = pd.DataFrame(
         {
             "funding_rate": [0.001, 0.002],
+            "oi_raw": [1000.0, 1200.0],
             "oi_change_1h": [0.1, 0.2],
             "oi_change_24h": [0.3, 0.4],
             "long_short_ratio": [1.1, 1.2],
@@ -207,3 +208,4 @@ def test_load_perp_parses_timestamp_index(tmp_path, monkeypatch):
     assert out is not None
     assert str(out.index.dtype).startswith("datetime64")
     assert out.index.tz is not None
+    assert "oi_raw" in out.columns
