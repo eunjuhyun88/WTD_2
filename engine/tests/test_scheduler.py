@@ -173,6 +173,20 @@ def test_pattern_scan_job_dedupes_repeated_entry_candidate_summaries(monkeypatch
     assert summaries[0]["entry_candidates"] == {"tradoor-oi-reversal-v1": ["BTCUSDT"]}
 
 
+def test_search_corpus_refresh_scheduler_wrapper(monkeypatch) -> None:
+    calls: list[str] = []
+
+    async def fake_search_corpus_refresh_job(*, universe_name: str) -> dict:
+        calls.append(universe_name)
+        return {"ok": True}
+
+    monkeypatch.setattr(scheduler, "search_corpus_refresh_job", fake_search_corpus_refresh_job)
+
+    asyncio.run(scheduler._search_corpus_refresh_job())
+
+    assert calls == [scheduler.UNIVERSE_NAME]
+
+
 def test_validate_scheduler_secrets_rejects_missing_service_role(monkeypatch) -> None:
     monkeypatch.setattr(scheduler, "SUPABASE_URL", "https://project.supabase.co")
     monkeypatch.setattr(scheduler, "SUPABASE_ROLE_KEY", "")

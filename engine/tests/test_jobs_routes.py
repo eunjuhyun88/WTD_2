@@ -40,3 +40,24 @@ def test_jobs_reject_invalid_scheduler_secret(monkeypatch) -> None:
 
     assert response.status_code == 403
     assert response.json() == {"detail": "invalid scheduler secret"}
+
+
+def test_jobs_search_corpus_endpoint_runs_guarded_job(monkeypatch) -> None:
+    import scanner.scheduler as scheduler
+
+    calls: list[str] = []
+
+    async def fake_search_corpus_refresh_job() -> None:
+        calls.append("ran")
+
+    monkeypatch.setattr(jobs, "SCHEDULER_SECRET", "top-secret")
+    monkeypatch.setattr(scheduler, "_search_corpus_refresh_job", fake_search_corpus_refresh_job)
+
+    response = _client().post(
+        "/jobs/search_corpus/run",
+        headers={"Authorization": "Bearer top-secret"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert calls == ["ran"]

@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`41a72eef` — current local `origin/main` ref
+`0d2423ad` — current local `origin/main` ref after PR #201
 
 ## 완료 (이번 세션)
 
@@ -18,6 +18,7 @@
 | #188 (W-0136) | worker-control research CLI + W-0126 cutover preflight 보강 |
 | #189 (W-0140) | bottom ANALYZE tab 상세 workspace 재구성 |
 | #190 (W-0138) | `ENGINE_RUNTIME_ROLE` 기반 engine-api / worker-control split |
+| #201 (W-0122) | consumer fact routes attach to engine facts (`reference-stack`, `chain-intel`) |
 
 ---
 
@@ -89,9 +90,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0122-consumer-fact-cut`
-- PR candidate extracted into clean worktree `/private/tmp/wtd-v2-w0122-consumer-cut`
-- W-0122 consumer fact cut is PR-ready by extraction: snapshot / confluence / flow / events / macro / intel-policy / reference-stack / chain-intel now prefer or attach engine fact routes while keeping public payloads stable
+- active on `codex/w-0145-corpus-plane`
+- worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
+- current slice: Search Plane first durable corpus boundary; add `engine/search` corpus window signatures, local SQLite store, worker-control refresh job, and targeted tests
 
 ---
 
@@ -115,7 +116,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `41a72eef` |
+| origin/main | — | local remote-tracking ref = `0d2423ad` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -128,7 +129,7 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| codex/w-0145-corpus-plane | W-0145 | planned parallel search lane |
+| codex/w-0145-corpus-plane | W-0145 | active Search Plane first corpus-store cut |
 | codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
 | codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
 | codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |
