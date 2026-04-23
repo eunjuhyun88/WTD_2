@@ -71,8 +71,8 @@ Engine logic change
 
 ## Next Steps
 
-1. wire seed-search retrieval to corpus-first reads with fallback to replay/cache scan.
-2. add app `/api/search/*` consumer only after engine seed/scan payloads are stable.
+1. align app search contracts and plane clients with canonical engine catalog/seed/scan payloads.
+2. wire seed-search retrieval to corpus-first reads with fallback to replay/cache scan.
 3. improve corpus similarity scoring beyond compact numeric-distance baseline.
 
 ## Exit Criteria
@@ -85,7 +85,7 @@ Engine logic change
 ## Handoff Checklist
 
 - active work item: `work/active/W-0145-operational-seed-search-corpus.md`
-- branch: `codex/w-0145-search-routes`
+- branch: `codex/w-0145-search-proxy-client`
 - worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- verification: engine targeted `pytest tests/test_search_routes.py tests/test_search_corpus.py tests/test_scheduler.py tests/test_jobs_routes.py -q` = `19 passed`; `npm --prefix app run contract:check:engine-types` = passed; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`
+- verification: `npm --prefix app run test -- src/lib/server/enginePlanes/planeClients.test.ts src/lib/server/enginePlaneProxy.test.ts` = `8 passed`; `npm --prefix app run contract:check:engine-types` = passed; `npm --prefix app run check` = `0 errors`, pre-existing `111 warnings`
 - remaining blockers: shared-state migration, richer onchain/event lanes, and sub-hour replay breadth remain future slices

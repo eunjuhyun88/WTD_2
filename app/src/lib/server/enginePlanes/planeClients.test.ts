@@ -8,7 +8,12 @@ import {
 	fetchFactReferenceStackProxy,
 	fetchPerpContextProxy,
 } from './facts';
-import { postSearchScanProxy } from './search';
+import {
+	fetchSeedSearchRunProxy,
+	fetchSearchScanRunProxy,
+	postSearchScanProxy,
+	postSeedSearchProxy,
+} from './search';
 import { fetchRuntimeCaptureProxy } from './runtime';
 
 describe('engine plane clients', () => {
@@ -209,12 +214,44 @@ describe('engine plane clients', () => {
 					status: 'fact_only',
 					generated_at: '2026-04-23T00:00:00Z',
 					scan_id: 'scan_1',
-					symbol: 'BTCUSDT',
-					timeframe: '1h',
-					summary: 'ok',
-					consensus: 'neutral',
-					avg_confidence: 0.4,
-					highlights: [],
+					request: { symbol: 'BTCUSDT', timeframe: '1h' },
+					candidates: [],
+				}),
+			)
+			.mockResolvedValueOnce(
+				Response.json({
+					ok: true,
+					owner: 'engine',
+					plane: 'search',
+					status: 'corpus_only',
+					generated_at: '2026-04-23T00:00:00Z',
+					scan_id: 'scan_1',
+					request: { symbol: 'BTCUSDT', timeframe: '1h' },
+					candidates: [],
+				}),
+			)
+			.mockResolvedValueOnce(
+				Response.json({
+					ok: true,
+					owner: 'engine',
+					plane: 'search',
+					status: 'corpus_only',
+					generated_at: '2026-04-23T00:00:00Z',
+					run_id: 'run_1',
+					request: { symbol: 'BTCUSDT', timeframe: '1h' },
+					candidates: [],
+				}),
+			)
+			.mockResolvedValueOnce(
+				Response.json({
+					ok: true,
+					owner: 'engine',
+					plane: 'search',
+					status: 'corpus_only',
+					generated_at: '2026-04-23T00:00:00Z',
+					run_id: 'run_1',
+					request: { symbol: 'BTCUSDT', timeframe: '1h' },
+					candidates: [],
 				}),
 			)
 			.mockResolvedValueOnce(
@@ -235,6 +272,13 @@ describe('engine plane clients', () => {
 			symbol: 'BTCUSDT',
 			timeframe: '1h',
 		});
+		const savedScan = await fetchSearchScanRunProxy(fetchMock as typeof fetch, 'scan_1');
+		const seed = await postSeedSearchProxy(fetchMock as typeof fetch, {
+			symbol: 'BTCUSDT',
+			timeframe: '1h',
+			signature: { trend: 'up' },
+		});
+		const savedSeed = await fetchSeedSearchRunProxy(fetchMock as typeof fetch, 'run_1');
 		const capture = await fetchRuntimeCaptureProxy(fetchMock as typeof fetch, 'cap_1');
 
 		expect(fetchMock).toHaveBeenNthCalledWith(
@@ -249,10 +293,33 @@ describe('engine plane clients', () => {
 		);
 		expect(fetchMock).toHaveBeenNthCalledWith(
 			2,
+			'/api/search/scan/scan_1',
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			3,
+			'/api/search/seed',
+			expect.objectContaining({
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ symbol: 'BTCUSDT', timeframe: '1h', signature: { trend: 'up' } }),
+				signal: expect.any(AbortSignal),
+			}),
+		);
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			4,
+			'/api/search/seed/run_1',
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			5,
 			'/api/runtime/captures/cap_1',
 			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
 		expect(scan?.scan_id).toBe('scan_1');
+		expect(savedScan?.scan_id).toBe('scan_1');
+		expect(seed?.run_id).toBe('run_1');
+		expect(savedSeed?.run_id).toBe('run_1');
 		expect(capture?.capture.id).toBe('cap_1');
 	});
 });
