@@ -56,9 +56,12 @@
     mobileView?: 'chart' | 'analyze' | 'scan' | 'judge';
     setMobileView?: (v: 'chart' | 'analyze' | 'scan' | 'judge') => void;
     setMobileSymbol?: (sym: string) => void;
+    onSymbolTap?: () => void;
+    onTFChange?: (tf: string) => void;
+    isPaneFocused?: boolean;
   }
 
-  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView, setMobileSymbol }: Props = $props();
+  let { mode, tabState, updateTabState, symbol = 'BTCUSDT', timeframe = '4h', mobileView, setMobileView, setMobileSymbol, onSymbolTap, onTFChange, isPaneFocused = true }: Props = $props();
 
   let containerEl: HTMLDivElement | undefined = $state();
   let dragging = $state(false);
@@ -908,7 +911,7 @@
   <div class="layout-c">
     <div class="chart-section lc-main">
     <div class="chart-header">
-      <span class="symbol">{symbol}</span>
+      <button class="symbol" onclick={() => onSymbolTap?.()} title="심볼 변경">{symbol}</button>
       <span class="timeframe">{timeframe.toUpperCase()}</span>
       <span class="pattern">Tradoor v2</span>
       <span class="hd-sep"></span>
@@ -1655,7 +1658,14 @@
     font-weight: 600;
     letter-spacing: -0.02em;
     font-family: 'Space Grotesk', sans-serif;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: color 0.15s;
   }
+  .symbol:hover { color: var(--brand); }
   .timeframe { color: var(--g6); letter-spacing: 0.04em; }
   .pattern {
     color: var(--g5);

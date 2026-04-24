@@ -179,44 +179,6 @@
   const judgeLast    = $derived((analysisData as any)?.snapshot?.price ?? (analysisData as any)?.snapshot?.last ?? null);
 </script>
 
-{#snippet analyzePane()}
-  <TerminalContextPanel
-    {analysisData}
-    activeTab={analyzeTab}
-    onTabChange={(t) => analyzeTab = t}
-    bars={ohlcvBars}
-    {layerBarsMap}
-  />
-{/snippet}
-
-{#snippet scanPane()}
-  <ScanGrid
-    alerts={scannerAlerts}
-    {similar}
-    {activeSymbol}
-    {loadingSimilar}
-    onOpenCapture={openCapture}
-  />
-{/snippet}
-
-{#snippet judgePane()}
-  <JudgePanel
-    symbol={activeSymbol}
-    timeframe={activeTf}
-    verdict={judgeVerdict}
-    entry={judgeEntry}
-    stop={judgeStop}
-    target={judgeTarget}
-    pWin={judgePWin}
-    lastPrice={judgeLast}
-    {captures}
-    saving={savingJudgment}
-    onSaveJudgment={saveJudgment}
-    onRejudge={rejudge}
-    onOpenCapture={openCapture}
-  />
-{/snippet}
-
 <svelte:head>
   <title>Terminal · Peek — wtd-v2</title>
 </svelte:head>

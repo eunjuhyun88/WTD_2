@@ -4,11 +4,18 @@
 
   type MatchCandidate = {
     symbol: string;
-    source: 'engine';
+    source: 'engine' | 'similar';
     score: number;
     matchedSignals: string[];
     missingSignals: string[];
     summary: string;
+    layerAScore?: number;
+    layerBScore?: number | null;
+    layerCScore?: number | null;
+    candidatePhasePath?: string[];
+    windowId?: string;
+    startTs?: string;
+    endTs?: string;
   };
 
   type Props = {
@@ -31,6 +38,8 @@
   let snapshotFiles = $state<File[]>([]);
   let requestedSignals = $state<string[]>([]);
   let searchQuerySpec = $state<SearchQuerySpec | null>(null);
+  let currentRunId = $state<string | null>(null);
+  let judgedCandidates = $state<Set<string>>(new Set());
 
   function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -73,6 +82,8 @@
       requestedSignals = Array.isArray(body.seed?.requestedSignals) ? body.seed.requestedSignals : [];
       searchQuerySpec = isSearchQuerySpec(body.seed?.searchQuerySpec) ? body.seed.searchQuerySpec : null;
       candidates = Array.isArray(body.candidates) ? body.candidates : [];
+      currentRunId = body.seed?.runId ?? null;
+      judgedCandidates = new Set();
     } catch (err) {
       error = String(err);
       candidates = [];
@@ -86,6 +97,29 @@
   function handlePick(symbol: string) {
     onPickSymbol?.(symbol);
     onClose?.();
+  }
+
+  async function judgeCandidate(candidate: MatchCandidate, verdict: 'good' | 'bad') {
+    if (!currentRunId || !candidate.windowId) return;
+    judgedCandidates = new Set([...judgedCandidates, candidate.windowId]);
+    try {
+      await fetch('/api/terminal/pattern-seed/judge', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          runId: currentRunId,
+          candidateId: candidate.windowId,
+          verdict,
+          symbol: candidate.symbol,
+          layerAScore: candidate.layerAScore,
+          layerBScore: candidate.layerBScore,
+          layerCScore: candidate.layerCScore,
+          finalScore: candidate.score / 100,
+        }),
+      });
+    } catch {
+      // non-fatal — best-effort telemetry
+    }
   }
 </script>
 
@@ -155,22 +189,59 @@
             <p class="seed-empty">Run a thesis search to rank similar setups.</p>
           {:else}
             {#each candidates as candidate}
-              <button type="button" class="candidate-row" onclick={() => handlePick(candidate.symbol)}>
+              <!-- svelte-ignore a11y_interactive_supports_focus -->
+              <div role="button" class="candidate-row" tabindex="0"
+                onclick={() => handlePick(candidate.symbol)}
+                onkeydown={(e) => e.key === 'Enter' && handlePick(candidate.symbol)}>
                 <div class="candidate-main">
                   <strong>{candidate.symbol.replace('USDT', '')}</strong>
                   <span class="candidate-source" data-source={candidate.source}>{candidate.source}</span>
                   <span class="candidate-score">{candidate.score}</span>
-                </div>
-                <p class="candidate-summary">{candidate.summary}</p>
-                <div class="candidate-signals">
-                  {#if candidate.matchedSignals.length > 0}
-                    <span class="candidate-match">match: {candidate.matchedSignals.join(', ')}</span>
+                  {#if candidate.windowId && !judgedCandidates.has(candidate.windowId)}
+                    <div class="judge-btns" role="group" aria-label="Rate this candidate">
+                      <button type="button" class="judge-btn good" title="Good match"
+                        onclick={(e) => { e.stopPropagation(); judgeCandidate(candidate, 'good'); }}
+                        aria-label="Mark as good match">+</button>
+                      <button type="button" class="judge-btn bad" title="Bad match"
+                        onclick={(e) => { e.stopPropagation(); judgeCandidate(candidate, 'bad'); }}
+                        aria-label="Mark as bad match">−</button>
+                    </div>
+                  {:else if candidate.windowId && judgedCandidates.has(candidate.windowId)}
+                    <span class="judge-done">✓</span>
                   {/if}
-                  {#if candidate.missingSignals.length > 0}
-                    <span class="candidate-miss">missing: {candidate.missingSignals.join(', ')}</span>
-                  {/if}
                 </div>
-              </button>
+                {#if candidate.candidatePhasePath && candidate.candidatePhasePath.length > 0}
+                  <div class="phase-path">
+                    {#each candidate.candidatePhasePath as phase, i}
+                      <span class="phase-node">{phase}</span>{#if i < (candidate.candidatePhasePath?.length ?? 0) - 1}<span class="phase-arrow">→</span>{/if}
+                    {/each}
+                  </div>
+                {/if}
+                {#if candidate.layerAScore !== undefined}
+                  <div class="layer-scores">
+                    <span class="layer-badge" data-layer="a">A {(candidate.layerAScore * 100).toFixed(0)}</span>
+                    {#if candidate.layerBScore !== null && candidate.layerBScore !== undefined}
+                      <span class="layer-badge" data-layer="b">B {(candidate.layerBScore * 100).toFixed(0)}</span>
+                    {/if}
+                    {#if candidate.layerCScore !== null && candidate.layerCScore !== undefined}
+                      <span class="layer-badge" data-layer="c">C {(candidate.layerCScore * 100).toFixed(0)}</span>
+                    {/if}
+                    {#if candidate.startTs}
+                      <span class="candidate-window">{candidate.startTs.slice(0, 10)}</span>
+                    {/if}
+                  </div>
+                {:else}
+                  <p class="candidate-summary">{candidate.summary}</p>
+                  <div class="candidate-signals">
+                    {#if candidate.matchedSignals.length > 0}
+                      <span class="candidate-match">match: {candidate.matchedSignals.join(', ')}</span>
+                    {/if}
+                    {#if candidate.missingSignals.length > 0}
+                      <span class="candidate-miss">missing: {candidate.missingSignals.join(', ')}</span>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
             {/each}
           {/if}
         </div>
@@ -375,5 +446,95 @@
   }
   .candidate-miss {
     color: rgba(253,186,116,0.95);
+  }
+  .phase-path {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    font-family: var(--sc-font-mono);
+    font-size: 9px;
+    color: rgba(214,231,255,0.8);
+  }
+  .phase-node {
+    background: rgba(99,179,237,0.1);
+    border: 1px solid rgba(99,179,237,0.2);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+  .phase-arrow {
+    color: rgba(247,242,234,0.3);
+    padding: 0 1px;
+  }
+  .layer-scores {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-family: var(--sc-font-mono);
+  }
+  .layer-badge {
+    font-size: 9px;
+    border-radius: 3px;
+    padding: 2px 6px;
+    border: 1px solid;
+  }
+  .layer-badge[data-layer='a'] {
+    border-color: rgba(131,188,255,0.25);
+    color: rgba(190,220,255,0.9);
+    background: rgba(131,188,255,0.07);
+  }
+  .layer-badge[data-layer='b'] {
+    border-color: rgba(167,243,208,0.25);
+    color: rgba(167,243,208,0.9);
+    background: rgba(74,222,128,0.07);
+  }
+  .layer-badge[data-layer='c'] {
+    border-color: rgba(253,186,116,0.25);
+    color: rgba(253,186,116,0.9);
+    background: rgba(251,146,60,0.07);
+  }
+  .candidate-window {
+    font-size: 9px;
+    color: rgba(247,242,234,0.3);
+    margin-left: auto;
+  }
+  .judge-btns {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .judge-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .judge-btn.good {
+    border-color: rgba(74,222,128,0.3);
+    color: rgba(74,222,128,0.9);
+  }
+  .judge-btn.good:hover {
+    background: rgba(74,222,128,0.12);
+  }
+  .judge-btn.bad {
+    border-color: rgba(248,113,113,0.3);
+    color: rgba(248,113,113,0.9);
+  }
+  .judge-btn.bad:hover {
+    background: rgba(248,113,113,0.12);
+  }
+  .judge-done {
+    margin-left: auto;
+    font-size: 10px;
+    color: rgba(74,222,128,0.7);
   }
 </style>

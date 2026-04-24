@@ -38,12 +38,7 @@ def negative_funding_bias(
             f"min_bars must be >= 1 and <= lookback_bars, got {min_bars} vs {lookback_bars}"
         )
 
-    if "funding_rate" in ctx.features.columns:
-        funding = ctx.features["funding_rate"].astype(float)
-    elif "funding_rate" in ctx.klines.columns:
-        funding = ctx.klines["funding_rate"].astype(float)
-    else:
-        return pd.Series(False, index=ctx.features.index, dtype=bool)
+    funding = ctx.klines["funding_rate"].astype(float)
 
     # Count negative bars in lookback window
     negative_count = (

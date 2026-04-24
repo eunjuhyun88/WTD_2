@@ -17,11 +17,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from data_cache.loader import list_cached_symbols, load_klines
+from data_cache.loader import load_klines
 from research.pattern_search import (
     BenchmarkCase,
     PatternVariantSpec,
-    PatternSearchArtifactStore,
     build_variant_pattern,
     evaluate_variant_on_case,
 )
@@ -78,42 +77,6 @@ PROMOTED_PATTERNS: list[tuple[str, str, set[str]]] = [
 ]
 
 
-def _registry_variant_slug(pattern_slug: str) -> str | None:
-    for promoted_pattern_slug, variant_slug, _watch_phases in PROMOTED_PATTERNS:
-        if promoted_pattern_slug == pattern_slug:
-            return variant_slug
-    return None
-
-
-def resolve_live_variant_slug(
-    pattern_slug: str,
-    requested_variant_slug: str | None = None,
-    *,
-    artifact_store: PatternSearchArtifactStore | None = None,
-) -> str:
-    """Resolve the live-monitor variant.
-
-    Priority:
-    1. explicit requested variant (except "auto")
-    2. latest benchmark-search winner persisted for the pattern
-    3. registry fallback from PROMOTED_PATTERNS
-    4. canonical naming convention fallback
-    """
-    if requested_variant_slug and requested_variant_slug != "auto":
-        return requested_variant_slug
-
-    artifact_store = artifact_store or PatternSearchArtifactStore()
-    for artifact in artifact_store.list(pattern_slug=pattern_slug, limit=20):
-        winner_variant_slug = artifact.get("winner_variant_slug")
-        if winner_variant_slug:
-            return winner_variant_slug
-
-    registry_variant_slug = _registry_variant_slug(pattern_slug)
-    if registry_variant_slug:
-        return registry_variant_slug
-    return f"{pattern_slug}__canonical"
-
-
 @dataclass
 class LiveScanResult:
     symbol: str
@@ -143,7 +106,7 @@ class LiveScanResult:
 
 def scan_universe_live(
     universe: list[str] | None = None,
-    variant_slug: str | None = None,
+    variant_slug: str = "tradoor-oi-reversal-v1__canonical",
     pattern_slug: str = "tradoor-oi-reversal-v1",
     timeframe: str = "1h",
     window_bars: int = 120,
@@ -156,7 +119,7 @@ def scan_universe_live(
 
     Args:
         universe: list of symbols to scan (default: DEFAULT_UNIVERSE)
-        variant_slug: explicit variant to evaluate; None/"auto" uses latest benchmark-search winner
+        variant_slug: promoted variant to evaluate
         pattern_slug: pattern family
         timeframe: bar size (default 1h)
         window_bars: lookback bars for phase detection (default 120 = 5 days)
@@ -168,17 +131,14 @@ def scan_universe_live(
         List of LiveScanResult sorted by phase priority (ACCUMULATION first).
     """
     if universe is None:
-        universe = list_cached_symbols(require_perp=False)
-        if not universe:
-            universe = DEFAULT_UNIVERSE
+        universe = DEFAULT_UNIVERSE
     if watch_phases is None:
         watch_phases = WATCH_PHASES
 
     now = datetime.now(timezone.utc)
-    resolved_variant_slug = resolve_live_variant_slug(pattern_slug, variant_slug)
     variant = PatternVariantSpec(
         pattern_slug=pattern_slug,
-        variant_slug=resolved_variant_slug,
+        variant_slug=variant_slug,
         timeframe=timeframe,
     )
     pattern = build_variant_pattern(pattern_slug, variant)
@@ -242,7 +202,6 @@ def scan_universe_live(
             "name": "live-phase-scan",
             "params": {
                 "pattern": variant_slug,
-                "resolved_variant_slug": resolved_variant_slug,
                 "universe_size": len(universe),
                 "window_bars": window_bars,
                 "staleness_hours": staleness_hours,
@@ -282,7 +241,7 @@ def scan_all_patterns_live(
     for pat_slug, var_slug, wp in PROMOTED_PATTERNS:
         results = scan_universe_live(
             universe=universe,
-            variant_slug="auto",
+            variant_slug=var_slug,
             pattern_slug=pat_slug,
             timeframe=timeframe,
             window_bars=window_bars,

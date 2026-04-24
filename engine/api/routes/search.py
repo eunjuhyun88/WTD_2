@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query
 
 from api.schemas_search import (
+    QualityJudgementRequest,
+    QualityJudgementResponse,
+    QualityStatsResponse,
     ScanRequest,
     ScanResponse,
     SearchCandidate,
@@ -12,13 +16,15 @@ from api.schemas_search import (
     SearchCorpusWindowSummary,
     SeedSearchRequest,
     SeedSearchResponse,
-    SimilarCandidateOut,
+    SimilarCandidate,
     SimilarSearchRequest,
     SimilarSearchResponse,
 )
 from patterns.definitions import PatternDefinitionService
 from search.corpus import SearchCorpusStore
 from search.runtime import get_scan, get_seed_search, run_scan, run_seed_search
+from search.quality_ledger import append_judgement, compute_weights, layer_stats
+from search.similar import get_similar_search, run_similar_search
 
 router = APIRouter()
 _definition_service: PatternDefinitionService | None = None
@@ -93,6 +99,99 @@ async def search_scan_result(scan_id: str) -> ScanResponse:
     return _scan_response(result)
 
 
+@router.post("/similar", response_model=SimilarSearchResponse)
+async def search_similar(body: SimilarSearchRequest) -> SimilarSearchResponse:
+    """3-layer pattern similarity search.
+
+    Layer A — feature signature distance (always active)
+    Layer B — phase path LCS similarity (active when observed_phase_paths provided)
+    Layer C — ML p_win from LightGBM (active when model is trained)
+    """
+    result = await asyncio.to_thread(run_similar_search, body.model_dump(mode="json"))
+    return _similar_response(result)
+
+
+@router.get("/similar/{run_id}", response_model=SimilarSearchResponse)
+async def search_similar_result(run_id: str) -> SimilarSearchResponse:
+    result = get_similar_search(run_id)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "similar_run_not_found", "run_id": run_id},
+        )
+    return _similar_response(result)
+
+
+def _similar_response(result: dict) -> SimilarSearchResponse:
+    candidates_raw = result.get("candidates", [])
+    candidates = [
+        SimilarCandidate(
+            candidate_id=row["candidate_id"],
+            window_id=row["window_id"],
+            symbol=row["symbol"],
+            timeframe=row["timeframe"],
+            start_ts=row["start_ts"],
+            end_ts=row["end_ts"],
+            bars=int(row.get("bars", 0)),
+            final_score=float(row.get("final_score", 0.0)),
+            layer_a_score=float(row.get("layer_a_score", 0.0)),
+            layer_b_score=row.get("layer_b_score"),
+            layer_c_score=row.get("layer_c_score"),
+            candidate_phase_path=row.get("candidate_phase_path") or [],
+            signature=row.get("signature") or {},
+            close_return_pct=row.get("close_return_pct"),
+        )
+        for row in candidates_raw
+    ]
+    # Report which layers were active in this run
+    any_b = any(c.layer_b_score is not None for c in candidates)
+    any_c = any(c.layer_c_score is not None for c in candidates)
+    return SimilarSearchResponse(
+        status=result["status"],
+        generated_at=result["updated_at"],
+        run_id=result["run_id"],
+        request=result.get("request", {}),
+        candidates=candidates,
+        scoring_layers={"layer_a": True, "layer_b": any_b, "layer_c": any_c},
+    )
+
+
+@router.post("/quality/judge", response_model=QualityJudgementResponse)
+async def search_quality_judge(body: QualityJudgementRequest) -> QualityJudgementResponse:
+    """Record a user judgement (good/bad/neutral) on a search candidate.
+
+    This feeds the weight recalibration loop: after _MIN_SAMPLES_FOR_RECALIBRATION
+    judgements the blend weights for Layer A/B/C shift toward whichever layer
+    has the higher user-validated accuracy.
+    """
+    judgement_id = await asyncio.to_thread(
+        append_judgement,
+        body.run_id,
+        body.candidate_id,
+        body.verdict,
+        symbol=body.symbol,
+        layer_a_score=body.layer_a_score,
+        layer_b_score=body.layer_b_score,
+        layer_c_score=body.layer_c_score,
+        final_score=body.final_score,
+        user_id=body.user_id,
+    )
+    return QualityJudgementResponse(judgement_id=judgement_id)
+
+
+@router.get("/quality/stats", response_model=QualityStatsResponse)
+async def search_quality_stats() -> QualityStatsResponse:
+    """Return per-layer accuracy stats and the current active blend weights."""
+    stats = await asyncio.to_thread(layer_stats)
+    weights = await asyncio.to_thread(compute_weights)
+    return QualityStatsResponse(
+        total_judgements=stats["total_judgements"],
+        layers=stats["layers"],
+        active_weights=weights,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
 def _seed_response(result: dict) -> SeedSearchResponse:
     return SeedSearchResponse(
         status=result["status"],
@@ -127,60 +226,6 @@ def _candidate(row: dict, *, request: dict[str, object]) -> SearchCandidate:
         score=float(row.get("score", 0.0)),
         definition_ref=definition_ref,
         payload=payload,
-    )
-
-
-@router.post("/similar", response_model=SimilarSearchResponse)
-async def search_similar(body: SimilarSearchRequest) -> SimilarSearchResponse:
-    """Pattern similarity search using feature_windows store.
-
-    Accepts a PatternDraft dict and runs the 3-layer hybrid search:
-    - Layer A (0.45): feature signal similarity
-    - Layer B (0.45): phase sequence alignment (LCS)
-    - Layer C (0.10): context (timeframe/symbol)
-
-    Returns top-k RankedCandidates sorted by final_score DESC.
-    The store must be populated via feature_windows_builder before results are meaningful.
-    """
-    from datetime import datetime, timezone
-    from research.candidate_search import search_from_pattern_draft
-
-    try:
-        result = search_from_pattern_draft(
-            body.pattern_draft,
-            top_k=body.top_k,
-            since_days=body.since_days,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail={"code": "invalid_pattern_draft", "msg": str(exc)}) from exc
-
-    candidates = [
-        SimilarCandidateOut(
-            symbol=c.symbol,
-            timeframe=c.timeframe,
-            bar_ts_ms=c.bar_ts_ms,
-            bar_iso=c.bar_iso,
-            feature_score=round(c.feature_score, 4),
-            sequence_score=round(c.sequence_score, 4),
-            context_score=round(c.context_score, 4),
-            final_score=round(c.final_score, 4),
-            observed_phase_path=c.observed_phase_path,
-            matched_phase_path=c.matched_phase_path,
-            missing_phases=c.missing_phases,
-            phase_feature_scores=[p.to_dict() for p in c.phase_feature_scores],
-        )
-        for c in result.candidates
-    ]
-
-    return SimilarSearchResponse(
-        spec_pattern_family=result.spec_pattern_family,
-        spec_phase_path=result.spec_phase_path,
-        reference_timeframe=result.reference_timeframe,
-        total_candidates_found=result.total_candidates_found,
-        top_k=result.top_k,
-        candidates=candidates,
-        search_meta=result.search_meta,
-        generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
 

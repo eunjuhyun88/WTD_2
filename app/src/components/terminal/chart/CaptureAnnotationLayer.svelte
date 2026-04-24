@@ -24,20 +24,11 @@
   import { EvalWindowPrimitive }    from './primitives/EvalWindowPrimitive';
   import type { CaptureAnnotation } from './primitives/CaptureMarkerPrimitive';
 
-  interface Props {
-    series?: ISeriesApi<'Candlestick', Time> | null;
-    symbol?: string;
-    timeframe?: string;
-    /** Called whenever the annotation list changes — lets parent maintain a cache for click handlers. */
-    onAnnotationsChange?: ((anns: CaptureAnnotation[]) => void) | null;
-  }
-
-  let {
-    series = null,
-    symbol = '',
-    timeframe = '1h',
-    onAnnotationsChange = null,
-  }: Props = $props();
+  export let series: ISeriesApi<'Candlestick', Time> | null = null;
+  export let symbol: string = '';
+  export let timeframe: string = '1h';
+  /** Called whenever the annotation list changes — lets parent maintain a cache for click handlers. */
+  export let onAnnotationsChange: ((anns: CaptureAnnotation[]) => void) | null = null;
 
   // ── Primitive registry ──────────────────────────────────────────────────────
   // Map capture_id → { marker, window } primitives currently attached
@@ -50,26 +41,21 @@
   let _unsubscribe: (() => void) | null = null;
 
   // ── Boot / tear-down on prop change ────────────────────────────────────────
-  $effect(() => {
-    if (!symbol || !timeframe) return;
+  $: if (symbol && timeframe) {
     _teardown();
     _store = createCaptureAnnotationsStore(symbol, timeframe);
-    _unsubscribe = _store.subscribe((state) => {
+    _unsubscribe = _store.subscribe(state => {
       if (series) _syncPrimitives(state.annotations);
     });
+  }
 
-    return () => {
-      _teardown();
-    };
-  });
-
-  $effect(() => {
-    if (!series) return;
+  $: if (series) {
+    // Series changed — re-attach all existing primitives
     _detachAll();
     if (_store) {
       _syncPrimitives(get(_store).annotations);
     }
-  });
+  }
 
   // ── Sync helpers ─────────────────────────────────────────────────────────────
 

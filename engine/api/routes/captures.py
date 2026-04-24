@@ -77,48 +77,6 @@ def _status_for_kind(kind: CaptureKind) -> str:
         return "pending_outcome"
     return "closed"
 
-class ResearchSourceBody(BaseModel):
-    kind: Literal["telegram_post", "chart_image", "manual_note", "terminal_capture"]
-    author: str | None = None
-    title: str | None = None
-    text: str | None = None
-    image_refs: list[str] = Field(default_factory=list, max_length=12)
-
-
-class ResearchPhaseAnnotationBody(BaseModel):
-    phase_id: str
-    label: str
-    timeframe: str
-    start_ts: int | None = None
-    end_ts: int | None = None
-    signals_required: list[str] = Field(default_factory=list, max_length=24)
-    signals_preferred: list[str] = Field(default_factory=list, max_length=24)
-    signals_forbidden: list[str] = Field(default_factory=list, max_length=24)
-    note: str | None = None
-
-
-class ResearchEntrySpecBody(BaseModel):
-    entry_phase_id: str
-    entry_trigger: str | None = None
-    stop_rule: str | None = None
-    target_rule: str | None = None
-
-
-class ResearchOutcomeSpecBody(BaseModel):
-    confirm_breakout_within_bars: int | None = None
-    min_forward_return_pct: float | None = None
-    stretch_return_pct: float | None = None
-
-
-class ResearchContextBody(BaseModel):
-    source: ResearchSourceBody | None = None
-    pattern_family: str
-    thesis: list[str] = Field(default_factory=list, max_length=12)
-    phase_annotations: list[ResearchPhaseAnnotationBody] = Field(default_factory=list, max_length=12)
-    entry_spec: ResearchEntrySpecBody | None = None
-    outcome_spec: ResearchOutcomeSpecBody | None = None
-    research_tags: list[str] = Field(default_factory=list, max_length=24)
-
 
 class ResearchSourceBody(BaseModel):
     kind: Literal["telegram_post", "chart_image", "manual_note", "terminal_capture"]

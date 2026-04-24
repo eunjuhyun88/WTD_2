@@ -90,19 +90,6 @@
   );
 </script>
 
-{#snippet reviewPane()}
-  {#if isTablet && selectedCapture}
-    <CaptureReviewDrawer
-      annotation={selectedCapture}
-      variant="inline"
-      onClose={clearCapture}
-      onVerdict={() => clearCapture()}
-    />
-  {:else}
-    {@render review?.()}
-  {/if}
-{/snippet}
-
 <main class="center-panel">
   <div class="chart-and-strip">
     <ChartBoard

@@ -29,7 +29,6 @@ from data_cache.fetch_binance_perp import fetch_futures_klines_max, fetch_perp_m
 from data_cache.loader import (
     CacheMiss,
     cache_path,
-    list_cached_symbols,
     load_klines,
     load_perp,
     perp_cache_path,
@@ -53,7 +52,6 @@ __all__ = [
     "fetch_perp_max",
     "fetch_perp_raw",
     "ingest_binance_symbol_raw",
-    "list_cached_symbols",
     "load_klines",
     "load_perp",
     "perp_cache_path",

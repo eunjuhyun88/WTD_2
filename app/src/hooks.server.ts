@@ -37,6 +37,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/market/sparklines',
   '/api/market/funding',
   '/api/market/oi',
+  '/api/market/symbols',    // Binance USDT perps universe search (public read-only)
   '/api/market/trending',
   '/api/market/news',
   '/api/market/events',

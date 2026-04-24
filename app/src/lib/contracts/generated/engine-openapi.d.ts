@@ -326,34 +326,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/search/similar": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Search Similar
-         * @description Pattern similarity search using feature_windows store.
-         *
-         *     Accepts a PatternDraft dict and runs the 3-layer hybrid search:
-         *     - Layer A (0.45): feature signal similarity
-         *     - Layer B (0.45): phase sequence alignment (LCS)
-         *     - Layer C (0.10): context (timeframe/symbol)
-         *
-         *     Returns top-k RankedCandidates sorted by final_score DESC.
-         *     The store must be populated via feature_windows_builder before results are meaningful.
-         */
-        post: operations["search_similar_search_similar_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/runtime/captures": {
         parameters: {
             query?: never;
@@ -1982,49 +1954,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/features/window": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Feature Window
-         * @description Latest materialized feature_window for symbol/timeframe.
-         *
-         *     Computes and persists on-demand from local cache (offline=True) if not
-         *     yet materialized. Never fans out to providers.
-         */
-        get: operations["get_feature_window_features_window_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/features/pattern-events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Pattern Events
-         * @description List persisted pattern_events for symbol/timeframe/pattern_family.
-         */
-        get: operations["get_pattern_events_features_pattern_events_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/jobs/pattern_scan/run": {
         parameters: {
             query?: never;
@@ -2144,29 +2073,6 @@ export interface paths {
          *       terminal_pattern_captures → 90 days (user data: longer retention)
          */
         post: operations["run_db_cleanup_jobs_db_cleanup_run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/jobs/feature_windows_build/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run Feature Windows Build
-         * @description Cloud Scheduler → rebuild FeatureWindowStore from local CSV cache.
-         *
-         *     Runs every 6 hours (BINANCE_30 × [15m, 1h, 4h], 90 days history).
-         *     Idempotent: UPSERT only writes bars not already stored.
-         */
-        post: operations["run_feature_windows_build_jobs_feature_windows_build_run_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3848,90 +3754,6 @@ export interface components {
             /** Candidates */
             candidates?: components["schemas"]["SearchCandidate"][];
         };
-        /** SimilarCandidateOut */
-        SimilarCandidateOut: {
-            /** Symbol */
-            symbol: string;
-            /** Timeframe */
-            timeframe: string;
-            /** Bar Ts Ms */
-            bar_ts_ms: number;
-            /** Bar Iso */
-            bar_iso: string;
-            /** Feature Score */
-            feature_score: number;
-            /** Sequence Score */
-            sequence_score: number;
-            /** Context Score */
-            context_score: number;
-            /** Final Score */
-            final_score: number;
-            /** Observed Phase Path */
-            observed_phase_path?: string[];
-            /** Matched Phase Path */
-            matched_phase_path?: string[];
-            /** Missing Phases */
-            missing_phases?: string[];
-            /** Phase Feature Scores */
-            phase_feature_scores?: {
-                [key: string]: unknown;
-            }[];
-        };
-        /** SimilarSearchRequest */
-        SimilarSearchRequest: {
-            /** Pattern Draft */
-            pattern_draft: {
-                [key: string]: unknown;
-            };
-            /**
-             * Top K
-             * @default 10
-             */
-            top_k: number;
-            /**
-             * Since Days
-             * @default 180
-             */
-            since_days: number | null;
-        };
-        /** SimilarSearchResponse */
-        SimilarSearchResponse: {
-            /**
-             * Ok
-             * @default true
-             */
-            ok: boolean;
-            /**
-             * Owner
-             * @default engine
-             * @constant
-             */
-            owner: "engine";
-            /**
-             * Plane
-             * @default research
-             * @constant
-             */
-            plane: "research";
-            /** Spec Pattern Family */
-            spec_pattern_family: string;
-            /** Spec Phase Path */
-            spec_phase_path: string[];
-            /** Reference Timeframe */
-            reference_timeframe: string;
-            /** Total Candidates Found */
-            total_candidates_found: number;
-            /** Top K */
-            top_k: number;
-            /** Candidates */
-            candidates?: components["schemas"]["SimilarCandidateOut"][];
-            /** Search Meta */
-            search_meta?: {
-                [key: string]: unknown;
-            };
-            /** Generated At */
-            generated_at: string;
-        };
         /** SnapInput */
         SnapInput: {
             /** Symbol */
@@ -4951,39 +4773,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    search_similar_search_similar_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SimilarSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SimilarSearchResponse"];
                 };
             };
             /** @description Validation Error */
@@ -7739,77 +7528,6 @@ export interface operations {
             };
         };
     };
-    get_feature_window_features_window_get: {
-        parameters: {
-            query: {
-                symbol: string;
-                timeframe?: string;
-                venue?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_pattern_events_features_pattern_events_get: {
-        parameters: {
-            query: {
-                symbol: string;
-                timeframe?: string;
-                venue?: string;
-                pattern_family?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     run_pattern_scan_jobs_pattern_scan_run_post: {
         parameters: {
             query?: never;
@@ -7911,26 +7629,6 @@ export interface operations {
         };
     };
     run_db_cleanup_jobs_db_cleanup_run_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    run_feature_windows_build_jobs_feature_windows_build_run_post: {
         parameters: {
             query?: never;
             header?: never;

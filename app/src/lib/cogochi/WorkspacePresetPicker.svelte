@@ -112,14 +112,8 @@
         <div
           class="wsp-item"
           class:active={$activePresetName === p.name}
-          role="menuitemradio"
-          tabindex="0"
           onclick={() => pick(p.name)}
-          onkeydown={(event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            pick(p.name);
-          }}
+          role="menuitemradio"
           aria-checked={$activePresetName === p.name}
           tabindex="0"
           onkeydown={(event) => onItemKeyDown(event, p.name)}
@@ -129,7 +123,7 @@
           {#if p.builtin}
             <span class="wsp-tag builtin">built-in</span>
           {:else}
-            <button type="button" class="wsp-del" onclick={(e) => del(e, p.name)} aria-label="Delete {p.name}">✕</button>
+            <button class="wsp-del" onclick={(e) => del(e, p.name)} aria-label="Delete {p.name}">✕</button>
           {/if}
         </div>
       {/each}

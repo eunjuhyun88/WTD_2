@@ -384,34 +384,28 @@ async def run_pattern_scan(
     errors: list[str] = []
     perp_coverage = {"with_perp": 0, "without_perp": 0}
 
-    def _eval_one(symbol: str) -> tuple[str, dict[str, str] | None, str | None]:
+    def _eval_one(symbol: str) -> tuple[str, dict[str, str] | None, bool, str | None]:
         try:
-            # Track perp coverage
             perp = load_perp(symbol, offline=True)
             has_perp = perp is not None and not perp.empty
-
             phases = evaluate_symbol_for_patterns(symbol, timestamp, scan_id=scan_id)
-            return (symbol, phases if phases else None, None)
+            return (symbol, phases if phases else None, has_perp, None)
         except Exception as exc:
-            return (symbol, None, f"{symbol}: {exc}")
+            return (symbol, None, False, f"{symbol}: {exc}")
 
     # v2: Parallel evaluation
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = list(pool.map(_eval_one, symbols))
 
-    for symbol, phases, error in futures:
+    for symbol, phases, has_perp, error in futures:
         if error:
             errors.append(error)
         elif phases:
             results[symbol] = phases
-        # Track perp coverage
-        try:
-            perp = load_perp(symbol, offline=True)
-            if perp is not None and not perp.empty:
-                perp_coverage["with_perp"] += 1
-            else:
-                perp_coverage["without_perp"] += 1
-        except Exception:
+        # Use has_perp from _eval_one — no second load needed
+        if has_perp:
+            perp_coverage["with_perp"] += 1
+        else:
             perp_coverage["without_perp"] += 1
 
     # Collect entry candidates across all patterns

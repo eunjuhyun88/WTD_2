@@ -31,8 +31,7 @@
 <div class="section">
   <SectionHeader label="RECENT VERDICTS" hint="learning signal" />
   {#each verdicts as v, i (i)}
-    <button
-      type="button"
+    <div
       class="item"
       class:agree={v.v === 'agree'}
       class:disagree={v.v === 'disagree'}
@@ -53,7 +52,7 @@
           <span class="pnl" class:positive={v.pnl.startsWith('+')}>{v.pnl}</span>
         {/if}
       </div>
-    </button>
+    </div>
   {/each}
 </div>
 
@@ -65,10 +64,6 @@
 
   .item {
     padding: 7px 12px;
-    width: 100%;
-    background: transparent;
-    border: none;
-    text-align: left;
     cursor: pointer;
     border-left: 2px solid transparent;
     transition: all 0.1s;

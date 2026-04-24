@@ -7,30 +7,48 @@
 
   const { currentSymbol, onSelect, onClose }: Props = $props();
 
-  const POPULAR = [
-    'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT',
-    'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'LINKUSDT',
-    'MATICUSDT', 'LTCUSDT', 'UNIUSDT', 'ATOMUSDT', 'NEARUSDT',
-  ];
+  interface SymbolEntry { symbol: string; base: string; }
 
   let query = $state('');
+  let results = $state<SymbolEntry[]>([]);
+  let loading = $state(false);
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let inputEl: HTMLInputElement | undefined = $state();
 
-  const filtered = $derived(
-    query.trim()
-      ? POPULAR.filter(s => s.toLowerCase().includes(query.toLowerCase()))
-      : POPULAR
-  );
+  $effect(() => { inputEl?.focus(); });
+
+  // Debounced fetch on query change
+  $effect(() => {
+    const q = query;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchSymbols(q), 250);
+  });
+
+  async function fetchSymbols(q: string) {
+    loading = true;
+    try {
+      const url = q.trim()
+        ? `/api/market/symbols?q=${encodeURIComponent(q.trim())}&limit=40`
+        : `/api/market/symbols?limit=30`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json() as { symbols: SymbolEntry[] };
+        results = data.symbols;
+      }
+    } catch {
+      // leave results as-is on network error
+    } finally {
+      loading = false;
+    }
+  }
+
+  // Initial load on mount
+  $effect(() => { fetchSymbols(''); });
 
   function pick(sym: string) {
     onSelect(sym);
     onClose();
   }
-
-  let inputEl: HTMLInputElement | undefined = $state();
-
-  $effect(() => {
-    inputEl?.focus();
-  });
 
   function onBackdropClick(e: MouseEvent) {
     if ((e.target as HTMLElement).classList.contains('sps-backdrop')) onClose();
@@ -48,32 +66,33 @@
         bind:this={inputEl}
         bind:value={query}
         class="sps-input"
-        placeholder="심볼 검색 (예: BTC, ETH)"
+        placeholder="심볼 검색 (예: BTC, SOL, INJ)"
         autocomplete="off"
         autocorrect="off"
         autocapitalize="characters"
         spellcheck={false}
       />
-      {#if query}
+      {#if loading}
+        <span class="sps-spinner"></span>
+      {:else if query}
         <button class="sps-clear" onclick={() => (query = '')}>×</button>
       {/if}
     </div>
     <div class="sps-list">
-      {#each filtered as sym}
-        {@const base = sym.replace('USDT', '')}
+      {#each results as entry (entry.symbol)}
         <button
           class="sps-row"
-          class:active={sym === currentSymbol}
-          onclick={() => pick(sym)}
+          class:active={entry.symbol === currentSymbol}
+          onclick={() => pick(entry.symbol)}
         >
-          <span class="sps-base">{base}</span>
+          <span class="sps-base">{entry.base}</span>
           <span class="sps-quote">/ USDT</span>
-          {#if sym === currentSymbol}
+          {#if entry.symbol === currentSymbol}
             <span class="sps-check">✓</span>
           {/if}
         </button>
       {/each}
-      {#if filtered.length === 0}
+      {#if !loading && results.length === 0}
         <div class="sps-empty">검색 결과 없음</div>
       {/if}
     </div>
@@ -161,6 +180,18 @@
     padding: 0 2px;
     cursor: pointer;
   }
+
+  .sps-spinner {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--g4);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .sps-list {
     overflow-y: auto;

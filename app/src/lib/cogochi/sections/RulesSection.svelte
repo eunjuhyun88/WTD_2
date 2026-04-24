@@ -47,7 +47,7 @@
         </div>
         <span class="weight">{r.weight.toFixed(2)}</span>
       </div>
-    </button>
+    </div>
   {/each}
 </div>
 
@@ -59,10 +59,6 @@
 
   .item {
     padding: 7px 12px;
-    width: 100%;
-    background: transparent;
-    border: none;
-    text-align: left;
     cursor: pointer;
     transition: background 0.1s;
   }

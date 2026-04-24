@@ -15,6 +15,7 @@
   import { chartTimeToUnixSeconds, slicePayloadToViewport } from '$lib/terminal/chartViewportCapture';
   import SaveSetupModal from './SaveSetupModal.svelte';
   import SaveStrip from './SaveStrip.svelte';
+  import ResearchPanel from './ResearchPanel.svelte';
   import ChartToolbar from './ChartToolbar.svelte';
   import IndicatorPaneStack from './IndicatorPaneStack.svelte';
   // ── Layer 1 range primitive (W-0086) ────────────────────────────────────────
@@ -181,9 +182,13 @@
     return items;
   });
 
-  // Save Setup modal
+  // Save Setup modal (mobile legacy)
   let showSaveModal = $state(false);
   let savedCaptureId = $state<string | null>(null);   // shown as toast after save
+
+  // ResearchPanel — opens automatically when range is fully selected
+  let showResearchPanel = $state(false);
+  let researchViewport = $state<ChartViewportSnapshot | null>(null);
 
   // Indicator toggles — backed by the shared chartIndicators store so that
   // the SSE `chart_action` handler, the studies popover, and pane × buttons
@@ -467,6 +472,15 @@
     }
 
     rangePrimitive?.setRange(state.anchorA, state.anchorB);
+
+    // Open ResearchPanel when both anchors are set (range fully selected)
+    if (state.active && state.anchorA !== null && state.anchorB !== null) {
+      const viewport = getViewportForSave();
+      if (viewport && viewport.barCount > 0) {
+        researchViewport = viewport;
+        showResearchPanel = true;
+      }
+    }
   }
 
   function handleRangeModeKeydown(e: KeyboardEvent) {
@@ -1368,9 +1382,17 @@
     showSaveModal = false;
     savedCaptureId = captureId;
     onCaptureSaved?.(captureId);
-    // Also fire parent callback if provided
     onSaveSetup?.({ symbol, timestamp: currentTime ?? Math.floor(Date.now() / 1000), tf });
-    // Clear toast after 4s
+    setTimeout(() => { savedCaptureId = null; }, 4000);
+  }
+
+  function handleResearchSaved(captureId: string) {
+    showResearchPanel = false;
+    researchViewport = null;
+    chartSaveMode.exitRangeMode();
+    savedCaptureId = captureId;
+    onCaptureSaved?.(captureId);
+    onSaveSetup?.({ symbol, timestamp: currentTime ?? Math.floor(Date.now() / 1000), tf });
     setTimeout(() => { savedCaptureId = null; }, 4000);
   }
 
@@ -1788,12 +1810,26 @@
 
 </div>
 
-<!-- Save Setup Modal -->
+<!-- Research Panel (W-0200): range select → auto-analyze → find similar → save -->
+<ResearchPanel
+  {symbol}
+  {tf}
+  open={showResearchPanel}
+  viewport={researchViewport}
+  onClose={() => {
+    showResearchPanel = false;
+    researchViewport = null;
+    chartSaveMode.exitRangeMode();
+  }}
+  onSaved={handleResearchSaved}
+/>
+
+<!-- Save Setup Modal (mobile / legacy path) -->
 <SaveSetupModal
   symbol={symbol}
   timestamp={currentTime ?? Math.floor(Date.now() / 1000)}
   tf={tf}
-  open={showSaveModal}
+  open={showSaveModal && !showResearchPanel}
   getViewportCapture={getViewportForSave}
   onClose={() => {
     showSaveModal = false;

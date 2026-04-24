@@ -73,38 +73,106 @@ class ScanResponse(BaseModel):
     candidates: list[SearchCandidate] = Field(default_factory=list)
 
 
-# ── Pattern similarity search (feature_windows based) ────────────────────────
+# ── /search/similar — 3-layer ranked search ──────────────────────────────────
 
 class SimilarSearchRequest(BaseModel):
-    pattern_draft: dict[str, Any]
-    top_k: int = Field(default=10, ge=1, le=50)
-    since_days: int | None = Field(default=180, ge=1, le=730)
+    pattern_draft: dict[str, Any] = Field(
+        default_factory=dict,
+        description="PatternDraft with phases and search_hints. "
+                    "search_hints.target_return_pct / volatility_range / "
+                    "volume_breakout_threshold are used for Layer A scoring.",
+    )
+    observed_phase_paths: list[str] = Field(
+        default_factory=list,
+        description="Ordered phase IDs the user has already observed "
+                    "(e.g. ['DUMP','ACCUMULATION']). Activates Layer B scoring.",
+        max_length=20,
+    )
+    symbol: str | None = Field(
+        None,
+        description="Optional corpus filter — restrict candidates to one symbol.",
+    )
+    timeframe: str = Field(
+        default="4h",
+        description="Target timeframe for corpus candidates.",
+    )
+    top_k: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Maximum candidates returned.",
+    )
 
 
-class SimilarCandidateOut(BaseModel):
+class SimilarCandidate(BaseModel):
+    candidate_id: str
+    window_id: str
     symbol: str
     timeframe: str
-    bar_ts_ms: int
-    bar_iso: str
-    feature_score: float
-    sequence_score: float
-    context_score: float
-    final_score: float
-    observed_phase_path: list[str] = Field(default_factory=list)
-    matched_phase_path: list[str] = Field(default_factory=list)
-    missing_phases: list[str] = Field(default_factory=list)
-    phase_feature_scores: list[dict[str, Any]] = Field(default_factory=list)
+    start_ts: str
+    end_ts: str
+    bars: int
+    final_score: float = Field(description="Blended 3-layer score ∈ [0, 1]")
+    layer_a_score: float = Field(description="Feature signature similarity")
+    layer_b_score: float | None = Field(
+        None, description="Phase path LCS similarity (None if no observed_phase_paths)"
+    )
+    layer_c_score: float | None = Field(
+        None, description="ML p_win from LightGBM (None if model not trained)"
+    )
+    candidate_phase_path: list[str] = Field(
+        default_factory=list,
+        description="Actual observed phase sequence for this candidate symbol.",
+    )
+    signature: dict[str, Any] = Field(default_factory=dict)
+    close_return_pct: float | None = Field(
+        None,
+        description="Corpus window close-to-close return % (proxy outcome for display).",
+    )
 
 
 class SimilarSearchResponse(BaseModel):
     ok: bool = True
     owner: Literal["engine"] = "engine"
-    plane: Literal["research"] = "research"
-    spec_pattern_family: str
-    spec_phase_path: list[str]
-    reference_timeframe: str
-    total_candidates_found: int
-    top_k: int
-    candidates: list[SimilarCandidateOut] = Field(default_factory=list)
-    search_meta: dict[str, Any] = Field(default_factory=dict)
+    plane: Literal["search"] = "search"
+    status: str
+    generated_at: str
+    run_id: str
+    request: dict[str, Any] = Field(default_factory=dict)
+    candidates: list[SimilarCandidate] = Field(default_factory=list)
+    scoring_layers: dict[str, bool] = Field(
+        default_factory=dict,
+        description="Which layers were active: {layer_a, layer_b, layer_c}",
+    )
+
+
+# ── /search/quality — judgement and weight recalibration ─────────────────────
+
+class QualityJudgementRequest(BaseModel):
+    run_id: str
+    candidate_id: str
+    verdict: str = Field(
+        description="'good' | 'bad' | 'neutral'",
+        pattern="^(good|bad|neutral)$",
+    )
+    symbol: str | None = None
+    layer_a_score: float | None = None
+    layer_b_score: float | None = None
+    layer_c_score: float | None = None
+    final_score: float | None = None
+    user_id: str | None = None
+
+
+class QualityJudgementResponse(BaseModel):
+    ok: bool = True
+    judgement_id: str
+
+
+class QualityStatsResponse(BaseModel):
+    ok: bool = True
+    owner: Literal["engine"] = "engine"
+    plane: Literal["search"] = "search"
+    total_judgements: int
+    layers: dict[str, Any] = Field(default_factory=dict)
+    active_weights: dict[str, float] = Field(default_factory=dict)
     generated_at: str

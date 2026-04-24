@@ -32,8 +32,7 @@
 <div class="section">
   <SectionHeader label="SAVED SETUPS" hint={`${suggestions.length} patterns`} />
   {#each suggestions as s, i (i)}
-    <button
-      type="button"
+    <div
       class="item"
       onclick={() => openSetup(i)}
       onkeydown={(event) => onItemKeyDown(event, i)}
@@ -46,7 +45,7 @@
         <span class="matches">{s.matches}</span>
       </div>
       <div class="item-text">{s.text}</div>
-    </button>
+    </div>
   {/each}
 
   <SectionHeader label="RAW CAPTURES" hint={`${items.length}`} />
@@ -63,10 +62,6 @@
 
   .item {
     padding: 6px 12px;
-    width: 100%;
-    background: transparent;
-    border: none;
-    text-align: left;
     cursor: pointer;
     border-left: 2px solid transparent;
     transition: all 0.1s;

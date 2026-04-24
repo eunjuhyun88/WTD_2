@@ -5,7 +5,6 @@
   import type { StrategyEntry } from '$lib/stores/strategyStore';
   import { MARKET_CYCLES } from '$lib/data/cycles';
   import { priceStore } from '$lib/stores/priceStore';
-  import { untrack } from 'svelte';
   import AdapterDiffPanel from '../../components/dashboard/AdapterDiffPanel.svelte';
   import type { CaptureRow, FlywheelHealth } from './+page.server';
 

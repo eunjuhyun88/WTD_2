@@ -30,7 +30,6 @@ from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
 from scanner.scheduler import is_running, next_run_time, start_scheduler, stop_scheduler
 from workers.kline_prefetcher import prefetch_klines
-from workers.feature_windows_prefetcher import prefetch_feature_windows
 from security_runtime import (
     assert_public_runtime_security,
     build_allowed_hosts,
@@ -90,11 +89,19 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     except Exception as exc:
         log.warning("kline prefetch warm-up failed (non-fatal): %s", exc)
 
-    # Pre-populate feature_windows store (non-blocking, best-effort)
+    # Restore in-progress pattern states from Supabase into local SQLite.
+    # Without this, every Cloud Run restart resets all pattern tracking to
+    # phase-0 and triggers spurious re-entry alerts on the next scan tick.
     try:
-        await prefetch_feature_windows()
+        from patterns.state_store import PatternStateStore
+        from patterns.supabase_state_sync import hydrate_from_supabase, hydrate_transitions_from_supabase
+        _pattern_store = PatternStateStore()
+        _hydrated = await hydrate_from_supabase(_pattern_store)
+        log.info("Pattern state hydration: %d states restored", _hydrated)
+        _transitions = await hydrate_transitions_from_supabase(_pattern_store)
+        log.info("Phase transition hydration: %d transitions restored", _transitions)
     except Exception as exc:
-        log.warning("feature_windows warm-up failed (non-fatal): %s", exc)
+        log.warning("Pattern state hydration failed (non-fatal): %s", exc)
 
     if scheduler_enabled():
         from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore[import]
@@ -104,13 +111,6 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
             "interval",
             minutes=5,
             id="kline_prefetch",
-            replace_existing=True,
-        )
-        _kline_scheduler.add_job(
-            prefetch_feature_windows,
-            "interval",
-            hours=6,
-            id="feature_windows_build",
             replace_existing=True,
         )
         _kline_scheduler.start()
