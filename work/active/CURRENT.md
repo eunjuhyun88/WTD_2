@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`117ecb19` — current local `origin/main` ref
+`46382882` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -45,6 +45,7 @@
 | #242 (W-0160) | `/patterns/{slug}/stats` and `/patterns/stats/all` now expose explicit `definition_scope`, and app pattern-stats proxies pass through scoped queries |
 | #243 (W-0148) | next execution plan was resynced again after the latest merged follow-ups so CURRENT stayed aligned with the canonical lane order and branch map |
 | #244 (W-0161) | app warning cleanup landed on latest main base; `npm --prefix app run check` now reports `0 errors / 0 warnings` and the queue resumes on engine lanes without app warning noise |
+| #248 (W-0159) | engine-owned Coinalyze market-wide liquidation ingress now materializes public windows into `market_liquidation_windows`, while optional Binance user-data diagnostics stay isolated by provider/venue |
 
 ---
 
@@ -61,7 +62,7 @@
 | **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
 | **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
 | **W-0156** | `W-0156-canonical-feature-plane-foundation.md` | 🔴 IN-PROGRESS | perp/orderflow canonical feature plane 첫 슬라이스: raw metrics contract + reusable derived features + targeted engine cut |
-| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | merged raw/search baseline 이후 public liquidation source 선정 + next raw family expansion + observability/productization |
+| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | Coinalyze public liquidation ingress landed; next is liquidation fact/read-route promotion + next raw family priority + telemetry exposure |
 | **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
 | **W-0158** | `W-0158-promotion-feature-diagnostics.md` | 🔴 IN-PROGRESS | canonical feature score/snapshot truth를 promotion report와 refinement report diagnostics에 재사용 |
 | **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
@@ -127,11 +128,11 @@
 
 - PR #244 closes the app warning lane on top of updated `origin/main`; app check baseline is now `0 errors / 0 warnings`
 - next executable queue resumes at `W-0122 -> W-0145 -> W-0142 -> W-0160`, with app-only hygiene removed as a blocker
-- latest queue refresh is based on updated `origin/main` `117ecb19`; docs-only refresh branches are merge-only and should not be reused as execution lanes
-- merged on `origin/main` since the raw/search baseline: PR #235 (`W-0160` definition truth scope), PR #236 (`W-0122` influencer fact coverage), PR #238 (`W-0122` confluence analyze direct-load), PR #239 (`W-0160` DOUNI pattern search), PR #241 (`W-0148` queue refresh), PR #242 (`W-0160` explicit pattern-stats scope), and PR #243 (`W-0148` queue resync)
+- latest queue refresh is based on updated `origin/main` `46382882`; docs-only refresh branches are merge-only and should not be reused as execution lanes
+- merged on `origin/main` since the raw/search baseline: PR #235 (`W-0160` definition truth scope), PR #236 (`W-0122` influencer fact coverage), PR #238 (`W-0122` confluence analyze direct-load), PR #239 (`W-0160` DOUNI pattern search), PR #241 (`W-0148` queue refresh), PR #242 (`W-0160` explicit pattern-stats scope), PR #243 (`W-0148` queue resync), PR #244 (`W-0161` app warning cleanup), and PR #248 (`W-0159` Coinalyze public liquidation ingress)
 - `W-0160` now has three merged follow-up cuts on top of `PatternSeedScout`; the remaining work is runtime capture/ledger scope policy, legacy backfill/sunset policy, and durable definition namespace choice, not another ad hoc DOUNI surface fork
 - `W-0122` no longer has an active confluence cleanup branch; the next clean fact-plane slice must start from updated `main` and focus on bridge retirement plus engine scoring promotion
-- `W-0159` no longer needs extraction work; the remaining gap is a public or market-wide liquidation source plus any next raw-family expansion with concrete product pull
+- `W-0159` now has both public market-wide Coinalyze windows and optional user-private Binance diagnostics; the remaining gap is consumer-facing liquidation fact promotion plus the next raw-family priority after liquidation
 
 ---
 
@@ -141,7 +142,7 @@
 2. **W-0145 / Lane B** — corpus/search read models and `/search/*` family promotion over the merged raw/search baseline
 3. **W-0142 / Lane C** — runtime repositories and `/runtime/*` read/write family expansion
 4. **W-0160 / Contract follow-up** — post-#235/#239/#242 runtime capture/ledger scope decision, legacy backfill policy, durable definition namespace decision, and canonical-key cleanup only
-5. **W-0159 / Raw follow-up** — public or market-wide liquidation source decision, liquidation fact promotion, and next raw-family expansion only if a concrete search gap remains
+5. **W-0159 / Raw follow-up** — promote `market_liquidation_windows` into a dedicated fact/read route, then choose the next raw family only if a concrete search/product gap remains
 6. **W-0156 / Feature promotion** — canonical `feature_windows` contract and reusable derived math promotion into consumers
 7. **W-0140 / Surface slimming** — bottom ANALYZE workspace must consume upstream workspace envelope/contracts only
 8. **Cloud Run region decision** — `asia-southeast1/cogotchi` redeploy vs `us-east4/cogotchi` 유지 명시
@@ -156,7 +157,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `8be0dd6f` (behind merged remote) |
-| origin/main | — | local remote-tracking ref = `117ecb19` |
+| origin/main | — | local remote-tracking ref = `46382882` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0160-pattern-definition-plane | W-0160 | clean main-based follow-up lane after merged definition truth / DOUNI contract cuts |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
@@ -166,7 +167,8 @@
 | codex/w-0156-feature-plane-foundation | W-0156 | active engine lane for canonical perp/orderflow/structure feature foundation |
 | codex/w-0157-similar-live-feature-ranking | W-0157 | active engine lane for canonical feature consumption in similar-live ranking |
 | codex/w-0158-promotion-feature-diagnostics | W-0158 | active engine lane for canonical feature diagnostics in promotion/report artifacts |
-| codex/w-0159-canonical-raw-plane-ingestion | W-0159 | merged baseline lane; follow-up scope is public liquidation source + raw-family expansion only |
+| codex/w-0159-canonical-raw-plane-ingestion | W-0159 | merged via PR #232; raw/search baseline lane only |
+| codex/w-0159-userdata-liquidation-diagnostics | W-0159 | merged via PR #248; public liquidation ingress follow-up landed, remaining scope is fact promotion + next raw family only |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
