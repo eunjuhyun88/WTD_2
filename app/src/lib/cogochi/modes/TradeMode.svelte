@@ -387,43 +387,10 @@
   let sidebarAnalyzeDockCollapsed = $state(false);
 
   // ── Scan core loop state ────────────────────────────────────────────────
+  // scanState/scanProgress are used by the live SCAN tab UI.
+  // Range selection → ResearchPanel is handled inside ChartBoard via chartSaveMode.
   let scanState = $state<'idle' | 'scanning' | 'done'>('idle');
   let scanProgress = $state(0);
-  let _scanTimer: ReturnType<typeof setInterval> | null = null;
-
-  let _prevRange = false;
-  $effect(() => {
-    const active = !!tabState.rangeSelection;
-    const prev = _prevRange;
-    _prevRange = active;
-    const scanningNow = scanState;
-    Promise.resolve().then(() => {
-      if (active && !prev) triggerScan();
-      else if (!active && prev && scanningNow === 'scanning') cancelScan();
-    });
-  });
-
-  function triggerScan() {
-    if (_scanTimer) clearInterval(_scanTimer);
-    scanState = 'scanning';
-    scanProgress = 0;
-    setDrawerTab('scan');
-    setPeekOpen(true);
-    _scanTimer = setInterval(() => {
-      scanProgress = Math.min(scanProgress + 3 + Math.random() * 9, 94);
-    }, 180);
-    setTimeout(() => {
-      if (_scanTimer) { clearInterval(_scanTimer); _scanTimer = null; }
-      scanProgress = 100;
-      scanState = 'done';
-    }, 3400);
-  }
-
-  function cancelScan() {
-    if (_scanTimer) { clearInterval(_scanTimer); _scanTimer = null; }
-    scanState = 'idle';
-    scanProgress = 0;
-  }
 
   // ── Compact header metrics ───────────────────────────────────────────────
   const currentPrice = $derived(analyzeData?.price ?? 0);

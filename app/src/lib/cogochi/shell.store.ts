@@ -212,7 +212,9 @@ function normalizeShellState(raw: Partial<ShellState>): ShellState {
     workMode,
     workspacePaneIds,
     workspaceImmersivePaneId,
-    workspaceMode: deriveWorkspaceMode(workspacePaneIds),
+    workspaceMode: (raw.workspaceMode === 'single' || raw.workspaceMode === 'split-2' || raw.workspaceMode === 'grid-4')
+      ? raw.workspaceMode
+      : deriveWorkspaceMode(workspacePaneIds),
     workspaceColumnSplit: clamp(28, raw.workspaceColumnSplit ?? DEFAULT_WORKSPACE_COLUMN_SPLIT, 72),
     workspaceLeftSplitY: clamp(24, raw.workspaceLeftSplitY ?? DEFAULT_WORKSPACE_LEFT_SPLIT_Y, 76),
     workspaceRightSplitY: clamp(24, raw.workspaceRightSplitY ?? DEFAULT_WORKSPACE_RIGHT_SPLIT_Y, 76),
