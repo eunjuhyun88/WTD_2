@@ -3,18 +3,18 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.main import app as _base_app, include_engine_routes
-from fastapi import FastAPI
+from api.main import include_engine_routes
+from features.materialization_store import FeatureMaterializationStore
+from scanner.jobs.feature_materialization import materialize_symbol_window
 
 
 def create_app() -> FastAPI:
     test_app = FastAPI()
     include_engine_routes(test_app)
     return test_app
-from features.materialization_store import FeatureMaterializationStore
-from scanner.jobs.feature_materialization import materialize_symbol_window
 
 
 def _make_bars(n: int = 80) -> pd.DataFrame:
