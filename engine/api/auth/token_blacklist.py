@@ -90,8 +90,8 @@ async def is_revoked(payload: dict[str, Any]) -> bool:
 
     jti = _token_jti(payload)
     try:
-        result = await pool.get(_revoke_key(jti))
-        return result is not None
+        result = await pool.exists(_revoke_key(jti))
+        return bool(result)
     except Exception as exc:
         log.warning(json.dumps({
             "event": "blacklist.check_failed",

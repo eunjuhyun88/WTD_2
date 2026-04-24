@@ -16,7 +16,7 @@ import time
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler  # type: ignore[import]
@@ -225,11 +225,9 @@ async def jwt_auth_middleware(request: Request, call_next):  # noqa: ANN001
                     {"detail": "Missing authorization token"},
                     status_code=401,
                 )
+        except HTTPException as e:
+            return JSONResponse({"detail": e.detail}, status_code=e.status_code)
         except Exception as e:
-            # JWT validation error (handled by extract_user_id_from_jwt)
-            if isinstance(e, JSONResponse):
-                return e
-            # Unexpected error
             log.error("JWT middleware error: %s", str(e))
             return JSONResponse(
                 {"detail": "Authentication error"},

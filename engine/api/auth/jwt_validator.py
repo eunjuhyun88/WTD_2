@@ -27,6 +27,7 @@ from typing import Any
 
 import httpx
 import jwt as pyjwt
+from cache.http_client import get_client as _get_http_client
 from jwt.algorithms import RSAAlgorithm
 from fastapi import HTTPException, Request
 
@@ -155,10 +156,10 @@ class JWTValidator:
         # Fetch from endpoint
         t0 = time.perf_counter()
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(self.jwks_url)
-                resp.raise_for_status()
-                jwks = resp.json()
+            client = _get_http_client()
+            resp = await client.get(self.jwks_url)
+            resp.raise_for_status()
+            jwks = resp.json()
 
             elapsed_ms = (time.perf_counter() - t0) * 1000
             observe_ms("jwt.jwks_fetch_ms", elapsed_ms)
@@ -227,7 +228,13 @@ class JWTValidator:
         if alg not in {"RS256", "RS384", "RS512"}:
             raise ValueError(f"Unsupported algorithm: {alg}")
 
-        # Build/refresh key cache from current JWKS
+        # Fast path: return cached key without iterating JWKS array
+        if kid and kid in self._key_cache:
+            return self._key_cache[kid]
+        if not kid and self._key_cache:
+            return next(iter(self._key_cache.values()))
+
+        # Build key cache from JWKS (runs once per key rotation)
         keys = jwks.get("keys", [])
         for key_data in keys:
             cache_key = key_data.get("kid", "__default__")
@@ -239,7 +246,6 @@ class JWTValidator:
             if kid in self._key_cache:
                 return self._key_cache[kid]
         elif self._key_cache:
-            # No kid in token — use first available key
             return next(iter(self._key_cache.values()))
 
         raise ValueError(f"No JWKS key matched kid={kid!r} (available: {list(self._key_cache.keys())})")
