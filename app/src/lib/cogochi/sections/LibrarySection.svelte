@@ -15,6 +15,18 @@
   ];
 
   const items = [];
+
+  function openSetup(index: number): void {
+    const setup = suggestions[index];
+    onOpenTab({ id: `setup_${index}`, kind: 'trade', title: `/ ${setup.tag}`, prompt: setup.text });
+  }
+
+  function onItemKeyDown(event: KeyboardEvent, index: number): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openSetup(index);
+    }
+  }
 </script>
 
 <div class="section">
@@ -22,7 +34,10 @@
   {#each suggestions as s, i (i)}
     <div
       class="item"
-      onclick={() => onOpenTab({ id: `setup_${i}`, kind: 'trade', title: `/ ${s.tag}`, prompt: s.text })}
+      onclick={() => openSetup(i)}
+      onkeydown={(event) => onItemKeyDown(event, i)}
+      role="button"
+      tabindex="0"
     >
       <div class="item-header">
         <span class="slash">/</span>

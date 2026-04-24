@@ -13,22 +13,37 @@
     { id: 'r3', title: 'Consecutive higher-lows', weight: 0.54, live: true },
     { id: 'r4', title: 'CVD bearish divergence', weight: 0.31, live: false },
   ];
+
+  function openRule(index: number): void {
+    const rule = rules[index];
+    onOpenTab({ id: rule.id, kind: 'rule', title: rule.title, rule });
+  }
+
+  function onItemKeyDown(event: KeyboardEvent, index: number): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openRule(index);
+    }
+  }
 </script>
 
 <div class="section">
   <SectionHeader label="MY RULES" hint="per-user model" action="+ new" />
-  {#each rules as r (r.id)}
+  {#each rules as r, i (r.id)}
     <div
       class="item"
-      onclick={() => onOpenTab({ id: r.id, kind: 'rule', title: r.title, rule: r })}
+      onclick={() => openRule(i)}
+      onkeydown={(event) => onItemKeyDown(event, i)}
+      role="button"
+      tabindex="0"
     >
       <div class="header">
-        <span class="dot" class:live={r.live} />
+        <span class="dot" class:live={r.live}></span>
         <span class="title">{r.title}</span>
       </div>
       <div class="bar-container">
         <div class="bar">
-          <div class="fill" style:width={`${r.weight * 100}%`} class:live={r.live} />
+          <div class="fill" style:width={`${r.weight * 100}%`} class:live={r.live}></div>
         </div>
         <span class="weight">{r.weight.toFixed(2)}</span>
       </div>

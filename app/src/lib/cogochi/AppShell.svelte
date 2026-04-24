@@ -171,7 +171,15 @@
       />
     {/if}
     {#if $shellStore.aiVisible}
-      <div class="mobile-ai-sheet" ontouchstart={onAITouchStart} ontouchend={onAITouchEnd}>
+      <div
+        class="mobile-ai-sheet"
+        ontouchstart={onAITouchStart}
+        ontouchend={onAITouchEnd}
+        role="dialog"
+        aria-modal="true"
+        aria-label="AI panel"
+        tabindex="0"
+      >
         <div class="sheet-topbar">
           <div class="sheet-handle"></div>
           <button class="sheet-close" onclick={() => shellStore.toggleAI()}>×</button>

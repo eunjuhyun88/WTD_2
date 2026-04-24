@@ -9,7 +9,6 @@
    *   series     — LWC ISeriesApi (candlestick series to attach to)
    *   symbol     — e.g. "BTCUSDT"
    *   timeframe  — e.g. "1h"
-   *   onSelect   — callback when user clicks a capture badge
    *
    * The component manages its own polling store and auto-syncs primitives
    * whenever annotations change.
@@ -28,7 +27,6 @@
   export let series: ISeriesApi<'Candlestick', Time> | null = null;
   export let symbol: string = '';
   export let timeframe: string = '1h';
-  export let onSelect: ((ann: CaptureAnnotation) => void) | null = null;
   /** Called whenever the annotation list changes — lets parent maintain a cache for click handlers. */
   export let onAnnotationsChange: ((anns: CaptureAnnotation[]) => void) | null = null;
 
