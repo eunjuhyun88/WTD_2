@@ -7,31 +7,18 @@
 
 ## Owner
 
-engine + app (surface)
+app
 
 ## Primary Change Type
 
-Product surface change (engine 연결 포함)
+Product surface change
 
 ## Scope
 
-### Engine (이미 있는 코드 연결)
-- `POST /captures/{capture_id}/benchmark_search` — stash에 보존됨, 이 브랜치에서 커밋
-  - `PatternDraftBody` schema (capture에 phase+signals+trade_plan 저장)
-  - `_normalize_research_context` (draft → capture research_context 변환)
-  - `build_manual_hypothesis_benchmark_pack_draft` → `run_pattern_benchmark_search` 연결
-- 위 엔드포인트가 실제로 유사 케이스 10개를 반환하는지 smoke test
-
-### App Surface (연결)
-- Save Setup 시 `pattern_draft` 포함해서 capture 저장하는 경로 확인/수정
-- 저장된 capture에서 "Find Similar" 버튼 → `POST /captures/{id}/benchmark_search` 호출
-- 결과 10개 표시: 심볼, 타임스탬프, 유사도 점수, outcome (+X% or stop)
-
-### Out of scope (이번에 하지 않음)
-- definition_ref 마이그레이션
-- plane contract 재정렬
-- feature plane canonical 연결
-- UI 완성도 (스타일, 애니메이션 등)
+- Save Setup 시 `pattern_draft` 포함 capture 저장 경로를 실제 surface에서 확인하고 필요하면 보정
+- 저장된 capture에서 `Find Similar`가 engine `POST /captures/{id}/benchmark_search`를 호출하게 연결
+- 결과 10개를 심볼, 타임스탬프, 유사도, outcome 관점으로 표시하는 최소 UI 연결
+- `benchmark_search` 응답을 surface가 바로 못 쓰면 route-local adapter를 최소 범위로 추가
 
 ## Non-Goals
 
@@ -45,7 +32,7 @@ Product surface change (engine 연결 포함)
 - `AGENTS.md`
 - `work/active/CURRENT.md`
 - `work/active/W-0200-core-loop-proof.md`
-- `engine/api/routes/captures.py` ← stash에 핵심 변경사항 있음
+- `engine/api/routes/captures.py`
 - `engine/research/manual_hypothesis_pack_builder.py`
 - `engine/research/pattern_search.py`
 - `engine/research/query_transformer.py`
@@ -55,18 +42,17 @@ Product surface change (engine 연결 포함)
 
 ## Facts
 
-1. `engine/research/pattern_search.py` (3,155줄)에 `run_pattern_benchmark_search`가 이미 구현되어 있다.
-2. `engine/research/manual_hypothesis_pack_builder.py`에 capture → benchmark pack 변환 로직이 이미 있다.
-3. stash에 `POST /captures/{id}/benchmark_pack_draft` + `POST /captures/{id}/benchmark_search` 엔드포인트가 완성되어 있다.
-4. `engine/pattern_registry/`에 16개 패턴이 있고 `engine/ledger_records/`에 실제 ledger data가 있다.
-5. `engine/state/pattern_capture.sqlite`에 400+개 capture가 실제로 쌓여있다.
-6. `PatternSeedScout` + `find_similar_patterns` (PR#230/#239)는 이미 main에 머지되어 있다.
+1. `engine/research/pattern_search.py`에는 `run_pattern_benchmark_search`가 이미 구현되어 있다.
+2. `engine/research/manual_hypothesis_pack_builder.py`에는 capture → benchmark pack 변환 로직이 이미 있다.
+3. `POST /captures/{id}/benchmark_pack_draft`와 `POST /captures/{id}/benchmark_search` route truth는 post-merge refresh lane에서 복구되어 `main`으로 들어갈 준비가 되어 있다.
+4. `PatternSeedScout`와 DOUNI `find_similar_patterns` bridge는 이미 mainline에 머지되어 있다.
+5. `engine/state/pattern_capture.sqlite`와 ledger artifacts가 이미 존재해 founder smoke loop를 돌릴 데이터가 있다.
 
 ## Assumptions
 
-1. stash의 captures.py 변경사항이 현재 engine 의존성과 충돌 없이 적용된다.
-2. benchmark_search가 실제 유사 케이스를 반환하려면 corpus가 충분히 쌓여있어야 한다 — 부족하면 seeded founder patterns으로 smoke test한다.
-3. app의 Save Setup 경로는 이미 `research_context`를 포함해 저장하고 있다 (W-0139에서 완료됨).
+1. benchmark_search 후보가 부족하면 founder capture / benchmark artifact를 기준으로 smoke loop를 먼저 닫을 수 있다.
+2. app의 Save Setup 경로는 이미 `research_context`를 포함해 저장하고 있어 `pattern_draft` 추가가 bounded change로 끝날 가능성이 높다.
+3. 최소 loop proof는 최종 UX보다 우선이며, adapter가 필요하면 route-local로 먼저 닫아도 된다.
 
 ## Open Questions
 
@@ -75,17 +61,16 @@ Product surface change (engine 연결 포함)
 
 ## Decisions
 
-- stash pop → `codex/w-0200-core-loop-proof` 브랜치에서 시작.
-- UI는 "작동하는 것" 우선, 스타일은 나중에.
-- benchmark_search 결과가 비면 "유사 케이스 없음" 표시 — 에러 처리 아님.
-- W-0149가 이 work item에 흡수된다 (별도 완료 처리 불필요).
+- 다음 execution branch는 `codex/w-0200-core-loop-proof`로 새로 만든다.
+- UI는 "작동하는 것" 우선이며, 결과가 비면 `"유사 케이스 없음"`으로 처리한다.
+- engine route truth가 이미 존재하면 surface는 그 truth를 소비만 하고 search 로직을 app에 복제하지 않는다.
+- W-0149의 남은 loop-proof 범위는 이 work item에 흡수한다.
 
 ## Next Steps
 
-1. `git checkout -b codex/w-0200-core-loop-proof` 후 `git stash pop`
-2. `uv run pytest tests/test_capture_routes.py -q` — stash 코드 smoke test
-3. benchmark_search 응답 포맷 확인 → app 연결 경로 결정
-4. app에서 "Find Similar" 호출 + 결과 표시
+1. fresh main에서 `codex/w-0200-core-loop-proof` 브랜치를 만들고 capture `benchmark_search` route truth가 그대로 있는지 먼저 확인한다.
+2. Save Setup 후 capture detail 또는 가장 가까운 existing surface에서 `Find Similar`를 트리거할 최소 insertion point를 고정한다.
+3. 결과 리스트 UI와 outcome 표시를 연결한 뒤 app/engine smoke를 함께 통과시킨다.
 
 ## Exit Criteria
 
@@ -98,4 +83,4 @@ Product surface change (engine 연결 포함)
 
 - active work item: `work/active/W-0200-core-loop-proof.md`
 - branch: `codex/w-0200-core-loop-proof` (미생성, 다음 단계)
-- stash: `core-loop: capture benchmark_search endpoints + PatternDraft schema [W-0149 scope]`
+- prerequisite merge: post-merge refresh PR must land first so `benchmark_search` route truth is back on `main`

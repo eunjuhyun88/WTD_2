@@ -78,7 +78,7 @@
 | W-0157 | 🟡 DEFERRED | similar-live feature ranking은 루프 완성 후 |
 | W-0158 | 🟡 DEFERRED | promotion feature diagnostics는 루프 완성 후 |
 | W-0159 | 🟡 DEFERRED | public liquidation source는 루프 완성 후 |
-| W-0149 | 🟡 DEFERRED | benchmark pack builder — stash에 보존됨, W-0200에 흡수 |
+| W-0149 | 🟡 DEFERRED | benchmark pack / search bridge truth is being restored via PR #240 and the remaining loop-proof scope is absorbed by W-0200 |
 | W-0142 | 🟡 DEFERRED | runtime state APIs는 루프 완성 후 |
 | W-0140 | 🟡 DEFERRED | bottom ANALYZE slimming은 루프 완성 후 |
 
@@ -112,8 +112,7 @@
 
 ## 현재 브랜치 상태
 
-- active: `codex/w-0148-current-plan-refresh-20260424` (문서 정리 완료, 다음 step 은 W-0200 전용 브랜치)
-- stash: `core-loop: capture benchmark_search endpoints + PatternDraft schema [W-0149 scope]`
+- active: `codex/w-0148-current-plan-refresh-20260424` (문서 정리 + `captures` benchmark-search route truth 복구 완료, merge 대기)
 - 다음 브랜치: `codex/w-0200-core-loop-proof` (새로 생성)
 
 ---
