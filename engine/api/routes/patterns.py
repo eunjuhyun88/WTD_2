@@ -18,6 +18,7 @@ from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
+from patterns.definitions import build_definition_ref, definition_id_from_ref
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.registry import PATTERN_REGISTRY_STORE
 from patterns.scanner import run_pattern_scan
@@ -251,6 +252,8 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
     if not matching:
         new_outcome = PatternOutcome(
             pattern_slug=slug,
+            definition_id=definition_id_from_ref(build_definition_ref(slug)),
+            definition_ref=build_definition_ref(slug),
             symbol=body.symbol,
             user_verdict=body.verdict,  # type: ignore[arg-type]
         )
@@ -284,6 +287,8 @@ async def record_capture(slug: str, body: _CaptureBody) -> dict:
         user_id=body.user_id,
         symbol=body.symbol,
         pattern_slug=slug,
+        definition_id=definition_id_from_ref(build_definition_ref(slug)),
+        definition_ref=build_definition_ref(slug),
         phase=body.phase,
         timeframe=body.timeframe,
         candidate_transition_id=body.candidate_transition_id,

@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`38e3ce13` — current local `origin/main` ref
+`8e914f76` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -40,7 +40,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | `/runtime/definitions/*` canonical read family over pattern library/registry + capture-linked research evidence |
+| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | definition plane mainline: canonical `/runtime/definitions/*` + capture/outcome truth scoped by `definition_id` |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
@@ -115,7 +115,7 @@
 
 - active on `codex/w-0160-pattern-definition-plane`
 - worktree: `/tmp/wtd-v2-w0160-pattern-definition`
-- current slice: `/runtime/definitions/*` is open, runtime captures/search/research/refinement/training all preserve `definition_ref`, direct model train/promote routes plus `/runtime/ledger/*` projection expose it, runtime ledger store + pattern stats/model-registry read models carry it as first-class metadata, runtime ledger history / pattern model-history accept canonical `definition_id` queries, model-registry/model-history filter on persisted definition metadata instead of validation-only slug routing, canonical pattern model identity is now definition-version aware (`definition_id`-scoped keys + per-definition promotion/preferred lookup with legacy fallback), and `/patterns/{slug}/stats` now exposes explicit mixed-scope stats (`pattern-wide` outcomes + `definition-scoped` model artifacts)
+- current slice: `/runtime/definitions/*` is open, runtime captures/search/research/refinement/training all preserve `definition_ref`, direct model train/promote routes plus `/runtime/ledger/*` projection expose it, runtime ledger store + pattern stats/model-registry read models carry it as first-class metadata, runtime ledger history / pattern model-history accept canonical `definition_id` queries, model-registry/model-history filter on persisted definition metadata instead of validation-only slug routing, canonical pattern model identity is now definition-version aware (`definition_id`-scoped keys + per-definition promotion/preferred lookup with legacy fallback), and capture/outcome truth plus `/patterns/{slug}/stats` now default to fully definition-scoped reads with current-definition fallback for legacy rows
 - current doc lane `codex/w-0153-protocol-doc-recovery` was split and pushed clean at `44431562`
 - engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
 - `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
@@ -148,7 +148,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `38e3ce13` |
+| origin/main | — | local remote-tracking ref = `8e914f76` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0160-pattern-definition-plane | W-0160 | active runtime lane for canonical pattern-definition read models |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |

@@ -40,6 +40,7 @@ log = logging.getLogger("engine.captures")
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store, validate_pattern_slug
+from patterns.definitions import build_definition_ref, definition_id_from_ref
 from patterns.state_store import PatternStateStore
 from research.manual_hypothesis_pack_builder import (
     ManualHypothesisBenchmarkPackError,
@@ -76,6 +77,12 @@ def _status_for_kind(kind: CaptureKind) -> str:
     if kind in ("pattern_candidate", "manual_hypothesis"):
         return "pending_outcome"
     return "closed"
+
+
+def _capture_definition_ref(pattern_slug: str, *, pattern_version: int | None = None) -> dict[str, Any] | None:
+    if not pattern_slug:
+        return None
+    return build_definition_ref(pattern_slug, pattern_version=pattern_version)
 
 class ResearchSourceBody(BaseModel):
     kind: Literal["telegram_post", "chart_image", "manual_note", "terminal_capture"]
@@ -328,12 +335,18 @@ async def create_capture(body: CaptureCreateBody) -> dict:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     transition_snapshot, transition_defaults = _validate_transition(body)
+    definition_ref = _capture_definition_ref(
+        body.pattern_slug,
+        pattern_version=body.pattern_version,
+    )
     record = CaptureRecord(
         capture_kind=body.capture_kind,
         user_id=body.user_id,
         symbol=body.symbol,
         pattern_slug=body.pattern_slug,
         pattern_version=body.pattern_version,
+        definition_id=definition_id_from_ref(definition_ref),
+        definition_ref=definition_ref,
         phase=body.phase,
         timeframe=body.timeframe,
         captured_at_ms=now_ms(),
@@ -395,12 +408,15 @@ async def bulk_import_captures(body: BulkImportBody) -> dict:
         chart_context: dict[str, Any] = {}
         if row.entry_price is not None:
             chart_context["hypothetical_entry_price"] = row.entry_price
+        definition_ref = _capture_definition_ref(row.pattern_slug, pattern_version=1)
         record = CaptureRecord(
             capture_kind="manual_hypothesis",
             user_id=body.user_id,
             symbol=row.symbol,
             pattern_slug=row.pattern_slug,
             pattern_version=1,
+            definition_id=definition_id_from_ref(definition_ref),
+            definition_ref=definition_ref,
             phase=row.phase,
             timeframe=row.timeframe,
             captured_at_ms=row.captured_at_ms,

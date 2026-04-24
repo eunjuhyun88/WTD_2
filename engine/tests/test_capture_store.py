@@ -11,6 +11,12 @@ def test_capture_store_roundtrips_record(tmp_path) -> None:
         symbol="PTBUSDT",
         pattern_slug="tradoor-oi-reversal-v1",
         pattern_version=1,
+        definition_id="tradoor-oi-reversal-v1:v1",
+        definition_ref={
+            "definition_id": "tradoor-oi-reversal-v1:v1",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "pattern_version": 1,
+        },
         phase="ACCUMULATION",
         timeframe="1h",
         captured_at_ms=1770000000000,
@@ -29,6 +35,8 @@ def test_capture_store_roundtrips_record(tmp_path) -> None:
     assert loaded.capture_id == capture.capture_id
     assert loaded.user_id == "user-1"
     assert loaded.candidate_transition_id == "transition-1"
+    assert loaded.definition_id == "tradoor-oi-reversal-v1:v1"
+    assert loaded.definition_ref["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert loaded.chart_context == {"close": 1.23}
     assert loaded.feature_snapshot == {"oi_change_1h": 0.18}
     assert loaded.block_scores["funding_flip"]["passed"] is True
@@ -41,6 +49,7 @@ def test_capture_store_filters_by_user_and_pattern(tmp_path) -> None:
             user_id="user-1",
             symbol="PTBUSDT",
             pattern_slug="tradoor-oi-reversal-v1",
+            definition_id="tradoor-oi-reversal-v1:v1",
             phase="ACCUMULATION",
             captured_at_ms=2,
         )
@@ -59,3 +68,4 @@ def test_capture_store_filters_by_user_and_pattern(tmp_path) -> None:
 
     assert len(captures) == 1
     assert captures[0].symbol == "PTBUSDT"
+    assert store.list(definition_id="tradoor-oi-reversal-v1:v1")[0].symbol == "PTBUSDT"

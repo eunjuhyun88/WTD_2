@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from ledger.types import Outcome, PatternOutcome, PatternStats
+from patterns.definitions import current_definition_id
 from patterns.outcome_policy import decide_outcome, policy_for
 
 log = logging.getLogger("engine.ledger.supabase")
@@ -52,6 +53,8 @@ def _row_to_outcome(row: dict) -> PatternOutcome:
     d.setdefault("entry_transition_id", None)
     d.setdefault("entry_scan_id", None)
     d.setdefault("entry_block_scores", None)
+    d.setdefault("definition_id", None)
+    d.setdefault("definition_ref", None)
     d.setdefault("entry_block_coverage", None)
     d.setdefault("entry_p_win", None)
     d.setdefault("entry_ml_state", None)
@@ -104,32 +107,58 @@ class SupabaseLedgerStore:
             return None
         return _row_to_outcome(result.data)
 
-    def list_all(self, pattern_slug: str) -> list[PatternOutcome]:
+    def list_all(self, pattern_slug: str, *, definition_id: str | None = None) -> list[PatternOutcome]:
         """Return all outcomes for a slug, ordered by created_at desc."""
-        result = (
+        query = (
             _sb()
             .table("pattern_outcomes")
             .select("*")
             .eq("pattern_slug", pattern_slug)
             .order("created_at", desc=True)
-            .execute()
         )
+        result = query.execute()
         rows = result.data or []
-        return [_row_to_outcome(r) for r in rows]
+        outcomes = [_row_to_outcome(r) for r in rows]
+        if definition_id is None:
+            return outcomes
+        current_id = current_definition_id(pattern_slug)
+        return [
+            outcome
+            for outcome in outcomes
+            if outcome.definition_id == definition_id
+            or (
+                outcome.definition_id is None
+                and not outcome.definition_ref
+                and current_id == definition_id
+            )
+        ]
 
-    def list_pending(self, pattern_slug: str) -> list[PatternOutcome]:
+    def list_pending(self, pattern_slug: str, *, definition_id: str | None = None) -> list[PatternOutcome]:
         """Return only pending outcomes for a slug."""
-        result = (
+        query = (
             _sb()
             .table("pattern_outcomes")
             .select("*")
             .eq("pattern_slug", pattern_slug)
             .eq("outcome", "pending")
             .order("created_at", desc=True)
-            .execute()
         )
+        result = query.execute()
         rows = result.data or []
-        return [_row_to_outcome(r) for r in rows]
+        outcomes = [_row_to_outcome(r) for r in rows]
+        if definition_id is None:
+            return outcomes
+        current_id = current_definition_id(pattern_slug)
+        return [
+            outcome
+            for outcome in outcomes
+            if outcome.definition_id == definition_id
+            or (
+                outcome.definition_id is None
+                and not outcome.definition_ref
+                and current_id == definition_id
+            )
+        ]
 
     def close_outcome(
         self,
@@ -179,10 +208,10 @@ class SupabaseLedgerStore:
 
     # ── Stats ────────────────────────────────────────────────────────────────
 
-    def compute_stats(self, pattern_slug: str) -> PatternStats:
+    def compute_stats(self, pattern_slug: str, *, definition_id: str | None = None) -> PatternStats:
         """Compute aggregate stats — delegates to the same pure-Python logic."""
         from ledger.store import _compute_stats_from_outcomes
-        outcomes = self.list_all(pattern_slug)
+        outcomes = self.list_all(pattern_slug, definition_id=definition_id)
         return _compute_stats_from_outcomes(pattern_slug, outcomes)
 
     def batch_list_all(self) -> dict[str, list["PatternOutcome"]]:
