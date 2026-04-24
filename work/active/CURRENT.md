@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`2e58d5e0` — current local `origin/main` ref
+`cf657e39` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -41,6 +41,7 @@
 | #237 (W-0148) | docs queue refresh landed on main so post-raw execution order and branch map were realigned to the canonical lane order |
 | #238 (W-0122) | `/api/confluence/current` fallback now reads analyze service directly instead of loopbacking through `/api/cogochi/analyze`; W-0122 conflict-marker drift was cleaned |
 | #239 (W-0160) | DOUNI pattern search now flows through `PatternSeedScout` / canonical `PatternDraft -> SearchQuerySpec` contracts instead of local route-specific wiring |
+| #241 (W-0148) | post-merge execution queue was refreshed again after the W-0122/W-0160 follow-up merges so the next lanes stayed fact -> search -> runtime -> contract -> raw follow-up |
 | #242 (W-0160) | `/patterns/{slug}/stats` and `/patterns/stats/all` now expose explicit `definition_scope`, and app pattern-stats proxies pass through scoped queries |
 
 ---
@@ -122,8 +123,8 @@
 
 ## Current Dirty Tree Snapshot
 
-- latest queue refresh is based on updated `origin/main` `2e58d5e0`; docs-only refresh branches are merge-only and should not be reused as execution lanes
-- merged on `origin/main` since the raw/search baseline: PR #235 (`W-0160` definition truth scope), PR #236 (`W-0122` influencer fact coverage), PR #238 (`W-0122` confluence analyze direct-load), PR #239 (`W-0160` DOUNI pattern search), and PR #242 (`W-0160` explicit pattern-stats scope)
+- latest queue refresh is based on updated `origin/main` `cf657e39`; docs-only refresh branches are merge-only and should not be reused as execution lanes
+- merged on `origin/main` since the raw/search baseline: PR #235 (`W-0160` definition truth scope), PR #236 (`W-0122` influencer fact coverage), PR #238 (`W-0122` confluence analyze direct-load), PR #239 (`W-0160` DOUNI pattern search), PR #241 (`W-0148` queue refresh), and PR #242 (`W-0160` explicit pattern-stats scope)
 - `W-0160` now has three merged follow-up cuts on top of `PatternSeedScout`; the remaining work is runtime capture/ledger scope policy, legacy backfill/sunset policy, and durable definition namespace choice, not another ad hoc DOUNI surface fork
 - `W-0122` no longer has an active confluence cleanup branch; the next clean fact-plane slice must start from updated `main` and focus on bridge retirement plus engine scoring promotion
 - `W-0159` no longer needs extraction work; the remaining gap is a public or market-wide liquidation source plus any next raw-family expansion with concrete product pull
@@ -151,7 +152,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `8be0dd6f` (behind merged remote) |
-| origin/main | — | local remote-tracking ref = `2e58d5e0` |
+| origin/main | — | local remote-tracking ref = `cf657e39` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0160-pattern-definition-plane | W-0160 | clean main-based follow-up lane after merged definition truth / DOUNI contract cuts |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
@@ -191,6 +192,7 @@
 | codex/w-0148-post-merge-plan-refresh | W-0148 | merged via PR #237; docs-only queue refresh reference |
 | codex/w-0122-confluence-analyze-direct-load | W-0122 | merged via PR #238 |
 | codex/w-0160-douni-pattern-search | W-0160 | merged via PR #239 |
+| codex/w-0148-current-plan-refresh-20260424 | W-0148 | merged via PR #241; follow-up docs-only queue refresh reference |
 | codex/w-0140-bottom-analyze-slimming | W-0140 | active bottom analyze workspace slimming lane |
 
 ---
