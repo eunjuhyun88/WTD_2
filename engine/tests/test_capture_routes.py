@@ -710,7 +710,7 @@ def test_manual_hypothesis_benchmark_search_derives_search_query_spec_from_patte
         "higher_lows_sequence",
     ]
     assert artifact["search_query_spec"]["phase_queries"][1]["forbidden_numeric"] == {
-        "funding_rate_zscore": {"min": 1.0}
+        "funding_rate": {"min": 0.0002}
     }
     assert seen["search_query_spec"] == artifact["search_query_spec"]
 

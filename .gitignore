@@ -60,3 +60,4 @@ engine/research/pattern_search/search_runs/*.json
 *.tar.gz
 cogochi-handoff*
 Core Loop*.html
+engine/research/pattern_search/feature_windows.sqlite
