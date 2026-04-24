@@ -19,6 +19,7 @@ from capture.store import CaptureStore, now_ms
 from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
+from patterns.definitions import build_definition_ref, definition_id_from_ref
 from patterns.outcome_policy import (
     DEFAULT_EVAL_WINDOW_HOURS,
     OutcomeDecision,
@@ -74,8 +75,14 @@ def _build_pattern_outcome(
     accumulation_at: datetime,
     window_hours: float,
 ) -> PatternOutcome:
+    definition_ref = capture.definition_ref or build_definition_ref(
+        capture.pattern_slug,
+        pattern_version=capture.pattern_version,
+    )
     return PatternOutcome(
         pattern_slug=capture.pattern_slug or "unknown",
+        definition_id=capture.definition_id or definition_id_from_ref(definition_ref),
+        definition_ref=definition_ref,
         symbol=capture.symbol,
         user_id=capture.user_id,
         accumulation_at=accumulation_at,

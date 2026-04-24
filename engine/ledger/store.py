@@ -29,6 +29,7 @@ from ledger.types import (
     PatternOutcome,
     PatternStats,
 )
+from patterns.definitions import current_definition_id
 from patterns.outcome_policy import decide_outcome, policy_for
 from patterns.types import PhaseAttemptRecord
 
@@ -232,6 +233,41 @@ def _record_definition_id(record: PatternLedgerRecord) -> str | None:
     return nested if isinstance(nested, str) and nested else None
 
 
+def _record_matches_definition(
+    pattern_slug: str,
+    record: PatternLedgerRecord,
+    definition_id: str | None,
+) -> bool:
+    if definition_id is None:
+        return True
+    record_definition_id = _record_definition_id(record)
+    if record_definition_id is not None:
+        return record_definition_id == definition_id
+    return current_definition_id(pattern_slug) == definition_id
+
+
+def _outcome_definition_id(outcome: PatternOutcome) -> str | None:
+    if outcome.definition_id:
+        return outcome.definition_id
+    definition_ref = outcome.definition_ref if isinstance(outcome.definition_ref, dict) else {}
+    value = definition_ref.get("definition_id")
+    return value if isinstance(value, str) and value else None
+
+
+def _outcome_matches_definition(
+    outcome: PatternOutcome,
+    *,
+    pattern_slug: str,
+    definition_id: str | None,
+) -> bool:
+    if definition_id is None:
+        return True
+    outcome_definition_id = _outcome_definition_id(outcome)
+    if outcome_definition_id is not None:
+        return outcome_definition_id == definition_id
+    return current_definition_id(pattern_slug) == definition_id
+
+
 class FileLedgerStore:
     """Append-only JSON ledger for PatternOutcome records."""
 
@@ -278,6 +314,8 @@ class FileLedgerStore:
         d.setdefault("entry_transition_id", None)
         d.setdefault("entry_scan_id", None)
         d.setdefault("entry_block_scores", None)
+        d.setdefault("definition_id", None)
+        d.setdefault("definition_ref", None)
         d.setdefault("entry_block_coverage", None)
         d.setdefault("entry_p_win", None)
         d.setdefault("entry_ml_state", None)
@@ -309,12 +347,16 @@ class FileLedgerStore:
             end = end.astimezone(timezone.utc).replace(tzinfo=None)
         return close.loc[(index >= start) & (index <= end)]
 
-    def list_all(self, pattern_slug: str) -> list[PatternOutcome]:
+    def list_all(self, pattern_slug: str, *, definition_id: str | None = None) -> list[PatternOutcome]:
         cached = _list_all_cache.get(pattern_slug)
         if cached is not None:
             ts, data = cached
             if _time.monotonic() - ts < _LIST_ALL_TTL:
-                return data
+                return [
+                    outcome
+                    for outcome in data
+                    if _outcome_matches_definition(outcome, pattern_slug=pattern_slug, definition_id=definition_id)
+                ]
         d = self._dir(pattern_slug)
         results = []
         for p in d.glob("*.json"):
@@ -323,10 +365,14 @@ class FileLedgerStore:
                 results.append(outcome)
         data = sorted(results, key=lambda o: o.created_at or datetime.min, reverse=True)
         _list_all_cache[pattern_slug] = (_time.monotonic(), data)
-        return data
+        return [
+            outcome
+            for outcome in data
+            if _outcome_matches_definition(outcome, pattern_slug=pattern_slug, definition_id=definition_id)
+        ]
 
-    def list_pending(self, pattern_slug: str) -> list[PatternOutcome]:
-        return [o for o in self.list_all(pattern_slug) if o.outcome == "pending"]
+    def list_pending(self, pattern_slug: str, *, definition_id: str | None = None) -> list[PatternOutcome]:
+        return [o for o in self.list_all(pattern_slug, definition_id=definition_id) if o.outcome == "pending"]
 
     def close_outcome(
         self,
@@ -447,12 +493,12 @@ class FileLedgerStore:
 
     # ── Stats ────────────────────────────────────────────────────────────────
 
-    def compute_stats(self, pattern_slug: str) -> PatternStats:
+    def compute_stats(self, pattern_slug: str, *, definition_id: str | None = None) -> PatternStats:
         """Compute aggregate stats for a pattern.
 
         v2: includes expected value, BTC-conditional rates, decay analysis.
         """
-        outcomes = self.list_all(pattern_slug)
+        outcomes = self.list_all(pattern_slug, definition_id=definition_id)
         return _compute_stats_from_outcomes(pattern_slug, outcomes)
 
 
@@ -512,7 +558,7 @@ class LedgerRecordStore:
                 continue
             if outcome_id and record.outcome_id != outcome_id:
                 continue
-            if definition_id and _record_definition_id(record) != definition_id:
+            if not _record_matches_definition(pattern_slug, record, definition_id):
                 continue
             records.append(record)
         records.sort(key=lambda record: record.created_at, reverse=True)
@@ -526,8 +572,10 @@ class LedgerRecordStore:
     def summarize_family(
         self,
         pattern_slug: str,
+        *,
+        definition_id: str | None = None,
     ) -> tuple[PatternLedgerFamilyStats, PatternLedgerRecord | None, PatternLedgerRecord | None]:
-        records = self.list(pattern_slug)
+        records = self.list(pattern_slug, definition_id=definition_id)
         return _build_record_family_summary(pattern_slug, records)
 
     def compute_family_stats(self, pattern_slug: str) -> PatternLedgerFamilyStats:
@@ -571,6 +619,8 @@ class LedgerRecordStore:
                 transition_id=outcome.entry_transition_id,
                 scan_id=outcome.entry_scan_id,
                 payload={
+                    "definition_id": outcome.definition_id,
+                    "definition_ref": dict(outcome.definition_ref or {}),
                     "accumulation_at": outcome.accumulation_at.isoformat() if outcome.accumulation_at else None,
                     "entry_price": outcome.entry_price,
                     "btc_trend_at_entry": outcome.btc_trend_at_entry,
@@ -590,6 +640,8 @@ class LedgerRecordStore:
                 transition_id=outcome.entry_transition_id,
                 scan_id=outcome.entry_scan_id,
                 payload={
+                    "definition_id": outcome.definition_id,
+                    "definition_ref": dict(outcome.definition_ref or {}),
                     "entry_p_win": outcome.entry_p_win,
                     "entry_ml_state": outcome.entry_ml_state,
                     "entry_model_key": outcome.entry_model_key,
@@ -614,6 +666,8 @@ class LedgerRecordStore:
                 scan_id=capture.scan_id,
                 payload={
                     "capture_kind": capture.capture_kind,
+                    "definition_id": capture.definition_id,
+                    "definition_ref": dict(capture.definition_ref or {}),
                     "pattern_version": capture.pattern_version,
                     "phase": capture.phase,
                     "timeframe": capture.timeframe,
@@ -636,6 +690,8 @@ class LedgerRecordStore:
                 transition_id=outcome.entry_transition_id,
                 scan_id=outcome.entry_scan_id,
                 payload={
+                    "definition_id": outcome.definition_id,
+                    "definition_ref": dict(outcome.definition_ref or {}),
                     "previous_outcome": previous_outcome,
                     "outcome": outcome.outcome,
                     "breakout_at": outcome.breakout_at.isoformat() if outcome.breakout_at else None,
@@ -660,6 +716,8 @@ class LedgerRecordStore:
                 transition_id=outcome.entry_transition_id,
                 scan_id=outcome.entry_scan_id,
                 payload={
+                    "definition_id": outcome.definition_id,
+                    "definition_ref": dict(outcome.definition_ref or {}),
                     "user_verdict": outcome.user_verdict,
                     "user_note": outcome.user_note,
                 },

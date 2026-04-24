@@ -32,6 +32,8 @@ class CaptureRecord:
     symbol: str = ""
     pattern_slug: str = ""
     pattern_version: int = 1
+    definition_id: str | None = None
+    definition_ref: dict[str, Any] | None = None
     phase: str = ""
     timeframe: str = "1h"
     captured_at_ms: int = 0
@@ -59,6 +61,8 @@ class CaptureRecord:
             "symbol": self.symbol,
             "pattern_slug": self.pattern_slug,
             "pattern_version": self.pattern_version,
+            "definition_id": self.definition_id,
+            "definition_ref_json": self.definition_ref or {},
             "phase": self.phase,
             "timeframe": self.timeframe,
             "captured_at_ms": self.captured_at_ms,

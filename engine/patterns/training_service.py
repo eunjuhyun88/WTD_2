@@ -6,6 +6,7 @@ import pandas as pd
 
 from ledger.dataset import build_pattern_training_records
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore, LedgerStore, get_ledger_store
+from patterns.definitions import current_definition_id, definition_id_from_ref
 from patterns.library import get_pattern
 from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE, PatternModelRegistryStore
@@ -34,7 +35,24 @@ def train_pattern_model_from_ledger(
     record_store = record_store or LEDGER_RECORD_STORE
     registry_store = registry_store or MODEL_REGISTRY_STORE
 
-    outcomes = ledger.list_all(pattern_slug)
+    definition_id = definition_id_from_ref(definition_ref)
+    if definition_id is None:
+        outcomes = ledger.list_all(pattern_slug)
+    else:
+        try:
+            outcomes = ledger.list_all(pattern_slug, definition_id=definition_id)
+        except TypeError:
+            outcomes = [
+                outcome
+                for outcome in ledger.list_all(pattern_slug)
+                if definition_id_from_ref(getattr(outcome, "definition_ref", None)) == definition_id
+                or getattr(outcome, "definition_id", None) == definition_id
+                or (
+                    getattr(outcome, "definition_id", None) is None
+                    and definition_id_from_ref(getattr(outcome, "definition_ref", None)) is None
+                    and current_definition_id(pattern_slug) == definition_id
+                )
+            ]
     records = build_pattern_training_records(outcomes)
     required_records = max(MIN_TRAIN_RECORDS, min_records or MIN_TRAIN_RECORDS)
     if len(records) < required_records:

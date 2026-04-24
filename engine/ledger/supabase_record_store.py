@@ -22,6 +22,7 @@ from ledger.types import (
     PatternLedgerFamilyStats,
     PatternLedgerRecord,
 )
+from patterns.definitions import current_definition_id
 
 if TYPE_CHECKING:
     from capture.types import CaptureRecord
@@ -124,14 +125,18 @@ class SupabaseLedgerRecordStore:
             q = q.eq("symbol", symbol)
         if outcome_id:
             q = q.eq("outcome_id", outcome_id)
-        if definition_id:
-            q = q.contains("payload", {"definition_ref": {"definition_id": definition_id}})
         if limit is not None:
             q = q.limit(limit)
         result = q.execute()
         records = [_row_to_record(r) for r in (result.data or [])]
         if definition_id:
-            records = [record for record in records if _record_definition_id(record) == definition_id]
+            current_id = current_definition_id(pattern_slug)
+            records = [
+                record
+                for record in records
+                if _record_definition_id(record) == definition_id
+                or (_record_definition_id(record) is None and current_id == definition_id)
+            ]
         return records
 
     def list_pattern_slugs(self) -> list[str]:
@@ -153,36 +158,56 @@ class SupabaseLedgerRecordStore:
     def summarize_family(
         self,
         pattern_slug: str,
+        *,
+        definition_id: str | None = None,
     ) -> tuple[PatternLedgerFamilyStats, PatternLedgerRecord | None, PatternLedgerRecord | None]:
-        stats = self.compute_family_stats(pattern_slug)
+        stats = self.compute_family_stats(pattern_slug, definition_id=definition_id)
         latest_training_run = next(
-            iter(self.list(pattern_slug, record_type="training_run", limit=1)),
+            iter(self.list(pattern_slug, record_type="training_run", definition_id=definition_id, limit=1)),
             None,
         )
         latest_model = next(
-            iter(self.list(pattern_slug, record_type="model", limit=1)),
+            iter(self.list(pattern_slug, record_type="model", definition_id=definition_id, limit=1)),
             None,
         )
         return stats, latest_training_run, latest_model
 
-    def compute_family_stats(self, pattern_slug: str) -> PatternLedgerFamilyStats:
+    def compute_family_stats(
+        self,
+        pattern_slug: str,
+        *,
+        definition_id: str | None = None,
+    ) -> PatternLedgerFamilyStats:
         """Aggregate family counts via a single indexed query (O(1) vs O(N files)."""
-        result = (
+        query = (
             _sb()
             .table("pattern_ledger_records")
-            .select("record_type")
+            .select("record_type,payload")
             .eq("pattern_slug", pattern_slug)
-            .execute()
         )
+        result = query.execute()
         rows = result.data or []
+        current_id = current_definition_id(pattern_slug) if definition_id is not None else None
         stats, _, _ = _build_record_family_summary(
             pattern_slug,
             [
                 PatternLedgerRecord(
                     record_type=row.get("record_type", "entry"),
                     pattern_slug=pattern_slug,
+                    payload=row.get("payload") or {},
                 )
                 for row in rows
+                if definition_id is None
+                or (
+                    isinstance(row.get("payload"), dict)
+                    and (
+                        row["payload"].get("definition_ref", {}).get("definition_id") == definition_id
+                        or (
+                            not row["payload"].get("definition_ref")
+                            and current_id == definition_id
+                        )
+                    )
+                )
             ],
         )
         return stats
@@ -215,6 +240,8 @@ class SupabaseLedgerRecordStore:
             transition_id=outcome.entry_transition_id,
             scan_id=outcome.entry_scan_id,
             payload={
+                "definition_id": outcome.definition_id,
+                "definition_ref": dict(outcome.definition_ref or {}),
                 "accumulation_at": outcome.accumulation_at.isoformat() if outcome.accumulation_at else None,
                 "entry_price": outcome.entry_price,
                 "btc_trend_at_entry": outcome.btc_trend_at_entry,
@@ -232,6 +259,8 @@ class SupabaseLedgerRecordStore:
             transition_id=outcome.entry_transition_id,
             scan_id=outcome.entry_scan_id,
             payload={
+                "definition_id": outcome.definition_id,
+                "definition_ref": dict(outcome.definition_ref or {}),
                 "entry_p_win": outcome.entry_p_win,
                 "entry_ml_state": outcome.entry_ml_state,
                 "entry_model_key": outcome.entry_model_key,
@@ -254,6 +283,8 @@ class SupabaseLedgerRecordStore:
             scan_id=capture.scan_id,
             payload={
                 "capture_kind": capture.capture_kind,
+                "definition_id": capture.definition_id,
+                "definition_ref": dict(capture.definition_ref or {}),
                 "pattern_version": capture.pattern_version,
                 "phase": capture.phase,
                 "timeframe": capture.timeframe,
@@ -278,6 +309,8 @@ class SupabaseLedgerRecordStore:
             transition_id=outcome.entry_transition_id,
             scan_id=outcome.entry_scan_id,
             payload={
+                "definition_id": outcome.definition_id,
+                "definition_ref": dict(outcome.definition_ref or {}),
                 "previous_outcome": previous_outcome,
                 "outcome": outcome.outcome,
                 "breakout_at": outcome.breakout_at.isoformat() if outcome.breakout_at else None,
@@ -300,6 +333,8 @@ class SupabaseLedgerRecordStore:
             transition_id=outcome.entry_transition_id,
             scan_id=outcome.entry_scan_id,
             payload={
+                "definition_id": outcome.definition_id,
+                "definition_ref": dict(outcome.definition_ref or {}),
                 "user_verdict": outcome.user_verdict,
                 "user_note": outcome.user_note,
             },
