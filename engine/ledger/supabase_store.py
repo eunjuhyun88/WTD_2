@@ -14,7 +14,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from ledger.types import Outcome, PatternOutcome, PatternStats
-from patterns.definitions import current_definition_id
 from patterns.outcome_policy import decide_outcome, policy_for
 
 log = logging.getLogger("engine.ledger.supabase")
@@ -53,6 +52,7 @@ def _row_to_outcome(row: dict) -> PatternOutcome:
     d.setdefault("entry_transition_id", None)
     d.setdefault("entry_scan_id", None)
     d.setdefault("entry_block_scores", None)
+    d.setdefault("pattern_version", None)
     d.setdefault("definition_id", None)
     d.setdefault("definition_ref", None)
     d.setdefault("entry_block_coverage", None)
@@ -107,7 +107,12 @@ class SupabaseLedgerStore:
             return None
         return _row_to_outcome(result.data)
 
-    def list_all(self, pattern_slug: str, *, definition_id: str | None = None) -> list[PatternOutcome]:
+    def list_all(
+        self,
+        pattern_slug: str,
+        *,
+        definition_id: str | None = None,
+    ) -> list[PatternOutcome]:
         """Return all outcomes for a slug, ordered by created_at desc."""
         query = (
             _sb()
@@ -133,7 +138,12 @@ class SupabaseLedgerStore:
             )
         ]
 
-    def list_pending(self, pattern_slug: str, *, definition_id: str | None = None) -> list[PatternOutcome]:
+    def list_pending(
+        self,
+        pattern_slug: str,
+        *,
+        definition_id: str | None = None,
+    ) -> list[PatternOutcome]:
         """Return only pending outcomes for a slug."""
         query = (
             _sb()
@@ -208,7 +218,12 @@ class SupabaseLedgerStore:
 
     # ── Stats ────────────────────────────────────────────────────────────────
 
-    def compute_stats(self, pattern_slug: str, *, definition_id: str | None = None) -> PatternStats:
+    def compute_stats(
+        self,
+        pattern_slug: str,
+        *,
+        definition_id: str | None = None,
+    ) -> PatternStats:
         """Compute aggregate stats — delegates to the same pure-Python logic."""
         from ledger.store import _compute_stats_from_outcomes
         outcomes = self.list_all(pattern_slug, definition_id=definition_id)

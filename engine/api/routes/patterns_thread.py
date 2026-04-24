@@ -8,7 +8,12 @@ from fastapi import HTTPException
 import time
 
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
-from ledger.store import LEDGER_RECORD_STORE, LedgerStore, _compute_stats_from_outcomes
+from ledger.store import (
+    LEDGER_RECORD_STORE,
+    LedgerStore,
+    _compute_stats_from_outcomes,
+    list_outcomes_for_definition,
+)
 from ledger.types import PatternLedgerRecord
 from patterns.alert_policy import ALERT_POLICY_STORE
 from patterns.definitions import PatternDefinitionService, current_definition_id
@@ -30,31 +35,6 @@ def _require_pattern(slug: str) -> None:
         get_pattern(slug)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
-
-
-def _outcome_definition_id(outcome) -> str | None:
-    value = getattr(outcome, "definition_id", None)
-    if isinstance(value, str) and value:
-        return value
-    definition_ref = getattr(outcome, "definition_ref", None)
-    if not isinstance(definition_ref, dict):
-        return None
-    nested = definition_ref.get("definition_id")
-    return nested if isinstance(nested, str) and nested else None
-
-
-def _list_outcomes_scoped(ledger: LedgerStore, slug: str, *, definition_id: str | None = None) -> list:
-    if definition_id is None:
-        return ledger.list_all(slug)
-    try:
-        return ledger.list_all(slug, definition_id=definition_id)
-    except TypeError:
-        return [
-            outcome
-            for outcome in ledger.list_all(slug)
-            if _outcome_definition_id(outcome) == definition_id
-            or (_outcome_definition_id(outcome) is None and current_definition_id(slug) == definition_id)
-        ]
 
 
 def list_patterns_sync() -> dict:
@@ -142,26 +122,32 @@ def _summarize_record_family(
     store = record_store or LEDGER_RECORD_STORE
     summarize_family = getattr(store, "summarize_family", None)
     if callable(summarize_family):
+        if definition_id is None:
+            return summarize_family(slug)
         try:
             return summarize_family(slug, definition_id=definition_id)
         except TypeError:
-            if definition_id is None:
-                return summarize_family(slug)
+            pass
 
     try:
         records = store.list(slug, definition_id=definition_id)
     except TypeError:
         records = store.list(slug)
         if definition_id is not None:
+            current_id = current_definition_id(slug)
             records = [
                 record
                 for record in records
-                if isinstance(getattr(record, "payload", None), dict)
-                and (
-                    record.payload.get("definition_ref", {}).get("definition_id") == definition_id
-                    or (
-                        not record.payload.get("definition_ref")
-                        and current_definition_id(slug) == definition_id
+                if (
+                    isinstance(getattr(record, "payload", None), dict)
+                    and (
+                        record.payload.get("definition_id") == definition_id
+                        or record.payload.get("definition_ref", {}).get("definition_id") == definition_id
+                        or (
+                            record.payload.get("definition_id") is None
+                            and not record.payload.get("definition_ref")
+                            and current_id == definition_id
+                        )
                     )
                 )
             ]
@@ -226,10 +212,24 @@ def get_stats_sync(
         else None
     )
     if outcomes is None:
-        outcomes = _list_outcomes_scoped(ledger, slug, definition_id=resolved_definition_id)
+        outcomes = list_outcomes_for_definition(
+            ledger,
+            slug,
+            definition_id=resolved_definition_id,
+        )
     elif resolved_definition_id is not None:
+        current_id = current_definition_id(slug)
         outcomes = [
-            outcome for outcome in outcomes if _outcome_definition_id(outcome) == resolved_definition_id
+            outcome
+            for outcome in outcomes
+            if (
+                getattr(outcome, "definition_id", None) == resolved_definition_id
+                or (
+                    not getattr(outcome, "definition_id", None)
+                    and not getattr(outcome, "definition_ref", None)
+                    and current_id == resolved_definition_id
+                )
+            )
         ]
     stats = _compute_stats_from_outcomes(slug, outcomes)
     record_family, latest_training_run_record, latest_model_record = _summarize_record_family(
@@ -414,7 +414,7 @@ def get_training_records_sync(
     definition_id: str | None = None,
 ) -> dict:
     definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
-    outcomes = _list_outcomes_scoped(
+    outcomes = list_outcomes_for_definition(
         ledger,
         slug,
         definition_id=definition_ref.get("definition_id"),

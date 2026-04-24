@@ -18,7 +18,6 @@ from capture.types import CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, PatternAlertPolicy
-from patterns.definitions import build_definition_ref, definition_id_from_ref
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.registry import PATTERN_REGISTRY_STORE
 from patterns.scanner import run_pattern_scan
@@ -238,7 +237,7 @@ async def get_pattern_def(slug: str) -> dict:
 async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
     """Set user_verdict on the most recent outcome for (slug, symbol)."""
     try:
-        get_pattern(slug)
+        pattern = get_pattern(slug)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
 
@@ -252,8 +251,8 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
     if not matching:
         new_outcome = PatternOutcome(
             pattern_slug=slug,
-            definition_id=definition_id_from_ref(build_definition_ref(slug)),
-            definition_ref=build_definition_ref(slug),
+            pattern_version=pattern.version,
+            definition_ref=patterns_thread._resolve_definition_ref(slug),
             symbol=body.symbol,
             user_verdict=body.verdict,  # type: ignore[arg-type]
         )
@@ -262,6 +261,9 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
         return {"ok": True, "created": True, "outcome_id": new_outcome.id}
 
     outcome = matching[0]
+    if outcome.definition_id is None and outcome.definition_ref is None:
+        outcome.pattern_version = outcome.pattern_version or pattern.version
+        outcome.definition_ref = patterns_thread._resolve_definition_ref(slug)
     outcome.user_verdict = body.verdict  # type: ignore[assignment]
     _ledger.save(outcome)
     LEDGER_RECORD_STORE.append_verdict_record(outcome)
@@ -278,7 +280,7 @@ async def record_capture(slug: str, body: _CaptureBody) -> dict:
     so the full chain capture_id → transition_id → outcome_id → verdict is traceable.
     """
     try:
-        get_pattern(slug)
+        pattern = get_pattern(slug)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
 
@@ -287,8 +289,8 @@ async def record_capture(slug: str, body: _CaptureBody) -> dict:
         user_id=body.user_id,
         symbol=body.symbol,
         pattern_slug=slug,
-        definition_id=definition_id_from_ref(build_definition_ref(slug)),
-        definition_ref=build_definition_ref(slug),
+        pattern_version=pattern.version,
+        definition_ref=patterns_thread._resolve_definition_ref(slug),
         phase=body.phase,
         timeframe=body.timeframe,
         candidate_transition_id=body.candidate_transition_id,

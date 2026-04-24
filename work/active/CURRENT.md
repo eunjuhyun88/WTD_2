@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`8e914f76` — current local `origin/main` ref
+`fd0f4731` — current local `origin/main` ref after PR #216
 
 ## 완료 (이번 세션)
 
@@ -43,7 +43,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | definition plane mainline plus post-merge `PatternDraft -> SearchQuerySpec` propagation, rule-registry tightening, and DOUNI cutover |
+| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | stored definition truth landed; legacy backfill policy + durable definition namespace decision remain |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
@@ -116,27 +116,22 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0148-post-merge-plan-refresh`
-- worktree: `/Users/ej/Projects/wtd-v2`
-- merged on `origin/main`: PR #230 / #231 (`W-0160` pattern-seed bridge, runtime capture fixture alignment, and optional user-data liquidation diagnostics) plus PR #232 (`W-0159` canonical raw/search mainline extract)
-- active engine lane remains `codex/w-0160-pattern-definition-plane`, which owns definition-scoped runtime truth and the next `PatternDraft/SearchQuerySpec` follow-up
-- active commercialization/search baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
-- `W-0156`, `W-0157`, and `W-0158` are merged prerequisites for the next feature-plane and ranking/diagnostics promotion wave
-- `W-0159` no longer needs extraction work; the remaining gap is a public or market-wide liquidation source plus any next raw-family expansion with concrete product pull
+- active on `codex/w-0160-definition-truth-scope`
+- worktree: `/private/tmp/wtd-v2-w0160-definition-truth`
+- current slice: W-0160 follow-up after merged `#228`; capture/outcome truth now persists canonical `definition_id` / `definition_ref`, file/supabase ledger readers prefer stored definition scope with legacy fallback, `/patterns/{slug}/stats` plus training/refinement consumers read stored definition scope first, and additive migration `0015_definition_truth_scope.sql` carries Supabase parity
 
 ---
 
 ## 즉시 실행 순서
 
-1. **W-0122 / Lane A** — fact-plane canonical sub-routes (`/facts/*`, `/ctx/fact`) expansion + app compatibility bridge retirement
-2. **W-0145 / Lane B** — corpus/search read models and `/search/*` family promotion over the merged raw/search baseline
-3. **W-0142 / Lane C** — runtime repositories and `/runtime/*` read/write family expansion
-4. **W-0160 / Contract follow-up** — `SearchQuerySpec` persistence beyond benchmark-search, rule-registry tightening, and DOUNI raw-analysis removal
-5. **W-0159 / Raw follow-up** — public or market-wide liquidation source decision, liquidation fact promotion, and next raw-family expansion only if a concrete search gap remains
-6. **W-0156 / Feature promotion** — canonical `feature_windows` contract and reusable derived math promotion into consumers
-7. **W-0140 / Surface slimming** — bottom ANALYZE workspace must consume upstream workspace envelope/contracts only
+1. **W-0148 / PR0.1** — docs/governance normalize
+2. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
+3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
+4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
+5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
+6. **W-0139 / Lane E.1** — terminal surface runtime/fact/search client slimming
+7. **W-0140 / Lane E.2** — bottom ANALYZE slimming after terminal surface has no data ownership
 8. **Cloud Run region decision** — `asia-southeast1/cogotchi` redeploy vs `us-east4/cogotchi` 유지 명시
-9. **Vercel production env** — `EXCHANGE_ENCRYPTION_KEY` production wiring
 
 ---
 
@@ -147,10 +142,11 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `8be0dd6f` (behind merged remote) |
-| origin/main | — | local remote-tracking ref = `8e914f76` |
+| origin/main | — | local remote-tracking ref = `49140f01` |
 | codex/w-0148-post-merge-plan-refresh | W-0148 | active docs-only lane for post-merge queue refresh |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
-| codex/w-0160-pattern-definition-plane | W-0160 | active runtime lane for canonical pattern-definition read models |
+| codex/w-0160-pattern-definition-plane | W-0160 | merged runtime lane for canonical pattern-definition read models |
+| codex/w-0160-definition-truth-scope | W-0160 | active follow-up lane for stored definition truth + definition-scoped stats |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
 | codex/w-0151-active-variant-runtime-registry | W-0149 / W-0150 / W-0151 / W-0152 | active stacked engine commercialization lane |
