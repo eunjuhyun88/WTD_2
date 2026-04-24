@@ -188,6 +188,77 @@ def test_raw_store_upserts_liquidation_windows(tmp_path) -> None:
     assert store.count_rows("market_liquidation_windows", symbol="BTCUSDT", timeframe="1h") == 1
 
 
+def test_raw_store_delete_liquidation_windows_respects_venue(tmp_path) -> None:
+    store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
+    ingested_at = _dt(12)
+
+    windows = [
+        MarketLiquidationWindowRecord(
+            provider="binance",
+            venue="binance_futures",
+            symbol="BTCUSDT",
+            timeframe="1h",
+            window_start_ts=_dt(10),
+            window_end_ts=_dt(11),
+            source_start_ts=_dt(10),
+            source_end_ts=_dt(11),
+            ingested_at=ingested_at,
+            freshness_ms=7_200_000,
+            quality_state="complete",
+            fallback_state="none",
+            event_count=2,
+            short_event_count=1,
+            long_event_count=1,
+            short_liq_usd=500.0,
+            long_liq_usd=300.0,
+            total_liq_usd=800.0,
+            net_liq_usd=200.0,
+            dominant_side="short_liq",
+            dominance_share=0.625,
+            imbalance_ratio=0.25,
+            largest_event_usd=500.0,
+            largest_event_side="BUY",
+        ),
+        MarketLiquidationWindowRecord(
+            provider="coinalyze",
+            venue="coinalyze_market_wide",
+            symbol="BTCUSDT",
+            timeframe="1h",
+            window_start_ts=_dt(10),
+            window_end_ts=_dt(11),
+            source_start_ts=_dt(10),
+            source_end_ts=_dt(11),
+            ingested_at=ingested_at,
+            freshness_ms=7_200_000,
+            quality_state="complete",
+            fallback_state="none",
+            event_count=0,
+            short_event_count=0,
+            long_event_count=0,
+            short_liq_usd=250.0,
+            long_liq_usd=450.0,
+            total_liq_usd=700.0,
+            net_liq_usd=-200.0,
+            dominant_side="long_liq",
+            dominance_share=0.6428571429,
+            imbalance_ratio=-0.2857142857,
+            largest_event_usd=None,
+            largest_event_side=None,
+        ),
+    ]
+
+    store.upsert_liquidation_windows(windows)
+
+    deleted = store.delete_liquidation_windows(
+        symbol="BTCUSDT",
+        timeframe="1h",
+        venue="coinalyze_market_wide",
+    )
+
+    assert deleted == 1
+    assert store.count_rows("market_liquidation_windows", symbol="BTCUSDT", timeframe="1h") == 1
+
+
 def test_raw_store_upsert_replaces_existing_row(tmp_path) -> None:
     store = CanonicalRawStore(tmp_path / "canonical_raw.sqlite")
     first_ingest = _dt(12)
