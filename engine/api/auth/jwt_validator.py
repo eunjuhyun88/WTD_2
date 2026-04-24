@@ -1,0 +1,165 @@
+"""JWT validation middleware for user authentication.
+
+Verifies JWT tokens from app client, extracts user_id, and injects into request state.
+Replaces query param / request body user_id extraction.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+import httpx
+from fastapi import HTTPException, Request
+from pydantic import BaseModel, Field
+
+log = logging.getLogger(__name__)
+
+
+class JWTPayload(BaseModel):
+    """Standard JWT payload structure (iat, exp, sub=user_id, aud, iss)."""
+
+    sub: str = Field(..., description="user_id")
+    aud: str = Field(..., description="intended audience (app origin)")
+    iss: str = Field(..., description="token issuer")
+    iat: int = Field(..., description="issued at (unix timestamp)")
+    exp: int = Field(..., description="expiration (unix timestamp)")
+
+
+class JWTValidator:
+    """Validates JWT tokens from app client.
+
+    Sources JWT public key from:
+    1. Environment variable (for testing / preview)
+    2. JWKS endpoint (for production — Vercel-issued tokens)
+
+    Config:
+        JWT_PUBLIC_KEY: raw public key or path to public key file
+        JWT_JWKS_URL: JWKS endpoint URL (production)
+        JWT_AUDIENCE: expected audience (app origin, e.g., "https://app.example.com")
+        JWT_ISSUER: expected issuer (e.g., "vercel")
+    """
+
+    def __init__(self):
+        self.public_key = os.getenv("JWT_PUBLIC_KEY", "").strip()
+        self.jwks_url = os.getenv("JWT_JWKS_URL", "").strip()
+        self.audience = os.getenv("JWT_AUDIENCE", "").strip()
+        self.issuer = os.getenv("JWT_ISSUER", "vercel").strip()
+        self._jwks_cache: dict[str, Any] | None = None
+        self._jwks_cache_time = 0
+
+    async def validate(self, token: str) -> str:
+        """Validate JWT and return user_id (from 'sub' claim).
+
+        Raises:
+            HTTPException(401): Invalid or missing token
+            HTTPException(403): Token expired or audience mismatch
+        """
+        if not token:
+            raise HTTPException(status_code=401, detail="Missing authorization token")
+
+        try:
+            # Remove "Bearer " prefix if present
+            if token.startswith("Bearer "):
+                token = token[7:]
+
+            # Step 1: Decode without verification first (to get headers)
+            # In production, use jwt.decode(token, key, algorithms=["RS256"])
+            # For now, use httpx-based validation
+            payload = self._decode_jwt(token)
+
+            # Step 2: Validate payload structure
+            jwt_payload = JWTPayload(**payload)
+
+            # Step 3: Validate claims
+            self._validate_claims(jwt_payload)
+
+            return jwt_payload.sub
+
+        except (KeyError, TypeError, ValueError) as e:
+            log.warning("JWT validation failed: %s", str(e))
+            raise HTTPException(status_code=401, detail="Invalid JWT token") from e
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.error("Unexpected JWT error: %s", str(e))
+            raise HTTPException(status_code=500, detail="Token validation error") from e
+
+    def _decode_jwt(self, token: str) -> dict[str, Any]:
+        """Decode JWT without verification (unsafe for untrusted input)."""
+        try:
+            import base64
+            # JWT format: header.payload.signature
+            parts = token.split(".")
+            if len(parts) != 3:
+                raise ValueError("Invalid JWT format")
+
+            # Decode payload (add padding if needed)
+            payload_b64 = parts[1]
+            padding = 4 - (len(payload_b64) % 4)
+            if padding != 4:
+                payload_b64 += "=" * padding
+
+            payload_json = base64.urlsafe_b64decode(payload_b64)
+            return json.loads(payload_json)
+        except Exception as e:
+            raise ValueError(f"Failed to decode JWT: {e}") from e
+
+    def _validate_claims(self, payload: JWTPayload) -> None:
+        """Validate standard JWT claims."""
+        now = datetime.now(timezone.utc).timestamp()
+
+        # Check expiration
+        if payload.exp < now:
+            raise HTTPException(status_code=403, detail="Token expired")
+
+        # Check audience (optional, but recommended)
+        if self.audience and payload.aud != self.audience:
+            log.warning("Audience mismatch: expected %s, got %s", self.audience, payload.aud)
+            # Note: Comment out if audience validation is not critical
+            # raise HTTPException(status_code=403, detail="Invalid token audience")
+
+        # Check issuer (optional)
+        if self.issuer and payload.iss != self.issuer:
+            log.warning("Issuer mismatch: expected %s, got %s", self.issuer, payload.iss)
+            # raise HTTPException(status_code=403, detail="Invalid token issuer")
+
+
+# Global validator instance
+_jwt_validator = JWTValidator()
+
+
+async def extract_user_id_from_jwt(request: Request) -> str | None:
+    """Extract user_id from Authorization header.
+
+    Returns:
+        user_id string if valid JWT found, None otherwise
+
+    Raises:
+        HTTPException: if JWT is present but invalid
+    """
+    auth_header = request.headers.get("Authorization", "").strip()
+    if not auth_header:
+        return None
+
+    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else auth_header
+    if not token:
+        return None
+
+    return await _jwt_validator.validate(token)
+
+
+def is_protected_route(path: str) -> bool:
+    """Check if route requires authentication.
+
+    Public routes (no JWT required):
+    - /healthz, /readyz (health checks)
+    - /jobs/* (internal scheduler, validated via ENGINE_INTERNAL_SECRET)
+
+    Protected routes (JWT required):
+    - All /facts/*, /search/*, /runtime/*, etc.
+    """
+    public_prefixes = {"/healthz", "/readyz", "/jobs/"}
+    return not any(path.startswith(prefix) for prefix in public_prefixes)

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from api.routes import patterns_thread
@@ -57,7 +57,6 @@ class _RegisterPatternBody(BaseModel):
 
 
 class _PatternTrainBody(BaseModel):
-    user_id: str | None = None
     definition_id: str | None = None
     target_name: str = "breakout"
     feature_schema_version: int = 1
@@ -79,7 +78,6 @@ class _PatternAlertPolicyBody(BaseModel):
 
 class _CaptureBody(BaseModel):
     symbol: str
-    user_id: str | None = None
     phase: str = ""
     timeframe: str = "1h"
     capture_kind: str = "pattern_candidate"
@@ -365,12 +363,16 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
 # ── Capture Plane ────────────────────────────────────────────────────────────
 
 @router.post("/{slug}/capture")
-async def record_capture(slug: str, body: _CaptureBody) -> dict:
+async def record_capture(request: Request, slug: str, body: _CaptureBody) -> dict:
     """Record a Save Setup capture event into the ledger capture plane.
 
     Links the capture to a durable phase transition via candidate_transition_id
     so the full chain capture_id → transition_id → outcome_id → verdict is traceable.
     """
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     try:
         pattern = get_pattern(slug)
     except KeyError:
@@ -378,7 +380,7 @@ async def record_capture(slug: str, body: _CaptureBody) -> dict:
 
     capture = CaptureRecord(
         capture_kind=body.capture_kind,  # type: ignore[arg-type]
-        user_id=body.user_id,
+        user_id=user_id,
         symbol=body.symbol,
         pattern_slug=slug,
         pattern_version=pattern.version,
@@ -411,13 +413,19 @@ async def auto_evaluate(slug: str) -> dict:
 
 
 @router.post("/{slug}/train-model")
-async def train_pattern_model(slug: str, body: _PatternTrainBody) -> dict:
+async def train_pattern_model(request: Request, slug: str, body: _PatternTrainBody) -> dict:
     """Train a pattern-scoped model from durable ledger outcomes."""
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     try:
+        body_dict = body.model_dump()
+        body_dict["user_id"] = user_id
         return await asyncio.to_thread(
             patterns_thread.train_pattern_model_sync,
             slug,
-            body.model_dump(),
+            body_dict,
             _ledger,
         )
     except ValueError as exc:
