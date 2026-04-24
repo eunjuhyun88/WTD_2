@@ -4,10 +4,11 @@ No network I/O — we monkeypatch CACHE_DIR to a tmp_path and seed/read
 files directly. Covers:
   1. offline=True + missing file → CacheMiss
   2. offline=True + cached file  → returns DataFrame with expected shape
-  3. non-1h timeframe            → resample from 1h base (CacheMiss if 1h absent)
-  4. unknown timeframe string    → ValueError
-  5. cache_path filename shape
-  6. round-trip through load_klines preserves numeric columns
+  3. sub-hour timeframe          → native cache/fetch path
+  4. higher timeframe            → resample from 1h base (CacheMiss if 1h absent)
+  5. unknown timeframe string    → ValueError
+  6. cache_path filename shape
+  7. round-trip through load_klines preserves numeric columns
 """
 from __future__ import annotations
 
@@ -106,8 +107,37 @@ def test_online_fetch_falls_back_to_futures_for_invalid_spot_symbol(tmp_path, mo
     assert (tmp_path / "PTBUSDT_1h.csv").exists()
 
 
-def test_non_1h_timeframe_resamples_from_1h_base(tmp_path, monkeypatch):
-    """4h / 1d etc. are now derived from 1h on the fly.
+def test_subhour_timeframe_uses_native_cache_or_fetch(tmp_path, monkeypatch):
+    monkeypatch.setattr(loader_mod, "CACHE_DIR", tmp_path)
+    df = _make_fake_klines(8)
+    df.to_csv(tmp_path / "BTCUSDT_15m.csv")
+
+    cached = load_klines("BTCUSDT", "15m", offline=True)
+    assert len(cached) == 8
+    assert cached["close"].iloc[-1] == pytest.approx(df["close"].iloc[-1])
+
+    (tmp_path / "BTCUSDT_15m.csv").unlink()
+    calls: list[tuple[str, str]] = []
+
+    def fake_spot(symbol: str, timeframe: str):
+        calls.append(("spot", timeframe))
+        return df
+
+    def fake_futures(symbol: str, timeframe: str):
+        calls.append(("futures", timeframe))
+        return df
+
+    monkeypatch.setattr(loader_mod, "fetch_klines_max", fake_spot)
+    monkeypatch.setattr(loader_mod, "fetch_futures_klines_max", fake_futures)
+
+    fetched = load_klines("BTCUSDT", "15m", offline=False)
+    assert len(fetched) == 8
+    assert calls == [("spot", "15m")]
+    assert (tmp_path / "BTCUSDT_15m.csv").exists()
+
+
+def test_higher_timeframe_resamples_from_1h_base(tmp_path, monkeypatch):
+    """4h / 1d etc. are derived from 1h on the fly.
 
     When offline=True and the 1h cache is missing, we get CacheMiss (not
     NotImplementedError). When the 1h cache is present, resampling succeeds.

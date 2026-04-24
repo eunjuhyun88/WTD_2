@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`e53c5f96` — current local `origin/main` ref after PR #202
+`c7925b23` — current local `origin/main` ref after PR #203
 
 ## 완료 (이번 세션)
 
@@ -20,6 +20,7 @@
 | #190 (W-0138) | `ENGINE_RUNTIME_ROLE` 기반 engine-api / worker-control split |
 | #201 (W-0122) | consumer fact routes attach to engine facts (`reference-stack`, `chain-intel`) |
 | #202 (W-0145) | search corpus store + worker-control corpus refresh + `/search/catalog` |
+| #203 (W-0145) | canonical `/search/seed` + `/search/scan` route family on durable corpus |
 
 ---
 
@@ -29,7 +30,7 @@
 |---|---|---|---|
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
-| **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
+| **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | 15m warm+corpus lane + broader app/agent search consumer cutover |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
 | **W-0143** | `W-0143-query-by-example-pattern-search.md` | 🟡 BLOCKED-ON-A-B-C | agent/search integration after fact/search/runtime lanes merge |
 | **W-0139** | `W-0139-terminal-core-loop-capture.md` | 🟡 BLOCKED-ON-UPSTREAM | surface closeout after agent/runtime/fact contracts freeze |
@@ -91,9 +92,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0145-search-routes`
-- worktree: `/private/tmp/wtd-v2-w0145-corpus-plane`
-- current slice: Search Plane seed/scan route skeleton; persist `search_seed_runs`, `search_seed_candidates`, `search_scan_runs`, `search_scan_candidates` behind canonical `/search/*`
+- active on `codex/w-0145-operational-pipeline`
+- worktree: `/private/tmp/wtd-v2-w0145-operational-pipeline`
+- current slice: terminal seed-scout consumes canonical `/search/seed`; corpus signatures persist cached perp (OI/funding/LS), `15m` cache can warm on miss during corpus refresh, and app search contracts match engine payloads
 
 ---
 
@@ -117,7 +118,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `27952d95` |
-| origin/main | — | local remote-tracking ref = `e53c5f96` |
+| origin/main | — | local remote-tracking ref = `c7925b23` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
@@ -131,7 +132,8 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | codex/w-0145-corpus-plane | W-0145 | merged via PR #202 |
-| codex/w-0145-search-routes | W-0145 | active seed/scan route skeleton |
+| codex/w-0145-search-routes | W-0145 | merged via PR #203 |
+| codex/w-0145-operational-pipeline | W-0145 | active product consumer cutover lane |
 | codex/w-0142-runtime-state-plane | W-0142 | planned parallel runtime lane |
 | codex/w-0143-agent-search-integration | W-0143 | planned post-A/B/C integration lane |
 | codex/w-0139-surface-closeout | W-0139 | planned post-agent surface lane |

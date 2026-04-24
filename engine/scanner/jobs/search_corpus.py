@@ -8,14 +8,15 @@ from typing import Callable, Iterable
 
 import pandas as pd
 
-from data_cache.loader import load_klines
+from data_cache.loader import CacheMiss, load_klines, load_perp
 from search.corpus import SearchCorpusStore, build_corpus_windows
 from universe.config import DEFAULT_SCAN_UNIVERSE
 from universe.loader import load_universe_async
 
 log = logging.getLogger("engine.scanner.search_corpus")
 
-DEFAULT_TIMEFRAMES = ("1h", "4h")
+DEFAULT_TIMEFRAMES = ("15m", "1h", "4h")
+DEFAULT_FETCH_ON_MISS_TIMEFRAMES = ("15m",)
 
 
 def _env_int(name: str, default: int) -> int:
@@ -25,11 +26,20 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_csv(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    raw = os.environ.get(name, "")
+    if not raw.strip():
+        return default
+    values = tuple(part.strip() for part in raw.split(",") if part.strip())
+    return values or default
+
+
 async def search_corpus_refresh_job(
     *,
     universe_name: str = DEFAULT_SCAN_UNIVERSE,
     symbols: Iterable[str] | None = None,
     timeframes: Iterable[str] = DEFAULT_TIMEFRAMES,
+    fetch_on_miss_timeframes: Iterable[str] | None = None,
     window_bars: int | None = None,
     stride_bars: int | None = None,
     lookback_bars: int | None = None,
@@ -38,6 +48,7 @@ async def search_corpus_refresh_job(
     store: SearchCorpusStore | None = None,
     load_universe: Callable[[str], object] = load_universe_async,
     load_kline_frame: Callable[..., pd.DataFrame] = load_klines,
+    load_perp_frame: Callable[..., pd.DataFrame | None] = load_perp,
 ) -> dict:
     """Refresh compact corpus windows from existing local market cache.
 
@@ -51,6 +62,13 @@ async def search_corpus_refresh_job(
     max_symbols = max_symbols or _env_int("SEARCH_CORPUS_MAX_SYMBOLS", 20)
     max_windows_per_series = max_windows_per_series or _env_int("SEARCH_CORPUS_MAX_WINDOWS_PER_SERIES", 24)
     store = store or SearchCorpusStore()
+    fetch_on_miss = {
+        str(timeframe).strip().lower()
+        for timeframe in (
+            fetch_on_miss_timeframes
+            or _env_csv("SEARCH_CORPUS_FETCH_ON_MISS_TIMEFRAMES", DEFAULT_FETCH_ON_MISS_TIMEFRAMES)
+        )
+    }
 
     if symbols is None:
         loaded = load_universe(universe_name)
@@ -64,15 +82,25 @@ async def search_corpus_refresh_job(
     skipped: list[dict] = []
 
     for symbol in selected_symbols:
+        try:
+            perp_frame = load_perp_frame(symbol, offline=True)
+        except Exception:
+            perp_frame = None
         for timeframe in selected_timeframes:
             try:
-                frame = load_kline_frame(symbol, timeframe, offline=True)
+                try:
+                    frame = load_kline_frame(symbol, timeframe, offline=True)
+                except CacheMiss:
+                    if timeframe.lower() not in fetch_on_miss:
+                        raise
+                    frame = load_kline_frame(symbol, timeframe, offline=False)
                 if lookback_bars > 0:
                     frame = frame.tail(max(lookback_bars, window_bars))
                 windows = build_corpus_windows(
                     symbol,
                     timeframe,
                     frame,
+                    perp=perp_frame,
                     window_bars=window_bars,
                     stride_bars=stride_bars,
                     source="kline_cache",

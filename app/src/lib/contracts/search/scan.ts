@@ -1,17 +1,18 @@
-export type SearchPlaneState = 'live' | 'corpus_only' | 'fact_only' | 'degraded' | 'blocked';
+export type SearchPlaneState = 'live' | 'corpus_only' | 'fact_only' | 'degraded' | 'blocked' | 'empty';
 
-export interface ScanRequest {
-	symbol: string;
-	timeframe: string;
-	universe?: string[];
-	max_candidates?: number;
+export interface SearchCandidate {
+	candidate_id: string;
+	window_id?: string | null;
+	symbol?: string | null;
+	timeframe?: string | null;
+	score: number;
+	payload?: Record<string, unknown>;
 }
 
-export interface ScanHighlight {
-	agent: string;
-	vote: string;
-	conf: number;
-	note: string;
+export interface ScanRequest {
+	symbol?: string;
+	timeframe?: string;
+	limit?: number;
 }
 
 export interface ScanResult {
@@ -21,16 +22,6 @@ export interface ScanResult {
 	status: SearchPlaneState;
 	generated_at: string;
 	scan_id: string;
-	symbol: string;
-	timeframe: string;
-	summary: string;
-	consensus: 'long' | 'short' | 'neutral';
-	avg_confidence: number;
-	highlights: ScanHighlight[];
-	pattern_context?: {
-		slug: string;
-		family?: string | null;
-		maturity?: string | null;
-		candidate_status?: string | null;
-	} | null;
+	request?: Record<string, unknown>;
+	candidates: SearchCandidate[];
 }

@@ -34,9 +34,10 @@ from exceptions import CacheMiss  # noqa: F401  (re-exported)
 # the repo-root .gitignore.
 CACHE_DIR = Path(__file__).parent / "cache"
 
-# Only 1-hour bars are stored on-disk; all other timeframes are derived
-# on the fly via resample_klines().  See data_cache.resample for the full
-# set of supported TF strings.
+# 1-hour bars remain the canonical base for higher-timeframe resamples.
+# Sub-hour bars (1m/3m/5m/15m/30m) can also be stored on disk directly so
+# operational search lanes can accumulate real 15m structure instead of
+# upsampling 1h bars.
 _SUPPORTED_TIMEFRAMES = SUPPORTED_TF_STRINGS
 
 
@@ -72,20 +73,49 @@ def load_klines(
 ) -> pd.DataFrame:
     """Load OHLCV klines for (symbol, timeframe).
 
-    Only 1-hour klines are stored on disk (the canonical Binance format).
-    All other timeframes are derived on the fly by resampling the 1h base:
+    1-hour klines remain the canonical base for higher-timeframe resampling.
+    Sub-hour timeframes are stored natively on disk when requested.
+
+    Higher timeframes are derived on the fly by resampling the 1h base:
 
         load_klines("BTCUSDT", "4h")   →  loads 1h CSV, resamples to 4h
         load_klines("BTCUSDT", "1d")   →  loads 1h CSV, resamples to 1d
 
+    Lower timeframes use their own cache/fetch path:
+
+        load_klines("BTCUSDT", "15m")  →  reads `BTCUSDT_15m.csv` or fetches 15m bars
+
     Behaviour:
-      - cached 1h            → read the CSV and return (or resample)
-      - not cached, offline=False → fetch from Binance, persist 1h, return
+      - cached requested TF       → read the CSV and return
+      - sub-hour miss + offline=False → fetch requested TF, persist, return
+      - higher-TF miss + offline=False → fetch/read 1h base, resample, return
       - not cached, offline=True  → raise CacheMiss
       - unknown timeframe string  → raise ValueError (from tf_string_to_minutes)
     """
     # Validate the timeframe string early; unknown values raise ValueError.
     tf_min = tf_string_to_minutes(timeframe)
+
+    if tf_min < 60:
+        path = cache_path(symbol, timeframe)
+        if path.exists():
+            df = pd.read_csv(path, index_col="timestamp", parse_dates=True)
+            if df.index.tz is None:
+                df.index = df.index.tz_localize("UTC")
+            return df
+        if offline:
+            raise CacheMiss(
+                f"{symbol}_{timeframe} not cached at {path} and offline=True"
+            )
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            df = fetch_klines_max(symbol, timeframe)
+        except RuntimeError as exc:
+            spot_error = str(exc)
+            if "Invalid symbol" not in spot_error and "no klines returned" not in spot_error:
+                raise
+            df = fetch_futures_klines_max(symbol, timeframe)
+        df.to_csv(path)
+        return df
 
     if timeframe == "1h":
         path = cache_path(symbol, "1h")
@@ -109,7 +139,7 @@ def load_klines(
         df.to_csv(path)
         return df
 
-    # ── Non-1h: resample from the 1h base on the fly ──────────────────────
+    # ── Higher-than-1h: resample from the 1h base on the fly ─────────────
     df_1h = load_klines(symbol, "1h", offline=offline)
     return resample_klines(df_1h, tf_min)
 

@@ -50,6 +50,44 @@ def _stable_window_id(symbol: str, timeframe: str, start_ts: str, end_ts: str) -
     return hashlib.sha1(raw).hexdigest()[:24]
 
 
+def _normalize_perp_frame(perp: pd.DataFrame | None) -> pd.DataFrame | None:
+    if perp is None or perp.empty:
+        return None
+    frame = perp.copy()
+    if not isinstance(frame.index, pd.DatetimeIndex):
+        return None
+    if frame.index.tz is None:
+        frame.index = frame.index.tz_localize("UTC")
+    else:
+        frame.index = frame.index.tz_convert("UTC")
+    for column, default in (
+        ("funding_rate", 0.0),
+        ("oi_change_1h", 0.0),
+        ("oi_change_24h", 0.0),
+        ("long_short_ratio", 1.0),
+    ):
+        if column not in frame.columns:
+            frame[column] = default
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    return frame.sort_index()[["funding_rate", "oi_change_1h", "oi_change_24h", "long_short_ratio"]]
+
+
+def _perp_bias(mean_funding_rate: float) -> str:
+    if mean_funding_rate <= -0.0001:
+        return "short_bias"
+    if mean_funding_rate >= 0.0001:
+        return "long_bias"
+    return "neutral"
+
+
+def _oi_regime(mean_oi_change_1h: float, max_oi_change_1h: float) -> str:
+    if max_oi_change_1h >= 0.03 or mean_oi_change_1h >= 0.01:
+        return "expanding"
+    if mean_oi_change_1h <= -0.01:
+        return "contracting"
+    return "flat"
+
+
 @dataclass(frozen=True)
 class CorpusWindow:
     window_id: str
@@ -394,6 +432,7 @@ def build_corpus_windows(
     timeframe: str,
     klines: pd.DataFrame,
     *,
+    perp: pd.DataFrame | None = None,
     window_bars: int = 48,
     stride_bars: int = 12,
     source: str = "kline_cache",
@@ -412,6 +451,7 @@ def build_corpus_windows(
     df = klines.sort_index()
     now = generated_at or _utcnow_iso()
     volume_baseline = float(df["volume"].mean() or 0.0)
+    perp_df = _normalize_perp_frame(perp)
     windows: list[CorpusWindow] = []
     normalized_symbol = symbol.upper()
 
@@ -431,6 +471,38 @@ def build_corpus_windows(
         realized_volatility_pct = float(returns.std(ddof=0) * 100.0) if len(returns) else 0.0
         volume_ratio = 0.0 if volume_baseline == 0 else float(volumes.mean() / volume_baseline)
         trend = "up" if close_return_pct > 0.5 else "down" if close_return_pct < -0.5 else "flat"
+        funding_rate_mean = 0.0
+        funding_rate_last = 0.0
+        funding_rate_min = 0.0
+        funding_rate_max = 0.0
+        oi_change_1h_mean = 0.0
+        oi_change_1h_max = 0.0
+        oi_change_24h_mean = 0.0
+        oi_change_24h_last = 0.0
+        long_short_ratio_mean = 1.0
+
+        if perp_df is not None:
+            perp_window = perp_df.reindex(window.index, method="ffill").fillna(
+                {
+                    "funding_rate": 0.0,
+                    "oi_change_1h": 0.0,
+                    "oi_change_24h": 0.0,
+                    "long_short_ratio": 1.0,
+                }
+            )
+            funding_series = perp_window["funding_rate"].astype(float)
+            oi_1h_series = perp_window["oi_change_1h"].astype(float)
+            oi_24h_series = perp_window["oi_change_24h"].astype(float)
+            ls_series = perp_window["long_short_ratio"].astype(float)
+            funding_rate_mean = float(funding_series.mean() or 0.0)
+            funding_rate_last = float(funding_series.iloc[-1] or 0.0)
+            funding_rate_min = float(funding_series.min() or 0.0)
+            funding_rate_max = float(funding_series.max() or 0.0)
+            oi_change_1h_mean = float(oi_1h_series.mean() or 0.0)
+            oi_change_1h_max = float(oi_1h_series.max() or 0.0)
+            oi_change_24h_mean = float(oi_24h_series.mean() or 0.0)
+            oi_change_24h_last = float(oi_24h_series.iloc[-1] or 0.0)
+            long_short_ratio_mean = float(ls_series.mean() or 1.0)
 
         start_ts = _timestamp_iso(window.index[0])
         end_ts = _timestamp_iso(window.index[-1])
@@ -439,7 +511,18 @@ def build_corpus_windows(
             "high_low_range_pct": round(range_pct, 6),
             "realized_volatility_pct": round(realized_volatility_pct, 6),
             "volume_ratio": round(volume_ratio, 6),
+            "funding_rate_mean": round(funding_rate_mean, 8),
+            "funding_rate_last": round(funding_rate_last, 8),
+            "funding_rate_min": round(funding_rate_min, 8),
+            "funding_rate_max": round(funding_rate_max, 8),
+            "oi_change_1h_mean": round(oi_change_1h_mean, 6),
+            "oi_change_1h_max": round(oi_change_1h_max, 6),
+            "oi_change_24h_mean": round(oi_change_24h_mean, 6),
+            "oi_change_24h_last": round(oi_change_24h_last, 6),
+            "long_short_ratio_mean": round(long_short_ratio_mean, 6),
             "trend": trend,
+            "funding_bias": _perp_bias(funding_rate_mean),
+            "oi_regime": _oi_regime(oi_change_1h_mean, oi_change_1h_max),
             "last_close": round(last_close, 8),
         }
         windows.append(

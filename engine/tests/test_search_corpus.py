@@ -5,6 +5,7 @@ import asyncio
 
 import pandas as pd
 
+from data_cache.loader import CacheMiss
 from scanner.jobs.search_corpus import search_corpus_refresh_job
 from search.corpus import SearchCorpusStore, build_corpus_windows
 
@@ -24,11 +25,25 @@ def _klines(rows: int = 8) -> pd.DataFrame:
     )
 
 
+def _perp(rows: int = 8) -> pd.DataFrame:
+    index = pd.date_range("2026-04-13", periods=rows, freq="h", tz="UTC")
+    return pd.DataFrame(
+        {
+            "funding_rate": [-0.0008 + (i * 0.0002) for i in range(rows)],
+            "oi_change_1h": [0.01 + (i * 0.005) for i in range(rows)],
+            "oi_change_24h": [0.03 + (i * 0.01) for i in range(rows)],
+            "long_short_ratio": [0.92 + (i * 0.03) for i in range(rows)],
+        },
+        index=index,
+    )
+
+
 def test_build_corpus_windows_creates_stable_compact_signatures() -> None:
     windows = build_corpus_windows(
         "btcusdt",
         "1h",
         _klines(),
+        perp=_perp(),
         window_bars=4,
         stride_bars=2,
         generated_at="2026-04-23T00:00:00+00:00",
@@ -41,10 +56,14 @@ def test_build_corpus_windows_creates_stable_compact_signatures() -> None:
     assert windows[0].end_ts == "2026-04-13T03:00:00+00:00"
     assert windows[0].signature["trend"] == "up"
     assert windows[0].signature["close_return_pct"] > 0
+    assert windows[0].signature["funding_rate_mean"] < 0
+    assert windows[0].signature["oi_change_1h_max"] > 0.02
+    assert windows[0].signature["oi_regime"] == "expanding"
     assert windows[0].window_id == build_corpus_windows(
         "BTCUSDT",
         "1h",
         _klines(),
+        perp=_perp(),
         window_bars=4,
         stride_bars=2,
         generated_at="2026-04-23T00:00:00+00:00",
@@ -109,6 +128,7 @@ def test_search_corpus_store_persists_seed_and_scan_runs(tmp_path) -> None:
 def test_search_corpus_refresh_job_uses_offline_cache_and_persists_windows(tmp_path) -> None:
     store = SearchCorpusStore(tmp_path / "search.sqlite")
     calls: list[tuple[str, str, bool]] = []
+    perp_calls: list[tuple[str, bool]] = []
 
     async def fake_load_universe(name: str) -> list[str]:
         assert name == "test-universe"
@@ -117,6 +137,10 @@ def test_search_corpus_refresh_job_uses_offline_cache_and_persists_windows(tmp_p
     def fake_load_klines(symbol: str, timeframe: str, *, offline: bool = False) -> pd.DataFrame:
         calls.append((symbol, timeframe, offline))
         return _klines(10)
+
+    def fake_load_perp(symbol: str, *, offline: bool = False) -> pd.DataFrame:
+        perp_calls.append((symbol, offline))
+        return _perp(10)
 
     result = asyncio.run(
         search_corpus_refresh_job(
@@ -129,6 +153,7 @@ def test_search_corpus_refresh_job_uses_offline_cache_and_persists_windows(tmp_p
             store=store,
             load_universe=fake_load_universe,
             load_kline_frame=fake_load_klines,
+            load_perp_frame=fake_load_perp,
         )
     )
 
@@ -138,4 +163,73 @@ def test_search_corpus_refresh_job_uses_offline_cache_and_persists_windows(tmp_p
     assert result["windows_upserted"] == 2
     assert result["symbols"] == ["BTCUSDT"]
     assert calls == [("BTCUSDT", "1h", True)]
+    assert perp_calls == [("BTCUSDT", True)]
     assert store.count_windows() == 2
+    windows = store.list_windows(symbol="BTCUSDT", timeframe="1h", limit=1)
+    assert windows[0].signature["oi_change_1h_max"] > 0.0
+    assert windows[0].signature["funding_rate_mean"] != 0.0
+
+
+def test_search_corpus_refresh_job_defaults_include_15m_lane(tmp_path) -> None:
+    store = SearchCorpusStore(tmp_path / "search.sqlite")
+    calls: list[tuple[str, str, bool]] = []
+
+    async def fake_load_universe(name: str) -> list[str]:
+        return ["btcusdt"]
+
+    def fake_load_klines(symbol: str, timeframe: str, *, offline: bool = False) -> pd.DataFrame:
+        calls.append((symbol, timeframe, offline))
+        return _klines(10)
+
+    asyncio.run(
+        search_corpus_refresh_job(
+            universe_name="test-universe",
+            max_symbols=1,
+            max_windows_per_series=1,
+            window_bars=4,
+            stride_bars=2,
+            store=store,
+            load_universe=fake_load_universe,
+            load_kline_frame=fake_load_klines,
+            load_perp_frame=lambda symbol, offline=True: _perp(10),
+        )
+    )
+
+    assert calls == [
+        ("BTCUSDT", "15m", True),
+        ("BTCUSDT", "1h", True),
+        ("BTCUSDT", "4h", True),
+    ]
+
+
+def test_search_corpus_refresh_job_warms_15m_cache_on_miss(tmp_path) -> None:
+    store = SearchCorpusStore(tmp_path / "search.sqlite")
+    calls: list[tuple[str, str, bool]] = []
+
+    async def fake_load_universe(name: str) -> list[str]:
+        return ["btcusdt"]
+
+    def fake_load_klines(symbol: str, timeframe: str, *, offline: bool = False) -> pd.DataFrame:
+        calls.append((symbol, timeframe, offline))
+        if timeframe == "15m" and offline:
+            raise CacheMiss("BTCUSDT_15m not cached")
+        return _klines(10)
+
+    result = asyncio.run(
+        search_corpus_refresh_job(
+            universe_name="test-universe",
+            timeframes=["15m"],
+            max_symbols=1,
+            max_windows_per_series=1,
+            window_bars=4,
+            stride_bars=2,
+            store=store,
+            load_universe=fake_load_universe,
+            load_kline_frame=fake_load_klines,
+            load_perp_frame=lambda symbol, offline=True: _perp(10),
+        )
+    )
+
+    assert result["status"] == "live"
+    assert calls == [("BTCUSDT", "15m", True), ("BTCUSDT", "15m", False)]
+    assert store.count_windows() == 1

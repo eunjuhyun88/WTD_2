@@ -1,19 +1,10 @@
-import type { SearchPlaneState } from './scan';
+import type { SearchCandidate, SearchPlaneState } from './scan';
 
 export interface SeedSearchRequest {
-	symbol: string;
-	timeframe: string;
-	range_start_ms: number;
-	range_end_ms: number;
+	symbol?: string;
+	timeframe?: string;
+	signature?: Record<string, unknown>;
 	limit?: number;
-}
-
-export interface SeedSearchCandidate {
-	id: string;
-	symbol: string;
-	timeframe: string;
-	score: number;
-	summary: string;
 }
 
 export interface SeedSearchResult {
@@ -23,6 +14,6 @@ export interface SeedSearchResult {
 	status: SearchPlaneState;
 	generated_at: string;
 	run_id: string;
-	summary: string;
-	candidates: SeedSearchCandidate[];
+	request?: Record<string, unknown>;
+	candidates: SearchCandidate[];
 }

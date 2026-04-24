@@ -3,7 +3,7 @@
 
   type MatchCandidate = {
     symbol: string;
-    source: 'board' | 'scan';
+    source: 'board' | 'search';
     score: number;
     matchedSignals: string[];
     missingSignals: string[];
@@ -45,6 +45,8 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           thesis,
+          activeSymbol,
+          timeframe,
           snapshotNames: snapshotFiles.map((file) => file.name),
           assets: assets.map((asset) => ({
             symbol: asset.symbol,

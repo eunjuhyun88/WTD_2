@@ -1,11 +1,14 @@
 import type { SearchPlaneState } from './scan';
 
-export interface PatternCatalogEntry {
-	slug: string;
-	family?: string | null;
-	label: string;
-	maturity?: string | null;
-	summary?: string | null;
+export interface SearchCorpusWindowSummary {
+	window_id: string;
+	symbol: string;
+	timeframe: string;
+	start_ts: string;
+	end_ts: string;
+	bars: number;
+	source: string;
+	signature?: Record<string, unknown>;
 }
 
 export interface PatternCatalogResponse {
@@ -14,5 +17,6 @@ export interface PatternCatalogResponse {
 	plane: 'search';
 	status: SearchPlaneState;
 	generated_at: string;
-	entries: PatternCatalogEntry[];
+	total_windows: number;
+	windows: SearchCorpusWindowSummary[];
 }

@@ -115,5 +115,15 @@ def _scan_score(window: CorpusWindow) -> float:
     return_pct = abs(float(signature.get("close_return_pct", 0.0) or 0.0))
     volatility = float(signature.get("realized_volatility_pct", 0.0) or 0.0)
     volume_ratio = float(signature.get("volume_ratio", 0.0) or 0.0)
-    raw = (return_pct / 10.0) + (volatility / 5.0) + min(volume_ratio, 3.0) / 3.0
-    return min(raw / 3.0, 1.0)
+    oi_change_max = max(float(signature.get("oi_change_1h_max", 0.0) or 0.0), 0.0)
+    funding_mean = abs(float(signature.get("funding_rate_mean", 0.0) or 0.0))
+    ls_deviation = abs(float(signature.get("long_short_ratio_mean", 1.0) or 1.0) - 1.0)
+    raw = (
+        (return_pct / 10.0)
+        + (volatility / 5.0)
+        + min(volume_ratio, 3.0) / 3.0
+        + min(oi_change_max * 12.0, 1.0)
+        + min(funding_mean * 4000.0, 1.0)
+        + min(ls_deviation * 3.0, 1.0)
+    )
+    return min(raw / 6.0, 1.0)
