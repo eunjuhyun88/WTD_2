@@ -19,6 +19,7 @@ export type Intent =
   | 'social'        // "커뮤니티 어때" — check_social
   | 'chart_ctrl'    // "4H로 바꿔" — chart_control only
   | 'pattern_save'  // "기억해", "패턴 저장" — save_pattern
+  | 'pattern_search' // "이 패턴이랑 비슷한 거" — find_similar_patterns
   | 'pattern_check' // "패턴 상태", "축적 구간" — check_pattern_status
   | 'convo';        // everything else — no tools
 
@@ -74,6 +75,13 @@ const CHART_CTRL_PATTERNS = [
 
 const PATTERN_SAVE_PATTERNS = [
   /기억해|저장해|패턴\s*저장|이거\s*저장|save\s*pattern|remember\s*this/i,
+];
+
+const PATTERN_SEARCH_PATTERNS = [
+  /(비슷한|유사한|유사)\s*(거|케이스|사례|패턴).*(찾|보여|검색)/,
+  /(이|저)\s*패턴.*(비슷한|유사한|같은).*(찾|보여|검색)/,
+  /(similar|similar\s*case|similar\s*pattern|look\s*for\s*similar|find\s*similar)/i,
+  /(oi|funding|higher low|higher lows|breakout|축적|저갱|우상향|돌파).*(비슷한|유사한|similar).*(찾|보여|search)/i,
 ];
 
 const PATTERN_CHECK_PATTERNS = [
@@ -196,9 +204,17 @@ const INTENT_CONFIG: Record<Intent, IntentBudget> = {
     includeSnapshot: 'if_same_symbol',
     preferredProvider: 'cerebras',
   },
+  pattern_search: {
+    intent: 'pattern_search',
+    tools: ['find_similar_patterns', 'check_pattern_status'],
+    maxTokens: 360,
+    historyDepth: 2,
+    includeSnapshot: 'if_same_symbol',
+    preferredProvider: 'cerebras',
+  },
   pattern_check: {
     intent: 'pattern_check',
-    tools: ['check_pattern_status', 'analyze_market'],
+    tools: ['check_pattern_status', 'find_similar_patterns'],
     maxTokens: 350,
     historyDepth: 2,
     includeSnapshot: 'if_same_symbol',
@@ -241,6 +257,11 @@ export function classifyIntent(message: string): IntentBudget {
   // Pattern save
   if (PATTERN_SAVE_PATTERNS.some(p => p.test(text))) {
     return INTENT_CONFIG.pattern_save;
+  }
+
+  // Pattern search (similar cases from free-form thesis)
+  if (PATTERN_SEARCH_PATTERNS.some(p => p.test(text))) {
+    return INTENT_CONFIG.pattern_search;
   }
 
   // Pattern check (OI 패턴 상태, 축적 구간 등)

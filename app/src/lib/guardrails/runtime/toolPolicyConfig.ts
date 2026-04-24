@@ -11,6 +11,7 @@ const DEFAULT_ALLOWLIST = [
   'check_social',
   'scan_market',
   'check_pattern_status',
+  'find_similar_patterns',
   'chart_control',
   'save_pattern',
   'submit_feedback',

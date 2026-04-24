@@ -18,6 +18,7 @@ Environment variables used:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -29,6 +30,7 @@ except ModuleNotFoundError:
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from data_cache.market_search import refresh_market_search_index
 from data_cache.loader import load_klines, load_macro_bundle, load_perp
 from data_cache.fetch_okx_historical import fetch_and_cache_signals, SYMBOL_CHAIN_MAP
 from scanner.alerts import (
@@ -43,6 +45,7 @@ from scanner.jobs.refinement_trigger import refinement_trigger_job
 from scanner.jobs.alpha_observer import scan_alpha_observer_job
 from scanner.jobs.alpha_warm import scan_alpha_warm_job
 from scanner.jobs.pattern_scan import pattern_scan_job
+from scanner.jobs.search_corpus import search_corpus_refresh_job
 from scanner.jobs.universe_scan import (
     push_alert,
     scan_universe_job,
@@ -67,9 +70,14 @@ PATTERN_REFINEMENT_ENABLED = os.environ.get("ENABLE_PATTERN_REFINEMENT_JOB", "fa
     "1", "true", "yes", "on",
 }
 PATTERN_REFINEMENT_INTERVAL = int(os.environ.get("PATTERN_REFINEMENT_INTERVAL_SECONDS", "21600"))
+MARKET_SEARCH_INDEX_REFRESH_INTERVAL = int(os.environ.get("MARKET_SEARCH_INDEX_REFRESH_SECONDS", "1800"))
 PATTERN_REFINEMENT_AUTO_TRAIN = os.environ.get("PATTERN_REFINEMENT_AUTO_TRAIN", "false").strip().lower() in {
     "1", "true", "yes", "on",
 }
+SEARCH_CORPUS_ENABLED = os.environ.get("ENABLE_SEARCH_CORPUS_JOB", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
+SEARCH_CORPUS_INTERVAL = int(os.environ.get("SEARCH_CORPUS_INTERVAL_SECONDS", "3600"))
 SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().lower() not in {
     "0", "false", "no", "off",
 }
@@ -195,6 +203,10 @@ async def _refinement_trigger_job() -> None:
     await refinement_trigger_job()
 
 
+async def _search_corpus_refresh_job() -> None:
+    await search_corpus_refresh_job(universe_name=UNIVERSE_NAME)
+
+
 async def _fetch_okx_signals_job() -> None:
     """Fetch and cache recent OKX smart money signals (every 6 hours).
 
@@ -214,6 +226,15 @@ async def _fetch_okx_signals_job() -> None:
             log.info(f"  {symbol}: {result['signals_appended']} signals cached")
     total_appended = sum(r.get("signals_appended", 0) for r in results)
     log.info(f"✓ OKX signals job complete: {total_appended} total signals cached")
+
+
+async def _market_search_index_refresh_job() -> None:
+    result = await asyncio.to_thread(refresh_market_search_index)
+    log.info(
+        "✓ market search index refresh complete: rows=%s updated_at=%s",
+        result.row_count,
+        result.refreshed_at,
+    )
 
 
 def start_scheduler() -> None:
@@ -299,6 +320,18 @@ def start_scheduler() -> None:
         misfire_grace_time=300,
     )
 
+    # Job 4b: Market search index refresh — every 30 minutes by default
+    _scheduler.add_job(
+        _market_search_index_refresh_job,
+        trigger="interval",
+        seconds=MARKET_SEARCH_INDEX_REFRESH_INTERVAL,
+        id="market_search_index_refresh",
+        name="Market search index refresh",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=300,
+    )
+
     if PATTERN_REFINEMENT_ENABLED:
         _scheduler.add_job(
             _pattern_refinement_job,
@@ -306,6 +339,18 @@ def start_scheduler() -> None:
             seconds=PATTERN_REFINEMENT_INTERVAL,
             id="pattern_refinement",
             name="Pattern refinement methodology cycle",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
+
+    if SEARCH_CORPUS_ENABLED:
+        _scheduler.add_job(
+            _search_corpus_refresh_job,
+            trigger="interval",
+            seconds=SEARCH_CORPUS_INTERVAL,
+            id="search_corpus_refresh",
+            name="Search corpus window accumulator",
             max_instances=1,
             coalesce=True,
             misfire_grace_time=300,
@@ -349,10 +394,12 @@ def start_scheduler() -> None:
 
     _scheduler.start()
     log.info(
-        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s refinement=%s feature_mat=%s universe=%s",
+        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s search_index=%ds refinement=%s search_corpus=%s feature_mat=%s universe=%s",
         SCAN_INTERVAL,
         SCAN_INTERVAL,
+        MARKET_SEARCH_INDEX_REFRESH_INTERVAL,
         f"{PATTERN_REFINEMENT_INTERVAL}s" if PATTERN_REFINEMENT_ENABLED else "off",
+        f"{SEARCH_CORPUS_INTERVAL}s" if SEARCH_CORPUS_ENABLED else "off",
         f"{FEATURE_MATERIALIZATION_INTERVAL}s" if FEATURE_MATERIALIZATION_ENABLED else "off",
         UNIVERSE_NAME,
     )

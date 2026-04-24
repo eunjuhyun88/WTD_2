@@ -1,13 +1,15 @@
 """Concrete Phase A refinement jobs backed by pattern ledger evidence."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 import pandas as pd
 
 from ledger.dataset import build_pattern_training_records, summarize_pattern_dataset
-from ledger.store import LedgerStore, get_ledger_store
+from ledger.store import LedgerStore, get_ledger_store, list_outcomes_for_definition
+from patterns.definition_refs import definition_id_from_ref
+from patterns.definitions import PatternDefinitionService, current_definition_id
 from patterns.library import get_pattern
 from patterns.model_key import make_pattern_model_key
 from patterns.model_registry import MODEL_REGISTRY_STORE
@@ -28,6 +30,7 @@ from .worker_control import (
 class PatternBoundedEvalConfig:
     pattern_slug: str
     objective_id: str | None = None
+    definition_ref: dict = field(default_factory=dict)
     search_mode: str = "bounded-walk-forward-eval"
     target_name: str = "breakout"
     feature_schema_version: int = 1
@@ -48,6 +51,10 @@ def run_pattern_bounded_eval(
 ) -> ResearchRun:
     """Run one bounded Phase A refinement job for a pattern."""
     pattern = get_pattern(config.pattern_slug)
+    definition_ref = _resolve_definition_ref(
+        pattern_slug=config.pattern_slug,
+        definition_ref=config.definition_ref,
+    )
     controller = controller or ResearchWorkerController()
     state_store = controller.store
     ledger_store = ledger_store or get_ledger_store()
@@ -86,10 +93,15 @@ def run_pattern_bounded_eval(
         baseline_ref=baseline_ref,
         search_policy={**search_policy, "target_name": config.target_name},
         evaluation_protocol=evaluation_protocol,
+        definition_ref=definition_ref,
     )
 
     def _execute(run: ResearchRun) -> ResearchJobResult:
-        outcomes = ledger_store.list_all(config.pattern_slug)
+        outcomes = list_outcomes_for_definition(
+            ledger_store,
+            config.pattern_slug,
+            definition_id=definition_id_from_ref(run.definition_ref),
+        )
         summary = summarize_pattern_dataset(outcomes)
 
         if not summary.ready_to_train:
@@ -99,7 +111,10 @@ def run_pattern_bounded_eval(
                     decision_kind="reject",
                     rationale=summary.readiness_reason,
                     baseline_ref=run.baseline_ref,
-                    metrics={"dataset_summary": summary.to_dict()},
+                    metrics={
+                        "definition_ref": run.definition_ref,
+                        "dataset_summary": summary.to_dict(),
+                    },
                 ),
                 memory_notes=[
                     ResearchMemoryInput(
@@ -115,6 +130,7 @@ def run_pattern_bounded_eval(
         X, y = _pattern_training_matrix(records)
         metrics = walk_forward_eval(X, y, n_splits=n_splits)
         aggregate_metrics = {
+            "definition_ref": run.definition_ref,
             "dataset_summary": summary.to_dict(),
             "eval": metrics,
         }
@@ -146,6 +162,7 @@ def run_pattern_bounded_eval(
             config.target_name,
             config.feature_schema_version,
             config.label_policy_version,
+            definition_ref=run.definition_ref,
         )
         variant_ref = f"pattern-model:{model_key}"
 
@@ -182,6 +199,7 @@ def run_pattern_bounded_eval(
             disposition="train_candidate",
             winner_variant_ref=variant_ref,
             handoff_payload={
+                "definition_ref": run.definition_ref,
                 "baseline_ref": run.baseline_ref,
                 "baseline_family_ref": baseline_family_ref,
                 "pattern_slug": config.pattern_slug,
@@ -215,6 +233,15 @@ def run_pattern_bounded_eval(
         )
 
     return controller.run_bounded_job(spec, execute=_execute)
+
+
+def _resolve_definition_ref(*, pattern_slug: str, definition_ref: dict | None) -> dict:
+    if isinstance(definition_ref, dict) and definition_ref:
+        return dict(definition_ref)
+    return (
+        PatternDefinitionService().get_definition_ref(pattern_slug=pattern_slug)
+        or {"pattern_slug": pattern_slug}
+    )
 
 
 def _pattern_training_matrix(records: list[dict]) -> tuple[np.ndarray, np.ndarray]:
@@ -253,7 +280,13 @@ def _derive_baseline_ref(pattern_slug: str, *, state_store: ResearchStateStore |
             baseline_family_ref = run.handoff_payload.get("baseline_family_ref")
             if baseline_family_ref:
                 return str(baseline_family_ref)
-    preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
+    definition_id = current_definition_id(pattern_slug)
+    preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+        pattern_slug,
+        definition_id=definition_id,
+    )
+    if preferred is None and definition_id is not None:
+        preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
     if preferred is None:
         return "pattern-shadow:rule-first"
     return f"model:{preferred.model_key}:{preferred.model_version}:{preferred.rollout_state}"

@@ -32,10 +32,10 @@
     {timeframe} ▾
   </button>
 
-  <span class="spacer" />
+  <span class="spacer"></span>
 
   <button class="ai-btn" class:active={aiVisible} onclick={toggleAI}>
-    <span class="dot" class:active={aiVisible} />
+    <span class="dot" class:active={aiVisible}></span>
     AI
   </button>
 

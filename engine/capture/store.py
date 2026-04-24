@@ -44,6 +44,12 @@ def _json_dumps(value: Any) -> str:
     return json.dumps(value if value is not None else {}, sort_keys=True, separators=(",", ":"))
 
 
+def _json_dumps_optional(value: Any) -> str | None:
+    if value is None:
+        return None
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
 def _json_loads(value: str | None, default: Any) -> Any:
     if not value:
         return default
@@ -79,6 +85,8 @@ class CaptureStore:
                   symbol TEXT NOT NULL,
                   pattern_slug TEXT NOT NULL,
                   pattern_version INTEGER NOT NULL DEFAULT 1,
+                  definition_id TEXT,
+                  definition_ref_json TEXT NOT NULL DEFAULT '{}',
                   phase TEXT NOT NULL,
                   timeframe TEXT NOT NULL,
                   captured_at_ms INTEGER NOT NULL,
@@ -87,6 +95,7 @@ class CaptureStore:
                   scan_id TEXT,
                   user_note TEXT,
                   chart_context_json TEXT NOT NULL,
+                  research_context_json TEXT,
                   feature_snapshot_json TEXT,
                   block_scores_json TEXT NOT NULL,
                   verdict_id TEXT,
@@ -102,8 +111,40 @@ class CaptureStore:
 
                 CREATE INDEX IF NOT EXISTS idx_capture_records_pattern_symbol
                   ON capture_records(pattern_slug, symbol, timeframe);
+
                 """
             )
+            self._ensure_column(conn, "capture_records", "research_context_json", "TEXT")
+            self._ensure_column(conn, "capture_records", "definition_id", "TEXT")
+            self._ensure_column(
+                conn,
+                "capture_records",
+                "definition_ref_json",
+                "TEXT NOT NULL DEFAULT '{}'",
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_capture_records_definition
+                  ON capture_records(definition_id, captured_at_ms)
+                """
+            )
+
+    @staticmethod
+    def _ensure_column(
+        conn: sqlite3.Connection,
+        table_name: str,
+        column_name: str,
+        column_definition: str,
+    ) -> None:
+        columns = {
+            str(row["name"])
+            for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        }
+        if column_name in columns:
+            return
+        conn.execute(
+            f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+        )
 
     def save(self, capture: CaptureRecord) -> CaptureRecord:
         with self._connect() as conn:
@@ -111,17 +152,19 @@ class CaptureStore:
                 """
                 INSERT INTO capture_records (
                   capture_id, capture_kind, user_id, symbol, pattern_slug,
-                  pattern_version, phase, timeframe, captured_at_ms,
+                  pattern_version, definition_id, definition_ref_json, phase, timeframe, captured_at_ms,
                   candidate_transition_id, candidate_id, scan_id, user_note,
-                  chart_context_json, feature_snapshot_json, block_scores_json,
+                  chart_context_json, research_context_json, feature_snapshot_json, block_scores_json,
                   verdict_id, outcome_id, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(capture_id) DO UPDATE SET
                   capture_kind=excluded.capture_kind,
                   user_id=excluded.user_id,
                   symbol=excluded.symbol,
                   pattern_slug=excluded.pattern_slug,
                   pattern_version=excluded.pattern_version,
+                  definition_id=excluded.definition_id,
+                  definition_ref_json=excluded.definition_ref_json,
                   phase=excluded.phase,
                   timeframe=excluded.timeframe,
                   captured_at_ms=excluded.captured_at_ms,
@@ -130,6 +173,7 @@ class CaptureStore:
                   scan_id=excluded.scan_id,
                   user_note=excluded.user_note,
                   chart_context_json=excluded.chart_context_json,
+                  research_context_json=excluded.research_context_json,
                   feature_snapshot_json=excluded.feature_snapshot_json,
                   block_scores_json=excluded.block_scores_json,
                   verdict_id=excluded.verdict_id,
@@ -143,6 +187,8 @@ class CaptureStore:
                     capture.symbol,
                     capture.pattern_slug,
                     capture.pattern_version,
+                    capture.definition_id,
+                    _json_dumps(capture.definition_ref),
                     capture.phase,
                     capture.timeframe,
                     capture.captured_at_ms,
@@ -151,6 +197,7 @@ class CaptureStore:
                     capture.scan_id,
                     capture.user_note,
                     _json_dumps(capture.chart_context),
+                    _json_dumps_optional(capture.research_context),
                     _json_dumps(capture.feature_snapshot),
                     _json_dumps(capture.block_scores),
                     capture.verdict_id,
@@ -175,6 +222,7 @@ class CaptureStore:
         *,
         user_id: str | None = None,
         pattern_slug: str | None = None,
+        definition_id: str | None = None,
         symbol: str | None = None,
         status: str | None = None,
         limit: int = 100,
@@ -187,6 +235,16 @@ class CaptureStore:
         if pattern_slug is not None:
             clauses.append("pattern_slug = ?")
             params.append(pattern_slug)
+        if definition_id is not None:
+            slug, separator, version_token = definition_id.partition(":v")
+            if separator == ":v" and version_token.isdigit():
+                clauses.append(
+                    "(definition_id = ? OR (definition_id IS NULL AND pattern_slug = ? AND pattern_version = ?))"
+                )
+                params.extend([definition_id, slug, int(version_token)])
+            else:
+                clauses.append("definition_id = ?")
+                params.append(definition_id)
         if symbol is not None:
             clauses.append("symbol = ?")
             params.append(symbol)
@@ -271,6 +329,8 @@ class CaptureStore:
             symbol=row["symbol"],
             pattern_slug=row["pattern_slug"],
             pattern_version=int(row["pattern_version"]),
+            definition_id=row["definition_id"],
+            definition_ref=_json_loads(row["definition_ref_json"], {}),
             phase=row["phase"],
             timeframe=row["timeframe"],
             captured_at_ms=int(row["captured_at_ms"]),
@@ -279,6 +339,7 @@ class CaptureStore:
             scan_id=row["scan_id"],
             user_note=row["user_note"],
             chart_context=_json_loads(row["chart_context_json"], {}),
+            research_context=_json_loads(row["research_context_json"], None),
             feature_snapshot=_json_loads(row["feature_snapshot_json"], None),
             block_scores=_json_loads(row["block_scores_json"], {}),
             verdict_id=row["verdict_id"],

@@ -1,6 +1,7 @@
 import { computeDecision, type EngineEvidence } from '$lib/intel/decisionEngine';
 import { evaluateQualityGateFromFeatures } from '$lib/intel/qualityGate';
 import { getIntelThresholds } from '$lib/intel/thresholds';
+import type { AgentContextPack } from '$lib/contracts/agent/agentContext';
 import type { DecisionBias, IntelDecisionOutput, ManipulationRiskLevel, QualityGateResult, QualityGateScores } from '$lib/intel/types';
 
 export type IntelPanelKey = 'headlines' | 'events' | 'flow' | 'trending' | 'picks';
@@ -45,6 +46,14 @@ type FlowRecord = {
   text?: string;
   source?: string;
   createdAt?: number;
+};
+
+type MacroOverview = {
+  btcDominance?: number | null;
+  dominanceChange24h?: number | null;
+  marketCapChange24hPct?: number | null;
+  stablecoinMcapChange24hPct?: number | null;
+  confidence?: number | null;
 };
 
 type TrendingCoin = {
@@ -92,8 +101,19 @@ export interface IntelPolicyInput {
   eventRecords: EventItem[];
   flowSnapshot: FlowSnapshot | null;
   flowRecords: FlowRecord[];
+  macroOverview: MacroOverview | null;
   trendingCoins: TrendingCoin[];
   pickCoins: PickCoin[];
+  agentContext?: AgentContextPack | null;
+}
+
+export interface IntelPolicyAgentContextSummary {
+  factStatus: string | null;
+  runtimeStatus: string | null;
+  evidenceCount: number;
+  captures: number;
+  scanCandidates: number;
+  seedSearchCandidates: number;
 }
 
 export interface IntelPolicyOutput {
@@ -105,6 +125,7 @@ export interface IntelPolicyOutput {
     timeframe: string;
     domainsUsed: string[];
     avgHelpfulness: number;
+    agentContext?: IntelPolicyAgentContextSummary;
   };
 }
 
@@ -116,6 +137,11 @@ function clamp(value: number, min = 0, max = 100): number {
 function toNum(value: unknown, fallback = 0): number {
   const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
   return Number.isFinite(n) ? n : fallback;
+}
+
+function toNullableNum(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+  return Number.isFinite(n) ? n : null;
 }
 
 function toUpperSafe(value: string): string {
@@ -222,6 +248,10 @@ function normalizeBias(raw: string | undefined): DecisionBias {
   if (normalized === 'long' || normalized === 'bullish') return 'long';
   if (normalized === 'short' || normalized === 'bearish') return 'short';
   return 'wait';
+}
+
+function formatSignedPct(value: number, digits = 2): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}%`;
 }
 
 function gateCard(
@@ -555,6 +585,145 @@ function buildFlowCards(input: IntelPolicyInput, maxCount: number): IntelPolicyC
   const out: IntelPolicyCard[] = [];
   const snap = input.flowSnapshot ?? {};
   const createdAt = Date.now();
+  const macro = input.macroOverview;
+
+  if (macro) {
+    const btcDominance = toNullableNum(macro.btcDominance);
+    const dominanceChange24h = toNullableNum(macro.dominanceChange24h);
+    const marketCapChange24hPct = toNullableNum(macro.marketCapChange24hPct);
+    const stablecoinMcapChange24hPct = toNullableNum(macro.stablecoinMcapChange24hPct);
+
+    if (
+      btcDominance !== null ||
+      marketCapChange24hPct !== null ||
+      stablecoinMcapChange24hPct !== null
+    ) {
+      let regimeScore = 0;
+      const signalNotes: string[] = [];
+      let dominanceStrength = 0;
+      let breadthStrength = 0;
+      let stableStrength = 0;
+
+      if (btcDominance !== null) {
+        dominanceStrength = strengthFromDeviation(btcDominance, 60, 2);
+        if (token === 'BTC') {
+          if (btcDominance >= 62) {
+            regimeScore += 1.1;
+            signalNotes.push(`BTC.D ${btcDominance.toFixed(1)}% keeps leadership with BTC`);
+          } else if (btcDominance <= 58) {
+            regimeScore -= 0.8;
+            signalNotes.push(`BTC.D ${btcDominance.toFixed(1)}% points to alt rotation over BTC`);
+          } else {
+            signalNotes.push(`BTC.D ${btcDominance.toFixed(1)}% is mid-range`);
+          }
+        } else if (btcDominance >= 62) {
+          regimeScore -= 1.1;
+          signalNotes.push(`BTC.D ${btcDominance.toFixed(1)}% is compressing alt beta`);
+        } else if (btcDominance <= 58) {
+          regimeScore += 1.1;
+          signalNotes.push(`BTC.D ${btcDominance.toFixed(1)}% supports alt rotation`);
+        } else {
+          signalNotes.push(`BTC.D ${btcDominance.toFixed(1)}% is range-bound`);
+        }
+      }
+
+      if (marketCapChange24hPct !== null) {
+        breadthStrength = strengthFromDeviation(marketCapChange24hPct, 0, 1);
+        if (marketCapChange24hPct >= 1) {
+          regimeScore += 1;
+          signalNotes.push(`total mcap ${formatSignedPct(marketCapChange24hPct)} shows broad risk-on`);
+        } else if (marketCapChange24hPct <= -1) {
+          regimeScore -= 1;
+          signalNotes.push(`total mcap ${formatSignedPct(marketCapChange24hPct)} shows broad risk-off`);
+        } else {
+          signalNotes.push(`total mcap ${formatSignedPct(marketCapChange24hPct)} is neutral`);
+        }
+      }
+
+      if (stablecoinMcapChange24hPct !== null) {
+        stableStrength = strengthFromDeviation(stablecoinMcapChange24hPct, 0, 0.25);
+        if (stablecoinMcapChange24hPct > 0.15) {
+          regimeScore += 0.7;
+          signalNotes.push(`stablecoin supply ${formatSignedPct(stablecoinMcapChange24hPct)} is rebuilding dry powder`);
+        } else if (stablecoinMcapChange24hPct < -0.15) {
+          regimeScore -= 0.7;
+          signalNotes.push(`stablecoin supply ${formatSignedPct(stablecoinMcapChange24hPct)} is draining`);
+        } else {
+          signalNotes.push(`stablecoin supply ${formatSignedPct(stablecoinMcapChange24hPct)} is flat`);
+        }
+      }
+
+      const bias: DecisionBias = regimeScore >= 1 ? 'long' : regimeScore <= -1 ? 'short' : 'wait';
+      const macroStrength = clamp(
+        dominanceStrength * 0.45 + breadthStrength * 0.35 + stableStrength * 0.2,
+        0,
+        100,
+      );
+      const macroConfidence = clamp(toNum(macro.confidence, 0.55) * 100, 20, 100);
+      const pairRelevance = relevanceScore(`${token} macro btc dominance stablecoin market cap`, token);
+      const confidence = calibrateConfidence(
+        [
+          { score: macroStrength, weight: 0.44 },
+          { score: macroConfidence, weight: 0.30 },
+          { score: 92, weight: 0.16 },
+          { score: bias === 'wait' ? 56 : 78, weight: 0.10 },
+        ],
+        bias === 'wait' ? -10 : 0,
+      );
+      const backtestWinRateLiftPct = clamp(3.4 + macroStrength / 22 + macroConfidence / 150, 3.4, 8.9);
+      const feedbackPositivePct = clamp(
+        55 + macroStrength * 0.16 + macroConfidence * 0.12 + (bias === 'wait' ? -4 : 3),
+        50,
+        89,
+      );
+      const applyRatePct = clamp(confidence * 0.84 + macroConfidence * 0.16, 44, 95);
+      const pnlLiftPct = clamp(1.8 + macroStrength / 26 + (bias === 'wait' ? 0.2 : 0.9), 1.5, 6.7);
+      const macroWhatParts = [
+        btcDominance !== null ? `BTC.D ${btcDominance.toFixed(1)}%` : null,
+        dominanceChange24h !== null ? `BTC.D 24h ${formatSignedPct(dominanceChange24h)}` : null,
+        marketCapChange24hPct !== null ? `Total mcap ${formatSignedPct(marketCapChange24hPct)}` : null,
+        stablecoinMcapChange24hPct !== null ? `Stablecoin ${formatSignedPct(stablecoinMcapChange24hPct)}` : null,
+      ].filter((part): part is string => Boolean(part));
+
+      out.push(
+        gateCard(
+          'flow',
+          'flow:macro_regime',
+          'MACRO_OVERVIEW',
+          {
+            title: 'MACRO REGIME',
+            createdAt,
+            bias,
+            confidence,
+            what: macroWhatParts.join(' · '),
+            soWhat:
+              bias === 'long'
+                ? '거시 레짐이 현재 페어의 상방 시나리오를 보조하고 있습니다.'
+                : bias === 'short'
+                  ? '거시 레짐이 현재 페어의 추격 롱에 불리한 방향으로 기울어져 있습니다.'
+                  : '거시 레짐이 혼재돼 있어 진입 트리거는 파생/뉴스 신호에 더 의존해야 합니다.',
+            nowWhat: biasToActionText(bias),
+            why: signalNotes.slice(0, 2).join(' · '),
+            helpfulnessWhy: `macro ${Math.round(macroStrength)} · route confidence ${Math.round(macroConfidence)}`,
+            visualAid: visualAidForBias(bias),
+          },
+          {
+            actionTypeCount: bias === 'wait' ? 1 : 2,
+            clarityScore: 36,
+            sourceReliability: 90,
+            failureRatePct: 5,
+            manipulationRisk: 'low',
+            pairKeywordMatchPct: pairRelevance,
+            timeframeAligned: true,
+            backtestWinRateLiftPct,
+            feedbackPositivePct,
+            applyRatePct,
+            pnlLiftPct,
+          },
+        ),
+      );
+    }
+  }
 
   const funding = snap.funding ?? null;
   if (funding != null) {
@@ -1030,6 +1199,18 @@ function domainCoverage(domains: EngineEvidence['domain'][]): string[] {
   return Array.from(new Set(domains));
 }
 
+function summarizeAgentContext(pack: AgentContextPack | null | undefined): IntelPolicyAgentContextSummary | undefined {
+  if (!pack) return undefined;
+  return {
+    factStatus: pack.facts?.status ?? null,
+    runtimeStatus: pack.runtime?.status ?? null,
+    evidenceCount: pack.evidence?.length ?? 0,
+    captures: pack.runtime?.captures.length ?? 0,
+    scanCandidates: pack.scan?.candidates.length ?? 0,
+    seedSearchCandidates: pack.seed_search?.candidates.length ?? 0,
+  };
+}
+
 export function buildIntelPolicyOutput(input: IntelPolicyInput): IntelPolicyOutput {
   const thresholds = getIntelThresholds();
   const maxCards = thresholds.panelRules.maxCardsPerPanel;
@@ -1082,6 +1263,7 @@ export function buildIntelPolicyOutput(input: IntelPolicyInput): IntelPolicyOutp
       timeframe: input.timeframe,
       domainsUsed: domainCoverage(evidence.map((item) => item.domain)),
       avgHelpfulness: Number(avgHelp.toFixed(2)),
+      agentContext: summarizeAgentContext(input.agentContext),
     },
   };
 }

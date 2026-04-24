@@ -8,6 +8,7 @@ Canonical env contract for local/prod runtime.
 |---|---|---|---|
 | `ENGINE_URL` | `http://localhost:8000` | `app-web` | App -> engine API base URL |
 | `DATABASE_URL` | none | `app-web` | Postgres connection |
+| `PUBLIC_SITE_URL` | none | `app-web` | Canonical external origin for absolute URLs / metadata |
 | `ENGINE_PORT` | `8000` | `engine-api` | Engine HTTP port |
 | `APP_ORIGIN` | `http://localhost:3000` | `engine-api` | CORS allow-origin |
 
@@ -95,3 +96,14 @@ Notes:
 1. Copy `./.env.example` to `./.env` and fill required variables.
 2. For app-specific extended keys, also review `app/.env.example`.
 3. Start stack with `docker compose up --build`.
+
+## Build Target
+
+| Variable | Default | Used by | Purpose |
+|---|---|---|---|
+| `APP_BUILD_TARGET` | `vercel` | `app-web` build | Selects SvelteKit adapter: `vercel` or `cloud-run` |
+
+Notes:
+
+- `APP_BUILD_TARGET=cloud-run` selects `@sveltejs/adapter-node` and is used by `app/Dockerfile` plus `cloudbuild.app.yaml`
+- default builds keep the current Vercel-compatible adapter path

@@ -31,6 +31,7 @@ from exceptions import CacheMiss
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store
 from ledger.types import PatternOutcome
 from patterns.alert_policy import ALERT_POLICY_STORE, evaluate_alert_policy
+from patterns.definitions import build_definition_ref, definition_id_from_ref
 from patterns.entry_scorer import score_entry_feature_snapshot
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.replay import replay_pattern_frames
@@ -131,8 +132,15 @@ def _on_entry_signal(transition: PhaseTransition) -> None:
         f"{entry_score.p_win:.4f}" if entry_score.p_win is not None else "n/a",
         entry_score.threshold_passed,
     )
+    definition_ref = build_definition_ref(
+        transition.pattern_slug,
+        pattern_version=transition.pattern_version,
+    )
     outcome = PatternOutcome(
         pattern_slug=transition.pattern_slug,
+        pattern_version=transition.pattern_version,
+        definition_id=definition_id_from_ref(definition_ref),
+        definition_ref=definition_ref,
         symbol=transition.symbol,
         accumulation_at=transition.timestamp,
         entry_price=entry_price,

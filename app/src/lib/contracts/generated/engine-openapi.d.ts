@@ -102,6 +102,441 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ctx/fact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ctx Fact
+         * @description Return a bounded engine-owned fact context for one symbol/timeframe.
+         */
+        get: operations["ctx_fact_ctx_fact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/price-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Price Context */
+        get: operations["facts_price_context_facts_price_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/perp-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Perp Context */
+        get: operations["facts_perp_context_facts_perp_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/reference-stack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Reference Stack */
+        get: operations["facts_reference_stack_facts_reference_stack_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/chain-intel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Chain Intel */
+        get: operations["facts_chain_intel_facts_chain_intel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/market-cap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Market Cap */
+        get: operations["facts_market_cap_facts_market_cap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/confluence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Confluence */
+        get: operations["facts_confluence_facts_confluence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/facts/indicator-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Facts Indicator Catalog */
+        get: operations["facts_indicator_catalog_facts_indicator_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Catalog */
+        get: operations["search_catalog_search_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Seed */
+        post: operations["search_seed_search_seed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/seed/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Seed Result */
+        get: operations["search_seed_result_search_seed__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Scan */
+        post: operations["search_scan_search_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/search/scan/{scan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Scan Result */
+        get: operations["search_scan_result_search_scan__scan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/captures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runtime Captures */
+        get: operations["list_runtime_captures_runtime_captures_get"];
+        put?: never;
+        /**
+         * Create Runtime Capture
+         * @description Create a canonical runtime capture.
+         *
+         *     This route reuses the existing CaptureRecord schema while moving new
+         *     runtime consumers to the `/runtime` plane.
+         */
+        post: operations["create_runtime_capture_runtime_captures_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/captures/{capture_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Runtime Capture */
+        get: operations["get_runtime_capture_runtime_captures__capture_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/definitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runtime Definitions */
+        get: operations["list_runtime_definitions_runtime_definitions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/definitions/{pattern_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Runtime Definition */
+        get: operations["get_runtime_definition_runtime_definitions__pattern_slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/workspace/pins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Workspace Pin */
+        post: operations["create_workspace_pin_runtime_workspace_pins_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/workspace/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Workspace */
+        get: operations["get_workspace_runtime_workspace__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/setups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Setup */
+        post: operations["create_setup_runtime_setups_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/setups/{setup_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Setup */
+        get: operations["get_setup_runtime_setups__setup_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/research-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Research Context */
+        post: operations["create_research_context_runtime_research_contexts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/research-contexts/{context_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Research Context */
+        get: operations["get_research_context_runtime_research_contexts__context_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/ledger/{ledger_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ledger */
+        get: operations["get_ledger_runtime_ledger__ledger_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Ledger */
+        get: operations["list_ledger_runtime_ledger_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/universe": {
         parameters: {
             query?: never;
@@ -140,6 +575,23 @@ export interface paths {
          * @description Return list of distinct sectors in the current universe.
          */
         get: operations["sectors_universe_sectors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/universe/search/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market Search Status */
+        get: operations["market_search_status_universe_search_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -532,6 +984,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/patterns/{slug}/model-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Model History
+         * @description Return training/model ledger history for a pattern.
+         */
+        get: operations["get_model_history_patterns__slug__model_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/patterns/{slug}/library": {
         parameters: {
             query?: never;
@@ -762,6 +1234,40 @@ export interface paths {
          *     ``status='verdict_ready'`` so it leaves the inbox.
          */
         post: operations["set_capture_verdict_captures__capture_id__verdict_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/benchmark_pack_draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Capture Benchmark Pack Draft */
+        post: operations["create_capture_benchmark_pack_draft_captures__capture_id__benchmark_pack_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/captures/{capture_id}/benchmark_search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Capture Benchmark Search */
+        post: operations["create_capture_benchmark_search_captures__capture_id__benchmark_search_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1508,6 +2014,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs/search_corpus/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Search Corpus
+         * @description Cloud Scheduler → refresh compact search corpus from local cache.
+         */
+        post: operations["run_search_corpus_jobs_search_corpus_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/market_search_index_refresh/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Market Search Index Refresh
+         * @description Cloud Scheduler → rebuild the local market search index.
+         */
+        post: operations["run_market_search_index_refresh_jobs_market_search_index_refresh_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/db_cleanup/run": {
         parameters: {
             query?: never;
@@ -1729,6 +2275,7 @@ export interface components {
             phase: string;
             /** User Note */
             user_note?: string | null;
+            research_context?: components["schemas"]["ResearchContextBody"] | null;
             /**
              * Entry Price
              * @description Optional hint. Resolver derives entry_price from OHLCV regardless.
@@ -1771,6 +2318,26 @@ export interface components {
              * @description 보유 시간 (h)
              */
             hold_hours: number;
+        };
+        /** CaptureBenchmarkSearchBody */
+        CaptureBenchmarkSearchBody: {
+            /** Candidate Timeframes */
+            candidate_timeframes?: string[] | null;
+            /**
+             * Warmup Bars
+             * @default 240
+             */
+            warmup_bars: number;
+            /**
+             * Min Reference Score
+             * @default 0.55
+             */
+            min_reference_score: number;
+            /**
+             * Min Holdout Score
+             * @default 0.35
+             */
+            min_holdout_score: number;
         };
         /** CaptureCreateBody */
         CaptureCreateBody: {
@@ -1816,6 +2383,7 @@ export interface components {
             chart_context?: {
                 [key: string]: unknown;
             };
+            research_context?: components["schemas"]["ResearchContextBody"] | null;
             /** Feature Snapshot */
             feature_snapshot?: {
                 [key: string]: unknown;
@@ -2374,6 +2942,108 @@ export interface components {
             /** Alerts */
             alerts: string[];
         };
+        /** ParserMetaBody */
+        ParserMetaBody: {
+            /** Parser Role */
+            parser_role: string;
+            /** Parser Model */
+            parser_model: string;
+            /** Parser Prompt Version */
+            parser_prompt_version: string;
+            /**
+             * Pattern Draft Schema Version
+             * @default 1
+             */
+            pattern_draft_schema_version: number;
+            /** Signal Vocab Version */
+            signal_vocab_version: string;
+            /** Confidence */
+            confidence?: number | null;
+            /**
+             * Ambiguity Count
+             * @default 0
+             */
+            ambiguity_count: number;
+        };
+        /** PatternDraftBody */
+        PatternDraftBody: {
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /** Pattern Family */
+            pattern_family: string;
+            /** Pattern Label */
+            pattern_label?: string | null;
+            /** Source Type */
+            source_type: string;
+            /** Source Text */
+            source_text: string;
+            /** Symbol Candidates */
+            symbol_candidates?: string[];
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Thesis */
+            thesis?: string[];
+            /** Phases */
+            phases?: components["schemas"]["PatternDraftPhaseBody"][];
+            /** Trade Plan */
+            trade_plan?: {
+                [key: string]: unknown;
+            };
+            search_hints?: components["schemas"]["PatternDraftSearchHintsBody"];
+            /** Confidence */
+            confidence?: number | null;
+            /** Ambiguities */
+            ambiguities?: string[];
+        };
+        /** PatternDraftPhaseBody */
+        PatternDraftPhaseBody: {
+            /** Phase Id */
+            phase_id: string;
+            /** Label */
+            label: string;
+            /**
+             * Sequence Order
+             * @default 0
+             */
+            sequence_order: number;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Signals Required */
+            signals_required?: string[];
+            /** Signals Preferred */
+            signals_preferred?: string[];
+            /** Signals Forbidden */
+            signals_forbidden?: string[];
+            /** Directional Belief */
+            directional_belief?: string | null;
+            /** Evidence Text */
+            evidence_text?: string | null;
+            /** Time Hint */
+            time_hint?: string | null;
+            /** Importance */
+            importance?: number | null;
+        };
+        /** PatternDraftSearchHintsBody */
+        PatternDraftSearchHintsBody: {
+            /** Must Have Signals */
+            must_have_signals?: string[];
+            /** Preferred Timeframes */
+            preferred_timeframes?: string[];
+            /** Exclude Patterns */
+            exclude_patterns?: string[];
+            /** Similarity Focus */
+            similarity_focus?: string[];
+            /** Symbol Scope */
+            symbol_scope?: string[];
+        };
         /**
          * PerpSnapshot
          * @description Current-bar derivatives data with neutral-safe defaults.
@@ -2496,6 +3166,433 @@ export interface components {
             /** Embedding */
             embedding: number[];
         };
+        /** ResearchContextBody */
+        ResearchContextBody: {
+            source?: components["schemas"]["ResearchSourceBody"] | null;
+            /** Pattern Family */
+            pattern_family?: string | null;
+            /** Thesis */
+            thesis?: string[];
+            /** Phase Annotations */
+            phase_annotations?: components["schemas"]["ResearchPhaseAnnotationBody"][];
+            entry_spec?: components["schemas"]["ResearchEntrySpecBody"] | null;
+            outcome_spec?: components["schemas"]["ResearchOutcomeSpecBody"] | null;
+            /** Research Tags */
+            research_tags?: string[];
+            pattern_draft?: components["schemas"]["PatternDraftBody"] | null;
+            parser_meta?: components["schemas"]["ParserMetaBody"] | null;
+        };
+        /** ResearchEntrySpecBody */
+        ResearchEntrySpecBody: {
+            /** Entry Phase Id */
+            entry_phase_id: string;
+            /** Entry Trigger */
+            entry_trigger?: string | null;
+            /** Stop Rule */
+            stop_rule?: string | null;
+            /** Target Rule */
+            target_rule?: string | null;
+        };
+        /** ResearchOutcomeSpecBody */
+        ResearchOutcomeSpecBody: {
+            /** Confirm Breakout Within Bars */
+            confirm_breakout_within_bars?: number | null;
+            /** Min Forward Return Pct */
+            min_forward_return_pct?: number | null;
+            /** Stretch Return Pct */
+            stretch_return_pct?: number | null;
+        };
+        /** ResearchPhaseAnnotationBody */
+        ResearchPhaseAnnotationBody: {
+            /** Phase Id */
+            phase_id: string;
+            /** Label */
+            label: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Start Ts */
+            start_ts?: number | null;
+            /** End Ts */
+            end_ts?: number | null;
+            /** Signals Required */
+            signals_required?: string[];
+            /** Signals Preferred */
+            signals_preferred?: string[];
+            /** Signals Forbidden */
+            signals_forbidden?: string[];
+            /** Note */
+            note?: string | null;
+        };
+        /** ResearchSourceBody */
+        ResearchSourceBody: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "telegram_post" | "chart_image" | "manual_note" | "terminal_capture";
+            /** Author */
+            author?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Text */
+            text?: string | null;
+            /** Image Refs */
+            image_refs?: string[];
+        };
+        /** RuntimeCaptureListResponse */
+        RuntimeCaptureListResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Captures */
+            captures: {
+                [key: string]: unknown;
+            }[];
+            /** Count */
+            count: number;
+        };
+        /** RuntimeCaptureResponse */
+        RuntimeCaptureResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Capture */
+            capture: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeLedgerListResponse */
+        RuntimeLedgerListResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Ledgers */
+            ledgers: {
+                [key: string]: unknown;
+            }[];
+            /** Count */
+            count: number;
+        };
+        /** RuntimeLedgerResponse */
+        RuntimeLedgerResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Ledger */
+            ledger: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimePatternDefinitionListResponse */
+        RuntimePatternDefinitionListResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Definitions */
+            definitions: {
+                [key: string]: unknown;
+            }[];
+            /** Count */
+            count: number;
+        };
+        /** RuntimePatternDefinitionResponse */
+        RuntimePatternDefinitionResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Definition */
+            definition: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeResearchContextCreate */
+        RuntimeResearchContextCreate: {
+            /** Symbol */
+            symbol?: string | null;
+            /** Pattern Slug */
+            pattern_slug?: string | null;
+            /** User Id */
+            user_id?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Fact Refs */
+            fact_refs?: string[];
+            /** Search Refs */
+            search_refs?: string[];
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeResearchContextResponse */
+        RuntimeResearchContextResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Research Context */
+            research_context: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeSetupCreate */
+        RuntimeSetupCreate: {
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** User Id */
+            user_id?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeSetupResponse */
+        RuntimeSetupResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Setup */
+            setup: {
+                [key: string]: unknown;
+            };
+        };
+        /** RuntimeWorkspacePinCreate */
+        RuntimeWorkspacePinCreate: {
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** User Id */
+            user_id?: string | null;
+            /**
+             * Kind
+             * @default pin
+             */
+            kind: string;
+            /** Summary */
+            summary?: string | null;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Pin Id */
+            pin_id?: string | null;
+        };
+        /** RuntimeWorkspaceResponse */
+        RuntimeWorkspaceResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default runtime
+             * @constant
+             */
+            plane: "runtime";
+            /**
+             * Status
+             * @default fallback_local
+             * @enum {string}
+             */
+            status: "durable" | "fallback_local" | "read_only";
+            /** Generated At */
+            generated_at: string;
+            /** Workspace */
+            workspace: {
+                [key: string]: unknown;
+            };
+        };
         /** ScanMatch */
         ScanMatch: {
             /** Symbol */
@@ -2511,33 +3608,6 @@ export interface components {
             p_win: number | null;
             /** Price */
             price: number;
-        };
-        /** ScanRequest */
-        ScanRequest: {
-            /** Symbols */
-            symbols?: string[] | null;
-            /**
-             * Send Alerts
-             * @default true
-             */
-            send_alerts: boolean;
-        };
-        /** ScanResponse */
-        ScanResponse: {
-            /** Scanned At */
-            scanned_at: string;
-            /** N Symbols */
-            n_symbols: number;
-            /** N Signals */
-            n_signals: number;
-            /** Signals */
-            signals: {
-                [key: string]: unknown;
-            }[];
-            /** Errors */
-            errors: string[];
-            /** Duration Sec */
-            duration_sec: number;
         };
         /** ScoreRequest */
         ScoreRequest: {
@@ -2563,6 +3633,126 @@ export interface components {
              * @default false
              */
             ensemble_triggered: boolean;
+        };
+        /** SearchCandidate */
+        SearchCandidate: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Window Id */
+            window_id?: string | null;
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Score */
+            score: number;
+            /** Definition Ref */
+            definition_ref?: {
+                [key: string]: unknown;
+            } | null;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+        };
+        /** SearchCatalogResponse */
+        SearchCatalogResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /** Status */
+            status: string;
+            /** Generated At */
+            generated_at: string;
+            /** Total Windows */
+            total_windows: number;
+            /** Windows */
+            windows?: components["schemas"]["SearchCorpusWindowSummary"][];
+        };
+        /** SearchCorpusWindowSummary */
+        SearchCorpusWindowSummary: {
+            /** Window Id */
+            window_id: string;
+            /** Symbol */
+            symbol: string;
+            /** Timeframe */
+            timeframe: string;
+            /** Start Ts */
+            start_ts: string;
+            /** End Ts */
+            end_ts: string;
+            /** Bars */
+            bars: number;
+            /** Source */
+            source: string;
+            /** Signature */
+            signature?: {
+                [key: string]: unknown;
+            };
+        };
+        /** SeedSearchRequest */
+        SeedSearchRequest: {
+            /** Definition Id */
+            definition_id?: string | null;
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /** Signature */
+            signature?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+        };
+        /** SeedSearchResponse */
+        SeedSearchResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /** Status */
+            status: string;
+            /** Generated At */
+            generated_at: string;
+            /** Run Id */
+            run_id: string;
+            /** Request */
+            request?: {
+                [key: string]: unknown;
+            };
+            /** Candidates */
+            candidates?: components["schemas"]["SearchCandidate"][];
         };
         /** SnapInput */
         SnapInput: {
@@ -2807,6 +3997,8 @@ export interface components {
         _PatternTrainBody: {
             /** User Id */
             user_id?: string | null;
+            /** Definition Id */
+            definition_id?: string | null;
             /**
              * Target Name
              * @default breakout
@@ -2832,6 +4024,8 @@ export interface components {
         };
         /** _PromotePatternModelBody */
         _PromotePatternModelBody: {
+            /** Definition Id */
+            definition_id?: string | null;
             /** Model Key */
             model_key: string;
             /** Model Version */
@@ -2919,6 +4113,79 @@ export interface components {
             symbol: string;
             /** Verdict */
             verdict: string;
+        };
+        /** ScanRequest */
+        api__routes__scanner__ScanRequest: {
+            /** Symbols */
+            symbols?: string[] | null;
+            /**
+             * Send Alerts
+             * @default true
+             */
+            send_alerts: boolean;
+        };
+        /** ScanResponse */
+        api__routes__scanner__ScanResponse: {
+            /** Scanned At */
+            scanned_at: string;
+            /** N Symbols */
+            n_symbols: number;
+            /** N Signals */
+            n_signals: number;
+            /** Signals */
+            signals: {
+                [key: string]: unknown;
+            }[];
+            /** Errors */
+            errors: string[];
+            /** Duration Sec */
+            duration_sec: number;
+        };
+        /** ScanRequest */
+        api__schemas_search__ScanRequest: {
+            /** Definition Id */
+            definition_id?: string | null;
+            /** Symbol */
+            symbol?: string | null;
+            /** Timeframe */
+            timeframe?: string | null;
+            /**
+             * Limit
+             * @default 20
+             */
+            limit: number;
+        };
+        /** ScanResponse */
+        api__schemas_search__ScanResponse: {
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+            /**
+             * Owner
+             * @default engine
+             * @constant
+             */
+            owner: "engine";
+            /**
+             * Plane
+             * @default search
+             * @constant
+             */
+            plane: "search";
+            /** Status */
+            status: string;
+            /** Generated At */
+            generated_at: string;
+            /** Scan Id */
+            scan_id: string;
+            /** Request */
+            request?: {
+                [key: string]: unknown;
+            };
+            /** Candidates */
+            candidates?: components["schemas"]["SearchCandidate"][];
         };
     };
     responses: never;
@@ -3077,6 +4344,869 @@ export interface operations {
             };
         };
     };
+    ctx_fact_ctx_fact_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_price_context_facts_price_context_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_perp_context_facts_perp_context_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_reference_stack_facts_reference_stack_get: {
+        parameters: {
+            query?: {
+                symbol?: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_chain_intel_facts_chain_intel_get: {
+        parameters: {
+            query?: {
+                symbol?: string;
+                chain?: string;
+                family?: string | null;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_market_cap_facts_market_cap_get: {
+        parameters: {
+            query?: {
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_confluence_facts_confluence_get: {
+        parameters: {
+            query: {
+                symbol: string;
+                timeframe?: string;
+                offline?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    facts_indicator_catalog_facts_indicator_catalog_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                family?: string | null;
+                stage?: string | null;
+                query?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_catalog_search_catalog_get: {
+        parameters: {
+            query?: {
+                symbol?: string | null;
+                timeframe?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchCatalogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_seed_search_seed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeedSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeedSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_seed_result_search_seed__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeedSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_scan_search_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["api__schemas_search__ScanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_scan_result_search_scan__scan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["api__schemas_search__ScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_captures_runtime_captures_get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+                definition_id?: string | null;
+                pattern_slug?: string | null;
+                symbol?: string | null;
+                status?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeCaptureListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_runtime_capture_runtime_captures_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureCreateBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeCaptureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_runtime_capture_runtime_captures__capture_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeCaptureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_definitions_runtime_definitions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimePatternDefinitionListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_runtime_definition_runtime_definitions__pattern_slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pattern_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimePatternDefinitionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_workspace_pin_runtime_workspace_pins_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeWorkspacePinCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeWorkspaceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_workspace_runtime_workspace__symbol__get: {
+        parameters: {
+            query?: {
+                user_id?: string | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeWorkspaceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_setup_runtime_setups_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeSetupCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeSetupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_setup_runtime_setups__setup_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                setup_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeSetupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_research_context_runtime_research_contexts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeResearchContextCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeResearchContextResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_research_context_runtime_research_contexts__context_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                context_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeResearchContextResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ledger_runtime_ledger__ledger_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ledger_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeLedgerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_ledger_runtime_ledger_get: {
+        parameters: {
+            query?: {
+                definition_id?: string | null;
+                kind?: string | null;
+                subject_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeLedgerListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     universe_universe_get: {
         parameters: {
             query?: {
@@ -3087,6 +5217,10 @@ export interface operations {
                 sort?: string;
                 /** @description Force cache refresh */
                 refresh?: boolean;
+                /** @description Token symbol, name, or contract search */
+                q?: string;
+                /** @description Allow live provider fallback on local index miss */
+                live_fallback?: boolean;
             };
             header?: never;
             path?: never;
@@ -3115,6 +5249,28 @@ export interface operations {
         };
     };
     sectors_universe_sectors_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    market_search_status_universe_search_status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3375,7 +5531,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["ScanRequest"];
+                "application/json": components["schemas"]["api__routes__scanner__ScanRequest"];
             };
         };
         responses: {
@@ -3385,7 +5541,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScanResponse"];
+                    "application/json": components["schemas"]["api__routes__scanner__ScanResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3511,7 +5667,9 @@ export interface operations {
     };
     get_all_stats_patterns_stats_all_get: {
         parameters: {
-            query?: never;
+            query?: {
+                definition_scope?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3527,6 +5685,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3566,7 +5733,10 @@ export interface operations {
     };
     get_stats_patterns__slug__stats_get: {
         parameters: {
-            query?: never;
+            query?: {
+                definition_id?: string | null;
+                definition_scope?: string;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -3601,6 +5771,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                definition_id?: string | null;
             };
             header?: never;
             path: {
@@ -3704,7 +5875,46 @@ export interface operations {
     };
     get_model_registry_patterns__slug__model_registry_get: {
         parameters: {
-            query?: never;
+            query?: {
+                definition_id?: string | null;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_history_patterns__slug__model_history_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                definition_id?: string | null;
+                record_type?: string | null;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -4140,6 +6350,80 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["api__routes__captures___VerdictBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_capture_benchmark_pack_draft_captures__capture_id__benchmark_pack_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CaptureBenchmarkSearchBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_capture_benchmark_search_captures__capture_id__benchmark_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                capture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CaptureBenchmarkSearchBody"] | null;
             };
         };
         responses: {
@@ -5285,6 +7569,46 @@ export interface operations {
         };
     };
     run_auto_capture_jobs_auto_capture_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_search_corpus_jobs_search_corpus_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    run_market_search_index_refresh_jobs_market_search_index_refresh_run_post: {
         parameters: {
             query?: never;
             header?: never;

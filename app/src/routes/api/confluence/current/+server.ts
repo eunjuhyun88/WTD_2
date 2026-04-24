@@ -16,26 +16,25 @@ import type { RequestHandler } from './$types';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { computeConfluence } from '$lib/confluence/score';
 import type { ConfluenceInput } from '$lib/confluence/score';
+import type { ConfluenceResult } from '$lib/confluence/types';
+import { getAnalyzePayload } from '$lib/server/analyze/service';
 import { pushConfluence, streakBack } from '$lib/server/confluenceHistory';
+import { adaptEngineFactConfluence } from '$lib/server/confluence/engineFactAdapter';
+import { fetchFactConfluenceProxy } from '$lib/server/enginePlanes/facts';
+import {
+  loadFundingFlip,
+  loadLiqClusters,
+  loadOptionsSnapshot,
+  loadRvCone,
+  loadStablecoinSsr,
+  loadVenueDivergence,
+} from '$lib/server/marketIndicatorFeeds';
 import { getRequestIp } from '$lib/server/requestIp';
 
 const VALID_SYMBOL = /^[A-Z0-9]{3,12}USDT$/;
 const VALID_TF = /^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/;
 const CACHE_TTL_MS = 30_000;
 const cache = new Map<string, { at: number; payload: unknown }>();
-
-async function fetchSelf<T>(origin: string, path: string): Promise<T | null> {
-  try {
-    const res = await fetch(`${origin}${path}`, {
-      signal: AbortSignal.timeout(8_000),
-      headers: { 'User-Agent': 'cogochi-terminal/confluence' },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
 
 // Minimal analyze payload shape we care about (pattern score + direction).
 interface AnalyzeMini {
@@ -49,30 +48,47 @@ interface AnalyzeMini {
   direction?: string;
 }
 
-interface VenueRow { venue: string; current: number; highlight?: boolean }
-interface VenuePayload { oi?: VenueRow[]; funding?: VenueRow[] }
-interface RvPayload { percentile?: Record<string, number> }
-interface SsrPayload { percentile?: number; regime?: 'dry_powder_high' | 'dry_powder_low' | 'neutral' }
-interface FlipPayload {
-  direction?: 'pos_to_neg' | 'neg_to_pos' | 'persisted';
-  persistedHours?: number;
-  consecutiveIntervals?: number;
-  currentRate?: number;
+async function loadAnalyzeMini(symbol: string, tf: string): Promise<AnalyzeMini | null> {
+  try {
+    const { payload } = await getAnalyzePayload({
+      symbol,
+      tf,
+      requestId: `internal:confluence:${symbol}:${tf}`,
+    });
+    const analyze = payload as AnalyzeMini & { blocks_triggered?: unknown[] };
+    const activeBlockCount =
+      typeof analyze.snapshot?.active_block_count === 'number'
+        ? analyze.snapshot.active_block_count
+        : Array.isArray(analyze.blocks_triggered)
+          ? analyze.blocks_triggered.length
+          : undefined;
+    return {
+      snapshot: analyze.snapshot
+        ? {
+            ...analyze.snapshot,
+            active_block_count: activeBlockCount,
+          }
+        : undefined,
+      score: analyze.score,
+      direction: analyze.direction,
+    };
+  } catch {
+    return null;
+  }
 }
-interface LiqCell { priceBucket: number; timeBucket: number; intensity: number; side?: string }
-interface LiqPayload { cells?: LiqCell[]; currentPrice?: number }
-interface OptionsPayload {
-  putCallRatioOi?: number;
-  putCallRatioVol?: number;
-  skew25d?: number;
-  atmIvNearTerm?: number;
-  gamma?: {
-    pinLevel?: number | null;
-    pinDistancePct?: number | null;
-    maxPain?: number | null;
-    maxPainDistancePct?: number | null;
-    pinDirection?: 'above' | 'below' | 'at' | null;
-  };
+
+function enrichConfluenceResult(symbol: string, result: ConfluenceResult): ConfluenceResult {
+  pushConfluence(symbol, {
+    at: result.at,
+    score: result.score,
+    confidence: result.confidence,
+    regime: result.regime,
+    divergence: result.divergence,
+  });
+
+  const divergenceStreak = streakBack(symbol, (entry) => entry.divergence);
+  const sameRegimeStreak = streakBack(symbol, (entry) => entry.regime === result.regime);
+  return { ...result, divergenceStreak, sameRegimeStreak };
 }
 
 /** Map non-BTCUSDT spot symbols onto Deribit's BTC/ETH option currencies. */
@@ -84,12 +100,12 @@ function symbolToDeribitCurrency(sym: string): string | null {
 
 /** Reduce liq heatmap cells into {aboveDistancePct, belowDistancePct, intensity} snapshot. */
 function summarizeLiq(
-  payload: LiqPayload | null,
+  payload: Awaited<ReturnType<typeof loadLiqClusters>>['payload'] | null,
   currentPrice: number | null
 ): ConfluenceInput['liqMagnet'] {
   if (!payload?.cells?.length || currentPrice == null || currentPrice <= 0) return null;
-  let closestAbove: LiqCell | null = null;
-  let closestBelow: LiqCell | null = null;
+  let closestAbove: (typeof payload.cells)[number] | null = null;
+  let closestBelow: (typeof payload.cells)[number] | null = null;
   let maxIntensity = 0;
   for (const c of payload.cells) {
     const p = c.priceBucket;
@@ -108,6 +124,14 @@ function summarizeLiq(
   return { aboveDistancePct, belowDistancePct, intensity };
 }
 
+async function safeLoad<T>(load: () => Promise<{ payload: T }>): Promise<T | null> {
+  try {
+    return (await load()).payload;
+  } catch {
+    return null;
+  }
+}
+
 export const GET: RequestHandler = async ({ url, request, getClientAddress, fetch: _kitFetch }) => {
   const symbol = (url.searchParams.get('symbol') ?? 'BTCUSDT').toUpperCase();
   const tf = (url.searchParams.get('tf') ?? '4h').trim();
@@ -122,27 +146,46 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
   const cacheKey = `${symbol}|${tf}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return json(cached.payload, { headers: { 'X-Cache': 'HIT' } });
+    return json(cached.payload, {
+      headers: {
+        'X-Cache': 'HIT',
+        'X-WTD-Plane': 'fact',
+        'X-WTD-Upstream': 'cache',
+        'X-WTD-State': 'adapter',
+      },
+    });
   }
 
-  const origin = url.origin;
+  const engineConfluence = await fetchFactConfluenceProxy(_kitFetch, {
+    symbol,
+    timeframe: tf,
+    offline: true,
+  });
+  if (engineConfluence) {
+    const enriched = enrichConfluenceResult(symbol, adaptEngineFactConfluence(engineConfluence));
+    cache.set(cacheKey, { at: Date.now(), payload: enriched });
+    return json(enriched, {
+      headers: {
+        'X-Cache': 'MISS',
+        'X-WTD-Plane': 'fact',
+        'X-WTD-Upstream': 'facts/confluence',
+        'X-WTD-State': 'adapter',
+      },
+    });
+  }
 
   const deribitCurrency = symbolToDeribitCurrency(symbol);
 
   // Parallel aggregate — any failure → null, composition still works.
   const [analyze, venueDiv, rvCone, ssr, flip, liq, options] = await Promise.all([
-    // analyze is auth-protected; we're server-side so we use fetchSelf but it will 401 unless
-    // we attach a cookie. For now: accept that pattern score may be missing when unauth'd — a
-    // separate read-only public analyze endpoint will be added in W-0122-Confluence-P2.
-    // This is explicitly documented so reviewers see the intentional limit.
-    fetchSelf<AnalyzeMini>(origin, `/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
-    fetchSelf<VenuePayload>(origin, `/api/market/venue-divergence?symbol=${symbol}`),
-    fetchSelf<RvPayload>(origin, `/api/market/rv-cone?symbol=${symbol}`),
-    fetchSelf<SsrPayload>(origin, `/api/market/stablecoin-ssr`),
-    fetchSelf<FlipPayload>(origin, `/api/market/funding-flip?symbol=${symbol}`),
-    fetchSelf<LiqPayload>(origin, `/api/market/liq-clusters?symbol=${symbol}&window=4h`),
+    loadAnalyzeMini(symbol, tf),
+    safeLoad(() => loadVenueDivergence(symbol)),
+    safeLoad(() => loadRvCone(symbol)),
+    safeLoad(() => loadStablecoinSsr()),
+    safeLoad(() => loadFundingFlip(symbol)),
+    safeLoad(() => loadLiqClusters({ symbol, window: '4h', fetchImpl: _kitFetch })),
     deribitCurrency
-      ? fetchSelf<OptionsPayload>(origin, `/api/market/options-snapshot?currency=${deribitCurrency}`)
+      ? safeLoad(() => loadOptionsSnapshot(deribitCurrency))
       : Promise.resolve(null),
   ]);
 
@@ -192,23 +235,15 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
       : null,
   };
 
-  const result = computeConfluence(input);
-
-  // Phase 2: push into in-memory ring buffer for history/streak queries.
-  pushConfluence(symbol, {
-    at: result.at,
-    score: result.score,
-    confidence: result.confidence,
-    regime: result.regime,
-    divergence: result.divergence,
-  });
-
-  // Attach derived streaks so the UI can flag persistent regimes without
-  // a second round-trip. Streaks are evaluated over the in-memory ring only.
-  const divergenceStreak = streakBack(symbol, e => e.divergence);
-  const sameRegimeStreak = streakBack(symbol, e => e.regime === result.regime);
-  const enriched = { ...result, divergenceStreak, sameRegimeStreak };
+  const enriched = enrichConfluenceResult(symbol, computeConfluence(input));
 
   cache.set(cacheKey, { at: Date.now(), payload: enriched });
-  return json(enriched, { headers: { 'X-Cache': 'MISS' } });
+  return json(enriched, {
+    headers: {
+      'X-Cache': 'MISS',
+      'X-WTD-Plane': 'fact',
+      'X-WTD-Upstream': 'legacy-compute',
+      'X-WTD-State': 'fallback',
+    },
+  });
 };

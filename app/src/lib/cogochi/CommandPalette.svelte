@@ -63,7 +63,7 @@
   }
 </script>
 
-<div class="overlay" onclick={onClose} />
+<button type="button" class="overlay" onclick={onClose} aria-label="Close command palette"></button>
 <div class="palette">
   <div class="header">
     <input
@@ -77,7 +77,8 @@
   </div>
   <div class="list">
     {#each filtered as c, i (c.id)}
-      <div
+      <button
+        type="button"
         class="item"
         onclick={() => onRun(c)}
         onmouseenter={(e) => e.currentTarget.style.background = 'var(--g2)'}
@@ -88,7 +89,7 @@
         {#if c.hint}
           <span class="hint">{c.hint}</span>
         {/if}
-      </div>
+      </button>
     {/each}
   </div>
 </div>
@@ -98,6 +99,8 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
+    border: none;
+    padding: 0;
     z-index: 80;
   }
 
@@ -142,6 +145,10 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    text-align: left;
     cursor: pointer;
     border-bottom: 0.5px solid var(--g3);
     transition: background 0.1s;

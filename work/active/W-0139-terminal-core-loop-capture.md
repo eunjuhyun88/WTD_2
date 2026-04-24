@@ -1,8 +1,8 @@
-# W-0139 — Terminal Core Loop Capture Closure
+# W-0139 — Terminal Surface Closeout
 
 ## Goal
 
-`/terminal` 에서 Day-1 코어 루프의 canonical entry인 `review -> select range -> Save Setup` 이 데스크톱 기준으로 실제 작동하게 만들고, 저장 직전/직후의 research handoff 가 사용자에게 보이도록 정렬한다.
+`/terminal` surface 를 fact/search/runtime/agent plane 의 소비자로 얇게 만든다. 현재 slice 는 terminal page review inbox count direct fetch 를 `terminalBackend` helper 로 이동한다.
 
 ## Owner
 
@@ -14,92 +14,76 @@ Product surface change
 
 ## Scope
 
-- 데스크톱 `/terminal` range selection save path 정렬
-- `SaveStrip` 을 single inline capture surface 로 정리
-- range-selected viewport 기반 payload / similar preview helper 도입
-- Save Setup -> engine capture flywheel 연결 감사 및 중복 write 정리
-- saved capture -> engine challenge projection + related-symbol scan contract 도입
-- 관련 app tests 및 active work item 문서 갱신
+- `TradeMode` surface 에 남은 direct data reads 를 단계적으로 `terminalBackend` / plane clients 로 이동
+- terminal page review inbox count 를 surface client helper 로 연결
+- `terminalBackend.ts` 를 compatibility surface client shim 으로 유지
+- 관련 app tests/check 및 active work item 문서 갱신
 
 ## Non-Goals
 
+- legacy `/api/captures` route 삭제
+- `TradeMode` 전체 데이터 fetch big-bang rewrite
 - `/lab` evaluation activation flow 전체 재설계
 - engine pattern runtime/context producer 신규 구현 및 user pattern DSL 확정
-- mobile `SaveSetupModal` 전면 재작성
 
 ## Canonical Files
 
 - `AGENTS.md`
 - `work/active/CURRENT.md`
 - `work/active/W-0139-terminal-core-loop-capture.md`
+- `docs/domains/terminal-ai-scan-architecture.md`
 - `docs/product/core-loop.md`
 - `docs/product/pages/02-terminal.md`
 - `docs/product/core-loop-agent-execution-blueprint.md`
-- `app/src/components/terminal/workspace/SaveStrip.svelte`
-- `app/src/components/terminal/workspace/ChartBoard.svelte`
-- `app/src/components/terminal/peek/CenterPanel.svelte`
-- `app/src/lib/stores/chartSaveMode.ts`
-- `app/src/lib/contracts/terminalPersistence.ts`
-- `app/src/lib/server/patternCaptureProjection.ts`
-- `app/src/routes/api/terminal/pattern-captures/+server.ts`
-- `app/src/routes/api/terminal/pattern-captures/[id]/project/+server.ts`
-- `engine/api/routes/captures.py`
-- `engine/api/routes/patterns.py`
-- `engine/patterns/scanner.py`
-- `engine/api/routes/challenge.py`
+- `app/src/lib/api/terminalBackend.ts`
+- `app/src/lib/api/terminalBackend.test.ts`
+- `app/src/routes/terminal/+page.svelte`
+- `app/src/lib/cogochi/modes/TradeMode.svelte`
+- `app/src/lib/contracts/runtime/captures.ts`
+- `app/src/routes/api/runtime/[...path]/+server.ts`
 
 ## Facts
 
-1. 제품 문서는 `/terminal` 의 primary job 을 `inspect -> select range -> Save Setup` 으로 고정하고, 선택 구간 저장이 코어 루프의 진입 이벤트라고 명시한다.
-2. 데스크톱 `SaveStrip` 은 single inline capture surface 로 정리되었고, selected viewport + indicator slice + phase reason + note 를 저장 payload 로 만든다.
-3. engine 에는 canonical `/captures`, `CaptureStore`, outcome resolver, pattern state scanner, pattern registry, challenge similarity scan 이 이미 존재한다.
-4. 감사 결과 `/api/terminal/pattern-captures` route 와 `createPatternCapture()` 가 모두 `/captures` 에 쓰는 중복 engine write 경로가 있었다.
-5. capture -> challenge projection 은 `/api/terminal/pattern-captures/[id]/project` 로 닫혔다. 이 route 는 reviewed viewport 를 engine `/challenge/create` snap 으로 투영하고, 선택적으로 `/challenge/{slug}/scan` 으로 related-symbol 후보를 반환한다.
-6. 아직 닫히지 않은 핵심 gap 은 projection 결과를 `/lab` UI 가 first-class 로 읽고 autorun/watch activation 까지 연결하는 product rule 이다.
+1. Fact, Search, Runtime, AgentContext 핵심 route/client slices 는 #201-#210 으로 main 에 병합되었다.
+2. #211-#215 로 `TradeMode` 의 saved captures, confluence, market indicators, analyze refresh, outcome submit, alpha world-model reads 는 `terminalBackend` / runtime client 뒤로 이동했다.
+3. 이번 slice 는 `app/src/routes/terminal/+page.svelte` 의 review inbox count direct `fetch('/api/captures/outcomes?limit=100')` 를 제거한다.
+4. `terminalBackend.ts` 는 final cleanup 전까지 compatibility surface client shim 으로 유지한다.
+5. local audit 기준 terminal surface files 에 direct `fetch(` 호출은 남아 있지 않다.
 
 ## Assumptions
 
-1. 이번 슬라이스의 최소 성공 조건은 "데스크톱 capture-first loop closure" 이고, mobile parity 는 follow-up 으로 남겨도 된다.
-2. engine projection/discovery 는 Save Setup write path 에 동기 결합하지 않고, 명시적 projection route 로 분리한다.
+1. 이번 PR 은 terminal page review inbox count read 만 자른다.
+2. legacy `/api/captures/outcomes` route 는 이번 slice 에서 삭제하지 않고 compatibility route 로 유지한다.
 
 ## Open Questions
 
-- save success 시 autorun 까지 default 로 붙일지 product rule 결정 필요.
-- `/lab?challengeSlug=...` 를 실제로 읽어 자동 실행할지, captureId 기반 intake 화면에서 사용자가 실행하게 둘지 결정 필요.
+- W-0139 완료 판정은 review inbox helper PR 의 CI/merge 이후 확정한다.
 
 ## Decisions
 
-- 데스크톱 코어 루프의 single capture owner 는 inline `SaveStrip` 으로 두고, 중복 렌더링은 제거한다.
-- 저장 payload 생성은 shared helper 로 묶어 selected viewport, sliced indicators, phase reason, note 가 같은 규칙으로 저장되게 한다.
-- 저장 직전 UI 는 phase 선택, exact range stats, similar capture preview 를 보여줘 AI research handoff 가 visible 하게 한다.
-- lab deep link 는 현재 `/lab` route 가 읽는 `captureId` query param 을 canonical 로 따른다.
-- Save Setup 의 engine write 는 `createPatternCapture()` 에서만 수행하고, route-level fire-and-forget `/captures` 중복 write 는 제거한다.
-- challenge projection 은 Save Setup POST 에 붙이지 않는다. `Save & Open Lab` 에서만 best-effort 로 `/api/terminal/pattern-captures/[id]/project` 를 호출하고, 실패해도 capture 저장과 lab handoff 는 막지 않는다.
-- related-symbol discovery 는 Day-1 에서 기존 challenge vector scan 을 재사용한다. PatternObject phase scanner 정규화는 별도 engine lane 으로 남긴다.
-- branch split reason: 기존 작업트리에 W-0126/W-0138 관련 dirty changes 가 있어도 본 슬라이스는 별도 work item / branch 이름으로 격리한다.
-- execution reset reason: 초기 `codex/w-0139-terminal-core-loop-capture` 브랜치는 `origin/main` 대비 뒤처지고 unrelated dirty files 와 섞여 있으므로, 최신 `origin/main` 기준 새 worktree/branch 에서 W-0139 only patch 를 재구성한다.
+- review inbox count read 는 `terminalBackend.fetchReviewInboxCount()` 로 읽는다.
+- `terminalBackend.ts` 는 final cleanup 전까지 compatibility surface client shim 으로 유지한다.
+- legacy captures outcome route 는 삭제하지 않는다.
+- branch split reason: terminal surface direct-fetch audit 은 최신 `origin/main` 기준 `codex/w-0139-surface-closeout-audit` 에서만 진행한다.
 
 ## Next Steps
 
-1. dev server 기준 manual browser QA 로 desktop range selection -> Save & Open Lab -> `challengeSlug` query handoff 를 확인한다.
-2. `/lab` 가 `challengeSlug` 를 읽어 autorun 할지, intake CTA 로 보여줄지 product rule 을 고정한다.
-3. pattern transition context producer 가 생기면 `SaveStrip` default phase / evidenceHash 연결을 추가한다.
+1. review inbox count helper slice 를 테스트/check 후 PR 로 병합한다.
+2. merge 후 W-0139 를 complete 로 갱신한다.
+3. W-0140 bottom ANALYZE slimming 으로 넘어간다.
 
 ## Exit Criteria
 
-- 데스크톱 `/terminal` 에서 선택 구간이 없으면 save 가 비활성 또는 명시적 오류 상태를 보인다.
-- 선택 구간 저장 시 viewport candles + indicator slices + selected phase + note 가 canonical capture payload 로 기록된다.
-- save surface 는 한 곳에서만 렌더링되며, similar capture preview 와 lab handoff 가 보인다.
-- Save & Open Lab 은 saved capture 를 engine challenge 로 best-effort projection 하고 related-symbol scan 결과를 받을 수 있다.
+- review inbox count 는 `terminalBackend` helper 를 통해 실행하고 terminal page 안에서 direct fetch 하지 않는다.
+- `TradeMode` 는 fact/search/runtime 결과만 소비하고 provider/fact composition 을 직접 소유하지 않는다.
+- `terminalBackend.ts` 는 surface-facing client shim 으로 남고 route-level product logic 을 추가하지 않는다.
 - 관련 app tests/check 가 통과한다.
 
 ## Handoff Checklist
 
 - active work item: `work/active/W-0139-terminal-core-loop-capture.md`
-- branch: `codex/w-0139-terminal-core-loop-capture-mainline`
+- branch: `codex/w-0139-surface-closeout-audit`
 - verification:
-  - `npm --prefix app run test -- src/lib/terminal/rangeSelectionCapture.test.ts`
-  - `npm --prefix app run test -- src/routes/api/terminal/pattern-captures/pattern-captures.test.ts`
-  - `npm --prefix app run test -- 'src/routes/api/terminal/pattern-captures/[id]/project/project.test.ts'`
-  - `npm --prefix app run check` (`0 errors`, pre-existing warnings only)
-- remaining blockers: engine-side pattern transition context producer, manual browser QA, lab autorun/watch activation rule
+  - `npm --prefix app run test -- src/lib/api/terminalBackend.test.ts`
+  - `npm --prefix app run check`
+- remaining blockers: terminal surface direct fetch audit, W-0140 bottom ANALYZE surface slimming

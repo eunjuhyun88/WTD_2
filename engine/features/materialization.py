@@ -156,8 +156,9 @@ def _derive_orderflow_frame(bars: pd.DataFrame, orderflow: pd.DataFrame | None) 
 
 
 def _oi_proxy(perp: pd.DataFrame) -> pd.Series:
-    if "open_interest" in perp.columns and perp["open_interest"].notna().any():
-        return _as_float_series(perp["open_interest"]).ffill()
+    for col in ("open_interest", "oi_raw", "oi"):
+        if col in perp.columns and perp[col].notna().any():
+            return _as_float_series(perp[col]).ffill()
     if "oi_change_1h" in perp.columns and perp["oi_change_1h"].notna().any():
         changes = _as_float_series(perp["oi_change_1h"]).fillna(0.0)
         return (1.0 + changes).cumprod()
@@ -354,7 +355,8 @@ def compute_feature_window(
     volume_dryup_flag = volume_last < (volume_ma * 0.6 if volume_ma else 0.0)
 
     oi_series = _oi_proxy(perp_aligned)
-    oi_last = float(oi_series.iloc[-1]) if "open_interest" in perp_aligned.columns and not oi_series.empty else None
+    _has_oi = any(c in perp_aligned.columns for c in ("open_interest", "oi_raw", "oi"))
+    oi_last = float(oi_series.iloc[-1]) if _has_oi and not oi_series.empty else None
     oi_change_abs = float(oi_series.iloc[-1] - oi_series.iloc[-2]) if len(oi_series) >= 2 else None
     oi_change_pct = None
     if "oi_change_1h" in perp_aligned.columns and perp_aligned["oi_change_1h"].notna().any():

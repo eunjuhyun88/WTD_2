@@ -1,0 +1,102 @@
+import type { RuntimeCaptureListResponse, RuntimeCaptureResponse } from '$lib/contracts/runtime/captures';
+import type { RuntimeLedgerListResponse, RuntimeLedgerResponse } from '$lib/contracts/runtime/ledger';
+import type { RuntimeResearchContextResponse } from '$lib/contracts/runtime/researchContext';
+import type { RuntimeWorkspaceStateResponse } from '$lib/contracts/runtime/workspaceState';
+import { fetchEnginePlaneJson, postEnginePlaneJson } from './shared';
+
+type ServerFetch = typeof fetch;
+
+export async function postRuntimeCaptureProxy(
+	fetchFn: ServerFetch,
+	body: unknown,
+): Promise<RuntimeCaptureResponse | null> {
+	return postEnginePlaneJson<RuntimeCaptureResponse>(fetchFn, 'runtime', {
+		path: 'captures',
+		body,
+		timeoutMs: 15_000,
+	});
+}
+
+export async function fetchRuntimeCaptureProxy(
+	fetchFn: ServerFetch,
+	captureId: string,
+): Promise<RuntimeCaptureResponse | null> {
+	return fetchEnginePlaneJson<RuntimeCaptureResponse>(fetchFn, 'runtime', {
+		path: `captures/${captureId}`,
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchRuntimeCaptureListProxy(
+	fetchFn: ServerFetch,
+	query: {
+		userId?: string;
+		symbol?: string;
+		patternSlug?: string;
+		status?: string;
+		limit?: number;
+	},
+): Promise<RuntimeCaptureListResponse | null> {
+	return fetchEnginePlaneJson<RuntimeCaptureListResponse>(fetchFn, 'runtime', {
+		path: 'captures',
+		query: {
+			user_id: query.userId,
+			symbol: query.symbol,
+			pattern_slug: query.patternSlug,
+			status: query.status,
+			limit: query.limit,
+		},
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchRuntimeWorkspaceStateProxy(
+	fetchFn: ServerFetch,
+	symbol: string,
+): Promise<RuntimeWorkspaceStateResponse | null> {
+	return fetchEnginePlaneJson<RuntimeWorkspaceStateResponse>(fetchFn, 'runtime', {
+		path: `workspace/${symbol}`,
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchRuntimeResearchContextProxy(
+	fetchFn: ServerFetch,
+	researchContextId: string,
+): Promise<RuntimeResearchContextResponse | null> {
+	return fetchEnginePlaneJson<RuntimeResearchContextResponse>(fetchFn, 'runtime', {
+		path: `research-contexts/${researchContextId}`,
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchRuntimeLedgerProxy(
+	fetchFn: ServerFetch,
+	ledgerId: string,
+): Promise<RuntimeLedgerResponse | null> {
+	return fetchEnginePlaneJson<RuntimeLedgerResponse>(fetchFn, 'runtime', {
+		path: `ledger/${ledgerId}`,
+		timeoutMs: 8_000,
+	});
+}
+
+export async function fetchRuntimeLedgerListProxy(
+	fetchFn: ServerFetch,
+	query: {
+		definitionId?: string;
+		kind?: string;
+		subjectId?: string;
+		limit?: number;
+	},
+): Promise<RuntimeLedgerListResponse | null> {
+	return fetchEnginePlaneJson<RuntimeLedgerListResponse>(fetchFn, 'runtime', {
+		path: 'ledger',
+		query: {
+			definition_id: query.definitionId,
+			kind: query.kind,
+			subject_id: query.subjectId,
+			limit: query.limit,
+		},
+		timeoutMs: 8_000,
+	});
+}

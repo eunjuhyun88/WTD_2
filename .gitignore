@@ -39,6 +39,7 @@ engine/ops/state/*.sqlite*
 engine/ops/state/*.json
 engine/pattern_registry/*.json
 tmp/telegram_refs/
+.tmp/
 .vercel
 
 # runtime artifacts (test/eval outputs that regenerate on each run)

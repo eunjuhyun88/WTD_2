@@ -19,6 +19,7 @@ import type { ToolDefinition, LLMMessageWithTools } from './types';
 import type { DouniSnapshot } from './types';
 import type { IntentBudget } from './intentClassifier';
 import { SNAPSHOT_MAX_AGE_MS } from './intentClassifier';
+import type { AgentContextPack } from '$lib/contracts/agent/agentContext';
 import {
   buildDouniSystemPrompt,
   buildAnalysisContext,
@@ -31,6 +32,7 @@ import {
   TOOL_CHECK_SOCIAL,
   TOOL_SCAN_MARKET,
   TOOL_CHECK_PATTERN_STATUS,
+  TOOL_FIND_SIMILAR_PATTERNS,
   TOOL_CHART_CONTROL,
   TOOL_SAVE_PATTERN,
   TOOL_SUBMIT_FEEDBACK,
@@ -86,6 +88,7 @@ const ALL_TOOLS: Record<string, ToolDefinition> = {
   check_social: TOOL_CHECK_SOCIAL,
   scan_market: TOOL_SCAN_MARKET,
   check_pattern_status: TOOL_CHECK_PATTERN_STATUS,
+  find_similar_patterns: TOOL_FIND_SIMILAR_PATTERNS,
   chart_control: TOOL_CHART_CONTROL,
   save_pattern: TOOL_SAVE_PATTERN,
   submit_feedback: TOOL_SUBMIT_FEEDBACK,
@@ -162,6 +165,79 @@ function isFullSignalSnapshot(snapshot: DouniSnapshot | undefined): snapshot is 
   return Boolean(snapshot && typeof snapshot === 'object' && 'l1' in snapshot && 'alphaScore' in snapshot);
 }
 
+function formatScore(score: number): string {
+  return Number.isFinite(score) ? score.toFixed(2) : 'n/a';
+}
+
+function formatSearchCandidates(candidates: NonNullable<AgentContextPack['scan']>['candidates']): string {
+  if (candidates.length === 0) return 'none';
+  return candidates
+    .slice(0, 3)
+    .map((candidate) => {
+      const symbol = candidate.symbol ? ` ${candidate.symbol}` : '';
+      const timeframe = candidate.timeframe ? ` ${candidate.timeframe}` : '';
+      return `${candidate.candidate_id}${symbol}${timeframe} score=${formatScore(candidate.score)}`;
+    })
+    .join('; ');
+}
+
+export function formatAgentContextPackForPrompt(pack: AgentContextPack): string {
+  const lines = [`symbol=${pack.symbol} timeframe=${pack.timeframe}`];
+
+  if (pack.facts) {
+    const confluence = pack.facts.confluence;
+    lines.push(
+      [
+        `facts=${pack.facts.status}`,
+        pack.facts.fact_id ? `fact_id=${pack.facts.fact_id}` : null,
+        confluence?.verdict ? `confluence=${confluence.verdict}` : null,
+        confluence?.score != null ? `confluence_score=${confluence.score}` : null,
+      ].filter(Boolean).join(' '),
+    );
+
+    const providerState = pack.facts.provider_state ?? pack.facts.sources ?? {};
+    const providerLines = Object.entries(providerState)
+      .slice(0, 5)
+      .map(([name, state]) => `${name}:${state.status}`)
+      .join(', ');
+    if (providerLines) {
+      lines.push(`providers=${providerLines}`);
+    }
+  } else {
+    lines.push('facts=unavailable');
+  }
+
+  if (pack.scan) {
+    lines.push(
+      `scan=${pack.scan.status} candidates=${pack.scan.candidates.length} top=${formatSearchCandidates(pack.scan.candidates)}`,
+    );
+  }
+  if (pack.seed_search) {
+    lines.push(
+      `seed_search=${pack.seed_search.status} candidates=${pack.seed_search.candidates.length} top=${formatSearchCandidates(pack.seed_search.candidates)}`,
+    );
+  }
+
+  if (pack.runtime) {
+    lines.push(`runtime=${pack.runtime.status} captures=${pack.runtime.captures.length}`);
+    for (const capture of pack.runtime.captures.slice(0, 3)) {
+      const note = capture.user_note ? ` note="${capture.user_note.slice(0, 80)}"` : '';
+      lines.push(
+        `capture=${capture.id} kind=${capture.kind} status=${capture.status} phase=${capture.phase ?? 'n/a'}${note}`,
+      );
+    }
+  }
+
+  const evidence = pack.evidence?.slice(0, 6)
+    .map((item) => `${item.metric}=${item.value}${item.state ? `(${item.state})` : ''}`)
+    .join(', ');
+  if (evidence) {
+    lines.push(`evidence=${evidence}`);
+  }
+
+  return lines.join('\n');
+}
+
 // ─── Main builder ────────────────────────────────────────────
 
 export interface BuildContextOptions {
@@ -201,6 +277,8 @@ export interface BuildContextOptions {
    * can reason about token phases without an extra tool call.
    */
   alphaWorldModel?: string;
+  /** Canonical bounded context assembled from fact/search/runtime planes. */
+  agentContextPack?: AgentContextPack;
 }
 
 export function buildContext(opts: BuildContextOptions): BuildContextResult {
@@ -215,6 +293,7 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
     memory,
     intent,
     alphaWorldModel,
+    agentContextPack,
   } = opts;
 
   // ── Step 1: Auto-compact history ──────────────────────────
@@ -253,9 +332,19 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
       const ctx = buildAnalysisContext(snapshot, profile.archetype);
       systemPrompt += `\n\n[Current Analysis]\n${ctx}`;
     } catch { /* skip partial snapshot */ }
-  } else if (budget.tools.includes('analyze_market') || budget.tools.includes('scan_market')) {
+  } else if (
+    budget.tools.includes('analyze_market') ||
+    budget.tools.includes('scan_market') ||
+    budget.tools.includes('find_similar_patterns')
+  ) {
     // Only add this hint when the LLM has tools to fetch data
-    systemPrompt += `\n\n[NO DATA YET]\nUse analyze_market or scan_market to get fresh data.`;
+    const hints: string[] = [];
+    if (budget.tools.includes('analyze_market')) hints.push('analyze_market for fresh market data');
+    if (budget.tools.includes('scan_market')) hints.push('scan_market for ranked market scans');
+    if (budget.tools.includes('find_similar_patterns')) {
+      hints.push('find_similar_patterns for thesis-style pattern retrieval');
+    }
+    systemPrompt += `\n\n[NO DATA YET]\nUse ${hints.join(', ')}.`;
   }
 
   // ── Step 3b-alpha: Alpha World Model injection ────────────
@@ -263,6 +352,10 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
   // inject the current phase table so the LLM can reason without a tool call.
   if (alphaWorldModel) {
     systemPrompt += `\n\n[Alpha Universe — Current State]\n${alphaWorldModel}\nUse get_alpha_token_detail or find_tokens for deeper investigation.`;
+  }
+
+  if (agentContextPack) {
+    systemPrompt += `\n\n[Agent Context Pack]\n${formatAgentContextPackForPrompt(agentContextPack)}\nUse this as the bounded canonical fact/search/runtime context. Do not ask for raw provider payloads or full OHLCV unless a tool explicitly returns them.`;
   }
 
   // ── Step 3b: Pattern Memory → Evidence Chain Layer C ──────

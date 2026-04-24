@@ -49,6 +49,7 @@
   import {
     fetchFlowBias,
     fetchMarketEvents,
+    fetchReviewInboxCount,
     sendMemoryDebugSession,
   } from '$lib/api/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
@@ -781,11 +782,7 @@
 
   async function loadReviewInboxCount() {
     try {
-      const res = await fetch('/api/captures/outcomes?limit=100');
-      if (res.ok) {
-        const data = await res.json() as { count?: number };
-        reviewInboxCount = data.count ?? 0;
-      }
+      reviewInboxCount = await fetchReviewInboxCount(100);
     } catch {}
   }
 

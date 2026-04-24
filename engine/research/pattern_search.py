@@ -17,6 +17,7 @@ from data_cache.loader import load_klines, load_perp
 from data_cache.resample import tf_string_to_minutes
 from ledger.store import LEDGER_RECORD_STORE, LedgerRecordStore
 from ledger.types import PatternLedgerRecord
+from patterns.definitions import PatternDefinitionService
 from patterns.library import get_pattern
 from patterns.replay import replay_pattern_frames
 from patterns.state_machine import PatternStateMachine
@@ -453,6 +454,8 @@ class PatternSearchRunArtifact:
     benchmark_pack_id: str
     winner_variant_slug: str | None
     variant_results: list[VariantSearchResult]
+    definition_ref: dict = field(default_factory=dict)
+    search_query_spec: dict | None = None
     variant_specs: list[PatternVariantSpec] = field(default_factory=list)
     variant_deltas: list[VariantDeltaInsight] = field(default_factory=list)
     branch_insights: list[MutationBranchInsight] = field(default_factory=list)
@@ -470,8 +473,10 @@ class PatternSearchRunArtifact:
         return {
             "research_run_id": self.research_run_id,
             "pattern_slug": self.pattern_slug,
+            "definition_ref": dict(self.definition_ref),
             "benchmark_pack_id": self.benchmark_pack_id,
             "winner_variant_slug": self.winner_variant_slug,
+            "search_query_spec": self.search_query_spec,
             "variant_results": [result.to_dict() for result in self.variant_results],
             "variant_specs": [spec.to_dict() for spec in self.variant_specs],
             "variant_deltas": [delta.to_dict() for delta in self.variant_deltas],
@@ -526,9 +531,11 @@ class NegativeSearchMemoryEntry:
 @dataclass(frozen=True)
 class PatternBenchmarkSearchConfig:
     pattern_slug: str
+    definition_id: str | None = None
     benchmark_pack_id: str | None = None
     objective_id: str | None = None
     variants: list[PatternVariantSpec] | None = None
+    search_query_spec: dict | None = None
     warmup_bars: int = 240
     min_reference_score: float = 0.55
     min_holdout_score: float = 0.35
@@ -2835,6 +2842,10 @@ def run_pattern_benchmark_search(
     pack_store = pack_store or BenchmarkPackStore()
     artifact_store = artifact_store or PatternSearchArtifactStore()
     negative_memory_store = negative_memory_store or NegativeSearchMemoryStore()
+    definition_ref = _resolve_definition_ref(
+        pattern_slug=config.pattern_slug,
+        definition_id=config.definition_id,
+    )
     pack = (
         pack_store.load(config.benchmark_pack_id)
         if config.benchmark_pack_id is not None
@@ -2866,9 +2877,11 @@ def run_pattern_benchmark_search(
             "min_holdout_score": config.min_holdout_score,
             "warmup_bars": config.warmup_bars,
         },
+        definition_ref=definition_ref,
     )
 
     def _execute(run: ResearchRun) -> ResearchJobResult:
+        run_definition_ref = run.definition_ref or definition_ref
         recent_artifacts = artifact_store.list(config.pattern_slug, limit=5)
         variant_results = [
             evaluate_variant_against_pack(pack, variant, warmup_bars=config.warmup_bars)
@@ -2893,8 +2906,10 @@ def run_pattern_benchmark_search(
         artifact = PatternSearchRunArtifact(
             research_run_id=run.research_run_id,
             pattern_slug=config.pattern_slug,
+            definition_ref=run_definition_ref,
             benchmark_pack_id=pack.benchmark_pack_id,
             winner_variant_slug=winner.variant_slug if winner is not None else None,
+            search_query_spec=copy.deepcopy(config.search_query_spec),
             variant_results=variant_results,
             variant_specs=variants,
             variant_deltas=variant_deltas,
@@ -2931,6 +2946,7 @@ def run_pattern_benchmark_search(
         passed_reference = winner.reference_score >= config.min_reference_score
         passed_holdout = winner.holdout_score is None or winner.holdout_score >= config.min_holdout_score
         metrics = {
+            "definition_ref": run_definition_ref,
             "benchmark_pack_id": pack.benchmark_pack_id,
             "winner_variant_slug": winner.variant_slug,
             "reference_score": winner.reference_score,
@@ -2971,6 +2987,7 @@ def run_pattern_benchmark_search(
                 winner_variant_ref=winner.variant_slug,
                 handoff_payload={
                     "artifact_ref": f"pattern-search:{run.research_run_id}",
+                    "definition_ref": run_definition_ref,
                     "active_family_key": active_family.family_key if active_family is not None else None,
                     "active_family_type": active_family.family_type if active_family is not None else None,
                     "active_family_variant_slug": active_family.representative_variant_slug if active_family is not None else None,
@@ -3062,6 +3079,7 @@ def run_pattern_benchmark_search(
             winner_variant_ref=winner.variant_slug,
             handoff_payload={
                 "artifact_ref": f"pattern-search:{run.research_run_id}",
+                "definition_ref": run_definition_ref,
                 "active_family_key": active_family.family_key if active_family is not None else None,
                 "active_family_type": active_family.family_type if active_family is not None else None,
                 "active_family_variant_slug": active_family.representative_variant_slug if active_family is not None else None,
@@ -3099,6 +3117,20 @@ def run_pattern_benchmark_search(
         )
 
     return controller.run_bounded_job(spec, execute=_execute)
+
+
+def _resolve_definition_ref(*, pattern_slug: str, definition_id: str | None) -> dict:
+    service = PatternDefinitionService()
+    if definition_id:
+        parsed = service.parse_definition_id(definition_id)
+        return (
+            service.get_definition_ref(
+                pattern_slug=parsed["pattern_slug"],
+                pattern_version=parsed["pattern_version"],
+            )
+            or parsed
+        )
+    return service.get_definition_ref(pattern_slug=pattern_slug) or {"pattern_slug": pattern_slug}
 
 
 def pattern_benchmark_search_payload(

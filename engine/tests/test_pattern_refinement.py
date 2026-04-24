@@ -14,6 +14,7 @@ from research.worker_control import ResearchWorkerController
 def _outcome(idx: int, *, outcome: str) -> PatternOutcome:
     return PatternOutcome(
         pattern_slug="tradoor-oi-reversal-v1",
+        pattern_version=1,
         symbol=f"SYM{idx}USDT",
         accumulation_at=datetime(2026, 4, 14, idx % 24, 0, tzinfo=timezone.utc),
         entry_price=100.0 + idx,
@@ -66,11 +67,14 @@ def test_pattern_bounded_eval_returns_train_candidate_when_gate_clears(tmp_path,
 
     assert run.status == "completed"
     assert run.completion_disposition == "train_candidate"
-    assert run.handoff_payload["model_key"].startswith("tradoor-oi-reversal-v1:1h:breakout")
+    assert run.definition_ref["definition_id"] == "tradoor-oi-reversal-v1:v1"
+    assert run.handoff_payload["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert run.handoff_payload["model_key"].startswith("tradoor-oi-reversal-v1:v1:1h:breakout")
     assert run.handoff_payload["mean_auc"] == pytest.approx(0.68)
     decision = state_store.get_selection_decision(run.research_run_id)
     assert decision is not None
     assert decision.decision_kind == "train_candidate"
+    assert decision.metrics["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
 
 
 def test_pattern_bounded_eval_uses_latest_promoted_family_baseline(tmp_path, monkeypatch) -> None:
@@ -86,6 +90,7 @@ def test_pattern_bounded_eval_uses_latest_promoted_family_baseline(tmp_path, mon
         search_policy={"mode": "benchmark-pack-search", "n_variants": 11},
         evaluation_protocol={"kind": "replay-benchmark"},
         created_at="2026-04-16T20:00:00+00:00",
+        definition_ref={"definition_id": "tradoor-oi-reversal-v1:v1", "pattern_slug": "tradoor-oi-reversal-v1"},
     )
     state_store.complete_run(
         benchmark_run.research_run_id,
@@ -127,6 +132,7 @@ def test_pattern_bounded_eval_uses_latest_promoted_family_baseline(tmp_path, mon
     )
 
     assert run.baseline_ref == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+    assert run.definition_ref["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert run.handoff_payload["baseline_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
     assert run.handoff_payload["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
     decision = state_store.get_selection_decision(run.research_run_id)
@@ -221,6 +227,7 @@ def test_pattern_bounded_eval_prefers_promoted_family_ref_over_legacy_baseline(
     # promoted_family_ref must win over both the legacy run's baseline_family_ref
     # and the newer run's stale legacy baseline_family_ref
     assert run.baseline_ref == "family:tradoor-oi-reversal-v1__promoted-family"
+    assert run.definition_ref["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert run.handoff_payload["baseline_ref"] == "family:tradoor-oi-reversal-v1__promoted-family"
 
 

@@ -1,6 +1,25 @@
 <script lang="ts">
   import ChartBoard from '../../../components/terminal/workspace/ChartBoard.svelte';
-  import { fetchAnalyzeAndChart } from '$lib/api/terminalBackend';
+  import {
+    fetchAnalyze,
+    fetchAnalyzeAndChart,
+    fetchAlphaWorldModel,
+    fetchConfluenceCurrent,
+    fetchConfluenceHistory,
+    fetchFundingFlip,
+    fetchFundingHistory,
+    fetchIndicatorContext,
+    fetchLiqClusters,
+    fetchOptionsSnapshot,
+    fetchRecentCaptures,
+    fetchRvCone,
+    fetchSsr,
+    fetchVenueDivergence,
+    submitTradeOutcome,
+    type ConfluenceHistoryEntry,
+    type RecentCaptureSummary,
+    type TradeOutcomeResult,
+  } from '$lib/api/terminalBackend';
   import type { AnalyzeEnvelope } from '$lib/contracts/terminalBackend';
   import type { ChartSeriesPayload } from '$lib/api/terminalBackend';
   import type { TabState } from '$lib/cogochi/shell.store';
@@ -80,9 +99,8 @@
     if (lastCandleTime === bar.time) return; // dedup duplicate fires
     lastCandleTime = bar.time;
     try {
-      const res = await fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${timeframe}`);
-      if (!res.ok) return;
-      analyzeData = (await res.json()) as AnalyzeEnvelope;
+      const nextAnalyze = await fetchAnalyze(symbol, timeframe);
+      if (nextAnalyze) analyzeData = nextAnalyze;
     } catch { /* retry on next candle */ }
     // Also refresh Pillar 3 (venue divergence) + Pillar 1 (liq clusters)
     // in lock-step with analyze on candle close.
@@ -96,9 +114,7 @@
 
   async function refreshVenueDivergence() {
     try {
-      const res = await fetch(`/api/market/venue-divergence?symbol=${symbol}`);
-      if (!res.ok) return;
-      venueDivergence = (await res.json()) as VenueDivergencePayload;
+      venueDivergence = await fetchVenueDivergence(symbol);
     } catch { /* tolerate: next refresh will retry */ }
   }
 
@@ -107,9 +123,7 @@
 
   async function refreshLiqClusters() {
     try {
-      const res = await fetch(`/api/market/liq-clusters?symbol=${symbol}&window=4h`);
-      if (!res.ok) return;
-      liqClusters = (await res.json()) as LiqClusterPayload;
+      liqClusters = await fetchLiqClusters(symbol, '4h');
     } catch { /* tolerate */ }
   }
 
@@ -120,9 +134,7 @@
 
   async function refreshIndicatorContext() {
     try {
-      const res = await fetch(`/api/market/indicator-context?symbol=${symbol}`);
-      if (!res.ok) return;
-      indicatorContext = (await res.json()) as IndicatorContextPayload;
+      indicatorContext = await fetchIndicatorContext(symbol);
     } catch { /* tolerate */ }
   }
 
@@ -133,25 +145,19 @@
 
   async function refreshSsr() {
     try {
-      const res = await fetch(`/api/market/stablecoin-ssr`);
-      if (!res.ok) return;
-      ssr = (await res.json()) as SsrPayload;
+      ssr = await fetchSsr();
     } catch { /* tolerate */ }
   }
 
   async function refreshRvCone() {
     try {
-      const res = await fetch(`/api/market/rv-cone?symbol=${symbol}`);
-      if (!res.ok) return;
-      rvCone = (await res.json()) as RvConePayload;
+      rvCone = await fetchRvCone(symbol);
     } catch { /* tolerate */ }
   }
 
   async function refreshFundingFlip() {
     try {
-      const res = await fetch(`/api/market/funding-flip?symbol=${symbol}`);
-      if (!res.ok) return;
-      fundingFlip = (await res.json()) as FundingFlipPayload;
+      fundingFlip = await fetchFundingFlip(symbol);
     } catch { /* tolerate */ }
   }
 
@@ -160,30 +166,16 @@
 
   async function refreshFundingHistory() {
     try {
-      const res = await fetch(`/api/market/funding?symbol=${symbol}&limit=270`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { symbol: string; bars: { t: number; delta: number }[] };
-      fundingHistory = data;
+      fundingHistory = await fetchFundingHistory(symbol, 270);
     } catch { /* tolerate */ }
   }
 
   // ── Past captures (real historical setups for PAST strip) ─────────────
-  interface PastCapture {
-    capture_id: string;
-    symbol: string;
-    pattern_slug: string;
-    timeframe: string;
-    captured_at_ms: number;
-    status: string;
-  }
-  let pastCaptures = $state<PastCapture[]>([]);
+  let pastCaptures = $state<RecentCaptureSummary[]>([]);
 
   async function refreshPastCaptures() {
     try {
-      const res = await fetch(`/api/captures?limit=8`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { ok: boolean; captures?: PastCapture[]; count?: number };
-      if (data.ok && data.captures) pastCaptures = data.captures;
+      pastCaptures = await fetchRecentCaptures(8);
     } catch { /* tolerate */ }
   }
 
@@ -195,32 +187,23 @@
     const currency = symbol.startsWith('BTC') ? 'BTC' : symbol.startsWith('ETH') ? 'ETH' : null;
     if (!currency) { optionsSnapshot = null; return; }
     try {
-      const res = await fetch(`/api/market/options-snapshot?currency=${currency}`);
-      if (!res.ok) return;
-      optionsSnapshot = (await res.json()) as OptionsSnapshotPayload;
+      optionsSnapshot = await fetchOptionsSnapshot(currency);
     } catch { /* tolerate */ }
   }
 
   // ── Confluence Engine (W-0122 master score) ──────────────────────────
-  interface ConfluenceHistoryEntry { at: number; score: number; confidence: number; regime: string; divergence: boolean }
-
   let confluence = $state<ConfluenceResult | null>(null);
   let confluenceHistory = $state<ConfluenceHistoryEntry[]>([]);
 
   async function refreshConfluence() {
     try {
-      const res = await fetch(`/api/confluence/current?symbol=${symbol}&tf=${timeframe}`);
-      if (!res.ok) return;
-      confluence = (await res.json()) as ConfluenceResult;
+      confluence = await fetchConfluenceCurrent(symbol, timeframe);
     } catch { /* tolerate */ }
   }
 
   async function refreshConfluenceHistory() {
     try {
-      const res = await fetch(`/api/confluence/history?symbol=${symbol}&limit=96`);
-      if (!res.ok) return;
-      const body = (await res.json()) as { entries?: ConfluenceHistoryEntry[] };
-      confluenceHistory = body.entries ?? [];
+      confluenceHistory = await fetchConfluenceHistory(symbol, 96);
     } catch { /* tolerate */ }
   }
 
@@ -500,7 +483,7 @@
   let judgeOutcome = $state<'win' | 'loss' | 'flat' | null>(null);
   let judgeRejudged = $state<'right' | 'wrong' | null>(null);
   let judgeSubmitting = $state(false);
-  let judgeSubmitResult = $state<{ saved: boolean; count: number; training_triggered: boolean } | null>(null);
+  let judgeSubmitResult = $state<TradeOutcomeResult | null>(null);
 
   // Auto-save outcome to flywheel when user selects WIN/LOSS/FLAT
   $effect(() => {
@@ -511,17 +494,12 @@
     // Move state mutation out of sync effect body to avoid Svelte 5 unsafe-mutation warning
     Promise.resolve().then(() => {
       judgeSubmitting = true;
-      fetch('/api/cogochi/outcome', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          snapshot: { ...snap, user_verdict: judgeVerdict },
-          outcome: outcome === 'win' ? 1 : outcome === 'loss' ? 0 : -1,
-          symbol,
-          timeframe,
-        }),
+      submitTradeOutcome({
+        snapshot: { ...snap, user_verdict: judgeVerdict },
+        outcome: outcome === 'win' ? 1 : outcome === 'loss' ? 0 : -1,
+        symbol,
+        timeframe,
       })
-        .then(r => r.json())
         .then(d => { judgeSubmitResult = d; })
         .catch(() => {})
         .finally(() => { judgeSubmitting = false; });
@@ -585,9 +563,8 @@
 
   function _loadAlphaWorldModel() {
     scanLoading = true;
-    fetch('/api/cogochi/alpha/world-model')
-      .then(r => r.json())
-      .then((data: { phases?: { symbol: string; grade: string; phase: string; entered_at: string | null }[] }) => {
+    fetchAlphaWorldModel()
+      .then((data) => {
         const items = (data.phases ?? [])
           .filter(p => p.phase !== 'IDLE')
           .sort((a, b) => (_PHASE_ORDER[a.phase] ?? 9) - (_PHASE_ORDER[b.phase] ?? 9))
@@ -621,12 +598,6 @@
     if (v == null || v === 0) return '—';
     return v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v.toFixed(4);
   }
-  function _pctDiff(a: number | undefined, b: number | undefined): string {
-    if (a == null || b == null || a === 0) return '';
-    const d = ((b - a) / a) * 100;
-    return `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`;
-  }
-
   // ── Confidence ───────────────────────────────────────────────────────────
   const confidence = $derived(
     analyzeData?.entryPlan?.confidencePct ??
@@ -635,56 +606,6 @@
   const confidencePct  = $derived(confidence != null ? `${Math.round(confidence)}%` : '0%');
   const fmtConf        = $derived(confidence != null ? `${Math.round(confidence)}` : '—');
   const confidenceAlpha = $derived(confidence != null ? `α${Math.round(confidence)}` : 'α—');
-
-  // ── Evidence items — derived from live analyze data ───────────────────
-  const evidenceItems = $derived((() => {
-    const snap = analyzeData?.snapshot;
-    const flow = analyzeData?.flowSummary;
-    if (!snap && !flow) return [
-      { k: 'OI 4H',       v: '+18.2%',         note: 'real_dump 확증', pos: true  },
-      { k: 'Funding',     v: '+0.018 → −0.004', note: '플립 완료',     pos: true  },
-      { k: 'CVD 15m',     v: '양전환',           note: '기관 매집',     pos: true  },
-      { k: '번지대',       v: '3h 12m',          note: '기준 만족',     pos: true  },
-      { k: 'Higher-lows', v: '5/5 bars',         note: 'accum 무결',   pos: true  },
-      { k: 'BTC regime',  v: 'RANGE',            note: 'ADX 낮음',     pos: false },
-    ];
-    const items: { k: string; v: string; note: string; pos: boolean }[] = [];
-    if (snap?.oi_change_1h != null) {
-      const oi = snap.oi_change_1h;
-      items.push({ k: 'OI 1h', v: `${oi >= 0 ? '+' : ''}${(oi * 100).toFixed(1)}%`, note: flow?.oi ?? '', pos: oi > 0.02 });
-    }
-    if (snap?.funding_rate != null) {
-      const fr = snap.funding_rate;
-      items.push({ k: 'Funding', v: `${fr >= 0 ? '+' : ''}${(fr * 100).toFixed(4)}%`, note: flow?.funding ?? '', pos: fr < 0 });
-    }
-    if (snap?.cvd_state) {
-      items.push({ k: 'CVD', v: snap.cvd_state, note: flow?.cvd ?? '', pos: /positive|양|bull/i.test(snap.cvd_state) });
-    }
-    if (snap?.regime) {
-      items.push({ k: 'BTC 레짐', v: snap.regime, note: '', pos: snap.regime === 'BULL' });
-    }
-    if (snap?.vol_ratio_3 != null) {
-      items.push({ k: 'Vol 3x', v: `${snap.vol_ratio_3.toFixed(2)}x`, note: '', pos: snap.vol_ratio_3 > 1.5 });
-    }
-    return items.length > 0 ? items : [{ k: '분석 중', v: '...', note: '', pos: true }];
-  })());
-
-  // ── Proposal — derived from entryPlan ────────────────────────────────
-  const proposal = $derived((() => {
-    const ep = analyzeData?.entryPlan;
-    if (!ep) return [
-      { label: 'ENTRY',  val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
-      { label: 'STOP',   val: '—', hint: '', tone: 'neg' as '' | 'neg' | 'pos' },
-      { label: 'TARGET', val: '—', hint: '', tone: 'pos' as '' | 'neg' | 'pos' },
-      { label: 'R:R',    val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
-    ];
-    return [
-      { label: 'ENTRY',  val: _fmtNum(ep.entry),                               hint: 'ATR level',                              tone: '' as '' | 'neg' | 'pos' },
-      { label: 'STOP',   val: _fmtNum(ep.stop),                                hint: _pctDiff(ep.entry, ep.stop),              tone: 'neg' as '' | 'neg' | 'pos' },
-      { label: 'TARGET', val: _fmtNum(ep.targets?.[0]?.price),                 hint: _pctDiff(ep.entry, ep.targets?.[0]?.price), tone: 'pos' as '' | 'neg' | 'pos' },
-      { label: 'R:R',    val: ep.riskReward != null ? `${ep.riskReward.toFixed(1)}x` : '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
-    ];
-  })());
 
   // ── Judge plan (for inline judge sections across all layouts) ─────────
   const judgePlan = $derived((() => {
@@ -698,18 +619,77 @@
   })());
 
   // ── Narrative ─────────────────────────────────────────────────────────
-  const narrativeDir = $derived(
-    analyzeData?.ensemble?.direction?.toLowerCase().includes('short') ||
-    analyzeData?.riskPlan?.bias?.includes('bear') ? '숏' : '롱'
+  const analyzeDetailDirection = $derived.by(() => {
+    const thesis = workspaceEnvelope.aiContext.thesis?.toLowerCase() ?? '';
+    const direction = analyzeData?.ensemble?.direction?.toLowerCase() ?? '';
+    return direction.includes('short') || thesis.includes('short') || thesis.includes('bear') ? '숏' : '롱';
+  });
+  const analyzeDetailThesis = $derived(
+    workspaceEnvelope.aiContext.thesis ?? '분석 완료'
   );
-  const narrativeBias = $derived(
-    analyzeData?.riskPlan?.bias ??
-    analyzeData?.ensemble?.reason ??
-    analyzeData?.deep?.verdict ??
-    null
-  );
-  const evidencePos = $derived(evidenceItems.filter(e => e.pos).length);
-  const evidenceNeg = $derived(evidenceItems.filter(e => !e.pos).length);
+  const analyzeDetailWarnings = $derived(workspaceEnvelope.aiContext.warnings ?? []);
+  const analyzeEvidenceItems = $derived.by(() => {
+    const evidenceIds = workspaceEnvelope.sections.find((section) => section.id === 'evidence-log')?.studyIds ?? [];
+    const items = evidenceIds
+      .map((id) => workspaceStudyMap[id])
+      .filter((study): study is NonNullable<typeof study> => Boolean(study))
+      .map((study) => {
+        const primary = study.summary[0];
+        const secondary = study.summary[1];
+        return {
+          k: primary?.label ?? study.title,
+          v: primary?.value == null || primary.value === '' ? '—' : String(primary.value),
+          note:
+            primary?.note ??
+            (secondary
+              ? `${secondary.label}${secondary.value != null && secondary.value !== '' ? ` ${secondary.value}` : ''}`
+              : study.title),
+          pos: primary?.tone !== 'bear' && primary?.tone !== 'warn',
+        };
+      });
+
+    if (items.length > 0) return items;
+
+    const fallbackItems = evidenceIds
+      .flatMap((id) => {
+        const study = workspaceStudyMap[id];
+        if (!study) return [];
+        return study.summary
+          .filter((row) => row.value != null && row.value !== '')
+          .slice(0, 2)
+          .map((row) => ({
+            k: row.label,
+            v: String(row.value ?? '—'),
+            note: row.note ?? study.title,
+            pos: row.tone !== 'bear' && row.tone !== 'warn',
+          }));
+      })
+      .slice(0, 6);
+
+    return fallbackItems.length > 0 ? fallbackItems : [{ k: '분석 중', v: '...', note: '', pos: true }];
+  });
+  const analyzeExecutionProposal = $derived.by(() => {
+    const study = workspaceStudyMap.execution;
+    if (!study) {
+      return [
+        { label: 'ENTRY',  val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+        { label: 'STOP',   val: '—', hint: '', tone: 'neg' as '' | 'neg' | 'pos' },
+        { label: 'TARGET', val: '—', hint: '', tone: 'pos' as '' | 'neg' | 'pos' },
+        { label: 'R:R',    val: '—', hint: '', tone: '' as '' | 'neg' | 'pos' },
+      ];
+    }
+
+    if (study.summary.length === 0) return [];
+
+    return study.summary.map((row) => ({
+      label: row.label.toUpperCase(),
+      val: row.value == null || row.value === '' ? '—' : String(row.value),
+      hint: row.note ?? '',
+      tone: (row.tone === 'bull' ? 'pos' : row.tone === 'bear' ? 'neg' : '') as '' | 'neg' | 'pos',
+    }));
+  });
+  const evidencePos = $derived(analyzeEvidenceItems.filter(e => e.pos).length);
+  const evidenceNeg = $derived(analyzeEvidenceItems.filter(e => !e.pos).length);
 
   // ── RR bar widths ─────────────────────────────────────────────────────
   const rrLossPct = $derived((() => {
@@ -769,7 +749,7 @@
           </div>
         {:else}
           <div class="narrative" role="region" aria-label="Trade bias and direction">
-            <span class="bull" aria-label="Recommendation">{narrativeDir} 진입 권장 ·</span> {narrativeBias ?? '실시간 분석 대기 중'}
+            <span class="bull" aria-label="Recommendation">{analyzeDetailDirection} 진입 권장 ·</span> {analyzeDetailThesis}
           </div>
           {#if confluence}
             <ConfluenceBanner value={confluence} history={confluenceHistory} compact />
@@ -785,7 +765,7 @@
             </div>
           {/if}
           <div class="evidence-grid" role="list" aria-label="Evidence items">
-            {#each evidenceItems as item}
+            {#each analyzeEvidenceItems as item}
               <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos} role="listitem">
                 <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
                 <span class="ev-key">{item.k}</span>
@@ -801,7 +781,7 @@
               <span class="pcta-text">AI 진입 플랜 실행 →</span>
             </button>
           {:else}
-            {#each proposal as p}
+            {#each analyzeExecutionProposal as p}
               <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
                 <span class="prop-l">{p.label}</span><span class="prop-v">{p.val}</span><span class="prop-h">{p.hint}</span>
               </div>
@@ -841,8 +821,8 @@
           <span class="jc-sep">/</span>
           <span class="jc-tf">{timeframe.toUpperCase()}</span>
           <span class="jc-spacer"></span>
-          {#if narrativeBias}
-            <span class="jc-bias">{narrativeDir} 편향</span>
+          {#if analyzeDetailThesis}
+            <span class="jc-bias">{analyzeDetailDirection} 편향</span>
           {/if}
         </div>
         <div class="mp-section">
@@ -1007,7 +987,7 @@
           {#if tab.id === 'analyze'}
             <span class="pb-val pos">{confidenceAlpha}</span>
             <span class="pb-sep" aria-hidden="true">·</span>
-            <span class="pb-txt">{narrativeDir} 진입 권장</span>
+            <span class="pb-txt">{analyzeDetailDirection} 진입 권장</span>
             {#if analyzeData?.flowSummary?.oi && analyzeData.flowSummary.oi !== 'n/a'}
               <span class="pb-sep" aria-hidden="true">·</span>
               <span class="pb-dim">OI {analyzeData.flowSummary.oi}</span>
@@ -1118,10 +1098,14 @@
                       <span class="analyze-section-copy">오른쪽 HUD가 아니라 실제 해석 근거를 읽는 상세 패널</span>
                     </div>
                     <div class="narrative">
-                      <span class="bull">{narrativeDir} 진입 권장 ·</span>
-                      {' '}{narrativeBias ?? '분석 완료'}
-                      {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
-                        {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
+                      <span class="bull">{analyzeDetailDirection} 진입 권장 ·</span>
+                      {' '}{analyzeDetailThesis}
+                      {#if analyzeDetailWarnings.length > 0}
+                        <div class="analyze-warning-list">
+                          {#each analyzeDetailWarnings as warning}
+                            <span class="warn">{warning}</span>
+                          {/each}
+                        </div>
                       {/if}
                     </div>
                   </div>
@@ -1154,7 +1138,7 @@
                       <span class="analyze-section-copy">판단에 사용한 근거 항목을 빠르게 확인</span>
                     </div>
                     <div class="evidence-grid">
-                      {#each evidenceItems as item}
+                      {#each analyzeEvidenceItems as item}
                         <div class="ev-chip" class:pos={item.pos} class:neg={!item.pos}>
                           <span class="ev-mark">{item.pos ? '✓' : '✗'}</span>
                           <span class="ev-key">{item.k}</span>
@@ -1178,7 +1162,7 @@
                       </div>
                     {/if}
                     <div class="proposal-label">PROPOSAL</div>
-                    {#each proposal as p}
+                    {#each analyzeExecutionProposal as p}
                       <div class="prop-cell" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'}>
                         <span class="prop-l">{p.label}</span>
                         <span class="prop-v">{p.val}</span>
@@ -1293,8 +1277,8 @@
                     {#each pastCaptures as s (s.capture_id)}
                       {@const sym = s.symbol.replace('USDT','').replace('PERP','')}
                       {@const dateStr = new Date(s.captured_at_ms).toISOString().slice(0,10)}
-                      {@const slug = s.pattern_slug.replace(/-v\d+$/, '').replace(/-/g, ' ')}
-                      <button class="past-card" title="{s.pattern_slug} · {s.timeframe}">
+                      {@const patternSlug = s.pattern_slug ?? 'saved-setup'}
+                      <button class="past-card" title="{patternSlug} · {s.timeframe}">
                         <span class="past-sym">{sym}</span>
                         <span class="past-pnl" style:color="var(--g6)">{dateStr}</span>
                         <span class="past-sim">{s.status === 'outcome_ready' ? '⚡' : s.status === 'verdict_ready' ? '✓' : '…'}</span>
@@ -1509,8 +1493,8 @@
             <span class="conf-val">{fmtConf}</span>
           </div>
           <div class="narrative" style="font-size: 9px; line-height: 1.6;" role="region" aria-label="Trade bias">
-            <span class="bull">{narrativeDir} 권장 ·</span>
-            {' '}{narrativeBias ?? '분석 완료'}
+            <span class="bull">{analyzeDetailDirection} 권장 ·</span>
+            {' '}{analyzeDetailThesis}
             {#if analyzeData?.snapshot?.regime && analyzeData.snapshot.regime !== 'BULL'}
               {' '}<span class="warn">{analyzeData.snapshot.regime}⚠</span>
             {/if}
@@ -1525,7 +1509,7 @@
             {/each}
           </div>
           <div class="lcs-mini-evidence" role="list" aria-label="Top evidence preview">
-            {#each evidenceItems.slice(0, 3) as item}
+            {#each analyzeEvidenceItems.slice(0, 3) as item}
               <div class="ev-chip compact" class:pos={item.pos} class:neg={!item.pos} role="listitem">
                 <span class="ev-mark" aria-hidden="true">{item.pos ? '✓' : '✗'}</span>
                 <span class="ev-key">{item.k}</span>
@@ -1586,7 +1570,7 @@
         <div class="lcs-header" role="heading" aria-level="2"><span class="lcs-step">04</span><span class="lcs-title">JUDGE</span></div>
         <div class="lcs-body">
           <div role="region" aria-label="Trade proposal">
-            {#each proposal as p}
+            {#each analyzeExecutionProposal as p}
               <div class="prop-cell compact" class:tone-pos={p.tone === 'pos'} class:tone-neg={p.tone === 'neg'} role="row">
                 <span class="prop-l">{p.label}</span>
                 <span class="prop-v" aria-label="{p.label}: {p.val}">{p.val}</span>
@@ -1638,115 +1622,6 @@
     background: var(--g0);
     gap: 0;
     overflow: hidden;
-  }
-
-  /* ── Empty canvas ── */
-  .empty-canvas {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--g0);
-    min-height: 0;
-  }
-  .ec-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    width: 440px;
-    max-width: 90vw;
-  }
-  .ec-logo {
-    font-size: 13px;
-    color: var(--g5);
-    letter-spacing: 0.32em;
-  }
-  .ec-tagline {
-    font-size: 11px;
-    color: var(--g6);
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 0.08em;
-    text-align: center;
-  }
-  .ec-divider {
-    width: 60px;
-    height: 0.5px;
-    background: var(--g4);
-  }
-  .ec-cta-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-  }
-  .ec-label {
-    font-size: 8px;
-    color: var(--g5);
-    letter-spacing: 0.22em;
-  }
-  .ec-options {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    width: 100%;
-  }
-  .ec-opt {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    background: var(--g1);
-    border: 0.5px solid var(--g4);
-    border-radius: 4px;
-  }
-  .ec-opt-key {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--amb);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    white-space: nowrap;
-    min-width: 80px;
-  }
-  .ec-opt-txt {
-    font-size: 10px;
-    color: var(--g6);
-  }
-  .ec-quick-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    width: 100%;
-  }
-  .ec-quick {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-    padding: 9px 12px;
-    background: var(--g1);
-    border: 0.5px solid var(--g4);
-    border-radius: 4px;
-    cursor: pointer;
-    text-align: left;
-    transition: border-color 0.12s, background 0.12s;
-  }
-  .ec-quick:hover {
-    border-color: var(--g4);
-    background: var(--g2);
-  }
-  .eq-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--g8);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-  }
-  .eq-sub {
-    font-size: 9px;
-    color: var(--g6);
   }
 
   /* Chart section */
@@ -1845,11 +1720,6 @@
     border: 0.5px solid var(--g4);
     border-radius: 999px;
   }
-  .ev-label {
-    font-size: 7.5px;
-    color: var(--g6);
-    letter-spacing: 0.14em;
-  }
   .ev-pos { font-size: 11px; color: var(--amb); font-weight: 700; }
   .ev-sep { font-size: 9px; color: var(--g4); }
   .ev-neg { font-size: 11px; color: var(--neg); font-weight: 700; }
@@ -1889,51 +1759,10 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .phase-markers {
-    display: flex;
-    gap: 0;
-    padding: 0 14px;
-    height: 26px;
-    border-bottom: 0.5px solid var(--g2);
-    flex-shrink: 0;
-    align-items: center;
-  }
-  .phase {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--g5);
-    padding: 0 12px;
-    border-right: 0.5px solid var(--g2);
-    height: 100%;
-    transition: color 0.1s;
-  }
-  .phase:first-child { padding-left: 0; }
-  .phase:last-child { border-right: none; }
-  .ph-n { font-size: 7.5px; color: var(--g5); letter-spacing: 0.1em; }
-  .ph-label { font-size: 8.5px; letter-spacing: 0.08em; }
-  .ph-dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--pos);
-    box-shadow: 0 0 6px var(--pos);
-    flex-shrink: 0;
-  }
-  .phase.active .ph-n   { color: var(--pos); }
-  .phase.active .ph-label { color: var(--pos); font-weight: 600; }
   .chart-live {
     flex: 1;
     min-height: 0;
     overflow: hidden;
-  }
-  .chart-loading {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--g4);
-    font-size: 11px;
   }
 
   /* PEEK bar */
@@ -1951,35 +1780,6 @@
     align-items: center;
     padding: 0 8px;
     border-left: 0.5px solid var(--g4);
-  }
-  /* W-0122-Phase3: Layout C details accordion */
-  .lc-ind-details {
-    margin: 6px 0;
-    border: 0.5px solid var(--g4);
-    border-radius: 3px;
-    padding: 0;
-  }
-  .lc-ind-details summary {
-    cursor: pointer;
-    padding: 4px 6px;
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--g5, rgba(255, 255, 255, 0.5));
-    list-style: none;
-  }
-  .lc-ind-details summary::marker,
-  .lc-ind-details summary::-webkit-details-marker {
-    display: none;
-  }
-  .lc-ind-details summary::before {
-    content: '▸';
-    display: inline-block;
-    margin-right: 4px;
-    transition: transform 120ms;
-  }
-  .lc-ind-details[open] summary::before {
-    transform: rotate(90deg);
   }
   .pb-tab {
     flex: 1;
@@ -2233,15 +2033,12 @@
     line-height: 1.7;
   }
   .narrative .bull { color: var(--pos); font-weight: 600; }
-  .narrative code {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--g9);
-    font-size: 11px;
-    padding: 0 3px;
-    background: var(--g2);
-    border-radius: 2px;
+  .analyze-warning-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
   }
-  .narrative strong { color: var(--g9); }
   .narrative .warn {
     color: var(--amb);
     background: var(--amb-dd);
@@ -2386,7 +2183,6 @@
     flex-shrink: 0; transition: all 0.1s;
   }
   .sc-open:hover { background: var(--g2); border-color: var(--g5); color: var(--g8); }
-  .scan-sort-label { font-size: 9px; color: var(--g5); letter-spacing: 0.14em; }
   .scan-sort-btn {
     font-size: 10px; color: var(--g8); font-weight: 500;
     padding: 3px 8px; background: var(--g2); border-radius: 3px; cursor: pointer;
@@ -2460,7 +2256,6 @@
   }
   .lvl-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); letter-spacing: 0.14em; }
   .lvl-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lvl-hint { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); }
   .rr-size-row { display: flex; gap: 6px; }
   .rr-box, .size-box {
     flex: 1; padding: 8px 10px; background: var(--g0);
@@ -2586,10 +2381,6 @@
     letter-spacing: 0.14em; margin-bottom: 8px;
   }
   .past-title { color: var(--amb); font-weight: 600; }
-  .past-sep { color: var(--g4); }
-  .past-win { color: var(--pos); }
-  .past-loss { color: var(--neg); }
-  .past-avg { color: var(--g6); letter-spacing: 0.04em; }
   .past-hint { font-size: 7.5px; color: var(--g5); letter-spacing: 0.04em; text-transform: none; }
   .past-cards { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
   .past-card {
@@ -2690,13 +2481,6 @@
     flex-direction: row;
     overflow: hidden;
     min-height: 0;
-  }
-  .lc-chart {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
   }
   /* merged layout: chart-section.lc-main = left pane (chart + peek) */
   .layout-c .chart-section.lc-main {
@@ -2838,7 +2622,6 @@
   .lcs-body { padding: 8px 12px; }
   .lcs-divider { height: 0.5px; background: var(--g3); flex-shrink: 0; }
   .prop-cell.compact { padding: 3px 0; }
-  .la-meta { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); letter-spacing: 0.04em; }
   .lcs-summary-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3026,32 +2809,6 @@
     gap: 8px;
   }
 
-  .mobile-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    flex: 1;
-    color: var(--g5);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    text-align: center;
-  }
-
-  .mobile-analyze-hint {
-    margin-top: 12px;
-    padding: 10px 14px;
-    border-radius: 4px;
-    background: var(--g2);
-    border: 0.5px solid var(--g4);
-    color: var(--g7);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    line-height: 1.6;
-    text-align: center;
-  }
-
   .mp-section {
     display: flex;
     flex-direction: column;
@@ -3120,23 +2877,6 @@
   .proposal-ai-cta:active { background: var(--brand-dd); }
   .pcta-icon { font-size: 11px; flex-shrink: 0; }
   .pcta-text { flex: 1; }
-
-  /* ── Proposal hint (desktop) ── */
-  .proposal-hint {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 12px;
-    background: var(--g2);
-    border: 0.5px dashed var(--g4);
-    border-radius: 4px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--g6);
-    margin-top: 4px;
-  }
-  .ph-icon { color: var(--brand); font-size: 10px; }
-  .ph-arrow { color: var(--brand); margin-left: auto; }
 
   /* ── JUDGE context header ── */
   .judge-ctx {

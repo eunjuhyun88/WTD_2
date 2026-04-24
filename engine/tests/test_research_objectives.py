@@ -11,6 +11,7 @@ from research.state_store import ResearchStateStore
 def _outcome(idx: int, *, outcome: str, model_version: str | None = None) -> PatternOutcome:
     return PatternOutcome(
         pattern_slug="tradoor-oi-reversal-v1",
+        pattern_version=1,
         symbol=f"SYM{idx}USDT",
         accumulation_at=datetime(2026, 4, 14, idx % 24, 0, tzinfo=timezone.utc),
         entry_price=100.0 + idx,
@@ -162,6 +163,7 @@ def test_derive_pattern_objective_detects_structural_scoring_drift(tmp_path) -> 
         ledger.save(
             PatternOutcome(
                 pattern_slug="tradoor-oi-reversal-v1",
+                pattern_version=1,
                 symbol=f"SYM{idx}USDT",
                 accumulation_at=datetime(2026, 4, 14, idx % 24, 0, tzinfo=timezone.utc),
                 entry_price=100.0 + idx,
@@ -206,6 +208,7 @@ def test_derive_pattern_objective_detects_incremental_scoring_drift(tmp_path) ->
         ledger.save(
             PatternOutcome(
                 pattern_slug="tradoor-oi-reversal-v1",
+                pattern_version=1,
                 symbol=f"SYM{idx}USDT",
                 accumulation_at=datetime(2026, 4, 14, idx % 24, 0, tzinfo=timezone.utc),
                 entry_price=100.0 + idx,

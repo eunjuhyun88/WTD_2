@@ -26,9 +26,14 @@ vi.mock('$lib/guardrails/runtime/toolPolicyConfig', () => ({
   }),
 }));
 
+vi.mock('$lib/server/quickTradeOpen', () => ({
+  openQuickTrade: vi.fn(),
+}));
+
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { evaluateRuntimeExecutionGate } from '$lib/guardrails/runtime/executionGate';
 import { evaluateShadowExecutionGovernance } from '$lib/guardrails/decision/shadowExecutionGate';
+import { openQuickTrade } from '$lib/server/quickTradeOpen';
 
 function mockEventRequest(body: Record<string, unknown>) {
   return new Request('http://localhost/api/terminal/intel-agent-shadow/execute', {
@@ -123,39 +128,45 @@ describe('/api/terminal/intel-agent-shadow/execute', () => {
       effectiveDecision: 'allow',
       result: { decision: 'allow', reasons: ['execution_gate_passed'], riskTier: 'high' },
     });
+    (openQuickTrade as any).mockResolvedValue({
+      id: 'qt-1',
+      userId: 'u-1',
+      pair: 'BTC/USDT',
+      dir: 'LONG',
+      entry: 100,
+      tp: null,
+      sl: null,
+      currentPrice: 100,
+      pnlPercent: 0,
+      status: 'open',
+      source: 'intel-shadow-agent',
+      note: 'shadow:fallback',
+      openedAt: 0,
+      closedAt: null,
+      closePnl: null,
+    });
 
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            data: {
-              pair: 'BTC/USDT',
-              timeframe: '4h',
-              shadow: {
-                source: 'fallback',
-                provider: null,
-                model: null,
-                enforced: { bias: 'long', wouldTrade: true, shouldExecute: true, reasons: ['ok'] },
-              },
-              policy: {
-                decision: { bias: 'long', blockers: [] },
-              },
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            pair: 'BTC/USDT',
+            timeframe: '4h',
+            shadow: {
+              source: 'fallback',
+              provider: null,
+              model: null,
+              enforced: { bias: 'long', wouldTrade: true, shouldExecute: true, reasons: ['ok'] },
             },
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            success: true,
-            trade: { id: 'qt-1' },
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        ),
-      );
+            policy: {
+              decision: { bias: 'long', blockers: [] },
+            },
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
 
     const res = await POST({
       cookies: {} as any,
@@ -167,6 +178,15 @@ describe('/api/terminal/intel-agent-shadow/execute', () => {
     expect(body.ok).toBe(true);
     expect(body.data.shadow.governance.effectiveDecision).toBe('allow');
     expect(body.data.trade.id).toBe('qt-1');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(openQuickTrade).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'u-1',
+        pair: 'BTC/USDT',
+        dir: 'LONG',
+        entry: 100,
+        source: 'intel-shadow-agent',
+      }),
+    );
   });
 });
-

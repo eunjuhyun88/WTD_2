@@ -36,7 +36,7 @@
     {/each}
   </div>
   <div class="mf-status">
-    <span class="dot" class:live />
+    <span class="dot" class:live></span>
     <span class="sym">{symCount}sym</span>
     <span class="sep">·</span>
     <span class="time">{currentTime}</span>

@@ -74,8 +74,15 @@ def _build_pattern_outcome(
     accumulation_at: datetime,
     window_hours: float,
 ) -> PatternOutcome:
+    definition_ref = capture.definition_ref or build_definition_ref(
+        capture.pattern_slug,
+        pattern_version=capture.pattern_version,
+    )
     return PatternOutcome(
         pattern_slug=capture.pattern_slug or "unknown",
+        pattern_version=capture.pattern_version,
+        definition_id=capture.definition_id or definition_id_from_ref(definition_ref),
+        definition_ref=definition_ref,
         symbol=capture.symbol,
         user_id=capture.user_id,
         accumulation_at=accumulation_at,

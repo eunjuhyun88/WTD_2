@@ -5,7 +5,8 @@ from dataclasses import asdict, dataclass
 from math import isnan
 
 from ledger.dataset import summarize_pattern_dataset
-from ledger.store import LedgerStore, get_ledger_store
+from ledger.store import LedgerStore, get_ledger_store, list_outcomes_for_definition
+from patterns.definitions import current_definition_id
 from patterns.model_registry import MODEL_REGISTRY_STORE
 from research.state_store import ResearchStateStore
 from scoring.lightgbm_engine import MIN_TRAIN_RECORDS
@@ -36,7 +37,13 @@ def derive_pattern_research_objective(
 ) -> PatternResearchObjective:
     ledger_store = ledger_store or get_ledger_store()
     state_store = state_store or ResearchStateStore()
-    summary = summarize_pattern_dataset(ledger_store.list_all(pattern_slug))
+    summary = summarize_pattern_dataset(
+        list_outcomes_for_definition(
+            ledger_store,
+            pattern_slug,
+            definition_id=current_definition_id(pattern_slug),
+        )
+    )
     summary_dict = summary.to_dict()
     history_summary = _build_history_summary(pattern_slug, state_store)
     baseline_ref_hint = _derive_baseline_ref_hint(pattern_slug)
@@ -245,7 +252,13 @@ def _build_history_summary(pattern_slug: str, state_store: ResearchStateStore) -
 
 
 def _derive_baseline_ref_hint(pattern_slug: str) -> str:
-    preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
+    definition_id = current_definition_id(pattern_slug)
+    preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+        pattern_slug,
+        definition_id=definition_id,
+    )
+    if preferred is None and definition_id is not None:
+        preferred = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
     if preferred is None:
         return "pattern-shadow:rule-first"
     return f"model:{preferred.model_key}:{preferred.model_version}:{preferred.rollout_state}"

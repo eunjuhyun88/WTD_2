@@ -27,19 +27,29 @@ Verdict Inbox (W-0088 Phase C, flywheel axis 3):
 from __future__ import annotations
 
 import asyncio
+from dataclasses import asdict, replace
 import logging
 import time
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
-
-log = logging.getLogger("engine.captures")
+from pydantic import BaseModel, Field, model_validator
 
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureKind, CaptureRecord
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, get_ledger_store, validate_pattern_slug
 from patterns.state_store import PatternStateStore
+from research.manual_hypothesis_pack_builder import (
+    ManualHypothesisBenchmarkPackError,
+    build_manual_hypothesis_benchmark_pack_draft,
+)
+from research.pattern_search import (
+    BenchmarkPackStore,
+    PatternBenchmarkSearchConfig,
+    PatternSearchArtifactStore,
+    run_pattern_benchmark_search,
+)
+from research.query_transformer import transform_pattern_draft
 
 log = logging.getLogger("engine.captures")
 
@@ -47,6 +57,8 @@ router = APIRouter()
 _capture_store = CaptureStore()
 _state_store = PatternStateStore()
 _ledger_store = get_ledger_store()
+_benchmark_pack_store = BenchmarkPackStore()
+_pattern_search_artifact_store = PatternSearchArtifactStore()
 
 # Literal alias documents the accepted values and lets pydantic validate.
 VerdictLabel = Literal["valid", "invalid", "missed"]
@@ -64,6 +76,109 @@ def _status_for_kind(kind: CaptureKind) -> str:
     return "closed"
 
 
+class ResearchSourceBody(BaseModel):
+    kind: Literal["telegram_post", "chart_image", "manual_note", "terminal_capture"]
+    author: str | None = None
+    title: str | None = None
+    text: str | None = None
+    image_refs: list[str] = Field(default_factory=list, max_length=12)
+
+
+class ResearchPhaseAnnotationBody(BaseModel):
+    phase_id: str
+    label: str
+    timeframe: str
+    start_ts: int | None = None
+    end_ts: int | None = None
+    signals_required: list[str] = Field(default_factory=list, max_length=24)
+    signals_preferred: list[str] = Field(default_factory=list, max_length=24)
+    signals_forbidden: list[str] = Field(default_factory=list, max_length=24)
+    note: str | None = None
+
+
+class ResearchEntrySpecBody(BaseModel):
+    entry_phase_id: str
+    entry_trigger: str | None = None
+    stop_rule: str | None = None
+    target_rule: str | None = None
+
+
+class ResearchOutcomeSpecBody(BaseModel):
+    confirm_breakout_within_bars: int | None = None
+    min_forward_return_pct: float | None = None
+    stretch_return_pct: float | None = None
+
+
+class PatternDraftPhaseBody(BaseModel):
+    phase_id: str
+    label: str
+    sequence_order: int = Field(default=0, ge=0)
+    description: str = ""
+    timeframe: str | None = None
+    signals_required: list[str] = Field(default_factory=list, max_length=24)
+    signals_preferred: list[str] = Field(default_factory=list, max_length=24)
+    signals_forbidden: list[str] = Field(default_factory=list, max_length=24)
+    directional_belief: str | None = None
+    evidence_text: str | None = None
+    time_hint: str | None = None
+    importance: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class PatternDraftSearchHintsBody(BaseModel):
+    must_have_signals: list[str] = Field(default_factory=list, max_length=24)
+    preferred_timeframes: list[str] = Field(default_factory=list, max_length=8)
+    exclude_patterns: list[str] = Field(default_factory=list, max_length=24)
+    similarity_focus: list[str] = Field(default_factory=list, max_length=12)
+    symbol_scope: list[str] = Field(default_factory=list, max_length=32)
+
+
+class PatternDraftBody(BaseModel):
+    schema_version: int = Field(default=1, ge=1)
+    pattern_family: str
+    pattern_label: str | None = None
+    source_type: str
+    source_text: str
+    symbol_candidates: list[str] = Field(default_factory=list, max_length=16)
+    timeframe: str | None = None
+    thesis: list[str] = Field(default_factory=list, max_length=12)
+    phases: list[PatternDraftPhaseBody] = Field(default_factory=list, max_length=12)
+    trade_plan: dict[str, Any] = Field(default_factory=dict)
+    search_hints: PatternDraftSearchHintsBody = Field(default_factory=PatternDraftSearchHintsBody)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    ambiguities: list[str] = Field(default_factory=list, max_length=16)
+
+
+class ParserMetaBody(BaseModel):
+    parser_role: str
+    parser_model: str
+    parser_prompt_version: str
+    pattern_draft_schema_version: int = Field(default=1, ge=1)
+    signal_vocab_version: str
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    ambiguity_count: int = Field(default=0, ge=0)
+
+
+class ResearchContextBody(BaseModel):
+    source: ResearchSourceBody | None = None
+    pattern_family: str | None = None
+    thesis: list[str] = Field(default_factory=list, max_length=12)
+    phase_annotations: list[ResearchPhaseAnnotationBody] = Field(default_factory=list, max_length=12)
+    entry_spec: ResearchEntrySpecBody | None = None
+    outcome_spec: ResearchOutcomeSpecBody | None = None
+    research_tags: list[str] = Field(default_factory=list, max_length=24)
+    pattern_draft: PatternDraftBody | None = None
+    parser_meta: ParserMetaBody | None = None
+
+    @model_validator(mode="after")
+    def validate_pattern_family(self) -> "ResearchContextBody":
+        draft_family = self.pattern_draft.pattern_family if self.pattern_draft is not None else None
+        if not self.pattern_family and not draft_family:
+            raise ValueError("research_context requires pattern_family or pattern_draft.pattern_family")
+        if self.pattern_family and draft_family and self.pattern_family != draft_family:
+            raise ValueError("research_context pattern_family must match pattern_draft.pattern_family")
+        return self
+
+
 class CaptureCreateBody(BaseModel):
     capture_kind: CaptureKind = "pattern_candidate"
     user_id: str | None = None
@@ -77,6 +192,7 @@ class CaptureCreateBody(BaseModel):
     scan_id: str | None = None
     user_note: str | None = None
     chart_context: dict[str, Any] = Field(default_factory=dict)
+    research_context: ResearchContextBody | None = None
     feature_snapshot: dict[str, Any] | None = None
     block_scores: dict[str, Any] = Field(default_factory=dict)
 
@@ -131,6 +247,93 @@ def _validate_transition(body: CaptureCreateBody) -> tuple[dict[str, Any] | None
     }
 
 
+def _normalize_research_context(
+    research_context: ResearchContextBody | None,
+    *,
+    default_timeframe: str,
+) -> dict[str, Any] | None:
+    if research_context is None:
+        return None
+    payload = research_context.model_dump(mode="python", exclude_none=True)
+    pattern_draft = payload.get("pattern_draft")
+    if not isinstance(pattern_draft, dict):
+        return payload
+
+    if not payload.get("pattern_family") and isinstance(pattern_draft.get("pattern_family"), str):
+        payload["pattern_family"] = pattern_draft["pattern_family"]
+
+    if payload.get("source") is None:
+        source_type = pattern_draft.get("source_type")
+        if isinstance(source_type, str) and source_type:
+            payload["source"] = {
+                "kind": source_type,
+                "text": pattern_draft.get("source_text") if isinstance(pattern_draft.get("source_text"), str) else None,
+            }
+
+    if not payload.get("thesis") and isinstance(pattern_draft.get("thesis"), list):
+        payload["thesis"] = [item for item in pattern_draft["thesis"] if isinstance(item, str)][:12]
+
+    if not payload.get("phase_annotations") and isinstance(pattern_draft.get("phases"), list):
+        draft_timeframe = pattern_draft.get("timeframe")
+        projected_timeframe = (
+            draft_timeframe if isinstance(draft_timeframe, str) and draft_timeframe else default_timeframe
+        )
+        payload["phase_annotations"] = [
+            {
+                "phase_id": phase.get("phase_id"),
+                "label": phase.get("label"),
+                "timeframe": (
+                    phase.get("timeframe")
+                    if isinstance(phase.get("timeframe"), str) and phase.get("timeframe")
+                    else projected_timeframe
+                ),
+                "signals_required": [
+                    item for item in phase.get("signals_required", []) if isinstance(item, str)
+                ][:24],
+                "signals_preferred": [
+                    item for item in phase.get("signals_preferred", []) if isinstance(item, str)
+                ][:24],
+                "signals_forbidden": [
+                    item for item in phase.get("signals_forbidden", []) if isinstance(item, str)
+                ][:24],
+                "note": phase.get("evidence_text") if isinstance(phase.get("evidence_text"), str) else None,
+            }
+            for phase in pattern_draft["phases"]
+            if isinstance(phase, dict)
+            and isinstance(phase.get("phase_id"), str)
+            and isinstance(phase.get("label"), str)
+        ]
+
+    if payload.get("entry_spec") is None:
+        trade_plan = pattern_draft.get("trade_plan")
+        if isinstance(trade_plan, dict):
+            entry_phase = trade_plan.get("entry_phase")
+            if isinstance(entry_phase, str) and entry_phase:
+                entry_trigger = trade_plan.get("entry_trigger")
+                if isinstance(entry_trigger, list):
+                    entry_trigger = ", ".join(
+                        item for item in entry_trigger if isinstance(item, str) and item
+                    ) or None
+                payload["entry_spec"] = {
+                    "entry_phase_id": entry_phase,
+                    "entry_trigger": (
+                        entry_trigger if isinstance(entry_trigger, str) and entry_trigger else None
+                    ),
+                    "stop_rule": (
+                        trade_plan.get("stop_rule")
+                        if isinstance(trade_plan.get("stop_rule"), str)
+                        else None
+                    ),
+                    "target_rule": (
+                        trade_plan.get("target_rule")
+                        if isinstance(trade_plan.get("target_rule"), str)
+                        else None
+                    ),
+                }
+
+    return payload
+
+
 @router.post("")
 async def create_capture(body: CaptureCreateBody) -> dict:
     """Create a canonical capture record from Save Setup."""
@@ -154,6 +357,7 @@ async def create_capture(body: CaptureCreateBody) -> dict:
         scan_id=body.scan_id or transition_defaults.get("scan_id"),
         user_note=body.user_note,
         chart_context=body.chart_context,
+        research_context=_normalize_research_context(body.research_context, default_timeframe=body.timeframe),
         feature_snapshot=body.feature_snapshot if body.feature_snapshot is not None else transition_snapshot,
         block_scores=body.block_scores or transition_defaults.get("block_scores", {}),
         status=_status_for_kind(body.capture_kind),
@@ -177,6 +381,7 @@ class BulkImportRow(BaseModel):
     pattern_slug: str = ""
     phase: str = ""
     user_note: str | None = None
+    research_context: ResearchContextBody | None = None
     entry_price: float | None = Field(
         default=None,
         description="Optional hint. Resolver derives entry_price from OHLCV regardless.",
@@ -216,6 +421,7 @@ async def bulk_import_captures(body: BulkImportBody) -> dict:
             captured_at_ms=row.captured_at_ms,
             user_note=row.user_note,
             chart_context=chart_context,
+            research_context=_normalize_research_context(row.research_context, default_timeframe=row.timeframe),
             status="pending_outcome",
         )
         _capture_store.save(record)
@@ -306,6 +512,11 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
             detail=f"Linked outcome {capture.outcome_id} missing for capture {capture_id}",
         )
 
+    if outcome.definition_id is None and capture.definition_id is not None:
+        outcome.pattern_version = outcome.pattern_version or capture.pattern_version
+        outcome.definition_id = capture.definition_id
+        outcome.definition_ref = dict(capture.definition_ref or {})
+
     outcome.user_verdict = body.verdict  # type: ignore[assignment]
     if body.user_note is not None:
         outcome.user_note = body.user_note
@@ -328,6 +539,120 @@ async def set_capture_verdict(capture_id: str, body: _VerdictBody) -> dict:
 
 # ── Chart annotations (TradingView overlay feed) ────────────────────────────
 # NOTE: must be registered BEFORE /{capture_id} to avoid route collision.
+
+
+class CaptureBenchmarkSearchBody(BaseModel):
+    candidate_timeframes: list[str] | None = Field(default=None, max_length=6)
+    warmup_bars: int = Field(default=240, ge=24, le=5000)
+    min_reference_score: float = Field(default=0.55, ge=0.0, le=1.0)
+    min_holdout_score: float = Field(default=0.35, ge=0.0, le=1.0)
+
+
+def _dedupe_timeframes(values: list[str] | None) -> list[str] | None:
+    if values is None:
+        return None
+    deduped: list[str] = []
+    for value in values:
+        if value and value not in deduped:
+            deduped.append(value)
+    return deduped or None
+
+
+def _build_and_save_capture_benchmark_pack(
+    capture: CaptureRecord,
+    *,
+    candidate_timeframes: list[str] | None = None,
+):
+    pack = build_manual_hypothesis_benchmark_pack_draft(capture)
+    normalized_timeframes = _dedupe_timeframes(candidate_timeframes)
+    if normalized_timeframes is not None:
+        pack = replace(pack, candidate_timeframes=normalized_timeframes)
+    saved_path = _benchmark_pack_store.save(pack)
+    return pack, saved_path
+
+
+def _build_capture_search_query_spec(capture: CaptureRecord) -> dict[str, Any] | None:
+    research_context = capture.research_context or {}
+    pattern_draft = research_context.get("pattern_draft")
+    if not isinstance(pattern_draft, dict):
+        return None
+    try:
+        return transform_pattern_draft(pattern_draft).to_dict()
+    except ValueError as exc:
+        log.warning(
+            "capture benchmark_search skipped invalid pattern_draft search_query_spec "
+            "capture_id=%s reason=%s",
+            capture.capture_id,
+            exc,
+        )
+        return None
+
+
+@router.post("/{capture_id}/benchmark_pack_draft")
+async def create_capture_benchmark_pack_draft(
+    capture_id: str,
+    body: CaptureBenchmarkSearchBody | None = None,
+) -> dict:
+    capture = _capture_store.load(capture_id)
+    if capture is None:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    try:
+        pack, saved_path = await asyncio.to_thread(
+            _build_and_save_capture_benchmark_pack,
+            capture,
+            candidate_timeframes=body.candidate_timeframes if body is not None else None,
+        )
+    except ManualHypothesisBenchmarkPackError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {
+        "ok": True,
+        "source_capture_id": capture_id,
+        "benchmark_pack": pack.to_dict(),
+        "saved_path": str(saved_path),
+    }
+
+
+@router.post("/{capture_id}/benchmark_search")
+async def create_capture_benchmark_search(
+    capture_id: str,
+    body: CaptureBenchmarkSearchBody | None = None,
+) -> dict:
+    capture = _capture_store.load(capture_id)
+    if capture is None:
+        raise HTTPException(status_code=404, detail=f"Capture not found: {capture_id}")
+    try:
+        pack, saved_path = await asyncio.to_thread(
+            _build_and_save_capture_benchmark_pack,
+            capture,
+            candidate_timeframes=body.candidate_timeframes if body is not None else None,
+        )
+    except ManualHypothesisBenchmarkPackError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    config = PatternBenchmarkSearchConfig(
+        pattern_slug=pack.pattern_slug,
+        benchmark_pack_id=pack.benchmark_pack_id,
+        search_query_spec=_build_capture_search_query_spec(capture),
+        warmup_bars=body.warmup_bars if body is not None else 240,
+        min_reference_score=body.min_reference_score if body is not None else 0.55,
+        min_holdout_score=body.min_holdout_score if body is not None else 0.35,
+    )
+    run = await asyncio.to_thread(
+        run_pattern_benchmark_search,
+        config,
+        pack_store=_benchmark_pack_store,
+        artifact_store=_pattern_search_artifact_store,
+    )
+    artifact = await asyncio.to_thread(_pattern_search_artifact_store.load, run.research_run_id)
+    return {
+        "ok": True,
+        "source_capture_id": capture_id,
+        "benchmark_pack": pack.to_dict(),
+        "saved_path": str(saved_path),
+        "research_run": asdict(run),
+        "artifact": artifact,
+    }
 
 @router.get("/chart-annotations")
 async def get_chart_annotations(

@@ -72,6 +72,13 @@
     if (e.key === 'Enter' && savingAs) commitSave();
   }
 
+  function onItemKeyDown(event: KeyboardEvent, name: string) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      pick(name);
+    }
+  }
+
   $effect(() => {
     if (open) {
       document.addEventListener('click', onDocClick);
@@ -102,12 +109,14 @@
     <div class="wsp-menu" role="menu">
       <div class="wsp-header">WORKSPACE PRESETS</div>
       {#each $presets as p}
-        <button
+        <div
           class="wsp-item"
           class:active={$activePresetName === p.name}
           onclick={() => pick(p.name)}
           role="menuitemradio"
           aria-checked={$activePresetName === p.name}
+          tabindex="0"
+          onkeydown={(event) => onItemKeyDown(event, p.name)}
         >
           <span class="wsp-marker" aria-hidden="true">{$activePresetName === p.name ? '●' : '○'}</span>
           <span class="wsp-name">{p.name}</span>
@@ -116,7 +125,7 @@
           {:else}
             <button class="wsp-del" onclick={(e) => del(e, p.name)} aria-label="Delete {p.name}">✕</button>
           {/if}
-        </button>
+        </div>
       {/each}
 
       <div class="wsp-sep"></div>

@@ -59,7 +59,7 @@
 
 <svelte:window onkeydown={onKeyDown} />
 
-<div class="overlay" onclick={onClose} role="presentation" />
+<div class="overlay" onclick={onClose} role="presentation"></div>
 
 <div class="sheet" role="dialog" aria-label="Indicator settings" aria-modal="true">
   <div class="sheet-header">
@@ -83,7 +83,7 @@
               aria-pressed={active}
               title={def.description ?? def.label}
             >
-              <span class="ind-dot" />
+              <span class="ind-dot"></span>
               <span class="ind-label">{def.label ?? def.id}</span>
               {#if def.unit}
                 <span class="ind-unit">{def.unit}</span>

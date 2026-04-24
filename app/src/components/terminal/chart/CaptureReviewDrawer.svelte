@@ -85,10 +85,10 @@
       onclick={() => onClose?.()}
       aria-label="Close capture review"
       tabindex="0"
-    />
+    ></button>
   {/if}
 
-  <aside
+  <div
     class="drawer"
     class:drawer--sheet={variant === 'sheet'}
     class:drawer--inline={variant === 'inline'}
@@ -164,7 +164,7 @@
             placeholder="Optional note…"
             bind:value={verdictNote}
             rows="2"
-          />
+          ></textarea>
           <div class="verdict-buttons">
             <button
               class="verdict-btn valid"
@@ -188,7 +188,7 @@
       <!-- Capture ID (for debugging) -->
       <div class="capture-id">ID: {annotation.capture_id.slice(0, 8)}…</div>
     </div>
-  </aside>
+  </div>
 {/if}
 
 <style>

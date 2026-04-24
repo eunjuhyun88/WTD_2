@@ -48,6 +48,7 @@ class _RegisterPatternBody(BaseModel):
 
 class _PatternTrainBody(BaseModel):
     user_id: str | None = None
+    definition_id: str | None = None
     target_name: str = "breakout"
     feature_schema_version: int = 1
     label_policy_version: int = 1
@@ -56,6 +57,7 @@ class _PatternTrainBody(BaseModel):
 
 
 class _PromotePatternModelBody(BaseModel):
+    definition_id: str | None = None
     model_key: str
     model_version: str
     threshold_policy_version: int = 1
@@ -126,9 +128,15 @@ async def trigger_pattern_scan(background_tasks: BackgroundTasks) -> dict:
 # ── Bulk read (static paths before parameterised routes) ────────────────────
 
 @router.get("/stats/all")
-async def get_all_stats() -> dict:
+async def get_all_stats(
+    definition_scope: str = Query(default="current_definition"),
+) -> dict:
     """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
-    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
+    return await asyncio.to_thread(
+        patterns_thread.get_all_stats_sync,
+        _ledger,
+        definition_scope=definition_scope,
+    )
 
 
 # ── Per-pattern endpoints ────────────────────────────────────────────────────
@@ -140,21 +148,47 @@ async def get_candidates(slug: str) -> dict:
 
 
 @router.get("/stats/all")
-async def get_all_stats() -> dict:
+async def get_all_stats(
+    definition_scope: str = Query(default="current_definition"),
+) -> dict:
     """Bulk ledger stats for all patterns — avoids N+1 fan-out from callers."""
-    return await asyncio.to_thread(patterns_thread.get_all_stats_sync, _ledger)
+    return await asyncio.to_thread(
+        patterns_thread.get_all_stats_sync,
+        _ledger,
+        definition_scope=definition_scope,
+    )
 
 
 @router.get("/{slug}/stats")
-async def get_stats(slug: str) -> dict:
+async def get_stats(
+    slug: str,
+    definition_id: str | None = None,
+    definition_scope: str = Query(default="current_definition"),
+) -> dict:
     """Ledger statistics for a pattern. v3: includes ML shadow readiness."""
-    return await asyncio.to_thread(patterns_thread.get_stats_sync, slug, _ledger)
+    return await asyncio.to_thread(
+        patterns_thread.get_stats_sync,
+        slug,
+        _ledger,
+        definition_id=definition_id,
+        definition_scope=definition_scope,
+    )
 
 
 @router.get("/{slug}/training-records")
-async def get_training_records(slug: str, limit: int = Query(default=25, ge=1, le=200)) -> dict:
+async def get_training_records(
+    slug: str,
+    limit: int = Query(default=25, ge=1, le=200),
+    definition_id: str | None = None,
+) -> dict:
     """Preview canonical training rows derived from the ledger."""
-    return await asyncio.to_thread(patterns_thread.get_training_records_sync, slug, limit, _ledger)
+    return await asyncio.to_thread(
+        patterns_thread.get_training_records_sync,
+        slug,
+        limit,
+        _ledger,
+        definition_id=definition_id,
+    )
 
 
 @router.get("/{slug}/alert-policy")
@@ -182,9 +216,30 @@ async def set_alert_policy(slug: str, body: _PatternAlertPolicyBody) -> dict:
 
 
 @router.get("/{slug}/model-registry")
-async def get_model_registry(slug: str) -> dict:
+async def get_model_registry(slug: str, definition_id: str | None = None) -> dict:
     """Return the current registry snapshot for a pattern."""
-    return await asyncio.to_thread(patterns_thread.get_model_registry_sync, slug)
+    return await asyncio.to_thread(
+        patterns_thread.get_model_registry_sync,
+        slug,
+        definition_id=definition_id,
+    )
+
+
+@router.get("/{slug}/model-history")
+async def get_model_history(
+    slug: str,
+    limit: int = Query(default=25, ge=1, le=200),
+    definition_id: str | None = None,
+    record_type: str | None = None,
+) -> dict:
+    """Return training/model ledger history for a pattern."""
+    return await asyncio.to_thread(
+        patterns_thread.get_model_history_sync,
+        slug,
+        limit=limit,
+        definition_id=definition_id,
+        record_type=record_type,
+    )
 
 
 @router.get("/{slug}/library")
@@ -199,7 +254,7 @@ async def get_pattern_def(slug: str) -> dict:
 async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
     """Set user_verdict on the most recent outcome for (slug, symbol)."""
     try:
-        get_pattern(slug)
+        pattern = get_pattern(slug)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
 
@@ -213,6 +268,8 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
     if not matching:
         new_outcome = PatternOutcome(
             pattern_slug=slug,
+            pattern_version=pattern.version,
+            definition_ref=patterns_thread._resolve_definition_ref(slug),
             symbol=body.symbol,
             user_verdict=body.verdict,  # type: ignore[arg-type]
         )
@@ -221,6 +278,9 @@ async def set_user_verdict(slug: str, body: _VerdictBody) -> dict:
         return {"ok": True, "created": True, "outcome_id": new_outcome.id}
 
     outcome = matching[0]
+    if outcome.definition_id is None and outcome.definition_ref is None:
+        outcome.pattern_version = outcome.pattern_version or pattern.version
+        outcome.definition_ref = patterns_thread._resolve_definition_ref(slug)
     outcome.user_verdict = body.verdict  # type: ignore[assignment]
     _ledger.save(outcome)
     LEDGER_RECORD_STORE.append_verdict_record(outcome)
@@ -237,7 +297,7 @@ async def record_capture(slug: str, body: _CaptureBody) -> dict:
     so the full chain capture_id → transition_id → outcome_id → verdict is traceable.
     """
     try:
-        get_pattern(slug)
+        pattern = get_pattern(slug)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Pattern not found: {slug}") from None
 
@@ -246,6 +306,8 @@ async def record_capture(slug: str, body: _CaptureBody) -> dict:
         user_id=body.user_id,
         symbol=body.symbol,
         pattern_slug=slug,
+        pattern_version=pattern.version,
+        definition_ref=patterns_thread._resolve_definition_ref(slug),
         phase=body.phase,
         timeframe=body.timeframe,
         candidate_transition_id=body.candidate_transition_id,
@@ -293,6 +355,7 @@ async def promote_pattern_model(slug: str, body: _PromotePatternModelBody) -> di
     return await asyncio.to_thread(
         patterns_thread.promote_pattern_model_sync,
         slug,
+        body.definition_id,
         body.model_key,
         body.model_version,
         body.threshold_policy_version,

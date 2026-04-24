@@ -408,3 +408,67 @@ export type {
 	MemorySnapshotDiffRequest,
 	MemorySnapshotDiffResponse
 } from './terminalMemory';
+
+// Terminal data-engine plane contracts — Phase 0 skeleton
+export type {
+	FactPlaneState,
+	FactSourceState,
+	CompactConfluenceSummary,
+	ReferenceHealthSummary,
+	FactSnapshot
+} from './facts/factSnapshot';
+export type { ReferenceStackSnapshot, ReferenceStackSource } from './facts/referenceStack';
+export type { ChainIntelSnapshot } from './facts/chainIntel';
+export type { MarketCapSnapshot } from './facts/marketCap';
+export type { ConfluenceContribution, ConfluenceResult } from './facts/confluence';
+export type {
+	IndicatorCatalogStatus,
+	IndicatorCatalogEntry,
+	IndicatorCatalogResponse
+} from './facts/indicatorCatalog';
+export type { SearchPlaneState, SearchCandidate, ScanRequest, ScanResult } from './search/scan';
+export type {
+	SearchQueryNumericBounds,
+	SearchQueryPhase,
+	SearchQueryTransformerMeta,
+	SearchQuerySpec
+} from './search/querySpec';
+export type {
+	SeedSearchRequest,
+	SeedSearchCandidate,
+	SeedSearchResult
+} from './search/seedSearch';
+export type {
+	SearchCorpusWindowSummary,
+	SearchCorpusCatalogResponse,
+	PatternCatalogEntry,
+	PatternCatalogResponse
+} from './search/catalog';
+export type {
+	AgentContextEvidence,
+	AgentContextCompareItem,
+	AgentContextRuntimeCaptureSummary,
+	AgentContextRuntimeSummary,
+	AgentContextPack
+} from './agent/agentContext';
+export type {
+	RuntimePlaneState,
+	CaptureRecord,
+	RuntimeCaptureResponse,
+	RuntimeCaptureListResponse
+} from './runtime/captures';
+export type {
+	WorkspacePin,
+	WorkspaceStateRecord,
+	RuntimeWorkspaceStateResponse
+} from './runtime/workspaceState';
+export type {
+	ResearchContextRecord,
+	RuntimeResearchContextResponse
+} from './runtime/researchContext';
+export type { LedgerRecord, RuntimeLedgerResponse, RuntimeLedgerListResponse } from './runtime/ledger';
+export type {
+	WorkspaceBundleSection,
+	WorkspaceCompareSlot,
+	WorkspaceBundle
+} from './surface/workspaceBundle';

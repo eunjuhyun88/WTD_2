@@ -47,6 +47,7 @@ UI 는 `archetype` 만 보고 렌더러를 선택하면 됨.
 
 export type IndicatorFamily =
   | 'PriceAction' | 'OI' | 'Funding' | 'CVD' | 'Volume'
+  | 'OnChain' | 'DeFi' | 'Sentiment'
   | 'Orderbook' | 'Liquidations' | 'Premium' | 'SmartMoney'
   | 'COT' | 'Volatility' | 'MovingAverage' | 'Structure'
   | 'RelativeStrength' | 'Options' | 'Netflow' | 'Social';
@@ -79,7 +80,8 @@ export interface IndicatorDef {
   /** 데이터 소스 */
   source: {
     provider: 'binance' | 'bybit' | 'okx' | 'deribit' | 'coinbase'
-            | 'coinalyze' | 'arkham' | 'glassnode' | 'lunarcrush'
+            | 'coinalyze' | 'arkham' | 'coinmetrics' | 'defillama'
+            | 'dune' | 'alternative_me' | 'glassnode' | 'lunarcrush'
             | 'cftc' | 'onchain' | 'derived';
     endpoint?: string;
     stream?: string;

@@ -8,10 +8,14 @@
   import AdapterDiffPanel from '../../components/dashboard/AdapterDiffPanel.svelte';
   import type { CaptureRow, FlywheelHealth } from './+page.server';
 
-  const { data } = $props();
+  let { data } = $props();
+  const sourcePendingVerdicts = $derived(data.pendingVerdicts ?? []);
+  const flywheel = $derived(data.flywheelHealth as FlywheelHealth | null);
 
-  let pendingVerdicts = $state<CaptureRow[]>(data.pendingVerdicts ?? []);
-  const flywheel = data.flywheelHealth as FlywheelHealth | null;
+  let pendingVerdicts = $state<CaptureRow[]>([]);
+  $effect(() => {
+    pendingVerdicts = [...sourcePendingVerdicts];
+  });
 
   // Gate specs — 6 business gate KPIs (fmtPct defined below alongside other fmt helpers)
   const GATE_SPECS = [

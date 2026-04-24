@@ -173,6 +173,20 @@ def test_pattern_scan_job_dedupes_repeated_entry_candidate_summaries(monkeypatch
     assert summaries[0]["entry_candidates"] == {"tradoor-oi-reversal-v1": ["BTCUSDT"]}
 
 
+def test_search_corpus_refresh_scheduler_wrapper(monkeypatch) -> None:
+    calls: list[str] = []
+
+    async def fake_search_corpus_refresh_job(*, universe_name: str) -> dict:
+        calls.append(universe_name)
+        return {"ok": True}
+
+    monkeypatch.setattr(scheduler, "search_corpus_refresh_job", fake_search_corpus_refresh_job)
+
+    asyncio.run(scheduler._search_corpus_refresh_job())
+
+    assert calls == [scheduler.UNIVERSE_NAME]
+
+
 def test_validate_scheduler_secrets_rejects_missing_service_role(monkeypatch) -> None:
     monkeypatch.setattr(scheduler, "SUPABASE_URL", "https://project.supabase.co")
     monkeypatch.setattr(scheduler, "SUPABASE_ROLE_KEY", "")
@@ -187,3 +201,21 @@ def test_validate_scheduler_secrets_rejects_placeholder_values(monkeypatch) -> N
 
     with pytest.raises(RuntimeError, match="placeholder"):
         scheduler.validate_scheduler_secrets()
+
+
+def test_market_search_index_refresh_job_runs_refresh(monkeypatch) -> None:
+    seen: list[tuple[int, str]] = []
+
+    class _Result:
+        row_count = 123
+        refreshed_at = "2026-04-24T00:00:00+00:00"
+
+    def fake_refresh():
+        seen.append((_Result.row_count, _Result.refreshed_at))
+        return _Result()
+
+    monkeypatch.setattr(scheduler, "refresh_market_search_index", fake_refresh)
+
+    asyncio.run(scheduler._market_search_index_refresh_job())
+
+    assert seen == [(123, "2026-04-24T00:00:00+00:00")]

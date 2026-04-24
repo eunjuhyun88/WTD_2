@@ -2168,8 +2168,15 @@ def test_run_pattern_benchmark_search_records_run_and_artifact(tmp_path, monkeyp
     run = run_pattern_benchmark_search(
         PatternBenchmarkSearchConfig(
             pattern_slug="tradoor-oi-reversal-v1",
+            definition_id="tradoor-oi-reversal-v1:v1",
             benchmark_pack_id="pack-2",
             variants=variants,
+            search_query_spec={
+                "schema_version": 1,
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "reference_timeframe": "1h",
+                "phase_path": ["REAL_DUMP", "ACCUMULATION"],
+            },
             min_reference_score=0.6,
             min_holdout_score=0.3,
         ),
@@ -2182,20 +2189,30 @@ def test_run_pattern_benchmark_search_records_run_and_artifact(tmp_path, monkeyp
     assert run.status == "completed"
     assert run.completion_disposition == "no_op"
     assert run.winner_variant_ref == "tradoor-oi-reversal-v1__winner"
+    assert run.definition_ref["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert run.search_policy["family_selection_policy"]["policy_id"] == "family-selection-v1"
+    assert run.handoff_payload["definition_ref"]["pattern_slug"] == "tradoor-oi-reversal-v1"
     assert run.handoff_payload["active_family_key"] == "tradoor-oi-reversal-v1__winner"
     assert run.handoff_payload["active_family_type"] == "manual"
     assert run.handoff_payload["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__winner"
     assert run.handoff_payload["family_policy_id"] == "family-selection-v1"
     artifact = artifact_store.load(run.research_run_id)
     assert artifact is not None
+    assert artifact["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert artifact["winner_variant_slug"] == "tradoor-oi-reversal-v1__winner"
+    assert artifact["search_query_spec"] == {
+        "schema_version": 1,
+        "pattern_family": "tradoor_ptb_oi_reversal",
+        "reference_timeframe": "1h",
+        "phase_path": ["REAL_DUMP", "ACCUMULATION"],
+    }
     assert artifact["family_policy"]["policy_id"] == "family-selection-v1"
     assert artifact["active_family_key"] == "tradoor-oi-reversal-v1__winner"
     assert artifact["active_family_type"] == "manual"
     decision = controller.store.get_selection_decision(run.research_run_id)
     assert decision is not None
     assert decision.decision_kind == "advance"
+    assert decision.metrics["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert decision.metrics["active_family_key"] == "tradoor-oi-reversal-v1__winner"
     assert decision.metrics["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__winner"
     assert decision.metrics["family_policy_id"] == "family-selection-v1"
@@ -3442,4 +3459,3 @@ def test_evaluate_variant_on_case_populates_realistic_return_fields(monkeypatch)
     assert result.forward_peak_return_pct == pytest.approx(15.0)
     assert result.entry_next_open == pytest.approx(0.010101)
     assert result.realistic_forward_peak_return_pct == pytest.approx(14.5)
-

@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import logging
+import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -207,6 +208,25 @@ def _snapshot_to_df(features: dict, days: int) -> pd.DataFrame:
 
 # ── Main registry-driven fetcher ─────────────────────────────────────────────
 
+def fetch_dex_search_pairs(
+    query: str,
+    *,
+    chains: tuple[str, ...] | None = tuple(_PREFERRED_CHAINS),
+) -> list[dict]:
+    """Search DexScreener pairs by free-form query."""
+    encoded = urllib.parse.quote(query.strip())
+    if not encoded:
+        return []
+    data = _get_json(f"{_BASE}/latest/dex/search?q={encoded}")
+    if not data or not isinstance(data, dict):
+        return []
+    pairs = data.get("pairs") or []
+    if chains is None:
+        return list(pairs)
+    allowed = set(chains)
+    return [pair for pair in pairs if pair.get("chainId") in allowed]
+
+
 def fetch_dex_token_data(symbol: str, days: int = 30) -> pd.DataFrame | None:
     """Fetch DEX market data for a token via DexScreener.
 
@@ -236,14 +256,7 @@ def fetch_dex_token_data(symbol: str, days: int = 30) -> pd.DataFrame | None:
 
     # Fallback: search by symbol
     if pair is None:
-        url = f"{_BASE}/latest/dex/search?q={base}"
-        data = _get_json(url)
-        if data and isinstance(data, dict):
-            pairs = [
-                p for p in (data.get("pairs") or [])
-                if p.get("chainId") in _PREFERRED_CHAINS
-            ]
-            pair = _pick_best_pair(pairs, base)
+        pair = _pick_best_pair(fetch_dex_search_pairs(base), base)
 
     if pair is None:
         log.debug("dexscreener: no pair found for %s", symbol)

@@ -11,7 +11,7 @@ import type {
   TerminalWatchlistItem,
 } from '$lib/contracts/terminalPersistence';
 import { query, withTransaction } from '$lib/server/db';
-import { engine } from '$lib/server/engineClient';
+import { engine, EngineError } from '$lib/server/engineClient';
 
 type Queryable = {
   query: (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
@@ -92,6 +92,256 @@ function mapPatternCaptureRow(row: Record<string, unknown>): PatternCaptureRecor
     sourceFreshness: (row.source_freshness as Record<string, string>) ?? {},
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
+  };
+}
+
+function shouldFallbackPatternCaptureWrite(error: unknown): boolean {
+  if (error instanceof EngineError) {
+    return [401, 403, 502, 503, 504].includes(error.status);
+  }
+  if (error instanceof TypeError) return true;
+  if (error instanceof Error && error.name === 'AbortError') return true;
+  return false;
+}
+
+function toEngineResearchContext(
+  value: PatternCaptureRecord['researchContext'] | PatternCaptureCreateRequest['researchContext']
+): Record<string, unknown> | undefined {
+  if (!value) return undefined;
+  return {
+    source: value.source
+      ? {
+          kind: value.source.kind,
+          author: value.source.author,
+          title: value.source.title,
+          text: value.source.text,
+          image_refs: value.source.imageRefs ?? [],
+        }
+      : undefined,
+    pattern_family: value.patternFamily ?? value.patternDraft?.patternFamily,
+    thesis: value.thesis ?? [],
+    phase_annotations: (value.phaseAnnotations ?? []).map((phase) => ({
+      phase_id: phase.phaseId,
+      label: phase.label,
+      timeframe: phase.timeframe,
+      start_ts: phase.startTs,
+      end_ts: phase.endTs,
+      signals_required: phase.signalsRequired ?? [],
+      signals_preferred: phase.signalsPreferred ?? [],
+      signals_forbidden: phase.signalsForbidden ?? [],
+      note: phase.note,
+    })),
+    entry_spec: value.entrySpec
+      ? {
+          entry_phase_id: value.entrySpec.entryPhaseId,
+          entry_trigger: value.entrySpec.entryTrigger,
+          stop_rule: value.entrySpec.stopRule,
+          target_rule: value.entrySpec.targetRule,
+        }
+      : undefined,
+    outcome_spec: value.outcomeSpec
+      ? {
+          confirm_breakout_within_bars: value.outcomeSpec.confirmBreakoutWithinBars,
+          min_forward_return_pct: value.outcomeSpec.minForwardReturnPct,
+          stretch_return_pct: value.outcomeSpec.stretchReturnPct,
+        }
+      : undefined,
+    research_tags: value.researchTags ?? [],
+    pattern_draft: value.patternDraft
+      ? {
+          schema_version: value.patternDraft.schemaVersion,
+          pattern_family: value.patternDraft.patternFamily,
+          pattern_label: value.patternDraft.patternLabel,
+          source_type: value.patternDraft.sourceType,
+          source_text: value.patternDraft.sourceText,
+          symbol_candidates: value.patternDraft.symbolCandidates ?? [],
+          timeframe: value.patternDraft.timeframe,
+          thesis: value.patternDraft.thesis ?? [],
+          phases: (value.patternDraft.phases ?? []).map((phase) => ({
+            phase_id: phase.phaseId,
+            label: phase.label,
+            sequence_order: phase.sequenceOrder,
+            description: phase.description,
+            timeframe: phase.timeframe,
+            signals_required: phase.signalsRequired ?? [],
+            signals_preferred: phase.signalsPreferred ?? [],
+            signals_forbidden: phase.signalsForbidden ?? [],
+            directional_belief: phase.directionalBelief,
+            evidence_text: phase.evidenceText,
+            time_hint: phase.timeHint,
+            importance: phase.importance,
+          })),
+          trade_plan: value.patternDraft.tradePlan ?? {},
+          search_hints: {
+            must_have_signals: value.patternDraft.searchHints?.mustHaveSignals ?? [],
+            preferred_timeframes: value.patternDraft.searchHints?.preferredTimeframes ?? [],
+            exclude_patterns: value.patternDraft.searchHints?.excludePatterns ?? [],
+            similarity_focus: value.patternDraft.searchHints?.similarityFocus ?? [],
+            symbol_scope: value.patternDraft.searchHints?.symbolScope ?? [],
+          },
+          confidence: value.patternDraft.confidence,
+          ambiguities: value.patternDraft.ambiguities ?? [],
+        }
+      : undefined,
+    parser_meta: value.parserMeta
+      ? {
+          parser_role: value.parserMeta.parserRole,
+          parser_model: value.parserMeta.parserModel,
+          parser_prompt_version: value.parserMeta.parserPromptVersion,
+          pattern_draft_schema_version: value.parserMeta.patternDraftSchemaVersion,
+          signal_vocab_version: value.parserMeta.signalVocabVersion,
+          confidence: value.parserMeta.confidence,
+          ambiguity_count: value.parserMeta.ambiguityCount,
+        }
+      : undefined,
+  };
+}
+
+function fromEngineResearchContext(
+  value: Record<string, unknown> | null | undefined
+): PatternCaptureRecord['researchContext'] | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const source = value.source as Record<string, unknown> | undefined;
+  const entrySpec = value.entry_spec as Record<string, unknown> | undefined;
+  const outcomeSpec = value.outcome_spec as Record<string, unknown> | undefined;
+  const patternDraft = value.pattern_draft as Record<string, unknown> | undefined;
+  const parserMeta = value.parser_meta as Record<string, unknown> | undefined;
+  const patternFamily =
+    typeof value.pattern_family === 'string' && value.pattern_family.length > 0
+      ? value.pattern_family
+      : typeof patternDraft?.pattern_family === 'string' && patternDraft.pattern_family.length > 0
+        ? patternDraft.pattern_family
+        : undefined;
+  if (!patternFamily) return undefined;
+  const phaseAnnotations = Array.isArray(value.phase_annotations)
+    ? value.phase_annotations
+    : [];
+  return {
+    source: source
+      ? {
+          kind: String(source.kind ?? 'manual_note') as
+            | 'telegram_post'
+            | 'chart_image'
+            | 'manual_note'
+            | 'terminal_capture',
+          author: source.author ? String(source.author) : undefined,
+          title: source.title ? String(source.title) : undefined,
+          text: source.text ? String(source.text) : undefined,
+          imageRefs: Array.isArray(source.image_refs)
+            ? source.image_refs.map((item) => String(item))
+            : [],
+        }
+      : undefined,
+    patternFamily: String(patternFamily),
+    thesis: Array.isArray(value.thesis) ? value.thesis.map((item) => String(item)) : [],
+    phaseAnnotations: phaseAnnotations.map((phase) => {
+      const row = phase as Record<string, unknown>;
+      return {
+        phaseId: String(row.phase_id ?? ''),
+        label: String(row.label ?? ''),
+        timeframe: String(row.timeframe ?? ''),
+        startTs: typeof row.start_ts === 'number' ? row.start_ts : undefined,
+        endTs: typeof row.end_ts === 'number' ? row.end_ts : undefined,
+        signalsRequired: Array.isArray(row.signals_required) ? row.signals_required.map((item) => String(item)) : [],
+        signalsPreferred: Array.isArray(row.signals_preferred) ? row.signals_preferred.map((item) => String(item)) : [],
+        signalsForbidden: Array.isArray(row.signals_forbidden) ? row.signals_forbidden.map((item) => String(item)) : [],
+        note: row.note ? String(row.note) : undefined,
+      };
+    }),
+    entrySpec: entrySpec
+      ? {
+          entryPhaseId: String(entrySpec.entry_phase_id ?? ''),
+          entryTrigger: entrySpec.entry_trigger ? String(entrySpec.entry_trigger) : undefined,
+          stopRule: entrySpec.stop_rule ? String(entrySpec.stop_rule) : undefined,
+          targetRule: entrySpec.target_rule ? String(entrySpec.target_rule) : undefined,
+        }
+      : undefined,
+    outcomeSpec: outcomeSpec
+      ? {
+          confirmBreakoutWithinBars:
+            typeof outcomeSpec.confirm_breakout_within_bars === 'number'
+              ? outcomeSpec.confirm_breakout_within_bars
+              : undefined,
+          minForwardReturnPct:
+            typeof outcomeSpec.min_forward_return_pct === 'number'
+              ? outcomeSpec.min_forward_return_pct
+              : undefined,
+          stretchReturnPct:
+            typeof outcomeSpec.stretch_return_pct === 'number'
+              ? outcomeSpec.stretch_return_pct
+              : undefined,
+        }
+      : undefined,
+    researchTags: Array.isArray(value.research_tags) ? value.research_tags.map((item) => String(item)) : [],
+    patternDraft: patternDraft
+      ? {
+          schemaVersion: Number(patternDraft.schema_version ?? 1),
+          patternFamily: String(patternDraft.pattern_family ?? ''),
+          patternLabel: patternDraft.pattern_label ? String(patternDraft.pattern_label) : undefined,
+          sourceType: String(patternDraft.source_type ?? 'manual_note'),
+          sourceText: String(patternDraft.source_text ?? ''),
+          symbolCandidates: Array.isArray(patternDraft.symbol_candidates)
+            ? patternDraft.symbol_candidates.map((item) => String(item))
+            : [],
+          timeframe: patternDraft.timeframe ? String(patternDraft.timeframe) : undefined,
+          thesis: Array.isArray(patternDraft.thesis) ? patternDraft.thesis.map((item) => String(item)) : [],
+          phases: Array.isArray(patternDraft.phases)
+            ? patternDraft.phases.map((phase) => {
+                const row = phase as Record<string, unknown>;
+                return {
+                  phaseId: String(row.phase_id ?? ''),
+                  label: String(row.label ?? ''),
+                  sequenceOrder: Number(row.sequence_order ?? 0),
+                  description: row.description ? String(row.description) : '',
+                  timeframe: row.timeframe ? String(row.timeframe) : undefined,
+                  signalsRequired: Array.isArray(row.signals_required) ? row.signals_required.map((item) => String(item)) : [],
+                  signalsPreferred: Array.isArray(row.signals_preferred) ? row.signals_preferred.map((item) => String(item)) : [],
+                  signalsForbidden: Array.isArray(row.signals_forbidden) ? row.signals_forbidden.map((item) => String(item)) : [],
+                  directionalBelief: row.directional_belief ? String(row.directional_belief) : undefined,
+                  evidenceText: row.evidence_text ? String(row.evidence_text) : undefined,
+                  timeHint: row.time_hint ? String(row.time_hint) : undefined,
+                  importance: typeof row.importance === 'number' ? row.importance : undefined,
+                };
+              })
+            : [],
+          tradePlan:
+            patternDraft.trade_plan && typeof patternDraft.trade_plan === 'object'
+              ? (patternDraft.trade_plan as Record<string, unknown>)
+              : {},
+          searchHints: patternDraft.search_hints && typeof patternDraft.search_hints === 'object'
+            ? {
+                mustHaveSignals: Array.isArray((patternDraft.search_hints as Record<string, unknown>).must_have_signals)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).must_have_signals as unknown[]).map((item) => String(item))
+                  : [],
+                preferredTimeframes: Array.isArray((patternDraft.search_hints as Record<string, unknown>).preferred_timeframes)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).preferred_timeframes as unknown[]).map((item) => String(item))
+                  : [],
+                excludePatterns: Array.isArray((patternDraft.search_hints as Record<string, unknown>).exclude_patterns)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).exclude_patterns as unknown[]).map((item) => String(item))
+                  : [],
+                similarityFocus: Array.isArray((patternDraft.search_hints as Record<string, unknown>).similarity_focus)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).similarity_focus as unknown[]).map((item) => String(item))
+                  : [],
+                symbolScope: Array.isArray((patternDraft.search_hints as Record<string, unknown>).symbol_scope)
+                  ? ((patternDraft.search_hints as Record<string, unknown>).symbol_scope as unknown[]).map((item) => String(item))
+                  : [],
+              }
+            : { mustHaveSignals: [], preferredTimeframes: [], excludePatterns: [], similarityFocus: [], symbolScope: [] },
+          confidence: typeof patternDraft.confidence === 'number' ? patternDraft.confidence : null,
+          ambiguities: Array.isArray(patternDraft.ambiguities) ? patternDraft.ambiguities.map((item) => String(item)) : [],
+        }
+      : undefined,
+    parserMeta: parserMeta
+      ? {
+          parserRole: String(parserMeta.parser_role ?? ''),
+          parserModel: String(parserMeta.parser_model ?? ''),
+          parserPromptVersion: String(parserMeta.parser_prompt_version ?? ''),
+          patternDraftSchemaVersion: Number(parserMeta.pattern_draft_schema_version ?? 1),
+          signalVocabVersion: String(parserMeta.signal_vocab_version ?? ''),
+          confidence: typeof parserMeta.confidence === 'number' ? parserMeta.confidence : null,
+          ambiguityCount: Number(parserMeta.ambiguity_count ?? 0),
+        }
+      : undefined,
   };
 }
 
@@ -349,26 +599,35 @@ export async function createPatternCapture(
   userId: string,
   input: PatternCaptureCreateRequest
 ): Promise<PatternCaptureRecord> {
-  // Engine is the canonical capture store (W-0088 Phase A dual-write).
-  // Engine POST runs first; failure blocks the write so the user gets a clear error.
-  await engine.createCapture({
-    capture_kind: 'manual_hypothesis',
-    user_id: userId,
-    symbol: input.symbol,
-    pattern_slug: input.patternSlug ?? '',
-    phase: '',
-    timeframe: input.timeframe,
-    user_note: input.note ?? undefined,
-    chart_context: {
-      contextKind: input.contextKind,
-      triggerOrigin: input.triggerOrigin,
-      reason: input.reason,
-      snapshot: input.snapshot,
-      decision: input.decision,
-      evidenceHash: input.evidenceHash,
-      sourceFreshness: input.sourceFreshness,
-    },
-  });
+  try {
+    // Runtime plane is the canonical workflow store. The app DB is only a
+    // degraded fallback so capture truth does not fork across planes.
+    // In local/degraded environments, auth or reachability failures fall back
+    // to the app DB so the capture-first loop remains usable.
+    const engineResult = await engine.createRuntimeCapture({
+      capture_kind: 'manual_hypothesis',
+      user_id: userId,
+      symbol: input.symbol,
+      pattern_slug: input.patternSlug ?? '',
+      phase: '',
+      timeframe: input.timeframe,
+      user_note: input.note ?? undefined,
+      research_context: toEngineResearchContext(input.researchContext),
+      chart_context: {
+        contextKind: input.contextKind,
+        triggerOrigin: input.triggerOrigin,
+        reason: input.reason,
+        snapshot: input.snapshot,
+        decision: input.decision,
+        evidenceHash: input.evidenceHash,
+        sourceFreshness: input.sourceFreshness,
+      },
+    });
+    return mapEngineCaptureRow(engineResult.capture);
+  } catch (error) {
+    if (!shouldFallbackPatternCaptureWrite(error)) throw error;
+    console.warn('[terminal/pattern-captures/create] runtime write degraded, falling back to app DB:', error);
+  }
 
   const id = `pcap-${randomUUID()}`;
   const result = await query(
@@ -396,7 +655,10 @@ export async function createPatternCapture(
       JSON.stringify(input.sourceFreshness ?? {}),
     ],
   );
-  return mapPatternCaptureRow(result.rows[0] ?? {});
+  return {
+    ...mapPatternCaptureRow(result.rows[0] ?? {}),
+    researchContext: input.researchContext ?? undefined,
+  };
 }
 
 function mapEngineCaptureRow(raw: Record<string, unknown>): PatternCaptureRecord {
@@ -414,6 +676,9 @@ function mapEngineCaptureRow(raw: Record<string, unknown>): PatternCaptureRecord
     note: (raw.user_note as string | undefined) ?? undefined,
     snapshot: (ctx.snapshot as PatternCaptureRecord['snapshot']) ?? {},
     decision: (ctx.decision as PatternCaptureRecord['decision']) ?? {},
+    researchContext: fromEngineResearchContext(
+      raw.research_context as Record<string, unknown> | null | undefined
+    ),
     evidenceHash: (ctx.evidenceHash as string | undefined) ?? undefined,
     sourceFreshness: (ctx.sourceFreshness as Record<string, string>) ?? {},
     createdAt: ts,
@@ -425,9 +690,9 @@ export async function listPatternCaptures(
   userId: string,
   queryInput: PatternCaptureQuery
 ): Promise<PatternCaptureRecord[]> {
-  // Engine read-through (W-0088 Phase A). Falls back to app DB if engine is unavailable.
+  // Runtime read-through. Falls back to app DB if engine is unavailable.
   try {
-    const engineResult = await engine.listCaptures({
+    const engineResult = await engine.listRuntimeCaptures({
       user_id: userId,
       symbol: queryInput.symbol,
       pattern_slug: queryInput.id ? undefined : undefined,

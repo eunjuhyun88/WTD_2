@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 import uuid
 
+from patterns.definition_refs import build_definition_ref, definition_id_from_ref
+
 CaptureKind = Literal[
     "pattern_candidate",
     "manual_hypothesis",
@@ -32,6 +34,8 @@ class CaptureRecord:
     symbol: str = ""
     pattern_slug: str = ""
     pattern_version: int = 1
+    definition_id: str | None = None
+    definition_ref: dict[str, Any] | None = None
     phase: str = ""
     timeframe: str = "1h"
     captured_at_ms: int = 0
@@ -40,11 +44,24 @@ class CaptureRecord:
     scan_id: str | None = None
     user_note: str | None = None
     chart_context: dict[str, Any] = field(default_factory=dict)
+    research_context: dict[str, Any] | None = None
     feature_snapshot: dict[str, Any] | None = None
     block_scores: dict[str, Any] = field(default_factory=dict)
     verdict_id: str | None = None
     outcome_id: str | None = None
     status: CaptureStatus = "pending_outcome"
+
+    def __post_init__(self) -> None:
+        resolved_ref = build_definition_ref(
+            self.pattern_slug,
+            self.pattern_version,
+            existing=self.definition_ref,
+        )
+        resolved_id = self.definition_id or definition_id_from_ref(resolved_ref)
+        if resolved_id is not None:
+            object.__setattr__(self, "definition_id", resolved_id)
+        if resolved_ref:
+            object.__setattr__(self, "definition_ref", resolved_ref)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -58,6 +75,8 @@ class CaptureRecord:
             "symbol": self.symbol,
             "pattern_slug": self.pattern_slug,
             "pattern_version": self.pattern_version,
+            "definition_id": self.definition_id,
+            "definition_ref_json": self.definition_ref or {},
             "phase": self.phase,
             "timeframe": self.timeframe,
             "captured_at_ms": self.captured_at_ms,
@@ -66,6 +85,7 @@ class CaptureRecord:
             "scan_id": self.scan_id,
             "user_note": self.user_note,
             "chart_context_json": self.chart_context or {},
+            "research_context_json": self.research_context,
             "feature_snapshot_json": self.feature_snapshot,
             "block_scores_json": self.block_scores or {},
             "verdict_id": self.verdict_id,

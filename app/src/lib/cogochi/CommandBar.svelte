@@ -22,7 +22,7 @@
 
 <div class="command-bar">
   <span class="logo">COGOTCHI</span>
-  <span class="divider" />
+  <span class="divider"></span>
 
   <div class="session-chip">
     <span class="pos">▸</span>
@@ -36,7 +36,7 @@
     <span class="kbd">⌘P</span>
   </button>
 
-  <span class="spacer" />
+  <span class="spacer"></span>
 
   <button
     class="range-btn"
@@ -46,7 +46,7 @@
     ◈ {hasRange ? 'RANGE 12 bars' : 'SELECT RANGE'}
   </button>
 
-  <span class="divider" />
+  <span class="divider"></span>
 
   {#if onIndicators}
     <button
@@ -56,7 +56,7 @@
     >
       ⚙ INDICATORS
     </button>
-    <span class="divider" />
+    <span class="divider"></span>
   {/if}
 
   <button
@@ -65,7 +65,7 @@
     title="Toggle AI panel (⌘L)"
     onclick={toggleAI}
   >
-    <span class="dot" class:active={aiVisible} />
+    <span class="dot" class:active={aiVisible}></span>
     AI
     <span class="kbd">⌘L</span>
   </button>

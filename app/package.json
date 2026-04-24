@@ -8,6 +8,7 @@
     "build": "vite build",
     "start": "node build",
     "preview": "vite preview",
+    "deploy:preview:cogochi": "node scripts/dev/deploy-cogochi-preview.mjs",
     "prepare": "svelte-kit sync || echo ''",
     "docs:refresh": "node scripts/dev/refresh-generated-context.mjs && node scripts/dev/refresh-context-metrics.mjs && node scripts/dev/refresh-task-contract-report.mjs",
     "docs:refresh:check": "node scripts/dev/refresh-generated-context.mjs --check && node scripts/dev/refresh-context-metrics.mjs --check && node scripts/dev/refresh-task-contract-report.mjs --check",
@@ -129,6 +130,7 @@
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^7.0.0",
+    "@sveltejs/adapter-node": "^5.5.4",
     "@sveltejs/adapter-vercel": "^6.3.3",
     "@sveltejs/kit": "^2.50.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",

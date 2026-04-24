@@ -24,7 +24,7 @@ from slowapi.errors import RateLimitExceeded  # type: ignore[import]
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from api.limiter import limiter
-from api.routes import backtest, captures, challenge, chart, ctx, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement
+from api.routes import backtest, captures, challenge, chart, ctx, facts, features, score, train, verdict, scanner, deep, universe, patterns, memory, screener, opportunity, rag, live_signals, observability, dalkkak, alpha, jobs, refinement, search, runtime
 from cache.http_client import close_client, init_client
 from cache.kline_cache import close_pool, init_pool
 from market_engine.ctx_cache import refresh_global_ctx
@@ -194,6 +194,9 @@ def _include_public_engine_routes(target: FastAPI) -> None:
     target.include_router(score.router, prefix="/score", tags=["scoring"])
     target.include_router(deep.router, prefix="/deep", tags=["deep"])
     target.include_router(ctx.router, prefix="/ctx", tags=["context"])
+    target.include_router(facts.router, prefix="/facts", tags=["facts"])
+    target.include_router(search.router, prefix="/search", tags=["search"])
+    target.include_router(runtime.router, prefix="/runtime", tags=["runtime"])
     target.include_router(universe.router, prefix="/universe", tags=["universe"])
     target.include_router(opportunity.router, prefix="/opportunity", tags=["opportunity"])
     target.include_router(backtest.router, prefix="/backtest", tags=["backtest"])

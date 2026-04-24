@@ -33,18 +33,22 @@ SCHEDULER_SECRET = os.environ.get("SCHEDULER_SECRET", "")
 
 # Minimum seconds between successful runs (anti-thrash)
 _MIN_INTERVAL: dict[str, int] = {
-    "pattern_scan":     600,    # 10 min minimum (scheduled every 15)
-    "outcome_resolver": 3300,   # 55 min minimum (scheduled hourly)
-    "auto_capture":     600,    # 10 min minimum (scheduled every 15)
-    "db_cleanup":       82800,  # 23 hr minimum (scheduled daily)
+    "pattern_scan":                 600,    # 10 min minimum (scheduled every 15)
+    "outcome_resolver":             3300,   # 55 min minimum (scheduled hourly)
+    "auto_capture":                 600,    # 10 min minimum (scheduled every 15)
+    "market_search_index_refresh":  1200,   # 20 min minimum (scheduled every 30 by default)
+    "search_corpus":                1800,   # 30 min minimum (scheduled hourly)
+    "db_cleanup":                   82800,  # 23 hr minimum (scheduled daily)
 }
 
 # Redis lock TTL = max allowed job duration
 _LOCK_TTL: dict[str, int] = {
-    "pattern_scan":     840,   # 14 min
-    "outcome_resolver": 300,   # 5 min
-    "auto_capture":     120,   # 2 min
-    "db_cleanup":       120,   # 2 min
+    "pattern_scan":                 840,   # 14 min
+    "outcome_resolver":             300,   # 5 min
+    "auto_capture":                 120,   # 2 min
+    "market_search_index_refresh":  900,   # 15 min
+    "search_corpus":                600,   # 10 min
+    "db_cleanup":                   120,   # 2 min
 }
 
 # Circuit breaker: pause job after N consecutive failures
@@ -203,6 +207,23 @@ async def run_auto_capture(
     return await _run_with_guard("auto_capture", _auto_capture_job())
 
 
+@router.post("/search_corpus/run")
+async def run_search_corpus(
+    _: None = Depends(_require_scheduler),
+) -> JSONResponse:
+    """Cloud Scheduler → refresh compact search corpus from local cache."""
+    from scanner.scheduler import _search_corpus_refresh_job
+    return await _run_with_guard("search_corpus", _search_corpus_refresh_job())
+
+@router.post("/market_search_index_refresh/run")
+async def run_market_search_index_refresh(
+    _: None = Depends(_require_scheduler),
+) -> JSONResponse:
+    """Cloud Scheduler → rebuild the local market search index."""
+    from scanner.scheduler import _market_search_index_refresh_job
+    return await _run_with_guard("market_search_index_refresh", _market_search_index_refresh_job())
+
+
 @router.post("/db_cleanup/run")
 async def run_db_cleanup(
     _: None = Depends(_require_scheduler),
@@ -250,7 +271,14 @@ async def run_db_cleanup(
 async def jobs_status() -> JSONResponse:
     """Return resource guard state for all managed jobs."""
     r = await _redis()
-    jobs = ["pattern_scan", "outcome_resolver", "auto_capture", "db_cleanup"]
+    jobs = [
+        "pattern_scan",
+        "outcome_resolver",
+        "auto_capture",
+        "market_search_index_refresh",
+        "search_corpus",
+        "db_cleanup",
+    ]
     result: dict[str, Any] = {}
 
     for job in jobs:

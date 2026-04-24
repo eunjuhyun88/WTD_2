@@ -10,6 +10,7 @@
 import type { RequestHandler } from './$types';
 import { callLLMStreamWithTools, type LLMMessage } from '$lib/server/llmService';
 import { douniMessageLimiter } from '$lib/server/rateLimit';
+import { getAuthUserFromCookies } from '$lib/server/authGuard';
 
 export const config = {
   runtime: 'nodejs22.x',
@@ -25,6 +26,7 @@ import type { DouniSSEEvent, LLMMessageWithTools } from '$lib/server/douni/types
 import { executeTool } from '$lib/server/douni/toolExecutor';
 import { classifyIntent } from '$lib/server/douni/intentClassifier';
 import { buildContext, type CompressedHistoryEntry } from '$lib/server/douni/contextBuilder';
+import { loadAgentContextPack } from '$lib/server/agentContextPack';
 import type { ToolCall } from '$lib/server/douni/types';
 
 const MAX_TOOL_ROUNDS = 3;
@@ -39,6 +41,12 @@ const SSE_HEADERS = {
 type HeuristicSnapshot = Partial<SignalSnapshotRaw> & {
   symbol?: string;
   timeframe?: string;
+};
+
+type AgentContextRequest = {
+  scanId?: string | null;
+  seedRunId?: string | null;
+  captureLimit?: number | null;
 };
 
 // ── HEURISTIC mode: template synthesis from snapshot (no LLM) ──
@@ -98,6 +106,20 @@ function sanitizeProviderError(raw: string, status: number): string {
   if (status === 429) return `Rate limit reached (429)`;
   const scrubbed = raw.replace(KEY_PATTERN, '[redacted]').slice(0, 120);
   return scrubbed || `Provider error (${status})`;
+}
+
+function normalizeAgentContextSymbol(value: string | undefined): string | null {
+  const raw = value?.trim().toUpperCase();
+  if (!raw) return null;
+  const compact = raw.replace('/', '');
+  if (compact.endsWith('USDT')) return compact;
+  if (/^[A-Z0-9]{2,12}$/.test(compact)) return `${compact}USDT`;
+  return null;
+}
+
+function normalizeAgentContextTimeframe(value: string | undefined): string {
+  const raw = value?.trim().toLowerCase();
+  return raw || '1h';
 }
 
 // ── API mode: user's own key, OpenAI-compatible stream (no tool loop) ──
@@ -166,7 +188,7 @@ const DEFAULT_PROFILE: DouniProfile = {
   stage: 'EGG',
 };
 
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, cookies, getClientAddress, fetch: eventFetch }) => {
   if (!douniMessageLimiter.check(getClientAddress())) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
@@ -185,6 +207,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     locale = 'ko-KR',
     detectedSymbol,
     runtimeConfig,
+    agentContext,
   } = body as {
     message: string;
     history?: CompressedHistoryEntry[];
@@ -197,6 +220,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     locale?: string;
     /** Symbol detected client-side from parsedQuery, passed for snapshot gating */
     detectedSymbol?: string;
+    /** Optional IDs for canonical search results to include in AgentContextPack. */
+    agentContext?: AgentContextRequest;
     runtimeConfig?: {
       mode: 'TERMINAL' | 'HEURISTIC' | 'OLLAMA' | 'API';
       provider?: string;
@@ -224,6 +249,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   }
 
   const activeProfile: DouniProfile = { ...DEFAULT_PROFILE, ...profile };
+  const authUser = await getAuthUserFromCookies(cookies).catch(() => null);
 
   // ── Runtime mode routing ─────────────────────────────────────
   const runtimeMode = runtimeConfig?.mode;
@@ -262,6 +288,19 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     ?? getAvailableProvider()
     ?? 'ollama';
 
+  const agentSymbol = normalizeAgentContextSymbol(snapshot?.symbol ?? detectedSymbol);
+  const agentTimeframe = normalizeAgentContextTimeframe(snapshot?.timeframe);
+  const agentContextPack = agentSymbol && !greeting
+    ? await loadAgentContextPack({
+        fetchFn: eventFetch,
+        symbol: agentSymbol,
+        timeframe: agentTimeframe,
+        scanId: agentContext?.scanId ?? null,
+        seedRunId: agentContext?.seedRunId ?? null,
+        captureLimit: agentContext?.captureLimit ?? 5,
+      })
+    : undefined;
+
   // ── Context assembly (Cursor-style) ────────────────────────
   const { messages: builtMessages, tools } = buildContext({
     profile: activeProfile,
@@ -271,6 +310,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     snapshot,
     snapshotTs,
     detectedSymbol,
+    agentContextPack,
   });
 
   const encoder = new TextEncoder();
@@ -318,6 +358,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
           symbol: snapshot?.symbol,
           timeframe: snapshot?.timeframe,
           cachedSnapshot: snapshot,
+          userId: authUser?.id,
         };
 
         // Tool call loop (max 3 rounds)

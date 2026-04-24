@@ -5,7 +5,19 @@ import type {
   FlowEnvelope,
   SnapshotEnvelope,
 } from '$lib/contracts/terminalBackend';
+import type { ConfluenceResult } from '$lib/confluence/types';
 import type { MemoryQueryResponse } from '$lib/contracts/terminalMemory';
+import type { CaptureRecord, RuntimeCaptureListResponse } from '$lib/contracts/runtime/captures';
+import type {
+  FundingFlipPayload,
+  FundingHistoryPayload,
+  IndicatorContextPayload,
+  LiqClusterPayload,
+  OptionsSnapshotPayload,
+  RvConePayload,
+  SsrPayload,
+  VenueDivergencePayload,
+} from '$lib/indicators/adapter';
 import {
   fromEngineMemoryQueryWire,
   toEngineMemoryDebugSessionWire,
@@ -26,6 +38,36 @@ export interface TerminalBundleResult {
   chartPayload: ChartSeriesPayload | null;
   snapshot: SnapshotEnvelope | null;
   derivatives: DerivativesEnvelope | null;
+}
+
+export type RecentCaptureSummary = Pick<
+  CaptureRecord,
+  'capture_id' | 'symbol' | 'pattern_slug' | 'timeframe' | 'captured_at_ms' | 'status'
+>;
+
+export interface ConfluenceHistoryEntry {
+  at: number;
+  score: number;
+  confidence: number;
+  regime: string;
+  divergence: boolean;
+}
+
+export interface TradeOutcomeResult {
+  saved: boolean;
+  count: number;
+  training_triggered: boolean;
+}
+
+export interface AlphaWorldModelPhase {
+  symbol: string;
+  grade: string;
+  phase: string;
+  entered_at: string | null;
+}
+
+export interface AlphaWorldModelResponse {
+  phases?: AlphaWorldModelPhase[];
 }
 
 export interface ChartSeriesPayload {
@@ -99,6 +141,12 @@ export async function fetchTerminalBundle(args: {
   };
 }
 
+export async function fetchAnalyze(symbol: string, tf: string): Promise<AnalyzeEnvelope | null> {
+  const res = await fetch(`/api/cogochi/analyze?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`);
+  if (!res.ok) return null;
+  return await readJson<AnalyzeEnvelope>(res);
+}
+
 /**
  * Lightweight version for callers (e.g. cogochi TradeMode) that only need
  * analyze + chart klines — skips the 2 extra market/* fetches the terminal
@@ -110,12 +158,12 @@ export async function fetchAnalyzeAndChart(args: {
 }): Promise<{ analyze: AnalyzeEnvelope | null; chartPayload: ChartSeriesPayload | null }> {
   const { symbol, tf } = args;
   const [analyzeRes, chartRes] = await Promise.allSettled([
-    fetch(`/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
+    fetchAnalyze(symbol, tf),
     fetch(`/api/chart/klines?symbol=${symbol}&tf=${tf}&limit=500`),
   ]);
   const analyze =
-    analyzeRes.status === 'fulfilled' && analyzeRes.value.ok
-      ? await readJson<AnalyzeEnvelope>(analyzeRes.value)
+    analyzeRes.status === 'fulfilled'
+      ? analyzeRes.value
       : null;
   const chartPayload =
     chartRes.status === 'fulfilled' && chartRes.value.ok
@@ -136,6 +184,102 @@ export async function fetchMarketEvents(pair: string, tf: string): Promise<Array
   if (!res.ok) return [];
   const payload = await readJson<EventsEnvelope>(res);
   return payload?.data?.records ?? [];
+}
+
+export async function fetchRecentCaptures(limit = 8): Promise<RecentCaptureSummary[]> {
+  const res = await fetch(`/api/runtime/captures?limit=${limit}`);
+  if (!res.ok) return [];
+  const payload = await readJson<RuntimeCaptureListResponse>(res);
+  return payload?.ok && Array.isArray(payload.captures) ? payload.captures : [];
+}
+
+export async function fetchReviewInboxCount(limit = 100): Promise<number> {
+  const res = await fetch(`/api/captures/outcomes?limit=${limit}`);
+  if (!res.ok) return 0;
+  const payload = await readJson<{ count?: number }>(res);
+  return payload?.count ?? 0;
+}
+
+export async function fetchConfluenceCurrent(symbol: string, tf: string): Promise<ConfluenceResult | null> {
+  const res = await fetch(`/api/confluence/current?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`);
+  if (!res.ok) return null;
+  return await readJson<ConfluenceResult>(res);
+}
+
+export async function fetchConfluenceHistory(symbol: string, limit = 96): Promise<ConfluenceHistoryEntry[]> {
+  const res = await fetch(`/api/confluence/history?symbol=${encodeURIComponent(symbol)}&limit=${limit}`);
+  if (!res.ok) return [];
+  const payload = await readJson<{ entries?: ConfluenceHistoryEntry[] }>(res);
+  return Array.isArray(payload?.entries) ? payload.entries : [];
+}
+
+export async function fetchVenueDivergence(symbol: string): Promise<VenueDivergencePayload | null> {
+  const res = await fetch(`/api/market/venue-divergence?symbol=${encodeURIComponent(symbol)}`);
+  if (!res.ok) return null;
+  return await readJson<VenueDivergencePayload>(res);
+}
+
+export async function fetchLiqClusters(symbol: string, window = '4h'): Promise<LiqClusterPayload | null> {
+  const res = await fetch(`/api/market/liq-clusters?symbol=${encodeURIComponent(symbol)}&window=${encodeURIComponent(window)}`);
+  if (!res.ok) return null;
+  return await readJson<LiqClusterPayload>(res);
+}
+
+export async function fetchIndicatorContext(symbol: string): Promise<IndicatorContextPayload | null> {
+  const res = await fetch(`/api/market/indicator-context?symbol=${encodeURIComponent(symbol)}`);
+  if (!res.ok) return null;
+  return await readJson<IndicatorContextPayload>(res);
+}
+
+export async function fetchSsr(): Promise<SsrPayload | null> {
+  const res = await fetch('/api/market/stablecoin-ssr');
+  if (!res.ok) return null;
+  return await readJson<SsrPayload>(res);
+}
+
+export async function fetchRvCone(symbol: string): Promise<RvConePayload | null> {
+  const res = await fetch(`/api/market/rv-cone?symbol=${encodeURIComponent(symbol)}`);
+  if (!res.ok) return null;
+  return await readJson<RvConePayload>(res);
+}
+
+export async function fetchFundingFlip(symbol: string): Promise<FundingFlipPayload | null> {
+  const res = await fetch(`/api/market/funding-flip?symbol=${encodeURIComponent(symbol)}`);
+  if (!res.ok) return null;
+  return await readJson<FundingFlipPayload>(res);
+}
+
+export async function fetchFundingHistory(symbol: string, limit = 270): Promise<FundingHistoryPayload | null> {
+  const res = await fetch(`/api/market/funding?symbol=${encodeURIComponent(symbol)}&limit=${limit}`);
+  if (!res.ok) return null;
+  return await readJson<FundingHistoryPayload>(res);
+}
+
+export async function fetchOptionsSnapshot(currency: string): Promise<OptionsSnapshotPayload | null> {
+  const res = await fetch(`/api/market/options-snapshot?currency=${encodeURIComponent(currency)}`);
+  if (!res.ok) return null;
+  return await readJson<OptionsSnapshotPayload>(res);
+}
+
+export async function submitTradeOutcome(args: {
+  snapshot: unknown;
+  outcome: 1 | 0 | -1;
+  symbol: string;
+  timeframe: string;
+}): Promise<TradeOutcomeResult | null> {
+  const res = await fetch('/api/cogochi/outcome', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) return null;
+  return await readJson<TradeOutcomeResult>(res);
+}
+
+export async function fetchAlphaWorldModel(): Promise<AlphaWorldModelResponse> {
+  const res = await fetch('/api/cogochi/alpha/world-model');
+  if (!res.ok) return {};
+  return (await readJson<AlphaWorldModelResponse>(res)) ?? {};
 }
 
 export type MemoryRerankRecord = MemoryQueryResponse['records'][number];
