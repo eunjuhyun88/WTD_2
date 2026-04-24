@@ -524,6 +524,7 @@ def test_manual_hypothesis_capture_launches_benchmark_search(tmp_path, monkeypat
         return ResearchRun(
             research_run_id="run-1",
             pattern_slug=config.pattern_slug,
+            definition_ref={"pattern_slug": config.pattern_slug},
             objective_id="benchmark-search:test",
             baseline_ref=f"benchmark-pack:{config.benchmark_pack_id}",
             search_policy={"mode": "benchmark-pack-search"},
@@ -624,6 +625,7 @@ def test_manual_hypothesis_benchmark_search_derives_search_query_spec_from_patte
         return ResearchRun(
             research_run_id="run-2",
             pattern_slug=config.pattern_slug,
+            definition_ref={"pattern_slug": config.pattern_slug},
             objective_id="benchmark-search:test",
             baseline_ref=f"benchmark-pack:{config.benchmark_pack_id}",
             search_policy={"mode": "benchmark-pack-search"},
