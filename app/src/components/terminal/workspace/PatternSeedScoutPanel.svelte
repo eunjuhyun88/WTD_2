@@ -38,6 +38,8 @@
   let snapshotFiles = $state<File[]>([]);
   let requestedSignals = $state<string[]>([]);
   let searchQuerySpec = $state<SearchQuerySpec | null>(null);
+  let currentRunId = $state<string | null>(null);
+  let judgedCandidates = $state<Set<string>>(new Set());
 
   function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -80,6 +82,8 @@
       requestedSignals = Array.isArray(body.seed?.requestedSignals) ? body.seed.requestedSignals : [];
       searchQuerySpec = isSearchQuerySpec(body.seed?.searchQuerySpec) ? body.seed.searchQuerySpec : null;
       candidates = Array.isArray(body.candidates) ? body.candidates : [];
+      currentRunId = body.seed?.runId ?? null;
+      judgedCandidates = new Set();
     } catch (err) {
       error = String(err);
       candidates = [];
@@ -93,6 +97,29 @@
   function handlePick(symbol: string) {
     onPickSymbol?.(symbol);
     onClose?.();
+  }
+
+  async function judgeCandidate(candidate: MatchCandidate, verdict: 'good' | 'bad') {
+    if (!currentRunId || !candidate.windowId) return;
+    judgedCandidates = new Set([...judgedCandidates, candidate.windowId]);
+    try {
+      await fetch('/api/terminal/pattern-seed/judge', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          runId: currentRunId,
+          candidateId: candidate.windowId,
+          verdict,
+          symbol: candidate.symbol,
+          layerAScore: candidate.layerAScore,
+          layerBScore: candidate.layerBScore,
+          layerCScore: candidate.layerCScore,
+          finalScore: candidate.score / 100,
+        }),
+      });
+    } catch {
+      // non-fatal — best-effort telemetry
+    }
   }
 </script>
 
@@ -167,6 +194,18 @@
                   <strong>{candidate.symbol.replace('USDT', '')}</strong>
                   <span class="candidate-source" data-source={candidate.source}>{candidate.source}</span>
                   <span class="candidate-score">{candidate.score}</span>
+                  {#if candidate.windowId && !judgedCandidates.has(candidate.windowId)}
+                    <div class="judge-btns" role="group" aria-label="Rate this candidate">
+                      <button type="button" class="judge-btn good" title="Good match"
+                        onclick={(e) => { e.stopPropagation(); judgeCandidate(candidate, 'good'); }}
+                        aria-label="Mark as good match">+</button>
+                      <button type="button" class="judge-btn bad" title="Bad match"
+                        onclick={(e) => { e.stopPropagation(); judgeCandidate(candidate, 'bad'); }}
+                        aria-label="Mark as bad match">−</button>
+                    </div>
+                  {:else if candidate.windowId && judgedCandidates.has(candidate.windowId)}
+                    <span class="judge-done">✓</span>
+                  {/if}
                 </div>
                 {#if candidate.candidatePhasePath && candidate.candidatePhasePath.length > 0}
                   <div class="phase-path">
@@ -456,5 +495,43 @@
     font-size: 9px;
     color: rgba(247,242,234,0.3);
     margin-left: auto;
+  }
+  .judge-btns {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .judge-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .judge-btn.good {
+    border-color: rgba(74,222,128,0.3);
+    color: rgba(74,222,128,0.9);
+  }
+  .judge-btn.good:hover {
+    background: rgba(74,222,128,0.12);
+  }
+  .judge-btn.bad {
+    border-color: rgba(248,113,113,0.3);
+    color: rgba(248,113,113,0.9);
+  }
+  .judge-btn.bad:hover {
+    background: rgba(248,113,113,0.12);
+  }
+  .judge-done {
+    margin-left: auto;
+    font-size: 10px;
+    color: rgba(74,222,128,0.7);
   }
 </style>
