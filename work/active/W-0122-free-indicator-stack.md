@@ -217,6 +217,17 @@ This small follow-up removes an app-server self-call that remains on the termina
 4. preserve `/api/quick-trades/open` route behavior by making it a thin wrapper over the same shared function
 5. lock the cut with targeted `intel-agent-shadow/execute` coverage
 
+### Current Lane Slice — Confluence Direct Load
+
+This follow-up keeps the existing engine-first confluence bridge but removes the remaining app HTTP loopbacks that the legacy fallback still uses.
+
+1. keep `/api/confluence/current` public payload stable
+2. preserve engine `/api/facts/confluence` as the preferred upstream
+3. extract shared direct loaders/helpers for the legacy fallback inputs that currently route through app HTTP
+4. make fallback composition call those helpers directly instead of `fetch(origin + /api/...)`
+5. keep legacy fallback semantics intact until engine fact confluence fully covers the needed evidence set
+6. lock the cut with targeted `confluence/current` route coverage plus helper tests where cache/reuse behavior changes materially
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
@@ -539,6 +550,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **legacy `/api/engine/ctx/fact` bridge is dead and should be removed** — fact-plane callers already use `/api/facts/ctx/fact`; keeping the same path allowlisted on the frozen legacy engine proxy only preserves duplicate ingress without any consumer.
 - **snapshot adapter should prefer `provider_state` over transitional `sources`** — once `ctx/fact` fills canonical provider summaries, app compatibility routes should read that normalized plane contract first and only fall back to raw transitional source maps when older engine payloads are encountered.
 - **terminal execution paths should share server helpers instead of HTTP loopbacks** — when `intel-policy`, `intel-agent-shadow/execute`, and `/api/quick-trades/open` live in the same app process, shared loaders/functions are the canonical surface and internal `fetch('/api/...')` should be removed before new orchestration grows around them.
+- **W-0122 follow-up slices must branch from the last merged fact cut once the previous PR lands** — PR #229 already merged the snapshot/intel-policy cleanup, so the confluence direct-load cut needs a fresh execution branch/worktree to keep the next PR reviewable and avoid reusing a merged head.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
