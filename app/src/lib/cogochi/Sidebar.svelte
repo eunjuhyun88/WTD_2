@@ -46,9 +46,9 @@
     </div>
 
     <div class="footer">
-      <span class="dot" />
+      <span class="dot"></span>
       <span>scanner live</span>
-      <span class="spacer" />
+      <span class="spacer"></span>
       <span>300 sym</span>
     </div>
   </div>

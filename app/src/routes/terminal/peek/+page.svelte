@@ -196,45 +196,45 @@
       />
     </div>
 
-    <PeekDrawer {analyzeCount} {scanCount} {judgeCount}>
-      <svelte:fragment slot="analyze">
-        <TerminalContextPanel
-          {analysisData}
-          activeTab={analyzeTab}
-          onTabChange={(t) => analyzeTab = t}
-          bars={ohlcvBars}
-          {layerBarsMap}
-        />
-      </svelte:fragment>
+    {#snippet analyze()}
+      <TerminalContextPanel
+        {analysisData}
+        activeTab={analyzeTab}
+        onTabChange={(t) => analyzeTab = t}
+        bars={ohlcvBars}
+        {layerBarsMap}
+      />
+    {/snippet}
 
-      <svelte:fragment slot="scan">
-        <ScanGrid
-          alerts={scannerAlerts}
-          {similar}
-          {activeSymbol}
-          {loadingSimilar}
-          onOpenCapture={openCapture}
-        />
-      </svelte:fragment>
+    {#snippet scan()}
+      <ScanGrid
+        alerts={scannerAlerts}
+        {similar}
+        {activeSymbol}
+        {loadingSimilar}
+        onOpenCapture={openCapture}
+      />
+    {/snippet}
 
-      <svelte:fragment slot="judge">
-        <JudgePanel
-          symbol={activeSymbol}
-          timeframe={activeTf}
-          verdict={judgeVerdict}
-          entry={judgeEntry}
-          stop={judgeStop}
-          target={judgeTarget}
-          pWin={judgePWin}
-          lastPrice={judgeLast}
-          {captures}
-          saving={savingJudgment}
-          onSaveJudgment={saveJudgment}
-          onRejudge={rejudge}
-          onOpenCapture={openCapture}
-        />
-      </svelte:fragment>
-    </PeekDrawer>
+    {#snippet judge()}
+      <JudgePanel
+        symbol={activeSymbol}
+        timeframe={activeTf}
+        verdict={judgeVerdict}
+        entry={judgeEntry}
+        stop={judgeStop}
+        target={judgeTarget}
+        pWin={judgePWin}
+        lastPrice={judgeLast}
+        {captures}
+        saving={savingJudgment}
+        onSaveJudgment={saveJudgment}
+        onRejudge={rejudge}
+        onOpenCapture={openCapture}
+      />
+    {/snippet}
+
+    <PeekDrawer {analyzeCount} {scanCount} {judgeCount} {analyze} {scan} {judge} />
   </main>
 </div>
 

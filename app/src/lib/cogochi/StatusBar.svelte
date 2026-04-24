@@ -45,7 +45,7 @@
 
   <span class="divider">│</span>
   <span class="status-item">
-    <span class="dot" />
+    <span class="dot"></span>
     scanner live · 300 sym · 14s
   </span>
 
@@ -61,7 +61,7 @@
     </strong>
   </span>
 
-  <span class="spacer" />
+  <span class="spacer"></span>
 
   <span class="shortcuts">
     <span class="status-item">⌘B <span class="divider">·</span> sidebar</span>

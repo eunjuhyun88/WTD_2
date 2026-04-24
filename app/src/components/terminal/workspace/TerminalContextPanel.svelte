@@ -481,20 +481,6 @@
       linear-gradient(180deg, rgba(77,143,245,0.045), rgba(255,255,255,0.005)),
       rgba(10,13,18,0.98);
   }
-  .panel-symbol-line {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-  }
-  .panel-symbol {
-    font-family: var(--sc-font-mono);
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.03em;
-    color: rgba(247,242,234,0.92);
-    white-space: nowrap;
-  }
   .panel-actions {
     display: flex;
     align-items: center;

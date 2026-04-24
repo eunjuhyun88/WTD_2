@@ -42,7 +42,8 @@
   function onTouchStart(e: TouchEvent) { startDrag(e.touches[0].clientX, e.touches[0].clientY); }
 </script>
 
-<div
+<button
+  type="button"
   class="splitter"
   class:vertical={orientation === 'vertical'}
   class:horizontal={orientation === 'horizontal'}
@@ -50,13 +51,16 @@
   style:--splitter-color={color}
   onmousedown={onMouseDown}
   ontouchstart={onTouchStart}
-/>
+  aria-label={orientation === 'vertical' ? 'Resize vertical split' : 'Resize horizontal split'}
+></button>
 
 <style>
   .splitter {
     flex-shrink: 0;
     position: relative;
     background: transparent;
+    border: none;
+    padding: 0;
     transition: background 0.1s;
     z-index: 1;
   }

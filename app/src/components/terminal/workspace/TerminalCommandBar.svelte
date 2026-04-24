@@ -196,6 +196,5 @@
     .ticker-pair { font-size: 13px; }
     .ticker-price { display: none; }
     .markets-label { display: none; }
-    .tf-pill { padding: 3px 5px; font-size: 10px; }
   }
 </style>

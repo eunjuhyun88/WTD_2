@@ -131,7 +131,6 @@
   series={_candleSeries}
   {symbol}
   timeframe={tf}
-  onSelect={(ann) => { selectedCapture = ann; }}
 />
 
 <!-- Bottom sheet review drawer (mobile variant) -->

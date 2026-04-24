@@ -1806,7 +1806,6 @@
   series={candleSeriesForAnnotations}
   {symbol}
   timeframe={tf}
-  onSelect={(ann) => { onCaptureSelect ? onCaptureSelect(ann) : (selectedCapture = ann); }}
   onAnnotationsChange={(anns) => { _annotationsCache = anns; }}
 />
 {#if !onCaptureSelect}
@@ -1952,9 +1951,6 @@
   .tf-scroll::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.12);
     border-radius: 2px;
-  }
-  .tf-scroll .tf-btn {
-    flex-shrink: 0;
   }
   /* legacy selectors removed — compact row now owns these styles */
   .capture-save-btn {

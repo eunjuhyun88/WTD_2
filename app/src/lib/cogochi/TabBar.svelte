@@ -29,6 +29,13 @@
     if (kind === 'flywheel') return '#7aa2e0';
     return 'var(--g6)';
   }
+
+  function onTabKeyDown(event: KeyboardEvent, tabId: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setActiveTabId(tabId);
+    }
+  }
 </script>
 
 <div class="tab-bar">
@@ -47,6 +54,9 @@
         class:active={t.id === activeTabId}
         style:--tab-color={tabColor(t.kind)}
         onclick={() => setActiveTabId(t.id)}
+        onkeydown={(event) => onTabKeyDown(event, t.id)}
+        role="button"
+        tabindex="0"
       >
         <span class="tab-text">
           {tabIcon(t.kind)} {t.title}

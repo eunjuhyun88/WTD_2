@@ -1624,115 +1624,6 @@
     overflow: hidden;
   }
 
-  /* ── Empty canvas ── */
-  .empty-canvas {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--g0);
-    min-height: 0;
-  }
-  .ec-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    width: 440px;
-    max-width: 90vw;
-  }
-  .ec-logo {
-    font-size: 13px;
-    color: var(--g5);
-    letter-spacing: 0.32em;
-  }
-  .ec-tagline {
-    font-size: 11px;
-    color: var(--g6);
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 0.08em;
-    text-align: center;
-  }
-  .ec-divider {
-    width: 60px;
-    height: 0.5px;
-    background: var(--g4);
-  }
-  .ec-cta-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-  }
-  .ec-label {
-    font-size: 8px;
-    color: var(--g5);
-    letter-spacing: 0.22em;
-  }
-  .ec-options {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    width: 100%;
-  }
-  .ec-opt {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    background: var(--g1);
-    border: 0.5px solid var(--g4);
-    border-radius: 4px;
-  }
-  .ec-opt-key {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--amb);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    white-space: nowrap;
-    min-width: 80px;
-  }
-  .ec-opt-txt {
-    font-size: 10px;
-    color: var(--g6);
-  }
-  .ec-quick-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    width: 100%;
-  }
-  .ec-quick {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-    padding: 9px 12px;
-    background: var(--g1);
-    border: 0.5px solid var(--g4);
-    border-radius: 4px;
-    cursor: pointer;
-    text-align: left;
-    transition: border-color 0.12s, background 0.12s;
-  }
-  .ec-quick:hover {
-    border-color: var(--g4);
-    background: var(--g2);
-  }
-  .eq-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--g8);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-  }
-  .eq-sub {
-    font-size: 9px;
-    color: var(--g6);
-  }
-
   /* Chart section */
   .chart-section {
     flex: 1;
@@ -1829,11 +1720,6 @@
     border: 0.5px solid var(--g4);
     border-radius: 999px;
   }
-  .ev-label {
-    font-size: 7.5px;
-    color: var(--g6);
-    letter-spacing: 0.14em;
-  }
   .ev-pos { font-size: 11px; color: var(--amb); font-weight: 700; }
   .ev-sep { font-size: 9px; color: var(--g4); }
   .ev-neg { font-size: 11px; color: var(--neg); font-weight: 700; }
@@ -1873,51 +1759,10 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .phase-markers {
-    display: flex;
-    gap: 0;
-    padding: 0 14px;
-    height: 26px;
-    border-bottom: 0.5px solid var(--g2);
-    flex-shrink: 0;
-    align-items: center;
-  }
-  .phase {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--g5);
-    padding: 0 12px;
-    border-right: 0.5px solid var(--g2);
-    height: 100%;
-    transition: color 0.1s;
-  }
-  .phase:first-child { padding-left: 0; }
-  .phase:last-child { border-right: none; }
-  .ph-n { font-size: 7.5px; color: var(--g5); letter-spacing: 0.1em; }
-  .ph-label { font-size: 8.5px; letter-spacing: 0.08em; }
-  .ph-dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--pos);
-    box-shadow: 0 0 6px var(--pos);
-    flex-shrink: 0;
-  }
-  .phase.active .ph-n   { color: var(--pos); }
-  .phase.active .ph-label { color: var(--pos); font-weight: 600; }
   .chart-live {
     flex: 1;
     min-height: 0;
     overflow: hidden;
-  }
-  .chart-loading {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--g4);
-    font-size: 11px;
   }
 
   /* PEEK bar */
@@ -1935,35 +1780,6 @@
     align-items: center;
     padding: 0 8px;
     border-left: 0.5px solid var(--g4);
-  }
-  /* W-0122-Phase3: Layout C details accordion */
-  .lc-ind-details {
-    margin: 6px 0;
-    border: 0.5px solid var(--g4);
-    border-radius: 3px;
-    padding: 0;
-  }
-  .lc-ind-details summary {
-    cursor: pointer;
-    padding: 4px 6px;
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--g5, rgba(255, 255, 255, 0.5));
-    list-style: none;
-  }
-  .lc-ind-details summary::marker,
-  .lc-ind-details summary::-webkit-details-marker {
-    display: none;
-  }
-  .lc-ind-details summary::before {
-    content: '▸';
-    display: inline-block;
-    margin-right: 4px;
-    transition: transform 120ms;
-  }
-  .lc-ind-details[open] summary::before {
-    transform: rotate(90deg);
   }
   .pb-tab {
     flex: 1;
@@ -2217,15 +2033,6 @@
     line-height: 1.7;
   }
   .narrative .bull { color: var(--pos); font-weight: 600; }
-  .narrative code {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--g9);
-    font-size: 11px;
-    padding: 0 3px;
-    background: var(--g2);
-    border-radius: 2px;
-  }
-  .narrative strong { color: var(--g9); }
   .analyze-warning-list {
     display: flex;
     flex-wrap: wrap;
@@ -2376,7 +2183,6 @@
     flex-shrink: 0; transition: all 0.1s;
   }
   .sc-open:hover { background: var(--g2); border-color: var(--g5); color: var(--g8); }
-  .scan-sort-label { font-size: 9px; color: var(--g5); letter-spacing: 0.14em; }
   .scan-sort-btn {
     font-size: 10px; color: var(--g8); font-weight: 500;
     padding: 3px 8px; background: var(--g2); border-radius: 3px; cursor: pointer;
@@ -2450,7 +2256,6 @@
   }
   .lvl-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); letter-spacing: 0.14em; }
   .lvl-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lvl-hint { font-family: 'JetBrains Mono', monospace; font-size: 7px; color: var(--g6); }
   .rr-size-row { display: flex; gap: 6px; }
   .rr-box, .size-box {
     flex: 1; padding: 8px 10px; background: var(--g0);
@@ -2576,10 +2381,6 @@
     letter-spacing: 0.14em; margin-bottom: 8px;
   }
   .past-title { color: var(--amb); font-weight: 600; }
-  .past-sep { color: var(--g4); }
-  .past-win { color: var(--pos); }
-  .past-loss { color: var(--neg); }
-  .past-avg { color: var(--g6); letter-spacing: 0.04em; }
   .past-hint { font-size: 7.5px; color: var(--g5); letter-spacing: 0.04em; text-transform: none; }
   .past-cards { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
   .past-card {
@@ -2680,13 +2481,6 @@
     flex-direction: row;
     overflow: hidden;
     min-height: 0;
-  }
-  .lc-chart {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
   }
   /* merged layout: chart-section.lc-main = left pane (chart + peek) */
   .layout-c .chart-section.lc-main {
@@ -2828,7 +2622,6 @@
   .lcs-body { padding: 8px 12px; }
   .lcs-divider { height: 0.5px; background: var(--g3); flex-shrink: 0; }
   .prop-cell.compact { padding: 3px 0; }
-  .la-meta { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--g5); letter-spacing: 0.04em; }
   .lcs-summary-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3016,32 +2809,6 @@
     gap: 8px;
   }
 
-  .mobile-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    flex: 1;
-    color: var(--g5);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    text-align: center;
-  }
-
-  .mobile-analyze-hint {
-    margin-top: 12px;
-    padding: 10px 14px;
-    border-radius: 4px;
-    background: var(--g2);
-    border: 0.5px solid var(--g4);
-    color: var(--g7);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    line-height: 1.6;
-    text-align: center;
-  }
-
   .mp-section {
     display: flex;
     flex-direction: column;
@@ -3110,23 +2877,6 @@
   .proposal-ai-cta:active { background: var(--brand-dd); }
   .pcta-icon { font-size: 11px; flex-shrink: 0; }
   .pcta-text { flex: 1; }
-
-  /* ── Proposal hint (desktop) ── */
-  .proposal-hint {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 12px;
-    background: var(--g2);
-    border: 0.5px dashed var(--g4);
-    border-radius: 4px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--g6);
-    margin-top: 4px;
-  }
-  .ph-icon { color: var(--brand); font-size: 10px; }
-  .ph-arrow { color: var(--brand); margin-left: auto; }
 
   /* ── JUDGE context header ── */
   .judge-ctx {

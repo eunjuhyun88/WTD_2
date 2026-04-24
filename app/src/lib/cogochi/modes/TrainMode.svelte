@@ -127,7 +127,7 @@
           <div class="detail-header">
             <span class="detail-symbol">{capture.symbol}</span>
             <span class="detail-range">{capture.range}</span>
-            <span class="spacer" />
+            <span class="spacer"></span>
             <span class="detail-when">{capture.when}</span>
           </div>
 
@@ -211,7 +211,7 @@
                 <div class="case-top">
                   <span class="case-symbol">{q.symbol}</span>
                   <span class="case-when">{q.when}</span>
-                  <span class="spacer" />
+                  <span class="spacer"></span>
                   <div class="confidence-bar-wrap">
                     <div class="conf-track">
                       <div class="conf-fill" style="width:{q.confidence}%"></div>
@@ -222,7 +222,7 @@
                 <p class="case-why">{q.why}</p>
                 <div class="case-actions">
                   <span class="model-guess">내 모델의 추측 · <strong>{q.guess}</strong></span>
-                  <span class="spacer" />
+                  <span class="spacer"></span>
                   <button class="judge-yes">Y · 맞다</button>
                   <button class="judge-no">N · 아니다</button>
                   <button class="judge-skip">skip</button>
@@ -402,7 +402,7 @@
               </div>
             {/each}
           </div>
-          <div class="spacer-flex" />
+          <div class="spacer-flex"></div>
           <div class="model-summary">
             당신의 모델은 지난 7주간 <strong class="pos">+19 alpha</strong> 개선. 기여가 큰 action:<br />
             <span class="mono-sm amb">active_learning(7) &gt; rejudge(3) &gt; save_setup(12)</span>

@@ -271,7 +271,7 @@
     </div>
     <div class="context-chips">
       {#each ['@btc', '@4h', '@tradoor_v2', '#accumulation'] as c}
-        <span class="ctx-chip" onclick={() => inputValue = inputValue + ' ' + c}>{c}</span>
+        <button type="button" class="ctx-chip" onclick={() => inputValue = inputValue + ' ' + c}>{c}</button>
       {/each}
     </div>
   </div>
@@ -529,6 +529,7 @@
     color: var(--g6);
     border: 1px solid var(--g5);
     border-radius: 10px;
+    font-family: inherit;
     cursor: pointer;
     transition: background 0.1s;
   }
