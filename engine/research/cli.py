@@ -133,6 +133,107 @@ def _run_pattern_search_refinement_once(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_live_monitor(args: argparse.Namespace) -> int:
+    from research.live_monitor import print_scan_report, scan_universe_live
+
+    universe = None
+    if args.universe and args.universe != "cached":
+        universe = args.universe.split(",")
+
+    variant_slug = None if args.variant_slug == "auto" else args.variant_slug
+
+    results = scan_universe_live(
+        universe=universe,
+        variant_slug=variant_slug,
+        pattern_slug=args.pattern_slug,
+        timeframe=args.timeframe,
+        window_bars=args.window_bars,
+        staleness_hours=args.staleness_hours,
+        warmup_bars=args.warmup_bars,
+        log_to_experiment=False,
+    )
+    print_scan_report(results)
+    print()
+    print(json.dumps([result.to_dict() for result in results], indent=2, default=str))
+    return 0
+
+
+def _run_market_search(args: argparse.Namespace) -> int:
+    from research.market_retrieval import print_market_search_report, run_pattern_market_search
+
+    universe = None
+    if args.universe and args.universe != "cached":
+        universe = args.universe.split(",")
+
+    variant_slug = None if args.variant_slug == "auto" else args.variant_slug
+    result = run_pattern_market_search(
+        pattern_slug=args.pattern_slug,
+        variant_slug=variant_slug,
+        benchmark_pack_id=args.benchmark_pack_id,
+        timeframe=args.timeframe,
+        history_bars=args.history_bars,
+        stride_bars=args.stride_bars,
+        top_k=args.top_k,
+        replay_top_k=args.replay_top_k,
+        universe=universe,
+        warmup_bars=args.warmup_bars,
+    )
+    print_market_search_report(result)
+    print()
+    print(json.dumps(result.to_dict(), indent=2, default=str))
+    return 0
+
+
+def _run_market_index_build(args: argparse.Namespace) -> int:
+    from research.market_retrieval import build_market_retrieval_index
+
+    universe = None
+    if args.universe and args.universe != "cached":
+        universe = args.universe.split(",")
+
+    artifact = build_market_retrieval_index(
+        timeframe=args.timeframe,
+        history_bars=args.history_bars,
+        stride_bars=args.stride_bars,
+        window_bars=args.window_bars,
+        universe=universe,
+        warmup_bars=args.warmup_bars,
+    )
+    print(json.dumps(artifact.to_summary_dict(), indent=2, default=str))
+    return 0
+
+
+def _run_benchmark_pack_from_capture(args: argparse.Namespace) -> int:
+    from research.capture_benchmark import build_benchmark_pack_from_capture
+
+    candidate_timeframes = args.candidate_timeframes or None
+    draft = build_benchmark_pack_from_capture(
+        capture_id=args.capture_id,
+        pattern_slug=args.pattern_slug,
+        candidate_timeframes=candidate_timeframes,
+        max_holdouts=args.max_holdouts,
+    )
+    print(json.dumps(draft.to_dict(), indent=2, default=str))
+    return 0
+
+
+def _run_benchmark_search_from_capture(args: argparse.Namespace) -> int:
+    from research.capture_benchmark import build_and_run_benchmark_search_from_capture
+
+    candidate_timeframes = args.candidate_timeframes or None
+    result = build_and_run_benchmark_search_from_capture(
+        capture_id=args.capture_id,
+        pattern_slug=args.pattern_slug,
+        candidate_timeframes=candidate_timeframes,
+        max_holdouts=args.max_holdouts,
+        warmup_bars=args.warmup_bars,
+        min_reference_score=args.min_reference_score,
+        min_holdout_score=args.min_holdout_score,
+    )
+    print(json.dumps(result.to_dict(), indent=2, default=str))
+    return 0
+
+
 def _run_backtest(args: argparse.Namespace) -> int:
     from datetime import timedelta
 
@@ -239,6 +340,58 @@ def build_parser() -> argparse.ArgumentParser:
     )
     search_refine_p.add_argument("--slug", required=True, help="Pattern slug")
     search_refine_p.set_defaults(func=_run_pattern_search_refinement_once)
+
+    live_p = sub.add_parser("pattern-live-monitor", help="Scan promoted/current variant over cached universe or explicit symbols")
+    live_p.add_argument("--pattern-slug", default="tradoor-oi-reversal-v1")
+    live_p.add_argument("--variant-slug", default="auto", help="'auto' or explicit variant slug")
+    live_p.add_argument("--timeframe", default="1h")
+    live_p.add_argument("--window-bars", type=int, default=120)
+    live_p.add_argument("--staleness-hours", type=int, default=48)
+    live_p.add_argument("--warmup-bars", type=int, default=240)
+    live_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
+    live_p.set_defaults(func=_run_live_monitor)
+
+    market_p = sub.add_parser("pattern-market-search", help="Cheap cached-corpus retrieval followed by replay rerank")
+    market_p.add_argument("--pattern-slug", default="tradoor-oi-reversal-v1")
+    market_p.add_argument("--variant-slug", default="auto", help="'auto' or explicit variant slug")
+    market_p.add_argument("--benchmark-pack-id")
+    market_p.add_argument("--timeframe", default="1h")
+    market_p.add_argument("--history-bars", type=int, default=24 * 30)
+    market_p.add_argument("--stride-bars", type=int, default=6)
+    market_p.add_argument("--top-k", type=int, default=20)
+    market_p.add_argument("--replay-top-k", type=int, default=8)
+    market_p.add_argument("--warmup-bars", type=int, default=240)
+    market_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
+    market_p.set_defaults(func=_run_market_search)
+
+    market_index_p = sub.add_parser("pattern-market-index-build", help="Build a persisted cached-window retrieval index")
+    market_index_p.add_argument("--timeframe", default="1h")
+    market_index_p.add_argument("--history-bars", type=int, default=24 * 30)
+    market_index_p.add_argument("--stride-bars", type=int, default=6)
+    market_index_p.add_argument("--window-bars", type=int, required=True)
+    market_index_p.add_argument("--warmup-bars", type=int, default=240)
+    market_index_p.add_argument("--universe", default="cached", help="'cached' or comma-separated symbols")
+    market_index_p.set_defaults(func=_run_market_index_build)
+
+    capture_pack_p = sub.add_parser("pattern-benchmark-pack-from-capture", help="Build and persist a benchmark-pack draft from one capture")
+    capture_pack_p.add_argument("--capture-id", required=True)
+    capture_pack_p.add_argument("--pattern-slug", default=None)
+    capture_pack_p.add_argument("--candidate-timeframes", nargs="*", default=None, metavar="TF")
+    capture_pack_p.add_argument("--max-holdouts", type=int, default=4)
+    capture_pack_p.set_defaults(func=_run_benchmark_pack_from_capture)
+
+    capture_search_p = sub.add_parser(
+        "pattern-benchmark-search-from-capture",
+        help="Build a benchmark-pack draft from one capture and run benchmark-search immediately",
+    )
+    capture_search_p.add_argument("--capture-id", required=True)
+    capture_search_p.add_argument("--pattern-slug", default=None)
+    capture_search_p.add_argument("--candidate-timeframes", nargs="*", default=None, metavar="TF")
+    capture_search_p.add_argument("--max-holdouts", type=int, default=4)
+    capture_search_p.add_argument("--warmup-bars", type=int, default=240)
+    capture_search_p.add_argument("--min-reference-score", type=float, default=0.55)
+    capture_search_p.add_argument("--min-holdout-score", type=float, default=0.35)
+    capture_search_p.set_defaults(func=_run_benchmark_search_from_capture)
 
     benchmark_p = sub.add_parser("pattern-benchmark-search", help="Run replay benchmark-pack search for pattern variants")
     benchmark_p.add_argument("--slug", required=True, help="Pattern slug")

@@ -2,6 +2,7 @@
     "benchmark_pack_id": "tradoor-oi-reversal-v1__ptb-tradoor-v1",
     "pattern_slug": "tradoor-oi-reversal-v1",
     "candidate_timeframes": [
+        "15m",
         "1h",
         "4h"
     ],
