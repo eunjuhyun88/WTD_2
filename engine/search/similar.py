@@ -32,6 +32,13 @@ from typing import Any
 STATE_DIR = Path(__file__).resolve().parent / "state"
 DEFAULT_DB_PATH = STATE_DIR / "similar_runs.sqlite"
 
+# FeatureWindowStore SQLite — used to enrich corpus window signatures with
+# the full 40+ signal set (W-0162 strangler upgrade).
+_FW_DB_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "research" / "pattern_search" / "feature_windows.sqlite"
+)
+
 _W_ABC_DEFAULT = (0.45, 0.30, 0.25)
 _W_AB_DEFAULT  = (0.60, 0.40)
 _W_AC_DEFAULT  = (0.70, 0.30)
@@ -122,39 +129,160 @@ def _load_run(db_path: Path, run_id: str) -> dict | None:
     }
 
 
+# ── W-0162: FeatureWindowStore signal enrichment ──────────────────────────────
+
+def _ts_iso_to_ms(ts: str) -> int | None:
+    """Parse ISO timestamp string → epoch milliseconds. Returns None on failure."""
+    try:
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
+    except (ValueError, TypeError):
+        return None
+
+
+def _fetch_feature_signals_batch(
+    windows: list[Any],
+    fw_db_path: Path,
+) -> dict[str, dict[str, float]]:
+    """Batch-fetch FeatureWindowStore signals for a list of corpus windows.
+
+    For each window, finds the nearest feature bar within ±8h of start_ts.
+    Returns {window_id: signals_dict}. Silently returns {} on any error so
+    Layer A degrades gracefully to the legacy corpus signature.
+    """
+    if not windows or not fw_db_path.exists():
+        return {}
+
+    # Group by (symbol, timeframe) for efficient range queries
+    groups: dict[tuple[str, str], list[tuple[str, int]]] = {}
+    for w in windows:
+        ts_ms = _ts_iso_to_ms(w.start_ts)
+        if ts_ms is None:
+            continue
+        key = (w.symbol.upper(), w.timeframe)
+        groups.setdefault(key, []).append((w.window_id, ts_ms))
+
+    if not groups:
+        return {}
+
+    result: dict[str, dict[str, float]] = {}
+    _TOLERANCE_MS = 8 * 3_600_000  # ±8h — covers up to 2× 4h bars
+
+    try:
+        from research.feature_windows import SIGNAL_COLUMNS
+        cols_sql = "bar_ts_ms, " + ", ".join(SIGNAL_COLUMNS)
+        conn = sqlite3.connect(str(fw_db_path), timeout=5.0)
+        conn.row_factory = sqlite3.Row
+
+        for (symbol, timeframe), wid_ts_list in groups.items():
+            all_ts = [ts for _, ts in wid_ts_list]
+            min_ms = min(all_ts) - _TOLERANCE_MS
+            max_ms = max(all_ts) + _TOLERANCE_MS
+
+            rows = conn.execute(
+                f"SELECT {cols_sql} FROM feature_windows "
+                "WHERE symbol=? AND timeframe=? AND bar_ts_ms BETWEEN ? AND ? "
+                "ORDER BY bar_ts_ms",
+                [symbol, timeframe, min_ms, max_ms],
+            ).fetchall()
+
+            if not rows:
+                continue
+
+            fw_map: dict[int, dict[str, float]] = {
+                row["bar_ts_ms"]: {col: float(row[col]) for col in SIGNAL_COLUMNS}
+                for row in rows
+            }
+            fw_times = sorted(fw_map.keys())
+
+            for window_id, ts_ms in wid_ts_list:
+                nearest = min(fw_times, key=lambda t: abs(t - ts_ms))
+                if abs(nearest - ts_ms) <= _TOLERANCE_MS:
+                    result[window_id] = fw_map[nearest]
+
+        conn.close()
+    except Exception:
+        pass  # degrade gracefully — Layer A falls back to corpus signature
+
+    return result
+
+
 # ── Layer A: feature signature similarity ─────────────────────────────────────
 
+# Signal importance weights for weighted L1 distance.
+# OI and funding signals are leading indicators in crypto — weight them higher.
+# Price structure and volume are confirmatory — moderate weight.
+_SIGNAL_WEIGHTS: dict[str, float] = {
+    "oi_zscore": 2.0, "oi_spike_flag": 2.0, "oi_unwind_flag": 1.8,
+    "oi_reexpansion_flag": 1.8, "oi_change_24h": 1.5, "oi_change_1h": 1.5,
+    "oi_small_uptick_flag": 1.2, "oi_hold_flag": 1.0,
+    "funding_rate": 2.0, "funding_extreme_short_flag": 2.0,
+    "funding_extreme_long_flag": 2.0, "funding_flip_flag": 1.8,
+    "funding_flip_negative_to_positive": 1.8, "funding_flip_positive_to_negative": 1.8,
+    "funding_positive_flag": 1.2,
+    "vol_zscore": 1.5, "volume_spike_flag": 1.5, "vol_ratio_3": 1.2,
+    "volume_dryup_flag": 1.2, "low_volume_flag": 1.0,
+    "higher_lows_sequence_flag": 1.5, "breakout_strength": 1.5,
+    "fresh_low_break_flag": 1.5, "price_dump_flag": 1.3, "price_spike_flag": 1.3,
+    "range_high_break": 1.3, "price_change_1h": 1.2, "price_change_4h": 1.2,
+    "higher_low_count": 1.2, "higher_high_count": 1.2, "compression_ratio": 1.1,
+    "range_width_pct": 1.0, "short_to_long_switch_flag": 1.8,
+    "long_short_ratio": 1.5, "short_build_up_flag": 1.5, "long_build_up_flag": 1.5,
+    "close_return_pct": 1.5, "realized_volatility_pct": 1.2, "volume_ratio": 1.2,
+}
+_DEFAULT_WEIGHT = 1.0
+
+
 def _extract_reference_sig(pattern_draft: dict[str, Any]) -> dict[str, float]:
-    """Pull numeric reference fields from PatternDraft.search_hints."""
-    hints = pattern_draft.get("search_hints") or {}
+    """Pull numeric reference fields from a PatternDraft.
+
+    Priority:
+    1. feature_snapshot — full 40+ signal set from capture time (W-0162).
+       When a capture is saved, the feature_snapshot carries the exact signal
+       state at that bar, giving Layer A the richest possible reference.
+    2. search_hints — legacy 3-field fallback for older pattern drafts.
+    """
     ref: dict[str, float] = {}
 
-    # target_return_pct → close_return_pct
+    # 1. feature_snapshot: use all numeric values as-is
+    snapshot = pattern_draft.get("feature_snapshot")
+    if isinstance(snapshot, dict):
+        for k, v in snapshot.items():
+            if isinstance(v, (int, float)):
+                try:
+                    ref[k] = float(v)
+                except (TypeError, ValueError):
+                    pass
+
+    # 2. search_hints: fill in fields not already covered by the snapshot
+    hints = pattern_draft.get("search_hints") or {}
+
     trp = hints.get("target_return_pct")
-    if trp is not None:
+    if trp is not None and "close_return_pct" not in ref:
         try:
             ref["close_return_pct"] = float(trp)
         except (TypeError, ValueError):
             pass
 
-    # volatility_range → realized_volatility_pct (midpoint of range, or scalar)
     vol = hints.get("volatility_range")
-    if isinstance(vol, dict):
-        lo = vol.get("min") or vol.get("low")
-        hi = vol.get("max") or vol.get("high")
-        try:
-            ref["realized_volatility_pct"] = (float(lo) + float(hi)) / 2.0
-        except (TypeError, ValueError):
-            pass
-    elif vol is not None:
-        try:
-            ref["realized_volatility_pct"] = float(vol)
-        except (TypeError, ValueError):
-            pass
+    if "realized_volatility_pct" not in ref:
+        if isinstance(vol, dict):
+            lo = vol.get("min") or vol.get("low")
+            hi = vol.get("max") or vol.get("high")
+            try:
+                ref["realized_volatility_pct"] = (float(lo) + float(hi)) / 2.0
+            except (TypeError, ValueError):
+                pass
+        elif vol is not None:
+            try:
+                ref["realized_volatility_pct"] = float(vol)
+            except (TypeError, ValueError):
+                pass
 
-    # volume_breakout_threshold → volume_ratio
     vbt = hints.get("volume_breakout_threshold")
-    if vbt is not None:
+    if vbt is not None and "volume_ratio" not in ref:
         try:
             ref["volume_ratio"] = float(vbt)
         except (TypeError, ValueError):
@@ -164,14 +292,24 @@ def _extract_reference_sig(pattern_draft: dict[str, Any]) -> dict[str, float]:
 
 
 def _layer_a(candidate_sig: dict[str, Any], reference_sig: dict[str, float]) -> float:
+    """Weighted L1 distance between candidate and reference signal vectors.
+
+    Higher-importance signals (OI, funding, positioning) contribute more to the
+    score than lower-importance ones (price structure, misc flags).
+    """
     keys = [
         k for k, v in reference_sig.items()
         if isinstance(v, (int, float)) and isinstance(candidate_sig.get(k), (int, float))
     ]
     if not keys:
         return 0.5  # neutral — no overlap to score
-    dist = sum(abs(float(candidate_sig[k]) - float(reference_sig[k])) for k in keys) / len(keys)
-    return 1.0 / (1.0 + dist)
+    total_weight = sum(_SIGNAL_WEIGHTS.get(k, _DEFAULT_WEIGHT) for k in keys)
+    weighted_dist = sum(
+        _SIGNAL_WEIGHTS.get(k, _DEFAULT_WEIGHT) * abs(float(candidate_sig[k]) - float(reference_sig[k]))
+        for k in keys
+    )
+    avg_dist = weighted_dist / total_weight if total_weight > 0 else 0.0
+    return 1.0 / (1.0 + avg_dist)
 
 
 # ── Layer B: phase path sequence similarity ───────────────────────────────────
@@ -312,9 +450,16 @@ def run_similar_search(
     ref_sig = _extract_reference_sig(pattern_draft)
     has_query_path = bool(observed)
 
+    # W-0162: enrich window signatures with full feature signals when available
+    fw_enrichment = _fetch_feature_signals_batch(windows, _FW_DB_PATH)
+
     candidates: list[dict[str, Any]] = []
     for w in windows:
-        la = _layer_a(w.signature, ref_sig)
+        # Merge feature signals (40+ dims) on top of corpus signature (6 dims)
+        cand_sig = dict(w.signature)
+        if w.window_id in fw_enrichment:
+            cand_sig.update(fw_enrichment[w.window_id])
+        la = _layer_a(cand_sig, ref_sig)
 
         # Layer B — phase path
         lb: float | None = None
@@ -323,8 +468,10 @@ def run_similar_search(
             cand_path = _phase_path_for_symbol(w.symbol, pattern_slug, w.timeframe)
             lb = _layer_b(observed, cand_path)
 
-        # Layer C — ML: prefer stored feature_snapshot in signature, then from transitions
-        snap = w.signature.get("feature_snapshot")
+        # Layer C — ML: fw_enrichment signals > stored snapshot > transitions
+        snap = fw_enrichment.get(w.window_id)
+        if not isinstance(snap, dict):
+            snap = w.signature.get("feature_snapshot")
         if not isinstance(snap, dict):
             snap = _latest_feature_snapshot_for_symbol(w.symbol, pattern_slug)
         lc = _layer_c(snap)

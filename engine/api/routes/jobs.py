@@ -40,8 +40,6 @@ _MIN_INTERVAL: dict[str, int] = {
     "search_corpus":                1800,   # 30 min minimum (scheduled hourly)
     "db_cleanup":                   82800,  # 23 hr minimum (scheduled daily)
     "feature_windows_build":        21600,  # 6 hr minimum (scheduled every 6 hr)
-=======
-    "feature_windows_build":        21600,  # 6 hr minimum (scheduled every 6 hr)
     "feature_materialization":      600,    # 10 min minimum (scheduled every 15)
     "raw_ingest":                   3300,   # 55 min minimum (scheduled hourly)
 }
@@ -54,8 +52,6 @@ _LOCK_TTL: dict[str, int] = {
     "market_search_index_refresh":  900,   # 15 min
     "search_corpus":                600,   # 10 min
     "db_cleanup":                   120,   # 2 min
-    "feature_windows_build":        1800,  # 30 min max
-=======
     "feature_windows_build":        1800,  # 30 min max
     "feature_materialization":      840,   # 14 min
     "raw_ingest":                   3300,  # 55 min (full universe ingest)
@@ -290,21 +286,6 @@ async def run_feature_windows_build(
     from workers.feature_windows_prefetcher import prefetch_feature_windows
     return await _run_with_guard("feature_windows_build", prefetch_feature_windows())
 
-
-=======
-
-@router.post("/feature_windows_build/run")
-async def run_feature_windows_build(
-    _: None = Depends(_require_scheduler),
-) -> JSONResponse:
-    """Cloud Scheduler → rebuild FeatureWindowStore from local CSV cache.
-
-    Runs every 6 hours (BINANCE_30 × [15m, 1h, 4h], 90 days history).
-    Idempotent: UPSERT only writes bars not already stored.
-    """
-    from workers.feature_windows_prefetcher import prefetch_feature_windows
-    return await _run_with_guard("feature_windows_build", prefetch_feature_windows())
-
 @router.post("/feature_materialization/run")
 async def run_feature_materialization(
     _: None = Depends(_require_scheduler),
@@ -371,8 +352,6 @@ async def jobs_status() -> JSONResponse:
         "market_search_index_refresh",
         "search_corpus",
         "db_cleanup",
-        "feature_windows_build",
-=======
         "feature_windows_build",
         "feature_materialization",
         "raw_ingest",

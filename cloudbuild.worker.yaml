@@ -26,6 +26,10 @@ steps:
       - --platform
       - managed
       - --no-allow-unauthenticated
+      - --concurrency
+      - "1"
+      - --timeout
+      - "900"
       - --update-env-vars
       - ENGINE_RUNTIME_ROLE=worker,ENGINE_ENABLE_SCHEDULER=true,ENGINE_ALLOWED_HOSTS=${_ALLOWED_HOSTS}
 
