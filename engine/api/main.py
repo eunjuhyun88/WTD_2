@@ -88,6 +88,18 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     except Exception as exc:
         log.warning("kline prefetch warm-up failed (non-fatal): %s", exc)
 
+    # Restore in-progress pattern states from Supabase into local SQLite.
+    # Without this, every Cloud Run restart resets all pattern tracking to
+    # phase-0 and triggers spurious re-entry alerts on the next scan tick.
+    try:
+        from patterns.state_store import PatternStateStore
+        from patterns.supabase_state_sync import hydrate_from_supabase
+        _pattern_store = PatternStateStore()
+        _hydrated = await hydrate_from_supabase(_pattern_store)
+        log.info("Pattern state hydration: %d states restored", _hydrated)
+    except Exception as exc:
+        log.warning("Pattern state hydration failed (non-fatal): %s", exc)
+
     if scheduler_enabled():
         from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore[import]
         _kline_scheduler = AsyncIOScheduler()

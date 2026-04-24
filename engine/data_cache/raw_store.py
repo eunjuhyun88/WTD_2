@@ -2,13 +2,24 @@
 
 This is the durable raw plane for normalized provider truth. It is separate
 from the legacy file cache under ``engine/data_cache/cache``.
+
+Connection strategy: thread-local reuse via _tls.
+Each OS thread (including thread-pool workers from asyncio.to_thread) gets
+its own SQLite connection, kept alive for the thread lifetime. This gives
+persistent page-cache warmth (4 MB per thread) and avoids connection-setup
+overhead on every read/write. WAL mode ensures concurrent readers never
+block writers.
 """
 from __future__ import annotations
 
 import sqlite3
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Thread-local storage: one SQLite connection per OS thread.
+_tls = threading.local()
 
 STATE_DIR = Path(__file__).resolve().parent.parent / "state"
 DEFAULT_DB_PATH = STATE_DIR / "canonical_raw.sqlite"
@@ -172,10 +183,26 @@ class CanonicalRawStore:
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        # Reuse the thread-local connection if healthy.  Each thread in the
+        # asyncio thread pool gets its own connection, giving us persistent
+        # page-cache warmth without lock contention.
+        key = f"raw_{self.db_path}"
+        existing: sqlite3.Connection | None = getattr(_tls, key, None)
+        if existing is not None:
+            try:
+                existing.execute("SELECT 1")
+                return existing
+            except sqlite3.ProgrammingError:
+                pass  # connection was closed; create a fresh one below
+
+        conn = sqlite3.connect(str(self.db_path), timeout=10.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA cache_size=-4000")    # 4 MB page cache per thread
+        conn.execute("PRAGMA temp_store=MEMORY")
+        conn.execute("PRAGMA mmap_size=268435456")  # 256 MB memory-mapped I/O
+        setattr(_tls, key, conn)
         return conn
 
     def _init_db(self) -> None:
