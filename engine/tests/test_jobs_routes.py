@@ -89,3 +89,37 @@ def test_market_search_index_refresh_dispatches(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
     assert seen == ["job"]
+
+
+def test_feature_materialization_endpoint_dispatches(monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "SCHEDULER_SECRET", "top-secret")
+    seen: list[str] = []
+
+    async def fake_job() -> None:
+        seen.append("mat")
+
+    async def fake_guard(job_name: str, coro) -> JSONResponse:  # noqa: ANN001
+        assert job_name == "feature_materialization"
+        await coro
+        return JSONResponse({"status": "ok"})
+
+    monkeypatch.setattr(jobs, "_run_with_guard", fake_guard)
+
+    import scanner.scheduler as scheduler
+    monkeypatch.setattr(scheduler, "_feature_materialization_refresh_job", fake_job)
+
+    response = _client().post(
+        "/jobs/feature_materialization/run",
+        headers={"Authorization": "Bearer top-secret"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert seen == ["mat"]
+
+
+def test_raw_ingest_endpoint_requires_auth(monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "SCHEDULER_SECRET", "top-secret")
+
+    response = _client().post("/jobs/raw_ingest/run")
+    assert response.status_code == 401
