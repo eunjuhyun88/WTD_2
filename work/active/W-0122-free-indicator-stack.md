@@ -604,13 +604,9 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 
 ## Next Steps
 
-1. terminal AI / scan 이 `marketCapPlane + reference-stack + chain-intel + influencer metrics` 를 bounded context pack 으로 읽게 정렬한다.
-2. `query-presets` / `anomalies` 를 parity 합성에서 explicit scan contract 소비 구조로 내린다.
-3. opportunity/search surface 용 canonical scan envelope (`opportunity + alerts + scanner status + pattern candidates`) 를 분리해 route fan-out 을 줄인다.
-4. EVM token lane 에 CoinGecko Onchain DEX plane(top pools + recent trades + liquidity/volume)를 붙이고, provider state 를 `etherscan + coingecko_onchain` 으로 분리한다.
-5. `reference-stack` 는 먼저 계약을 분리한다: curated reference catalog 를 유지할지, engine coverage read model adapter 를 새로 둘지 결정한 뒤에만 cutover 한다.
-6. `market-cap` fact route 가 app macro consumers 를 충분히 커버하면 `marketCapPlane` 을 app-owned producer 에서 ingress fallback 으로 강등한다.
-7. `influencer-metrics` 가 additive catalog coverage 를 안정적으로 싣기 시작하면, 다음 단계에서 `report.metricLeaderboard` 의 report-local ids 를 canonical ids 로 직접 수렴시킬지 판단한다.
+1. `market-cap` fact route 와 macro consumers 를 더 묶어 `marketCapPlane` 을 app-owned producer 에서 ingress fallback 으로 강등한다.
+2. merged `factCoverage` / confluence cuts를 바탕으로 다음 W-0122 consumer 를 canonical `/facts/*` contract 위로 올리되, app self-call 을 다시 열지 않는다.
+3. 다음 engine slice 는 confluence scoring/read-model promotion 과 blocked provider matrix(Solscan, Etherscan paid-tier, Arkham) 정리를 한 merge unit으로 자른다.
 
 ## Related
 
@@ -642,8 +638,8 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-confluence-analyze-direct-load`, active worktree at `/tmp/wtd-v2-w0122-confluence-analyze-direct-load`
-- verification status: confluence analyze direct-load cleanup passes targeted `vitest` (`src/routes/api/confluence/current/confluence-current.test.ts`) plus `npm --prefix app run check` (`0 errors`, existing warnings only); prior influencer metric fact coverage and earlier snapshot/intel-policy/terminal loopback cleanup slices remain merged on `main`
+- branch/worktree state: latest merged slice = PR #238 on `origin/main`; next W-0122 execution branch must start from updated `main`
+- verification status: PR #236 and PR #238 landed on `main`; the confluence analyze direct-load slice passed targeted `vitest` (`src/routes/api/confluence/current/confluence-current.test.ts`) plus `npm --prefix app run check` (`0 errors`, existing warnings only)
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, remaining app self-calls outside the current snapshot/intel-policy/confluence path
 
 ## PR Trail
@@ -656,4 +652,6 @@ Phase 2 (future cycle):
 - #161 (Pillar 2 Options Phase 1)
 - #225 (`ctx/fact` contract fill-in)
 - #227 (indicator catalog alias cleanup + market-cap bridge consolidation)
+- #234 (confluence direct-load legacy fallback cleanup)
 - #236 (influencer metric fact coverage)
+- #238 (confluence analyze direct-load)
