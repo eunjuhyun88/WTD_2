@@ -30,7 +30,7 @@ from typing import Any
 import pandas as pd
 
 from scanner.feature_calc import compute_features_table, MIN_HISTORY_BARS
-from .feature_windows import FeatureWindowStore, FEATURE_WINDOW_STORE
+from .feature_windows import FeatureWindowStore, FEATURE_WINDOW_STORE, get_all_feature_window_stores
 from .signal_derivations import derive_all_signals
 
 log = logging.getLogger("engine.research.feature_windows_builder")
@@ -267,13 +267,30 @@ def _cli() -> None:
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-    store = FeatureWindowStore(args.db) if args.db else FEATURE_WINDOW_STORE
     tfs = [t.strip() for t in args.timeframes.split(",") if t.strip()]
 
+    # Resolve stores: custom db path overrides, otherwise write to all configured stores
+    if args.db:
+        stores = [FeatureWindowStore(args.db)]
+    else:
+        stores = get_all_feature_window_stores()
+    log.info("Writing to %d store(s): %s", len(stores), [type(s).__name__ for s in stores])
+
     if args.symbol:
-        for tf in tfs:
-            result = build_for_symbol(args.symbol, tf, store=store, since_days=args.since_days)
-            print(json.dumps(result, indent=2))
+        try:
+            from data_cache.loader import load_klines, load_perp
+            klines_df = load_klines(args.symbol, offline=False)
+            perp_df = load_perp(args.symbol, offline=False) if klines_df is not None else None
+        except Exception as exc:
+            print(f"Failed to load klines for {args.symbol}: {exc}")
+            return
+        for store in stores:
+            for tf in tfs:
+                result = build_for_symbol(
+                    args.symbol, tf, store=store, since_days=args.since_days,
+                    klines_df=klines_df, perp_df=perp_df,
+                )
+                print(json.dumps({**result, "backend": type(store).__name__}, indent=2))
 
     elif args.all_symbols:
         try:
@@ -282,13 +299,15 @@ def _cli() -> None:
         except Exception as exc:
             print(f"Could not load dynamic universe: {exc}")
             return
-        results = build_for_universe(symbols, tfs, store=store, since_days=args.since_days)
-        summary = {
-            "total_pairs": len(results),
-            "total_rows_written": sum(r.get("rows_written", 0) for r in results),
-            "errors": [r for r in results if r.get("error")],
-        }
-        print(json.dumps(summary, indent=2))
+        for store in stores:
+            results = build_for_universe(symbols, tfs, store=store, since_days=args.since_days)
+            summary = {
+                "backend": type(store).__name__,
+                "total_pairs": len(results),
+                "total_rows_written": sum(r.get("rows_written", 0) for r in results),
+                "errors": [r for r in results if r.get("error")],
+            }
+            print(json.dumps(summary, indent=2))
 
     else:
         parser.print_help()

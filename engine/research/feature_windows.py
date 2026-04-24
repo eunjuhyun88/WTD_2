@@ -377,9 +377,41 @@ class FeatureWindowStore:
 FEATURE_WINDOW_STORE = FeatureWindowStore(DEFAULT_DB_PATH)
 
 
+def get_feature_window_store() -> "FeatureWindowStore | Any":
+    """Return the appropriate store for the current environment.
+
+    - If SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set → SupabaseFeatureWindowStore
+    - Otherwise → local SQLite FeatureWindowStore
+
+    Used by /search/similar on GCP where no local CSV data exists.
+    """
+    import os
+    if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+        from .feature_windows_supabase import SupabaseFeatureWindowStore
+        return SupabaseFeatureWindowStore()
+    return FEATURE_WINDOW_STORE
+
+
+def get_all_feature_window_stores() -> "list[FeatureWindowStore | Any]":
+    """Return all configured stores (SQLite + Supabase if configured).
+
+    Used by the builder to write to both simultaneously:
+    - SQLite: fast local queries and offline research
+    - Supabase: persistent shared store readable by GCP
+    """
+    import os
+    stores: list[Any] = [FEATURE_WINDOW_STORE]
+    if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
+        from .feature_windows_supabase import SupabaseFeatureWindowStore
+        stores.append(SupabaseFeatureWindowStore())
+    return stores
+
+
 __all__ = [
     "CandidateWindow",
     "FeatureWindowStore",
     "FEATURE_WINDOW_STORE",
     "SIGNAL_COLUMNS",
+    "get_feature_window_store",
+    "get_all_feature_window_stores",
 ]

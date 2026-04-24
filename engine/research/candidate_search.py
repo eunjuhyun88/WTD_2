@@ -23,9 +23,10 @@ Usage:
     for candidate in result.candidates:
         print(candidate.symbol, candidate.final_score)
 
-The search is corpus-first: it only reads from the feature_windows SQLite
-store, never from raw provider endpoints. feature_windows must be populated
-by feature_windows_builder before searches return meaningful results.
+The search is corpus-first: it only reads from the feature_windows store
+(SQLite locally, Supabase on GCP), never from raw provider endpoints.
+feature_windows must be populated by feature_windows_builder before
+searches return meaningful results.
 """
 from __future__ import annotations
 
@@ -34,7 +35,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from .feature_windows import CandidateWindow, FeatureWindowStore, FEATURE_WINDOW_STORE, SIGNAL_COLUMNS
+from .feature_windows import CandidateWindow, FeatureWindowStore, FEATURE_WINDOW_STORE, SIGNAL_COLUMNS, get_feature_window_store
 from .query_transformer import PhaseQuery, SearchQuerySpec
 from .similarity_ranker import RankedCandidate, rank_candidates
 
@@ -138,7 +139,7 @@ def search_similar_patterns(
     Returns:
         PatternSearchResult with ranked candidates
     """
-    fw_store = store or FEATURE_WINDOW_STORE
+    fw_store = store or get_feature_window_store()
 
     # Compute time bounds
     since_ms: int | None = None
