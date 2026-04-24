@@ -25,6 +25,7 @@ Contract change
 - runtime ledger history 와 pattern model history / registry views 가 `definition_id` 기준 query/list 를 지원하도록 contract 정렬
 - capture truth 와 outcome truth 가 canonical `definition_ref` 를 write time 에 저장하도록 정렬
 - per-pattern stats / record-family summary 가 stored `definition_id` 기준 fully definition-scoped aggregate 를 지원하도록 정렬
+- stats read surfaces expose explicit `definition_scope` (`current_definition` default, `all_definitions` opt-in) so callers can choose scoped vs aggregate reads without abusing missing `definition_id`
 - targeted engine tests 추가
 
 ## Non-Goals
@@ -68,6 +69,7 @@ Contract change
 16. the prior mixed-scope step exposed `definition_id` on `/patterns/{slug}/stats`, but still kept outcome aggregates pattern-wide while filtering only model artifacts by definition scope.
 17. current local cut now persists canonical `definition_id` / `definition_ref` on `CaptureRecord` and `PatternOutcome` truth, mirrors the same metadata into entry/score/capture/outcome/verdict ledger records, and promotes training/stats/read models to fully definition-scoped aggregates.
 18. current local cut also keeps backward compatibility for legacy rows: when capture/outcome/ledger records predate stored definition metadata, current-definition reads still include them via explicit fallback instead of dropping stats to zero during migration.
+19. current local cut now exposes explicit `definition_scope` on `/patterns/{slug}/stats` and `/patterns/stats/all`, keeping `current_definition` as the default while allowing callers to request `all_definitions` aggregate reads without abusing missing `definition_id`.
 
 ## Assumptions
 
@@ -92,12 +94,13 @@ Contract change
 - preferred-model consumers should resolve the current definition scope first and only fall back to slug-only registry rows for legacy artifacts that predate definition-aware model keys.
 - capture/outcome truth now persists canonical definition identity at write time, so stats/training/runtime readers should prefer stored `definition_id` / `definition_ref` over `pattern_version` inference.
 - current-definition fallback is acceptable only for legacy rows with missing stored definition metadata; new rows must always carry canonical definition identity.
+- stats routes distinguish `current_definition` default reads from explicit `all_definitions` aggregate reads, and reject conflicting `definition_id + all_definitions` requests instead of overloading `definition_id` omission.
 - `#228` merged 이후에도 W-0160 후속 contract 가 남아 있어, 이번 slice 는 기존 merged branch를 재사용하지 않고 new main-based execution branch로 분리한다.
 
 ## Next Steps
 
-1. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
-2. decide whether stats/runtime readers need explicit `scope=all_definitions` views in addition to current-definition default reads.
+1. decide whether the same explicit scope contract should also be exposed on runtime capture/ledger list routes now that stats surfaces are closed.
+2. decide whether definition ids remain slug/version derived or move to a durable UUID namespace once write paths land.
 3. split capture-linked evidence from captures into a dedicated definition store only after the read contract proves stable.
 
 ## Exit Criteria
@@ -113,6 +116,7 @@ Contract change
 - model training, promotion, and preferred-model lookup are definition-version aware so sibling definition revisions under one slug do not collide.
 - capture and outcome truth persist canonical `definition_id` / `definition_ref` at write time.
 - per-pattern stats and record-family summaries are fully definition-scoped for the current/requested definition, with current-definition fallback only for legacy rows missing stored definition metadata.
+- stats routes accept an explicit aggregate scope (`all_definitions`) while keeping `current_definition` as the default.
 - targeted engine tests pass.
 
 ## Handoff Checklist
@@ -120,6 +124,6 @@ Contract change
 - active work item: `work/active/W-0160-pattern-definition-plane.md`
 - branch: `codex/w-0160-pattern-definition-plane`
 - verification:
-  - `uv run --directory engine python -m pytest tests/test_search_routes.py tests/test_runtime_routes.py tests/test_capture_store.py tests/test_capture_routes.py tests/test_capture_verdict_inbox.py tests/test_outcome_resolver.py tests/test_ledger_store.py tests/test_pattern_candidate_routes.py tests/test_pattern_search.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_refinement.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_refinement_reporting.py tests/test_model_registry.py tests/test_pattern_entry_scorer.py tests/test_patterns_scanner.py -q`
-  - `npm --prefix app run check` currently blocked in this worktree (`svelte-kit: command not found`)
+  - `uv run --directory engine python -m pytest tests/test_pattern_candidate_routes.py tests/test_search_routes.py tests/test_runtime_routes.py tests/test_pattern_search.py tests/test_research_state_store.py tests/test_research_worker_control.py tests/test_pattern_refinement.py tests/test_train_handoff.py tests/test_worker_research_jobs.py tests/test_refinement_reporting.py tests/test_model_registry.py tests/test_pattern_entry_scorer.py tests/test_patterns_scanner.py -q`
+  - `npm --prefix app run check`
 - remaining blockers: definition write path, durable definition store, full writer adoption of stored `definition_id`, and UI consumption remain future slices

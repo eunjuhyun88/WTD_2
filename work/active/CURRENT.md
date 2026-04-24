@@ -40,7 +40,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | definition plane mainline: canonical `/runtime/definitions/*` + capture/outcome truth scoped by `definition_id` |
+| **W-0160** | `W-0160-pattern-definition-plane.md` | 🟢 COMPLETE | definition plane mainline merged: canonical `/runtime/definitions/*`, definition-aware model identity, and explicit stats scope (`current_definition` / `all_definitions`) |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
@@ -115,7 +115,7 @@
 
 - active on `codex/w-0160-pattern-definition-plane`
 - worktree: `/tmp/wtd-v2-w0160-pattern-definition`
-- current slice: `/runtime/definitions/*` is open, runtime captures/search/research/refinement/training all preserve `definition_ref`, direct model train/promote routes plus `/runtime/ledger/*` projection expose it, runtime ledger store + pattern stats/model-registry read models carry it as first-class metadata, runtime ledger history / pattern model-history accept canonical `definition_id` queries, model-registry/model-history filter on persisted definition metadata instead of validation-only slug routing, canonical pattern model identity is now definition-version aware (`definition_id`-scoped keys + per-definition promotion/preferred lookup with legacy fallback), and capture/outcome truth plus `/patterns/{slug}/stats` now default to fully definition-scoped reads with current-definition fallback for legacy rows
+- current slice: `/runtime/definitions/*` is closed and ready to merge; runtime captures/search/research/refinement/training preserve `definition_ref`, model identity/promotion/preferred lookup are definition-version aware, capture/outcome truth is persisted with canonical definition metadata, and `/patterns/{slug}/stats` plus `/patterns/stats/all` now expose explicit `definition_scope` (`current_definition` default, `all_definitions` opt-in)
 - current doc lane `codex/w-0153-protocol-doc-recovery` was split and pushed clean at `44431562`
 - engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
 - `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
@@ -134,9 +134,9 @@
 3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
 4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
 5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
-6. **W-0160 / Contract lane** — `PatternDraft` / `SearchQuerySpec` + parser/transformer boundary for live agent/search turns
-7. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
-8. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
+6. **W-0150 / W-0151 / W-0152** — breakout production lane + active variant registry + similarity ranking commercialization
+7. **W-0159 / Extraction lane** — canonical raw plane mixed tree를 clean main-based lane로 재분리
+8. **W-0140 / Lane E** — bottom ANALYZE workspace slimming after upstream merge
 9. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
 
 ---
