@@ -59,16 +59,15 @@ def _generated_at() -> str:
 
 def _serialize_capture(capture: CaptureRecord) -> dict[str, Any]:
     payload = capture.to_dict()
-    definition_ref = capture.definition_ref if isinstance(capture.definition_ref, dict) else None
-    if (not isinstance(definition_ref, dict) or not definition_ref) and capture.pattern_slug:
+    if isinstance(capture.definition_ref, dict) and capture.definition_ref:
+        payload["definition_ref"] = dict(capture.definition_ref)
+    elif capture.pattern_slug:
         definition_ref = get_definition_service().get_definition_ref(
             pattern_slug=capture.pattern_slug,
             pattern_version=capture.pattern_version,
         )
         if definition_ref is not None:
             payload["definition_ref"] = definition_ref
-    elif definition_ref:
-        payload["definition_ref"] = definition_ref
     return payload
 
 

@@ -12,6 +12,8 @@ from datetime import datetime
 from typing import Literal
 import uuid
 
+from patterns.definition_refs import build_definition_ref, definition_id_from_ref
+
 Outcome = Literal["success", "failure", "timeout", "pending"]
 LedgerRecordType = Literal["entry", "capture", "score", "outcome", "verdict", "training_run", "model", "phase_attempt"]
 
@@ -20,6 +22,7 @@ class PatternOutcome:
     """One instance of a pattern playing out."""
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     pattern_slug: str = ""
+    pattern_version: int | None = None
     definition_id: str | None = None
     definition_ref: dict | None = None
     symbol: str = ""
@@ -73,6 +76,26 @@ class PatternOutcome:
 
     created_at: datetime = field(default_factory=lambda: datetime.now())
     updated_at: datetime = field(default_factory=lambda: datetime.now())
+
+    def __post_init__(self) -> None:
+        if (
+            self.pattern_version is None
+            and not isinstance(self.definition_ref, dict)
+            and self.definition_id is None
+        ):
+            return
+        resolved_ref = build_definition_ref(
+            self.pattern_slug,
+            self.pattern_version,
+            existing=self.definition_ref if isinstance(self.definition_ref, dict) else None,
+        )
+        resolved_id = self.definition_id or definition_id_from_ref(resolved_ref)
+        if self.pattern_version is None and isinstance(resolved_ref.get("pattern_version"), int):
+            self.pattern_version = int(resolved_ref["pattern_version"])
+        if resolved_id is not None:
+            self.definition_id = resolved_id
+        if resolved_ref:
+            self.definition_ref = resolved_ref
 
     def to_dict(self) -> dict:
         d = asdict(self)
