@@ -42,11 +42,11 @@ Product surface change
 
 ## Facts
 
-1. this lane starts from `main@8e914f76` after W-0159 merged.
+1. this lane was rebased onto `origin/main@117ecb19` before merge so the warning cleanup lands as a clean latest-main follow-up.
 2. the clean-worktree baseline was `svelte-check found 0 errors and 111 warnings`.
 3. the highest-yield warning family is self-closing non-void tags, followed by deprecated `<slot>` usage and many single-instance unused CSS selectors.
 4. `TradeMode.svelte` alone accounts for `48` warnings, but many smaller files can be cleaned with low-risk syntax-only edits first.
-5. the current branch result is `svelte-check found 0 errors and 0 warnings`.
+5. PR #244 carries the closeout, and the current branch result is `svelte-check found 0 errors and 0 warnings`.
 
 ## Assumptions
 
@@ -64,8 +64,9 @@ Product surface change
 
 ## Next Steps
 
-1. commit the warning cleanup lane on `codex/w-0161-app-warning-cleanup`.
-2. merge or stack this app hygiene branch as a clean follow-up unit when requested.
+1. merge PR #244 into `main`.
+2. treat any future `npm --prefix app run check` warning as a regression instead of normal background noise.
+3. resume the execution queue from `CURRENT.md`, starting with `W-0122`, `W-0145`, and `W-0142`.
 
 ## Exit Criteria
 
@@ -79,4 +80,4 @@ Product surface change
 - branch: `codex/w-0161-app-warning-cleanup`
 - verification:
   - `npm --prefix app run check`
-- remaining blockers: none
+- remaining blockers: PR #244 merge only

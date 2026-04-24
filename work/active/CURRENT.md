@@ -7,7 +7,7 @@
 
 ## main SHA
 
-`cf657e39` — current local `origin/main` ref
+`117ecb19` — current local `origin/main` ref
 
 ## 완료 (이번 세션)
 
@@ -43,6 +43,8 @@
 | #239 (W-0160) | DOUNI pattern search now flows through `PatternSeedScout` / canonical `PatternDraft -> SearchQuerySpec` contracts instead of local route-specific wiring |
 | #241 (W-0148) | post-merge execution queue was refreshed again after the W-0122/W-0160 follow-up merges so the next lanes stayed fact -> search -> runtime -> contract -> raw follow-up |
 | #242 (W-0160) | `/patterns/{slug}/stats` and `/patterns/stats/all` now expose explicit `definition_scope`, and app pattern-stats proxies pass through scoped queries |
+| #243 (W-0148) | next execution plan was resynced again after the latest merged follow-ups so CURRENT stayed aligned with the canonical lane order and branch map |
+| #244 (W-0161) | app warning cleanup landed on latest main base; `npm --prefix app run check` now reports `0 errors / 0 warnings` and the queue resumes on engine lanes without app warning noise |
 
 ---
 
@@ -50,7 +52,6 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0161** | `W-0161-app-warning-cleanup.md` | 🔴 IN-PROGRESS | app warning cleanup is clean at `svelte-check 0 errors / 0 warnings`; remaining work is latest-main merge, verification, and queue refresh only |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline after #236/#238: market-cap bridge retirement, remaining engine-preferred `/facts/*` consumer cuts, and confluence scoring runway |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
 | **W-0142** | `W-0142-manual-hypothesis-research-context.md` | 🔴 IN-PROGRESS | runtime state APIs for capture / pins / setups / research context / ledger |
@@ -124,11 +125,10 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0161-app-warning-cleanup`
-- worktree: `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0161-app-warning-cleanup`
-- current slice: app warning cleanup now rebases on top of updated `origin/main` and still holds `svelte-check 0 errors / 0 warnings`; next action is clean PR/merge, then queue resumes on the engine lanes below
-- latest queue refresh is based on updated `origin/main` `cf657e39`; docs-only refresh branches are merge-only and should not be reused as execution lanes
-- merged on `origin/main` since the raw/search baseline: PR #235 (`W-0160` definition truth scope), PR #236 (`W-0122` influencer fact coverage), PR #238 (`W-0122` confluence analyze direct-load), PR #239 (`W-0160` DOUNI pattern search), PR #241 (`W-0148` queue refresh), and PR #242 (`W-0160` explicit pattern-stats scope)
+- PR #244 closes the app warning lane on top of updated `origin/main`; app check baseline is now `0 errors / 0 warnings`
+- next executable queue resumes at `W-0122 -> W-0145 -> W-0142 -> W-0160`, with app-only hygiene removed as a blocker
+- latest queue refresh is based on updated `origin/main` `117ecb19`; docs-only refresh branches are merge-only and should not be reused as execution lanes
+- merged on `origin/main` since the raw/search baseline: PR #235 (`W-0160` definition truth scope), PR #236 (`W-0122` influencer fact coverage), PR #238 (`W-0122` confluence analyze direct-load), PR #239 (`W-0160` DOUNI pattern search), PR #241 (`W-0148` queue refresh), PR #242 (`W-0160` explicit pattern-stats scope), and PR #243 (`W-0148` queue resync)
 - `W-0160` now has three merged follow-up cuts on top of `PatternSeedScout`; the remaining work is runtime capture/ledger scope policy, legacy backfill/sunset policy, and durable definition namespace choice, not another ad hoc DOUNI surface fork
 - `W-0122` no longer has an active confluence cleanup branch; the next clean fact-plane slice must start from updated `main` and focus on bridge retirement plus engine scoring promotion
 - `W-0159` no longer needs extraction work; the remaining gap is a public or market-wide liquidation source plus any next raw-family expansion with concrete product pull
@@ -156,8 +156,7 @@
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
 | main | — | local `main` = `8be0dd6f` (behind merged remote) |
-| origin/main | — | local remote-tracking ref = `cf657e39` |
-| codex/w-0161-app-warning-cleanup | W-0161 | active app hygiene lane for zero-warning `svelte-check` cleanup and merge-only closeout |
+| origin/main | — | local remote-tracking ref = `117ecb19` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0160-pattern-definition-plane | W-0160 | clean main-based follow-up lane after merged definition truth / DOUNI contract cuts |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
@@ -197,7 +196,8 @@
 | codex/w-0148-post-merge-plan-refresh | W-0148 | merged via PR #237; docs-only queue refresh reference |
 | codex/w-0122-confluence-analyze-direct-load | W-0122 | merged via PR #238 |
 | codex/w-0160-douni-pattern-search | W-0160 | merged via PR #239 |
-| codex/w-0148-current-plan-refresh-20260424 | W-0148 | merged via PR #241; follow-up docs-only queue refresh reference |
+| codex/w-0148-current-plan-refresh-20260424 | W-0148 | merged via PR #243; follow-up docs-only queue refresh reference |
+| codex/w-0161-app-warning-cleanup | W-0161 | merged via PR #244; app check warning baseline reduced from `111 warnings` to `0 warnings` |
 | codex/w-0140-bottom-analyze-slimming | W-0140 | active bottom analyze workspace slimming lane |
 
 ---
