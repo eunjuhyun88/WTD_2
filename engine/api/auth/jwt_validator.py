@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
@@ -113,63 +114,68 @@ class JWTValidator:
         """
         # Check circuit breaker state
         now = datetime.now(timezone.utc).timestamp()
+        ts = datetime.now(timezone.utc).isoformat()
         if self._circuit_state == CircuitState.OPEN:
-            # Check if timeout expired, transition to HALF_OPEN
             if now >= self._circuit_last_failure_time + self._circuit_timeout_seconds:
                 self._circuit_state = CircuitState.HALF_OPEN
-                log.info("Circuit breaker: transitioning OPEN → HALF_OPEN")
+                log.info(json.dumps({"event": "circuit_state_change", "from": "open", "to": "half_open", "ts": ts}))
             else:
-                log.warning("Circuit breaker is OPEN, rejecting JWKS fetch")
+                log.warning(json.dumps({"event": "circuit_open_reject", "ts": ts}))
                 return None
 
         # Try cache first
         cached = await self._jwks_cache.get()
         if cached is not None:
-            log.debug("JWKS cache hit")
+            log.debug(json.dumps({"event": "jwks_cache_hit", "ts": ts}))
             return cached
 
         if not self.jwks_url:
-            log.error("JWT_JWKS_URL not configured")
+            log.error(json.dumps({"event": "jwks_url_missing", "ts": ts}))
             return None
 
         try:
-            # Fetch JWKS from endpoint
+            t0 = time.monotonic()
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(self.jwks_url)
                 resp.raise_for_status()
                 jwks = resp.json()
+            latency_ms = round((time.monotonic() - t0) * 1000)
 
-            # Cache the result
             await self._jwks_cache.set(jwks)
 
-            # Reset circuit breaker on success
             if self._circuit_state == CircuitState.HALF_OPEN:
                 self._circuit_state = CircuitState.CLOSED
                 self._circuit_failure_count = 0
-                log.info("Circuit breaker: transitioning HALF_OPEN → CLOSED")
+                log.info(json.dumps({"event": "circuit_state_change", "from": "half_open", "to": "closed", "ts": ts}))
 
+            log.info(json.dumps({"event": "jwks_fetch_ok", "latency_ms": latency_ms, "ts": ts}))
             return jwks
 
         except httpx.HTTPError as e:
             self._circuit_failure_count += 1
             self._circuit_last_failure_time = now
 
-            log.error(
-                "JWKS fetch failed (attempt %d/%d): %s",
-                self._circuit_failure_count,
-                self._circuit_failure_threshold,
-                str(e),
-            )
+            log.error(json.dumps({
+                "event": "jwks_fetch_error",
+                "attempt": self._circuit_failure_count,
+                "threshold": self._circuit_failure_threshold,
+                "error": str(e),
+                "ts": ts,
+            }))
 
-            # Open circuit if threshold exceeded
             if self._circuit_failure_count >= self._circuit_failure_threshold:
                 self._circuit_state = CircuitState.OPEN
-                log.error("Circuit breaker: transitioning to OPEN after %d failures", self._circuit_failure_count)
+                log.error(json.dumps({
+                    "event": "circuit_state_change",
+                    "from": "closed",
+                    "to": "open",
+                    "failure_count": self._circuit_failure_count,
+                    "ts": ts,
+                }))
 
-            # Try to return cached JWKS for graceful degradation
             cached = await self._jwks_cache.get()
             if cached is not None:
-                log.warning("Using stale cached JWKS due to endpoint failure")
+                log.warning(json.dumps({"event": "jwks_stale_cache_used", "ts": ts}))
                 return cached
 
             return None
