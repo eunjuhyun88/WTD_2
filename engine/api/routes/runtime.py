@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from api.routes import captures as capture_routes
 from api.schemas_runtime import (
@@ -57,15 +57,27 @@ def _generated_at() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _serialize_capture(capture: CaptureRecord) -> dict[str, Any]:
+def _serialize_capture(capture: CaptureRecord, definition_cache: dict[tuple[str, int | None], dict] | None = None) -> dict[str, Any]:
+    """Serialize capture with optional definition ref cache for batch loading.
+
+    Args:
+        capture: The capture record to serialize
+        definition_cache: Pre-loaded cache of {(pattern_slug, version): definition_ref}
+                         Avoids N+1 queries when serializing multiple captures
+    """
     payload = capture.to_dict()
     if isinstance(capture.definition_ref, dict) and capture.definition_ref:
         payload["definition_ref"] = dict(capture.definition_ref)
     elif capture.pattern_slug:
-        definition_ref = get_definition_service().get_definition_ref(
-            pattern_slug=capture.pattern_slug,
-            pattern_version=capture.pattern_version,
-        )
+        # Try to use cache first, then fall back to direct lookup
+        cache_key = (capture.pattern_slug, capture.pattern_version)
+        if definition_cache is not None and cache_key in definition_cache:
+            definition_ref = definition_cache[cache_key]
+        else:
+            definition_ref = get_definition_service().get_definition_ref(
+                pattern_slug=capture.pattern_slug,
+                pattern_version=capture.pattern_version,
+            )
         if definition_ref is not None:
             payload["definition_ref"] = definition_ref
     return payload
@@ -114,12 +126,16 @@ def _serialize_ledger_entry(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/captures", response_model=RuntimeCaptureResponse)
-async def create_runtime_capture(body: capture_routes.CaptureCreateBody) -> RuntimeCaptureResponse:
+async def create_runtime_capture(request: Request, body: capture_routes.CaptureCreateBody) -> RuntimeCaptureResponse:
     """Create a canonical runtime capture.
 
     This route reuses the existing CaptureRecord schema while moving new
     runtime consumers to the `/runtime` plane.
     """
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     if body.capture_kind != "pattern_candidate" and body.pattern_slug:
         try:
             body.pattern_slug = capture_routes.validate_pattern_slug(body.pattern_slug)
@@ -128,7 +144,7 @@ async def create_runtime_capture(body: capture_routes.CaptureCreateBody) -> Runt
     transition_snapshot, transition_defaults = capture_routes._validate_transition(body)
     record = CaptureRecord(
         capture_kind=body.capture_kind,
-        user_id=body.user_id,
+        user_id=user_id,
         symbol=body.symbol,
         pattern_slug=body.pattern_slug,
         pattern_version=body.pattern_version,
@@ -152,13 +168,17 @@ async def create_runtime_capture(body: capture_routes.CaptureCreateBody) -> Runt
 
 @router.get("/captures", response_model=RuntimeCaptureListResponse)
 async def list_runtime_captures(
-    user_id: str | None = None,
+    request: Request,
     definition_id: str | None = None,
     pattern_slug: str | None = None,
     symbol: str | None = None,
     status: str | None = None,
     limit: int = 100,
 ) -> RuntimeCaptureListResponse:
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     definition_ref: dict[str, Any] | None = None
     if definition_id is not None:
         try:
@@ -191,7 +211,24 @@ async def list_runtime_captures(
         status=status,
         limit=max(1, min(limit, 500)),
     )
-    rows = [_serialize_capture(capture) for capture in captures]
+
+    # OPTIMIZATION: Batch-load all unique definition refs to avoid N+1 queries
+    definition_cache: dict[tuple[str, int | None], dict] = {}
+    unique_definitions = set()
+    for capture in captures:
+        if capture.pattern_slug:
+            unique_definitions.add((capture.pattern_slug, capture.pattern_version))
+
+    for pattern_slug_key, pattern_version_key in unique_definitions:
+        ref = get_definition_service().get_definition_ref(
+            pattern_slug=pattern_slug_key,
+            pattern_version=pattern_version_key,
+        )
+        if ref is not None:
+            definition_cache[(pattern_slug_key, pattern_version_key)] = ref
+
+    # Serialize all captures using the pre-loaded cache
+    rows = [_serialize_capture(capture, definition_cache=definition_cache) for capture in captures]
     return RuntimeCaptureListResponse(
         generated_at=_generated_at(),
         captures=rows,
@@ -230,11 +267,15 @@ async def get_runtime_definition(pattern_slug: str) -> RuntimePatternDefinitionR
 
 
 @router.post("/workspace/pins", response_model=RuntimeWorkspaceResponse)
-async def create_workspace_pin(body: RuntimeWorkspacePinCreate) -> RuntimeWorkspaceResponse:
+async def create_workspace_pin(request: Request, body: RuntimeWorkspacePinCreate) -> RuntimeWorkspaceResponse:
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     workspace = get_runtime_store().save_workspace_pin(
         symbol=body.symbol,
         timeframe=body.timeframe,
-        user_id=body.user_id,
+        user_id=user_id,
         kind=body.kind,
         summary=body.summary,
         payload=body.payload,
@@ -244,18 +285,26 @@ async def create_workspace_pin(body: RuntimeWorkspacePinCreate) -> RuntimeWorksp
 
 
 @router.get("/workspace/{symbol}", response_model=RuntimeWorkspaceResponse)
-async def get_workspace(symbol: str, user_id: str | None = None) -> RuntimeWorkspaceResponse:
+async def get_workspace(request: Request, symbol: str) -> RuntimeWorkspaceResponse:
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     workspace = get_runtime_store().get_workspace(symbol, user_id=user_id)
     return RuntimeWorkspaceResponse(generated_at=_generated_at(), workspace=workspace)
 
 
 @router.post("/setups", response_model=RuntimeSetupResponse)
-async def create_setup(body: RuntimeSetupCreate) -> RuntimeSetupResponse:
+async def create_setup(request: Request, body: RuntimeSetupCreate) -> RuntimeSetupResponse:
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     payload: dict[str, Any] = {
         **body.payload,
         "symbol": body.symbol,
         "timeframe": body.timeframe,
-        "user_id": body.user_id,
+        "user_id": user_id,
         "title": body.title,
         "summary": body.summary,
     }
@@ -272,12 +321,16 @@ async def get_setup(setup_id: str) -> RuntimeSetupResponse:
 
 
 @router.post("/research-contexts", response_model=RuntimeResearchContextResponse)
-async def create_research_context(body: RuntimeResearchContextCreate) -> RuntimeResearchContextResponse:
+async def create_research_context(request: Request, body: RuntimeResearchContextCreate) -> RuntimeResearchContextResponse:
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     payload: dict[str, Any] = {
         **body.payload,
         "symbol": body.symbol,
         "pattern_slug": body.pattern_slug,
-        "user_id": body.user_id,
+        "user_id": user_id,
         "title": body.title,
         "summary": body.summary,
         "fact_refs": body.fact_refs,
