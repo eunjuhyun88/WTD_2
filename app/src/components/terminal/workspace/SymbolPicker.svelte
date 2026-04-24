@@ -41,6 +41,7 @@
   let sector = $state('');
   let sort = $state('rank');
   let searchInput: HTMLInputElement;
+  let fetchRequestId = 0;
 
   const UNIVERSE_LIMIT = 500;
   const sectors: Array<{ label: string; value: string }> = [
@@ -149,28 +150,39 @@
   }
 
   async function fetchTokens() {
+    const requestId = ++fetchRequestId;
+    const searchQuery = query.trim();
     loading = true;
     error = '';
     try {
-      const params = new URLSearchParams({ limit: String(UNIVERSE_LIMIT), sort });
+      const params = new URLSearchParams({
+        limit: String(searchQuery ? Math.min(UNIVERSE_LIMIT, 50) : UNIVERSE_LIMIT),
+        sort,
+      });
       if (sector) params.set('sector', sector);
+      if (searchQuery) params.set('q', searchQuery);
       const res = await fetch(`/api/engine/universe?${params}`);
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
+      if (requestId !== fetchRequestId) return;
       tokens = data.tokens ?? [];
       usingFallback = false;
 
       // Fetch sparklines for top 20 tokens
-      if (tokens.length > 0) {
-        fetchSparklines(tokens.slice(0, 20).map(t => t.symbol));
+      const sparklineSymbols = tokens.filter((token) => token.is_futures).slice(0, 20).map((token) => token.symbol);
+      if (sparklineSymbols.length > 0) {
+        fetchSparklines(sparklineSymbols);
       }
     } catch (e: any) {
       await loadFallbackTokens();
+      if (requestId !== fetchRequestId) return;
       if (tokens.length === 0) {
         error = e.message || 'Failed to load';
       }
     } finally {
-      loading = false;
+      if (requestId === fetchRequestId) {
+        loading = false;
+      }
     }
   }
 
@@ -186,7 +198,7 @@
   }
 
   const filtered = $derived.by(() => {
-    if (!query) return tokens;
+    if (!query || !usingFallback) return tokens;
     const q = query.toUpperCase();
     return tokens.filter(
       t => t.base.includes(q) || t.name.toUpperCase().includes(q) || t.symbol.includes(q)
@@ -230,8 +242,12 @@
 
   // Refetch when sort/sector changes
   $effect(() => {
-    sort; sector;
-    fetchTokens();
+    sort; sector; query;
+    const delayMs = query.trim() ? 150 : 0;
+    const timer = setTimeout(() => {
+      void fetchTokens();
+    }, delayMs);
+    return () => clearTimeout(timer);
   });
 
   onMount(() => {
