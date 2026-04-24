@@ -428,6 +428,12 @@ export type {
 } from './facts/indicatorCatalog';
 export type { SearchPlaneState, SearchCandidate, ScanRequest, ScanResult } from './search/scan';
 export type {
+	SearchQueryNumericBounds,
+	SearchQueryPhase,
+	SearchQueryTransformerMeta,
+	SearchQuerySpec
+} from './search/querySpec';
+export type {
 	SeedSearchRequest,
 	SeedSearchCandidate,
 	SeedSearchResult

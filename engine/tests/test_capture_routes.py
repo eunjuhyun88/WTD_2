@@ -12,11 +12,19 @@ from ledger.store import LedgerStore
 from ledger.types import PatternOutcome
 from patterns.state_store import PatternStateStore
 from patterns.types import PhaseTransition
+from research.pattern_search import (
+    BenchmarkPackStore,
+    PatternSearchArtifactStore,
+    PatternSearchRunArtifact,
+)
+from research.state_store import ResearchRun
 
 
 def _client(tmp_path, monkeypatch) -> TestClient:
     capture_store = CaptureStore(tmp_path / "capture.sqlite")
     state_store = PatternStateStore(tmp_path / "runtime.sqlite")
+    benchmark_pack_store = BenchmarkPackStore(tmp_path / "benchmark_packs")
+    pattern_search_artifact_store = PatternSearchArtifactStore(tmp_path / "search_runs")
     appended = []
 
     class FakeRecordStore:
@@ -26,12 +34,16 @@ def _client(tmp_path, monkeypatch) -> TestClient:
 
     monkeypatch.setattr(captures, "_capture_store", capture_store)
     monkeypatch.setattr(captures, "_state_store", state_store)
+    monkeypatch.setattr(captures, "_benchmark_pack_store", benchmark_pack_store)
+    monkeypatch.setattr(captures, "_pattern_search_artifact_store", pattern_search_artifact_store)
     monkeypatch.setattr(captures, "LEDGER_RECORD_STORE", FakeRecordStore())
     app = FastAPI()
     app.include_router(captures.router, prefix="/captures")
     client = TestClient(app)
     client.capture_store = capture_store  # type: ignore[attr-defined]
     client.state_store = state_store  # type: ignore[attr-defined]
+    client.benchmark_pack_store = benchmark_pack_store  # type: ignore[attr-defined]
+    client.pattern_search_artifact_store = pattern_search_artifact_store  # type: ignore[attr-defined]
     client.appended_records = appended  # type: ignore[attr-defined]
     return client
 
@@ -180,6 +192,38 @@ def test_manual_hypothesis_capture_persists_research_context(tmp_path, monkeypat
                         "signals_required": ["price_dump", "oi_spike_with_dump"],
                     }
                 ],
+                "pattern_draft": {
+                    "schema_version": 1,
+                    "pattern_family": "tradoor_ptb_oi_reversal",
+                    "pattern_label": "Second dump reclaim",
+                    "source_type": "telegram_post",
+                    "source_text": "oi spike after second dump",
+                    "timeframe": "15m",
+                    "thesis": ["second dump is the real event"],
+                    "phases": [
+                        {
+                            "phase_id": "real_dump",
+                            "label": "second dump",
+                            "sequence_order": 0,
+                            "timeframe": "15m",
+                            "signals_required": ["oi_spike"],
+                        }
+                    ],
+                    "search_hints": {
+                        "preferred_timeframes": ["15m", "1h"],
+                        "similarity_focus": ["phase_path", "required_signals"],
+                        "symbol_scope": ["TRADOORUSDT"],
+                    },
+                    "ambiguities": ["breakout threshold unspecified"],
+                },
+                "parser_meta": {
+                    "parser_role": "pattern_parser",
+                    "parser_model": "gpt-5.4",
+                    "parser_prompt_version": "pattern-draft-v1",
+                    "pattern_draft_schema_version": 1,
+                    "signal_vocab_version": "signal-vocab-v1",
+                    "ambiguity_count": 1,
+                },
             },
         },
     )
@@ -187,9 +231,532 @@ def test_manual_hypothesis_capture_persists_research_context(tmp_path, monkeypat
     assert response.status_code == 200
     capture = response.json()["capture"]
     assert capture["research_context"]["pattern_family"] == "tradoor_ptb_oi_reversal"
+    assert capture["research_context"]["pattern_draft"]["pattern_family"] == "tradoor_ptb_oi_reversal"
+    assert capture["research_context"]["parser_meta"]["parser_role"] == "pattern_parser"
     stored = client.capture_store.load(capture["capture_id"])  # type: ignore[attr-defined]
     assert stored is not None
     assert stored.research_context["research_tags"] == ["second_dump", "oi_reexpand"]
+
+
+def test_manual_hypothesis_capture_projects_pattern_draft(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "TRADOORUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "15m",
+            "chart_context": {
+                "snapshot": {
+                    "viewport": {
+                        "timeFrom": 1712966400000,
+                        "timeTo": 1713139200000,
+                    }
+                }
+            },
+            "research_context": {
+                "pattern_draft": {
+                    "schema_version": 1,
+                    "pattern_family": "tradoor_ptb_oi_reversal",
+                    "pattern_label": "Second dump reclaim",
+                    "source_type": "manual_note",
+                    "source_text": "OI spike then reclaim",
+                    "symbol_candidates": ["TRADOORUSDT"],
+                    "timeframe": "15m",
+                    "thesis": ["second dump is the real event"],
+                    "phases": [
+                        {
+                            "phase_id": "real_dump",
+                            "label": "second dump",
+                            "sequence_order": 0,
+                            "description": "price dump with oi expansion",
+                            "signals_required": ["oi_spike"],
+                            "signals_preferred": ["volume_spike"],
+                            "signals_forbidden": [],
+                            "directional_belief": "event_confirmed",
+                            "evidence_text": "red vertical arrow",
+                            "time_hint": "event",
+                            "importance": 0.9,
+                        },
+                        {
+                            "phase_id": "accumulation",
+                            "label": "rising lows",
+                            "sequence_order": 1,
+                            "description": "higher lows after the dump",
+                            "signals_required": ["higher_lows_sequence"],
+                            "signals_preferred": ["oi_hold_after_spike"],
+                            "signals_forbidden": ["fresh_low_break"],
+                        },
+                    ],
+                    "trade_plan": {
+                        "entry_phase": "accumulation",
+                        "entry_trigger": ["higher_lows_sequence", "oi_hold_after_spike"],
+                        "stop_rule": "break_last_higher_low",
+                    },
+                    "search_hints": {
+                        "must_have_signals": ["oi_spike"],
+                        "preferred_timeframes": ["15m"],
+                        "exclude_patterns": ["continued_dump_after_low_oi"],
+                        "similarity_focus": ["sequence"],
+                        "symbol_scope": ["TRADOORUSDT"],
+                    },
+                    "confidence": 0.82,
+                    "ambiguities": ["breakout threshold not explicit"],
+                },
+                "parser_meta": {
+                    "parser_role": "pattern_parser",
+                    "parser_model": "gpt-5.4",
+                    "parser_prompt_version": "pattern-draft-v1",
+                    "pattern_draft_schema_version": 1,
+                    "signal_vocab_version": "signal-vocab-v1",
+                    "confidence": 0.82,
+                    "ambiguity_count": 1,
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    capture = response.json()["capture"]
+    research_context = capture["research_context"]
+    assert research_context["pattern_family"] == "tradoor_ptb_oi_reversal"
+    assert research_context["phase_annotations"][0]["phase_id"] == "real_dump"
+    assert research_context["entry_spec"]["entry_phase_id"] == "accumulation"
+    assert research_context["parser_meta"]["parser_model"] == "gpt-5.4"
+    assert research_context["pattern_draft"]["search_hints"]["must_have_signals"] == ["oi_spike"]
+
+    draft_response = client.post(f"/captures/{capture['capture_id']}/benchmark_pack_draft")
+    assert draft_response.status_code == 200
+    pack = draft_response.json()["benchmark_pack"]
+    assert pack["cases"][0]["expected_phase_path"] == ["REAL_DUMP", "ACCUMULATION"]
+    stored = client.capture_store.load(capture["capture_id"])  # type: ignore[attr-defined]
+    assert stored is not None
+    assert stored.research_context["pattern_draft"]["source_text"] == "OI spike then reclaim"
+    assert stored.research_context["parser_meta"]["signal_vocab_version"] == "signal-vocab-v1"
+
+
+def test_manual_hypothesis_capture_generates_benchmark_pack_draft(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    start_ts = int(datetime(2026, 4, 13, 0, 0, tzinfo=timezone.utc).timestamp() * 1000)
+    dump_ts = int(datetime(2026, 4, 14, 6, 0, tzinfo=timezone.utc).timestamp() * 1000)
+    breakout_ts = int(datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc).timestamp() * 1000)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "TRADOORUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "15m",
+            "user_note": "telegram seed",
+            "research_context": {
+                "source": {"kind": "telegram_post", "author": "founder"},
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "thesis": ["second dump is the real event"],
+                "research_tags": ["second_dump", "oi_reexpand"],
+                "phase_annotations": [
+                    {
+                        "phase_id": "fake_dump",
+                        "label": "warning dump",
+                        "timeframe": "15m",
+                        "start_ts": start_ts,
+                        "end_ts": dump_ts,
+                        "signals_required": ["recent_decline"],
+                    },
+                    {
+                        "phase_id": "real_dump",
+                        "label": "real dump",
+                        "timeframe": "15m",
+                        "start_ts": dump_ts,
+                        "end_ts": dump_ts + 900000,
+                        "signals_required": ["oi_spike_with_dump", "volume_spike"],
+                    },
+                    {
+                        "phase_id": "accumulation_15m",
+                        "label": "rising lows",
+                        "timeframe": "15m",
+                        "start_ts": dump_ts + 900000,
+                        "end_ts": breakout_ts - 900000,
+                        "signals_required": ["higher_lows_sequence"],
+                    },
+                    {
+                        "phase_id": "breakout_oi_reexpand",
+                        "label": "breakout",
+                        "timeframe": "15m",
+                        "start_ts": breakout_ts - 900000,
+                        "end_ts": breakout_ts,
+                        "signals_required": ["range_high_break", "oi_reexpansion"],
+                    },
+                ],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    capture_id = response.json()["capture"]["capture_id"]
+
+    draft_response = client.post(f"/captures/{capture_id}/benchmark_pack_draft")
+
+    assert draft_response.status_code == 200
+    payload = draft_response.json()
+    assert payload["source_capture_id"] == capture_id
+    pack = payload["benchmark_pack"]
+    assert pack["pattern_slug"] == "tradoor-oi-reversal-v1"
+    assert pack["candidate_timeframes"] == ["15m", "30m", "1h", "4h"]
+    assert len(pack["cases"]) == 1
+    case = pack["cases"][0]
+    assert case["symbol"] == "TRADOORUSDT"
+    assert case["timeframe"] == "15m"
+    assert case["expected_phase_path"] == [
+        "FAKE_DUMP",
+        "REAL_DUMP",
+        "ACCUMULATION",
+        "BREAKOUT",
+    ]
+    stored = client.benchmark_pack_store.load(pack["benchmark_pack_id"])  # type: ignore[attr-defined]
+    assert stored is not None
+    assert stored.cases[0].case_id == capture_id
+
+
+def test_manual_hypothesis_benchmark_pack_draft_falls_back_to_pattern_draft(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    time_from = int(datetime(2026, 4, 13, 0, 0, tzinfo=timezone.utc).timestamp() * 1000)
+    time_to = int(datetime(2026, 4, 15, 12, 0, tzinfo=timezone.utc).timestamp() * 1000)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "TRADOORUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "15m",
+            "chart_context": {
+                "snapshot": {
+                    "viewport": {
+                        "timeFrom": time_from,
+                        "timeTo": time_to,
+                        "tf": "15m",
+                        "barCount": 240,
+                    }
+                }
+            },
+            "research_context": {
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "pattern_draft": {
+                    "schema_version": 1,
+                    "pattern_family": "tradoor_ptb_oi_reversal",
+                    "pattern_label": "Second dump reclaim",
+                    "source_type": "terminal_capture",
+                    "source_text": "OI spike after second dump then higher lows",
+                    "timeframe": "15m",
+                    "thesis": ["second dump is the real event"],
+                    "phases": [
+                        {
+                            "phase_id": "real_dump",
+                            "label": "real dump",
+                            "sequence_order": 0,
+                            "timeframe": "15m",
+                            "signals_required": ["oi_spike"],
+                        },
+                        {
+                            "phase_id": "accumulation_15m",
+                            "label": "higher lows",
+                            "sequence_order": 1,
+                            "timeframe": "15m",
+                            "signals_required": ["higher_lows_sequence"],
+                        },
+                        {
+                            "phase_id": "breakout_oi_reexpand",
+                            "label": "breakout",
+                            "sequence_order": 2,
+                            "timeframe": "15m",
+                            "signals_required": ["range_high_break"],
+                        },
+                    ],
+                    "search_hints": {
+                        "preferred_timeframes": ["30m", "1h", "4h"],
+                        "similarity_focus": ["phase_path", "required_signals"],
+                        "symbol_scope": ["TRADOORUSDT"],
+                    },
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    capture_id = response.json()["capture"]["capture_id"]
+
+    draft_response = client.post(f"/captures/{capture_id}/benchmark_pack_draft")
+
+    assert draft_response.status_code == 200
+    payload = draft_response.json()
+    pack = payload["benchmark_pack"]
+    assert pack["candidate_timeframes"] == ["15m", "30m", "1h", "4h"]
+    case = pack["cases"][0]
+    assert case["timeframe"] == "15m"
+    assert case["expected_phase_path"] == ["REAL_DUMP", "ACCUMULATION", "BREAKOUT"]
+    assert case["start_at"] == "2026-04-13T00:00:00+00:00"
+    assert case["end_at"] == "2026-04-15T12:00:00+00:00"
+    assert "draft_source=OI spike after second dump then higher lows" in case["notes"]
+    assert "draft_thesis=second dump is the real event" in case["notes"]
+
+
+def test_manual_hypothesis_capture_launches_benchmark_search(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    seen: dict[str, object] = {}
+
+    def fake_run_pattern_benchmark_search(config, *, pack_store=None, artifact_store=None, **_kwargs):
+        assert pack_store is not None
+        pack = pack_store.load(config.benchmark_pack_id)
+        assert pack is not None
+        seen["benchmark_pack_id"] = config.benchmark_pack_id
+        seen["candidate_timeframes"] = pack.candidate_timeframes
+        seen["warmup_bars"] = config.warmup_bars
+        seen["min_reference_score"] = config.min_reference_score
+        return ResearchRun(
+            research_run_id="run-1",
+            pattern_slug=config.pattern_slug,
+            objective_id="benchmark-search:test",
+            baseline_ref=f"benchmark-pack:{config.benchmark_pack_id}",
+            search_policy={"mode": "benchmark-pack-search"},
+            evaluation_protocol={"candidate_timeframes": pack.candidate_timeframes},
+            status="completed",
+            completion_disposition="no_op",
+            winner_variant_ref=f"{config.pattern_slug}__canonical__tf-15m",
+            handoff_payload={"artifact_ref": "pattern-search:run-1"},
+            created_at="2026-04-23T00:00:00+00:00",
+            updated_at="2026-04-23T00:00:01+00:00",
+            started_at="2026-04-23T00:00:00+00:00",
+            completed_at="2026-04-23T00:00:01+00:00",
+        )
+
+    monkeypatch.setattr(captures, "run_pattern_benchmark_search", fake_run_pattern_benchmark_search)
+
+    create = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "TRADOORUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "15m",
+            "research_context": {
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "phase_annotations": [
+                    {
+                        "phase_id": "real_dump",
+                        "label": "real dump",
+                        "timeframe": "15m",
+                        "start_ts": 1776031200000,
+                        "end_ts": 1776032100000,
+                    },
+                    {
+                        "phase_id": "accumulation_15m",
+                        "label": "acc",
+                        "timeframe": "15m",
+                        "start_ts": 1776032100000,
+                        "end_ts": 1776116700000,
+                    },
+                    {
+                        "phase_id": "breakout_oi_reexpand",
+                        "label": "breakout",
+                        "timeframe": "15m",
+                        "start_ts": 1776116700000,
+                        "end_ts": 1776117600000,
+                    },
+                ],
+            },
+        },
+    )
+    assert create.status_code == 200
+    capture_id = create.json()["capture"]["capture_id"]
+
+    search_response = client.post(
+        f"/captures/{capture_id}/benchmark_search",
+        json={
+            "candidate_timeframes": ["15m", "30m", "1h", "4h"],
+            "warmup_bars": 180,
+            "min_reference_score": 0.42,
+        },
+    )
+
+    assert search_response.status_code == 200
+    payload = search_response.json()
+    assert payload["source_capture_id"] == capture_id
+    assert payload["benchmark_pack"]["candidate_timeframes"] == ["15m", "30m", "1h", "4h"]
+    assert payload["research_run"]["research_run_id"] == "run-1"
+    assert payload["research_run"]["winner_variant_ref"] == "tradoor-oi-reversal-v1__canonical__tf-15m"
+    assert seen["benchmark_pack_id"] == payload["benchmark_pack"]["benchmark_pack_id"]
+    assert seen["candidate_timeframes"] == ["15m", "30m", "1h", "4h"]
+    assert seen["warmup_bars"] == 180
+    assert seen["min_reference_score"] == 0.42
+
+
+def test_manual_hypothesis_benchmark_search_derives_search_query_spec_from_pattern_draft(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    seen: dict[str, object] = {}
+
+    def fake_run_pattern_benchmark_search(config, *, pack_store=None, artifact_store=None, **_kwargs):
+        assert pack_store is not None
+        assert artifact_store is not None
+        seen["search_query_spec"] = config.search_query_spec
+        artifact_store.save(
+            PatternSearchRunArtifact(
+                research_run_id="run-2",
+                pattern_slug=config.pattern_slug,
+                benchmark_pack_id=config.benchmark_pack_id or "missing-pack",
+                winner_variant_slug=None,
+                variant_results=[],
+                search_query_spec=config.search_query_spec,
+            )
+        )
+        return ResearchRun(
+            research_run_id="run-2",
+            pattern_slug=config.pattern_slug,
+            objective_id="benchmark-search:test",
+            baseline_ref=f"benchmark-pack:{config.benchmark_pack_id}",
+            search_policy={"mode": "benchmark-pack-search"},
+            evaluation_protocol={"candidate_timeframes": ["15m", "1h"]},
+            status="completed",
+            completion_disposition="dead_end",
+            winner_variant_ref=None,
+            handoff_payload={"artifact_ref": "pattern-search:run-2"},
+            created_at="2026-04-23T00:00:00+00:00",
+            updated_at="2026-04-23T00:00:01+00:00",
+            started_at="2026-04-23T00:00:00+00:00",
+            completed_at="2026-04-23T00:00:01+00:00",
+        )
+
+    monkeypatch.setattr(captures, "run_pattern_benchmark_search", fake_run_pattern_benchmark_search)
+
+    create = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "TRADOORUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "15m",
+            "chart_context": {
+                "snapshot": {
+                    "viewport": {
+                        "timeFrom": 1776031200000,
+                        "timeTo": 1776117600000,
+                    }
+                }
+            },
+            "research_context": {
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "pattern_draft": {
+                    "schema_version": 1,
+                    "pattern_family": "tradoor_ptb_oi_reversal",
+                    "pattern_label": "Second dump reclaim",
+                    "source_type": "terminal_capture",
+                    "source_text": "OI spike after second dump then higher lows",
+                    "symbol_candidates": ["TRADOORUSDT"],
+                    "timeframe": "15m",
+                    "phases": [
+                        {
+                            "phase_id": "real_dump",
+                            "label": "real dump",
+                            "sequence_order": 0,
+                            "signals_required": ["oi_spike", "short_funding_pressure"],
+                        },
+                        {
+                            "phase_id": "accumulation",
+                            "label": "higher lows",
+                            "sequence_order": 1,
+                            "signals_required": ["higher_lows_sequence"],
+                            "signals_forbidden": ["long_funding_pressure"],
+                            "max_gap_bars": 18,
+                        },
+                    ],
+                    "search_hints": {
+                        "must_have_signals": ["dump_then_reclaim"],
+                        "preferred_timeframes": ["1h"],
+                        "similarity_focus": ["phase_path", "required_signals"],
+                    },
+                },
+            },
+        },
+    )
+    assert create.status_code == 200
+    capture_id = create.json()["capture"]["capture_id"]
+
+    search_response = client.post(f"/captures/{capture_id}/benchmark_search")
+
+    assert search_response.status_code == 200
+    artifact = search_response.json()["artifact"]
+    assert artifact["search_query_spec"]["pattern_family"] == "tradoor_ptb_oi_reversal"
+    assert artifact["search_query_spec"]["reference_timeframe"] == "15m"
+    assert artifact["search_query_spec"]["phase_path"] == ["real_dump", "accumulation"]
+    assert artifact["search_query_spec"]["must_have_signals"] == [
+        "dump_then_reclaim",
+        "oi_spike",
+        "short_funding_pressure",
+        "higher_lows_sequence",
+    ]
+    assert artifact["search_query_spec"]["phase_queries"][1]["forbidden_numeric"] == {
+        "funding_rate_zscore": {"min": 1.0}
+    }
+    assert seen["search_query_spec"] == artifact["search_query_spec"]
+
+
+def test_benchmark_pack_draft_rejects_capture_without_research_context(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "SOLUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "1h",
+        },
+    )
+
+    assert response.status_code == 200
+    capture_id = response.json()["capture"]["capture_id"]
+
+    draft_response = client.post(f"/captures/{capture_id}/benchmark_pack_draft")
+
+    assert draft_response.status_code == 400
+    assert "research_context" in draft_response.json()["detail"]
+
+
+def test_benchmark_search_rejects_capture_without_research_context(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/captures",
+        json={
+            "capture_kind": "manual_hypothesis",
+            "user_id": "founder",
+            "symbol": "SOLUSDT",
+            "pattern_slug": "tradoor-oi-reversal-v1",
+            "timeframe": "1h",
+        },
+    )
+
+    assert response.status_code == 200
+    capture_id = response.json()["capture"]["capture_id"]
+
+    search_response = client.post(f"/captures/{capture_id}/benchmark_search")
+
+    assert search_response.status_code == 400
+    assert "research_context" in search_response.json()["detail"]
 
 
 def test_chart_bookmark_capture_is_closed(tmp_path, monkeypatch) -> None:

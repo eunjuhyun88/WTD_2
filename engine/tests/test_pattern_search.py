@@ -2171,6 +2171,12 @@ def test_run_pattern_benchmark_search_records_run_and_artifact(tmp_path, monkeyp
             definition_id="tradoor-oi-reversal-v1:v1",
             benchmark_pack_id="pack-2",
             variants=variants,
+            search_query_spec={
+                "schema_version": 1,
+                "pattern_family": "tradoor_ptb_oi_reversal",
+                "reference_timeframe": "1h",
+                "phase_path": ["REAL_DUMP", "ACCUMULATION"],
+            },
             min_reference_score=0.6,
             min_holdout_score=0.3,
         ),
@@ -2194,6 +2200,12 @@ def test_run_pattern_benchmark_search_records_run_and_artifact(tmp_path, monkeyp
     assert artifact is not None
     assert artifact["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert artifact["winner_variant_slug"] == "tradoor-oi-reversal-v1__winner"
+    assert artifact["search_query_spec"] == {
+        "schema_version": 1,
+        "pattern_family": "tradoor_ptb_oi_reversal",
+        "reference_timeframe": "1h",
+        "phase_path": ["REAL_DUMP", "ACCUMULATION"],
+    }
     assert artifact["family_policy"]["policy_id"] == "family-selection-v1"
     assert artifact["active_family_key"] == "tradoor-oi-reversal-v1__winner"
     assert artifact["active_family_type"] == "manual"
