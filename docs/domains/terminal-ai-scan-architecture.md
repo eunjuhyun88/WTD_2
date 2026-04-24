@@ -4,7 +4,7 @@
 
 터미널 제품의 핵심 수직 경로를 아래 하나의 구조로 정렬한다.
 
-`raw data -> fact plane -> search plane -> agent context -> surface`
+`raw data -> canonical feature plane -> pattern/search plane -> agent context -> surface`
 
 그리고 이 흐름과 별도로, workflow truth 를 담당하는 engine-owned
 `runtime state / workflow state` plane 을 둔다.
@@ -12,7 +12,7 @@
 이 구조의 목표는 세 가지다.
 
 1. AI 가 raw provider fan-out 없이도 일관된 사실을 읽게 한다.
-2. scan/search 가 UI 와 분리된 canonical runtime 을 갖게 한다.
+2. pattern/search 가 common feature 재계산 없이 canonical feature plane 위에서 동작하게 한다.
 3. surface 는 비교/저장/실행 UX 만 담당하게 한다.
 
 ## Current Diagnosis
@@ -36,6 +36,7 @@
 5. degraded provider state (`live / blocked / reference_only`) 는 first-class contract 다.
 6. refactor 는 plane 단위 strangler 방식으로 하고, big-bang rewrite 는 금지한다.
 7. raw retention 은 `replay 가능한 truth` 중심으로만 durable 하게 저장하고, provider blob 전체 보관은 금지한다.
+8. shared feature math belongs to the data engine; pattern engines only interpret those features.
 
 ## Raw Storage Policy
 
@@ -208,10 +209,33 @@ Implementation baseline as of `2026-04-24`:
 - `live / blocked / reference_only` state 를 반드시 포함한다.
 - UI/AI 는 provider 개별 응답을 몰라도 된다.
 
-### 3. Search Plane
+### 3. Canonical Feature Plane
 
 역할:
 
+- normalized market series에서 reusable feature를 계산
+- 공통 zscore / slope / divergence / percentile / duration / regime 계열을 한 번만 계산
+- fact, pattern, AI, runtime 이 같은 feature vocabulary 를 재사용하게 함
+
+대표 object / store:
+
+- `feature_bar_snapshots`
+- `feature_windows`
+- compact feature projections inside bounded fact contracts
+
+규칙:
+
+- `oi_zscore`, `funding_flip_flag`, `volume_percentile`,
+  `cvd_divergence_price`, `liq_imbalance`, `pullback_depth_pct`,
+  `timeframe_alignment_score` 같은 공통 재료는 여기서만 계산한다.
+- pattern family 마다 같은 feature 를 다시 계산하지 않는다.
+- 자세한 지표 정의는 `docs/domains/canonical-indicator-materialization.md` 를 canonical spec 으로 따른다.
+
+### 4. Pattern / Search Plane
+
+역할:
+
+- canonical feature plane 위에서 phase / family / replay / similarity 를 정의
 - 유사 패턴 탐색
 - market-wide retrieval
 - replay / rerank / promotion
@@ -237,11 +261,13 @@ Implementation baseline as of `2026-04-24`:
 
 규칙:
 
+- pattern/search 는 feature producer 가 아니라 feature interpreter 다.
+- phase rule, transition, family definition, replay score 는 이 plane 소유다.
 - on-demand live scan 과 historical retrieval 을 분리한다.
 - historical retrieval 은 corpus-first 로만 간다.
 - search plane 은 explanation 과 score 를 같이 반환한다.
 
-### 4. Agent Context Layer
+### 5. Agent Context Layer
 
 역할:
 
@@ -266,7 +292,7 @@ Implementation baseline as of `2026-04-24`:
 - token budget 우선
 - LLM 이 다시 broad retrieval 을 트리거하지 않아도 되게 구성
 
-### 5. Runtime State Plane
+### 6. Runtime State Plane
 
 역할:
 
@@ -283,7 +309,7 @@ Implementation baseline as of `2026-04-24`:
 - user workflow truth 는 fact/search cache 와 분리되어야 한다.
 - local SQLite/file 은 fallback only 이다.
 
-### 6. Surface Plane
+### 7. Surface Plane
 
 역할:
 
@@ -310,8 +336,8 @@ Implementation baseline as of `2026-04-24`:
 ### A. User asks AI about a symbol
 
 1. surface selects current symbol/timeframe
-2. fact plane returns canonical snapshots
-3. search plane returns latest scan or relevant catalog/search results
+2. fact plane and canonical feature plane return bounded snapshots
+3. pattern/search plane returns latest scan or relevant catalog/search results
 4. agent context builder compresses them into `AgentContextPack`
 5. runtime state is consulted only for saved workflow context
 6. AI route consumes only `AgentContextPack`
@@ -319,7 +345,7 @@ Implementation baseline as of `2026-04-24`:
 ### B. User runs pattern scan
 
 1. surface emits `ScanRequest`
-2. search plane executes live scan
+2. pattern/search plane executes live scan on canonical features
 3. search plane returns `ScanResult`
 4. result metadata may be persisted into runtime state
 5. result is optionally used by AI
@@ -977,6 +1003,10 @@ The reset only works if each data kind has one canonical write path and one cano
 
 The table names below are target canonical names, not a claim that every table already exists.
 
+For calculation-ready indicator names, raw fields, derived features, and
+search signature vocabulary, use
+`docs/domains/canonical-indicator-materialization.md` as the companion spec.
+
 | Data kind | Ingress sources | Canonical store | Hot cache | Owner routes | Background jobs | Primary plane |
 |---|---|---|---|---|---|---|
 | `ohlcv bars` | Binance, Coinbase, OKX, Bybit | `market_ohlcv_bars` | redis key by `symbol:timeframe` | `GET /facts/price-context`, `GET /ctx/fact` | kline prefetch/warm job | Fact |
@@ -997,6 +1027,188 @@ The table names below are target canonical names, not a claim that every table a
 | `pattern runtime state` | engine scanner/pattern runtime | `runtime_pattern_states`, `runtime_phase_transitions` | in-memory active state cache | internal runtime routes only | runtime checkpoint job | Runtime State |
 | `research context` | user/manual hypothesis flow, AI follow-up, evaluation artifacts | `runtime_research_contexts`, `runtime_research_links` | active session cache | workflow routes + agent inputs | research compaction job | Runtime State |
 | `ledger / outcomes / verdicts` | engine decisions and execution flow | `runtime_ledger_records`, `runtime_outcomes`, `runtime_verdicts` | optional hot state cache | workflow/report routes | outcome resolver job | Runtime State |
+
+## Pattern Research Runtime Decomposition
+
+The TRADOOR/PTB-style “Pattern Research OS” should not be treated as one new
+mega-module. In the current repo, the important question is not “what tables
+should exist eventually?” but “which existing primitives already exist, which
+plane owns them, and which contract family is still missing?”
+
+### Operating-System Framing
+
+This engine should be framed as a `Pattern Research Operating System`, not as
+one of the following:
+
+- a market scanner with more indicators
+- a backtest-only evaluation box
+- a one-shot ML classifier or ranking model
+
+The canonical loop is:
+
+`observation -> feature -> pattern definition -> sequence/runtime -> research search -> ledger -> refinement/promotion`
+
+That distinction matters because TRADOOR/PTB-style patterns are not owned by a
+single score. They are owned by:
+
+- pattern language: thesis, phases, evidence vocabulary, failure modes
+- sequence truth: `fake_dump -> arch_zone -> real_dump -> accumulation -> breakout`
+- judgment loop: valid / invalid / too early / too late / wrong threshold
+- promotion loop: research-only -> paper-watch -> live-active
+
+Surface-side query intent or chart templating is a consumer of this engine, not
+the engine itself. Chart planners may decide how to show evidence, but they do
+not define the evidence contracts.
+
+### Seven-Layer Runtime Model
+
+| Layer | Purpose | Canonical plane / route family | Notes |
+|---|---|---|---|
+| `Observation Engine` | collect reusable low-level market truth | ingress + `/facts/*` | price, OI, funding, volume, liquidation, macro, on-chain, reference health |
+| `Feature Engine` | compute canonical reusable math once | fact/feature plane | zscore, percentile, divergence, duration, slopes; no family-specific semantics |
+| `Pattern Definition Engine` | store trader intuition as a durable object | `/runtime/definitions/*` | thesis, phase template, evidence refs, outcome spec, failure notes |
+| `Sequence / State Engine` | track live phase truth and transition order | `/runtime/states/*`, `/search/*` | current phase, phase path, transition events, sequence match |
+| `Research Engine` | search, replay, near-miss clustering, benchmarking | `/search/*` | candidate search, replay, similarity, variant suggestions |
+| `Ledger Engine` | record what happened after the candidate | `/runtime/ledger/*`, `/runtime/judgments/*` | breakout, invalidation, expectancy, regime-conditioned outcomes |
+| `Refinement / Promotion Engine` | convert judgments into rollout decisions | `/runtime/promotions/*` | threshold adjustments, active rollout stage, evidence-backed promotion |
+
+The minimum system claim is therefore not “we store more data” but “we can
+compile trader intuition into machine-searchable, machine-verifiable, and later
+machine-promotable pattern objects.”
+
+### Sequence-First Rules
+
+1. `feature -> phase -> transition -> outcome` is the required ownership order.
+2. Vector similarity and ranking may filter candidates, but they do not own
+   canonical phase truth.
+3. `RuntimePatternState` is the authoritative answer to “where in the sequence
+   is this symbol now?”
+4. `OutcomeRecord` plus `JudgmentRecord` is the authoritative answer to “did
+   this sequence actually work?”
+5. `PromotionRecord` is the authoritative answer to “is this family/variant
+   allowed to affect live flows?”
+
+### Minimal Pattern Object Shape
+
+At the contract level, a TRADOOR/PTB-style family should be representable as a
+durable object with linked evidence rather than as loose notes on captures or a
+single model score.
+
+```json
+{
+  "pattern_family": "tradoor_ptb_oi_reversal",
+  "definition_id": "patdef_tradoor_v1",
+  "thesis": [
+    "first dump is warning, second dump plus OI expansion is decisive",
+    "15m higher lows mark accumulation",
+    "breakout requires OI re-expansion"
+  ],
+  "phase_template": [
+    "fake_dump",
+    "arch_zone",
+    "real_dump",
+    "accumulation",
+    "breakout"
+  ],
+  "evidence_refs": [
+    "capture:tradoor-2026-04-xx",
+    "image:tradoor-reference-chart",
+    "benchmark_pack:oi-reversal-v1"
+  ],
+  "outcome_policy": {
+    "breakout_rule": "range_high_close_plus_oi_expansion",
+    "invalidation_rule": "accumulation_low_loss"
+  }
+}
+```
+
+The important boundary is that:
+
+- `PatternDefinition` owns thesis and phase template
+- `CanonicalFeatureSnapshot` owns the reusable numeric truth
+- `RuntimePatternState` owns current sequence truth
+- `OutcomeRecord` owns realized result
+- `JudgmentRecord` owns human verdict
+- `PromotionRecord` owns rollout state
+
+### Current Primitive Map
+
+| Concern | Current primitive | Current file(s) | Current reality | Canonical target |
+|---|---|---|---|---|
+| built-in pattern definition | `PatternObject`, `PhaseCondition` | `engine/patterns/types.py`, `engine/patterns/library.py` | phase graph exists in code | seed source for `pattern definition` plane |
+| thin pattern metadata registry | `PatternRegistryEntry` | `engine/patterns/registry.py` | metadata is durable, but thesis/phase evidence is not | part of `pattern definition` plane |
+| manual pattern research context | `research_context` on captures | `engine/api/routes/captures.py`, `engine/capture/store.py` | rich founder notes exist, but are stored on capture records | must split into addressable `pattern definition` or linked research artifacts |
+| runtime phase state | `PatternStateRecord`, `PhaseTransitionRecord` | `engine/patterns/state_store.py` | durable SQLite state already exists | canonical `runtime state` plane |
+| benchmark/search control state | `ResearchRun`, `SelectionDecision`, memory notes | `engine/research/state_store.py` | durable control-plane store exists | `search control` / `research runtime` plane |
+| outcomes / verdict-ready loop | `PatternOutcome`, verdict inbox, capture status transitions | `engine/ledger/store.py`, `engine/api/routes/captures.py` | outcome resolver and verdict loop already work | canonical `outcome + judgment` plane |
+| refinement stats / suggestions | computed stats and text suggestions | `engine/api/routes/refinement.py` | read-only refinement exists | future `refinement/promotion` consumer plane |
+| active live variant | active variant registry | `engine/patterns/active_variant_registry.py` | one active winner per pattern family exists | future `promotion` plane input, not the whole promotion model |
+
+### Canonical Object Split
+
+The next design cut should stabilize these objects before any large storage
+rewrite.
+
+| Canonical object | Meaning | Must contain | Must not contain |
+|---|---|---|---|
+| `PatternDefinition` | trader intuition turned into a durable pattern spec | family, thesis, phase template, entry/outcome spec, evidence refs | live runtime state, per-symbol outcomes |
+| `PatternVariant` | search/replay-tuned executable variant | definition ref, timeframe, overrides, schema/policy versions | raw evidence assets, user UI state |
+| `CanonicalFeatureSnapshot` | compact feature truth at one bar/window | symbol, timeframe, ts, schema version, canonical feature subset | full raw provider payloads |
+| `RuntimePatternState` | live per-symbol phase truth | current phase, phase path, last transition id, phase score, evidence summary | whole feature tables, user notes |
+| `OutcomeRecord` | what happened after a candidate | entry/breakout/invalidation timestamps, returns, MFE/MAE, regime refs | full phase graph definition |
+| `JudgmentRecord` | user/refiner verdict on a case | verdict kind, comment, adjustment hints, refs to capture/outcome | market fact ownership |
+| `PromotionRecord` | live rollout status for a pattern/variant | rollout stage, gate metrics, active refs, evidence refs | raw search corpus or full capture payloads |
+
+### Contract-First Route Family
+
+The runtime stack should converge on route families first, even if the storage
+behind them stays SQLite/JSON during the first cut.
+
+| Route family | Primary objects | Current repo state | Required cut |
+|---|---|---|---|
+| `/runtime/definitions/*` | `PatternDefinition`, evidence assets | missing | split durable definition/evidence from `capture.research_context` and thin registry metadata |
+| `/runtime/states/*` | `RuntimePatternState`, transitions | missing canonical family; state exists in `patterns/state_store.py` | normalize read routes over existing state store |
+| `/runtime/captures/*` | captures, manual hypotheses, workspace-linked saves | partially exists as `/captures/*` | keep semantics, rename/cutover under runtime plane |
+| `/runtime/ledger/*` | `OutcomeRecord`, ledger summary | partially exists under `/patterns/*`, app runtime proxy, and ledger store | normalize around one runtime ledger contract family |
+| `/runtime/judgments/*` | `JudgmentRecord` | partially exists as capture verdict flow | separate verdict/judgment contract from capture route shape |
+| `/runtime/promotions/*` | `PromotionRecord`, active rollout status | mostly missing; active variant registry is only a slice | add only after outcome/judgment normalization |
+| `/search/*` | seed search, sequence match, similar-live, benchmark runs | partially exists | keep search ownership separate from runtime ownership |
+
+### Storage Normalization Strategy
+
+Do not start by creating a brand-new Postgres table for every noun. Start by
+deciding which current stores survive as-is, which need a new contract in front
+of them, and which should be split later.
+
+| Current store | Today | Short-term action | Long-term target |
+|---|---|---|---|
+| `engine/capture/store.py` SQLite | canonical capture persistence | keep, add runtime route family in front | migrate only when runtime plane contract is stable |
+| `engine/patterns/state_store.py` SQLite | canonical runtime phase persistence | keep, expose canonical runtime-state reads | later move to shared DB if multi-instance pressure demands it |
+| `engine/research/state_store.py` SQLite | research/search control plane | keep separate from outcome ledger | later move to shared DB if worker topology requires it |
+| `engine/ledger/store.py` JSON + ledger records | canonical outcome family today | keep, but normalize route family before replacing store | split `outcomes`, `judgments`, `promotion evidence` once contract stabilizes |
+| `engine/pattern_registry/*.json` | thin pattern metadata | keep as seed metadata only | absorb into richer `PatternDefinition` store later |
+
+### Follow-Up Merge Units
+
+These should be opened as separate execution lanes after `PR0.2`, not combined
+into one runtime rewrite.
+
+| Merge unit | Primary owner | Purpose | Success condition |
+|---|---|---|---|
+| `Pattern Definition Plane` | runtime/contract lane | lift thesis, phase annotations, evidence refs out of captures into a durable definition object | a manual hypothesis can reference a definition id instead of carrying full pattern definition payload |
+| `Runtime Route Normalization` | `W-0142` follow-up | normalize captures/state/ledger/judgment reads and writes under `/runtime/*` | app/runtime consumers stop depending on mixed `/captures` + `/patterns` semantics |
+| `Feature Snapshot Store` | feature/runtime bridge lane | persist the W-0156 canonical subset as a versioned snapshot object | similar-live and future promotion diagnostics can read stored canonical feature snapshots |
+| `Outcome + Judgment Split` | refinement/runtime lane | separate resolved outcomes from user judgments and threshold suggestions | verdict flow no longer mutates capture semantics directly |
+| `Promotion Ladder` | commercialization lane | make live rollout stage explicit beyond “active variant exists” | runtime can distinguish `research_only` vs `paper_watch` vs `production_live` |
+
+### Design Rules For This Runtime Family
+
+1. `PatternDefinition` and `PatternVariant` are not the same object.
+2. `CanonicalFeatureSnapshot` belongs to feature/runtime bridge work, not to search or surface.
+3. `RuntimePatternState` owns phase truth, but not market truth.
+4. `OutcomeRecord` and `JudgmentRecord` must be separately addressable, even if the first store keeps them physically close.
+5. `PromotionRecord` comes last; do not invent rollout stages before outcome/judgment contracts exist.
+6. Any lane that touches pattern-runtime architecture must declare whether it changes `definition`, `runtime state`, `outcome/judgment`, or `promotion` ownership.
 
 ## Write Path / Read Path Rules By Data Kind
 
