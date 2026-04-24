@@ -105,6 +105,8 @@ class JWTValidator:
         self._skip_sig = os.getenv("JWT_SKIP_SIG", "").lower() in {"1", "true", "yes"}
 
         self._jwks_cache = JWKSCache(ttl_seconds=3600)
+        # kid → RSA public key object (parsed once, reused every request)
+        self._key_cache: dict[str, Any] = {}
 
         self._circuit_state = CircuitState.CLOSED
         self._circuit_failure_count = 0
@@ -163,6 +165,7 @@ class JWTValidator:
             increment("jwt.cache.miss")
 
             await self._jwks_cache.set(jwks)
+            self._key_cache.clear()  # invalidate parsed-key cache on new JWKS
 
             if self._circuit_state == CircuitState.HALF_OPEN:
                 self._circuit_state = CircuitState.CLOSED
@@ -207,7 +210,12 @@ class JWTValidator:
     # ------------------------------------------------------------------
 
     def _get_public_key(self, token: str, jwks: dict[str, Any]) -> Any:
-        """Extract RSA public key matching this token's kid from JWKS."""
+        """Extract RSA public key for this token from JWKS.
+
+        Parsed keys are cached in self._key_cache (kid → key object) so
+        RSAAlgorithm.from_jwk() is called once per key rotation, not per request.
+        Cache is invalidated when JWKS data changes (new key set loaded).
+        """
         try:
             header = pyjwt.get_unverified_header(token)
         except pyjwt.exceptions.DecodeError as exc:
@@ -219,12 +227,22 @@ class JWTValidator:
         if alg not in {"RS256", "RS384", "RS512"}:
             raise ValueError(f"Unsupported algorithm: {alg}")
 
+        # Build/refresh key cache from current JWKS
         keys = jwks.get("keys", [])
         for key_data in keys:
-            if not kid or key_data.get("kid") == kid:
-                return RSAAlgorithm.from_jwk(key_data)
+            cache_key = key_data.get("kid", "__default__")
+            if cache_key not in self._key_cache:
+                self._key_cache[cache_key] = RSAAlgorithm.from_jwk(key_data)
 
-        raise ValueError(f"No JWKS key matched kid={kid!r} (available: {[k.get('kid') for k in keys]})")
+        # Resolve which key to use
+        if kid:
+            if kid in self._key_cache:
+                return self._key_cache[kid]
+        elif self._key_cache:
+            # No kid in token — use first available key
+            return next(iter(self._key_cache.values()))
+
+        raise ValueError(f"No JWKS key matched kid={kid!r} (available: {list(self._key_cache.keys())})")
 
     # ------------------------------------------------------------------
     # Main validate entry point
