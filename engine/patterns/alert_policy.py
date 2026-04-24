@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 from ledger.types import PatternOutcome
+from patterns.definitions import current_definition_id
 from patterns.model_registry import MODEL_REGISTRY_STORE
 
 AlertPolicyMode = Literal["shadow", "visible", "gated"]
@@ -92,7 +93,10 @@ def evaluate_alert_policy(pattern_slug: str, outcome: PatternOutcome | None) -> 
     if policy.mode == "visible":
         return AlertPolicyDecision(mode=policy.mode, visible=True, reason="policy_visible")
 
-    active_model = MODEL_REGISTRY_STORE.get_active(pattern_slug)
+    definition_id = current_definition_id(pattern_slug)
+    active_model = MODEL_REGISTRY_STORE.get_active(pattern_slug, definition_id=definition_id)
+    if active_model is None and definition_id is not None:
+        active_model = MODEL_REGISTRY_STORE.get_active(pattern_slug)
     if active_model is None:
         return AlertPolicyDecision(mode=policy.mode, visible=False, reason="no_active_model")
     if outcome is None:
@@ -101,6 +105,8 @@ def evaluate_alert_policy(pattern_slug: str, outcome: PatternOutcome | None) -> 
         return AlertPolicyDecision(mode=policy.mode, visible=False, reason="active_model_unscored")
     if outcome.entry_rollout_state != "active":
         return AlertPolicyDecision(mode=policy.mode, visible=False, reason="non_active_rollout_score")
+    if outcome.entry_model_key != active_model.model_key:
+        return AlertPolicyDecision(mode=policy.mode, visible=False, reason="active_model_key_mismatch")
     if outcome.entry_model_version != active_model.model_version:
         return AlertPolicyDecision(mode=policy.mode, visible=False, reason="active_model_mismatch")
     if outcome.entry_threshold_passed is True:

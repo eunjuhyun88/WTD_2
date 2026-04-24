@@ -5,6 +5,51 @@ vi.mock('$lib/server/marketFeedService', () => ({
 	normalizeTimeframe: vi.fn((value: string | null) => value ?? '4h'),
 }));
 
+vi.mock('$lib/server/perpContextBridge', () => ({
+	loadPerpContextBridge: vi.fn(),
+}));
+
+vi.mock('$lib/server/marketFlow', () => ({
+	loadMarketFlow: vi.fn(),
+}));
+
+vi.mock('$lib/server/marketEvents', () => ({
+	loadMarketEvents: vi.fn(),
+}));
+
+vi.mock('$lib/server/marketNews', () => ({
+	loadMarketNews: vi.fn(),
+}));
+
+vi.mock('$lib/server/marketTrending', () => ({
+	loadMarketTrending: vi.fn(),
+}));
+
+vi.mock('$lib/server/marketCapPlane', () => ({
+	adaptEngineMarketCapSnapshot: vi.fn(() => ({
+		at: Date.now(),
+		btcDominance: 63.4,
+		dominanceChange24h: 0.6,
+		marketCapChange24hPct: -1.3,
+		stablecoinMcapUsd: null,
+		stablecoinMcapChange24hPct: -0.7,
+		confidence: 0.74,
+		providers: {},
+	})),
+	fetchMarketCapOverview: vi.fn(),
+}));
+
+vi.mock('$lib/server/opportunityScan', () => ({
+	getOrRunOpportunityScan: vi.fn(),
+}));
+
+import { loadPerpContextBridge } from '$lib/server/perpContextBridge';
+import { loadMarketFlow } from '$lib/server/marketFlow';
+import { loadMarketEvents } from '$lib/server/marketEvents';
+import { loadMarketNews } from '$lib/server/marketNews';
+import { loadMarketTrending } from '$lib/server/marketTrending';
+import { fetchMarketCapOverview } from '$lib/server/marketCapPlane';
+import { getOrRunOpportunityScan } from '$lib/server/opportunityScan';
 import { GET } from './+server';
 
 function jsonResponse(payload: unknown, status = 200): Response {
@@ -15,7 +60,86 @@ function jsonResponse(payload: unknown, status = 200): Response {
 }
 
 describe('/api/terminal/intel-policy', () => {
-	it('pulls macro overview into the flow panel so terminal intel uses the fact-backed macro lane', async () => {
+	it('uses direct loaders for flow/events and fact-backed macro without internal route loopbacks', async () => {
+		const bridge = {
+			pair: 'ETH/USDT',
+			timeframe: '4h',
+			symbol: 'ETHUSDT',
+			enginePerp: null,
+			legacyDeriv: null,
+		};
+		vi.mocked(loadPerpContextBridge).mockResolvedValueOnce(bridge as any);
+		vi.mocked(loadMarketFlow).mockResolvedValueOnce({
+			data: {
+				pair: 'ETH/USDT',
+				timeframe: '4h',
+				token: 'ETH',
+				bias: 'SHORT',
+				snapshot: {
+					source: {
+						binance: true,
+						coinalyze: true,
+						coinmarketcap: false,
+					},
+					funding: null,
+					lsRatio: null,
+					liqLong24h: 0,
+					liqShort24h: 0,
+					priceChangePct: 0,
+					quoteVolume24h: 0,
+					cmcPrice: null,
+					cmcMarketCap: null,
+					cmcVolume24hUsd: null,
+					cmcChange24hPct: null,
+					cmcUpdatedAt: null,
+					cmcKeyConfigured: false,
+				},
+				records: [],
+			},
+			headers: {
+				upstream: 'facts/perp-context',
+				state: 'adapter',
+			},
+		} as any);
+		vi.mocked(loadMarketEvents).mockResolvedValueOnce({
+			data: {
+				pair: 'ETH/USDT',
+				timeframe: '4h',
+				records: [],
+			},
+			headers: {
+				upstream: 'facts/perp-context',
+				state: 'adapter',
+			},
+		} as any);
+		vi.mocked(loadMarketNews).mockResolvedValueOnce({
+			records: [],
+			total: 0,
+			offset: 0,
+			limit: 40,
+			hasMore: false,
+			sources: { rss: 0, social: 0 },
+			referenceSources: {},
+		} as any);
+		vi.mocked(loadMarketTrending).mockResolvedValueOnce({
+			trending: [],
+			gainers: [],
+			losers: [],
+			mostVisited: [],
+			dexHot: [],
+			updatedAt: Date.now(),
+		} as any);
+		vi.mocked(getOrRunOpportunityScan).mockResolvedValueOnce({
+			payload: {
+				result: {
+					coins: [],
+				},
+				alerts: [],
+				cachedAt: Date.now(),
+			},
+			cacheStatus: 'miss',
+		} as any);
+
 		const seenUrls: string[] = [];
 		const fetchMock = vi.fn(async (input: string | URL | Request) => {
 			const url =
@@ -26,43 +150,18 @@ describe('/api/terminal/intel-policy', () => {
 						: input.toString();
 			seenUrls.push(url);
 
-			if (url.startsWith('/api/market/news')) {
-				return jsonResponse({ data: { records: [] } });
-			}
-			if (url.startsWith('/api/market/events')) {
-				return jsonResponse({ data: { records: [] } });
-			}
-			if (url.startsWith('/api/market/flow')) {
-				return jsonResponse({
-					data: {
-						snapshot: {
-							funding: null,
-							lsRatio: null,
-							liqLong24h: 0,
-							liqShort24h: 0,
-							priceChangePct: 0,
-							cmcChange24hPct: null,
-						},
-						records: [],
-					},
-				});
-			}
-			if (url.startsWith('/api/market/macro-overview')) {
+			if (url.startsWith('/api/facts/market-cap')) {
 				return jsonResponse({
 					ok: true,
-					success: true,
-					btcDominance: 63.4,
-					dominanceChange24h: 0.6,
-					marketCapChange24hPct: -1.3,
-					stablecoinMcapChange24hPct: -0.7,
-					confidence: 0.74,
+					owner: 'engine',
+					plane: 'fact',
+					kind: 'market_cap',
+					status: 'live',
+					generated_at: '2026-04-23T00:00:00Z',
+					btc_dominance: 63.4,
+					total_market_cap: 1000000000000,
+					stablecoin_market_cap: 150000000000,
 				});
-			}
-			if (url.startsWith('/api/market/trending')) {
-				return jsonResponse({ data: { trending: [] } });
-			}
-			if (url.startsWith('/api/terminal/opportunity-scan')) {
-				return jsonResponse({ data: { coins: [] } });
 			}
 			if (url.startsWith('/api/facts/ctx/fact')) {
 				return jsonResponse({
@@ -97,7 +196,37 @@ describe('/api/terminal/intel-policy', () => {
 		} as any);
 
 		expect(res.status).toBe(200);
-		expect(seenUrls.some((url) => url.startsWith('/api/market/macro-overview'))).toBe(true);
+		expect(vi.mocked(loadPerpContextBridge)).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(loadMarketFlow)).toHaveBeenCalledWith(fetchMock, {
+			pair: 'ETH/USDT',
+			timeframe: '4h',
+			perpBridge: bridge,
+		});
+		expect(vi.mocked(loadMarketEvents)).toHaveBeenCalledWith(fetchMock, {
+			pair: 'ETH/USDT',
+			timeframe: '4h',
+			perpBridge: bridge,
+		});
+		expect(vi.mocked(loadMarketNews)).toHaveBeenCalledWith({
+			limit: 40,
+			offset: 0,
+			token: 'ETH',
+			interval: '1m',
+			sortBy: 'importance',
+		});
+		expect(vi.mocked(loadMarketTrending)).toHaveBeenCalledWith({
+			limit: 20,
+			section: 'all',
+		});
+		expect(vi.mocked(getOrRunOpportunityScan)).toHaveBeenCalledWith(15);
+		expect(vi.mocked(fetchMarketCapOverview)).not.toHaveBeenCalled();
+		expect(seenUrls.some((url) => url.startsWith('/api/market/news'))).toBe(false);
+		expect(seenUrls.some((url) => url.startsWith('/api/market/trending'))).toBe(false);
+		expect(seenUrls.some((url) => url.startsWith('/api/terminal/opportunity-scan'))).toBe(false);
+		expect(seenUrls.some((url) => url.startsWith('/api/market/events'))).toBe(false);
+		expect(seenUrls.some((url) => url.startsWith('/api/market/flow'))).toBe(false);
+		expect(seenUrls.some((url) => url.startsWith('/api/market/macro-overview'))).toBe(false);
+		expect(seenUrls).toContain('/api/facts/market-cap?offline=true');
 		expect(seenUrls).toContain('/api/facts/ctx/fact?symbol=ETHUSDT&timeframe=4h&offline=true');
 		expect(seenUrls).toContain('/api/runtime/captures?symbol=ETHUSDT&limit=3');
 

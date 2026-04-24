@@ -10,6 +10,7 @@ import { evaluateShadowExecutionGovernance } from '$lib/guardrails/decision/shad
 import { evaluateRuntimeExecutionGate } from '$lib/guardrails/runtime/executionGate';
 import { getDefaultChannelPolicyInput } from '$lib/guardrails/runtime/toolPolicyConfig';
 import { recordGuardrailAudit } from '$lib/guardrails/core/audit';
+import { openQuickTrade } from '$lib/server/quickTradeOpen';
 
 type ShadowPayload = {
   ok?: boolean;
@@ -19,12 +20,6 @@ type ShadowPayload = {
     policy: IntelPolicyOutput;
     shadow: ShadowAgentDecision;
   };
-  error?: string;
-};
-
-type QuickTradeOpenPayload = {
-  success?: boolean;
-  trade?: unknown;
   error?: string;
 };
 
@@ -161,34 +156,17 @@ export const POST: RequestHandler = async ({ cookies, request, fetch }) => {
       userNote,
     ].filter((value) => value.length > 0);
 
-    const openRes = await fetch('/api/quick-trades/open', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        pair,
-        dir,
-        entry,
-        tp,
-        sl,
-        currentPrice: currentPrice > 0 ? currentPrice : entry,
-        source: 'intel-shadow-agent',
-        note: noteParts.join(' · ').slice(0, 320),
-      }),
-      signal: AbortSignal.timeout(15_000),
+    const trade = await openQuickTrade({
+      userId: user.id,
+      pair,
+      dir,
+      entry,
+      tp,
+      sl,
+      currentPrice: currentPrice > 0 ? currentPrice : entry,
+      source: 'intel-shadow-agent',
+      note: noteParts.join(' · ').slice(0, 320),
     });
-
-    const openJson = (await openRes.json().catch(() => ({}))) as QuickTradeOpenPayload;
-    if (!openRes.ok || !openJson?.trade) {
-      return json(
-        {
-          ok: false,
-          error: openJson?.error || `Failed to open quick trade (${openRes.status})`,
-        },
-        { status: openRes.status >= 400 && openRes.status < 500 ? openRes.status : 502 },
-      );
-    }
 
     return json({
       ok: true,
@@ -210,7 +188,7 @@ export const POST: RequestHandler = async ({ cookies, request, fetch }) => {
             reasons: governance.result.reasons,
           },
         },
-        trade: openJson.trade,
+        trade,
       },
     });
   } catch (error: any) {
@@ -222,6 +200,9 @@ export const POST: RequestHandler = async ({ cookies, request, fetch }) => {
     }
 
     console.error('[api/terminal/intel-agent-shadow/execute] error:', error);
+    if (typeof error?.message === 'string' && error.message.includes('DATABASE_URL is not set')) {
+      return json({ ok: false, error: 'Server database is not configured' }, { status: 500 });
+    }
     return json({ ok: false, error: 'Failed to execute shadow decision' }, { status: 500 });
   }
 };

@@ -38,6 +38,7 @@ def execute_train_candidate_handoff(
         feature_schema_version=int(payload.get("feature_schema_version", 1)),
         label_policy_version=int(payload.get("label_policy_version", 1)),
         threshold_policy_version=int(payload.get("threshold_policy_version", 1)),
+        definition_ref=run.definition_ref,
     )
     updated = store.update_handoff_payload(
         research_run_id,
@@ -51,6 +52,7 @@ def execute_train_candidate_handoff(
                 "n_records": result["n_records"],
                 "baseline_ref": payload.get("baseline_ref"),
                 "baseline_family_ref": payload.get("baseline_family_ref"),
+                "definition_ref": run.definition_ref,
             }
         },
         updated_at=_utcnow_iso(),

@@ -10,6 +10,9 @@ from api.schemas_runtime import (
     RuntimeCaptureResponse,
     RuntimeCaptureListResponse,
     RuntimeLedgerResponse,
+    RuntimeLedgerListResponse,
+    RuntimePatternDefinitionListResponse,
+    RuntimePatternDefinitionResponse,
     RuntimeResearchContextCreate,
     RuntimeResearchContextResponse,
     RuntimeSetupCreate,
@@ -19,12 +22,14 @@ from api.schemas_runtime import (
 )
 from capture.store import CaptureStore, now_ms
 from capture.types import CaptureRecord
+from patterns.definitions import PatternDefinitionService
 from runtime.store import RuntimeStateStore
 
 router = APIRouter()
 
 _capture_store: CaptureStore | None = None
 _runtime_store: RuntimeStateStore | None = None
+_definition_service: PatternDefinitionService | None = None
 
 
 def get_capture_store() -> CaptureStore:
@@ -41,8 +46,69 @@ def get_runtime_store() -> RuntimeStateStore:
     return _runtime_store
 
 
+def get_definition_service() -> PatternDefinitionService:
+    global _definition_service
+    if _definition_service is None:
+        _definition_service = PatternDefinitionService(capture_store=get_capture_store())
+    return _definition_service
+
+
 def _generated_at() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _serialize_capture(capture: CaptureRecord) -> dict[str, Any]:
+    payload = capture.to_dict()
+    if capture.pattern_slug:
+        definition_ref = get_definition_service().get_definition_ref(
+            pattern_slug=capture.pattern_slug,
+            pattern_version=capture.pattern_version,
+        )
+        if definition_ref is not None:
+            payload["definition_ref"] = definition_ref
+    return payload
+
+
+def _serialize_ledger_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    payload = entry.get("payload")
+    payload = payload if isinstance(payload, dict) else {}
+    definition_ref = entry.get("definition_ref")
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        definition_ref = payload.get("definition_ref")
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        training_result = payload.get("training_result")
+        if isinstance(training_result, dict):
+            nested_ref = training_result.get("definition_ref")
+            if isinstance(nested_ref, dict) and nested_ref:
+                definition_ref = nested_ref
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        definition_id = payload.get("definition_id")
+        if isinstance(definition_id, str) and definition_id:
+            try:
+                parsed = get_definition_service().parse_definition_id(definition_id)
+            except (ValueError, KeyError):
+                parsed = None
+            if parsed is not None:
+                definition_ref = (
+                    get_definition_service().get_definition_ref(
+                        pattern_slug=parsed["pattern_slug"],
+                        pattern_version=parsed["pattern_version"],
+                    )
+                    or parsed
+                )
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        pattern_slug = payload.get("pattern_slug")
+        pattern_version = payload.get("pattern_version")
+        if isinstance(pattern_slug, str) and pattern_slug:
+            version = pattern_version if isinstance(pattern_version, int) else None
+            definition_ref = get_definition_service().get_definition_ref(
+                pattern_slug=pattern_slug,
+                pattern_version=version,
+            )
+    serialized = dict(entry)
+    if isinstance(definition_ref, dict) and definition_ref:
+        serialized["definition_ref"] = definition_ref
+    return serialized
 
 
 @router.post("/captures", response_model=RuntimeCaptureResponse)
@@ -79,17 +145,42 @@ async def create_runtime_capture(body: capture_routes.CaptureCreateBody) -> Runt
     )
     get_capture_store().save(record)
     capture_routes.LEDGER_RECORD_STORE.append_capture_record(record)
-    return RuntimeCaptureResponse(generated_at=_generated_at(), capture=record.to_dict())
+    return RuntimeCaptureResponse(generated_at=_generated_at(), capture=_serialize_capture(record))
 
 
 @router.get("/captures", response_model=RuntimeCaptureListResponse)
 async def list_runtime_captures(
     user_id: str | None = None,
+    definition_id: str | None = None,
     pattern_slug: str | None = None,
     symbol: str | None = None,
     status: str | None = None,
     limit: int = 100,
 ) -> RuntimeCaptureListResponse:
+    definition_ref: dict[str, Any] | None = None
+    if definition_id is not None:
+        try:
+            definition_ref = get_definition_service().parse_definition_id(definition_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "runtime_definition_id_invalid", "definition_id": definition_id},
+            ) from exc
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "runtime_definition_not_found", "definition_id": definition_id},
+            ) from exc
+        if pattern_slug is not None and pattern_slug != definition_ref["pattern_slug"]:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "runtime_definition_slug_mismatch",
+                    "definition_id": definition_id,
+                    "pattern_slug": pattern_slug,
+                },
+            )
+        pattern_slug = definition_ref["pattern_slug"]
     captures = get_capture_store().list(
         user_id=user_id,
         pattern_slug=pattern_slug,
@@ -97,7 +188,11 @@ async def list_runtime_captures(
         status=status,
         limit=max(1, min(limit, 500)),
     )
-    rows = [capture.to_dict() for capture in captures]
+    if definition_ref is not None:
+        captures = [
+            capture for capture in captures if capture.pattern_version == definition_ref["pattern_version"]
+        ]
+    rows = [_serialize_capture(capture) for capture in captures]
     return RuntimeCaptureListResponse(
         generated_at=_generated_at(),
         captures=rows,
@@ -110,7 +205,29 @@ async def get_runtime_capture(capture_id: str) -> RuntimeCaptureResponse:
     capture = get_capture_store().load(capture_id)
     if capture is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_capture_not_found", "capture_id": capture_id})
-    return RuntimeCaptureResponse(generated_at=_generated_at(), capture=capture.to_dict())
+    return RuntimeCaptureResponse(generated_at=_generated_at(), capture=_serialize_capture(capture))
+
+
+@router.get("/definitions", response_model=RuntimePatternDefinitionListResponse)
+async def list_runtime_definitions(limit: int = 100) -> RuntimePatternDefinitionListResponse:
+    definitions = get_definition_service().list_definitions(limit=max(1, min(limit, 200)))
+    return RuntimePatternDefinitionListResponse(
+        generated_at=_generated_at(),
+        definitions=definitions,
+        count=len(definitions),
+    )
+
+
+@router.get("/definitions/{pattern_slug}", response_model=RuntimePatternDefinitionResponse)
+async def get_runtime_definition(pattern_slug: str) -> RuntimePatternDefinitionResponse:
+    try:
+        definition = get_definition_service().get_definition(pattern_slug)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "runtime_definition_not_found", "pattern_slug": pattern_slug},
+        ) from exc
+    return RuntimePatternDefinitionResponse(generated_at=_generated_at(), definition=definition)
 
 
 @router.post("/workspace/pins", response_model=RuntimeWorkspaceResponse)
@@ -184,4 +301,38 @@ async def get_ledger(ledger_id: str) -> RuntimeLedgerResponse:
     entry = get_runtime_store().get_ledger_entry(ledger_id)
     if entry is None:
         raise HTTPException(status_code=404, detail={"code": "runtime_ledger_not_found", "ledger_id": ledger_id})
-    return RuntimeLedgerResponse(generated_at=_generated_at(), ledger=entry)
+    return RuntimeLedgerResponse(generated_at=_generated_at(), ledger=_serialize_ledger_entry(entry))
+
+
+@router.get("/ledger", response_model=RuntimeLedgerListResponse)
+async def list_ledger(
+    definition_id: str | None = None,
+    kind: str | None = None,
+    subject_id: str | None = None,
+    limit: int = 50,
+) -> RuntimeLedgerListResponse:
+    if definition_id is not None:
+        try:
+            get_definition_service().parse_definition_id(definition_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "runtime_definition_id_invalid", "definition_id": definition_id},
+            ) from exc
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "runtime_definition_not_found", "definition_id": definition_id},
+            ) from exc
+    entries = get_runtime_store().list_ledger_entries(
+        definition_id=definition_id,
+        kind=kind,
+        subject_id=subject_id,
+        limit=limit,
+    )
+    rows = [_serialize_ledger_entry(entry) for entry in entries]
+    return RuntimeLedgerListResponse(
+        generated_at=_generated_at(),
+        ledgers=rows,
+        count=len(rows),
+    )

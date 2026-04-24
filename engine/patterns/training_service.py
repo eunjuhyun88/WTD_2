@@ -17,6 +17,7 @@ def train_pattern_model_from_ledger(
     pattern_slug: str,
     *,
     user_id: str | None = None,
+    definition_ref: dict | None = None,
     target_name: str = "breakout",
     feature_schema_version: int = 1,
     label_policy_version: int = 1,
@@ -49,6 +50,7 @@ def train_pattern_model_from_ledger(
         target_name,
         feature_schema_version,
         label_policy_version,
+        definition_ref=definition_ref,
     )
     engine = get_engine_fn(model_key)
     result = engine.train(X, y)
@@ -60,6 +62,7 @@ def train_pattern_model_from_ledger(
     )
     payload = {
         "model_key": model_key,
+        "definition_ref": dict(definition_ref or {}),
         "timeframe": pattern.timeframe,
         "target_name": target_name,
         "feature_schema_version": feature_schema_version,
@@ -78,6 +81,7 @@ def train_pattern_model_from_ledger(
         pattern_slug=pattern_slug,
         model_key=model_key,
         user_id=user_id,
+        definition_ref=definition_ref,
         payload=payload,
     )
 
@@ -92,11 +96,13 @@ def train_pattern_model_from_ledger(
             label_policy_version=label_policy_version,
             threshold_policy_version=threshold_policy_version,
             requested_by_user_id=user_id,
+            definition_ref=definition_ref,
         )
         record_store.append_model_record(
             pattern_slug=pattern_slug,
             model_version=model_version,
             user_id=user_id,
+            definition_ref=definition_ref,
             payload={
                 **payload,
                 "rollout_state": registry_entry.rollout_state,
@@ -106,6 +112,7 @@ def train_pattern_model_from_ledger(
     return {
         "ok": True,
         "pattern_slug": pattern_slug,
+        "definition_ref": dict(definition_ref or {}),
         "model_key": model_key,
         "model_version": model_version,
         "rollout_state": payload["rollout_state"],

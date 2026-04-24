@@ -40,6 +40,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
+| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | `/runtime/definitions/*` canonical read family over pattern library/registry + capture-linked research evidence |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
@@ -104,9 +105,9 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0140-analyze-surface-align`
-- worktree: `/private/tmp/wtd-v2-w0140-analyze-surface-align`
-- current slice: align analyze-adjacent surfaces (mobile / peek / compact summary / judge preview) to reuse `analyzeDetail*` and workspace study outputs
+- active on `codex/w-0160-pattern-definition-plane`
+- worktree: `/tmp/wtd-v2-w0160-pattern-definition`
+- current slice: `/runtime/definitions/*` is open, runtime captures/search/research/refinement/training all preserve `definition_ref`, direct model train/promote routes plus `/runtime/ledger/*` projection expose it, runtime ledger store + pattern stats/model-registry read models carry it as first-class metadata, runtime ledger history / pattern model-history accept canonical `definition_id` queries, model-registry/model-history filter on persisted definition metadata instead of validation-only slug routing, canonical pattern model identity is now definition-version aware (`definition_id`-scoped keys + per-definition promotion/preferred lookup with legacy fallback), and `/patterns/{slug}/stats` now exposes explicit mixed-scope stats (`pattern-wide` outcomes + `definition-scoped` model artifacts)
 
 ---
 
@@ -132,6 +133,7 @@
 | main | — | local `main` = `27952d95` |
 | origin/main | — | local remote-tracking ref = `fd0f4731` |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
+| codex/w-0160-pattern-definition-plane | W-0160 | active runtime lane for canonical pattern-definition read models |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
 | codex/w-0122-market-cap-fact-cut | W-0122 | active Lane A slice; engine market-cap fact route + macro consumer fallback cut |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |

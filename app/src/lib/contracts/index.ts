@@ -460,7 +460,7 @@ export type {
 	ResearchContextRecord,
 	RuntimeResearchContextResponse
 } from './runtime/researchContext';
-export type { LedgerRecord, RuntimeLedgerResponse } from './runtime/ledger';
+export type { LedgerRecord, RuntimeLedgerResponse, RuntimeLedgerListResponse } from './runtime/ledger';
 export type {
 	WorkspaceBundleSection,
 	WorkspaceCompareSlot,
