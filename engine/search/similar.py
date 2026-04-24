@@ -32,9 +32,14 @@ from typing import Any
 STATE_DIR = Path(__file__).resolve().parent / "state"
 DEFAULT_DB_PATH = STATE_DIR / "similar_runs.sqlite"
 
-_W_ABC = (0.45, 0.30, 0.25)
-_W_AB  = (0.60, 0.40)
-_W_AC  = (0.70, 0.30)
+_W_ABC_DEFAULT = (0.45, 0.30, 0.25)
+_W_AB_DEFAULT  = (0.60, 0.40)
+_W_AC_DEFAULT  = (0.70, 0.30)
+
+# Kept as module-level aliases for blending — updated at runtime via quality ledger
+_W_ABC = _W_ABC_DEFAULT
+_W_AB  = _W_AB_DEFAULT
+_W_AC  = _W_AC_DEFAULT
 
 
 # ── run store ─────────────────────────────────────────────────────────────────
@@ -281,6 +286,21 @@ def run_similar_search(
         or pattern_draft.get("pattern_family")
         or None
     )
+
+    # Load quality-adjusted weights (falls back to defaults if insufficient data)
+    global _W_ABC, _W_AB, _W_AC
+    try:
+        from search.quality_ledger import compute_weights
+        w = compute_weights()
+        wa, wb, wc = w.get("layer_a", 0.45), w.get("layer_b", 0.30), w.get("layer_c", 0.25)
+        # Re-derive derived tuples from ledger weights
+        ab_sum = wa + wb
+        ac_sum = wa + wc
+        _W_ABC = (wa, wb, wc)
+        _W_AB  = (wa / ab_sum if ab_sum > 0 else 0.60, wb / ab_sum if ab_sum > 0 else 0.40)
+        _W_AC  = (wa / ac_sum if ac_sum > 0 else 0.70, wc / ac_sum if ac_sum > 0 else 0.30)
+    except Exception:
+        pass  # keep defaults
 
     from search.corpus import SearchCorpusStore
     windows = SearchCorpusStore().list_windows(

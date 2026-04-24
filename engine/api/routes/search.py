@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query
 
 from api.schemas_search import (
+    QualityJudgementRequest,
+    QualityJudgementResponse,
+    QualityStatsResponse,
     ScanRequest,
     ScanResponse,
     SearchCandidate,
@@ -20,6 +23,7 @@ from api.schemas_search import (
 from patterns.definitions import PatternDefinitionService
 from search.corpus import SearchCorpusStore
 from search.runtime import get_scan, get_seed_search, run_scan, run_seed_search
+from search.quality_ledger import append_judgement, compute_weights, layer_stats
 from search.similar import get_similar_search, run_similar_search
 
 router = APIRouter()
@@ -148,6 +152,42 @@ def _similar_response(result: dict) -> SimilarSearchResponse:
         request=result.get("request", {}),
         candidates=candidates,
         scoring_layers={"layer_a": True, "layer_b": any_b, "layer_c": any_c},
+    )
+
+
+@router.post("/quality/judge", response_model=QualityJudgementResponse)
+async def search_quality_judge(body: QualityJudgementRequest) -> QualityJudgementResponse:
+    """Record a user judgement (good/bad/neutral) on a search candidate.
+
+    This feeds the weight recalibration loop: after _MIN_SAMPLES_FOR_RECALIBRATION
+    judgements the blend weights for Layer A/B/C shift toward whichever layer
+    has the higher user-validated accuracy.
+    """
+    judgement_id = await asyncio.to_thread(
+        append_judgement,
+        body.run_id,
+        body.candidate_id,
+        body.verdict,
+        symbol=body.symbol,
+        layer_a_score=body.layer_a_score,
+        layer_b_score=body.layer_b_score,
+        layer_c_score=body.layer_c_score,
+        final_score=body.final_score,
+        user_id=body.user_id,
+    )
+    return QualityJudgementResponse(judgement_id=judgement_id)
+
+
+@router.get("/quality/stats", response_model=QualityStatsResponse)
+async def search_quality_stats() -> QualityStatsResponse:
+    """Return per-layer accuracy stats and the current active blend weights."""
+    stats = await asyncio.to_thread(layer_stats)
+    weights = await asyncio.to_thread(compute_weights)
+    return QualityStatsResponse(
+        total_judgements=stats["total_judgements"],
+        layers=stats["layers"],
+        active_weights=weights,
+        generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
 

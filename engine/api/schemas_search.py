@@ -140,3 +140,35 @@ class SimilarSearchResponse(BaseModel):
         default_factory=dict,
         description="Which layers were active: {layer_a, layer_b, layer_c}",
     )
+
+
+# ── /search/quality — judgement and weight recalibration ─────────────────────
+
+class QualityJudgementRequest(BaseModel):
+    run_id: str
+    candidate_id: str
+    verdict: str = Field(
+        description="'good' | 'bad' | 'neutral'",
+        pattern="^(good|bad|neutral)$",
+    )
+    symbol: str | None = None
+    layer_a_score: float | None = None
+    layer_b_score: float | None = None
+    layer_c_score: float | None = None
+    final_score: float | None = None
+    user_id: str | None = None
+
+
+class QualityJudgementResponse(BaseModel):
+    ok: bool = True
+    judgement_id: str
+
+
+class QualityStatsResponse(BaseModel):
+    ok: bool = True
+    owner: Literal["engine"] = "engine"
+    plane: Literal["search"] = "search"
+    total_judgements: int
+    layers: dict[str, Any] = Field(default_factory=dict)
+    active_weights: dict[str, float] = Field(default_factory=dict)
+    generated_at: str
