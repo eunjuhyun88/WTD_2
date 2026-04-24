@@ -23,6 +23,7 @@ from ledger.types import (
     PatternLedgerRecord,
 )
 from patterns.definitions import current_definition_id
+from patterns.definition_refs import definition_id_from_ref
 
 if TYPE_CHECKING:
     from capture.types import CaptureRecord
@@ -66,11 +67,21 @@ def _record_definition_id(record: PatternLedgerRecord) -> str | None:
     value = payload.get("definition_id")
     if isinstance(value, str) and value:
         return value
-    definition_ref = payload.get("definition_ref")
-    if not isinstance(definition_ref, dict):
-        return None
-    nested = definition_ref.get("definition_id")
-    return nested if isinstance(nested, str) and nested else None
+    return definition_id_from_ref(payload.get("definition_ref"))
+
+
+def _definition_payload(
+    *,
+    definition_id: str | None,
+    definition_ref: dict | None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "definition_ref": dict(definition_ref or {}),
+    }
+    resolved_definition_id = definition_id or definition_id_from_ref(definition_ref)
+    if resolved_definition_id is not None:
+        payload["definition_id"] = resolved_definition_id
+    return payload
 
 
 class SupabaseLedgerRecordStore:
@@ -125,7 +136,7 @@ class SupabaseLedgerRecordStore:
             q = q.eq("symbol", symbol)
         if outcome_id:
             q = q.eq("outcome_id", outcome_id)
-        if limit is not None:
+        if limit is not None and definition_id is None:
             q = q.limit(limit)
         result = q.execute()
         records = [_row_to_record(r) for r in (result.data or [])]
@@ -137,7 +148,7 @@ class SupabaseLedgerRecordStore:
                 if _record_definition_id(record) == definition_id
                 or (_record_definition_id(record) is None and current_id == definition_id)
             ]
-        return records
+        return records[:limit] if limit is not None else records
 
     def list_pattern_slugs(self) -> list[str]:
         result = (
@@ -179,35 +190,28 @@ class SupabaseLedgerRecordStore:
         definition_id: str | None = None,
     ) -> PatternLedgerFamilyStats:
         """Aggregate family counts via a single indexed query (O(1) vs O(N files)."""
-        query = (
-            _sb()
-            .table("pattern_ledger_records")
-            .select("record_type,payload")
-            .eq("pattern_slug", pattern_slug)
-        )
-        result = query.execute()
-        rows = result.data or []
-        current_id = current_definition_id(pattern_slug) if definition_id is not None else None
+        if definition_id is None:
+            result = (
+                _sb()
+                .table("pattern_ledger_records")
+                .select("record_type")
+                .eq("pattern_slug", pattern_slug)
+                .execute()
+            )
+            rows = result.data or []
+        else:
+            rows = [
+                {"record_type": record.record_type}
+                for record in self.list(pattern_slug, definition_id=definition_id)
+            ]
         stats, _, _ = _build_record_family_summary(
             pattern_slug,
             [
                 PatternLedgerRecord(
                     record_type=row.get("record_type", "entry"),
                     pattern_slug=pattern_slug,
-                    payload=row.get("payload") or {},
                 )
                 for row in rows
-                if definition_id is None
-                or (
-                    isinstance(row.get("payload"), dict)
-                    and (
-                        row["payload"].get("definition_ref", {}).get("definition_id") == definition_id
-                        or (
-                            not row["payload"].get("definition_ref")
-                            and current_id == definition_id
-                        )
-                    )
-                )
             ],
         )
         return stats
@@ -240,8 +244,10 @@ class SupabaseLedgerRecordStore:
             transition_id=outcome.entry_transition_id,
             scan_id=outcome.entry_scan_id,
             payload={
-                "definition_id": outcome.definition_id,
-                "definition_ref": dict(outcome.definition_ref or {}),
+                **_definition_payload(
+                    definition_id=outcome.definition_id,
+                    definition_ref=outcome.definition_ref if isinstance(outcome.definition_ref, dict) else None,
+                ),
                 "accumulation_at": outcome.accumulation_at.isoformat() if outcome.accumulation_at else None,
                 "entry_price": outcome.entry_price,
                 "btc_trend_at_entry": outcome.btc_trend_at_entry,
@@ -259,8 +265,10 @@ class SupabaseLedgerRecordStore:
             transition_id=outcome.entry_transition_id,
             scan_id=outcome.entry_scan_id,
             payload={
-                "definition_id": outcome.definition_id,
-                "definition_ref": dict(outcome.definition_ref or {}),
+                **_definition_payload(
+                    definition_id=outcome.definition_id,
+                    definition_ref=outcome.definition_ref if isinstance(outcome.definition_ref, dict) else None,
+                ),
                 "entry_p_win": outcome.entry_p_win,
                 "entry_ml_state": outcome.entry_ml_state,
                 "entry_model_key": outcome.entry_model_key,
@@ -282,9 +290,11 @@ class SupabaseLedgerRecordStore:
             transition_id=capture.candidate_transition_id,
             scan_id=capture.scan_id,
             payload={
+                **_definition_payload(
+                    definition_id=capture.definition_id,
+                    definition_ref=capture.definition_ref if isinstance(capture.definition_ref, dict) else None,
+                ),
                 "capture_kind": capture.capture_kind,
-                "definition_id": capture.definition_id,
-                "definition_ref": dict(capture.definition_ref or {}),
                 "pattern_version": capture.pattern_version,
                 "phase": capture.phase,
                 "timeframe": capture.timeframe,
@@ -309,8 +319,10 @@ class SupabaseLedgerRecordStore:
             transition_id=outcome.entry_transition_id,
             scan_id=outcome.entry_scan_id,
             payload={
-                "definition_id": outcome.definition_id,
-                "definition_ref": dict(outcome.definition_ref or {}),
+                **_definition_payload(
+                    definition_id=outcome.definition_id,
+                    definition_ref=outcome.definition_ref if isinstance(outcome.definition_ref, dict) else None,
+                ),
                 "previous_outcome": previous_outcome,
                 "outcome": outcome.outcome,
                 "breakout_at": outcome.breakout_at.isoformat() if outcome.breakout_at else None,
@@ -333,8 +345,10 @@ class SupabaseLedgerRecordStore:
             transition_id=outcome.entry_transition_id,
             scan_id=outcome.entry_scan_id,
             payload={
-                "definition_id": outcome.definition_id,
-                "definition_ref": dict(outcome.definition_ref or {}),
+                **_definition_payload(
+                    definition_id=outcome.definition_id,
+                    definition_ref=outcome.definition_ref if isinstance(outcome.definition_ref, dict) else None,
+                ),
                 "user_verdict": outcome.user_verdict,
                 "user_note": outcome.user_note,
             },
@@ -376,7 +390,10 @@ class SupabaseLedgerRecordStore:
             user_id=user_id,
             payload={
                 "model_version": model_version,
-                "definition_ref": dict(definition_ref or {}),
+                **_definition_payload(
+                    definition_id=None,
+                    definition_ref=definition_ref,
+                ),
                 **(payload or {}),
             },
         ))
@@ -396,7 +413,10 @@ class SupabaseLedgerRecordStore:
             user_id=user_id,
             payload={
                 "model_key": model_key,
-                "definition_ref": dict(definition_ref or {}),
+                **_definition_payload(
+                    definition_id=None,
+                    definition_ref=definition_ref,
+                ),
                 **(payload or {}),
             },
         ))
