@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal, Mapping
 
+from patterns.definitions import current_definition_id
 from patterns.model_registry import MODEL_REGISTRY_STORE
 from scoring.lightgbm_engine import get_engine
 
@@ -61,7 +62,13 @@ def score_entry_feature_snapshot(
                 threshold_passed=None,
             )
 
-        model_ref = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
+        definition_id = current_definition_id(pattern_slug)
+        model_ref = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+            pattern_slug,
+            definition_id=definition_id,
+        )
+        if model_ref is None and definition_id is not None:
+            model_ref = MODEL_REGISTRY_STORE.get_preferred_scoring_model(pattern_slug)
         if model_ref is None:
             return PatternEntryScore(
                 state="untrained",
@@ -73,12 +80,7 @@ def score_entry_feature_snapshot(
                 threshold_passed=None,
             )
 
-        # Build pattern-keyed model identity: {pattern_slug}_{timeframe}_{target_name}_{fschema_v}_{lpolicy_v}
-        pattern_keyed_model_id = (
-            f"{model_ref.pattern_slug}_{model_ref.timeframe}_{model_ref.target_name}"
-            f"_{model_ref.feature_schema_version}_{model_ref.label_policy_version}"
-        )
-        engine = get_engine(pattern_keyed_model_id)
+        engine = get_engine(model_ref.model_key)
         if not engine.is_trained:
             return PatternEntryScore(
                 state="untrained",

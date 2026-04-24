@@ -26,6 +26,7 @@ def write_refinement_report(
         "",
         "## Run",
         f"- Pattern: `{run.pattern_slug}`",
+        f"- Definition Ref: `{run.definition_ref}`",
         f"- Status: `{run.status}`",
         f"- Disposition: `{run.completion_disposition}`",
         f"- Winner Variant: `{run.winner_variant_ref}`",

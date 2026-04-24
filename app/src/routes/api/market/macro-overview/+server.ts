@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchFactMarketCapProxy } from '$lib/server/enginePlanes/facts';
-import { adaptEngineMarketCapSnapshot, fetchMarketCapOverview } from '$lib/server/marketCapPlane';
+import { loadPreferredMarketCapOverview } from '$lib/server/marketCapOverviewBridge';
 import { chartFeedLimiter } from '$lib/server/rateLimit';
 import { getRequestIp } from '$lib/server/requestIp';
 
@@ -14,15 +13,14 @@ export const GET: RequestHandler = async ({ request, getClientAddress, fetch }) 
     return json({ error: 'rate limited' }, { status: 429, headers: { 'Retry-After': '60' } });
   }
 
-  const engineSnapshot = await fetchFactMarketCapProxy(fetch, { offline: true });
-  const engineOverview = adaptEngineMarketCapSnapshot(engineSnapshot);
-  const overview = engineOverview ?? (await fetchMarketCapOverview());
-  const hasMacroSignal =
-    overview.btcDominance !== null ||
-    overview.totalMarketCapUsd !== null ||
-    overview.stablecoinMcapUsd !== null;
-
-  if (!hasMacroSignal) {
+  const selection = await loadPreferredMarketCapOverview(fetch, 'macro');
+  const overview = selection.overview;
+  if (
+    !overview ||
+    (overview.btcDominance === null &&
+      overview.totalMarketCapUsd === null &&
+      overview.stablecoinMcapUsd === null)
+  ) {
     return json({ error: 'macro_overview_unavailable' }, { status: 503 });
   }
 
@@ -69,8 +67,8 @@ export const GET: RequestHandler = async ({ request, getClientAddress, fetch }) 
       headers: {
         'Cache-Control': 'public, max-age=60',
         'X-WTD-Plane': 'fact',
-        'X-WTD-Upstream': engineOverview ? 'facts/market-cap' : 'legacy-marketCapPlane',
-        'X-WTD-State': engineOverview ? 'adapter' : 'fallback',
+        'X-WTD-Upstream': selection.upstream,
+        'X-WTD-State': selection.state,
       },
     },
   );

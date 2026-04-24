@@ -35,6 +35,80 @@
 4. broad retrieval 은 scheduler-built corpus 뒤로 숨긴다.
 5. degraded provider state (`live / blocked / reference_only`) 는 first-class contract 다.
 6. refactor 는 plane 단위 strangler 방식으로 하고, big-bang rewrite 는 금지한다.
+7. raw retention 은 `replay 가능한 truth` 중심으로만 durable 하게 저장하고, provider blob 전체 보관은 금지한다.
+
+## Raw Storage Policy
+
+트레이딩뷰 CTO 기준으로도 답은 `모든 응답을 다 저장` 이 아니다.
+정답은 아래처럼 나누는 것이다.
+
+### 1. Canonical Raw Plane
+
+durable 하게 저장해야 하는 것:
+
+- `raw_market_bars`
+- `raw_perp_metrics`
+- `raw_orderflow_metrics`
+- `raw_liquidation_events` 또는 liquidation aggregate snapshot
+- `raw_onchain_metrics`
+- `raw_fundamental_metrics`
+- `raw_macro_metrics`
+- human research inputs (`capture`, chart snapshot metadata, source note, manual labels)
+
+조건:
+
+- normalized schema
+- deterministic primary key
+- `provider`, `source_ts`, `ingested_at`, `freshness_ms`, `quality_state`, `fallback_state` 포함
+- replay / audit / recompute 에 사용 가능해야 함
+
+### 2. Provider Blob Cache
+
+durable canonical plane 으로 두지 말아야 하는 것:
+
+- provider-native JSON blob 전체
+- websocket tick/event full firehose without aggregation
+- UI/debug 용 ad hoc payload dumps
+
+정책:
+
+- short TTL cache 또는 object storage
+- debugging / forensic 용도만 허용
+- fact/search/pattern/surface contract 는 이 layer 를 직접 읽지 않음
+
+### 3. Canonical Feature Plane
+
+raw 위에서 한 번만 계산해 저장해야 하는 것:
+
+- bar features
+- window features
+- similarity/search signatures
+
+대표 예:
+
+- `oi_zscore`
+- `funding_flip_flag`
+- `volume_percentile`
+- `cvd_divergence_price`
+- `liq_imbalance`
+- `pullback_depth_pct`
+- `timeframe_alignment_score`
+
+규칙:
+
+- pattern family 마다 재계산 금지
+- AI/surface/search 는 raw 대신 이 plane 을 우선 읽음
+
+### 4. Retention Rule
+
+- replay-critical raw: long retention, partitioned hot/cold storage
+- feature windows/signatures: durable retention
+- provider blobs: short TTL only
+- full tick/orderbook history: pattern/replay 에 필요할 때만 별도 opt-in lane 으로 저장
+
+한 줄 정책:
+
+`store enough to replay and audit the market truth, but never turn provider exhaust into the product's canonical database.`
 
 ## Execution Ownership
 
@@ -758,7 +832,7 @@ Andrej Karpathy 식으로 적용하면, architecture 는 “한 번에 완성”
 - plane: `Fact`
 - owner: `engine`
 - source_of_truth: catalog file + bounded read route
-- hot_path: `GET /ctx/indicator-catalog`
+- hot_path: `GET /facts/indicator-catalog`
 - background_path: none in phase 1
 - canonical_route: engine catalog route
 - degraded_states: `live / partial / blocked / missing`

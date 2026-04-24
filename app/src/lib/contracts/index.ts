@@ -428,6 +428,12 @@ export type {
 } from './facts/indicatorCatalog';
 export type { SearchPlaneState, SearchCandidate, ScanRequest, ScanResult } from './search/scan';
 export type {
+	SearchQueryNumericBounds,
+	SearchQueryPhase,
+	SearchQueryTransformerMeta,
+	SearchQuerySpec
+} from './search/querySpec';
+export type {
 	SeedSearchRequest,
 	SeedSearchCandidate,
 	SeedSearchResult
@@ -460,7 +466,7 @@ export type {
 	ResearchContextRecord,
 	RuntimeResearchContextResponse
 } from './runtime/researchContext';
-export type { LedgerRecord, RuntimeLedgerResponse } from './runtime/ledger';
+export type { LedgerRecord, RuntimeLedgerResponse, RuntimeLedgerListResponse } from './runtime/ledger';
 export type {
 	WorkspaceBundleSection,
 	WorkspaceCompareSlot,

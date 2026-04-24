@@ -13,13 +13,14 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
         search_policy={"mode": "bounded-walk-forward-eval"},
         evaluation_protocol={"kind": "walk-forward"},
         created_at="2026-04-16T14:00:00+00:00",
+        definition_ref={"definition_id": "tradoor-oi-reversal-v1:v1", "pattern_slug": "tradoor-oi-reversal-v1"},
     )
     store.start_run(run.research_run_id, started_at="2026-04-16T14:00:01+00:00")
     completed = store.complete_run(
         run.research_run_id,
         completed_at="2026-04-16T14:05:00+00:00",
         disposition="train_candidate",
-        winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:1h:breakout:fs1:lp1",
+        winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
         handoff_payload={
             "baseline_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
             "baseline_family_ref": "family:tradoor-oi-reversal-v1__reset-reclaim-compression",
@@ -35,7 +36,8 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
         lambda slug, **kwargs: {
             "ok": True,
             "pattern_slug": slug,
-            "model_key": "tradoor-oi-reversal-v1:1h:breakout:fs1:lp1",
+            "definition_ref": kwargs["definition_ref"],
+            "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout:fs1:lp1",
             "model_version": "20260416_140500",
             "rollout_state": "candidate",
             "replaced": True,
@@ -55,6 +57,7 @@ def test_execute_train_candidate_handoff_updates_research_run(tmp_path, monkeypa
     assert updated_run.handoff_payload["training_result"]["rollout_state"] == "candidate"
     assert updated_run.handoff_payload["training_result"]["baseline_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
     assert updated_run.handoff_payload["training_result"]["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+    assert updated_run.handoff_payload["training_result"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
 
 
 def test_execute_train_candidate_handoff_rejects_non_candidate_runs(tmp_path) -> None:

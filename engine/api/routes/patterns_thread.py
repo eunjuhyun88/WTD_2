@@ -11,6 +11,7 @@ from ledger.dataset import build_pattern_training_records, summarize_pattern_dat
 from ledger.store import LEDGER_RECORD_STORE, LedgerStore, _compute_stats_from_outcomes
 from ledger.types import PatternLedgerRecord
 from patterns.alert_policy import ALERT_POLICY_STORE
+from patterns.definitions import PatternDefinitionService
 from patterns.library import PATTERN_LIBRARY, get_pattern
 from patterns.model_registry import MODEL_REGISTRY_STORE
 from patterns.training_service import train_pattern_model_from_ledger
@@ -164,9 +165,20 @@ def get_stats_sync(
     ledger: LedgerStore,
     outcomes: list | None = None,
     *,
+    definition_id: str | None = None,
     record_store=None,
 ) -> dict:
     _require_pattern(slug)
+    definition_ref = (
+        _resolve_definition_ref_or_http(slug, definition_id=definition_id)
+        if definition_id is not None
+        else _resolve_definition_ref(slug)
+    )
+    resolved_definition_id = (
+        definition_ref.get("definition_id")
+        if isinstance(definition_ref, dict)
+        else None
+    )
     if outcomes is None:
         outcomes = ledger.list_all(slug)
     stats = _compute_stats_from_outcomes(slug, outcomes)
@@ -174,9 +186,17 @@ def get_stats_sync(
         slug,
         record_store=record_store,
     )
-    registry_entries = MODEL_REGISTRY_STORE.list(slug)
-    active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug)
-    preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
+    registry_entries = MODEL_REGISTRY_STORE.list(slug, definition_id=resolved_definition_id)
+    active_registry_entry = MODEL_REGISTRY_STORE.get_active(slug, definition_id=resolved_definition_id)
+    preferred_registry_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+        slug,
+        definition_id=resolved_definition_id,
+    )
+    definition_artifacts = _definition_artifact_summary(
+        slug,
+        definition_id=resolved_definition_id,
+        record_store=record_store,
+    )
     ml_shadow = summarize_pattern_dataset(outcomes)
     alert_policy = ALERT_POLICY_STORE.load(slug)
     record_family_payload = (
@@ -196,6 +216,14 @@ def get_stats_sync(
     )
     return {
         "pattern_slug": stats.pattern_slug,
+        "definition_ref": definition_ref,
+        "scope": {
+            "pattern_slug": slug,
+            "definition_id": resolved_definition_id,
+            "outcome_metrics": "pattern_slug",
+            "record_family": "pattern_slug",
+            "model_artifacts": "definition_id" if resolved_definition_id is not None else "pattern_slug",
+        },
         "total": stats.total_instances,
         "pending": stats.pending_count,
         "success": stats.success_count,
@@ -232,12 +260,23 @@ def get_stats_sync(
         },
         "model_registry": {
             "entry_count": len(registry_entries),
-            "active_model": active_registry_entry.to_dict() if active_registry_entry else None,
-            "preferred_scoring_model": preferred_registry_entry.to_dict() if preferred_registry_entry else None,
+            "active_model": _registry_entry_payload(active_registry_entry) if active_registry_entry else None,
+            "preferred_scoring_model": _registry_entry_payload(preferred_registry_entry) if preferred_registry_entry else None,
         },
         "alert_policy": alert_policy.to_dict(),
-        "latest_training_run": latest_training_run_record.to_dict() if latest_training_run_record else None,
-        "latest_model": latest_model_record.to_dict() if latest_model_record else None,
+        "latest_training_run": definition_artifacts["latest_training_run"],
+        "latest_model": definition_artifacts["latest_model"],
+        "definition_artifacts": {
+            "definition_id": resolved_definition_id,
+            "training_run_count": definition_artifacts["training_run_count"],
+            "model_count": definition_artifacts["model_count"],
+            "latest_training_run": definition_artifacts["latest_training_run"],
+            "latest_model": definition_artifacts["latest_model"],
+            "pattern_latest_training_run": _record_payload(latest_training_run_record, slug)
+            if latest_training_run_record
+            else None,
+            "pattern_latest_model": _record_payload(latest_model_record, slug) if latest_model_record else None,
+        },
         "ml_shadow": {
             "total_entries": ml_shadow.total_entries,
             "decided_entries": ml_shadow.decided_entries,
@@ -263,6 +302,25 @@ def get_stats_sync(
             "readiness_reason": ml_shadow.readiness_reason,
             "last_model_version": ml_shadow.last_model_version,
         },
+    }
+
+
+def _definition_artifact_summary(
+    slug: str,
+    *,
+    definition_id: str | None,
+    record_store=None,
+) -> dict[str, Any]:
+    store = record_store or LEDGER_RECORD_STORE
+    training_runs = store.list(slug, record_type="training_run", definition_id=definition_id)
+    model_records = store.list(slug, record_type="model", definition_id=definition_id)
+    latest_training_run = training_runs[0] if training_runs else None
+    latest_model = model_records[0] if model_records else None
+    return {
+        "training_run_count": len(training_runs),
+        "model_count": len(model_records),
+        "latest_training_run": _record_payload(latest_training_run, slug) if latest_training_run else None,
+        "latest_model": _record_payload(latest_model, slug) if latest_model else None,
     }
 
 
@@ -297,13 +355,20 @@ def get_all_stats_sync(ledger: LedgerStore) -> dict:
     return {"patterns": results, "count": len(results)}
 
 
-def get_training_records_sync(slug: str, limit: int, ledger: LedgerStore) -> dict:
-    _require_pattern(slug)
+def get_training_records_sync(
+    slug: str,
+    limit: int,
+    ledger: LedgerStore,
+    *,
+    definition_id: str | None = None,
+) -> dict:
+    definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
     outcomes = ledger.list_all(slug)
     records = build_pattern_training_records(outcomes)
     summary = summarize_pattern_dataset(outcomes)
     return {
         "pattern_slug": slug,
+        "definition_ref": definition_ref,
         "total_records": len(records),
         "ready_to_train": summary.ready_to_train,
         "readiness_reason": summary.readiness_reason,
@@ -320,16 +385,51 @@ def get_alert_policy_sync(slug: str) -> dict:
     }
 
 
-def get_model_registry_sync(slug: str) -> dict:
-    _require_pattern(slug)
-    entries = MODEL_REGISTRY_STORE.list(slug)
-    active_entry = MODEL_REGISTRY_STORE.get_active(slug)
-    preferred_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(slug)
+def get_model_registry_sync(slug: str, *, definition_id: str | None = None) -> dict:
+    definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
+    entries = MODEL_REGISTRY_STORE.list(slug, definition_id=definition_id)
+    active_entry = MODEL_REGISTRY_STORE.get_active(slug, definition_id=definition_id)
+    preferred_entry = MODEL_REGISTRY_STORE.get_preferred_scoring_model(
+        slug,
+        definition_id=definition_id,
+    )
     return {
         "pattern_slug": slug,
-        "entries": [entry.to_dict() for entry in entries],
-        "active_model": active_entry.to_dict() if active_entry else None,
-        "preferred_scoring_model": preferred_entry.to_dict() if preferred_entry else None,
+        "definition_ref": definition_ref,
+        "entries": [_registry_entry_payload(entry) for entry in entries],
+        "active_model": _registry_entry_payload(active_entry) if active_entry else None,
+        "preferred_scoring_model": _registry_entry_payload(preferred_entry) if preferred_entry else None,
+    }
+
+
+def get_model_history_sync(
+    slug: str,
+    *,
+    limit: int,
+    definition_id: str | None = None,
+    record_type: str | None = None,
+    record_store=None,
+) -> dict:
+    definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
+    store = record_store or LEDGER_RECORD_STORE
+    if record_type is not None and record_type not in {"training_run", "model"}:
+        raise HTTPException(status_code=400, detail="record_type must be one of training_run|model")
+    if record_type is not None:
+        records = store.list(slug, record_type=record_type, definition_id=definition_id, limit=limit)
+    else:
+        records = store.list(slug, record_type="training_run", definition_id=definition_id, limit=limit) + store.list(
+            slug,
+            record_type="model",
+            definition_id=definition_id,
+            limit=limit,
+        )
+        records.sort(key=lambda record: record.created_at, reverse=True)
+        records = records[:limit]
+    return {
+        "pattern_slug": slug,
+        "definition_ref": definition_ref,
+        "count": len(records),
+        "records": [_record_payload(record, slug) for record in records],
     }
 
 
@@ -377,9 +477,11 @@ def auto_evaluate_sync(slug: str, ledger: LedgerStore) -> dict:
 
 def train_pattern_model_sync(slug: str, body: dict[str, Any], ledger: LedgerStore) -> dict:
     _require_pattern(slug)
+    definition_ref = _resolve_definition_ref(slug, definition_id=body.get("definition_id"))
     return train_pattern_model_from_ledger(
         slug,
         user_id=body.get("user_id"),
+        definition_ref=definition_ref,
         target_name=body.get("target_name", "breakout"),
         feature_schema_version=body.get("feature_schema_version", 1),
         label_policy_version=body.get("label_policy_version", 1),
@@ -394,17 +496,20 @@ def train_pattern_model_sync(slug: str, body: dict[str, Any], ledger: LedgerStor
 
 def promote_pattern_model_sync(
     slug: str,
+    definition_id: str | None,
     model_key: str,
     model_version: str,
     threshold_policy_version: int,
 ) -> dict:
     _require_pattern(slug)
+    definition_ref = _resolve_definition_ref_or_http(slug, definition_id=definition_id)
     try:
         active_entry = MODEL_REGISTRY_STORE.promote(
             pattern_slug=slug,
             model_key=model_key,
             model_version=model_version,
             threshold_policy_version=threshold_policy_version,
+            definition_id=definition_ref.get("definition_id"),
         )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -412,7 +517,9 @@ def promote_pattern_model_sync(
     LEDGER_RECORD_STORE.append_model_record(
         pattern_slug=slug,
         model_version=active_entry.model_version,
+        definition_ref=definition_ref,
         payload={
+            "definition_ref": definition_ref,
             "model_key": active_entry.model_key,
             "timeframe": active_entry.timeframe,
             "target_name": active_entry.target_name,
@@ -427,5 +534,66 @@ def promote_pattern_model_sync(
     return {
         "ok": True,
         "pattern_slug": slug,
+        "definition_ref": definition_ref,
         "active_model": active_entry.to_dict(),
     }
+
+
+def _resolve_definition_ref(slug: str, *, definition_id: str | None = None) -> dict[str, Any]:
+    service = PatternDefinitionService()
+    if definition_id:
+        parsed = service.parse_definition_id(definition_id)
+        return (
+            service.get_definition_ref(
+                pattern_slug=parsed["pattern_slug"],
+                pattern_version=parsed["pattern_version"],
+            )
+            or parsed
+        )
+    return service.get_definition_ref(pattern_slug=slug) or {"pattern_slug": slug}
+
+
+def _resolve_definition_ref_or_http(slug: str, *, definition_id: str | None = None) -> dict[str, Any]:
+    _require_pattern(slug)
+    try:
+        definition_ref = _resolve_definition_ref(slug, definition_id=definition_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "pattern_definition_id_invalid", "definition_id": definition_id},
+        ) from exc
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "pattern_definition_not_found", "definition_id": definition_id},
+        ) from exc
+    if definition_ref.get("pattern_slug") != slug:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "pattern_definition_slug_mismatch",
+                "definition_id": definition_id,
+                "pattern_slug": slug,
+            },
+        )
+    return definition_ref
+
+
+def _registry_entry_payload(entry) -> dict[str, Any]:
+    payload = entry.to_dict()
+    definition_ref = getattr(entry, "definition_ref", None)
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        definition_ref = _resolve_definition_ref(entry.pattern_slug)
+    payload["definition_ref"] = definition_ref
+    return payload
+
+
+def _record_payload(record: PatternLedgerRecord, slug: str) -> dict[str, Any]:
+    payload = record.to_dict()
+    record_payload = payload.get("payload")
+    record_payload = record_payload if isinstance(record_payload, dict) else {}
+    definition_ref = record_payload.get("definition_ref")
+    if not isinstance(definition_ref, dict) or not definition_ref:
+        definition_ref = _resolve_definition_ref(slug)
+    payload["definition_ref"] = definition_ref
+    return payload

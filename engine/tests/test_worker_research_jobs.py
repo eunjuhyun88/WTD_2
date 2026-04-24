@@ -73,6 +73,7 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
                 search_policy={"mode": "benchmark-pack-search", "n_variants": 11},
                 evaluation_protocol={"kind": "replay-benchmark"},
                 created_at="2026-04-17T00:00:00+00:00",
+                definition_ref={"definition_id": "tradoor-oi-reversal-v1:v1", "pattern_slug": "tradoor-oi-reversal-v1"},
             ).research_run_id,
             completed_at="2026-04-17T00:05:00+00:00",
             disposition="dead_end",
@@ -104,6 +105,7 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
 
     def _fake_refinement(config, *, controller=None, ledger_store=None, objective=None):
         assert config.baseline_ref == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+        assert config.definition_ref["definition_id"] == "tradoor-oi-reversal-v1:v1"
         controller = controller or __import__(
             "research.worker_control", fromlist=["ResearchWorkerController"]
         ).ResearchWorkerController(state_store)
@@ -114,12 +116,13 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
             search_policy={"mode": config.search_mode},
             evaluation_protocol={"n_splits": config.n_splits},
             created_at="2026-04-17T00:06:00+00:00",
+            definition_ref=config.definition_ref,
         )
         return controller.store.complete_run(
             run.research_run_id,
             completed_at="2026-04-17T00:07:00+00:00",
             disposition="train_candidate",
-            winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:1h:breakout",
+            winner_variant_ref="pattern-model:tradoor-oi-reversal-v1:v1:1h:breakout",
             handoff_payload={
                 "baseline_ref": config.baseline_ref,
                 "baseline_family_ref": config.baseline_ref,
@@ -134,19 +137,20 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
             research_run_id,
             payload={
                 "training_result": {
-                    "model_key": "tradoor-oi-reversal-v1:1h:breakout",
+                    "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout",
                     "model_version": "2026-04-17T00-08-00Z",
                     "rollout_state": "shadow",
                     "auc": 0.67,
                     "n_records": 42,
                     "baseline_ref": run.baseline_ref,
                     "baseline_family_ref": run.handoff_payload.get("baseline_family_ref"),
+                    "definition_ref": run.definition_ref,
                 }
             },
             updated_at="2026-04-17T00:08:00+00:00",
         )
         return updated, {
-            "model_key": "tradoor-oi-reversal-v1:1h:breakout",
+            "model_key": "tradoor-oi-reversal-v1:v1:1h:breakout",
             "model_version": "2026-04-17T00-08-00Z",
             "rollout_state": "shadow",
             "auc": 0.67,
@@ -166,10 +170,14 @@ def test_run_pattern_search_refinement_once_bridges_search_baseline_into_refinem
     payload = run_pattern_search_refinement_once("tradoor-oi-reversal-v1")
 
     assert payload["search"]["selection_decision"]["decision_kind"] == "dead_end"
+    assert payload["refinement"]["research_run"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert payload["refinement"]["research_run"]["baseline_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+    assert payload["refinement"]["research_run"]["handoff_payload"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert payload["refinement"]["research_run"]["handoff_payload"]["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
+    assert payload["refinement"]["research_run"]["handoff_payload"]["upstream_search_definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert payload["refinement"]["research_run"]["handoff_payload"]["upstream_search_baseline_family_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
     assert payload["refinement"]["research_run"]["handoff_payload"]["upstream_search_winner_variant_ref"] == "tradoor-oi-reversal-v1__arch-soft-real-loose"
+    assert payload["refinement"]["research_run"]["handoff_payload"]["training_result"]["definition_ref"]["definition_id"] == "tradoor-oi-reversal-v1:v1"
     assert payload["refinement"]["research_run"]["handoff_payload"]["training_result"]["baseline_family_ref"] == "family:tradoor-oi-reversal-v1__reset-reclaim-compression"
-    assert payload["training_handoff"]["model_key"] == "tradoor-oi-reversal-v1:1h:breakout"
+    assert payload["training_handoff"]["model_key"] == "tradoor-oi-reversal-v1:v1:1h:breakout"
     assert payload["report_path"].endswith(".md")

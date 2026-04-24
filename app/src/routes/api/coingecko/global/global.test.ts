@@ -1,22 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/server/enginePlanes/facts', () => ({
-	fetchFactMarketCapProxy: vi.fn(),
+vi.mock('$lib/server/marketCapOverviewBridge', () => ({
+	loadPreferredMarketCapOverview: vi.fn(),
 }));
 
-vi.mock('$lib/server/marketCapPlane', () => ({
-	adaptEngineMarketCapSnapshot: vi.fn(),
-	fetchMarketCapOverview: vi.fn(),
-}));
-
-import { fetchFactMarketCapProxy } from '$lib/server/enginePlanes/facts';
-import {
-	adaptEngineMarketCapSnapshot,
-	fetchMarketCapOverview,
-} from '$lib/server/marketCapPlane';
+import { loadPreferredMarketCapOverview } from '$lib/server/marketCapOverviewBridge';
 import { GET } from './+server';
 
-const FULL_ENGINE_OVERVIEW = {
+const ENGINE_SELECTION = {
+	upstream: 'facts/market-cap',
+	state: 'adapter',
+	overview: {
 	at: Date.now(),
 	totalMarketCapUsd: 2_500_000_000_000,
 	marketCapChange24hPct: 1.5,
@@ -35,13 +29,18 @@ const FULL_ENGINE_OVERVIEW = {
 		assets: { provider: 'engine_fact_market_cap', status: 'blocked', updatedAt: Date.now() },
 		stablecoins: { provider: 'engine_fact_market_cap', status: 'partial', updatedAt: Date.now() },
 	},
+	},
 };
 
-const FALLBACK_OVERVIEW = {
-	...FULL_ENGINE_OVERVIEW,
-	totalMarketCapUsd: 2_300_000_000_000,
-	btcDominance: 57.9,
-	confidence: 0.81,
+const FALLBACK_SELECTION = {
+	upstream: 'legacy-marketCapPlane',
+	state: 'fallback',
+	overview: {
+		...ENGINE_SELECTION.overview,
+		totalMarketCapUsd: 2_300_000_000_000,
+		btcDominance: 57.9,
+		confidence: 0.81,
+	},
 };
 
 describe('/api/coingecko/global', () => {
@@ -50,13 +49,12 @@ describe('/api/coingecko/global', () => {
 	});
 
 	it('prefers engine market-cap facts when total market cap and BTC dominance are present', async () => {
-		vi.mocked(fetchFactMarketCapProxy).mockResolvedValue({ ok: true } as any);
-		vi.mocked(adaptEngineMarketCapSnapshot).mockReturnValue(FULL_ENGINE_OVERVIEW as any);
+		vi.mocked(loadPreferredMarketCapOverview).mockResolvedValue(ENGINE_SELECTION as any);
 
 		const res = await GET({ fetch: globalThis.fetch } as any);
 
 		expect(res.status).toBe(200);
-		expect(vi.mocked(fetchMarketCapOverview)).not.toHaveBeenCalled();
+		expect(vi.mocked(loadPreferredMarketCapOverview)).toHaveBeenCalledWith(globalThis.fetch, 'global');
 		expect(res.headers.get('x-wtd-upstream')).toBe('facts/market-cap');
 		expect(res.headers.get('x-wtd-state')).toBe('adapter');
 		const body = await res.json();
@@ -65,17 +63,12 @@ describe('/api/coingecko/global', () => {
 	});
 
 	it('falls back to the legacy marketCapPlane when engine facts are incomplete', async () => {
-		vi.mocked(fetchFactMarketCapProxy).mockResolvedValue({ ok: true } as any);
-		vi.mocked(adaptEngineMarketCapSnapshot).mockReturnValue({
-			...FULL_ENGINE_OVERVIEW,
-			totalMarketCapUsd: null,
-		} as any);
-		vi.mocked(fetchMarketCapOverview).mockResolvedValue(FALLBACK_OVERVIEW as any);
+		vi.mocked(loadPreferredMarketCapOverview).mockResolvedValue(FALLBACK_SELECTION as any);
 
 		const res = await GET({ fetch: globalThis.fetch } as any);
 
 		expect(res.status).toBe(200);
-		expect(vi.mocked(fetchMarketCapOverview)).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(loadPreferredMarketCapOverview)).toHaveBeenCalledWith(globalThis.fetch, 'global');
 		expect(res.headers.get('x-wtd-upstream')).toBe('legacy-marketCapPlane');
 		expect(res.headers.get('x-wtd-state')).toBe('fallback');
 		const body = await res.json();

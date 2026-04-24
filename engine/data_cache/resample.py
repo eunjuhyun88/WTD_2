@@ -110,7 +110,10 @@ def resample_klines(df: pd.DataFrame, target_minutes: int) -> pd.DataFrame:
         "low":    "min",
         "close":  "last",
         "volume": "sum",
+        "quote_volume": "sum",
+        "trade_count": "sum",
         "taker_buy_base_volume": "sum",
+        "taker_buy_quote_volume": "sum",
     }
     agg = {col: rule for col, rule in _AGG.items() if col in df.columns}
 

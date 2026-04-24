@@ -57,6 +57,7 @@ def _json_loads_list(value: str | None) -> list[str]:
 class ResearchRun:
     research_run_id: str
     pattern_slug: str
+    definition_ref: dict
     objective_id: str
     baseline_ref: str
     search_policy: dict
@@ -132,6 +133,7 @@ class ResearchStateStore:
                 CREATE TABLE IF NOT EXISTS research_runs (
                   research_run_id TEXT PRIMARY KEY,
                   pattern_slug TEXT NOT NULL,
+                  definition_ref_json TEXT NOT NULL DEFAULT '{}',
                   objective_id TEXT NOT NULL,
                   baseline_ref TEXT NOT NULL,
                   search_policy_json TEXT NOT NULL,
@@ -191,6 +193,24 @@ class ResearchStateStore:
                 );
                 """
             )
+            self._ensure_column(conn, "research_runs", "definition_ref_json", "TEXT NOT NULL DEFAULT '{}'")
+
+    @staticmethod
+    def _ensure_column(
+        conn: sqlite3.Connection,
+        table_name: str,
+        column_name: str,
+        column_definition: str,
+    ) -> None:
+        columns = {
+            str(row["name"])
+            for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        }
+        if column_name in columns:
+            return
+        conn.execute(
+            f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+        )
 
     def create_run(
         self,
@@ -201,21 +221,23 @@ class ResearchStateStore:
         search_policy: dict,
         evaluation_protocol: dict,
         created_at: str,
+        definition_ref: dict | None = None,
     ) -> ResearchRun:
         research_run_id = str(uuid.uuid4())
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO research_runs (
-                  research_run_id, pattern_slug, objective_id, baseline_ref,
+                  research_run_id, pattern_slug, definition_ref_json, objective_id, baseline_ref,
                   search_policy_json, evaluation_protocol_json, status,
                   completion_disposition, winner_variant_ref, handoff_payload_json,
                   created_at, updated_at, started_at, completed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, '{}', ?, ?, NULL, NULL)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, '{}', ?, ?, NULL, NULL)
                 """,
                 (
                     research_run_id,
                     pattern_slug,
+                    _json_dumps(definition_ref or {}),
                     objective_id,
                     baseline_ref,
                     _json_dumps(search_policy),
@@ -504,6 +526,7 @@ class ResearchStateStore:
         return ResearchRun(
             research_run_id=row["research_run_id"],
             pattern_slug=row["pattern_slug"],
+            definition_ref=_json_loads_dict(row["definition_ref_json"]),
             objective_id=row["objective_id"],
             baseline_ref=row["baseline_ref"],
             search_policy=_json_loads_dict(row["search_policy_json"]),
