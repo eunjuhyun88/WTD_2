@@ -33,6 +33,9 @@
 | #214 (W-0139) | `TradeMode` candle-close analyze refresh moved behind terminal client helper |
 | #215 (W-0139) | `TradeMode` outcome submit and alpha world-model reads moved behind terminal client helpers |
 | #216 (W-0139) | terminal page review inbox count moved behind terminal client helper; terminal surface direct-fetch audit clean |
+| #230 (W-0160) | `PatternSeedScout` now persists `PatternDraft`, runs engine benchmark search, and reads `similar-live` through canonical `SearchQuerySpec` contracts |
+| #231 (W-0160 / W-0159) | runtime capture / benchmark fixtures aligned with `/runtime/captures`, and optional user-data liquidation diagnostics landed on raw ingest |
+| #232 (W-0159) | canonical raw plane mainline extract merged: raw SQLite tables, indexed market search, shared cache, scheduler refresh, and `/universe?q=` cutover |
 
 ---
 
@@ -40,7 +43,7 @@
 
 | ID | 파일 | 상태 | 핵심 미완 |
 |---|---|---|---|
-| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | definition plane mainline: canonical `/runtime/definitions/*` + capture/outcome truth scoped by `definition_id` |
+| **W-0160** | `W-0160-pattern-definition-plane.md` | 🔴 IN-PROGRESS | definition plane mainline plus post-merge `PatternDraft -> SearchQuerySpec` propagation, rule-registry tightening, and DOUNI cutover |
 | **W-0148** | `W-0148-cto-data-engine-reset.md` | 🔴 IN-PROGRESS | Phase 0 boundary program: docs/governance normalize + plane contract skeleton + proxy split |
 | **W-0122** | `W-0122-free-indicator-stack.md` | 🔴 IN-PROGRESS | fact plane mainline: `GET /ctx/fact` expansion + canonical `/facts/*` routes + `indicator_catalog.py` inventory owner |
 | **W-0145** | `W-0145-operational-seed-search-corpus.md` | 🔴 IN-PROGRESS | corpus accumulation + canonical `/search/*` route family |
@@ -48,7 +51,7 @@
 | **W-0151** | `W-0151-active-variant-runtime-registry.md` | 🔴 IN-PROGRESS | gate-cleared benchmark winners를 live runtime activation registry로 연결 |
 | **W-0152** | `W-0152-pattern-state-similarity-search.md` | 🔴 IN-PROGRESS | active variant 기준 live universe를 state/phase similarity로 직접 랭크하는 query path 추가 |
 | **W-0156** | `W-0156-canonical-feature-plane-foundation.md` | 🔴 IN-PROGRESS | perp/orderflow canonical feature plane 첫 슬라이스: raw metrics contract + reusable derived features + targeted engine cut |
-| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | canonical raw ingress + optional liquidation diagnostics + persisted market search index + L1/L2 cache + scheduler refresh + universe query cutover |
+| **W-0159** | `W-0159-canonical-raw-plane-ingestion.md` | 🔴 IN-PROGRESS | merged raw/search baseline 이후 public liquidation source 선정 + next raw family expansion + observability/productization |
 | **W-0157** | `W-0157-similar-live-feature-ranking.md` | 🔴 IN-PROGRESS | canonical feature snapshot을 `similar-live` ranking score에 실제 반영하는 consumption slice |
 | **W-0158** | `W-0158-promotion-feature-diagnostics.md` | 🔴 IN-PROGRESS | canonical feature score/snapshot truth를 promotion report와 refinement report diagnostics에 재사용 |
 | **W-0149** | `W-0149-manual-hypothesis-benchmark-pack-draft.md` | 🔴 IN-PROGRESS | capture research context를 replay benchmark pack draft로 변환하는 runtime/research bridge |
@@ -113,31 +116,27 @@
 
 ## Current Dirty Tree Snapshot
 
-- active on `codex/w-0160-pattern-definition-plane`
-- worktree: `/tmp/wtd-v2-w0160-pattern-definition`
-- current slice: `/runtime/definitions/*` is open, runtime captures/search/research/refinement/training all preserve `definition_ref`, direct model train/promote routes plus `/runtime/ledger/*` projection expose it, runtime ledger store + pattern stats/model-registry read models carry it as first-class metadata, runtime ledger history / pattern model-history accept canonical `definition_id` queries, model-registry/model-history filter on persisted definition metadata instead of validation-only slug routing, canonical pattern model identity is now definition-version aware (`definition_id`-scoped keys + per-definition promotion/preferred lookup with legacy fallback), and capture/outcome truth plus `/patterns/{slug}/stats` now default to fully definition-scoped reads with current-definition fallback for legacy rows
-- current doc lane `codex/w-0153-protocol-doc-recovery` was split and pushed clean at `44431562`
-- engine baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
-- `W-0156` foundation landed clean at `6ae2f566` on `codex/w-0156-feature-plane-foundation`
-- `W-0157` landed clean at `a3a8f2c0` on `codex/w-0157-similar-live-feature-ranking`
-- `W-0158` landed clean at `e51ab067` on `codex/w-0158-promotion-feature-diagnostics`
-- `W-0159` owning branch now also carries optional user-data liquidation ingress, liquidation windows, and credential diagnostics; extraction branch is porting that delta onto current main
-- active execution lane is `codex/w-0159-canonical-raw-plane-ingestion`
-- `W-0159` local cut adds canonical raw SQLite tables, query-driven Binance raw ingestion, persisted local market search index, process-local + shared Redis query caching, bounded index refresh job, `/universe?q=` local-search read path, and optional user-data liquidation ingress/windows
+- active on `codex/w-0148-post-merge-plan-refresh`
+- worktree: `/Users/ej/Projects/wtd-v2`
+- merged on `origin/main`: PR #230 / #231 (`W-0160` pattern-seed bridge, runtime capture fixture alignment, and optional user-data liquidation diagnostics) plus PR #232 (`W-0159` canonical raw/search mainline extract)
+- active engine lane remains `codex/w-0160-pattern-definition-plane`, which owns definition-scoped runtime truth and the next `PatternDraft/SearchQuerySpec` follow-up
+- active commercialization/search baseline remains `codex/w-0151-active-variant-runtime-registry` at `f5dec6c1`
+- `W-0156`, `W-0157`, and `W-0158` are merged prerequisites for the next feature-plane and ranking/diagnostics promotion wave
+- `W-0159` no longer needs extraction work; the remaining gap is a public or market-wide liquidation source plus any next raw-family expansion with concrete product pull
 
 ---
 
 ## 즉시 실행 순서
 
-1. **W-0148 / PR0.1** — docs/governance normalize
-2. **W-0148 / PR0.2** — plane contract skeleton + plane-specific app proxies (`facts/search/runtime`)
-3. **W-0122 / Lane A** — fact-plane canonical sub-routes + app compatibility bridges
-4. **W-0145 / Lane B** — corpus/search stores + canonical `/search/*`
-5. **W-0142 / Lane C** — runtime repositories + canonical `/runtime/*`
-6. **W-0160 / Contract lane** — `PatternDraft` / `SearchQuerySpec` + parser/transformer boundary for live agent/search turns
-7. **W-0143 / Lane D** — `AgentContextPack` loader + agent route unification
-8. **W-0139 + W-0140 / Lane E** — terminal surface slimming after upstream merge
-9. **Supabase migration 018** — `app/supabase/migrations/018_pattern_ledger_records.sql` (MCP or psql)
+1. **W-0122 / Lane A** — fact-plane canonical sub-routes (`/facts/*`, `/ctx/fact`) expansion + app compatibility bridge retirement
+2. **W-0145 / Lane B** — corpus/search read models and `/search/*` family promotion over the merged raw/search baseline
+3. **W-0142 / Lane C** — runtime repositories and `/runtime/*` read/write family expansion
+4. **W-0160 / Contract follow-up** — `SearchQuerySpec` persistence beyond benchmark-search, rule-registry tightening, and DOUNI raw-analysis removal
+5. **W-0159 / Raw follow-up** — public or market-wide liquidation source decision, liquidation fact promotion, and next raw-family expansion only if a concrete search gap remains
+6. **W-0156 / Feature promotion** — canonical `feature_windows` contract and reusable derived math promotion into consumers
+7. **W-0140 / Surface slimming** — bottom ANALYZE workspace must consume upstream workspace envelope/contracts only
+8. **Cloud Run region decision** — `asia-southeast1/cogotchi` redeploy vs `us-east4/cogotchi` 유지 명시
+9. **Vercel production env** — `EXCHANGE_ENCRYPTION_KEY` production wiring
 
 ---
 
@@ -147,8 +146,9 @@
 
 | 브랜치 | Work Item | 상태 |
 |---|---|---|
-| main | — | local `main` = `27952d95` |
+| main | — | local `main` = `8be0dd6f` (behind merged remote) |
 | origin/main | — | local remote-tracking ref = `8e914f76` |
+| codex/w-0148-post-merge-plan-refresh | W-0148 | active docs-only lane for post-merge queue refresh |
 | codex/w-0148-data-engine-reset | W-0148 | active Phase 0 lane; bounded engine fact landing zone + governance/contract split |
 | codex/w-0160-pattern-definition-plane | W-0160 | active runtime lane for canonical pattern-definition read models |
 | codex/w-0122-fact-plane-mainline | W-0122 | clean main-based execution lane |
@@ -158,7 +158,7 @@
 | codex/w-0156-feature-plane-foundation | W-0156 | active engine lane for canonical perp/orderflow/structure feature foundation |
 | codex/w-0157-similar-live-feature-ranking | W-0157 | active engine lane for canonical feature consumption in similar-live ranking |
 | codex/w-0158-promotion-feature-diagnostics | W-0158 | active engine lane for canonical feature diagnostics in promotion/report artifacts |
-| codex/w-0159-canonical-raw-plane-ingestion | W-0159 | active engine lane for canonical raw plane ingestion and query-driven symbol resolution |
+| codex/w-0159-canonical-raw-plane-ingestion | W-0159 | merged baseline lane; follow-up scope is public liquidation source + raw-family expansion only |
 | codex/parking-20260423-mixed-lanes | parking | preservation-only mixed snapshot |
 | codex/stack-20260423-mixed-terminal-stack | parking | preservation-only stacked history |
 | codex/w-0139-terminal-core-loop-capture | mixed stack | preserved only; do not reuse for new work |
