@@ -53,10 +53,10 @@
         class="tab"
         class:active={t.id === activeTabId}
         style:--tab-color={tabColor(t.kind)}
-        onclick={() => setActiveTabId(t.id)}
-        onkeydown={(event) => onTabKeyDown(event, t.id)}
         role="button"
         tabindex="0"
+        onclick={() => setActiveTabId(t.id)}
+        onkeydown={(event) => onTabKeyDown(event, t.id)}
       >
         <span class="tab-text">
           {tabIcon(t.kind)} {t.title}
