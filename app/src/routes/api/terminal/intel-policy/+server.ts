@@ -3,6 +3,14 @@ import type { RequestHandler } from './$types';
 import { normalizePair, normalizeTimeframe } from '$lib/server/marketFeedService';
 import { loadAgentContextPack } from '$lib/server/agentContextPack';
 import { buildIntelPolicyOutput, emptyPanels } from '$lib/server/intelPolicyRuntime';
+import { loadMarketEvents } from '$lib/server/marketEvents';
+import { loadMarketFlow } from '$lib/server/marketFlow';
+import { adaptEngineMarketCapSnapshot, fetchMarketCapOverview } from '$lib/server/marketCapPlane';
+import { fetchFactMarketCapProxy } from '$lib/server/enginePlanes/facts';
+import { loadMarketNews } from '$lib/server/marketNews';
+import { loadPerpContextBridge } from '$lib/server/perpContextBridge';
+import { loadMarketTrending } from '$lib/server/marketTrending';
+import { getOrRunOpportunityScan } from '$lib/server/opportunityScan';
 
 export const config = {
 	runtime: 'nodejs22.x',
@@ -25,69 +33,70 @@ function cacheKey(pair: string, timeframe: string): string {
   return `${pair}:${timeframe}`;
 }
 
-async function fetchJsonSafe(fetchFn: typeof fetch, path: string): Promise<any | null> {
-  try {
-    const res = await fetchFn(path, { signal: AbortSignal.timeout(12_000) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function numericOrNull(value: unknown): number | null {
-  const num = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
-  return Number.isFinite(num) ? num : null;
-}
-
 function symbolFromPair(pair: string): string {
   return pair.replace('/', '').toUpperCase();
 }
 
+async function loadMacroOverview(fetchFn: typeof fetch) {
+  const engineSnapshot = await fetchFactMarketCapProxy(fetchFn, { offline: true }).catch(() => null);
+  const engineOverview = adaptEngineMarketCapSnapshot(engineSnapshot);
+  const overview = engineOverview ?? (await fetchMarketCapOverview().catch(() => null));
+
+  if (!overview) return null;
+  const hasMacroSignal =
+    overview.btcDominance !== null ||
+    overview.marketCapChange24hPct !== null ||
+    overview.stablecoinMcapChange24hPct !== null;
+
+  if (!hasMacroSignal) return null;
+
+  return {
+    btcDominance: overview.btcDominance,
+    dominanceChange24h: overview.dominanceChange24h,
+    marketCapChange24hPct: overview.marketCapChange24hPct,
+    stablecoinMcapChange24hPct: overview.stablecoinMcapChange24hPct,
+    confidence: overview.confidence,
+  };
+}
+
 async function runIntelPolicy(fetchFn: typeof fetch, pair: string, timeframe: string) {
   const token = pair.split('/')[0] ?? 'BTC';
+  const perpBridgePromise = loadPerpContextBridge(fetchFn, { pair, timeframe });
 
-  const [newsRes, eventsRes, flowRes, macroRes, trendingRes, picksRes, agentContext] = await Promise.all([
-    fetchJsonSafe(
-      fetchFn,
-      `/api/market/news?limit=40&offset=0&token=${encodeURIComponent(token)}&sort=importance&interval=1m`,
-    ),
-    fetchJsonSafe(fetchFn, `/api/market/events?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
-    fetchJsonSafe(fetchFn, `/api/market/flow?pair=${encodeURIComponent(pair)}&timeframe=${encodeURIComponent(timeframe)}`),
-    fetchJsonSafe(fetchFn, '/api/market/macro-overview'),
-    fetchJsonSafe(fetchFn, '/api/market/trending?section=all&limit=20'),
-    fetchJsonSafe(fetchFn, '/api/terminal/opportunity-scan?limit=15'),
+  const [newsData, trendingData, picksData, agentContext, flowResult, eventsResult, macroOverview] = await Promise.all([
+    loadMarketNews({
+      limit: 40,
+      offset: 0,
+      token: token.toUpperCase(),
+      interval: '1m',
+      sortBy: 'importance',
+    }),
+    loadMarketTrending({
+      limit: 20,
+      section: 'all',
+    }),
+    getOrRunOpportunityScan(15),
     loadAgentContextPack({
       fetchFn,
       symbol: symbolFromPair(pair),
       timeframe,
       captureLimit: 3,
     }),
+    perpBridgePromise.then((bridge) =>
+      loadMarketFlow(fetchFn, { pair, timeframe, perpBridge: bridge }),
+    ),
+    perpBridgePromise.then((bridge) =>
+      loadMarketEvents(fetchFn, { pair, timeframe, perpBridge: bridge }),
+    ),
+    loadMacroOverview(fetchFn),
   ]);
 
-  const newsRecords = Array.isArray(newsRes?.data?.records) ? newsRes.data.records : [];
-  const eventRecords = Array.isArray(eventsRes?.data?.records) ? eventsRes.data.records : [];
-  const flowSnapshot = flowRes?.data?.snapshot ?? null;
-  const flowRecords = Array.isArray(flowRes?.data?.records) ? flowRes.data.records : [];
-  const macroOverview =
-    macroRes && (
-      numericOrNull(macroRes.btcDominance ?? macroRes.data?.btcDominance) !== null ||
-      numericOrNull(macroRes.marketCapChange24hPct ?? macroRes.data?.marketCapChange24hPct) !== null ||
-      numericOrNull(macroRes.stablecoinMcapChange24hPct ?? macroRes.data?.stablecoinMcapChange24hPct) !== null
-    )
-      ? {
-          btcDominance: numericOrNull(macroRes.btcDominance ?? macroRes.data?.btcDominance),
-          dominanceChange24h: numericOrNull(macroRes.dominanceChange24h ?? macroRes.data?.dominanceChange24h),
-          marketCapChange24hPct: numericOrNull(macroRes.marketCapChange24hPct ?? macroRes.data?.marketCapChange24hPct),
-          stablecoinMcapChange24hPct: numericOrNull(
-            macroRes.stablecoinMcapChange24hPct ?? macroRes.data?.stablecoinMcapChange24hPct,
-          ),
-          confidence: numericOrNull(macroRes.confidence ?? macroRes.data?.confidence),
-        }
-      : null;
-  const trendingCoins = Array.isArray(trendingRes?.data?.trending) ? trendingRes.data.trending : [];
-  const pickCoins = Array.isArray(picksRes?.data?.coins) ? picksRes.data.coins : [];
+  const newsRecords = newsData.records;
+  const eventRecords = eventsResult.data.records;
+  const flowSnapshot = flowResult.data.snapshot ?? null;
+  const flowRecords = flowResult.data.records;
+  const trendingCoins = trendingData.trending;
+  const pickCoins = picksData.payload.result.coins;
 
   return buildIntelPolicyOutput({
     pair,

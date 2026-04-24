@@ -93,7 +93,7 @@ function publicSuccessResponse(payload: MarketSnapshotSuccessPayload, cacheStatu
   });
 }
 
-function privateSuccessResponse(snapshot: MarketSnapshotResult) {
+function privateSuccessResponse(snapshot: MarketSnapshotResult | PublicSnapshotResult) {
   return json(buildSuccessPayload(snapshot), {
     headers: noStoreHeaders(),
   });
@@ -163,7 +163,9 @@ export const POST: RequestHandler = async ({ fetch, request, cookies, getClientA
     const requestedPersist = toPersistFlag(body?.persist, true);
     const persist = requestedPersist && authenticated;
 
-    const snapshot = await collectMarketSnapshot(fetch, { pair, timeframe, persist });
+    const snapshot = persist
+      ? await collectMarketSnapshot(fetch, { pair, timeframe, persist })
+      : await collectPublicMarketSnapshot(fetch, { pair, timeframe });
     return privateSuccessResponse(snapshot);
   } catch (error: any) {
     return errorResponse(error, 'post');
