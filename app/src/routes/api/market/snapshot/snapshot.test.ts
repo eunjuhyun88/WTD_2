@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { getAuthUserFromCookies } from '$lib/server/authGuard';
 import { collectMarketSnapshot, collectPublicMarketSnapshot } from '$lib/server/marketSnapshotService';
+import { readJsonBody } from '$lib/server/requestGuards';
 
 vi.mock('$lib/server/marketSnapshotService', () => ({
   collectMarketSnapshot: vi.fn(async () => ({
@@ -46,9 +47,16 @@ vi.mock('$lib/server/requestGuards', () => ({
   readJsonBody: vi.fn(),
 }));
 
-import { GET } from './+server';
+import { GET, POST } from './+server';
 
 describe('/api/market/snapshot', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getAuthUserFromCookies).mockReset();
+    vi.mocked(getAuthUserFromCookies).mockResolvedValue(null as any);
+    vi.mocked(readJsonBody).mockReset();
+  });
+
   it('forces non-persistent reads on GET even for authenticated callers', async () => {
     vi.mocked(getAuthUserFromCookies).mockResolvedValueOnce({ id: 'user-1' } as any);
     const req = new Request('http://localhost/api/market/snapshot?pair=BTCUSDT&timeframe=1h&persist=1');
@@ -88,5 +96,58 @@ describe('/api/market/snapshot', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.pair).toBe('BTCUSDT');
+  });
+
+  it('routes unauthenticated POST reads through the engine-first public snapshot path', async () => {
+    vi.mocked(readJsonBody).mockResolvedValueOnce({
+      pair: 'BTCUSDT',
+      timeframe: '1h',
+      persist: true,
+    });
+
+    const req = new Request('http://localhost/api/market/snapshot', { method: 'POST' });
+    const res = await POST({
+      fetch: globalThis.fetch,
+      request: req,
+      cookies: {},
+      getClientAddress: () => '127.0.0.1',
+    } as any);
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(collectPublicMarketSnapshot)).toHaveBeenCalledWith(
+      globalThis.fetch,
+      expect.objectContaining({
+        pair: 'BTCUSDT',
+        timeframe: '1h',
+      }),
+    );
+    expect(vi.mocked(collectMarketSnapshot)).not.toHaveBeenCalled();
+  });
+
+  it('keeps authenticated persistent POST on the legacy snapshot persistence path', async () => {
+    vi.mocked(getAuthUserFromCookies).mockResolvedValueOnce({ id: 'user-1' } as any);
+    vi.mocked(readJsonBody).mockResolvedValueOnce({
+      pair: 'BTCUSDT',
+      timeframe: '1h',
+      persist: true,
+    });
+
+    const req = new Request('http://localhost/api/market/snapshot', { method: 'POST' });
+    const res = await POST({
+      fetch: globalThis.fetch,
+      request: req,
+      cookies: {},
+      getClientAddress: () => '127.0.0.1',
+    } as any);
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(collectMarketSnapshot)).toHaveBeenCalledWith(
+      globalThis.fetch,
+      expect.objectContaining({
+        pair: 'BTCUSDT',
+        timeframe: '1h',
+        persist: true,
+      }),
+    );
   });
 });

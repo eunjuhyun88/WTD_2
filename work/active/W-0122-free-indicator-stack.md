@@ -176,6 +176,47 @@ This slice keeps `GET /ctx/fact` as the bounded landing zone but makes it satisf
 4. avoid any new app-side fact composition; only align the engine payload and current adapter expectations
 5. lock the cut with targeted engine `ctx` tests plus app fact-proxy / snapshot adapter tests
 
+### Current Lane Slice — Snapshot Engine Contract
+
+This cut tightens the public snapshot compatibility bridge so non-persistent reads stop falling back to app-owned fact assembly unless the engine fact path is unavailable.
+
+1. keep `/api/market/snapshot` response shape stable for both GET and POST
+2. keep authenticated `persist=true` POST on the legacy app persistence path until the engine owns snapshot persistence
+3. route GET and any `persist=false` snapshot read through the engine-first `collectPublicMarketSnapshot()` path
+4. keep legacy app snapshot assembly only as the degraded fallback behind the engine fact adapter
+5. lock the cut with targeted snapshot route tests covering GET plus unauthenticated/non-persistent POST
+
+### Current Lane Slice — Intel Policy Direct Load
+
+This cut reduces terminal surface latency and duplicate fact reads by removing internal app route loopbacks for `flow` and `events` inside `/api/terminal/intel-policy`.
+
+1. keep `/api/terminal/intel-policy` public payload stable
+2. extract engine-first `flow` and `events` loaders so routes and terminal orchestration share one composition path
+3. fetch `perp-context` once per intel-policy request and reuse it across flow/events assembly
+4. read macro regime directly from the fact-backed market-cap helper instead of calling `/api/market/macro-overview` over loopback
+5. preserve legacy enrichments and public route headers for standalone `/api/market/flow` and `/api/market/events`
+6. lock the cut with targeted `flow`, `events`, and `intel-policy` route tests
+
+### Current Lane Slice — Intel Policy Shared Feeds
+
+This follow-up cut removes the remaining internal app route loopbacks that `intel-policy` still uses for public feed assembly.
+
+1. keep `/api/terminal/intel-policy` public payload stable
+2. extract shared loaders for `news`, `trending`, and `opportunity-scan`
+3. make `/api/terminal/intel-policy` call those loaders directly instead of hitting app HTTP routes
+4. preserve standalone route behavior, cache semantics, and DB persist on `/api/terminal/opportunity-scan`
+5. lock the cut with targeted `intel-policy` coverage plus direct helper tests where the cache path changes materially
+
+### Current Lane Slice — Terminal Execution Loopback Cleanup
+
+This small follow-up removes an app-server self-call that remains on the terminal execution path and showed up during the direct-loader audit.
+
+1. keep `/api/terminal/intel-agent-shadow/execute` public payload stable
+2. extract quick-trade open persistence + side effects into a shared server function
+3. make `intel-agent-shadow/execute` call that shared function directly instead of POSTing to `/api/quick-trades/open`
+4. preserve `/api/quick-trades/open` route behavior by making it a thin wrapper over the same shared function
+5. lock the cut with targeted `intel-agent-shadow/execute` coverage
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
@@ -497,6 +538,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **`ctx/fact` should satisfy the contract it already advertises** — `FactSnapshot` already exposes optional `fact_id`, `provider_state`, `confluence`, and `reference_health`, and app adapters probe for those fields today. The engine landing zone should populate them before more transitional app logic grows around missing values.
 - **legacy `/api/engine/ctx/fact` bridge is dead and should be removed** — fact-plane callers already use `/api/facts/ctx/fact`; keeping the same path allowlisted on the frozen legacy engine proxy only preserves duplicate ingress without any consumer.
 - **snapshot adapter should prefer `provider_state` over transitional `sources`** — once `ctx/fact` fills canonical provider summaries, app compatibility routes should read that normalized plane contract first and only fall back to raw transitional source maps when older engine payloads are encountered.
+- **terminal execution paths should share server helpers instead of HTTP loopbacks** — when `intel-policy`, `intel-agent-shadow/execute`, and `/api/quick-trades/open` live in the same app process, shared loaders/functions are the canonical surface and internal `fetch('/api/...')` should be removed before new orchestration grows around them.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
@@ -543,9 +585,9 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-ctx-fact-fillin`, active worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-ctx-fact-fillin`
-- verification status: `refactor(W-0122): fill ctx fact contract summaries` passed engine `pytest tests/test_ctx_fact_route.py -q` plus app targeted `planeClients` and `market/snapshot` route coverage; follow-up dead-code cut should re-run legacy engine proxy coverage
-- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design
+- branch/worktree state: `codex/w-0122-snapshot-engine-contract`, active worktree at `/tmp/wtd-v2-w0122-snapshot-engine-contract`
+- verification status: snapshot/intel-policy/terminal loopback cleanup passes app targeted `vitest` (`market/snapshot`, `market/flow`, `market/events`, `terminal/intel-policy`, `terminal/intel-agent-shadow/execute`, `marketSnapshotService`, `opportunityScan`) plus `npm --prefix app run check`
+- remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, remaining app self-calls outside the current snapshot/intel-policy/terminal execute path
 
 ## PR Trail
 
