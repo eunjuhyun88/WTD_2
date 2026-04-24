@@ -235,6 +235,17 @@ This small follow-up removes an app-server self-call that remains on the termina
 4. preserve `/api/quick-trades/open` route behavior by making it a thin wrapper over the same shared function
 5. lock the cut with targeted `intel-agent-shadow/execute` coverage
 
+### Current Lane Slice — Influencer Metric Fact Coverage
+
+This cut keeps the existing app-side influencer payload intact, but attaches engine-owned indicator inventory truth so the route stops shipping a purely app-local research bundle.
+
+1. keep `/api/market/influencer-metrics` public payload stable and additive-only
+2. keep `fetchInfluencerMetrics()` as the existing app-side producer; do not move provider fetch logic in this cut
+3. attach additive `factCoverage` by reading engine `/facts/indicator-catalog` once per request
+4. normalize known report-binding aliases (`whale_activity`, `total_value_locked`, `dex_volume_tvl_ratio`, `social_mention_velocity`) to canonical catalog ids at the route adapter layer only
+5. surface route headers that make engine-backed coverage vs pure app fallback explicit
+6. lock the cut with targeted influencer route tests plus app check
+
 ## Goal
 
 무료 API 만으로 **$400/월 premium stack ($39 Glassnode + $99 Laevitas + $29 Coinglass + $150 Nansen) 의 70-80% 커버리지** 를 달성하고, 우리 80+ building blocks 및 flywheel 과 결합해 **경쟁사가 살 수 없는 독점 confluence** 를 생산한다.
@@ -558,6 +569,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **snapshot adapter should prefer `provider_state` over transitional `sources`** — once `ctx/fact` fills canonical provider summaries, app compatibility routes should read that normalized plane contract first and only fall back to raw transitional source maps when older engine payloads are encountered.
 - **indicator catalog should not keep a duplicate `ctx` alias once plane proxies are live** — app fact consumers and plane clients already use `/facts/indicator-catalog`; keeping `/ctx/indicator-catalog` only preserves a second fact owner path and stale contract surface.
 - **terminal execution paths should share server helpers instead of HTTP loopbacks** — when `intel-policy`, `intel-agent-shadow/execute`, and `/api/quick-trades/open` live in the same app process, shared loaders/functions are the canonical surface and internal `fetch('/api/...')` should be removed before new orchestration grows around them.
+- **influencer metric report bindings should map to engine catalog ids at the route adapter layer** — the app research report already exposes `indicatorId`, but some ids are report-local aliases rather than canonical catalog ids. The compatibility cut should normalize aliases in the route adapter instead of rewriting the report producer or changing engine inventory ids.
 ## Open Questions
 
 1. **Arkham free tier rate limit** — 5min polling 이 sustainable? 필요 시 paid $$ 구독.
@@ -573,6 +585,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 4. EVM token lane 에 CoinGecko Onchain DEX plane(top pools + recent trades + liquidity/volume)를 붙이고, provider state 를 `etherscan + coingecko_onchain` 으로 분리한다.
 5. `reference-stack` 는 먼저 계약을 분리한다: curated reference catalog 를 유지할지, engine coverage read model adapter 를 새로 둘지 결정한 뒤에만 cutover 한다.
 6. `market-cap` fact route 가 app macro consumers 를 충분히 커버하면 `marketCapPlane` 을 app-owned producer 에서 ingress fallback 으로 강등한다.
+7. `influencer-metrics` 가 additive catalog coverage 를 안정적으로 싣기 시작하면, 다음 단계에서 `report.metricLeaderboard` 의 report-local ids 를 canonical ids 로 직접 수렴시킬지 판단한다.
 
 ## Related
 
@@ -604,8 +617,8 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-confluence-fact-cut`, active worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-confluence-fact-cut`
-- verification status: snapshot/intel-policy/terminal loopback cleanup passes app targeted `vitest` (`market/snapshot`, `market/flow`, `market/events`, `terminal/intel-policy`, `terminal/intel-agent-shadow/execute`, `marketSnapshotService`, `opportunityScan`) plus `npm --prefix app run check`; `refactor(W-0122): remove indicator catalog ctx alias` passed engine `pytest engine/tests/test_ctx_fact_route.py engine/tests/test_facts_route.py -q`, `npm --prefix app run contract:check:engine-types`, and `npm --prefix app run check`; `refactor(W-0122): consolidate market-cap bridge selection` passed targeted app vitest (`marketCapOverviewBridge`, `macro-overview`, `coingecko/global`) plus `npm --prefix app run check`
+- branch/worktree state: `codex/w-0122-influencer-fact-coverage`, active worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-influencer-fact-coverage`
+- verification status: `refactor(W-0122): add influencer metric fact coverage` passes targeted app `vitest` (`market/influencer-metrics`, `lib/server/influencerMetrics`) plus `npm --prefix app run check`; prior snapshot/intel-policy/terminal loopback cleanup, indicator catalog alias cleanup, and market-cap bridge consolidation remain merged on `main`
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, remaining app self-calls outside the current snapshot/intel-policy/terminal execute path
 
 ## PR Trail
@@ -618,3 +631,4 @@ Phase 2 (future cycle):
 - #161 (Pillar 2 Options Phase 1)
 - #225 (`ctx/fact` contract fill-in)
 - #227 (indicator catalog alias cleanup + market-cap bridge consolidation)
+- pending (`influencer metric fact coverage`)

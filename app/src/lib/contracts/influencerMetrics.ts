@@ -1,3 +1,11 @@
+import type {
+	IndicatorCatalogEntry,
+	IndicatorCatalogOwner,
+	IndicatorCatalogPromotionStage,
+	IndicatorCatalogStatus,
+} from '$lib/contracts/facts/indicatorCatalog';
+import type { FactPlaneState } from '$lib/contracts/facts/factSnapshot';
+
 export type InfluencerProviderStatus = 'live' | 'partial' | 'blocked' | 'planned';
 export type InfluencerProviderKey = 'onchain' | 'defi' | 'sentiment';
 export type InfluencerMetricFamily = 'OnChain' | 'DeFi' | 'DerivativesMacro';
@@ -68,6 +76,38 @@ export interface InfluencerMetricsReport {
   conclusions: string[];
 }
 
+export interface InfluencerMetricFactCoverageItem {
+  reportMetricId: string;
+  bindingLabel: string;
+  requestedIndicatorId: string;
+  catalogIndicatorId: string;
+  payloadPath?: string;
+  providerKey?: InfluencerProviderKey;
+  family: IndicatorCatalogEntry['family'] | null;
+  status: IndicatorCatalogStatus | 'missing';
+  currentOwner: IndicatorCatalogOwner | null;
+  promotionStage: IndicatorCatalogPromotionStage | null;
+  primarySources: string[];
+  nextGate: string | null;
+}
+
+export interface InfluencerMetricFactCoverage {
+  owner: 'engine';
+  plane: 'fact';
+  kind: 'indicator_catalog';
+  status: FactPlaneState;
+  generatedAt: string;
+  coverage: {
+    totalBindings: number;
+    matched: number;
+    missing: number;
+    live: number;
+    partial: number;
+    blocked: number;
+  };
+  items: InfluencerMetricFactCoverageItem[];
+}
+
 export interface InfluencerMetricsPayload {
   symbol: string;
   baseAsset: string;
@@ -102,4 +142,5 @@ export interface InfluencerMetricsPayload {
     socialDominancePct: number | null;
   };
   report: InfluencerMetricsReport;
+  factCoverage?: InfluencerMetricFactCoverage;
 }
