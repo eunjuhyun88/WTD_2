@@ -32,6 +32,7 @@ import {
   TOOL_CHECK_SOCIAL,
   TOOL_SCAN_MARKET,
   TOOL_CHECK_PATTERN_STATUS,
+  TOOL_FIND_SIMILAR_PATTERNS,
   TOOL_CHART_CONTROL,
   TOOL_SAVE_PATTERN,
   TOOL_SUBMIT_FEEDBACK,
@@ -87,6 +88,7 @@ const ALL_TOOLS: Record<string, ToolDefinition> = {
   check_social: TOOL_CHECK_SOCIAL,
   scan_market: TOOL_SCAN_MARKET,
   check_pattern_status: TOOL_CHECK_PATTERN_STATUS,
+  find_similar_patterns: TOOL_FIND_SIMILAR_PATTERNS,
   chart_control: TOOL_CHART_CONTROL,
   save_pattern: TOOL_SAVE_PATTERN,
   submit_feedback: TOOL_SUBMIT_FEEDBACK,
@@ -330,9 +332,19 @@ export function buildContext(opts: BuildContextOptions): BuildContextResult {
       const ctx = buildAnalysisContext(snapshot, profile.archetype);
       systemPrompt += `\n\n[Current Analysis]\n${ctx}`;
     } catch { /* skip partial snapshot */ }
-  } else if (budget.tools.includes('analyze_market') || budget.tools.includes('scan_market')) {
+  } else if (
+    budget.tools.includes('analyze_market') ||
+    budget.tools.includes('scan_market') ||
+    budget.tools.includes('find_similar_patterns')
+  ) {
     // Only add this hint when the LLM has tools to fetch data
-    systemPrompt += `\n\n[NO DATA YET]\nUse analyze_market or scan_market to get fresh data.`;
+    const hints: string[] = [];
+    if (budget.tools.includes('analyze_market')) hints.push('analyze_market for fresh market data');
+    if (budget.tools.includes('scan_market')) hints.push('scan_market for ranked market scans');
+    if (budget.tools.includes('find_similar_patterns')) {
+      hints.push('find_similar_patterns for thesis-style pattern retrieval');
+    }
+    systemPrompt += `\n\n[NO DATA YET]\nUse ${hints.join(', ')}.`;
   }
 
   // ── Step 3b-alpha: Alpha World Model injection ────────────
