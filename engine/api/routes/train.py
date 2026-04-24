@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from api.schemas import TrainRequest, TrainResponse
 from models.compat import normalize_signal_snapshot_payload
@@ -49,12 +49,16 @@ def _dict_to_snapshot(d: dict) -> SignalSnapshot:
 
 
 @router.post("", response_model=TrainResponse)
-async def train(req: TrainRequest) -> TrainResponse:
+async def train(request: Request, req: TrainRequest) -> TrainResponse:
     """Retrain LightGBM on new trade records.
 
     Records with outcome == -1 (timeout / neutral) are excluded from
     training — only clear wins (1) and losses (0) are used.
     """
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     if len(req.records) < MIN_TRAIN_RECORDS:
         raise HTTPException(
             status_code=400,
@@ -88,7 +92,7 @@ async def train(req: TrainRequest) -> TrainResponse:
     X = np.stack(X_parts)
     y = np.array(y_parts, dtype=int)
 
-    engine = get_engine(req.user_id)
+    engine = get_engine(user_id)
     result = engine.train(X, y)
 
     # model_version: new version if replaced, "not_replaced" if incumbent kept.
@@ -106,19 +110,23 @@ async def train(req: TrainRequest) -> TrainResponse:
 
 
 @router.get("/report")
-async def train_report(user_id: str | None = None, top_k: int = 20) -> dict:
+async def train_report(request: Request, top_k: int = 20) -> dict:
     """Model report endpoint with feature importance ranking."""
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User authentication required")
+
     engine = get_engine(user_id)
     if not engine.is_trained:
         return {
             "trained": False,
             "message": "Model not trained yet.",
-            "user_id": user_id or "global",
+            "user_id": user_id,
         }
 
     report = engine.feature_importance_report(top_k=top_k) or {}
     return {
         "trained": True,
-        "user_id": user_id or "global",
+        "user_id": user_id,
         **report,
     }
