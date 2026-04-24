@@ -20,6 +20,14 @@ import type { ConfluenceResult } from '$lib/confluence/types';
 import { pushConfluence, streakBack } from '$lib/server/confluenceHistory';
 import { adaptEngineFactConfluence } from '$lib/server/confluence/engineFactAdapter';
 import { fetchFactConfluenceProxy } from '$lib/server/enginePlanes/facts';
+import {
+  loadFundingFlip,
+  loadLiqClusters,
+  loadOptionsSnapshot,
+  loadRvCone,
+  loadStablecoinSsr,
+  loadVenueDivergence,
+} from '$lib/server/marketIndicatorFeeds';
 import { getRequestIp } from '$lib/server/requestIp';
 
 const VALID_SYMBOL = /^[A-Z0-9]{3,12}USDT$/;
@@ -52,32 +60,6 @@ interface AnalyzeMini {
   direction?: string;
 }
 
-interface VenueRow { venue: string; current: number; highlight?: boolean }
-interface VenuePayload { oi?: VenueRow[]; funding?: VenueRow[] }
-interface RvPayload { percentile?: Record<string, number> }
-interface SsrPayload { percentile?: number; regime?: 'dry_powder_high' | 'dry_powder_low' | 'neutral' }
-interface FlipPayload {
-  direction?: 'pos_to_neg' | 'neg_to_pos' | 'persisted';
-  persistedHours?: number;
-  consecutiveIntervals?: number;
-  currentRate?: number;
-}
-interface LiqCell { priceBucket: number; timeBucket: number; intensity: number; side?: string }
-interface LiqPayload { cells?: LiqCell[]; currentPrice?: number }
-interface OptionsPayload {
-  putCallRatioOi?: number;
-  putCallRatioVol?: number;
-  skew25d?: number;
-  atmIvNearTerm?: number;
-  gamma?: {
-    pinLevel?: number | null;
-    pinDistancePct?: number | null;
-    maxPain?: number | null;
-    maxPainDistancePct?: number | null;
-    pinDirection?: 'above' | 'below' | 'at' | null;
-  };
-}
-
 function enrichConfluenceResult(symbol: string, result: ConfluenceResult): ConfluenceResult {
   pushConfluence(symbol, {
     at: result.at,
@@ -101,12 +83,12 @@ function symbolToDeribitCurrency(sym: string): string | null {
 
 /** Reduce liq heatmap cells into {aboveDistancePct, belowDistancePct, intensity} snapshot. */
 function summarizeLiq(
-  payload: LiqPayload | null,
+  payload: Awaited<ReturnType<typeof loadLiqClusters>>['payload'] | null,
   currentPrice: number | null
 ): ConfluenceInput['liqMagnet'] {
   if (!payload?.cells?.length || currentPrice == null || currentPrice <= 0) return null;
-  let closestAbove: LiqCell | null = null;
-  let closestBelow: LiqCell | null = null;
+  let closestAbove: (typeof payload.cells)[number] | null = null;
+  let closestBelow: (typeof payload.cells)[number] | null = null;
   let maxIntensity = 0;
   for (const c of payload.cells) {
     const p = c.priceBucket;
@@ -123,6 +105,14 @@ function summarizeLiq(
     ? ((currentPrice - closestBelow.priceBucket) / currentPrice) * 100
     : null;
   return { aboveDistancePct, belowDistancePct, intensity };
+}
+
+async function safeLoad<T>(load: () => Promise<{ payload: T }>): Promise<T | null> {
+  try {
+    return (await load()).payload;
+  } catch {
+    return null;
+  }
 }
 
 export const GET: RequestHandler = async ({ url, request, getClientAddress, fetch: _kitFetch }) => {
@@ -149,7 +139,6 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
     });
   }
 
-  const origin = url.origin;
   const engineConfluence = await fetchFactConfluenceProxy(_kitFetch, {
     symbol,
     timeframe: tf,
@@ -176,14 +165,14 @@ export const GET: RequestHandler = async ({ url, request, getClientAddress, fetc
     // we attach a cookie. For now: accept that pattern score may be missing when unauth'd — a
     // separate read-only public analyze endpoint will be added in W-0122-Confluence-P2.
     // This is explicitly documented so reviewers see the intentional limit.
-    fetchSelf<AnalyzeMini>(_kitFetch, origin, `/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
-    fetchSelf<VenuePayload>(_kitFetch, origin, `/api/market/venue-divergence?symbol=${symbol}`),
-    fetchSelf<RvPayload>(_kitFetch, origin, `/api/market/rv-cone?symbol=${symbol}`),
-    fetchSelf<SsrPayload>(_kitFetch, origin, `/api/market/stablecoin-ssr`),
-    fetchSelf<FlipPayload>(_kitFetch, origin, `/api/market/funding-flip?symbol=${symbol}`),
-    fetchSelf<LiqPayload>(_kitFetch, origin, `/api/market/liq-clusters?symbol=${symbol}&window=4h`),
+    fetchSelf<AnalyzeMini>(_kitFetch, url.origin, `/api/cogochi/analyze?symbol=${symbol}&tf=${tf}`),
+    safeLoad(() => loadVenueDivergence(symbol)),
+    safeLoad(() => loadRvCone(symbol)),
+    safeLoad(() => loadStablecoinSsr()),
+    safeLoad(() => loadFundingFlip(symbol)),
+    safeLoad(() => loadLiqClusters({ symbol, window: '4h', fetchImpl: _kitFetch })),
     deribitCurrency
-      ? fetchSelf<OptionsPayload>(_kitFetch, origin, `/api/market/options-snapshot?currency=${deribitCurrency}`)
+      ? safeLoad(() => loadOptionsSnapshot(deribitCurrency))
       : Promise.resolve(null),
   ]);
 
