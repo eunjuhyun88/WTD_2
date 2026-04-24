@@ -7,7 +7,46 @@
 
 ## main SHA
 
-`2e58d5e0` — current local `origin/main` ref
+`46382882` — current local `origin/main` ref
+
+## 완료 (이번 세션)
+
+| PR | 내용 |
+|---|---|
+| #185 (W-0137) | C sidebar ANALYZE를 right-dock collapse + summary/detail 구조로 재분리 |
+| #186 (W-0126) | ledger record store boundary refactor를 최신 mainline에 통합 |
+| #188 (W-0136) | worker-control research CLI + W-0126 cutover preflight 보강 |
+| #189 (W-0140) | bottom ANALYZE tab 상세 workspace 재구성 |
+| #190 (W-0138) | `ENGINE_RUNTIME_ROLE` 기반 engine-api / worker-control split |
+| #201 (W-0122) | consumer fact routes attach to engine facts (`reference-stack`, `chain-intel`) |
+| #202 (W-0145) | search corpus store + worker-control corpus refresh + `/search/catalog` |
+| #203 (W-0145) | corpus-only `/search/seed` and `/search/scan` routes + persisted run candidates |
+| #205 (W-0145) | app search contracts aligned with canonical engine search payloads |
+| #206 (W-0142) | runtime state route skeleton for captures, workspace pins, setups, research contexts, and ledger |
+| #207 (W-0142) | app pattern captures routed through the runtime plane with degraded fallback |
+| #208 (W-0143) | canonical app-side `AgentContextPack` loader over fact/search/runtime plane clients |
+| #209 (W-0143) | DOUNI terminal message consumes bounded `AgentContextPack` through contextBuilder |
+| #210 (W-0143) | `intel-policy` consumes bounded `AgentContextPack` summary without changing scoring |
+| #211 (W-0139) | `TradeMode` recent saved captures read through runtime plane client |
+| #212 (W-0139) | `TradeMode` confluence current/history reads moved behind terminal client helpers |
+| #213 (W-0139) | `TradeMode` indicator side-fetch `/api/market/*` reads moved behind terminal client helpers |
+| #214 (W-0139) | `TradeMode` candle-close analyze refresh moved behind terminal client helper |
+| #215 (W-0139) | `TradeMode` outcome submit and alpha world-model reads moved behind terminal client helpers |
+| #216 (W-0139) | terminal page review inbox count moved behind terminal client helper; terminal surface direct-fetch audit clean |
+| #230 (W-0160) | `PatternSeedScout` now persists `PatternDraft`, runs engine benchmark search, and reads `similar-live` through canonical `SearchQuerySpec` contracts |
+| #231 (W-0160 / W-0159) | runtime capture / benchmark fixtures aligned with `/runtime/captures`, and optional user-data liquidation diagnostics landed on raw ingest |
+| #232 (W-0159) | canonical raw plane mainline extract merged: raw SQLite tables, indexed market search, shared cache, scheduler refresh, and `/universe?q=` cutover |
+| #235 (W-0160) | definition truth scope now persists canonical `definition_id` / `definition_ref` across captures, outcomes, ledger, and definition-scoped stats/read models |
+| #236 (W-0122) | `influencer-metrics` now attaches additive engine `indicator-catalog` fact coverage without changing the public research payload |
+| #237 (W-0148) | docs queue refresh landed on main so post-raw execution order and branch map were realigned to the canonical lane order |
+| #238 (W-0122) | `/api/confluence/current` fallback now reads analyze service directly instead of loopbacking through `/api/cogochi/analyze`; W-0122 conflict-marker drift was cleaned |
+| #239 (W-0160) | DOUNI pattern search now flows through `PatternSeedScout` / canonical `PatternDraft -> SearchQuerySpec` contracts instead of local route-specific wiring |
+| #241 (W-0148) | post-merge execution queue was refreshed again after the W-0122/W-0160 follow-up merges so the next lanes stayed fact -> search -> runtime -> contract -> raw follow-up |
+| #242 (W-0160) | `/patterns/{slug}/stats` and `/patterns/stats/all` now expose explicit `definition_scope`, and app pattern-stats proxies pass through scoped queries |
+| #243 (W-0148) | next execution plan was resynced again after the latest merged follow-ups so CURRENT stayed aligned with the canonical lane order and branch map |
+| #244 (W-0161) | app warning cleanup landed on latest main base; `npm --prefix app run check` now reports `0 errors / 0 warnings` and the queue resumes on engine lanes without app warning noise |
+| #248 (W-0159) | engine-owned Coinalyze market-wide liquidation ingress now materializes public windows into `market_liquidation_windows`, while optional Binance user-data diagnostics stay isolated by provider/venue |
+| #240 (W-0148 / W-0160) | post-merge plan refresh branch was kept mergeable on latest `main` by restoring `captures` benchmark-search route truth and re-syncing engine contract artifacts after upstream drift |
 
 ---
 
