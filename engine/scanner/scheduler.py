@@ -73,6 +73,10 @@ PATTERN_REFINEMENT_AUTO_TRAIN = os.environ.get("PATTERN_REFINEMENT_AUTO_TRAIN", 
 SCAN_TELEGRAM_ENABLED = os.environ.get("SCAN_TELEGRAM_ENABLED", "1").strip().lower() not in {
     "0", "false", "no", "off",
 }
+FEATURE_MATERIALIZATION_ENABLED = os.environ.get("ENABLE_FEATURE_MATERIALIZATION_JOB", "true").strip().lower() not in {
+    "0", "false", "no", "off",
+}
+FEATURE_MATERIALIZATION_INTERVAL = int(os.environ.get("FEATURE_MATERIALIZATION_INTERVAL_SECONDS", "900"))
 
 SUPABASE_URL      = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
@@ -100,6 +104,40 @@ def validate_scheduler_secrets() -> None:
 
 async def _push_alert(payload: dict[str, Any]) -> None:
     await push_alert(payload, SUPABASE_URL, SUPABASE_ROLE_KEY)
+
+
+async def _feature_materialization_refresh_job() -> None:
+    """Materialize feature_windows for all universe symbols from local cache.
+
+    Intentionally offline — reads from existing CSV cache, never fans out to
+    providers. Run after universe_scan so freshly cached data is consumed.
+    """
+    import asyncio
+    from features.materialization_store import FeatureMaterializationStore
+    from scanner.jobs.feature_materialization import materialize_symbol_window
+
+    store = FeatureMaterializationStore()
+    loaded = await load_universe_async(UNIVERSE_NAME)
+    symbols = list(loaded)[:60]
+    materialized = skipped = 0
+    for symbol in symbols:
+        for timeframe in ("1h", "4h"):
+            try:
+                await asyncio.to_thread(
+                    materialize_symbol_window,
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    venue="binance",
+                    offline=True,
+                    store=store,
+                )
+                materialized += 1
+            except Exception:
+                skipped += 1
+    log.info(
+        "feature_materialization: symbols=%d materialized=%d skipped=%d",
+        len(symbols), materialized, skipped,
+    )
 
 
 # ── Core scan loop ────────────────────────────────────────────────────────────
@@ -273,6 +311,18 @@ def start_scheduler() -> None:
             misfire_grace_time=300,
         )
 
+    if FEATURE_MATERIALIZATION_ENABLED:
+        _scheduler.add_job(
+            _feature_materialization_refresh_job,
+            trigger="interval",
+            seconds=FEATURE_MATERIALIZATION_INTERVAL,
+            id="feature_materialization_refresh",
+            name="Canonical feature plane materializer",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=120,
+        )
+
     # Job: Alpha Universe COLD scanner — every 4 hours
     _scheduler.add_job(
         scan_alpha_observer_job,
@@ -299,10 +349,11 @@ def start_scheduler() -> None:
 
     _scheduler.start()
     log.info(
-        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s refinement=%s universe=%s",
+        "Scanner started: block_scan=%ds pattern_scan=%ds auto_eval=3600s refinement=%s feature_mat=%s universe=%s",
         SCAN_INTERVAL,
         SCAN_INTERVAL,
         f"{PATTERN_REFINEMENT_INTERVAL}s" if PATTERN_REFINEMENT_ENABLED else "off",
+        f"{FEATURE_MATERIALIZATION_INTERVAL}s" if FEATURE_MATERIALIZATION_ENABLED else "off",
         UNIVERSE_NAME,
     )
 
