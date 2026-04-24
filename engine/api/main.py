@@ -93,10 +93,12 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     # phase-0 and triggers spurious re-entry alerts on the next scan tick.
     try:
         from patterns.state_store import PatternStateStore
-        from patterns.supabase_state_sync import hydrate_from_supabase
+        from patterns.supabase_state_sync import hydrate_from_supabase, hydrate_transitions_from_supabase
         _pattern_store = PatternStateStore()
         _hydrated = await hydrate_from_supabase(_pattern_store)
         log.info("Pattern state hydration: %d states restored", _hydrated)
+        _transitions = await hydrate_transitions_from_supabase(_pattern_store)
+        log.info("Phase transition hydration: %d transitions restored", _transitions)
     except Exception as exc:
         log.warning("Pattern state hydration failed (non-fatal): %s", exc)
 

@@ -243,6 +243,36 @@ class PatternStateStore:
 
         return record
 
+    def append_transition_from_hydration(self, record: PhaseTransitionRecord) -> None:
+        """Write a transition from Supabase startup hydration — SQLite only, no push-back."""
+        now = datetime.now(timezone.utc)
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO phase_transitions (
+                  transition_id, symbol, pattern_slug, pattern_version, timeframe,
+                  from_phase, to_phase, from_phase_idx, to_phase_idx,
+                  transition_kind, reason, transitioned_at, trigger_bar_ts, scan_id,
+                  confidence, block_scores_json, blocks_triggered_json,
+                  feature_snapshot_json, data_quality_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.transition_id, record.symbol, record.pattern_slug,
+                    record.pattern_version, record.timeframe, record.from_phase,
+                    record.to_phase, record.from_phase_idx, record.to_phase_idx,
+                    record.transition_kind, record.reason,
+                    _dt_to_ms(record.transitioned_at),
+                    _dt_to_ms(record.trigger_bar_ts),
+                    record.scan_id, record.confidence,
+                    _json_dumps(record.block_scores),
+                    _json_dumps(record.blocks_triggered),
+                    _json_dumps(record.feature_snapshot),
+                    _json_dumps(record.data_quality),
+                    _dt_to_ms(record.created_at) or _dt_to_ms(now),
+                ),
+            )
+
     def upsert_state(self, state: PatternStateRecord) -> PatternStateRecord:
         """Persist the current runtime snapshot even when no transition occurred."""
         now = datetime.now(timezone.utc)

@@ -207,3 +207,91 @@ async def hydrate_from_supabase(store: PatternStateStore) -> int:
 
     log.info("Pattern state hydration complete: %d active states restored from Supabase", count)
     return count
+
+
+async def hydrate_transitions_from_supabase(
+    store: PatternStateStore,
+    limit: int = 5000,
+) -> int:
+    """Startup hydration: restore recent phase transitions from Supabase into SQLite.
+
+    Called once during FastAPI lifespan startup, after hydrate_from_supabase().
+    Without this, Layer B (phase-path LCS scoring) sees an empty transition
+    history on every cold start and scores every candidate as 0.
+
+    Returns the number of transitions restored.
+    """
+    if not _supabase_available():
+        log.info("Supabase not configured — skipping transition hydration (local dev mode)")
+        return 0
+
+    import asyncio
+
+    def _fetch_transitions() -> list[dict]:
+        try:
+            result = (
+                _sb()
+                .table("phase_transitions")
+                .select("*")
+                .order("transitioned_at", desc=False)
+                .limit(limit)
+                .execute()
+            )
+            return result.data or []
+        except Exception as exc:
+            log.warning("Phase transition hydration fetch failed: %s", exc)
+            return []
+
+    rows = await asyncio.to_thread(_fetch_transitions)
+    if not rows:
+        log.info("Phase transition hydration: no transitions in Supabase")
+        return 0
+
+    from patterns.types import PhaseTransitionRecord
+
+    count = 0
+    for row in rows:
+        try:
+            record = PhaseTransitionRecord(
+                transition_id=row["transition_id"],
+                symbol=row["symbol"],
+                pattern_slug=row["pattern_slug"],
+                pattern_version=int(row.get("pattern_version", 1)),
+                timeframe=row["timeframe"],
+                from_phase=row.get("from_phase"),
+                to_phase=row["to_phase"],
+                from_phase_idx=row.get("from_phase_idx"),
+                to_phase_idx=int(row["to_phase_idx"]),
+                transition_kind=row["transition_kind"],
+                reason=row["reason"],
+                transitioned_at=_parse_dt(row.get("transitioned_at")) or datetime.now(timezone.utc),
+                trigger_bar_ts=_parse_dt(row.get("trigger_bar_ts")),
+                scan_id=row.get("scan_id"),
+                confidence=float(row.get("confidence", 0.0)),
+                block_scores=row.get("block_scores") or {},
+                blocks_triggered=row.get("blocks_triggered") or [],
+                feature_snapshot=row.get("feature_snapshot"),
+                data_quality=row.get("data_quality"),
+                created_at=_parse_dt(row.get("created_at")) or datetime.now(timezone.utc),
+            )
+            store.append_transition_from_hydration(record)
+            count += 1
+        except Exception as exc:
+            log.warning(
+                "Phase transition hydration: failed to restore %s/%s: %s",
+                row.get("symbol"),
+                row.get("pattern_slug"),
+                exc,
+            )
+
+    log.info("Phase transition hydration complete: %d transitions restored from Supabase", count)
+    return count
+
+
+def _parse_dt(v: str | None) -> datetime | None:
+    if not v:
+        return None
+    try:
+        return datetime.fromisoformat(v)
+    except (ValueError, TypeError):
+        return None

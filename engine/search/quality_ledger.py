@@ -24,11 +24,18 @@ Weight recalibration algorithm:
 
 Defaults (no data):
     layer_a = 0.45, layer_b = 0.30, layer_c = 0.25
+
+Durability:
+    Each judgement is written to local SQLite AND fire-and-forget pushed to
+    Supabase search_judgements table (if SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY
+    are set). This survives Cloud Run container restarts.
 """
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -116,6 +123,30 @@ def _dominant_layer(
     return max(scores, key=lambda k: scores[k])
 
 
+# ---------------------------------------------------------------------------
+# Supabase durability — fire-and-forget write-through
+# ---------------------------------------------------------------------------
+
+def _supabase_available() -> bool:
+    return bool(
+        os.environ.get("SUPABASE_URL", "").strip()
+        and os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    )
+
+
+def _push_judgement_bg(row: dict) -> None:
+    """Background thread: upsert one judgement row to Supabase."""
+    try:
+        from supabase import create_client  # type: ignore[import]
+        sb = create_client(
+            os.environ["SUPABASE_URL"],
+            os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+        )
+        sb.table("search_judgements").upsert(row, on_conflict="judgement_id").execute()
+    except Exception:
+        pass  # non-fatal; SQLite write already succeeded
+
+
 def append_judgement(
     run_id: str,
     candidate_id: str,
@@ -139,6 +170,7 @@ def append_judgement(
 
     judgement_id = uuid.uuid4().hex[:20]
     dom = _dominant_layer(layer_a_score, layer_b_score, layer_c_score)
+    judged_at = _utcnow()
 
     with _connect(db_path) as conn:
         conn.execute(
@@ -152,9 +184,28 @@ def append_judgement(
             (
                 judgement_id, run_id, candidate_id, symbol, verdict,
                 dom, layer_a_score, layer_b_score, layer_c_score,
-                final_score, user_id, _utcnow(),
+                final_score, user_id, judged_at,
             ),
         )
+
+    # Async Supabase sync — fire-and-forget, never blocks the request.
+    if _supabase_available():
+        row = {
+            "judgement_id": judgement_id,
+            "run_id": run_id,
+            "candidate_id": candidate_id,
+            "symbol": symbol,
+            "verdict": verdict,
+            "dominant_layer": dom,
+            "layer_a_score": layer_a_score,
+            "layer_b_score": layer_b_score,
+            "layer_c_score": layer_c_score,
+            "final_score": final_score,
+            "user_id": user_id,
+            "judged_at": judged_at,
+        }
+        threading.Thread(target=_push_judgement_bg, args=(row,), daemon=True).start()
+
     return judgement_id
 
 
