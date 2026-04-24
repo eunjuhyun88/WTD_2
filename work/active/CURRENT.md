@@ -48,6 +48,7 @@
 | #244 (W-0161) | app warning cleanup landed on latest main base; `npm --prefix app run check` now reports `0 errors / 0 warnings` and the queue resumes on engine lanes without app warning noise |
 | #248 (W-0159) | engine-owned Coinalyze market-wide liquidation ingress now materializes public windows into `market_liquidation_windows`, while optional Binance user-data diagnostics stay isolated by provider/venue |
 | #249 (W-0159) | public liquidation ingress follow-up closed with Coinalyze credential handling, diagnostics, and refreshed raw-plane tests/docs |
+| #240 (W-0148 / W-0160) | post-merge plan refresh branch was kept mergeable on latest `main` by restoring `captures` benchmark-search route truth and re-syncing engine contract artifacts after upstream drift |
 
 ---
 
