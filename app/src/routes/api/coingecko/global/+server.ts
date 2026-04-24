@@ -1,24 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchFactMarketCapProxy } from '$lib/server/enginePlanes/facts';
-import { adaptEngineMarketCapSnapshot, fetchMarketCapOverview } from '$lib/server/marketCapPlane';
+import { loadPreferredMarketCapOverview } from '$lib/server/marketCapOverviewBridge';
 
 export const GET: RequestHandler = async ({ fetch }) => {
   try {
-    const engineSnapshot = await fetchFactMarketCapProxy(fetch, { offline: true });
-    const engineOverview = adaptEngineMarketCapSnapshot(engineSnapshot);
-    const prefersEngine =
-      engineOverview !== null &&
-      engineOverview.totalMarketCapUsd !== null &&
-      engineOverview.btcDominance !== null;
-    const maybeOverview =
-      prefersEngine && engineOverview
-        ? engineOverview
-        : await fetchMarketCapOverview();
-    if (!maybeOverview) {
+    const selection = await loadPreferredMarketCapOverview(fetch, 'global');
+    const overview = selection.overview;
+    if (!overview) {
       return json({ error: 'Market cap overview unavailable' }, { status: 502 });
     }
-    const overview = maybeOverview;
 
     if (overview.totalMarketCapUsd === null || overview.btcDominance === null) {
       return json({ error: 'Market cap overview unavailable' }, { status: 502 });
@@ -65,8 +55,8 @@ export const GET: RequestHandler = async ({ fetch }) => {
         headers: {
           'Cache-Control': 'public, max-age=60',
           'X-WTD-Plane': 'fact',
-          'X-WTD-Upstream': prefersEngine ? 'facts/market-cap' : 'legacy-marketCapPlane',
-          'X-WTD-State': prefersEngine ? 'adapter' : 'fallback',
+          'X-WTD-Upstream': selection.upstream,
+          'X-WTD-State': selection.state,
         },
       },
     );

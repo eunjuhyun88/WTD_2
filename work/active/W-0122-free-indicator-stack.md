@@ -176,6 +176,24 @@ This slice keeps `GET /ctx/fact` as the bounded landing zone but makes it satisf
 4. avoid any new app-side fact composition; only align the engine payload and current adapter expectations
 5. lock the cut with targeted engine `ctx` tests plus app fact-proxy / snapshot adapter tests
 
+### Current Lane Slice — Indicator Catalog Alias Cleanup
+
+This slice removes a stale duplicate engine entrypoint now that fact-plane consumers use the canonical `/facts/*` family.
+
+1. remove legacy `GET /ctx/indicator-catalog`
+2. keep `GET /facts/indicator-catalog` as the sole canonical indicator inventory route
+3. move route coverage from `ctx` tests onto the canonical `facts` route tests
+4. refresh generated engine OpenAPI types so app contracts stop advertising the dead alias
+
+### Current Lane Slice — Market-Cap Bridge Consolidation
+
+This slice keeps `market-cap` engine-preferred behavior intact, but moves the readiness choice into one bounded bridge so app fallback logic stops duplicating owner-selection rules.
+
+1. add one app-side `market-cap` bridge loader with explicit `macro` vs `global` readiness modes
+2. keep `marketCapPlane` as the legacy fallback producer only when engine facts are not ready enough
+3. make `/api/market/macro-overview` and `/api/coingecko/global` consume the shared bridge result instead of open-coding engine-first selection
+4. preserve existing public payloads and `X-WTD-*` headers
+
 ### Current Lane Slice — Snapshot Engine Contract
 
 This cut tightens the public snapshot compatibility bridge so non-persistent reads stop falling back to app-owned fact assembly unless the engine fact path is unavailable.
@@ -538,6 +556,7 @@ def compute_confluence_score(ctx: Context) -> ConfluenceResult:
 - **`ctx/fact` should satisfy the contract it already advertises** — `FactSnapshot` already exposes optional `fact_id`, `provider_state`, `confluence`, and `reference_health`, and app adapters probe for those fields today. The engine landing zone should populate them before more transitional app logic grows around missing values.
 - **legacy `/api/engine/ctx/fact` bridge is dead and should be removed** — fact-plane callers already use `/api/facts/ctx/fact`; keeping the same path allowlisted on the frozen legacy engine proxy only preserves duplicate ingress without any consumer.
 - **snapshot adapter should prefer `provider_state` over transitional `sources`** — once `ctx/fact` fills canonical provider summaries, app compatibility routes should read that normalized plane contract first and only fall back to raw transitional source maps when older engine payloads are encountered.
+- **indicator catalog should not keep a duplicate `ctx` alias once plane proxies are live** — app fact consumers and plane clients already use `/facts/indicator-catalog`; keeping `/ctx/indicator-catalog` only preserves a second fact owner path and stale contract surface.
 - **terminal execution paths should share server helpers instead of HTTP loopbacks** — when `intel-policy`, `intel-agent-shadow/execute`, and `/api/quick-trades/open` live in the same app process, shared loaders/functions are the canonical surface and internal `fetch('/api/...')` should be removed before new orchestration grows around them.
 ## Open Questions
 
@@ -585,8 +604,8 @@ Phase 2 (future cycle):
 ## Handoff Checklist
 
 - active work item: `work/active/W-0122-free-indicator-stack.md`
-- branch/worktree state: `codex/w-0122-snapshot-engine-contract`, active worktree at `/tmp/wtd-v2-w0122-snapshot-engine-contract`
-- verification status: snapshot/intel-policy/terminal loopback cleanup passes app targeted `vitest` (`market/snapshot`, `market/flow`, `market/events`, `terminal/intel-policy`, `terminal/intel-agent-shadow/execute`, `marketSnapshotService`, `opportunityScan`) plus `npm --prefix app run check`
+- branch/worktree state: `codex/w-0122-confluence-fact-cut`, active worktree at `/Users/ej/Projects/wtd-v2/.codex/worktrees/w-0122-confluence-fact-cut`
+- verification status: snapshot/intel-policy/terminal loopback cleanup passes app targeted `vitest` (`market/snapshot`, `market/flow`, `market/events`, `terminal/intel-policy`, `terminal/intel-agent-shadow/execute`, `marketSnapshotService`, `opportunityScan`) plus `npm --prefix app run check`; `refactor(W-0122): remove indicator catalog ctx alias` passed engine `pytest engine/tests/test_ctx_fact_route.py engine/tests/test_facts_route.py -q`, `npm --prefix app run contract:check:engine-types`, and `npm --prefix app run check`; `refactor(W-0122): consolidate market-cap bridge selection` passed targeted app vitest (`marketCapOverviewBridge`, `macro-overview`, `coingecko/global`) plus `npm --prefix app run check`
 - remaining blockers: Solscan key validity, Etherscan paid-tier chain coverage, Arkham direct API key, MacroMicro/CoinGlass/Tokenomist/RootData paid credentials, engine-side confluence scoring, flywheel weight learning, query-surface explicit scan contract, total-cap fallback design, remaining app self-calls outside the current snapshot/intel-policy/terminal execute path
 
 ## PR Trail
@@ -597,3 +616,5 @@ Phase 2 (future cycle):
 - #157 (Slice F — SSR + RV Cone + Funding Flip)
 - #159 (Confluence Engine Phase 1)
 - #161 (Pillar 2 Options Phase 1)
+- #225 (`ctx/fact` contract fill-in)
+- #227 (indicator catalog alias cleanup + market-cap bridge consolidation)

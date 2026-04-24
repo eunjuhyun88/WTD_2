@@ -122,26 +122,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/ctx/indicator-catalog": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Ctx Indicator Catalog
-         * @description Return the canonical engine-owned 100-metric indicator inventory.
-         */
-        get: operations["ctx_indicator_catalog_ctx_indicator_catalog_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/facts/price-context": {
         parameters: {
             query?: never;
@@ -4175,42 +4155,6 @@ export interface operations {
                 symbol: string;
                 timeframe?: string;
                 offline?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    ctx_indicator_catalog_ctx_indicator_catalog_get: {
-        parameters: {
-            query?: {
-                status?: string | null;
-                family?: string | null;
-                stage?: string | null;
-                query?: string | null;
             };
             header?: never;
             path?: never;
